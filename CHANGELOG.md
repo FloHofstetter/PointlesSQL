@@ -6,6 +6,37 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- **Phase 87 Restschuld I (config + repo_assets + audit) closed
+  (2026-05-16).**  First of three follow-up phases to clear the
+  trim list from Phase 86.  Three low-risk strands; ruff / pyright
+  / pydoclint / alembic all green at every commit, pyright count
+  drops 8→6 errors / 539→533 warnings.
+
+  1. **87.1** — ``config/_settings.py`` 922 LOC → ``config/_settings/``
+     package with six topical sub-modules (auth, storage, infra,
+     audit, features, integrations) plus a shared ``_paths`` for
+     ``STARTUP_CWD`` / ``PROJECT_ROOT``.  ``Settings()`` API
+     unchanged — sanity probe confirms 23 fields, path validators
+     anchor against startup CWD.
+  2. **87.2** — ``pointlessql/repo_assets/`` deleted (428 LOC + a
+     136-LOC test for it + two stale doc rows + the
+     dashboards/saved_queries YAML block in
+     ``git-backed-workspaces.md``).  The Phase-51.3 loader for
+     dashboards + saved queries was never wired into the
+     workspace-repo sync loop; the Phase-86 audit caught it as
+     orphaned and Phase 87 confirms the deletion is safe (zero
+     production imports).
+  3. **87.3** — ``audit/_legacy.py`` 1262 LOC → seven axis modules
+     (``_helpers``, ``_metrics``, ``_principal``, ``_pii``,
+     ``_history``, ``_cdf``, ``_anomaly_inbox``).  The "legacy"
+     filename is gone — PointlesSQL isn't published yet, so no
+     backwards-compat shim; the audit ``__init__`` mounts seven
+     sibling routers and the combined router still serves the same
+     23 paths.  Helper functions promoted out of the file-private
+     underscore convention (``resolve_workspace_lens``,
+     ``parse_iso8601``, ``record_self``) because every axis module
+     now consumes them across module boundaries.
+
 - **Phase 86 modularisation + dedup wave closed (2026-05-16).**
   Twelve-commit structural pass on files large enough to push past
   LLM-comfort and on the cross-cutting helpers that were duplicated

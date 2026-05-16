@@ -1183,7 +1183,57 @@ PointlesSQL
 │          legacy bridges) that would each justify their own sprint;
 │          deferred per plan's trim list.  Stale-module audit
 │          (``repo_assets``, ``conventions``, ``pointlessql.git``,
-│          ``types``) confirmed all four actively imported.
+│          ``types``) confirmed all four actively imported — but
+│          ``repo_assets`` was later proven orphaned in Phase 87.2.
+│
+├── Phase 87 — Restschuld I: config + repo_assets + audit  ✅ done 2026-05-16
+│       First of three follow-up phases to clear the trim list from
+│       Phase 86.  Low-risk strands without business-logic change;
+│       three commits on branch ``phase-87-…``, net ~−400 LOC
+│       (after subtracting the docstring expansion in the splits).
+│       All gates green at every commit (ruff/pyright/pydoclint/
+│       alembic); pyright count drops 8→6 errors / 539→533 warnings
+│       (from the deleted repo_assets/_loader.py ``workspace_repos``
+│       callsites — the underlying bug is unchanged).
+│
+│       ── 87.1 (`1c4d337`) ``config/_settings.py`` 922 LOC → package.
+│          Six topical sub-modules under ``config/_settings/``:
+│          ``_auth`` (AuthSettings, OIDCSettings, GroupMapping + the
+│          group-map parser), ``_storage`` (DatabaseSettings,
+│          DeltaSettings), ``_infra`` (ServerSettings + 5 more),
+│          ``_audit`` (AuditSettings + 3 more), ``_features``
+│          (SQLSettings + 5 more), ``_integrations`` (JupyterSettings
+│          + 4 more), plus ``_paths`` holding the shared STARTUP_CWD
+│          / PROJECT_ROOT anchors.  ``Settings()`` instantiation
+│          probe confirms 23 fields, all path validators honour
+│          their startup-CWD anchor.
+│
+│       ── 87.2 (`f3c7e07`) ``pointlessql/repo_assets/`` deleted.
+│          The Phase-51.3 YAML loader for dashboards + saved queries
+│          (428 LOC + a 136-LOC test) was never wired into the
+│          workspace-repo sync loop or the manual-sync button — half-
+│          finished feature that audit flagged in Phase 86 (zero
+│          production imports).  Doc table in
+│          ``docs/concepts/git-backed-workspaces.md`` also pruned of
+│          its two stale rows + the dashboards/saved_queries YAML
+│          block.  If repo-canonical dashboards become a real
+│          requirement, a future sprint reintroduces against the
+│          conventions / data_products pattern.
+│
+│       ── 87.3 (`6d2ac2d`) ``audit/_legacy.py`` 1262 LOC → 7 modules.
+│          Split by behavioural axis: ``_helpers`` (workspace-lens,
+│          ISO-8601 parse, audit-of-audit self-tracking; renamed
+│          without leading underscores for cross-module reuse),
+│          ``_metrics`` (summary / timeseries / anomalies),
+│          ``_principal`` (principal-summary), ``_pii`` (admin-only
+│          reveal), ``_history`` (paginated query_history walker),
+│          ``_cdf`` (CDF subscriptions + events), ``_anomaly_inbox``
+│          (inbox + ack CRUD; named anomaly-prefixed to avoid
+│          colliding with the existing ``inbox.py`` HTML cockpit
+│          page).  ``_legacy.py`` deleted outright — no backwards-
+│          compatibility shim because PointlesSQL isn't published
+│          yet and the name was never public API.  Combined audit
+│          router still exposes the same 23 paths.
 │
 ├── Phase 81 — Feed overhaul + help surface + entity ⋯-menu  ✅ done 2026-05-16
 │       Three-track polish bundle.  Track K rebuilt /feed from a
