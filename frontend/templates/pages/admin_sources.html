@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+{% block title %}Ingest sources · Admin · PointlesSQL{% endblock %}
+
+{% set breadcrumbs = [
+    {"label": "Home", "href": "/"},
+    {"label": "Admin", "href": "/admin"},
+    {"label": "Ingest sources"}
+] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-3">
+    <div class="d-flex align-items-center gap-2">
+        <i class="bi bi-plug-fill fs-3"></i>
+        <h1 class="h3 mb-0">Ingest sources — system view</h1>
+    </div>
+    <span class="text-muted small">Admin only</span>
+</div>
+
+<p class="text-muted small mb-3">
+    Every ingest source across all workspaces.  Last pull status,
+    error / row rollup over the last 7 days, schedule, drill-down to
+    per-source detail.
+</p>
+
+<div x-data="adminSourcesList()" x-init="load()">
+    <div class="d-flex gap-2 mb-3 flex-wrap">
+        <input type="search"
+               class="form-control form-control-sm"
+               style="max-width: 280px;"
+               x-model="filter"
+               placeholder="Filter by name / kind&hellip;">
+        <div class="form-check form-check-inline">
+            <input class="form-check-input" type="checkbox"
+                   id="failed-only"
+                   x-model="showFailedOnly">
+            <label class="form-check-label small" for="failed-only">
+                Show failed only
+            </label>
+        </div>
+        <button class="btn btn-outline-secondary btn-sm ms-auto"
+                @click="load()"
+                :disabled="loading">
+            <i class="bi bi-arrow-clockwise"></i> Refresh
+        </button>
+    </div>
+
+    <template x-if="loading">
+        <div class="text-muted small">
+            <span class="spinner-border spinner-border-sm me-1"></span>
+            Loading sources&hellip;
+        </div>
+    </template>
+
+    <template x-if="!loading && sources.length === 0">
+        <div class="card">
+            <div class="card-body text-muted small text-center py-4">
+                No ingest sources have been configured.
+            </div>
+        </div>
+    </template>
+
+    <template x-if="!loading && filtered().length > 0">
+        <div class="card">
+            <div class="table-responsive">
+                <table class="table table-sm align-middle mb-0 pql-list-table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Kind</th>
+                            <th>Workspace</th>
+                            <th>Schedule</th>
+                            <th>Last pull</th>
+                            <th class="text-center">Status</th>
+                            <th class="text-end">Errors 7d</th>
+                            <th class="text-end">Rows</th>
+                            <th class="text-center">Active</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <template x-for="s in filtered()" :key="s.id">
+                            <tr style="cursor: pointer;"
+                                @click="window.location.href = '/ingest/sources/' + s.id">
+                                <td><strong x-text="s.name"></strong></td>
+                                <td>
+                                    <span class="badge bg-secondary font-monospace"
+                                          x-text="s.kind"></span>
+                                </td>
+                                <td class="text-muted small"
+                                    x-text="'#' + s.workspace_id"></td>
+                                <td class="font-monospace small text-muted"
+                                    x-text="s.cron_expr || '—'"></td>
+                                <td class="text-muted small"
+                                    x-text="s.last_pull_ts || '—'"></td>
+                                <td class="text-center">
+                                    <span x-show="s.last_pull_ok === true" class="badge bg-success">ok</span>
+                                    <span x-show="s.last_pull_ok === false" class="badge bg-danger">failed</span>
+                                    <span x-show="s.last_pull_ok === null" class="badge bg-secondary">never</span>
+                                </td>
+                                <td class="text-end"
+                                    :class="s.errors_7d > 0 ? 'text-danger fw-bold' : 'text-muted'"
+                                    x-text="s.errors_7d"></td>
+                                <td class="text-end small text-muted"
+                                    x-text="s.last_pull_rows ?? '—'"></td>
+                                <td class="text-center">
+                                    <span x-show="s.is_active" class="text-success">
+                                        <i class="bi bi-check-circle-fill"></i>
+                                    </span>
+                                    <span x-show="!s.is_active" class="text-muted">
+                                        <i class="bi bi-pause-circle"></i>
+                                    </span>
+                                </td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </template>
+</div>
+
+<script>
+function adminSourcesList() {
+    return {
+        loading: true,
+        sources: [],
+        filter: '',
+        showFailedOnly: false,
+        async load() {
+            this.loading = true;
+            const res = await window.pqlApi.fetch('/api/admin/ingest-sources');
+            this.loading = false;
+            if (res.ok && res.data) {
+                this.sources = res.data.sources || [];
+            }
+        },
+        filtered() {
+            let xs = this.sources;
+            if (this.showFailedOnly) {
+                xs = xs.filter(s => s.errors_7d > 0 || s.last_pull_ok === false);
+            }
+            const q = (this.filter || '').toLowerCase().trim();
+            if (!q) return xs;
+            return xs.filter(s =>
+                (s.name + ' ' + s.kind).toLowerCase().includes(q)
+            );
+        }
+    };
+}
+</script>
+{% endblock %}

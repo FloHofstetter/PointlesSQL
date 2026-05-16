@@ -470,6 +470,24 @@ async def admin_system_info_index(request: Request) -> HTMLResponse:
     )
 
 
+@router.get("/admin/sources", response_class=HTMLResponse)
+async def admin_ingest_sources_index(request: Request) -> HTMLResponse:
+    """Render the system-wide ingest health monitor (Phase 82.5).
+
+    Pure HTML shell — the page fetches ``/api/admin/ingest-sources``
+    on load to populate the table.
+    """
+    require_admin(request)
+    return _templates(request).TemplateResponse(
+        request,
+        "pages/admin_sources.html",
+        {
+            "active_page": "admin",
+            "is_admin": True,
+        },
+    )
+
+
 @router.get("/admin/audit", response_class=HTMLResponse)
 async def admin_audit_index(
     request: Request,

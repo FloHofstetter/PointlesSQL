@@ -79,6 +79,43 @@
         </div>
     </div>
 
+    {# Phase 82.5 — Ingest sources feeding this DP.  Lazy-fetched
+       on page boot; row hidden entirely when no source matches. #}
+    <div x-data="ingestStatusBand({{ product.catalog_name|tojson }},
+                                  {{ product.schema_name|tojson }})"
+         x-init="load()"
+         x-show="sources.length > 0"
+         class="alert alert-light border d-flex flex-wrap gap-2 align-items-center small mb-3">
+        <i class="bi bi-plug-fill text-muted"></i>
+        <strong class="me-1">Ingest sources:</strong>
+        <template x-for="s in sources" :key="s.source_id">
+            <a :href="'/ingest/sources/' + s.source_id"
+               class="badge text-decoration-none"
+               :class="s.last_pull_ok === false ? 'bg-danger' :
+                       (s.last_pull_ok === true ? 'bg-success' : 'bg-secondary')"
+               :title="s.target_fqn + ' · ' + (s.last_pull_ts || 'never pulled')">
+                📥 <span x-text="s.source_name"></span>
+                <span class="ms-1" x-show="s.last_pull_ts"
+                      x-text="' · ' + (s.last_pull_ts || '').substring(0, 10)"></span>
+            </a>
+        </template>
+    </div>
+    <script>
+    function ingestStatusBand(catalog, schema) {
+        return {
+            sources: [],
+            async load() {
+                const res = await window.pqlApi.fetch(
+                    `/api/data-products/${catalog}/${schema}/ingest-status`
+                );
+                if (res.ok && res.data) {
+                    this.sources = res.data.sources || [];
+                }
+            }
+        };
+    }
+    </script>
+
     <ul class="nav nav-tabs mb-3" id="dpTabs" role="tablist">
         <li class="nav-item" role="presentation">
             <button class="nav-link active" id="tab-overview-btn" data-bs-toggle="tab"
