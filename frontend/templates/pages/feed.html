@@ -173,9 +173,44 @@
                 </div>
             </template>
 
-            {# Empty state — chosen by Alpine based on active filter
-               (C8 expands the copy variants; C1 ships the All-fallback). #}
-            <template x-if="loaded && rows.length === 0">
+            {# Per-filter empty states (Phase 81.K.8).  Each filter
+               gets distinct copy so an empty feed reads as an
+               invitation rather than a dead end.  The fallback is
+               the All-filter message that already shipped in C1. #}
+            <template x-if="loaded && rows.length === 0 && filter === 'mentions'">
+                <div>
+                    {% with icon="bi-at",
+                           title="No mentions yet",
+                           message="When teammates @-mention you in comments or reviews, they'll appear here.",
+                           action_href="/users", action_label="Browse people" %}
+                    {% include "components/empty.html" %}
+                    {% endwith %}
+                </div>
+            </template>
+
+            <template x-if="loaded && rows.length === 0 && filter === 'my'">
+                <div>
+                    {% with icon="bi-pencil-square",
+                           title="You haven't posted yet",
+                           message="Comment on a data product or leave a review to see your activity here.",
+                           action_href="/data-products", action_label="Browse data products" %}
+                    {% include "components/empty.html" %}
+                    {% endwith %}
+                </div>
+            </template>
+
+            <template x-if="loaded && rows.length === 0 && filter === 'followed_users'">
+                <div>
+                    {% with icon="bi-people",
+                           title="You're not following anyone yet",
+                           message="Follow contributors from the People-to-follow card on the right (or from any user profile) to populate this filter.",
+                           action_href="/users", action_label="Browse people" %}
+                    {% include "components/empty.html" %}
+                    {% endwith %}
+                </div>
+            </template>
+
+            <template x-if="loaded && rows.length === 0 && (filter === 'all' || filter === 'followed_dps')">
                 <div>
                     {% with icon="bi-newspaper",
                            title="No activity yet",
@@ -185,6 +220,33 @@
                     {% endwith %}
                 </div>
             </template>
+
+            {# First-run welcome card — visible at the top of the feed
+               for users who joined recently AND haven't followed any
+               entity yet.  Dismissal persists in localStorage. #}
+            <div class="card border-primary mb-3"
+                 x-show="welcomeVisible"
+                 x-cloak>
+                <div class="card-body d-flex gap-3 align-items-start">
+                    <i class="bi bi-stars fs-2 text-primary"></i>
+                    <div class="flex-grow-1">
+                        <h6 class="card-title mb-1">Welcome to PointlesSQL.</h6>
+                        <p class="card-text text-muted small mb-2">
+                            Your feed builds itself as you follow data products, models, and the people who own them.
+                            Here are some quick starts:
+                        </p>
+                        <div class="d-flex flex-wrap gap-2">
+                            <a class="btn btn-sm btn-outline-primary" href="/topics">Browse topics</a>
+                            <a class="btn btn-sm btn-outline-primary" href="/data-products">Browse data products</a>
+                            <a class="btn btn-sm btn-outline-primary" href="/users">Find people</a>
+                        </div>
+                    </div>
+                    <button type="button"
+                            class="btn-close"
+                            aria-label="Dismiss welcome"
+                            @click="dismissWelcome()"></button>
+                </div>
+            </div>
 
             {# Day-grouped feed — Alpine computed ``groupedDays``
                returns ``[{iso, label, rows: [...]}, ...]`` sorted
@@ -555,6 +617,7 @@ window.feedPage = function () {
         trending: [],
         people: [],
         savedSearches: [],
+        welcomeVisible: false,
 
         filters: [
             { key: 'all', label: 'For you', icon: 'bi-stars' },
@@ -596,6 +659,7 @@ window.feedPage = function () {
                 }
             } catch (e) { /* ignore storage errors */ }
             this._restoreSavedSearches();
+            this._evaluateWelcome();
             await this.reload();
             this.loadTrending();
             this.loadPeople();
@@ -1039,6 +1103,27 @@ window.feedPage = function () {
         deleteSavedSearch(idx) {
             this.savedSearches.splice(idx, 1);
             this._persistSavedSearches();
+        },
+
+        // First-run welcome card (Phase 81.K.8) — dismiss persists in
+        // localStorage.  Server-side gating on user.created_at <7d +
+        // social_follow count == 0 would require an extra round-trip;
+        // local-only is simpler and the dismiss is sticky-per-browser.
+        _evaluateWelcome() {
+            try {
+                if (window.localStorage?.getItem('pql.feed.welcomeDismissed') === '1') {
+                    this.welcomeVisible = false;
+                    return;
+                }
+            } catch (e) { /* ignore */ }
+            this.welcomeVisible = true;
+        },
+
+        dismissWelcome() {
+            this.welcomeVisible = false;
+            try {
+                window.localStorage?.setItem('pql.feed.welcomeDismissed', '1');
+            } catch (e) { /* ignore */ }
         },
 
         // Keyboard navigation (Phase 81.K.7) — j/k/o/e/m/r/?.
