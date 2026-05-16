@@ -6,7 +6,7 @@ set, the route walks every ``dbt_model`` op in the run and invokes
 ``pql.rollback`` for each — collecting per-target outcomes (succeeded
 vs. refused) into the response envelope.
 
-We monkeypatch :func:`pointlessql.api.dbt_routes._invoke_pql_rollback`
+We monkeypatch :func:`pointlessql.api.dbt._rollback.invoke_pql_rollback`
 to control the rollback outcome without spinning up a real Delta
 table — the rollback primitive itself is covered by
 :mod:`tests.test_pql_rollback`.
@@ -23,7 +23,7 @@ import httpx
 import pytest
 from sqlalchemy import select
 
-from pointlessql.api.dbt import routes as dbt_routes
+from pointlessql.api.dbt import _rollback as dbt_rollback
 from pointlessql.api.main import app
 from pointlessql.exceptions import ValidationError
 from pointlessql.models.audit._sinks import GovernanceEvent
@@ -118,7 +118,7 @@ async def test_auto_rollback_disabled_emits_no_rollback_block(
         rollback_calls.append(str(kwargs.get("target")))
         return _FakeRollbackResult(0, 1, 0, None)
 
-    monkeypatch.setattr(dbt_routes, "_invoke_pql_rollback", _spy_rollback)
+    monkeypatch.setattr(dbt_rollback, "invoke_pql_rollback", _spy_rollback)
 
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(
@@ -150,7 +150,7 @@ async def test_auto_rollback_with_only_warn_failures_no_ops(
         rollback_calls.append(str(kwargs.get("target")))
         return _FakeRollbackResult(0, 1, 0, None)
 
-    monkeypatch.setattr(dbt_routes, "_invoke_pql_rollback", _spy_rollback)
+    monkeypatch.setattr(dbt_rollback, "invoke_pql_rollback", _spy_rollback)
 
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(
@@ -191,7 +191,7 @@ async def test_auto_rollback_with_error_failure_invokes_rollback(
             restored_file_count=2,
         )
 
-    monkeypatch.setattr(dbt_routes, "_invoke_pql_rollback", _stub_rollback)
+    monkeypatch.setattr(dbt_rollback, "invoke_pql_rollback", _stub_rollback)
 
     factory = app.state.session_factory
     with factory() as session:
@@ -259,7 +259,7 @@ async def test_auto_rollback_collects_refusals_in_failed_list(
         # records the class name + message).
         raise ValidationError("delta_version_before is None")
 
-    monkeypatch.setattr(dbt_routes, "_invoke_pql_rollback", _flaky_rollback)
+    monkeypatch.setattr(dbt_rollback, "invoke_pql_rollback", _flaky_rollback)
 
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(
@@ -291,7 +291,7 @@ async def test_run_path_does_not_emit_auto_rollback_block(
         rollback_calls.append(str(kwargs.get("target")))
         return _FakeRollbackResult(0, 1, 0, None)
 
-    monkeypatch.setattr(dbt_routes, "_invoke_pql_rollback", _spy_rollback)
+    monkeypatch.setattr(dbt_rollback, "invoke_pql_rollback", _spy_rollback)
 
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(

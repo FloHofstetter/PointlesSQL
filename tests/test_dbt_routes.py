@@ -140,7 +140,7 @@ async def test_run_populates_delta_versions_when_capture_succeeds(
     persisted ``dbt_model`` rows carry ``delta_version_before`` (7)
     and ``delta_version_after`` (8) end-to-end through ``/api/dbt/run``.
     """
-    from pointlessql.api.dbt import routes as dbt_routes
+    from pointlessql.api.dbt import _audit as dbt_audit
     from pointlessql.models import AgentRunOperation
 
     # Point project_dir at the fixture so post-capture sees the right
@@ -163,8 +163,8 @@ async def test_run_populates_delta_versions_when_capture_succeeds(
     def _stub_post(_client: Any, relations: list[str]) -> dict[str, int | None]:
         return {rel: 8 for rel in relations}
 
-    monkeypatch.setattr(dbt_routes, "_capture_pre_run_versions", _stub_pre)
-    monkeypatch.setattr(dbt_routes, "capture_delta_versions", _stub_post)
+    monkeypatch.setattr(dbt_audit, "capture_pre_run_versions", _stub_pre)
+    monkeypatch.setattr(dbt_audit, "capture_delta_versions", _stub_post)
 
     # Set a sentinel uc_client so the post-capture path inside
     # ``_emit_audit_for_run`` doesn't short-circuit on the
