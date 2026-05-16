@@ -118,6 +118,7 @@
 <body hx-boost="true"
       hx-target="#main-content"
       hx-select="#main-content"
+      hx-select-oob="#pql-topbar-breadcrumbs-wrap"
       hx-swap="outerHTML show:window:top"
       {% if list_page is defined and list_page %}data-pql-refresh="1"{% endif %}>
     <nav class="navbar navbar-expand bg-body-tertiary border-bottom px-3 pql-topbar">
@@ -139,8 +140,14 @@
         {# Phase 81.K.11 \u2014 breadcrumbs moved into the topbar so the
            page content area starts ~50 px higher.  Hidden on mobile
            (<md) where the topbar already carries the brand + search
-           + offcanvas-trigger and would otherwise overflow. #}
-        <div class="pql-topbar-breadcrumbs d-none d-md-flex align-items-center">
+           + offcanvas-trigger and would otherwise overflow.
+
+           The ``id`` lets HTMX's body-level ``hx-select-oob`` fish
+           the new breadcrumb out of every boost-swap response \u2014
+           without it, ``hx-select="#main-content"`` would drop the
+           updated breadcrumb on every navigation. #}
+        <div id="pql-topbar-breadcrumbs-wrap"
+             class="pql-topbar-breadcrumbs d-none d-md-flex align-items-center">
             {% block breadcrumbs %}{% endblock %}
         </div>
 
