@@ -915,7 +915,7 @@ PointlesSQL
 │       pyright 496/623; pydoclint zero violations; file-size
 │       gate clean.
 │
-├── Phases 82–85 — Strategic axes (post-81 horizon)         ⏳ planned
+├── Phases 82–85 — Strategic axes (post-81 horizon)         ⏳ in progress
 │   │
 │   │   Articulated 2026-05-16.  Three pillars frame the next horizon:
 │   │   (1) social integration with DPs = "GitHub feeling" for data
@@ -928,38 +928,60 @@ PointlesSQL
 │   │   Memory anchor:
 │   │   `~/.claude/projects/-home-flo-git-PointlesSQL/memory/project_phase82_strategic_axes.md`.
 │   │
-│   ├── Phase 82 — Ingest UI (critical path)               ⏳ planned
+│   ├── Phase 82 — Ingest UI (critical path)               ✅ done 2026-05-16
 │   │   │
-│   │   │   Without ingest, PointlesSQL is a viewer over data
-│   │   │   somebody else dropped in.  DuckDB already ships the
-│   │   │   readers (`read_csv`, `read_parquet`, `read_json`,
-│   │   │   `postgres_scanner`, `mysql_scanner`, `sqlite_scanner`,
-│   │   │   S3/HTTP); what's missing is the UI that walks a
-│   │   │   non-technical user through "connect Postgres → pick
-│   │   │   tables → schedule pull → land in `<catalog>.<schema>`".
+│   │   │   Closed in one autonomous session post the "go voll autnom"
+│   │   │   green light.  Six commits (82.0 through 82.5), one Alembic
+│   │   │   migration (`ingest_sources`), seven first-party connector
+│   │   │   kinds wired end-to-end (file_upload, s3, http, postgres,
+│   │   │   mysql, sqlite, parquet_glob).  Pyright stays at 498 (no
+│   │   │   regression); 60 new pytest cases (57 pass + 3 properly
+│   │   │   gated on live-DB env vars).
 │   │   │
-│   │   ├── 82.1 — Connection-form UX (CSV / Parquet / JSON file
-│   │   │     upload + S3 URL + HTTP URL + Postgres / MySQL /
-│   │   │     SQLite connection string).  Probes via DuckDB
-│   │   │     dry-run (`SELECT * FROM <reader> LIMIT 0`) so the
-│   │   │     form shows the resolved column list before save.
-│   │   ├── 82.2 — Table-picker (for the SQL connectors) — schema
-│   │   │     browse + multi-select + per-table target
-│   │   │     `<catalog>.<schema>.<table>` mapping.
-│   │   ├── 82.3 — Scheduled pull (reuses existing scheduler from
-│   │   │     Phase 8) — full-refresh + incremental (high-water-mark
-│   │   │     column).  Emits the same `fanout_event` lifecycle
-│   │   │     events so /feed picks up pulls automatically.
-│   │   ├── 82.4 — First-party connectors covered: file upload,
-│   │   │     S3, HTTP, Postgres, MySQL, SQLite, Parquet glob.
-│   │   │     A generic Connector SDK is explicitly deferred —
-│   │   │     extract once 4-5 first-party connectors exist and
-│   │   │     the shared shape is clear (Grafana ate this dogfood
-│   │   │     for ~20 plugins before extracting their SDK).
-│   │   └── 82.5 — Health monitor: per-source last-pull timestamp,
-│   │         row-delta, error count.  Surfaces on `/admin/sources`
-│   │         and as a Health-band on every DP that consumes
-│   │         from a tracked source.
+│   │   │   Picked: all 7 connector kinds in v1 + plaintext + form-
+│   │   │   masking credentials (mirrors the audit-sink pattern).
+│   │   │   Encryption-at-rest via `system_keys` and the generic
+│   │   │   Connector SDK explicitly deferred (audit `phase82` memory
+│   │   │   for rationale).
+│   │   │
+│   │   ├── 82.0 — Foundation: `IngestSource` ORM + Alembic
+│   │   │     `m0o2q4s6u8w0`, `pointlessql/services/ingest/`
+│   │   │     package (connectors / probe / pull / executor),
+│   │   │     `"ingest_pull"` job kind registered with the
+│   │   │     Phase-8 scheduler.  Per-kind connector unit tests.
+│   │   ├── 82.1 — Probe + Create form: `/ingest/sources/new`
+│   │   │     with kind selector + per-kind config block +
+│   │   │     `POST /api/ingest/probe` dry-run.  Source CRUD
+│   │   │     (`/api/ingest/sources`) with `"***"` secret redaction
+│   │   │     on GET and the round-trip-keeps-original rule on PATCH.
+│   │   │     Primary rail gains an "Ingest" entry under DATA.
+│   │   ├── 82.2 — Table-picker + mappings: `GET /api/ingest/
+│   │   │     sources/{id}/tables` probes the source's catalog
+│   │   │     (single-row short-circuit for file-based connectors,
+│   │   │     `information_schema.tables` / `sqlite_master` for SQL).
+│   │   │     `POST /api/ingest/sources/{id}/mappings` persists the
+│   │   │     validated per-table pull configurations.
+│   │   ├── 82.3 — Pull executor + fanout: `run_pull` carries the
+│   │   │     full lifecycle (load source → DuckDB read → PQL write
+│   │   │     → stats + fanout) and is reused by the scheduler
+│   │   │     executor AND the manual `POST /api/ingest/sources/{id}/
+│   │   │     pulls` route.  `PUT /api/ingest/sources/{id}/schedule`
+│   │   │     creates / updates / clears the underlying `Job` row.
+│   │   │     Pull lifecycle emits `pointlessql.ingest.pulled` /
+│   │   │     `.failed` so `/feed` picks them up automatically.
+│   │   ├── 82.4 — End-to-end connector coverage: one fixture-driven
+│   │   │     test per kind.  File / Parquet / HTTP / SQLite run in
+│   │   │     CI; S3 (moto) / live Postgres / live MySQL gate on
+│   │   │     env vars.  PullError envelope verified for the bogus-
+│   │   │     host failure path.
+│   │   └── 82.5 — Health monitor + DP Health-band:
+│   │         `/admin/sources` table (admin-only) with per-source
+│   │         7-day rollup (status pill, errors, rows, schedule);
+│   │         drilldown returns the last 30 JobRuns + per-day
+│   │         tallies.  DP detail pages render an inline ingest
+│   │         band when one or more sources feed
+│   │         `<catalog>.<schema>`, color-coded by last pull
+│   │         outcome.
 │   │
 │   ├── Phase 83 — Saved Views + Visual Query Builder      ⏳ planned
 │   │   │
