@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+{% block title %}{{ view.title }} · View · PointlesSQL{% endblock %}
+
+{% set breadcrumbs = [
+    {"label": "Home", "href": "/"},
+    {"label": "Views", "href": "/views"},
+    {"label": view.title}
+] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block content %}
+<div x-data='savedViewDetail({{ view | tojson }})' x-init="run()">
+    <div class="d-flex align-items-start justify-content-between mb-3">
+        <div>
+            <h1 class="h3 mb-1" x-text="view.title"></h1>
+            <template x-if="view.description">
+                <p class="text-muted small mb-0" x-text="view.description"></p>
+            </template>
+        </div>
+        <div class="d-flex gap-2">
+            <button class="btn btn-outline-secondary btn-sm" @click="copyEmbed()" title="Copy embed URL">
+                <i class="bi bi-code-slash"></i> Embed
+            </button>
+            <button class="btn btn-outline-secondary btn-sm" @click="copyJsonRows()">
+                <i class="bi bi-clipboard"></i> Copy JSON
+            </button>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-3">
+            <div class="card mb-3">
+                <div class="card-header">Parameters</div>
+                <div class="card-body">
+                    <template x-if="(view.parameters || []).length === 0">
+                        <div class="text-muted small">No parameters.</div>
+                    </template>
+                    <template x-for="p in (view.parameters || [])" :key="p.name">
+                        <div class="mb-3">
+                            <label class="form-label" x-text="p.label || p.name"></label>
+                            <template x-if="p.type === 'boolean'">
+                                <select class="form-select form-select-sm" x-model="values[p.name]">
+                                    <option value="false">false</option>
+                                    <option value="true">true</option>
+                                </select>
+                            </template>
+                            <template x-if="p.type === 'date'">
+                                <input type="date" class="form-control form-control-sm" x-model="values[p.name]">
+                            </template>
+                            <template x-if="p.type === 'integer' || p.type === 'number'">
+                                <input type="number" class="form-control form-control-sm" x-model="values[p.name]">
+                            </template>
+                            <template x-if="p.type === 'string'">
+                                <input type="text" class="form-control form-control-sm" x-model="values[p.name]">
+                            </template>
+                            <template x-if="p.required">
+                                <small class="text-muted">required</small>
+                            </template>
+                        </div>
+                    </template>
+                    <button class="btn btn-primary btn-sm w-100" @click="run()" :disabled="running">
+                        <span x-show="running" class="spinner-border spinner-border-sm me-2"></span>
+                        Run view
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-9">
+            <template x-if="error">
+                <div class="alert alert-danger small" x-text="error"></div>
+            </template>
+
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="text-muted small me-2">Rows:</span>
+                        <span class="fw-bold" x-text="result ? result.row_count : '—'"></span>
+                        <span class="text-muted small ms-3 me-2">Duration:</span>
+                        <span class="fw-bold" x-text="result ? result.duration_ms + ' ms' : '—'"></span>
+                        <template x-if="result && result.truncated">
+                            <span class="badge bg-warning text-dark ms-2">Truncated</span>
+                        </template>
+                    </div>
+                    <button class="btn btn-link btn-sm text-decoration-none p-0"
+                            @click="showSql = !showSql">
+                        <i class="bi" :class="showSql ? 'bi-eye-slash' : 'bi-code-slash'"></i>
+                        <span x-text="showSql ? 'Hide SQL' : 'Show SQL'"></span>
+                    </button>
+                </div>
+                <div class="card-body p-0">
+                    <template x-if="showSql">
+                        <pre class="p-3 mb-0 small bg-light border-bottom"
+                             x-text="view.sql_text"></pre>
+                    </template>
+                    <div class="table-responsive" style="max-height: 60vh; overflow: auto;">
+                        <table class="table table-sm table-striped mb-0">
+                            <thead>
+                                <tr>
+                                    <template x-for="c in (result ? result.columns : [])" :key="c.name">
+                                        <th class="text-nowrap"
+                                            x-text="c.name + ' (' + c.type + ')'"></th>
+                                    </template>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <template x-for="(row, ridx) in (result ? result.rows : [])" :key="ridx">
+                                    <tr>
+                                        <template x-for="(cell, cidx) in row" :key="cidx">
+                                            <td class="text-nowrap small" x-text="cell"></td>
+                                        </template>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function savedViewDetail(view) {
+    const initial = {};
+    (view.parameters || []).forEach(p => {
+        initial[p.name] = (p.default !== null && p.default !== undefined) ? p.default : '';
+    });
+    return {
+        view,
+        values: initial,
+        running: false,
+        result: null,
+        error: null,
+        showSql: false,
+        async run() {
+            this.error = null;
+            this.running = true;
+            const res = await window.pqlApi.fetch('/api/views/' + this.view.slug + '/run', {
+                method: 'POST',
+                body: { parameters: this.values }
+            });
+            this.running = false;
+            if (res.ok && res.data) {
+                this.result = res.data;
+            } else {
+                this.error = (res.data && res.data.detail) || res.message || 'Run failed';
+            }
+        },
+        copyEmbed() {
+            const url = window.location.origin + '/views/' + this.view.slug + '/embed';
+            navigator.clipboard.writeText(url);
+        },
+        copyJsonRows() {
+            if (!this.result) return;
+            const payload = {
+                columns: this.result.columns.map(c => c.name),
+                rows: this.result.rows
+            };
+            navigator.clipboard.writeText(JSON.stringify(payload, null, 2));
+        }
+    };
+}
+</script>
+{% endblock %}

@@ -124,6 +124,10 @@ from pointlessql.models.notifications import (
     UserNotification,
     UserWebhookSubscription,
 )
+from pointlessql.models.saved_views import (
+    SAVED_VIEW_PARAM_TYPES,
+    SavedView,
+)
 from pointlessql.models.scheduler import (
     Job,
     JobLog,
@@ -224,8 +228,10 @@ __all__ = [
     "VERDICT_HUMAN_APPROVAL_REQUIRED",
     "VERDICT_ORIGINAL_APPROVED",
     "SINK_TYPES",
+    "SAVED_VIEW_PARAM_TYPES",
     "SavedAuditQuery",
     "SavedQuery",
+    "SavedView",
     "SyncRun",
     "SystemKey",
     "TableStats",

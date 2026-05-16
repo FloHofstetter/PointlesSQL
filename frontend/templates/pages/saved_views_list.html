@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% block title %}Saved views · PointlesSQL{% endblock %}
+
+{% set breadcrumbs = [
+    {"label": "Home", "href": "/"},
+    {"label": "Views"}
+] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-3">
+    <div class="d-flex align-items-center gap-2">
+        <i class="bi bi-eye-fill fs-3"></i>
+        <h1 class="h3 mb-0">Saved views</h1>
+    </div>
+    <a href="/views/new" class="btn btn-primary btn-sm">
+        <i class="bi bi-plus-lg me-1"></i>New view
+    </a>
+</div>
+
+<p class="text-muted small mb-4">
+    Parameterised, read-only SQL that non-tech consumers can run without
+    touching the editor.  Pick the parameters, get the rows.
+</p>
+
+<div x-data="savedViewsList()" x-init="load()">
+    <template x-if="loading">
+        <div class="text-center text-muted py-5">
+            <span class="spinner-border spinner-border-sm me-2"></span>
+            Loading views&hellip;
+        </div>
+    </template>
+
+    <template x-if="!loading && views.length === 0">
+        <div class="card">
+            <div class="card-body text-center py-5">
+                <i class="bi bi-eye text-muted" style="font-size: 2.5rem;"></i>
+                <h2 class="h5 mt-3">No saved views yet</h2>
+                <p class="text-muted small mb-3">
+                    Save a parameterised SELECT so consumers can re-run it
+                    without seeing the SQL.
+                </p>
+                <a href="/views/new" class="btn btn-primary btn-sm">
+                    <i class="bi bi-plus-lg me-1"></i>New view
+                </a>
+            </div>
+        </div>
+    </template>
+
+    <template x-if="!loading && views.length > 0">
+        <div class="card">
+            <div class="table-responsive">
+                <table class="table table-sm align-middle mb-0 pql-list-table">
+                    <thead>
+                        <tr>
+                            <th>Title</th>
+                            <th>Scope</th>
+                            <th class="text-center">Parameters</th>
+                            <th class="text-center">Active</th>
+                            <th>Updated</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <template x-for="v in views" :key="v.id">
+                            <tr style="cursor: pointer;"
+                                @click="window.location.href = '/views/' + v.slug">
+                                <td>
+                                    <strong x-text="v.title"></strong>
+                                    <template x-if="v.description">
+                                        <div class="text-muted small"
+                                             x-text="v.description"></div>
+                                    </template>
+                                </td>
+                                <td>
+                                    <template x-if="v.target_fqn">
+                                        <span class="badge bg-secondary font-monospace"
+                                              x-text="v.target_fqn"></span>
+                                    </template>
+                                    <template x-if="!v.target_fqn && v.dp_id">
+                                        <span class="badge bg-info text-dark">
+                                            DP&nbsp;<span x-text="v.dp_id"></span>
+                                        </span>
+                                    </template>
+                                    <template x-if="!v.target_fqn && !v.dp_id">
+                                        <span class="text-muted small">— workspace —</span>
+                                    </template>
+                                </td>
+                                <td class="text-center text-muted small"
+                                    x-text="(v.parameters || []).length"></td>
+                                <td class="text-center">
+                                    <span x-show="v.is_active" class="text-success">
+                                        <i class="bi bi-check-circle-fill"></i>
+                                    </span>
+                                    <span x-show="!v.is_active" class="text-muted">
+                                        <i class="bi bi-archive"></i>
+                                    </span>
+                                </td>
+                                <td class="text-muted small"
+                                    x-text="(v.updated_at || '').substring(0, 10)"></td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </template>
+</div>
+
+<script>
+function savedViewsList() {
+    return {
+        loading: true,
+        views: [],
+        async load() {
+            this.loading = true;
+            const res = await window.pqlApi.fetch('/api/views');
+            if (res.ok && res.data) {
+                this.views = res.data.views || [];
+            }
+            this.loading = false;
+        }
+    };
+}
+</script>
+{% endblock %}

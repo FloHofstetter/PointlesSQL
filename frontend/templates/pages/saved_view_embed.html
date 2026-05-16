@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ view.title }} · embed</title>
+    <link rel="stylesheet" href="/static/vendor/bootstrap.min.css">
+    <link rel="stylesheet" href="/static/vendor/bootstrap-icons.css">
+    <style>
+        body { padding: 1rem; }
+        .embed-header { border-bottom: 1px solid #dee2e6; padding-bottom: 0.5rem; margin-bottom: 1rem; }
+    </style>
+    <script src="/static/vendor/alpine.min.js" defer></script>
+    <script src="/js/api.js"></script>
+</head>
+<body>
+    <div x-data='savedViewEmbed({{ view | tojson }})' x-init="run()">
+        <div class="embed-header d-flex justify-content-between align-items-center">
+            <div>
+                <strong x-text="view.title"></strong>
+                <template x-if="view.description">
+                    <span class="text-muted small ms-2" x-text="view.description"></span>
+                </template>
+            </div>
+            <a class="small text-decoration-none"
+               :href="'/views/' + view.slug" target="_top">Open full ↗</a>
+        </div>
+
+        <div class="row mb-2" x-show="(view.parameters || []).length > 0">
+            <template x-for="p in (view.parameters || [])" :key="p.name">
+                <div class="col-auto mb-2">
+                    <label class="form-label small mb-0" x-text="p.label || p.name"></label>
+                    <input class="form-control form-control-sm" x-model="values[p.name]"
+                           :type="p.type === 'date' ? 'date' : (p.type === 'integer' || p.type === 'number' ? 'number' : 'text')"
+                           style="min-width: 10rem;">
+                </div>
+            </template>
+            <div class="col-auto align-self-end mb-2">
+                <button class="btn btn-primary btn-sm" @click="run()" :disabled="running">Run</button>
+            </div>
+        </div>
+
+        <template x-if="error">
+            <div class="alert alert-danger small" x-text="error"></div>
+        </template>
+
+        <div class="table-responsive" style="max-height: 80vh; overflow: auto;">
+            <table class="table table-sm table-striped mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <template x-for="c in (result ? result.columns : [])" :key="c.name">
+                            <th class="text-nowrap small" x-text="c.name"></th>
+                        </template>
+                    </tr>
+                </thead>
+                <tbody>
+                    <template x-for="(row, ridx) in (result ? result.rows : [])" :key="ridx">
+                        <tr>
+                            <template x-for="(cell, cidx) in row" :key="cidx">
+                                <td class="text-nowrap small" x-text="cell"></td>
+                            </template>
+                        </tr>
+                    </template>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+<script>
+function savedViewEmbed(view) {
+    const initial = {};
+    (view.parameters || []).forEach(p => {
+        initial[p.name] = (p.default !== null && p.default !== undefined) ? p.default : '';
+    });
+    return {
+        view, values: initial, running: false, result: null, error: null,
+        async run() {
+            this.error = null; this.running = true;
+            const res = await window.pqlApi.fetch('/api/views/' + this.view.slug + '/run', {
+                method: 'POST', body: { parameters: this.values }
+            });
+            this.running = false;
+            if (res.ok && res.data) this.result = res.data;
+            else this.error = (res.data && res.data.detail) || res.message || 'Run failed';
+        }
+    };
+}
+</script>
+</body>
+</html>

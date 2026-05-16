@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+{% block title %}New saved view · PointlesSQL{% endblock %}
+
+{% set breadcrumbs = [
+    {"label": "Home", "href": "/"},
+    {"label": "Views", "href": "/views"},
+    {"label": "New"}
+] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center gap-2 mb-3">
+    <i class="bi bi-eye-fill fs-3"></i>
+    <h1 class="h3 mb-0">New saved view</h1>
+</div>
+
+<div class="card" x-data="savedViewForm()">
+    <div class="card-body">
+        <div class="mb-3">
+            <label class="form-label">Title</label>
+            <input type="text" class="form-control" x-model="form.title"
+                   placeholder="Daily orders by country">
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Description <span class="text-muted small">(optional)</span></label>
+            <textarea class="form-control" rows="2" x-model="form.description"
+                      placeholder="Briefly describe what consumers should expect."></textarea>
+        </div>
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label class="form-label">DP scope <span class="text-muted small">(optional)</span></label>
+                <input type="number" class="form-control" x-model.number="form.dp_id"
+                       placeholder="data_products.id">
+            </div>
+            <div class="col-md-6 mb-3">
+                <label class="form-label">Table FQN scope <span class="text-muted small">(optional)</span></label>
+                <input type="text" class="form-control" x-model="form.target_fqn"
+                       placeholder="catalog.schema.table">
+            </div>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">SQL <small class="text-muted ms-2">Use <code>${name}</code> placeholders for parameters.</small></label>
+            <textarea class="form-control font-monospace" rows="6" x-model="form.sql"
+                      placeholder="SELECT * FROM main.sales.orders WHERE country = ${country}"></textarea>
+        </div>
+        <div class="mb-3">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <label class="form-label mb-0">Parameters</label>
+                <button class="btn btn-outline-secondary btn-sm" @click="addParam()">
+                    <i class="bi bi-plus-lg me-1"></i>Add parameter
+                </button>
+            </div>
+            <table class="table table-sm align-middle" x-show="form.parameters.length > 0">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Label</th>
+                        <th>Type</th>
+                        <th>Default</th>
+                        <th class="text-center">Required</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <template x-for="(p, idx) in form.parameters" :key="idx">
+                        <tr>
+                            <td><input type="text" class="form-control form-control-sm font-monospace" x-model="p.name"></td>
+                            <td><input type="text" class="form-control form-control-sm" x-model="p.label"></td>
+                            <td>
+                                <select class="form-select form-select-sm" x-model="p.type">
+                                    <option value="string">string</option>
+                                    <option value="integer">integer</option>
+                                    <option value="number">number</option>
+                                    <option value="date">date</option>
+                                    <option value="boolean">boolean</option>
+                                </select>
+                            </td>
+                            <td><input type="text" class="form-control form-control-sm" x-model="p.default"></td>
+                            <td class="text-center">
+                                <input type="checkbox" class="form-check-input" x-model="p.required">
+                            </td>
+                            <td>
+                                <button class="btn btn-link btn-sm text-danger p-0"
+                                        @click="form.parameters.splice(idx, 1)">
+                                    <i class="bi bi-x-lg"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    </template>
+                </tbody>
+            </table>
+        </div>
+
+        <template x-if="error">
+            <div class="alert alert-danger small" x-text="error"></div>
+        </template>
+
+        <div class="d-flex gap-2">
+            <button class="btn btn-primary" :disabled="saving" @click="save()">
+                <span x-show="saving" class="spinner-border spinner-border-sm me-2"></span>
+                Save view
+            </button>
+            <a href="/views" class="btn btn-outline-secondary">Cancel</a>
+        </div>
+    </div>
+</div>
+
+<script>
+function savedViewForm() {
+    return {
+        saving: false,
+        error: null,
+        form: {
+            title: '',
+            description: '',
+            sql: '',
+            dp_id: null,
+            target_fqn: '',
+            parameters: []
+        },
+        addParam() {
+            this.form.parameters.push({
+                name: '', label: '', type: 'string', default: '', required: false
+            });
+        },
+        async save() {
+            this.error = null;
+            this.saving = true;
+            const body = {
+                title: this.form.title,
+                description: this.form.description || null,
+                sql: this.form.sql,
+                dp_id: this.form.dp_id || null,
+                target_fqn: this.form.target_fqn || null,
+                parameters: this.form.parameters
+            };
+            const res = await window.pqlApi.fetch('/api/views', { method: 'POST', body });
+            this.saving = false;
+            if (res.ok && res.data) {
+                window.location.href = '/views/' + res.data.slug;
+            } else {
+                this.error = (res.data && res.data.detail) || res.message || 'Save failed';
+            }
+        }
+    };
+}
+</script>
+{% endblock %}
