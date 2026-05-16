@@ -21,21 +21,27 @@
     margin-bottom: 0;
 }
 .pql-topbar-breadcrumbs .breadcrumb {
-    font-size: var(--pql-text-sm);
+    font-size: var(--pql-text-xl);     /* match navbar-brand (1.25 rem) */
     margin-bottom: 0;
     padding: 0;
-    flex-wrap: nowrap;     /* never wrap inside the topbar */
+    flex-wrap: nowrap;                  /* never wrap inside the topbar */
 }
 .pql-topbar-breadcrumbs .breadcrumb-item {
     line-height: 1.2;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 24ch;       /* one long FQN won't push the search away */
+    max-width: 24ch;                    /* one long FQN won't push search away */
+    font-weight: var(--pql-weight-semibold);
+}
+.pql-topbar-breadcrumbs .breadcrumb-item a {
+    color: var(--bs-body-color);        /* same colour as the brand */
+}
+.pql-topbar-breadcrumbs .breadcrumb-item a:hover {
+    color: var(--pql-color-accent);
 }
 .pql-topbar-breadcrumbs .breadcrumb-item:last-child {
     color: var(--bs-body-color);
-    font-weight: 600;
     max-width: 32ch;
 }
 
