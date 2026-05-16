@@ -9,9 +9,7 @@ import os
 import re
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, cast
 
 from fastapi import FastAPI, Request
 from fastapi.responses import (
@@ -19,7 +17,6 @@ from fastapi.responses import (
 )
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from markdown_it import MarkdownIt
 
 import pointlessql
 from pointlessql.api._bootstrap._loops import (
@@ -38,6 +35,8 @@ from pointlessql.api._bootstrap._loops import (
     _user_notification_digest_loop,  # pyright: ignore[reportPrivateUsage]
     _workspace_repos_sync_loop,  # pyright: ignore[reportPrivateUsage]
 )
+from pointlessql.api._template_context import install_template_wrapper
+from pointlessql.api._template_filters import register_template_filters
 from pointlessql.api.dependencies import (
     require_admin as _require_admin,
 )
@@ -66,8 +65,6 @@ from pointlessql.services.mlflow_subprocess import (
 from pointlessql.services.notebook.kernel_session import KernelRegistry
 from pointlessql.services.soyuz_client import make_soyuz_client
 from pointlessql.services.unitycatalog import UnityCatalogClient
-from pointlessql.web import get_help as _get_help
-from pointlessql.web import status_class as _status_class
 
 # Configure logging at module import time so it takes effect in every
 # process that serves traffic — the uvicorn --reload worker imports
@@ -87,246 +84,8 @@ logger = logging.getLogger(__name__)
 _dev_dir = Path(__file__).resolve().parents[2] / "frontend"
 _FRONTEND_DIR = _dev_dir if _dev_dir.is_dir() else Path(__file__).resolve().parents[1] / "_frontend"
 _TEMPLATES = Jinja2Templates(directory=str(_FRONTEND_DIR / "templates"))
-
-
-def _format_epoch_ms(value: Any) -> str:
-    """Format Unity Catalog epoch-millisecond timestamps as a local datetime."""
-    if value is None:
-        return "—"
-    try:
-        return datetime.fromtimestamp(int(value) / 1000, tz=UTC).strftime("%Y-%m-%d %H:%M UTC")
-    except (TypeError, ValueError):
-        return str(value)
-
-
-def _format_uuid(value: Any) -> str:
-    """Normalise UUID strings to canonical hyphenated form.
-
-    PointlesSQL's API mixes hyphenated and packed UUID formats depending
-    on the source row (some seeds, some FK inserts, some agent-emitted
-    payloads). Templates use this filter so the user always sees the
-    same shape regardless of source.
-    """
-    if not value:
-        return ""
-    s = str(value).replace("-", "")
-    if len(s) != 32:
-        return str(value)
-    return f"{s[0:8]}-{s[8:12]}-{s[12:16]}-{s[16:20]}-{s[20:32]}"
-
-
-def _format_hash(value: Any, sentinel_label: str = "(no source captured)") -> str:
-    """Hide the all-zeros SHA sentinel as a human-readable label.
-
-    Run-source capture writes ``"0" * 64`` when no bytes were captured
-    (e.g. agent-only flows that never hit ``capture_run_source``). The
-    raw zero-hash leaks an implementation detail; this filter swaps it
-    for a readable empty-state. Real hashes pass through unchanged.
-    """
-    if not value:
-        return ""
-    s = str(value)
-    if s and all(c == "0" for c in s):
-        return sentinel_label
-    return s
-
-
-_MARKDOWN_RENDERER = MarkdownIt("commonmark", {"html": False, "linkify": True}).enable(
-    ["table"]
-)
-
-
-def _render_markdown(value: Any) -> str:
-    """Render saved-query Markdown descriptions to an HTML fragment.
-
-    Uses markdown-it-py in CommonMark mode with ``html: false`` so any
-    raw ``<script>`` / ``<iframe>`` in user input is escaped at parse
-    time — descriptions are user-authored, so ``|safe`` would expose
-    us to script injection without this guard.
-    """
-    if not value:
-        return ""
-    return _MARKDOWN_RENDERER.render(str(value))
-
-
-_TEMPLATES.env.filters["epoch_ms"] = _format_epoch_ms
-_TEMPLATES.env.filters["format_uuid"] = _format_uuid
-_TEMPLATES.env.filters["format_hash"] = _format_hash
-_TEMPLATES.env.filters["render_markdown"] = _render_markdown
-
-# contextual help-popover registry (see ``pointlessql/web/
-# help.py``).  Templates resolve slugs via ``{{ help('runs.what-is-a-
-# run') }}`` and render through ``_macros/help_icon.html``.  Registering
-# the global once here means every template — including ones rendered
-# in tests via ``TestClient`` — can call it without a per-route hook.
-_TEMPLATES.env.globals["help"] = _get_help  # pyright: ignore[reportArgumentType]
-
-# Asset cache-bust token.  Bumps automatically with every release;
-# templates use ``?v={{ asset_version }}`` instead of hand-edited
-# per-edit strings.
-_TEMPLATES.env.globals["asset_version"] = pointlessql.__version__  # pyright: ignore[reportArgumentType]
-
-# Centralised status → Bootstrap badge class mapping.  Templates
-# call ``{{ status_class(run.status) }}`` instead of hand-rolling
-# {% if status == 'succeeded' %}bg-success{% elif … %} ladders.
-_TEMPLATES.env.globals["status_class"] = _status_class  # pyright: ignore[reportArgumentType]
-
-
-def _paginate_url(base_url: str, query_params: Any, offset: int) -> str:
-    """Return ``base_url`` plus ``query_params`` with ``offset`` overridden.
-
-    Used by ``frontend/templates/_macros/pagination.html`` to build
-    page-link hrefs without losing in-flight filter chips.
-
-    Args:
-        base_url: Path the page is served from (e.g. ``request.url.path``).
-        query_params: Starlette ``QueryParams`` (or any iterable of
-            ``(key, value)``).  Pre-existing ``offset`` keys are dropped.
-        offset: New offset value.
-
-    Returns:
-        ``"path?offset=N&filter=foo"`` style URL.
-    """
-    from urllib.parse import urlencode
-
-    items: list[tuple[str, str]] = []
-    if query_params is not None:
-        if hasattr(query_params, "multi_items"):
-            iterator = query_params.multi_items()
-        else:
-            iterator = list(query_params)
-        for key, val in iterator:
-            if key == "offset":
-                continue
-            items.append((str(key), str(val)))
-    items.append(("offset", str(offset)))
-    return f"{base_url}?{urlencode(items)}"
-
-
-_TEMPLATES.env.globals["paginate_url"] = _paginate_url  # pyright: ignore[reportArgumentType]
-
-
-_original_template_response = _TEMPLATES.TemplateResponse
-
-
-def _resolve_workspace_context(request: Request) -> dict[str, Any]:
-    """Build the workspace-scoped Jinja context for one TemplateResponse call.
-
-    Returns a dict with ``current_workspace``, ``available_workspaces``
-    (the list rendered by the topbar switcher), and
-    ``current_workspace_primary_catalog`` (used by the catalog tree
-    to pre-expand on first load).  Every lookup is wrapped in a
-    try/except so a transient DB failure during template render
-    falls back to a blank context rather than 500ing the whole
-    page.
-    """
-    factory = getattr(request.app.state, "session_factory", None)
-    workspace_id = getattr(request.state, "workspace_id", None)
-    user = getattr(request.state, "user", None)
-    if factory is None or workspace_id is None:
-        return {
-            "current_workspace": None,
-            "available_workspaces": [],
-            "current_workspace_primary_catalog": None,
-        }
-    try:
-        from sqlalchemy import select as _select
-
-        from pointlessql.models import Workspace, WorkspaceCatalogPin
-        from pointlessql.services.workspace import _crud as ws_service
-
-        with factory() as session:
-            current = session.get(Workspace, workspace_id)
-            primary_pin = None
-            if current is not None:
-                primary_pin = session.scalar(
-                    _select(WorkspaceCatalogPin).where(
-                        WorkspaceCatalogPin.workspace_id == current.id,
-                        WorkspaceCatalogPin.mode == "primary",
-                    )
-                )
-            if current is not None:
-                session.expunge(current)
-
-        available: list[Any] = []
-        if user is not None and isinstance(user.get("id"), int) and user["id"] > 0:
-            available = ws_service.list_workspaces_for_user(factory, user_id=int(user["id"]))
-
-        return {
-            "current_workspace": current,
-            "available_workspaces": available,
-            "current_workspace_primary_catalog": (
-                primary_pin.catalog_name if primary_pin is not None else None
-            ),
-        }
-    except Exception:  # noqa: BLE001 — template render must not 500 on a workspace-lookup hiccup
-        logger.debug("Failed to resolve workspace context for template", exc_info=True)
-        return {
-            "current_workspace": None,
-            "available_workspaces": [],
-            "current_workspace_primary_catalog": None,
-        }
-
-
-def _resolve_nav_badges(request: Request) -> dict[str, int]:
-    """Compute the primary-rail badge counts for one TemplateResponse.
-
-    Delegates to :func:`pointlessql.services.nav_badges.compute_nav_badges`
-    so the query lives next to the other audit aggregators rather than
-    in the templates wrapper.  Keys consumed by
-    ``components/primary_rail.html``:
-
-    * ``runs_pending``  — agent runs awaiting approval.
-    * ``audit_unread``  — unread notification count.
-    * ``alerts_firing`` — active alert definitions.
-
-    Args:
-        request: Starlette request whose ``state.workspace_id`` /
-            ``state.user`` resolve the workspace scope.
-
-    Returns:
-        Dict mapping badge key to integer count.  Empty if the request
-        has no DB factory or the aggregator throws.  Zero-valued keys
-        are filtered template-side via ``and value > 0``.
-    """
-    factory = getattr(request.app.state, "session_factory", None)
-    user = getattr(request.state, "user", None)
-    workspace_id = int(getattr(request.state, "workspace_id", 0) or 0)
-    user_id = int((user or {}).get("id") or 0)
-    from pointlessql.services.nav_badges import compute_nav_badges
-
-    badges = compute_nav_badges(factory, user_id, workspace_id)
-    # NavBadges is a TypedDict with int values; cast each via
-    # ``cast(int, …)`` for the Jinja consumer.  ``.items()`` returns
-    # the values as ``object`` because TypedDict is invariant.
-    return {key: cast(int, value) for key, value in badges.items()}
-
-
-def _template_response_with_user(request: Request, *args: Any, **kwargs: Any) -> Response:
-    """Wrap TemplateResponse to inject user + workspace + nav-badge context."""
-    # TemplateResponse(request, name, context) or (name, context, request=request)
-    # Starlette 0.37+ signature: TemplateResponse(request, name, context={}, ...)
-    workspace_ctx = _resolve_workspace_context(request)
-    nav_badges = _resolve_nav_badges(request)
-    user = getattr(request.state, "user", None)
-    if "context" in kwargs:
-        ctx = kwargs["context"]
-        ctx.setdefault("current_user", user)
-        ctx.setdefault("nav_badges", nav_badges)
-        for key, value in workspace_ctx.items():
-            ctx.setdefault(key, value)
-    elif len(args) >= 2 and isinstance(args[1], dict):
-        mutable = list(args)
-        ctx = mutable[1]
-        ctx.setdefault("current_user", user)
-        ctx.setdefault("nav_badges", nav_badges)
-        for key, value in workspace_ctx.items():
-            ctx.setdefault(key, value)
-        args = tuple(mutable)
-    return _original_template_response(request, *args, **kwargs)
-
-
-_TEMPLATES.TemplateResponse = _template_response_with_user  # type: ignore[assignment]
+register_template_filters(_TEMPLATES)
+install_template_wrapper(_TEMPLATES)
 
 
 @asynccontextmanager
