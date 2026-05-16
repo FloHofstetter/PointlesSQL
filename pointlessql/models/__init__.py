@@ -89,6 +89,7 @@ from pointlessql.models.catalog import (
     SyncRun,
     TableStats,
 )
+from pointlessql.models.dp_releases import DataProductRelease
 from pointlessql.models.ingest import (
     INGEST_PULL_MODES,
     INGEST_SOURCE_KINDS,
@@ -187,6 +188,7 @@ __all__ = [
     "DataProductComment",
     "DataProductContractEvent",
     "DataProductEndorsement",
+    "DataProductRelease",
     "DataProductReview",
     "DataProductTrending",
     "Dashboard",

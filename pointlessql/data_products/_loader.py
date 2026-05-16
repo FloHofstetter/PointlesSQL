@@ -181,6 +181,15 @@ def load_contract(
             )
         ).scalar_one_or_none()
 
+        # Phase 84.2 — release-stream bookkeeping.  Detect a new
+        # release row up front so we can persist it after the DP
+        # row is committed (we need DataProduct.id either way).
+        # ``release_signal`` is ``None`` when no release should be
+        # recorded, else the signed-off email (or empty string).
+        from pointlessql.models import DataProductRelease
+
+        release_signal: str | None = None
+
         if existing is None:
             row = DataProduct(
                 workspace_id=workspace_id,
@@ -196,7 +205,13 @@ def load_contract(
                 created_at=timestamp,
             )
             session.add(row)
+            release_signal = contract.steward_email or ""
         else:
+            if (
+                existing.version != contract.version
+                or existing.contract_yaml_hash != contract_hash
+            ):
+                release_signal = contract.steward_email or ""
             existing.steward_user_id = steward_id
             existing.version = contract.version
             existing.description = contract.description
@@ -205,6 +220,25 @@ def load_contract(
             existing.contract_json = contract_json
             existing.last_loaded_at = timestamp
         session.commit()
+
+        if release_signal is not None:
+            dp_row = session.execute(
+                select(DataProduct).where(
+                    DataProduct.workspace_id == workspace_id,
+                    DataProduct.catalog_name == contract.catalog,
+                    DataProduct.schema_name == contract.schema_name,
+                )
+            ).scalar_one()
+            session.add(
+                DataProductRelease(
+                    data_product_id=dp_row.id,
+                    version=contract.version,
+                    contract_yaml_hash=contract_hash,
+                    released_at=timestamp,
+                    signed_off_by_email=release_signal,
+                )
+            )
+            session.commit()
 
     return contract
 

@@ -81,8 +81,8 @@
 
     {# Phase 82.5 — Ingest sources feeding this DP.  Lazy-fetched
        on page boot; row hidden entirely when no source matches. #}
-    <div x-data="ingestStatusBand({{ product.catalog_name|tojson }},
-                                  {{ product.schema_name|tojson }})"
+    <div x-data="ingestStatusBand({{ product.catalog|tojson }},
+                                  {{ product.schema|tojson }})"
          x-init="load()"
          x-show="sources.length > 0"
          class="alert alert-light border d-flex flex-wrap gap-2 align-items-center small mb-3">
@@ -162,6 +162,250 @@
     <div class="tab-content" id="dpTabsContent">
         <!-- Overview -->
         <div class="tab-pane fade show active" id="tab-overview" role="tabpanel">
+
+            <!-- Phase 84.4 — Health hero band. -->
+            <div class="card mb-3 pql-dp-health-hero"
+                 :class="{
+                    'border-success': healthBand.status === 'green',
+                    'border-warning': healthBand.status === 'yellow',
+                    'border-danger': healthBand.status === 'red',
+                    'border-secondary': healthBand.status === 'unknown'
+                 }">
+                <div class="card-body py-2 d-flex align-items-center gap-3 flex-wrap">
+                    <span class="badge"
+                          :class="{
+                            'bg-success': healthBand.status === 'green',
+                            'bg-warning text-dark': healthBand.status === 'yellow',
+                            'bg-danger': healthBand.status === 'red',
+                            'bg-secondary': healthBand.status === 'unknown'
+                          }"
+                          x-text="healthBand.label"></span>
+                    <span class="text-muted small">
+                        <i class="bi bi-clock-history me-1"></i>Freshness
+                        <strong x-text="healthBand.freshness_pct !== null && healthBand.freshness_pct !== undefined
+                            ? Math.round(healthBand.freshness_pct) + '%'
+                            : '—'"></strong>
+                        / 30d
+                    </span>
+                    <span class="text-muted small">
+                        <i class="bi bi-stopwatch me-1"></i>SLA
+                        <strong x-text="healthBand.sla_minutes ? healthBand.sla_minutes + ' min' : '—'"></strong>
+                    </span>
+                    <span class="text-muted small">
+                        <i class="bi bi-arrow-down-right me-1"></i>Downstream
+                        <strong x-text="healthBand.downstream"></strong>
+                    </span>
+                    <span class="text-muted small">
+                        <i class="bi bi-robot me-1"></i>Agent runs / 7d
+                        <strong x-text="healthBand.agent_runs_7d"></strong>
+                    </span>
+                </div>
+            </div>
+
+            <!-- Phase 84.1 — README as canonical landing card. -->
+            <div class="card mb-3 pql-dp-readme-hero" x-show="readmeLoaded">
+                <div class="card-header d-flex align-items-center gap-2">
+                    <i class="bi bi-book"></i>
+                    <strong>README</strong>
+                    <span class="text-muted small ms-auto"
+                          x-show="readme && readme.version_int"
+                          x-text="readme ? 'v' + readme.version_int : ''"></span>
+                </div>
+                <div class="card-body">
+                    <template x-if="readme && readme.body_md">
+                        <pre class="mb-0 pql-dp-readme-body"
+                             style="white-space: pre-wrap; font-family: inherit;"
+                             x-text="readme.body_md"></pre>
+                    </template>
+                    <template x-if="!readme || !readme.body_md">
+                        <div class="text-muted small">
+                            <em>No README authored yet.</em>
+                            <span x-show="canEditReadme">
+                                Open the Social drawer to add one.
+                            </span>
+                        </div>
+                    </template>
+                </div>
+            </div>
+
+            <!-- Phase 84.3 — Consume hero (PQL / SQL / Python). -->
+            <div class="card mb-3 pql-dp-consume-hero" x-data="{ consumeTab: 'pql' }">
+                <div class="card-header d-flex align-items-center gap-2">
+                    <i class="bi bi-terminal"></i>
+                    <strong>Consume this product</strong>
+                    <small class="text-muted ms-auto">Copy-paste into your tool.</small>
+                </div>
+                <div class="card-body">
+                    <ul class="nav nav-pills mb-3" role="tablist">
+                        <li class="nav-item">
+                            <button class="nav-link" :class="{ active: consumeTab === 'pql' }"
+                                    @click="consumeTab = 'pql'">PQL</button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link" :class="{ active: consumeTab === 'sql' }"
+                                    @click="consumeTab = 'sql'">SQL</button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link" :class="{ active: consumeTab === 'python' }"
+                                    @click="consumeTab = 'python'">Python</button>
+                        </li>
+                    </ul>
+                    <div class="position-relative">
+                        <pre class="bg-light border rounded p-3 mb-2 small"
+                             style="white-space: pre-wrap;"
+                             x-text="consumeSnippets[consumeTab]"></pre>
+                        <button class="btn btn-outline-secondary btn-sm position-absolute top-0 end-0 m-2"
+                                @click="copySnippet(consumeTab)">
+                            <i class="bi bi-clipboard"></i> Copy
+                        </button>
+                    </div>
+                    <a class="btn btn-outline-primary btn-sm"
+                       :href="'/notebooks/new?consume=' + (firstSchemaTable ? product.catalog + '.' + product.schema + '.' + firstSchemaTable.name : '')">
+                        <i class="bi bi-journal-code me-1"></i>Open in notebook
+                    </a>
+                </div>
+            </div>
+
+            <!-- Phase 84.5 — Schema-at-a-glance. -->
+            <template x-if="firstSchemaTable">
+                <div class="card mb-3 pql-dp-schema-glance">
+                    <div class="card-header d-flex align-items-center gap-2">
+                        <i class="bi bi-table"></i>
+                        <strong>Schema preview</strong>
+                        <small class="text-muted ms-2"
+                               x-text="'· ' + firstSchemaTable.name + ' (' + (firstSchemaTable.columns ? firstSchemaTable.columns.length : 0) + ' cols)'"></small>
+                        <button class="btn btn-link btn-sm ms-auto text-decoration-none p-0"
+                                @click="document.getElementById('tab-contract-btn').click()">
+                            See all columns →
+                        </button>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-sm align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Column</th>
+                                    <th>Type</th>
+                                    <th>Nullable</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <template x-for="c in schemaPreviewColumns" :key="c.name">
+                                    <tr>
+                                        <td><code x-text="c.name"></code></td>
+                                        <td><span class="badge bg-secondary" x-text="c.type"></span></td>
+                                        <td>
+                                            <template x-if="c.nullable">
+                                                <span class="text-muted small">nullable</span>
+                                            </template>
+                                            <template x-if="!c.nullable">
+                                                <span class="text-muted small">required</span>
+                                            </template>
+                                        </td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </template>
+
+            <!-- Phase 84.2 — Release stream. -->
+            <div class="card mb-3 pql-dp-releases"
+                 x-data="{ releases: [], loaded: false }"
+                 x-init="(async () => {
+                    try {
+                        const res = await fetch('/api/data-products/' + product.catalog + '/' + product.schema + '/releases');
+                        if (res.ok) {
+                            const data = await res.json();
+                            releases = (data.releases || []).slice(0, 5);
+                        }
+                    } catch (e) {}
+                    loaded = true;
+                 })()"
+                 x-show="loaded && releases.length > 0">
+                <div class="card-header d-flex align-items-center gap-2">
+                    <i class="bi bi-tag-fill"></i>
+                    <strong>Releases</strong>
+                    <small class="text-muted ms-2" x-text="'(' + releases.length + ' shown)'"></small>
+                    <a class="ms-auto small text-decoration-none"
+                       :href="'/api/data-products/' + product.catalog + '/' + product.schema + '/releases.atom'"
+                       title="Atom feed">
+                        <i class="bi bi-rss"></i> Atom
+                    </a>
+                </div>
+                <ul class="list-group list-group-flush">
+                    <template x-for="r in releases" :key="r.id">
+                        <li class="list-group-item d-flex align-items-center gap-2">
+                            <span class="badge bg-primary" x-text="'v' + r.version"></span>
+                            <code class="text-muted small"
+                                  x-text="(r.contract_yaml_hash || '').substring(0, 12)"></code>
+                            <small class="text-muted ms-2"
+                                   x-text="pqlRelativeTime(r.released_at)"
+                                   :title="pqlAbsTime(r.released_at)"></small>
+                            <span class="ms-auto small text-muted"
+                                  x-show="r.signed_off_by_email"
+                                  x-text="'signed off by ' + r.signed_off_by_email"></span>
+                        </li>
+                    </template>
+                </ul>
+            </div>
+
+            <!-- Phase 84.6 — Contributor heatmap. -->
+            <div class="card mb-3 pql-dp-heatmap" x-show="heatmapLoaded && heatmap.total > 0">
+                <div class="card-header d-flex align-items-center gap-2">
+                    <i class="bi bi-calendar3"></i>
+                    <strong>Contributor activity</strong>
+                    <small class="text-muted ms-auto"
+                           x-text="heatmap.total + ' actions in the last year'"></small>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex flex-wrap" style="gap: 2px;">
+                        <template x-for="cell in heatmap.cells" :key="cell.day">
+                            <span class="pql-heatmap-cell"
+                                  :style="{
+                                    width: '11px', height: '11px',
+                                    borderRadius: '2px',
+                                    background: cell.count === 0 ? '#ebedf0'
+                                              : cell.count < 3 ? '#c6e48b'
+                                              : cell.count < 6 ? '#7bc96f'
+                                              : cell.count < 12 ? '#239a3b'
+                                              : '#196127'
+                                  }"
+                                  :title="cell.day + ': ' + cell.count + ' actions'"></span>
+                        </template>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Phase 84.7 — Forks (active Delta branches). -->
+            <div class="card mb-3 pql-dp-forks" x-show="forksLoaded && forks.length > 0">
+                <div class="card-header d-flex align-items-center gap-2">
+                    <i class="bi bi-diagram-3"></i>
+                    <strong>Forks (active Delta branches)</strong>
+                    <span class="badge bg-secondary ms-auto" x-text="forks.length"></span>
+                </div>
+                <ul class="list-group list-group-flush">
+                    <template x-for="f in forks" :key="f.branch_schema_fqn">
+                        <li class="list-group-item d-flex align-items-center gap-2">
+                            <i class="bi bi-diagram-3 text-muted"></i>
+                            <a :href="'/branches/' + encodeURIComponent(f.branch_schema_fqn)"
+                               class="text-decoration-none flex-grow-1"
+                               x-text="f.branch_schema_fqn"></a>
+                            <span class="badge"
+                                  :class="{
+                                    'bg-success': f.last_action === 'promote',
+                                    'bg-danger': f.last_action === 'discard',
+                                    'bg-secondary': f.last_action === 'create'
+                                  }"
+                                  x-text="f.last_action || '—'"></span>
+                            <small class="text-muted"
+                                   x-text="pqlRelativeTime(f.last_action_at)"
+                                   :title="pqlAbsTime(f.last_action_at)"></small>
+                        </li>
+                    </template>
+                </ul>
+            </div>
+
             <div class="card">
                 <div class="card-body">
                     <dl class="row mb-0">
@@ -697,8 +941,120 @@ window.dataProductDetail = function (product, ctx) {
             await this.loadFollowState();
             this.loadRelated();
             this.loadProposals();
+            // Phase 84.1 — README on the Overview hero, eager-loaded.
+            this.loadReadme();
+            // Phase 84.7 — Forks (active Delta branches off this DP).
+            this.loadForks();
+            // Phase 84.6 — Contributor heatmap data.
+            this.loadHeatmap();
             this.wireLazyTabs();
             this.maybeTriggerInitialTabLoad();
+        },
+
+        // Phase 84 — derived computed surfaces -----------------------
+
+        get healthBand() {
+            const b = (this.detail && this.detail.badges) || {};
+            const fresh = b.freshness_on_time_30d_pct;
+            const rollbackPassed = b.last_rollback_passed;
+            let status = 'unknown';
+            let label = 'No telemetry yet';
+            if (fresh !== null && fresh !== undefined) {
+                if (fresh >= 95 && rollbackPassed !== false) {
+                    status = 'green';
+                    label = 'Healthy';
+                } else if (fresh >= 75) {
+                    status = 'yellow';
+                    label = 'Degraded freshness';
+                } else {
+                    status = 'red';
+                    label = 'Freshness below threshold';
+                }
+                if (rollbackPassed === false) {
+                    status = 'red';
+                    label = 'Last rollback failed';
+                }
+            }
+            return {
+                status,
+                label,
+                freshness_pct: fresh,
+                downstream: b.downstream_count || 0,
+                agent_runs_7d: b.agent_run_count_7d || 0,
+                sla_minutes: this.product.sla_minutes,
+            };
+        },
+
+        get firstSchemaTable() {
+            if (!this.detail || !this.detail.tables || this.detail.tables.length === 0) {
+                return null;
+            }
+            return this.detail.tables[0];
+        },
+
+        get schemaPreviewColumns() {
+            const t = this.firstSchemaTable;
+            if (!t || !t.columns) return [];
+            return t.columns.slice(0, 10);
+        },
+
+        get consumeSnippets() {
+            const t = this.firstSchemaTable;
+            const fqn = t ? this.product.catalog + '.' + this.product.schema + '.' + t.name
+                          : this.product.catalog + '.' + this.product.schema + '.<table>';
+            return {
+                pql: 'from pointlessql import PQL\npql = PQL()\ndf = pql.read_table("' + fqn + '")',
+                sql: 'SELECT *\nFROM ' + fqn + '\nLIMIT 100;',
+                python: 'import pandas as pd\nfrom pointlessql import PQL\ndf = pql.read_table("' + fqn + '")\nprint(df.head())',
+            };
+        },
+
+        async copySnippet(kind) {
+            const snip = this.consumeSnippets[kind];
+            if (snip) navigator.clipboard.writeText(snip);
+        },
+
+        // Phase 84.7 — forks (active branches off this DP's schema).
+
+        forks: [],
+        forksLoaded: false,
+        async loadForks() {
+            this.forksLoaded = false;
+            try {
+                const res = await fetch('/api/data-products/' + this.product.catalog + '/' + this.product.schema + '/forks');
+                if (!res.ok) {
+                    this.forks = [];
+                    return;
+                }
+                const data = await res.json();
+                this.forks = data.forks || [];
+            } catch (e) {
+                console.error('forks load failed', e);
+                this.forks = [];
+            } finally {
+                this.forksLoaded = true;
+            }
+        },
+
+        // Phase 84.6 — Contributor heatmap.
+
+        heatmap: { cells: [], total: 0 },
+        heatmapLoaded: false,
+        async loadHeatmap() {
+            this.heatmapLoaded = false;
+            try {
+                const res = await fetch('/api/data-products/' + this.product.catalog + '/' + this.product.schema + '/heatmap');
+                if (!res.ok) {
+                    this.heatmap = { cells: [], total: 0 };
+                    return;
+                }
+                this.heatmap = await res.json();
+            } catch (e) {
+                console.error('heatmap load failed', e);
+                this.heatmap = { cells: [], total: 0 };
+            } finally {
+                this.heatmapLoaded = true;
+            }
         },
 
         maybeTriggerInitialTabLoad() {
