@@ -1,30 +1,35 @@
 {#
-  Topbar quick-create menu — Phase 80.8.
+  Primary-rail quick-create entry — Phase 81.H.
 
-  Mirrors GitHub's top-bar `+` dropdown: one-click access to every
-  primary "Create" surface so authors don't have to navigate to a
-  list page first.  Each option deep-links into the existing
-  create-route; no in-line modals (those add Alpine complexity
-  for little UX win over a 2-click create flow).
+  Mirrors Databricks' "+ New" rail item: lives at the very top of the
+  primary sidebar so authors don't have to navigate to a list page
+  first to create something.  Replaces the prior topbar dropdown
+  (Phase 80.8) — moved here because (a) it matches what users already
+  know from DBX, (b) frees topbar space, and (c) avoids the
+  bottom-right toast-stack collision a FAB would have caused.
 
-  Surfaced only for authenticated users.  The "Data product" entry
-  is admin-gated because authoring DPs is a steward-level action;
-  Phase 73 plumbing assumes a workspace admin OR an agent with the
-  right scope.
+  Renders as a single ``<li class="pql-icon-rail__item dropend">`` so
+  the dropdown menu opens to the right of the rail in both expanded
+  and collapsed states.  Visually treated as a primary-coloured pill
+  via the ``pql-icon-rail__link--cta`` modifier so it reads as the
+  primary call-to-action.
+
+  Surfaced only for authenticated users.  The "Data product" and
+  "Scheduled job" entries are admin-gated.
 #}
 {% if current_user is defined and current_user %}
-<div class="dropdown me-2 d-none d-md-block"
-     data-bs-toggle="tooltip"
-     data-bs-placement="bottom"
-     data-bs-title="Create new…">
-    <button class="btn btn-link text-body p-0 d-flex align-items-center pql-quick-create-trigger"
-            type="button"
+<li class="pql-icon-rail__item dropend pql-icon-rail__item--cta">
+    <button type="button"
+            class="pql-icon-rail__link pql-icon-rail__link--cta pql-quick-create-trigger"
             data-bs-toggle="dropdown"
+            data-bs-auto-close="true"
             aria-expanded="false"
-            aria-label="Create new">
-        <i class="bi bi-plus-square fs-5"></i>
+            aria-label="Create new"
+            title="Create new">
+        <i class="bi bi-plus-lg"></i>
+        <span class="pql-icon-rail__label">New</span>
     </button>
-    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="quickCreateMenu">
+    <ul class="dropdown-menu" aria-labelledby="quickCreateMenu">
         <li><h6 class="dropdown-header">Create new</h6></li>
         <li>
             <a class="dropdown-item d-flex align-items-center gap-2"
@@ -86,5 +91,5 @@
         </li>
         {% endif %}
     </ul>
-</div>
+</li>
 {% endif %}

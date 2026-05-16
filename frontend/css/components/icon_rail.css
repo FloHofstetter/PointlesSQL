@@ -80,6 +80,38 @@
     margin: 0;
 }
 
+/* Phase 81.H — primary "New" rail entry.  Sits pinned to the top of
+   the rail above all nav groups; visually treated as a primary
+   call-to-action pill so it reads as the dominant authoring entry
+   point (Databricks parity). */
+.pql-icon-rail__item--cta {
+    padding: 0.5rem 0.5rem 0.65rem;
+    border-bottom: 1px solid var(--bs-border-color-translucent);
+    margin-bottom: 0.25rem;
+}
+.pql-icon-rail__link--cta {
+    border-radius: 0.5rem;
+    background: var(--pql-color-accent);
+    color: #fff !important;
+    border-left: 0 !important;
+    font-weight: 600;
+    padding: 0.55rem 0.75rem;
+    justify-content: center;
+}
+.pql-icon-rail__link--cta:hover {
+    background: var(--pql-color-accent-strong, #5a9000);
+    color: #fff !important;
+}
+.pql-icon-rail__link--cta i {
+    color: #fff;
+}
+html[data-pql-rail-state="collapsed"] .pql-icon-rail__link--cta {
+    padding: 0.55rem 0;
+}
+html[data-pql-rail-state="collapsed"] .pql-icon-rail__link--cta .pql-icon-rail__label {
+    display: none;
+}
+
 /* Phase 81.A — per-user customisation.  rail_customise.js sets
    ``data-rail-hidden="1"`` on the parent <li> of any rail entry the
    user has hidden via the customise drawer.  Only entries with a

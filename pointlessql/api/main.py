@@ -6,6 +6,7 @@ import asyncio
 import contextlib
 import logging
 import os
+import re
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
@@ -701,19 +702,38 @@ register_routers(app)
 _STYLE_CSS_PATH = _FRONTEND_DIR / "css" / "style.css"
 
 
+_CSS_DIR = _FRONTEND_DIR / "css"
+_ASSET_VERSION_RE = re.compile(r'url\("(\./[^"]+)\?v=ASSET_VERSION"\)')
+
+
 @app.get("/static/css/style.css", include_in_schema=False)
 async def _style_css() -> Response:  # pyright: ignore[reportUnusedFunction]
-    """Serve the master stylesheet with the cache-bust token rewritten to ``__version__``.
+    """Serve the master stylesheet with per-import mtime cache-busters.
 
     Browsers cache ``@import`` URLs independently of their referring
-    sheet, so the parent's cache-bust does not propagate.  Rewriting
-    on the fly lets a single ``__version__`` bump invalidate every
-    imported sub-sheet at once without a build step.
+    sheet, so the parent's cache-bust does not propagate.  Earlier the
+    token expanded to ``pointlessql.__version__``; that meant dev
+    iteration required a version bump to invalidate sub-imports.
+
+    Instead we stamp each ``@import url("./foo.css?v=ASSET_VERSION")``
+    with the imported file's own mtime.  In dev, editing a sub-sheet
+    bumps its mtime → browser refetches that one file.  In prod the
+    wheel's install-time mtime is stable → identical caching as
+    before.  Files that are missing fall back to ``__version__``.
     """
-    body = _STYLE_CSS_PATH.read_text().replace(
-        "?v=ASSET_VERSION",
-        f"?v={pointlessql.__version__}",
-    )
+    body = _STYLE_CSS_PATH.read_text()
+
+    def _stamp(match: re.Match[str]) -> str:
+        rel = match.group(1)
+        target = (_CSS_DIR / rel.removeprefix("./")).resolve()
+        try:
+            mtime = int(target.stat().st_mtime)
+            stamp = f"{pointlessql.__version__}-{mtime}"
+        except OSError:
+            stamp = pointlessql.__version__
+        return f'url("{rel}?v={stamp}")'
+
+    body = _ASSET_VERSION_RE.sub(_stamp, body)
     return Response(body, media_type="text/css")
 
 
