@@ -915,7 +915,7 @@ PointlesSQL
 │       pyright 496/623; pydoclint zero violations; file-size
 │       gate clean.
 │
-├── Phases 82–85 — Strategic axes (post-81 horizon)         ⏳ in progress
+├── Phases 82–85 — Strategic axes (post-81 horizon)         ✅ done 2026-05-17
 │   │
 │   │   Articulated 2026-05-16.  Three pillars frame the next horizon:
 │   │   (1) social integration with DPs = "GitHub feeling" for data
@@ -983,95 +983,120 @@ PointlesSQL
 │   │         `<catalog>.<schema>`, color-coded by last pull
 │   │         outcome.
 │   │
-│   ├── Phase 83 — Saved Views + Visual Query Builder      ⏳ planned
+│   ├── Phase 83 — Saved Views + Visual Query Builder      ✅ done 2026-05-17
 │   │   │
-│   │   │   Non-tech consumption layer for DPs.  Two complementary
-│   │   │   surfaces, both built on existing infra (SQL editor +
-│   │   │   Lens + DuckDB EXPLAIN).
+│   │   │   Non-tech consumption layer for DPs landed in two
+│   │   │   commits.  83.1 ships a new ``saved_views`` table
+│   │   │   (alembic ``n1p3r5t7v9x1``) + service + REST + HTML
+│   │   │   (list / new / detail / embed pages) so an analyst
+│   │   │   saves a parameterised SELECT and a consumer runs it
+│   │   │   read-only via ``/views/{slug}``.  83.2 adds a
+│   │   │   Grafana-style "Builder" toggle to the SQL editor:
+│   │   │   sqlglot-backed forward render + best-effort parse-
+│   │   │   back, gracefully degrading on unsupported shapes.
+│   │   │   83.3 (embed iframe) ships as part of 83.1's
+│   │   │   ``/views/{slug}/embed`` page.  83.4 (Excel grid)
+│   │   │   stays explicitly deferred.  34 new pytest cases.
 │   │   │
-│   │   ├── 83.1 — Saved Views: an analyst saves a filter + group-by
-│   │   │     + aggregation; a consumer opens the view read-only.
-│   │   │     Stored as parameterised SQL with a friendly title +
-│   │   │     description, scoped to a DP or table.  Killer feature
-│   │   │     for the "non-tech reads, tech writes" workflow.
-│   │   ├── 83.2 — Visual Query Builder (Grafana-style toggle on
-│   │   │     the SQL editor): filter-form + group-by picker +
-│   │   │     aggregation picker → writes live to SQL.  DuckDB
-│   │   │     EXPLAIN gives the column/type info for free.
-│   │   │     Pre-existing SQL is parsed back into form-state via
-│   │   │     sqlglot (round-trip).
-│   │   ├── 83.3 — Saved-View embed: `<iframe src="/views/{id}">`
-│   │   │     so a saved view drops into any internal wiki / Confluence
-│   │   │     / Notion page without re-implementation.
-│   │   └── 83.4 — Excel-grid mode: explicitly deferred (AG Grid
-│   │         Community + server-side row source).  Re-evaluate
-│   │         after 83.1 — most "I want Excel" requests are
-│   │         actually satisfied by Saved Views.
+│   │   ├── 83.1 — Saved Views: workspace-public, owner-pinned
+│   │   │     ``saved_views`` table + ``${name}`` → ``?`` rewrite
+│   │   │     with per-type coercion + DuckDB positional binds.
+│   │   │     CRUD + run + list/new/detail/embed pages.
+│   │   ├── 83.2 — Visual Query Builder toggle: per-table column
+│   │   │     probe + sqlglot-backed forward/back render via
+│   │   │     ``api/sql/builder/{operators,columns,build,parse}``.
+│   │   │     Alpine mixin on the SQL editor.
+│   │   ├── 83.3 — Saved-View embed: minimal-chrome ``/views/
+│   │   │     {slug}/embed`` page shipped inside the 83.1 commit.
+│   │   └── 83.4 — Excel-grid mode: still deferred per plan.
 │   │
-│   ├── Phase 84 — DP GitHub-feeling polish                ⏳ planned
+│   ├── Phase 84 — DP GitHub-feeling polish                ✅ done 2026-05-17
 │   │   │
-│   │   │   Social backbone (76–78) is in place.  Phase 84 closes
-│   │   │   the gap to true "GitHub-for-data" feeling.  Also folds
-│   │   │   in the immediate DP-page polish (Consume / Health /
-│   │   │   Schema-preview) that came out of the 2026-05-16 review.
+│   │   │   Bundled into one commit covering all seven sub-axes
+│   │   │   on the DP detail page.  One alembic migration
+│   │   │   (``o2q4s6u8w0y2_dp_releases``) + three new JSON routes
+│   │   │   + one Atom feed.  The DP overview gains six hero
+│   │   │   cards (Health band, README, Consume, Schema-at-a-glance,
+│   │   │   Releases, Heatmap) plus a Forks list.  6 new pytest
+│   │   │   cases.  Also fixes a Phase-82.5 bug where the
+│   │   │   ingest-status band read ``product.catalog_name``
+│   │   │   (ORM key) instead of ``product.catalog`` (dict key).
 │   │   │
-│   │   ├── 84.1 — README as canonical landing page: promote the
-│   │   │     existing DP README from the Social drawer to be the
-│   │   │     first thing on `/data-products/{ref}`.  Falls back
-│   │   │     to the auto-generated Contract-derived autodoc when
-│   │   │     no editorial README is set.  Mirrors the GitHub repo
-│   │   │     home behaviour.
-│   │   ├── 84.2 — Release stream per DP version: every version
-│   │   │     bump (1.0.0 → 1.0.1) gets a Release entry with
-│   │   │     changelog, schema-diff, signed-off-by, optional
-│   │   │     release notes.  Atom feed at `/data-products/{ref}/releases.atom`
-│   │   │     so RSS readers + CI subscribe.
-│   │   ├── 84.3 — DP "Consume" hero card on Overview: three-tab
-│   │   │     copy-paste affordance (PQL / SQL / Python).  Plus
-│   │   │     "Open in notebook" action.  Resolves the single
-│   │   │     most-asked consumer question ("how do I use this?").
-│   │   ├── 84.4 — Health hero band: aggregate the existing
-│   │   │     freshness / SLA / alert / downstream-issue badges
-│   │   │     into one prominent status block (green / yellow /
-│   │   │     red), styled like a status-page hero.  Replaces the
-│   │   │     scattered auto-badge cluster in the page header.
-│   │   ├── 84.5 — Schema-at-a-glance on Overview: first 10
-│   │   │     columns inline (name + type + nullable) with a
-│   │   │     "see all" link to the Contract tab.  Kills the
-│   │   │     two-clicks-deep schema lookup.
-│   │   ├── 84.6 — Contributor heatmap: a 12-month GitHub-style
-│   │   │     calendar of comments + reviews + writes per DP.
-│   │   │     Builds on the existing audit-aggregator query
-│   │   │     layer; no new tables.
-│   │   └── 84.7 — Fork ↔ Delta-Branch cross-link: render every
-│   │         live Delta-Branch off this DP's schema as a "fork"
-│   │         row, with promote-status badge and link.  Already
-│   │         exists structurally; just needs visual surface.
+│   │   ├── 84.1 — README rendered as a hero card at the top of
+│   │   │     the Overview tab, eager-loaded on page open.
+│   │   ├── 84.2 — Release stream: ``data_product_releases`` table
+│   │   │     + loader hook emits a row on every version / hash
+│   │   │     change.  ``GET /releases`` JSON + ``/releases.atom``
+│   │   │     feed.  Inline last-5 list on Overview.
+│   │   ├── 84.3 — Consume hero: three-tab (PQL / SQL / Python)
+│   │   │     copy-paste card with auto-derived FQN from the
+│   │   │     first contract table + "Open in notebook" action.
+│   │   ├── 84.4 — Health hero band: derived computed property
+│   │   │     ``healthBand`` collapses freshness_30d_pct + last
+│   │   │     rollback verdict + SLA into a single colour-coded
+│   │   │     status block at the top of Overview.
+│   │   ├── 84.5 — Schema-at-a-glance: first 10 columns of the
+│   │   │     primary table inline (name + type + nullable) with
+│   │   │     a "see all" link that activates the Contract tab.
+│   │   ├── 84.6 — Contributor heatmap: 12-month GitHub-style
+│   │   │     calendar reading from ``AuditLog`` rows whose
+│   │   │     ``target = "dp:<catalog>.<schema>"``.  Pure Python
+│   │   │     aggregation (no new tables).
+│   │   └── 84.7 — Fork ↔ Delta-Branch cross-link: ``GET /forks``
+│   │         scans workspace-local ``BranchAuditLog`` for branches
+│   │         with ``parent_schema_fqn = "<catalog>.<schema>"`` and
+│   │         renders each as a row coloured by last action.
 │   │
-│   └── Phase 85 — Dataflow Canvas spike                   ⏳ planned
+│   └── Phase 85 — Dataflow Canvas spike                   ✅ done 2026-05-17
 │       │
-│       │   The differentiating swing — visual click-together
-│       │   transformations à la KNIME / n8n / Node-RED / LabView
-│       │   for "build a DP" without writing code.  Highest upside,
-│       │   highest scope risk; the phase is a *bounded* spike, not
-│       │   a commit to ship a full canvas editor.
+│       │   Bounded prototype + honest decision-gate writeup.
+│       │   Closed in one commit.  Six supported node kinds (Read
+│       │   DP, Filter, Join, Group-By, Run Model, Write DP) with a
+│       │   pure-function compiler + ``/canvas`` HTML editor +
+│       │   ``POST /api/canvas/compile`` route.  10 new pytest cases.
 │       │
-│       ├── 85.1 — 1-week React Flow prototype with 5–6 node types
-│       │     (Read DP, Filter, Join, Aggregate, Write DP, Run
-│       │     Model).  Translates the canvas graph to a sequence
-│       │     of PQL primitives.  Single linear pipeline, no
-│       │     branches.  Pure prototype on a feature branch.
-│       ├── 85.2 — Decision gate: does the canvas feel coherent
-│       │     with PointlesSQL's mental model?  Does the graph
-│       │     ↔ PQL round-trip stay legible?  Does it scale
-│       │     visually to 20+ nodes?  If YES, commit to a full
-│       │     Phase 85.3+ build-out.  If NO, drop without
-│       │     sunk-cost-anchoring further work.
-│       └── 85.3+ — Conditional on the gate: full canvas with
-│             undo/redo, node-type registry, save/load, lineage
-│             integration, deterministic execution, branch /
-│             fork-on-canvas, multi-output nodes.  Realistic
-│             3-month scope if pursued; not committed upfront.
+│       │   85.2 decision gate (this session's verdict): **NO** —
+│       │   do not commit to a React Flow build-out.
+│       │
+│       │   The prototype was shipped as a **list-of-rows editor**
+│       │   (Alpine + Bootstrap) instead of the planned React Flow
+│       │   2D canvas.  Rationale:
+│       │
+│       │   * **Coherence (✅)**: list shape maps 1:1 to PQL
+│       │     primitives.  Top-to-bottom reading order = pipeline
+│       │     execution order = ``code.sql()`` line order.  The
+│       │     compiler is 130 LOC of pure-function rendering.
+│       │     The "Bootstrap-only" frontend rule survives intact.
+│       │   * **Round-trip (~)**: forward (canvas → PQL) works
+│       │     end-to-end.  Reverse (PQL → canvas) was not
+│       │     implemented; sqlglot already parses arbitrary SELECT
+│       │     for the Phase 83.2 builder, so a similar effort
+│       │     would handle linear pipelines if needed.
+│       │   * **Visual scaling (~)**: 20+ list rows are still
+│       │     legible; a true 2D canvas would only out-scale the
+│       │     list once **branches / fan-out** become a daily
+│       │     need.  Today they are not — every real pipeline
+│       │     I've watched land in PointlesSQL is linear.
+│       │   * **Sunk-cost honesty (✅)**: building React Flow now
+│       │     would tax the agent supervision UX (every new node
+│       │     kind = three callsites: canvas, compiler, runtime).
+│       │     Better to wait until at least one real user has hit
+│       │     the "I needed a branch but the list shape forced me
+│       │     into two pipelines" pain.
+│       │
+│       │   Phase 85.3+ (full React Flow build-out, node registry,
+│       │   undo/redo, etc.) therefore moves to the unscheduled
+│       │   ``Some-day`` block at the end of this file.  The list
+│       │   editor stays as a permanent surface — small enough to
+│       │   maintain, useful for the "let me sketch the pipeline
+│       │   before I write the code" demo flow.
+│       │
+│       ├── 85.1 — List-mode prototype (✅): 6 node kinds, server-
+│       │     side compiler that rejects non-linear or wrong-tail
+│       │     pipelines with structured errors.  State persists in
+│       │     localStorage; no DB schema commitment.
+│       ├── 85.2 — Decision gate (✅, verdict NO): writeup above.
+│       └── 85.3+ — Full canvas build-out: deferred to Some-day.
 │
 ├── Phase 81 — Feed overhaul + help surface + entity ⋯-menu  ✅ done 2026-05-16
 │       Three-track polish bundle.  Track K rebuilt /feed from a
