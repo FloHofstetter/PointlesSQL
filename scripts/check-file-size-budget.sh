@@ -100,6 +100,14 @@ ALLOWLIST=(
     # Cmd+K index) are separable; tracked for a future split into
     # ``home_routes.py`` (digest) + ``search_routes.py`` (Cmd+K).
     "pointlessql/api/home_routes.py"
+    # Feed JSON + HTML + mute/snooze + trending/people surface — Phase
+    # 81.K.4/K.5 added the trending, people, mark-all-read, mute,
+    # snooze, unmute endpoints plus the bulk actor-name + active-mute
+    # helpers, which pushed the file past 800 LOC.  Split candidates
+    # exist (``feed_routes`` JSON read + ``feed_mute_routes`` write +
+    # ``feed_discover_routes`` trending/people), tracked for a future
+    # Phase 81.K+ modularization pass.
+    "pointlessql/api/feed_routes.py"
 )
 
 is_allowed() {
