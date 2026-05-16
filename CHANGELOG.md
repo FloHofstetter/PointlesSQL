@@ -6,6 +6,31 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- **Phase 88 Restschuld II (SQL/dbt cluster) closed (2026-05-16).**
+  Three medium-risk file splits, three commits on the same
+  ``phase-87…`` branch as Phase 87:
+
+  1. **88.1** — ``sql/_dispatcher.py`` 1009 LOC → 8-module package
+     (``_types``, ``_privilege``, ``_agent_run``, ``_ast_extract``,
+     ``_select``, ``_dml``, ``_ddl``, ``__init__``).  Cross-module
+     helpers lost their leading underscore so pyright stops
+     tripping on cross-package private access.  External callers
+     (saved_views_routes, editor) updated to import from the new
+     sub-modules.
+  2. **88.2** — ``sql/editor.py`` 1127 LOC → 8-module package
+     (``_helpers``, ``_execute``, ``_batch``, ``_cancel``,
+     ``_download``, ``_explain``, ``_page``, ``__init__``).  The
+     dispatcher's lazy ``from pointlessql.api.sql.editor import
+     run_sql_sync`` still resolves through the package facade.
+  3. **88.3** — ``dbt/routes.py`` 1061 LOC → 5 sibling modules:
+     ``_executor``, ``_lifecycle``, ``_audit``, ``_rollback``,
+     ``_run_test``.  Routes module shrinks to 8 handlers (~350
+     LOC).  Three test files re-targeted at the new sibling
+     modules for their monkeypatches.
+
+  Pyright count stays at 6 errors / 533 warnings at every commit;
+  ruff / pyright / pydoclint / alembic all green.
+
 - **Phase 87 Restschuld I (config + repo_assets + audit) closed
   (2026-05-16).**  First of three follow-up phases to clear the
   trim list from Phase 86.  Three low-risk strands; ruff / pyright

@@ -1235,6 +1235,51 @@ PointlesSQL
 │          yet and the name was never public API.  Combined audit
 │          router still exposes the same 23 paths.
 │
+├── Phase 88 — Restschuld II: SQL/dbt cluster              ✅ done 2026-05-16
+│       Three medium-risk strands targeting the 1000-LOC SQL editor
+│       + dbt cluster.  Three commits on the same ``phase-87…``
+│       branch (the wave continues), pyright count stays at
+│       6 / 533 errors / warnings at every commit, all gates green.
+│
+│       ── 88.1 (`ef837c3`) ``sql/_dispatcher.py`` 1009 LOC → 8-module
+│          package: ``_types`` (DispatchContext + ExecutionResult),
+│          ``_privilege`` (enforce_select_per_table,
+│          enforce_modify_target), ``_agent_run`` (start/finish
+│          editor agent runs, emit DDL ops), ``_ast_extract``
+│          (sqlglot translators), ``_select`` (kept isolated to
+│          break the editor↔dispatcher import cycle), ``_dml``
+│          (INSERT/CTAS, UPDATE, DELETE, MERGE branches), ``_ddl``
+│          (DROP TABLE, CREATE/DROP SCHEMA branches), ``__init__``
+│          (dispatch() facade re-exporting DispatchContext,
+│          ExecutionResult, PreparedSQL).  Saved-views import
+│          rewired from the old private name to the new sibling
+│          module.
+│
+│       ── 88.2 (`05ea3d2`) ``sql/editor.py`` 1127 LOC → 8-module
+│          package: ``_helpers`` (short_sql_hash, run_sql_sync,
+│          live_queries, run_sql_export_sync, strip_ansi),
+│          ``_execute`` (api_sql_execute + inline EXPLAIN
+│          serializer, the 284-LOC main route), ``_batch`` (atomic
+│          rollback runner + _rollback_run), ``_cancel`` (interrupt
+│          endpoint sharing the helpers' live_queries registry),
+│          ``_download`` (CSV/Parquet streamer re-running enforcement),
+│          ``_explain`` (cost-gate inspector with governance event),
+│          ``_page`` (the Jinja2 ``/sql`` route), ``__init__``
+│          (facade mounting 6 routers + helper re-exports).
+│
+│       ── 88.3 (`517a4b6`) ``dbt/routes.py`` 1061 LOC → 5 sibling
+│          modules.  Endpoints stay in ``routes.py`` (~350 LOC, 8
+│          handlers); helpers move out: ``_executor`` (factory),
+│          ``_lifecycle`` (auto-spawned AgentRun create/finish +
+│          result_payload), ``_audit`` (classify_severity,
+│          emit_dbt_events, model_relations_from_manifest_path,
+│          capture_pre_run_versions, emit_audit_for_run),
+│          ``_rollback`` (invoke_pql_rollback + auto_rollback_on_error
+│          test-only branch), ``_run_test`` (the 133-LOC shared
+│          run/test body + load_manifest_or_404).  Three test
+│          modules updated to monkeypatch the new sibling modules
+│          instead of the routes module.
+│
 ├── Phase 81 — Feed overhaul + help surface + entity ⋯-menu  ✅ done 2026-05-16
 │       Three-track polish bundle.  Track K rebuilt /feed from a
 │       flat Bootstrap `list-group` into a first-class social
