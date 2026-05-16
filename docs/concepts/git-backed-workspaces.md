@@ -44,8 +44,6 @@ keep it in sync by hand.  With it:
 |---|---|---|
 | `pointlessql.yaml` with `data_product:` | `load_contracts_for_workspace` | 50 + 51.2 |
 | `pointlessql.yaml` without `data_product:` | `load_conventions_for_workspace` | 13.5 + 51.2 |
-| `pointlessql.yaml` with `dashboards:` | `load_dashboards_from_yaml` | 51.3 |
-| `pointlessql.yaml` with `saved_queries:` | `load_saved_queries_from_yaml` | 51.3 |
 | `<rel>.py` referenced by `repo:<ws>:<slug>/<rel>.py` notebook spec | `resolve_notebook_path` | 51.3 |
 
 The two glob patterns walked under each clone dir (configurable
@@ -77,22 +75,6 @@ data_product:
         - {name: order_total, type: decimal,   nullable: true}
         - {name: ordered_at,  type: timestamp, nullable: false}
 
-dashboards:
-  - slug: weekly-orders
-    title: Weekly orders volume
-    notebook_path: dashboards/weekly_orders.py
-
-saved_queries:
-  - slug: top-customers-q1
-    title: Top customers (Q1)
-    sql_text: |
-      SELECT customer_id, SUM(order_total)
-      FROM main.sales_gold.orders
-      WHERE ordered_at >= '2026-01-01'
-      GROUP BY 1
-      ORDER BY 2 DESC
-      LIMIT 50
-    is_shared: true
 ```
 
 ## Auth model
