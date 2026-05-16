@@ -13,7 +13,6 @@ Coverage:
 
 from __future__ import annotations
 
-from collections.abc import AsyncIterator
 from pathlib import Path
 
 import httpx
@@ -41,14 +40,6 @@ data_product:
         - {name: order_id, type: long, nullable: false}
 """
 
-
-@pytest.fixture
-async def anonymous_client() -> AsyncIterator[httpx.AsyncClient]:
-    """``httpx.AsyncClient`` with no auth cookie."""
-    async with httpx.AsyncClient(
-        transport=httpx.ASGITransport(app=app), base_url="http://test"
-    ) as client:
-        yield client
 
 
 def _seed_product(tmp_path: Path) -> int:
