@@ -14,11 +14,15 @@ from pointlessql.api.ingest_routes._serializers import (
     redact_secrets,
     serialize_source,
 )
+from pointlessql.api.ingest_routes.mappings import router as _mappings_router
 from pointlessql.api.ingest_routes.probe import router as _probe_router
 from pointlessql.api.ingest_routes.sources import router as _sources_router
+from pointlessql.api.ingest_routes.tables import router as _tables_router
 
 router = APIRouter(tags=["ingest"])
 router.include_router(_sources_router)
 router.include_router(_probe_router)
+router.include_router(_tables_router)
+router.include_router(_mappings_router)
 
 __all__ = ["redact_secrets", "router", "serialize_source"]
