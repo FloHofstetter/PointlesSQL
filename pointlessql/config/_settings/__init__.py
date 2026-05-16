@@ -87,6 +87,7 @@ class Settings(BaseSettings):
     conventions: ConventionsSettings = Field(default_factory=ConventionsSettings)
     data_products: DataProductsSettings = Field(default_factory=DataProductsSettings)
     notifications: NotificationsSettings = Field(default_factory=NotificationsSettings)
+    workspace_repos: WorkspaceReposSettings = Field(default_factory=WorkspaceReposSettings)
     mlflow: MLflowSettings = Field(default_factory=MLflowSettings)
     dbt: DBTSettings = Field(default_factory=DBTSettings)
     lens: LensSettings = Field(default_factory=LensSettings)
