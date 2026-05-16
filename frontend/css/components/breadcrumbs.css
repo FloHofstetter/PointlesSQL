@@ -1,10 +1,16 @@
 /* ---------------------------------------------------------------
- * Breadcrumbs.  Wrapper tightens the Bootstrap spacing
- * so the component sits flush above the page header.
+ * Breadcrumbs.  Phase 81.K.10 tightened the resting padding (1rem
+ * → 0.4rem bottom; ~12 px saved per page) since most pages already
+ * carry an h1 or nav-tabs heading immediately below — the original
+ * 1rem gap read as wasted whitespace.
  * ------------------------------------------------------------- */
 .pql-breadcrumbs {
-    margin-bottom: var(--pql-space-4);
+    margin-bottom: var(--pql-space-2);
 }
 .pql-breadcrumbs .breadcrumb {
-    font-size: var(--pql-text-sm);
+    font-size: var(--pql-text-xs);
+    margin-bottom: 0;
+}
+.pql-breadcrumbs .breadcrumb-item {
+    line-height: 1.4;
 }

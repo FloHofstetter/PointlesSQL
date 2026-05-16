@@ -10,36 +10,14 @@
 {% block content %}
 <div x-data="feedPage()" x-init="init()" :class="density === 'comfortable' ? '' : ('pql-feed--' + density)">
 
-    {# Hero row — title + counts + page actions. #}
-    <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
-        <i class="bi bi-rss fs-3"></i>
-        <h1 class="h3 mb-0">Feed</h1>
-        <span class="text-muted small ms-2"
-              x-show="loaded"
-              x-text="rows.length + ' items'"></span>
-        <span class="badge bg-primary ms-2 pql-feed-new-pill"
-              x-show="newCount > 0"
-              data-pql-badge-pulse="1"
-              x-text="newCount + ' new'"></span>
-        <div class="ms-auto d-flex align-items-center gap-2 flex-wrap">
-            <button type="button"
-                    class="btn btn-sm btn-outline-secondary"
-                    @click="markAllRead()"
-                    title="Mark every item read">
-                <i class="bi bi-check2-all me-1"></i>Mark all read
-            </button>
-            <a class="btn btn-sm btn-outline-secondary" href="/settings/notifications">
-                <i class="bi bi-gear me-1"></i>Notification settings
-            </a>
-        </div>
-    </div>
-
     {# Top-level tabs: Activity (the feed stream) vs Discover
-       (trending + people-to-follow + saved searches).  The Discover
-       cards previously lived in a right-rail column that ate ~25 %
-       of the activity column — moving them behind a tab gives the
-       feed full width and reads as a clear destination switch. #}
-    <ul class="nav nav-tabs mb-3" role="tablist">
+       (trending + people-to-follow + saved searches).  Phase 81.K.10
+       — the page heading + breadcrumb were redundant once the tabs
+       arrived, so we drop the heading and host the page actions
+       (Mark-all-read, Notification settings) on the tab strip's
+       right side.  The "X new" pulse-pill rides on the Activity tab
+       label so live counts stay visible without a hero row. #}
+    <ul class="nav nav-tabs mb-3 align-items-center" role="tablist">
         <li class="nav-item" role="presentation">
             <button type="button"
                     class="nav-link"
@@ -51,6 +29,10 @@
                 <span class="badge text-bg-secondary ms-1"
                       x-show="loaded"
                       x-text="rows.length"></span>
+                <span class="badge bg-primary ms-1"
+                      x-show="newCount > 0"
+                      data-pql-badge-pulse="1"
+                      x-text="newCount + ' new'"></span>
             </button>
         </li>
         <li class="nav-item" role="presentation">
@@ -65,6 +47,18 @@
                       x-show="trending.length + people.length > 0"
                       x-text="trending.length + people.length"></span>
             </button>
+        </li>
+        <li class="ms-auto d-flex align-items-center gap-2 pb-2">
+            <button type="button"
+                    class="btn btn-sm btn-outline-secondary"
+                    @click="markAllRead()"
+                    title="Mark every item read">
+                <i class="bi bi-check2-all me-1"></i>Mark all read
+            </button>
+            <a class="btn btn-sm btn-outline-secondary" href="/settings/notifications"
+               title="Notification settings">
+                <i class="bi bi-gear"></i>
+            </a>
         </li>
     </ul>
 
