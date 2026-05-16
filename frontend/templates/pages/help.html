@@ -1,0 +1,341 @@
+{% extends "base.html" %}
+{% block title %}Help · PointlesSQL{% endblock %}
+
+{% set breadcrumbs = [
+    {"label": "Home", "href": "/"},
+    {"label": "Help"}
+] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block content %}
+<div>
+
+    <div class="d-flex align-items-center gap-2 mb-2">
+        <i class="bi bi-question-circle fs-3"></i>
+        <h1 class="h3 mb-0">Help &amp; reference</h1>
+    </div>
+    <p class="text-muted">
+        Keyboard shortcuts, hidden affordances, and the vocabulary
+        PointlesSQL uses across the UI.  Press <kbd>?</kbd> on any
+        page that wires a local shortcut sheet to get the page-specific
+        quick reference; the topbar <i class="bi bi-question-circle"></i>
+        button always lands you back here.
+    </p>
+
+    {# TOC chips — anchor links so the reader can jump rather than
+       scroll-hunt.  Stays on one line at md+, wraps at sm. #}
+    <nav aria-label="Section navigation" class="mb-4 d-flex flex-wrap gap-2">
+        <a class="btn btn-sm btn-outline-secondary" href="#shortcuts">
+            <i class="bi bi-keyboard me-1"></i>Keyboard shortcuts
+        </a>
+        <a class="btn btn-sm btn-outline-secondary" href="#hidden-features">
+            <i class="bi bi-stars me-1"></i>Hidden features
+        </a>
+        <a class="btn btn-sm btn-outline-secondary" href="#per-page">
+            <i class="bi bi-window-stack me-1"></i>Per-page reference
+        </a>
+        <a class="btn btn-sm btn-outline-secondary" href="#glossary">
+            <i class="bi bi-book me-1"></i>Glossary
+        </a>
+        <a class="btn btn-sm btn-outline-secondary" href="#more">
+            <i class="bi bi-link-45deg me-1"></i>More resources
+        </a>
+    </nav>
+
+    {# ===================================================================
+       Keyboard shortcuts — global + universal
+       =================================================================== #}
+    <section id="shortcuts" class="mb-5">
+        <h2 class="h5 d-flex align-items-center gap-2 mb-3">
+            <i class="bi bi-keyboard"></i>Keyboard shortcuts
+        </h2>
+
+        <div class="row g-3">
+            <div class="col-12 col-md-6">
+                <div class="card h-100">
+                    <div class="card-header py-2">
+                        <h6 class="mb-0 small text-uppercase text-muted">Global</h6>
+                    </div>
+                    <div class="card-body">
+                        <dl class="row mb-0 small">
+                            <dt class="col-4"><kbd>Cmd</kbd> + <kbd>K</kbd> <span class="text-muted">/</span> <kbd>Ctrl</kbd> + <kbd>K</kbd></dt>
+                            <dd class="col-8">Open the command palette — search every catalog, schema, table, data product, model, branch, run, notebook, saved query, user, topic and issue.</dd>
+                            <dt class="col-4"><kbd>?</kbd></dt>
+                            <dd class="col-8">Open the page-specific shortcut sheet (Feed today; more pages incoming).  Falls back to this <a href="/help">/help</a> page from the topbar button.</dd>
+                            <dt class="col-4"><kbd>Esc</kbd></dt>
+                            <dd class="col-8">Dismiss the active palette, modal or offcanvas drawer.</dd>
+                        </dl>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-12 col-md-6">
+                <div class="card h-100">
+                    <div class="card-header py-2">
+                        <h6 class="mb-0 small text-uppercase text-muted">Cmd+K palette operators</h6>
+                    </div>
+                    <div class="card-body">
+                        <dl class="row mb-0 small">
+                            <dt class="col-4"><kbd>@</kbd>name</dt>
+                            <dd class="col-8">Jump to a user profile by display name or email prefix.</dd>
+                            <dt class="col-4"><kbd>#</kbd>topic</dt>
+                            <dd class="col-8">Jump to a topic page by name.</dd>
+                            <dt class="col-4">plain text</dt>
+                            <dd class="col-8">Search every other entity — catalog &amp; schema, table, DP, model, branch, run, notebook, saved query and issue.</dd>
+                        </dl>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    {# ===================================================================
+       Hidden / discoverable features
+       =================================================================== #}
+    <section id="hidden-features" class="mb-5">
+        <h2 class="h5 d-flex align-items-center gap-2 mb-3">
+            <i class="bi bi-stars"></i>Hidden features
+        </h2>
+        <p class="text-muted small mb-3">
+            Things that aren't on a button label but live one click away.
+            Find them once, and they stick.
+        </p>
+
+        <div class="list-group">
+            <div class="list-group-item">
+                <div class="d-flex align-items-start gap-2">
+                    <i class="bi bi-layout-sidebar-inset fs-5 text-muted"></i>
+                    <div class="flex-grow-1">
+                        <div class="fw-semibold">Collapse the primary rail &amp; side panel</div>
+                        <div class="small text-muted">
+                            Top-left of the topbar — two chevron buttons.  The first collapses the icon rail from 220 px to 64 px; the second hides the contextual side panel entirely so the main content gets its full width.  Both states persist across reloads.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="list-group-item">
+                <div class="d-flex align-items-start gap-2">
+                    <i class="bi bi-list fs-5 text-muted"></i>
+                    <div class="flex-grow-1">
+                        <div class="fw-semibold">Feed density modes</div>
+                        <div class="small text-muted">
+                            On <a href="/feed">/feed</a> — three-button group on the filter bar (Comfortable / Compact / Headlines).  Headlines collapses each item to a single line; useful for scanning a long overnight queue.  Choice persists.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="list-group-item">
+                <div class="d-flex align-items-start gap-2">
+                    <i class="bi bi-three-dots-vertical fs-5 text-muted"></i>
+                    <div class="flex-grow-1">
+                        <div class="fw-semibold">Feed item ⋯-menu</div>
+                        <div class="small text-muted">
+                            Each row carries a dot menu with <em>Mark read</em>, <em>Mute thread</em>, <em>Mute author</em>, <em>Snooze 1 h / 8 h / 1 d</em> and <em>Copy link</em>.  Mutes filter the row out of every future feed load until you un-mute from the settings page.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="list-group-item">
+                <div class="d-flex align-items-start gap-2">
+                    <i class="bi bi-bookmark fs-5 text-muted"></i>
+                    <div class="flex-grow-1">
+                        <div class="fw-semibold">Saved searches</div>
+                        <div class="small text-muted">
+                            On <a href="/feed">/feed</a> &rarr; <em>Discover</em> tab &rarr; <em>Saved searches</em>.  Click <em>Save current</em> to bookmark the Activity tab's current filter + kind + search combo; click a saved row to apply it.  Stored per-browser in localStorage.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="list-group-item">
+                <div class="d-flex align-items-start gap-2">
+                    <i class="bi bi-rss fs-5 text-muted"></i>
+                    <div class="flex-grow-1">
+                        <div class="fw-semibold">Live feed updates</div>
+                        <div class="small text-muted">
+                            <a href="/feed">/feed</a> opens a Server-Sent-Events stream and queues new activity rows under an <em>X new</em> banner — click the banner to drain.  The small dot at the top-right of the filter bar shows the connection state.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="list-group-item">
+                <div class="d-flex align-items-start gap-2">
+                    <i class="bi bi-bezier2 fs-5 text-muted"></i>
+                    <div class="flex-grow-1">
+                        <div class="fw-semibold">Branch preview &amp; promote</div>
+                        <div class="small text-muted">
+                            Every Delta-branch row (under <a href="/branches">/branches</a>) carries a <em>Preview</em> action that diffs the branch against its parent and a <em>Promote</em> action that pointer-swaps after the supervisor approval review passes.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="list-group-item">
+                <div class="d-flex align-items-start gap-2">
+                    <i class="bi bi-clock-history fs-5 text-muted"></i>
+                    <div class="flex-grow-1">
+                        <div class="fw-semibold">Time-travel any table</div>
+                        <div class="small text-muted">
+                            On any table detail page, the <em>History</em> tab lists every Delta version with timestamp + operation; admins also see a <em>Row at version</em> form for ad-hoc forensic queries.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    {# ===================================================================
+       Per-page reference
+       =================================================================== #}
+    <section id="per-page" class="mb-5">
+        <h2 class="h5 d-flex align-items-center gap-2 mb-3">
+            <i class="bi bi-window-stack"></i>Per-page reference
+        </h2>
+
+        <div class="card">
+            <div class="card-header py-2 d-flex align-items-center justify-content-between">
+                <h6 class="mb-0 small text-uppercase text-muted">
+                    <i class="bi bi-rss me-1"></i>Feed (<a href="/feed">/feed</a>)
+                </h6>
+                <span class="badge text-bg-light">press <kbd>?</kbd> on /feed</span>
+            </div>
+            <div class="card-body small">
+                <dl class="row mb-0">
+                    <dt class="col-3"><kbd>j</kbd></dt><dd class="col-9">Move focus to the next item.</dd>
+                    <dt class="col-3"><kbd>k</kbd></dt><dd class="col-9">Move focus to the previous item.</dd>
+                    <dt class="col-3"><kbd>o</kbd> <span class="text-muted">/</span> <kbd>Enter</kbd></dt><dd class="col-9">Open the focused item (navigates to <em>source_url</em>).</dd>
+                    <dt class="col-3"><kbd>e</kbd></dt><dd class="col-9">Toggle read state on the focused notification.</dd>
+                    <dt class="col-3"><kbd>m</kbd></dt><dd class="col-9">Mute the focused thread (entity + kind).</dd>
+                    <dt class="col-3"><kbd>r</kbd></dt><dd class="col-9">Focus the search input.</dd>
+                    <dt class="col-3"><kbd>?</kbd></dt><dd class="col-9">Open the page-specific shortcut sheet.</dd>
+                </dl>
+            </div>
+        </div>
+
+        <p class="text-muted small mt-3 mb-0">
+            More page-specific shortcut sheets land alongside the
+            ``⋯``-action-menu sweep on the catalog, data-product, model
+            and run detail pages.  When a page wires its own sheet, a
+            small <kbd>?</kbd> hint appears in the topbar.
+        </p>
+    </section>
+
+    {# ===================================================================
+       Glossary
+       =================================================================== #}
+    <section id="glossary" class="mb-5">
+        <h2 class="h5 d-flex align-items-center gap-2 mb-3">
+            <i class="bi bi-book"></i>Glossary
+        </h2>
+
+        <div class="row g-3">
+            <div class="col-12 col-md-6 col-lg-4">
+                <div class="card h-100">
+                    <div class="card-body small">
+                        <div class="fw-semibold d-flex align-items-center gap-2 mb-1">
+                            <i class="bi bi-archive"></i>Catalog &middot;
+                            <i class="bi bi-diagram-3"></i>Schema &middot;
+                            <i class="bi bi-table"></i>Table
+                        </div>
+                        <div class="text-muted">
+                            The Unity-Catalog three-level namespace.  Every PQL primitive that reads or writes a Delta table addresses it as <em>catalog.schema.table</em>.
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-md-6 col-lg-4">
+                <div class="card h-100">
+                    <div class="card-body small">
+                        <div class="fw-semibold d-flex align-items-center gap-2 mb-1">
+                            <i class="bi bi-collection"></i>Data product (DP)
+                        </div>
+                        <div class="text-muted">
+                            A curated, contract-bearing dataset registered in PointlesSQL.  Carries owner, SLA, schema-change policy, README, discussion, reviews and citations.  Lives at <a href="/data-products">/data-products</a>.
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-md-6 col-lg-4">
+                <div class="card h-100">
+                    <div class="card-body small">
+                        <div class="fw-semibold d-flex align-items-center gap-2 mb-1">
+                            <i class="bi bi-cpu"></i>Model
+                        </div>
+                        <div class="text-muted">
+                            An MLflow model registered as a Unity-Catalog <em>MODEL</em> securable.  Audit-linked to the agent run that trained it; lives at <a href="/models">/models</a>.
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-md-6 col-lg-4">
+                <div class="card h-100">
+                    <div class="card-body small">
+                        <div class="fw-semibold d-flex align-items-center gap-2 mb-1">
+                            <i class="bi bi-bezier2"></i>Branch
+                        </div>
+                        <div class="text-muted">
+                            A zero-copy Delta-Lake shallow clone of a schema, scoped to one agent run.  Lets the run write freely against isolated tables; an explicit <em>Promote</em> step pointer-swaps the parent.
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-md-6 col-lg-4">
+                <div class="card h-100">
+                    <div class="card-body small">
+                        <div class="fw-semibold d-flex align-items-center gap-2 mb-1">
+                            <i class="bi bi-robot"></i>Run
+                        </div>
+                        <div class="text-muted">
+                            One supervised invocation of an agent.  Every PQL primitive it calls is captured as a row-level + column-level lineage operation with cost estimate and source-byte hash.
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-md-6 col-lg-4">
+                <div class="card h-100">
+                    <div class="card-body small">
+                        <div class="fw-semibold d-flex align-items-center gap-2 mb-1">
+                            <i class="bi bi-journal-code"></i>Notebook &middot;
+                            <i class="bi bi-code-square"></i>Saved query
+                        </div>
+                        <div class="text-muted">
+                            JupyterLab notebooks and ad-hoc SQL editor snippets, both audited and citation-linkable from any comment, review or issue.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    {# ===================================================================
+       More resources
+       =================================================================== #}
+    <section id="more" class="mb-5">
+        <h2 class="h5 d-flex align-items-center gap-2 mb-3">
+            <i class="bi bi-link-45deg"></i>More resources
+        </h2>
+        <div class="list-group">
+            <a href="/docs" class="list-group-item list-group-item-action">
+                <i class="bi bi-book me-2"></i><strong>Documentation site</strong>
+                <span class="text-muted small ms-2">— installation, walkthroughs, reference</span>
+            </a>
+            <a href="/health" class="list-group-item list-group-item-action">
+                <i class="bi bi-activity me-2"></i><strong>Health</strong>
+                <span class="text-muted small ms-2">— soyuz / MLflow / dbt / Hermes liveness</span>
+            </a>
+            <a href="https://github.com/FloHofstetter/PointlesSQL"
+               target="_blank"
+               rel="noopener"
+               class="list-group-item list-group-item-action">
+                <i class="bi bi-github me-2"></i><strong>Source &amp; issues</strong>
+                <span class="text-muted small ms-2">— file a bug, propose a feature</span>
+            </a>
+        </div>
+    </section>
+
+</div>
+{% endblock %}
