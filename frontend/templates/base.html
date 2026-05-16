@@ -447,6 +447,12 @@
          data-pql-keynav="1" and contains a table tagged
          data-pql-keynav-table="1". -->
     <script src="/static/js/list_keyboard.js"></script>
+    <!-- Phase 81.H — boost-navigation loading skeleton.  Replaces
+         #main-content with a placeholder-glow shell after 250 ms of
+         a pending HTMX-boost request; htmx:beforeSwap replaces it
+         with the real content.  Generalises the notebook-workspace
+         resting-placeholder pattern to every page navigation. -->
+    <script src="/static/js/loading_skeleton.js"></script>
     <script>
         // Theme color-modes click-handler.  The init script in <head>
         // already applied the right ``data-bs-theme`` before paint;
