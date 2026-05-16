@@ -26,7 +26,7 @@ from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
-from sqlalchemy import or_, select, update
+from sqlalchemy import func, or_, select, update
 
 from pointlessql.api.dependencies import current_workspace_id, get_user, require_user
 from pointlessql.models.auth import User
@@ -851,3 +851,171 @@ async def unmute(request: Request, body: _MuteBody) -> dict[str, Any]:
         session.delete(existing)
         session.commit()
     return {"ok": True, "removed": True}
+
+
+# ---------------------------------------------------------------
+# Phase 81.K.5 — right-column endpoints.
+#
+# Two read-only feeds drive the discovery panel:
+# ``GET /api/feed/trending`` and ``GET /api/feed/people``.  Both
+# scope to the caller's workspace; both surface only entities /
+# users that have actually been active in the relevant window.
+# ---------------------------------------------------------------
+
+_TRENDING_WINDOW = datetime.timedelta(hours=24)
+_PEOPLE_WINDOW = datetime.timedelta(days=7)
+
+
+@router.get("/api/feed/trending")
+async def get_trending(
+    request: Request, limit: int = 5
+) -> dict[str, Any]:
+    """Top-N entities by activity-count in the caller's workspace.
+
+    Phase 81.K.5 — drives the "Trending today" card on the feed's
+    right column.  Aggregates ``user_notifications`` group-by
+    ``(source_entity_kind, source_entity_ref)`` over the last 24 h,
+    count desc.
+
+    Args:
+        request: Incoming FastAPI request.
+        limit: Result cap; clamped to ``[1, 20]``.  Defaults to 5
+            (one card-row each).
+
+    Returns:
+        ``{"rows": [{"entity_kind", "entity_ref", "label",
+        "source_url", "count"}, ...]}`` sorted count desc.
+    """
+    require_user(request)
+    workspace_id = current_workspace_id(request)
+    cap = max(1, min(20, int(limit)))
+    factory = request.app.state.session_factory
+    cutoff = datetime.datetime.now(datetime.UTC) - _TRENDING_WINDOW
+    with factory() as session:
+        rows = session.execute(
+            select(
+                UserNotification.source_entity_kind,
+                UserNotification.source_entity_ref,
+                func.count().label("c"),
+            )
+            .where(
+                UserNotification.workspace_id == workspace_id,
+                UserNotification.created_at >= cutoff,
+                UserNotification.source_entity_kind.is_not(None),
+                UserNotification.source_entity_ref.is_not(None),
+            )
+            .group_by(
+                UserNotification.source_entity_kind,
+                UserNotification.source_entity_ref,
+            )
+            .order_by(func.count().desc())
+            .limit(cap)
+        ).all()
+    out: list[dict[str, Any]] = []
+    for kind, ref, count in rows:
+        if not kind or not ref:
+            continue
+        out.append(
+            {
+                "entity_kind": str(kind),
+                "entity_ref": str(ref),
+                "label": str(ref),  # ref already reads as the FQN
+                "source_url": entity_registry.url_for(str(kind), str(ref)),
+                "count": int(count),
+            }
+        )
+    return {"rows": out}
+
+
+@router.get("/api/feed/people")
+async def get_people_to_follow(
+    request: Request, limit: int = 5
+) -> dict[str, Any]:
+    """Top contributors the caller doesn't follow yet.
+
+    Phase 81.K.5 — drives the "People to follow" card.  Looks at
+    the last 7 days of comments + reviews, picks the most active
+    authors that aren't already in the caller's ``user_follows``
+    set, and returns ``{id, display_name, recent_event_count}``.
+
+    Args:
+        request: Incoming FastAPI request.
+        limit: Result cap; clamped to ``[1, 20]``.  Defaults to 5.
+
+    Returns:
+        ``{"rows": [...]}`` sorted by recent-event count desc.
+    """
+    require_user(request)
+    caller = get_user(request)
+    workspace_id = current_workspace_id(request)
+    cap = max(1, min(20, int(limit)))
+    factory = request.app.state.session_factory
+    cutoff = datetime.datetime.now(datetime.UTC) - _PEOPLE_WINDOW
+    with factory() as session:
+        # Already-followed user ids.
+        followed: set[int] = {
+            int(uid)
+            for (uid,) in session.execute(
+                select(UserFollow.followed_user_id).where(
+                    UserFollow.follower_user_id == caller["id"]
+                )
+            ).all()
+        }
+        # Comment + review activity authored in window.  Counts both
+        # tables and sums client-side to keep the SQL portable across
+        # SQLite + Postgres.
+        comment_counts = session.execute(
+            select(
+                DataProductComment.author_user_id,
+                func.count().label("c"),
+            )
+            .where(
+                DataProductComment.workspace_id == workspace_id,
+                DataProductComment.created_at >= cutoff,
+                DataProductComment.deleted_at.is_(None),
+            )
+            .group_by(DataProductComment.author_user_id)
+        ).all()
+        review_counts = session.execute(
+            select(
+                DataProductReview.author_user_id,
+                func.count().label("c"),
+            )
+            .where(
+                DataProductReview.workspace_id == workspace_id,
+                DataProductReview.created_at >= cutoff,
+            )
+            .group_by(DataProductReview.author_user_id)
+        ).all()
+        totals: dict[int, int] = {}
+        for uid, c in comment_counts:
+            totals[int(uid)] = totals.get(int(uid), 0) + int(c)
+        for uid, c in review_counts:
+            totals[int(uid)] = totals.get(int(uid), 0) + int(c)
+        # Drop caller + already-followed.
+        candidates = sorted(
+            (
+                (uid, total) for uid, total in totals.items()
+                if uid != caller["id"] and uid not in followed
+            ),
+            key=lambda x: x[1],
+            reverse=True,
+        )[:cap]
+        if not candidates:
+            return {"rows": []}
+        ids = [uid for uid, _ in candidates]
+        names = dict(
+            session.execute(
+                select(User.id, User.display_name).where(User.id.in_(ids))
+            ).all()
+        )
+    return {
+        "rows": [
+            {
+                "id": int(uid),
+                "display_name": str(names.get(uid, f"user-{uid}")),
+                "recent_event_count": int(total),
+            }
+            for uid, total in candidates
+        ]
+    }

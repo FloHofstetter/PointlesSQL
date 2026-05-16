@@ -356,33 +356,100 @@
             </div>
         </div>
 
-        {# Right context column — xl+ only.  C5 fills the three
-           sub-cards (Trending / People / Saved searches). C1 ships a
-           placeholder so the layout reads as intended. #}
+        {# Right context column — xl+ only.  Three Bootstrap cards
+           feed Trending / People-to-follow / Saved searches. #}
         <aside class="col-xl-3 d-none d-xl-block">
+
+            {# Trending today. #}
+            <div class="card mb-3">
+                <div class="card-header py-2 d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0 small text-uppercase text-muted">
+                        <i class="bi bi-graph-up-arrow me-1"></i>Trending today
+                    </h6>
+                </div>
+                <ul class="list-group list-group-flush small">
+                    <template x-if="trending.length === 0">
+                        <li class="list-group-item text-muted">
+                            No trending entities yet — activity in the last 24 h is quiet.
+                        </li>
+                    </template>
+                    <template x-for="t in trending" :key="t.entity_kind + ':' + t.entity_ref">
+                        <li class="list-group-item d-flex align-items-center gap-2 pql-hover-lift">
+                            <i class="bi" :class="iconForKind(t.entity_kind)"></i>
+                            <a class="text-decoration-none flex-grow-1 text-truncate"
+                               :href="t.source_url" x-text="t.label"></a>
+                            <span class="badge text-bg-secondary"
+                                  x-text="t.count + (t.count === 1 ? ' event' : ' events')"></span>
+                        </li>
+                    </template>
+                </ul>
+            </div>
+
+            {# People to follow. #}
             <div class="card mb-3">
                 <div class="card-header py-2">
-                    <h6 class="mb-0 small text-uppercase text-muted">Trending today</h6>
+                    <h6 class="mb-0 small text-uppercase text-muted">
+                        <i class="bi bi-people me-1"></i>People to follow
+                    </h6>
                 </div>
-                <div class="card-body text-muted small">
-                    Trending entities will appear here once activity ramps up.
-                </div>
+                <ul class="list-group list-group-flush small">
+                    <template x-if="people.length === 0">
+                        <li class="list-group-item text-muted">
+                            You're following every recent contributor.
+                        </li>
+                    </template>
+                    <template x-for="p in people" :key="p.id">
+                        <li class="list-group-item d-flex align-items-center gap-2 pql-hover-lift">
+                            <i class="bi bi-person-circle fs-5 text-muted"></i>
+                            <div class="flex-grow-1 text-truncate">
+                                <div class="text-truncate" x-text="p.display_name"></div>
+                                <div class="text-muted x-small"
+                                     x-text="p.recent_event_count + ' events this week'"></div>
+                            </div>
+                            <button type="button"
+                                    class="btn btn-sm btn-outline-primary"
+                                    :class="p._following ? 'btn-success' : 'btn-outline-primary'"
+                                    @click="followUser(p)">
+                                <span x-text="p._following ? 'Following' : 'Follow'"></span>
+                            </button>
+                        </li>
+                    </template>
+                </ul>
             </div>
-            <div class="card mb-3">
-                <div class="card-header py-2">
-                    <h6 class="mb-0 small text-uppercase text-muted">People to follow</h6>
-                </div>
-                <div class="card-body text-muted small">
-                    Suggestions populate based on recent contributors.
-                </div>
-            </div>
+
+            {# Saved searches — localStorage-backed. #}
             <div class="card">
-                <div class="card-header py-2">
-                    <h6 class="mb-0 small text-uppercase text-muted">Saved searches</h6>
+                <div class="card-header py-2 d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0 small text-uppercase text-muted">
+                        <i class="bi bi-bookmark me-1"></i>Saved searches
+                    </h6>
+                    <button type="button" class="btn btn-link btn-sm p-0"
+                            @click="saveCurrentSearch()"
+                            title="Save current filter combo">
+                        <i class="bi bi-plus-lg"></i>
+                    </button>
                 </div>
-                <div class="card-body text-muted small">
-                    Bookmark a filter combination to come back to it.
-                </div>
+                <ul class="list-group list-group-flush small">
+                    <template x-if="savedSearches.length === 0">
+                        <li class="list-group-item text-muted">
+                            Save the current filter + search by clicking +.
+                        </li>
+                    </template>
+                    <template x-for="(s, idx) in savedSearches" :key="s.id">
+                        <li class="list-group-item d-flex align-items-center gap-2 pql-hover-lift">
+                            <button type="button"
+                                    class="btn btn-link btn-sm text-decoration-none text-start flex-grow-1 p-0"
+                                    @click="applySavedSearch(s)"
+                                    x-text="s.label"></button>
+                            <button type="button"
+                                    class="btn btn-link btn-sm text-danger p-0"
+                                    @click="deleteSavedSearch(idx)"
+                                    title="Delete saved search">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </li>
+                    </template>
+                </ul>
             </div>
         </aside>
     </div>
@@ -461,6 +528,9 @@ window.feedPage = function () {
         newCount: 0,
         density: 'comfortable',
         connState: 'disconnected',
+        trending: [],
+        people: [],
+        savedSearches: [],
 
         filters: [
             { key: 'all', label: 'For you', icon: 'bi-stars' },
@@ -501,7 +571,10 @@ window.feedPage = function () {
                     this.density = v;
                 }
             } catch (e) { /* ignore storage errors */ }
+            this._restoreSavedSearches();
             await this.reload();
+            this.loadTrending();
+            this.loadPeople();
             this.connectSse();
             // Tear down on page leave so the server-side queue gets
             // released promptly (htmx:beforeRequest fires on boost
@@ -862,6 +935,85 @@ window.feedPage = function () {
             if (eventType.endsWith('.promoted')) return 'Promoted';
             if (eventType.endsWith('.discarded')) return 'Discarded';
             return 'Updated';
+        },
+
+        async loadTrending() {
+            try {
+                const res = await fetch('/api/feed/trending');
+                if (!res.ok) return;
+                const data = await res.json();
+                this.trending = data.rows || [];
+            } catch (e) { /* silent — the empty-state copy covers it */ }
+        },
+
+        async loadPeople() {
+            try {
+                const res = await fetch('/api/feed/people');
+                if (!res.ok) return;
+                const data = await res.json();
+                this.people = (data.rows || []).map((p) => ({ ...p, _following: false }));
+            } catch (e) { /* silent */ }
+        },
+
+        async followUser(p) {
+            if (p._following) return;
+            try {
+                const res = await fetch('/api/users/' + p.id + '/follow', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                });
+                if (!res.ok && res.status !== 409) throw new Error('HTTP ' + res.status);
+                p._following = true;
+                window.pqlToast?.success?.('Following ' + p.display_name + '.');
+            } catch (e) {
+                console.error('followUser failed', e);
+                window.pqlToast?.error?.('Could not follow user.');
+            }
+        },
+
+        // Saved-searches: localStorage-backed bookmarked filter combos.
+        _restoreSavedSearches() {
+            try {
+                const raw = window.localStorage?.getItem('pql.feed.savedSearches');
+                if (raw) this.savedSearches = JSON.parse(raw) || [];
+            } catch (e) { /* ignore */ }
+        },
+
+        _persistSavedSearches() {
+            try {
+                window.localStorage?.setItem(
+                    'pql.feed.savedSearches', JSON.stringify(this.savedSearches));
+            } catch (e) { /* ignore */ }
+        },
+
+        saveCurrentSearch() {
+            const parts = [];
+            if (this.filter && this.filter !== 'all') parts.push(this.filter);
+            if (this.kindFilter.length > 0) parts.push(this.kindFilter.join('+'));
+            if (this.searchDraft.trim()) parts.push('"' + this.searchDraft.trim() + '"');
+            const label = parts.length === 0 ? 'All activity' : parts.join(' · ');
+            const entry = {
+                id: Date.now().toString(36),
+                label,
+                filter: this.filter,
+                kindFilter: this.kindFilter.slice(),
+                q: this.searchDraft.trim(),
+            };
+            this.savedSearches.push(entry);
+            this._persistSavedSearches();
+            window.pqlToast?.success?.('Saved search "' + label + '".');
+        },
+
+        applySavedSearch(s) {
+            this.filter = s.filter || 'all';
+            this.kindFilter = (s.kindFilter || []).slice();
+            this.searchDraft = s.q || '';
+            this.reload();
+        },
+
+        deleteSavedSearch(idx) {
+            this.savedSearches.splice(idx, 1);
+            this._persistSavedSearches();
         },
 
         get groupedDays() {
