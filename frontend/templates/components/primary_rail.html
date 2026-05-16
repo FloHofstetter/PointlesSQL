@@ -36,17 +36,10 @@
 {% from "_macros/permission_link.html" import permission_link %}
 {% set _badges = nav_badges if nav_badges is defined and nav_badges else {} %}
 <nav class="pql-icon-rail" aria-label="Primary navigation">
-    <div class="pql-icon-rail__header">
-        <button type="button"
-                class="pql-icon-rail__toggle"
-                data-pql-rail-toggle="toggle"
-                aria-label="Toggle sidebar width"
-                data-bs-toggle="tooltip"
-                data-bs-placement="right"
-                data-bs-title="Toggle sidebar width">
-            <i class="bi bi-chevron-double-left"></i>
-        </button>
-    </div>
+    {# Phase 81.K.12 — rail-toggle button moved into the topbar so
+       the rail header is no longer needed.  Kept the empty header
+       block out (was just ``__header`` with one button); the rail's
+       first list item now sits flush against the top. #}
     <ul class="pql-icon-rail__list">
         {# ── Quick-create (Databricks-style "+ New" pinned to top) ── #}
         {% include "components/quick_create_menu.html" %}

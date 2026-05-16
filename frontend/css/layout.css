@@ -39,44 +39,24 @@
  }
 }
 
-/* Single toggle button at the top-left of the content area.
-   When the panel is expanded the chevron points left (« click → collapse);
-   when collapsed the icon flips 180° so it points right (» click → expand).
-   Lives in the content's padding area so the panel chrome (refresh /
-   header) stays untouched. */
-.pql-panel-toggle {
- display: none; /* shown only at md+ via the media-query below */
- position: absolute;
- top: 0.5rem;
- left: 0.25rem;
- z-index: 5;
- width: 1.5rem;
- height: 1.5rem;
- padding: 0;
- align-items: center;
- justify-content: center;
- border: 1px solid var(--bs-border-color-translucent);
- border-radius: 0.25rem;
- background: var(--bs-body-bg);
- color: var(--bs-secondary-color);
- line-height: 1;
- font-size: 0.7rem;
- cursor: pointer;
-}
-.pql-panel-toggle:hover {
- color: var(--bs-body-color);
- background: var(--bs-secondary-bg);
-}
-.pql-panel-toggle .bi {
- transition: transform 0.15s ease-in-out;
-}
-html[data-pql-panel-collapsed] .pql-panel-toggle .bi {
- transform: rotate(180deg);
-}
-@media (min-width: 768px) {
- .pql-panel-toggle { display: inline-flex; }
-}
+/* Phase 81.K.12 — layout toggles live in the topbar.  The legacy
+   ``.pql-panel-toggle`` selector is kept as a no-op so any stale
+   bootstrap-cached copy doesn't flash a residual button on first
+   paint; remove this rule once the cache window expires. */
+.pql-panel-toggle { display: none !important; }
 .pql-content { position: relative; }
+
+.pql-layout-toggle {
+ line-height: 1;
+ font-size: 1rem;
+ border-radius: 0.25rem;
+}
+.pql-layout-toggle:hover { background: var(--bs-secondary-bg); }
+.pql-layout-toggle .bi { transition: transform 0.15s ease-in-out; }
+html[data-pql-rail-state="collapsed"] .pql-layout-toggle[data-pql-rail-toggle] .bi,
+html[data-pql-panel-collapsed] .pql-layout-toggle[data-pql-panel-toggle] .bi {
+ color: var(--pql-color-accent);
+}
 
 /* Sidebar wrapper: static column ≥ md, slides in as an offcanvas drawer < md.
  Bootstrap's ``.offcanvas-md`` handles the responsive switch — we only tune

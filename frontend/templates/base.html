@@ -131,6 +131,35 @@
                 aria-label="Toggle sidebar">
             <i class="bi bi-list fs-4"></i>
         </button>
+
+        {# Phase 81.K.12 — layout toggles (rail width + context panel)
+           moved from their old positions (primary-rail header + the
+           tiny chevron at the top-left of <main>) into the topbar.
+           Frees ~50 px of vertical space at the top of the content
+           area and keeps both controls reachable regardless of which
+           side is currently collapsed. #}
+        <div class="btn-group btn-group-sm d-none d-md-inline-flex me-2"
+             role="group"
+             aria-label="Layout toggles">
+            <button type="button"
+                    class="btn btn-link text-body p-1 pql-layout-toggle"
+                    data-pql-rail-toggle="toggle"
+                    data-bs-toggle="tooltip"
+                    data-bs-placement="bottom"
+                    data-bs-title="Toggle primary navigation"
+                    aria-label="Toggle primary navigation">
+                <i class="bi bi-layout-sidebar-inset"></i>
+            </button>
+            <button type="button"
+                    class="btn btn-link text-body p-1 pql-layout-toggle"
+                    data-pql-panel-toggle="toggle"
+                    data-bs-toggle="tooltip"
+                    data-bs-placement="bottom"
+                    data-bs-title="Toggle side panel"
+                    aria-label="Toggle side panel">
+                <i class="bi bi-layout-sidebar"></i>
+            </button>
+        </div>
         {% endif %}
         <a class="navbar-brand d-flex align-items-center gap-2 me-2" href="/">
             <i class="bi bi-database"></i>
@@ -255,15 +284,10 @@
               id="main-content"
               data-active-section="{{ active_section }}"
               data-active-page="{{ active_page if active_page is defined else '' }}">
-            {% if not hide_sidebar %}
-            <button type="button"
-                    class="pql-panel-toggle"
-                    aria-label="Toggle side panel"
-                    title="Toggle side panel"
-                    data-pql-panel-toggle="toggle">
-                <i class="bi bi-chevron-double-left"></i>
-            </button>
-            {% endif %}
+            {# Phase 81.K.12 — the panel-toggle (data-pql-panel-toggle)
+               and rail-toggle (data-pql-rail-toggle) chevron buttons
+               moved into the topbar; the document-level click handler
+               picks them up there. #}
             {% block content %}{% endblock %}
         </main>
     </div>
