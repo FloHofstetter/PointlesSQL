@@ -1,16 +1,55 @@
 /* ---------------------------------------------------------------
- * Breadcrumbs.  Phase 81.K.10 tightened the resting padding (1rem
- * → 0.4rem bottom; ~12 px saved per page) since most pages already
- * carry an h1 or nav-tabs heading immediately below — the original
- * 1rem gap read as wasted whitespace.
+ * Breadcrumbs — Phase 81.K.11.
+ *
+ * Breadcrumbs now render inside the topbar, sitting between the
+ * navbar-brand and the Cmd+K search trigger.  The page content
+ * area gains ~50 px of vertical space because the dedicated
+ * breadcrumb row below the topbar is gone.
+ *
+ * The topbar context uses a slightly larger font (sm) than the
+ * old below-topbar position; this matches GitHub / Linear / Vercel
+ * where the trail reads as a navigation primitive, not metadata.
+ *
+ * A leading chevron sits between the brand and the first crumb so
+ * the visual flow reads as "PointlesSQL > Catalog > main > orders".
  * ------------------------------------------------------------- */
-.pql-breadcrumbs {
-    margin-bottom: var(--pql-space-2);
+.pql-topbar-breadcrumbs {
+    min-width: 0;          /* allow flex item to shrink */
+    flex: 0 1 auto;
 }
-.pql-breadcrumbs .breadcrumb {
-    font-size: var(--pql-text-xs);
+.pql-topbar-breadcrumbs .pql-breadcrumbs {
     margin-bottom: 0;
 }
-.pql-breadcrumbs .breadcrumb-item {
-    line-height: 1.4;
+.pql-topbar-breadcrumbs .breadcrumb {
+    font-size: var(--pql-text-sm);
+    margin-bottom: 0;
+    padding: 0;
+    flex-wrap: nowrap;     /* never wrap inside the topbar */
+}
+.pql-topbar-breadcrumbs .breadcrumb-item {
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 24ch;       /* one long FQN won't push the search away */
+}
+.pql-topbar-breadcrumbs .breadcrumb-item:last-child {
+    color: var(--bs-body-color);
+    font-weight: 600;
+    max-width: 32ch;
+}
+
+/* Chevron between the navbar-brand and the first breadcrumb item.
+ * Uses the same ``>`` separator Bootstrap renders between items so
+ * the brand reads as the first crumb in the trail. */
+.pql-topbar-breadcrumbs .breadcrumb::before {
+    content: "/";
+    padding: 0 var(--pql-space-2);
+    color: var(--bs-secondary-color);
+}
+
+/* Legacy below-topbar position (used by any page that doesn't yet
+ * declare its breadcrumbs through the block).  Kept compact. */
+.pql-breadcrumbs:not(.pql-topbar-breadcrumbs .pql-breadcrumbs) {
+    margin-bottom: var(--pql-space-2);
 }

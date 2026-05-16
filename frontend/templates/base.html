@@ -131,10 +131,19 @@
             <i class="bi bi-list fs-4"></i>
         </button>
         {% endif %}
-        <a class="navbar-brand d-flex align-items-center gap-2" href="/">
+        <a class="navbar-brand d-flex align-items-center gap-2 me-2" href="/">
             <i class="bi bi-database"></i>
-            <span class="fw-semibold">PointlesSQL</span>
+            <span class="fw-semibold d-none d-lg-inline">PointlesSQL</span>
         </a>
+
+        {# Phase 81.K.11 \u2014 breadcrumbs moved into the topbar so the
+           page content area starts ~50 px higher.  Hidden on mobile
+           (<md) where the topbar already carries the brand + search
+           + offcanvas-trigger and would otherwise overflow. #}
+        <div class="pql-topbar-breadcrumbs d-none d-md-flex align-items-center">
+            {% block breadcrumbs %}{% endblock %}
+        </div>
+
         <button type="button"
                 x-data="{ mod: /Mac|iPhone|iPad/.test(navigator.platform) ? '\u2318' : 'Ctrl' }"
                 class="pql-cmdk-trigger ms-auto me-3 d-none d-md-inline-flex align-items-center gap-2"
@@ -248,7 +257,6 @@
                 <i class="bi bi-chevron-double-left"></i>
             </button>
             {% endif %}
-            {% block breadcrumbs %}{% endblock %}
             {% block content %}{% endblock %}
         </main>
     </div>

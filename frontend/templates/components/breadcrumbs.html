@@ -12,10 +12,20 @@
     Items with a truthy ``href`` render as links. The final item (or any
     item without ``href``) renders as the active terminal crumb.
 #}
+{# Phase 81.K.11 — breadcrumbs render inside the topbar, sitting
+   between the navbar-brand and the search trigger.  The brand
+   itself is the implicit "Home" link, so a leading
+   ``{"label": "Home", "href": "/"}`` crumb is dropped here; pages
+   keep declaring it for self-documentation but it never paints. #}
 {% if breadcrumbs %}
+{% set _crumbs = breadcrumbs %}
+{% if _crumbs and _crumbs[0].label == "Home" and _crumbs[0].href == "/" %}
+    {% set _crumbs = _crumbs[1:] %}
+{% endif %}
+{% if _crumbs %}
 <nav aria-label="breadcrumb" class="pql-breadcrumbs">
-    <ol class="breadcrumb mb-0 ms-3">
-        {% for crumb in breadcrumbs %}
+    <ol class="breadcrumb mb-0">
+        {% for crumb in _crumbs %}
         {% set is_last = loop.last %}
         {% if crumb.href and not is_last %}
         <li class="breadcrumb-item">
@@ -27,4 +37,5 @@
         {% endfor %}
     </ol>
 </nav>
+{% endif %}
 {% endif %}
