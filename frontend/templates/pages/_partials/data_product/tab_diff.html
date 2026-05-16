@@ -1,0 +1,64 @@
+        <div class="tab-pane fade" id="tab-diff" role="tabpanel">
+            <template x-if="diffLoading">
+                <div class="text-muted small p-3">
+                    <span class="spinner-border spinner-border-sm me-1"></span>Diffing yaml against on-disk schema…
+                </div>
+            </template>
+            <template x-if="!diffLoading && diff && diff.tables.length === 0 && !diffError">
+                <div class="alert alert-secondary pql-diff-empty">
+                    <i class="bi bi-info-circle me-1"></i>
+                    Nothing to diff — the contract yaml carries no table
+                    definitions, so there is no expected schema to compare
+                    against the on-disk Delta tables.
+                </div>
+            </template>
+            <template x-if="diff && diff.tables.length > 0">
+                <div>
+                    <template x-for="t in diff.tables" :key="t.name">
+                        <div class="card mb-3">
+                            <div class="card-body">
+                                <h5 class="card-title">
+                                    <i class="bi bi-table me-1"></i>
+                                    <span x-text="t.name"></span>
+                                    <template x-if="t.error">
+                                        <span class="badge bg-warning text-dark ms-2" x-text="t.error"></span>
+                                    </template>
+                                    <template x-if="!t.error && !t.is_breaking">
+                                        <span class="badge bg-success ms-2">Compliant</span>
+                                    </template>
+                                    <template x-if="!t.error && t.is_breaking">
+                                        <span class="badge bg-danger ms-2">Breaking drift</span>
+                                    </template>
+                                </h5>
+                                <template x-if="!t.error">
+                                    <ul class="small mb-0">
+                                        <li x-show="t.missing_columns && t.missing_columns.length">
+                                            <strong>Missing columns:</strong>
+                                            <span x-text="(t.missing_columns || []).join(', ')"></span>
+                                        </li>
+                                        <li x-show="t.extra_columns && t.extra_columns.length">
+                                            <strong>Extra columns (drift):</strong>
+                                            <span x-text="(t.extra_columns || []).join(', ')"></span>
+                                        </li>
+                                        <li x-show="t.type_mismatches && t.type_mismatches.length">
+                                            <strong>Type mismatches:</strong>
+                                            <template x-for="m in t.type_mismatches" :key="m.name">
+                                                <span class="d-block ms-3"
+                                                      x-text="m.name + ': contract=' + m.contract + ' actual=' + m.actual"></span>
+                                            </template>
+                                        </li>
+                                        <li x-show="t.dropped_pk_columns && t.dropped_pk_columns.length">
+                                            <strong>Dropped PK columns:</strong>
+                                            <span x-text="(t.dropped_pk_columns || []).join(', ')"></span>
+                                        </li>
+                                    </ul>
+                                </template>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </template>
+            <template x-if="diffError">
+                <div class="alert alert-danger" x-text="diffError"></div>
+            </template>
+        </div>

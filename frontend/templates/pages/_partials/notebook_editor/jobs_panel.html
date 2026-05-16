@@ -1,0 +1,80 @@
+ {# Phase 67.4 Jobs-of-this-notebook collapsible panel. #}
+ <div class="pql-notebook-jobs-panel card mt-2"
+      x-show="jobsPanelOpen"
+      x-cloak>
+  <div class="card-body small">
+   <div class="d-flex justify-content-between align-items-center mb-2">
+    <strong>
+     <i class="bi bi-list-task me-1"></i>
+     Jobs of this notebook
+    </strong>
+    <button type="button" class="btn-close btn-close-sm"
+            aria-label="Close"
+            @click="jobsPanelOpen = false"></button>
+   </div>
+   <template x-if="jobsPanel.scheduled_jobs.length === 0
+                   && jobsPanel.recent_runs.length === 0">
+    <div class="text-muted">
+     No scheduled jobs yet — click <em>Schedule</em> above or
+     <em>Run as job</em> for a one-shot.
+    </div>
+   </template>
+   <template x-if="jobsPanel.scheduled_jobs.length > 0">
+    <div class="mb-2">
+     <div class="text-muted text-uppercase small mb-1">Scheduled</div>
+     <ul class="list-unstyled mb-0">
+      <template x-for="j in jobsPanel.scheduled_jobs" :key="j.id">
+       <li>
+        <a :href="`/jobs/${j.id}`"
+           class="text-decoration-none">
+         <code x-text="j.name"></code>
+        </a>
+        <span class="text-muted ms-1"
+              x-text="`@ ${j.cron_expr}`"></span>
+        <span class="badge bg-warning ms-1"
+              x-show="j.is_paused"
+              x-cloak>paused</span>
+        <span class="badge ms-1"
+              :class="{
+                'bg-success': j.last_run_status === 'succeeded',
+                'bg-danger': j.last_run_status === 'failed',
+                'bg-secondary': !j.last_run_status,
+              }"
+              x-show="j.last_run_status"
+              x-cloak
+              x-text="j.last_run_status"></span>
+       </li>
+      </template>
+     </ul>
+    </div>
+   </template>
+   <template x-if="jobsPanel.recent_runs.length > 0">
+    <div>
+     <div class="text-muted text-uppercase small mb-1">Recent runs</div>
+     <ul class="list-unstyled mb-0">
+      <template x-for="r in jobsPanel.recent_runs" :key="r.id">
+       <li>
+        <a :href="`/jobs/${r.job_id}`"
+           class="text-decoration-none">
+         run #<span x-text="r.id"></span>
+        </a>
+        <span class="badge ms-1"
+              :class="{
+                'bg-success': r.status === 'succeeded',
+                'bg-danger': r.status === 'failed',
+                'bg-secondary': r.status === 'running',
+                'bg-warning': r.status === 'skipped',
+              }"
+              x-text="r.status"></span>
+        <span class="text-muted ms-1"
+              x-text="r.trigger"></span>
+        <span class="text-muted ms-1"
+              x-text="pqlRelativeTime(r.started_at)"
+              :title="pqlAbsTime(r.started_at)"></span>
+       </li>
+      </template>
+     </ul>
+    </div>
+   </template>
+  </div>
+ </div>

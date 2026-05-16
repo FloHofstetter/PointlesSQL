@@ -1,0 +1,149 @@
+    <div class="tab-pane"
+         :class="activeTab === 'discover' ? 'show active' : ''"
+         id="pql-feed-discover-pane"
+         role="tabpanel">
+
+        {# Sub-tab strip — Trending / People / Saved.  Mirrors the
+           Activity filter pill row so the structure reads parallel
+           across the two top-level tabs.  State persists to
+           localStorage so the user lands on the surface they last
+           opened. #}
+        <ul class="nav nav-pills nav-pills-sm mb-3" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button type="button"
+                        class="nav-link py-1 px-2"
+                        :class="discoverTab === 'trending' ? 'active' : ''"
+                        @click="setDiscoverTab('trending')">
+                    <i class="bi bi-graph-up-arrow"></i>
+                    <span class="ms-1">Trending today</span>
+                    <span class="badge text-bg-secondary ms-1"
+                          x-show="trending.length > 0"
+                          x-text="trending.length"></span>
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button type="button"
+                        class="nav-link py-1 px-2"
+                        :class="discoverTab === 'people' ? 'active' : ''"
+                        @click="setDiscoverTab('people')">
+                    <i class="bi bi-people"></i>
+                    <span class="ms-1">People to follow</span>
+                    <span class="badge text-bg-secondary ms-1"
+                          x-show="people.length > 0"
+                          x-text="people.length"></span>
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button type="button"
+                        class="nav-link py-1 px-2"
+                        :class="discoverTab === 'saved' ? 'active' : ''"
+                        @click="setDiscoverTab('saved')">
+                    <i class="bi bi-bookmark"></i>
+                    <span class="ms-1">Saved searches</span>
+                    <span class="badge text-bg-secondary ms-1"
+                          x-show="savedSearches.length > 0"
+                          x-text="savedSearches.length"></span>
+                </button>
+            </li>
+            <li class="ms-auto d-flex align-items-center">
+                <button type="button"
+                        class="btn btn-sm btn-outline-secondary"
+                        x-show="discoverTab === 'saved'"
+                        @click="saveCurrentSearch()"
+                        title="Save current filter + search combo">
+                    <i class="bi bi-plus-lg me-1"></i>Save current
+                </button>
+            </li>
+        </ul>
+
+        {# Trending today — full-width panel. #}
+        <div x-show="discoverTab === 'trending'">
+            <p class="text-muted small mb-3">
+                <i class="bi bi-graph-up-arrow me-1"></i>
+                Entities with the most activity in the last 24 h — a quick read on what the rest of the team is moving.
+            </p>
+            <div class="card">
+                <ul class="list-group list-group-flush small">
+                    <template x-if="trending.length === 0">
+                        <li class="list-group-item text-muted">
+                            No trending entities yet — activity in the last 24 h is quiet.
+                        </li>
+                    </template>
+                    <template x-for="t in trending" :key="t.entity_kind + ':' + t.entity_ref">
+                        <li class="list-group-item d-flex align-items-center gap-2 pql-hover-lift">
+                            <i class="bi" :class="iconForKind(t.entity_kind)"></i>
+                            <a class="text-decoration-none flex-grow-1 text-truncate"
+                               :href="t.source_url" x-text="t.label"></a>
+                            <span class="badge text-bg-secondary"
+                                  x-text="t.count + (t.count === 1 ? ' event' : ' events')"></span>
+                        </li>
+                    </template>
+                </ul>
+            </div>
+        </div>
+
+        {# People to follow — full-width panel. #}
+        <div x-show="discoverTab === 'people'">
+            <p class="text-muted small mb-3">
+                <i class="bi bi-people me-1"></i>
+                Top contributors over the last 7 days that you don't already follow.
+            </p>
+            <div class="card">
+                <ul class="list-group list-group-flush small">
+                    <template x-if="people.length === 0">
+                        <li class="list-group-item text-muted">
+                            You're following every recent contributor.
+                        </li>
+                    </template>
+                    <template x-for="p in people" :key="p.id">
+                        <li class="list-group-item d-flex align-items-center gap-2 pql-hover-lift">
+                            <i class="bi bi-person-circle fs-5 text-muted"></i>
+                            <div class="flex-grow-1 text-truncate">
+                                <div class="text-truncate" x-text="p.display_name"></div>
+                                <div class="text-muted x-small"
+                                     x-text="p.recent_event_count + ' events this week'"></div>
+                            </div>
+                            <button type="button"
+                                    class="btn btn-sm"
+                                    :class="p._following ? 'btn-success' : 'btn-outline-primary'"
+                                    @click="followUser(p)">
+                                <span x-text="p._following ? 'Following' : 'Follow'"></span>
+                            </button>
+                        </li>
+                    </template>
+                </ul>
+            </div>
+        </div>
+
+        {# Saved searches — localStorage-backed full-width panel. #}
+        <div x-show="discoverTab === 'saved'">
+            <p class="text-muted small mb-3">
+                <i class="bi bi-bookmark me-1"></i>
+                Bookmarked filter + search combos.  Use <span class="text-body">Save current</span> on the right to capture the Activity tab's current filter; click a row to apply it.
+            </p>
+            <div class="card">
+                <ul class="list-group list-group-flush small">
+                    <template x-if="savedSearches.length === 0">
+                        <li class="list-group-item text-muted">
+                            No saved searches yet — switch to the Activity tab, choose a filter / kind / search, then come back and click <em>Save current</em>.
+                        </li>
+                    </template>
+                    <template x-for="(s, idx) in savedSearches" :key="s.id">
+                        <li class="list-group-item d-flex align-items-center gap-2 pql-hover-lift">
+                            <button type="button"
+                                    class="btn btn-link btn-sm text-decoration-none text-start flex-grow-1 p-0"
+                                    @click="applySavedSearch(s)"
+                                    x-text="s.label"></button>
+                            <button type="button"
+                                    class="btn btn-link btn-sm text-danger p-0"
+                                    @click="deleteSavedSearch(idx)"
+                                    title="Delete saved search">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </li>
+                    </template>
+                </ul>
+            </div>
+        </div>
+
+    </div>

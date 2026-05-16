@@ -1,0 +1,123 @@
+ <div class="pql-notebook-toolbar" role="toolbar" aria-label="Notebook toolbar">
+  <i class="bi bi-journal-code" aria-hidden="true"></i>
+  <span class="pql-notebook-path" x-text="path"></span>
+  <span class="badge bg-info text-dark"
+        x-show="parameters && parameters.length > 0"
+        x-cloak
+        :title="`This notebook declares ${parameters.length} papermill parameter(s).`">
+   <i class="bi bi-sliders" aria-hidden="true"></i>
+   <span x-text="`${parameters.length} param${parameters.length === 1 ? '' : 's'}`"></span>
+  </span>
+  <span class="badge bg-warning"
+        x-show="dirty && !saving"
+        x-cloak
+        title="Notebook has unsaved changes">
+   <i class="bi bi-exclamation-circle" aria-hidden="true"></i>
+   Unsaved
+  </span>
+  <span class="badge bg-info"
+        x-show="saving"
+        x-cloak>
+   <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+   Saving…
+  </span>
+  <span class="text-success small"
+        x-show="!dirty && !saving && lastSavedAt"
+        x-cloak
+        title="Last saved time">
+   <i class="bi bi-check-circle" aria-hidden="true"></i>
+   Saved
+  </span>
+  <span class="badge ms-auto"
+        :class="{
+          'bg-secondary': kernelStatus === 'disconnected' || kernelStatus === 'closed',
+          'bg-warning': kernelStatus === 'connecting',
+          'bg-success': kernelStatus === 'ready'
+        }"
+        x-text="`Kernel: ${kernelStatus}`"></span>
+  <button type="button"
+          class="btn btn-sm btn-outline-warning"
+          @click="interruptKernel()"
+          :disabled="kernelStatus !== 'ready'"
+          title="Send KeyboardInterrupt to the kernel">
+   <i class="bi bi-x-octagon" aria-hidden="true"></i>
+   Interrupt
+  </button>
+  <button type="button"
+          class="btn btn-sm btn-outline-danger"
+          @click="restartKernel()"
+          :disabled="kernelStatus !== 'ready'"
+          title="Restart kernel (clears variables + outputs)">
+   <i class="bi bi-arrow-clockwise" aria-hidden="true"></i>
+   Restart
+  </button>
+  <button type="button"
+          class="btn btn-sm btn-outline-primary"
+          @click="save()"
+          :disabled="saving || mtimeConflict"
+          title="Save notebook (Cmd/Ctrl+S)">
+   <i class="bi bi-save" aria-hidden="true"></i>
+   Save
+  </button>
+  <span class="text-muted small">
+   <kbd>Cmd</kbd>+<kbd>S</kbd>
+  </span>
+  <button type="button"
+          class="btn btn-sm btn-outline-secondary"
+          @click="openScheduleModal()"
+          title="Schedule this notebook on cron">
+   <i class="bi bi-clock" aria-hidden="true"></i>
+   Schedule
+  </button>
+  <button type="button"
+          class="btn btn-sm btn-outline-secondary"
+          @click="openRunOnceModal()"
+          title="Run this notebook as a one-shot job">
+   <i class="bi bi-lightning" aria-hidden="true"></i>
+   Run as job
+  </button>
+  <button type="button"
+          class="btn btn-sm btn-outline-secondary"
+          @click="toggleJobsPanel()"
+          :class="{ active: jobsPanelOpen }"
+          title="Show scheduled jobs + recent runs for this notebook">
+   <i class="bi bi-list-task" aria-hidden="true"></i>
+   Jobs
+   <span class="badge bg-secondary ms-1"
+         x-show="jobsPanel && jobsPanel.scheduled_jobs && jobsPanel.scheduled_jobs.length > 0"
+         x-text="jobsPanel.scheduled_jobs.length"
+         x-cloak></span>
+  </button>
+  <button type="button"
+          class="btn btn-sm btn-outline-secondary"
+          @click="toggleInspector()"
+          :class="{ active: inspectorOpen }"
+          title="Live kernel variable inspector (refreshes after every cell run)">
+   <i class="bi bi-eye" aria-hidden="true"></i>
+   Variables
+   <span class="badge bg-secondary ms-1"
+         x-show="inspectorVars && inspectorVars.length > 0"
+         x-text="inspectorVars.length"
+         x-cloak></span>
+  </button>
+  <span class="badge bg-secondary"
+        x-show="loading"
+        x-cloak>
+   Loading…
+  </span>
+
+  {% if notebook_uuid %}
+  {# Phase 77.6 — Social drawer toggle.  Notebook editor is full-
+     screen by design so the social surface lives in a side-drawer
+     instead of a tab strip.  Bootstrap offcanvas-end drives the
+     slide-out; state is persisted across cell re-executes via
+     localStorage by the ``notebookSocialDrawer`` factory below. #}
+  <button class="btn btn-sm btn-outline-secondary ms-auto"
+          type="button" data-bs-toggle="offcanvas"
+          data-bs-target="#pql-notebook-social-drawer"
+          title="Open social drawer (Discussion / Endorsements / Followers / README)">
+   <i class="bi bi-people" aria-hidden="true"></i>
+   Social
+  </button>
+  {% endif %}
+ </div>

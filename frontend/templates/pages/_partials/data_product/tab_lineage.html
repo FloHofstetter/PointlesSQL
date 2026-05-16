@@ -1,0 +1,14 @@
+        <div class="tab-pane fade" id="tab-lineage" role="tabpanel">
+            <div id="dp-cy" style="width: 100%; height: 600px;" x-show="lineageLoaded"></div>
+            <template x-if="!lineageLoaded">
+                <div class="text-muted small p-3">
+                    <span class="spinner-border spinner-border-sm me-1"></span>Loading lineage graph…
+                </div>
+            </template>
+            <template x-if="lineageEmpty">
+                <div class="alert alert-secondary">
+                    <i class="bi bi-info-circle me-1"></i>
+                    No lineage edges recorded yet for this product's tables.
+                </div>
+            </template>
+        </div>

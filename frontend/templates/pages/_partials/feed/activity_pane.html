@@ -1,0 +1,383 @@
+    <div class="tab-pane"
+         :class="activeTab === 'activity' ? 'show active' : ''"
+         id="pql-feed-activity-pane"
+         role="tabpanel">
+
+    {# Sticky filter bar — segmented pills, kind dropdown, search,
+       density toggle.  Below md the kind dropdown + density toggle
+       collapse into compact-icon triggers. #}
+    <div class="pql-feed-filter-bar mb-3">
+        <div class="d-flex flex-wrap align-items-center gap-2">
+            {# For You / Mentions / My / Following — segmented pills. #}
+            <ul class="nav nav-pills nav-pills-sm pql-feed-segments" role="tablist">
+                <template x-for="f in filters" :key="f.key">
+                    <li class="nav-item" role="presentation">
+                        <button type="button"
+                                class="nav-link py-1 px-2"
+                                :class="filter === f.key ? 'active' : ''"
+                                :data-filter="f.key"
+                                @click="setFilter(f.key)">
+                            <i class="bi" :class="f.icon"></i>
+                            <span class="ms-1 d-none d-sm-inline" x-text="f.label"></span>
+                        </button>
+                    </li>
+                </template>
+            </ul>
+
+            {# Kind multi-select dropdown.  Replaces the flat pill row;
+               each kind is a checkbox so users can intersect kinds. #}
+            <div class="dropdown">
+                <button type="button"
+                        class="btn btn-sm btn-outline-secondary dropdown-toggle"
+                        data-bs-toggle="dropdown"
+                        data-bs-auto-close="outside"
+                        aria-expanded="false">
+                    <i class="bi bi-funnel me-1"></i>Kinds
+                    <span class="badge bg-secondary ms-1"
+                          x-show="kindFilter.length > 0"
+                          x-text="kindFilter.length"></span>
+                </button>
+                <ul class="dropdown-menu p-2 pql-feed-kind-menu" style="min-width: 14rem;">
+                    <li class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="small text-muted">Filter by kind</span>
+                        <button type="button"
+                                class="btn btn-link btn-sm p-0"
+                                @click="kindFilter = []; reload()"
+                                x-show="kindFilter.length > 0">Clear</button>
+                    </li>
+                    <template x-for="k in kindOptions" :key="k.key">
+                        <li>
+                            <label class="dropdown-item d-flex align-items-center gap-2 px-2">
+                                <input type="checkbox"
+                                       class="form-check-input m-0"
+                                       :value="k.key"
+                                       x-model="kindFilter"
+                                       @change="reload()">
+                                <i class="bi" :class="k.icon"></i>
+                                <span x-text="k.label"></span>
+                            </label>
+                        </li>
+                    </template>
+                </ul>
+            </div>
+
+            {# Search — Enter triggers reload; uses listTable's 300ms
+               debounce pattern but kept inline since this is the only
+               search on the page. #}
+            <input type="search"
+                   class="form-control form-control-sm w-auto pql-feed-search"
+                   x-model="searchDraft"
+                   @input.debounce.300ms="reload()"
+                   @keyup.enter="reload()"
+                   placeholder="Search activity…"
+                   aria-label="Search activity">
+
+            {# Density toggle.  localStorage-backed; restored on init. #}
+            <div class="btn-group btn-group-sm d-none d-md-inline-flex ms-auto"
+                 role="group"
+                 aria-label="Item density">
+                <template x-for="opt in densityOptions" :key="opt.key">
+                    <button type="button"
+                            class="btn"
+                            :class="density === opt.key ? 'btn-secondary' : 'btn-outline-secondary'"
+                            @click="setDensity(opt.key)"
+                            :title="opt.label">
+                        <i class="bi" :class="opt.icon"></i>
+                    </button>
+                </template>
+            </div>
+
+            {# Connection state dot — feed.js (C3) toggles class. #}
+            <span class="pql-feed-conn-dot ms-2"
+                  :class="connState === 'connected' ? ''
+                          : (connState === 'reconnecting' ? 'pql-feed-conn-dot--reconnecting' : 'pql-feed-conn-dot--disconnected')"
+                  :title="connState === 'connected' ? 'Live updates connected'
+                         : (connState === 'reconnecting' ? 'Reconnecting…' : 'Live updates offline')"
+                  aria-hidden="true"></span>
+        </div>
+    </div>
+
+    {# Single-column feed — full width (Phase 81.K.9 moved the
+       right-rail context cards into the Discover tab pane). #}
+    <div>
+
+            {# Live "X new" banner — drained on click.  Visible only
+               when SSE has buffered events not yet merged. #}
+            <div class="alert alert-primary alert-dismissible pql-feed-new-banner"
+                 x-show="newCount > 0"
+                 x-cloak
+                 data-pql-badge-pulse="1"
+                 role="status"
+                 aria-live="polite">
+                <button type="button" class="btn btn-link" @click="drainBuffered()">
+                    <span x-text="newCount"></span> new — click to load
+                </button>
+                <button type="button"
+                        class="btn-close"
+                        @click="newCount = 0; bufferedRows = []"
+                        aria-label="Dismiss"></button>
+            </div>
+
+            {# Loading skeleton — used only on first paint; future
+               navigations use the boost-nav loading_skeleton.js. #}
+            <template x-if="!loaded">
+                <div class="placeholder-glow pql-feed-skeleton" aria-hidden="true">
+                    <div class="placeholder col-7 mb-2" style="height: 1rem;"></div>
+                    <div class="placeholder col-9 mb-2" style="height: 1rem;"></div>
+                    <div class="placeholder col-5 mb-3" style="height: 1rem;"></div>
+                    <div class="placeholder col-8 mb-2" style="height: 1rem;"></div>
+                    <div class="placeholder col-10 mb-2" style="height: 1rem;"></div>
+                </div>
+            </template>
+
+            {# Per-filter empty states (Phase 81.K.8).  Each filter
+               gets distinct copy so an empty feed reads as an
+               invitation rather than a dead end.  The fallback is
+               the All-filter message that already shipped in C1. #}
+            <template x-if="loaded && rows.length === 0 && filter === 'mentions'">
+                <div>
+                    {% with icon="bi-at",
+                           title="No mentions yet",
+                           message="When teammates @-mention you in comments or reviews, they'll appear here.",
+                           action_href="/users", action_label="Browse people" %}
+                    {% include "components/empty.html" %}
+                    {% endwith %}
+                </div>
+            </template>
+
+            <template x-if="loaded && rows.length === 0 && filter === 'my'">
+                <div>
+                    {% with icon="bi-pencil-square",
+                           title="You haven't posted yet",
+                           message="Comment on a data product or leave a review to see your activity here.",
+                           action_href="/data-products", action_label="Browse data products" %}
+                    {% include "components/empty.html" %}
+                    {% endwith %}
+                </div>
+            </template>
+
+            <template x-if="loaded && rows.length === 0 && filter === 'followed_users'">
+                <div>
+                    {% with icon="bi-people",
+                           title="You're not following anyone yet",
+                           message="Follow contributors from the People-to-follow card on the right (or from any user profile) to populate this filter.",
+                           action_href="/users", action_label="Browse people" %}
+                    {% include "components/empty.html" %}
+                    {% endwith %}
+                </div>
+            </template>
+
+            <template x-if="loaded && rows.length === 0 && (filter === 'all' || filter === 'followed_dps')">
+                <div>
+                    {% with icon="bi-newspaper",
+                           title="No activity yet",
+                           message="The workspace feed will populate as teammates author notebooks, leave reviews, and follow data products.",
+                           action_href="/topics", action_label="Browse topics" %}
+                    {% include "components/empty.html" %}
+                    {% endwith %}
+                </div>
+            </template>
+
+            {# First-run welcome card — visible at the top of the feed
+               for users who joined recently AND haven't followed any
+               entity yet.  Dismissal persists in localStorage.
+
+               Gated on ``filter === 'all'`` because the Mentions /
+               My activity / Following filters carry their own
+               purpose-specific empty-state messages (Phase 81.K.8);
+               stacking the welcome card on top of them is redundant
+               and visually noisy. #}
+            <div class="card border-primary mb-3"
+                 x-show="welcomeVisible && filter === 'all'"
+                 x-cloak>
+                <div class="card-body d-flex gap-3 align-items-start">
+                    <i class="bi bi-stars fs-2 text-primary"></i>
+                    <div class="flex-grow-1">
+                        <h6 class="card-title mb-1">Welcome to PointlesSQL.</h6>
+                        <p class="card-text text-muted small mb-2">
+                            Your feed builds itself as you follow data products, models, and the people who own them.
+                            Here are some quick starts:
+                        </p>
+                        <div class="d-flex flex-wrap gap-2">
+                            <a class="btn btn-sm btn-outline-primary" href="/topics">Browse topics</a>
+                            <a class="btn btn-sm btn-outline-primary" href="/data-products">Browse data products</a>
+                            <a class="btn btn-sm btn-outline-primary" href="/users">Find people</a>
+                        </div>
+                    </div>
+                    <button type="button"
+                            class="btn-close"
+                            aria-label="Dismiss welcome"
+                            @click="dismissWelcome()"></button>
+                </div>
+            </div>
+
+            {# Day-grouped feed — Alpine computed ``groupedDays``
+               returns ``[{iso, label, rows: [...]}, ...]`` sorted
+               newest-first; "Today" / "Yesterday" / weekday / "Earlier"
+               labels are localised at render time. #}
+            <div class="pql-feed-rows"
+                 role="feed"
+                 aria-busy="false"
+                 x-show="loaded && rows.length > 0">
+                <template x-for="day in groupedDays" :key="day.iso">
+                    <section class="mb-3">
+                        <h6 class="pql-feed-day-header py-2 px-2 text-uppercase small text-muted mb-2"
+                            role="separator"
+                            x-text="day.label"></h6>
+                        <div class="d-flex flex-column gap-2">
+                            <template x-for="r in day.rows" :key="r.kind + ':' + r.created_at + ':' + r.event_type + ':' + (r.entity_ref || '') + ':' + (r.comment_id || '')">
+                                <article class="card pql-feed-item pql-hover-lift"
+                                         role="article"
+                                         :class="itemClasses(r)">
+                                    <div class="card-body d-flex gap-3 align-items-start">
+
+                                        <span class="pql-feed-item__avatar"
+                                              :title="r.actor_display_name || ''">
+                                            <i class="bi"
+                                               :class="avatarIcon(r)"></i>
+                                        </span>
+
+                                        <div class="pql-feed-item__body">
+
+                                            {# Header line: actor + verb + entity link. #}
+                                            <div class="d-flex flex-wrap align-items-center gap-1 mb-1">
+                                                <strong class="me-1"
+                                                        x-text="actorLabel(r)"></strong>
+                                                <span class="text-muted small me-1"
+                                                      x-text="verbLabel(r)"></span>
+                                                <a class="text-decoration-none"
+                                                   :href="r.source_url || '#'"
+                                                   x-text="entityLinkLabel(r)"></a>
+                                                <span class="badge text-bg-secondary ms-1"
+                                                      x-show="r.entity_kind"
+                                                      x-text="kindLabel(r.entity_kind)"></span>
+                                                <span class="text-muted small ms-auto pql-feed-item__meta"
+                                                      x-text="pqlRelativeTime(r.created_at)"
+                                                      :title="pqlAbsTime(r.created_at)"></span>
+
+                                                {# 3-dot action menu — read / mute / snooze / copy link. #}
+                                                <div class="dropdown">
+                                                    <button type="button"
+                                                            class="btn btn-sm btn-link text-muted px-1 py-0"
+                                                            data-bs-toggle="dropdown"
+                                                            data-bs-container="body"
+                                                            data-bs-display="static"
+                                                            data-bs-boundary="viewport"
+                                                            aria-label="Item actions">
+                                                        <i class="bi bi-three-dots-vertical"></i>
+                                                    </button>
+                                                    <ul class="dropdown-menu dropdown-menu-end pql-feed-item__menu">
+                                                        <li x-show="r.kind === 'notification'">
+                                                            <button type="button" class="dropdown-item"
+                                                                    @click="toggleRead(r)">
+                                                                <i class="bi me-1"
+                                                                   :class="r.read_at ? 'bi-envelope' : 'bi-envelope-open'"></i>
+                                                                <span x-text="r.read_at ? 'Mark as unread' : 'Mark as read'"></span>
+                                                            </button>
+                                                        </li>
+                                                        <li><button type="button" class="dropdown-item"
+                                                                    @click="muteThread(r)">
+                                                            <i class="bi bi-bell-slash me-1"></i>Mute this thread
+                                                        </button></li>
+                                                        <li x-show="r.actor_user_id">
+                                                            <button type="button" class="dropdown-item"
+                                                                    @click="muteAuthor(r)">
+                                                                <i class="bi bi-person-x me-1"></i>
+                                                                Mute <span x-text="r.actor_display_name || 'author'"></span>
+                                                            </button>
+                                                        </li>
+                                                        <li><hr class="dropdown-divider"></li>
+                                                        <li><h6 class="dropdown-header py-1">Snooze</h6></li>
+                                                        <li><button type="button" class="dropdown-item"
+                                                                    @click="snooze(r, '1h')">1 hour</button></li>
+                                                        <li><button type="button" class="dropdown-item"
+                                                                    @click="snooze(r, '8h')">8 hours</button></li>
+                                                        <li><button type="button" class="dropdown-item"
+                                                                    @click="snooze(r, '1d')">1 day</button></li>
+                                                        <li><hr class="dropdown-divider"></li>
+                                                        <li><button type="button" class="dropdown-item"
+                                                                    @click="copyItemLink(r)">
+                                                            <i class="bi bi-link-45deg me-1"></i>Copy link
+                                                        </button></li>
+                                                    </ul>
+                                                </div>
+                                            </div>
+
+                                            {# Review — star row + body snippet. #}
+                                            <template x-if="r.render_kind === 'review'">
+                                                <div>
+                                                    <div class="mb-1"
+                                                         :aria-label="(r.stars || 0) + ' of 5 stars'">
+                                                        <template x-for="i in 5" :key="i">
+                                                            <i class="bi"
+                                                               :class="i <= (r.stars || 0) ? 'bi-star-fill text-warning' : 'bi-star text-muted'"></i>
+                                                        </template>
+                                                    </div>
+                                                    <div class="pql-feed-item__snippet"
+                                                         x-text="r.body_md || ''"></div>
+                                                </div>
+                                            </template>
+
+                                            {# Comment / mention — blockquote with body. #}
+                                            <template x-if="r.render_kind === 'comment' || r.render_kind === 'mention'">
+                                                <blockquote class="blockquote mb-1 ps-2 pql-feed-item__snippet"
+                                                            style="font-size: 0.95rem; border-left: 3px solid var(--bs-border-color);"
+                                                            x-text="r.body_md || r.summary_md || ''"></blockquote>
+                                            </template>
+
+                                            {# Agent run — status pill + summary. #}
+                                            <template x-if="r.render_kind === 'agent_run'">
+                                                <div>
+                                                    <span class="badge"
+                                                          :class="r.event_type && r.event_type.endsWith('.failed') ? 'text-bg-danger' : 'text-bg-success'"
+                                                          x-text="r.event_type && r.event_type.endsWith('.failed') ? 'Failed' : 'Completed'"></span>
+                                                    <span class="ms-2 text-muted small"
+                                                          x-text="r.summary_md || ''"></span>
+                                                </div>
+                                            </template>
+
+                                            {# Badge award — celebration treatment. #}
+                                            <template x-if="r.render_kind === 'badge_award'">
+                                                <div class="d-flex align-items-center gap-2">
+                                                    <i class="bi bi-award-fill text-warning fs-4"></i>
+                                                    <span x-text="r.summary_md || 'New badge earned'"></span>
+                                                </div>
+                                            </template>
+
+                                            {# Issue lifecycle — status badge + title. #}
+                                            <template x-if="r.render_kind === 'issue'">
+                                                <div>
+                                                    <span class="badge"
+                                                          :class="issueBadgeClass(r.event_type)"
+                                                          x-text="issueBadgeLabel(r.event_type)"></span>
+                                                    <span class="ms-2"
+                                                          x-text="r.summary_md || ''"></span>
+                                                </div>
+                                            </template>
+
+                                            {# Branch lifecycle — verb chip + summary. #}
+                                            <template x-if="r.render_kind === 'branch'">
+                                                <div>
+                                                    <span class="badge text-bg-info"
+                                                          x-text="branchVerb(r.event_type)"></span>
+                                                    <span class="ms-2"
+                                                          x-text="r.summary_md || ''"></span>
+                                                </div>
+                                            </template>
+
+                                            {# Generic notification fallback. #}
+                                            <template x-if="r.render_kind === 'notification' || !r.render_kind">
+                                                <div class="pql-feed-item__snippet"
+                                                     x-text="r.summary_md || r.event_type"></div>
+                                            </template>
+
+                                        </div>
+                                    </div>
+                                </article>
+                            </template>
+                        </div>
+                    </section>
+                </template>
+            </div>
+        </div>{# /single-column wrapper #}
+    </div>{# /activity tab-pane #}

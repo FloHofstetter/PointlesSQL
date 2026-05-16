@@ -1,0 +1,58 @@
+        <div class="tab-pane fade" id="tab-compliance" role="tabpanel">
+            <template x-if="!detail">
+                <div class="text-muted small p-3">Loading…</div>
+            </template>
+            <template x-if="detail && detail.recent_events.length === 0">
+                <div class="alert alert-secondary">
+                    <i class="bi bi-info-circle me-1"></i>
+                    No contract validations have run against this product yet.
+                </div>
+            </template>
+            <template x-if="detail && detail.recent_events.length > 0">
+                <div class="card">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Time</th>
+                                    <th>Outcome</th>
+                                    <th>Op</th>
+                                    <th>Details</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <template x-for="e in detail.recent_events" :key="e.id">
+                                    <tr>
+                                        <td class="small text-muted"
+                                            x-text="pqlRelativeTime(e.created_at)"
+                                            :title="pqlAbsTime(e.created_at)"></td>
+                                        <td>
+                                            <template x-if="e.outcome === 'compliant'">
+                                                <span class="badge bg-success">compliant</span>
+                                            </template>
+                                            <template x-if="e.outcome === 'violated'">
+                                                <span class="badge bg-danger">violated</span>
+                                            </template>
+                                            <template x-if="e.outcome === 'schema_drift_warning'">
+                                                <span class="badge bg-warning text-dark">drift</span>
+                                            </template>
+                                            <template x-if="e.outcome === 'no_contract'">
+                                                <span class="badge bg-secondary">no_contract</span>
+                                            </template>
+                                        </td>
+                                        <td>
+                                            <a :href="'/runs?op=' + e.agent_run_operation_id"
+                                               class="text-decoration-none small"
+                                               x-text="'op #' + e.agent_run_operation_id"></a>
+                                        </td>
+                                        <td class="small">
+                                            <code x-text="JSON.stringify(e.details).substring(0, 120)"></code>
+                                        </td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </template>
+        </div>

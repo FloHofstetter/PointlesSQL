@@ -1,0 +1,61 @@
+        <div class="tab-pane fade" id="tab-contract" role="tabpanel">
+            <template x-if="!detail">
+                <div class="text-muted small p-3">Loading contract…</div>
+            </template>
+            <template x-if="detail && detail.tables.length === 0">
+                <div class="alert alert-secondary pql-contract-empty">
+                    <i class="bi bi-info-circle me-1"></i>
+                    This data product carries no table definitions in its
+                    contract yaml.  Add a <code>tables:</code> block to the
+                    yaml under <code>data_product:</code> and call
+                    <a href="/api/data-products/reload" class="alert-link">/api/data-products/reload</a>
+                    to populate this view.
+                </div>
+            </template>
+            <template x-if="detail && detail.tables.length > 0">
+                <div>
+                    <template x-for="t in detail.tables" :key="t.name">
+                        <div class="card mb-3">
+                            <div class="card-body">
+                                <h5 class="card-title">
+                                    <i class="bi bi-table me-1"></i>
+                                    <span x-text="t.name"></span>
+                                    <template x-if="t.primary_key.length > 0">
+                                        <span class="badge bg-info ms-2"
+                                              x-text="'PK: ' + t.primary_key.join(', ')"></span>
+                                    </template>
+                                </h5>
+                                <div class="table-responsive">
+                                    <table class="table table-sm mb-0">
+                                        <thead>
+                                            <tr>
+                                                <th>Column</th>
+                                                <th>Type</th>
+                                                <th>Nullable</th>
+                                                <th>Description</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <template x-for="c in t.columns" :key="c.name">
+                                                <tr>
+                                                    <td><code x-text="c.name"></code></td>
+                                                    <td><span class="badge bg-secondary" x-text="c.type"></span></td>
+                                                    <td>
+                                                        <template x-if="c.nullable">
+                                                            <span class="text-muted small">nullable</span>
+                                                        </template>
+                                                        <template x-if="!c.nullable">
+                                                            <span class="badge bg-warning text-dark">NOT NULL</span>
+                                                        </template>
+                                                    </td>
+                                                    <td class="small text-muted" x-text="c.description || ''"></td>
+                                                </tr>
+                                            </template>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </template>
