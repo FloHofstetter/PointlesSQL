@@ -302,14 +302,12 @@ async def api_run_view(
         max_rows=settings.sql.max_rows,
     )
     # Reuse the SELECT enforcement helper for parity with the editor.
-    # The helper is module-private but the import is intentional —
-    # the dispatcher exposes the right gate shape and re-implementing
-    # it would duplicate every privilege rule.
-    from pointlessql.api.sql import _dispatcher as _dispatcher_mod
+    # Imported from the privilege sub-module instead of a private name
+    # on the dispatcher facade so pyright doesn't trip on cross-module
+    # private access — the helper is package-internal either way.
+    from pointlessql.api.sql._dispatcher._privilege import enforce_select_per_table
 
-    approved = await _dispatcher_mod._enforce_select_per_table(  # pyright: ignore[reportPrivateUsage]
-        ctx, prepared.refs
-    )
+    approved = await enforce_select_per_table(ctx, prepared.refs)
     max_rows = max(1, int(settings.sql.max_rows))
 
     def _run() -> dict[str, Any]:

@@ -288,10 +288,8 @@ async def api_sql_execute(request: Request, body: dict[str, Any] = Body(...)) ->
         if stype is StmtType.SELECT and explain:
             # Legacy EXPLAIN path stays inline — feeds the
             # pre-existing JSON-plan renderer below.
-            from pointlessql.api.sql._dispatcher import (
-                DispatchContext,
-                _enforce_select_per_table,  # pyright: ignore[reportPrivateUsage]
-            )
+            from pointlessql.api.sql._dispatcher import DispatchContext
+            from pointlessql.api.sql._dispatcher._privilege import enforce_select_per_table
             from pointlessql.pql import prepare_sql
 
             prepared = prepare_sql(query)
@@ -307,7 +305,7 @@ async def api_sql_execute(request: Request, body: dict[str, Any] = Body(...)) ->
                 conn=conn,
                 max_rows=settings.sql.max_rows,
             )
-            approved = await _enforce_select_per_table(ctx, prepared.refs)
+            approved = await enforce_select_per_table(ctx, prepared.refs)
             try:
                 result = await asyncio.wait_for(
                     asyncio.to_thread(
