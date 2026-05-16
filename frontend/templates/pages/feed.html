@@ -467,6 +467,30 @@
     </div>
 </div>
 
+{# Phase 81.K.7 — keyboard shortcuts help modal.  Triggered by
+   pressing ``?`` on the feed page. #}
+<div class="modal fade" id="pql-feed-help-modal" tabindex="-1" aria-labelledby="pql-feed-help-modal-title" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="pql-feed-help-modal-title">Feed keyboard shortcuts</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <dl class="row mb-0 small">
+                    <dt class="col-3"><kbd>j</kbd></dt><dd class="col-9">Next item</dd>
+                    <dt class="col-3"><kbd>k</kbd></dt><dd class="col-9">Previous item</dd>
+                    <dt class="col-3"><kbd>o</kbd> / <kbd>Enter</kbd></dt><dd class="col-9">Open focused item</dd>
+                    <dt class="col-3"><kbd>e</kbd></dt><dd class="col-9">Toggle read (notifications)</dd>
+                    <dt class="col-3"><kbd>m</kbd></dt><dd class="col-9">Mute focused thread</dd>
+                    <dt class="col-3"><kbd>r</kbd></dt><dd class="col-9">Focus search input</dd>
+                    <dt class="col-3"><kbd>?</kbd></dt><dd class="col-9">Open this help</dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 window.feedPage = function () {
     const DAY_MS = 24 * 60 * 60 * 1000;
@@ -576,6 +600,7 @@ window.feedPage = function () {
             this.loadTrending();
             this.loadPeople();
             this.connectSse();
+            this._installHotkeys();
             // Tear down on page leave so the server-side queue gets
             // released promptly (htmx:beforeRequest fires on boost
             // navs even though the feed root unmounts).
@@ -1014,6 +1039,102 @@ window.feedPage = function () {
         deleteSavedSearch(idx) {
             this.savedSearches.splice(idx, 1);
             this._persistSavedSearches();
+        },
+
+        // Keyboard navigation (Phase 81.K.7) — j/k/o/e/m/r/?.
+        _focusedIndex: -1,
+        _hotkeysAttached: false,
+
+        _installHotkeys() {
+            if (this._hotkeysAttached) return;
+            this._hotkeysAttached = true;
+            window.addEventListener('keydown', (ev) => this._onHotkey(ev));
+        },
+
+        _onHotkey(ev) {
+            // Don't hijack when the user is typing in a form field.
+            const t = ev.target;
+            const tag = t && t.tagName;
+            if (tag === 'INPUT' || tag === 'TEXTAREA' || (t && t.isContentEditable)) {
+                return;
+            }
+            // Don't hijack when a modifier is held — Cmd+R must reload.
+            if (ev.ctrlKey || ev.metaKey || ev.altKey) return;
+
+            const flat = this._flatRows();
+            switch (ev.key) {
+                case 'j':
+                    ev.preventDefault();
+                    this._focusedIndex = Math.min(flat.length - 1, this._focusedIndex + 1);
+                    this._highlightFocused();
+                    break;
+                case 'k':
+                    ev.preventDefault();
+                    this._focusedIndex = Math.max(0, this._focusedIndex - 1);
+                    this._highlightFocused();
+                    break;
+                case 'o':
+                case 'Enter': {
+                    const row = flat[this._focusedIndex];
+                    if (row && row.source_url) {
+                        ev.preventDefault();
+                        window.location.href = row.source_url;
+                    }
+                    break;
+                }
+                case 'e': {
+                    const row = flat[this._focusedIndex];
+                    if (row && row.kind === 'notification') {
+                        ev.preventDefault();
+                        this.toggleRead(row);
+                    }
+                    break;
+                }
+                case 'm': {
+                    const row = flat[this._focusedIndex];
+                    if (row) {
+                        ev.preventDefault();
+                        this.muteThread(row);
+                    }
+                    break;
+                }
+                case 'r': {
+                    ev.preventDefault();
+                    const input = document.querySelector('.pql-feed-search');
+                    if (input) input.focus();
+                    break;
+                }
+                case '?':
+                    ev.preventDefault();
+                    if (window.bootstrap?.Modal) {
+                        const el = document.getElementById('pql-feed-help-modal');
+                        if (el) window.bootstrap.Modal.getOrCreateInstance(el).show();
+                    }
+                    break;
+                default:
+                    break;
+            }
+        },
+
+        _flatRows() {
+            const out = [];
+            for (const day of this.groupedDays) {
+                for (const r of day.rows) out.push(r);
+            }
+            return out;
+        },
+
+        _highlightFocused() {
+            // Drop the focus class from every item, then apply to the
+            // n-th rendered card.  Card DOM order matches ``_flatRows``
+            // because Alpine renders ``groupedDays`` in the same order.
+            const cards = document.querySelectorAll('.pql-feed-item');
+            cards.forEach((el) => el.classList.remove('pql-feed-item--focused'));
+            const target = cards[this._focusedIndex];
+            if (target) {
+                target.classList.add('pql-feed-item--focused');
+                target.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+            }
         },
 
         get groupedDays() {
