@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+{% block title %}{{ source_name }} · Ingest · PointlesSQL{% endblock %}
+
+{% set breadcrumbs = [
+    {"label": "Home", "href": "/"},
+    {"label": "Ingest", "href": "/ingest/sources"},
+    {"label": source_name}
+] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block content %}
+<div x-data="ingestSourceDetail({{ source_id }})" x-init="load()">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <div class="d-flex align-items-center gap-2">
+            <i class="bi bi-plug-fill fs-3"></i>
+            <h1 class="h3 mb-0">{{ source_name }}</h1>
+            <span class="badge bg-secondary font-monospace">{{ source_kind }}</span>
+        </div>
+        <button class="btn btn-primary btn-sm"
+                :disabled="!source || (source.table_mappings || []).length === 0 || pulling"
+                title="Configure at least one mapping first."
+                @click="pullNow()">
+            <i class="bi bi-arrow-clockwise me-1"></i>Pull now
+        </button>
+    </div>
+
+    <ul class="nav nav-tabs mb-3" role="tablist">
+        <li class="nav-item">
+            <button class="nav-link active" data-bs-toggle="tab"
+                    data-bs-target="#tab-overview" type="button">
+                Overview
+            </button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link" data-bs-toggle="tab"
+                    data-bs-target="#tab-mappings" type="button">
+                Mappings
+                <span class="badge bg-secondary"
+                      x-text="(source?.table_mappings || []).length"></span>
+            </button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link" data-bs-toggle="tab"
+                    data-bs-target="#tab-runs" type="button">
+                Runs
+            </button>
+        </li>
+    </ul>
+
+    <div class="tab-content">
+        <div class="tab-pane fade show active" id="tab-overview">
+            <template x-if="source">
+                <div class="card">
+                    <div class="card-body">
+                        <dl class="row mb-0 small">
+                            <dt class="col-sm-3">Kind</dt>
+                            <dd class="col-sm-9 font-monospace"
+                                x-text="source.kind"></dd>
+                            <dt class="col-sm-3">Config</dt>
+                            <dd class="col-sm-9">
+                                <template x-for="[k, v] in Object.entries(source.config || {})"
+                                          :key="k">
+                                    <div>
+                                        <span class="text-muted" x-text="k + ':'"></span>
+                                        <span class="font-monospace" x-text="v"></span>
+                                    </div>
+                                </template>
+                            </dd>
+                            <dt class="col-sm-3">Secrets</dt>
+                            <dd class="col-sm-9">
+                                <template x-for="k in Object.keys(source.secrets || {})"
+                                          :key="k">
+                                    <div>
+                                        <span class="text-muted" x-text="k + ':'"></span>
+                                        <span class="font-monospace">***</span>
+                                    </div>
+                                </template>
+                                <div x-show="!Object.keys(source.secrets || {}).length"
+                                     class="text-muted">none</div>
+                            </dd>
+                            <dt class="col-sm-3">Created</dt>
+                            <dd class="col-sm-9 text-muted"
+                                x-text="source.created_at"></dd>
+                            <dt class="col-sm-3">Status</dt>
+                            <dd class="col-sm-9">
+                                <span x-show="source.is_active" class="text-success">
+                                    <i class="bi bi-check-circle-fill me-1"></i>Active
+                                </span>
+                                <span x-show="!source.is_active" class="text-muted">
+                                    <i class="bi bi-pause-circle me-1"></i>Paused
+                                </span>
+                            </dd>
+                        </dl>
+                    </div>
+                </div>
+            </template>
+        </div>
+
+        <div class="tab-pane fade" id="tab-mappings">
+            <div class="card">
+                <div class="card-body">
+                    <p class="text-muted small mb-0">
+                        Table-picker UI lands in Phase 82.2.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="tab-pane fade" id="tab-runs">
+            <div class="card">
+                <div class="card-body">
+                    <p class="text-muted small mb-0">
+                        Run history lands in Phase 82.3.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function ingestSourceDetail(sourceId) {
+    return {
+        sourceId,
+        source: null,
+        pulling: false,
+        async load() {
+            const res = await window.pqlApi.fetch(
+                '/api/ingest/sources/' + this.sourceId
+            );
+            if (res.ok && res.data) {
+                this.source = res.data.source;
+            }
+        },
+        async pullNow() {
+            window.pqlToast?.info?.('Pull-now wires in Phase 82.3.');
+        }
+    };
+}
+</script>
+{% endblock %}

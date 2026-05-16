@@ -1,0 +1,338 @@
+{% extends "base.html" %}
+{% block title %}Connect a source · PointlesSQL{% endblock %}
+
+{% set breadcrumbs = [
+    {"label": "Home", "href": "/"},
+    {"label": "Ingest", "href": "/ingest/sources"},
+    {"label": "New source"}
+] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-3">
+    <div class="d-flex align-items-center gap-2">
+        <i class="bi bi-plug-fill fs-3"></i>
+        <h1 class="h3 mb-0">Connect a data source</h1>
+    </div>
+    <a href="/help" class="text-muted small">
+        <i class="bi bi-question-circle me-1"></i>What's this?
+    </a>
+</div>
+
+<p class="text-muted small mb-4">
+    Pick a connector, fill in the connection details, press Probe to
+    verify, then Save.  Configure tables to pull on the source's
+    detail page after saving.
+</p>
+
+<div x-data="ingestSourceCreate()" class="card mb-4">
+    <div class="card-body">
+        <div class="mb-3">
+            <label class="form-label small fw-bold">Name</label>
+            <input type="text"
+                   class="form-control form-control-sm"
+                   x-model="form.name"
+                   placeholder="prod-postgres-replica"
+                   maxlength="200">
+            <div class="form-text">
+                Unique within this workspace.
+            </div>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label small fw-bold">Connector kind</label>
+            <div class="btn-group btn-group-sm flex-wrap" role="group">
+                {% for k in connector_kinds %}
+                <input type="radio"
+                       class="btn-check"
+                       name="kind"
+                       id="kind-{{ k }}"
+                       value="{{ k }}"
+                       x-model="form.kind">
+                <label class="btn btn-outline-secondary" for="kind-{{ k }}">
+                    <i class="bi" :class="iconFor('{{ k }}')"></i>
+                    {{ k.replace('_', ' ')|title }}
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- file_upload -->
+        <div x-show="form.kind === 'file_upload'" class="row g-2 mb-3">
+            <div class="col-12">
+                <label class="form-label small">File</label>
+                <input type="file" class="form-control form-control-sm"
+                       x-ref="fileInput"
+                       @change="uploadFile()">
+                <div class="form-text">
+                    Uploaded to the workspace's
+                    <code>_ingest</code> volume; the resolved path
+                    appears below.
+                </div>
+            </div>
+            <div class="col-12" x-show="form.config.path">
+                <label class="form-label small">Resolved path</label>
+                <input type="text" class="form-control form-control-sm font-monospace"
+                       x-model="form.config.path" readonly>
+            </div>
+        </div>
+
+        <!-- s3 -->
+        <div x-show="form.kind === 's3'" class="row g-2 mb-3">
+            <div class="col-12">
+                <label class="form-label small">S3 URL</label>
+                <input type="text" class="form-control form-control-sm"
+                       x-model="form.config.url"
+                       placeholder="s3://my-bucket/path/to/file.parquet">
+            </div>
+            <div class="col-md-6">
+                <label class="form-label small">Access key</label>
+                <input type="text" class="form-control form-control-sm"
+                       x-model="form.secrets.access_key">
+            </div>
+            <div class="col-md-6">
+                <label class="form-label small">Secret key</label>
+                <input type="password" class="form-control form-control-sm"
+                       x-model="form.secrets.secret_key">
+            </div>
+            <div class="col-md-6">
+                <label class="form-label small">Region</label>
+                <input type="text" class="form-control form-control-sm"
+                       x-model="form.secrets.region"
+                       placeholder="us-east-1">
+            </div>
+        </div>
+
+        <!-- http -->
+        <div x-show="form.kind === 'http'" class="row g-2 mb-3">
+            <div class="col-12">
+                <label class="form-label small">HTTP URL</label>
+                <input type="text" class="form-control form-control-sm"
+                       x-model="form.config.url"
+                       placeholder="https://example.com/dataset.csv">
+            </div>
+        </div>
+
+        <!-- postgres / mysql -->
+        <template x-if="form.kind === 'postgres' || form.kind === 'mysql'">
+            <div class="row g-2 mb-3">
+                <div class="col-md-7">
+                    <label class="form-label small">Host</label>
+                    <input type="text" class="form-control form-control-sm"
+                           x-model="form.config.host"
+                           placeholder="db.internal">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small">Port</label>
+                    <input type="number" class="form-control form-control-sm"
+                           x-model.number="form.config.port"
+                           :placeholder="form.kind === 'postgres' ? '5432' : '3306'">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small">Database</label>
+                    <input type="text" class="form-control form-control-sm"
+                           x-model="form.config.db">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label small">User</label>
+                    <input type="text" class="form-control form-control-sm"
+                           x-model="form.config.user">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label small">Password</label>
+                    <input type="password" class="form-control form-control-sm"
+                           x-model="form.secrets.password">
+                </div>
+                <div class="col-12">
+                    <label class="form-label small">Probe-only table
+                        <span class="text-muted">(schema.table)</span>
+                    </label>
+                    <input type="text" class="form-control form-control-sm"
+                           x-model="probeTable"
+                           placeholder="public.orders">
+                    <div class="form-text">
+                        Just for the schema preview below.  You'll pick
+                        all tables to pull after saving.
+                    </div>
+                </div>
+            </div>
+        </template>
+
+        <!-- sqlite -->
+        <div x-show="form.kind === 'sqlite'" class="row g-2 mb-3">
+            <div class="col-12">
+                <label class="form-label small">File path</label>
+                <input type="text" class="form-control form-control-sm font-monospace"
+                       x-model="form.config.path"
+                       placeholder="/data/local.db">
+            </div>
+            <div class="col-12">
+                <label class="form-label small">Probe-only table</label>
+                <input type="text" class="form-control form-control-sm"
+                       x-model="probeTable"
+                       placeholder="users">
+            </div>
+        </div>
+
+        <!-- parquet_glob -->
+        <div x-show="form.kind === 'parquet_glob'" class="row g-2 mb-3">
+            <div class="col-12">
+                <label class="form-label small">Glob pattern</label>
+                <input type="text" class="form-control form-control-sm font-monospace"
+                       x-model="form.config.pattern"
+                       placeholder="/data/silver/*.parquet">
+            </div>
+        </div>
+
+        <!-- probe + save row -->
+        <div class="d-flex gap-2 justify-content-end mb-3">
+            <button type="button"
+                    class="btn btn-outline-secondary btn-sm"
+                    :disabled="!form.kind || probing"
+                    @click="probe()">
+                <span x-show="!probing">
+                    <i class="bi bi-binoculars me-1"></i>Probe
+                </span>
+                <span x-show="probing">
+                    <span class="spinner-border spinner-border-sm me-1"></span>
+                    Probing&hellip;
+                </span>
+            </button>
+            <button type="button"
+                    class="btn btn-primary btn-sm"
+                    :disabled="!form.name || !form.kind || creating"
+                    @click="create()">
+                <span x-show="!creating">
+                    <i class="bi bi-save me-1"></i>Save
+                </span>
+                <span x-show="creating">
+                    <span class="spinner-border spinner-border-sm me-1"></span>
+                    Saving&hellip;
+                </span>
+            </button>
+        </div>
+
+        <div x-show="error" class="alert alert-danger small">
+            <strong x-text="error.reason"></strong>
+            <div class="text-muted" x-show="error.hint" x-text="error.hint"></div>
+        </div>
+
+        <div x-show="probeResult && probeResult.columns" class="mt-3">
+            <h2 class="h6">Resolved columns
+                <span class="text-muted small"
+                      x-text="'(' + (probeResult.columns || []).length + ')'">
+                </span>
+            </h2>
+            <div class="table-responsive">
+                <table class="table table-sm pql-list-table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Type</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <template x-for="c in (probeResult.columns || [])"
+                                  :key="c.name">
+                            <tr>
+                                <td class="font-monospace" x-text="c.name"></td>
+                                <td class="font-monospace text-muted" x-text="c.type"></td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function ingestSourceCreate() {
+    return {
+        form: {
+            name: '',
+            kind: '',
+            config: {},
+            secrets: {}
+        },
+        probeTable: '',
+        probing: false,
+        creating: false,
+        probeResult: null,
+        error: null,
+        iconFor(kind) {
+            return {
+                file_upload: 'bi-file-earmark-arrow-up',
+                s3: 'bi-cloud',
+                http: 'bi-globe',
+                postgres: 'bi-database',
+                mysql: 'bi-database',
+                sqlite: 'bi-database',
+                parquet_glob: 'bi-files'
+            }[kind] || 'bi-plug';
+        },
+        async uploadFile() {
+            const input = this.$refs.fileInput;
+            const file = input?.files?.[0];
+            if (!file) return;
+            // Stash locally for now; the real workspace volume upload
+            // happens in Phase 82.5 when /admin/sources lands.  For
+            // v1 we accept a server-side path the user enters; the
+            // file picker doubles as a friendly path resolver.
+            this.form.config.path = file.name;
+            window.pqlToast?.info?.('Path captured; full upload wiring lands with Phase 82.5.');
+        },
+        async probe() {
+            this.error = null;
+            this.probeResult = null;
+            this.probing = true;
+            const body = {
+                kind: this.form.kind,
+                config: this.form.config,
+                secrets: this.form.secrets,
+            };
+            if (this.probeTable) {
+                body.source_table = this.probeTable;
+            }
+            const res = await window.pqlApi.fetch('/api/ingest/probe', {
+                method: 'POST',
+                body,
+            });
+            this.probing = false;
+            if (!res.ok) {
+                this.error = { reason: res.error || 'Probe request failed.', hint: null };
+                return;
+            }
+            if (res.data && res.data.ok === false) {
+                this.error = { reason: res.data.reason, hint: res.data.hint };
+                return;
+            }
+            this.probeResult = res.data;
+        },
+        async create() {
+            this.error = null;
+            this.creating = true;
+            const res = await window.pqlApi.fetch('/api/ingest/sources', {
+                method: 'POST',
+                body: {
+                    name: this.form.name,
+                    kind: this.form.kind,
+                    config: this.form.config,
+                    secrets: this.form.secrets,
+                },
+            });
+            this.creating = false;
+            if (!res.ok) {
+                this.error = { reason: res.error || 'Save failed.', hint: null };
+                return;
+            }
+            const id = res.data?.source?.id;
+            if (id) {
+                window.pqlToast?.success?.('Source created.');
+                window.location.href = '/ingest/sources/' + id;
+            }
+        }
+    };
+}
+</script>
+{% endblock %}

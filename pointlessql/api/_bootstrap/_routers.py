@@ -51,6 +51,8 @@ def register_routers(app: FastAPI) -> None:
     from pointlessql.api.health_routes import router as health_router
     from pointlessql.api.help_routes import router as help_router
     from pointlessql.api.home_routes import router as home_router
+    from pointlessql.api.ingest_html_routes import router as ingest_html_router
+    from pointlessql.api.ingest_routes import router as ingest_router
     from pointlessql.api.issues_html_routes import router as issues_html_router
     from pointlessql.api.jobs_routes import router as jobs_router
     from pointlessql.api.lens import router as lens_router
@@ -143,5 +145,7 @@ def register_routers(app: FastAPI) -> None:
     app.include_router(lens_router)
     app.include_router(mcp_router)
     app.include_router(workspaces_public_router)
+    app.include_router(ingest_router)
+    app.include_router(ingest_html_router)
     app.include_router(help_router)
     app.include_router(health_router)

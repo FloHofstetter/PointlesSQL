@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% block title %}Ingest sources · PointlesSQL{% endblock %}
+
+{% set breadcrumbs = [
+    {"label": "Home", "href": "/"},
+    {"label": "Ingest"}
+] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-3">
+    <div class="d-flex align-items-center gap-2">
+        <i class="bi bi-plug-fill fs-3"></i>
+        <h1 class="h3 mb-0">Ingest sources</h1>
+    </div>
+    <a href="/ingest/sources/new" class="btn btn-primary btn-sm">
+        <i class="bi bi-plus-lg me-1"></i>Connect a source
+    </a>
+</div>
+
+<p class="text-muted small mb-4">
+    Pull rows from CSV files, S3 buckets, HTTP URLs, Postgres, MySQL,
+    SQLite, or Parquet globs into your lakehouse on a schedule.
+</p>
+
+<div x-data="ingestSourcesList()" x-init="load()">
+    <template x-if="loading">
+        <div class="text-center text-muted py-5">
+            <span class="spinner-border spinner-border-sm me-2"></span>
+            Loading sources&hellip;
+        </div>
+    </template>
+
+    <template x-if="!loading && sources.length === 0">
+        <div class="card">
+            <div class="card-body text-center py-5">
+                <i class="bi bi-plug text-muted" style="font-size: 2.5rem;"></i>
+                <h2 class="h5 mt-3">No sources yet</h2>
+                <p class="text-muted small mb-3">
+                    Connect your first data source to start pulling rows on a schedule.
+                </p>
+                <a href="/ingest/sources/new" class="btn btn-primary btn-sm">
+                    <i class="bi bi-plus-lg me-1"></i>Connect a source
+                </a>
+            </div>
+        </div>
+    </template>
+
+    <template x-if="!loading && sources.length > 0">
+        <div class="card">
+            <div class="table-responsive">
+                <table class="table table-sm align-middle mb-0 pql-list-table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Kind</th>
+                            <th>Mappings</th>
+                            <th>Schedule</th>
+                            <th class="text-center">Active</th>
+                            <th>Created</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <template x-for="s in sources" :key="s.id">
+                            <tr style="cursor: pointer;"
+                                @click="window.location.href = '/ingest/sources/' + s.id">
+                                <td><strong x-text="s.name"></strong></td>
+                                <td>
+                                    <span class="badge bg-secondary font-monospace"
+                                          x-text="s.kind"></span>
+                                </td>
+                                <td>
+                                    <span class="text-muted small"
+                                          x-text="(s.table_mappings || []).length + ' tables'"></span>
+                                </td>
+                                <td>
+                                    <span class="text-muted small"
+                                          x-text="s.job_id ? 'scheduled' : 'manual only'"></span>
+                                </td>
+                                <td class="text-center">
+                                    <span x-show="s.is_active" class="text-success">
+                                        <i class="bi bi-check-circle-fill"></i>
+                                    </span>
+                                    <span x-show="!s.is_active" class="text-muted">
+                                        <i class="bi bi-pause-circle"></i>
+                                    </span>
+                                </td>
+                                <td class="text-muted small"
+                                    x-text="(s.created_at || '').substring(0, 10)"></td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </template>
+</div>
+
+<script>
+function ingestSourcesList() {
+    return {
+        loading: true,
+        sources: [],
+        async load() {
+            this.loading = true;
+            const res = await window.pqlApi.fetch('/api/ingest/sources');
+            if (res.ok && res.data) {
+                this.sources = res.data.sources || [];
+            }
+            this.loading = false;
+        }
+    };
+}
+</script>
+{% endblock %}

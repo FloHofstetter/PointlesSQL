@@ -183,6 +183,15 @@
             </a>
         </li>
         <li class="pql-icon-rail__item">
+            <a href="/ingest/sources"
+               data-section="ingest"
+               class="pql-icon-rail__link{% if active_page is defined and active_page == 'ingest' %} active{% endif %}"
+               title="Ingest sources — pull rows from external systems">
+                <i class="bi bi-plug-fill"></i>
+                <span class="pql-icon-rail__label">Ingest</span>
+            </a>
+        </li>
+        <li class="pql-icon-rail__item">
             <a href="/models"
                data-section="federation"
                data-active-page="models"
