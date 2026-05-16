@@ -120,29 +120,50 @@ html[data-pql-rail-state="collapsed"] .pql-icon-rail__link--cta .pql-icon-rail__
 }
 
 /* Phase 81.H — /new launchpad cards.  Wraps Bootstrap .card with a
-   prominent icon and accent border-top, so the page reads like a
-   set of "things you can start" rather than a generic list. */
+   prominent icon tile + persistent accent strip at the top.  The
+   resting strip carries the accent without competing for attention;
+   hovering thickens it and brightens the icon tile so the
+   clickability cue is unmistakable. */
 .pql-new-card {
     color: inherit;
-    border-top: 3px solid transparent;
-    transition: border-color var(--pql-duration-fast) var(--pql-ease),
-        transform var(--pql-duration-fast) var(--pql-ease),
+    position: relative;
+    overflow: hidden;
+    transition: transform var(--pql-duration-fast) var(--pql-ease),
         box-shadow var(--pql-duration-fast) var(--pql-ease);
 }
+.pql-new-card::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 3px;
+    background-color: var(--pql-color-accent, #76b900);
+    opacity: 0.55;
+    transition: opacity var(--pql-duration-fast) var(--pql-ease),
+        height var(--pql-duration-fast) var(--pql-ease);
+}
 .pql-new-card:hover {
-    border-top-color: var(--pql-color-accent, #76b900);
     color: inherit;
 }
+.pql-new-card:hover::before {
+    opacity: 1;
+    height: 4px;
+}
 .pql-new-card__icon {
-    width: 2.25rem;
-    height: 2.25rem;
+    width: 2.5rem;
+    height: 2.5rem;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    border-radius: 0.5rem;
+    border-radius: 0.6rem;
     background-color: var(--pql-color-accent-bg, rgba(118, 185, 0, 0.12));
     color: var(--pql-color-accent, #76b900);
-    font-size: 1.15rem;
+    font-size: 1.3rem;
+    transition: background-color var(--pql-duration-fast) var(--pql-ease),
+        color var(--pql-duration-fast) var(--pql-ease);
+}
+.pql-new-card:hover .pql-new-card__icon {
+    background-color: var(--pql-color-accent, #76b900);
+    color: #ffffff;
 }
 
 /* Phase 81.A — per-user customisation.  rail_customise.js sets
