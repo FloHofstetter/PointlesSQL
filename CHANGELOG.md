@@ -6,6 +6,32 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- **Phase 89 Restschuld III (endgame) closed (2026-05-16).**
+  Two highest-risk file splits from the Phase-86 trim list,
+  closing the modularisation wave:
+
+  1. **89.1** — ``social_routes/_polymorphic_handlers.py`` 2231
+     LOC → 9-axis sub-package.  The largest single Python file
+     in the repo splits into modules per behavioural axis
+     (comments, endorsements, follows, entity reactions, comment
+     reactions, stars, READMEs, reviews) plus a shared
+     constants/helpers/serialisers module.  ``__init__.py``
+     re-exports every public handler the 7 sibling route modules
+     already import — call sites are unchanged.  The flat
+     ``_polymorphic_handlers.py`` is deleted outright.
+  2. **89.2** — ``main.py`` lifespan 358 LOC → new
+     ``api/_bootstrap/_lifespan.py`` behind a ``make_lifespan(
+     templates)`` factory.  ``main.py`` shrinks 767 → 374 LOC.
+     The teardown's 14× repeated cancel-and-await ritual now
+     lives in a single ``_cancel_task`` helper.  App.state
+     contracts and background-task / subprocess shutdown order
+     are byte-identical.
+
+  Pyright stays at 6 / 533 throughout; ruff / pyright /
+  pydoclint / alembic all green.  Combined with Phases 87 + 88,
+  the Restschuld wave eliminates the ten 1000-LOC hot-path files
+  identified in the Phase-86 audit.
+
 - **Phase 88 Restschuld II (SQL/dbt cluster) closed (2026-05-16).**
   Three medium-risk file splits, three commits on the same
   ``phase-87…`` branch as Phase 87:

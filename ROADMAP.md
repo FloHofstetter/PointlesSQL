@@ -1280,6 +1280,46 @@ PointlesSQL
 │          modules updated to monkeypatch the new sibling modules
 │          instead of the routes module.
 │
+├── Phase 89 — Restschuld III: endgame                     ✅ done 2026-05-16
+│       Two highest-risk strands from the Phase-86 trim list:
+│       splitting the largest single Python file in the repo
+│       (``_polymorphic_handlers.py`` at 2231 LOC) and extracting
+│       the 358-LOC lifespan from ``main.py``.  Three commits on
+│       the same ``phase-87…`` branch; pyright stays at 6/533 at
+│       every commit.
+│
+│       ── 89.1 (`d1716ce`) ``social_routes/_polymorphic_handlers.py``
+│          2231 LOC → 9-axis sub-package.  Sub-modules:
+│          ``_shared`` (constants + 9 cross-axis helpers +
+│          4 serialisers), ``_comments`` (3 handlers),
+│          ``_endorsements`` (3), ``_followers`` (4),
+│          ``_reactions_entity`` (3 + ``validate_emoji_field``),
+│          ``_reactions_comment`` (3 + ``load_comment_on_target``),
+│          ``_stars`` (4), ``_readme`` (2), ``_reviews`` (3).
+│          ``__init__`` re-exports every public handler the 7
+│          sibling route modules (``comments.py`` /
+│          ``endorsements.py`` / ``follows.py`` / ``reviews.py``
+│          / ``reactions.py`` / ``stars.py`` / ``readme.py``)
+│          already import from this package.  The old flat
+│          ``_polymorphic_handlers.py`` deleted outright (no BC
+│          shim).  Leading underscores dropped on every
+│          cross-axis helper so pyright stops tripping on
+│          ``reportPrivateUsage`` across the new module
+│          boundaries.
+│
+│       ── 89.2 (`76e6941`) ``main.py`` lifespan 358 LOC →
+│          ``api/_bootstrap/_lifespan.py``.  ``main.py`` shrinks
+│          767 → 374 LOC.  The new module exposes a
+│          ``make_lifespan(templates)`` factory that closes over
+│          the Jinja2Templates instance built at import time in
+│          ``main.py`` so the filters + TemplateResponse wrapper
+│          stay where they are.  Side-effect: the teardown's 14×
+│          repeated cancel-and-await ritual collapses into one
+│          ``_cancel_task`` helper.  External behaviour
+│          unchanged — ``app.state`` is built identically and the
+│          14 background-task names / 2 subprocess shutdown order
+│          are byte-identical.
+│
 ├── Phase 81 — Feed overhaul + help surface + entity ⋯-menu  ✅ done 2026-05-16
 │       Three-track polish bundle.  Track K rebuilt /feed from a
 │       flat Bootstrap `list-group` into a first-class social
