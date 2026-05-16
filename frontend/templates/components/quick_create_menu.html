@@ -1,95 +1,26 @@
 {#
   Primary-rail quick-create entry — Phase 81.H.
 
-  Mirrors Databricks' "+ New" rail item: lives at the very top of the
-  primary sidebar so authors don't have to navigate to a list page
-  first to create something.  Replaces the prior topbar dropdown
-  (Phase 80.8) — moved here because (a) it matches what users already
-  know from DBX, (b) frees topbar space, and (c) avoids the
-  bottom-right toast-stack collision a FAB would have caused.
+  Renders the "+ New" rail item at the very top of the primary
+  sidebar.  Matches the Databricks "+ New" pattern Flo uses daily.
 
-  Renders as a single ``<li class="pql-icon-rail__item dropend">`` so
-  the dropdown menu opens to the right of the rail in both expanded
-  and collapsed states.  Visually treated as a primary-coloured pill
-  via the ``pql-icon-rail__link--cta`` modifier so it reads as the
-  primary call-to-action.
+  Phase 81.H.2 — switched from a Bootstrap dropdown to a plain link
+  pointing at ``/new``.  The /new page hosts a card grid with one
+  description per creatable entity, which scales better than a
+  cramped dropdown (8 items, two admin-gated) and avoids the
+  light-mode contrast issues a primary-accent pill ran into next
+  to the rest of the muted rail items.
 
-  Surfaced only for authenticated users.  The "Data product" and
-  "Scheduled job" entries are admin-gated.
+  Surfaced only for authenticated users.
 #}
 {% if current_user is defined and current_user %}
-<li class="pql-icon-rail__item dropend pql-icon-rail__item--cta">
-    <button type="button"
-            class="pql-icon-rail__link pql-icon-rail__link--cta pql-quick-create-trigger"
-            data-bs-toggle="dropdown"
-            data-bs-auto-close="true"
-            aria-expanded="false"
-            aria-label="Create new"
-            title="Create new">
+<li class="pql-icon-rail__item pql-icon-rail__item--cta">
+    <a href="/new"
+       class="pql-icon-rail__link pql-icon-rail__link--cta pql-quick-create-trigger{% if active_page is defined and active_page == 'new' %} active{% endif %}"
+       aria-label="Create new"
+       title="Create new">
         <i class="bi bi-plus-lg"></i>
         <span class="pql-icon-rail__label">New</span>
-    </button>
-    <ul class="dropdown-menu" aria-labelledby="quickCreateMenu">
-        <li><h6 class="dropdown-header">Create new</h6></li>
-        <li>
-            <a class="dropdown-item d-flex align-items-center gap-2"
-               href="/notebooks/workspace"
-               data-pql-quick-create="notebook">
-                <i class="bi bi-journal-code"></i> Notebook
-            </a>
-        </li>
-        <li>
-            <a class="dropdown-item d-flex align-items-center gap-2"
-               href="/sql"
-               data-pql-quick-create="sql-query">
-                <i class="bi bi-code-square"></i> SQL query
-            </a>
-        </li>
-        <li>
-            <a class="dropdown-item d-flex align-items-center gap-2"
-               href="/dashboards"
-               data-pql-quick-create="dashboard">
-                <i class="bi bi-speedometer2"></i> Dashboard
-            </a>
-        </li>
-        <li>
-            <a class="dropdown-item d-flex align-items-center gap-2"
-               href="/topics?new=1"
-               data-pql-quick-create="topic">
-                <i class="bi bi-hash"></i> Topic
-            </a>
-        </li>
-        <li>
-            <a class="dropdown-item d-flex align-items-center gap-2"
-               href="/issues"
-               data-pql-quick-create="issue">
-                <i class="bi bi-bug"></i> Issue
-            </a>
-        </li>
-        <li>
-            <a class="dropdown-item d-flex align-items-center gap-2"
-               href="/alerts"
-               data-pql-quick-create="alert">
-                <i class="bi bi-bell"></i> Alert
-            </a>
-        </li>
-        {% if current_user.is_admin %}
-        <li><hr class="dropdown-divider"></li>
-        <li>
-            <a class="dropdown-item d-flex align-items-center gap-2"
-               href="/data-products"
-               data-pql-quick-create="data-product">
-                <i class="bi bi-collection"></i> Data product
-            </a>
-        </li>
-        <li>
-            <a class="dropdown-item d-flex align-items-center gap-2"
-               href="/jobs"
-               data-pql-quick-create="job">
-                <i class="bi bi-clock-history"></i> Scheduled job
-            </a>
-        </li>
-        {% endif %}
-    </ul>
+    </a>
 </li>
 {% endif %}

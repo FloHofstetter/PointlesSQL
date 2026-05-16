@@ -83,33 +83,64 @@
 /* Phase 81.H — primary "New" rail entry.  Sits pinned to the top of
    the rail above all nav groups; visually treated as a primary
    call-to-action pill so it reads as the dominant authoring entry
-   point (Databricks parity). */
+   point (Databricks parity).  Treatment is solid-fill in both
+   themes — the accent green carries enough contrast on white text
+   against both light (#f8f9fa rail bg) and dark (#212529) modes. */
 .pql-icon-rail__item--cta {
     padding: 0.5rem 0.5rem 0.65rem;
     border-bottom: 1px solid var(--bs-border-color-translucent);
     margin-bottom: 0.25rem;
 }
-.pql-icon-rail__link--cta {
+.pql-icon-rail__link--cta,
+.pql-icon-rail__link--cta:visited {
     border-radius: 0.5rem;
-    background: var(--pql-color-accent);
-    color: #fff !important;
+    background-color: var(--pql-color-accent, #76b900);
+    color: #ffffff !important;
     border-left: 0 !important;
     font-weight: 600;
     padding: 0.55rem 0.75rem;
     justify-content: center;
 }
-.pql-icon-rail__link--cta:hover {
-    background: var(--pql-color-accent-strong, #5a9000);
-    color: #fff !important;
+.pql-icon-rail__link--cta:hover,
+.pql-icon-rail__link--cta:focus {
+    background-color: var(--pql-color-accent-strong, #5a9000);
+    color: #ffffff !important;
+    text-decoration: none;
 }
 .pql-icon-rail__link--cta i {
-    color: #fff;
+    color: #ffffff;
 }
 html[data-pql-rail-state="collapsed"] .pql-icon-rail__link--cta {
     padding: 0.55rem 0;
 }
 html[data-pql-rail-state="collapsed"] .pql-icon-rail__link--cta .pql-icon-rail__label {
     display: none;
+}
+
+/* Phase 81.H — /new launchpad cards.  Wraps Bootstrap .card with a
+   prominent icon and accent border-top, so the page reads like a
+   set of "things you can start" rather than a generic list. */
+.pql-new-card {
+    color: inherit;
+    border-top: 3px solid transparent;
+    transition: border-color var(--pql-duration-fast) var(--pql-ease),
+        transform var(--pql-duration-fast) var(--pql-ease),
+        box-shadow var(--pql-duration-fast) var(--pql-ease);
+}
+.pql-new-card:hover {
+    border-top-color: var(--pql-color-accent, #76b900);
+    color: inherit;
+}
+.pql-new-card__icon {
+    width: 2.25rem;
+    height: 2.25rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.5rem;
+    background-color: var(--pql-color-accent-bg, rgba(118, 185, 0, 0.12));
+    color: var(--pql-color-accent, #76b900);
+    font-size: 1.15rem;
 }
 
 /* Phase 81.A — per-user customisation.  rail_customise.js sets

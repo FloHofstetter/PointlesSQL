@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+{% block title %}Create new · PointlesSQL{% endblock %}
+
+{% set breadcrumbs = [{"label": "Home", "href": "/"}, {"label": "Create new"}] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center gap-2 mb-2">
+    <i class="bi bi-plus-square fs-3"></i>
+    <h1 class="h3 mb-0">Create new</h1>
+</div>
+<p class="text-muted mb-4">
+    Start something — pick what fits the task.  Most surfaces open a
+    create-dialogue on the destination page; admin-only items are
+    grouped at the bottom.
+</p>
+
+<h6 class="text-uppercase text-muted small fw-semibold mb-3">Build</h6>
+<div class="row g-3 mb-4">
+    {% set _build_cards = [
+        {
+            "href": "/notebooks/workspace",
+            "icon": "bi-journal-code",
+            "title": "Notebook",
+            "body": "Mix SQL, Python and markdown in a versioned .py notebook. Best for ad-hoc analysis, agent hand-off, and reproducible runs."
+        },
+        {
+            "href": "/sql",
+            "icon": "bi-code-square",
+            "title": "SQL query",
+            "body": "Open the SQL editor with a fresh tab. Use it to explore a table, sketch a transformation, or save a query for an alert."
+        },
+        {
+            "href": "/dashboards",
+            "icon": "bi-speedometer2",
+            "title": "Dashboard",
+            "body": "Pin chart-emitting cells of a notebook to a permanent URL. Refreshes on the bound job's schedule."
+        }
+    ] %}
+    {% for card in _build_cards %}
+    <div class="col-12 col-md-6 col-xl-4">
+        <a href="{{ card.href }}" class="pql-new-card card h-100 text-decoration-none pql-hover-lift">
+            <div class="card-body">
+                <div class="pql-new-card__icon mb-2">
+                    <i class="bi {{ card.icon }}"></i>
+                </div>
+                <h5 class="card-title h6 mb-1">{{ card.title }}</h5>
+                <p class="card-text text-muted small mb-0">{{ card.body }}</p>
+            </div>
+        </a>
+    </div>
+    {% endfor %}
+</div>
+
+<h6 class="text-uppercase text-muted small fw-semibold mb-3">Community</h6>
+<div class="row g-3 mb-4">
+    {% set _community_cards = [
+        {
+            "href": "/topics?new=1",
+            "icon": "bi-hash",
+            "title": "Topic",
+            "body": "A knowledge hub for a subject area — collects discussions, follows entities, and aggregates citations across data products."
+        },
+        {
+            "href": "/issues",
+            "icon": "bi-bug",
+            "title": "Issue",
+            "body": "Report a problem with a table, dashboard, alert, or agent run. Issues thread reviews, mentions, and resolution."
+        },
+        {
+            "href": "/alerts",
+            "icon": "bi-bell",
+            "title": "Alert",
+            "body": "Run a saved SQL query on cron; fire when row-count crosses a threshold. Pushes to a webhook, RSS, or email destination."
+        }
+    ] %}
+    {% for card in _community_cards %}
+    <div class="col-12 col-md-6 col-xl-4">
+        <a href="{{ card.href }}" class="pql-new-card card h-100 text-decoration-none pql-hover-lift">
+            <div class="card-body">
+                <div class="pql-new-card__icon mb-2">
+                    <i class="bi {{ card.icon }}"></i>
+                </div>
+                <h5 class="card-title h6 mb-1">{{ card.title }}</h5>
+                <p class="card-text text-muted small mb-0">{{ card.body }}</p>
+            </div>
+        </a>
+    </div>
+    {% endfor %}
+</div>
+
+{% if is_admin %}
+<h6 class="text-uppercase text-muted small fw-semibold mb-3">
+    Admin
+    <i class="bi bi-shield-lock-fill ms-1" aria-label="Admin-only"></i>
+</h6>
+<div class="row g-3 mb-4">
+    {% set _admin_cards = [
+        {
+            "href": "/data-products",
+            "icon": "bi-collection",
+            "title": "Data product",
+            "body": "Declare a UC schema as a curated, contract-bearing data product. Stewards own it; consumers subscribe and follow change."
+        },
+        {
+            "href": "/jobs",
+            "icon": "bi-clock-history",
+            "title": "Scheduled job",
+            "body": "Schedule a papermill-driven notebook run on cron. Job runs become the source of truth for bound dashboards."
+        }
+    ] %}
+    {% for card in _admin_cards %}
+    <div class="col-12 col-md-6 col-xl-4">
+        <a href="{{ card.href }}" class="pql-new-card card h-100 text-decoration-none pql-hover-lift">
+            <div class="card-body">
+                <div class="pql-new-card__icon mb-2">
+                    <i class="bi {{ card.icon }}"></i>
+                </div>
+                <h5 class="card-title h6 mb-1">{{ card.title }}</h5>
+                <p class="card-text text-muted small mb-0">{{ card.body }}</p>
+            </div>
+        </a>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+{% endblock %}
