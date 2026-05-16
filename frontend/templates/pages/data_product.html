@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_macros/entity_actions.html" import entity_actions_menu %}
 {% block title %}{{ product.ref }} · Data Products · PointlesSQL{% endblock %}
 
 {% set breadcrumbs = [
@@ -68,6 +69,13 @@
                     title="Open social drawer (Discussion / Reviews / README / Issues)">
                 <i class="bi bi-people me-1"></i>Social
             </button>
+            {{ entity_actions_menu(
+                "dp",
+                product.ref,
+                request.url.path,
+                citation="#dp:" ~ product.ref,
+                label="data product " ~ product.name,
+            ) }}
         </div>
     </div>
 

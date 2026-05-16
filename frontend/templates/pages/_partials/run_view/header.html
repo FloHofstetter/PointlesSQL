@@ -1,3 +1,4 @@
+{% from "_macros/entity_actions.html" import entity_actions_menu %}
 <div class="d-flex align-items-center justify-content-between mb-4"
 {% if run %}
  x-data='pqlStarToggle({kind: "run", ref: {{ run.id|tojson }}})'
@@ -28,6 +29,15 @@
  title="Open the lineage card for {{ first_touched }} (OpenLineage emission)">
  <i class="bi bi-diagram-3 me-1"></i>View lineage graph
  </a>
+ {% endif %}
+ {% if run %}
+ {{ entity_actions_menu(
+     "run",
+     run.id,
+     request.url.path,
+     citation="#run:" ~ run.id,
+     label="run #" ~ run.id[:8],
+ ) }}
  {% endif %}
  </div>
 </div>

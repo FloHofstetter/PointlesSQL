@@ -1,0 +1,66 @@
+{#
+    Per-entity ``⋯``-action dropdown (Phase 81.M / Track A).
+
+    A single Bootstrap dropdown that every entity-detail page (DP,
+    Model, Run, …) can render at the end of its header action group
+    so the menu shape stays identical across surfaces.
+
+    Args:
+      kind          — the entity_kind (``dp``, ``model``, ``run``, …)
+                      passed straight through to ``/api/feed/mute``.
+      ref           — the entity_ref the mute endpoint scopes against.
+      source_url    — canonical absolute URL (e.g. ``/runs/<id>``);
+                      copied to clipboard for Copy-link.
+      citation      — optional citation token (e.g. ``#run:<uuid>``)
+                      to copy for pasting into comments / reviews.
+      label         — human-readable entity label for the toast
+                      ("Run #1234", "Data product orders") so the
+                      ``Muted X.`` message reads naturally.
+
+    Backend dependency: ``POST /api/feed/mute`` (Phase 81.K.4); the
+    button passes ``{entity_kind, entity_ref}`` exactly as the feed
+    item ``⋯``-menu does, so the same ``feed_mutes`` row scopes both.
+#}
+{% macro entity_actions_menu(kind, ref, source_url, citation="", label="") -%}
+<div class="dropdown pql-entity-actions">
+    <button type="button"
+            class="btn btn-sm btn-outline-secondary"
+            data-bs-toggle="dropdown"
+            data-bs-auto-close="true"
+            aria-expanded="false"
+            aria-label="More actions for this {{ kind }}">
+        <i class="bi bi-three-dots-vertical"></i>
+    </button>
+    <ul class="dropdown-menu dropdown-menu-end">
+        <li>
+            <button type="button"
+                    class="dropdown-item pql-copy-btn"
+                    data-pql-copy="{{ source_url }}"
+                    aria-label="Copy link to this {{ kind }}">
+                <i class="bi bi-link-45deg me-2"></i>Copy link
+            </button>
+        </li>
+        {% if citation %}
+        <li>
+            <button type="button"
+                    class="dropdown-item pql-copy-btn"
+                    data-pql-copy="{{ citation }}"
+                    aria-label="Copy citation token">
+                <i class="bi bi-quote me-2"></i>Copy citation
+                <span class="text-muted small ms-1 font-monospace">{{ citation }}</span>
+            </button>
+        </li>
+        {% endif %}
+        <li><hr class="dropdown-divider"></li>
+        <li>
+            <button type="button"
+                    class="dropdown-item pql-entity-mute-btn"
+                    data-pql-mute-kind="{{ kind }}"
+                    data-pql-mute-ref="{{ ref }}"
+                    data-pql-mute-label="{{ label or (kind + ' ' + ref) }}">
+                <i class="bi bi-bell-slash me-2"></i>Mute notifications
+            </button>
+        </li>
+    </ul>
+</div>
+{%- endmacro %}

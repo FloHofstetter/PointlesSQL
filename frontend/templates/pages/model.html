@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% from "_macros/help_icon.html" import info %}
 {% from "_macros/copy_button.html" import copy_btn %}
+{% from "_macros/entity_actions.html" import entity_actions_menu %}
 {% block title %}{{ model.full_name }} · Models · PointlesSQL{% endblock %}
 
 {% set breadcrumbs = [
@@ -45,6 +46,13 @@
             title="Open social drawer (Discussion / Reviews / Endorsements / Followers / README / Issues)">
         <i class="bi bi-people me-1"></i>Social
     </button>
+    {{ entity_actions_menu(
+        "model",
+        model.full_name,
+        request.url.path,
+        citation="#model:" ~ model.full_name,
+        label="model " ~ model.full_name,
+    ) }}
 </div>
 
 {% if model.comment %}

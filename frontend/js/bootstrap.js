@@ -32,6 +32,11 @@ window.pqlApi = pqlApi;
 // rendered by ``_macros/copy_button.html``.
 import './copy_button.js';
 
+// Per-entity ⋯-action menu mute handler (Phase 81.M).  Document-level
+// click listener for every ``.pql-entity-mute-btn`` rendered by
+// ``_macros/entity_actions.html``.
+import './entity_actions.js';
+
 // Permission-locked nav-link delegated listener.  Captures clicks
 // on anchors rendered by ``_macros/permission_link.html`` when the
 // caller passed ``granted=False`` and surfaces a toast naming the
