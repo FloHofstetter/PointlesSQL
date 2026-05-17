@@ -14,7 +14,7 @@ in [`soyuz-catalog/ROADMAP.md`](../soyuz-catalog/ROADMAP.md).
 Older closed phases that are no longer load-bearing for follow-up
 conversations are *collapsed*: a one-line summary stays in this
 file (in tabular form), and the full per-sprint detail moves to
-[`ROADMAP_ARCHIVE.md`](ROADMAP_ARCHIVE.md).  See "How to update
+[`docs/internal/roadmap_archive.md`](docs/internal/roadmap_archive.md).  See "How to update
 this file" at the bottom for the collapse trigger.  Phase numbers
 are preserved across the collapse so cross-references in
 `CHANGELOG.md`, memory entries, and commit messages remain valid.
@@ -29,7 +29,7 @@ PointlesSQL
 ├── Phases 0–47 — completed, collapsed                    ✅ done
 │   │
 │   │   Full per-sprint detail in
-│   │   [`ROADMAP_ARCHIVE.md`](ROADMAP_ARCHIVE.md).  Phases 0-12.8
+│   │   [`docs/internal/roadmap_archive.md`](docs/internal/roadmap_archive.md).  Phases 0-12.8
 │   │   were collapsed in commit `3a90354` (2026-04-27); Phases
 │   │   12.10-13.5 in the same commit; Phases 12.9 + 14-47 rolled
 │   │   2026-05-12 to bring this file back under 2500 lines.
@@ -3814,7 +3814,7 @@ PointlesSQL
   move on. Do not delete completed phases — they are the record
   of what "done" meant.
 - **When closed phases stack up:** roll older completed phases
-  out of `ROADMAP.md` into [`ROADMAP_ARCHIVE.md`](ROADMAP_ARCHIVE.md)
+  out of `ROADMAP.md` into [`docs/internal/roadmap_archive.md`](docs/internal/roadmap_archive.md)
   using the existing collapse pattern (one-line summary in a
   table, full detail moved verbatim to the archive). Both
   conditions must hold before a phase qualifies for the roll:

@@ -198,7 +198,7 @@ invent new milestone or sprint names — extend the existing tree.
 
 Older completed phases are collapsed into a summary table; their
 per-sprint detail lives in
-[`ROADMAP_ARCHIVE.md`](ROADMAP_ARCHIVE.md).  Read the archive only
+[`docs/internal/roadmap_archive.md`](docs/internal/roadmap_archive.md).  Read the archive only
 when investigating a specific old decision — `ROADMAP.md` alone
 covers all current and recently-closed work.
 

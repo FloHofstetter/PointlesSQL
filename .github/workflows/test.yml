@@ -112,7 +112,7 @@ jobs:
         # silent regressions.  Twelve tests are deselected below;
         # they were already failing on main when this gate was
         # introduced and need separate investigation (full list in
-        # QUALITY_FINAL.md).  Once a deselected test is fixed,
+        # docs/internal/quality_final.md).  Once a deselected test is fixed,
         # delete its line — the gate must regress visibly if a
         # previously-green test starts failing.
         # Phase 31.4 — ``-n auto`` parallelises across the runner's
