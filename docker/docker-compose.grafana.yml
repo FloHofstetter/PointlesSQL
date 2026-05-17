@@ -42,8 +42,8 @@ services:
       # ``disk I/O error`` on the first query.  The Grafana plugin
       # only issues SELECTs.
       - pointlessql_data:/data/pointlessql
-      - ../grafana/provisioning:/etc/grafana/provisioning:ro
-      - ../grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - ../examples/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ../examples/grafana/dashboards:/var/lib/grafana/dashboards:ro
       - grafana_data:/var/lib/grafana
     depends_on:
       pointlessql:

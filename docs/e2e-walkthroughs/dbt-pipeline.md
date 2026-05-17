@@ -61,7 +61,7 @@ Exercises the dbt cockpit at `/dbt`:
      ```
    - Assert: text contains all four bullet points:
      - `Install the optional [dbt] extra`
-     - `Place your dbt project under dbt_project/`
+     - `Place your dbt project under examples/dbt_project/`
      - `Run dbt compile once to generate target/manifest.json`
      - `Restart PointlesSQL — the subprocess starts during the
        FastAPI lifespan hook`
@@ -173,15 +173,15 @@ clashes with mashumaro 3.17's Python-3.14 fix
    ```bash
    docker compose -f docker/docker-compose.yml -f docker/docker-compose.e2e.yml \
      exec -w /app -T pointlessql /opt/venv/bin/dbt compile \
-       --project-dir dbt_project --profiles-dir dbt_project/profiles
+       --project-dir examples/dbt_project --profiles-dir examples/dbt_project/profiles
    docker compose ... exec -w /tmp/dbt_project -T pointlessql \
      /opt/venv/bin/dbt docs generate --profiles-dir profiles
    ```
-   - Assert: both exit 0; `dbt_project/target/manifest.json`
-     and `dbt_project/target/catalog.json` exist. The
+   - Assert: both exit 0; `examples/dbt_project/target/manifest.json`
+     and `examples/dbt_project/target/catalog.json` exist. The
      3-model demo (`bronze_raw`, `silver_clean`,
      `gold_summary`) plus 5 tests from
-     `dbt_project/models/schema.yml` are now compiled.
+     `examples/dbt_project/models/schema.yml` are now compiled.
    - Without `catalog.json` the dbt-docs SPA throws an alert
      dialog on every page load — `dbt docs generate` is what
      produces it.

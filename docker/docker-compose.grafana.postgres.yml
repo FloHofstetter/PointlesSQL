@@ -12,7 +12,7 @@
 # overlays are mutually exclusive — picking PG drops the
 # frser-sqlite-datasource plugin and the SQLite file mount.
 #
-# The PG dashboard ships in grafana/postgres-dashboards/ and the
+# The PG dashboard ships in examples/grafana/postgres-dashboards/ and the
 # matching datasource provisioning lives in
 # grafana/postgres-provisioning/datasources/.  See
 # docs/integrations/grafana.md for the operator playbook.
@@ -28,8 +28,8 @@ services:
     ports:
       - "${GRAFANA_HOST_PORT:-3000}:3000"
     volumes:
-      - ../grafana/postgres-provisioning:/etc/grafana/provisioning:ro
-      - ../grafana/postgres-dashboards:/var/lib/grafana/dashboards:ro
+      - ../examples/grafana/postgres-provisioning:/etc/grafana/provisioning:ro
+      - ../examples/grafana/postgres-dashboards:/var/lib/grafana/dashboards:ro
       - grafana_data:/var/lib/grafana
     depends_on:
       postgres:

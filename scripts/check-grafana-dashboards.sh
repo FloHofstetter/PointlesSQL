@@ -13,8 +13,8 @@
 set -euo pipefail
 
 DASHBOARDS=(
-    "grafana/dashboards/pointlessql_audit.json"
-    "grafana/postgres-dashboards/pointlessql_audit.json"
+    "examples/grafana/dashboards/pointlessql_audit.json"
+    "examples/grafana/postgres-dashboards/pointlessql_audit.json"
 )
 
 failed=0

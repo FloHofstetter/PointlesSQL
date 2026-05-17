@@ -66,7 +66,7 @@ The tag key is overridable via `layer_tag_key` in
 
 The Medallion defaults live in
 `pointlessql/conventions/_defaults.py`. To override them, copy
-[`pointlessql.yaml.example`](https://github.com/FloHofstetter/PointlesSQL/blob/main/pointlessql.yaml.example) to
+[`examples/pointlessql.yaml.example`](https://github.com/FloHofstetter/PointlesSQL/blob/main/examples/pointlessql.yaml.example) to
 `pointlessql.yaml` and point `POINTLESSQL_CONVENTIONS_PATH` at
 it. Overrides shallow-merge over the defaults at the top level
 — if you redefine `layers`, you must include every layer you

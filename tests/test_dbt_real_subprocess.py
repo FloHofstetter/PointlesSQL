@@ -4,7 +4,7 @@ Sister to :mod:`tests.test_dbt_executor` (which never spawns dbt and
 covers argv composition + path resolution) and :mod:`tests.test_dbt_bridge`
 (which parses static fixture artefacts).  This module fills the
 remaining gap: a real ``dbt`` CLI invocation against the sample
-project at ``dbt_project/`` plus assertions on the *bridge-readable*
+project at ``examples/dbt_project/`` plus assertions on the *bridge-readable*
 shape of the resulting ``manifest.json`` + ``run_results.json``.
 
 Skipped when:
@@ -57,7 +57,7 @@ pytestmark = pytest.mark.integration
 
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-SAMPLE_PROJECT = REPO_ROOT / "dbt_project"
+SAMPLE_PROJECT = REPO_ROOT / "examples" / "dbt_project"
 SAMPLE_PROFILES = SAMPLE_PROJECT / "profiles"
 
 
@@ -65,7 +65,7 @@ def _executor(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> DBTExecutor:
     """Build a ``DBTExecutor`` pinned to the sample project + a scratch DB.
 
     The DuckDB path is steered via the ``POINTLESSQL_DBT_DEMO_DUCKDB``
-    env var (see ``dbt_project/profiles/profiles.yml``) so the run
+    env var (see ``examples/dbt_project/profiles/profiles.yml``) so the run
     cannot pollute a developer's shared scratch file.
 
     Args:

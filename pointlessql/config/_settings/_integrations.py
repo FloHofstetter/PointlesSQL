@@ -140,8 +140,8 @@ class DBTSettings(BaseSettings):
 
     enabled: bool = True
     docs_port: int = 5002
-    project_dir: Path = Path("dbt_project")
-    profiles_dir: Path = Path("dbt_project/profiles")
+    project_dir: Path = Path("examples/dbt_project")
+    profiles_dir: Path = Path("examples/dbt_project/profiles")
     target: str = "dev"
     timeout_seconds: int = 600
 
