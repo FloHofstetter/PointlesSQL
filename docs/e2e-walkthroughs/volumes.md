@@ -12,7 +12,7 @@ interaction translates 1:1 to one of those routes.
 
 ## Preconditions
 
-- Stack up via `docker-compose.yml` + `docker-compose.e2e.yml`.
+- Stack up via `docker/docker-compose.yml` + `docker/docker-compose.e2e.yml`.
 - [`auth.md`](auth.md) ran first — `admin@pql.test` exists and is
   signed in.
 - A volume named `demo.sales.uploads` exists in soyuz-catalog

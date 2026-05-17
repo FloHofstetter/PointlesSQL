@@ -4,7 +4,7 @@
 
 Exercises the OAuth2 authorization-code + PKCE flow against the
 `ghcr.io/navikt/mock-oauth2-server` sidecar added to
-`docker-compose.e2e.yml`. Two passes: off (SSO button absent) and
+`docker/docker-compose.e2e.yml`. Two passes: off (SSO button absent) and
 on (full round-trip, auto-user-creation, claim mapping).
 
 ## Preconditions
@@ -50,7 +50,7 @@ on (full round-trip, auto-user-creation, claim mapping).
  `127.0.0.1:9090`).
  - Action (shell):
  ```bash
- docker compose -f docker-compose.yml -f docker-compose.e2e.yml \
+ docker compose -f docker/docker-compose.yml -f docker/docker-compose.e2e.yml \
  exec pointlessql python -c \
  "import httpx; print(httpx.get('http://mock-oidc:8080/default/.well-known/openid-configuration').json()['issuer'])"
  ```
@@ -80,7 +80,7 @@ on (full round-trip, auto-user-creation, claim mapping).
  POINTLESSQL_OIDC_CLIENT_ID=pql-e2e \
  POINTLESSQL_OIDC_CLIENT_SECRET=secret \
  POINTLESSQL_SERVER_BASE_URL=http://127.0.0.1:8000 \
- docker compose -f docker-compose.yml -f docker-compose.e2e.yml \
+ docker compose -f docker/docker-compose.yml -f docker/docker-compose.e2e.yml \
  up -d --force-recreate pointlessql
  ```
 
@@ -120,7 +120,7 @@ on (full round-trip, auto-user-creation, claim mapping).
 9. **OIDC bind fields recorded in the DB**.
  - Action (shell):
  ```bash
- docker compose -f docker-compose.yml -f docker-compose.e2e.yml \
+ docker compose -f docker/docker-compose.yml -f docker/docker-compose.e2e.yml \
  exec pointlessql sqlite3 /app/data/pointlessql.db \
  "SELECT email, oidc_provider, oidc_subject FROM users WHERE email='oidc@pql.test';"
  ```
@@ -142,7 +142,7 @@ on (full round-trip, auto-user-creation, claim mapping).
  ```bash
  POINTLESSQL_OIDC_DISCOVERY_URL= POINTLESSQL_OIDC_CLIENT_ID= \
  POINTLESSQL_OIDC_CLIENT_SECRET= POINTLESSQL_SERVER_BASE_URL= \
- docker compose -f docker-compose.yml -f docker-compose.e2e.yml \
+ docker compose -f docker/docker-compose.yml -f docker/docker-compose.e2e.yml \
  up -d --force-recreate pointlessql
  ```
 

@@ -7,16 +7,16 @@ services:
     # pyproject.toml's [tool.uv.sources].
     # image: ghcr.io/flohofstetter/soyuz-catalog:v0.2.0rc2
     build:
-      context: .
-      dockerfile: Dockerfile.soyuz
+      context: ..
+      dockerfile: docker/Dockerfile.soyuz
       additional_contexts:
-        soyuz-catalog: ../soyuz-catalog
+        soyuz-catalog: ../../soyuz-catalog
     ports:
       - "${SOYUZ_HOST_PORT:-8080}:8080"
     environment:
       SOYUZ_DATABASE_URL: "sqlite:////app/data/soyuz.db"
     volumes:
-      - ./warehouse:/app/warehouse
+      - ../warehouse:/app/warehouse
       - soyuz_data:/app/data
     healthcheck:
       test:
@@ -38,8 +38,8 @@ services:
     # docs/install.md for the full clean-machine pull flow.
     # image: ghcr.io/flohofstetter/pointlessql:v0.1.0rc3
     build:
-      context: .
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: docker/Dockerfile
       # Dual-auth: contributor path uses ssh-agent via
       # `docker compose build --ssh default`; clean-machine / CI path
       # uses a PAT via `GH_PAT=$(gh auth token) docker compose build`.
@@ -60,9 +60,9 @@ services:
       POINTLESSQL_DB_URL: "sqlite:////app/data/pointlessql.db"
       POINTLESSQL_AUTH_SECRET_KEY: "docker-dev-secret-change-in-prod"
     volumes:
-      - ./warehouse:/app/warehouse
+      - ../warehouse:/app/warehouse
       - pointlessql_data:/app/data
-      - ./notebooks:/app/notebooks
+      - ../notebooks:/app/notebooks
     depends_on:
       soyuz-catalog:
         condition: service_healthy

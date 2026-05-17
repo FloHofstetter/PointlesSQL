@@ -10,7 +10,7 @@ response carries an `X-Request-ID` header.
 
 ## Preconditions
 
-- Stack up (`docker-compose.yml` + `docker-compose.e2e.yml`).
+- Stack up (`docker/docker-compose.yml` + `docker/docker-compose.e2e.yml`).
 - Metadata DB **clean** — no users exist yet (`docker compose
  down -v` between sessions).
 - Seed script has **not** yet been required — the registration

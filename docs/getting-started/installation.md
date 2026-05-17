@@ -31,14 +31,14 @@ export GHCR_PAT='ghp_...'
 echo "$GHCR_PAT" | docker login ghcr.io -u <your-github-username> --password-stdin
 ```
 
-**3. Download the reference `docker-compose.yml`** into a fresh
+**3. Download the reference `docker/docker-compose.yml`** into a fresh
 working directory (do NOT run this inside a PointlesSQL source
 clone — compose will pick up the local file with `build:` still
 active):
 
 ```bash
 mkdir ~/pointlessql && cd ~/pointlessql
-curl -L -o docker-compose.yml \
+curl -L -o docker/docker-compose.yml \
  https://raw.githubusercontent.com/FloHofstetter/PointlesSQL/v0.1.0rc3/docker-compose.yml
 ```
 
@@ -51,7 +51,7 @@ soyuz-catalog:
  image: ghcr.io/flohofstetter/soyuz-catalog:v0.2.0rc2 # ← uncomment
  # build: # ← comment
  # context:. # entire
- # dockerfile: Dockerfile.soyuz # block
+ # dockerfile: docker/Dockerfile.soyuz # block
  # additional_contexts:
  # soyuz-catalog:../soyuz-catalog
  ports:
@@ -73,12 +73,12 @@ welcome page. JupyterLab is on `:8888`, soyuz-catalog's UC API on
 `:8080`.
 
 **Optional — Grafana audit dashboard.** Append the
-`docker-compose.grafana.yml` overlay to spin up Grafana with a
+`docker/docker-compose.grafana.yml` overlay to spin up Grafana with a
 pre-provisioned audit + lineage dashboard at
 `http://127.0.0.1:3000`:
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.grafana.yml up -d
+docker compose -f docker/docker-compose.yml -f docker/docker-compose.grafana.yml up -d
 ```
 
 Reads the same SQLite metadata DB the app uses; no agent code,

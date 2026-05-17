@@ -173,7 +173,7 @@ namespace:
 
 Images are private; consumers authenticate with
 `docker login ghcr.io` and a classic PAT scoped `read:packages`.
-The commented `image:` lines in `docker-compose.yml` turn the
+The commented `image:` lines in `docker/docker-compose.yml` turn the
 stack into a pure-pull install with no source checkout required —
 [`docs/getting-started/installation.md`](docs/getting-started/installation.md) and the
 [`docs/e2e-walkthroughs/packaging.md`](docs/e2e-walkthroughs/packaging.md)
@@ -214,7 +214,7 @@ tool family. The Sprint 23
 orchestration + operational playbooks use host env overlays
 (`POINTLESSQL_JUPYTER_ENABLED`, `POINTLESSQL_LOG_FORMAT`,
 `POINTLESSQL_OIDC_*`, etc.) exposed by
-`docker-compose.e2e.yml` via `${…:-default}` — see
+`docker/docker-compose.e2e.yml` via `${…:-default}` — see
 [`docs/e2e-walkthroughs/README.md`](docs/e2e-walkthroughs/README.md)
 for the full table. When connecting a Playwright MCP server,
 pass `--browser firefox` (or the playwright-bundled

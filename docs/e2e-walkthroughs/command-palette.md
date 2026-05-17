@@ -11,7 +11,7 @@ visibility split on notebook hits.
 
 ## Preconditions
 
-- Stack up via `docker-compose.yml` + `docker-compose.e2e.yml`.
+- Stack up via `docker/docker-compose.yml` + `docker/docker-compose.e2e.yml`.
 - Run [`auth.md`](auth.md) once so `admin@pql.test` and `user@pql.test`
  exist; downstream steps assume admin is logged in.
 - Run [`catalog-browsing.md`](catalog-browsing.md) (or

@@ -29,8 +29,8 @@ Exercises the dbt cockpit at `/dbt`:
 
 - Stack up:
   ```bash
-  docker compose -f docker-compose.yml -f docker-compose.e2e.yml up -d
-  docker compose -f docker-compose.yml -f docker-compose.e2e.yml \
+  docker compose -f docker/docker-compose.yml -f docker/docker-compose.e2e.yml up -d
+  docker compose -f docker/docker-compose.yml -f docker/docker-compose.e2e.yml \
     exec pointlessql python /app/scripts/seed-e2e.py
   ```
 - [`auth.md`](auth.md) ran first — any signed-in user can browse
@@ -142,7 +142,7 @@ clashes with mashumaro 3.17's Python-3.14 fix
 
 1. **Install the `[dbt]` extra into the venv**.
    ```bash
-   docker compose -f docker-compose.yml -f docker-compose.e2e.yml \
+   docker compose -f docker/docker-compose.yml -f docker/docker-compose.e2e.yml \
      exec -T pointlessql /opt/venv/bin/python -m pip install dbt-duckdb
    ```
    - Note: `pip install` lands in the running venv at
@@ -153,7 +153,7 @@ clashes with mashumaro 3.17's Python-3.14 fix
 
 2. **Force-upgrade mashumaro to 3.17 (Python 3.14 unblock)**.
    ```bash
-   docker compose -f docker-compose.yml -f docker-compose.e2e.yml \
+   docker compose -f docker/docker-compose.yml -f docker/docker-compose.e2e.yml \
      exec -T pointlessql /opt/venv/bin/python -m pip install \
        --upgrade --no-deps mashumaro==3.17
    ```
@@ -171,7 +171,7 @@ clashes with mashumaro 3.17's Python-3.14 fix
 
 3. **Compile the in-repo sample project**.
    ```bash
-   docker compose -f docker-compose.yml -f docker-compose.e2e.yml \
+   docker compose -f docker/docker-compose.yml -f docker/docker-compose.e2e.yml \
      exec -w /app -T pointlessql /opt/venv/bin/dbt compile \
        --project-dir dbt_project --profiles-dir dbt_project/profiles
    docker compose ... exec -w /tmp/dbt_project -T pointlessql \
@@ -188,7 +188,7 @@ clashes with mashumaro 3.17's Python-3.14 fix
 
 4. **Restart PointlesSQL so the subprocess starts**.
    ```bash
-   docker compose -f docker-compose.yml -f docker-compose.e2e.yml \
+   docker compose -f docker/docker-compose.yml -f docker/docker-compose.e2e.yml \
      restart pointlessql
    ```
 
@@ -272,8 +272,8 @@ Browser replay for the `/dbt` cockpit (both states):
 
 ```bash
 # Optional: roll back the [dbt] install if you ran Part C
-docker compose -f docker-compose.yml -f docker-compose.e2e.yml \
+docker compose -f docker/docker-compose.yml -f docker/docker-compose.e2e.yml \
   exec pointlessql uv pip uninstall -y dbt-duckdb
-docker compose -f docker-compose.yml -f docker-compose.e2e.yml \
+docker compose -f docker/docker-compose.yml -f docker/docker-compose.e2e.yml \
   restart pointlessql
 ```

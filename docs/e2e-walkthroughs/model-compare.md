@@ -12,7 +12,7 @@ rows on `mlflow_run_id`.
 
 ## Preconditions
 
-- Stack up via `docker-compose.yml` + `docker-compose.e2e.yml`
+- Stack up via `docker/docker-compose.yml` + `docker/docker-compose.e2e.yml`
   with `POINTLESSQL_MLFLOW_ENABLED=1`.
 - [`auth.md`](auth.md) ran first — `admin@pql.test` is signed in.
 - [`models-tab.md`](models-tab.md) ran first — at least 2

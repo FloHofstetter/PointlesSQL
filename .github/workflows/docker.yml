@@ -117,7 +117,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: pointlessql
-          file: pointlessql/Dockerfile
+          file: pointlessql/docker/Dockerfile
           push: true
           tags: ${{ steps.pql_tags.outputs.tags }}
           build-args: |
@@ -132,7 +132,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: pointlessql
-          file: pointlessql/Dockerfile.soyuz
+          file: pointlessql/docker/Dockerfile.soyuz
           push: true
           tags: ghcr.io/flohofstetter/soyuz-catalog:${{ steps.pin.outputs.soyuz_tag }}
           build-contexts: |

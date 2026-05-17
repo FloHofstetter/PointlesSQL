@@ -365,7 +365,7 @@ Screenshots: `06_agents_jobs_models/{01_agent_reviews, 03_jobs_list, 05_dashboar
 - **[CONTENT → P-5]** ML-Empty-State exzellent ("Install pip
   install pointlessql[ml]…"), aber Docker-Path fehlt. **Fix:**
   "**Docker:** add `POINTLESSQL_MLFLOW_ENABLED=1` to
-  `docker-compose.yml`".
+  `docker/docker-compose.yml`".
 - **[STRUCTURAL]** Models-Filter-Row "Catalog [Dropdown] / Schema
   [Textfield]" inkonsistent. **Fix:** Schema als Dropdown,
   populated dynamisch nach Catalog.

@@ -1946,7 +1946,7 @@ PointlesSQL
 │   │   Browser-replay sweep of every UI surface across multiple
 │   │   user roles + config flips, primarily to verify Phase 68's
 │   │   structural HTML/CSS/JS reorganization landed cleanly.  All
-│   │   work on the ``docker-compose.e2e.yml`` stack with the
+│   │   work on the ``docker/docker-compose.e2e.yml`` stack with the
 │   │   ``scripts/seed-e2e.py`` baseline.  ~20 wave-shaped passes;
 │   │   3 bugs found, 1 fixed in-band (BUG-69-03), 1 cascade
 │   │   (BUG-69-02), 1 deploy-hygiene (BUG-69-01) documented.
@@ -2077,7 +2077,7 @@ PointlesSQL
 │   └── 70.9 — Browser-replay carry-over (2026-05-12, autonomous
 │           Playwright-MCP session).  Sprint 70.8's verification
 │           gate was skipped in auto-mode; replayed against the
-│           ``docker-compose.e2e.yml`` stack with both admin
+│           ``docker/docker-compose.e2e.yml`` stack with both admin
 │           (``admin@pql.test``) and member (``flo@pql.test``)
 │           personas.  Green on both: all 92 Alpine state keys
 │           present (5 install functions wire correctly), all 9

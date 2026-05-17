@@ -127,7 +127,7 @@ echo "$GHCR_PAT" | docker login ghcr.io -u <your-github-username> --password-std
 
 ```bash
 mkdir ~/pointlessql && cd ~/pointlessql
-curl -L -o docker-compose.yml \
+curl -L -o docker/docker-compose.yml \
   https://raw.githubusercontent.com/FloHofstetter/PointlesSQL/v0.1.0rc3/docker-compose.yml
 ```
 

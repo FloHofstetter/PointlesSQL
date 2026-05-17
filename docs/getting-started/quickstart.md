@@ -11,7 +11,7 @@ source) see [Installation](installation.md).
 
 ```bash
 mkdir ~/pointlessql-quickstart && cd ~/pointlessql-quickstart
-curl -L -o docker-compose.yml \
+curl -L -o docker/docker-compose.yml \
  https://raw.githubusercontent.com/FloHofstetter/PointlesSQL/main/docker-compose.yml
 echo "$GHCR_PAT" | docker login ghcr.io -u <your-github-handle> --password-stdin
 docker compose pull

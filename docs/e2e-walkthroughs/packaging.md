@@ -24,7 +24,7 @@ published both images with the OCI labels they should carry.
  [CLAUDE.md](https://github.com/FloHofstetter/PointlesSQL/blob/main/CLAUDE.md) (bundled Firefox, not system Chrome).
 - **Do NOT run this playbook from a PointlesSQL source checkout.**
  Compose inside a source tree would find the local
- `docker-compose.yml` with the `build:` blocks active and silently
+ `docker/docker-compose.yml` with the `build:` blocks active and silently
  rebuild instead of pulling — masking the thing this playbook is
  there to test.
 
@@ -33,7 +33,7 @@ published both images with the OCI labels they should carry.
 1. **Fresh tmpdir simulates a clean machine.**
  - Action: `WORK=$(mktemp -d) && cd "$WORK"`.
  - Assert: `ls -a.` shows only `.` and `..` — no stray
- `docker-compose.yml` present.
+ `docker/docker-compose.yml` present.
 
 2. **Anonymous pull fails (proves the images are private).**
  - Action: `docker logout ghcr.io` to wipe any stale credentials.
@@ -51,7 +51,7 @@ published both images with the OCI labels they should carry.
 
 4. **Download the reference compose file at the tag.**
  - Action:
- `curl -fL -o docker-compose.yml https://raw.githubusercontent.com/FloHofstetter/PointlesSQL/v0.1.0rc3/docker-compose.yml`.
+ `curl -fL -o docker/docker-compose.yml https://raw.githubusercontent.com/FloHofstetter/PointlesSQL/v0.1.0rc3/docker-compose.yml`.
  - Assert: the file exists and contains two commented `# image:
  ghcr.io/flohofstetter/...` lines (one per service).
 
@@ -60,10 +60,10 @@ published both images with the OCI labels they should carry.
  and comment the six `build:` lines (`sed -i -E
  's/^([[:space:]]*)# (image: ghcr\.io)/\1\2/;
  s/^([[:space:]]*)(build:| context:| dockerfile:| additional_contexts:| soyuz-catalog:| ssh:| - default| secrets:| - gh_pat)/\1# \2/'
- docker-compose.yml` — exact incantation lives in
+ docker/docker-compose.yml` — exact incantation lives in
  [Installation](../getting-started/installation.md)).
- - Assert: `grep -c '^[[:space:]]*image: ghcr.io' docker-compose.yml` returns `2`.
- - Assert: `grep -c '^[[:space:]]*build:' docker-compose.yml` returns `0`.
+ - Assert: `grep -c '^[[:space:]]*image: ghcr.io' docker/docker-compose.yml` returns `2`.
+ - Assert: `grep -c '^[[:space:]]*build:' docker/docker-compose.yml` returns `0`.
 
 6. **`docker compose pull` succeeds.**
  - Action: `docker compose pull`.

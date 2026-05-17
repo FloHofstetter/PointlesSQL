@@ -140,7 +140,7 @@ browser_evaluate(function='() => getComputedStyle(document.documentElement).getP
 ## Found bugs
 
 _No app bugs surfaced on the replay (2026-04-18, commit
-pending, Playwright MCP against `docker-compose.e2e.yml`). Verified
+pending, Playwright MCP against `docker/docker-compose.e2e.yml`). Verified
 end-to-end:_
 
 - _**Pass A** — `?` opens the help modal with all nine shortcuts

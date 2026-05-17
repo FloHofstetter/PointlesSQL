@@ -20,8 +20,8 @@ dedicated deep-dive playbook before Phase 37 Wave 4.
 
 - Stack up + seed:
   ```bash
-  docker compose -f docker-compose.yml -f docker-compose.e2e.yml up -d
-  docker compose -f docker-compose.yml -f docker-compose.e2e.yml \
+  docker compose -f docker/docker-compose.yml -f docker/docker-compose.e2e.yml up -d
+  docker compose -f docker/docker-compose.yml -f docker/docker-compose.e2e.yml \
     exec pointlessql python /app/scripts/seed-e2e.py
   ```
   `seed-e2e.py` is enough — alerts only need a saved audit

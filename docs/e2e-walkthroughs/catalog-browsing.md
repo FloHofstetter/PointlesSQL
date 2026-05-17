@@ -229,7 +229,7 @@ browser_click(element='Open in notebook button inside PQL Snippet card header')
 
 _No PointlesSQL bugs surfaced on this playbook replay
 (commit f970fce, replayed 2026-04-17 via Playwright MCP against
-the `docker-compose.e2e.yml` stack). Verified end-to-end:_
+the `docker/docker-compose.e2e.yml` stack). Verified end-to-end:_
 
 - _Catalog detail `/catalogs/demo` inline Schemas card listed
  `sales` and `hr` with live `updated_at` timestamps and working

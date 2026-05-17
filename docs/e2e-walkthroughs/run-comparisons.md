@@ -21,8 +21,8 @@ a side-by-side of the two runs' rendered notebook iframes.
 
 - Stack up + seed:
   ```bash
-  docker compose -f docker-compose.yml -f docker-compose.e2e.yml up -d
-  docker compose -f docker-compose.yml -f docker-compose.e2e.yml \
+  docker compose -f docker/docker-compose.yml -f docker/docker-compose.e2e.yml up -d
+  docker compose -f docker/docker-compose.yml -f docker/docker-compose.e2e.yml \
     exec pointlessql python /app/scripts/seed-full-stack-demo.py \
     --fresh --demo-rollback --keep-state
   ```

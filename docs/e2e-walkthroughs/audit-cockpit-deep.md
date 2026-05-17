@@ -26,13 +26,13 @@ this one drives the human cockpit via the browser.
 
 ## Preconditions
 
-- Stack up via `docker compose -f docker-compose.yml -f
-  docker-compose.e2e.yml up -d`.
+- Stack up via `docker compose -f docker/docker-compose.yml -f
+  docker/docker-compose.e2e.yml up -d`.
 - Seed: `seed-e2e.py` is enough for the **chrome** of every
   page. To exercise the **data** paths (anomaly rows, FTS hits,
   reverse-index rows), use
   ```bash
-  docker compose -f docker-compose.yml -f docker-compose.e2e.yml \
+  docker compose -f docker/docker-compose.yml -f docker/docker-compose.e2e.yml \
     exec pointlessql python /app/scripts/seed-full-stack-demo.py \
     --fresh --demo-rollback --keep-state
   ```

@@ -1,8 +1,8 @@
 # Compose override — Playwright MCP walkthrough harness.
 #
 # Usage:
-#   docker compose -f docker-compose.yml -f docker-compose.e2e.yml up -d
-#   docker compose -f docker-compose.yml -f docker-compose.e2e.yml \
+#   docker compose -f docker/docker-compose.yml -f docker/docker-compose.e2e.yml up -d
+#   docker compose -f docker/docker-compose.yml -f docker/docker-compose.e2e.yml \
 #       exec pointlessql python /app/scripts/seed-e2e.py
 #
 # Sprint 22 delivered the base overlay (``postgres-e2e`` sidecar as
@@ -25,7 +25,7 @@ services:
     # in-process scheduler and any subsequent notebook usage will see
     # the seeded Delta tables.
     volumes:
-      - ./scripts:/app/scripts:ro
+      - ../scripts:/app/scripts:ro
     environment:
       # Short scheduler tick for the ``jobs-dag.md`` playbook —
       # ``pointlessql/settings.py`` defaults to 30 s which is too slow
@@ -60,7 +60,7 @@ services:
       - "${E2E_POSTGRES_HOST_PORT:-5433}:5432"
     volumes:
       - postgres_e2e_data:/var/lib/postgresql/data
-      - ./scripts/pg-seed.sql:/docker-entrypoint-initdb.d/seed.sql:ro
+      - ../scripts/pg-seed.sql:/docker-entrypoint-initdb.d/seed.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U e2e -d ecommerce"]
       interval: 5s

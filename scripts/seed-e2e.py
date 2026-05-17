@@ -6,7 +6,7 @@ Creates the fixed catalog/schema/table shape the five playbooks under
 ``foreign-catalog-sync`` playbook uses to spin up a foreign catalog.
 
 Runs against a live stack brought up with
-``docker compose -f docker-compose.yml -f docker-compose.e2e.yml up -d``
+``docker compose -f docker/docker-compose.yml -f docker/docker-compose.e2e.yml up -d``
 and is safe to re-run — every mutation is guarded by a "does it exist?"
 check so reruns are no-ops.
 
@@ -62,7 +62,7 @@ SCHEMAS = ("sales", "hr")
 WAREHOUSE_ROOT = os.environ.get("E2E_WAREHOUSE_ROOT", "/app/warehouse")
 
 CONNECTION_NAME = "pg_e2e"
-# Host/port/user/password default to what ``docker-compose.e2e.yml``
+# Host/port/user/password default to what ``docker/docker-compose.e2e.yml``
 # provisions; override via env when pointing at a different target.
 PG_HOST = os.environ.get("E2E_POSTGRES_HOST", "postgres-e2e")
 PG_PORT = os.environ.get("E2E_POSTGRES_PORT", "5432")

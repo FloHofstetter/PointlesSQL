@@ -1,7 +1,7 @@
 # Compose override — Grafana auto-provisioned audit dashboard.
 #
 # Usage:
-#   docker compose -f docker-compose.yml -f docker-compose.grafana.yml up
+#   docker compose -f docker/docker-compose.yml -f docker/docker-compose.grafana.yml up
 #
 # Adds a Grafana service that reads PointlesSQL's metadata SQLite DB
 # directly via the frser-sqlite-datasource plugin and renders a
@@ -42,8 +42,8 @@ services:
       # ``disk I/O error`` on the first query.  The Grafana plugin
       # only issues SELECTs.
       - pointlessql_data:/data/pointlessql
-      - ./grafana/provisioning:/etc/grafana/provisioning:ro
-      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - ../grafana/provisioning:/etc/grafana/provisioning:ro
+      - ../grafana/dashboards:/var/lib/grafana/dashboards:ro
       - grafana_data:/var/lib/grafana
     depends_on:
       pointlessql:

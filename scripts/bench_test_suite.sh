@@ -10,7 +10,7 @@
 #     PYTEST_XDIST=auto scripts/bench_test_suite.sh # parallel
 #
 # The PG path requires ``TEST_DATABASE_URL`` to already point at a
-# running PG (the docker-compose.postgres.yml lane is the canonical
+# running PG (the docker/docker-compose.postgres.yml lane is the canonical
 # one).  We do not spin one up here on purpose — keeping the script
 # trivial avoids container-lifecycle traps at bench time.
 set -euo pipefail

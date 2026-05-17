@@ -336,10 +336,10 @@ attribute escaping on four admin row templates), fixed in
 
 ```bash
 # from repo root
-docker compose -f docker-compose.yml -f docker-compose.e2e.yml up -d
+docker compose -f docker/docker-compose.yml -f docker/docker-compose.e2e.yml up -d
 # wait for health: `docker compose ps` should show both PointlesSQL
 # and soyuz-catalog "(healthy)" plus postgres-e2e "(healthy)"
-docker compose -f docker-compose.yml -f docker-compose.e2e.yml \
+docker compose -f docker/docker-compose.yml -f docker/docker-compose.e2e.yml \
  exec pointlessql python /app/scripts/seed-e2e.py
 ```
 
@@ -360,15 +360,15 @@ If the cached `pointlessql-pointlessql` image predates Sprint
 first seed:
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.e2e.yml \
+docker compose -f docker/docker-compose.yml -f docker/docker-compose.e2e.yml \
  build pointlessql
-docker compose -f docker-compose.yml -f docker-compose.e2e.yml \
+docker compose -f docker/docker-compose.yml -f docker/docker-compose.e2e.yml \
  up -d --force-recreate pointlessql
 ```
 
 ## Host env overlays
 
-The `docker-compose.e2e.yml` overlay exposes a handful of
+The `docker/docker-compose.e2e.yml` overlay exposes a handful of
 `${…:-default}` env passthroughs so a playbook can flip a single
 knob without editing the file. All are off/default unless the host
 exports the override:
@@ -396,7 +396,7 @@ container so the new env reaches the uvicorn process:
 
 ```bash
 POINTLESSQL_JUPYTER_ENABLED=false docker compose \
- -f docker-compose.yml -f docker-compose.e2e.yml \
+ -f docker/docker-compose.yml -f docker/docker-compose.e2e.yml \
  up -d --force-recreate pointlessql
 ```
 
@@ -421,7 +421,7 @@ PointlesSQL's first-user bootstrap (see
 against a **clean metadata DB**. To reset:
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.e2e.yml down -v
+docker compose -f docker/docker-compose.yml -f docker/docker-compose.e2e.yml down -v
 ```
 
 `down -v` removes the volumes (including the metadata DB and
@@ -477,7 +477,7 @@ attributes. Playbook steps use, in order of preference:
 ## Teardown
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.e2e.yml down -v
+docker compose -f docker/docker-compose.yml -f docker/docker-compose.e2e.yml down -v
 ```
 
 `-v` wipes volumes so the next run starts from a known clean

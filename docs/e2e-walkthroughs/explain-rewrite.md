@@ -27,8 +27,8 @@ Exercises the Phase-39 explain-first rewrite loop end to end:
 
 - Stack up:
   ```bash
-  docker compose -f docker-compose.yml -f docker-compose.e2e.yml up -d
-  docker compose -f docker-compose.yml -f docker-compose.e2e.yml \
+  docker compose -f docker/docker-compose.yml -f docker/docker-compose.e2e.yml up -d
+  docker compose -f docker/docker-compose.yml -f docker/docker-compose.e2e.yml \
     exec pointlessql python /app/scripts/seed-e2e.py
   ```
 - [`auth.md`](auth.md) ran first — admin@pql.test session for the

@@ -28,7 +28,7 @@ run. One fully-written primary walk + five delta walks.
 
 1. **Start with the defaults**.
  ```bash
- docker compose -f docker-compose.yml -f docker-compose.e2e.yml up -d
+ docker compose -f docker/docker-compose.yml -f docker/docker-compose.e2e.yml up -d
  docker compose exec pointlessql python /app/scripts/seed-e2e.py
  ```
 
@@ -60,8 +60,8 @@ confirms the override landed.
 ### Delta A — `POINTLESSQL_DELTA_ENGINE=duckdb`
 
 ```bash
-POINTLESSQL_DELTA_ENGINE=duckdb docker compose -f docker-compose.yml \
- -f docker-compose.e2e.yml up -d --force-recreate pointlessql
+POINTLESSQL_DELTA_ENGINE=duckdb docker compose -f docker/docker-compose.yml \
+ -f docker/docker-compose.e2e.yml up -d --force-recreate pointlessql
 ```
 
 Assert startup log shows `engine=duckdb`. Re-run seed (harmless,
@@ -75,8 +75,8 @@ Same pattern; expect `engine=polars`.
 ### Delta C — `POINTLESSQL_LOG_FORMAT=json`
 
 ```bash
-POINTLESSQL_LOG_FORMAT=json docker compose -f docker-compose.yml \
- -f docker-compose.e2e.yml up -d --force-recreate pointlessql
+POINTLESSQL_LOG_FORMAT=json docker compose -f docker/docker-compose.yml \
+ -f docker/docker-compose.e2e.yml up -d --force-recreate pointlessql
 ```
 
 Assert:
@@ -90,8 +90,8 @@ with a non-null `request_id` field should appear.
 ### Delta D — `DATABASE_URL=postgres`
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.postgres.yml \
- -f docker-compose.e2e.yml up -d --force-recreate pointlessql postgres
+docker compose -f docker/docker-compose.yml -f docker/docker-compose.postgres.yml \
+ -f docker/docker-compose.e2e.yml up -d --force-recreate pointlessql postgres
 ```
 
 Note: a fresh `postgres_data` volume has no users. Re-register
@@ -112,7 +112,7 @@ asserts beyond primary + the per-axis asserts combined.
 ## Cleanup between deltas
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.e2e.yml down -v
+docker compose -f docker/docker-compose.yml -f docker/docker-compose.e2e.yml down -v
 # — reset every env var before re-up —
 ```
 

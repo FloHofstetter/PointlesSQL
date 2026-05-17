@@ -157,7 +157,7 @@ browser_evaluate(function='() => !!document.querySelector(".pql-list-sort-mobile
 
 _No bugs surfaced on the replay (2026-04-17, commit
 pending, Playwright MCP at 375 × 812 / 768 × 1024 / 1280 × 800
-against the `docker-compose.e2e.yml` stack). Verified
+against the `docker/docker-compose.e2e.yml` stack). Verified
 end-to-end:_
 
 - _At **375 px**: the top navbar collapses to hamburger + brand +

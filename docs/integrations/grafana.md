@@ -25,11 +25,11 @@ scrape, no agent code, no API changes.
 ## Install
 
 The overlay file lives at
-[`docker-compose.grafana.yml`](https://github.com/FloHofstetter/PointlesSQL/blob/main/docker-compose.grafana.yml)
+[`docker/docker-compose.grafana.yml`](https://github.com/FloHofstetter/PointlesSQL/blob/main/docker-compose.grafana.yml)
 in the repo root:
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.grafana.yml up -d
+docker compose -f docker/docker-compose.yml -f docker/docker-compose.grafana.yml up -d
 ```
 
 Browse to <http://127.0.0.1:3000>, login with the default
@@ -89,9 +89,9 @@ dashboard JSON:
 
 ```bash
 docker compose \
-  -f docker-compose.yml \
-  -f docker-compose.postgres.yml \
-  -f docker-compose.grafana.postgres.yml up -d
+  -f docker/docker-compose.yml \
+  -f docker/docker-compose.postgres.yml \
+  -f docker/docker-compose.grafana.postgres.yml up -d
 ```
 
 Differences from the SQLite overlay:
@@ -113,7 +113,7 @@ Differences from the SQLite overlay:
   compose network.
 
 The two overlays are mutually exclusive. Operators picking
-Postgres should not also pass `-f docker-compose.grafana.yml`.
+Postgres should not also pass `-f docker/docker-compose.grafana.yml`.
 
 ## Why SQLite, not Prometheus
 
@@ -145,7 +145,7 @@ full row-level detail when an operator clicks into a panel.
 Add panels by exporting them as JSON and dropping into
 `pointlessql/_grafana/dashboards/audit.json`. Re-up the
 overlay; provisioning re-imports. See
-[`docker-compose.grafana.yml`](https://github.com/FloHofstetter/PointlesSQL/blob/main/docker-compose.grafana.yml).
+[`docker/docker-compose.grafana.yml`](https://github.com/FloHofstetter/PointlesSQL/blob/main/docker-compose.grafana.yml).
 
 ## Where to read next
 

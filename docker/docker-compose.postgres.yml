@@ -1,7 +1,7 @@
 # Compose override — Postgres as the PointlesSQL metadata DB.
 #
 # Usage:
-#   docker compose -f docker-compose.yml -f docker-compose.postgres.yml up
+#   docker compose -f docker/docker-compose.yml -f docker/docker-compose.postgres.yml up
 #
 # The base docker-compose.yml uses SQLite by default. This override adds
 # a Postgres service and points PointlesSQL at it instead.

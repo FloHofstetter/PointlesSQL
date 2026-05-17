@@ -31,21 +31,21 @@ around 10⁵ runs.
 
 ## Bring up the stack
 
-The base `docker-compose.yml` defaults to SQLite.  Postgres is a
+The base `docker/docker-compose.yml` defaults to SQLite.  Postgres is a
 compose overlay:
 
 ```bash
 # Postgres metadata DB only.
 docker compose \
-  -f docker-compose.yml \
-  -f docker-compose.postgres.yml up -d
+  -f docker/docker-compose.yml \
+  -f docker/docker-compose.postgres.yml up -d
 
 # With Grafana on Postgres (Sprint 30.2).  The Grafana overlay
-# is mutually exclusive with docker-compose.grafana.yml.
+# is mutually exclusive with docker/docker-compose.grafana.yml.
 docker compose \
-  -f docker-compose.yml \
-  -f docker-compose.postgres.yml \
-  -f docker-compose.grafana.postgres.yml up -d
+  -f docker/docker-compose.yml \
+  -f docker/docker-compose.postgres.yml \
+  -f docker/docker-compose.grafana.postgres.yml up -d
 ```
 
 The PG service uses `postgres:17-alpine` with
@@ -170,10 +170,10 @@ the FTS index, and verifies row counts.
 ```bash
 # Quiesce the source first — stop the SQLite-backed PointlesSQL
 # stack so no writes happen mid-copy.
-docker compose -f docker-compose.yml down
+docker compose -f docker/docker-compose.yml down
 
 # Bring up just Postgres for the new target.
-docker compose -f docker-compose.yml -f docker-compose.postgres.yml up -d postgres
+docker compose -f docker/docker-compose.yml -f docker/docker-compose.postgres.yml up -d postgres
 
 # Run the migration.
 uv run pointlessql migrate-to-postgres \
@@ -181,7 +181,7 @@ uv run pointlessql migrate-to-postgres \
     --target postgresql+psycopg://pointlessql:pointlessql@localhost:5432/pointlessql
 
 # Bring the full PG stack up.
-docker compose -f docker-compose.yml -f docker-compose.postgres.yml up -d
+docker compose -f docker/docker-compose.yml -f docker/docker-compose.postgres.yml up -d
 ```
 
 The CLI carries a `--dry-run` flag that prints source row counts
