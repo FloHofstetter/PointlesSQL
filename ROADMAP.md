@@ -1849,7 +1849,7 @@ PointlesSQL
 │   │     cryptographically verifiable — EU AI Act Art. 12 anchor.
 │   │     Foundation for replay/scenario mode (Phase 103).
 │   │
-│   ├── Phase 98 — DBX-parity quick wins bundle                   ⏳ in progress
+│   ├── Phase 98 — DBX-parity quick wins bundle                   ✅ done 2026-05-20
 │   │     Single sprint covering four small DBX-parity items:
 │   │     magic commands (``%sql``, ``%md``, ``%fs ls``,
 │   │     ``%timeit``) as a thin pre-processor; notebook-tags +
@@ -1866,6 +1866,20 @@ PointlesSQL
 │   │         kernel dispatch, resolving SQL approval server-side per
 │   │         %sql line.  13 new pytest covering line/block parsing,
 │   │         placeholder splicing, and indent preservation.
+│   │       * 98.D ✅ done 2026-05-20 — static HTML / PDF export.
+│   │         New ``services/notebook/export.py`` builds a self-
+│   │         contained HTML document (inline CSS, no external assets,
+│   │         ``@page`` print stylesheet) from the parsed ``.py`` doc +
+│   │         the latest-session ``notebook_outputs`` rows.  Output
+│   │         frames reuse the existing
+│   │         ``services.output_rendering.render_output_frame``
+│   │         pipeline.  Optional ``render_notebook_pdf`` produces real
+│   │         ``application/pdf`` via WeasyPrint when importable; falls
+│   │         back to the HTML body + diagnostic header
+│   │         ``X-PointlesSQL-Export-Fallback`` so the UI can suggest
+│   │         the browser's *Save as PDF*.  Routes
+│   │         ``GET /api/notebooks/export.html`` and ``/export.pdf``.
+│   │         9 new pytest.
 │   │       * 98.C ✅ done 2026-05-20 — cell-level lineage badges.
 │   │         New ``services/notebook/cell_lineage.py`` joins
 │   │         ``notebook_cell_runs`` (filtered to rows with

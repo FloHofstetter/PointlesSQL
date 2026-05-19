@@ -17,6 +17,7 @@ Sub-modules:
 * :mod:`.tags` — notebook-level tag CRUD (Phase 98.B)
 * :mod:`.templates` — starter-template gallery + create (Phase 98.B)
 * :mod:`.cell_lineage` — cell-level write-op badges (Phase 98.C)
+* :mod:`.export` — HTML / PDF export pipeline (Phase 98.D)
 """
 
 from __future__ import annotations
@@ -29,6 +30,9 @@ from pointlessql.api.notebooks_routes.cell_lineage import (
 from pointlessql.api.notebooks_routes.crud import router as _crud_router
 from pointlessql.api.notebooks_routes.discovery import (
     router as _discovery_router,
+)
+from pointlessql.api.notebooks_routes.export import (
+    router as _export_router,
 )
 from pointlessql.api.notebooks_routes.io import router as _io_router
 from pointlessql.api.notebooks_routes.jobs import router as _jobs_router
@@ -46,6 +50,7 @@ router.include_router(_jobs_router)
 router.include_router(_tags_router)
 router.include_router(_templates_router)
 router.include_router(_cell_lineage_router)
+router.include_router(_export_router)
 router.include_router(_pages_router)
 
 

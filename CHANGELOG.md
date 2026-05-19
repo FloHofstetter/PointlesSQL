@@ -6,6 +6,21 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Phase 98.D — Notebook static HTML/PDF export (2026-05-20).**
+  Adds ``GET /api/notebooks/export.html`` and
+  ``GET /api/notebooks/export.pdf`` so users can download a self-
+  contained snapshot of a notebook + its latest outputs.  The HTML
+  document inlines its CSS (no external assets), uses an ``@page``
+  print stylesheet so the browser's *Print → Save as PDF* path
+  produces a clean PDF, and reuses
+  :func:`pointlessql.services.output_rendering.render_output_frame`
+  so the rendered output mime bundles match the inline-editor look.
+  When WeasyPrint is importable, the PDF route returns
+  ``application/pdf`` bytes; otherwise it falls back to HTML with
+  ``X-PointlesSQL-Export-Fallback: weasyprint-unavailable`` so the
+  UI can guide the user.  9 new pytest in
+  ``tests/test_notebook_export.py``.
+
 - **Phase 98.C — Cell-level lineage badges (2026-05-20).**  Adds a
   read-only query helper +
   ``GET /api/notebooks/cell/lineage?path=…&content_hash=…`` that
