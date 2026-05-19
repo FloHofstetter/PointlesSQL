@@ -1974,14 +1974,34 @@ PointlesSQL
 │   │     consumption.  DBX-parity (and ChatGPT-parity) for the
 │   │     "publish a notebook" flow.
 │   │
-│   ├── Phase 101 — Agent-co-authored cells + Reviewer-per-cell   ⏳ planned
-│   │     Every cell tracks its authoring agent (or user) + the
-│   │     memory snapshot it relied on, surfaced in the cell
-│   │     header as a small attribution chip.  Phase-74
-│   │     Reviewer-Agent v2 extends to "review this cell" with
-│   │     inline comments on individual cells (GitHub-PR feel).
-│   │     Closes the loop with Phase 95: reviewer comments are
-│   │     just polymorphic cell comments with an agent author.
+│   ├── Phase 101 — Agent-co-authored cells + Reviewer-per-cell   ⏳ partial
+│   │     Per-cell attribution backbone (Phase 101) shipped 2026-05-20:
+│   │     new ``NotebookCellAuthorship`` ORM + migration
+│   │     ``805d36938963``, 1:1 with :class:`NotebookCellIdentity`.
+│   │     Tracks ``first_author_*`` (user email or ``agents.id`` +
+│   │     ``agent_run_id``) and ``last_modifier_*`` separately so the
+│   │     header chip can render "minted by agent A • last edited by
+│   │     user B".  Service in
+│   │     ``services/notebook/cell_authorship.py``;
+│   │     :func:`upsert_cell_authorship` is the save-path /
+│   │     proposal-acceptance hook.  REST: ``GET
+│   │     /api/notebooks/cell/attribution?cell_uuid=…`` +
+│   │     ``GET /api/agents/{id}/authored-cells``.  13 new pytest.
+│   │     Asset 0.1.0rc36.
+│   │
+│   │     **Deferred:**
+│   │     * **Save-path / acceptance-path wiring** — the upsert
+│   │       service is in place but is not yet invoked by the
+│   │       Phase-95 reconciler or the Phase-96 acceptance flow.
+│   │       Follow-up needed to register the call sites so live
+│   │       cells start filling the table.
+│   │     * **Reviewer-per-cell flow** — the existing polymorphic
+│   │       comment system (``DataProductComment`` already carries
+│   │       ``author_agent_id``) already supports it; the dedicated
+│   │       "review this cell" UI affordance + reviewer-agent tool
+│   │       both land in a follow-up.
+│   │     * **Cell-header attribution chip** — backend is ready;
+│   │       editor render gated by the nested-x-data trap.
 │   │
 │   ├── Phase 102 — Branch-aware notebooks                        ⏳ planned
 │   │     Notebook runs against a Delta-branch (per the existing

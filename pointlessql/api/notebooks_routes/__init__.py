@@ -19,12 +19,16 @@ Sub-modules:
 * :mod:`.cell_lineage` — cell-level write-op badges (Phase 98.C)
 * :mod:`.export` — HTML / PDF export pipeline (Phase 98.D)
 * :mod:`.revisions` — save-snapshot history + diff (Phase 97)
+* :mod:`.cell_authorship` — per-cell attribution (Phase 101)
 """
 
 from __future__ import annotations
 
 from fastapi import APIRouter
 
+from pointlessql.api.notebooks_routes.cell_authorship import (
+    router as _cell_authorship_router,
+)
 from pointlessql.api.notebooks_routes.cell_lineage import (
     router as _cell_lineage_router,
 )
@@ -56,6 +60,7 @@ router.include_router(_templates_router)
 router.include_router(_cell_lineage_router)
 router.include_router(_export_router)
 router.include_router(_revisions_router)
+router.include_router(_cell_authorship_router)
 router.include_router(_pages_router)
 
 

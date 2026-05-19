@@ -6,6 +6,21 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Phase 101 — Per-cell authorship attribution (backend, 2026-05-20).**
+  Adds the ``NotebookCellAuthorship`` table (migration
+  ``805d36938963``) 1:1 with ``NotebookCellIdentity``.  Tracks both
+  the first author (user email **or** ``agents.id`` + the originating
+  ``agent_run_id``) and the most recent modifier so the editor's
+  upcoming cell-header chip can render "minted by agent A • last
+  edited by user B".  Service in
+  ``services/notebook/cell_authorship.py``;
+  :func:`upsert_cell_authorship` is the idempotent save-path /
+  proposal-acceptance hook.  REST:
+  ``GET /api/notebooks/cell/attribution?cell_uuid=…`` and
+  ``GET /api/agents/{agent_id}/authored-cells``.  13 new pytest in
+  ``tests/test_notebook_cell_authorship.py``.  Save-path wiring,
+  reviewer-per-cell UI, and the header chip remain follow-ups.
+
 - **Phase 97 — Notebook revision history + diff (2026-05-20).**
   Save-snapshot machinery for the editor.  New ``NotebookRevision``
   table (migration ``47832b8d57ca``) stores canonical JSON
