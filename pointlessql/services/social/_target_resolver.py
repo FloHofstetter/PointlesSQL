@@ -202,10 +202,45 @@ def resolve_workspace_for_entity(
         if len(parts) != 2 or not all(parts):
             return None
         return _workspace_for_catalog(session_factory, parts[0])
+    if kind == "notebook_cell":
+        return _workspace_for_notebook_cell(session_factory, ref)
     # Other kinds register their resolver in later sub-phases;
     # until then return None so callers fall back to the request's
     # current workspace.
     return None
+
+
+def _workspace_for_notebook_cell(
+    session_factory: Any, entity_ref: str
+) -> int | None:
+    """Probe the workspace owning a ``"{notebook_uuid}:{cell_uuid}"`` ref.
+
+    Phase 95 — notebook-cell social anchors join through the parent
+    notebook's ``workspace_id``.  The cell-uuid half is unique on its
+    own but the cheap probe is via ``notebooks.id`` (already indexed).
+
+    Args:
+        session_factory: SQLAlchemy session factory.
+        entity_ref: Composite ``{notebook_uuid}:{cell_uuid}`` string.
+
+    Returns:
+        The notebook's ``workspace_id`` or ``None`` when the ref is
+        malformed or no notebook exists for the given UUID.
+    """
+    if not entity_ref or ":" not in entity_ref:
+        return None
+    notebook_uuid, _, cell_uuid = entity_ref.partition(":")
+    if not notebook_uuid or not cell_uuid:
+        return None
+    from pointlessql.models.notebook import Notebook
+
+    with session_factory() as session:
+        row = session.execute(
+            select(Notebook.workspace_id).where(Notebook.id == notebook_uuid)
+        ).first()
+        if row is None:
+            return None
+        return int(row[0])
 
 
 def _workspace_for_catalog(

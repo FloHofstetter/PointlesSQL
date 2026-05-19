@@ -203,10 +203,22 @@ async def test_saved_query_endorsement_round_trip(
 
 
 def test_notebook_editor_template_carries_drawer_marker() -> None:
-    """``notebook_editor.html`` references the social offcanvas + factories."""
-    body = (
-        _TEMPLATES_ROOT / "pages/notebook_editor.html"
-    ).read_text()
+    """``notebook_editor.html`` + its partials wire the social drawer.
+
+    Phase 86 split the editor template into page-scoped partials —
+    the drawer markup now lives in
+    ``_partials/notebook_editor/social_drawer.html`` and the Alpine
+    factory wiring in
+    ``_partials/notebook_editor/scripts.html``.  This test
+    concatenates the three relevant files so the assertion still
+    catches a drawer regression without owning a stale literal.
+    """
+    parts = [
+        (_TEMPLATES_ROOT / "pages/notebook_editor.html").read_text(),
+        (_TEMPLATES_ROOT / "pages/_partials/notebook_editor/social_drawer.html").read_text(),
+        (_TEMPLATES_ROOT / "pages/_partials/notebook_editor/scripts.html").read_text(),
+    ]
+    body = "\n".join(parts)
     assert "pql-notebook-social-drawer" in body
     assert 'socialTabs({' in body
     assert 'kind: "notebook"' in body

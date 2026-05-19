@@ -54,12 +54,21 @@ export function installPersistence(state) {
         if (updated[i] && updated[i].content_hash) {
           this.cells[i].content_hash = updated[i].content_hash;
         }
+        if (updated[i] && updated[i].cell_uuid) {
+          this.cells[i].cell_uuid = updated[i].cell_uuid;
+        }
         this.cells[i]._dirty = false;
       }
       this.mtime = data.mtime || this.mtime;
+      if (data.notebook_uuid) {
+        this.notebookUuid = data.notebook_uuid;
+      }
       this.dirty = false;
       this.lastSavedAt = new Date();
       this.errorMessage = '';
+      // Phase 95.2 — refresh per-cell social counts post-save so the
+      // chips reflect any cells that got minted UUIDs this round.
+      this.refreshCellCounts();
     } catch (err) {
       this.errorMessage = (err && err.message) || String(err);
     } finally {

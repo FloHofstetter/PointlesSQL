@@ -1,0 +1,18 @@
+{# Phase 95.3 — Tag-icon button only.
+
+   Pinned tag chips live in the inline panel below the cell now
+   (``cell_tag_picker_panel.html``) — duplicating them in the
+   header just doubled the visual weight without adding anything.
+   The button shows a small badge with the active-tag count so the
+   user still gets a glance signal that this cell carries tags.
+#}
+<button type="button"
+        class="btn btn-sm d-inline-flex align-items-center justify-content-center pql-cell-tag-picker__toggle"
+        :class="(cell.tags || []).filter(t => t && t !== 'parameters').length > 0
+                ? (pickerOpen ? 'btn-primary' : 'btn-outline-primary')
+                : (pickerOpen ? 'btn-primary' : 'btn-outline-secondary')"
+        @click="togglePickerOpen()"
+        :aria-expanded="pickerOpen"
+        :title="(cell.tags || []).filter(t => t && t !== 'parameters').join(', ') || 'Toggle the tag picker'">
+ <i class="bi bi-tag-fill" aria-hidden="true"></i>
+</button>

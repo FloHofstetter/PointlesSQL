@@ -6,6 +6,24 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Phase 95 — Cell-level social (comments / reactions / follows /
+  tags per cell, 2026-05-19).**  Extends the Phase-77.6 polymorphic
+  social schema down to single notebook cells via a new
+  ``notebook_cell`` entity-kind anchored on composite
+  ``{notebook_uuid}:{cell_uuid}`` refs.  Stable cell identity is
+  minted by a save-path reconciler (exact-hash → similarity-gated
+  ordinal fallback → fresh UUID) that keeps the ``.py`` file
+  IDE-agnostic — no sidecar UUID tokens in the marker grammar.
+  Inline ``💬 N`` chip + thread below each cell; six-emoji reactions
+  + follow button piggyback on the existing polymorphic routes.
+  Bulk-counts endpoint collapses N×3 queries into one
+  ``GET /api/social/notebook_cell/_bulk_counts?notebook_id=…``.
+  Cell-tags add a curated dropdown (``#etl``, ``#draft``, ``#prod``,
+  ``#wip``, ``#verified``, ``#broken``) plus a "Custom…" escape for
+  free-text entries — round-tripped through the existing
+  ``tags=[...]`` marker.  26 new tests covering all 8 reconciliation
+  scenarios from the plan.  Asset version bumped to ``0.1.0rc15``.
+
 - **Phase 92 — UI to create a vector index from the Table page
   (2026-05-19).**  When a table has at least one text column and the
   user has ``MANAGE_GRANTS``, the ``Semantic search`` tab is now

@@ -29,6 +29,7 @@ _POLYMORPHIC_KINDS: frozenset[str] = frozenset(
         "notebook",
         "saved_query",
         "workspace",
+        "notebook_cell",
     }
 )
 
@@ -204,6 +205,28 @@ def parse_ref(kind: str, ref: str) -> str:
             raise HTTPException(
                 status_code=400,
                 detail="kind='workspace' ref must be a slug",
+            )
+        return ref
+    if kind == "notebook_cell":
+        # Phase 95 — composite ref ``{notebook_uuid}:{cell_uuid}``.
+        # Both halves are 36-char UUIDs.  The cell-uuid identity is
+        # minted by the save-path reconciler; URL clients pass it
+        # back verbatim.
+        notebook_uuid, sep, cell_uuid = ref.partition(":")
+        if (
+            not sep
+            or len(notebook_uuid) != 36
+            or notebook_uuid.count("-") != 4
+            or len(cell_uuid) != 36
+            or cell_uuid.count("-") != 4
+        ):
+            # bare-http-ok: ref shape is the API contract.
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "kind='notebook_cell' ref must be "
+                    "'{notebook_uuid}:{cell_uuid}' (two 36-char UUIDs)"
+                ),
             )
         return ref
     if kind not in _POLYMORPHIC_KINDS:

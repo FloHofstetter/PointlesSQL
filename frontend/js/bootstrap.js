@@ -129,6 +129,19 @@ import { notebookEditor } from './notebook/notebook_editor.js';
 window.cellEditor = cellEditor;
 window.notebookEditor = notebookEditor;
 
+// Phase 95.2 — per-cell social thread.  cellThread powers the inline
+// 💬 chip + collapsible thread below each cell on /notebooks/edit/{path}.
+// Comments + reactions + follows ride the polymorphic
+// /api/social/notebook_cell/{ref}/... routes.
+import { cellThread } from './notebook/cell_thread.js';
+
+window.cellThread = cellThread;
+
+// Phase 95.3 — the cell-tag picker lives inside the per-cell
+// ``cellThread`` factory now (was a separate nested ``cellTagPicker``
+// x-data, but Alpine snapshotted the ``cell`` POJO so picker mutations
+// never reached ``cells[i].tags``).  No separate registration needed.
+
 // Cmd+K command palette.  bootstrap.js re-attaches the factory under
 // the same window name so the partial's x-data="commandPalette()"
 // keeps working unchanged.

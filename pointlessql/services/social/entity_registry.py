@@ -221,6 +221,23 @@ def _agent_memory_url(entity_ref: str) -> str:
     return f"/memory/{entity_ref}"
 
 
+def _notebook_cell_url(entity_ref: str) -> str:
+    """Map a notebook-cell composite ref to its in-editor anchor URL.
+
+    Phase 95 — notebook-cell anchors use the composite
+    ``"{notebook_uuid}:{cell_uuid}"`` ref shape so a citation can
+    deep-link to the cell inside the notebook editor.  Falls back to
+    the notebooks index on malformed refs so audit-log rendering
+    never crashes.
+    """
+    if not entity_ref or ":" not in entity_ref:
+        return "/notebooks"
+    notebook_uuid, _, cell_uuid = entity_ref.partition(":")
+    if not notebook_uuid or not cell_uuid:
+        return "/notebooks"
+    return f"/notebooks/uuid/{notebook_uuid}?cell={cell_uuid}"
+
+
 def _workspace_url(entity_ref: str) -> str:
     """Map a workspace slug to its landing page URL.
 
@@ -490,6 +507,31 @@ _REGISTRY: dict[str, EntityKindSpec] = {
         tab_keys=(
             "discussion",
             "endorsements",
+            "followers",
+        ),
+    ),
+    # Phase 95 — notebook-cell anchors host the inline cell-thread
+    # surface (comments + reactions + followers) for a single cell.
+    # entity_ref is the composite ``{notebook_uuid}:{cell_uuid}``; the
+    # ``cell_uuid`` half is the stable identity minted by the
+    # save-path reconciler in
+    # ``pointlessql.services.notebook.cell_reconciliation``.  Reviews
+    # off (cells aren't curated artefacts); endorsements / READMEs /
+    # issues off (overkill at cell scope — Phase 101 will layer
+    # reviewer-per-cell on top of the same anchor).  Stars off (cells
+    # are notebook-internal; bookmarks live at notebook level).
+    "notebook_cell": EntityKindSpec(
+        key="notebook_cell",
+        label="Notebook cell",
+        url_for=_notebook_cell_url,
+        audit_target_prefix="notebook_cell",
+        supports_reviews=False,
+        supports_endorsements=False,
+        supports_readme=False,
+        supports_issues=False,
+        supports_stars=False,
+        tab_keys=(
+            "discussion",
             "followers",
         ),
     ),

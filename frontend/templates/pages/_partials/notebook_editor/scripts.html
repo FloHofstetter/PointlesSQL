@@ -7,7 +7,14 @@ function notebookDiscussion(notebookUuid) {
     commentsLoaded: false,
     draftBody: '',
     async init() {
-      const res = await window.pqlApi.fetch('/api/social/notebook/' + notebookUuid + '/comments');
+      // ``silent: true`` — the social drawer auto-opens on page mount;
+      // a 404 / empty-thread response is the normal first-visit shape
+      // and must not raise a global toast (was firing "no comments" /
+      // "no readme" toasts on every notebook open until Phase 95.5).
+      const res = await window.pqlApi.fetch(
+        '/api/social/notebook/' + notebookUuid + '/comments',
+        { silent: true },
+      );
       this.comments = (res && res.ok && res.data && res.data.comments) || [];
       this.commentsLoaded = true;
     },
@@ -31,7 +38,13 @@ function notebookReadme(notebookUuid) {
     editing: false,
     readmeLoaded: false,
     async init() {
-      const res = await window.pqlApi.fetch('/api/social/notebook/' + notebookUuid + '/readme');
+      // ``silent: true`` — notebooks usually have no README at first
+      // load and the server returns ``404 {"detail": "no readme"}``.
+      // Without the silent flag every notebook open showed a toast.
+      const res = await window.pqlApi.fetch(
+        '/api/social/notebook/' + notebookUuid + '/readme',
+        { silent: true },
+      );
       this.bodyRendered = (res && res.ok && res.data && (res.data.body_md_resolved || res.data.body_md)) || '';
       this.draftBody = (res && res.ok && res.data && res.data.body_md) || '';
       this.readmeLoaded = true;

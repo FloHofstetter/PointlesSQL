@@ -26,6 +26,9 @@ from pointlessql.api.social_routes import (
     reviews,
     stars,
 )
+from pointlessql.api.social_routes._polymorphic_handlers import (
+    _notebook_cell_counts,
+)
 
 router = APIRouter()
 router.include_router(comments.router)
@@ -37,6 +40,7 @@ router.include_router(readme.router)
 router.include_router(stars.router)
 router.include_router(issues.router)
 router.include_router(_issue_taxonomy.router)
+router.include_router(_notebook_cell_counts.router)
 
 
 __all__: list[str] = ["router"]

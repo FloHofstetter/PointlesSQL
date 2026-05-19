@@ -91,9 +91,72 @@ export function notebookEditor({ initialPath = '' } = {}) {
  _kernel: null,
  _liveOutputs: {},
  _runStatus: {},
+ // Phase 94: per-cell run-duration tracking, keyed by content_hash.
+ // Wall-clock delta captured client-side from performance.now()
+ // between the ``execute_input`` iopub frame and the matching
+ // ``execute_reply`` on the shell channel. Persistent display
+ // across reload would require the backend to pass through the
+ // existing ``NotebookCellRun.started_at`` / ``finished_at`` fields
+ // over the WS frame — out of scope for Phase 94.
+ _runStartedAt: {},
+ _runDurationMs: {},
  _autosaveTimer: null,
  _historyByCell: {},
  historyOpenFor: null,
+ // Phase 95.2 — per-cell social: notebook UUID + bulk-count snapshot.
+ // ``notebookUuid`` lands from /api/notebooks/load; ``cellCounts`` is
+ // a ``{ cell_uuid -> { comments, reactions, followers } }`` map
+ // populated by ``refreshCellCounts()`` once on init and after each
+ // save.  Cells that have no entry are simply rendered without a
+ // count badge.
+ notebookUuid: null,
+ cellCounts: {},
+
+ /**
+  * Phase 95.2 — fetch per-cell social counts for this notebook.
+  *
+  * Called on initial load + after every successful save.  Failures
+  * are non-fatal (chips stay at their last-known counts) so a
+  * transient API hiccup never blocks the editor.
+  */
+ async refreshCellCounts() {
+  if (!this.notebookUuid) return;
+  try {
+   const res = await window.pqlApi.fetch(
+    `/api/social/notebook_cell/_bulk_counts?notebook_id=${encodeURIComponent(this.notebookUuid)}`,
+    { silent: true },
+   );
+   if (res.ok && res.data && res.data.counts) {
+    this.cellCounts = res.data.counts;
+   }
+  } catch {
+   // Non-fatal — leave the prior snapshot in place.
+  }
+ },
+
+ /**
+  * Initial-counts payload for one cell's ``cellThread`` factory.
+  */
+ cellCountsFor(cell) {
+  if (!cell || !cell.cell_uuid) return null;
+  return this.cellCounts[cell.cell_uuid] || null;
+ },
+
+ /**
+  * Format the most recent run duration for ``cell`` as a human
+  * string ("0.2s" / "1.4s" / "2m 3s"), or '' if the cell hasn't
+  * finished a run yet in this session.
+  */
+ runDurationFor(cell) {
+  if (!cell || !cell.content_hash) return '';
+  const ms = this._runDurationMs[cell.content_hash];
+  if (ms == null || !Number.isFinite(ms) || ms < 0) return '';
+  if (ms < 1000) return `${Math.round(ms)}ms`;
+  if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
+  const m = Math.floor(ms / 60000);
+  const s = Math.round((ms - m * 60000) / 1000);
+  return `${m}m ${s}s`;
+ },
 
  async init() {
  try {
@@ -110,11 +173,13 @@ export function notebookEditor({ initialPath = '' } = {}) {
  this.path = res.data.path || this.path;
  this.dirty = !!res.data.dirty;
  this.mtime = res.data.mtime || null;
+ this.notebookUuid = res.data.notebook_uuid || null;
  this.cells = (res.data.cells || []).map((cell) => ({
  ...cell,
  _dirty: false,
  }));
  this.outputs = res.data.outputs || [];
+ this.refreshCellCounts();
  this._seedLiveOutputs();
  this.loading = false;
  // Wait one frame so Alpine's x-for has rendered the cell DOM,

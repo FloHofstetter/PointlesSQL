@@ -17,7 +17,8 @@
 <div class="pql-notebook-shell"
      x-data='notebookEditor({ initialPath: {{ notebook_path | tojson }} })'
      x-init="init()"
-     @beforeunload.window="destroy()">
+     @beforeunload.window="destroy()"
+     @pql:cell-tag-changed="dirty = true; _scheduleAutosave && _scheduleAutosave()">
 
 
  {% include "pages/_partials/notebook_editor/toolbar.html" %}
@@ -46,16 +47,38 @@
  </div>
 
  <template x-for="cell in cells" :key="cell.id">
-  <div class="pql-notebook-cell">
+  <div class="pql-notebook-cell"
+       x-data='cellThread({
+         notebookUuid: notebookUuid,
+         cell: cell,
+         initialCounts: cellCountsFor(cell),
+         curatedTags: {{ curated_cell_tags|tojson }}
+       })'
+       x-effect="applyCounts(cellCountsFor(cell))">
    <div class="pql-notebook-cell__header">
     <div class="d-flex align-items-center gap-2">
+     {# Phase 95.x layout — Run button moved to the very left of the
+        cell header, before the type-pill, so the kernel-action sits
+        where the eye lands first when scanning a notebook. #}
+     <button type="button"
+             class="btn btn-sm btn-outline-success"
+             @click="runCell(cell)"
+             :disabled="cell.cell_type === 'markdown' || kernelStatus !== 'ready'"
+             title="Run this cell">
+      <i class="bi bi-play-fill" aria-hidden="true"></i>
+      Run
+     </button>
      <span class="pql-notebook-cell__type-pill"
            :data-cell-type="cell.cell_type"
            x-text="cellLabel(cell)"></span>
      <span class="text-muted small"
+           :title="cell.content_hash"
            x-text="`[${cell.exec_count != null ? cell.exec_count : ' '}]`"></span>
-     <span class="text-muted"
-           x-text="cell.content_hash.slice(0, 8)"></span>
+     <span class="text-muted small font-monospace"
+           x-show="runDurationFor(cell)"
+           x-text="runDurationFor(cell)"
+           x-cloak
+           title="Wall-clock duration of the most recent run"></span>
      <template x-if="cell.cell_type === 'sql'">
       <div class="d-flex align-items-center gap-1">
        <span class="text-muted small">→</span>
@@ -73,13 +96,23 @@
      <span class="text-muted"
            x-show="cell._dirty"
            title="Cell modified since last save">●</span>
+     {# Phase 95.3 — Tag-picker toggle.  Lives in the right cluster
+        flush with the social chip + run cluster so all per-cell
+        action buttons sit together on the right edge. #}
+     {% include "pages/_partials/notebook_editor/cell_tag_picker.html" %}
+     {# Phase 95.2 — 💬 chip toggles the inline cell-thread below.
+        Hidden when the cell has no stable UUID yet (not saved since
+        Phase 95 landed); first save mints one and the chip appears. #}
      <button type="button"
-             class="btn btn-sm btn-outline-success"
-             @click="runCell(cell)"
-             :disabled="cell.cell_type === 'markdown' || kernelStatus !== 'ready'"
-             title="Run this cell">
-      <i class="bi bi-play-fill" aria-hidden="true"></i>
-      Run
+             class="btn btn-sm pql-cell-thread__chip"
+             :class="hasActivity ? 'btn-outline-primary' : 'btn-outline-secondary'"
+             x-show="cell.cell_uuid"
+             @click="toggle()"
+             :aria-expanded="open"
+             title="Toggle comments / reactions / followers for this cell">
+      <i class="bi bi-chat-dots" aria-hidden="true"></i>
+      <span x-show="commentCount > 0" x-cloak
+            class="ms-1" x-text="commentCount"></span>
      </button>
      <div class="dropdown">
       <button class="btn btn-sm btn-outline-secondary dropdown-toggle"
@@ -160,8 +193,25 @@
          @keydown.meta.enter.prevent="runCell(cell)"
          @keydown.escape="cell.cell_type === 'markdown' ? exitMarkdownEdit(cell) : null"></div>
    </template>
-   <div class="pql-notebook-cell__output"
-        :id="`pql-cell-output-${cell.id}`"></div>
+   <div class="pql-notebook-cell__output-zone"
+        :class="{ 'pql-notebook-cell__output-zone--ran': cell.exec_count != null }">
+    <div class="pql-notebook-cell__output-label"
+         x-show="cell.exec_count != null"
+         x-cloak>
+     <span x-text="`Out[${cell.exec_count}]:`"></span>
+     <button type="button"
+             class="btn btn-link btn-sm p-0 ms-auto text-muted"
+             @click="_clearOutput(cell)"
+             title="Clear output for this cell (does not re-run)">
+      <i class="bi bi-x-lg" aria-hidden="true"></i>
+      <span class="visually-hidden">Clear output</span>
+     </button>
+    </div>
+    <div class="pql-notebook-cell__output"
+         :id="`pql-cell-output-${cell.id}`"></div>
+   </div>
+   {% include "pages/_partials/notebook_editor/cell_tag_picker_panel.html" %}
+   {% include "pages/_partials/notebook_editor/cell_thread.html" %}
    <template x-if="historyOpenFor === cell.id">
     <div class="pql-notebook-cell__history">
      <div class="pql-notebook-cell__history-header">

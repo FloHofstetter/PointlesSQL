@@ -1,0 +1,87 @@
+{# Phase 95.3 — Inline tag picker panel.
+
+   Rendered below the cell next to the social-thread region.  Inline
+   panel matches the cellThread social-thread expansion pattern so
+   users get a predictable "click → expansion below the cell"
+   behaviour, with no dropdown z-index / clipping problems.
+
+   Mutations target the live ``cell`` via inline expressions so the
+   parent's reactive ``cells[i].tags`` array is the one being
+   mutated — Alpine snapshotted ``cell`` when passed as a factory
+   arg, so factory methods could not modify the right reference.
+#}
+<div class="pql-notebook-cell__tag-panel"
+     x-show="pickerOpen && cell.cell_uuid"
+     x-cloak>
+ <div class="pql-notebook-cell__tag-panel-header">
+  <strong>Cell tags</strong>
+  <button type="button" class="btn-close btn-close-sm ms-auto"
+          @click="pickerOpen = false; pickerCustomMode = false; pickerCustomDraft = ''"
+          aria-label="Close tag picker"></button>
+ </div>
+ <div class="pql-notebook-cell__tag-panel-section">
+  <div class="text-muted small mb-1">On this cell</div>
+  <div class="d-flex flex-wrap gap-1">
+   <template x-if="(cell.tags || []).filter(t => t && t !== 'parameters').length === 0">
+    <span class="text-muted small fst-italic">No tags yet — pick one below.</span>
+   </template>
+   <template x-for="tag in (cell.tags || []).filter(t => t && t !== 'parameters')" :key="tag">
+    <span class="badge rounded-pill pql-cell-tag" role="button"
+          @click="cell.tags = (cell.tags || []).filter(t => t !== tag); cell._dirty = true; $dispatch('pql:cell-tag-changed')"
+          title="Click to remove">
+     <span x-text="`#${tag}`"></span>
+     <i class="bi bi-x ms-1" aria-hidden="true"></i>
+    </span>
+   </template>
+  </div>
+ </div>
+ <div class="pql-notebook-cell__tag-panel-section">
+  <div class="text-muted small mb-1">Add curated</div>
+  <div class="d-flex flex-wrap gap-1 pql-notebook-cell__tag-panel-curated">
+   <template x-if="curatedTags.filter(t => !(cell.tags || []).includes(t)).length === 0">
+    <span class="text-muted small fst-italic">
+     All curated tags are already on this cell.
+    </span>
+   </template>
+   <template x-for="tag in curatedTags.filter(t => !(cell.tags || []).includes(t))" :key="tag">
+    <button type="button" class="btn btn-sm btn-outline-secondary"
+            @click="if (!Array.isArray(cell.tags)) cell.tags = []; if (!cell.tags.includes(tag)) cell.tags.push(tag); cell._dirty = true; $dispatch('pql:cell-tag-changed')">
+     <span x-text="`#${tag}`"></span>
+    </button>
+   </template>
+  </div>
+ </div>
+ <div class="mt-2">
+  <template x-if="!pickerCustomMode">
+   <button type="button" class="btn btn-sm btn-link p-0"
+           @click="pickerCustomMode = true">
+    <i class="bi bi-plus-circle me-1" aria-hidden="true"></i>
+    Add custom tag…
+   </button>
+  </template>
+  <template x-if="pickerCustomMode">
+   <form class="d-flex gap-2 align-items-center" @submit.prevent="
+     let v = (pickerCustomDraft || '').trim().replace(/^#+/, '').trim();
+     if (v && v !== 'parameters') {
+       if (!Array.isArray(cell.tags)) cell.tags = [];
+       if (!cell.tags.includes(v)) cell.tags.push(v);
+       cell._dirty = true;
+       $dispatch('pql:cell-tag-changed');
+     }
+     pickerCustomDraft = '';
+     pickerCustomMode = false;
+   ">
+    <input type="text"
+           class="form-control form-control-sm pql-notebook-cell__tag-panel-input"
+           placeholder="custom-tag"
+           x-model="pickerCustomDraft"
+           @keydown.escape="pickerCustomMode = false; pickerCustomDraft = ''"
+           x-init="$nextTick(() => $el.focus())">
+    <button type="submit" class="btn btn-sm btn-primary"
+            :disabled="!pickerCustomDraft.trim()">Add</button>
+    <button type="button" class="btn btn-sm btn-outline-secondary"
+            @click="pickerCustomMode = false; pickerCustomDraft = ''">Cancel</button>
+   </form>
+  </template>
+ </div>
+</div>

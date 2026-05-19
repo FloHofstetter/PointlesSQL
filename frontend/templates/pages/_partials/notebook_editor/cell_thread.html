@@ -1,0 +1,101 @@
+{# Phase 95.2 — Inline cell-social thread.
+
+   Rendered inside the parent ``.pql-notebook-cell`` whose ``x-data``
+   already mounted the ``cellThread`` factory.  Only the body shows /
+   hides via ``x-show="open"`` — the chip itself lives in the cell
+   header and toggles ``open`` through the factory's ``toggle()``.
+
+   No ``x-data`` here; that would create a sibling factory instance
+   that doesn't see the chip's ``open`` flag.
+
+   The thread is hidden when the cell has no stable UUID yet (e.g.
+   never saved since Phase 95 landed); the chip in the header is
+   gated the same way, so this section is effectively dead until
+   the first save.
+#}
+<div class="pql-notebook-cell__thread"
+     x-show="open && cell.cell_uuid"
+     x-cloak>
+ <div class="pql-notebook-cell__thread-header">
+  <strong>Cell discussion</strong>
+  <div class="d-flex align-items-center gap-2 ms-auto">
+   <button type="button"
+           class="btn btn-sm"
+           :class="following ? 'btn-primary' : 'btn-outline-primary'"
+           @click="toggleFollow()">
+    <i class="bi" :class="following ? 'bi-bell-fill' : 'bi-bell'"
+       aria-hidden="true"></i>
+    <span class="ms-1" x-text="following ? 'Following' : 'Follow'"></span>
+    <span class="ms-1 text-muted small"
+          x-show="followerCount > 0"
+          x-text="`(${followerCount})`"></span>
+   </button>
+   <button type="button" class="btn-close btn-close-sm"
+           @click="open = false"
+           aria-label="Close cell discussion"></button>
+  </div>
+ </div>
+
+ <template x-if="loading">
+  <div class="text-muted small py-2">Loading…</div>
+ </template>
+ <template x-if="error">
+  <div class="alert alert-danger py-2 small mb-2" x-text="error"></div>
+ </template>
+
+ <div class="pql-notebook-cell__thread-reactions"
+      x-show="loaded"
+      x-cloak>
+  <template x-for="r in reactions" :key="r.emoji">
+   <button type="button"
+           class="btn btn-sm pql-cell-reaction"
+           :class="r.mine ? 'btn-primary' : 'btn-outline-secondary'"
+           @click="toggleReaction(r.emoji)"
+           :title="`React with ${r.emoji}`">
+    <span x-text="r.emoji"></span>
+    <span class="ms-1" x-show="r.count > 0" x-text="r.count"></span>
+   </button>
+  </template>
+ </div>
+
+ <div class="pql-notebook-cell__thread-comments"
+      x-show="loaded"
+      x-cloak>
+  <template x-for="c in comments" :key="c.id">
+   <div class="card mb-2"
+        x-show="!c.deleted_at">
+    <div class="card-body py-2">
+     <div class="small text-muted mb-1 d-flex align-items-center">
+      <strong x-text="(c.author && (c.author.display_name || c.author.email)) || 'unknown'"></strong>
+      <span class="mx-1">·</span>
+      <span x-text="pqlRelativeTime(c.created_at)"
+            :title="pqlAbsTime(c.created_at)"></span>
+      <button type="button"
+              class="btn btn-link btn-sm p-0 ms-auto text-muted"
+              @click="deleteComment(c.id)"
+              title="Delete comment">
+       <i class="bi bi-trash" aria-hidden="true"></i>
+      </button>
+     </div>
+     <div class="pql-comment-body"
+          x-html="c.body_md_resolved || c.body_md"></div>
+    </div>
+   </div>
+  </template>
+  <template x-if="comments.length === 0">
+   <div class="text-muted small py-2">
+    No comments on this cell yet.
+   </div>
+  </template>
+  <form class="mt-2" @submit.prevent="submitComment()">
+   <textarea class="form-control form-control-sm mb-2" rows="2"
+             x-model="draftBody"
+             placeholder="Comment on this cell…"></textarea>
+   <button class="btn btn-primary btn-sm" type="submit"
+           :disabled="!draftBody.trim() || submitting">
+    <span x-show="!submitting" x-cloak>Post</span>
+    <span x-show="submitting" x-cloak>Posting…</span>
+   </button>
+  </form>
+ </div>
+</div>

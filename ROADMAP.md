@@ -1572,6 +1572,305 @@ PointlesSQL
 │             and REST route.  All green; ``alembic check``
 │             clean.
 │
+├── Phase 93 — Notebook-Editor UX quick wins                  ✅ shipped (local, 2026-05-19)
+│       Six surgical fixes after the Phase-12.12 editor wire-up
+│       brought the toolbar back into rotation and Playwright
+│       replays revealed several visual rough edges.  All
+│       frontend-only; one ``pyproject.toml`` version bump
+│       (``0.1.0rc12`` → ``0.1.0rc13``) busts the asset cache.
+│
+│       1. **Toolbar title vertical-rendering bug** — flex-child
+│          ``.pql-notebook-path`` collapsed buchstabenweise next
+│          to 15 sibling pills because ``word-break: break-all``
+│          + missing ``min-width: 0``.  Switched to single-line
+│          ellipsis with ``:title`` tooltip and gave the toolbar
+│          ``flex-wrap`` so overflow goes to a new row instead.
+│       2. **Toolbar grouping** — three ``.pql-toolbar-group``
+│          clusters: ``[Interrupt · Restart]``,
+│          ``[Save · Schedule · Run as job]``,
+│          ``[Jobs · Variables]``.  Inlined the floating
+│          ``⌘S`` kbd hint into the Save button.
+│       3. **Native prompt/confirm → Bootstrap modals** — new
+│          ``notebookDialogs()`` mixin spread into
+│          ``notebookWorkspace()``; new partial
+│          ``pages/_partials/notebooks_workspace/notebook_modals.html``
+│          with create/rename + delete modals.  Client-side
+│          validation: ``.py`` suffix, no leading ``/``, no
+│          ``..`` segments, no double-slashes.  Modal toggle via
+│          ``:class="{ 'show d-block': flag }"`` (Alpine 3.14 +
+│          ``.modal`` quirk — memory
+│          ``feedback_bootstrap_modal_x_show``).
+│          *Close-out fix:* ``openCreate`` / ``openRename`` /
+│          ``openDeleteDialog`` mutate the dialog state fields
+│          individually instead of replacing the dialog object as
+│          a whole.  Replacing a nested reactive object detaches
+│          Alpine bindings that captured deps on the old proxy —
+│          the ``:disabled`` binding on the submit button stopped
+│          re-evaluating in particular.  Caught during live
+│          browser verification, fixed at source.
+│       4. **Output iframe dark-theme fix** —
+│          [`output_renderer.js`](frontend/js/notebook/output_renderer.js)
+│          reads ``document.documentElement.dataset.bsTheme``
+│          and bakes matching ``color`` / ``border`` / ``th-bg``
+│          into the srcdoc.  Wrapper CSS
+│          ``.pql-notebook-output__iframe`` flipped from
+│          ``background: white`` to ``transparent`` with
+│          ``color-scheme: light dark``.
+│       5. **Workspace "New notebook…" CTA** — dropped the
+│          inline ``font-size: 0.75rem`` + ``btn-sm`` shrink;
+│          now a normal-size ``btn-primary`` with
+│          ``bi-plus-lg`` icon, refresh moved to ``ms-auto``.
+│       6. **Sidebar ``.ipynb`` chip detox** —
+│          [`workspace_sidebar.js`](frontend/js/components/sidebars/workspace_sidebar.js)
+│          ``formatBadge()`` now returns
+│          ``bg-info-subtle text-info-emphasis`` for ``.py`` and
+│          ``bg-secondary-subtle text-secondary-emphasis`` for
+│          ``.ipynb`` — no more orange warning-looking pill.
+│
+├── Phase 94 — Notebook-Editor UX polish                       ✅ shipped (local, 2026-05-19)
+│       Follow-up polish bundle to Phase 93.  Adds the visual
+│       structure Jupyter users expect (Out[N] frame, run-duration
+│       display) without touching the backend.  Wall-clock duration
+│       is captured client-side via ``performance.now()`` between
+│       the ``execute_input`` and ``execute_reply`` frames —
+│       persistent duration after reload would need backend
+│       timestamp propagation through the iopub WS (deferred to a
+│       later phase).  Asset version bumped to ``0.1.0rc14``.
+│
+│       1. **Cell-header hash to tooltip** — the 8-char FNV
+│          ``content_hash`` slice next to ``[N]`` is now a tooltip
+│          on the ``[N]`` element itself; the separate visible
+│          span is gone.
+│       2. **Out[N] output frame** — new
+│          ``.pql-notebook-cell__output-zone`` wrapper with a small
+│          ``Out[N]:`` label header above the output container.
+│          The output zone gets a top border only when the cell has
+│          actually executed (``exec_count != null``), keeping
+│          never-run cells visually quiet.
+│       3. **Run duration display** — new ``runDurationFor(cell)``
+│          helper in [`notebook_editor.js`](frontend/js/notebook/notebook_editor.js)
+│          formats the client-side wall-clock ms into ``0.2s`` /
+│          ``1.4s`` / ``2m 3s``.  Captured in
+│          [`kernel_execution.js`](frontend/js/notebook/kernel_execution.js)
+│          on ``execute_input`` (stamp) → ``execute_reply``
+│          (delta).  Shown next to ``[N]`` in the cell header.
+│       4. **Clear-output per cell** — new ``_clearOutput(cell)``
+│          method in [`markdown_output.js`](frontend/js/notebook/markdown_output.js)
+│          drops the live-output buffer + duration for one cell
+│          without re-running it.  Triggered by the small ``×`` in
+│          the new Out[N] label header.
+│       5. **Workspace action-cluster spacing** — filename span
+│          now has ``flex-grow-1`` + ``min-width: 0`` + ``:title``
+│          so long names ellipsis-truncate instead of crowding the
+│          Edit / Schedule / ⋯ buttons.
+│
+├── Phases 95–105 — Notebook v3 (DBX-parity + agent-native lift)  ⏳ planned
+│       Multi-phase axis to bring notebooks to Databricks-parity on
+│       the basics (cell-level UX, revision history, widget cells,
+│       permissions, dashboard view) and surpass on the
+│       agent-native + provenance axes where shoreguard, Phase-90
+│       memory and the delta-branching idea give us infrastructure
+│       DBX doesn't have.  Notebooks are already polymorphic-social
+│       at notebook-level since Phase 77.6; the natural next step
+│       is cell-level granularity.  Phase scoping is intentionally
+│       narrow — exact specs land in dedicated plan files before
+│       each sprint.  Order respects dependencies (cell-level
+│       social + revision history land before reviewer-per-cell +
+│       replay mode).
+│
+│   ├── Phase 95 — Cell-level social                              ✅ shipped (local, 2026-05-19)
+│   │   │
+│   │   │   Extends the Phase-77.6 polymorphic-social schema down to
+│   │   │   single cells.  A user (or a Phase-101 reviewer agent) can
+│   │   │   now drop a comment on the specific cell that broke, react
+│   │   │   to the chart in cell 7, follow that one cell, and tag it
+│   │   │   with ``#etl`` / ``#draft`` / ``#prod`` for light
+│   │   │   categorisation.  Closest analog: Google Colab
+│   │   │   cell-comments (DBX has no real cell-social surface).
+│   │   │
+│   │   │   The hard part — stable cell identity that survives source
+│   │   │   edits while keeping the ``.py`` file IDE-agnostic — gets
+│   │   │   solved by a new ``notebook_cells`` mapping table + a
+│   │   │   three-pass reconciler at save time (exact-hash, then
+│   │   │   similarity-gated ordinal fallback, then fresh UUID).
+│   │   │   See [`docs/concepts/cell-level-social.md`](docs/concepts/cell-level-social.md)
+│   │   │   for the conceptual model and the known limitation.
+│   │   │
+│   │   ├── 95.0 — Schema + polymorphic plumbing                  ✅ shipped
+│   │   │     Two Alembic migrations (``s7u9w1y3b5d7`` creates
+│   │   │     ``notebook_cells``; ``t8v0x2z4c6e8`` extends
+│   │   │     ``ck_social_targets_kind`` with ``notebook_cell``,
+│   │   │     line-by-line mirror of Phase 90's ``p4r6t8v0x2z4``).
+│   │   │     ``NotebookCellIdentity`` model in
+│   │   │     [`pointlessql/models/notebook.py`](pointlessql/models/notebook.py)
+│   │   │     (named ``Identity`` to avoid collision with the doc-
+│   │   │     level dataclass).  ``EntityKindSpec(key='notebook_cell',
+│   │   │     supports_reviews=False, …, tab_keys=('discussion',
+│   │   │     'followers'))`` in
+│   │   │     [`entity_registry.py`](pointlessql/services/social/entity_registry.py).
+│   │   │     Workspace-resolver arm in
+│   │   │     [`_target_resolver.py`](pointlessql/services/social/_target_resolver.py).
+│   │   │     ``{uuid36}:{uuid36}`` composite-ref shape validator in
+│   │   │     [`_kind_dispatch.py`](pointlessql/api/social_routes/_kind_dispatch.py).
+│   │   ├── 95.1 — Save-path reconciliation                       ✅ shipped
+│   │   │     Three-pass reconciler in
+│   │   │     [`pointlessql/services/notebook/cell_reconciliation.py`](pointlessql/services/notebook/cell_reconciliation.py):
+│   │   │     (1) exact-hash with same-hash ordinal-proximity tiebreak,
+│   │   │     (2) similarity-gated ordinal fallback (3-char Jaccard
+│   │   │     shingles, 0.5 threshold) — the gate that prevents
+│   │   │     "delete + insert at same position steals UUID",
+│   │   │     (3) fresh UUID for genuinely new cells.  Unmatched
+│   │   │     existing rows get soft-deleted via ``removed_at``.
+│   │   │     Wired into [`io.py`](pointlessql/api/notebooks_routes/io.py)
+│   │   │     at the post-``save_document`` hook; load route emits
+│   │   │     ``cell_uuid`` per cell + ``notebook_uuid`` at top level.
+│   │   │     11 unit tests cover scenarios (a)–(h) from the plan
+│   │   │     plus reformat-all + no-op + empty-save.
+│   │   ├── 95.2 — Frontend chip + inline thread + bulk-counts    ✅ shipped
+│   │   │     New ``cellThread()`` Alpine factory in
+│   │   │     [`frontend/js/notebook/cell_thread.js`](frontend/js/notebook/cell_thread.js)
+│   │   │     mounted per cell.  The ``💬 N`` chip lives in the
+│   │   │     cell-header right cluster; the collapsible thread
+│   │   │     region renders below the output zone via
+│   │   │     [`_partials/notebook_editor/cell_thread.html`](frontend/templates/pages/_partials/notebook_editor/cell_thread.html).
+│   │   │     Lazy-loaded on first open; comments / 6-emoji reactions
+│   │   │     / follow ride the existing polymorphic
+│   │   │     ``/api/social/notebook_cell/{ref}/...`` routes.  New
+│   │   │     bulk-counts endpoint at
+│   │   │     [`_notebook_cell_counts.py`](pointlessql/api/social_routes/_polymorphic_handlers/_notebook_cell_counts.py)
+│   │   │     aggregates comments + reactions + followers for one
+│   │   │     notebook in a single query (notebook-load + post-save
+│   │   │     refresh).  Asset-version bump to ``0.1.0rc15``.
+│   │   ├── 95.3 — Cell-tags hybrid picker                        ✅ shipped
+│   │   │     Curated vocabulary (``etl``, ``draft``, ``prod``,
+│   │   │     ``wip``, ``verified``, ``broken``) in
+│   │   │     [`pointlessql/services/notebook/cell_tags.py`](pointlessql/services/notebook/cell_tags.py);
+│   │   │     ``cellTagPicker()`` Alpine factory in
+│   │   │     [`frontend/js/notebook/cell_tag_picker.js`](frontend/js/notebook/cell_tag_picker.js)
+│   │   │     mounted in the cell-header LEFT cluster.  Hybrid:
+│   │   │     dropdown of curated tags plus a "Custom…" escape for
+│   │   │     free-text entries.  Mutates ``cell.tags`` in place
+│   │   │     (memory rule ``feedback_alpine_nested_object_replace``);
+│   │   │     dispatches ``pql:cell-tag-changed`` so the parent
+│   │   │     editor's autosave debouncer picks up the change.  No
+│   │   │     schema work — the marker grammar already round-trips
+│   │   │     arbitrary tag lists losslessly.
+│   │   └── 95.4 — Walkthrough + concept doc + nav                ✅ shipped
+│   │         [`docs/concepts/cell-level-social.md`](docs/concepts/cell-level-social.md)
+│   │         explains the reconciliation algorithm + the documented
+│   │         limitation + the forward-compat contract Phase 101 keys
+│   │         off.  [`docs/e2e-walkthroughs/notebook_cell_social.md`](docs/e2e-walkthroughs/notebook_cell_social.md)
+│   │         covers the 8-step Playwright playbook with step 5 as
+│   │         the headline identity-survival test.  Concept nav entry
+│   │         after ``Agent memory``; walkthrough entry in the
+│   │         Notebook cluster.
+│   │
+│   ├── Phase 96 — Inline AI-Assistant in notebook                ⏳ planned
+│   │     Lift the Phase-91 NL→SQL hermes-agent chat panel into
+│   │     the notebook editor.  New hermes-plugin tools:
+│   │     ``pql_propose_cell`` (code or markdown),
+│   │     ``pql_explain_cell``, ``pql_fix_cell``.  Provenance
+│   │     trail records which agent proposed which cell version.
+│   │     Direct counter to DBX-Assistant's commercial pitch.
+│   │
+│   ├── Phase 97 — Revision history + Diff + shoreguard-signing   ⏳ planned
+│   │     Save-snapshots in our own metadata DB (not the on-disk
+│   │     ``.py`` file), Monaco-driven diff viewer, "pin this
+│   │     result" button promoting a snapshot into ``pql.memory``
+│   │     (Phase 90) as a referenceable fact.  Each snapshot is
+│   │     shoreguard-signed so the audit trail is
+│   │     cryptographically verifiable — EU AI Act Art. 12 anchor.
+│   │     Foundation for replay/scenario mode (Phase 103).
+│   │
+│   ├── Phase 98 — DBX-parity quick wins bundle                   ⏳ planned
+│   │     Single sprint covering four small DBX-parity items:
+│   │     magic commands (``%sql``, ``%md``, ``%fs ls``,
+│   │     ``%timeit``) as a thin pre-processor; notebook-tags +
+│   │     template gallery (``/notebooks/new from template``);
+│   │     cell-level lineage badges in the cell header reading
+│   │     existing ``agent_run_operations`` write events;
+│   │     notebook → static HTML/PDF export.
+│   │
+│   ├── Phase 99 — Widget-cells + Notebook permissions            ⏳ planned
+│   │     Interactive parameter widgets
+│   │     (``pql.widgets.dropdown`` / ``.slider`` / ``.text``)
+│   │     rendered as a form above the notebook, populating the
+│   │     kernel namespace.  Notebook permissions (view / run /
+│   │     edit roles) layered on top of the workspace membership
+│   │     model so a notebook can be shared without granting edit.
+│   │
+│   ├── Phase 100 — Publish notebook (external share + dashboard) ⏳ planned
+│   │     Two orthogonal pieces shipped together because they share
+│   │     a route + rendering pipeline:
+│   │     (a) **Public share via UUID** — ChatGPT-shared-chat
+│   │     pattern: clicking "Publish" mints an unguessable v4 UUID
+│   │     under ``/share/notebook/{uuid}``.  No auth required,
+│   │     read-only.  Two share modes (publisher picks at publish
+│   │     time, switchable later):
+│   │       * **Snapshot** *(default — safer)* — freezes the
+│   │         current notebook state (cells + outputs + exec
+│   │         counts) as a tagged Phase-97 revision; later in-place
+│   │         edits don't leak.  Re-publish updates the snapshot
+│   │         under the same UUID (link stays stable); Unpublish
+│   │         revokes entirely.  Reproducible / audit-friendly.
+│   │       * **Live** *(opt-in, with warning)* — link always
+│   │         reflects the current ``.py`` + last-known outputs.
+│   │         For team dashboards / stakeholder views where you
+│   │         want auto-update without re-publishing.  Higher risk
+│   │         (an accidental secret-push lands publicly the moment
+│   │         you save) so the toggle ships behind an explicit
+│   │         confirm dialog and a persistent "LIVE share" badge
+│   │         in the editor toolbar while active.
+│   │     Snapshot storage piggybacks on Phase 97 revision history.
+│   │     Common to both modes: admin-gated, (optional) expiry,
+│   │     outputs scrubbed for secrets, "public share" watermark,
+│   │     iframe-embed-friendly analog to Phase-92.2's
+│   │     ``/embed/semantic_search/{fqn}`` surface.
+│   │     (b) **Dashboard rendering mode** — strips code cells,
+│   │     renders only markdown + outputs as a clean read-only
+│   │     view; re-uses ``output_rendering.py``.  Available both
+│   │     under the public share UUID and under
+│   │     ``/notebooks/dashboard/{path}`` for workspace-internal
+│   │     consumption.  DBX-parity (and ChatGPT-parity) for the
+│   │     "publish a notebook" flow.
+│   │
+│   ├── Phase 101 — Agent-co-authored cells + Reviewer-per-cell   ⏳ planned
+│   │     Every cell tracks its authoring agent (or user) + the
+│   │     memory snapshot it relied on, surfaced in the cell
+│   │     header as a small attribution chip.  Phase-74
+│   │     Reviewer-Agent v2 extends to "review this cell" with
+│   │     inline comments on individual cells (GitHub-PR feel).
+│   │     Closes the loop with Phase 95: reviewer comments are
+│   │     just polymorphic cell comments with an agent author.
+│   │
+│   ├── Phase 102 — Branch-aware notebooks                        ⏳ planned
+│   │     Notebook runs against a Delta-branch (per the existing
+│   │     delta-branching idea in memory); promotion gate via
+│   │     shoreguard.  Per-agent-run isolation: an agent
+│   │     experimenting can't corrupt the prod table; humans
+│   │     review the promote.
+│   │
+│   ├── Phase 103 — Replay / Scenario-mode                        ⏳ planned
+│   │     Re-execute an old notebook revision against today's
+│   │     data; side-by-side diff of outputs.  AV-governance
+│   │     "shadow mode" pattern from the memory notes applied to
+│   │     notebooks.  Builds on Phase 97 (snapshots) + Phase 102
+│   │     (branch isolation).
+│   │
+│   ├── Phase 104 — NL→Notebook (full cell-sequence generation)   ⏳ planned
+│   │     Extends Phase 96's inline assistant from single-cell
+│   │     proposals to a full code-gen flow: a prompt yields an
+│   │     imports + dataframe + plot + markdown sequence.
+│   │     Provenance + reviewer gate per Phase 101.
+│   │
+│   └── Phase 105 — Real-time co-edit (speculative)               ⏳ planned
+│         Y.js / CRDT layer over the existing WebSocket so
+│         multiple humans + agents can edit cells simultaneously
+│         with visible cursors.  Speculative because it expands
+│         the infrastructure surface significantly (server-side
+│         CRDT backend); ship only if the simpler async patterns
+│         from Phases 95 / 101 prove insufficient in practice.
+│
 ├── Phase 81 — Feed overhaul + help surface + entity ⋯-menu  ✅ done 2026-05-16
 │       Three-track polish bundle.  Track K rebuilt /feed from a
 │       flat Bootstrap `list-group` into a first-class social

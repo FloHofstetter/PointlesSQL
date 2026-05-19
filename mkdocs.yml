@@ -97,6 +97,7 @@ nav:
       - Lineage: concepts/lineage.md
       - Agent supervision: concepts/agent-supervision.md
       - Agent memory: concepts/agent-memory.md
+      - Cell-level social: concepts/cell-level-social.md
       - NL → SQL chat: concepts/nl-to-sql.md
       - Auth: concepts/auth.md
       - Data layers: concepts/data-layers.md
@@ -153,6 +154,7 @@ nav:
               - Notebook editor: e2e-walkthroughs/notebook-editor.md
               - Notebook full walkthrough: e2e-walkthroughs/notebook_full_walkthrough.md
               - Notebook jobs: e2e-walkthroughs/notebook-jobs.md
+              - Notebook cell social: e2e-walkthroughs/notebook_cell_social.md
               - Jobs DAG: e2e-walkthroughs/jobs-dag.md
           - Audit + lineage:
               - Admin audit: e2e-walkthroughs/admin-audit.md

@@ -15,6 +15,7 @@ from pointlessql.config import Settings
 from pointlessql.exceptions import ValidationError
 from pointlessql.models.notebook import Notebook
 from pointlessql.services.notebook import _doc as notebook_doc_service
+from pointlessql.services.notebook.cell_tags import CURATED_CELL_TAGS
 
 router = APIRouter(tags=["notebooks"])
 
@@ -54,6 +55,7 @@ async def notebook_editor_page(request: Request, path: str) -> HTMLResponse:
         {
             "notebook_path": relative,
             "notebook_uuid": notebook_uuid,
+            "curated_cell_tags": list(CURATED_CELL_TAGS),
             "active_page": "workspace",
             "active_catalog": None,
             "active_schema": None,
@@ -112,6 +114,7 @@ async def notebook_editor_by_uuid(
         {
             "notebook_path": relative,
             "notebook_uuid": notebook_uuid,
+            "curated_cell_tags": list(CURATED_CELL_TAGS),
             "active_page": "workspace",
             "active_catalog": None,
             "active_schema": None,

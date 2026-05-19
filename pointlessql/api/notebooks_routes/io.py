@@ -7,12 +7,16 @@ from typing import Any
 
 from fastapi import APIRouter, Body, Query, Request
 from fastapi.responses import JSONResponse
+from sqlalchemy import select
 
-from pointlessql.api.dependencies import require_user
+from pointlessql.api.dependencies import current_workspace_id, require_user
+from pointlessql.api.notebooks_routes._shared import get_or_create_notebook_uuid
 from pointlessql.config import Settings
 from pointlessql.exceptions import ValidationError
+from pointlessql.models.notebook import NotebookCellIdentity
 from pointlessql.services import output_rendering as notebook_render_service
 from pointlessql.services.notebook import _doc as notebook_doc_service
+from pointlessql.services.notebook import cell_reconciliation
 from pointlessql.services.notebook import outputs as notebook_outputs_service
 
 logger = logging.getLogger(__name__)
@@ -57,10 +61,12 @@ async def api_load_notebook(request: Request, path: str) -> JSONResponse:
     outputs = notebook_outputs_service.load_outputs_for_path(
         request.app.state.session_factory, relative
     )
+    cell_uuids = _load_cell_uuid_map(request, relative)
     cells = [
         {
             "id": cell.id,
             "content_hash": cell.content_hash,
+            "cell_uuid": cell_uuids.get(cell.content_hash),
             "cell_type": cell.cell_type,
             "source": cell.source,
             "result_var": cell.result_var,
@@ -68,15 +74,45 @@ async def api_load_notebook(request: Request, path: str) -> JSONResponse:
         }
         for cell in document.cells
     ]
+    notebook_uuid = cell_uuids.get("__notebook__")
     return JSONResponse(
         {
             "path": document.path,
             "dirty": document.dirty,
             "mtime": absolute.stat().st_mtime,
+            "notebook_uuid": notebook_uuid,
             "cells": cells,
             "outputs": outputs,
         }
     )
+
+
+def _load_cell_uuid_map(request: Request, file_path: str) -> dict[str, str | None]:
+    """Return ``content_hash -> cell_uuid`` for the load path.
+
+    The result also carries the parent notebook UUID under the
+    sentinel key ``"__notebook__"`` so the caller doesn't have to look
+    it up twice.  Cells in the file that have no matching live row in
+    ``notebook_cells`` (e.g. brand-new notebook never saved since
+    Phase 95 landed) return ``None`` for their UUID; the next save
+    mints them.
+    """
+    notebook_uuid = get_or_create_notebook_uuid(request, file_path)
+    factory = request.app.state.session_factory
+    mapping: dict[str, str | None] = {"__notebook__": notebook_uuid}
+    with factory() as session:
+        rows = session.execute(
+            select(
+                NotebookCellIdentity.id,
+                NotebookCellIdentity.current_content_hash,
+            ).where(
+                NotebookCellIdentity.notebook_id == notebook_uuid,
+                NotebookCellIdentity.removed_at.is_(None),
+            )
+        ).all()
+    for row in rows:
+        mapping[row[1]] = row[0]
+    return mapping
 
 
 @router.post("/api/notebooks/save")
@@ -174,21 +210,44 @@ async def api_save_notebook(
         )
     notebook_doc_service.save_document(absolute, cells)
     new_mtime = absolute.stat().st_mtime
+    relative = str(absolute.relative_to(notebooks_dir))
+    notebook_uuid = get_or_create_notebook_uuid(request, relative)
+    workspace_id = current_workspace_id(request)
+    reconcile_inputs = [
+        cell_reconciliation.ReconcileInput(
+            content_hash=cell.content_hash, source=cell.source
+        )
+        for cell in cells
+    ]
+    factory = request.app.state.session_factory
+    with factory() as session:
+        results = cell_reconciliation.reconcile(
+            session,
+            workspace_id=workspace_id,
+            notebook_id=notebook_uuid,
+            new_cells=reconcile_inputs,
+        )
+        session.commit()
     out_cells = [
         {
             "id": cell.id,
             "content_hash": cell.content_hash,
+            "cell_uuid": results[index].cell_id,
             "cell_type": cell.cell_type,
             "source": cell.source,
             "result_var": cell.result_var,
             "tags": list(cell.tags),
         }
-        for cell in cells
+        for index, cell in enumerate(cells)
     ]
-    relative = str(absolute.relative_to(notebooks_dir))
     logger.info("saved notebook %s (%d cells)", relative, len(cells))
     return JSONResponse(
-        {"path": relative, "mtime": new_mtime, "cells": out_cells}
+        {
+            "path": relative,
+            "mtime": new_mtime,
+            "notebook_uuid": notebook_uuid,
+            "cells": out_cells,
+        }
     )
 
 

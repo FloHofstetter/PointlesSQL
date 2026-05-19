@@ -64,6 +64,97 @@ class Notebook(Base):
     )
 
 
+class NotebookCellIdentity(Base):
+    """Stable UUID identity for a single notebook cell (Phase 95).
+
+    Named ``NotebookCellIdentity`` rather than ``NotebookCell`` to avoid
+    a name collision with the transient doc-level
+    :class:`pointlessql.services.notebook._doc.NotebookCell` dataclass.
+    The table itself is ``notebook_cells`` (concise; no collision in
+    SQL space).
+
+    Per-cell social rows (comments / reactions / follows / tags) need a
+    handle that survives source edits.  The on-disk ``.py`` is
+    IDE-agnostic so no sidecar cell-UUID can ride the marker grammar;
+    instead this table maps ``(notebook_id, content_hash)`` to a stable
+    UUID at first save and tracks the current ``content_hash`` +
+    ``ordinal_hint`` as the file evolves.
+
+    Reconciliation happens on every save (see
+    :mod:`pointlessql.services.notebook.cell_reconciliation`): pass 1
+    does exact-hash matching (handles reorders), pass 2 a
+    similarity-gated ordinal fallback (handles pure edits at the same
+    position without stealing the UUID of a deleted-and-replaced
+    neighbour), pass 3 mints fresh UUIDs for genuinely new cells.
+    Unmatched survivors are soft-deleted via ``removed_at`` so the
+    social anchor stays addressable from the notebook-level activity
+    feed even after the cell is gone from the file.
+
+    Attributes:
+        id: 36-char UUID4 string — the stable cell identity.  Used as
+            the second half of ``social_targets.entity_ref`` for kind
+            ``'notebook_cell'`` (encoded as ``"{notebook_id}:{id}"``).
+        workspace_id: Tenant scope, denormalised from the parent
+            notebook so workspace-scoped queries don't need a join.
+        notebook_id: FK to :class:`Notebook` with ``ondelete=CASCADE``.
+        current_content_hash: Latest FNV-1a-64 hex of the cell's
+            normalized source.  Drives pass-1 exact-hash matching.
+        ordinal_hint: 0-based last-known position in the file.  Used
+            as a tiebreak when multiple existing rows share the same
+            hash and as the secondary key for pass-2 ordinal matching.
+            Not a source of truth: cells can move freely.
+        last_source_excerpt: First ≤500 chars of the last-seen source
+            text.  Drives the pass-2 similarity gate that prevents
+            the dark-corner case (delete cell + insert different cell
+            at same position would otherwise steal the UUID).
+        created_at: Wall-clock when the cell-identity row was minted.
+        removed_at: Soft-delete tombstone, set when reconciliation
+            cannot find this row in a later save.  Social rows stay
+            reachable from the notebook activity feed; the inline
+            cell-thread chip just doesn't render.
+    """
+
+    __tablename__ = "notebook_cells"
+
+    __table_args__ = (
+        Index(
+            "ix_notebook_cells_live_ordinal",
+            "notebook_id",
+            "removed_at",
+            "ordinal_hint",
+        ),
+        Index(
+            "ix_notebook_cells_notebook_hash",
+            "notebook_id",
+            "current_content_hash",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    workspace_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("workspaces.id"),
+        nullable=False,
+        server_default="1",
+    )
+    notebook_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("notebooks.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    current_content_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    ordinal_hint: Mapped[int] = mapped_column(Integer, nullable=False)
+    last_source_excerpt: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=text("CURRENT_TIMESTAMP"),
+    )
+    removed_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+
 class NotebookOutput(Base):
     """A single kernel output captured for the native notebook editor.
 

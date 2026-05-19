@@ -16,7 +16,9 @@
 .pql-notebook-toolbar {
  display: flex;
  align-items: center;
- gap: 0.75rem;
+ flex-wrap: wrap;
+ column-gap: 0.75rem;
+ row-gap: 0.5rem;
  padding: 0.5rem 0.75rem;
  background: var(--bs-body-tertiary-bg, var(--bs-secondary-bg));
  border: 1px solid var(--bs-border-color);
@@ -24,17 +26,67 @@
 }
 
 .pql-notebook-toolbar .pql-notebook-path {
+ flex: 0 1 auto;
+ min-width: 0;
+ max-width: 100%;
+ overflow: hidden;
+ text-overflow: ellipsis;
+ white-space: nowrap;
  font-family: var(--bs-font-monospace, monospace);
  font-size: 0.85rem;
  color: var(--bs-body-color);
- word-break: break-all;
+}
+
+.pql-notebook-toolbar .pql-toolbar-group {
+ display: inline-flex;
+ align-items: center;
+ gap: 0.25rem;
+}
+
+.pql-notebook-toolbar .pql-toolbar-group .btn {
+ white-space: nowrap;
 }
 
 .pql-notebook-cell {
  border: 1px solid var(--bs-border-color);
  border-radius: 0.25rem;
- overflow: hidden;
+ /* overflow: visible — the cell-tag picker dropdown (Phase 95.3) is
+    positioned absolutely and gets clipped when the wrapper hides
+    overflow.  Round-corner clipping for children is negligible vs.
+    a dropdown that vanishes behind the next cell.
+    Intentionally NO ``position: relative`` here — that would create
+    a stacking context per cell, and a dropdown opened on cell N
+    would stack BELOW cell N+1's own tag chips (sibling stacking
+    contexts ignore each other's z-index).  The inner
+    ``.dropdown`` wrapper handles anchoring; the menu's high z-index
+    works document-globally as long as no ancestor is positioned. */
+ overflow: visible;
  background: var(--bs-body-bg);
+}
+
+/* Phase 95.3 — inline tag-picker panel below the cell. */
+.pql-notebook-cell__tag-panel {
+ border-top: 1px solid var(--bs-border-color-translucent, rgba(0, 0, 0, 0.1));
+ padding: 0.65rem 0.85rem 0.8rem;
+ background: var(--bs-tertiary-bg, var(--bs-secondary-bg, #f8f9fa));
+}
+.pql-notebook-cell__tag-panel-header {
+ display: flex;
+ align-items: center;
+ gap: 0.5rem;
+ margin-bottom: 0.5rem;
+}
+.pql-notebook-cell__tag-panel-curated {
+ min-height: 1.75rem;
+}
+.pql-notebook-cell__tag-panel-section {
+ margin-bottom: 0.5rem;
+}
+.pql-notebook-cell__tag-panel-section:last-of-type {
+ margin-bottom: 0;
+}
+.pql-notebook-cell__tag-panel-input {
+ width: 14rem;
 }
 
 .pql-notebook-cell__header {
@@ -117,9 +169,30 @@
  height: 100%;
 }
 
+.pql-notebook-cell__output-zone {
+ display: flex;
+ flex-direction: column;
+}
+
+.pql-notebook-cell__output-zone--ran {
+ border-top: 1px solid var(--bs-border-color);
+ background: var(--bs-body-bg);
+}
+
+.pql-notebook-cell__output-label {
+ display: flex;
+ align-items: center;
+ gap: 0.4rem;
+ padding: 0.25rem 0.6rem;
+ font-family: var(--bs-font-monospace, monospace);
+ font-size: 0.75rem;
+ color: var(--bs-secondary-color);
+ background: var(--bs-body-tertiary-bg, var(--bs-secondary-bg));
+ border-bottom: 1px solid var(--bs-border-color);
+}
+
 .pql-notebook-cell__output {
  padding: 0.6rem 0.75rem;
- border-top: 1px dashed var(--bs-border-color);
  background: var(--bs-body-bg);
  font-family: var(--bs-font-monospace, monospace);
  font-size: 0.82rem;
@@ -128,7 +201,8 @@
  overflow: auto;
 }
 
-.pql-notebook-cell__output:empty {
+.pql-notebook-cell__output-zone:not(.pql-notebook-cell__output-zone--ran)
+ .pql-notebook-cell__output:empty {
  display: none;
 }
 
@@ -164,8 +238,9 @@
 
 .pql-notebook-output__iframe {
  width: 100%;
- background: white;
+ background: transparent;
  border-radius: 0.25rem;
+ color-scheme: light dark;
 }
 
 .pql-notebook-output__json {
@@ -289,4 +364,52 @@
  background: var(--bs-danger-bg-subtle, transparent);
  color: var(--bs-danger-text-emphasis, var(--bs-danger));
  border-radius: 0.25rem;
+}
+
+/* Phase 95.2 — per-cell inline discussion thread.  No custom sizing
+   on the chip — inherits ``btn btn-sm`` exactly so it aligns flush
+   with the Run / cell-type / history / move / delete cluster. */
+
+.pql-notebook-cell__thread {
+ border-top: 1px solid var(--bs-border-color-translucent, rgba(0, 0, 0, 0.1));
+ padding: 0.75rem 0.85rem 0.85rem;
+ background: var(--bs-tertiary-bg, var(--bs-secondary-bg, #f8f9fa));
+ border-bottom-left-radius: 0.5rem;
+ border-bottom-right-radius: 0.5rem;
+}
+.pql-notebook-cell__thread-header {
+ display: flex;
+ align-items: center;
+ gap: 0.5rem;
+ margin-bottom: 0.5rem;
+}
+.pql-notebook-cell__thread-reactions {
+ display: flex;
+ flex-wrap: wrap;
+ gap: 0.25rem;
+ margin-bottom: 0.75rem;
+}
+.pql-cell-reaction {
+ padding: 0.15rem 0.4rem;
+ font-size: 0.9rem;
+}
+
+/* Phase 95.3 — cell-tag picker (curated + custom escape). */
+.pql-cell-tag-picker {
+ display: inline-flex;
+ align-items: center;
+ gap: 0.25rem;
+ flex-wrap: wrap;
+}
+.pql-cell-tag {
+ background: var(--bs-info-bg-subtle, var(--bs-secondary-bg));
+ color: var(--bs-info-text-emphasis, var(--bs-body-color));
+ font-weight: 500;
+ cursor: pointer;
+ padding: 0.15rem 0.5rem;
+}
+/* No custom sizing — inherit ``btn btn-sm`` so the tag-toggle is
+   flush with the right-cluster action buttons. */
+.pql-cell-tag-picker__menu {
+ min-width: 12rem;
 }

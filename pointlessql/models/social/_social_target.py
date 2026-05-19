@@ -56,6 +56,7 @@ ENTITY_KINDS: tuple[str, ...] = (
     "issue",
     "workspace",
     "agent_memory",
+    "notebook_cell",
 )
 
 
@@ -94,7 +95,7 @@ class SocialTarget(Base):
             "'dp', 'table', 'schema', 'catalog', "
             "'model', 'branch', 'run', 'query', "
             "'notebook', 'saved_query', 'issue', "
-            "'workspace', 'agent_memory'"
+            "'workspace', 'agent_memory', 'notebook_cell'"
             ")",
             name="ck_social_targets_kind",
         ),
