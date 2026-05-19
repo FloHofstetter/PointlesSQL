@@ -268,6 +268,20 @@ async def table_detail(
         workspace_id=workspace_id,
         session_factory=request.app.state.session_factory,
     )
+    # Phase 92 — text columns the user can pick from the
+    # "Semantic search" tab's empty-state create-index form.
+    # Filter to STRING / VARCHAR-shaped types so the dropdown does
+    # not offer numeric columns that the embedder cannot handle.
+    # ``table`` is a dict here (the UC-facade-shaped row) — its
+    # ``columns`` entry is a list of column dicts with ``name`` +
+    # ``type_text`` keys.  ``[]`` is the empty-page fallback when the
+    # catalog call errored above.
+    _cols = (table or {}).get("columns", []) if isinstance(table, dict) else []
+    text_column_names = [
+        col["name"]
+        for col in _cols
+        if _is_text_column_type(col.get("type_text", ""))
+    ]
     return get_templates(request).TemplateResponse(
         request,
         "pages/table.html",
@@ -285,6 +299,7 @@ async def table_detail(
             "cdf_subscription": cdf_subscription,
             "cdf_recent_events": cdf_recent_events,
             "vector_indices": vector_indices,
+            "text_column_names": text_column_names,
             "can_manage": can_manage,
             "is_admin": user.get("is_admin", False),
             "error": error,
@@ -293,6 +308,22 @@ async def table_detail(
             "active_table": table_name,
         },
     )
+
+
+_TEXT_TYPE_PREFIXES: tuple[str, ...] = ("STRING", "VARCHAR", "CHAR", "TEXT")
+
+
+def _is_text_column_type(type_text: str) -> bool:
+    """Whether *type_text* is a text-shaped column type.
+
+    Phase 92 vector-index create-form dropdown filters by this so the
+    user cannot pick a numeric column.  The check is intentionally
+    permissive: it matches by prefix to handle ``VARCHAR(200)`` etc.
+    """
+    if not type_text:
+        return False
+    upper = type_text.strip().upper()
+    return any(upper.startswith(prefix) for prefix in _TEXT_TYPE_PREFIXES)
 
 
 def _vector_indices_for_table(

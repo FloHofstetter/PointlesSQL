@@ -282,4 +282,3 @@ export function chatPanel(editorSessionId) {
   };
 }
 
-window.chatPanel = chatPanel;

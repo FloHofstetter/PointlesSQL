@@ -575,9 +575,9 @@
 
 {% block extra_js %}
 {{ super() }}
-{% if sql_enabled and chat_enabled %}
-<script type="module" src="/static/js/sql_editor/chat.js?v={{ asset_version }}"></script>
-{% endif %}
+{# Phase 91 — ``chatPanel`` factory registered globally via
+   ``frontend/js/bootstrap.js`` (Alpine-race-safe).  No per-page
+   script needed.  See feedback memory ``feedback_alpine_factories_via_bootstrap.md``. #}
 {% endblock %}
 
 {#-

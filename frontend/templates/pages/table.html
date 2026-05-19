@@ -115,14 +115,18 @@
  </button>
  </li>
  {% endif %}
- {% if vector_indices %}
+ {% if vector_indices or (can_manage and text_column_names) %}
  <li class="nav-item" role="presentation">
  <button class="nav-link" id="tab-semantic-search-btn" data-bs-toggle="tab"
  data-bs-target="#tab-semantic-search" type="button" role="tab"
  aria-controls="tab-semantic-search" aria-selected="false"
  data-pql-tab-key="semantic-search">
  <i class="bi bi-compass me-1"></i>Semantic search
+ {% if vector_indices %}
  <span class="badge bg-secondary ms-1">{{ vector_indices|length }}</span>
+ {% else %}
+ <span class="badge bg-warning-subtle text-warning-emphasis ms-1" title="No index yet">+</span>
+ {% endif %}
  </button>
  </li>
  {% endif %}
@@ -149,7 +153,7 @@
  {% include "pages/_partials/table/tags.html" %}
  {% include "pages/_partials/table/permissions.html" %}
  {% include "pages/_partials/table/cdf_events.html" %}
- {% if vector_indices %}
+ {% if vector_indices or (can_manage and text_column_names) %}
  {% include "pages/_partials/table/semantic_search.html" %}
  {% endif %}
 </div>

@@ -182,6 +182,17 @@ async def api_vector_index_delete(request: Request, index_id: int) -> None:
             index_path.unlink()
         except OSError:
             logger.warning("vector_index_delete: failed to unlink %s", index_path, exc_info=True)
+    # ``_vss/`` is a per-table directory we own end-to-end.  If the
+    # just-removed index was the last one for the table, the dir
+    # is now empty and serves no purpose — clean it up so a stale
+    # empty dir does not linger on disk forever.  Non-empty (other
+    # column indices) → ``rmdir`` raises ``OSError`` which we swallow.
+    parent = index_path.parent
+    if parent.exists() and parent.name == "_vss":
+        try:
+            parent.rmdir()
+        except OSError:
+            pass
     await audit(
         request,
         "sql.vector_index.delete",

@@ -7,8 +7,13 @@ endpoints, a hermes-plugin tool, and a per-table UI tab.
 
 Concept: [`docs/concepts/vector-search.md`](../concepts/vector-search.md).
 
-This playbook walks the end-to-end loop in 7 steps; a fake
-embedder lets the suite run without `sentence-transformers`.
+This playbook walks the end-to-end loop in 8 steps.
+
+The pytest suite (`tests/test_vector_*.py`) uses an in-test
+`_FakeEmbedder` so it runs without any embedder backend; the
+walkthrough below requires a real embedder (an in-registry
+``fake``-style stub does **not** exist by design — registries
+shipped to end users only expose production embedders).
 
 ## Prerequisites
 
@@ -16,10 +21,12 @@ embedder lets the suite run without `sentence-transformers`.
 - An admin browser session (index creation is admin-gated).
 - A non-empty Delta table reachable via UC.  This playbook uses
   `main.silver.docs`; substitute any 3-part FQN with a text column.
-- Optional: `pip install pointlessql[vector]` if you want the
-  default `sentence_transformers` embedder.  The Playwright path
-  works without it because the REST creator accepts any registered
-  embedder name.
+- **One of**:
+  - `pip install pointlessql[vector]` for the default
+    `sentence_transformers` embedder (local, ~700 MB pulled in
+    via PyTorch — recommended for one-machine setups), OR
+  - `OPENAI_API_KEY` set in the server's environment if you want
+    to use the hosted `openai` embedder instead.
 
 ## Steps
 
@@ -80,9 +87,22 @@ pql.merge(
 )
 ```
 
-Tail the server logs for `vss_rebuild` entries.  Re-run
-`pql.vector_search` from step 3 with a query that should hit one
-of the new rows; the row should appear with a non-zero score.
+The auto-rebuild is implemented as a **server-side post-commit
+hook** (sixth hook in
+`pointlessql.services.agent_runs.operations._lifecycle`).  Triggering
+it from a Python session requires the FastAPI app's session factory
+to be bound, which is the case when the merge runs inside the
+in-process notebook kernel (``Notebooks`` tab) or via a write through
+``POST /api/sql/write``.  A bare ``uv run python`` REPL has no bound
+session factory, so the hook short-circuits — the index file stays
+at its pre-merge Delta version until you call ``pql.vector_index``
+again to force a rebuild.
+
+To verify the hook from this walkthrough: either re-run the merge
+from a PointlesSQL notebook cell, or trigger any write via the SQL
+editor.  Tail the server logs for ``vss_rebuild`` entries.  Then
+re-run ``pql.vector_search`` with a query that should hit one of
+the new rows; the row should appear with a non-zero score.
 
 ### 5. UI tab via Playwright MCP
 

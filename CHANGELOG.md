@@ -4,6 +4,45 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- **Phase 92 — UI to create a vector index from the Table page
+  (2026-05-19).**  When a table has at least one text column and the
+  user has ``MANAGE_GRANTS``, the ``Semantic search`` tab is now
+  visible even with zero indices and renders an empty-state card
+  with a column dropdown + embedder selector + ``Build index``
+  button.  Eliminates the prior need for REPL or hand-crafted REST
+  calls to bootstrap the first index.  Tab badge shows the index
+  count when ≥1, or a ``+`` chip in the empty case.
+
+### Fixed
+
+- **Phase 92 ``_vss/`` cleanup on index delete (2026-05-19).**
+  ``DELETE /api/sql/vector_search/indices/{id}`` now also ``rmdir``s
+  the parent ``_vss/`` directory when it is the last index for the
+  table — previously the empty directory lingered on disk.
+
+- **Phase 91 ``chatPanel`` Alpine race latent bug (2026-05-19).**
+  Same architectural issue as Phase 92's ``semanticSearch``: the
+  per-page ``<script type="module">`` for ``chat.js`` raced Alpine's
+  CDN bundle.  Masked in practice because the chat drawer is hidden
+  until clicked.  ``chatPanel`` now ships via
+  ``frontend/js/bootstrap.js`` — same shape as every other Alpine
+  factory in the project.  Memory rule:
+  ``feedback_alpine_factories_via_bootstrap.md`` (see ``.claude/``).
+
+### Docs
+
+- **Phase 92 walkthrough Step 4 + prereq clarification (2026-05-19).**
+  Step 4's "Run a merge — confirm auto-rebuild" now spells out that
+  the post-commit hook only fires inside the FastAPI lifespan (in-
+  process notebook kernel or REST write path), not from a bare
+  ``uv run python`` REPL where ``_session_factory_or_none()``
+  returns ``None``.  Prereq section corrected: the "fake embedder"
+  exists only in the pytest suite, not the live walkthrough — users
+  need either ``pip install pointlessql[vector]`` (sentence-
+  transformers) or an ``OPENAI_API_KEY`` to run the walkthrough.
+
 ### Fixed
 
 - **Phase 92 walkthrough fixes (2026-05-19).**  Two bugs surfaced by
