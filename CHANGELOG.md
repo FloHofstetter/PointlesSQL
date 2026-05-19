@@ -6,6 +6,22 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Phase 98.C — Cell-level lineage badges (2026-05-20).**  Adds a
+  read-only query helper +
+  ``GET /api/notebooks/cell/lineage?path=…&content_hash=…`` that
+  surfaces a per-cell list of Delta write events.  The implementation
+  joins ``notebook_cell_runs`` (rows whose ``agent_run_id`` is non-
+  null) with ``agent_run_operations`` filtered to the 13 WRITE op
+  names (``write_table`` / ``merge`` / ``autoload`` / ``update`` /
+  ``delete`` / ``drop_table`` / ``create_schema`` / ``drop_schema`` /
+  ``alter_table`` / ``branch_create`` / ``branch_promote`` /
+  ``branch_discard`` / ``dbt_model`` / ``train_model``) and collapses
+  duplicate ``(op_name, target_table)`` pairs to the most-recent
+  occurrence.  Backend-only ship; the cell-header chip render is a
+  follow-up (deliberately deferred to avoid the x-data + ``|tojson``
+  playbook-gate cost — the API is the load-bearing surface).  8 new
+  pytest in ``tests/test_notebook_cell_lineage.py``.
+
 - **Phase 98.B — Notebook tags + template gallery (2026-05-20).**
   Two DBX-parity surfaces shipped together because they both live in
   the workspace tree:

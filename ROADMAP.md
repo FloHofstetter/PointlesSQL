@@ -1866,6 +1866,17 @@ PointlesSQL
 │   │         kernel dispatch, resolving SQL approval server-side per
 │   │         %sql line.  13 new pytest covering line/block parsing,
 │   │         placeholder splicing, and indent preservation.
+│   │       * 98.C ✅ done 2026-05-20 — cell-level lineage badges.
+│   │         New ``services/notebook/cell_lineage.py`` joins
+│   │         ``notebook_cell_runs`` (filtered to rows with
+│   │         ``agent_run_id`` set) → ``agent_run_operations``
+│   │         (filtered to the 13 WRITE op_names) and collapses
+│   │         duplicate ``(op_name, target_table)`` pairs to the most
+│   │         recent occurrence.  REST ``GET
+│   │         /api/notebooks/cell/lineage`` surfaces the badges to a
+│   │         future cell-header UI; backend-only ship (UI affordance
+│   │         deferred to a follow-up to avoid the x-data + |tojson
+│   │         playbook-gate cost).  8 new pytest.
 │   │       * 98.B ✅ done 2026-05-20 — notebook tags + template
 │   │         gallery.  New ``NotebookTag`` ORM table + migration
 │   │         ``b185acda50d7`` for notebook-level lifecycle tags
