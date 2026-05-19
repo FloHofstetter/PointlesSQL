@@ -1840,14 +1840,37 @@ PointlesSQL
 │   │     header buttons that pre-fill the chat panel with a
 │   │     templated prompt referencing the focused cell.
 │   │
-│   ├── Phase 97 — Revision history + Diff + shoreguard-signing   ⏳ planned
+│   ├── Phase 97 — Revision history + Diff (+ shoreguard-signing)  ⏳ partial
 │   │     Save-snapshots in our own metadata DB (not the on-disk
-│   │     ``.py`` file), Monaco-driven diff viewer, "pin this
-│   │     result" button promoting a snapshot into ``pql.memory``
-│   │     (Phase 90) as a referenceable fact.  Each snapshot is
-│   │     shoreguard-signed so the audit trail is
-│   │     cryptographically verifiable — EU AI Act Art. 12 anchor.
-│   │     Foundation for replay/scenario mode (Phase 103).
+│   │     ``.py`` file).  New ``NotebookRevision`` table + migration
+│   │     ``47832b8d57ca``; canonical JSON encoding + SHA-256 in
+│   │     ``services/notebook/revisions.py``; idempotent on the
+│   │     canonical hash so a re-save with identical content collapses
+│   │     to the existing row.  Cell-by-cell diff via the stable
+│   │     ``content_hash`` identity emits ``added`` / ``removed`` /
+│   │     ``changed`` / ``moved`` / ``unchanged`` envelopes the front-
+│   │     end can hand to Monaco's diff editor.  REST: POST + GET on
+│   │     ``/api/notebooks/revisions``; ``GET .../{uuid}`` for full
+│   │     payload; ``GET .../diff?left=…&right=…``.  14 new pytest.
+│   │     Asset 0.1.0rc35.  Shipped 2026-05-20.
+│   │
+│   │     **Deferred:**
+│   │     * **Shoreguard signing** — Phase 97's cryptographic verify
+│   │       leg is paused.  The shoreguard-fresh checkout exposes
+│   │       webhook + OIDC + auth signing helpers but no public
+│   │       "sign-this-revision" API yet; ``signature_alg`` and
+│   │       ``signature`` columns are reserved on the row so a follow-
+│   │       up sprint can populate them once the API ships.  Every
+│   │       snapshot still records its deterministic SHA-256.
+│   │     * **Pin-to-memory** — ``pql.memory`` is the agent-run
+│   │       operations recorder (Phase 90), not a fact registry; the
+│   │       "pin this result" UI affordance needs a fact-shaped
+│   │       memory primitive that does not exist yet.  Logged as a
+│   │       follow-up.
+│   │     * **Monaco diff UI** — backend envelope is ready; the
+│   │       editor's history-panel render is a follow-up (gated by
+│   │       the nested-x-data trap, same reason 98.C's chip render
+│   │       was deferred).
 │   │
 │   ├── Phase 98 — DBX-parity quick wins bundle                   ✅ done 2026-05-20
 │   │     Single sprint covering four small DBX-parity items:

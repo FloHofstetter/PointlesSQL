@@ -489,6 +489,105 @@ class NotebookCellProvenance(Base):
     )
 
 
+class NotebookRevision(Base):
+    """Save-time snapshot of a notebook's cells + outputs (Phase 97).
+
+    Each row freezes the notebook state at a discrete save event so
+    the editor's revision-history panel can render a Monaco diff
+    between any two points in time, replay an old execution against
+    today's data (Phase 103), or surface the agent timeline alongside
+    the human edit timeline (Phase 101).
+
+    The snapshot lives in this metadata DB rather than on the
+    on-disk ``.py`` so:
+
+    * The ``.py`` stays IDE-agnostic (the per-feedback rule
+      ``feedback_notebook_py_editability``).
+    * Outputs travel with the snapshot — re-rendering an old
+      revision does not require re-running the kernel.
+    * Cell-level diffs use the stable ``content_hash`` identity
+      keyed by :class:`NotebookCellIdentity` so cell reordering is
+      cheap to detect.
+
+    ``content_sha256`` is a deterministic hash of the canonical JSON
+    encoding of ``(cells, outputs)``.  It is the basis for a future
+    shoreguard-fresh cryptographic signature (Phase 97 stretch goal;
+    deferred until the shoreguard signing API ships).  Two columns
+    ride along ready for that integration: ``signature_alg`` (e.g.
+    ``"shoreguard-v1"``) and ``signature`` (the opaque blob).  Both
+    are nullable today — every snapshot still records its
+    deterministic hash, only the signature step is pending.
+
+    Attributes:
+        id: Auto-incremented primary key.
+        revision_uuid: 36-char UUID4 the editor surfaces in the URL
+            and the API; stable across DB exports / imports.
+        notebook_id: FK to :class:`Notebook` — cascade-delete so a
+            removed notebook drops its revision rows.
+        parent_revision_id: FK to self for "this snapshot's parent"
+            so the diff viewer can render an ancestry chain.  Null
+            on the first revision per notebook.
+        created_by: User email; null when written by an agent /
+            scheduler with no human author.
+        created_at: Wall-clock when the snapshot landed.
+        message: Optional save message ("checkpoint before X
+            refactor") — keeps the panel readable.
+        cells_json: Canonical JSON encoding of the cell list at
+            save time; ``[{content_hash, cell_type, source,
+            result_var, tags}, …]``.
+        outputs_json: Canonical JSON encoding of the latest-session
+            output rows at save time.
+        content_sha256: SHA-256 hex digest of the canonical JSON
+            ``cells_json + outputs_json`` payload.  Stable across
+            re-saves of an identical notebook (which then collapse
+            into the same revision).
+        signature_alg: Future shoreguard signature algorithm
+            identifier (``"shoreguard-v1"`` planned).  Null while
+            the integration is pending.
+        signature: Future shoreguard signature blob.  Null while
+            the integration is pending.
+    """
+
+    __tablename__ = "notebook_revisions"
+
+    __table_args__ = (
+        UniqueConstraint(
+            "notebook_id",
+            "content_sha256",
+            name="uq_notebook_revisions_notebook_sha",
+        ),
+        Index("ix_notebook_revisions_notebook_created", "notebook_id", "created_at"),
+        Index("ix_notebook_revisions_uuid", "revision_uuid"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    revision_uuid: Mapped[str] = mapped_column(
+        String(36), nullable=False, unique=True
+    )
+    notebook_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("notebooks.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    parent_revision_id: Mapped[int | None] = mapped_column(
+        Integer,
+        ForeignKey("notebook_revisions.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    created_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=text("CURRENT_TIMESTAMP"),
+    )
+    message: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    cells_json: Mapped[str] = mapped_column(Text, nullable=False)
+    outputs_json: Mapped[str] = mapped_column(Text, nullable=False)
+    content_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    signature_alg: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    signature: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
 class NotebookTag(Base):
     """Notebook-level lifecycle tags (Phase 98.B).
 

@@ -6,6 +6,27 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Phase 97 — Notebook revision history + diff (2026-05-20).**
+  Save-snapshot machinery for the editor.  New ``NotebookRevision``
+  table (migration ``47832b8d57ca``) stores canonical JSON
+  encodings of cells + outputs plus a deterministic SHA-256.  New
+  ``services/notebook/revisions.py`` is the create / list / get /
+  diff service; ``create_revision`` is idempotent on the canonical
+  hash so a re-save of an unchanged notebook collapses to the
+  existing row, and each fresh snapshot chains via
+  ``parent_revision_id``.  Cell-by-cell diff uses the stable
+  ``content_hash`` identity to classify cells into ``added`` /
+  ``removed`` / ``changed`` (paired add+remove at the same position)
+  / ``moved`` / ``unchanged`` — Monaco-friendly envelopes.  REST:
+  ``POST|GET /api/notebooks/revisions``, ``GET
+  /api/notebooks/revisions/{uuid}``, ``GET
+  /api/notebooks/revisions/diff?left=…&right=…``.  Shoreguard
+  cryptographic signing is deferred (no public signing API in
+  shoreguard-fresh yet); ``signature_alg`` and ``signature`` columns
+  are reserved on the row so a follow-up sprint can sign historical
+  rows without re-writing the payload.  14 new pytest in
+  ``tests/test_notebook_revisions.py``.
+
 - **Phase 98.D — Notebook static HTML/PDF export (2026-05-20).**
   Adds ``GET /api/notebooks/export.html`` and
   ``GET /api/notebooks/export.pdf`` so users can download a self-
