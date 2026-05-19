@@ -19,9 +19,16 @@
   class="pql-chat-drawer pql-notebook-chat-drawer"
   x-data="notebookChatPanel('{{ notebook_chat_session_id }}')"
   x-init="connect()"
-  x-show="$root.chatPanelOpen"
+  {# ``$root`` inside an ``x-data`` scope returns the CURRENT root    #}
+  {# (the drawer), not the page-level outer scope, so                 #}
+  {# ``$root.chatPanelOpen`` always evaluated against the drawer's    #}
+  {# own data and silently stayed undefined.  Alpine 3's parent-scope #}
+  {# walk lets us read ``chatPanelOpen`` unprefixed — it traverses    #}
+  {# up the x-data stack until it finds the outer notebookEditor()    #}
+  {# scope.  (Mirrors the Phase-96 fix in the SQL chat drawer.)       #}
+  x-show="chatPanelOpen"
   x-cloak
-  @keydown.escape.window="$root.chatPanelOpen = false"
+  @keydown.escape.window="chatPanelOpen = false"
 >
   <div class="pql-chat-drawer__header">
     <strong><i class="bi bi-robot me-1"></i>AI Assistant</strong>
@@ -39,7 +46,7 @@
       type="button"
       class="btn btn-link btn-sm p-0 ms-2"
       aria-label="Close chat"
-      @click="$root.chatPanelOpen = false"
+      @click="chatPanelOpen = false"
     >
       <i class="bi bi-x-lg"></i>
     </button>

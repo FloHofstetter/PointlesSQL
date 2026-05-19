@@ -16,9 +16,15 @@
   class="pql-chat-drawer"
   x-data="chatPanel('{{ editor_session_id }}')"
   x-init="connect()"
-  x-show="$root.chatOpen"
+  {# Phase-96 fix: ``$root`` inside an ``x-data`` scope returns the   #}
+  {# CURRENT root (the drawer), not the page-level outer scope, so    #}
+  {# ``$root.chatOpen`` always evaluated against the drawer's own     #}
+  {# data and silently stayed undefined.  Alpine 3's parent-scope     #}
+  {# walk lets us read ``chatOpen`` unprefixed — it traverses up the  #}
+  {# x-data stack until it finds the outer ``sqlEditor()`` scope.     #}
+  x-show="chatOpen"
   x-cloak
-  @keydown.escape.window="$root.chatOpen = false"
+  @keydown.escape.window="chatOpen = false"
 >
   <div class="pql-chat-drawer__header">
     <strong><i class="bi bi-chat-dots me-1"></i>NL → SQL</strong>
@@ -36,7 +42,7 @@
       type="button"
       class="btn btn-link btn-sm p-0 ms-2"
       aria-label="Close chat"
-      @click="$root.chatOpen = false"
+      @click="chatOpen = false"
     >
       <i class="bi bi-x-lg"></i>
     </button>
@@ -86,23 +92,23 @@
     <template x-if="lastError">
       <div class="alert alert-danger small mb-2">
         <span x-text="lastError"></span>
-        <div class="mt-2 d-flex gap-2" x-show="$root.lastRun && $root.lastRun.lastSql">
+        <div class="mt-2 d-flex gap-2" x-show="lastRun && lastRun.lastSql">
           <button type="button"
                   class="btn btn-outline-warning btn-sm"
                   data-testid="chat-refine-error"
-                  @click="refine('error', $root.lastRun.lastSql, lastError)">
+                  @click="refine('error', lastRun.lastSql, lastError)">
             <i class="bi bi-arrow-clockwise me-1"></i>Refine
           </button>
         </div>
       </div>
     </template>
-    <template x-if="$root.result && $root.result.row_count === 0 && !streaming">
+    <template x-if="result && result.row_count === 0 && !streaming">
       <div class="alert alert-warning small mb-2">
         Previous query returned 0 rows.
         <button type="button"
                 class="btn btn-link btn-sm p-0 ms-2"
                 data-testid="chat-refine-zero"
-                @click="refine('zero_rows', $root.lastRun ? $root.lastRun.lastSql : '', '')">
+                @click="refine('zero_rows', lastRun ? lastRun.lastSql : '', '')">
           Ask chat to refine
         </button>
       </div>

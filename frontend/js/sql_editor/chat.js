@@ -160,7 +160,17 @@ export function chatPanel(editorSessionId) {
       this._removeProposalLocal(id);
     },
 
-    /** Accept the proposal, load SQL into editor with the chat run id. */
+    /** Accept the proposal, load SQL into editor with the chat run id.
+     *
+     * Phase-96 fix: ``this.$root`` inside this factory returns the
+     * drawer's own root, NOT the outer ``sqlEditor()`` scope —
+     * Alpine 3's ``$root`` magic resolves to the closest x-data
+     * ancestor, which is the drawer itself.  Phase-91 shipped with
+     * silently-broken ``this.$root.setSQL`` / ``.chatOpen`` /
+     * ``._chatAgentRunId`` writes against this self-reference.
+     * Walking up one ancestor and asking Alpine for its data
+     * gives us the real outer scope.
+     */
     async loadProposalIntoEditor(proposal) {
       const id = proposal.proposal_id;
       const result = await window.pqlApi.fetch(
@@ -172,14 +182,18 @@ export function chatPanel(editorSessionId) {
           (result.data && result.data.detail) || 'failed to accept proposal';
         return;
       }
-      if (typeof this.$root.setSQL === 'function') {
-        this.$root.setSQL(result.data.sql);
+      const editor =
+        window.Alpine && this.$el && this.$el.parentElement
+          ? window.Alpine.$data(this.$el.parentElement)
+          : null;
+      if (editor && typeof editor.setSQL === 'function') {
+        editor.setSQL(result.data.sql);
       }
       // Stamp the chat run id on the editor so the next Run click
       // sends ``X-Agent-Run-Id`` against the chat run.
-      this.$root._chatAgentRunId = result.data.agent_run_id;
+      if (editor) editor._chatAgentRunId = result.data.agent_run_id;
       this._removeProposalLocal(id);
-      this.$root.chatOpen = false;
+      if (editor) editor.chatOpen = false;
     },
 
     _removeProposalLocal(id) {
