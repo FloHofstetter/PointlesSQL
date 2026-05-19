@@ -20,9 +20,10 @@ import logging
 import threading
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
-from pointlessql.services.sql_chat._broker import ChatEvent, publish
+from pointlessql.services.editor_chat._agent_factory import ChatSurface
+from pointlessql.services.editor_chat._broker import ChatEvent, publish
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -71,6 +72,7 @@ async def run_turn(
     conversation_history: Sequence[dict[str, Any]],
     cancel_event: threading.Event,
     agent_builder: Any | None = None,
+    surface: str = "sql",
 ) -> TurnResult:
     """Execute one chat turn end-to-end with streaming + cancel.
 
@@ -88,8 +90,12 @@ async def run_turn(
         cancel_event: ``threading.Event`` checked on every token;
             set from the WS side to abort mid-turn.
         agent_builder: Optional override of
-            :func:`pointlessql.services.sql_chat._agent_factory.build_agent`
+            :func:`pointlessql.services.editor_chat._agent_factory.build_agent`
             — tests inject a :class:`FakeAIAgent` factory here.
+        surface: Which propose-tool family the plugin should
+            register inside this turn.  ``"sql"`` (default) for
+            the Phase-91 SQL chat; ``"notebook"`` for the Phase-96
+            notebook AI assistant.  Forwarded to ``build_agent``.
 
     Returns:
         A :class:`TurnResult` carrying the assistant reply, the
@@ -121,7 +127,7 @@ async def run_turn(
     def _run_sync() -> TurnResult:
         nonlocal builder
         if builder is None:
-            from pointlessql.services.sql_chat._agent_factory import build_agent
+            from pointlessql.services.editor_chat._agent_factory import build_agent
 
             builder = build_agent
         agent = builder(
@@ -129,6 +135,7 @@ async def run_turn(
             agent_run_id=agent_run_id,
             editor_session_id=editor_session_id,
             on_token=on_token,
+            surface=cast(ChatSurface, surface),
         )
         try:
             result = agent.run_conversation(

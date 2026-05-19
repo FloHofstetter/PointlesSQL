@@ -32,7 +32,7 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from pointlessql.api.ws_auth import resolve_websocket_user
 from pointlessql.exceptions import ValidationError
-from pointlessql.services.sql_chat import (
+from pointlessql.services.editor_chat import (
     ChatEvent,
     append_turn_messages,
     claim_turn,
@@ -44,7 +44,7 @@ from pointlessql.services.sql_chat import (
     subscribe,
     unsubscribe,
 )
-from pointlessql.services.sql_chat._agent_factory import (
+from pointlessql.services.editor_chat._agent_factory import (
     LLM_NOT_CONFIGURED_REASON,
     check_llm_configured,
 )
@@ -82,8 +82,8 @@ async def sql_chat_ws(websocket: WebSocket, editor_session_id: str) -> None:
         editor_session_id: UUID7 from the SQL-editor page render.
     """
     settings: Settings = websocket.app.state.settings
-    if not settings.sql_chat.enabled:
-        await websocket.close(code=4503, reason="sql_chat_disabled")
+    if not settings.editor_chat.enabled:
+        await websocket.close(code=4503, reason="editor_chat_disabled")
         return
     user = resolve_websocket_user(websocket)
     if user is None:
@@ -307,7 +307,7 @@ async def _handle_prompt(
     async def _runner() -> None:
         try:
             history = _reload_history(factory, chat_session_id)
-            executor = _get_executor(settings.sql_chat.executor_workers)
+            executor = _get_executor(settings.editor_chat.executor_workers)
             try:
                 result = await run_turn(
                     settings=settings,

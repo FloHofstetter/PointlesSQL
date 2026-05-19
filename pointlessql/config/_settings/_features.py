@@ -35,12 +35,21 @@ class SQLSettings(BaseSettings):
     cost_gate_threshold_rows: int = 1_000_000
 
 
-class SqlChatSettings(BaseSettings):
-    """Phase-91 NL→SQL chat panel configuration.
+class EditorChatSettings(BaseSettings):
+    """Editor-chat configuration — shared by SQL + notebook surfaces.
 
-    Reads ``POINTLESSQL_SQL_CHAT_*`` environment variables.  The
+    Phase 91 introduced this as ``SqlChatSettings`` for the NL→SQL
+    drawer.  Phase 96 added the notebook-editor AI assistant, which
+    consumes the exact same provider / model / executor config —
+    there is no axis on which an operator would want different
+    model defaults per surface, so the setting is shared and the
+    class was renamed.  The env prefix moved to
+    ``POINTLESSQL_EDITOR_CHAT_*`` in the same cut-over (no shim).
+
+    Reads ``POINTLESSQL_EDITOR_CHAT_*`` environment variables.  The
     drawer is gated behind ``enabled`` so admins can stand the
-    feature down per-deploy without touching the frontend.
+    feature down per-deploy without touching the frontend; the
+    same flag also gates the notebook-editor AI button.
 
     ``default_model`` + ``provider`` route to the in-process
     :class:`hermes_agent.AIAgent` instance built per turn.  Both
@@ -58,7 +67,7 @@ class SqlChatSettings(BaseSettings):
     stays reserved for the cancel-handshake from the WS side.
     """
 
-    model_config = SettingsConfigDict(env_prefix="POINTLESSQL_SQL_CHAT_")
+    model_config = SettingsConfigDict(env_prefix="POINTLESSQL_EDITOR_CHAT_")
 
     enabled: bool = True
     default_model: str = "claude-haiku-4-5-20251001"

@@ -27,7 +27,7 @@ from pointlessql.api.dependencies import current_workspace_id, require_user
 from pointlessql.exceptions import ValidationError
 from pointlessql.models import ChatProposal, EditorChatSession
 from pointlessql.pql.sql_parser import StmtType, parse_and_classify
-from pointlessql.services.sql_chat import publish_proposal_created
+from pointlessql.services.editor_chat import publish_proposal_created
 
 logger = logging.getLogger(__name__)
 

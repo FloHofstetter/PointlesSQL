@@ -19,7 +19,7 @@ from fastapi import APIRouter, HTTPException, Request
 
 from pointlessql.api.dependencies import require_user
 from pointlessql.models import ChatProposal, EditorChatSession
-from pointlessql.services.sql_chat import ChatEvent, publish
+from pointlessql.services.editor_chat import ChatEvent, publish
 
 logger = logging.getLogger(__name__)
 

@@ -111,7 +111,7 @@ def fake_factory(monkeypatch: pytest.MonkeyPatch) -> None:
         return _FakeAIAgent(stream_delta_callback=on_token)
 
     monkeypatch.setattr(
-        "pointlessql.services.sql_chat._agent_factory.build_agent",
+        "pointlessql.services.editor_chat._agent_factory.build_agent",
         fake_build_agent,
     )
     monkeypatch.setattr(

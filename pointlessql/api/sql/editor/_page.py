@@ -30,7 +30,7 @@ async def sql_editor_page(request: Request) -> HTMLResponse:
             # fresh editor session id per render so the WS route has
             # a stable handle across reload of the same tab via
             # sessionStorage.
-            "chat_enabled": settings.sql_chat.enabled,
+            "chat_enabled": settings.editor_chat.enabled,
             "editor_session_id": str(uuid.uuid4()),
             "active_page": "sql",
             "active_catalog": None,

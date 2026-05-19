@@ -1,4 +1,4 @@
-"""SQL-editor chat services (Phase 91).
+"""Editor-chat services (Phase 91, renamed from ``sql_chat`` in Phase 96).
 
 The package is built in three layers:
 
@@ -11,28 +11,31 @@ The package is built in three layers:
   in-process ``hermes_agent.AIAgent`` and the bridge between its
   sync streaming callback and the WS-send-queue.
 
-Only the broker is needed before the WS route lands (Day 4); the
-propose route uses :func:`publish_proposal_created` so the WS-side
-can subscribe later without changing the route signature.
+All three layers are surface-agnostic; both the SQL-editor chat
+(Phase 91) and the notebook-editor AI assistant (Phase 96) import
+from this package.  Only the propose-route fan-out helper
+``publish_proposal_created`` is SQL-specific — notebook chat uses
+its own ``publish_cell_proposal_created`` helper inside the new
+``notebook_chat_routes`` package.
 """
 
 from __future__ import annotations
 
-from pointlessql.services.sql_chat._broker import (
+from pointlessql.services.editor_chat._broker import (
     ChatEvent,
     publish,
     publish_proposal_created,
     subscribe,
     unsubscribe,
 )
-from pointlessql.services.sql_chat._session import (
+from pointlessql.services.editor_chat._session import (
     append_turn_messages,
     claim_turn,
     load_or_create_session,
     release_turn,
     reset_session,
 )
-from pointlessql.services.sql_chat._turn import (
+from pointlessql.services.editor_chat._turn import (
     StreamCancelled,
     TurnResult,
     run_turn,

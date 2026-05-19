@@ -33,7 +33,7 @@ timeline, branches off the conversation become real Delta branches.
 │     • per-turn: run_in_executor(hermes_agent.AIAgent.run_conv…)  │
 │       └─ stream_delta_callback bridges tokens → broker → WS      │
 │                                                                  │
-│   pointlessql/services/sql_chat/                                 │
+│   pointlessql/services/editor_chat/                                 │
 │     • _session.py  — load/create, append messages, claim/release │
 │     • _turn.py     — orchestrate AIAgent + cancel-event          │
 │     • _broker.py   — fan-out frames to the per-session WS queue  │
@@ -96,12 +96,12 @@ back-and-forth.
 
 | Setting | Default | Purpose |
 |---|---|---|
-| `POINTLESSQL_SQL_CHAT_ENABLED` | `true` | Hide the chat toggle + reject WS upgrades when `false`. |
-| `POINTLESSQL_SQL_CHAT_DEFAULT_MODEL` | `claude-haiku-4-5-20251001` | Model the in-process `AIAgent` uses. |
-| `POINTLESSQL_SQL_CHAT_PROVIDER` | empty (auto-detect) | Override the provider when the model id doesn't disambiguate. |
-| `POINTLESSQL_SQL_CHAT_BASE_URL` | empty | Override the provider's base URL (e.g. local Ollama). |
-| `POINTLESSQL_SQL_CHAT_MAX_TURNS_PER_SESSION` | `20` | Hard cap before the WS layer asks the user to reset. |
-| `POINTLESSQL_SQL_CHAT_EXECUTOR_WORKERS` | `2` | Threads dedicated to in-flight turns. |
+| `POINTLESSQL_EDITOR_CHAT_ENABLED` | `true` | Hide the chat toggle + reject WS upgrades when `false`. |
+| `POINTLESSQL_EDITOR_CHAT_DEFAULT_MODEL` | `claude-haiku-4-5-20251001` | Model the in-process `AIAgent` uses. |
+| `POINTLESSQL_EDITOR_CHAT_PROVIDER` | empty (auto-detect) | Override the provider when the model id doesn't disambiguate. |
+| `POINTLESSQL_EDITOR_CHAT_BASE_URL` | empty | Override the provider's base URL (e.g. local Ollama). |
+| `POINTLESSQL_EDITOR_CHAT_MAX_TURNS_PER_SESSION` | `20` | Hard cap before the WS layer asks the user to reset. |
+| `POINTLESSQL_EDITOR_CHAT_EXECUTOR_WORKERS` | `2` | Threads dedicated to in-flight turns. |
 
 `hermes-agent` reads provider credentials from the standard env
 vars (``ANTHROPIC_API_KEY``, ``OPENAI_API_KEY``, …).  When none
@@ -115,7 +115,7 @@ is set, the WS closes with code 1011 + reason
 |---|---|
 | [`pointlessql/api/sql_chat_ws.py`](https://github.com/FloHofstetter/PointlesSQL/blob/main/pointlessql/api/sql_chat_ws.py) | WebSocket route `/ws/sql/chat/{editor_session_id}` |
 | [`pointlessql/api/sql_chat_routes/`](https://github.com/FloHofstetter/PointlesSQL/blob/main/pointlessql/api/sql_chat_routes/) | `POST .../propose`, `.../accept`, `.../discard` |
-| [`pointlessql/services/sql_chat/`](https://github.com/FloHofstetter/PointlesSQL/blob/main/pointlessql/services/sql_chat/) | Session lifecycle + turn orchestration + broker |
+| [`pointlessql/services/editor_chat/`](https://github.com/FloHofstetter/PointlesSQL/blob/main/pointlessql/services/editor_chat/) | Session lifecycle + turn orchestration + broker |
 | [`pointlessql/services/column_stats/`](https://github.com/FloHofstetter/PointlesSQL/blob/main/pointlessql/services/column_stats/) | Live PQL→pandas reduction for `pql_describe_columns_with_stats` |
 | [`frontend/templates/pages/_partials/sql_editor/chat_drawer.html`](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/templates/pages/_partials/sql_editor/chat_drawer.html) | Right-side drawer markup |
 | [`frontend/js/sql_editor/chat.js`](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/js/sql_editor/chat.js) | `chatPanel()` Alpine factory + WebSocket client |

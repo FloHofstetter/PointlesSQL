@@ -174,7 +174,7 @@ async def test_discard_flips_status_and_fanouts(
     proposal_row: tuple[str, str, str],
 ) -> None:
     """Discard → ``status='discarded'`` + WS notify proposal_discarded."""
-    from pointlessql.services.sql_chat import subscribe, unsubscribe
+    from pointlessql.services.editor_chat import subscribe, unsubscribe
 
     editor_session_id, _, proposal_id = proposal_row
     queue = subscribe(editor_session_id)

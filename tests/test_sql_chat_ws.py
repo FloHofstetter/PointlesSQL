@@ -63,7 +63,7 @@ def fake_agent_factory(monkeypatch: pytest.MonkeyPatch) -> None:
         )
 
     monkeypatch.setattr(
-        "pointlessql.services.sql_chat._agent_factory.build_agent",
+        "pointlessql.services.editor_chat._agent_factory.build_agent",
         fake_build_agent,
     )
     # Bypass the env-var check so the WS-open path succeeds even

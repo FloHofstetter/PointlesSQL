@@ -207,7 +207,7 @@ async def test_propose_broker_fan_out(
     chat_session_with_run: tuple[str, str],
 ) -> None:
     """A WS subscriber receives a ``proposal_created`` event."""
-    from pointlessql.services.sql_chat import subscribe, unsubscribe
+    from pointlessql.services.editor_chat import subscribe, unsubscribe
 
     editor_session_id, run_id = chat_session_with_run
     queue = subscribe(editor_session_id)

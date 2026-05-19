@@ -9,7 +9,7 @@ the host env.
 
 ## Prerequisites
 
-- A running PointlesSQL with `POINTLESSQL_SQL_CHAT_ENABLED=true`
+- A running PointlesSQL with `POINTLESSQL_EDITOR_CHAT_ENABLED=true`
   (the default).
 - An LLM provider key in the env (else the WS closes with
   `LLM_NOT_CONFIGURED` — verified by step 0 below).

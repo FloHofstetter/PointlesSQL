@@ -90,6 +90,12 @@ from pointlessql.models.catalog import (
     TableStats,
 )
 from pointlessql.models.dp_releases import DataProductRelease
+from pointlessql.models.editor_chat import (
+    CHAT_PROPOSAL_KINDS,
+    CHAT_PROPOSAL_STATUSES,
+    ChatProposal,
+    EditorChatSession,
+)
 from pointlessql.models.ingest import (
     INGEST_PULL_MODES,
     INGEST_SOURCE_KINDS,
@@ -144,12 +150,6 @@ from pointlessql.models.social import (
     UserFollow,
     UserProfile,
     UserTopicFollow,
-)
-from pointlessql.models.sql_chat import (
-    CHAT_PROPOSAL_KINDS,
-    CHAT_PROPOSAL_STATUSES,
-    ChatProposal,
-    EditorChatSession,
 )
 from pointlessql.models.system_keys import SystemKey
 from pointlessql.models.vector import VectorIndex
