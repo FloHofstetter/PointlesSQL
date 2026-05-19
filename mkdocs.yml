@@ -96,6 +96,7 @@ nav:
       - Audit trail: concepts/audit-trail.md
       - Lineage: concepts/lineage.md
       - Agent supervision: concepts/agent-supervision.md
+      - Agent memory: concepts/agent-memory.md
       - Auth: concepts/auth.md
       - Data layers: concepts/data-layers.md
       - PII modes: concepts/pii-modes.md
@@ -165,6 +166,7 @@ nav:
               - Git-backed workspaces: e2e-walkthroughs/git-backed-workspaces.md
               - Volumes: e2e-walkthroughs/volumes.md
           - Agents + ML registry:
+              - Agent memory: e2e-walkthroughs/agent_memory.md
               - Agent ML registry: e2e-walkthroughs/agent-ml-registry.md
               - Models tab: e2e-walkthroughs/models-tab.md
               - Model compare: e2e-walkthroughs/model-compare.md

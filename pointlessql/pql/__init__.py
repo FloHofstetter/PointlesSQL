@@ -59,6 +59,7 @@ Write-side helpers:
   path (or ``None`` if missing) without instantiating a full PQL.
 """
 
+from pointlessql.pql import memory
 from pointlessql.pql._branch_errors import (
     BranchAlreadyExistsError,
     BranchCloudUnsupportedError,
@@ -134,6 +135,7 @@ __all__ = [
     "extract_table_refs",
     "extract_write_target",
     "make_engine",
+    "memory",
     "parse_and_classify",
     "parse_batch",
     "prepare_sql",

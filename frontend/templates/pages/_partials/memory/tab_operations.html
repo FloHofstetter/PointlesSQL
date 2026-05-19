@@ -1,0 +1,92 @@
+{# Phase 90.1 — Operation tape with recall filter bar. #}
+<div x-data='memoryRecall({{ agent.id|tojson }})' x-init="init()">
+    <div class="row g-2 mb-3" data-testid="recall-bar">
+        <div class="col-md-3">
+            <label class="form-label small text-muted">Op name</label>
+            <select class="form-select form-select-sm" x-model="filter.op_name"
+                    @change="refresh()" data-testid="recall-op-name">
+                <option value="">All</option>
+                <option value="autoload">autoload</option>
+                <option value="merge">merge</option>
+                <option value="write_table">write_table</option>
+                <option value="sql">sql</option>
+                <option value="aggregate">aggregate</option>
+                <option value="rollback">rollback</option>
+                <option value="train_model">train_model</option>
+                <option value="branch_create">branch_create</option>
+                <option value="dbt_model">dbt_model</option>
+                <option value="dbt_test">dbt_test</option>
+            </select>
+        </div>
+        <div class="col-md-4">
+            <label class="form-label small text-muted">Target table</label>
+            <input type="text" class="form-control form-control-sm"
+                   placeholder="catalog.schema.table"
+                   x-model.debounce.300ms="filter.target_table"
+                   @input="refresh()"
+                   data-testid="recall-target">
+        </div>
+        <div class="col-md-3">
+            <label class="form-label small text-muted">Status</label>
+            <select class="form-select form-select-sm" x-model="filter.status"
+                    @change="refresh()" data-testid="recall-status">
+                <option value="">All</option>
+                <option value="success">success</option>
+                <option value="failed">failed</option>
+                <option value="running">running</option>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label small text-muted">Limit</label>
+            <input type="number" class="form-control form-control-sm"
+                   min="1" max="1000" x-model.number="filter.limit"
+                   @change="refresh()" data-testid="recall-limit">
+        </div>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-sm table-hover" data-testid="operations-table">
+            <thead>
+                <tr>
+                    <th class="small text-muted">When</th>
+                    <th class="small text-muted">Op</th>
+                    <th class="small text-muted">Target</th>
+                    <th class="small text-muted text-end">Rows</th>
+                    <th class="small text-muted">Run</th>
+                </tr>
+            </thead>
+            <tbody>
+                <template x-if="loading">
+                    <tr>
+                        <td colspan="5" class="text-muted small">Loading…</td>
+                    </tr>
+                </template>
+                <template x-if="!loading && operations.length === 0">
+                    <tr>
+                        <td colspan="5" class="text-muted small">No operations match the filter.</td>
+                    </tr>
+                </template>
+                <template x-for="op in operations" :key="op.id">
+                    <tr>
+                        <td class="small text-muted font-monospace"
+                            x-text="(op.started_at || '').substring(0, 19)"></td>
+                        <td>
+                            <span class="badge bg-light text-dark border" x-text="op.op_name"></span>
+                            <template x-if="op.error_message">
+                                <i class="bi bi-exclamation-triangle text-danger ms-1"
+                                   :title="op.error_message"></i>
+                            </template>
+                        </td>
+                        <td class="font-monospace small" x-text="op.target_table || '—'"></td>
+                        <td class="text-end small" x-text="op.rows_affected ?? '—'"></td>
+                        <td class="small">
+                            <a :href="'/runs/' + op.agent_run_id"
+                               x-text="op.agent_run_id.substring(0, 8)"
+                               class="font-monospace text-decoration-none"></a>
+                        </td>
+                    </tr>
+                </template>
+            </tbody>
+        </table>
+    </div>
+</div>

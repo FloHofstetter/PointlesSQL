@@ -22,6 +22,10 @@ this order if you want the full mental model:
    privilege tiers, supervisor + auditor scopes, the wake-gate
    optimisation, the `agent_reviews` table and CloudEvents
    webhook fan-out, and the four canonical bot personas.
+5. **[Agent memory](agent-memory.md)** — the `pql.memory`
+   facade (record / recall / branch / fork / replay) framed as
+   Delta-first persistent memory for AI agents.  Counter-pitch
+   to Lakebase's Postgres-OLTP angle.
 
 The remaining pages are reference-style:
 

@@ -1320,6 +1320,186 @@ PointlesSQL
 │          14 background-task names / 2 subprocess shutdown order
 │          are byte-identical.
 │
+├── Phases 90–92 — Agent-native lakehouse axis (post-Lakebase) ⏳ planned
+│   │
+│   │   Articulated 2026-05-19 after a gap-analysis sweep against
+│   │   Databricks' May-2026 feature set (AI/BI Genie GA, Lakebase
+│   │   GA Feb 2026, ABAC GA Apr 2026, catalog commits May 2026,
+│   │   Mosaic AI Vector Search GA).  DBX's pitch — "agents want
+│   │   to spin up DBs, branch quickly, persist memory" — directly
+│   │   validates the PointlesSQL vision *from the OLTP-Postgres
+│   │   side*.  PointlesSQL has the same building blocks
+│   │   (``agent_runs``, ``operations``, ``branch_service``,
+│   │   audit-stream) but lacks the *naming and API surface* that
+│   │   makes them legible as "the agent's persistent memory".
+│   │
+│   │   Three pillars, ranked by vision-leverage per LOC:
+│   │   (1) name + expose the existing memory stack as a primitive,
+│   │   (2) wire ``hermes-agent`` into the SQL editor as the
+│   │   NL→SQL surface DBX calls "Genie", (3) add Vector Search
+│   │   as the third compute primitive next to ``pql.merge`` /
+│   │   ``pql.autoload`` so RAG-style retrieval is in-stack.
+│   │
+│   │   Explicitly NOT pursued (out-of-scope per gap-analysis):
+│   │   ABAC policy engine (defer until shoreguard is a standalone
+│   │   lib), Lakehouse Monitoring full UI (the
+│   │   ``notebooks/agent_drift_monitor.py`` covers 80 %), Model
+│   │   Serving (out of mission), Lakeflow Connect / Liquid
+│   │   Clustering / DLT-replacement (engine-arms-race that
+│   │   PointlesSQL does not win by reimplementing).
+│   │
+│   ├── Phase 90 — Agent-Memory as first-class primitive       ✅ shipped (local, 2026-05-19)
+│   │   │
+│   │   │   Smallest diff, largest narrative win.  The
+│   │   │   infrastructure is ~80 % already shipped — what's
+│   │   │   missing is a single ``pql.memory`` API facade plus a
+│   │   │   ``/memory/<agent-id>`` UI page that frames the
+│   │   │   existing ``agent_runs`` + ``operations`` + branch
+│   │   │   surface as "the agent's persistent memory" instead of
+│   │   │   "audit infrastructure".  Directly counters Lakebase's
+│   │   │   "persistent memory for AI agents" positioning with
+│   │   │   the Delta-first / append-only angle (Lakebase is
+│   │   │   Postgres-first; agent writes are dominantly append-
+│   │   │   only logs which Delta serves more cheaply).
+│   │   │
+│   │   │   Shipped 2026-05-19 at ~2510 LOC across 9 sub-strands
+│   │   │   (5 facade methods + Alembic migration + 4 routes + 7
+│   │   │   templates + JS + walkthrough + concept doc + 62 tests).
+│   │   │   Scope grew vs the original 400-LOC sketch because the
+│   │   │   user picked "Voll-Scope" — real replay-dispatcher with
+│   │   │   policy gate, polymorphic comment integration with
+│   │   │   Alembic migration, full Playwright walkthrough.  See
+│   │   │   ``docs/concepts/agent-memory.md`` for the conceptual
+│   │   │   model and the Lakebase comparison.
+│   │   │
+│   │   ├── 90.0 — ``pql.memory`` facade + replay-dispatcher  ✅ shipped
+│   │   │     [`pointlessql/pql/memory.py`](pointlessql/pql/memory.py)
+│   │   │     exposing the five public methods, plus the
+│   │   │     [`services/agent_runs/memory/`](pointlessql/services/agent_runs/memory/)
+│   │   │     package backing them (recall SELECT, branch-from-run,
+│   │   │     replay dispatcher with REPLAYABLE / DATA_UNAVAILABLE /
+│   │   │     UNSAFE op classification + STRICT/SKIP_UNSAFE/LENIENT
+│   │   │     policy).  Replay-execution scoped to "intent-only"
+│   │   │     for Phase 90 — re-records ops against the replay run
+│   │   │     with ``_replay_recorded_only: true``, real DuckDB
+│   │   │     execution lands with Phase 91 (same plumbing
+│   │   │     requirement).  49 unit tests.
+│   │   ├── 90.1 — ``/memory/<agent-id>`` UI + comment surface  ✅ shipped
+│   │   │     Alembic migration ``p4r6t8v0x2z4`` extends
+│   │   │     ``social_targets.entity_kind`` CHECK to accept
+│   │   │     ``agent_memory``; new entity-registry spec defines
+│   │   │     the discussion/endorsements/followers tab strip.
+│   │   │     HTML route + 3 JSON routes
+│   │   │     (recall / branch / replay).  ``memory.html`` plus
+│   │   │     5 page-scoped partials (header, timeline,
+│   │   │     operations, branches, social) and
+│   │   │     ``memory_brain.js`` (memoryRecall + memoryDiscussion
+│   │   │     Alpine factories + replay-button handler).
+│   │   │     ``asset_version`` bumped to 0.1.0rc6.  13 route
+│   │   │     tests.  Replayed via
+│   │   │     ``docs/e2e-walkthroughs/agent_memory.md``.
+│   │   ├── 90.2 — Counter-pitch concept doc                  ✅ shipped
+│   │   │     [`docs/concepts/agent-memory.md`](docs/concepts/agent-memory.md)
+│   │   │     frames the Delta-first / append-only angle vs
+│   │   │     Lakebase's Postgres-first.  Cross-link from
+│   │   │     ``agent-supervision.md``, new ``Agent memory`` nav
+│   │   │     entry in ``mkdocs.yml`` and concept-index.
+│   │
+│   ├── Phase 91 — NL→SQL via hermes-agent wiring             ⏳ planned
+│   │   │
+│   │   │   The DBX "Genie" equivalent.  Plumbing exists end-to-
+│   │   │   end (``hermes-agent`` framework,
+│   │   │   ``hermes-plugin-pointlessql`` with the
+│   │   │   ``pql_*`` tool set, SQL editor with EXPLAIN gate,
+│   │   │   column-stats refresh, audit-trail for agent runs) —
+│   │   │   what's missing is the chat UI panel and the
+│   │   │   WebSocket transport that streams hermes-agent output
+│   │   │   into the editor.  After Phase 91, agents and humans
+│   │   │   share the same SQL surface: human types SQL, or
+│   │   │   asks the chat for it, then both go through the same
+│   │   │   dispatcher + audit pipeline.
+│   │   │
+│   │   │   Sprint sketch (~2 sprints, ~800 LOC):
+│   │   │
+│   │   ├── 91.0 — Chat panel + WebSocket transport
+│   │   │     New side-panel in the SQL editor that opens a
+│   │   │     ``/api/sql/chat/<editor-session>`` WebSocket.
+│   │   │     Streams hermes-agent thinking-traces + tool-call
+│   │   │     decisions inline.  Reuses the kernel-websocket
+│   │   │     plumbing from the notebook editor.
+│   │   ├── 91.1 — Tool-set hardening in
+│   │   │     ``hermes-plugin-pointlessql``
+│   │   │     Ensure the 5 core tools the chat needs are
+│   │   │     production-ready: ``pql_list_tables``,
+│   │   │     ``pql_describe_columns_with_stats``,
+│   │   │     ``pql_explain``, ``pql_run_select_capped``,
+│   │   │     ``pql_save_query``.  Each tool emits an
+│   │   │     ``operation`` row so Phase 90's memory surface
+│   │   │     captures the conversation automatically.
+│   │   ├── 91.2 — Run-it gate + audit-mirroring
+│   │   │     The chat never executes destructive SQL silently:
+│   │   │     SELECTs run capped (read-only, 10K row limit),
+│   │   │     DML lands in the editor as a draft the user
+│   │   │     clicks "Run" on — same audit/agent-run lifecycle
+│   │   │     as a human-typed query.  Cross-link with shoreguard
+│   │   │     supervision (if shoreguard policy says "ask before
+│   │   │     non-SELECT", the chat surface honours that).
+│   │   ├── 91.3 — Conversational refinement loop
+│   │   │     If the generated SQL returns an error or zero
+│   │   │     rows, the chat surfaces the failure and offers a
+│   │   │     refine button that feeds the error + the original
+│   │   │     question back to hermes-agent.  Each turn appends
+│   │   │     to the same agent-run, so Phase 90's memory page
+│   │   │     shows the full refinement trace.
+│   │
+│   └── Phase 92 — Vector-Search compute primitive            ⏳ planned
+│       │
+│       │   Third compute primitive next to ``pql.merge`` and
+│       │   ``pql.autoload``.  Backed by ``duckdb-vss`` HNSW
+│       │   indices stored side-by-side with the Delta table
+│       │   (Delta remains source-of-truth; the index is a
+│       │   secondary structure rebuilt on merge).  Completes
+│       │   the "persistent memory for agents" story: Phase 90
+│       │   gives agents *what to remember*, Phase 91 gives
+│       │   them *how to ask*, Phase 92 gives them *how to
+│       │   retrieve semantically*.  Highest-risk of the three
+│       │   (duckdb-vss maturity, embed-provider choice) — ship
+│       │   after 90 + 91 land.
+│       │
+│       │   Sprint sketch (~2 sprints, ~600 LOC):
+│       │
+│       ├── 92.0 — ``pql.vector_index`` primitive
+│       │     ``pql.vector_index(table, column, dim, model)``
+│       │     creates the duckdb-vss HNSW index over a Delta
+│       │     table column (typically a text column with
+│       │     pre-computed embeddings, or PointlesSQL computes
+│       │     them via hermes-agent embed tool).  Index file
+│       │     stored at ``<warehouse>/<schema>/<table>/_vss/
+│       │     <column>.duckdb``.  Auto-rebuild hook on
+│       │     ``pql.merge`` writes.
+│       ├── 92.1 — Embedding-provider abstraction
+│       │     Pluggable ``Embedder`` interface; default
+│       │     provider routes through hermes-agent's embed tool
+│       │     (no new API key surface).  Local-only provider
+│       │     using ``sentence-transformers`` as a fallback for
+│       │     air-gapped installs.
+│       ├── 92.2 — ``/api/sql/vector_search`` REST endpoint
+│       │     ``POST /api/sql/vector_search`` with
+│       │     ``{table, column, query, top_k}``; returns top-K
+│       │     rows ranked by cosine similarity.  Reuses the SQL
+│       │     dispatcher's privilege check
+│       │     (``enforce_select_per_table``) so a user can't
+│       │     vector-search a table they couldn't SELECT.
+│       ├── 92.3 — Hermes-tool exposure
+│       │     ``pql_vector_search`` tool in
+│       │     ``hermes-plugin-pointlessql`` so the Phase-91
+│       │     chat panel can do semantic retrieval before
+│       │     generating SQL — closing the RAG loop end-to-end.
+│       └── 92.4 — UI surface on Table-detail
+│           A "Semantic search" tab on table-detail pages when
+│           a vector index exists.  Reuses the saved-view embed
+│           pattern for shareable result snippets.
+│
 ├── Phase 81 — Feed overhaul + help surface + entity ⋯-menu  ✅ done 2026-05-16
 │       Three-track polish bundle.  Track K rebuilt /feed from a
 │       flat Bootstrap `list-group` into a first-class social

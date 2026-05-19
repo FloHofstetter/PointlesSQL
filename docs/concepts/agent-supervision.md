@@ -10,6 +10,11 @@ families, two scope dimensions, the daily review loop, the
 agent_reviews persistence layer, and the four canonical bot
 personas.
 
+> **See also**: [Agent memory](agent-memory.md) frames the same
+> per-operation audit log as the agent's persistent memory,
+> exposes it via `pql.memory.record/recall/branch/replay/fork`,
+> and explains the Delta-vs-Lakebase positioning.
+
 ## The three privilege families
 
 Every Hermes plugin tool falls into one of three families:

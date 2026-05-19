@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{#
+ Phase 90.1 — Agent-memory "brain browser" page.
+
+ Routed from /memory/{agent_id}.  Renders four top-tabs over an
+ agent's recorded activity:
+
+ * Timeline — runs grouped by day
+ * Operations — cross-run operation tape with a recall filter
+ * Branches — agent-driven branches with replay actions
+ * Social — polymorphic discussion / endorsements / followers
+
+ The page is the agent-side counter-pitch to Lakebase's
+ Postgres-backed "persistent memory for agents" surface:
+ PointlesSQL routes the same conceptual primitives (record,
+ recall, branch, replay) through Delta + agent_run_operations.
+
+ Expected context:
+ * ``agent`` — ``{"id", "run_count", "last_seen"}``
+ * ``timeline`` — output of ``_group_runs_by_day``
+ * ``operations`` — list of serialised ops (most-recent first)
+ * ``branches`` — agent-driven branch rows with intent + pin
+ * ``social_entity_kind`` / ``social_entity_ref`` — wired into
+   the discussion + endorsements + followers partials
+#}
+{% block title %}Memory · {{ agent.id }} · PointlesSQL{% endblock %}
+
+{% block breadcrumbs %}
+<ol class="breadcrumb mb-0 ms-3">
+    <li class="breadcrumb-item"><a href="/" class="text-decoration-none">Home</a></li>
+    <li class="breadcrumb-item"><a href="/agents" class="text-decoration-none">Agents</a></li>
+    <li class="breadcrumb-item active font-monospace">{{ agent.id }} · memory</li>
+</ol>
+{% endblock %}
+
+{% block content %}
+{% include "pages/_partials/memory/header.html" %}
+
+<ul class="nav nav-tabs mb-3" id="memoryTopTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="memory-timeline-btn" data-bs-toggle="tab"
+                data-bs-target="#memory-timeline" type="button" role="tab"
+                aria-controls="memory-timeline" aria-selected="true">
+            <i class="bi bi-clock-history me-1"></i>Timeline
+            <span class="badge bg-secondary ms-1">{{ timeline|length }}</span>
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="memory-operations-btn" data-bs-toggle="tab"
+                data-bs-target="#memory-operations" type="button" role="tab"
+                aria-controls="memory-operations" aria-selected="false">
+            <i class="bi bi-list-task me-1"></i>Operations
+            <span class="badge bg-secondary ms-1">{{ operations|length }}</span>
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="memory-branches-btn" data-bs-toggle="tab"
+                data-bs-target="#memory-branches" type="button" role="tab"
+                aria-controls="memory-branches" aria-selected="false">
+            <i class="bi bi-diagram-2 me-1"></i>Branches
+            <span class="badge bg-secondary ms-1">{{ branches|length }}</span>
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="memory-social-btn" data-bs-toggle="tab"
+                data-bs-target="#memory-social" type="button" role="tab"
+                aria-controls="memory-social" aria-selected="false">
+            <i class="bi bi-chat-square-dots me-1"></i>Social
+        </button>
+    </li>
+</ul>
+
+<div class="tab-content">
+    <div class="tab-pane fade show active" id="memory-timeline" role="tabpanel"
+         aria-labelledby="memory-timeline-btn">
+        {% include "pages/_partials/memory/tab_timeline.html" %}
+    </div>
+    <div class="tab-pane fade" id="memory-operations" role="tabpanel"
+         aria-labelledby="memory-operations-btn">
+        {% include "pages/_partials/memory/tab_operations.html" %}
+    </div>
+    <div class="tab-pane fade" id="memory-branches" role="tabpanel"
+         aria-labelledby="memory-branches-btn">
+        {% include "pages/_partials/memory/tab_branches.html" %}
+    </div>
+    <div class="tab-pane fade" id="memory-social" role="tabpanel"
+         aria-labelledby="memory-social-btn">
+        {% include "pages/_partials/memory/tab_social.html" %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="/static/js/memory_brain.js?v={{ asset_version }}"></script>
+{% endblock %}

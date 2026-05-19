@@ -1,0 +1,81 @@
+{# Phase 90.1 — Branch list with replay action for each row.
+
+   Server-rendered list of branches whose ``BranchAuditLog.run_id``
+   matches any of the agent's runs.  The intent + pinned-version
+   metadata stamped by the ``pql.memory.branch`` / ``fork`` flow
+   shows up inline so a reviewer can distinguish fork-vs-create
+   without opening the branch detail page. #}
+{% if branches %}
+    <div class="table-responsive">
+        <table class="table table-sm table-hover" data-testid="branches-table">
+            <thead>
+                <tr>
+                    <th class="small text-muted">Branch</th>
+                    <th class="small text-muted">Parent</th>
+                    <th class="small text-muted">Intent</th>
+                    <th class="small text-muted">Pin</th>
+                    <th class="small text-muted">Source run</th>
+                    <th class="small text-muted">When</th>
+                    <th class="small text-muted">Replay</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for b in branches %}
+                    <tr>
+                        <td class="font-monospace small">
+                            <a href="/branches/{{ b.branch_schema_fqn }}"
+                               class="text-decoration-none">{{ b.branch_schema_fqn }}</a>
+                        </td>
+                        <td class="font-monospace small text-muted">{{ b.parent_schema_fqn or '—' }}</td>
+                        <td>
+                            <span class="badge
+                                {% if b.intent == 'fork' %}bg-info text-dark
+                                {% else %}bg-light text-dark border{% endif %}">
+                                {{ b.intent }}
+                            </span>
+                        </td>
+                        <td class="font-monospace small text-muted">
+                            {% if b.pinned_delta_version is not none %}
+                                v{{ b.pinned_delta_version }}
+                            {% else %}
+                                —
+                            {% endif %}
+                        </td>
+                        <td class="small">
+                            {% if b.source_run_id %}
+                                <a href="/runs/{{ b.source_run_id }}"
+                                   class="font-monospace text-decoration-none">{{ b.source_run_id[:8] }}</a>
+                            {% else %}
+                                <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td class="small text-muted font-monospace">
+                            {{ (b.created_at or '')[:19] }}
+                        </td>
+                        <td>
+                            {% if b.source_run_id %}
+                                <button class="btn btn-sm btn-outline-primary"
+                                        data-testid="replay-button"
+                                        data-branch-fqn="{{ b.branch_schema_fqn }}"
+                                        data-source-run-id="{{ b.source_run_id }}"
+                                        data-agent-id="{{ agent.id }}"
+                                        onclick="window.memoryReplayBranch(this)">
+                                    <i class="bi bi-arrow-clockwise me-1"></i>Replay
+                                </button>
+                            {% else %}
+                                <span class="text-muted small">—</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+{% else %}
+    <div class="alert alert-secondary">
+        <i class="bi bi-info-circle me-2"></i>
+        No agent-driven branches yet.  Branches show up here once
+        the agent (or a human via the run-detail page) calls
+        <code>pql.memory.branch()</code> / <code>fork()</code>.
+    </div>
+{% endif %}

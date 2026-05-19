@@ -1,0 +1,95 @@
+{# Phase 90.1 — Social top-tab for agent-memory.
+
+   Three sub-tabs (Discussion / Endorsements / Followers) hang off
+   the polymorphic backbone landed in 77.1.5.  The registry's
+   ``agent_memory`` kind keeps Reviews + README + Issues off (see
+   ``entity_registry.py``), matching the "run" kind shape — memory
+   is transient activity, not a curated artefact.
+
+   The Discussion sub-tab uses the kind-agnostic ``memoryDiscussion``
+   factory in ``memory_brain.js`` — semantically identical to
+   ``runDiscussion`` but pointing at the agent_memory endpoints. #}
+<ul class="nav nav-pills mb-3 small" id="memorySocialSubTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="mem-discussion-btn" data-bs-toggle="tab"
+                data-bs-target="#mem-discussion" type="button" role="tab"
+                aria-controls="mem-discussion" aria-selected="true">
+            <i class="bi bi-chat-left-text me-1"></i>Discussion
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="mem-endorsements-btn" data-bs-toggle="tab"
+                data-bs-target="#mem-endorsements" type="button" role="tab"
+                aria-controls="mem-endorsements" aria-selected="false">
+            <i class="bi bi-hand-thumbs-up me-1"></i>Endorsements
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="mem-followers-btn" data-bs-toggle="tab"
+                data-bs-target="#mem-followers" type="button" role="tab"
+                aria-controls="mem-followers" aria-selected="false">
+            <i class="bi bi-bell me-1"></i>Followers
+        </button>
+    </li>
+</ul>
+
+<div class="tab-content"
+     x-data='socialTabs({
+        kind: {{ social_entity_kind|tojson }},
+        ref: {{ social_entity_ref|tojson }},
+        endorsementTypes: [
+            {key: "verified-by-steward", label: "Verified by steward",
+             description: "Steward reviewed this agent's recent activity."},
+            {key: "production-ready", label: "Production ready",
+             description: "Agent's outputs are safe to consume downstream."},
+            {key: "deprecated", label: "Deprecated",
+             description: "Soft warning — prefer a newer agent for this work."},
+            {key: "under-review", label: "Under review",
+             description: "Actively being audited; expect churn."}
+        ]
+     })'>
+
+    <div class="tab-pane fade show active" id="mem-discussion" role="tabpanel"
+         x-data='memoryDiscussion({{ social_entity_kind|tojson }}, {{ social_entity_ref|tojson }})'
+         x-init="init()">
+        <template x-if="!commentsLoaded">
+            <div class="text-muted small p-3">Loading discussion…</div>
+        </template>
+        <template x-if="commentsLoaded">
+            <div>
+                <template x-if="comments.length === 0">
+                    <div class="alert alert-secondary">
+                        <i class="bi bi-chat-left-text me-1"></i>
+                        No comments yet — start the discussion below.
+                    </div>
+                </template>
+                <template x-for="c in comments" :key="c.id">
+                    <div class="card mb-2">
+                        <div class="card-body py-2">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <div class="small text-muted">
+                                    <strong x-text="(c.author && (c.author.display_name || c.author.email)) || 'unknown'"></strong>
+                                </div>
+                            </div>
+                            <div x-html="c.body_md_resolved || c.body_md"></div>
+                        </div>
+                    </div>
+                </template>
+                <form class="mt-3" @submit.prevent="submitNew()">
+                    <div class="mb-2">
+                        <textarea class="form-control" rows="3"
+                                  placeholder="Add a comment… markdown welcome"
+                                  x-model="draftBody"></textarea>
+                    </div>
+                    <button class="btn btn-primary btn-sm" type="submit"
+                            :disabled="postBusy || !draftBody.trim()">
+                        <i class="bi bi-send me-1"></i>Post
+                    </button>
+                </form>
+            </div>
+        </template>
+    </div>
+
+    {% include 'partials/social/_endorsements_pane.html' %}
+    {% include 'partials/social/_followers_pane.html' %}
+</div>

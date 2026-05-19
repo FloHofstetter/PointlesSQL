@@ -209,6 +209,18 @@ def _saved_query_url(entity_ref: str) -> str:
     return f"/audit/queries/{entity_ref}"
 
 
+def _agent_memory_url(entity_ref: str) -> str:
+    """Map an agent_id to its memory page URL.
+
+    Phase 90 — agent memory pages live at ``/memory/{agent_id}``.
+    Falls back to the agents index on empty refs so audit-log
+    rendering never crashes.
+    """
+    if not entity_ref:
+        return "/agents"
+    return f"/memory/{entity_ref}"
+
+
 def _workspace_url(entity_ref: str) -> str:
     """Map a workspace slug to its landing page URL.
 
@@ -455,6 +467,30 @@ _REGISTRY: dict[str, EntityKindSpec] = {
             "endorsements",
             "followers",
             "readme",
+        ),
+    ),
+    # Phase 90 — agent_memory anchors hang the polymorphic social
+    # surface off an agent identifier (one row per agent, the
+    # entity_ref is the AgentRun.agent_id string).  Same tab strip
+    # as "run" because a memory page is the agent-wide aggregation
+    # of run-scoped activity — humans endorse, follow, and discuss
+    # but don't review (memory is transient activity, not a curated
+    # artefact).  Stars on so users can bookmark agents they
+    # supervise.
+    "agent_memory": EntityKindSpec(
+        key="agent_memory",
+        label="Agent memory",
+        url_for=_agent_memory_url,
+        audit_target_prefix="agent_memory",
+        supports_reviews=False,
+        supports_endorsements=True,
+        supports_readme=False,
+        supports_issues=False,
+        supports_stars=True,
+        tab_keys=(
+            "discussion",
+            "endorsements",
+            "followers",
         ),
     ),
     # Phase 77.10 — workspaces themselves get a Discussion +

@@ -4,6 +4,78 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- **Phase 90 Agent-Memory as first-class primitive closed
+  (2026-05-19).**  Frames the existing audit + branching
+  infrastructure (``agent_runs``, ``agent_run_operations``,
+  ``branch_audit_log``) as the agent's persistent memory and
+  ships a five-function API matching what Lakebase markets as
+  "persistent memory for AI agents" on its Postgres-OLTP
+  backend.  Three sub-strands, ~2510 LOC total, 62 new tests
+  (49 unit + 13 route), all gates green (ruff / pyright /
+  pydoclint / alembic / pytest).
+
+  1. **90.0** — ``pql.memory`` facade + replay-dispatcher.
+     [`pointlessql/pql/memory.py`](pointlessql/pql/memory.py)
+     exposes ``record`` / ``recall`` / ``branch`` / ``fork``
+     / ``replay``.  The
+     [`services/agent_runs/memory/`](pointlessql/services/agent_runs/memory/)
+     package backs each method with a thin SELECT (recall),
+     a ``create_branch_schema`` wrapper that derives source
+     schema from the run's first write op + stamps
+     ``pinned_delta_version`` into the BranchAuditLog payload
+     (branch / fork), and a dispatcher that buckets every
+     ``OpName`` member into REPLAYABLE (sql / sql_explain /
+     autoload) / DATA_UNAVAILABLE (merge / write_table /
+     aggregate) / UNSAFE (branch_* / dbt_* / train_model /
+     update / delete / rollback / drop_table / DDL).
+     ``ReplayPolicy`` enum gates the unsafe path:
+     ``STRICT`` raises, ``SKIP_UNSAFE`` records the skip
+     reason, ``LENIENT`` accepts.  Replay-execution scoped
+     to *intent-only* for Phase 90 — re-records ops against
+     the replay run with ``_replay_recorded_only: true``
+     stamped in params; real DuckDB execution lands with
+     Phase 91 (which needs the same approved-tables map
+     for the branch schema).  Version-pinning ships as
+     payload metadata + branch-tag stamp; true per-table
+     time-travel cloning is a follow-up.
+  2. **90.1** — ``/memory/<agent-id>`` UI + polymorphic
+     comment surface.  Alembic ``p4r6t8v0x2z4`` extends
+     ``social_targets.entity_kind`` CHECK to accept
+     ``agent_memory`` (round-trip downgrade-tested).
+     ``entity_registry`` gets a new ``agent_memory`` spec
+     with discussion / endorsements / followers tab strip
+     (matches the ``run`` shape — memory is transient
+     activity, not a curated artefact).
+     [`memory_html_routes.py`](pointlessql/api/memory_html_routes.py)
+     renders the brain-browser page with four top-tabs;
+     [`memory_routes/`](pointlessql/api/memory_routes/)
+     ships the recall / branch / replay JSON endpoints.
+     [`memory.html`](frontend/templates/pages/memory.html)
+     plus 5 page-scoped partials
+     ([`pages/_partials/memory/`](frontend/templates/pages/_partials/memory/))
+     and [`memory_brain.js`](frontend/js/memory_brain.js)
+     (Alpine factories + replay-button HX-Redirect handler).
+     ``pyproject.toml`` version bumped 0.1.0rc5 → 0.1.0rc6 to
+     bust the frontend ES-module cache.
+  3. **90.2** — Counter-pitch concept doc at
+     [`docs/concepts/agent-memory.md`](docs/concepts/agent-memory.md)
+     frames the Delta-first / append-only angle against
+     Lakebase's Postgres-first.  Walkthrough at
+     [`docs/e2e-walkthroughs/agent_memory.md`](docs/e2e-walkthroughs/agent_memory.md)
+     captures the four-step Playwright replay (navigate →
+     filter → branch+replay → post comment).  Cross-link
+     from ``agent-supervision.md``; new ``Agent memory``
+     nav entry in ``mkdocs.yml`` and concept-index.
+
+  ROADMAP.md sketch grew from ~400 LOC to ~2510 LOC because
+  the user picked Voll-Scope (real replay dispatcher with
+  policy gate, polymorphic comment integration with Alembic
+  migration, full Playwright walkthrough); the original 400-
+  LOC budget assumed pure pass-through with no scope-trim
+  expansions.
+
 ### Changed
 
 - **Phase 89 Restschuld III (endgame) closed (2026-05-16).**
