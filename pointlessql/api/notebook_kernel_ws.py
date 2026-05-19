@@ -45,6 +45,7 @@ from pointlessql.pql import SQLParseError
 from pointlessql.services import query_history as query_history_service
 from pointlessql.services.notebook import _doc as notebook_doc
 from pointlessql.services.notebook import _sql_cell as notebook_sql_cell
+from pointlessql.services.notebook import magic_commands as notebook_magic_commands
 from pointlessql.services.notebook import outputs as notebook_outputs_service
 from pointlessql.services.notebook.kernel_session import (
     KernelMessage,
@@ -427,6 +428,55 @@ async def _handle_execute(
             "approved_tables": list(approved.keys()),
         }
         kernel_source = wrapped_source
+    elif cell_type == "code" and notebook_magic_commands.has_magics(source):
+        # Phase 98.A — rewrite %sql / %md / %fs ls / %timeit lines.
+        # SQL fragments need server-side approval resolution before
+        # the wrapper call is spliced back into the placeholder.
+        pre = notebook_magic_commands.preprocess(source)
+        wrappers: list[str] = []
+        for block in pre.sql_blocks:
+            try:
+                uc_client = websocket.app.state.uc_client
+                approved = await notebook_sql_cell.resolve_approved_tables(
+                    block.sql,
+                    uc_client=uc_client,
+                    actor_email=str(user.get("email") or ""),
+                    is_admin=bool(user.get("is_admin")),
+                )
+            except SQLParseError as exc:
+                await _send_error(
+                    websocket,
+                    request_id=request_id,
+                    code="sql_parse_error",
+                    message=f"%sql line {block.index}: {exc}",
+                )
+                return
+            except AuthorizationError as exc:
+                await _send_error(
+                    websocket,
+                    request_id=request_id,
+                    code="sql_authorization_denied",
+                    message=f"%sql line {block.index}: {exc}",
+                )
+                return
+            except CatalogNotFoundError as exc:
+                await _send_error(
+                    websocket,
+                    request_id=request_id,
+                    code="sql_catalog_not_found",
+                    message=f"%sql line {block.index}: {exc}",
+                )
+                return
+            wrappers.append(
+                notebook_sql_cell.build_kernel_wrapper(
+                    block.sql,
+                    approved_tables=approved,
+                    result_var=block.result_var,
+                ).strip()
+            )
+        kernel_source = notebook_magic_commands.apply_sql_resolutions(
+            pre.source, wrappers=wrappers
+        )
     else:
         kernel_source = source
     started_at = datetime.datetime.now(datetime.UTC)

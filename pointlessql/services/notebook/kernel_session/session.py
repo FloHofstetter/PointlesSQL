@@ -122,6 +122,84 @@ def __pql_inspect_detail__(varname):
         pass
     display({"application/x-pql-vardetail+json": detail}, raw=True)
     return None
+
+
+# Phase 98.A — magic-command helpers.  The WS pre-processor
+# (``pointlessql.services.notebook.magic_commands``) rewrites every
+# recognised ``%magic`` line into a call to one of these.  The helpers
+# all use ``IPython.display.display`` so the iopub stream carries the
+# rendered output exactly like a normal cell result — the existing
+# ``output_renderer.js`` path handles it without further wiring.
+def __pql_magic_md__(markdown_source):
+    from IPython.display import Markdown, display
+
+    display(Markdown(str(markdown_source)))
+    return None
+
+
+def __pql_magic_fs_ls__(path):
+    import os as _os
+
+    from IPython.display import display
+
+    p = (path or ".").strip()
+    if p.startswith("file://"):
+        p = p[len("file://") :]
+    try:
+        entries = sorted(_os.listdir(p))
+    except FileNotFoundError:
+        display({"text/plain": f"%fs ls: no such path: {p!r}"}, raw=True)
+        return None
+    except PermissionError:
+        display({"text/plain": f"%fs ls: permission denied: {p!r}"}, raw=True)
+        return None
+    rows = []
+    for name in entries:
+        full = _os.path.join(p, name)
+        try:
+            st = _os.stat(full)
+            kind = "dir" if _os.path.isdir(full) else "file"
+            rows.append({"name": name, "kind": kind, "size": int(st.st_size)})
+        except OSError:
+            rows.append({"name": name, "kind": "?", "size": 0})
+    display({"application/x-pql-fs-ls+json": {"path": p, "entries": rows}}, raw=True)
+    return None
+
+
+def __pql_magic_timeit__(expr_source):
+    import timeit as _timeit
+
+    from IPython.display import display
+
+    expr = str(expr_source)
+    try:
+        # First a single run to estimate; then repeat=3 with autoscaled
+        # ``number`` so quick expressions get many iterations and slow
+        # ones still finish promptly.
+        single = _timeit.timeit(expr, globals=globals(), number=1)
+        if single <= 0:
+            number = 1_000_000
+        else:
+            number = max(1, int(0.1 / max(single, 1e-9)))
+        runs = _timeit.repeat(expr, globals=globals(), repeat=3, number=number)
+        best = min(runs) / number
+    except Exception as exc:  # noqa: BLE001
+        display({"text/plain": f"%timeit error: {type(exc).__name__}: {exc}"}, raw=True)
+        return None
+
+    if best < 1e-6:
+        human = f"{best * 1e9:.1f} ns"
+    elif best < 1e-3:
+        human = f"{best * 1e6:.1f} µs"
+    elif best < 1:
+        human = f"{best * 1e3:.1f} ms"
+    else:
+        human = f"{best:.3f} s"
+    display(
+        {"text/plain": f"{human} per loop (best of 3; number={number})"},
+        raw=True,
+    )
+    return None
 """
 
 

@@ -6,6 +6,22 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Phase 98.A — Notebook magic-command pre-processor (2026-05-20).**
+  Adds four DBX-parity line-magics in front of the kernel execute
+  path: ``%sql <query>`` (server-side ``approved_tables`` resolution
+  + ``__pql_sql_run`` wrap, optional ``-o varname`` bind),
+  ``%md <markdown>`` and the ``%%md`` block-form (rendered via
+  ``IPython.display.Markdown``), ``%fs ls <path>`` (custom-MIME
+  ``application/x-pql-fs-ls+json`` payload), and ``%timeit <expr>``
+  (stdlib ``timeit`` with autoscaled ``number``, ``repeat=3``,
+  human-readable best-of-3 line).  New
+  ``pointlessql/services/notebook/magic_commands.py`` is the pure
+  pre-processor (parsing + placeholder splicing); kernel-side helpers
+  ride along in ``_NOTEBOOK_BOOTSTRAP_CODE``.  The WS execute handler
+  only invokes the pre-processor when ``has_magics(source)`` is true,
+  so plain Python cells pay no cost.  13 new pytest in
+  ``tests/test_notebook_magic_commands.py``.
+
 - **Phase 96 — Inline AI-Assistant in the notebook editor
   (2026-05-19).**  Lifts the Phase-91 NL→SQL chat panel into the
   notebook editor with three new

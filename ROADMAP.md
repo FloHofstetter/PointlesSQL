@@ -1849,7 +1849,7 @@ PointlesSQL
 │   │     cryptographically verifiable — EU AI Act Art. 12 anchor.
 │   │     Foundation for replay/scenario mode (Phase 103).
 │   │
-│   ├── Phase 98 — DBX-parity quick wins bundle                   ⏳ planned
+│   ├── Phase 98 — DBX-parity quick wins bundle                   ⏳ in progress
 │   │     Single sprint covering four small DBX-parity items:
 │   │     magic commands (``%sql``, ``%md``, ``%fs ls``,
 │   │     ``%timeit``) as a thin pre-processor; notebook-tags +
@@ -1857,6 +1857,15 @@ PointlesSQL
 │   │     cell-level lineage badges in the cell header reading
 │   │     existing ``agent_run_operations`` write events;
 │   │     notebook → static HTML/PDF export.
+│   │       * 98.A ✅ done 2026-05-20 — magic-command pre-processor.
+│   │         New ``services/notebook/magic_commands.py``: %sql / %md
+│   │         (line + block) / %fs ls / %timeit.  Bootstrap helpers
+│   │         (``__pql_magic_md__`` / ``__pql_magic_fs_ls__`` /
+│   │         ``__pql_magic_timeit__``) added to the kernel session.
+│   │         WS execute handler now runs the pre-processor before
+│   │         kernel dispatch, resolving SQL approval server-side per
+│   │         %sql line.  13 new pytest covering line/block parsing,
+│   │         placeholder splicing, and indent preservation.
 │   │
 │   ├── Phase 99 — Widget-cells + Notebook permissions            ⏳ planned
 │   │     Interactive parameter widgets
