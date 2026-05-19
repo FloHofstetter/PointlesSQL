@@ -6,6 +6,66 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Phase 92 vector-search compute primitive closed (2026-05-19).**
+  Third PQL primitive next to ``pql.merge`` / ``pql.autoload``.
+  Backed by the DuckDB ``vss`` extension; the HNSW index file
+  lives at ``<table.storage_location>/_vss/<column>.duckdb`` and
+  is rebuilt automatically on every merge / write / autoload via
+  the sixth post-commit hook in
+  ``pointlessql.services.agent_runs.operations._lifecycle``.
+
+  Five sub-strands shipped (92.0–92.4) + docs + tests:
+
+  1. **92.0 / 92.1 — Primitive + embedder registry.**
+     [`pointlessql/pql/_vector.py`](pointlessql/pql/_vector.py) +
+     [`pointlessql/pql/_vss_engine.py`](pointlessql/pql/_vss_engine.py)
+     add ``PQL.vector_index(...)`` and ``PQL.vector_search(...)``.
+     Embedders live under
+     [`pointlessql/pql/embedders/`](pointlessql/pql/embedders/) —
+     ``SentenceTransformersEmbedder`` (default; new ``[vector]``
+     extra), ``OpenAIEmbedder`` (optional; ``OPENAI_API_KEY``),
+     and a documented ``HermesEmbedder`` stub reserved for a
+     future hermes-agent ``embed`` tool.  ROADMAP-adjustment:
+     the originally-planned default (route through hermes-agent
+     ``embed``) had to invert because the tool does not yet
+     exist — the rationale is captured in
+     [`docs/concepts/vector-search.md`](docs/concepts/vector-search.md).
+     Alembic migration ``r6t8v0x2z4a6`` creates ``vector_indices``
+     and extends the ``op_name`` CHECK with ``vector_index`` +
+     ``vector_search``.
+  2. **92.2 — REST surface.**
+     [`pointlessql/api/sql/vector_search/`](pointlessql/api/sql/vector_search/)
+     adds ``POST /api/sql/vector_search`` (re-uses the SQL
+     dispatcher's ``enforce_select_per_table``),
+     ``POST /api/sql/vector_search/indices`` +
+     ``GET`` + ``DELETE …/{id}`` (workspace-admin), and
+     ``GET /embed/semantic_search/{fqn}`` for the iframe share
+     URL.  Audit-mirrors via ``record_query_async`` +
+     ``audit("sql.vector_search", ...)``.
+  3. **92.3 — Hermes-plugin tool.**
+     ``hermes_plugin_pointlessql.tools.vector_search`` ships
+     ``pql_vector_search`` (registered unconditionally — unlike
+     the chat-gated ``pql_propose_sql``).  Closes the RAG loop:
+     chat-panel agents can retrieve semantically before
+     generating SQL.
+  4. **92.4 — UI tab on Table-detail.**
+     Conditional ``Semantic search`` tab on
+     [`frontend/templates/pages/table.html`](frontend/templates/pages/table.html)
+     guarded by ``{% if vector_indices %}``.  Alpine factory
+     ``semanticSearch()`` in
+     [`frontend/js/table/semantic_search.js`](frontend/js/table/semantic_search.js)
+     owns column picker / query / result rendering + a
+     "Copy share URL" → embeddable iframe via
+     [`semantic_search_embed.html`](frontend/templates/pages/semantic_search_embed.html).
+     ``asset_version`` bumped to ``0.1.0rc8``.
+  5. **92.5 — Docs + tests.** Concept doc
+     [`docs/concepts/vector-search.md`](docs/concepts/vector-search.md)
+     and 8-step playbook
+     [`docs/e2e-walkthroughs/vector_search.md`](docs/e2e-walkthroughs/vector_search.md).
+     19 new pytest cases across embedder registry, primitive,
+     merge-hook, and REST route — all green; ``alembic check``
+     clean.
+
 - **Phase 91 NL→SQL chat panel closed (2026-05-19).**  Ships the
   DBX "Genie" equivalent: an in-editor chat drawer that talks to
   an in-process ``hermes_agent.AIAgent`` over a JSON-RPC

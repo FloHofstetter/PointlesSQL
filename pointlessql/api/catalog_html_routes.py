@@ -261,6 +261,13 @@ async def table_detail(
         if cdf_subscription is not None
         else []
     )
+    vector_indices = _vector_indices_for_table(
+        catalog_name,
+        schema_name,
+        table_name,
+        workspace_id=workspace_id,
+        session_factory=request.app.state.session_factory,
+    )
     return get_templates(request).TemplateResponse(
         request,
         "pages/table.html",
@@ -277,6 +284,7 @@ async def table_detail(
             "external_producers": external_producers,
             "cdf_subscription": cdf_subscription,
             "cdf_recent_events": cdf_recent_events,
+            "vector_indices": vector_indices,
             "can_manage": can_manage,
             "is_admin": user.get("is_admin", False),
             "error": error,
@@ -285,6 +293,55 @@ async def table_detail(
             "active_table": table_name,
         },
     )
+
+
+def _vector_indices_for_table(
+    catalog: str,
+    schema: str,
+    table: str,
+    *,
+    workspace_id: int,
+    session_factory: Any,
+) -> list[dict[str, Any]]:
+    """Return the workspace's vector indices on *table* as plain dicts.
+
+    Best-effort: returns an empty list when the metadata DB is
+    unreachable so a transient DB hiccup never breaks the table page.
+    """
+    if session_factory is None:
+        return []
+    try:
+        from pointlessql.models.vector import VectorIndex
+
+        with session_factory() as session:
+            rows = list(
+                session.query(VectorIndex)
+                .filter_by(
+                    workspace_id=workspace_id,
+                    catalog=catalog,
+                    schema=schema,
+                    table=table,
+                )
+                .order_by(VectorIndex.column)
+                .all()
+            )
+    except Exception:  # noqa: BLE001 — page renders even when DB is unhappy
+        return []
+    return [
+        {
+            "id": r.id,
+            "column": r.column,
+            "dim": r.dim,
+            "model": r.model,
+            "embedder": r.embedder,
+            "metric": r.metric,
+            "delta_version_indexed": r.delta_version_indexed,
+            "last_built_at": r.last_built_at.isoformat() if r.last_built_at else None,
+            "last_built_rows": r.last_built_rows,
+            "last_error": r.last_error,
+        }
+        for r in rows
+    ]
 
 
 def _columns_with_lineage(full_name: str) -> set[str]:

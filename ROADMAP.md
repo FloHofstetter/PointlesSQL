@@ -1480,53 +1480,97 @@ PointlesSQL
 │   │   │     under ``Concepts`` and the "Working with data"
 │   │   │     walkthrough cluster.
 │   │
-│   └── Phase 92 — Vector-Search compute primitive            ⏳ planned
+│   └── Phase 92 — Vector-Search compute primitive            ✅ shipped (local, 2026-05-19)
 │       │
 │       │   Third compute primitive next to ``pql.merge`` and
-│       │   ``pql.autoload``.  Backed by ``duckdb-vss`` HNSW
-│       │   indices stored side-by-side with the Delta table
-│       │   (Delta remains source-of-truth; the index is a
-│       │   secondary structure rebuilt on merge).  Completes
-│       │   the "persistent memory for agents" story: Phase 90
-│       │   gives agents *what to remember*, Phase 91 gives
-│       │   them *how to ask*, Phase 92 gives them *how to
-│       │   retrieve semantically*.  Highest-risk of the three
-│       │   (duckdb-vss maturity, embed-provider choice) — ship
-│       │   after 90 + 91 land.
+│       │   ``pql.autoload``.  Backed by the DuckDB ``vss``
+│       │   extension (HNSW indices) stored side-by-side with
+│       │   the Delta table (Delta remains source-of-truth;
+│       │   the index is a secondary structure rebuilt on every
+│       │   merge via the post-commit hook in
+│       │   ``operations._lifecycle``).  Completes the
+│       │   "persistent memory for agents" loop: Phase 90 gives
+│       │   agents *what to remember*, Phase 91 gives them *how
+│       │   to ask*, Phase 92 gives them *how to retrieve
+│       │   semantically*.
 │       │
-│       │   Sprint sketch (~2 sprints, ~600 LOC):
+│       │   ROADMAP-adjustment (close-out): the originally
+│       │   planned hermes-agent ``embed`` tool does not exist
+│       │   yet, so the **default embedder inverts** to
+│       │   ``sentence-transformers`` (local, zero-config) with
+│       │   the ``openai`` SDK as an optional hosted provider
+│       │   and a documented :class:`HermesEmbedder` stub
+│       │   reserved for when hermes-agent ships an ``embed``
+│       │   tool.
 │       │
-│       ├── 92.0 — ``pql.vector_index`` primitive
-│       │     ``pql.vector_index(table, column, dim, model)``
-│       │     creates the duckdb-vss HNSW index over a Delta
-│       │     table column (typically a text column with
-│       │     pre-computed embeddings, or PointlesSQL computes
-│       │     them via hermes-agent embed tool).  Index file
-│       │     stored at ``<warehouse>/<schema>/<table>/_vss/
-│       │     <column>.duckdb``.  Auto-rebuild hook on
-│       │     ``pql.merge`` writes.
-│       ├── 92.1 — Embedding-provider abstraction
-│       │     Pluggable ``Embedder`` interface; default
-│       │     provider routes through hermes-agent's embed tool
-│       │     (no new API key surface).  Local-only provider
-│       │     using ``sentence-transformers`` as a fallback for
-│       │     air-gapped installs.
-│       ├── 92.2 — ``/api/sql/vector_search`` REST endpoint
-│       │     ``POST /api/sql/vector_search`` with
-│       │     ``{table, column, query, top_k}``; returns top-K
-│       │     rows ranked by cosine similarity.  Reuses the SQL
-│       │     dispatcher's privilege check
-│       │     (``enforce_select_per_table``) so a user can't
-│       │     vector-search a table they couldn't SELECT.
-│       ├── 92.3 — Hermes-tool exposure
-│       │     ``pql_vector_search`` tool in
-│       │     ``hermes-plugin-pointlessql`` so the Phase-91
-│       │     chat panel can do semantic retrieval before
-│       │     generating SQL — closing the RAG loop end-to-end.
-│       └── 92.4 — UI surface on Table-detail
-│           A "Semantic search" tab on table-detail pages when
-│           a vector index exists.  Reuses the saved-view embed
-│           pattern for shareable result snippets.
+│       ├── 92.0 — ``pql.vector_index`` primitive             ✅ shipped
+│       │     [`pointlessql/pql/_vector.py`](pointlessql/pql/_vector.py)
+│       │     adds ``PQL.vector_index(table, column, ...)`` +
+│       │     ``PQL.vector_search(...)`` next to ``merge`` /
+│       │     ``autoload``.  HNSW index file lives at
+│       │     ``<table.storage_location>/_vss/<column>.duckdb``;
+│       │     persistent HNSW enabled via
+│       │     ``hnsw_enable_experimental_persistence = true`` in
+│       │     [`_vss_engine.py`](pointlessql/pql/_vss_engine.py).
+│       │     New ``OpName.VECTOR_INDEX`` + ``VECTOR_SEARCH``
+│       │     extend the ``agent_run_operations.op_name`` CHECK
+│       │     (Alembic ``r6t8v0x2z4a6``).  ``VectorIndex`` ORM
+│       │     keyed by ``(workspace, catalog, schema, table,
+│       │     column)``.
+│       ├── 92.1 — Embedder registry + auto-rebuild hook      ✅ shipped
+│       │     [`pointlessql/pql/embedders/`](pointlessql/pql/embedders/)
+│       │     ships ``SentenceTransformersEmbedder`` (default,
+│       │     lazy import; new ``[vector]`` extra),
+│       │     ``OpenAIEmbedder`` (optional, ``OPENAI_API_KEY``),
+│       │     and a documented ``HermesEmbedder`` stub.
+│       │     Sixth post-commit hook
+│       │     [`_vector_rebuild.py`](pointlessql/services/agent_runs/operations/_vector_rebuild.py)
+│       │     wired into ``operation_context`` re-embeds the
+│       │     affected column on every ``merge`` / ``write_table``
+│       │     / ``autoload`` / ``update`` / ``delete`` /
+│       │     ``branch_promote`` / ``dbt_model`` commit.
+│       │     Failure is non-fatal: stamps
+│       │     ``vector_indices.last_error`` and continues.
+│       ├── 92.2 — REST surface                                ✅ shipped
+│       │     [`pointlessql/api/sql/vector_search/`](pointlessql/api/sql/vector_search/)
+│       │     mounts ``POST /api/sql/vector_search`` (reuses
+│       │     ``enforce_select_per_table``),
+│       │     ``POST /api/sql/vector_search/indices`` +
+│       │     ``GET`` + ``DELETE …/{id}`` (workspace-admin
+│       │     gated for write paths), and
+│       │     ``GET /embed/semantic_search/{fqn}`` for the
+│       │     iframe share URL.  RFC 9457 envelopes
+│       │     (``404 vector-index-missing``,
+│       │     ``403 forbidden``).
+│       ├── 92.3 — Hermes-plugin tool                          ✅ shipped
+│       │     ``hermes_plugin_pointlessql/tools/vector_search.py``
+│       │     adds ``pql_vector_search`` (registered
+│       │     unconditionally) calling the new
+│       │     ``PointlessClient.vector_search()`` HTTP wrapper.
+│       │     Closes the RAG loop end-to-end: chat panel agents
+│       │     can do semantic retrieval before generating SQL.
+│       ├── 92.4 — UI surface on Table-detail                  ✅ shipped
+│       │     Conditional ``Semantic search`` tab on
+│       │     [`table.html`](frontend/templates/pages/table.html)
+│       │     guarded by ``{% if vector_indices %}``.  Alpine
+│       │     factory ``semanticSearch()`` in
+│       │     [`frontend/js/table/semantic_search.js`](frontend/js/table/semantic_search.js)
+│       │     owns column picker + query + result-table state.
+│       │     Embed view at
+│       │     [`semantic_search_embed.html`](frontend/templates/pages/semantic_search_embed.html)
+│       │     mirrors the saved-view embed pattern for share
+│       │     URLs.  ``asset_version`` bumped to ``0.1.0rc8``.
+│       └── 92.5 — Docs + tests                                ✅ shipped
+│             Concept doc
+│             [`docs/concepts/vector-search.md`](docs/concepts/vector-search.md)
+│             frames the architecture, embedder strategy, and
+│             privilege model.  Playbook
+│             [`docs/e2e-walkthroughs/vector_search.md`](docs/e2e-walkthroughs/vector_search.md)
+│             walks the 8-step loop.  19 new pytest cases
+│             covering embedder registry, primitive (create /
+│             search / rebuild / dim mismatch), merge-hook,
+│             and REST route.  All green; ``alembic check``
+│             clean.
 │
 ├── Phase 81 — Feed overhaul + help surface + entity ⋯-menu  ✅ done 2026-05-16
 │       Three-track polish bundle.  Track K rebuilt /feed from a

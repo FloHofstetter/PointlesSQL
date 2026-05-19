@@ -61,6 +61,8 @@ class OpName(StrEnum):
     CREATE_SCHEMA = "create_schema"
     DROP_SCHEMA = "drop_schema"
     ALTER_TABLE = "alter_table"
+    VECTOR_INDEX = "vector_index"
+    VECTOR_SEARCH = "vector_search"
 
 
 class ReadKind(StrEnum):

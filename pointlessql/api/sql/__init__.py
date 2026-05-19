@@ -28,6 +28,7 @@ from fastapi import APIRouter
 from pointlessql.api.sql.builder import router as _builder_router
 from pointlessql.api.sql.editor import router as _editor_router
 from pointlessql.api.sql.saved_queries import router as _saved_queries_router
+from pointlessql.api.sql.vector_search import router as _vector_search_router
 from pointlessql.api.sql.write import router as _write_router
 
 router = APIRouter()
@@ -35,5 +36,6 @@ router.include_router(_editor_router)
 router.include_router(_write_router)
 router.include_router(_saved_queries_router)
 router.include_router(_builder_router)
+router.include_router(_vector_search_router)
 
 __all__ = ["router"]

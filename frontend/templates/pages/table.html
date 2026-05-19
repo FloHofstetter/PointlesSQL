@@ -115,6 +115,17 @@
  </button>
  </li>
  {% endif %}
+ {% if vector_indices %}
+ <li class="nav-item" role="presentation">
+ <button class="nav-link" id="tab-semantic-search-btn" data-bs-toggle="tab"
+ data-bs-target="#tab-semantic-search" type="button" role="tab"
+ aria-controls="tab-semantic-search" aria-selected="false"
+ data-pql-tab-key="semantic-search">
+ <i class="bi bi-compass me-1"></i>Semantic search
+ <span class="badge bg-secondary ms-1">{{ vector_indices|length }}</span>
+ </button>
+ </li>
+ {% endif %}
  <li class="nav-item" role="presentation">
  <button class="nav-link" id="tab-permissions-btn" data-bs-toggle="tab"
  data-bs-target="#tab-permissions" type="button" role="tab"
@@ -138,6 +149,9 @@
  {% include "pages/_partials/table/tags.html" %}
  {% include "pages/_partials/table/permissions.html" %}
  {% include "pages/_partials/table/cdf_events.html" %}
+ {% if vector_indices %}
+ {% include "pages/_partials/table/semantic_search.html" %}
+ {% endif %}
 </div>
 
 {# Phase 81.F — Social drawer.  Replaces the previous inline
@@ -569,4 +583,7 @@
  window.tableReadme = tableReadme;
 })();
 </script>
+{% if vector_indices %}
+<script type="module" src="/static/js/table/semantic_search.js?v={{ asset_version }}"></script>
+{% endif %}
 {% endblock %}

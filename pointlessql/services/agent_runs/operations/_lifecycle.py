@@ -44,6 +44,9 @@ from pointlessql.services.agent_runs.operations._rejects import (
 from pointlessql.services.agent_runs.operations._value_changes import (
     record_value_changes_after_commit,
 )
+from pointlessql.services.agent_runs.operations._vector_rebuild import (
+    rebuild_vss_indices_after_commit,
+)
 from pointlessql.types import OpId, OpName, RunId
 
 if TYPE_CHECKING:
@@ -349,4 +352,12 @@ def operation_context(
         session_factory,
         op_id=op_id,
         pending=recorder.pending_contract_event,
+    )
+    rebuild_vss_indices_after_commit(
+        session_factory,
+        op_id=op_id,
+        agent_run_id=agent_run_id,
+        op_name=op_name.value,
+        target_table=final_target,
+        error_message=None,
     )

@@ -152,6 +152,7 @@ from pointlessql.models.sql_chat import (
     EditorChatSession,
 )
 from pointlessql.models.system_keys import SystemKey
+from pointlessql.models.vector import VectorIndex
 from pointlessql.models.workspace import (
     WORKSPACE_PIN_MODES,
     WORKSPACE_REPO_PROVIDER_KINDS,
@@ -258,6 +259,7 @@ __all__ = [
     "UserProfile",
     "UserTopicFollow",
     "UserWebhookSubscription",
+    "VectorIndex",
     "WORKSPACE_PIN_MODES",
     "WORKSPACE_REPO_PROVIDER_KINDS",
     "WORKSPACE_REPO_SECRET_KINDS",

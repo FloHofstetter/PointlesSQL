@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "pointlessql"
-version = "0.1.0rc7"
+version = "0.1.0rc8"
 description = "A web UI for Unity Catalog and other open-source Databricks components"
 license = "Apache-2.0"
 readme = "README.md"
@@ -67,6 +67,15 @@ ml = [
 ]
 dbt = [
     "dbt-duckdb >= 1.9, < 2.0",
+]
+# Phase 92 — vector-search compute primitive.  The default embedder
+# uses ``sentence-transformers`` (lazy import).  Pulls in PyTorch
+# (~700 MB), so it stays optional — minimal installs that never call
+# ``pql.vector_index`` are unaffected.  The ``openai`` SDK is already
+# a core dep (chat panel), so no separate extra is needed for the
+# hosted ``OpenAIEmbedder`` provider.
+vector = [
+    "sentence-transformers >= 2.7, < 4.0",
 ]
 # Note: ``dbt-expectations`` and ``dbt-utils`` are dbt *packages*
 # (Jinja macros), not Python wheels.  They are declared in the user's

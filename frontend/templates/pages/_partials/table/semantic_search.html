@@ -1,0 +1,80 @@
+ <div class="tab-pane fade" id="tab-semantic-search" role="tabpanel"
+      aria-labelledby="tab-semantic-search-btn"
+      x-data='semanticSearch({{ vector_indices|tojson }}, {{ (catalog_name ~ "." ~ schema_name ~ "." ~ table_name)|tojson }})'>
+   <p class="text-muted small mb-3">
+     Top-K semantic search over an HNSW index colocated with the Delta
+     table.  Rebuilt automatically on <code>pql.merge</code> writes; pick
+     the indexed column and run a free-text query.
+   </p>
+
+   <div class="card mb-3">
+     <div class="card-body">
+       <div class="row g-2 align-items-end">
+         <div class="col-md-3">
+           <label class="form-label small mb-1">Column</label>
+           <select class="form-select form-select-sm" x-model="selectedColumn">
+             <template x-for="ix in indices" :key="ix.id">
+               <option :value="ix.column" x-text="ix.column"></option>
+             </template>
+           </select>
+         </div>
+         <div class="col-md-7">
+           <label class="form-label small mb-1">Query</label>
+           <input type="text" class="form-control form-control-sm"
+                  x-model="query" @keydown.enter.prevent="run()"
+                  placeholder="e.g. customers about to churn">
+         </div>
+         <div class="col-md-1">
+           <label class="form-label small mb-1">Top K</label>
+           <input type="number" class="form-control form-control-sm"
+                  x-model.number="topK" min="1" max="200">
+         </div>
+         <div class="col-md-1 text-end">
+           <button type="button" class="btn btn-primary btn-sm w-100"
+                   @click="run()" :disabled="loading || !query.trim()">
+             <span x-show="!loading">Search</span>
+             <span x-show="loading" class="spinner-border spinner-border-sm" role="status"></span>
+           </button>
+         </div>
+       </div>
+       <div x-show="error" class="alert alert-danger mt-2 mb-0 small" x-text="error"></div>
+     </div>
+   </div>
+
+   <div x-show="hits.length > 0">
+     <div class="d-flex justify-content-between align-items-center mb-2">
+       <div class="small text-muted">
+         <span x-text="hits.length"></span> hits ·
+         model <code x-text="responseMeta.model"></code> ·
+         index v<span x-text="responseMeta.delta_version_indexed"></span>
+       </div>
+       <button type="button" class="btn btn-outline-secondary btn-sm"
+               @click="copyShareUrl()" x-text="shareCopied ? 'Copied!' : 'Copy share URL'">
+       </button>
+     </div>
+     <table class="table table-sm align-middle">
+       <thead>
+         <tr>
+           <th style="width: 6rem;">Score</th>
+           <th style="width: 12rem;">PK</th>
+           <th>Snippet</th>
+         </tr>
+       </thead>
+       <tbody>
+         <template x-for="(hit, idx) in hits" :key="idx">
+           <tr>
+             <td class="font-monospace small" x-text="hit.score.toFixed(4)"></td>
+             <td class="font-monospace small text-muted" x-text="JSON.stringify(hit.pk)"></td>
+             <td class="small" x-text="hit.snippet"></td>
+           </tr>
+         </template>
+       </tbody>
+     </table>
+   </div>
+
+   <div x-show="hasRun && !loading && hits.length === 0 && !error"
+        class="text-muted small">
+     No matches.  Try a different phrasing — the index returns the
+     top-K closest rows regardless of relevance threshold.
+   </div>
+ </div>

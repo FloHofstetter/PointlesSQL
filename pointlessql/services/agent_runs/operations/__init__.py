@@ -38,6 +38,9 @@ from pointlessql.services.agent_runs.operations._rollback import (
     RollbackStale,
     RollbackTargetNotFound,
 )
+from pointlessql.services.agent_runs.operations._vector_rebuild import (
+    rebuild_vss_indices_after_commit,
+)
 
 __all__ = [
     "OperationRecorder",
@@ -48,5 +51,6 @@ __all__ = [
     "RollbackTargetNotFound",
     "VALID_OP_NAMES",
     "operation_context",
+    "rebuild_vss_indices_after_commit",
     "record_operation",
 ]

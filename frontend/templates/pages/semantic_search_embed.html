@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Semantic search · {{ table_fqn }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <meta name="csrf-token" content="{{ request.state.csrf_token }}">
+    <style>
+        body { padding: 1rem; }
+        .embed-header { border-bottom: 1px solid #dee2e6; padding-bottom: 0.5rem; margin-bottom: 1rem; }
+        [x-cloak] { display: none !important; }
+    </style>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+</head>
+<body>
+    <div x-data='semanticSearchEmbed({{ embed_data|tojson }})' x-init="run()">
+        <div class="embed-header d-flex justify-content-between align-items-center">
+            <div>
+                <strong>Semantic search</strong>
+                <span class="text-muted small ms-2">
+                    <code x-text="embed.table"></code>.<code x-text="embed.column"></code>
+                </span>
+            </div>
+            <a class="small text-decoration-none"
+               :href="'/catalogs/' + embed.catalog + '/schemas/' + embed.schema + '/tables/' + embed.table_name"
+               target="_top">Open full ↗</a>
+        </div>
+        <div class="small text-muted mb-2">
+            Query: <code x-text="embed.query"></code> · top
+            <span x-text="embed.top_k"></span>
+        </div>
+        <div x-show="loading" class="text-muted small">Running…</div>
+        <div x-show="error" class="alert alert-danger small" x-text="error"></div>
+        <div x-show="!loading && hits.length === 0 && !error"
+             class="text-muted small">No matches.</div>
+        <table class="table table-sm" x-show="hits.length > 0">
+            <thead>
+                <tr>
+                    <th style="width: 5rem;">Score</th>
+                    <th>Snippet</th>
+                </tr>
+            </thead>
+            <tbody>
+                <template x-for="(hit, idx) in hits" :key="idx">
+                    <tr>
+                        <td class="font-monospace small" x-text="hit.score.toFixed(4)"></td>
+                        <td class="small" x-text="hit.snippet"></td>
+                    </tr>
+                </template>
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+    function semanticSearchEmbed(embed) {
+        return {
+            embed,
+            loading: true,
+            error: '',
+            hits: [],
+            async run() {
+                this.loading = true;
+                this.error = '';
+                try {
+                    const resp = await fetch('/api/sql/vector_search', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'same-origin',
+                        body: JSON.stringify({
+                            table: this.embed.table,
+                            column: this.embed.column,
+                            query: this.embed.query,
+                            top_k: this.embed.top_k,
+                        }),
+                    });
+                    if (!resp.ok) {
+                        const body = await resp.text();
+                        this.error = `HTTP ${resp.status} — ${body}`;
+                        this.hits = [];
+                    } else {
+                        const payload = await resp.json();
+                        this.hits = payload.hits || [];
+                    }
+                } catch (exc) {
+                    this.error = `Request failed: ${exc.message || exc}`;
+                } finally {
+                    this.loading = false;
+                }
+            },
+        };
+    }
+    window.semanticSearchEmbed = semanticSearchEmbed;
+    </script>
+</body>
+</html>
