@@ -22,6 +22,34 @@ export function installPersistence(state) {
     if (this.saving || this.mtimeConflict) return;
     this.saving = true;
     try {
+      // Phase 96 — translate ``placeholder_cell_id`` (transient
+      // ordinal id the chat-integration mixin records when it
+      // inserts a proposed cell) into the ``placeholder_index``
+      // (position in the saved cells array) that the server's
+      // reconciler can map to the final ``cell_uuid``.  For fix
+      // proposals the target_cell_uuid is already stable and is
+      // passed through as-is.
+      const proposalAcceptances = (this._pendingProvenance || []).map(
+        (acc) => {
+          if (acc.action === 'propose' && acc.placeholder_cell_id) {
+            const idx = this.cells.findIndex(
+              (c) => c.id === acc.placeholder_cell_id,
+            );
+            return {
+              proposal_id: acc.proposal_id,
+              agent_run_id: acc.agent_run_id,
+              action: acc.action,
+              placeholder_index: idx,
+            };
+          }
+          return {
+            proposal_id: acc.proposal_id,
+            agent_run_id: acc.agent_run_id,
+            action: acc.action,
+            target_cell_uuid: acc.target_cell_uuid || null,
+          };
+        },
+      );
       const payload = {
         path: this.path,
         expected_mtime: this.mtime,
@@ -31,6 +59,7 @@ export function installPersistence(state) {
           result_var: cell.result_var || null,
           tags: Array.isArray(cell.tags) ? cell.tags : [],
         })),
+        proposal_acceptances: proposalAcceptances,
       };
       const res = await window.pqlApi.fetch('/api/notebooks/save', {
         method: 'POST',
@@ -66,6 +95,14 @@ export function installPersistence(state) {
       this.dirty = false;
       this.lastSavedAt = new Date();
       this.errorMessage = '';
+      // Phase 96 — clear the proposal-acceptance buffer on
+      // successful save; provenance rows are now written.  Also
+      // clear the per-cell ``_proposalPending`` markers so the
+      // "from chat" chips fade.
+      this._pendingProvenance = [];
+      for (const c of this.cells) {
+        if (c._proposalPending) delete c._proposalPending;
+      }
       // Phase 95.2 — refresh per-cell social counts post-save so the
       // chips reflect any cells that got minted UUIDs this round.
       this.refreshCellCounts();

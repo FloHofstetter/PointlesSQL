@@ -24,6 +24,7 @@ from __future__ import annotations
 from pointlessql.services.editor_chat._broker import (
     ChatEvent,
     publish,
+    publish_cell_proposal_created,
     publish_proposal_created,
     subscribe,
     unsubscribe,
@@ -49,6 +50,7 @@ __all__ = [
     "claim_turn",
     "load_or_create_session",
     "publish",
+    "publish_cell_proposal_created",
     "publish_proposal_created",
     "release_turn",
     "reset_session",

@@ -93,8 +93,11 @@ from pointlessql.models.dp_releases import DataProductRelease
 from pointlessql.models.editor_chat import (
     CHAT_PROPOSAL_KINDS,
     CHAT_PROPOSAL_STATUSES,
+    NOTEBOOK_CELL_PROPOSAL_ACTIONS,
+    NOTEBOOK_CELL_PROPOSAL_STATUSES,
     ChatProposal,
     EditorChatSession,
+    NotebookCellProposal,
 )
 from pointlessql.models.ingest import (
     INGEST_PULL_MODES,
@@ -122,6 +125,7 @@ from pointlessql.models.lineage import (
 )
 from pointlessql.models.notebook import (
     Notebook,
+    NotebookCellProvenance,
     NotebookCellRun,
     NotebookCellRunSource,
     NotebookJobLink,
@@ -223,7 +227,11 @@ __all__ = [
     "LineageValueChange",
     "REJECT_REASONS",
     "TRANSFORM_KINDS",
+    "NOTEBOOK_CELL_PROPOSAL_ACTIONS",
+    "NOTEBOOK_CELL_PROPOSAL_STATUSES",
     "Notebook",
+    "NotebookCellProposal",
+    "NotebookCellProvenance",
     "NotebookCellRun",
     "NotebookCellRunSource",
     "NotebookJobLink",

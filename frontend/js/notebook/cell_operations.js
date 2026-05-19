@@ -111,6 +111,91 @@ export function installCellOperations(state, deps) {
     await this._moveCell(cell, +1);
   };
 
+  /**
+   * Phase 96 — insert a cell drafted by the AI assistant.
+   *
+   * Called by the chat-integration mixin after an accept on a
+   * ``propose`` proposal.  Inserts the cell either after the
+   * targeted UUID, at the end of the notebook, or — when both
+   * locators are missing — at the end as a safe fallback.  Marks
+   * the cell with ``_proposalPending`` so the next save flushes a
+   * provenance acceptance for it (the save-path reconciler then
+   * mints the final cell_uuid).
+   */
+  state.insertCellFromProposal = async function ({
+    afterCellUuid,
+    atEnd,
+    cellType,
+    source,
+    proposalId,
+    agentRunId,
+  }) {
+    const ordinal = this._nextCellOrdinal();
+    const newCell = {
+      id: `cell-${ordinal}`,
+      content_hash: await computeContentHash(source || ''),
+      cell_uuid: null,
+      cell_type: cellType === 'markdown' ? 'markdown' : 'code',
+      source: source || '',
+      result_var: null,
+      tags: [],
+      _dirty: true,
+      exec_count: null,
+      status: null,
+      _proposalPending: { proposalId, agentRunId, action: 'propose' },
+    };
+    let insertAt = this.cells.length;
+    if (afterCellUuid) {
+      const idx = this.cells.findIndex((c) => c.cell_uuid === afterCellUuid);
+      if (idx >= 0) insertAt = idx + 1;
+    } else if (!atEnd) {
+      // Neither locator → still safe-default to end.
+      insertAt = this.cells.length;
+    }
+    await this._insertCellAt(insertAt, newCell);
+    this._pendingProvenance = this._pendingProvenance || [];
+    this._pendingProvenance.push({
+      proposal_id: proposalId,
+      agent_run_id: agentRunId,
+      action: 'propose',
+      placeholder_cell_id: newCell.id,
+    });
+    return newCell;
+  };
+
+  /**
+   * Phase 96 — apply an accepted ``fix`` proposal to an existing cell.
+   *
+   * Finds the cell by stable ``cell_uuid``, replaces its source,
+   * re-renders the CodeMirror editor, marks the cell dirty, and
+   * records a pending provenance acceptance for the next save.
+   */
+  state.updateCellSourceByUuid = async function (
+    cellUuid,
+    newSource,
+    { proposalId, agentRunId },
+  ) {
+    const cell = this.cells.find((c) => c.cell_uuid === cellUuid);
+    if (!cell) return null;
+    cell.source = newSource;
+    cell.content_hash = await computeContentHash(newSource);
+    cell._dirty = true;
+    cell._proposalPending = { proposalId, agentRunId, action: 'fix' };
+    this.dirty = true;
+    const editor = this._editors[cell.id];
+    if (editor && typeof editor.setSource === 'function') {
+      editor.setSource(newSource);
+    }
+    this._pendingProvenance = this._pendingProvenance || [];
+    this._pendingProvenance.push({
+      proposal_id: proposalId,
+      agent_run_id: agentRunId,
+      action: 'fix',
+      target_cell_uuid: cellUuid,
+    });
+    return cell;
+  };
+
   state.convertCellType = async function (cell, newType) {
     if (cell.cell_type === newType) return;
     const editor = this._editors[cell.id];

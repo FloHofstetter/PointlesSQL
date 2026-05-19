@@ -117,7 +117,7 @@ def publish_proposal_created(
     kind: str,
     rationale: str | None,
 ) -> int:
-    """Convenience wrapper for the propose-route's fan-out frame."""
+    """Convenience wrapper for the SQL propose-route's fan-out frame."""
     return publish(
         editor_session_id,
         ChatEvent(
@@ -127,6 +127,69 @@ def publish_proposal_created(
                 "sql": sql_text,
                 "kind": kind,
                 "rationale": rationale,
+            },
+        ),
+    )
+
+
+def publish_cell_proposal_created(
+    editor_session_id: str,
+    *,
+    proposal_id: str,
+    action: str,
+    cell_type: str | None,
+    target_cell_uuid: str | None,
+    new_source: str | None,
+    explanation: str | None,
+    position_after_cell_uuid: str | None,
+    position_at_end: bool,
+    rationale: str | None,
+    auto_accepted: bool,
+    agent_run_id: str | None,
+) -> int:
+    """Fan-out for the Phase-96 notebook cell propose / fix / explain route.
+
+    Args:
+        editor_session_id: Target chat session id (notebook chat).
+        proposal_id: UUID of the newly-written
+            :class:`NotebookCellProposal` row.
+        action: ``"propose"`` | ``"fix"`` | ``"explain"``.
+        cell_type: ``"code"`` | ``"markdown"`` for propose; ``None``
+            for fix + explain.
+        target_cell_uuid: Existing cell UUID for fix + explain;
+            ``None`` for propose.
+        new_source: Cell source for propose + fix; ``None`` for
+            explain.
+        explanation: Explanation body for explain; ``None`` for
+            propose + fix.
+        position_after_cell_uuid: For propose only.
+        position_at_end: For propose only.
+        rationale: Optional one-paragraph LLM-authored rationale.
+        auto_accepted: ``True`` for ``explain`` (created at status
+            ``accepted``); ``False`` for propose + fix (pending).
+            The frontend uses this to skip the Run-button banner.
+        agent_run_id: Owning chat session's ``agent_run_id``.
+            Stamped onto the eventual provenance row.
+
+    Returns:
+        The number of subscribers the event was fan-out'd to.
+    """
+    return publish(
+        editor_session_id,
+        ChatEvent(
+            kind="cell_proposal_created",
+            payload={
+                "proposal_id": proposal_id,
+                "action": action,
+                "cell_type": cell_type,
+                "target_cell_uuid": target_cell_uuid,
+                "new_source": new_source,
+                "explanation": explanation,
+                "position_after_cell_uuid": position_after_cell_uuid,
+                "position_at_end": position_at_end,
+                "rationale": rationale,
+                "auto_accepted": auto_accepted,
+                "agent_run_id": agent_run_id,
             },
         ),
     )

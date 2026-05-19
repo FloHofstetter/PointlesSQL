@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import uuid
+
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 from sqlalchemy import select
@@ -56,6 +58,8 @@ async def notebook_editor_page(request: Request, path: str) -> HTMLResponse:
             "notebook_path": relative,
             "notebook_uuid": notebook_uuid,
             "curated_cell_tags": list(CURATED_CELL_TAGS),
+            "notebook_chat_enabled": settings.editor_chat.enabled,
+            "notebook_chat_session_id": str(uuid.uuid4()),
             "active_page": "workspace",
             "active_catalog": None,
             "active_schema": None,
@@ -115,6 +119,8 @@ async def notebook_editor_by_uuid(
             "notebook_path": relative,
             "notebook_uuid": notebook_uuid,
             "curated_cell_tags": list(CURATED_CELL_TAGS),
+            "notebook_chat_enabled": settings.editor_chat.enabled,
+            "notebook_chat_session_id": str(uuid.uuid4()),
             "active_page": "workspace",
             "active_catalog": None,
             "active_schema": None,

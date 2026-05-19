@@ -6,6 +6,54 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Phase 96 — Inline AI-Assistant in the notebook editor
+  (2026-05-19).**  Lifts the Phase-91 NL→SQL chat panel into the
+  notebook editor with three new
+  [hermes-plugin-pointlessql](../hermes-plugin-pointlessql) tools:
+  ``pql_propose_cell`` (insert a new code/markdown cell),
+  ``pql_fix_cell`` (replace an existing cell's source — 60 s
+  server-side idempotency on identical fixes), and
+  ``pql_explain_cell`` (auto-accepts on create; the explanation
+  persists in the per-cell social drawer's new "AI Explanations"
+  section).  Provenance lives in a new append-only
+  ``notebook_cell_provenance`` table — one row per accepted
+  proposal, keyed by the stable ``cell_uuid`` the save-path
+  reconciler mints, with FK to the originating ``agent_run``.
+  Phase 97 revision history will read this chain to render the
+  per-cell agent timeline.
+
+  New WS endpoint ``/ws/notebook/chat/{editor_session_id}`` (fork
+  of the Phase-91 ``sql_chat_ws``; drops ``refine`` — notebook
+  surface has no zero-row / error analog).  New REST routes
+  ``/api/notebook/chat/{id}/{propose,fix,explain}-cell`` +
+  ``/api/notebook/chat/proposals/{id}/{accept,discard}`` +
+  ``GET /api/notebook/chat/cell/{cell_uuid}/explanations``.
+  Frontend ships a new ``notebookChatPanel`` Alpine factory with
+  three polymorphic proposal banner variants
+  (Insert / Apply / explain-auto-attach), a toolbar **AI** button
+  beside Variables/Jobs, and a ``pql:cell-proposal-accepted``
+  window-event bus that bridges drawer accepts to the editor's
+  ``cell_operations`` mixin.  ``/api/notebooks/save`` extended to
+  accept ``proposal_acceptances`` in the body and flush
+  provenance rows after the reconciler returns final UUIDs.
+
+  As a Phase-96 preamble, the chat substrate that turned out to
+  be generic (session table, broker, agent factory, turn runner)
+  was renamed from ``pointlessql.services.sql_chat`` →
+  ``pointlessql.services.editor_chat`` (and the corresponding
+  models / settings).  Env prefix
+  ``POINTLESSQL_SQL_CHAT_*`` → ``POINTLESSQL_EDITOR_CHAT_*``.
+  No re-export shim per memory rule ``feedback_no_legacy_shim``.
+  The SQL-specific surfaces (``api/sql_chat_ws.py``,
+  ``api/sql_chat_routes/``, ``ChatProposal``, ``pql_propose_sql``)
+  keep their SQL names.
+
+  28 new tests across the two repos plus a Markdown walkthrough at
+  [`docs/e2e-walkthroughs/notebook_assistant.md`](docs/e2e-walkthroughs/notebook_assistant.md)
+  and a seed notebook at
+  [`notebooks/phase96_walkthrough.py`](notebooks/phase96_walkthrough.py).
+  Asset version bumped to ``0.1.0rc29``.
+
 - **Phase 95 — Cell-level social (comments / reactions / follows /
   tags per cell, 2026-05-19).**  Extends the Phase-77.6 polymorphic
   social schema down to single notebook cells via a new

@@ -20,6 +20,7 @@
  */
 
 import { installCellOperations } from './cell_operations.js';
+import { installChatIntegration } from './chat_integration.js';
 import { installJobsOrchestration } from './jobs_orchestration.js';
 import { installKernelExecution } from './kernel_execution.js';
 import { installMarkdownOutput } from './markdown_output.js';
@@ -111,6 +112,13 @@ export function notebookEditor({ initialPath = '' } = {}) {
  // count badge.
  notebookUuid: null,
  cellCounts: {},
+ // Phase 96 — AI-assistant chat panel state + provenance buffer.
+ // ``chatPanelOpen`` toggles the offcanvas drawer.  ``_pendingProvenance``
+ // collects accepted-proposal records between Insert/Apply click and
+ // the next /api/notebooks/save call, which flushes them as
+ // notebook_cell_provenance rows.
+ chatPanelOpen: false,
+ _pendingProvenance: [],
 
  /**
   * Phase 95.2 — fetch per-cell social counts for this notebook.
@@ -189,6 +197,9 @@ export function notebookEditor({ initialPath = '' } = {}) {
  this._renderAllOutputs();
  this._installKeymap();
  this._connectKernel();
+ // Phase 96 — listen for chat-panel accept events so the
+ // editor can apply proposed cell inserts / fixes.
+ this._installChatProposalListener();
  // Fire-and-forget — populates ``this.parameters`` once papermill
  // has introspected the notebook. The Schedule + Run-Once modals
  // poll-on-open so a slow inspect call never blocks page load.
@@ -247,6 +258,7 @@ export function notebookEditor({ initialPath = '' } = {}) {
  this._kernel.close();
  this._kernel = null;
  }
+ this._removeChatProposalListener();
  },
  };
  installJobsOrchestration(state);
@@ -254,5 +266,6 @@ export function notebookEditor({ initialPath = '' } = {}) {
  installCellOperations(state, { computeContentHash: _computeContentHash });
  installMarkdownOutput(state, { computeContentHash: _computeContentHash });
  installPersistence(state);
+ installChatIntegration(state);
  return state;
 }

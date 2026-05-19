@@ -18,6 +18,11 @@ share it.
 
 from __future__ import annotations
 
+from pointlessql.models.editor_chat._cell_proposal import (
+    NOTEBOOK_CELL_PROPOSAL_ACTIONS,
+    NOTEBOOK_CELL_PROPOSAL_STATUSES,
+    NotebookCellProposal,
+)
 from pointlessql.models.editor_chat._session import EditorChatSession
 from pointlessql.models.editor_chat._sql_proposal import (
     CHAT_PROPOSAL_KINDS,
@@ -30,4 +35,7 @@ __all__ = [
     "CHAT_PROPOSAL_STATUSES",
     "ChatProposal",
     "EditorChatSession",
+    "NOTEBOOK_CELL_PROPOSAL_ACTIONS",
+    "NOTEBOOK_CELL_PROPOSAL_STATUSES",
+    "NotebookCellProposal",
 ]

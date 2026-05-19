@@ -1765,13 +1765,80 @@ PointlesSQL
 │   │         after ``Agent memory``; walkthrough entry in the
 │   │         Notebook cluster.
 │   │
-│   ├── Phase 96 — Inline AI-Assistant in notebook                ⏳ planned
-│   │     Lift the Phase-91 NL→SQL hermes-agent chat panel into
-│   │     the notebook editor.  New hermes-plugin tools:
+│   ├── Phase 96 — Inline AI-Assistant in notebook                ✅ shipped (local, 2026-05-19)
+│   │     Lifted the Phase-91 NL→SQL hermes-agent chat panel into
+│   │     the notebook editor.  Three new hermes-plugin tools:
 │   │     ``pql_propose_cell`` (code or markdown),
-│   │     ``pql_explain_cell``, ``pql_fix_cell``.  Provenance
-│   │     trail records which agent proposed which cell version.
+│   │     ``pql_fix_cell``, ``pql_explain_cell``.  Provenance
+│   │     trail records which agent proposed which cell version
+│   │     in the append-only ``notebook_cell_provenance`` table
+│   │     (separate from ``notebook_cell_identity`` so Phase 97
+│   │     revision history can render the full agent chain).
 │   │     Direct counter to DBX-Assistant's commercial pitch.
+│   │
+│   │     Sub-phases:
+│   │       * **96.A** — refactor(editor-chat): rename
+│   │         ``sql_chat`` → ``editor_chat`` services + models +
+│   │         settings (no shim).  Env prefix
+│   │         ``POINTLESSQL_SQL_CHAT_*`` →
+│   │         ``POINTLESSQL_EDITOR_CHAT_*``.  Generic substrate
+│   │         (session table, broker, agent factory, turn runner)
+│   │         is shared between the SQL-editor chat (Phase 91)
+│   │         and the notebook AI assistant.  Commit ``52d2f1e``.
+│   │       * **96.B** — new ORM tables
+│   │         ``notebook_cell_proposals`` (polymorphic
+│   │         propose/fix/explain with status lifecycle) and
+│   │         ``notebook_cell_provenance`` (append-only audit).
+│   │         New WS endpoint ``/ws/notebook/chat/{editor_session_id}``
+│   │         (fork of ``sql_chat_ws``; drops ``refine``).  New
+│   │         REST routes ``/api/notebook/chat/...``: propose-cell,
+│   │         fix-cell, explain-cell, accept, discard, plus
+│   │         ``GET /api/notebook/chat/cell/{cell_uuid}/explanations``.
+│   │         Agent factory gains a ``surface`` arg (``"sql"``
+│   │         vs ``"notebook"``) so the plugin's env-var split
+│   │         registers the right propose-tool family per turn.
+│   │         ``/api/notebooks/save`` extended to flush
+│   │         ``proposal_acceptances`` into provenance rows after
+│   │         the cell-reconciliation pass mints the final
+│   │         ``cell_uuid``.  Alembic migration
+│   │         ``u9w1y3a5d7f9_phase96_notebook_chat_proposals``.
+│   │       * **96.C** — three new ``hermes-plugin-pointlessql``
+│   │         tools (``pql_propose_cell`` / ``pql_fix_cell`` /
+│   │         ``pql_explain_cell``), three matching
+│   │         :class:`PointlessClient` methods, ``PluginConfig``
+│   │         gains ``notebook_chat_session_id``, ``register_all``
+│   │         wires them.  Plugin commit ``1ddf587``.
+│   │       * **96.D** — frontend: new
+│   │         ``notebookChatPanel`` Alpine factory (forked from
+│   │         the SQL chat panel), ``chat_drawer.html`` partial
+│   │         with three proposal banner variants
+│   │         (propose=Insert / fix=Apply / explain=auto-attach),
+│   │         ``chat_integration.js`` mixin that bridges accepted
+│   │         proposals back to the editor via a
+│   │         ``pql:cell-proposal-accepted`` window event,
+│   │         ``cell_operations.js`` gains
+│   │         ``insertCellFromProposal`` /
+│   │         ``updateCellSourceByUuid``, ``persistence.js``
+│   │         threads ``proposal_acceptances`` through save,
+│   │         toolbar AI button beside Variables/Jobs, social
+│   │         drawer's per-cell view gains an "AI Explanations"
+│   │         section.  Asset version bumped to ``0.1.0rc29``.
+│   │       * **96.E** — pytest: 14 tests across
+│   │         ``test_notebook_chat_routes.py`` (model + route
+│   │         lifecycle + idempotency + rename guard) +
+│   │         ``test_notebook_chat_ws.py`` (4 WS smoke tests
+│   │         incl. surface routing assertion) +
+│   │         ``test_notebook_save_provenance.py`` (save-path
+│   │         flush round-trip for both propose + fix).  Plugin
+│   │         side adds 10 tests in ``tests/test_cell_tools.py``.
+│   │         Markdown walkthrough
+│   │         [`docs/e2e-walkthroughs/notebook_assistant.md`](docs/e2e-walkthroughs/notebook_assistant.md)
+│   │         + seed notebook
+│   │         [`notebooks/phase96_walkthrough.py`](notebooks/phase96_walkthrough.py).
+│   │
+│   │     Deferred to Phase 96.1: per-cell inline Fix/Explain
+│   │     header buttons that pre-fill the chat panel with a
+│   │     templated prompt referencing the focused cell.
 │   │
 │   ├── Phase 97 — Revision history + Diff + shoreguard-signing   ⏳ planned
 │   │     Save-snapshots in our own metadata DB (not the on-disk

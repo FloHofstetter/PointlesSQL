@@ -79,6 +79,11 @@ export function cellThread({ notebookUuid, cell, initialCounts, curatedTags = []
         draftBody: "",
         submitting: false,
         allowedEmoji: ALLOWED_EMOJI,
+        // Phase 96 — accepted ``pql_explain_cell`` payloads attached
+        // to this cell.  Lazily fetched on first open via the
+        // /api/notebook/chat/cell/{uuid}/explanations route.
+        explanations: [],
+        explanationsLoaded: false,
 
         init() {
             if (initialCounts) this._applyCounts(initialCounts);
@@ -143,10 +148,33 @@ export function cellThread({ notebookUuid, cell, initialCounts, curatedTags = []
                 this.followerCount = followersResp.count || 0;
                 this.following = !!followersResp.following;
                 this.loaded = true;
+                // Phase 96 — explanations live on a separate route
+                // because they're keyed on cell_uuid alone (no
+                // notebook prefix).  Fetch alongside the social
+                // bundle so the section renders immediately.
+                await this.loadExplanations();
             } catch (err) {
                 this.error = err.message || "load failed";
             } finally {
                 this.loading = false;
+            }
+        },
+
+        async loadExplanations() {
+            if (this.explanationsLoaded) return;
+            const cellUuid = this.cellUuid;
+            if (!cellUuid) return;
+            try {
+                const resp = await jsonFetch(
+                    `/api/notebook/chat/cell/${cellUuid}/explanations`,
+                );
+                this.explanations = resp.explanations || [];
+                this.explanationsLoaded = true;
+            } catch (_e) {
+                // Non-fatal: tab simply renders empty if the new
+                // route is missing (server older than Phase 96).
+                this.explanations = [];
+                this.explanationsLoaded = true;
             }
         },
 

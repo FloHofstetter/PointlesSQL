@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import datetime
 import logging
 from typing import Any
 
@@ -13,6 +14,7 @@ from pointlessql.api.dependencies import current_workspace_id, require_user
 from pointlessql.api.notebooks_routes._shared import get_or_create_notebook_uuid
 from pointlessql.config import Settings
 from pointlessql.exceptions import ValidationError
+from pointlessql.models import NotebookCellProposal, NotebookCellProvenance
 from pointlessql.models.notebook import NotebookCellIdentity
 from pointlessql.services import output_rendering as notebook_render_service
 from pointlessql.services.notebook import _doc as notebook_doc_service
@@ -219,6 +221,13 @@ async def api_save_notebook(
         )
         for cell in cells
     ]
+    raw_acceptances = body.get("proposal_acceptances")
+    proposal_acceptances: list[dict[str, Any]] = []
+    if isinstance(raw_acceptances, list):
+        for raw_acc in raw_acceptances:
+            if not isinstance(raw_acc, dict):
+                continue
+            proposal_acceptances.append(dict(raw_acc))
     factory = request.app.state.session_factory
     with factory() as session:
         results = cell_reconciliation.reconcile(
@@ -227,6 +236,12 @@ async def api_save_notebook(
             notebook_id=notebook_uuid,
             new_cells=reconcile_inputs,
         )
+        if proposal_acceptances:
+            _write_proposal_provenance(
+                session,
+                proposal_acceptances=proposal_acceptances,
+                reconcile_results=results,
+            )
         session.commit()
     out_cells = [
         {
@@ -317,3 +332,78 @@ async def api_render_markdown(
         raise ValidationError("body.source must be a string")
     html = notebook_render_service.render_markdown_source(raw)
     return JSONResponse({"html": html})
+
+
+def _write_proposal_provenance(
+    session: Any,
+    *,
+    proposal_acceptances: list[dict[str, Any]],
+    reconcile_results: list[cell_reconciliation.ReconcileResult],
+) -> None:
+    """Flush accepted-proposal records into :class:`NotebookCellProvenance`.
+
+    Called from the save-route inside the reconcile transaction so
+    the new identity rows the reconciler just minted are visible.
+
+    Acceptance entries are dicts with shape::
+
+        {
+          "proposal_id": str,
+          "action": "propose" | "fix",
+          "agent_run_id": str,
+          "placeholder_index": int,   # for action='propose'
+          "target_cell_uuid": str,    # for action='fix'
+        }
+
+    For ``propose`` the frontend tracks the new cell's position in
+    the saved cells array via ``placeholder_index``; we map that to
+    the reconciler's final cell_uuid.  For ``fix`` the target uuid is
+    already known.  Explain proposals don't ride this path — they
+    write their provenance row inline at create-time.
+
+    Args:
+        session: Active SQLAlchemy session (do not commit; the
+            caller owns the transaction).
+        proposal_acceptances: List of acceptance dicts (see above).
+        reconcile_results: Output of
+            :func:`cell_reconciliation.reconcile` for the current
+            save — same order as the cells list.
+    """
+    now = datetime.datetime.now(datetime.UTC)
+    for acc in proposal_acceptances:
+        action = acc.get("action")
+        proposal_id = acc.get("proposal_id")
+        agent_run_id = acc.get("agent_run_id")
+        if not isinstance(proposal_id, str) or not isinstance(agent_run_id, str):
+            continue
+        if action == "propose":
+            placeholder_index = acc.get("placeholder_index")
+            if not isinstance(placeholder_index, int):
+                continue
+            if not 0 <= placeholder_index < len(reconcile_results):
+                continue
+            cell_uuid = reconcile_results[placeholder_index].cell_id
+        elif action == "fix":
+            cell_uuid = acc.get("target_cell_uuid")
+            if not isinstance(cell_uuid, str):
+                continue
+        else:
+            continue
+        session.add(
+            NotebookCellProvenance(
+                cell_uuid=cell_uuid,
+                agent_run_id=agent_run_id,
+                proposal_id=proposal_id,
+                action=action,
+                created_at=now,
+            )
+        )
+        # Mirror the final cell_uuid back onto the proposal row so
+        # audit queries don't need to JOIN the provenance table.
+        proposal = (
+            session.query(NotebookCellProposal)
+            .filter(NotebookCellProposal.proposal_id == proposal_id)
+            .one_or_none()
+        )
+        if proposal is not None:
+            proposal.inserted_cell_uuid = cell_uuid
