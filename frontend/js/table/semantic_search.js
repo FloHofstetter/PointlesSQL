@@ -109,4 +109,3 @@ export function semanticSearch(indices, tableFqn) {
   };
 }
 
-window.semanticSearch = semanticSearch;

@@ -4,6 +4,33 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Phase 92 walkthrough fixes (2026-05-19).**  Two bugs surfaced by
+  the first end-to-end Playwright replay of
+  [`docs/e2e-walkthroughs/vector_search.md`](docs/e2e-walkthroughs/vector_search.md):
+  1. ``pql.vector_index`` failed with
+     ``IOException: Cannot open file …/_vss/<col>.duckdb`` when
+     ``soyuz-catalog`` returned ``storage_location`` as a
+     ``file://`` URI.  ``deltalake`` handles the URI scheme natively
+     but DuckDB's ``connect()`` does not.
+     [`pointlessql/pql/_vector.py`](pointlessql/pql/_vector.py)'s
+     ``_index_file_path`` now strips the ``file://`` prefix before
+     constructing the on-disk index path.
+  2. The conditional ``Semantic search`` tab on table-detail pages
+     threw ``ReferenceError: semanticSearch is not defined`` because
+     the ``<script type="module">`` raced Alpine's ``x-data`` walk.
+     The factory now ships via
+     [`frontend/js/bootstrap.js`](frontend/js/bootstrap.js) — the
+     existing ESM-bridge pattern that lands every Alpine factory on
+     ``window`` BEFORE Alpine's CDN bundle fires (same shape as
+     ``pqlToast`` / ``pqlApi`` / ``editable`` etc.).  Per-page
+     script tag dropped from ``table.html``.
+
+  ``asset_version`` bumped to ``0.1.0rc10`` to invalidate cached
+  ``bootstrap.js`` + ``semantic_search.js`` in Firefox's ES-module
+  cache.
+
 ### Added
 
 - **Phase 92 vector-search compute primitive closed (2026-05-19).**

@@ -583,7 +583,8 @@
  window.tableReadme = tableReadme;
 })();
 </script>
-{% if vector_indices %}
-<script type="module" src="/static/js/table/semantic_search.js?v={{ asset_version }}"></script>
-{% endif %}
+{# Phase 92 — ``semanticSearch`` factory registered globally via
+   ``frontend/js/bootstrap.js`` so it lands on ``window`` BEFORE Alpine's
+   x-data walk fires (same pattern as ``pqlToast`` / ``pqlApi`` etc.).
+   No per-page script tag needed. #}
 {% endblock %}

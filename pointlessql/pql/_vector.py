@@ -395,6 +395,14 @@ def delete_index(*, workspace_id: int, index_id: str) -> Path | None:
 
 
 def _index_file_path(storage_location: str, column: str) -> Path:
+    # Soyuz returns ``storage_location`` as a ``file://`` URI for managed
+    # tables; ``deltalake`` handles that natively but DuckDB's
+    # ``connect()`` expects a plain filesystem path.  Strip the scheme
+    # so the same call site works for both Delta reads and DuckDB index
+    # opens.  Non-``file://`` schemes (s3://, abfss://) intentionally
+    # fall through — vector-search currently only supports local Delta.
+    if storage_location.startswith("file://"):
+        storage_location = storage_location[len("file://") :]
     base = Path(storage_location.rstrip("/"))
     return base / "_vss" / f"{column}.duckdb"
 

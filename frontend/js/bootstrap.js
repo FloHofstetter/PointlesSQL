@@ -188,6 +188,7 @@ import { dbtSchemaContext } from './pages/dbt_schema_context.js';
 import { dbtTableContext } from './pages/dbt_table_context.js';
 import { mlflowCockpit } from './pages/mlflow_cockpit.js';
 import { mlTableContext } from './pages/ml_table_context.js';
+import { semanticSearch } from './table/semantic_search.js';
 
 // Per-section context-panel factories.  Each replaces a static link
 // list in components/context_panel.html with a navigable,
@@ -210,6 +211,7 @@ window.dbtSchemaContext = dbtSchemaContext;
 window.dbtTableContext = dbtTableContext;
 window.mlflowCockpit = mlflowCockpit;
 window.mlTableContext = mlTableContext;
+window.semanticSearch = semanticSearch;
 window.runsSidebar = runsSidebar;
 window.branchesSidebar = branchesSidebar;
 window.workspaceSidebar = workspaceSidebar;
