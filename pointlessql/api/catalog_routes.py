@@ -483,3 +483,55 @@ async def api_table_preview(
         full_name,
     )
     return JSONResponse(content=payload, headers={"Cache-Control": "no-store"})
+
+
+@router.get(
+    "/api/catalogs/{catalog_name}/schemas/{schema_name}/tables/{table_name}/stats"
+)
+async def api_table_stats(
+    request: Request,
+    catalog_name: str,
+    schema_name: str,
+    table_name: str,
+) -> Response:
+    """Return per-column statistics for a Delta table as JSON.
+
+    Used by the Phase-91 ``pql_describe_columns_with_stats`` chat
+    tool: the LLM calls this before drafting SQL so the prompt
+    carries row counts, nullability, cardinality, and a few
+    extremes / modes per column.
+
+    The reduction lives in
+    :func:`pointlessql.services.column_stats.compute_table_stats`
+    and is cached per ``(principal, fqn)`` for 5 minutes so a
+    multi-turn refinement loop only scans the table once.  Auth
+    re-uses the SELECT privilege gate the preview endpoint above
+    enforces — describing a table you cannot read leaks shape
+    information and is treated identically to reading rows.
+    """
+    from pointlessql.services.column_stats import compute_table_stats
+
+    client = get_uc_client(request)
+    user = get_user(request)
+    full_name = TableFqn.from_parts(catalog_name, schema_name, table_name)
+    principal = effective_principal(request) or user.get("email", "")
+    effective = await client.get_effective_permissions("table", full_name)
+    check_privilege_from_effective(
+        effective,
+        principal,
+        user.get("is_admin", False),
+        "table",
+        full_name,
+        SELECT,
+    )
+    settings: Settings = request.app.state.settings
+    payload = await asyncio.to_thread(
+        compute_table_stats,
+        settings,
+        principal,
+        full_name,
+    )
+    return JSONResponse(
+        content=jsonable_encoder(payload),
+        headers={"Cache-Control": "no-store"},
+    )

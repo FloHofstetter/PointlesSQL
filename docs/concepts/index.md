@@ -26,6 +26,12 @@ this order if you want the full mental model:
    facade (record / recall / branch / fork / replay) framed as
    Delta-first persistent memory for AI agents.  Counter-pitch
    to Lakebase's Postgres-OLTP angle.
+6. **[NL → SQL chat](nl-to-sql.md)** — Phase 91's in-editor
+   chat drawer.  WebSocket bridges to an in-process
+   ``hermes_agent.AIAgent``; DML / DDL fenced behind a
+   human-reviewed "draft + Run" gate; tool-calls land on the
+   chat session's agent_run so the memory page shows the full
+   conversation trace.
 
 The remaining pages are reference-style:
 

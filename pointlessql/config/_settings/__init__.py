@@ -36,6 +36,7 @@ from pointlessql.config._settings._features import (
     DataProductsSettings,
     LensSettings,
     NotificationsSettings,
+    SqlChatSettings,
     SQLSettings,
 )
 from pointlessql.config._settings._infra import (
@@ -79,6 +80,7 @@ class Settings(BaseSettings):
     audit: AuditSettings = Field(default_factory=AuditSettings)
     delta: DeltaSettings = Field(default_factory=DeltaSettings)
     sql: SQLSettings = Field(default_factory=SQLSettings)
+    sql_chat: SqlChatSettings = Field(default_factory=SqlChatSettings)
     agent_runs: AgentRunsSettings = Field(default_factory=AgentRunsSettings)
     audit_stream: AuditStreamSettings = Field(default_factory=AuditStreamSettings)
     external_writes: ExternalWritesSettings = Field(default_factory=ExternalWritesSettings)
@@ -116,6 +118,7 @@ __all__ = [
     "OIDCSettings",
     "RateLimitSettings",
     "SQLSettings",
+    "SqlChatSettings",
     "SchedulerSettings",
     "ServerSettings",
     "Settings",

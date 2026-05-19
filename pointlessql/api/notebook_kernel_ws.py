@@ -34,6 +34,7 @@ from typing import Any
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
+from pointlessql.api.ws_auth import resolve_websocket_user as _resolve_websocket_user
 from pointlessql.config import Settings
 from pointlessql.exceptions import (
     AuthorizationError,
@@ -41,8 +42,6 @@ from pointlessql.exceptions import (
     ValidationError,
 )
 from pointlessql.pql import SQLParseError
-from pointlessql.services import api_keys as api_keys_service
-from pointlessql.services import auth as auth_service
 from pointlessql.services import query_history as query_history_service
 from pointlessql.services.notebook import _doc as notebook_doc
 from pointlessql.services.notebook import _sql_cell as notebook_sql_cell
@@ -62,54 +61,6 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["notebook-kernel-ws"])
 
 _RESERVED_BOOTSTRAP_HASH = "__pql_sql_bootstrap__"
-
-
-def _resolve_websocket_user(websocket: WebSocket) -> UserInfo | None:
-    """Re-run cookie + Bearer auth for a WebSocket upgrade.
-
-    Starlette's ``BaseHTTPMiddleware``-style ``auth_middleware`` does
-    not run for WebSocket scope, so we mirror its two attempts here:
-
-    1. ``pql_session`` cookie → JWT verification → :class:`UserInfo`.
-    2. ``Authorization: Bearer ...`` header → DB-backed api_keys
-       verification → synthetic :class:`UserInfo` carrying the key
-       name and scope flags.
-
-    Args:
-        websocket: The incoming WebSocket connection.
-
-    Returns:
-        The resolved :class:`UserInfo` or ``None`` if neither path
-        produced an identity.
-    """
-    factory = getattr(websocket.app.state, "session_factory", None)
-    settings = getattr(websocket.app.state, "settings", None)
-    if factory is None or settings is None:
-        return None
-    token = websocket.cookies.get(auth_service.COOKIE_NAME)
-    if token is not None:
-        user = auth_service.get_current_user(
-            factory,
-            token,
-            settings.auth.secret_key,
-            previous_key=settings.auth.secret_key_previous,
-        )
-        if user is not None:
-            return user
-    entry = api_keys_service.verify_bearer(
-        websocket.headers.get("authorization"),
-        factory,
-    )
-    if entry is None:
-        return None
-    return UserInfo(
-        id=0,
-        email=f"api_key:{entry.name}",
-        display_name=entry.name,
-        is_admin=False,
-        is_supervisor=entry.supervisor,
-        is_auditor=entry.auditor,
-    )
 
 
 def _user_can_use_editor(user: UserInfo) -> bool:

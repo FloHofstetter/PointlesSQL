@@ -97,6 +97,7 @@ nav:
       - Lineage: concepts/lineage.md
       - Agent supervision: concepts/agent-supervision.md
       - Agent memory: concepts/agent-memory.md
+      - NL → SQL chat: concepts/nl-to-sql.md
       - Auth: concepts/auth.md
       - Data layers: concepts/data-layers.md
       - PII modes: concepts/pii-modes.md
@@ -137,6 +138,7 @@ nav:
           - Working with data:
               - Full-stack demo (raw → ML): e2e-walkthroughs/full-stack-demo.md
               - SQL editor: e2e-walkthroughs/sql-editor.md
+              - SQL chat: e2e-walkthroughs/sql_chat.md
               - Inline editors: e2e-walkthroughs/inline-editors.md
               - Time travel: e2e-walkthroughs/time-travel.md
               - Branches: e2e-walkthroughs/branches.md

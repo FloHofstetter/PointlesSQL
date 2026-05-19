@@ -35,6 +35,39 @@ class SQLSettings(BaseSettings):
     cost_gate_threshold_rows: int = 1_000_000
 
 
+class SqlChatSettings(BaseSettings):
+    """Phase-91 NL→SQL chat panel configuration.
+
+    Reads ``POINTLESSQL_SQL_CHAT_*`` environment variables.  The
+    drawer is gated behind ``enabled`` so admins can stand the
+    feature down per-deploy without touching the frontend.
+
+    ``default_model`` + ``provider`` route to the in-process
+    :class:`hermes_agent.AIAgent` instance built per turn.  Both
+    are typed as strings rather than enums because Hermes
+    auto-detects the provider from the base URL when ``provider``
+    is empty — only set it if you must override.
+
+    ``max_turns_per_session`` bounds the conversation history so
+    the token window doesn't drift indefinitely; after the limit
+    the WS layer emits a warning notify and resets the row.
+
+    ``executor_workers`` sizes the dedicated thread pool that
+    backs the synchronous ``AIAgent.run_conversation`` calls.
+    Two workers is the right shape: one runs the active turn, one
+    stays reserved for the cancel-handshake from the WS side.
+    """
+
+    model_config = SettingsConfigDict(env_prefix="POINTLESSQL_SQL_CHAT_")
+
+    enabled: bool = True
+    default_model: str = "claude-haiku-4-5-20251001"
+    provider: str = ""
+    base_url: str = ""
+    max_turns_per_session: int = 20
+    executor_workers: int = 2
+
+
 class BranchSettings(BaseSettings):
     """Delta-Branching strategy + auto-cleanup configuration.
 

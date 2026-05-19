@@ -249,6 +249,9 @@ agent doesn't add 100 dashboards a human has to watch. It adds
 
 - [Auth](auth.md) — the API-key + supervisor / auditor scope
  mechanics
+- [NL → SQL chat](nl-to-sql.md) — Phase 91's chat drawer wires
+ the agent's tool-call output directly into the SQL editor;
+ every tool call lands an op row on the chat session's run.
 - [Audit trail](audit-trail.md) — the `agent_run_operations`
  schema the supervision endpoints read from
 - [Hermes jobs index](../integrations/hermes-jobs/README.md) —

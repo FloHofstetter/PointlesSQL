@@ -145,6 +145,12 @@ from pointlessql.models.social import (
     UserProfile,
     UserTopicFollow,
 )
+from pointlessql.models.sql_chat import (
+    CHAT_PROPOSAL_KINDS,
+    CHAT_PROPOSAL_STATUSES,
+    ChatProposal,
+    EditorChatSession,
+)
 from pointlessql.models.system_keys import SystemKey
 from pointlessql.models.workspace import (
     WORKSPACE_PIN_MODES,
@@ -175,6 +181,9 @@ __all__ = [
     "AnomalyAck",
     "ApiKey",
     "BADGE_KEYS",
+    "CHAT_PROPOSAL_KINDS",
+    "CHAT_PROPOSAL_STATUSES",
+    "ChatProposal",
     "AuditLog",
     "AuditSink",
     "AutoloadCheckpoint",
@@ -192,6 +201,7 @@ __all__ = [
     "DataProductReview",
     "DataProductTrending",
     "Dashboard",
+    "EditorChatSession",
     "ExpectedLineageInbound",
     "GovernanceEvent",
     "INGEST_PULL_MODES",

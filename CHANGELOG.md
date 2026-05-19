@@ -6,6 +6,90 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Phase 91 NL→SQL chat panel closed (2026-05-19).**  Ships the
+  DBX "Genie" equivalent: an in-editor chat drawer that talks to
+  an in-process ``hermes_agent.AIAgent`` over a JSON-RPC
+  WebSocket.  Five sub-strands (91.0–91.4), ~2700 LOC, 52 new
+  tests across PointlesSQL + hermes-plugin-pointlessql, all
+  gates green (ruff / pyright / pydoclint / alembic / pytest).
+
+  1. **91.0** — WebSocket transport + drawer.
+     [`pointlessql/api/sql_chat_ws.py`](pointlessql/api/sql_chat_ws.py)
+     mounts ``/ws/sql/chat/{editor_session_id}`` with the
+     notebook-WS JSON-RPC envelope (``prompt`` / ``cancel`` /
+     ``refine`` / ``reset``).  Per-turn ``AIAgent`` runs on a
+     dedicated ``ThreadPoolExecutor``; the streaming callback
+     bridges through the per-session broker
+     ([`pointlessql/services/sql_chat/_broker.py`](pointlessql/services/sql_chat/_broker.py))
+     so tokens, tool-phase sentinels, and proposals all pass
+     through one ordered queue.  Alembic migration
+     ``q5s7u9w1y3a5`` adds ``editor_chat_sessions`` (1:1 with
+     ``agent_runs``) + ``chat_proposals`` (CHECK on kind +
+     status).  WS-auth helper lifted to
+     [`pointlessql/api/ws_auth.py`](pointlessql/api/ws_auth.py)
+     and shared with ``notebook_kernel_ws``.  Right-side drawer
+     template
+     ([`frontend/templates/pages/_partials/sql_editor/chat_drawer.html`](frontend/templates/pages/_partials/sql_editor/chat_drawer.html))
+     + ``chatPanel()`` Alpine factory
+     ([`frontend/js/sql_editor/chat.js`](frontend/js/sql_editor/chat.js))
+     wired into the SQL editor header.  ``asset_version``
+     bumped to 0.1.0rc7.
+
+  2. **91.1** — Tool-set hardening.  Three new tools in
+     [`hermes-plugin-pointlessql`](https://github.com/FloHofstetter/hermes-plugin-pointlessql):
+     ``pql_describe_columns_with_stats`` (live PQL→pandas
+     reduction backed by new
+     [`pointlessql/services/column_stats/`](pointlessql/services/column_stats/)
+     service + ``GET .../tables/{t}/stats`` route with 5-min
+     LRU cache); ``pql_save_query`` (wraps existing
+     ``POST /api/views``); ``pql_propose_sql`` (registered only
+     when ``POINTLESSQL_CHAT_SESSION_ID`` env var is set).
+     ``pql_run_select_capped`` dropped — semantic duplicate of
+     existing ``pql_query`` which already enforces the 10K-row
+     cap and the EXPLAIN-first cost-gate loop.  Server-side
+     [`pointlessql/api/sql_chat_routes/_propose.py`](pointlessql/api/sql_chat_routes/_propose.py)
+     classifies via ``sqlglot`` (rejects SELECT/EXPLAIN with
+     400), enforces ``X-Agent-Run-Id`` ownership against the
+     chat session, and dedupes identical SQL within 60 s.
+
+  3. **91.2** — Run-it gate + audit-mirroring.
+     [`pointlessql/api/sql_chat_routes/_accept.py`](pointlessql/api/sql_chat_routes/_accept.py)
+     adds ``POST .../proposals/{id}/accept|discard``; accept
+     returns the chat session's ``agent_run_id`` so the editor's
+     normal Run path stamps ``X-Agent-Run-Id`` and the DML
+     operation lands on the chat run alongside every tool-call.
+     Stale proposals (>24h) auto-flip to ``expired`` instead of
+     running.  ``frontend/js/sql_editor/execute.js`` now reads
+     ``_chatAgentRunId`` off ``$root`` and forwards the header
+     once per accepted proposal.  Shoreguard policy cross-link
+     deferred to a follow-up sprint; hook point documented in
+     the new concept doc.
+
+  4. **91.3** — Conversational refinement loop.  ``refine``
+     WS method templates structured user prompts for the two
+     canonical failure modes (``zero_rows``, ``error``) and
+     runs them through the normal turn pipeline.  Each refine
+     appends to the same ``conversation_json`` so Phase 90's
+     ``/memory/<agent-id>`` timeline shows the full
+     refinement trace.  Frontend ``Refine`` buttons appear next
+     to 0-row results and error banners.
+
+  5. **91.4** — Concept doc + walkthrough + nav.
+     [`docs/concepts/nl-to-sql.md`](docs/concepts/nl-to-sql.md)
+     frames the architecture, the DML gate, and the LLM-config
+     env vars.
+     [`docs/e2e-walkthroughs/sql_chat.md`](docs/e2e-walkthroughs/sql_chat.md)
+     is the 6-step Playwright playbook (drawer open → SELECT →
+     propose → accept → refine → reset).  Cross-link from
+     ``agent-supervision.md``; new nav entries under
+     ``Concepts`` and the "Working with data" walkthrough
+     cluster in ``mkdocs.yml``.
+
+  Scope note: every chat turn shares a single ``agent_run`` with
+  ``agent_id="sql-chat-{editor_session_id_short}"``; the WS
+  closes with code 1011 + reason ``LLM_NOT_CONFIGURED`` when no
+  provider env var is set (verified before the first token).
+
 - **Phase 90 Agent-Memory as first-class primitive closed
   (2026-05-19).**  Frames the existing audit + branching
   infrastructure (``agent_runs``, ``agent_run_operations``,

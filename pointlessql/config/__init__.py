@@ -54,6 +54,7 @@ from pointlessql.config._settings import (
     ServerSettings,
     Settings,
     SoyuzSettings,
+    SqlChatSettings,
     SQLSettings,
     WorkspaceReposSettings,
 )
@@ -81,6 +82,7 @@ __all__ = [
     "RateLimitSettings",
     "RequestIdFilter",
     "SQLSettings",
+    "SqlChatSettings",
     "SchedulerSettings",
     "ServerSettings",
     "Settings",

@@ -106,11 +106,21 @@ export const executeMethods = {
  this.currentQueryId = this._generateQueryId();
  this._startElapsed();
  const started = performance.now();
- const res = await window.pqlApi.fetch('/api/sql/execute', {
+ const fetchOpts = {
  method: 'POST',
  body: { sql: query, query_id: this.currentQueryId, explain },
  silent: true,
- });
+ };
+ // Phase 91 — when the user has accepted a chat proposal,
+ // stamp the chat session's agent_run_id on the request so the
+ // operation row hangs off the same run as the rest of the
+ // conversation. Cleared after one request so a follow-up
+ // hand-typed query doesn't land on a stale run.
+ if (this._chatAgentRunId) {
+ fetchOpts.headers = { 'X-Agent-Run-Id': this._chatAgentRunId };
+ this._chatAgentRunId = null;
+ }
+ const res = await window.pqlApi.fetch('/api/sql/execute', fetchOpts);
  this._stopElapsed();
  this.running = false;
  this.currentQueryId = null;

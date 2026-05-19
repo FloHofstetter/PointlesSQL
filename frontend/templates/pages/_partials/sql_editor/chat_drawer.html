@@ -1,0 +1,144 @@
+{#-
+  Phase 91 — SQL-editor NL→SQL chat drawer.
+
+  Mounted as a right-side fixed-position drawer inside the
+  sql_editor.html template.  Toggled by the ``chatOpen`` flag on
+  the parent ``sqlEditor()`` Alpine scope; the inner scope is its
+  own factory ``chatPanel(editorSessionId)`` so reload-recovery
+  and WS lifecycle stay isolated from the editor's own state.
+
+  Layout:
+    * Header: title + close button.
+    * Body: scrollable message list.
+    * Footer: textarea + Send/Cancel buttons + status pill.
+-#}
+<div
+  class="pql-chat-drawer"
+  x-data="chatPanel('{{ editor_session_id }}')"
+  x-init="connect()"
+  x-show="$root.chatOpen"
+  x-cloak
+  @keydown.escape.window="$root.chatOpen = false"
+>
+  <div class="pql-chat-drawer__header">
+    <strong><i class="bi bi-chat-dots me-1"></i>NL → SQL</strong>
+    <span class="text-muted small ms-2" x-text="statusLabel"></span>
+    <button
+      type="button"
+      class="btn btn-link btn-sm ms-auto p-0"
+      aria-label="Reset conversation"
+      @click="reset()"
+      title="Clear conversation history"
+    >
+      <i class="bi bi-arrow-counterclockwise"></i>
+    </button>
+    <button
+      type="button"
+      class="btn btn-link btn-sm p-0 ms-2"
+      aria-label="Close chat"
+      @click="$root.chatOpen = false"
+    >
+      <i class="bi bi-x-lg"></i>
+    </button>
+  </div>
+
+  <div class="pql-chat-drawer__body" x-ref="messageList">
+    <template x-for="(msg, i) in messages" :key="i">
+      <div
+        class="pql-chat-msg"
+        :class="'pql-chat-msg--' + msg.role"
+      >
+        <div class="pql-chat-msg__role" x-text="msg.role"></div>
+        <div class="pql-chat-msg__content" x-text="msg.content"></div>
+      </div>
+    </template>
+    <template x-if="streaming">
+      <div class="pql-chat-msg pql-chat-msg--assistant pql-chat-msg--streaming">
+        <div class="pql-chat-msg__role">assistant</div>
+        <div class="pql-chat-msg__content" x-text="streamingText || 'thinking…'"></div>
+      </div>
+    </template>
+    <template x-for="proposal in proposals" :key="proposal.proposal_id">
+      <div class="pql-chat-proposal">
+        <div class="pql-chat-proposal__header">
+          <span class="badge text-bg-warning" x-text="proposal.kind.toUpperCase()"></span>
+          Draft SQL — review before running.
+        </div>
+        <pre class="pql-chat-proposal__sql" x-text="proposal.sql"></pre>
+        <div class="pql-chat-proposal__rationale text-muted small"
+             x-show="proposal.rationale"
+             x-text="proposal.rationale"></div>
+        <div class="pql-chat-proposal__actions d-flex gap-2 mt-2">
+          <button type="button"
+                  class="btn btn-sm btn-primary"
+                  data-testid="propose-run"
+                  @click="loadProposalIntoEditor(proposal)">
+            <i class="bi bi-arrow-left me-1"></i>Load in editor
+          </button>
+          <button type="button"
+                  class="btn btn-sm btn-outline-secondary"
+                  @click="discardProposal(proposal)">
+            Discard
+          </button>
+        </div>
+      </div>
+    </template>
+    <template x-if="lastError">
+      <div class="alert alert-danger small mb-2">
+        <span x-text="lastError"></span>
+        <div class="mt-2 d-flex gap-2" x-show="$root.lastRun && $root.lastRun.lastSql">
+          <button type="button"
+                  class="btn btn-outline-warning btn-sm"
+                  data-testid="chat-refine-error"
+                  @click="refine('error', $root.lastRun.lastSql, lastError)">
+            <i class="bi bi-arrow-clockwise me-1"></i>Refine
+          </button>
+        </div>
+      </div>
+    </template>
+    <template x-if="$root.result && $root.result.row_count === 0 && !streaming">
+      <div class="alert alert-warning small mb-2">
+        Previous query returned 0 rows.
+        <button type="button"
+                class="btn btn-link btn-sm p-0 ms-2"
+                data-testid="chat-refine-zero"
+                @click="refine('zero_rows', $root.lastRun ? $root.lastRun.lastSql : '', '')">
+          Ask chat to refine
+        </button>
+      </div>
+    </template>
+  </div>
+
+  <div class="pql-chat-drawer__footer">
+    <form @submit.prevent="send()" class="d-flex gap-2 align-items-end">
+      <textarea
+        class="form-control form-control-sm pql-chat-input"
+        rows="2"
+        placeholder="Ask a SQL question (e.g. top 5 countries by ingest count)"
+        x-model="prompt"
+        x-ref="promptInput"
+        @keydown.enter.prevent="!$event.shiftKey && send()"
+        :disabled="streaming"
+      ></textarea>
+      <div class="d-flex flex-column gap-1">
+        <button
+          type="submit"
+          class="btn btn-primary btn-sm"
+          :disabled="streaming || !prompt.trim()"
+          data-testid="chat-send"
+        >
+          <i class="bi bi-send"></i>
+        </button>
+        <button
+          type="button"
+          class="btn btn-outline-danger btn-sm"
+          x-show="streaming"
+          x-cloak
+          @click="cancel()"
+        >
+          <i class="bi bi-x-octagon"></i>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
