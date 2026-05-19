@@ -14,6 +14,8 @@ Sub-modules:
 * :mod:`.io` — load / save / cell-history / render-markdown
 * :mod:`.jobs` — notebook-job listing + run-once trigger
 * :mod:`.pages` — HTML page renders (editor + workspace browser)
+* :mod:`.tags` — notebook-level tag CRUD (Phase 98.B)
+* :mod:`.templates` — starter-template gallery + create (Phase 98.B)
 """
 
 from __future__ import annotations
@@ -27,12 +29,18 @@ from pointlessql.api.notebooks_routes.discovery import (
 from pointlessql.api.notebooks_routes.io import router as _io_router
 from pointlessql.api.notebooks_routes.jobs import router as _jobs_router
 from pointlessql.api.notebooks_routes.pages import router as _pages_router
+from pointlessql.api.notebooks_routes.tags import router as _tags_router
+from pointlessql.api.notebooks_routes.templates import (
+    router as _templates_router,
+)
 
 router = APIRouter(tags=["notebooks"])
 router.include_router(_discovery_router)
 router.include_router(_crud_router)
 router.include_router(_io_router)
 router.include_router(_jobs_router)
+router.include_router(_tags_router)
+router.include_router(_templates_router)
 router.include_router(_pages_router)
 
 

@@ -6,6 +6,30 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Phase 98.B — Notebook tags + template gallery (2026-05-20).**
+  Two DBX-parity surfaces shipped together because they both live in
+  the workspace tree:
+    * **Notebook-level tags** — new ``notebook_tags`` table (migration
+      ``b185acda50d7``) keyed on stable ``notebooks.id`` UUID with a
+      ``(notebook_id, tag)`` unique constraint.  Curated vocabulary
+      (``etl`` / ``draft`` / ``prod`` / ``wip`` / ``verified`` /
+      ``broken`` / ``ml`` / ``report`` / ``scratch``) plus free-text
+      ``[a-z0-9_-]{1,64}``; 16-tag cap per notebook.  Service in
+      ``services/notebook/tags.py``; REST in
+      ``api/notebooks_routes/tags.py``
+      (``GET|POST|DELETE /api/notebooks/tags``).  Idempotent re-add.
+      Distinct from the Phase-95.3 cell-tag picker which tags
+      individual cells inside the ``.py`` marker grammar.
+    * **Template gallery** — four shipped starter ``.py`` files under
+      ``pointlessql/data/notebook_templates/`` (``blank``,
+      ``sql_exploration``, ``etl_pipeline``, ``ml_quickstart``) driven
+      by ``_manifest.json``.  Service in
+      ``services/notebook/templates.py``; REST in
+      ``api/notebooks_routes/templates.py``
+      (``GET /api/notebooks/templates``,
+      ``POST /api/notebooks/from-template``).
+  13 new pytest in ``tests/test_notebook_tags_and_templates.py``.
+
 - **Phase 98.A — Notebook magic-command pre-processor (2026-05-20).**
   Adds four DBX-parity line-magics in front of the kernel execute
   path: ``%sql <query>`` (server-side ``approved_tables`` resolution

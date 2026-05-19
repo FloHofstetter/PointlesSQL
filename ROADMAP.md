@@ -1866,6 +1866,22 @@ PointlesSQL
 │   │         kernel dispatch, resolving SQL approval server-side per
 │   │         %sql line.  13 new pytest covering line/block parsing,
 │   │         placeholder splicing, and indent preservation.
+│   │       * 98.B ✅ done 2026-05-20 — notebook tags + template
+│   │         gallery.  New ``NotebookTag`` ORM table + migration
+│   │         ``b185acda50d7`` for notebook-level lifecycle tags
+│   │         (distinct from the marker-grammar cell tags); curated
+│   │         vocabulary (``etl`` / ``draft`` / ``prod`` / etc.) plus
+│   │         free-text with ``[a-z0-9_-]`` validation, 16-tag cap
+│   │         per notebook.  New ``services/notebook/tags.py``
+│   │         service + ``api/notebooks_routes/tags.py`` routes
+│   │         (GET / POST / DELETE ``/api/notebooks/tags``).
+│   │         Template gallery ships four starter ``.py`` files
+│   │         under ``pointlessql/data/notebook_templates/`` driven
+│   │         by ``_manifest.json``: blank, sql_exploration,
+│   │         etl_pipeline, ml_quickstart.  New
+│   │         ``services/notebook/templates.py`` + routes
+│   │         ``GET /api/notebooks/templates`` and ``POST
+│   │         /api/notebooks/from-template``.  13 new pytest.
 │   │
 │   ├── Phase 99 — Widget-cells + Notebook permissions            ⏳ planned
 │   │     Interactive parameter widgets

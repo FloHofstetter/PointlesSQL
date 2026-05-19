@@ -130,6 +130,7 @@ from pointlessql.models.notebook import (
     NotebookCellRunSource,
     NotebookJobLink,
     NotebookOutput,
+    NotebookTag,
 )
 from pointlessql.models.notifications import (
     UserNotification,
@@ -236,6 +237,7 @@ __all__ = [
     "NotebookCellRunSource",
     "NotebookJobLink",
     "NotebookOutput",
+    "NotebookTag",
     "QueryHistory",
     "QueryHistoryTable",
     "REVIEW_SEVERITIES",

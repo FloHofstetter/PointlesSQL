@@ -1,0 +1,30 @@
+[
+  {
+    "id": "blank",
+    "title": "Blank notebook",
+    "description": "An empty notebook with a single markdown header and code cell.",
+    "category": "starter",
+    "filename": "blank.py"
+  },
+  {
+    "id": "sql_exploration",
+    "title": "SQL exploration",
+    "description": "Run `%sql` cells against the catalog and explore the result inline.",
+    "category": "sql",
+    "filename": "sql_exploration.py"
+  },
+  {
+    "id": "etl_pipeline",
+    "title": "ETL pipeline",
+    "description": "Read → transform → write skeleton using PQL.read / PQL.write.",
+    "category": "etl",
+    "filename": "etl_pipeline.py"
+  },
+  {
+    "id": "ml_quickstart",
+    "title": "ML quickstart",
+    "description": "Pull features, train a scikit-learn model, log to MLflow.",
+    "category": "ml",
+    "filename": "ml_quickstart.py"
+  }
+]
