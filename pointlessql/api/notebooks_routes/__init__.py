@@ -23,6 +23,7 @@ Sub-modules:
 * :mod:`.widgets` — parameter-widget CRUD (Phase 99)
 * :mod:`.permissions` — per-notebook share permissions (Phase 99)
 * :mod:`.shares` — public-share + dashboard render (Phase 100)
+* :mod:`.branch_bindings` — per-notebook Delta-branch binding (Phase 102)
 """
 
 from __future__ import annotations
@@ -51,6 +52,9 @@ from pointlessql.api.notebooks_routes.permissions import (
 from pointlessql.api.notebooks_routes.revisions import (
     router as _revisions_router,
 )
+from pointlessql.api.notebooks_routes.branch_bindings import (
+    router as _branch_bindings_router,
+)
 from pointlessql.api.notebooks_routes.shares import (
     router as _shares_router,
 )
@@ -76,6 +80,7 @@ router.include_router(_cell_authorship_router)
 router.include_router(_widgets_router)
 router.include_router(_permissions_router)
 router.include_router(_shares_router)
+router.include_router(_branch_bindings_router)
 router.include_router(_pages_router)
 
 

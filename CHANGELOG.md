@@ -6,6 +6,23 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Phase 102 — Branch-aware notebooks (backend, 2026-05-20).**  New
+  ``notebook_branch_bindings`` table (migration ``095e6a40fa0e``)
+  records which Delta-branch a notebook writes to.  Lifecycle is
+  encoded in four nullable timestamp columns: ``created_at`` /
+  ``promoted_at`` / ``discarded_at`` / ``superseded_at``; every
+  bind / promote / discard supersedes the prior row so only one
+  binding is ever "current" while history rows stay queryable.
+  Service in ``services/notebook/branch_bindings.py`` (validated
+  branch-name pattern ``[A-Za-z0-9][A-Za-z0-9._-]*``).  REST:
+  ``GET|POST|DELETE /api/notebooks/branch``,
+  ``POST /api/notebooks/branch/promote``,
+  ``GET /api/notebooks/branch/history``.  Kernel-side env-bridge
+  (``POINTLESSQL_BRANCH``) + the shoreguard-gated promotion path
+  remain follow-ups — today the binding is recorded but not yet
+  consulted by ``pql.read_table`` / ``pql.write_table``.  11 new
+  pytest.
+
 - **Phase 100 — Publish notebook (backend, 2026-05-20).**  New
   ``notebook_shares`` table (migration ``8c7c6eb5add5``) — one row
   per public share.  ``share_mode ∈ {snapshot, live}`` and a

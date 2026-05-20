@@ -2048,12 +2048,31 @@ PointlesSQL
 │   │     * **Cell-header attribution chip** — backend is ready;
 │   │       editor render gated by the nested-x-data trap.
 │   │
-│   ├── Phase 102 — Branch-aware notebooks                        ⏳ planned
-│   │     Notebook runs against a Delta-branch (per the existing
-│   │     delta-branching idea in memory); promotion gate via
-│   │     shoreguard.  Per-agent-run isolation: an agent
-│   │     experimenting can't corrupt the prod table; humans
-│   │     review the promote.
+│   ├── Phase 102 — Branch-aware notebooks                        ⏳ partial
+│   │     Backend shipped 2026-05-20.  New
+│   │     ``notebook_branch_bindings`` table + migration
+│   │     ``095e6a40fa0e`` records which Delta-branch a notebook
+│   │     writes to (or ``None`` for ``main``).  Lifecycle columns
+│   │     (``created_at`` / ``promoted_at`` / ``discarded_at`` /
+│   │     ``superseded_at``) keep history while keeping at most one
+│   │     "current" binding per notebook — every fresh bind /
+│   │     promote / discard supersedes the prior row.
+│   │     Service ``services/notebook/branch_bindings.py``:
+│   │     ``bind_branch`` / ``get_current_binding`` /
+│   │     ``promote_binding`` / ``discard_binding`` /
+│   │     ``list_bindings``.  REST: ``GET|POST|DELETE
+│   │     /api/notebooks/branch``, ``POST
+│   │     /api/notebooks/branch/promote``, ``GET
+│   │     /api/notebooks/branch/history``.  11 new pytest.
+│   │     Asset 0.1.0rc39.
+│   │
+│   │     **Deferred:** kernel-side env-bridge so cells actually
+│   │     route reads + writes through the bound branch (today the
+│   │     binding is recorded but not yet consulted by
+│   │     ``pql.read_table`` / ``pql.write_table``).  Promote-gate
+│   │     to shoreguard remains a future hook — ``promote_binding``
+│   │     today records the lifecycle transition without calling
+│   │     into a reviewer system.
 │   │
 │   ├── Phase 103 — Replay / Scenario-mode                        ⏳ planned
 │   │     Re-execute an old notebook revision against today's
