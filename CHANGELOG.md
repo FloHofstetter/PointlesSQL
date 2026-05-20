@@ -6,6 +6,20 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Phase 104 — NL→Notebook cell-sequence proposals (backend,
+  2026-05-20).**  Extends Phase 96's single-cell propose / fix /
+  explain to a multi-cell code-gen flow.  New
+  ``notebook_cell_sequence_proposals`` table (migration
+  ``d737762ace76``) carries the full proposed sequence in
+  ``cells_json`` so insertion is atomic.  Status lifecycle
+  ``pending → {accepted, discarded, expired}``.  Service in
+  ``services/notebook/cell_sequence_proposals.py`` (validates
+  cell_type ∈ ``{code, markdown, sql}``, sorts by ``position``).
+  REST under ``/api/notebook/chat/{chat_session_id}/propose-sequence``
+  + ``/api/notebook/chat/sequences/{proposal_id}/{accept,discard}``.
+  The hermes-plugin ``pql_propose_cell_sequence`` LLM tool that
+  drives the code-gen stays as a follow-up.  10 new pytest.
+
 - **Phase 103 — Replay / Scenario-mode (backend, 2026-05-20).**  New
   ``notebook_replays`` table (migration ``311c87f25421``) records
   one row per replay of a Phase-97 ``NotebookRevision``.  Lifecycle

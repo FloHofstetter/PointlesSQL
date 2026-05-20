@@ -18,10 +18,11 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
-from pointlessql.api.notebook_chat_routes import _accept, _propose
+from pointlessql.api.notebook_chat_routes import _accept, _propose, _sequence
 
 router = APIRouter()
 router.include_router(_propose.router)
 router.include_router(_accept.router)
+router.include_router(_sequence.router)
 
 __all__ = ["router"]

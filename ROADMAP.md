@@ -2101,11 +2101,31 @@ PointlesSQL
 │   │     orchestration; the scaffolding for the audit + diff
 │   │     surface is the load-bearing piece and is in place.
 │   │
-│   ├── Phase 104 — NL→Notebook (full cell-sequence generation)   ⏳ planned
-│   │     Extends Phase 96's inline assistant from single-cell
-│   │     proposals to a full code-gen flow: a prompt yields an
-│   │     imports + dataframe + plot + markdown sequence.
-│   │     Provenance + reviewer gate per Phase 101.
+│   ├── Phase 104 — NL→Notebook (full cell-sequence generation)   ⏳ partial
+│   │     Backend shipped 2026-05-20.  New
+│   │     ``notebook_cell_sequence_proposals`` table + migration
+│   │     ``d737762ace76``.  One row carries the full proposed
+│   │     sequence (``imports → DataFrame → plot → markdown``) as
+│   │     ``cells_json`` so insertion is atomic — the user picks
+│   │     "Insert all" or "Discard" without ever landing in a
+│   │     half-applied state.  Status lifecycle ``pending →
+│   │     {accepted, discarded, expired}``; the existing Phase-96
+│   │     :class:`NotebookCellProvenance` fans out per-cell
+│   │     provenance after acceptance.  Service
+│   │     ``services/notebook/cell_sequence_proposals.py``:
+│   │     ``propose_sequence`` (validates cell_type ∈
+│   │     ``{code, markdown, sql}``, sorts by ``position``),
+│   │     ``accept_sequence``, ``discard_sequence``,
+│   │     ``get_sequence``, ``list_pending_for_session``.  REST:
+│   │     ``POST /api/notebook/chat/{chat_session_id}/propose-sequence``,
+│   │     ``GET|accept|discard /api/notebook/chat/sequences/{proposal_id}``,
+│   │     ``GET .../sequences/pending``.  10 new pytest.
+│   │     Asset 0.1.0rc41.
+│   │
+│   │     **Deferred:** the hermes-plugin ``pql_propose_cell_sequence``
+│   │     LLM tool that drives the actual code-gen.  Backend storage
+│   │     + REST surface is the load-bearing piece; the LLM call
+│   │     stays in the plugin once the next plugin release lands.
 │   │
 │   └── Phase 105 — Real-time co-edit (speculative)               ⏳ planned
 │         Y.js / CRDT layer over the existing WebSocket so
