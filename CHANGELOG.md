@@ -6,6 +6,24 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Phase 103 — Replay / Scenario-mode (backend, 2026-05-20).**  New
+  ``notebook_replays`` table (migration ``311c87f25421``) records
+  one row per replay of a Phase-97 ``NotebookRevision``.  Lifecycle
+  encoded as ``status ∈ {pending, running, ok, error, cancelled}``;
+  outputs land in ``outputs_json`` and a small ``{stable, changed,
+  missing, new}`` digest in ``diff_summary_json``.  Optional
+  ``branch_name`` routes the replay's writes to a Phase-102 branch
+  so production stays untouched.  Service in
+  ``services/notebook/replay.py`` (``start_replay`` /
+  ``record_finished`` / ``compute_replay_diff`` etc.).  REST:
+  ``POST /api/notebooks/replay``,
+  ``POST .../replay/{uuid}/finish``,
+  ``GET .../replay/{uuid}``,
+  ``GET .../replay/{uuid}/diff``,
+  ``GET /api/notebooks/replays``.  Worker that drives the
+  re-execution remains a follow-up; the audit + diff scaffolding is
+  the load-bearing piece.  8 new pytest.
+
 - **Phase 102 — Branch-aware notebooks (backend, 2026-05-20).**  New
   ``notebook_branch_bindings`` table (migration ``095e6a40fa0e``)
   records which Delta-branch a notebook writes to.  Lifecycle is

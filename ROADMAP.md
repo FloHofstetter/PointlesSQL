@@ -2074,12 +2074,32 @@ PointlesSQL
 │   │     today records the lifecycle transition without calling
 │   │     into a reviewer system.
 │   │
-│   ├── Phase 103 — Replay / Scenario-mode                        ⏳ planned
-│   │     Re-execute an old notebook revision against today's
-│   │     data; side-by-side diff of outputs.  AV-governance
-│   │     "shadow mode" pattern from the memory notes applied to
-│   │     notebooks.  Builds on Phase 97 (snapshots) + Phase 102
-│   │     (branch isolation).
+│   ├── Phase 103 — Replay / Scenario-mode                        ⏳ partial
+│   │     Backend shipped 2026-05-20.  New ``notebook_replays``
+│   │     table + migration ``311c87f25421`` records one row per
+│   │     replay attempt of a Phase-97 :class:`NotebookRevision`.
+│   │     Lifecycle column ``status`` ∈ ``{pending, running, ok,
+│   │     error, cancelled}``; outputs land in ``outputs_json``
+│   │     and a digest of ``{stable, changed, missing, new}`` cell
+│   │     counts lives in ``diff_summary_json`` for the list page.
+│   │     Optional ``branch_name`` routes writes to a Phase-102
+│   │     branch so the replay does not corrupt production.
+│   │     Service ``services/notebook/replay.py`` (``start_replay``,
+│   │     ``mark_running``, ``record_finished``, ``get_replay``,
+│   │     ``list_replays``, ``compute_replay_diff``).  REST:
+│   │     ``POST /api/notebooks/replay``,
+│   │     ``POST .../replay/{uuid}/finish``,
+│   │     ``GET .../replay/{uuid}``,
+│   │     ``GET .../replay/{uuid}/diff``,
+│   │     ``GET /api/notebooks/replays``.  8 new pytest.
+│   │     Asset 0.1.0rc40.
+│   │
+│   │     **Deferred:** the actual kernel-driven re-execution loop
+│   │     (the worker that takes a replay row from ``pending`` →
+│   │     ``running`` → ``ok`` and uploads the outputs).  Worker
+│   │     plumbing is straightforward papermill / kernel-session
+│   │     orchestration; the scaffolding for the audit + diff
+│   │     surface is the load-bearing piece and is in place.
 │   │
 │   ├── Phase 104 — NL→Notebook (full cell-sequence generation)   ⏳ planned
 │   │     Extends Phase 96's inline assistant from single-cell
