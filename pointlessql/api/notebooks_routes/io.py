@@ -433,3 +433,23 @@ def _write_proposal_provenance(
         )
         if proposal is not None:
             proposal.inserted_cell_uuid = cell_uuid
+        # Phase 101 AI-acceptance authorship (Wave-B follow-up
+        # 2026-05-20).  Fires BEFORE the save-handler's user-authorship
+        # loop so the row's ``first_author_*`` gets the agent and the
+        # user-loop only bumps ``last_modifier_*`` to the saver.  Net
+        # effect: the chip reads "minted by AI • last edit by Flo".
+        # Inline editor chat has no registered ``Agent`` DB row;
+        # ``agent_id`` stays None and the service contract accepts
+        # ``agent_run_id``-only attribution.
+        try:
+            cell_authorship_service.upsert_cell_authorship(
+                session,
+                cell_uuid=cell_uuid,
+                kind="agent",
+                agent_run_id=agent_run_id,
+            )
+        except Exception:  # noqa: BLE001 — non-fatal
+            logger.exception(
+                "phase101 agent authorship upsert failed for cell %s",
+                cell_uuid,
+            )

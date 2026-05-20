@@ -6,6 +6,21 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Phase 101 AI-acceptance authorship hook (2026-05-20).**  Wave-B
+  scope-trim closed.  ``upsert_cell_authorship`` now accepts
+  ``kind="agent"`` with ``agent_id=None`` when ``agent_run_id`` is
+  set — inline editor chat has no registered ``Agent`` DB row, so
+  the previous strict ``agent_id``-required contract blocked the
+  hook entirely.  ``_write_proposal_provenance`` in
+  ``api/notebooks_routes/io.py`` now upserts the agent authorship
+  immediately after the ``NotebookCellProvenance`` insert.  Order
+  matters: the call fires *before* the save-handler's user-
+  authorship loop, so the row's ``first_author_*`` records the
+  agent and the user loop only bumps ``last_modifier_*`` to the
+  saver.  Net effect: the chip on a proposal-accepted cell now
+  reads "minted by AI assistant • last edit by &lt;saver&gt;".  One
+  new pytest plus a renamed old one (16 total).  Asset 0.1.0rc52.
+
 - **Wave-B — three deferred notebook UIs shipped (2026-05-20).**
   Three Phase backends (98.B Tags, 101 Author-Chip, 100 Publish/Share)
   had green tests but no UI; this wave wires all three from the

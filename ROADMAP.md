@@ -2070,15 +2070,16 @@ PointlesSQL
 │   │     ``{cell_uuid: envelope}`` so a 50-cell notebook costs one
 │   │     HTTP request instead of 50; 2 new pytest (15 total).
 │   │
+│   │     **AI-acceptance hook landed 2026-05-20 (asset 0.1.0rc52):**
+│   │     ``upsert_cell_authorship`` relaxed to accept ``kind="agent"``
+│   │     with ``agent_id=None`` when ``agent_run_id`` is set;
+│   │     ``_write_proposal_provenance`` in ``io.py`` now upserts
+│   │     agent authorship before the user-authorship loop runs.  A
+│   │     proposal-accepted cell now reads "minted by AI assistant •
+│   │     last edit by <saver>" on the chip.  One new pytest (16
+│   │     total).
+│   │
 │   │     **Still deferred:**
-│   │     * **Agent-author attribution for proposal-accepted cells.**
-│   │       Wave-2 scope-trim: the service contract requires
-│   │       ``agent_id`` (int FK) for ``kind="agent"`` but inline
-│   │       editor chat has no registered DB agent.  Fix needs
-│   │       either a service relaxation (accept ``agent_run_id``-
-│   │       only when ``agent_id is None``) or a "system AI" agent
-│   │       seed row.  ``NotebookCellProvenance`` already records
-│   │       the agent_run_id; chip stays in user-mode until then.
 │   │     * **Reviewer-per-cell flow** — the existing polymorphic
 │   │       comment system (``DataProductComment`` already carries
 │   │       ``author_agent_id``) already supports it; the dedicated

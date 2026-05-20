@@ -79,9 +79,15 @@ def upsert_cell_authorship(
                 "upsert_cell_authorship: kind='user' requires email"
             )
     elif kind == "agent":
-        if agent_id is None:
+        # Phase 101 follow-up (Wave-B closure 2026-05-20): inline editor
+        # chat has no registered ``Agent`` DB row, so ``agent_id`` is
+        # often unavailable.  The ``agent_run_id`` alone is enough
+        # provenance — the cell-header chip falls back to a generic
+        # "AI assistant" label when ``agent_id`` is null.
+        if agent_id is None and not agent_run_id:
             raise ValidationError(
-                "upsert_cell_authorship: kind='agent' requires agent_id"
+                "upsert_cell_authorship: kind='agent' requires "
+                "agent_id or agent_run_id"
             )
     else:
         raise ValidationError(f"unknown author kind: {kind!r}")

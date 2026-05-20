@@ -166,16 +166,41 @@ def test_upsert_user_kind_missing_email_raises(
             )
 
 
-def test_upsert_agent_kind_missing_agent_id_raises(
+def test_upsert_agent_kind_missing_both_identifiers_raises(
     factory: sessionmaker,  # type: ignore[type-arg]
 ) -> None:
-    """``kind='agent'`` without ``agent_id`` raises."""
+    """``kind='agent'`` with neither ``agent_id`` nor ``agent_run_id`` raises."""
     cell_uuid = _seed_cell(factory)
     with factory() as session:
         with pytest.raises(ValidationError):
             cell_authorship_service.upsert_cell_authorship(
                 session, cell_uuid=cell_uuid, kind="agent"
             )
+
+
+def test_upsert_agent_kind_accepts_run_id_only(
+    factory: sessionmaker,  # type: ignore[type-arg]
+) -> None:
+    """``kind='agent'`` with only ``agent_run_id`` is allowed.
+
+    Wave-B follow-up (2026-05-20): inline editor chat has no
+    registered ``Agent`` DB row, so the AI-acceptance authorship
+    hook can only supply ``agent_run_id``.  Service accepts the
+    weaker attribution and the chip falls back to a generic
+    "AI assistant" label client-side.
+    """
+    cell_uuid = _seed_cell(factory)
+    with factory() as session:
+        row = cell_authorship_service.upsert_cell_authorship(
+            session,
+            cell_uuid=cell_uuid,
+            kind="agent",
+            agent_run_id="run-abc",
+        )
+        assert row.first_author_kind == "agent"
+        assert row.first_author_agent_id is None
+        assert row.first_author_agent_run_id == "run-abc"
+        session.commit()
 
 
 def test_upsert_unknown_cell_raises(factory: sessionmaker) -> None:  # type: ignore[type-arg]
