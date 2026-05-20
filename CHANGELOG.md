@@ -6,6 +6,50 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Wave-C — three deferred Phase-102/103/104 notebook UIs + Phase 99
+  UI shipped (2026-05-20).**  Four orphan backends (Branch-Binding /
+  Replays / Cell-Sequence-Proposals / Widgets+Permissions) wired from
+  the editor in one bundle.  Asset 0.1.0rc52 → rc56.
+  - **Wave C.1 — Branch-Binding-Picker (Phase 102.UI).**  Toolbar
+    "Branch" button opens an inline panel with three states (no
+    binding / pending / promoted).  Bind form takes ``branch_name``
+    + optional ``base_revision_uuid``; Promote + Discard actions
+    flip lifecycle; expandable history list shows recent bindings.
+    New ``installBranchBinding`` Alpine mixin + ``branch_binding.js``
+    + ``branch_binding_panel.html``.  No backend change; wires
+    ``GET|POST|DELETE /api/notebooks/branch`` + ``POST /promote`` +
+    ``GET /history``.
+  - **Wave C.2 — Replay-Run-Liste (Phase 103.UI).**  Toolbar
+    "Replays" button opens an inline list (status pill + 8-char
+    UUIDs + branch hint + relative timestamps).  Each row expands to
+    a JSON-pretty-printed diff envelope (lazy-fetched).  A
+    "Start replay" form posts a fresh ``pending`` row; the kernel
+    worker that takes it to ``running``/``ok`` is still deferred.
+    New ``installReplays`` mixin + ``replays.js`` +
+    ``replays_panel.html``.
+  - **Wave C.3 — Cell-Sequence-Proposal-Drawer (Phase 104.UI).**
+    Toolbar "Proposals" button opens a passive inbox listening for
+    ``pql:cell-sequence-proposed`` window events.  Each pending
+    proposal shows prompt + rationale + cell preview + Accept-all /
+    Discard.  Accept iterates the cells via the existing Phase-96
+    ``insertCellFromProposal`` path so provenance fans out per cell
+    once the save lands.  New ``installSequenceProposals`` mixin +
+    ``sequence_proposals.js`` + ``sequence_proposals_drawer.html``.
+    Until the hermes plugin LLM tool ships, the inbox stays empty —
+    the empty-state copy says so.
+  - **Phase 99.UI — Widget-Cells-Form + Permissions-Lattice.**  Two
+    new toolbar buttons: "Widgets" opens a CRUD panel for
+    dropdown / slider / text widgets with JSON config + default
+    value + position, plus a resolved-values preview from
+    ``POST /api/notebooks/widgets/resolve``.  "Access" opens a
+    per-notebook grants table (``view < run < edit`` lattice) with
+    inline role editing and revoke.  Backend untouched; wires
+    ``GET|PUT|DELETE /api/notebooks/widgets`` and
+    ``GET|PUT|DELETE /api/notebooks/permissions``.  New
+    ``installWidgetsPanel`` + ``installPermissionsPanel`` mixins.
+    Still deferred: ``pql.widgets`` kernel-side shim + route-layer
+    enforcement of the role lattice.
+
 - **Phase 101 AI-acceptance authorship hook (2026-05-20).**  Wave-B
   scope-trim closed.  ``upsert_cell_authorship`` now accepts
   ``kind="agent"`` with ``agent_id=None`` when ``agent_run_id`` is

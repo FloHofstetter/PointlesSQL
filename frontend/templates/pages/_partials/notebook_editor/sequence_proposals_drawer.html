@@ -1,0 +1,84 @@
+{# Phase 104 — Cell-sequence proposals drawer.
+
+   Passive inbox for multi-cell proposals received via the
+   ``pql:cell-sequence-proposed`` window event.  Accept inserts every
+   cell at the bottom and POSTs to accept; Discard flips the row to
+   ``discarded`` server-side.
+
+   Empty state is visible — until the LLM tool (deferred) lands, this
+   panel will sit empty.  The empty-state copy explains that.
+#}
+<div class="pql-notebook-sequence-drawer"
+     x-show="sequenceProposals.open"
+     x-cloak>
+ <div class="pql-notebook-sequence-drawer__header">
+  <strong>Cell-sequence proposals</strong>
+  <span class="badge bg-secondary ms-2"
+        x-text="sequenceProposals.pending.length"></span>
+  <span class="text-danger small ms-2"
+        x-show="sequenceProposals.error"
+        x-cloak
+        x-text="sequenceProposals.error"></span>
+  <button type="button" class="btn-close btn-close-sm ms-auto"
+          @click="sequenceProposals.open = false"
+          aria-label="Close proposal drawer"></button>
+ </div>
+
+ <template x-if="sequenceProposals.pending.length === 0">
+  <p class="text-muted small fst-italic mb-0">
+   No pending sequence proposals.  The hermes plugin tool that
+   generates these is still on the deferred list — until it ships,
+   nothing will land here.
+  </p>
+ </template>
+
+ <template x-for="proposal in sequenceProposals.pending" :key="proposal.proposal_id">
+  <div class="pql-sequence-proposal py-2 border-bottom">
+   <div class="d-flex align-items-center gap-2 mb-1">
+    <code class="text-body font-monospace small"
+          x-text="proposal.proposal_id.slice(0, 8)"></code>
+    <span class="badge bg-info text-dark"
+          x-text="`${(proposal.cells || []).length} cell${(proposal.cells || []).length === 1 ? '' : 's'}`"></span>
+    <span class="text-muted small ms-auto"
+          x-text="proposal.created_at || ''"></span>
+   </div>
+   <div class="mb-1 small">
+    <span class="text-muted">Prompt:</span>
+    <span x-text="proposal.prompt"></span>
+   </div>
+   <div class="mb-1 small"
+        x-show="proposal.rationale"
+        x-cloak>
+    <span class="text-muted">Rationale:</span>
+    <span x-text="proposal.rationale"></span>
+   </div>
+   <details class="mb-2 small">
+    <summary class="text-muted">Preview cells</summary>
+    <ol class="ps-3 mb-0">
+     <template x-for="cell in proposal.cells" :key="cell.position">
+      <li>
+       <span class="badge bg-secondary"
+             x-text="cell.cell_type"></span>
+       <code class="text-body font-monospace small"
+             x-text="(cell.source || '').slice(0, 80) + ((cell.source || '').length > 80 ? '…' : '')"></code>
+      </li>
+     </template>
+    </ol>
+   </details>
+   <div class="d-flex gap-2">
+    <button type="button" class="btn btn-sm btn-primary"
+            @click="acceptSequenceProposal(proposal)"
+            :disabled="sequenceProposals.busyId === proposal.proposal_id">
+     <i class="bi bi-check2-circle me-1" aria-hidden="true"></i>
+     Insert all
+    </button>
+    <button type="button" class="btn btn-sm btn-outline-secondary"
+            @click="discardSequenceProposal(proposal)"
+            :disabled="sequenceProposals.busyId === proposal.proposal_id">
+     <i class="bi bi-x-octagon me-1" aria-hidden="true"></i>
+     Discard
+    </button>
+   </div>
+  </div>
+ </template>
+</div>

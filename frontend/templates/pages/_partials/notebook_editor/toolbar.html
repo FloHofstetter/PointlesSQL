@@ -161,6 +161,80 @@
           x-text="notebookTags.length"
           x-cloak></span>
    </button>
+   {# Phase 102 — Delta branch binding.  Toggle the inline panel with
+      bind / promote / discard actions. #}
+   <button type="button"
+           class="btn btn-sm btn-outline-secondary"
+           @click="toggleBranchBinding()"
+           :class="{ active: branchBinding.open }"
+           data-testid="notebook-branch-button"
+           title="Bind this notebook to a Delta branch (Phase 102)">
+    <i class="bi bi-diagram-3" aria-hidden="true"></i>
+    Branch
+    <span class="badge ms-1"
+          :class="branchBinding.current && branchBinding.current.promoted_at ? 'bg-success' : 'bg-warning text-dark'"
+          x-show="branchBinding.loaded && branchBinding.current"
+          x-cloak
+          x-text="branchBinding.current ? branchBinding.current.branch_name : ''"></span>
+   </button>
+   {# Phase 103 — Replays / scenario-mode list.  Click opens a panel
+      with recent replay rows and their per-cell diff status. #}
+   <button type="button"
+           class="btn btn-sm btn-outline-secondary"
+           @click="toggleReplaysPanel()"
+           :class="{ active: replays.open }"
+           data-testid="notebook-replays-button"
+           title="Inspect notebook replays / scenario runs (Phase 103)">
+    <i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i>
+    Replays
+    <span class="badge bg-secondary ms-1"
+          x-show="replays.loaded && replays.rows.length > 0"
+          x-text="replays.rows.length"
+          x-cloak></span>
+   </button>
+   {# Phase 104 — Inbox for multi-cell sequence proposals.  Surfaces
+      pending proposals received via ``pql:cell-sequence-proposed``. #}
+   <button type="button"
+           class="btn btn-sm btn-outline-secondary"
+           @click="toggleSequenceProposals()"
+           :class="{ active: sequenceProposals.open }"
+           data-testid="notebook-sequence-proposals-button"
+           title="Cell-sequence proposals (Phase 104)">
+    <i class="bi bi-stack" aria-hidden="true"></i>
+    Proposals
+    <span class="badge bg-primary ms-1"
+          x-show="sequenceProposals.pending.length > 0"
+          x-text="sequenceProposals.pending.length"
+          x-cloak></span>
+   </button>
+   {# Phase 99 — Widget-cell form (dropdown / slider / text). #}
+   <button type="button"
+           class="btn btn-sm btn-outline-secondary"
+           @click="toggleWidgetsPanel()"
+           :class="{ active: widgetsPanel.open }"
+           data-testid="notebook-widgets-button"
+           title="Notebook input widgets (Phase 99)">
+    <i class="bi bi-sliders" aria-hidden="true"></i>
+    Widgets
+    <span class="badge bg-secondary ms-1"
+          x-show="widgetsPanel.loaded && widgetsPanel.widgets.length > 0"
+          x-text="widgetsPanel.widgets.length"
+          x-cloak></span>
+   </button>
+   {# Phase 99 — Per-notebook permission grants (view/run/edit). #}
+   <button type="button"
+           class="btn btn-sm btn-outline-secondary"
+           @click="togglePermissionsPanel()"
+           :class="{ active: permissionsPanel.open }"
+           data-testid="notebook-permissions-button"
+           title="Per-notebook permission grants (Phase 99)">
+    <i class="bi bi-shield-lock" aria-hidden="true"></i>
+    Access
+    <span class="badge bg-secondary ms-1"
+          x-show="permissionsPanel.loaded && permissionsPanel.rows.length > 0"
+          x-text="permissionsPanel.rows.length"
+          x-cloak></span>
+   </button>
    {% if notebook_chat_enabled %}
    {# Phase 96 — toggle the AI-assistant chat drawer. #}
    <button type="button"

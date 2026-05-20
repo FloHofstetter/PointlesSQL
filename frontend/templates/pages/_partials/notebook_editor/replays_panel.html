@@ -1,0 +1,122 @@
+{# Phase 103 — Replay / scenario-mode panel.
+
+   Lists recent replays for this notebook (newest first).  Expandable
+   row reveals the per-cell diff envelope from
+   ``GET /api/notebooks/replay/{uuid}/diff``.  Kernel re-execution
+   worker is still deferred; the diff classifier currently reports
+   any captured outputs against the base revision.
+#}
+<div class="pql-notebook-replays-panel"
+     x-show="replays.open"
+     x-cloak>
+ <div class="pql-notebook-replays-panel__header">
+  <strong>Notebook replays</strong>
+  <span class="text-muted small ms-2"
+        x-show="replays.loading"
+        x-cloak>Loading…</span>
+  <span class="text-danger small ms-2"
+        x-show="replays.error"
+        x-cloak
+        x-text="replays.error"></span>
+  <button type="button" class="btn-close btn-close-sm ms-auto"
+          @click="replays.open = false"
+          aria-label="Close replays panel"></button>
+ </div>
+
+ <form class="pql-notebook-replays-panel__section"
+       @submit.prevent="startReplay()">
+  <div class="text-muted small mb-2">
+   Start a new replay against a Phase-97 revision.  The kernel worker
+   that re-executes cells is still on the deferred list; until it
+   lands, the row will sit in ``pending``.
+  </div>
+  <div class="row g-2 align-items-end">
+   <div class="col-sm-6">
+    <label class="form-label small text-muted">Base revision</label>
+    <input type="text"
+           class="form-control form-control-sm font-monospace"
+           placeholder="revision uuid…"
+           x-model="replays.draftRevision"
+           :disabled="replays.submitting">
+   </div>
+   <div class="col-sm-4">
+    <label class="form-label small text-muted">
+     Branch <span class="text-muted">(optional)</span>
+    </label>
+    <input type="text"
+           class="form-control form-control-sm"
+           placeholder="experiment_x"
+           x-model="replays.draftBranch"
+           :disabled="replays.submitting">
+   </div>
+   <div class="col-sm-2 d-grid">
+    <button type="submit" class="btn btn-sm btn-primary"
+            :disabled="replays.submitting || !replays.draftRevision.trim()">
+     <span x-show="replays.submitting" x-cloak>
+      <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+     </span>
+     Replay
+    </button>
+   </div>
+  </div>
+ </form>
+
+ <div class="pql-notebook-replays-panel__section">
+  <template x-if="replays.loaded && replays.rows.length === 0">
+   <p class="text-muted small fst-italic mb-0">
+    No replays yet — start one above.
+   </p>
+  </template>
+  <ul class="list-unstyled mb-0">
+   <template x-for="row in replays.rows" :key="row.replay_uuid">
+    <li class="pql-replay-row py-2 border-bottom">
+     <div class="d-flex align-items-center gap-2 flex-wrap">
+      <span class="badge"
+            :class="{
+              'bg-warning text-dark': row.status === 'pending',
+              'bg-success': row.status === 'ok',
+              'bg-danger': row.status === 'error',
+              'bg-secondary': row.status === 'cancelled'
+            }"
+            x-text="row.status"></span>
+      <code class="text-body font-monospace small"
+            x-text="row.replay_uuid.slice(0, 8)"></code>
+      <span class="text-muted small">base</span>
+      <code class="text-body font-monospace small"
+            x-text="(row.base_revision_uuid || '').slice(0, 8)"></code>
+      <span class="text-muted small"
+            x-show="row.branch_name"
+            x-cloak>
+       branch
+       <code class="text-body font-monospace small"
+             x-text="row.branch_name"></code>
+      </span>
+      <span class="text-muted small ms-auto"
+            x-text="row.created_at || ''"></span>
+      <button type="button" class="btn btn-sm btn-outline-secondary"
+              @click="toggleReplayDiff(row.replay_uuid)">
+       <i class="bi"
+          :class="replays.expandedUuid === row.replay_uuid
+                   ? 'bi-chevron-up'
+                   : 'bi-chevron-down'"
+          aria-hidden="true"></i>
+       Diff
+      </button>
+     </div>
+     <template x-if="replays.expandedUuid === row.replay_uuid">
+      <div class="mt-2 small">
+       <template x-if="replays.diffLoading[row.replay_uuid]">
+        <span class="text-muted">Loading diff…</span>
+       </template>
+       <template x-if="replays.diffByUuid[row.replay_uuid]">
+        <pre class="bg-body-tertiary p-2 rounded mb-0"
+             style="max-height: 12rem; overflow: auto;"
+             x-text="JSON.stringify(replays.diffByUuid[row.replay_uuid], null, 2)"></pre>
+       </template>
+      </div>
+     </template>
+    </li>
+   </template>
+  </ul>
+ </div>
+</div>

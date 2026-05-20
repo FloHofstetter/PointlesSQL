@@ -1959,14 +1959,22 @@ PointlesSQL
 │   │     ``GET|PUT|DELETE /api/notebooks/permissions``.  12 new
 │   │     pytest.  Asset 0.1.0rc37.
 │   │
-│   │     **Deferred:** form-above-the-notebook UI render +
-│   │     ``pql.widgets`` kernel-side shim (env-bridge route from
-│   │     the WS handler to the kernel namespace).  Permission
-│   │     enforcement at the route/WS layer also deferred — the
-│   │     ``role_satisfies`` helper is in place but not yet wired
-│   │     into the load / save / WS execute paths.  Backend is the
-│   │     load-bearing surface; both follow-ups are mechanical
-│   │     plumbing that lands once the UI is opened.
+│   │     **Wave-C UI 2026-05-20 (asset 0.1.0rc56):** Widgets-CRUD
+│   │     panel + per-notebook permission grants both shipped.
+│   │     Toolbar buttons "Widgets" / "Access" open inline panels
+│   │     with full CRUD on ``GET|PUT|DELETE /api/notebooks/widgets``
+│   │     and ``GET|PUT|DELETE /api/notebooks/permissions``.  The
+│   │     widgets panel surfaces resolved values via
+│   │     ``POST /widgets/resolve`` so the user sees what the
+│   │     kernel would receive.  The permissions panel exposes the
+│   │     ``view < run < edit`` lattice with inline role editing.
+│   │
+│   │     **Still deferred:** ``pql.widgets`` kernel-side shim
+│   │     (env-bridge from WS handler to kernel namespace) +
+│   │     route-layer enforcement (``role_satisfies`` is in place
+│   │     but not yet consulted by the load / save / WS execute
+│   │     paths).  Both are mechanical plumbing — the UI now
+│   │     surfaces the data the runtime needs to honour.
 │   │
 │   ├── Phase 100 — Publish notebook (external share + dashboard) ⏳ partial
 │   │     Two orthogonal pieces shipped together because they share
@@ -2104,9 +2112,16 @@ PointlesSQL
 │   │     /api/notebooks/branch/history``.  11 new pytest.
 │   │     Asset 0.1.0rc39.
 │   │
-│   │     **Deferred:** kernel-side env-bridge so cells actually
-│   │     route reads + writes through the bound branch (today the
-│   │     binding is recorded but not yet consulted by
+│   │     **Wave-C UI 2026-05-20 (asset 0.1.0rc56):** Toolbar
+│   │     "Branch" button opens an inline binding panel with
+│   │     three states (none / pending / promoted), a bind form
+│   │     (branch_name + optional base_revision_uuid), promote +
+│   │     discard actions, and an expandable history list.  Wires
+│   │     the existing REST surface; no backend change needed.
+│   │
+│   │     **Still deferred:** kernel-side env-bridge so cells
+│   │     actually route reads + writes through the bound branch
+│   │     (today the binding is recorded but not yet consulted by
 │   │     ``pql.read_table`` / ``pql.write_table``).  Promote-gate
 │   │     to shoreguard remains a future hook — ``promote_binding``
 │   │     today records the lifecycle transition without calling
@@ -2132,9 +2147,17 @@ PointlesSQL
 │   │     ``GET /api/notebooks/replays``.  8 new pytest.
 │   │     Asset 0.1.0rc40.
 │   │
-│   │     **Deferred:** the actual kernel-driven re-execution loop
-│   │     (the worker that takes a replay row from ``pending`` →
-│   │     ``running`` → ``ok`` and uploads the outputs).  Worker
+│   │     **Wave-C UI 2026-05-20 (asset 0.1.0rc56):** Toolbar
+│   │     "Replays" button opens an inline list with status pill
+│   │     + base-revision UUID + branch + per-row diff expand
+│   │     (lazy GETs ``/api/notebooks/replay/{uuid}/diff``).  A
+│   │     "Start replay" form lets the user mint a fresh ``pending``
+│   │     row; the kernel re-execution worker stays deferred so
+│   │     the row just sits until that lands.
+│   │
+│   │     **Still deferred:** the actual kernel-driven re-execution
+│   │     loop (the worker that takes a replay row from ``pending``
+│   │     → ``running`` → ``ok`` and uploads the outputs).  Worker
 │   │     plumbing is straightforward papermill / kernel-session
 │   │     orchestration; the scaffolding for the audit + diff
 │   │     surface is the load-bearing piece and is in place.
@@ -2160,10 +2183,21 @@ PointlesSQL
 │   │     ``GET .../sequences/pending``.  10 new pytest.
 │   │     Asset 0.1.0rc41.
 │   │
-│   │     **Deferred:** the hermes-plugin ``pql_propose_cell_sequence``
-│   │     LLM tool that drives the actual code-gen.  Backend storage
-│   │     + REST surface is the load-bearing piece; the LLM call
-│   │     stays in the plugin once the next plugin release lands.
+│   │     **Wave-C UI 2026-05-20 (asset 0.1.0rc56):** Toolbar
+│   │     "Proposals" button opens a passive inbox listening for
+│   │     ``pql:cell-sequence-proposed`` window events.  Each
+│   │     pending proposal shows prompt + rationale + cell preview
+│   │     + Accept-all / Discard.  Accept iterates the cells via
+│   │     ``insertCellFromProposal`` then POSTs the accept route;
+│   │     Discard hits the discard route.  Inbox auto-opens the
+│   │     first time a proposal arrives so the user doesn't miss
+│   │     it.
+│   │
+│   │     **Still deferred:** the hermes-plugin
+│   │     ``pql_propose_cell_sequence`` LLM tool that drives the
+│   │     actual code-gen + fires the window event.  Until the
+│   │     plugin lands, the inbox stays empty (and the empty-state
+│   │     copy says so).
 │   │
 │   └── Phase 105 — Real-time co-edit (speculative)               🧊 on ice 2026-05-20
 │         Y.js / CRDT layer over the existing WebSocket so

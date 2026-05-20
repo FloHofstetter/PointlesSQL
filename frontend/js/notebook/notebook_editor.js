@@ -19,6 +19,7 @@
  *     cell run-history.
  */
 
+import { installBranchBinding } from './branch_binding.js';
 import { installCellAuthorship } from './cell_authorship.js';
 import { installCellOperations } from './cell_operations.js';
 import { installChatIntegration } from './chat_integration.js';
@@ -27,7 +28,11 @@ import { installKernelExecution } from './kernel_execution.js';
 import { installMarkdownOutput } from './markdown_output.js';
 import { installNotebookTags } from './notebook_tags.js';
 import { installPersistence } from './persistence.js';
+import { installReplays } from './replays.js';
+import { installSequenceProposals } from './sequence_proposals.js';
 import { installShareDialog } from './share_dialog.js';
+import { installWidgetsPanel } from './widgets_panel.js';
+import { installPermissionsPanel } from './permissions_panel.js';
 
 // Mirrors `pointlessql.services.notebook._doc.compute_content_hash`
 // — FNV-1a 64-bit over the line-right-stripped + LF-normalised source.
@@ -204,6 +209,9 @@ export function notebookEditor({ initialPath = '' } = {}) {
  // Phase 96 — listen for chat-panel accept events so the
  // editor can apply proposed cell inserts / fixes.
  this._installChatProposalListener();
+ // Phase 104 — listen for multi-cell sequence proposals so the
+ // inbox surfaces them whether the drawer is open or not.
+ this._installSequenceListener();
  // Fire-and-forget — populates ``this.parameters`` once papermill
  // has introspected the notebook. The Schedule + Run-Once modals
  // poll-on-open so a slow inspect call never blocks page load.
@@ -263,6 +271,7 @@ export function notebookEditor({ initialPath = '' } = {}) {
  this._kernel = null;
  }
  this._removeChatProposalListener();
+ this._removeSequenceListener();
  },
  };
  installJobsOrchestration(state);
@@ -274,5 +283,10 @@ export function notebookEditor({ initialPath = '' } = {}) {
  installNotebookTags(state);
  installCellAuthorship(state);
  installShareDialog(state);
+ installBranchBinding(state);
+ installReplays(state);
+ installSequenceProposals(state);
+ installWidgetsPanel(state);
+ installPermissionsPanel(state);
  return state;
 }

@@ -143,6 +143,44 @@
  word-break: break-all;
 }
 
+/* Wave C / Phase 99 — shared inline panel skin.  Used by branch
+   binding, replays, sequence-proposal drawer, widget CRUD and the
+   permissions panel.  Same look-and-feel as the notebook-tags panel
+   so users see a coherent surface. */
+.pql-notebook-branch-panel,
+.pql-notebook-replays-panel,
+.pql-notebook-sequence-drawer,
+.pql-notebook-widgets-panel,
+.pql-notebook-permissions-panel {
+ padding: 0.75rem 0.85rem 0.9rem;
+ background: var(--bs-tertiary-bg, var(--bs-secondary-bg, #f8f9fa));
+ border: 1px solid var(--bs-border-color);
+ border-radius: 0.25rem;
+ margin-top: 0.5rem;
+}
+.pql-notebook-branch-panel__header,
+.pql-notebook-replays-panel__header,
+.pql-notebook-sequence-drawer__header,
+.pql-notebook-widgets-panel__header,
+.pql-notebook-permissions-panel__header {
+ display: flex;
+ align-items: center;
+ gap: 0.5rem;
+ margin-bottom: 0.5rem;
+}
+.pql-notebook-branch-panel__section,
+.pql-notebook-replays-panel__section,
+.pql-notebook-widgets-panel__section,
+.pql-notebook-permissions-panel__section {
+ margin-bottom: 0.5rem;
+}
+.pql-notebook-branch-panel__section:last-of-type,
+.pql-notebook-replays-panel__section:last-of-type,
+.pql-notebook-widgets-panel__section:last-of-type,
+.pql-notebook-permissions-panel__section:last-of-type {
+ margin-bottom: 0;
+}
+
 .pql-notebook-cell__header {
  display: flex;
  align-items: center;

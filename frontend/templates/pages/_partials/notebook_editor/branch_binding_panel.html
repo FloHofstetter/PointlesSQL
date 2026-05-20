@@ -1,0 +1,149 @@
+{# Phase 102 — Branch-binding picker.
+
+   Lives outside the per-cell ``x-for`` so it stays single-instance.
+   Toggled by the toolbar "Branch" button via ``toggleBranchBinding()``.
+   Shows three flavours depending on the current state:
+
+   * No binding              → "Bind to branch" draft form.
+   * Pending (un-promoted)   → branch + Promote / Discard.
+   * Promoted                → branch + Unbind (discard).
+#}
+<div class="pql-notebook-branch-panel"
+     x-show="branchBinding.open"
+     x-cloak>
+ <div class="pql-notebook-branch-panel__header">
+  <strong>Delta branch binding</strong>
+  <span class="text-muted small ms-2"
+        x-show="branchBinding.loading"
+        x-cloak>Loading…</span>
+  <span class="text-danger small ms-2"
+        x-show="branchBinding.error"
+        x-cloak
+        x-text="branchBinding.error"></span>
+  <button type="button" class="btn-close btn-close-sm ms-auto"
+          @click="branchBinding.open = false"
+          aria-label="Close branch panel"></button>
+ </div>
+
+ {# No binding → bind-form. #}
+ <template x-if="branchBinding.loaded && !branchBinding.current">
+  <form class="pql-notebook-branch-panel__section"
+        @submit.prevent="submitBranchBinding()">
+   <div class="text-muted small mb-2">
+    No active binding.  Bind this notebook to a Delta branch so its
+    writes target an isolated namespace (promote later to merge).
+   </div>
+   <div class="row g-2 align-items-end">
+    <div class="col-sm-5">
+     <label class="form-label small text-muted">Branch name</label>
+     <input type="text"
+            class="form-control form-control-sm"
+            placeholder="experiment_x"
+            x-model="branchBinding.draftName"
+            :disabled="branchBinding.submitting">
+    </div>
+    <div class="col-sm-5">
+     <label class="form-label small text-muted">
+      Base revision <span class="text-muted">(optional)</span>
+     </label>
+     <input type="text"
+            class="form-control form-control-sm font-monospace"
+            placeholder="revision uuid…"
+            x-model="branchBinding.draftRevision"
+            :disabled="branchBinding.submitting">
+    </div>
+    <div class="col-sm-2 d-grid">
+     <button type="submit" class="btn btn-sm btn-primary"
+             :disabled="branchBinding.submitting || !branchBinding.draftName.trim()">
+      <span x-show="branchBinding.submitting" x-cloak>
+       <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+      </span>
+      Bind
+     </button>
+    </div>
+   </div>
+  </form>
+ </template>
+
+ {# Active binding → status + actions. #}
+ <template x-if="branchBinding.loaded && branchBinding.current">
+  <div class="pql-notebook-branch-panel__section">
+   <div class="d-flex align-items-center gap-2 flex-wrap mb-2">
+    <span class="badge bg-secondary"
+          :class="{ 'bg-success': branchBinding.current.promoted_at, 'bg-warning text-dark': !branchBinding.current.promoted_at }">
+     <i class="bi"
+        :class="branchBinding.current.promoted_at ? 'bi-check-circle' : 'bi-hourglass-split'"
+        aria-hidden="true"></i>
+     <span x-text="branchBinding.current.promoted_at ? 'promoted' : 'pending'"></span>
+    </span>
+    <code class="text-body font-monospace"
+          x-text="branchBinding.current.branch_name"></code>
+    <span class="text-muted small"
+          x-show="branchBinding.current.base_revision_uuid"
+          x-cloak>
+     base
+     <code class="text-body font-monospace small"
+           x-text="(branchBinding.current.base_revision_uuid || '').slice(0, 8)"></code>
+    </span>
+   </div>
+   <div class="small text-muted mb-2">
+    <span x-text="`bound ${branchBinding.current.created_at || ''}`"></span>
+    <template x-if="branchBinding.current.promoted_at">
+     <span> · promoted <span x-text="branchBinding.current.promoted_at"></span></span>
+    </template>
+   </div>
+   <div class="d-flex gap-2">
+    <button type="button" class="btn btn-sm btn-outline-success"
+            x-show="!branchBinding.current.promoted_at"
+            @click="promoteBranchBinding()"
+            :disabled="branchBinding.submitting"
+            x-cloak>
+     <i class="bi bi-check2-circle me-1" aria-hidden="true"></i>
+     Promote
+    </button>
+    <button type="button" class="btn btn-sm btn-outline-danger"
+            @click="discardBranchBinding()"
+            :disabled="branchBinding.submitting">
+     <i class="bi bi-x-octagon me-1" aria-hidden="true"></i>
+     <span x-text="branchBinding.current.promoted_at ? 'Unbind' : 'Discard'"></span>
+    </button>
+   </div>
+  </div>
+ </template>
+
+ {# History toggle + list. #}
+ <div class="pql-notebook-branch-panel__section">
+  <button type="button" class="btn btn-sm btn-link p-0"
+          @click="loadBranchHistory()"
+          x-show="!branchBinding.historyLoaded"
+          x-cloak>
+   <i class="bi bi-clock-history me-1" aria-hidden="true"></i>
+   Show history
+  </button>
+  <template x-if="branchBinding.historyLoaded">
+   <div>
+    <div class="text-muted small mb-1">Recent bindings</div>
+    <template x-if="branchBinding.history.length === 0">
+     <span class="text-muted small fst-italic">No bindings yet.</span>
+    </template>
+    <ul class="list-unstyled mb-0">
+     <template x-for="row in branchBinding.history" :key="row.id || row.binding_id || row.created_at">
+      <li class="small d-flex align-items-center gap-2">
+       <span class="badge"
+             :class="{
+               'bg-success': row.promoted_at,
+               'bg-warning text-dark': !row.promoted_at && !row.discarded_at,
+               'bg-secondary': row.discarded_at
+             }"
+             x-text="row.promoted_at ? 'promoted' : (row.discarded_at ? 'discarded' : 'pending')"></span>
+       <code class="text-body font-monospace small"
+             x-text="row.branch_name"></code>
+       <span class="text-muted"
+             x-text="row.created_at || ''"></span>
+      </li>
+     </template>
+    </ul>
+   </div>
+  </template>
+ </div>
+</div>

@@ -1,0 +1,163 @@
+{# Phase 99 — Notebook widget CRUD panel.
+
+   Manages dropdown / slider / text widgets that the kernel-side
+   ``pql.widgets`` shim (deferred) will resolve at runtime.  The
+   draft form is at the bottom so the existing widget list reads
+   top-to-bottom in display order.
+#}
+<div class="pql-notebook-widgets-panel"
+     x-show="widgetsPanel.open"
+     x-cloak>
+ <div class="pql-notebook-widgets-panel__header">
+  <strong>Notebook input widgets</strong>
+  <span class="text-muted small ms-2"
+        x-show="widgetsPanel.loading"
+        x-cloak>Loading…</span>
+  <span class="text-danger small ms-2"
+        x-show="widgetsPanel.error"
+        x-cloak
+        x-text="widgetsPanel.error"></span>
+  <button type="button" class="btn-close btn-close-sm ms-auto"
+          @click="widgetsPanel.open = false"
+          aria-label="Close widgets panel"></button>
+ </div>
+
+ <div class="pql-notebook-widgets-panel__section">
+  <template x-if="widgetsPanel.loaded && widgetsPanel.widgets.length === 0">
+   <p class="text-muted small fst-italic mb-2">
+    No widgets yet — define one with the form below.
+   </p>
+  </template>
+  <ul class="list-unstyled mb-0">
+   <template x-for="widget in widgetsPanel.widgets" :key="widget.name">
+    <li class="pql-widget-row py-2 border-bottom">
+     <div class="d-flex align-items-center gap-2 flex-wrap">
+      <code class="text-body font-monospace small" x-text="widget.name"></code>
+      <span class="badge bg-secondary" x-text="widget.widget_kind"></span>
+      <span class="small text-muted" x-text="widget.label"></span>
+      <span class="badge bg-info text-dark ms-auto"
+            x-text="`pos ${widget.position}`"></span>
+      <button type="button" class="btn btn-sm btn-outline-secondary"
+              @click="editWidgetDraft(widget)">
+       <i class="bi bi-pencil" aria-hidden="true"></i>
+      </button>
+      <button type="button" class="btn btn-sm btn-outline-danger"
+              @click="deleteWidget(widget)"
+              :disabled="widgetsPanel.submitting">
+       <i class="bi bi-trash" aria-hidden="true"></i>
+      </button>
+     </div>
+     <div class="small text-muted mt-1">
+      <span>config:</span>
+      <code class="text-body font-monospace small"
+            x-text="JSON.stringify(widget.config)"></code>
+      <span class="ms-2"
+            x-show="widget.default_value !== null && widget.default_value !== undefined"
+            x-cloak>
+       default
+       <code class="text-body font-monospace small"
+             x-text="JSON.stringify(widget.default_value)"></code>
+      </span>
+      <span class="ms-2"
+            x-show="widgetsPanel.resolvedValues[widget.name] !== undefined"
+            x-cloak>
+       resolved
+       <code class="text-body font-monospace small"
+             x-text="JSON.stringify(widgetsPanel.resolvedValues[widget.name])"></code>
+      </span>
+     </div>
+    </li>
+   </template>
+  </ul>
+ </div>
+
+ <form class="pql-notebook-widgets-panel__section pt-2"
+       @submit.prevent="submitWidget()">
+  <div class="text-muted small mb-2">
+   <span x-text="widgetsPanel.editingName ? `Edit widget · ${widgetsPanel.editingName}` : 'New widget'"></span>
+  </div>
+  <div class="row g-2 mb-2">
+   <div class="col-sm-4">
+    <label class="form-label small text-muted">Name</label>
+    <input type="text"
+           class="form-control form-control-sm font-monospace"
+           placeholder="param_x"
+           x-model="widgetsPanel.draft.name"
+           :disabled="widgetsPanel.submitting || widgetsPanel.editingName">
+   </div>
+   <div class="col-sm-3">
+    <label class="form-label small text-muted">Kind</label>
+    <select class="form-select form-select-sm"
+            x-model="widgetsPanel.draft.widget_kind"
+            :disabled="widgetsPanel.submitting">
+     <template x-for="k in widgetsPanel.kinds" :key="k">
+      <option :value="k" x-text="k"></option>
+     </template>
+    </select>
+   </div>
+   <div class="col-sm-3">
+    <label class="form-label small text-muted">Label</label>
+    <input type="text"
+           class="form-control form-control-sm"
+           placeholder="Pick a value"
+           x-model="widgetsPanel.draft.label"
+           :disabled="widgetsPanel.submitting">
+   </div>
+   <div class="col-sm-2">
+    <label class="form-label small text-muted">Position</label>
+    <input type="number"
+           class="form-control form-control-sm"
+           min="0"
+           x-model.number="widgetsPanel.draft.position"
+           :disabled="widgetsPanel.submitting">
+   </div>
+  </div>
+  <div class="row g-2 mb-2">
+   <div class="col-sm-7">
+    <label class="form-label small text-muted">
+     Config (JSON)
+     <span class="text-muted ms-1"
+           x-text="widgetsPanel.draft.widget_kind === 'dropdown'
+                    ? '{ options: [{ value, label }] }'
+                    : widgetsPanel.draft.widget_kind === 'slider'
+                       ? '{ min, max, step }'
+                       : '{ placeholder? }'"></span>
+    </label>
+    <textarea class="form-control form-control-sm font-monospace"
+              rows="3"
+              x-model="widgetsPanel.draft.config_raw"
+              :disabled="widgetsPanel.submitting"></textarea>
+   </div>
+   <div class="col-sm-5">
+    <label class="form-label small text-muted">
+     Default value (JSON literal, optional)
+    </label>
+    <textarea class="form-control form-control-sm font-monospace"
+              rows="3"
+              placeholder='"default" / 42 / null'
+              x-model="widgetsPanel.draft.default_value_raw"
+              :disabled="widgetsPanel.submitting"></textarea>
+   </div>
+  </div>
+  <div class="d-flex gap-2 align-items-center">
+   <button type="submit" class="btn btn-sm btn-primary"
+           :disabled="widgetsPanel.submitting">
+    <span x-show="widgetsPanel.submitting" x-cloak>
+     <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+    </span>
+    <i class="bi bi-check2-circle me-1" x-show="!widgetsPanel.submitting" aria-hidden="true"></i>
+    <span x-text="widgetsPanel.editingName ? 'Update' : 'Create'"></span>
+   </button>
+   <button type="button" class="btn btn-sm btn-outline-secondary"
+           x-show="widgetsPanel.editingName"
+           @click="resetWidgetDraft()"
+           x-cloak>
+    Cancel
+   </button>
+   <span class="text-danger small"
+         x-show="widgetsPanel.draft.error"
+         x-cloak
+         x-text="widgetsPanel.draft.error"></span>
+  </div>
+ </form>
+</div>
