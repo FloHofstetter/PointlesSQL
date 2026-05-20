@@ -19,7 +19,7 @@ this file" at the bottom for the collapse trigger.  Phase numbers
 are preserved across the collapse so cross-references in
 `CHANGELOG.md`, memory entries, and commit messages remain valid.
 
-Status legend: ✅ done · 🔜 next · ⏳ planned · 🧊 on ice
+Status legend: ✅ done · 🟦 backbone shipped (deferred UI/wiring follow-ups) · 🔜 next · ⏳ planned · ⏳ partial · 🧊 on ice
 
 ## Current state
 
@@ -1320,7 +1320,7 @@ PointlesSQL
 │          14 background-task names / 2 subprocess shutdown order
 │          are byte-identical.
 │
-├── Phases 90–92 — Agent-native lakehouse axis (post-Lakebase) ⏳ planned
+├── Phases 90–92 — Agent-native lakehouse axis (post-Lakebase) ✅ shipped 2026-05-19
 │   │
 │   │   Articulated 2026-05-19 after a gap-analysis sweep against
 │   │   Databricks' May-2026 feature set (AI/BI Genie GA, Lakebase
@@ -1664,7 +1664,7 @@ PointlesSQL
 │          so long names ellipsis-truncate instead of crowding the
 │          Edit / Schedule / ⋯ buttons.
 │
-├── Phases 95–105 — Notebook v3 (DBX-parity + agent-native lift)  ⏳ planned
+├── Phases 95–105 — Notebook v3 (DBX-parity + agent-native lift)  🟦 backbone shipped 2026-05-20
 │       Multi-phase axis to bring notebooks to Databricks-parity on
 │       the basics (cell-level UX, revision history, widget cells,
 │       permissions, dashboard view) and surpass on the
