@@ -18,6 +18,7 @@ from pointlessql.models import NotebookCellProposal, NotebookCellProvenance
 from pointlessql.models.notebook import NotebookCellIdentity
 from pointlessql.services import output_rendering as notebook_render_service
 from pointlessql.services.notebook import _doc as notebook_doc_service
+from pointlessql.services.notebook import cell_authorship as cell_authorship_service
 from pointlessql.services.notebook import cell_reconciliation
 from pointlessql.services.notebook import outputs as notebook_outputs_service
 
@@ -242,6 +243,31 @@ async def api_save_notebook(
                 proposal_acceptances=proposal_acceptances,
                 reconcile_results=results,
             )
+        # Phase 101 — upsert per-cell authorship for every reconciled
+        # cell so the editor's cell-header chip can render "minted by
+        # X • last edited by Y".  The reconciler returned a UUID per
+        # input cell; pair them with the saver's identity here.
+        actor_email = ""
+        try:
+            actor_email = str(
+                request.state.user.get("email") or ""
+            ) if request.state.user else ""
+        except AttributeError:
+            actor_email = ""
+        if actor_email:
+            for res in results:
+                try:
+                    cell_authorship_service.upsert_cell_authorship(
+                        session,
+                        cell_uuid=res.cell_id,
+                        kind="user",
+                        email=actor_email,
+                    )
+                except Exception:  # noqa: BLE001 — non-fatal
+                    logger.exception(
+                        "phase101 authorship upsert failed for cell %s",
+                        res.cell_id,
+                    )
         session.commit()
     out_cells = [
         {

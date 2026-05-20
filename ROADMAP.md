@@ -2034,12 +2034,18 @@ PointlesSQL
 │   │     ``GET /api/agents/{id}/authored-cells``.  13 new pytest.
 │   │     Asset 0.1.0rc36.
 │   │
+│   │     Save-path wiring landed 2026-05-20 (asset 0.1.0rc42):
+│   │     ``api/notebooks_routes/io.py``'s save handler now calls
+│   │     ``upsert_cell_authorship`` for every reconciled cell with
+│   │     the saver's email as ``first_author``/``last_modifier``.
+│   │     Cells start filling the table from the next save.
+│   │
 │   │     **Deferred:**
-│   │     * **Save-path / acceptance-path wiring** — the upsert
-│   │       service is in place but is not yet invoked by the
-│   │       Phase-95 reconciler or the Phase-96 acceptance flow.
-│   │       Follow-up needed to register the call sites so live
-│   │       cells start filling the table.
+│   │     * **Agent-author attribution for proposal-accepted cells.**
+│   │       The save-path attributes to the human saver; when the
+│   │       cell came from a Phase-96 proposal it should attribute
+│   │       to the agent instead.  Needs a lookup
+│   │       ``agent_run_id → agents.id`` before the upsert.
 │   │     * **Reviewer-per-cell flow** — the existing polymorphic
 │   │       comment system (``DataProductComment`` already carries
 │   │       ``author_agent_id``) already supports it; the dedicated
@@ -2127,13 +2133,30 @@ PointlesSQL
 │   │     + REST surface is the load-bearing piece; the LLM call
 │   │     stays in the plugin once the next plugin release lands.
 │   │
-│   └── Phase 105 — Real-time co-edit (speculative)               ⏳ planned
+│   └── Phase 105 — Real-time co-edit (speculative)               🧊 on ice 2026-05-20
 │         Y.js / CRDT layer over the existing WebSocket so
 │         multiple humans + agents can edit cells simultaneously
-│         with visible cursors.  Speculative because it expands
-│         the infrastructure surface significantly (server-side
-│         CRDT backend); ship only if the simpler async patterns
-│         from Phases 95 / 101 prove insufficient in practice.
+│         with visible cursors.
+│
+│         **Decision 2026-05-20:** parked on ice deliberately.  The
+│         phase itself was tagged "ship only if the simpler async
+│         patterns from Phases 95 / 101 prove insufficient in
+│         practice".  Today, the social + AI surfaces shipped in
+│         95 (cell-level comments / reactions / followers), 96
+│         (inline assistant), 101 (per-cell authorship), and 104
+│         (sequence proposals) all use the simpler turn-based async
+│         pattern and no user friction with simultaneous-edit
+│         scenarios has surfaced yet.
+│
+│         The infrastructure cost (server-side CRDT backend +
+│         Y.js wire format + persistence + conflict resolution
+│         that survives the existing reconciliation pass) is
+│         substantial and would deflect from the agent-native
+│         vision pillars in `project_ai_native_vision.md`.  Revisit
+│         only when a concrete user-reported pain story shows the
+│         current async pattern is the blocker — until then the
+│         per-cell social + provenance surface is the load-bearing
+│         collaboration model.
 │
 ├── Phase 81 — Feed overhaul + help surface + entity ⋯-menu  ✅ done 2026-05-16
 │       Three-track polish bundle.  Track K rebuilt /feed from a

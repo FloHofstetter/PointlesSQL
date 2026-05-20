@@ -6,6 +6,24 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Phase 105 — Real-time co-edit parked on ice (2026-05-20).**
+  ROADMAP marker flipped ⏳ planned → 🧊 on ice.  The phase was
+  explicitly tagged "ship only if simpler async patterns prove
+  insufficient" — today no user pain has surfaced around the
+  turn-based async model used by Phases 95 / 96 / 101 / 104, and
+  the CRDT infrastructure cost would deflect from the agent-native
+  vision pillars.  Revisit only when a concrete pain story
+  appears.
+
+- **Phase 101 follow-up — save-path authorship wiring (2026-05-20).**
+  ``api/notebooks_routes/io.py`` now calls
+  ``cell_authorship.upsert_cell_authorship`` for every reconciled
+  cell with the saver's email as ``first_author`` / ``last_modifier``.
+  The Phase-101 ``notebook_cell_authorship`` table starts filling
+  from the next save; the dedicated agent-author attribution for
+  Phase-96 proposal-accepted cells + the cell-header chip render
+  remain follow-ups.  Asset 0.1.0rc42.
+
 - **Phase 104 — NL→Notebook cell-sequence proposals (backend,
   2026-05-20).**  Extends Phase 96's single-cell propose / fix /
   explain to a multi-cell code-gen flow.  New
