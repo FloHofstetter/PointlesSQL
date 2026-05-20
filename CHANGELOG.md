@@ -6,6 +6,23 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Phase 99 — Notebook widgets + per-notebook permissions (backend,
+  2026-05-20).**  Two new tables (migration ``b944b9be7e03``):
+  ``notebook_widgets`` keys ``(notebook_id, name)`` to parameter
+  widgets (``dropdown`` / ``slider`` / ``text``) with JSON-encoded
+  ``config`` and ``default_value``; ``notebook_permissions`` carries
+  the ``view`` / ``run`` / ``edit`` lattice as per-notebook grants
+  layered on top of workspace membership.  Service modules
+  ``services/notebook/widgets.py`` and
+  ``services/notebook/permissions.py`` ship the CRUD + a
+  ``resolve_widget_values`` helper (default ↔ override merge) and a
+  ``role_satisfies`` lattice helper.  REST:
+  ``GET|PUT|DELETE /api/notebooks/widgets``,
+  ``POST /api/notebooks/widgets/resolve``, and
+  ``GET|PUT|DELETE /api/notebooks/permissions``.  UI render + WS
+  kernel-namespace bridge + permission enforcement on the load /
+  save / execute paths are deferred follow-ups.  12 new pytest.
+
 - **Phase 101 — Per-cell authorship attribution (backend, 2026-05-20).**
   Adds the ``NotebookCellAuthorship`` table (migration
   ``805d36938963``) 1:1 with ``NotebookCellIdentity``.  Tracks both

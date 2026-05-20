@@ -20,6 +20,8 @@ Sub-modules:
 * :mod:`.export` — HTML / PDF export pipeline (Phase 98.D)
 * :mod:`.revisions` — save-snapshot history + diff (Phase 97)
 * :mod:`.cell_authorship` — per-cell attribution (Phase 101)
+* :mod:`.widgets` — parameter-widget CRUD (Phase 99)
+* :mod:`.permissions` — per-notebook share permissions (Phase 99)
 """
 
 from __future__ import annotations
@@ -42,12 +44,18 @@ from pointlessql.api.notebooks_routes.export import (
 from pointlessql.api.notebooks_routes.io import router as _io_router
 from pointlessql.api.notebooks_routes.jobs import router as _jobs_router
 from pointlessql.api.notebooks_routes.pages import router as _pages_router
+from pointlessql.api.notebooks_routes.permissions import (
+    router as _permissions_router,
+)
 from pointlessql.api.notebooks_routes.revisions import (
     router as _revisions_router,
 )
 from pointlessql.api.notebooks_routes.tags import router as _tags_router
 from pointlessql.api.notebooks_routes.templates import (
     router as _templates_router,
+)
+from pointlessql.api.notebooks_routes.widgets import (
+    router as _widgets_router,
 )
 
 router = APIRouter(tags=["notebooks"])
@@ -61,6 +69,8 @@ router.include_router(_cell_lineage_router)
 router.include_router(_export_router)
 router.include_router(_revisions_router)
 router.include_router(_cell_authorship_router)
+router.include_router(_widgets_router)
+router.include_router(_permissions_router)
 router.include_router(_pages_router)
 
 

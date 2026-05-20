@@ -1931,13 +1931,34 @@ PointlesSQL
 │   │         ``GET /api/notebooks/templates`` and ``POST
 │   │         /api/notebooks/from-template``.  13 new pytest.
 │   │
-│   ├── Phase 99 — Widget-cells + Notebook permissions            ⏳ planned
-│   │     Interactive parameter widgets
-│   │     (``pql.widgets.dropdown`` / ``.slider`` / ``.text``)
-│   │     rendered as a form above the notebook, populating the
-│   │     kernel namespace.  Notebook permissions (view / run /
-│   │     edit roles) layered on top of the workspace membership
-│   │     model so a notebook can be shared without granting edit.
+│   ├── Phase 99 — Widget-cells + Notebook permissions            ⏳ partial
+│   │     Backend shipped 2026-05-20.  Two new tables (migration
+│   │     ``b944b9be7e03``):
+│   │     * ``notebook_widgets`` — parameter widgets keyed
+│   │       ``(notebook_id, name)`` with ``widget_kind`` ∈
+│   │       ``dropdown`` / ``slider`` / ``text``; JSON-encoded
+│   │       ``config`` + ``default_value``.
+│   │     * ``notebook_permissions`` — per-notebook share grants
+│   │       (``view`` / ``run`` / ``edit`` lattice); layered on top
+│   │       of workspace membership.
+│   │     Services: ``services/notebook/widgets.py``
+│   │     (``upsert_widget`` / ``list_widgets`` /
+│   │     ``resolve_widget_values`` / ``delete_widget``) and
+│   │     ``services/notebook/permissions.py`` (``grant_permission``,
+│   │     ``revoke_permission``, ``get_effective_role``,
+│   │     ``role_satisfies``).  REST: ``GET|PUT|DELETE
+│   │     /api/notebooks/widgets``, ``POST .../widgets/resolve``,
+│   │     ``GET|PUT|DELETE /api/notebooks/permissions``.  12 new
+│   │     pytest.  Asset 0.1.0rc37.
+│   │
+│   │     **Deferred:** form-above-the-notebook UI render +
+│   │     ``pql.widgets`` kernel-side shim (env-bridge route from
+│   │     the WS handler to the kernel namespace).  Permission
+│   │     enforcement at the route/WS layer also deferred — the
+│   │     ``role_satisfies`` helper is in place but not yet wired
+│   │     into the load / save / WS execute paths.  Backend is the
+│   │     load-bearing surface; both follow-ups are mechanical
+│   │     plumbing that lands once the UI is opened.
 │   │
 │   ├── Phase 100 — Publish notebook (external share + dashboard) ⏳ planned
 │   │     Two orthogonal pieces shipped together because they share
