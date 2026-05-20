@@ -6,6 +6,24 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Phase 100 — Publish notebook (backend, 2026-05-20).**  New
+  ``notebook_shares`` table (migration ``8c7c6eb5add5``) — one row
+  per public share.  ``share_mode ∈ {snapshot, live}`` and a
+  ``dashboard_mode`` boolean cover the four publish configurations.
+  Snapshot publishes mint a fresh Phase-97 ``NotebookRevision`` and
+  pin the share to it; live shares carry no pin.  Service
+  ``services/notebook/shares.py`` exposes ``create_share`` /
+  ``update_share`` (idempotent re-publish — keeps the same UUID) /
+  ``revoke_share`` (soft-revoke; returns 410 Gone on the public
+  viewer) / ``list_shares_for_notebook``.  Admin REST under
+  ``/api/notebooks/shares`` (cookie-gated); public viewer at
+  ``GET /share/notebook/{share_uuid}`` (no auth, hands off to the
+  Phase-98.D HTML pipeline or to the new ``render_dashboard_html``).
+  Dashboard render keeps markdown cells, replaces code cells with
+  zero-source placeholders so their outputs still surface in
+  original order, and prepends a "DASHBOARD" banner.  Publish-dialog
+  UI + secret-scrub pre-filter remain follow-ups.  8 new pytest.
+
 - **Phase 99 — Notebook widgets + per-notebook permissions (backend,
   2026-05-20).**  Two new tables (migration ``b944b9be7e03``):
   ``notebook_widgets`` keys ``(notebook_id, name)`` to parameter

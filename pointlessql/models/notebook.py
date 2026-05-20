@@ -5,6 +5,7 @@ from __future__ import annotations
 import datetime
 
 from sqlalchemy import (
+    Boolean,
     DateTime,
     ForeignKey,
     Index,
@@ -486,6 +487,88 @@ class NotebookCellProvenance(Base):
         DateTime(timezone=True),
         nullable=False,
         server_default=text("CURRENT_TIMESTAMP"),
+    )
+
+
+class NotebookShare(Base):
+    """Public-share grant for a notebook (Phase 100).
+
+    One row mints an unguessable v4 UUID under
+    ``/share/notebook/{share_uuid}`` so a notebook can be shared
+    read-only without authentication.  Two modes:
+
+    * ``snapshot`` *(default — safer)* — freezes the current state
+      as a tagged :class:`NotebookRevision`; later in-place edits
+      do not leak.  ``revision_uuid`` points at the frozen row.
+      Re-publish updates the snapshot under the same share UUID
+      (the link stays stable); Unpublish revokes entirely.
+    * ``live`` — link always reflects the current ``.py`` +
+      last-known outputs.  ``revision_uuid`` is null; the editor
+      paints a persistent "LIVE share" badge while active so
+      accidental secret-push is obvious.
+
+    A second flag (``dashboard_mode``) toggles between
+    "regular notebook" rendering and the dashboard rendering that
+    strips code cells and shows only markdown + outputs.
+
+    Attributes:
+        id: Auto-incremented primary key.
+        share_uuid: 36-char v4 UUID — the URL slug.  Stable across
+          re-publish; rotated only on unpublish + republish.
+        notebook_id: FK to :class:`Notebook` — cascade-delete with
+          the notebook.
+        share_mode: ``"snapshot"`` | ``"live"``.
+        dashboard_mode: ``True`` when the share should render only
+          markdown + outputs (no code).
+        revision_uuid: For ``snapshot`` mode — FK-by-uuid to the
+          :class:`NotebookRevision` row that is the frozen view.
+          ``None`` for ``live``.
+        created_by_user_id: Audit pointer.
+        created_at: Wall-clock when the share row was minted.
+        expires_at: Optional auto-expiry timestamp; ``None`` means
+          no expiry.
+        revoked_at: Soft-revoke tombstone.  Once set the share UUID
+          returns 410 Gone.
+    """
+
+    __tablename__ = "notebook_shares"
+
+    __table_args__ = (
+        UniqueConstraint("share_uuid", name="uq_notebook_shares_uuid"),
+        Index(
+            "ix_notebook_shares_notebook_active",
+            "notebook_id",
+            "revoked_at",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    share_uuid: Mapped[str] = mapped_column(String(36), nullable=False)
+    notebook_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("notebooks.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    share_mode: Mapped[str] = mapped_column(String(10), nullable=False)
+    dashboard_mode: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="0"
+    )
+    revision_uuid: Mapped[str | None] = mapped_column(
+        String(36), nullable=True
+    )
+    created_by_user_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("users.id"), nullable=True
+    )
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=text("CURRENT_TIMESTAMP"),
+    )
+    expires_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    revoked_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
     )
 
 

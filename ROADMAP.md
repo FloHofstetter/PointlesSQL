@@ -1960,7 +1960,7 @@ PointlesSQL
 │   │     load-bearing surface; both follow-ups are mechanical
 │   │     plumbing that lands once the UI is opened.
 │   │
-│   ├── Phase 100 — Publish notebook (external share + dashboard) ⏳ planned
+│   ├── Phase 100 — Publish notebook (external share + dashboard) ⏳ partial
 │   │     Two orthogonal pieces shipped together because they share
 │   │     a route + rendering pipeline:
 │   │     (a) **Public share via UUID** — ChatGPT-shared-chat
@@ -1994,6 +1994,30 @@ PointlesSQL
 │   │     ``/notebooks/dashboard/{path}`` for workspace-internal
 │   │     consumption.  DBX-parity (and ChatGPT-parity) for the
 │   │     "publish a notebook" flow.
+│   │
+│   │     Backend shipped 2026-05-20.  New ``notebook_shares`` table
+│   │     + migration ``8c7c6eb5add5``.  Share-mode lattice
+│   │     (``snapshot`` / ``live``) plus a ``dashboard_mode`` flag
+│   │     persisted per-share.  Snapshot publishes mint a fresh
+│   │     Phase-97 :class:`NotebookRevision` and pin the share to
+│   │     it; live shares carry no revision pin.  Service in
+│   │     ``services/notebook/shares.py`` (``create_share``,
+│   │     ``update_share``, ``revoke_share``, ``get_active_share``,
+│   │     ``list_shares_for_notebook``, ``render_dashboard_html``).
+│   │     Admin REST: ``GET|POST /api/notebooks/shares``,
+│   │     ``PATCH|DELETE /api/notebooks/shares/{share_uuid}``.
+│   │     Public viewer: ``GET /share/notebook/{share_uuid}`` —
+│   │     no auth required; 410 Gone for revoked / expired /
+│   │     unknown share UUIDs.  Dashboard render keeps markdown
+│   │     cells, replaces code cells with placeholder slots so
+│   │     their outputs still surface in original order, prepends
+│   │     a "DASHBOARD" banner.  8 new pytest.  Asset 0.1.0rc38.
+│   │
+│   │     **Deferred:** publish-dialog UI in the editor toolbar,
+│   │     iframe-embed analog of Phase-92.2's
+│   │     ``/embed/semantic_search/{fqn}``, and the secret-scrub
+│   │     pass before serving (today the publisher is expected to
+│   │     vet the content; the route does not redact).
 │   │
 │   ├── Phase 101 — Agent-co-authored cells + Reviewer-per-cell   ⏳ partial
 │   │     Per-cell attribution backbone (Phase 101) shipped 2026-05-20:

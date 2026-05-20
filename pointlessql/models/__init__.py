@@ -133,6 +133,7 @@ from pointlessql.models.notebook import (
     NotebookOutput,
     NotebookPermission,
     NotebookRevision,
+    NotebookShare,
     NotebookTag,
     NotebookWidget,
 )
@@ -244,6 +245,7 @@ __all__ = [
     "NotebookOutput",
     "NotebookPermission",
     "NotebookRevision",
+    "NotebookShare",
     "NotebookTag",
     "NotebookWidget",
     "QueryHistory",
