@@ -77,6 +77,9 @@ export function installKernelExecution(state, deps) {
       if (msgType === 'execute_input') {
         // First iopub frame for a fresh execute — clear stale outputs.
         this._liveOutputs[hash] = [];
+        // Phase 94: stamp run-start for wall-clock duration display.
+        this._runStartedAt[hash] = performance.now();
+        this._runDurationMs[hash] = null;
         if (cell) this._renderCellOutput(cell);
         return;
       }
@@ -101,7 +104,22 @@ export function installKernelExecution(state, deps) {
         cell.exec_count = execCount;
         cell.status = status;
       }
-      if (this.inspectorOpen) this.requestVariableSnapshot();
+      // Phase 94: finalise wall-clock duration. Use the iopub-time
+      // start stamped earlier; if missing (race or pre-mixin frame)
+      // skip silently rather than report a bogus value.
+      const startedAt = this._runStartedAt[hash];
+      if (startedAt != null) {
+        this._runDurationMs[hash] = performance.now() - startedAt;
+        delete this._runStartedAt[hash];
+      }
+      // Auto-refresh the variable inspector only for user-driven runs.
+      // The inspector's own probe carries ``__pql_vars__`` /
+      // ``__pql_vardetail__`` as content_hash, and refreshing on its
+      // own reply spins an unbounded loop that grew IPython's
+      // ``_ih`` / ``_oh`` indefinitely (caught Phase 105 replay).
+      if (this.inspectorOpen && !String(hash).startsWith('__pql_')) {
+        this.requestVariableSnapshot();
+      }
     }
   };
 

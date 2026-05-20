@@ -85,6 +85,11 @@ PUBLIC_PREFIXES: tuple[str, ...] = (
     # /mcp/* to /auth/login would break IDE consumers (Claude
     # Desktop, Cursor) that never see an HTTP redirect.
     "/mcp/",
+    # Phase 100: notebook share viewer.  Public-by-design surface;
+    # the share_uuid IS the credential.  Revoked / expired shares
+    # return 410 from the route itself — letting the auth middleware
+    # redirect to /auth/login would break the whole publish flow.
+    "/share/",
 )
 
 

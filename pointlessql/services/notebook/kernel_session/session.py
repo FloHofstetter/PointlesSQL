@@ -395,7 +395,13 @@ class KernelSession:
         """
         self._subscribers.discard(sub)
 
-    async def execute(self, code: str, content_hash: str) -> str:
+    async def execute(
+        self,
+        code: str,
+        content_hash: str,
+        *,
+        silent: bool = False,
+    ) -> str:
         """Send an ``execute_request`` to the kernel.
 
         Args:
@@ -407,13 +413,26 @@ class KernelSession:
                 earlier UUID ``cell_id`` argument so the editor can
                 drop the marker UUID without losing message-to-cell
                 routing.
+            silent: When ``True``, set ``store_history=False`` on
+                the kernel request — the Variable Inspector polls
+                use this so they don't push every probe onto
+                IPython's ``_ih`` / ``_oh`` history lists (caught
+                Phase 105 replay: the inspector inflated
+                ``In list[…]`` indefinitely).  Note: the Jupyter
+                ``silent`` flag itself stays ``False`` because the
+                inspector still needs its custom-MIME iopub frame
+                to arrive — only history recording is suppressed.
 
         Returns:
             The Jupyter message ID.
         """
         assert self._kc is not None
         async with self._exec_lock:
-            msg_id: str = self._kc.execute(code, silent=False, store_history=True)
+            msg_id: str = self._kc.execute(
+                code,
+                silent=False,
+                store_history=not silent,
+            )
             self._msg_to_content_hash[msg_id] = content_hash
             return msg_id
 

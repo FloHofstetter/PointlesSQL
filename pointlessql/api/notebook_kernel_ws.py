@@ -235,6 +235,7 @@ async def _handle_kernel_message(
     if (
         channel == "iopub"
         and msg.content_hash is not None
+        and not msg.content_hash.startswith("__pql_")
         and notebook_outputs_service.is_persistable(msg.msg_type)
     ):
         key = (msg.content_hash, session.session_id)
@@ -257,6 +258,7 @@ async def _handle_kernel_message(
         channel == "shell"
         and msg.msg_type == "execute_reply"
         and msg.content_hash is not None
+        and not msg.content_hash.startswith("__pql_")
     ):
         status = str(msg.content.get("status", "ok"))
         execution_count_raw = msg.content.get("execution_count")
@@ -380,6 +382,13 @@ async def _handle_execute(
         return
     cell_type = params.get("cell_type") or "code"
     result_var = params.get("result_var")
+    # ``silent`` here means "this is an internal probe — skip
+    # IPython history + skip the notebook_cell_run persistence."
+    # The Variable Inspector polls hit this path; without it,
+    # IPython's ``_ih`` / ``_oh`` grew indefinitely and the
+    # notebook_cell_runs table accumulated rows for every probe
+    # (caught Phase 105 replay).
+    silent = bool(params.get("silent"))
     if not isinstance(cell_type, str):
         cell_type = "code"
     if cell_type == "sql":
@@ -481,40 +490,41 @@ async def _handle_execute(
         kernel_source = source
     started_at = datetime.datetime.now(datetime.UTC)
     output_counters.pop((content_hash, session.session_id), None)
-    try:
-        notebook_outputs_service.clear_cell(
-            factory,
-            file_path=file_path,
-            content_hash=content_hash,
-        )
-        notebook_outputs_service.upsert_cell_run(
-            factory,
-            file_path=file_path,
-            content_hash=content_hash,
-            kernel_session_id=session.session_id,
-            status="running",
-            finished=False,
-        )
-        run_source_id = notebook_outputs_service.record_cell_run_start(
-            factory,
-            file_path=file_path,
-            content_hash=content_hash,
-            kernel_session_id=session.session_id,
-            source=source,
-            started_at=started_at,
-        )
-    except Exception:  # noqa: BLE001
-        logger.exception("notebook run-source start failed")
-        await _send_error(
-            websocket,
-            request_id=request_id,
-            code="persist_failed",
-            message="failed to persist run-source row",
-        )
-        return
-    pending_run_sources[(content_hash, session.session_id)] = run_source_id
-    cell_run_started_at[(content_hash, session.session_id)] = started_at
-    msg_id = await session.execute(kernel_source, content_hash)
+    if not silent:
+        try:
+            notebook_outputs_service.clear_cell(
+                factory,
+                file_path=file_path,
+                content_hash=content_hash,
+            )
+            notebook_outputs_service.upsert_cell_run(
+                factory,
+                file_path=file_path,
+                content_hash=content_hash,
+                kernel_session_id=session.session_id,
+                status="running",
+                finished=False,
+            )
+            run_source_id = notebook_outputs_service.record_cell_run_start(
+                factory,
+                file_path=file_path,
+                content_hash=content_hash,
+                kernel_session_id=session.session_id,
+                source=source,
+                started_at=started_at,
+            )
+        except Exception:  # noqa: BLE001
+            logger.exception("notebook run-source start failed")
+            await _send_error(
+                websocket,
+                request_id=request_id,
+                code="persist_failed",
+                message="failed to persist run-source row",
+            )
+            return
+        pending_run_sources[(content_hash, session.session_id)] = run_source_id
+        cell_run_started_at[(content_hash, session.session_id)] = started_at
+    msg_id = await session.execute(kernel_source, content_hash, silent=silent)
     payload = {
         "id": request_id,
         "result": {"msg_id": msg_id, "kernel_session_id": session.session_id},

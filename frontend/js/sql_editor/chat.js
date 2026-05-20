@@ -279,6 +279,16 @@ export function chatPanel(editorSessionId) {
           'No LLM provider is configured on the server. Set ANTHROPIC_API_KEY (or another supported env var) and reload.';
         return;
       }
+      if (event.code === 4503) {
+        this.statusLabel = 'SQL chat disabled';
+        this.lastError = 'The SQL chat is disabled on this deployment.';
+        return;
+      }
+      if (event.code === 4401) {
+        this.statusLabel = 'sign-in required';
+        this.lastError = 'Your session expired — reload the page to sign in again.';
+        return;
+      }
       this.statusLabel = 'reconnecting…';
       this._reconnectHandle = window.setTimeout(
         () => this.connect(),

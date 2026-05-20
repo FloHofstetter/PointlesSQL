@@ -1,0 +1,169 @@
+{# Phase 100 — Publish / Share modal.
+
+   Toggle pattern uses Bootstrap's CSS classes (``show d-block``)
+   driven by ``shareDialog.open`` rather than Alpine's ``x-show`` —
+   Alpine 3.14 strips inline ``display: block`` set externally when
+   x-show toggles (see ``feedback_bootstrap_modal_x_show``).
+#}
+<div class="modal fade"
+     :class="{ 'show d-block': shareDialog.open }"
+     :style="shareDialog.open ? 'background: rgba(0,0,0,0.5)' : ''"
+     tabindex="-1"
+     @keydown.escape.window="closeShareDialog()"
+     x-cloak>
+ <div class="modal-dialog modal-lg">
+  <div class="modal-content">
+   <div class="modal-header">
+    <h5 class="modal-title">
+     <i class="bi bi-share me-1" aria-hidden="true"></i>
+     Share notebook
+    </h5>
+    <button type="button" class="btn-close"
+            @click="closeShareDialog()"
+            :disabled="shareDialog.submitting"
+            aria-label="Close"></button>
+   </div>
+   <div class="modal-body">
+    <p class="text-muted small mb-3">
+     Mint a read-only link to <code class="text-body" x-text="path"></code>.
+     Snapshot mode freezes the current cells + outputs; live mode
+     follows future saves.  Dashboard mode hides the code cells —
+     useful for sharing results with non-engineers.
+    </p>
+    <form @submit.prevent="createShare()">
+     <div class="row g-3 mb-3">
+      <div class="col-sm-6">
+       <label class="form-label small text-muted">Mode</label>
+       <div class="btn-group w-100" role="group" aria-label="Share mode">
+        <input type="radio" class="btn-check" id="pql-share-mode-snapshot"
+               value="snapshot" x-model="shareDialog.mode"
+               :disabled="shareDialog.submitting">
+        <label class="btn btn-outline-secondary" for="pql-share-mode-snapshot">
+         <i class="bi bi-camera me-1" aria-hidden="true"></i>Snapshot
+        </label>
+        <input type="radio" class="btn-check" id="pql-share-mode-live"
+               value="live" x-model="shareDialog.mode"
+               :disabled="shareDialog.submitting">
+        <label class="btn btn-outline-secondary" for="pql-share-mode-live">
+         <i class="bi bi-broadcast me-1" aria-hidden="true"></i>Live
+        </label>
+       </div>
+      </div>
+      <div class="col-sm-6">
+       <label class="form-label small text-muted">Layout</label>
+       <div class="form-check pt-1">
+        <input class="form-check-input" type="checkbox" id="pql-share-dashboard"
+               x-model="shareDialog.dashboard"
+               :disabled="shareDialog.submitting">
+        <label class="form-check-label" for="pql-share-dashboard">
+         Dashboard mode (hides code cells)
+        </label>
+       </div>
+      </div>
+     </div>
+     <div class="mb-3" x-show="shareDialog.mode === 'snapshot'" x-cloak>
+      <label class="form-label small text-muted" for="pql-share-message">
+       Snapshot note <span class="text-muted">(optional)</span>
+      </label>
+      <input id="pql-share-message" type="text"
+             class="form-control form-control-sm"
+             placeholder="What's in this snapshot?"
+             x-model="shareDialog.message"
+             :disabled="shareDialog.submitting">
+     </div>
+     <button type="submit" class="btn btn-primary"
+             :disabled="shareDialog.submitting">
+      <span x-show="shareDialog.submitting" x-cloak>
+       <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+      </span>
+      <i class="bi bi-plus-lg me-1" x-show="!shareDialog.submitting"
+         aria-hidden="true"></i>
+      Create share
+     </button>
+     <span class="text-danger small ms-2"
+           x-show="shareDialog.error"
+           x-cloak
+           x-text="shareDialog.error"></span>
+    </form>
+
+    <hr class="my-4">
+
+    <h6 class="mb-2">
+     Existing shares
+     <span class="text-muted small ms-1"
+           x-show="shareDialog.loading"
+           x-cloak>Loading…</span>
+    </h6>
+    <template x-if="shareDialog.loaded && shareDialog.shares.length === 0">
+     <p class="text-muted small fst-italic mb-0">
+      No shares yet — create one above.
+     </p>
+    </template>
+    <ul class="list-unstyled mb-0">
+     <template x-for="share in shareDialog.shares" :key="share.share_uuid">
+      <li class="pql-share-row d-flex align-items-start gap-2 py-2 border-bottom">
+       <div class="flex-grow-1 min-width-0">
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+         <code class="text-body font-monospace small"
+               x-text="`/share/notebook/${share.share_uuid}`"></code>
+         <span class="badge bg-secondary"
+               x-text="share.share_mode"></span>
+         <span class="badge bg-info text-dark"
+               x-show="share.dashboard_mode"
+               x-cloak>dashboard</span>
+         <span class="badge bg-danger"
+               x-show="!share.active"
+               x-cloak>revoked</span>
+        </div>
+        <div class="small text-muted"
+             x-text="share.created_at ? `created ${share.created_at}` : ''"></div>
+       </div>
+       <div class="btn-group btn-group-sm" role="group" aria-label="Share actions">
+        <a class="btn btn-outline-secondary"
+           :href="`/share/notebook/${share.share_uuid}`"
+           target="_blank" rel="noopener"
+           :class="{ disabled: !share.active }"
+           title="Open the public viewer in a new tab">
+         <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>
+        </a>
+        <button type="button" class="btn btn-outline-secondary"
+                @click="copyShareUrl(share.share_uuid)"
+                :disabled="!share.active"
+                :title="shareDialog.copiedUuid === share.share_uuid
+                         ? 'Copied!'
+                         : 'Copy share URL'">
+         <i class="bi"
+            :class="shareDialog.copiedUuid === share.share_uuid
+                     ? 'bi-clipboard-check'
+                     : 'bi-clipboard'"
+            aria-hidden="true"></i>
+        </button>
+        <button type="button" class="btn btn-outline-secondary"
+                @click="toggleShareDashboard(share)"
+                :disabled="!share.active"
+                :title="share.dashboard_mode
+                         ? 'Switch to code-visible mode'
+                         : 'Switch to dashboard mode'">
+         <i class="bi bi-layout-text-window-reverse" aria-hidden="true"></i>
+        </button>
+        <button type="button" class="btn btn-outline-danger"
+                @click="revokeShare(share.share_uuid)"
+                :disabled="!share.active"
+                title="Revoke this share (returns 410 to future visitors)">
+         <i class="bi bi-trash" aria-hidden="true"></i>
+        </button>
+       </div>
+      </li>
+     </template>
+    </ul>
+   </div>
+   <div class="modal-footer">
+    <button type="button" class="btn btn-outline-secondary"
+            @click="closeShareDialog()"
+            :disabled="shareDialog.submitting">
+     Close
+    </button>
+   </div>
+  </div>
+ </div>
+</div>

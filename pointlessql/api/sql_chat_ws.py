@@ -82,12 +82,17 @@ async def sql_chat_ws(websocket: WebSocket, editor_session_id: str) -> None:
         editor_session_id: UUID7 from the SQL-editor page render.
     """
     settings: Settings = websocket.app.state.settings
+    # Browsers surface a closed-before-accept handshake as a generic
+    # "connection refused" — the WS close code + reason never arrive
+    # on the client.  Accept first, then close with a meaningful code
+    # so the editor-chat drawer can render an actionable error.
+    await websocket.accept()
     if not settings.editor_chat.enabled:
         await websocket.close(code=4503, reason="editor_chat_disabled")
         return
     user = resolve_websocket_user(websocket)
     if user is None:
-        await websocket.close(code=4401)
+        await websocket.close(code=4401, reason="not_authenticated")
         return
     if not check_llm_configured():
         await websocket.close(code=1011, reason=LLM_NOT_CONFIGURED_REASON)
@@ -102,8 +107,6 @@ async def sql_chat_ws(websocket: WebSocket, editor_session_id: str) -> None:
         user_email=str(user.get("email") or ""),
         workspace_id=workspace_id,
     )
-
-    await websocket.accept()
     queue = subscribe(editor_session_id)
     cancel_event = threading.Event()
     active_turn: dict[str, Any] = {"id": None, "task": None}

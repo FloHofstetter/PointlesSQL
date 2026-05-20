@@ -46,10 +46,13 @@ playbook (the embedded JupyterLab iframe retired).
 
 1. **Landing route**.
  - Action: `browser_navigate('http://127.0.0.1:8000/notebooks/workspace')`
- - Assert: workspace page renders with file-tree, the "Open"
+ - Assert: workspace page renders with file-tree, the "Edit"
    affordance on `scratch.py` navigates to
    `/notebooks/edit/scratch.py`, page title contains
    `Editor · scratch.py`, navbar "Notebook" link is active.
+   The "New notebook…" button in the card header also opens the
+   editor at the freshly-created file once a `.py` path is
+   confirmed at the prompt.
 
 2. **Monaco boots + single empty cell**.
  - Action: `browser_wait_for(time=2)` (Monaco AMD loader +

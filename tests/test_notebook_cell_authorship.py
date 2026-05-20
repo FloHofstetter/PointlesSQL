@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import datetime
 import uuid
+from pathlib import Path
 from typing import Any
 
 import httpx
@@ -294,3 +295,70 @@ async def test_api_agent_authored_cells_empty(
     body: dict[str, Any] = resp.json()
     assert body["agent_id"] == 9999
     assert body["cells"] == []
+
+
+# -- service + REST: bulk attribution (Phase 101 UI hook) ---------------------
+
+
+def test_list_for_notebook_returns_mapping(
+    factory: sessionmaker,  # type: ignore[type-arg]
+) -> None:
+    """One JOIN query returns every authorship row for a notebook."""
+    nb_id = str(uuid.uuid4())
+    cell_a = str(uuid.uuid4())
+    cell_b = str(uuid.uuid4())
+    now = datetime.datetime.now(datetime.UTC)
+    with factory() as s:
+        s.add(Notebook(id=nb_id, workspace_id=1, file_path="bulk.py"))
+        s.flush()
+        for cell_uuid in (cell_a, cell_b):
+            s.add(
+                NotebookCellIdentity(
+                    id=cell_uuid,
+                    workspace_id=1,
+                    notebook_id=nb_id,
+                    current_content_hash="h",
+                    ordinal_hint=0,
+                    created_at=now,
+                )
+            )
+        s.commit()
+    with factory() as session:
+        cell_authorship_service.upsert_cell_authorship(
+            session, cell_uuid=cell_a, kind="user", email="a@test"
+        )
+        cell_authorship_service.upsert_cell_authorship(
+            session, cell_uuid=cell_b, kind="user", email="b@test"
+        )
+        session.commit()
+        out = cell_authorship_service.list_for_notebook(
+            session, notebook_id=nb_id
+        )
+    assert set(out.keys()) == {cell_a, cell_b}
+    assert out[cell_a]["first_author"]["email"] == "a@test"
+    assert out[cell_b]["first_author"]["email"] == "b@test"
+
+
+@pytest.fixture
+def workspace_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """Point ``settings.jupyter.notebooks_dir`` at an isolated tmp dir."""
+    root = tmp_path / "notebooks"
+    root.mkdir()
+    monkeypatch.setattr(app.state.settings.jupyter, "notebooks_dir", root)
+    return root
+
+
+async def test_api_notebook_attribution_bulk(
+    workspace_dir: Path, admin_client: httpx.AsyncClient
+) -> None:
+    """GET /api/notebooks/attribution/bulk returns ``{cell_uuid: envelope}``."""
+    nb_path = workspace_dir / "bulk.py"
+    nb_path.write_text("# %%\nprint(1)\n")
+    resp = await admin_client.get(
+        "/api/notebooks/attribution/bulk", params={"path": "bulk.py"}
+    )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["path"] == "bulk.py"
+    assert isinstance(body["notebook_id"], str)
+    assert isinstance(body["attributions"], dict)

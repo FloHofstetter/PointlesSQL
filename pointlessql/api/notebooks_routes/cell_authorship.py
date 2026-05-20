@@ -14,7 +14,10 @@ from fastapi import APIRouter, Query, Request
 from fastapi.responses import JSONResponse
 
 from pointlessql.api.dependencies import require_user
+from pointlessql.api.notebooks_routes._shared import get_or_create_notebook_uuid
+from pointlessql.config import Settings
 from pointlessql.exceptions import ValidationError
+from pointlessql.services.notebook import _doc as notebook_doc_service
 from pointlessql.services.notebook import cell_authorship as cell_authorship_service
 
 logger = logging.getLogger(__name__)
@@ -51,6 +54,45 @@ async def api_cell_attribution(
             f"no authorship row for cell {cell_uuid!r}"
         )
     return JSONResponse(envelope)
+
+
+@router.get("/api/notebooks/attribution/bulk")
+async def api_notebook_attribution_bulk(
+    request: Request,
+    path: str = Query(..., min_length=1),
+) -> JSONResponse:
+    """Return ``{cell_uuid: envelope}`` for every cell of one notebook.
+
+    The editor calls this once on page-mount + after every save so
+    the per-cell author chip can render without N HTTP round-trips.
+
+    Args:
+        request: Incoming request; any authenticated user.
+        path: Relative notebook path under ``notebooks_dir``.
+
+    Returns:
+        JSON ``{path, notebook_id, attributions: {cell_uuid: ...}}``.
+    """
+    require_user(request)
+    settings: Settings = request.app.state.settings
+    notebooks_dir = settings.jupyter.notebooks_dir.resolve()
+    absolute = notebook_doc_service.resolve_py_notebook_path(
+        notebooks_dir, path, must_exist=True
+    )
+    relative = str(absolute.relative_to(notebooks_dir))
+    notebook_id = get_or_create_notebook_uuid(request, relative)
+    factory = request.app.state.session_factory
+    with factory() as session:
+        attributions = cell_authorship_service.list_for_notebook(
+            session, notebook_id=notebook_id
+        )
+    return JSONResponse(
+        {
+            "path": relative,
+            "notebook_id": notebook_id,
+            "attributions": attributions,
+        }
+    )
 
 
 @router.get("/api/agents/{agent_id}/authored-cells")

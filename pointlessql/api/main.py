@@ -105,6 +105,67 @@ async def _style_css() -> Response:  # pyright: ignore[reportUnusedFunction]
     return Response(body, media_type="text/css")
 
 
+_JS_DIR = _FRONTEND_DIR / "js"
+_JS_IMPORT_RE = re.compile(r"""(['"])(\.\.?\/[^'"\s]+\.js)\1""")
+
+
+def _js_with_cache_bust(rel_path: str) -> Response | None:
+    """Serve a JS file with relative ``import`` URLs cache-busted.
+
+    Mirrors the CSS sub-import stamping at :func:`_style_css` — the
+    browser caches ES module imports under their bare URL, so a bump
+    of the entrypoint asset version invalidates only the entrypoint,
+    not its transitively-imported siblings.  We rewrite every
+    ``from "./foo.js"`` / ``from "../bar.js"`` literal to include
+    ``?v=<version>-<mtime>`` so any file that changes is automatically
+    re-fetched on next page load.
+
+    Args:
+        rel_path: Path of the JS file relative to ``frontend/js``.
+
+    Returns:
+        A ``Response`` with the rewritten body, or ``None`` if the
+        path falls outside ``frontend/js`` or doesn't exist.  Callers
+        fall back to the static-file mount on ``None``.
+    """
+    target = (_JS_DIR / rel_path).resolve()
+    try:
+        target.relative_to(_JS_DIR.resolve())
+    except ValueError:
+        return None
+    if not target.is_file():
+        return None
+    body = target.read_text()
+
+    def _stamp(match: re.Match[str]) -> str:
+        quote = match.group(1)
+        rel = match.group(2)
+        sibling = (target.parent / rel).resolve()
+        try:
+            mtime = int(sibling.stat().st_mtime)
+            stamp = f"{pointlessql.__version__}-{mtime}"
+        except OSError:
+            stamp = pointlessql.__version__
+        return f"{quote}{rel}?v={stamp}{quote}"
+
+    rewritten = _JS_IMPORT_RE.sub(_stamp, body)
+    return Response(rewritten, media_type="application/javascript")
+
+
+@app.get("/static/js/{rel_path:path}", include_in_schema=False)
+async def _serve_js(rel_path: str) -> Response:  # pyright: ignore[reportUnusedFunction]
+    """Serve ``frontend/js/**`` with relative-import cache-busts.
+
+    Falls back to a 404 ``Response`` if the file is missing — the
+    static-files mount is registered *after* this route so a missing
+    JS path never silently serves a directory listing.
+    """
+    out = _js_with_cache_bust(rel_path)
+    if out is None:
+        return Response(status_code=404)
+    return out
+
+
 app.mount(
     "/static",
     StaticFiles(directory=str(_FRONTEND_DIR)),

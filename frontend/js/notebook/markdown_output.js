@@ -46,6 +46,25 @@ export function installMarkdownOutput(state, deps) {
     }
   };
 
+  /**
+   * Phase 94 — clear the rendered output frames + run duration for
+   * a single cell without re-running it.
+   *
+   * Drops the live-output buffer keyed by ``content_hash`` and clears
+   * the DOM container.  The cell's ``exec_count`` stays as-is so the
+   * Out[N] label and run-history are still meaningful.  A subsequent
+   * ``runCell`` call will re-populate the live outputs from fresh
+   * iopub frames.
+   */
+  state._clearOutput = function (cell) {
+    if (!cell || !cell.content_hash) return;
+    delete this._liveOutputs[cell.content_hash];
+    delete this._runDurationMs[cell.content_hash];
+    delete this._runStartedAt[cell.content_hash];
+    const host = this._outputContainerFor(cell);
+    if (host) host.innerHTML = '';
+  };
+
   state._mountAllEditors = async function () {
     const promises = this.cells.map(async (cell) => {
       if (cell.cell_type === 'markdown') {

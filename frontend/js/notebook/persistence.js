@@ -106,6 +106,9 @@ export function installPersistence(state) {
       // Phase 95.2 — refresh per-cell social counts post-save so the
       // chips reflect any cells that got minted UUIDs this round.
       this.refreshCellCounts();
+      // Phase 101 UI — refresh authorship envelopes too; the save just
+      // upserted user-authorship for every cell.
+      this.loadCellAttributions();
     } catch (err) {
       this.errorMessage = (err && err.message) || String(err);
     } finally {

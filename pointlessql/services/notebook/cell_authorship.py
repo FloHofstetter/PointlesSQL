@@ -160,6 +160,59 @@ def get_attribution(
     }
 
 
+def list_for_notebook(
+    session: Session, *, notebook_id: str
+) -> dict[str, dict[str, Any]]:
+    """Return ``{cell_uuid: envelope}`` for every cell in one notebook.
+
+    Lets the editor render the per-cell author chip without firing
+    one HTTP round-trip per cell — a 50-cell notebook would otherwise
+    burn 50 requests on every page load.
+
+    Args:
+        session: A SQLAlchemy session.
+        notebook_id: ``notebooks.id``.
+
+    Returns:
+        Mapping ``{cell_uuid -> envelope}``.  Cells that exist in the
+        notebook but have no authorship row yet (rare — only happens
+        between cell mint and first save commit) are simply absent.
+    """
+    rows = session.execute(
+        select(NotebookCellAuthorship)
+        .join(
+            NotebookCellIdentity,
+            NotebookCellIdentity.id == NotebookCellAuthorship.cell_uuid,
+        )
+        .where(NotebookCellIdentity.notebook_id == notebook_id)
+    ).scalars().all()
+    out: dict[str, dict[str, Any]] = {}
+    for row in rows:
+        out[row.cell_uuid] = {
+            "cell_uuid": row.cell_uuid,
+            "first_author": {
+                "kind": row.first_author_kind,
+                "email": row.first_author_email,
+                "agent_id": row.first_author_agent_id,
+                "agent_run_id": row.first_author_agent_run_id,
+            },
+            "last_modifier": {
+                "kind": row.last_modifier_kind,
+                "email": row.last_modifier_email,
+                "agent_id": row.last_modifier_agent_id,
+            },
+            "created_at": (
+                row.created_at.isoformat() if row.created_at else None
+            ),
+            "last_modified_at": (
+                row.last_modified_at.isoformat()
+                if row.last_modified_at
+                else None
+            ),
+        }
+    return out
+
+
 def list_authored_by_agent(
     session: Session, *, agent_id: int, limit: int = 100
 ) -> list[dict[str, Any]]:
@@ -195,5 +248,6 @@ __all__ = [
     "AuthorKind",
     "get_attribution",
     "list_authored_by_agent",
+    "list_for_notebook",
     "upsert_cell_authorship",
 ]

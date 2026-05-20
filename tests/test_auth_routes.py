@@ -115,7 +115,11 @@ class TestRegisterFlow:
                 },
             )
             assert resp.status_code == 303
-            assert resp.headers["location"] == "/auth/login"
+            # Phase 105 UX — register now redirects with a success
+            # flash query-param so the login page can render an
+            # "account created" confirmation (the silent redirect read
+            # as a failure in the replay).
+            assert resp.headers["location"] == "/auth/login?flash=account_created"
 
             # Login.
             resp = await client.post(

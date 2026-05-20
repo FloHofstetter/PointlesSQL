@@ -6,12 +6,19 @@
    The button shows a small badge with the active-tag count so the
    user still gets a glance signal that this cell carries tags.
 #}
+{#- Cells minted before Phase 95 carry no ``cell_uuid``; the
+    save-path reconciler assigns one.  Without that the picker panel
+    can't render (it keys social state on the UUID), so the click
+    handler kicks off a save first and only flips the panel open
+    after the UUID arrives. -#}
 <button type="button"
         class="btn btn-sm d-inline-flex align-items-center justify-content-center pql-cell-tag-picker__toggle"
         :class="(cell.tags || []).filter(t => t && t !== 'parameters').length > 0
                 ? (pickerOpen ? 'btn-primary' : 'btn-outline-primary')
                 : (pickerOpen ? 'btn-primary' : 'btn-outline-secondary')"
-        @click="togglePickerOpen()"
+        @click="cell.cell_uuid
+                ? togglePickerOpen()
+                : save().then(() => togglePickerOpen())"
         :aria-expanded="pickerOpen"
         :title="(cell.tags || []).filter(t => t && t !== 'parameters').join(', ') || 'Toggle the tag picker'">
  <i class="bi bi-tag-fill" aria-hidden="true"></i>

@@ -23,6 +23,8 @@
 
  {% include "pages/_partials/notebook_editor/toolbar.html" %}
 
+ {% include "pages/_partials/notebook_editor/notebook_tag_picker_panel.html" %}
+
  {% include "pages/_partials/notebook_editor/chat_drawer.html" %}
 
  {% include "pages/_partials/notebook_editor/social_drawer.html" %}
@@ -98,18 +100,31 @@
      <span class="text-muted"
            x-show="cell._dirty"
            title="Cell modified since last save">●</span>
+     {# Phase 101 — per-cell author chip.  Hidden when no
+        authorship row is known for this cell yet (un-saved cells
+        + cells from before Phase 101 shipped).  Methods live on
+        the outer notebookEditor scope so we don't pay for a
+        nested x-data per cell. #}
+     <span class="pql-cell-author-chip text-muted small"
+           x-show="attributionFor(cell)"
+           x-cloak
+           :title="authorChipTooltip(cell)">
+      <i class="bi" :class="authorChipIcon(cell)" aria-hidden="true"></i>
+      <span x-text="authorChipLabel(cell)"></span>
+     </span>
      {# Phase 95.3 — Tag-picker toggle.  Lives in the right cluster
         flush with the social chip + run cluster so all per-cell
         action buttons sit together on the right edge. #}
      {% include "pages/_partials/notebook_editor/cell_tag_picker.html" %}
      {# Phase 95.2 — 💬 chip toggles the inline cell-thread below.
-        Hidden when the cell has no stable UUID yet (not saved since
-        Phase 95 landed); first save mints one and the chip appears. #}
+        Cells minted before Phase 95 carry no ``cell_uuid``; the
+        save-path reconciler assigns one.  The chip stays visible
+        either way — first click on an un-saved cell fires a save
+        and only then expands the thread. #}
      <button type="button"
              class="btn btn-sm pql-cell-thread__chip"
              :class="hasActivity ? 'btn-outline-primary' : 'btn-outline-secondary'"
-             x-show="cell.cell_uuid"
-             @click="toggle()"
+             @click="cell.cell_uuid ? toggle() : save().then(() => toggle())"
              :aria-expanded="open"
              title="Toggle comments / reactions / followers for this cell">
       <i class="bi bi-chat-dots" aria-hidden="true"></i>
@@ -271,6 +286,8 @@
  {% include "pages/_partials/notebook_editor/schedule_modal.html" %}
 
  {% include "pages/_partials/notebook_editor/run_once_modal.html" %}
+
+ {% include "pages/_partials/notebook_editor/share_modal.html" %}
 </div>
 
 {% include "pages/_partials/notebook_editor/scripts.html" %}

@@ -89,6 +89,60 @@
  width: 14rem;
 }
 
+/* Phase 98.B — Notebook-level tag picker (sibling to toolbar, single
+   instance per notebook).  Visually distinct from the per-cell panel
+   so the user immediately sees that they're tagging the document,
+   not the focused cell. */
+.pql-notebook-tags-panel {
+ padding: 0.75rem 0.85rem 0.9rem;
+ background: var(--bs-tertiary-bg, var(--bs-secondary-bg, #f8f9fa));
+ border: 1px solid var(--bs-border-color);
+ border-radius: 0.25rem;
+}
+.pql-notebook-tags-panel__header {
+ display: flex;
+ align-items: center;
+ gap: 0.5rem;
+ margin-bottom: 0.5rem;
+}
+.pql-notebook-tags-panel__section {
+ margin-bottom: 0.5rem;
+}
+.pql-notebook-tags-panel__section:last-of-type {
+ margin-bottom: 0;
+}
+.pql-notebook-tags-panel__input {
+ width: 14rem;
+}
+.pql-notebook-tag {
+ background: var(--bs-primary-bg-subtle, #cfe2ff);
+ color: var(--bs-primary-text-emphasis, #052c65);
+}
+
+/* Phase 101 — per-cell author chip in the cell header right cluster.
+   Sits flush with the dirty-dot + tag-picker; minimal visual weight so
+   it doesn't compete with the action cluster. */
+.pql-cell-author-chip {
+ display: inline-flex;
+ align-items: center;
+ gap: 0.25rem;
+ padding: 0 0.35rem;
+ white-space: nowrap;
+}
+.pql-cell-author-chip .bi {
+ font-size: 0.85em;
+}
+
+/* Phase 100 — share-list rows inside the publish modal.  Forces
+   long share UUIDs to wrap on narrow screens instead of pushing the
+   action buttons off-canvas. */
+.pql-share-row .min-width-0 {
+ min-width: 0;
+}
+.pql-share-row code {
+ word-break: break-all;
+}
+
 .pql-notebook-cell__header {
  display: flex;
  align-items: center;
@@ -309,20 +363,29 @@
  padding: 0.25rem 0;
 }
 
-/* Phase 67.5 — Variable Inspector floating side-pane */
+/* Variable Inspector — right-side drawer.
+   Originally a top-right popover that clipped the toolbar buttons
+   (Save / Schedule / Run-as-job sat behind it).  Phase 105 replay
+   aligned this with the AI-Assistant drawer pattern: full-height
+   right-side panel that pushes neither toolbar nor content, just
+   shares the right edge of the viewport. */
 .pql-notebook-inspector {
  position: fixed;
- top: 4rem;
- right: 0.5rem;
- width: 22rem;
- max-height: 75vh;
+ top: 0;
+ right: 0;
+ bottom: 0;
+ width: min(420px, 100vw);
  overflow-y: auto;
  z-index: 1040;
  background: var(--bs-body-bg);
- border: 1px solid var(--bs-border-color);
- border-radius: 0.375rem;
- box-shadow: 0 0.5rem 1.25rem rgba(0, 0, 0, 0.1);
- padding: 0.75rem;
+ border-left: 1px solid var(--bs-border-color);
+ box-shadow: -0.25rem 0 1rem rgba(0, 0, 0, 0.075);
+ padding: 0.75rem 1rem;
+}
+@media (max-width: 767.98px) {
+ .pql-notebook-inspector {
+ width: 100vw;
+ }
 }
 .pql-notebook-inspector__row {
  display: flex;

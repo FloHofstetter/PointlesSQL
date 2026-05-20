@@ -19,12 +19,15 @@
  *     cell run-history.
  */
 
+import { installCellAuthorship } from './cell_authorship.js';
 import { installCellOperations } from './cell_operations.js';
 import { installChatIntegration } from './chat_integration.js';
 import { installJobsOrchestration } from './jobs_orchestration.js';
 import { installKernelExecution } from './kernel_execution.js';
 import { installMarkdownOutput } from './markdown_output.js';
+import { installNotebookTags } from './notebook_tags.js';
 import { installPersistence } from './persistence.js';
+import { installShareDialog } from './share_dialog.js';
 
 // Mirrors `pointlessql.services.notebook._doc.compute_content_hash`
 // — FNV-1a 64-bit over the line-right-stripped + LF-normalised source.
@@ -188,6 +191,7 @@ export function notebookEditor({ initialPath = '' } = {}) {
  }));
  this.outputs = res.data.outputs || [];
  this.refreshCellCounts();
+ this.loadCellAttributions();
  this._seedLiveOutputs();
  this.loading = false;
  // Wait one frame so Alpine's x-for has rendered the cell DOM,
@@ -267,5 +271,8 @@ export function notebookEditor({ initialPath = '' } = {}) {
  installMarkdownOutput(state, { computeContentHash: _computeContentHash });
  installPersistence(state);
  installChatIntegration(state);
+ installNotebookTags(state);
+ installCellAuthorship(state);
+ installShareDialog(state);
  return state;
 }

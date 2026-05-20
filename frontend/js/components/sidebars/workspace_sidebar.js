@@ -50,9 +50,9 @@ export function workspaceSidebar() {
                 return i >= 0 ? path.slice(0, i) : '';
             },
             formatBadge(format) {
-                if (format === 'py') return 'bg-info text-dark';
-                if (format === 'ipynb') return 'bg-warning text-dark';
-                return 'bg-secondary';
+                if (format === 'py') return 'bg-info-subtle text-info-emphasis';
+                if (format === 'ipynb') return 'bg-secondary-subtle text-secondary-emphasis';
+                return 'bg-secondary-subtle text-secondary-emphasis';
             },
         },
     });

@@ -56,12 +56,24 @@ function _renderHtml(html) {
  frame.className = 'pql-notebook-output__iframe';
  frame.setAttribute('sandbox', '');
  frame.setAttribute('referrerpolicy', 'no-referrer');
+ // Theme detection: read the host document's ``data-bs-theme`` and
+ // bake matching colours into the srcdoc.  The iframe can't reach
+ // out to the parent (sandbox=""), and CSS ``light-dark()`` is too
+ // new to rely on across browsers, so we resolve up-front.
+ const hostTheme = document.documentElement.dataset.bsTheme || 'light';
+ const themePalette = hostTheme === 'dark'
+  ? { fg: '#e9ecef', border: 'rgba(255,255,255,0.18)', mutedBg: 'rgba(255,255,255,0.04)' }
+  : { fg: '#212529', border: '#dee2e6', mutedBg: 'rgba(0,0,0,0.025)' };
  frame.srcdoc = `<!doctype html><meta charset="utf-8">
+  <meta name="color-scheme" content="${hostTheme}">
   <style>
-    body { margin: 0; font: 0.85rem -apple-system, system-ui, sans-serif; color: #222; background: transparent; }
+    :root { color-scheme: ${hostTheme}; }
+    body { margin: 0; font: 0.85rem -apple-system, system-ui, sans-serif; color: ${themePalette.fg}; background: transparent; }
     table { border-collapse: collapse; }
-    table, th, td { border: 1px solid #ccc; padding: 2px 6px; }
-    pre { white-space: pre-wrap; }
+    table, th, td { border: 1px solid ${themePalette.border}; padding: 2px 6px; }
+    th { background: ${themePalette.mutedBg}; }
+    pre { white-space: pre-wrap; color: inherit; }
+    a { color: inherit; text-decoration: underline; }
   </style>
   <body>${html}</body>`;
  // Allow the iframe to grow with its content.  postMessage from

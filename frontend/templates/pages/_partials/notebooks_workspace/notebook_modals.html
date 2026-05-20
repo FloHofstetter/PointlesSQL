@@ -1,0 +1,159 @@
+{# Notebook create/rename/delete modals.
+
+   Driven by the ``notebookDialogs()`` mixin spread into
+   ``notebookWorkspace()``.  Two modals live here:
+
+   - ``pql-notebook-path-modal`` — used by both create and rename
+     (mode-aware title + submit label).
+   - ``pql-notebook-delete-modal`` — single confirm dialog.
+
+   Toggle pattern: ``:class="{ 'show d-block': flag }"`` + a backdrop
+   inline style.  Bootstrap's JS modal API is intentionally NOT used
+   here — Alpine 3.14 strips ``display: block`` set externally when
+   ``x-show`` toggles, which is why we drive visibility via class
+   binding instead (see ``feedback_bootstrap_modal_x_show``).
+#}
+
+<div class="modal fade"
+     :class="{ 'show d-block': pathDialog.open }"
+     :style="pathDialog.open ? 'background: rgba(0,0,0,0.5)' : ''"
+     tabindex="-1"
+     @keydown.escape.window="closePathDialog()"
+     x-cloak>
+ <div class="modal-dialog">
+  <div class="modal-content">
+   <form @submit.prevent="submitPathDialog()">
+    <div class="modal-header">
+     <h5 class="modal-title">
+      <i class="bi bi-file-earmark-code me-1"></i>
+      <span x-text="pathDialog.mode === 'create' ? 'New notebook' : 'Rename notebook'"></span>
+     </h5>
+     <button type="button" class="btn-close"
+             @click="closePathDialog()"
+             :disabled="pathDialog.submitting"
+             aria-label="Close"></button>
+    </div>
+    <div class="modal-body">
+     {# Phase 98.B template-gallery picker — visible only on create.
+        Empty starter is the implicit option (pathDialog.templateId
+        unset).  Categories taken straight from the gallery
+        endpoint; templates clicked while open swap the active
+        selection without closing the modal. #}
+     {#- Phase 98.B template-gallery picker (defensive ``templates``
+         lookup — ``($data.templates || [])`` lets the modal still render
+         on a stale browser cache where the outer ``templates`` field
+         hasn't been hydrated yet). -#}
+     <template x-if="pathDialog.mode === 'create' && ($data.templates || []).length > 0">
+      <div class="mb-3">
+       <label class="form-label small text-muted">Start from a template</label>
+       <div class="d-flex flex-wrap gap-2 mb-2">
+        <button type="button"
+                class="btn btn-sm"
+                :class="(pathDialog.templateId || '') === '' ? 'btn-primary' : 'btn-outline-secondary'"
+                @click="pathDialog.templateId = ''"
+                title="Empty notebook">
+         <i class="bi bi-file-earmark me-1"></i> Empty
+        </button>
+        <template x-for="tpl in ($data.templates || [])" :key="tpl.id">
+         <button type="button"
+                 class="btn btn-sm"
+                 :class="pathDialog.templateId === tpl.id ? 'btn-primary' : 'btn-outline-secondary'"
+                 @click="pathDialog.templateId = tpl.id"
+                 :title="tpl.description">
+          <i class="bi bi-file-earmark-code me-1"></i>
+          <span x-text="tpl.title"></span>
+         </button>
+        </template>
+       </div>
+       <p class="small text-muted mb-0"
+          x-show="pathDialog.templateId"
+          x-cloak>
+        <span x-text="(($data.templates || []).find(t => t.id === pathDialog.templateId) || {}).description || ''"></span>
+       </p>
+      </div>
+     </template>
+     <label for="pql-notebook-path-input" class="form-label small text-muted">
+      Path (relative, must end with <code>.py</code>)
+     </label>
+     <input id="pql-notebook-path-input"
+            type="text"
+            class="form-control font-monospace"
+            :class="{ 'is-invalid': pathDialog.error }"
+            x-model="pathDialog.value"
+            @input="validatePathInput()"
+            placeholder="folder/my_notebook.py"
+            autocomplete="off"
+            spellcheck="false"
+            :disabled="pathDialog.submitting">
+     <div class="invalid-feedback" x-text="pathDialog.error"></div>
+     <p class="form-text small text-muted mb-0 mt-2"
+        x-show="pathDialog.mode === 'rename'"
+        x-cloak>
+      Renaming from
+      <code class="text-body" x-text="pathDialog.originalPath"></code>.
+     </p>
+    </div>
+    <div class="modal-footer">
+     <button type="button" class="btn btn-outline-secondary"
+             @click="closePathDialog()"
+             :disabled="pathDialog.submitting">
+      Cancel
+     </button>
+     <button type="submit" class="btn btn-primary"
+             :disabled="pathDialog.submitting || !!pathDialog.error || !pathDialog.value">
+      <span x-show="pathDialog.submitting" x-cloak>
+       <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+      </span>
+      <span x-text="pathDialog.mode === 'create' ? 'Create' : 'Rename'"></span>
+     </button>
+    </div>
+   </form>
+  </div>
+ </div>
+</div>
+
+<div class="modal fade"
+     :class="{ 'show d-block': deleteDialog.open }"
+     :style="deleteDialog.open ? 'background: rgba(0,0,0,0.5)' : ''"
+     tabindex="-1"
+     @keydown.escape.window="closeDeleteDialog()"
+     x-cloak>
+ <div class="modal-dialog">
+  <div class="modal-content">
+   <div class="modal-header">
+    <h5 class="modal-title text-danger">
+     <i class="bi bi-trash me-1"></i>
+     Delete notebook
+    </h5>
+    <button type="button" class="btn-close"
+            @click="closeDeleteDialog()"
+            :disabled="deleteDialog.submitting"
+            aria-label="Close"></button>
+   </div>
+   <div class="modal-body">
+    <p class="mb-2">
+     Delete <code class="text-body" x-text="deleteDialog.path"></code>?
+    </p>
+    <p class="small text-muted mb-0">
+     Removes the file from disk and clears its persisted outputs.
+     This cannot be undone.
+    </p>
+   </div>
+   <div class="modal-footer">
+    <button type="button" class="btn btn-outline-secondary"
+            @click="closeDeleteDialog()"
+            :disabled="deleteDialog.submitting">
+     Cancel
+    </button>
+    <button type="button" class="btn btn-danger"
+            @click="submitDeleteDialog()"
+            :disabled="deleteDialog.submitting">
+     <span x-show="deleteDialog.submitting" x-cloak>
+      <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+     </span>
+     Delete
+    </button>
+   </div>
+  </div>
+ </div>
+</div>

@@ -42,7 +42,7 @@ def _oidc_redirect_uri(request: Request, settings: Settings) -> str:
 
 
 @router.get("/login", response_class=HTMLResponse)
-async def login_page(request: Request, error: str = ""):
+async def login_page(request: Request, error: str = "", flash: str = ""):
     """Render the login page."""
     settings = _settings(request)
     return get_templates(request).TemplateResponse(
@@ -50,6 +50,7 @@ async def login_page(request: Request, error: str = ""):
         "pages/login.html",
         {
             "error": error,
+            "flash": flash,
             "hide_sidebar": True,
             "oidc_enabled": settings.oidc.enabled,
         },
@@ -145,7 +146,13 @@ async def register_submit(
     if user is None:
         return _reg_error("An account with that email already exists.", 409)
 
-    return RedirectResponse(url="/auth/login", status_code=303)
+    # Phase 105 UX — surface a one-shot success flash on the login
+    # page so the user sees a positive confirmation instead of being
+    # bounced to an empty form (the no-feedback redirect read as
+    # silent failure in the replay).
+    return RedirectResponse(
+        url="/auth/login?flash=account_created", status_code=303
+    )
 
 
 @router.post("/logout")

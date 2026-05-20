@@ -11,19 +11,25 @@
 </div>
 
 <p class="text-muted small mb-3">
-    Read-only listing of notebooks under the workspace directory. Authoring
-    happens outside PointlesSQL — agents drop
-    <code>.py</code> jupytext-Percent files into the notebooks directory,
-    the scheduler executes them, and runs surface under
-    <a href="/runs">Runs</a>. Use <strong>Schedule…</strong> to wire a
-    notebook into a Papermill job.
+    Browse, create, and edit notebooks. Files are stored as
+    <code>.py</code> jupytext-Percent under the notebooks directory and
+    execute against an in-process Jupyter kernel. Use <strong>Edit</strong>
+    to open the in-browser editor, <strong>Schedule…</strong> to wire a
+    notebook into a Papermill job. Scheduled runs surface under
+    <a href="/runs">Runs</a>.
 </p>
 
 <div x-data="notebookWorkspace()" x-init="load()">
     <div class="card">
-        <div class="card-header d-flex align-items-center justify-content-between py-2">
+        <div class="card-header d-flex align-items-center gap-2 py-2">
             <span class="text-uppercase small fw-semibold text-muted">Notebooks</span>
-            <button class="btn btn-sm btn-link p-0 text-muted" @click="reload()" title="Refresh">
+            <button class="btn btn-primary"
+                    @click="createNotebook()"
+                    title="Create an empty .py notebook">
+                <i class="bi bi-plus-lg me-1"></i> New notebook…
+            </button>
+            <button class="btn btn-link p-0 text-muted ms-auto"
+                    @click="reload()" title="Refresh">
                 <i class="bi bi-arrow-clockwise" :class="loading ? 'pql-spin' : ''"></i>
             </button>
         </div>
@@ -45,9 +51,14 @@
                     <i class="bi bi-folder2-open pql-empty__icon" aria-hidden="true"></i>
                     <p class="pql-empty__title">No notebooks yet</p>
                     <p class="pql-empty__message">
-                        Drop a <code>.py</code> or <code>.ipynb</code> file into the
-                        notebooks directory on disk (or via a UC Volume) and refresh.
+                        Create your first notebook, drop a <code>.py</code> /
+                        <code>.ipynb</code> file into the notebooks directory on disk
+                        (or via a UC Volume), and refresh.
                     </p>
+                    <button type="button" class="btn btn-primary"
+                            @click="createNotebook()">
+                        <i class="bi bi-plus-lg me-1"></i> New notebook…
+                    </button>
                 </div>
             </template>
 
@@ -80,9 +91,12 @@
                                     <i class="bi bi-journal-code"
                                        title=".ipynb notebook"></i>
                                 </template>
-                                <span class="text-truncate font-monospace" x-text="row.name"></span>
+                                <span class="text-truncate font-monospace flex-grow-1"
+                                      style="min-width: 0;"
+                                      :title="row.path"
+                                      x-text="row.name"></span>
                                 <template x-if="row.kind === 'notebook' && row.parameters_tagged">
-                                    <span class="badge bg-success ms-1"
+                                    <span class="badge bg-success-subtle text-success-emphasis ms-1"
                                           style="font-size: 0.6rem;"
                                           title="Notebook declares Papermill parameters">
                                         PARAMS
@@ -91,13 +105,45 @@
                             </span>
 
                             <template x-if="row.kind === 'notebook'">
-                                <span class="ms-auto d-flex gap-1">
+                                <span class="ms-auto d-flex gap-2 align-items-center flex-shrink-0">
+                                    <template x-if="row.format === 'py'">
+                                        <button type="button"
+                                                class="btn btn-sm btn-outline-success"
+                                                @click="openEditor(row.path)"
+                                                title="Open in the in-browser editor">
+                                            <i class="bi bi-pencil-square me-1"></i> Edit
+                                        </button>
+                                    </template>
                                     <button type="button"
-                                            class="btn btn-sm btn-outline-primary py-0 px-2"
-                                            style="font-size: 0.75rem;"
+                                            class="btn btn-sm btn-outline-primary"
                                             @click="schedule(row.path)">
-                                        <i class="bi bi-calendar-plus"></i> Schedule…
+                                        <i class="bi bi-calendar-plus me-1"></i> Schedule…
                                     </button>
+                                    <div class="dropdown">
+                                        <button class="btn btn-sm btn-outline-secondary"
+                                                type="button"
+                                                data-bs-toggle="dropdown"
+                                                aria-expanded="false"
+                                                title="More actions">
+                                            <i class="bi bi-three-dots"></i>
+                                        </button>
+                                        <ul class="dropdown-menu dropdown-menu-end">
+                                            <li>
+                                                <button class="dropdown-item" type="button"
+                                                        @click="renameNotebook(row.path)">
+                                                    <i class="bi bi-input-cursor-text me-1"></i>
+                                                    Rename…
+                                                </button>
+                                            </li>
+                                            <li>
+                                                <button class="dropdown-item text-danger" type="button"
+                                                        @click="deleteNotebook(row.path)">
+                                                    <i class="bi bi-trash me-1"></i>
+                                                    Delete…
+                                                </button>
+                                            </li>
+                                        </ul>
+                                    </div>
                                 </span>
                             </template>
                         </div>
@@ -106,6 +152,8 @@
             </ul>
         </div>
     </div>
+
+    {% include "pages/_partials/notebooks_workspace/notebook_modals.html" %}
 </div>
 
 {# notebookWorkspace() factory lives in

@@ -13,6 +13,13 @@
         </div>
         {% endif %}
 
+        {% if flash == 'account_created' %}
+        <div class="alert alert-success alert-dismissible fade show m-0" role="alert">
+            Account created — sign in with the credentials you just chose.
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        {% endif %}
+
         <form method="post" action="/auth/login" hx-boost="false" class="pql-stack">
             {{ csrf_input() }}
             <div>

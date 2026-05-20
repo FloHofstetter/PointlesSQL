@@ -1930,6 +1930,14 @@ PointlesSQL
 │   │         ``services/notebook/templates.py`` + routes
 │   │         ``GET /api/notebooks/templates`` and ``POST
 │   │         /api/notebooks/from-template``.  13 new pytest.
+│   │         **Wave-B UI 2026-05-20 (asset 0.1.0rc47):** notebook-
+│   │         level tag picker shipped in the editor toolbar
+│   │         (next to Variables/AI), driven by new
+│   │         ``installNotebookTags`` mixin + ``notebookTagPicker``
+│   │         inline panel.  Curated chips + custom-tag input +
+│   │         pill-list of active tags with one-click removal +
+│   │         count badge on the button.  Workspace-list tag-pills
+│   │         still deferred.
 │   │
 │   ├── Phase 99 — Widget-cells + Notebook permissions            ⏳ partial
 │   │     Backend shipped 2026-05-20.  Two new tables (migration
@@ -2013,8 +2021,18 @@ PointlesSQL
 │   │     their outputs still surface in original order, prepends
 │   │     a "DASHBOARD" banner.  8 new pytest.  Asset 0.1.0rc38.
 │   │
-│   │     **Deferred:** publish-dialog UI in the editor toolbar,
-│   │     iframe-embed analog of Phase-92.2's
+│   │     **Wave-B UI 2026-05-20:** Share-Dialog shipped (asset
+│   │     0.1.0rc49 → rc51).  Toolbar Share-button opens a modal
+│   │     with Snapshot/Live mode toggle, Dashboard-mode checkbox,
+│   │     optional snapshot-note input, and a list of existing
+│   │     shares with Open-in-new-tab / Copy-URL / Toggle-Dashboard
+│   │     / Revoke actions per row.  Replay caught + fixed a
+│   │     latent backend bug: ``/share/`` was missing from the
+│   │     auth middleware's ``PUBLIC_PREFIXES`` allowlist, so the
+│   │     public viewer had been 303-redirecting every visitor
+│   │     to ``/auth/login`` since initial Phase-100 ship.
+│   │
+│   │     **Still deferred:** iframe-embed analog of Phase-92.2's
 │   │     ``/embed/semantic_search/{fqn}``, and the secret-scrub
 │   │     pass before serving (today the publisher is expected to
 │   │     vet the content; the route does not redact).
@@ -2040,19 +2058,32 @@ PointlesSQL
 │   │     the saver's email as ``first_author``/``last_modifier``.
 │   │     Cells start filling the table from the next save.
 │   │
-│   │     **Deferred:**
+│   │     **Wave-B UI 2026-05-20:** cell-header chip shipped
+│   │     (asset 0.1.0rc48).  Each cell shows a small person/robot
+│   │     chip between the dirty-dot and the tag-picker with the
+│   │     saver's email local-part and the full attribution
+│   │     envelope (created / last-modified) on hover.  Nested-
+│   │     x-data trap dodged by exposing the methods on the outer
+│   │     notebook scope via a new ``installCellAuthorship`` mixin
+│   │     (DOM-walk-free).  New bulk endpoint
+│   │     ``GET /api/notebooks/attribution/bulk?path=…`` returns
+│   │     ``{cell_uuid: envelope}`` so a 50-cell notebook costs one
+│   │     HTTP request instead of 50; 2 new pytest (15 total).
+│   │
+│   │     **Still deferred:**
 │   │     * **Agent-author attribution for proposal-accepted cells.**
-│   │       The save-path attributes to the human saver; when the
-│   │       cell came from a Phase-96 proposal it should attribute
-│   │       to the agent instead.  Needs a lookup
-│   │       ``agent_run_id → agents.id`` before the upsert.
+│   │       Wave-2 scope-trim: the service contract requires
+│   │       ``agent_id`` (int FK) for ``kind="agent"`` but inline
+│   │       editor chat has no registered DB agent.  Fix needs
+│   │       either a service relaxation (accept ``agent_run_id``-
+│   │       only when ``agent_id is None``) or a "system AI" agent
+│   │       seed row.  ``NotebookCellProvenance`` already records
+│   │       the agent_run_id; chip stays in user-mode until then.
 │   │     * **Reviewer-per-cell flow** — the existing polymorphic
 │   │       comment system (``DataProductComment`` already carries
 │   │       ``author_agent_id``) already supports it; the dedicated
 │   │       "review this cell" UI affordance + reviewer-agent tool
 │   │       both land in a follow-up.
-│   │     * **Cell-header attribution chip** — backend is ready;
-│   │       editor render gated by the nested-x-data trap.
 │   │
 │   ├── Phase 102 — Branch-aware notebooks                        ⏳ partial
 │   │     Backend shipped 2026-05-20.  New
@@ -2157,6 +2188,36 @@ PointlesSQL
 │         current async pattern is the blocker — until then the
 │         per-cell social + provenance surface is the load-bearing
 │         collaboration model.
+│
+│         **Replay bug-hunt 2026-05-20:** a full Playwright-MCP
+│         replay of ``docs/e2e-walkthroughs/notebook-editor.md``
+│         against the Phase-95 / 96 / 98 surfaces caught five real
+│         bugs that escaped every prior gate (no ruff / pyright /
+│         pydoclint signal — all five live in JS+Jinja+WS
+│         boundaries).  Fixes batched as Phase 105 bug-fix wave;
+│         see CHANGELOG ``Unreleased`` for BUG-105-01..05 details.
+│         Asset 0.1.0rc44.  Confirms ``feedback_run_playbook_as_gate``
+│         — the replay was the gate; nothing earlier would have
+│         caught the AI-drawer infinite reconnect, the
+│         variable-inspector self-trigger loop, the tag-picker /
+│         💬-chip UUID gating, or the ``cellThread.cellRef``
+│         snapshot regression.
+│
+│         **Wave-B follow-up 2026-05-20:** three deferred-UI
+│         backends (98.B Tags, 101 Author-Chip, 100 Publish/Share)
+│         lifted from "orphan REST + green tests" to "live editor
+│         feature" — see Phase 98.B / 100 / 101 entries above for
+│         per-phase details.  Replay turned up three more at-source
+│         bugs: ``/share/`` missing from auth allowlist (Phase 100
+│         viewer unreachable since initial ship), ES-module cache
+│         invalidation gap (now structurally fixed via a
+│         ``/static/js/{path:path}`` route that stamps ``?v=mtime``
+│         into every relative import — mirrors the long-standing
+│         ``_style_css`` route for CSS sub-imports), and a tag-
+│         payload shape mismatch in the new picker JS.  Asset
+│         0.1.0rc46 → rc51 (four sub-bumps across three waves +
+│         two bug-bumps).  Tests: 36/36 green across the three
+│         touched suites.
 │
 ├── Phase 81 — Feed overhaul + help surface + entity ⋯-menu  ✅ done 2026-05-16
 │       Three-track polish bundle.  Track K rebuilt /feed from a

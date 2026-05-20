@@ -79,6 +79,45 @@
     <i class="bi bi-lightning" aria-hidden="true"></i>
     Run as job
    </button>
+   {#- Phase 100 — Publish/Share button.  Opens the share modal with
+       create-share form + list of existing shares. -#}
+   <button type="button"
+           class="btn btn-sm btn-outline-secondary"
+           @click="openShareDialog()"
+           data-testid="notebook-share-button"
+           title="Publish this notebook to a public share link">
+    <i class="bi bi-share" aria-hidden="true"></i>
+    Share
+   </button>
+   {#- Phase 98.D — Export dropdown.  Routes are server-side rendered
+       to a self-contained HTML or PDF (WeasyPrint with HTML fallback)
+       — no client-side dependency. -#}
+   <div class="btn-group">
+    <button type="button"
+            class="btn btn-sm btn-outline-secondary dropdown-toggle"
+            data-bs-toggle="dropdown"
+            aria-expanded="false"
+            title="Export this notebook as HTML or PDF">
+     <i class="bi bi-download" aria-hidden="true"></i>
+     Export
+    </button>
+    <ul class="dropdown-menu dropdown-menu-end">
+     <li>
+      <a class="dropdown-item"
+         :href="`/api/notebooks/export.html?path=${encodeURIComponent(path)}`"
+         target="_blank" rel="noopener">
+       <i class="bi bi-filetype-html me-1"></i> HTML
+      </a>
+     </li>
+     <li>
+      <a class="dropdown-item"
+         :href="`/api/notebooks/export.pdf?path=${encodeURIComponent(path)}`"
+         target="_blank" rel="noopener">
+       <i class="bi bi-filetype-pdf me-1"></i> PDF
+      </a>
+     </li>
+    </ul>
+   </div>
   </div>
 
   <div class="pql-toolbar-group" role="group" aria-label="Panels">
@@ -104,6 +143,22 @@
     <span class="badge bg-secondary ms-1"
           x-show="inspectorVars && inspectorVars.length > 0"
           x-text="inspectorVars.length"
+          x-cloak></span>
+   </button>
+   {# Phase 98.B — Notebook-level tag picker.  Backend (REST +
+      curated vocab) shipped earlier; this toolbar entry wires the
+      panel toggle.  Count badge surfaces only once the first
+      ``loadNotebookTags()`` call has returned. #}
+   <button type="button"
+           class="btn btn-sm btn-outline-secondary"
+           @click="toggleTagsPicker()"
+           :class="{ active: tagsPickerOpen }"
+           title="Tag this notebook (etl / draft / prod / …)">
+    <i class="bi bi-tags" aria-hidden="true"></i>
+    Tags
+    <span class="badge bg-secondary ms-1"
+          x-show="notebookTagsLoaded && notebookTags.length > 0"
+          x-text="notebookTags.length"
           x-cloak></span>
    </button>
    {% if notebook_chat_enabled %}

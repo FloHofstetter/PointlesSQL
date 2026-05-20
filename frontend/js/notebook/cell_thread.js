@@ -97,8 +97,31 @@ export function cellThread({ notebookUuid, cell, initialCounts, curatedTags = []
             );
         },
 
+        // Resolve the live cell from the parent scope on every read.
+        // ``cellRef`` was meant to be a live Alpine proxy but in
+        // practice ended up snapshotting ``cell_uuid`` at factory-init
+        // time — the save-path mints UUIDs into the parent's
+        // ``cells[i]`` proxy without the snapshot ever catching up
+        // (caught Phase 105 replay).  Walking the DOM up to the
+        // editor scope and looking up by stable ``cell.id`` keeps the
+        // thread accurate after a save reconciliation.
+        _liveCell() {
+            try {
+                if (!window.Alpine || !this.$el) return this.cellRef;
+                const shell = this.$el.closest('.pql-notebook-shell');
+                if (!shell) return this.cellRef;
+                const editor = window.Alpine.$data(shell);
+                const cellId = this.cellRef?.id;
+                if (!editor?.cells || !cellId) return this.cellRef;
+                return editor.cells.find((c) => c.id === cellId) || this.cellRef;
+            } catch {
+                return this.cellRef;
+            }
+        },
+
         get cellUuid() {
-            return this.cellRef ? this.cellRef.cell_uuid : null;
+            const live = this._liveCell();
+            return live ? live.cell_uuid : null;
         },
 
         get baseUrl() {

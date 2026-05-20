@@ -6,6 +6,192 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Wave-B — three deferred notebook UIs shipped (2026-05-20).**
+  Three Phase backends (98.B Tags, 101 Author-Chip, 100 Publish/Share)
+  had green tests but no UI; this wave wires all three from the
+  editor.  Asset 0.1.0rc46 → rc51 over four sub-bumps.
+  - **Wave 1 — Notebook-Tags-Picker (Phase 98.B.UI).**  Toolbar
+    button next to Variables/AI opens an inline panel mirroring the
+    cell-tag-picker shape: curated chips (etl / draft / prod / wip /
+    verified / broken / ml / report / scratch), custom-tag input,
+    pill-list of active tags with one-click removal.  Count badge on
+    the toolbar button.  Wires the existing
+    ``GET/POST/DELETE /api/notebooks/tags`` REST surface (Phase 98.B
+    backend, 13 pytest).  New ``notebookTagPicker`` panel + Alpine
+    install-mixin ``installNotebookTags``.  Workspace-list tag-pills
+    deferred — editor loop first.
+  - **Wave 2 — Per-cell Author-Chip (Phase 101.UI).**  Small
+    person/robot chip in each cell header between the dirty-dot and
+    the tag-picker, showing the saver's email local-part and the
+    full attribution (created / last-modified) on hover.  New bulk
+    endpoint ``GET /api/notebooks/attribution/bulk?path=…`` returns
+    ``{cell_uuid: envelope}`` so a 50-cell notebook costs one HTTP
+    request instead of 50.  Service helper
+    ``cell_authorship_service.list_for_notebook`` plus 2 new pytest
+    (15 total in
+    ``tests/test_notebook_cell_authorship.py``).  Frontend mixin
+    ``installCellAuthorship`` reads envelopes lazily after load + on
+    every save.  **Scope-trim:** the AI-acceptance path
+    (``_write_proposal_provenance``) does NOT yet upsert
+    ``kind="agent"`` authorship — the service contract requires an
+    integer ``Agent.id`` and inline editor chat has no registered
+    DB agent.  Tracked as a separate follow-up sprint (relax the
+    contract to accept ``agent_run_id``-only, or introduce a
+    "system AI" agent row).  Cell-provenance row already records
+    the agent_run_id; the chip just stays in user-mode until the
+    save-path runs.
+  - **Wave 3 — Publish/Share-Dialog (Phase 100.UI).**  Share
+    button in the Save+Run toolbar group opens a modal with a
+    Snapshot/Live mode toggle, Dashboard-mode checkbox, an
+    optional snapshot note, and a list of existing shares with
+    Open-in-new-tab / Copy-URL / Toggle-Dashboard / Revoke per
+    row.  Wires the existing
+    ``GET/POST/PATCH/DELETE /api/notebooks/shares`` REST surface
+    + the public-by-design ``/share/notebook/{uuid}`` viewer
+    (Phase 100 backend, 8 pytest).  Modal uses the
+    ``:class="{ 'show d-block': flag }"`` pattern per
+    ``feedback_bootstrap_modal_x_show``.  New
+    ``installShareDialog`` mixin + ``share_modal.html`` partial.
+
+### Fixed
+
+- **Wave-B replay-bughunt — three at-source fixes (2026-05-20).**
+  Discovered while replaying the Wave-B UIs in Firefox via
+  Playwright-MCP; ruff + pyright would not have caught any of
+  these.
+  - **Phase 100 public-share viewer was unreachable.**  The Phase
+    100 backend shipped its public viewer at
+    ``/share/notebook/{share_uuid}`` but the auth middleware's
+    ``PUBLIC_PREFIXES`` allowlist had no entry for ``/share/``, so
+    every visit got 303-redirected to ``/auth/login`` — breaking
+    the *entire* publish flow since Phase 100 landed.  ``/share/``
+    added to the allowlist with a comment naming the share_uuid
+    as the credential.  Caught when the share URL the new dialog
+    mints returned 303 instead of 200.
+  - **ES module cache invalidation gap.**  ``base.html`` cache-busts
+    only the ``bootstrap.js`` URL via ``?v={asset_version}``; the
+    static imports inside (``./notebook/notebook_editor.js`` →
+    ``./notebook_tags.js`` etc.) inherit no querystring and resolve
+    to the same cached URLs across releases.  Firefox served the
+    pre-Wave-B ``notebook_editor.js`` indefinitely, masking every
+    new field/method.  New ``/static/js/{path:path}`` route rewrites
+    every relative import literal to include ``?v=<version>-<mtime>``
+    — same pattern as the existing ``_style_css`` route for CSS
+    sub-imports.  Future Wave-N sprints no longer need a manual
+    Ctrl+Shift+R after every release.
+  - **Tag-payload shape mismatch.**  The list endpoint returns
+    ``[{tag, created_at}, …]`` but the new Wave-1 picker JS treated
+    entries as plain strings (``notebookTags.includes('prod')``).
+    Switched to ``some(t => t.tag === 'prod')`` + the template
+    iterates ``row in notebookTags`` and reads ``row.tag``.
+
+- **Phase 105 replay — notebook editor bug-hunt (2026-05-20).**
+  Driven by a full Playwright-MCP replay of
+  ``docs/e2e-walkthroughs/notebook-editor.md`` against the latest
+  Phase-95/96/98 surfaces; five real bugs caught + fixed at source.
+  Asset 0.1.0rc44.
+  - **BUG-105-01** — ``/ws/notebook/chat/{id}`` and
+    ``/ws/sql/chat/{id}`` closed the WebSocket *before*
+    ``accept()`` for the disabled / unauthenticated / no-LLM gates.
+    Browsers surface a closed-before-accept handshake as a generic
+    "connection refused" — the WS close code + reason never reach
+    the client.  Both handlers now ``accept()`` first then close
+    with the meaningful code, so the AI-Assistant + SQL-chat drawers
+    render an actionable "LLM not configured / chat disabled /
+    session expired" error instead of looping infinite reconnect
+    attempts with console spam.  Clients also stopped reconnecting
+    on the 4503/4401 close codes.
+  - **BUG-105-02** — The notebook editor's Variable Inspector
+    looped: every cell ``execute_reply`` re-triggered
+    ``requestVariableSnapshot()``, whose own ``__pql_inspect__()``
+    execute_reply re-triggered the same path indefinitely.  The
+    iopub frame handler now gates the auto-refresh on cells whose
+    ``content_hash`` does NOT start with ``__pql_``.
+  - **BUG-105-03** — The frontend already passed ``silent: true``
+    on inspector probes; the WS handler dropped that flag and the
+    kernel session always called ``kc.execute(silent=False,
+    store_history=True)``.  IPython's ``_ih`` / ``_oh`` grew
+    indefinitely and ``notebook_cell_runs`` got noise rows for
+    every probe.  ``silent`` is now honored end-to-end: the WS
+    handler skips ``upsert_cell_run`` / ``record_cell_run_start``
+    + iopub / shell persistence for ``__pql_``-prefixed hashes;
+    ``session.execute`` passes ``store_history=False`` (the
+    Jupyter ``silent`` flag stays ``False`` because the custom-MIME
+    iopub frame still needs to flow).
+  - **BUG-105-04** — Cells minted before Phase 95 carry no stable
+    ``cell_uuid``; the panel gated on ``cell.cell_uuid && open``
+    silently refused to render and the 💬 chip stayed hidden.
+    Clicking the tag-picker icon or the 💬 chip now calls
+    ``save()`` first when ``cell_uuid`` is missing — the save-path
+    reconciler mints the UUID, then the click-handler opens the
+    panel / thread with the live UUID in scope.
+  - **BUG-105-05** — ``cellThread.cellRef`` was meant to track the
+    parent ``cells[i]`` proxy live; in practice it snapshotted at
+    factory init time and the save-path UUID mint never propagated.
+    ``cellUuid`` is now resolved via a DOM walk to the editor scope
+    on every read, looking up the live cell by stable ``id``.  The
+    cell-thread loads its comments / reactions / followers
+    correctly after the first save.
+
+### Changed
+
+- **Phase 105 UX wave (2026-05-20).**  Same Playwright-MCP replay
+  that surfaced BUG-105-01..05 also caught five UX gaps; each
+  addressed with the minimum-viable surface.  Asset 0.1.0rc46.
+  - **Register → login confirmation.** ``/auth/register`` POST now
+    redirects to ``/auth/login?flash=account_created`` and the
+    login template renders a one-shot success alert above the
+    form.  The silent post-register redirect read as a failure in
+    the replay.  Test expectation in ``test_register_and_login``
+    updated.
+  - **Orphan font preload dropped.** ``auth_chromeless.html``
+    pre-loaded ``inter-regular.woff2`` upfront; Firefox kept
+    warning "preloaded but never used within a few seconds" because
+    the actual @font-face request arrived from the @import chain
+    seconds later and the preload's cross-origin match failed.
+    ``font-display: swap`` in ``base.css`` already prevents FOIT,
+    so the preload was pure waste — removed.
+  - **Variable inspector → right-side drawer.** The Phase-67.5
+    floating top-right popover clipped the toolbar buttons
+    (Save / Schedule / Run-as-job sat behind it).
+    ``.pql-notebook-inspector`` now uses the same fixed
+    full-height right-edge drawer pattern as the Phase-91 AI
+    assistant: ``top:0 right:0 bottom:0`` + ``width: min(420px,
+    100vw)`` + ``border-left`` + matching shadow.  Falls back to
+    100vw on mobile.
+  - **Export dropdown in the notebook toolbar.** Phase 98.D shipped
+    ``GET /api/notebooks/export.{html,pdf}`` but had no UI surface;
+    added a Bootstrap dropdown button next to *Run as job* that
+    opens both routes in a new tab.  No client-side conversion —
+    server renders the self-contained HTML / WeasyPrint PDF.
+  - **Template-gallery picker in the New-notebook dialog.**
+    Phase 98.B shipped ``GET /api/notebooks/templates`` + ``POST
+    /api/notebooks/from-template`` but the workspace's
+    "New notebook…" flow still created an empty file.  The path
+    modal now lazy-fetches the gallery and renders one chip per
+    starter template (Blank / SQL exploration / ETL pipeline /
+    ML quickstart); selecting a chip POSTs to
+    ``/api/notebooks/from-template`` and opens the editor at the
+    materialised path.  Expression uses ``$data.templates`` rather
+    than a bare identifier to stay safe under Alpine's strict
+    with-scope evaluation even if the dialogs mixin hasn't
+    hydrated yet (e.g. stale browser cache).
+  - **Static-import cache caveat.** The Phase-98.B mixin lives in
+    ``frontend/js/pages/notebooks_workspace_dialogs.js`` and is
+    statically imported from ``notebooks_workspace.js`` (which is
+    statically imported from ``bootstrap.js``).  Static-import
+    URLs don't inherit the ``?v={asset_version}`` cache-bust on
+    the parent script tag, so existing browser sessions hold the
+    pre-Phase-105 mixin in their ES-module cache until a hard
+    refresh (Ctrl+Shift+R).  The defensive ``$data.templates ||
+    []`` guard in the modal template ensures the page still
+    renders without errors on the stale-cache path; the gallery
+    just stays empty until the new mixin loads.  Long-term fix is
+    a module-fingerprinting build step; out of scope for this
+    wave.
+
+### Added
+
 - **Phase 105 — Real-time co-edit parked on ice (2026-05-20).**
   ROADMAP marker flipped ⏳ planned → 🧊 on ice.  The phase was
   explicitly tagged "ship only if simpler async patterns prove
