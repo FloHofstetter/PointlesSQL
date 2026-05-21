@@ -2343,6 +2343,33 @@ PointlesSQL
 │           once those APIs ship.
 │         - Phase 97 pin-to-memory (no fact-shaped pql.memory).
 │
+│         Phase 105 open follow-ups (out of scope, tracked here so
+│         they don't fall off the radar):
+│         - **hermes-plugin agent-presence wiring** — closes 105.6
+│           fully.  The REST endpoint
+│           ``POST /api/notebooks/{nb}/coedit/agent-presence`` ships
+│           on PointlesSQL but the plugin's ``propose_cell`` /
+│           ``fix_cell`` / ``explain_cell`` tools don't fire the
+│           pre/post calls yet, so the robot-avatar pseudo-peer
+│           never lights up in real agent runs.  Cross-repo commit
+│           on ``hermes-plugin-pointlessql``, ~30 LOC.
+│         - **Sync-timing rebind on ``cellYBinding``** — when the
+│           Y.Doc sync handshake is still in flight, ``cellYBinding``
+│           returns ``null`` and cells mount as standalone
+│           CodeMirror.  Today the binding picks up on the next
+│           mount (cell add/delete or reload); a clean fix needs an
+│           ``ydoc.on('synced', ...)`` listener in the mixin that
+│           rebinds open editors once.
+│         - **Cell-remap → editor rebind** — 105.5 stashes the
+│           remap in ``_pendingCellRemap`` but 105.3b doesn't
+│           actively consume it yet.  The first save-after-Pass-3-
+│           mint requires a page reload to clean up.  Edge case
+│           outside the 105.7 happy path, low priority.
+│         - **Multi-worker Uvicorn** — *deliberately* out of scope.
+│           The in-process ``_HUBS`` dict makes multi-worker invalid
+│           for co-edit; lifting that needs a Redis pub/sub broker
+│           and is its own phase, not a 105 follow-up.
+│
 
 ├── Phase 81 — Feed overhaul + help surface + entity ⋯-menu  ✅ done 2026-05-16
 │       Three-track polish bundle.  Track K rebuilt /feed from a
