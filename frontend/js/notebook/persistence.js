@@ -109,6 +109,9 @@ export function installPersistence(state) {
       // Phase 101 UI — refresh authorship envelopes too; the save just
       // upserted user-authorship for every cell.
       this.loadCellAttributions();
+      // Phase 98.C Wave-D — refresh per-cell lineage badges so a cell
+      // that just ran a write-op surfaces it without a page reload.
+      this.loadCellLineageBulk();
     } catch (err) {
       this.errorMessage = (err && err.message) || String(err);
     } finally {

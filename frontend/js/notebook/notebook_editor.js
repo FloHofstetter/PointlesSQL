@@ -21,6 +21,7 @@
 
 import { installBranchBinding } from './branch_binding.js';
 import { installCellAuthorship } from './cell_authorship.js';
+import { installCellLineage } from './cell_lineage.js';
 import { installCellOperations } from './cell_operations.js';
 import { installChatIntegration } from './chat_integration.js';
 import { installJobsOrchestration } from './jobs_orchestration.js';
@@ -29,6 +30,7 @@ import { installMarkdownOutput } from './markdown_output.js';
 import { installNotebookTags } from './notebook_tags.js';
 import { installPersistence } from './persistence.js';
 import { installReplays } from './replays.js';
+import { installRevisions } from './revisions.js';
 import { installSequenceProposals } from './sequence_proposals.js';
 import { installShareDialog } from './share_dialog.js';
 import { installWidgetsPanel } from './widgets_panel.js';
@@ -197,6 +199,10 @@ export function notebookEditor({ initialPath = '' } = {}) {
  this.outputs = res.data.outputs || [];
  this.refreshCellCounts();
  this.loadCellAttributions();
+ // Phase 98.C Wave-D — lineage badges read the same audit trail
+ // and are cheap; loaded alongside attribution so the chip strip
+ // paints on first render.
+ this.loadCellLineageBulk();
  this._seedLiveOutputs();
  this.loading = false;
  // Wait one frame so Alpine's x-for has rendered the cell DOM,
@@ -282,6 +288,8 @@ export function notebookEditor({ initialPath = '' } = {}) {
  installChatIntegration(state);
  installNotebookTags(state);
  installCellAuthorship(state);
+ installCellLineage(state);
+ installRevisions(state);
  installShareDialog(state);
  installBranchBinding(state);
  installReplays(state);

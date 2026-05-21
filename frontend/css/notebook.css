@@ -151,7 +151,8 @@
 .pql-notebook-replays-panel,
 .pql-notebook-sequence-drawer,
 .pql-notebook-widgets-panel,
-.pql-notebook-permissions-panel {
+.pql-notebook-permissions-panel,
+.pql-notebook-revisions-panel {
  padding: 0.75rem 0.85rem 0.9rem;
  background: var(--bs-tertiary-bg, var(--bs-secondary-bg, #f8f9fa));
  border: 1px solid var(--bs-border-color);
@@ -162,7 +163,8 @@
 .pql-notebook-replays-panel__header,
 .pql-notebook-sequence-drawer__header,
 .pql-notebook-widgets-panel__header,
-.pql-notebook-permissions-panel__header {
+.pql-notebook-permissions-panel__header,
+.pql-notebook-revisions-panel__header {
  display: flex;
  align-items: center;
  gap: 0.5rem;

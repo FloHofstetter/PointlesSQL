@@ -258,3 +258,50 @@ async def test_api_cell_lineage_empty_cell(
     )
     assert resp.status_code == 200
     assert resp.json()["badges"] == []
+
+
+# -- bulk REST surface --------------------------------------------------------
+
+
+async def test_api_cell_lineage_bulk_empty_notebook(
+    workspace_dir: Path, admin_client: httpx.AsyncClient
+) -> None:
+    """Bulk endpoint returns ``{}`` for a notebook with no write history."""
+    await admin_client.post(
+        "/api/notebooks/create", json={"path": "n.py"}
+    )
+    resp = await admin_client.get(
+        "/api/notebooks/cell/lineage/bulk",
+        params={"path": "n.py"},
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["path"] == "n.py"
+    assert body["badges"] == {}
+
+
+def test_list_cell_lineage_badges_bulk_indexes_by_content_hash(
+    factory: sessionmaker,  # type: ignore[type-arg]
+) -> None:
+    """Bulk service maps ``content_hash`` -> badges across all cells."""
+    _seed_run_with_op(
+        factory,
+        file_path="n.py",
+        content_hash="aaaa",
+        op_name="write_table",
+        target_table="main.silver.events",
+    )
+    _seed_run_with_op(
+        factory,
+        file_path="n.py",
+        content_hash="bbbb",
+        op_name="merge",
+        target_table="main.gold.summary",
+    )
+    with factory() as session:
+        out = cell_lineage_service.list_cell_lineage_badges_bulk(
+            session, file_path="n.py"
+        )
+    assert set(out) == {"aaaa", "bbbb"}
+    assert out["aaaa"][0]["target_table"] == "main.silver.events"
+    assert out["bbbb"][0]["op_name"] == "merge"

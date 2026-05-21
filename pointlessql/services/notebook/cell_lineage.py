@@ -127,4 +127,92 @@ def list_cell_lineage_badges(
     return out
 
 
-__all__ = ["WRITE_OP_NAMES", "list_cell_lineage_badges"]
+def list_cell_lineage_badges_bulk(
+    session: Session,
+    *,
+    file_path: str,
+) -> dict[str, list[dict[str, Any]]]:
+    """Return ``{content_hash: [badge, ...]}`` for every cell in one notebook.
+
+    The per-cell route exists for deep-link / detail use; the editor's
+    cell-header chip strip needs N badges in a single call so the
+    bulk variant avoids the N+1.
+
+    Args:
+        session: A SQLAlchemy session.
+        file_path: Notebook path relative to ``notebooks_dir``.
+
+    Returns:
+        ``{content_hash: [badge, ...]}`` keyed by the cell-source
+        identity column shared with :class:`NotebookCellRun`.  Cells
+        with no write history are omitted; callers default to an
+        empty list per row.  Same per-badge shape and dedup rules as
+        :func:`list_cell_lineage_badges`.
+    """
+    stmt = (
+        select(
+            NotebookCellRun.content_hash,
+            NotebookCellRun.agent_run_id,
+            NotebookCellRun.started_at,
+        )
+        .where(
+            NotebookCellRun.file_path == file_path,
+            NotebookCellRun.agent_run_id.is_not(None),
+        )
+        .order_by(NotebookCellRun.started_at.desc())
+    )
+    rows = session.execute(stmt).all()
+    if not rows:
+        return {}
+
+    runs_by_content: dict[str, list[str]] = {}
+    for content_hash, agent_run_id, _ in rows:
+        if not agent_run_id:
+            continue
+        runs_by_content.setdefault(content_hash, []).append(agent_run_id)
+
+    if not runs_by_content:
+        return {}
+
+    all_run_ids = [rid for ids in runs_by_content.values() for rid in ids]
+    op_stmt = (
+        select(AgentRunOperation)
+        .where(
+            AgentRunOperation.agent_run_id.in_(all_run_ids),
+            AgentRunOperation.op_name.in_(WRITE_OP_NAMES),
+        )
+        .order_by(AgentRunOperation.started_at.desc())
+    )
+    ops_by_run: dict[str, list[AgentRunOperation]] = {}
+    for op in session.execute(op_stmt).scalars().all():
+        ops_by_run.setdefault(op.agent_run_id, []).append(op)
+
+    out: dict[str, list[dict[str, Any]]] = {}
+    for content_hash, run_ids in runs_by_content.items():
+        seen: set[tuple[str, str | None]] = set()
+        badges: list[dict[str, Any]] = []
+        for rid in run_ids:
+            for op in ops_by_run.get(rid, ()):
+                key = (op.op_name, op.target_table)
+                if key in seen:
+                    continue
+                seen.add(key)
+                badges.append(
+                    {
+                        "op_name": op.op_name,
+                        "target_table": op.target_table,
+                        "rows_affected": op.rows_affected,
+                        "delta_version_after": op.delta_version_after,
+                        "started_at": op.started_at.isoformat(),
+                    }
+                )
+        if badges:
+            out[content_hash] = badges
+    return out
+
+
+__all__ = [
+    "WRITE_OP_NAMES",
+    "list_cell_lineage_badges",
+    "list_cell_lineage_badges_bulk",
+]

@@ -235,6 +235,21 @@
           x-text="permissionsPanel.rows.length"
           x-cloak></span>
    </button>
+   {# Phase 97 Wave-D — revision history + cell-diff drawer.  Click
+      mints / lists snapshots; selecting two rows runs the diff. #}
+   <button type="button"
+           class="btn btn-sm btn-outline-secondary"
+           @click="toggleRevisionsPanel()"
+           :class="{ active: revisions.open }"
+           data-testid="notebook-revisions-button"
+           title="Revision history + cell diff (Phase 97)">
+    <i class="bi bi-clock-history" aria-hidden="true"></i>
+    History
+    <span class="badge bg-secondary ms-1"
+          x-show="revisions.loaded && revisions.rows.length > 0"
+          x-text="revisions.rows.length"
+          x-cloak></span>
+   </button>
    {% if notebook_chat_enabled %}
    {# Phase 96 — toggle the AI-assistant chat drawer. #}
    <button type="button"

@@ -34,6 +34,7 @@
  {% include "pages/_partials/notebook_editor/widgets_panel.html" %}
 
  {% include "pages/_partials/notebook_editor/permissions_panel.html" %}
+ {% include "pages/_partials/notebook_editor/revisions_panel.html" %}
 
  {% include "pages/_partials/notebook_editor/chat_drawer.html" %}
 
@@ -122,6 +123,23 @@
       <i class="bi" :class="authorChipIcon(cell)" aria-hidden="true"></i>
       <span x-text="authorChipLabel(cell)"></span>
      </span>
+     {# Phase 98.C Wave-D — lineage chips for cells with recorded
+        write-ops.  Looked up by content_hash via the outer-scope
+        ``lineageFor`` mixin so the inner per-cell scope stays empty
+        of x-data (nested-x-data trap dodged). #}
+     <template x-if="lineageFor(cell).length > 0">
+      <span class="d-inline-flex align-items-center gap-1"
+            data-testid="cell-lineage-strip">
+       <template x-for="badge in lineageFor(cell)" :key="`${badge.op_name}|${badge.target_table}`">
+        <span class="badge bg-info-subtle text-info-emphasis"
+              style="font-size: 0.65rem;"
+              :title="`${badge.op_name} → ${badge.target_table || '(none)'}\n${badge.rows_affected != null ? badge.rows_affected + ' rows · ' : ''}${badge.delta_version_after != null ? 'v' + badge.delta_version_after + ' · ' : ''}${badge.started_at}`">
+         <i class="bi bi-diagram-2 me-1" aria-hidden="true"></i>
+         <span x-text="badge.target_table || badge.op_name"></span>
+        </span>
+       </template>
+      </span>
+     </template>
      {# Phase 95.3 — Tag-picker toggle.  Lives in the right cluster
         flush with the social chip + run cluster so all per-cell
         action buttons sit together on the right edge. #}
