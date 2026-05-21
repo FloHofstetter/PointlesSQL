@@ -6,6 +6,40 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Phase 101 reviewer-per-cell flow closed (2026-05-22).**
+  Cross-repo.  Phase 101 was ``⏳ partial`` since 2026-05-20 — the
+  per-cell authorship backbone, save-path wiring, header chip, and
+  AI-acceptance hook all shipped earlier, leaving the
+  reviewer-flow as the last deferred item.  Two changes close it:
+  - **PointlesSQL:** ``post_polymorphic_comment`` now accepts
+    ``?as_agent=<slug>`` for every entity kind.  Previously the
+    polymorphic POST silently dropped the query param and only the
+    DP-routes path (Phase 76.5) carried the speak-as-agent
+    envelope.  The dispatcher in
+    ``social_routes/comments.py`` extracts the param uniformly and
+    forwards it, the polymorphic handler resolves it via
+    ``resolve_agent_for_principal`` (principal-or-admin gate
+    unchanged), and the serialised reply now contains the
+    ``agent`` payload so the cell-thread review badge can render
+    "decision by agent on behalf of <principal>".
+  - **hermes-plugin:** new ``pql_review_cell`` tool that POSTs to
+    ``/api/social/notebook_cell/{nb}:{cell}/comments`` with
+    ``category=review`` and an optional ``as_agent`` slug.  Self-
+    gates on ``POINTLESSQL_NOTEBOOK_ID`` (the env-var seam wired
+    in Phase 105.6 for agent-presence broadcast) so SQL-chat
+    sessions never see it.  The decision (``approved`` /
+    ``changes-requested`` / ``commented``) is prepended to the
+    body as a deterministic prefix line that the Wave-D
+    ``cellThread`` UI renderer already extracts back into the
+    badge — no schema change, no UI work.  ``agent_presence``
+    pre/post broadcasts wrap the call so reviewers show up on the
+    co-edit peer rail while the review is in flight.
+  - 3 new PointlesSQL pytest (happy-path with agent envelope,
+    non-principal 403, unknown-slug 404), 7 new plugin pytest
+    (gating, schema validation, decision enum, URL + body shape,
+    ``as_agent`` query-param threading, ``X-Agent-Run-Id`` header).
+  - Asset 0.1.0rc83 → 0.1.0rc84.
+
 - **Phase 100 + 103 + 104 status flip in ROADMAP (2026-05-21).**
   No new code — these three phases were already closed by Wave-D
   in-flight commits (``e91da74`` share secret-scrub + iframe-embed;

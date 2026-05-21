@@ -147,6 +147,104 @@ async def test_notebook_cell_review_category_round_trip(
 
 
 @pytest.mark.asyncio
+async def test_notebook_cell_comment_as_agent_principal_ok(
+    admin_client: httpx.AsyncClient,
+) -> None:
+    """Phase 101 closure — ``?as_agent=`` on the polymorphic POST.
+
+    The polymorphic comment POST previously dropped ``as_agent`` for
+    non-DP kinds (silent ignore).  Closure widens the Phase 76.5
+    speak-as-agent envelope to every kind, so cell-level review
+    decisions authored via ``pql_review_cell`` carry the agent chip
+    on the rendered review badge.
+    """
+    factory = app.state.session_factory
+    principal_id: int
+    from sqlalchemy import select
+
+    from pointlessql.models.auth import User as _User
+
+    with factory() as session:
+        principal_id = int(
+            session.execute(
+                select(_User.id).where(_User.email == "test@test.com")
+            ).scalar_one()
+        )
+
+    create = await admin_client.post(
+        "/api/agents",
+        json={
+            "display_name": "Cell Reviewer Bot",
+            "principal_user_id": principal_id,
+        },
+    )
+    assert create.status_code == 200, create.text
+    slug = create.json()["slug"]
+
+    ref = _nb_cell_ref()
+    res = await admin_client.post(
+        f"/api/social/notebook_cell/{ref}/comments?as_agent={slug}",
+        json={
+            "body_md": "review-decision: approved\n\nLGTM",
+            "category": "review",
+        },
+    )
+    assert res.status_code == 200, res.text
+    payload = res.json()
+    assert payload["category"] == "review"
+    assert payload["agent"] is not None
+    assert payload["agent"]["slug"] == slug
+    assert payload["author"]["user_id"] == principal_id
+
+
+@pytest.mark.asyncio
+async def test_notebook_cell_comment_as_agent_non_principal_rejected(
+    admin_client: httpx.AsyncClient,
+    non_admin_client: httpx.AsyncClient,
+) -> None:
+    """A different user cannot speak as another user's agent on a cell."""
+    factory = app.state.session_factory
+    from sqlalchemy import select
+
+    from pointlessql.models.auth import User as _User
+
+    with factory() as session:
+        principal_id = int(
+            session.execute(
+                select(_User.id).where(_User.email == "test@test.com")
+            ).scalar_one()
+        )
+    create = await admin_client.post(
+        "/api/agents",
+        json={
+            "display_name": "Owner Bot",
+            "principal_user_id": principal_id,
+        },
+    )
+    slug = create.json()["slug"]
+
+    ref = _nb_cell_ref()
+    res = await non_admin_client.post(
+        f"/api/social/notebook_cell/{ref}/comments?as_agent={slug}",
+        json={"body_md": "trying to impersonate", "category": "review"},
+    )
+    assert res.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_notebook_cell_comment_unknown_agent_404(
+    admin_client: httpx.AsyncClient,
+) -> None:
+    """Unknown ``?as_agent=`` slug returns 404 on cell comments."""
+    ref = _nb_cell_ref()
+    res = await admin_client.post(
+        f"/api/social/notebook_cell/{ref}/comments?as_agent=ghost-bot",
+        json={"body_md": "no agent here", "category": "review"},
+    )
+    assert res.status_code == 404
+
+
+@pytest.mark.asyncio
 async def test_notebook_cell_follow_round_trip(
     admin_client: httpx.AsyncClient,
 ) -> None:

@@ -15,6 +15,9 @@ from fastapi import HTTPException, Request
 from sqlalchemy import select
 
 from pointlessql.api._social_serializers import agent_payload
+from pointlessql.api.data_products_routes._shared import (
+    resolve_agent_for_principal,
+)
 from pointlessql.api.dependencies import (
     get_user,
     require_user,
@@ -163,7 +166,11 @@ async def list_polymorphic_comments(
 
 
 async def post_polymorphic_comment(
-    kind: str, ref: str, request: Request
+    kind: str,
+    ref: str,
+    request: Request,
+    *,
+    as_agent: str | None = None,
 ) -> dict[str, Any]:
     """Create a comment on the polymorphic entity.
 
@@ -174,18 +181,36 @@ async def post_polymorphic_comment(
         kind: Entity kind discriminator.
         ref: Opaque entity reference within *kind*.
         request: Incoming FastAPI request.
+        as_agent: Optional agent slug — when set, the caller posts
+            *on behalf of* that agent and ``author_agent_id`` lands
+            on the row.  Phase 101 review-loop closure: ungated the
+            Phase 76.5 DP-only flow so cell-level review decisions
+            authored by ``hermes`` plugin (and other notebook
+            entities) carry the same presentation-layer envelope.
+            The principal-or-admin gate in
+            :func:`resolve_agent_for_principal` still applies.
 
     Returns:
         Serialised comment row.
 
     Raises:
-        HTTPException: 400 on empty body, missing parent,
-            unknown category, or over-deep nesting.
+        HTTPException: 400 on empty body, missing parent, unknown
+            category, or over-deep nesting; 404 when ``as_agent``
+            slug does not resolve.  Indirect: also raised inside
+            :func:`resolve_agent_for_principal` for unauthorised
+            ``as_agent`` callers (surfaces as 403 via the global
+            handler).
     """
     require_user(request)
     user = get_user(request)
     workspace_id, target_id = resolve_target_id(request, kind, ref)
     factory = request.app.state.session_factory
+
+    author_agent_id: int | None = None
+    if as_agent is not None:
+        author_agent_id = resolve_agent_for_principal(
+            factory, workspace_id=workspace_id, slug=as_agent, user=user
+        )
 
     body = await request.json()
     body_md = (body.get("body_md") or "").strip()
@@ -247,7 +272,7 @@ async def post_polymorphic_comment(
             social_target_id=target_id,
             parent_comment_id=parent_comment_id,
             author_user_id=user["id"],
-            author_agent_id=None,
+            author_agent_id=author_agent_id,
             body_md=body_md,
             mentioned_user_ids_json=json.dumps(mention_ids),
             category=effective_category,
@@ -262,6 +287,11 @@ async def post_polymorphic_comment(
         author_row = session.get(User, comment.author_user_id)
         author_email = author_row.email if author_row else None
         author_display = author_row.display_name if author_row else None
+        agent_envelope: dict[str, Any] | None = None
+        if author_agent_id is not None:
+            agent_row = session.get(Agent, author_agent_id)
+            if agent_row is not None:
+                agent_envelope = agent_payload(agent_row)
 
     mirror_social_to_audit(
         factory,
@@ -318,6 +348,7 @@ async def post_polymorphic_comment(
         author_email=author_email,
         author_display_name=author_display,
         body_md_resolved=resolve_citations(body_md, factory, workspace_id),
+        agent=agent_envelope,
         reactions=[
             {"emoji": e, "count": 0, "has_current_user_reacted": False}
             for e in ALLOWED_EMOJI

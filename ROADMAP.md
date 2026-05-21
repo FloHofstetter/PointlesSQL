@@ -2100,7 +2100,7 @@ PointlesSQL
 │   │     in the auth middleware's ``PUBLIC_PREFIXES`` allowlist
 │   │     so unauthenticated iframes resolve without a redirect.
 │   │
-│   ├── Phase 101 — Agent-co-authored cells + Reviewer-per-cell   ⏳ partial
+│   ├── Phase 101 — Agent-co-authored cells + Reviewer-per-cell   ✅ done 2026-05-22
 │   │     Per-cell attribution backbone (Phase 101) shipped 2026-05-20:
 │   │     new ``NotebookCellAuthorship`` ORM + migration
 │   │     ``805d36938963``, 1:1 with :class:`NotebookCellIdentity`.
@@ -2142,12 +2142,22 @@ PointlesSQL
 │   │     last edit by <saver>" on the chip.  One new pytest (16
 │   │     total).
 │   │
-│   │     **Still deferred:**
-│   │     * **Reviewer-per-cell flow** — the existing polymorphic
-│   │       comment system (``DataProductComment`` already carries
-│   │       ``author_agent_id``) already supports it; the dedicated
-│   │       "review this cell" UI affordance + reviewer-agent tool
-│   │       both land in a follow-up.
+│   │     **Reviewer-per-cell flow closed 2026-05-22 (asset 0.1.0rc84):**
+│   │     The polymorphic ``POST /api/social/{kind}/{ref}/comments``
+│   │     handler now honours ``?as_agent=<slug>`` for every entity
+│   │     kind (was Phase-76.5 DP-only).  Cell-level review decisions
+│   │     authored via the new ``pql_review_cell`` plugin tool carry
+│   │     the Phase 76.5 presentation envelope into the row — the
+│   │     review badge in the cell thread renders "decision by agent
+│   │     X on behalf of <principal>" with the existing principal-or-
+│   │     admin gate intact.  ``pql_review_cell`` self-gates on
+│   │     ``POINTLESSQL_NOTEBOOK_ID`` (the editor-chat env-var seam
+│   │     wired in Phase 105.6), so SQL chat sessions never see it.
+│   │     The decision is prepended as a deterministic prefix line
+│   │     (``review-decision: approved`` / ``changes-requested`` /
+│   │     ``commented``) that the Wave-D ``cellThread`` renderer
+│   │     already extracts back into the badge.  3 new PointlesSQL
+│   │     pytest + 7 new plugin pytest; no UI change needed.
 │   │
 │   ├── Phase 102 — Branch-aware notebooks                        ⏳ partial
 │   │     Backend shipped 2026-05-20.  New
