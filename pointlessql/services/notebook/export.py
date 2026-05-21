@@ -150,14 +150,51 @@ _HTML_HEADER = """\
     margin-bottom: 2rem;
   }}
   .pql-cell {{
-    border-left: 3px solid var(--pql-border);
-    padding: 0.5rem 0.75rem 0.5rem 1rem;
+    border: 1px solid var(--pql-border);
+    border-radius: 8px;
     margin: 0 0 1.25rem 0;
     page-break-inside: avoid;
+    overflow: hidden;
+    background: var(--pql-bg);
   }}
-  .pql-cell--code {{ border-left-color: var(--pql-code-fg); }}
-  .pql-cell--sql {{ border-left-color: var(--pql-sql-fg); }}
-  .pql-cell--markdown {{ border-left: none; padding-left: 0; }}
+  .pql-cell--markdown {{ border: none; background: transparent; }}
+  .pql-cell__head {{
+    display: flex; align-items: center; gap: 0.5rem;
+    padding: 0.4rem 0.75rem;
+    background: var(--pql-bg-elev);
+    border-bottom: 1px solid var(--pql-border);
+    font-size: 0.78rem;
+  }}
+  .pql-cell--markdown .pql-cell__head {{ display: none; }}
+  .pql-cell__type-chip {{
+    display: inline-block;
+    padding: 0.05rem 0.5rem;
+    border-radius: 999px;
+    font-weight: 600;
+    font-size: 0.72rem;
+    letter-spacing: 0.02em;
+    background: var(--pql-bg-tertiary);
+    color: var(--pql-text);
+    border: 1px solid var(--pql-border);
+  }}
+  .pql-cell__type-chip--code {{ background: rgba(127, 177, 255, 0.18); color: var(--pql-code-fg); border-color: var(--pql-code-fg); }}
+  .pql-cell__type-chip--sql  {{ background: rgba(192, 132, 252, 0.18); color: var(--pql-sql-fg);  border-color: var(--pql-sql-fg); }}
+  .pql-cell__hash {{
+    color: var(--pql-text-muted); font-size: 0.72rem;
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  }}
+  .pql-cell__out-count {{
+    margin-left: auto;
+    color: var(--pql-text-muted);
+    font-size: 0.72rem;
+  }}
+  .pql-cell__body {{ padding: 0.75rem; }}
+  .pql-cell--markdown .pql-cell__body {{ padding: 0; }}
+  .pql-cell__outputs {{
+    padding: 0.5rem 0.75rem;
+    border-top: 1px dashed var(--pql-border);
+    background: var(--pql-bg);
+  }}
   pre {{
     background: var(--pql-bg-elev);
     border: 1px solid var(--pql-border);
@@ -314,6 +351,14 @@ def _render_output_frame(frame: dict[str, Any]) -> str:
     return f'<div class="{kind_class}">{body}</div>'
 
 
+_CELL_TYPE_LABEL: dict[str, str] = {
+    "code": "Python",
+    "sql": "SQL",
+    "markdown": "Markdown",
+    "raw": "Raw",
+}
+
+
 def render_notebook_body_html(
     *,
     cells: list[dict[str, Any]],
@@ -327,6 +372,13 @@ def render_notebook_body_html(
     that brings its own theme + chrome (the public share viewer does
     this so it can reuse the main app's base.css palette instead of
     duplicating an offline-friendly inline copy).
+
+    Each cell renders as a small card with a header strip carrying the
+    cell-type chip + short hash + an output count, matching the
+    Databricks-style "cell-card with toolbar" layout the in-app editor
+    uses.  The chip is the same ``Markdown / Python / SQL`` set the
+    editor's cell-type dropdown exposes, so a reader switching between
+    the share view and the editor sees consistent labels.
 
     Args:
         cells: One dict per cell — same shape as
@@ -342,14 +394,36 @@ def render_notebook_body_html(
         cell_type = cell.get("cell_type") or "code"
         content_hash = cell.get("content_hash") or ""
         source = cell.get("source") or ""
+        type_label = _CELL_TYPE_LABEL.get(cell_type, cell_type.title())
+        frames = by_cell.get(content_hash, [])
         wrap_class = f"pql-cell pql-cell--{cell_type}"
         pieces.append(f'<div class="{wrap_class}">')
+        pieces.append('<div class="pql-cell__head">')
+        pieces.append(
+            f'<span class="pql-cell__type-chip pql-cell__type-chip--{cell_type}">'
+            f"{_html.escape(type_label)}</span>"
+        )
+        if content_hash:
+            pieces.append(
+                f'<code class="pql-cell__hash" title="{_html.escape(content_hash)}">'
+                f"{_html.escape(content_hash[:8])}</code>"
+            )
+        if frames:
+            pieces.append(
+                f'<span class="pql-cell__out-count">{len(frames)} output{"s" if len(frames) != 1 else ""}</span>'
+            )
+        pieces.append("</div>")
+        pieces.append('<div class="pql-cell__body">')
         if cell_type == "markdown":
             pieces.append(render_service.render_markdown_source(source))
         else:
             pieces.append(_render_cell_source(source))
-        for frame in by_cell.get(content_hash, []):
-            pieces.append(_render_output_frame(frame))
+        pieces.append("</div>")
+        if frames:
+            pieces.append('<div class="pql-cell__outputs">')
+            for frame in frames:
+                pieces.append(_render_output_frame(frame))
+            pieces.append("</div>")
         pieces.append("</div>")
     return "\n".join(pieces)
 

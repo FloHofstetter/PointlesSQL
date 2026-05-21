@@ -64,6 +64,17 @@
  .pql-public-topbar__actions {
   margin-left: auto; display: flex; align-items: center; gap: 0.5rem;
  }
+ .pql-public-topbar__readonly {
+  display: inline-flex; align-items: center; gap: 0.3rem;
+  margin-left: 0.4rem;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid var(--bs-border-color);
+  background: var(--bs-body-bg);
+  color: var(--bs-secondary-color);
+  font-size: 0.72rem; font-weight: 500;
+ }
+ .pql-public-topbar__readonly .bi { color: var(--bs-secondary-color); }
  .pql-public-main {
   max-width: 960px;
   margin: 0 auto;
@@ -74,28 +85,76 @@
   color: var(--bs-secondary-color);
   font-size: 0.85rem; margin-bottom: 1.5rem;
  }
- {# Cell rendering — uses brand palette tokens declared in base.css so
-    light/dark mode swap is automatic.  Mirrors the inline-export
-    styles from ``services/notebook/export.py`` but pulls colours from
-    the live CSS variables instead of duplicating per-mode literals. #}
+ {# Cell-card rendering — matches the in-app editor's "card with
+    header strip" look so the share view feels like the read-only
+    twin of the editor it came from.  All colours come from the brand
+    palette in base.css so dark/light switching is automatic. #}
  .pql-public-main .pql-cell {
-  border-left: 3px solid var(--bs-border-color);
-  padding: 0.5rem 0.75rem 0.5rem 1rem;
-  margin: 0 0 1.25rem 0;
+  border: 1px solid var(--bs-border-color);
+  border-radius: 8px;
+  margin: 0 0 1rem 0;
+  background: var(--bs-body-bg);
+  overflow: hidden;
  }
- .pql-public-main .pql-cell--code { border-left-color: var(--pql-color-info-fg); }
- .pql-public-main .pql-cell--sql  { border-left-color: var(--pql-color-warning-fg); }
- .pql-public-main .pql-cell--markdown { border-left: none; padding-left: 0; }
- .pql-public-main pre {
+ .pql-public-main .pql-cell--markdown {
+  border: none; background: transparent; border-radius: 0;
+ }
+ .pql-public-main .pql-cell__head {
+  display: flex; align-items: center; gap: 0.5rem;
+  padding: 0.4rem 0.75rem;
+  background: var(--bs-tertiary-bg);
+  border-bottom: 1px solid var(--bs-border-color);
+  font-size: 0.78rem;
+ }
+ .pql-public-main .pql-cell--markdown .pql-cell__head { display: none; }
+ .pql-public-main .pql-cell__type-chip {
+  display: inline-block;
+  padding: 0.05rem 0.5rem;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
+  background: var(--bs-secondary-bg);
+  color: var(--bs-body-color);
+  border: 1px solid var(--bs-border-color);
+ }
+ .pql-public-main .pql-cell__type-chip--code {
+  background: var(--pql-color-info-bg);
+  color: var(--pql-color-info-fg);
+  border-color: var(--pql-color-info-fg);
+ }
+ .pql-public-main .pql-cell__type-chip--sql {
+  background: var(--pql-color-warning-bg);
+  color: var(--pql-color-warning-fg);
+  border-color: var(--pql-color-warning-fg);
+ }
+ .pql-public-main .pql-cell__hash {
+  color: var(--bs-secondary-color); font-size: 0.72rem;
+  font-family: var(--bs-font-monospace);
+ }
+ .pql-public-main .pql-cell__out-count {
+  margin-left: auto;
+  color: var(--bs-secondary-color);
+  font-size: 0.72rem;
+ }
+ .pql-public-main .pql-cell__body { padding: 0.75rem; }
+ .pql-public-main .pql-cell--markdown .pql-cell__body { padding: 0; }
+ .pql-public-main .pql-cell__outputs {
+  padding: 0.5rem 0.75rem;
+  border-top: 1px dashed var(--bs-border-color);
+  background: var(--bs-body-bg);
+ }
+ .pql-public-main .pql-cell__body pre {
   background: var(--bs-tertiary-bg);
   border: 1px solid var(--bs-border-color);
   border-radius: 6px;
-  padding: 0.75rem; overflow: auto;
+  padding: 0.6rem 0.75rem; overflow: auto; margin: 0;
   font-family: var(--bs-font-monospace);
-  font-size: 0.875rem;
+  font-size: 0.85rem;
   color: var(--bs-body-color);
  }
- .pql-public-main .pql-output { margin-top: 0.5rem; padding: 0.5rem 0; }
+ .pql-public-main .pql-output { margin-top: 0.25rem; }
+ .pql-public-main .pql-output:first-child { margin-top: 0; }
  .pql-public-main .pql-output--stream-stderr pre {
   background: var(--pql-color-warning-bg);
   border-color: var(--pql-color-warning-fg);
@@ -112,6 +171,29 @@
   color: var(--bs-body-color);
  }
  .pql-public-main th { background: var(--bs-tertiary-bg); }
+ {# Status-bar footer mirrors the in-app footer (workspace + service
+    pills) so the share view feels like a public, read-only slice of
+    the real product. #}
+ .pql-public-footer {
+  display: flex; align-items: center; gap: 0.75rem;
+  padding: 0.5rem 1rem;
+  background: var(--bs-tertiary-bg);
+  border-top: 1px solid var(--bs-border-color);
+  font-size: 0.75rem;
+  color: var(--bs-secondary-color);
+  margin-top: 2rem;
+ }
+ .pql-public-footer__pill {
+  display: inline-flex; align-items: center; gap: 0.3rem;
+  padding: 0.1rem 0.5rem;
+  background: var(--bs-body-bg);
+  border: 1px solid var(--bs-border-color);
+  border-radius: 999px;
+ }
+ .pql-public-footer__pill .bi { color: var(--pql-color-accent, #76b900); }
+ .pql-public-footer__spacer { flex: 1; }
+ .pql-public-footer a { color: var(--pql-color-accent, #76b900); text-decoration: none; }
+ .pql-public-footer a:hover { text-decoration: underline; }
  {# Compact mode (iframe embeds) — no topbar, tighter outer padding. #}
  body.pql-public--compact .pql-public-topbar { display: none; }
  body.pql-public--compact .pql-public-main { padding: 1rem 1.25rem; }
@@ -128,6 +210,11 @@
  </a>
  <span class="pql-public-topbar__sep">·</span>
  <span class="pql-public-topbar__title">{% block topbar_title %}shared notebook{% endblock %}</span>
+ <span class="pql-public-topbar__readonly"
+       title="This is a read-only public share">
+  <i class="bi bi-eye" aria-hidden="true"></i>
+  <span>Read-only</span>
+ </span>
  <div class="pql-public-topbar__actions">
   {% block topbar_actions %}{% endblock %}
   <button type="button"
@@ -142,5 +229,22 @@
 <main class="pql-public-main">
 {% block content %}{% endblock %}
 </main>
+{% if not compact %}
+<footer class="pql-public-footer">
+ <span class="pql-public-footer__pill">
+  <i class="bi bi-database" aria-hidden="true"></i>
+  PointlesSQL
+ </span>
+ <span class="pql-public-footer__pill" title="Public share — secret-redacted on the server">
+  <i class="bi bi-shield-check" aria-hidden="true"></i>
+  scrubbed
+ </span>
+ <span class="pql-public-footer__spacer"></span>
+ <a href="https://github.com/FloHofstetter/PointlesSQL"
+    target="_blank" rel="noopener">
+  github.com/FloHofstetter/PointlesSQL
+ </a>
+</footer>
+{% endif %}
 </body>
 </html>
