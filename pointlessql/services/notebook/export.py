@@ -314,6 +314,46 @@ def _render_output_frame(frame: dict[str, Any]) -> str:
     return f'<div class="{kind_class}">{body}</div>'
 
 
+def render_notebook_body_html(
+    *,
+    cells: list[dict[str, Any]],
+    outputs: list[dict[str, Any]],
+) -> str:
+    """Render only the inner cells + outputs as an HTML fragment.
+
+    Returns the same per-cell markup as :func:`render_notebook_html`
+    but without the surrounding ``<!DOCTYPE>`` / ``<head>`` / inline
+    ``<style>`` envelope, so it can be slotted into a Jinja template
+    that brings its own theme + chrome (the public share viewer does
+    this so it can reuse the main app's base.css palette instead of
+    duplicating an offline-friendly inline copy).
+
+    Args:
+        cells: One dict per cell — same shape as
+            :func:`render_notebook_html`.
+        outputs: ``notebook_outputs`` rows.
+
+    Returns:
+        HTML fragment (no top-level wrapper).
+    """
+    pieces: list[str] = []
+    by_cell = _latest_outputs_for(outputs)
+    for cell in cells:
+        cell_type = cell.get("cell_type") or "code"
+        content_hash = cell.get("content_hash") or ""
+        source = cell.get("source") or ""
+        wrap_class = f"pql-cell pql-cell--{cell_type}"
+        pieces.append(f'<div class="{wrap_class}">')
+        if cell_type == "markdown":
+            pieces.append(render_service.render_markdown_source(source))
+        else:
+            pieces.append(_render_cell_source(source))
+        for frame in by_cell.get(content_hash, []):
+            pieces.append(_render_output_frame(frame))
+        pieces.append("</div>")
+    return "\n".join(pieces)
+
+
 def render_notebook_html(
     *,
     title: str,
@@ -348,20 +388,9 @@ def render_notebook_html(
             cell_count=len(cells),
         )
     ]
-    by_cell = _latest_outputs_for(outputs)
-    for cell in cells:
-        cell_type = cell.get("cell_type") or "code"
-        content_hash = cell.get("content_hash") or ""
-        source = cell.get("source") or ""
-        wrap_class = f"pql-cell pql-cell--{cell_type}"
-        pieces.append(f'<div class="{wrap_class}">')
-        if cell_type == "markdown":
-            pieces.append(render_service.render_markdown_source(source))
-        else:
-            pieces.append(_render_cell_source(source))
-        for frame in by_cell.get(content_hash, []):
-            pieces.append(_render_output_frame(frame))
-        pieces.append("</div>")
+    pieces.append(
+        render_notebook_body_html(cells=cells, outputs=outputs)
+    )
     pieces.append(_HTML_FOOTER)
     return "\n".join(pieces)
 
@@ -403,4 +432,8 @@ def render_notebook_pdf(
     return buf.getvalue()
 
 
-__all__ = ["render_notebook_html", "render_notebook_pdf"]
+__all__ = [
+    "render_notebook_body_html",
+    "render_notebook_html",
+    "render_notebook_pdf",
+]

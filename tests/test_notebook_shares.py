@@ -125,7 +125,8 @@ async def test_api_create_dashboard_share(
     viewed = await admin_client.get(
         f"/share/notebook/{create.json()['share_uuid']}"
     )
-    assert "DASHBOARD" in viewed.text
+    assert "Dashboard" in viewed.text
+    assert "dashboard_mode" not in viewed.text  # template flag, not output
 
 
 async def test_api_revoke_share_returns_410(
@@ -234,7 +235,14 @@ async def test_embed_route_returns_same_body_as_share_route(
     embed = await admin_client.get(f"/embed/notebook_share/{share_uuid}")
     assert embed.status_code == 200
     assert direct.status_code == 200
-    assert embed.text == direct.text
+    # Same inner notebook body; outer chrome differs (embed suppresses the
+    # brand topbar via the ``pql-public--compact`` class on ``<body>``).
+    assert '<body class="pql-public--compact">' in embed.text
+    assert '<body class="pql-public--compact">' not in direct.text
+    assert '<body>' in direct.text
+    # The notebook body fragment (cells + outputs) is identical in both.
+    for marker in ('class="pql-cell pql-cell--code"', 'class="pql-cell pql-cell--markdown"'):
+        assert (marker in direct.text) == (marker in embed.text)
 
 
 async def test_api_list_shares_includes_revoked(

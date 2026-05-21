@@ -22,6 +22,7 @@ from typing import Any
 
 from fastapi import APIRouter, Body, Query, Request
 from fastapi.responses import HTMLResponse, JSONResponse, Response
+from fastapi.templating import Jinja2Templates
 
 from pointlessql.api.dependencies import require_user
 from pointlessql.api.notebooks_routes._shared import get_or_create_notebook_uuid
@@ -220,16 +221,21 @@ async def api_revoke_share(
     return JSONResponse({"revoked": removed})
 
 
-@router.get("/share/notebook/{share_uuid}")
-async def public_share_view(
-    request: Request, share_uuid: str
+async def _render_share(
+    request: Request, share_uuid: str, *, compact: bool
 ) -> Response:
-    """Render the share publicly (no auth).
+    """Common body of :func:`public_share_view` + :func:`public_share_embed`.
 
-    Resolves the row, picks the revision or live source, then hands
-    off to the export / dashboard render pipeline.  Returns 410 Gone
-    for revoked / expired shares so external link-checkers can drop
-    them automatically.
+    Resolves the row, picks the revision or live source, scrubs outputs,
+    then renders the cells fragment into the stripped-down public Jinja
+    layout (``base_public.html`` + ``notebook_share_public.html``).  The
+    layout brings its own brand topbar so the share view feels like part
+    of PointlesSQL instead of a context-free standalone export.  The
+    ``compact`` flag suppresses the topbar for iframe embeds where the
+    surrounding page already provides chrome.
+
+    Returns ``410 Gone`` for revoked / expired shares + missing assets so
+    external link-checkers can drop dead links automatically.
     """
     factory = request.app.state.session_factory
     settings: Settings = request.app.state.settings
@@ -289,21 +295,58 @@ async def public_share_view(
             )
             dashboard = share.dashboard_mode
 
-    # Phase 100 Wave-D — secret-scrub before serving.  Public shares
-    # are read by anyone with the UUID; aggressive redaction matches
-    # the principle "missed-secret is worse than false-positive".
     scrubbed_outputs = notebook_shares_service.scrub_outputs(outputs)
     if dashboard:
-        body = notebook_shares_service.render_dashboard_html(
-            title=title, cells=cells, outputs=scrubbed_outputs
-        )
+        filtered_cells: list[dict[str, Any]] = []
+        relevant_hashes = {c.get("content_hash") for c in cells}
+        for cell in cells:
+            if (cell.get("cell_type") or "code") == "markdown":
+                filtered_cells.append(cell)
+            else:
+                filtered_cells.append(
+                    {
+                        "content_hash": cell.get("content_hash") or "",
+                        "cell_type": "markdown",
+                        "source": "",
+                    }
+                )
+        scrubbed_outputs = [
+            o for o in scrubbed_outputs if o.get("content_hash") in relevant_hashes
+        ]
+        cells_for_render = filtered_cells
     else:
-        body = notebook_export_service.render_notebook_html(
-            title=title, cells=cells, outputs=scrubbed_outputs
-        )
-    # The public share viewer always serves text/html; never set an
-    # attachment header so the browser renders inline.
-    return HTMLResponse(content=body)
+        cells_for_render = cells
+
+    body_html = notebook_export_service.render_notebook_body_html(
+        cells=cells_for_render, outputs=scrubbed_outputs
+    )
+    import datetime as _dt
+
+    exported_at = _dt.datetime.now(_dt.UTC).strftime("%Y-%m-%d %H:%M UTC")
+    templates: Jinja2Templates = request.app.state.templates
+    return templates.TemplateResponse(
+        request,
+        "pages/notebook_share_public.html",
+        {
+            "title": title,
+            "exported_at": exported_at,
+            "cell_count": len(cells_for_render),
+            "body_html": body_html,
+            "dashboard_mode": bool(dashboard),
+            "compact": compact,
+        },
+    )
+
+
+@router.get("/share/notebook/{share_uuid}")
+async def public_share_view(
+    request: Request, share_uuid: str
+) -> Response:
+    """Render the share publicly (no auth).
+
+    See :func:`_render_share` for the shared resolution + render logic.
+    """
+    return await _render_share(request, share_uuid, compact=False)
 
 
 @router.get("/embed/notebook_share/{share_uuid}")
@@ -312,9 +355,7 @@ async def public_share_embed(
 ) -> Response:
     """Iframe-friendly variant of :func:`public_share_view`.
 
-    Same content + same secret-scrub; reuses :func:`public_share_view`
-    so the two surfaces never drift.  Lives under ``/embed/`` so
-    external docs can frame it cleanly and ops can audit "what's
-    being embedded" without grepping ``/share/``.
+    Same content + same secret-scrub; ``compact=True`` hides the brand
+    topbar so the iframe parent owns the chrome.
     """
-    return await public_share_view(request, share_uuid)
+    return await _render_share(request, share_uuid, compact=True)

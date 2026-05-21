@@ -1,0 +1,32 @@
+{% extends "base_public.html" %}
+
+{# Public notebook share viewer (Phase 100 Wave-D follow-up).
+
+   Slots the pre-rendered cells/outputs fragment produced by
+   ``render_notebook_body_html`` into the stripped-down public
+   layout.  The fragment is already HTML-safe (server-side render,
+   markdown via the project's renderer, output frames via the
+   shared output_rendering pipeline + secret-scrub), so it's marked
+   ``|safe`` at the slot. #}
+
+{% block title %}{{ title }} · PointlesSQL{% endblock %}
+{% block topbar_title %}{{ title }}{% endblock %}
+
+{% block topbar_actions %}
+{% if dashboard_mode %}
+<span class="badge text-bg-success-subtle border" title="Dashboard mode — code cells hidden">
+ <i class="bi bi-bar-chart-fill me-1" aria-hidden="true"></i>Dashboard
+</span>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<h1 class="h3 mb-1">{{ title }}</h1>
+<div class="pql-public-meta">
+ Exported {{ exported_at }} · {{ cell_count }} cells
+ {% if dashboard_mode %}
+  · <span class="text-success">code cells hidden</span>
+ {% endif %}
+</div>
+{{ body_html|safe }}
+{% endblock %}
