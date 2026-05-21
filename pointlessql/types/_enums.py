@@ -63,6 +63,7 @@ class OpName(StrEnum):
     ALTER_TABLE = "alter_table"
     VECTOR_INDEX = "vector_index"
     VECTOR_SEARCH = "vector_search"
+    PIN_FACT = "pin_fact"
 
 
 class ReadKind(StrEnum):

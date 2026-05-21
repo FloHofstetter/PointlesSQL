@@ -238,6 +238,33 @@ def _notebook_cell_url(entity_ref: str) -> str:
     return f"/notebooks/uuid/{notebook_uuid}?cell={cell_uuid}"
 
 
+def _notebook_revision_url(entity_ref: str) -> str:
+    """Map a fact-uuid to the library facts detail URL.
+
+    Phase 97 Rest — pinned facts (whole-revision flavour) are
+    addressed by their 36-char ``fact_uuid`` so the social anchor
+    deep-links into the workspace library at ``/library/facts/{uuid}``.
+    Falls back to the library index on malformed refs so audit-log
+    rendering never crashes.
+    """
+    if len(entity_ref) != 36 or entity_ref.count("-") != 4:
+        return "/library/facts"
+    return f"/library/facts/{entity_ref}"
+
+
+def _notebook_cell_output_url(entity_ref: str) -> str:
+    """Map a cell-output fact uuid to its library detail URL.
+
+    Phase 97 Rest — cell-output facts share the library detail page
+    with whole-revision facts; the page itself decides whether to
+    render the result snapshot.  Same shape as
+    :func:`_notebook_revision_url`.
+    """
+    if len(entity_ref) != 36 or entity_ref.count("-") != 4:
+        return "/library/facts"
+    return f"/library/facts/{entity_ref}"
+
+
 def _workspace_url(entity_ref: str) -> str:
     """Map a workspace slug to its landing page URL.
 
@@ -525,6 +552,48 @@ _REGISTRY: dict[str, EntityKindSpec] = {
         label="Notebook cell",
         url_for=_notebook_cell_url,
         audit_target_prefix="notebook_cell",
+        supports_reviews=False,
+        supports_endorsements=False,
+        supports_readme=False,
+        supports_issues=False,
+        supports_stars=False,
+        tab_keys=(
+            "discussion",
+            "followers",
+        ),
+    ),
+    # Phase 97 Rest — pinned-fact anchors point at a whole notebook
+    # revision (``cell_content_hash IS NULL`` on the fact row).  The
+    # entity_ref is the fact's 36-char ``fact_uuid``.  Cells aren't
+    # curated artefacts at this scope (we treat the *fact* itself as
+    # the curated surface), so reviews / endorsements / readmes /
+    # issues / stars are all off — the social affordance is "follow
+    # the workspace's library activity" which lives on the workspace
+    # entity instead.  Discussion + followers still wire so a fact
+    # can collect comments and notify watchers.
+    "notebook_revision": EntityKindSpec(
+        key="notebook_revision",
+        label="Pinned fact",
+        url_for=_notebook_revision_url,
+        audit_target_prefix="notebook_revision",
+        supports_reviews=False,
+        supports_endorsements=False,
+        supports_readme=False,
+        supports_issues=False,
+        supports_stars=False,
+        tab_keys=(
+            "discussion",
+            "followers",
+        ),
+    ),
+    # Phase 97 Rest — cell-output facts use the same library detail
+    # page as whole-revision facts; the differentiating field is
+    # ``cell_content_hash`` on the fact row.  Same capability shape.
+    "notebook_cell_output": EntityKindSpec(
+        key="notebook_cell_output",
+        label="Pinned cell output",
+        url_for=_notebook_cell_output_url,
+        audit_target_prefix="notebook_cell_output",
         supports_reviews=False,
         supports_endorsements=False,
         supports_readme=False,

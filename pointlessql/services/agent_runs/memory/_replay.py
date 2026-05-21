@@ -64,7 +64,18 @@ REPLAYABLE_OPS: frozenset[str] = frozenset(
     {OpName.SQL.value, OpName.SQL_EXPLAIN.value, OpName.AUTOLOAD.value}
 )
 DATA_UNAVAILABLE_OPS: frozenset[str] = frozenset(
-    {OpName.MERGE.value, OpName.WRITE_TABLE.value, OpName.AGGREGATE.value}
+    {
+        OpName.MERGE.value,
+        OpName.WRITE_TABLE.value,
+        OpName.AGGREGATE.value,
+        # Phase 97 pin-to-memory — a fact points at a *specific*
+        # revision UUID + workspace; replaying onto a branch would
+        # either duplicate the pin (same revision, two workspaces)
+        # or silently re-point at a different revision.  Neither is
+        # the right semantic, so the dispatcher records the skip and
+        # the audit trail makes the gap explicit.
+        OpName.PIN_FACT.value,
+    }
 )
 UNSAFE_OPS: frozenset[str] = frozenset(
     {
