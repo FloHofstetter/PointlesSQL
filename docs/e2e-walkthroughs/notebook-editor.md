@@ -1998,5 +1998,26 @@ shows the three matching entries under ``[Unreleased]``.
 
 ### What the replay caught
 
-- (initially empty; bugs discovered here land here with
-  ``BUG-97-XX-XX`` IDs).
+- **BUG-97-X3-01 (fixed in same commit).** First Playwright-MCP
+  replay of Part P found ``/feed`` empty after a real pin: the
+  pin POST returned 201 but ``user_notifications`` stayed empty.
+  Root cause: :func:`fanout_event` resolves followers via
+  ``entity_kind == "dp"`` only — for the new
+  ``notebook_revision`` / ``notebook_cell_output`` kinds the
+  follower set was empty, and the actor-self filter then ran the
+  recipient set down to zero.  Fix: ``_emit_pin_feed_event``
+  resolves the parent notebook's followers
+  (``kind='notebook', ref=notebook_id``) and threads them through
+  ``extra_recipients``.  Verified: a non-admin who follows the
+  notebook now sees the pin in their inbox; admin who pinned is
+  correctly excluded.  Test:
+  ``test_resolve_notebook_followers_pulls_subscribers``.
+- **Note on Playwright eval-click.** Programmatically clicking
+  the inline pin form's submit button via
+  ``mcp__playwright__browser_evaluate`` ``btn.click()`` does
+  *not* fire the Alpine ``@click`` handler.  The pin must go
+  through ``mcp__playwright__browser_click`` (a native
+  Playwright click) or, as we did in this replay, a direct
+  ``POST /api/notebooks/facts`` to validate the backend.  The
+  UI affordance was validated structurally (form opens, fields
+  exist, ``revision-pin-form`` testid renders).

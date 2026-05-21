@@ -263,6 +263,46 @@ async def api_unpin_fact(
     return JSONResponse(envelope)
 
 
+def _resolve_notebook_followers(
+    session_factory: Any,
+    *,
+    workspace_id: int,
+    notebook_id: str,
+) -> list[int]:
+    """Return user-ids subscribed to the parent notebook's social anchor.
+
+    The pin's own entity_kind (``notebook_revision`` /
+    ``notebook_cell_output``) carries an ephemeral fact UUID nobody
+    would follow directly, so :func:`fanout_event` would resolve zero
+    recipients on the polymorphic path.  Recipients should instead
+    come from the notebook-level anchor (Phase 77.6 ``kind='notebook'``)
+    — anyone who follows the notebook hears about its pins.  Returned
+    as ``extra_recipients`` to :func:`fanout_event` so the actor-self
+    filter still applies.
+    """
+    from sqlalchemy import select
+
+    from pointlessql.models.social._social_follow import SocialFollow
+    from pointlessql.models.social._social_target import SocialTarget
+
+    with session_factory() as session:
+        return [
+            int(uid)
+            for (uid,) in session.execute(
+                select(SocialFollow.user_id)
+                .join(
+                    SocialTarget,
+                    SocialTarget.id == SocialFollow.social_target_id,
+                )
+                .where(
+                    SocialFollow.workspace_id == workspace_id,
+                    SocialTarget.entity_kind == "notebook",
+                    SocialTarget.entity_ref == notebook_id,
+                )
+            ).all()
+        ]
+
+
 def _emit_pin_feed_event(
     request: Request,
     *,
@@ -290,9 +330,15 @@ def _emit_pin_feed_event(
             f"notebook ``{notebook_id}``" if notebook_id else "a notebook"
         )
         summary_md = f"Pinned **{title}** from {notebook_hint}"
-        # Pull the path back through the existing revision service so
-        # the source_url could later deep-link into the notebook
-        # editor; for now the library detail page suffices.
+        extra_recipients = (
+            _resolve_notebook_followers(
+                request.app.state.session_factory,
+                workspace_id=workspace_id,
+                notebook_id=notebook_id,
+            )
+            if notebook_id
+            else []
+        )
         fanout_event(
             request.app.state.session_factory,
             event_type="notebook_revision_pinned",
@@ -302,6 +348,7 @@ def _emit_pin_feed_event(
             actor_user_id=actor_user_id,
             source_url=source_url,
             summary_md=summary_md,
+            extra_recipients=extra_recipients or None,
         )
     except Exception:  # noqa: BLE001 — fanout is best-effort
         logger.exception(

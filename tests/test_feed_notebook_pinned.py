@@ -192,3 +192,55 @@ def test_fanout_event_pinned_writes_polymorphic_marker(
         # The renderer-facing envelope reports ``render_kind == "fact"``.
         envelope = row_from_notification(row, fqn_map={}, actor_names={})
         assert envelope["render_kind"] == "fact"
+
+
+def test_resolve_notebook_followers_pulls_subscribers(
+    admin_user_id: int,
+    nonadmin_user_id: int,
+    clean_pin_notifications: None,
+) -> None:
+    """The pin helper looks up notebook-level followers, not pin-level."""
+    del clean_pin_notifications
+    import datetime
+    import uuid
+
+    from pointlessql.api.notebooks_routes.facts import (
+        _resolve_notebook_followers,
+    )
+    from pointlessql.models import Notebook
+    from pointlessql.models.social._social_follow import SocialFollow
+    from pointlessql.services.social import get_or_create_target
+
+    nb_id = str(uuid.uuid4())
+    factory = app.state.session_factory
+    with factory() as session:
+        session.add(
+            Notebook(
+                id=nb_id,
+                workspace_id=1,
+                file_path=f"fanout-test-{nb_id[:8]}.py",
+            )
+        )
+        anchor = get_or_create_target(
+            session,
+            workspace_id=1,
+            kind="notebook",
+            ref=nb_id,
+        )
+        session.add(
+            SocialFollow(
+                workspace_id=1,
+                social_target_id=int(anchor.id),
+                user_id=nonadmin_user_id,
+                created_at=datetime.datetime.now(datetime.UTC),
+            )
+        )
+        session.commit()
+    followers = _resolve_notebook_followers(
+        factory,
+        workspace_id=1,
+        notebook_id=nb_id,
+    )
+    assert nonadmin_user_id in followers
+    # The actor (admin) is *not* in the follower set — admin hasn't followed.
+    assert admin_user_id not in followers
