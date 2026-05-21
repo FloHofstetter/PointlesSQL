@@ -1840,7 +1840,7 @@ PointlesSQL
 │   │     header buttons that pre-fill the chat panel with a
 │   │     templated prompt referencing the focused cell.
 │   │
-│   ├── Phase 97 — Revision history + Diff (+ shoreguard-signing)  ⏳ partial
+│   ├── Phase 97 — Revision history + Diff + Pin-to-memory          ✅ done 2026-05-21
 │   │     Save-snapshots in our own metadata DB (not the on-disk
 │   │     ``.py`` file).  New ``NotebookRevision`` table + migration
 │   │     ``47832b8d57ca``; canonical JSON encoding + SHA-256 in
@@ -1854,23 +1854,58 @@ PointlesSQL
 │   │     payload; ``GET .../diff?left=…&right=…``.  14 new pytest.
 │   │     Asset 0.1.0rc35.  Shipped 2026-05-20.
 │   │
-│   │     **Deferred:**
+│   │     **97.X.1 — Pin-to-memory backend** ✅ shipped 2026-05-21,
+│   │     commit ``36dc878``, asset rc69.  ``notebook_revision_facts``
+│   │     table + migration ``d8f1a3b5c7e9``; ``OpName.PIN_FACT`` in
+│   │     the agent-ops enum; new ``services/notebook/facts.py``
+│   │     primitive idempotent on ``(workspace_id, revision_id,
+│   │     cell_content_hash)`` partial-UNIQUE; four REST endpoints
+│   │     under ``/api/notebooks/facts`` (POST + GET list + GET
+│   │     detail + DELETE soft-unpin); ``pql.facts`` PQL facade with
+│   │     agent env-bridge via ``POINTLESSQL_AGENT_RUN_ID``;
+│   │     ``social_targets.entity_kind`` CHECK widened with two new
+│   │     kinds (``notebook_revision`` + ``notebook_cell_output``)
+│   │     plus matching ``entity_registry`` URL builders; best-effort
+│   │     ``fanout_event(event_type='notebook_revision_pinned', …)``
+│   │     wired so pins land in the Phase-81 inbox.  18 new pytest.
+│   │
+│   │     **97.X.2 — Pin-to-memory UI** ✅ shipped 2026-05-21, commit
+│   │     ``cfaad5c``, asset rc70.  📌 button in the Phase-97
+│   │     revisions panel + cell-header chip (lit
+│   │     ``btn-outline-warning`` when a fact exists) reusing the
+│   │     outer-scope mixin pattern (no nested-x-data trap); new
+│   │     ``frontend/js/notebook/cell_facts.js`` + extension of
+│   │     ``revisions.js``; bulk lookup at ``/api/notebooks/facts/bulk``
+│   │     for per-cell hot-paths; ``/library/facts`` browse page
+│   │     wired through ``library_facts.html`` + Alpine factory in
+│   │     ``bootstrap.js``; cell-output pin auto-snapshots a fresh
+│   │     revision before pinning so the fact always points at a
+│   │     concrete row.  2 new pytest.
+│   │
+│   │     **97.X.3 — Pin feed-card closure** ✅ shipped 2026-05-21,
+│   │     asset rc72.  Dedicated ``render_kind = "fact"`` branch in
+│   │     ``classify_notification`` + SSE ``_classifyEvent`` mirror +
+│   │     new Alpine ``<template x-if="r.render_kind === 'fact'">``
+│   │     block in ``activity_pane.html`` showing
+│   │     ``bi-pin-angle-fill`` + summary text.  5 new pytest
+│   │     covering classify + envelope + e2e fanout + null-actor
+│   │     agent path.  Playwright-MCP playbook extended with Part P
+│   │     in ``notebook-editor.md`` + new ``library-facts.md``.
+│   │
+│   │     **Deferred (genuine blocker):**
 │   │     * **Shoreguard signing** — Phase 97's cryptographic verify
 │   │       leg is paused.  The shoreguard-fresh checkout exposes
 │   │       webhook + OIDC + auth signing helpers but no public
 │   │       "sign-this-revision" API yet; ``signature_alg`` and
-│   │       ``signature`` columns are reserved on the row so a follow-
-│   │       up sprint can populate them once the API ships.  Every
-│   │       snapshot still records its deterministic SHA-256.
-│   │     * **Pin-to-memory** — ``pql.memory`` is the agent-run
-│   │       operations recorder (Phase 90), not a fact registry; the
-│   │       "pin this result" UI affordance needs a fact-shaped
-│   │       memory primitive that does not exist yet.  Logged as a
-│   │       follow-up.
-│   │     * **Monaco diff UI** — backend envelope is ready; the
-│   │       editor's history-panel render is a follow-up (gated by
-│   │       the nested-x-data trap, same reason 98.C's chip render
-│   │       was deferred).
+│   │       ``signature`` columns are reserved on the row so a
+│   │       follow-up sprint can populate them once the API ships.
+│   │       Every snapshot still records its deterministic SHA-256.
+│   │     * **Monaco diff UI** — backend envelope is ready and
+│   │       Wave-D-1 lit up the side-by-side panel; the Monaco
+│   │       editor-mode renderer is a follow-up (gated by the
+│   │       nested-x-data trap, same reason 98.C's chip render was
+│   │       deferred — re-eval once Phase 105 awareness layer lands
+│   │       and the outer-scope mixin pattern is dominant).
 │   │
 │   ├── Phase 98 — DBX-parity quick wins bundle                   ✅ done 2026-05-20
 │   │     Single sprint covering four small DBX-parity items:

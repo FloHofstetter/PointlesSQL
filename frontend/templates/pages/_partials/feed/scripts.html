@@ -216,6 +216,7 @@ window.feedPage = function () {
             if (eventType.startsWith('pointlessql.user.badge_')) return 'badge_award';
             if (eventType.startsWith('pointlessql.issue.')) return 'issue';
             if (eventType.startsWith('pointlessql.branch.')) return 'branch';
+            if (eventType === 'notebook_revision_pinned') return 'fact';
             return 'notification';
         },
 

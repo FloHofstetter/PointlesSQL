@@ -365,6 +365,14 @@
                                                 </div>
                                             </template>
 
+                                            {# Pinned fact — 📌 icon + summary, click follows source_url. #}
+                                            <template x-if="r.render_kind === 'fact'">
+                                                <div class="d-flex align-items-center gap-2">
+                                                    <i class="bi bi-pin-angle-fill text-warning"></i>
+                                                    <span x-text="r.summary_md || 'Pinned a fact'"></span>
+                                                </div>
+                                            </template>
+
                                             {# Generic notification fallback. #}
                                             <template x-if="r.render_kind === 'notification' || !r.render_kind">
                                                 <div class="pql-feed-item__snippet"

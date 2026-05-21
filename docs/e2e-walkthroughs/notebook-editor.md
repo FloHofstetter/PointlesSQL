@@ -1916,3 +1916,87 @@ post-fix renderer's widget branch without manual cache-bust.
  the editor's ``fontSize`` (18 → 14) and Monaco's background
  (``rgb(30, 30, 30)`` → ``rgb(255, 255, 254)``) — confirms the
  per-tab listener picks up cross-tab broadcasts as designed.
+
+## Part P — : pin-to-memory (Phase 97.X.1 / 97.X.2 / 97.X.3)
+
+**Preconditions.**
+
+- ``scratch.py`` open in [/notebook/editor](http://127.0.0.1:8000/notebook/editor)
+  with at least two saved revisions (run + save twice so the
+  revisions panel has rows).
+- Playwright-MCP attached with ``--browser firefox`` per
+  [`CLAUDE.md`](https://github.com/FloHofstetter/PointlesSQL/blob/main/CLAUDE.md)
+  line 220.
+- Asset version is ``rc72`` or higher
+  ([pyproject.toml](https://github.com/FloHofstetter/PointlesSQL/blob/main/pyproject.toml))
+  so the feed renderer carries the ``render_kind === 'fact'``
+  Alpine branch.
+
+**P1 — Revisions panel pin.** Open the revisions panel from the
+toolbar. Pick the latest revision. Click the 📌 button at the
+right edge of that row. Assert: an inline form appears with a
+``Title`` text input + optional ``Description`` textarea + a
+``Pin`` button. Type ``Smoke pin`` in the title; submit. Assert:
+toast ``Pinned`` appears, the row re-renders with a 📌-chip
+beside the timestamp, and ``GET /api/notebooks/facts?...``
+returns the new row at the top of the array.
+
+**P2 — Cell-header chip lights up.** Pin a cell-output: click
+the 📌 icon in any cell's header (it currently renders as a
+``btn-outline-secondary`` since no fact exists for that cell
+hash). Fill the dialog title ``Q3 anomaly``; submit. Assert: the
+button class flips to ``btn-outline-warning`` (the lit state),
+and ``GET /api/notebooks/facts/bulk?cell_content_hashes=<hash>``
+now returns that row indexed under the cell hash.
+
+**P3 — Library browse page.** Navigate to
+[/library/facts](http://127.0.0.1:8000/library/facts). Assert:
+both new facts appear as cards. Click ``Smoke pin``. Assert: the
+URL flips to ``/library/facts/<uuid>`` and the detail block
+shows the revision snapshot + Unpin button. Click ``Unpin``.
+Assert: row gains a strikethrough, the toggle
+``Include unpinned`` exposes/hides it correctly.
+
+**P4 — Feed fan-out + 📌-card branch.** Navigate to
+[/feed?filter=all](http://127.0.0.1:8000/feed?filter=all).
+Assert: a new card appears with class ``bi-pin-angle-fill`` +
+the summary text (matches what the backend wrote) + a click
+target of ``/library/facts/<uuid>``. The ``render_kind`` is
+``"fact"`` (inspect via DevTools on the Alpine ``$data.rows``);
+no console errors during the render. SSE-injected pins from a
+second tab go through ``_classifyEvent`` and pick up the same
+branch live.
+
+**P5 — Phase 97 closure.** Open
+[ROADMAP.md](https://github.com/FloHofstetter/PointlesSQL/blob/main/ROADMAP.md);
+scroll to the Phase 97 node. Assert: marker reads ✅ shipped
+with commit refs for 97.X.1 / 97.X.2 / 97.X.3; the
+``Pin-to-memory`` sub-bullet is closed; the ``Shoreguard
+signing`` sub-bullet is annotated as a genuine blocker waiting
+on the upstream ``sign-revision`` endpoint.
+[CHANGELOG.md](https://github.com/FloHofstetter/PointlesSQL/blob/main/CHANGELOG.md)
+shows the three matching entries under ``[Unreleased]``.
+
+### Files changed
+
+- [pointlessql/api/feed_routes/_serializers.py](https://github.com/FloHofstetter/PointlesSQL/blob/main/pointlessql/api/feed_routes/_serializers.py)
+  — ``classify_notification`` carries the ``notebook_revision_pinned`` →
+  ``"fact"`` mapping; docstring updated.
+- [frontend/templates/pages/_partials/feed/scripts.html](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/templates/pages/_partials/feed/scripts.html)
+  — ``_classifyEvent`` mirror so SSE-pushed rows pick the same
+  branch on the wire.
+- [frontend/templates/pages/_partials/feed/activity_pane.html](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/templates/pages/_partials/feed/activity_pane.html)
+  — new ``<template x-if="r.render_kind === 'fact'">`` block
+  with ``bi-pin-angle-fill`` icon + summary.
+- [tests/test_feed_notebook_pinned.py](https://github.com/FloHofstetter/PointlesSQL/blob/main/tests/test_feed_notebook_pinned.py)
+  — 5 pytest covering classify + row envelope + e2e fanout +
+  null-actor agent path.
+- [pyproject.toml](https://github.com/FloHofstetter/PointlesSQL/blob/main/pyproject.toml)
+  — version ``0.1.0rc71`` → ``0.1.0rc72`` so the relative-import
+  asset-stamping picks up the activity_pane.html + scripts.html
+  diffs.
+
+### What the replay caught
+
+- (initially empty; bugs discovered here land here with
+  ``BUG-97-XX-XX`` IDs).

@@ -6,6 +6,56 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Phase 97 closure — Pin-to-memory shipped end-to-end
+  (2026-05-21).**  Three commits + a feed-card polish flip
+  Phase 97 from ⏳ partial → ✅ done.  Asset 0.1.0rc68 → rc72.
+  - **Phase 97.X.1 (pin-to-memory backend, rc69).** Commit
+    ``36dc878``.  New ``notebook_revision_facts`` table +
+    migration ``d8f1a3b5c7e9``; ``OpName.PIN_FACT`` member +
+    matching CHECK; ``services/notebook/facts.py`` idempotent
+    on ``(workspace_id, revision_id, cell_content_hash)``
+    partial-UNIQUE; four REST endpoints under
+    ``/api/notebooks/facts``; ``pql.facts`` PQL facade with
+    agent env-bridge via ``POINTLESSQL_AGENT_RUN_ID``;
+    ``social_targets.entity_kind`` CHECK widened with
+    ``notebook_revision`` + ``notebook_cell_output``;
+    best-effort ``fanout_event('notebook_revision_pinned', …)``
+    so pins land in the Phase-81 inbox.
+  - **Phase 97.X.2 (pin-to-memory UI, rc70).** Commit
+    ``cfaad5c``.  📌 button in the Phase-97 revisions panel +
+    cell-header chip (lit ``btn-outline-warning`` when a fact
+    exists) via outer-scope mixin (no nested-x-data trap); new
+    ``frontend/js/notebook/cell_facts.js`` + extension of
+    ``revisions.js``; bulk lookup at ``/api/notebooks/facts/bulk``
+    for the per-cell hot-path; ``/library/facts`` browse page
+    + ``library_facts.html`` + Alpine factory in
+    ``bootstrap.js``.
+  - **Phase 97.X.3 (pin feed-card, rc72).** Dedicated
+    ``render_kind = "fact"`` branch in ``classify_notification``
+    + SSE ``_classifyEvent`` mirror + new Alpine
+    ``<template x-if="r.render_kind === 'fact'">`` block in
+    ``activity_pane.html`` with ``bi-pin-angle-fill`` icon + summary.
+    5 new pytest covering classify + envelope + e2e fanout +
+    null-actor agent path.  Playwright-MCP playbook extended
+    with Part P in ``notebook-editor.md`` + new
+    ``library-facts.md``.
+
+- **Phase 105.1 — pycrdt CRDT sidecar backend (2026-05-21).**
+  Commit ``389f023``.  Asset 0.1.0rc70 → rc71.  Adds
+  ``pycrdt>=0.10`` (Y.js-compatible Python binding); new
+  ``notebook_crdt_state`` table + migration ``e9f2b4c6d8a0``
+  with ``y_doc_blob`` LargeBinary + version + compaction
+  timestamps; ``services/notebook/coedit.py`` locks the Y.Doc
+  shape (``cells_order: Array<str>`` + ``cells_text: Map<str,
+  Text>``) and exposes ``get_or_init_ydoc`` / ``apply_update`` /
+  ``encode_state_as_update`` / ``compact`` / ``needs_compaction``
+  for the upcoming Sprint 105.2 WS hub; 11 new pytest covering
+  cold/warm load, cross-replica apply roundtrip, and the
+  size/TTL compaction gates.  The WS endpoint, y-monaco
+  binding, awareness layer, save-barrier, agent presence,
+  multi-tab replay gate, and compaction worker (105.2 – 105.8)
+  remain deferred.
+
 - **Wave-D — every remaining deferred notebook item in one wave
   (2026-05-21).**  Six commits (D-1 → D-6a) closing the punch list
   the Wave-C handoff left open.  Asset 0.1.0rc56 → rc62.

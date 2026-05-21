@@ -78,7 +78,7 @@ def classify_notification(event_type: str) -> str:
 
     Returns:
         One of ``mention``, ``agent_run``, ``badge_award``, ``issue``,
-        ``branch``, ``notification``.
+        ``branch``, ``fact``, ``notification``.
     """
     if not event_type:
         return "notification"
@@ -92,6 +92,8 @@ def classify_notification(event_type: str) -> str:
         return "issue"
     if event_type.startswith("pointlessql.branch."):
         return "branch"
+    if event_type == "notebook_revision_pinned":
+        return "fact"
     return "notification"
 
 
