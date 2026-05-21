@@ -40,6 +40,48 @@
   <div class="alert alert-danger py-1 small mb-2" x-text="revisions.error"></div>
  </template>
 
+ {# Phase 97 Rest — Cell-output pin dialog.  Opens when the user
+    clicks a cell-header 📌 chip on an unpinned cell; the chip in
+    ``installCellFacts`` auto-opens the revisions drawer so the
+    dialog renders here.  Auto-snapshots the notebook so the fact
+    points at a concrete revision UUID before the POST. #}
+ <template x-if="cellFactsDialog.open">
+  <div class="p-2 rounded bg-body-tertiary border mb-2"
+       data-testid="cell-fact-pin-form">
+   <div class="small text-muted mb-1">
+    <i class="bi bi-pin-angle-fill me-1"></i>
+    Pin cell output as fact (cell hash
+    <code x-text="cellFactsDialog.cellContentHash.slice(0, 8)"></code>)
+   </div>
+   <input type="text"
+          class="form-control form-control-sm mb-1"
+          x-model="cellFactsDialog.title"
+          placeholder="Fact title (required)"
+          maxlength="200">
+   <textarea class="form-control form-control-sm mb-1"
+             x-model="cellFactsDialog.description"
+             rows="2"
+             placeholder="Description (Markdown, optional)"></textarea>
+   <template x-if="cellFactsDialog.error">
+    <div class="alert alert-danger py-1 small mb-1"
+         x-text="cellFactsDialog.error"></div>
+   </template>
+   <div class="d-flex gap-1">
+    <button type="button"
+            class="btn btn-sm btn-warning"
+            :disabled="!cellFactsDialog.title || cellFactsDialog.busy"
+            @click="confirmCellFactPin()">
+     <i class="bi bi-pin-angle-fill me-1"></i>
+     <span x-show="!cellFactsDialog.busy">Snapshot + pin</span>
+     <span x-show="cellFactsDialog.busy" x-cloak>Pinning…</span>
+    </button>
+    <button type="button"
+            class="btn btn-sm btn-link"
+            @click="cancelCellFactDialog()">Cancel</button>
+   </div>
+  </div>
+ </template>
+
  <div class="text-muted small mb-2"
       x-show="revisions.selectedLeftUuid && !revisions.selectedRightUuid"
       x-cloak>
@@ -98,7 +140,60 @@
          <code x-text="r.revision_uuid.slice(0, 8)"></code>
         </div>
        </div>
+       {# Phase 97 Rest — per-row 📌 Pin-as-fact button.  Lit yellow
+          when the revision already carries an active whole-revision
+          fact; click then unpins.  Unlit click opens the inline pin
+          form rendered below the list. #}
+       <button type="button"
+               class="btn btn-sm ms-auto"
+               :class="factForRevision(r)
+                       ? 'btn-warning'
+                       : 'btn-outline-warning'"
+               style="--bs-btn-padding-y: .1rem; --bs-btn-padding-x: .35rem;"
+               @click="factForRevision(r)
+                       ? unpinRevisionFact(r)
+                       : openRevisionPinDialog(r.revision_uuid)"
+               data-testid="revision-pin-button"
+               :title="factForRevision(r)
+                       ? `Pinned as: ${factForRevision(r).title}`
+                       : 'Pin this revision as a fact'">
+        <i class="bi bi-pin-angle-fill" aria-hidden="true"></i>
+       </button>
       </div>
+      {# Inline pin-form unfolds in place when this row is the
+         active dialog target.  Lives inside the same list-item so
+         the form stays anchored visually to the source revision. #}
+      <template x-if="revisions.pinDialog.revisionUuid === r.revision_uuid">
+       <div class="mt-2 p-2 rounded bg-body-tertiary border"
+            data-testid="revision-pin-form">
+        <input type="text"
+               class="form-control form-control-sm mb-1"
+               x-model="revisions.pinDialog.title"
+               placeholder="Fact title (required)"
+               maxlength="200">
+        <textarea class="form-control form-control-sm mb-1"
+                  x-model="revisions.pinDialog.description"
+                  rows="2"
+                  placeholder="Description (Markdown, optional)"></textarea>
+        <template x-if="revisions.pinDialog.error">
+         <div class="alert alert-danger py-1 small mb-1"
+              x-text="revisions.pinDialog.error"></div>
+        </template>
+        <div class="d-flex gap-1">
+         <button type="button"
+                 class="btn btn-sm btn-warning"
+                 :disabled="!revisions.pinDialog.title || revisions.pinDialog.busy"
+                 @click="confirmRevisionPin()">
+          <i class="bi bi-pin-angle-fill me-1"></i>
+          <span x-show="!revisions.pinDialog.busy">Pin as fact</span>
+          <span x-show="revisions.pinDialog.busy" x-cloak>Pinning…</span>
+         </button>
+         <button type="button"
+                 class="btn btn-sm btn-link"
+                 @click="cancelRevisionPinDialog()">Cancel</button>
+        </div>
+       </div>
+      </template>
      </li>
     </template>
    </ul>

@@ -112,6 +112,10 @@ export function installPersistence(state) {
       // Phase 98.C Wave-D — refresh per-cell lineage badges so a cell
       // that just ran a write-op surfaces it without a page reload.
       this.loadCellLineageBulk();
+      // Phase 97 Rest — refresh per-cell pinned-fact chips for the
+      // same reason (a cell whose content_hash changes loses its
+      // pin badge and re-aligns to the new hash).
+      this.loadCellFactsBulk();
     } catch (err) {
       this.errorMessage = (err && err.message) || String(err);
     } finally {

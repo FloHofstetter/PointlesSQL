@@ -426,6 +426,59 @@ async def test_api_pin_and_list_roundtrip(
     assert any(f["fact_uuid"] == fact_uuid for f in body["facts"])
 
 
+async def test_api_bulk_lookup_groups_by_cell_hash(
+    workspace_dir: Path, admin_client: httpx.AsyncClient
+) -> None:
+    """``GET /api/notebooks/facts/bulk`` returns active per-cell facts."""
+    _write_notebook(workspace_dir)
+    await admin_client.post(
+        "/api/notebooks/create", json={"path": "facts.py"}
+    )
+    create_rev = await admin_client.post(
+        "/api/notebooks/revisions", json={"path": "facts.py"}
+    )
+    rev_uuid = create_rev.json()["revision_uuid"]
+    # Pin two cell-output facts on two different content hashes.
+    await admin_client.post(
+        "/api/notebooks/facts",
+        json={
+            "revision_uuid": rev_uuid,
+            "title": "cell-A",
+            "cell_content_hash": "hA",
+        },
+    )
+    await admin_client.post(
+        "/api/notebooks/facts",
+        json={
+            "revision_uuid": rev_uuid,
+            "title": "cell-B",
+            "cell_content_hash": "hB",
+        },
+    )
+    bulk = await admin_client.get(
+        "/api/notebooks/facts/bulk"
+        "?notebook_path=facts.py&cell_content_hashes=hA,hB,hMissing"
+    )
+    assert bulk.status_code == 200
+    payload = bulk.json()
+    assert set(payload["facts"].keys()) == {"hA", "hB"}
+    assert payload["facts"]["hA"][0]["title"] == "cell-A"
+
+
+async def test_library_facts_page_renders(
+    admin_client: httpx.AsyncClient,
+) -> None:
+    """``GET /library/facts`` returns the browse shell."""
+    page = await admin_client.get("/library/facts")
+    assert page.status_code == 200
+    assert page.headers["content-type"].startswith("text/html")
+    # The Alpine factory + the page heading are both literal strings in
+    # the template; checking presence catches a 404 → 200-wrong-template
+    # regression.
+    assert "factsLibrary()" in page.text
+    assert "Pinned facts" in page.text
+
+
 async def test_api_unpin_hides_from_default_list(
     workspace_dir: Path, admin_client: httpx.AsyncClient
 ) -> None:

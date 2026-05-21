@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+{% block title %}Pinned facts · PointlesSQL{% endblock %}
+
+{% set breadcrumbs = [
+    {"label": "Home", "href": "/"},
+    {"label": "Library"},
+    {"label": "Facts"}
+] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-3">
+    <div class="d-flex align-items-center gap-2">
+        <i class="bi bi-pin-angle-fill fs-3 text-warning"></i>
+        <h1 class="h3 mb-0">Pinned facts</h1>
+    </div>
+</div>
+
+<p class="text-muted small mb-4">
+    Notebook revisions (and individual cell outputs) promoted into
+    referenceable bookmarks.  A fact freezes its source revision's
+    content hash, so the bookmark stays auditable even when the
+    notebook moves on.
+</p>
+
+<div x-data="factsLibrary()" x-init="load()" data-testid="facts-library">
+    <div class="d-flex align-items-center gap-2 mb-3">
+        <input type="text"
+               class="form-control form-control-sm"
+               style="max-width: 320px;"
+               x-model="query"
+               placeholder="Filter by title / description&hellip;">
+        <div class="form-check form-switch ms-auto mb-0">
+            <input class="form-check-input"
+                   type="checkbox"
+                   id="facts-library-include-unpinned"
+                   x-model="includeUnpinned"
+                   @change="load()">
+            <label class="form-check-label small" for="facts-library-include-unpinned">
+                Include unpinned
+            </label>
+        </div>
+    </div>
+
+    <template x-if="loading">
+        <div class="text-center text-muted py-5">
+            <span class="spinner-border spinner-border-sm me-2"></span>
+            Loading facts&hellip;
+        </div>
+    </template>
+
+    <template x-if="error">
+        <div class="alert alert-danger py-2 small" x-text="error"></div>
+    </template>
+
+    <template x-if="!loading && filtered().length === 0 && !error">
+        <div class="card">
+            <div class="card-body text-center py-5">
+                <i class="bi bi-pin-angle text-muted" style="font-size: 2.5rem;"></i>
+                <h2 class="h5 mt-3">No pinned facts yet</h2>
+                <p class="text-muted small mb-0">
+                    Open a notebook&#39;s revision history and click the
+                    <i class="bi bi-pin-angle-fill text-warning"></i> button
+                    on any snapshot to pin it as a referenceable fact.
+                </p>
+            </div>
+        </div>
+    </template>
+
+    <template x-if="!loading && filtered().length > 0">
+        <div class="row g-3">
+            <template x-for="f in filtered()" :key="f.fact_uuid">
+                <div class="col-md-6 col-xl-4">
+                    <div class="card h-100"
+                         :class="{ 'opacity-50': !f.active }"
+                         data-testid="fact-card">
+                        <div class="card-body">
+                            <div class="d-flex align-items-start gap-2 mb-2">
+                                <i class="bi bi-pin-angle-fill text-warning"
+                                   aria-hidden="true"></i>
+                                <h2 class="h6 mb-0 flex-grow-1 text-truncate"
+                                    x-text="f.title"></h2>
+                                <template x-if="!f.active">
+                                    <span class="badge bg-secondary">unpinned</span>
+                                </template>
+                            </div>
+                            <p class="text-muted small mb-2"
+                               x-show="f.description_md" x-cloak
+                               x-text="f.description_md"></p>
+                            <div class="small text-muted mb-2">
+                                <i class="bi bi-clock-history me-1"></i>
+                                <span x-text="pqlRelativeTime(f.pinned_at)"
+                                      :title="pqlAbsTime(f.pinned_at)"></span>
+                                <template x-if="f.cell_content_hash">
+                                    <span>
+                                        <span class="mx-1">·</span>
+                                        Cell
+                                        <code x-text="f.cell_content_hash.slice(0, 8)"></code>
+                                    </span>
+                                </template>
+                            </div>
+                            <div class="d-flex gap-1 align-items-center">
+                                <template x-if="f.active">
+                                    <button type="button"
+                                            class="btn btn-sm btn-outline-secondary"
+                                            @click="unpin(f.fact_uuid)"
+                                            data-testid="fact-card-unpin">
+                                        <i class="bi bi-x-lg me-1"></i>Unpin
+                                    </button>
+                                </template>
+                                <span class="ms-auto small text-muted"
+                                      x-show="f.pinned_by_agent_id" x-cloak>
+                                    <i class="bi bi-robot me-1"></i>
+                                    <span x-text="f.pinned_by_agent_id"></span>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </template>
+        </div>
+    </template>
+</div>
+{% endblock %}

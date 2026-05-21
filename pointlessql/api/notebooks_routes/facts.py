@@ -24,10 +24,13 @@ import logging
 from typing import Any
 
 from fastapi import APIRouter, Body, Query, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 
 from pointlessql.api.dependencies import current_workspace_id, require_user
-from pointlessql.api.notebooks_routes._shared import get_or_create_notebook_uuid
+from pointlessql.api.notebooks_routes._shared import (
+    get_or_create_notebook_uuid,
+    templates,
+)
 from pointlessql.config import Settings
 from pointlessql.exceptions import ValidationError
 from pointlessql.services.notebook import _doc as notebook_doc_service
@@ -304,3 +307,27 @@ def _emit_pin_feed_event(
         logger.exception(
             "feed fan-out for notebook_revision_pinned failed"
         )
+
+
+@router.get("/library/facts", response_class=HTMLResponse)
+async def page_facts_library(request: Request) -> HTMLResponse:
+    """Render the workspace's pinned-facts library browse page.
+
+    The page itself is a thin shell — the actual fact list is fetched
+    client-side via ``GET /api/notebooks/facts`` so the page renders
+    fast even when the workspace has hundreds of facts.
+
+    Args:
+        request: Incoming FastAPI request; any authenticated user.
+
+    Returns:
+        Rendered ``pages/library_facts.html`` template.
+    """
+    require_user(request)
+    return templates(request).TemplateResponse(
+        request,
+        "pages/library_facts.html",
+        {
+            "active_page": "library",
+        },
+    )

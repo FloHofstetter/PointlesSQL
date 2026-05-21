@@ -137,6 +137,14 @@ import { cellThread } from './notebook/cell_thread.js';
 
 window.cellThread = cellThread;
 
+// Phase 97 Rest — workspace library browse page for pinned facts.
+// Backs the ``factsLibrary()`` factory mounted on
+// ``/library/facts``.  Lives outside the notebook editor so the
+// page can render without the heavy editor coordinator.
+import { factsLibrary } from './facts_library.js';
+
+window.factsLibrary = factsLibrary;
+
 // Phase 95.3 — the cell-tag picker lives inside the per-cell
 // ``cellThread`` factory now (was a separate nested ``cellTagPicker``
 // x-data, but Alpine snapshotted the ``cell`` POJO so picker mutations

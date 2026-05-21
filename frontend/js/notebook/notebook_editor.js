@@ -21,6 +21,7 @@
 
 import { installBranchBinding } from './branch_binding.js';
 import { installCellAuthorship } from './cell_authorship.js';
+import { installCellFacts } from './cell_facts.js';
 import { installCellLineage } from './cell_lineage.js';
 import { installCellOperations } from './cell_operations.js';
 import { installChatIntegration } from './chat_integration.js';
@@ -289,6 +290,7 @@ export function notebookEditor({ initialPath = '' } = {}) {
  installNotebookTags(state);
  installCellAuthorship(state);
  installCellLineage(state);
+ installCellFacts(state);
  installRevisions(state);
  installShareDialog(state);
  installBranchBinding(state);
