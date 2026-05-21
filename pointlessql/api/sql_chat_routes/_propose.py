@@ -20,7 +20,8 @@ import logging
 import uuid
 from typing import Any
 
-from fastapi import APIRouter, Body, Request
+from fastapi import APIRouter, Request
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from pointlessql.api._audit_helpers import effective_agent_run_id
 from pointlessql.api.dependencies import current_workspace_id, require_user
@@ -36,6 +37,43 @@ from pointlessql.services.editor_chat import publish_proposal_created
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+
+class ProposeSqlBody(BaseModel):
+    """Body for ``POST /api/sql/chat/{id}/propose``.
+
+    The plugin tool historically posted ``sql`` while some older
+    callers used ``sql_text``; both names round-trip identically
+    via a populate-by-name alias so we do not break the existing
+    contract while moving off ``dict[str, Any]``.
+    """
+
+    sql: str = Field(default="", alias="sql")
+    sql_text: str | None = None
+    rationale: str | None = None
+
+    model_config = {"populate_by_name": True}
+
+    @model_validator(mode="after")
+    def _coalesce_sql(self) -> ProposeSqlBody:
+        # ``sql_text`` is the legacy alias; merge into ``sql`` so the
+        # route reads a single field.  Pydantic v2 forbids mutating
+        # the model after validation by default — we rebuild via
+        # ``model_copy`` to stay within the supported surface.
+        chosen = (self.sql or self.sql_text or "").strip()
+        if not chosen:
+            raise ValueError("sql is required")
+        object.__setattr__(self, "sql", chosen)
+        object.__setattr__(self, "sql_text", None)
+        return self
+
+    @field_validator("rationale")
+    @classmethod
+    def _strip_rationale(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        stripped = value.strip()
+        return stripped or None
 
 _IDEMPOTENCY_WINDOW_SECONDS: int = 60
 
@@ -62,20 +100,18 @@ _DML_TYPES: frozenset[StmtType] = frozenset(
 async def api_propose_sql(
     request: Request,
     editor_session_id: str,
-    body: dict[str, Any] = Body(...),
+    body: ProposeSqlBody,
 ) -> dict[str, Any]:
     """Draft a non-SELECT SQL statement for the human's review.
 
-    Body shape:
-        ``{"sql": str, "rationale": str | None}``.  ``kind`` is
-        derived server-side from the parsed statement type so
-        agents can't lie about it.
+    ``kind`` is derived server-side from the parsed statement type
+    so agents can't lie about it.
 
     Args:
         request: Incoming request — must carry an
             ``X-Agent-Run-Id`` matching the session's agent run.
         editor_session_id: UUID7 of the target chat session.
-        body: JSON payload (see above).
+        body: Validated :class:`ProposeSqlBody`.
 
     Returns:
         ``{"proposal_id": str, "kind": "dml" | "ddl",
@@ -86,16 +122,12 @@ async def api_propose_sql(
         ValidationError: On invalid SQL or SELECT statements.
         PermissionDeniedError: On ``X-Agent-Run-Id`` mismatch.
         ResourceNotFoundError: When the session is unknown.
-    """
+    """  # noqa: DOC503 — ValidationError bubbles up from _classify_proposal_kind
     require_user(request)
     workspace_id = current_workspace_id(request)
 
-    sql_text = body.get("sql") or body.get("sql_text") or ""
-    rationale = body.get("rationale")
-    if not isinstance(sql_text, str) or not sql_text.strip():
-        raise ValidationError("sql is required")
-    if rationale is not None and not isinstance(rationale, str):
-        rationale = None
+    sql_text = body.sql
+    rationale = body.rationale
 
     kind = _classify_proposal_kind(sql_text)
     factory = request.app.state.session_factory

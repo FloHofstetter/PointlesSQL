@@ -25,6 +25,8 @@ import pytest
 
 from pointlessql.api.feed_routes._serializers import (  # noqa: PLC2701  # test reaches private serializer module
     row_from_comment as _row_from_comment,
+)
+from pointlessql.api.feed_routes._serializers import (
     row_from_review as _row_from_review,
 )
 from pointlessql.models.catalog._data_product_comments import DataProductComment

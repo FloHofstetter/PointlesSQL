@@ -228,3 +228,60 @@ async def test_propose_broker_fan_out(
         assert event.payload["kind"] == "dml"
     finally:
         unsubscribe(editor_session_id, queue)
+
+
+# ---------------------------------------------------------------------------
+# Phase 106.5 — typed body validation
+# ---------------------------------------------------------------------------
+
+
+async def test_propose_sql_text_alias_still_accepted(
+    admin_client: httpx.AsyncClient,
+    chat_session_with_run: tuple[str, str],
+) -> None:
+    """The legacy ``sql_text`` field-name keeps working post-Pydantic refactor.
+
+    Earlier plugin clients posted ``{"sql_text": "..."}``; Phase 106.5
+    moved the body off ``dict[str, Any]`` and onto :class:`ProposeSqlBody`,
+    which coalesces ``sql_text`` into ``sql`` at validation time so we
+    don't break the existing wire contract.
+    """
+    editor_session_id, run_id = chat_session_with_run
+    response = await admin_client.post(
+        f"/api/sql/chat/{editor_session_id}/propose",
+        json={"sql_text": "DELETE FROM main.silver.dupes WHERE 1=1"},
+        headers={"X-Agent-Run-Id": run_id},
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["kind"] == "dml"
+    assert body["idempotent_match"] is False
+
+
+async def test_propose_sql_missing_required_is_422(
+    admin_client: httpx.AsyncClient,
+    chat_session_with_run: tuple[str, str],
+) -> None:
+    """Empty body (no sql / sql_text) → 422 with field name surfaced."""
+    editor_session_id, run_id = chat_session_with_run
+    response = await admin_client.post(
+        f"/api/sql/chat/{editor_session_id}/propose",
+        json={"rationale": "trying something"},
+        headers={"X-Agent-Run-Id": run_id},
+    )
+    assert response.status_code == 422
+    assert "sql is required" in response.text
+
+
+async def test_propose_sql_blank_string_is_422(
+    admin_client: httpx.AsyncClient,
+    chat_session_with_run: tuple[str, str],
+) -> None:
+    """Whitespace-only ``sql`` is rejected — agents must send a real statement."""
+    editor_session_id, run_id = chat_session_with_run
+    response = await admin_client.post(
+        f"/api/sql/chat/{editor_session_id}/propose",
+        json={"sql": "   \n  "},
+        headers={"X-Agent-Run-Id": run_id},
+    )
+    assert response.status_code == 422

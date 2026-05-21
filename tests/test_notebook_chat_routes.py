@@ -152,14 +152,20 @@ async def test_propose_cell_validates_cell_type(
     admin_client: httpx.AsyncClient,
     nb_chat_session_with_run: tuple[str, str],
 ) -> None:
-    """Unknown cell_type → 400, no row written."""
+    """Unknown cell_type → 422 (Pydantic body validation), no row written.
+
+    Phase 106.5 moved the proposal body off ``dict[str, Any]`` onto
+    :class:`ProposeCellBody`; FastAPI surfaces invalid bodies as 422
+    (Unprocessable Entity) per its standard contract, no longer as
+    the old hand-rolled 400.
+    """
     editor_session_id, run_id = nb_chat_session_with_run
     resp = await admin_client.post(
         f"/api/notebook/chat/{editor_session_id}/propose-cell",
         json={"cell_type": "sql", "source": "SELECT 1"},
         headers={"X-Agent-Run-Id": run_id},
     )
-    assert resp.status_code == 400
+    assert resp.status_code == 422
 
 
 async def test_propose_cell_session_mismatch_403(
@@ -423,3 +429,67 @@ def test_editor_chat_namespace_canonical() -> None:
         importlib.import_module("pointlessql.services.sql_chat")
     with pytest.raises(ModuleNotFoundError):
         importlib.import_module("pointlessql.models.sql_chat")
+
+
+# ---------------------------------------------------------------------------
+# Phase 106.5 — typed-body validation contract
+# ---------------------------------------------------------------------------
+
+
+async def test_propose_cell_missing_source_is_422(
+    admin_client: httpx.AsyncClient,
+    nb_chat_session_with_run: tuple[str, str],
+) -> None:
+    """Missing ``source`` field surfaces as Pydantic 422 with the field name."""
+    editor_session_id, run_id = nb_chat_session_with_run
+    resp = await admin_client.post(
+        f"/api/notebook/chat/{editor_session_id}/propose-cell",
+        json={"cell_type": "code"},
+        headers={"X-Agent-Run-Id": run_id},
+    )
+    assert resp.status_code == 422
+    body = resp.json()
+    assert "source" in str(body)
+
+
+async def test_propose_cell_blank_source_is_422(
+    admin_client: httpx.AsyncClient,
+    nb_chat_session_with_run: tuple[str, str],
+) -> None:
+    """Whitespace-only ``source`` is rejected — agents must send real code."""
+    editor_session_id, run_id = nb_chat_session_with_run
+    resp = await admin_client.post(
+        f"/api/notebook/chat/{editor_session_id}/propose-cell",
+        json={"cell_type": "code", "source": "   \n  "},
+        headers={"X-Agent-Run-Id": run_id},
+    )
+    assert resp.status_code == 422
+
+
+async def test_fix_cell_missing_target_uuid_is_422(
+    admin_client: httpx.AsyncClient,
+    nb_chat_session_with_run: tuple[str, str],
+) -> None:
+    """Missing ``target_cell_uuid`` → 422.  Catches the typo class."""
+    editor_session_id, run_id = nb_chat_session_with_run
+    resp = await admin_client.post(
+        f"/api/notebook/chat/{editor_session_id}/fix-cell",
+        json={"new_source": "x = 1"},
+        headers={"X-Agent-Run-Id": run_id},
+    )
+    assert resp.status_code == 422
+    assert "target_cell_uuid" in resp.text
+
+
+async def test_explain_cell_blank_explanation_is_422(
+    admin_client: httpx.AsyncClient,
+    nb_chat_session_with_run: tuple[str, str],
+) -> None:
+    """Whitespace-only ``explanation`` rejected on the typed body too."""
+    editor_session_id, run_id = nb_chat_session_with_run
+    resp = await admin_client.post(
+        f"/api/notebook/chat/{editor_session_id}/explain-cell",
+        json={"target_cell_uuid": "cell-1", "explanation": "\n   "},
+        headers={"X-Agent-Run-Id": run_id},
+    )
+    assert resp.status_code == 422

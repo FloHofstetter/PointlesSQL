@@ -4,6 +4,46 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- **Phase 106.5 typed proposal bodies — closes the open dict[str, Any]
+  erosion line item (2026-05-22).**  The 4 chat-proposal routes
+  (notebook-chat ``propose-cell`` / ``fix-cell`` / ``explain-cell``
+  + sql-chat ``propose``) parsed their JSON body as ``dict[str,
+  Any]`` and reached for fields via ``body.get(...)`` with
+  hand-rolled type checks — typos like ``rationael`` for
+  ``rationale`` would silently drop the field and persist a
+  half-filled ``NotebookCellProposal`` / ``ChatProposal`` row.
+  Replaced with Pydantic ``BaseModel`` typed bodies:
+  - ``ProposeCellBody`` (``cell_type`` Literal["code","markdown"],
+    ``source`` non-blank str, optional positioning + rationale)
+  - ``FixCellBody`` (``target_cell_uuid``, ``new_source`` non-blank,
+    optional rationale)
+  - ``ExplainCellBody`` (``target_cell_uuid``, ``explanation``
+    non-blank, optional rationale)
+  - ``ProposeSqlBody`` (``sql`` with ``sql_text`` alias coalesced
+    in a model-validator so the legacy plugin wire contract still
+    works, optional rationale)
+  Body-validation now lands as standard FastAPI 422 with a
+  per-field error map (forwarded through the existing
+  ``_handle_request_validation_error`` envelope as a problem-body
+  ``errors`` extension); the route bodies dropped the hand-rolled
+  400-raising guard layer.  The one existing test asserting 400
+  on bad ``cell_type`` was updated to 422 with a comment explaining
+  the migration.  7 new pytest cover the typo class: missing /
+  blank fields surface as 422, ``sql_text`` legacy alias still
+  works, blank ``rationale`` is normalised to ``None``.  No
+  schema change.  Asset 0.1.0rc86 → 0.1.0rc87.
+  *Deferred (correctly):* Lineage inbound facets stay
+  ``dict[str, Any]`` for OpenLineage 2.x vendor-extension
+  forward-compat (the parser comment makes that explicit);
+  ``admin/console.py`` carries only two ``dict[str, Any]``
+  helper signatures with zero mutation routes, nothing to tighten
+  there.  PQL mixin extraction (106.4) stays deferred — the 24
+  ``PQL`` methods are already a thin parameter-forwarding facade
+  to ``_vector.py`` / ``_merge.py`` / etc; a mixin would shuffle
+  74 LOC without reducing the ``self._client`` coupling.
+
 ### Fixed
 
 - **Phase 106 lint-baseline hygiene (2026-05-22).**  Two stale

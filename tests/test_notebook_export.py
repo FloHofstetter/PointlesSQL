@@ -10,7 +10,6 @@ import pytest
 from pointlessql.api.main import app
 from pointlessql.services.notebook import export as notebook_export_service
 
-
 # -- service: HTML rendering --------------------------------------------------
 
 

@@ -2499,18 +2499,44 @@ PointlesSQL
 │           ``_tags`` (98.B) / ``_share`` (99/100) / ``_authorship``
 │           (101) / ``_branch`` (102) / ``_replays`` (103) /
 │           ``_proposals`` (104) / ``_coedit`` (105).
+│         - **106.5 (typed proposal bodies, 2026-05-22 asset
+│           0.1.0rc87).**  The four chat-proposal routes
+│           (notebook-chat ``propose`` / ``fix`` / ``explain`` +
+│           sql-chat ``propose``) parsed JSON bodies as
+│           ``dict[str, Any]`` and reached for fields via
+│           ``body.get(...)`` with hand-rolled isinstance guards
+│           — a typo on the agent side (``rationael`` for
+│           ``rationale``) would silently drop the value and
+│           persist a half-filled proposal row.  Replaced with
+│           Pydantic ``BaseModel``s (``ProposeCellBody`` /
+│           ``FixCellBody`` / ``ExplainCellBody`` /
+│           ``ProposeSqlBody`` with a ``sql_text`` alias model-
+│           validator so legacy plugin clients still work).
+│           Body-validation errors now surface as 422 via the
+│           existing ``RequestValidationError`` handler; the old
+│           400-raising guard layer dropped.  7 new pytest cover
+│           the typo class.  Lineage inbound facets stay
+│           ``dict[str, Any]`` (OpenLineage 2.x vendor-extension
+│           forward-compat; explicit parser comment); admin
+│           console has no mutation routes to tighten.
 │         - **Deferred sub-phases (tracked).**  106.4 (PQL mixin
-│           extraction) — 24 methods all need ``self._client``; no
-│           clean cluster scissors today.  106.5 (``dict[str, Any]``
-│           hardening) — ``LineageInboundEvent.facets`` *must* stay
-│           ``Any``-shaped for OpenLineage forward-compat
-│           (vendor-extension drift).  106.6 (missing module
-│           docstrings) collapsed to no-op — AST scan via
-│           ``ast.get_docstring()`` shows zero files actually
-│           missing; the initial grep was tripped by ``r"""`` /
-│           pragma-prefixed openers.  106.7 (lifespan-loops reorg)
-│           deferred until a concrete new init step demands it —
-│           current 33-step complexity is structural, not a smell.
+│           extraction) — 24 methods all need ``self._client``;
+│           ``PQL`` is already a thin parameter-forwarding facade
+│           to ``_vector.py`` / ``_merge.py`` / etc., so a Mixin
+│           would shuffle 74 LOC without reducing the
+│           ``self._client`` coupling.  106.6 (missing module
+│           docstrings) collapsed to no-op for content but a
+│           ruff-baseline hygiene amendment landed 2026-05-22 —
+│           two stray ``logger = getLogger(__name__)`` placements
+│           left by the 106.1 sweep tripped E402, plus three
+│           E501s and a per-file-ignore for
+│           ``pointlessql/data/notebook_templates`` (jupytext
+│           starter snippets reference kernel-runtime variables
+│           the user fills in via ``%sql -o`` magics in earlier
+│           cells); ``uv run ruff check pointlessql/`` 28 errors
+│           → 0.  106.7 (lifespan-loops reorg) deferred until a
+│           concrete new init step demands it — current 33-step
+│           complexity is structural, not a smell.
 │
 
 ├── Phase 81 — Feed overhaul + help surface + entity ⋯-menu  ✅ done 2026-05-16

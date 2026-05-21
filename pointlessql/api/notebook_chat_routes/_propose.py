@@ -25,9 +25,10 @@ from __future__ import annotations
 import datetime
 import logging
 import uuid
-from typing import Any
+from typing import Any, Literal
 
-from fastapi import APIRouter, Body, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request
+from pydantic import BaseModel, Field, field_validator
 
 from pointlessql.api._audit_helpers import effective_agent_run_id
 from pointlessql.api.dependencies import current_workspace_id, require_user
@@ -43,6 +44,88 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 _FIX_IDEMPOTENCY_WINDOW_SECONDS: int = 60
+
+
+# ---------------------------------------------------------------------
+# Phase 106.5 — typed proposal bodies.
+#
+# Pydantic models tighten the field-name surface so a typo on the
+# agent side (``rationael`` for ``rationale``) lands as a 422 instead
+# of silently dropping the field through ``dict.get(...)``.  The
+# field set is mostly required strings + the same ``rationale``
+# optional everywhere; we use a small mixin to keep the validators
+# co-located with their fields.
+# ---------------------------------------------------------------------
+
+
+def _strip_or_none(value: str | None) -> str | None:
+    """Treat empty / whitespace-only strings as missing for optional fields."""
+    if value is None:
+        return None
+    stripped = value.strip()
+    return stripped or None
+
+
+class ProposeCellBody(BaseModel):
+    """Body for ``POST /api/notebook/chat/{id}/propose-cell``."""
+
+    cell_type: Literal["code", "markdown"]
+    source: str = Field(..., min_length=1)
+    position_after_cell_uuid: str | None = None
+    position_at_end: bool = False
+    rationale: str | None = None
+
+    @field_validator("source")
+    @classmethod
+    def _source_non_blank(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("source is required")
+        return value
+
+    @field_validator("position_after_cell_uuid", "rationale")
+    @classmethod
+    def _strip_optionals(cls, value: str | None) -> str | None:
+        return _strip_or_none(value)
+
+
+class FixCellBody(BaseModel):
+    """Body for ``POST /api/notebook/chat/{id}/fix-cell``."""
+
+    target_cell_uuid: str = Field(..., min_length=1)
+    new_source: str = Field(..., min_length=1)
+    rationale: str | None = None
+
+    @field_validator("new_source")
+    @classmethod
+    def _new_source_non_blank(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("new_source is required")
+        return value
+
+    @field_validator("rationale")
+    @classmethod
+    def _strip_rationale(cls, value: str | None) -> str | None:
+        return _strip_or_none(value)
+
+
+class ExplainCellBody(BaseModel):
+    """Body for ``POST /api/notebook/chat/{id}/explain-cell``."""
+
+    target_cell_uuid: str = Field(..., min_length=1)
+    explanation: str = Field(..., min_length=1)
+    rationale: str | None = None
+
+    @field_validator("explanation")
+    @classmethod
+    def _explanation_non_blank(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("explanation is required")
+        return value
+
+    @field_validator("rationale")
+    @classmethod
+    def _strip_rationale(cls, value: str | None) -> str | None:
+        return _strip_or_none(value)
 
 
 def _resolve_session(
@@ -82,50 +165,24 @@ def _resolve_session(
 async def api_propose_cell(
     request: Request,
     editor_session_id: str,
-    body: dict[str, Any] = Body(...),
+    body: ProposeCellBody,
 ) -> dict[str, Any]:
     """Draft a new cell to insert into the open notebook.
-
-    Body shape:
-        ``{"cell_type": "code"|"markdown", "source": str,
-        "position_after_cell_uuid": str | None,
-        "position_at_end": bool, "rationale": str | None}``.
 
     Args:
         request: Incoming request — must carry an
             ``X-Agent-Run-Id`` matching the session's agent run.
         editor_session_id: UUID7 of the target notebook chat session.
-        body: JSON payload (see above).
+        body: Validated :class:`ProposeCellBody`.
 
     Returns:
         ``{"proposal_id": str, "action": "propose"}``.
 
     Raises:
-        HTTPException: 400 on invalid body; 403 on
-            X-Agent-Run-Id mismatch; 404 on unknown session.
+        HTTPException: 403 on X-Agent-Run-Id mismatch; 404 on
+            unknown session.  Body validation errors surface as 422
+            via FastAPI.
     """  # noqa: DOC502 — HTTPException is what we raise
-    cell_type = body.get("cell_type")
-    source = body.get("source")
-    if cell_type not in {"code", "markdown"}:
-        # bare-http-ok: 400 for invalid request body; agent should
-        # re-call with a valid cell_type — no domain exception fits.
-        raise HTTPException(
-            status_code=400,
-            detail="cell_type must be 'code' or 'markdown'",
-        )
-    if not isinstance(source, str) or not source.strip():
-        # bare-http-ok: 400 for missing required body field.
-        raise HTTPException(
-            status_code=400, detail="source is required"
-        )
-    rationale = body.get("rationale")
-    if rationale is not None and not isinstance(rationale, str):
-        rationale = None
-    position_after = body.get("position_after_cell_uuid")
-    if position_after is not None and not isinstance(position_after, str):
-        position_after = None
-    position_at_end = bool(body.get("position_at_end") or False)
-
     chat_session, agent_run_id, workspace_id = _resolve_session(
         request, editor_session_id
     )
@@ -140,13 +197,13 @@ async def api_propose_cell(
                 chat_session_id=chat_session.id,
                 workspace_id=workspace_id,
                 action="propose",
-                cell_type=cell_type,
+                cell_type=body.cell_type,
                 target_cell_uuid=None,
-                new_source=source,
+                new_source=body.source,
                 explanation=None,
-                position_after_cell_uuid=position_after,
-                position_at_end=position_at_end,
-                rationale=rationale,
+                position_after_cell_uuid=body.position_after_cell_uuid,
+                position_at_end=body.position_at_end,
+                rationale=body.rationale,
                 status="pending",
                 created_at=now,
             )
@@ -157,13 +214,13 @@ async def api_propose_cell(
         editor_session_id,
         proposal_id=proposal_id,
         action="propose",
-        cell_type=cell_type,
+        cell_type=body.cell_type,
         target_cell_uuid=None,
-        new_source=source,
+        new_source=body.source,
         explanation=None,
-        position_after_cell_uuid=position_after,
-        position_at_end=position_at_end,
-        rationale=rationale,
+        position_after_cell_uuid=body.position_after_cell_uuid,
+        position_at_end=body.position_at_end,
+        rationale=body.rationale,
         auto_accepted=False,
         agent_run_id=agent_run_id,
     )
@@ -174,19 +231,15 @@ async def api_propose_cell(
 async def api_fix_cell(
     request: Request,
     editor_session_id: str,
-    body: dict[str, Any] = Body(...),
+    body: FixCellBody,
 ) -> dict[str, Any]:
     """Draft a source replacement for an existing notebook cell.
-
-    Body shape:
-        ``{"target_cell_uuid": str, "new_source": str,
-        "rationale": str | None}``.
 
     Args:
         request: Incoming request — must carry an
             ``X-Agent-Run-Id`` matching the session's agent run.
         editor_session_id: UUID7 of the target chat session.
-        body: JSON payload (see *Body shape* above).
+        body: Validated :class:`FixCellBody`.
 
     Returns:
         ``{"proposal_id": str, "action": "fix",
@@ -195,25 +248,10 @@ async def api_fix_cell(
         its ``proposal_id`` is returned instead of writing a new row.
 
     Raises:
-        HTTPException: 400 on invalid body; 403 on
-            X-Agent-Run-Id mismatch; 404 on unknown session.
-    """
-    target_cell_uuid = body.get("target_cell_uuid")
-    new_source = body.get("new_source")
-    if not isinstance(target_cell_uuid, str) or not target_cell_uuid:
-        # bare-http-ok: 400 for missing required body field.
-        raise HTTPException(
-            status_code=400, detail="target_cell_uuid is required"
-        )
-    if not isinstance(new_source, str) or not new_source.strip():
-        # bare-http-ok: 400 for missing required body field.
-        raise HTTPException(
-            status_code=400, detail="new_source is required"
-        )
-    rationale = body.get("rationale")
-    if rationale is not None and not isinstance(rationale, str):
-        rationale = None
-
+        HTTPException: 403 on X-Agent-Run-Id mismatch; 404 on
+            unknown session.  Body validation errors surface as 422
+            via FastAPI.
+    """  # noqa: DOC502 — HTTPException bubbles up from _resolve_session
     chat_session, agent_run_id, workspace_id = _resolve_session(
         request, editor_session_id
     )
@@ -224,8 +262,8 @@ async def api_fix_cell(
         existing = _find_idempotent_fix(
             session,
             chat_session.id,
-            target_cell_uuid=target_cell_uuid,
-            new_source=new_source,
+            target_cell_uuid=body.target_cell_uuid,
+            new_source=body.new_source,
         )
         if existing is not None:
             return {
@@ -241,12 +279,12 @@ async def api_fix_cell(
                 workspace_id=workspace_id,
                 action="fix",
                 cell_type=None,
-                target_cell_uuid=target_cell_uuid,
-                new_source=new_source,
+                target_cell_uuid=body.target_cell_uuid,
+                new_source=body.new_source,
                 explanation=None,
                 position_after_cell_uuid=None,
                 position_at_end=False,
-                rationale=rationale,
+                rationale=body.rationale,
                 status="pending",
                 created_at=now,
             )
@@ -258,12 +296,12 @@ async def api_fix_cell(
         proposal_id=proposal_id,
         action="fix",
         cell_type=None,
-        target_cell_uuid=target_cell_uuid,
-        new_source=new_source,
+        target_cell_uuid=body.target_cell_uuid,
+        new_source=body.new_source,
         explanation=None,
         position_after_cell_uuid=None,
         position_at_end=False,
-        rationale=rationale,
+        rationale=body.rationale,
         auto_accepted=False,
         agent_run_id=agent_run_id,
     )
@@ -278,13 +316,9 @@ async def api_fix_cell(
 async def api_explain_cell(
     request: Request,
     editor_session_id: str,
-    body: dict[str, Any] = Body(...),
+    body: ExplainCellBody,
 ) -> dict[str, Any]:
     """Attach an explanation to an existing notebook cell (auto-accept).
-
-    Body shape:
-        ``{"target_cell_uuid": str, "explanation": str,
-        "rationale": str | None}``.
 
     Auto-accepts on create — no Run button — and writes a
     ``NotebookCellProvenance`` row immediately so the explanation
@@ -298,32 +332,17 @@ async def api_explain_cell(
         request: Incoming request — must carry an
             ``X-Agent-Run-Id`` matching the session's agent run.
         editor_session_id: UUID7 of the target chat session.
-        body: JSON payload (see *Body shape* above).
+        body: Validated :class:`ExplainCellBody`.
 
     Returns:
         ``{"proposal_id": str, "action": "explain",
         "status": "accepted"}``.
 
     Raises:
-        HTTPException: 400 on invalid body; 403 on
-            X-Agent-Run-Id mismatch; 404 on unknown session.
-    """
-    target_cell_uuid = body.get("target_cell_uuid")
-    explanation = body.get("explanation")
-    if not isinstance(target_cell_uuid, str) or not target_cell_uuid:
-        # bare-http-ok: 400 for missing required body field.
-        raise HTTPException(
-            status_code=400, detail="target_cell_uuid is required"
-        )
-    if not isinstance(explanation, str) or not explanation.strip():
-        # bare-http-ok: 400 for missing required body field.
-        raise HTTPException(
-            status_code=400, detail="explanation is required"
-        )
-    rationale = body.get("rationale")
-    if rationale is not None and not isinstance(rationale, str):
-        rationale = None
-
+        HTTPException: 403 on X-Agent-Run-Id mismatch; 404 on
+            unknown session.  Body validation errors surface as 422
+            via FastAPI.
+    """  # noqa: DOC502 — HTTPException bubbles up from _resolve_session
     chat_session, agent_run_id, workspace_id = _resolve_session(
         request, editor_session_id
     )
@@ -339,22 +358,22 @@ async def api_explain_cell(
                 workspace_id=workspace_id,
                 action="explain",
                 cell_type=None,
-                target_cell_uuid=target_cell_uuid,
+                target_cell_uuid=body.target_cell_uuid,
                 new_source=None,
-                explanation=explanation,
+                explanation=body.explanation,
                 position_after_cell_uuid=None,
                 position_at_end=False,
-                rationale=rationale,
+                rationale=body.rationale,
                 status="accepted",
                 created_at=now,
                 accepted_at=now,
                 accepted_run_id=agent_run_id,
-                inserted_cell_uuid=target_cell_uuid,
+                inserted_cell_uuid=body.target_cell_uuid,
             )
         )
         session.add(
             NotebookCellProvenance(
-                cell_uuid=target_cell_uuid,
+                cell_uuid=body.target_cell_uuid,
                 agent_run_id=agent_run_id,
                 proposal_id=proposal_id,
                 action="explain",
@@ -368,12 +387,12 @@ async def api_explain_cell(
         proposal_id=proposal_id,
         action="explain",
         cell_type=None,
-        target_cell_uuid=target_cell_uuid,
+        target_cell_uuid=body.target_cell_uuid,
         new_source=None,
-        explanation=explanation,
+        explanation=body.explanation,
         position_after_cell_uuid=None,
         position_at_end=False,
-        rationale=rationale,
+        rationale=body.rationale,
         auto_accepted=True,
         agent_run_id=agent_run_id,
     )
