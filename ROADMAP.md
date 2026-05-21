@@ -2254,6 +2254,51 @@ PointlesSQL
 │         two bug-bumps).  Tests: 36/36 green across the three
 │         touched suites.
 │
+│         **Wave-D 2026-05-21 — every remaining deferred notebook
+│         item closed.**  Six sub-commits + one cross-repo plugin
+│         commit asset 0.1.0rc56 → rc62; the per-phase "deferred"
+│         lists above flip as follows (full detail in CHANGELOG
+│         Unreleased):
+│         - Phase 97 — Monaco-diff-style UI (line-by-line unified
+│           diff drawer); ``set_revision_signature`` receive
+│           endpoint for out-of-band signers.  Pin-to-memory still
+│           defers (needs fact-shaped pql.memory primitive).
+│         - Phase 98.B — workspace-tree tag-pills + filter
+│           dropdown via new ``GET /api/notebooks/tags/bulk``.
+│         - Phase 98.C — cell-header lineage chip via
+│           ``installCellLineage`` mixin + new bulk endpoint.
+│         - Phase 99 — ``pql.widgets`` kernel shim + route-layer
+│           ``actor_has_role`` enforcement on load / save /
+│           WS-open.
+│         - Phase 100 — secret-scrub pass on public viewer +
+│           ``GET /embed/notebook_share/{uuid}`` iframe mirror.
+│         - Phase 101 — per-cell Review affordance (✅ / ⚠ / 💬
+│           decision lattice) on top of the existing polymorphic
+│           comment surface (``category='review'`` + migration
+│           ``c4e7a91b2f60``).
+│         - Phase 102 — ``PQL._branch_remap`` + kernel env-bridge
+│           via ``POINTLESSQL_BRANCH``; ``promote_binding`` consults
+│           ``POINTLESSQL_BRANCH_PROMOTE_WEBHOOK_URL`` so an
+│           external reviewer (shoreguard or any other) can gate
+│           the transition.
+│         - Phase 103 — replay re-execution worker
+│           (``services/notebook/replay_worker.py``) drains pending
+│           rows via ``jupyter_client.AsyncKernelManager`` per
+│           replay.
+│         - Phase 104 — hermes-plugin ``pql_propose_cell_sequence``
+│           tool fires the ``pql:cell-sequence-proposed`` window
+│           event the Wave-C inbox waits for; backend route now
+│           accepts ``editor_session_id`` UUID7 for symmetry.
+│
+│         Genuine blockers (kept deferred):
+│         - Shoreguard *sign-revision* and *promote-binding*
+│           reviewer APIs do not exist upstream yet; PointlesSQL
+│           ships the receive-endpoint + webhook-hook so the
+│           integration lands without further PointlesSQL changes
+│           once those APIs ship.
+│         - Phase 97 pin-to-memory (no fact-shaped pql.memory).
+│
+
 ├── Phase 81 — Feed overhaul + help surface + entity ⋯-menu  ✅ done 2026-05-16
 │       Three-track polish bundle.  Track K rebuilt /feed from a
 │       flat Bootstrap `list-group` into a first-class social

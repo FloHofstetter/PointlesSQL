@@ -6,6 +6,58 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Wave-D — every remaining deferred notebook item in one wave
+  (2026-05-21).**  Six commits (D-1 → D-6a) closing the punch list
+  the Wave-C handoff left open.  Asset 0.1.0rc56 → rc62.
+  - **D-1 (rc57).** Workspace tag-pills + per-cell reviewer
+    affordance.  New ``GET /api/notebooks/tags/bulk`` feeds tag-pills
+    + filter dropdown on ``/notebooks/workspace``.  New per-cell
+    "Review" chip + composer (✅ Approved / ⚠ Changes requested /
+    💬 Comment-only); decision encoded as a body_md prefix on a
+    ``category='review'`` comment.  Migration ``c4e7a91b2f60``
+    extends ``ck_dp_comment_category`` with the ``review`` value.
+  - **D-2 (rc58).** Cell-level lineage chip + revision-history
+    drawer.  New ``GET /api/notebooks/cell/lineage/bulk`` returns
+    ``{content_hash: [badge, ...]}`` for the whole notebook; chips
+    paint in the cell header for write-op target tables.  New
+    "History" toolbar drawer with snapshot / list / pin-two / diff;
+    line-by-line unified diff in the Changed bucket (Monaco /
+    CodeMirror-merge can drop in behind the same panel later).
+  - **D-3 (rc59).** ``pointlessql.pql.widgets`` kernel shim
+    (``widgets.value(name, default)``); ``pointlessql.pql.context``
+    + ``PQL._branch_remap`` so a bound branch rewrites
+    ``catalog.schema.table`` → ``catalog.<branch>.table`` on every
+    read / write.  Phase 99 route-layer ``actor_has_role`` enforces
+    ``view`` / ``run`` / ``edit`` at load / save / WS-open;
+    workspace-default lets view + run through so existing tests
+    pass.  Kernel session start now surfaces ``POINTLESSQL_NOTEBOOK_ID``
+    + ``POINTLESSQL_BRANCH``.
+  - **D-4 (rc60).** Secret-scrub for public share viewers (AWS /
+    GitHub PAT / Slack / JWT / generic key=value patterns) + new
+    ``GET /embed/notebook_share/{uuid}`` iframe-embed mirror.
+    Added ``/embed/notebook_share/`` to ``PUBLIC_PREFIXES``.
+  - **D-5 (rc61).** Phase-103 replay re-execution worker — serial
+    loop in ``services/notebook/replay_worker.py`` that spins up an
+    isolated ``jupyter_client.AsyncKernelManager`` per pending row,
+    re-runs every cell, and records outputs back.  Optional
+    ``branch_name`` flows via ``POINTLESSQL_BRANCH``.  Mounted in
+    the FastAPI lifespan; opt-out via
+    ``POINTLESSQL_REPLAY_WORKER_DISABLED=1``.
+  - **D-6a (rc62).** Phase 97 sign-revision receive endpoint
+    (``POST /api/notebooks/revisions/{uuid}/signature``, admin-only)
+    so out-of-band signers can flip ``signed=true`` on a revision.
+    Phase 102 ``promote_binding`` now consults
+    ``POINTLESSQL_BRANCH_PROMOTE_WEBHOOK_URL``; non-2xx denies the
+    promote with the reviewer's reason.  ``POST .../propose-sequence``
+    accepts ``editor_session_id`` UUID7 in the path so the
+    hermes-plugin tool addresses it the same way as propose-cell.
+  - **D-6 plugin commit** (cross-repo
+    ``hermes-plugin-pointlessql`` ``0147d29``):
+    ``pql_propose_cell_sequence`` LLM tool registered when the
+    notebook chat session env is set — fires the
+    ``pql:cell-sequence-proposed`` window event the Wave-C inbox
+    has been waiting for.
+
 - **Wave-C — three deferred Phase-102/103/104 notebook UIs + Phase 99
   UI shipped (2026-05-20).**  Four orphan backends (Branch-Binding /
   Replays / Cell-Sequence-Proposals / Widgets+Permissions) wired from
