@@ -179,6 +179,64 @@ async def test_api_update_share_flips_dashboard(
     assert patched.json()["dashboard_mode"] is True
 
 
+# -- Phase 100 Wave-D: secret-scrub + iframe embed ---------------------------
+
+
+def test_scrub_text_redacts_common_credential_shapes() -> None:
+    """Aggressive redaction covers AWS / GitHub / JWT / Slack / key=val."""
+    raw = (
+        "AKIAIOSFODNN7EXAMPLE "
+        "ghp_abcdefghijklmnopqrstuvwxyz0123456789 "
+        "xoxb-1234-abcdef "
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9."
+        "eyJzdWIiOiIxIiwiaWF0IjoxNzAwMDAwMDAwfQ."
+        "abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGH "
+        "password=hunter2hunter2"
+    )
+    scrubbed = notebook_shares_service.scrub_text(raw)
+    assert "AKIA" not in scrubbed
+    assert "ghp_" not in scrubbed
+    assert "xoxb-" not in scrubbed
+    assert "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9" not in scrubbed
+    assert "hunter2hunter2" not in scrubbed
+
+
+def test_scrub_output_frame_only_touches_string_content() -> None:
+    """Non-string mime payloads (images) pass through unmolested."""
+    frame = {
+        "content_hash": "h",
+        "msg_type": "stream",
+        "content": {
+            "text": "token=abcdef123456",
+            "image/png": b"binary-blob",
+            "rows_affected": 42,
+        },
+    }
+    out = notebook_shares_service.scrub_output_frame(frame)
+    assert "redacted" in out["content"]["text"]
+    assert out["content"]["image/png"] == b"binary-blob"
+    assert out["content"]["rows_affected"] == 42
+
+
+async def test_embed_route_returns_same_body_as_share_route(
+    workspace_dir: Path, admin_client: httpx.AsyncClient
+) -> None:
+    """``/embed/notebook_share/{uuid}`` mirrors ``/share/notebook/{uuid}``."""
+    _write_notebook(workspace_dir, "embed.py")
+    await admin_client.post("/api/notebooks/create", json={"path": "embed.py"})
+    _write_notebook(workspace_dir, "embed.py")
+    create = await admin_client.post(
+        "/api/notebooks/shares",
+        json={"path": "embed.py", "share_mode": "live"},
+    )
+    share_uuid = create.json()["share_uuid"]
+    direct = await admin_client.get(f"/share/notebook/{share_uuid}")
+    embed = await admin_client.get(f"/embed/notebook_share/{share_uuid}")
+    assert embed.status_code == 200
+    assert direct.status_code == 200
+    assert embed.text == direct.text
+
+
 async def test_api_list_shares_includes_revoked(
     workspace_dir: Path, admin_client: httpx.AsyncClient
 ) -> None:

@@ -289,14 +289,32 @@ async def public_share_view(
             )
             dashboard = share.dashboard_mode
 
+    # Phase 100 Wave-D — secret-scrub before serving.  Public shares
+    # are read by anyone with the UUID; aggressive redaction matches
+    # the principle "missed-secret is worse than false-positive".
+    scrubbed_outputs = notebook_shares_service.scrub_outputs(outputs)
     if dashboard:
         body = notebook_shares_service.render_dashboard_html(
-            title=title, cells=cells, outputs=outputs
+            title=title, cells=cells, outputs=scrubbed_outputs
         )
     else:
         body = notebook_export_service.render_notebook_html(
-            title=title, cells=cells, outputs=outputs
+            title=title, cells=cells, outputs=scrubbed_outputs
         )
     # The public share viewer always serves text/html; never set an
     # attachment header so the browser renders inline.
     return HTMLResponse(content=body)
+
+
+@router.get("/embed/notebook_share/{share_uuid}")
+async def public_share_embed(
+    request: Request, share_uuid: str
+) -> Response:
+    """Iframe-friendly variant of :func:`public_share_view`.
+
+    Same content + same secret-scrub; reuses :func:`public_share_view`
+    so the two surfaces never drift.  Lives under ``/embed/`` so
+    external docs can frame it cleanly and ops can audit "what's
+    being embedded" without grepping ``/share/``.
+    """
+    return await public_share_view(request, share_uuid)

@@ -318,6 +318,95 @@ def render_dashboard_html(
     )
 
 
+# --------------------------------------------------------------------------- #
+# Phase 100 Wave-D — secret-scrub for public share viewers + iframe embeds.
+# --------------------------------------------------------------------------- #
+
+# Pattern list designed to redact common credential shapes that leak via
+# notebook outputs (env-var dumps, traceback frames showing tokens, etc.).
+# The redaction is intentionally aggressive — false positives are tolerable
+# for a public share; a missed secret is not.  Callers that need the raw
+# output should fetch the notebook directly through the authenticated UI.
+_SECRET_PATTERNS: tuple[tuple[str, str], ...] = (
+    # AWS access keys
+    (r"AKIA[0-9A-Z]{16}", "[redacted-aws-access-key]"),
+    # AWS secret keys (40-char base64-ish)
+    (
+        r"(?<![A-Za-z0-9/+=])[A-Za-z0-9/+=]{40}(?![A-Za-z0-9/+=])",
+        "[redacted-aws-secret]",
+    ),
+    # GitHub PAT / fine-grained PAT
+    (r"gh[pousr]_[A-Za-z0-9]{36,}", "[redacted-github-token]"),
+    (r"github_pat_[A-Za-z0-9_]{20,}", "[redacted-github-pat]"),
+    # Generic "Bearer eyJ…" JWT prefix
+    (r"eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}", "[redacted-jwt]"),
+    # Slack tokens
+    (r"xox[abp]-[0-9A-Za-z-]{10,}", "[redacted-slack-token]"),
+    # Generic "password=..." or "secret=..." / "token=..." / "api[_-]?key=..."
+    (
+        r'(?i)(password|secret|token|api[_-]?key)\s*[:=]\s*["\']?([^\s"\']{6,})',
+        r"\1=[redacted-secret]",
+    ),
+)
+
+
+def scrub_text(value: str) -> str:
+    """Apply the secret-redaction regex pass over a single string.
+
+    Args:
+        value: Arbitrary text from a notebook output frame.
+
+    Returns:
+        ``value`` with every match replaced by a ``[redacted-*]`` token.
+    """
+    import re
+
+    out = value
+    for pattern, repl in _SECRET_PATTERNS:
+        out = re.sub(pattern, repl, out)
+    return out
+
+
+def scrub_output_frame(frame: dict[str, Any]) -> dict[str, Any]:
+    """Return *frame* with credential-ish substrings redacted.
+
+    Walks the rich-mime ``content`` dict and applies :func:`scrub_text`
+    to every string-valued entry.  Non-string entries (images, tables
+    encoded as JSON) pass through untouched — the regex pass is too
+    expensive to apply to multi-MB binary payloads and any secret in a
+    rendered image is the user's vetting problem, not the redactor's.
+
+    Args:
+        frame: A row from ``notebook_outputs`` (load-shape dict).
+
+    Returns:
+        A shallow copy of *frame* with scrubbed text fields.
+    """
+    content = frame.get("content")
+    if not isinstance(content, dict):
+        return frame
+    new_content: dict[str, Any] = {}
+    for k, v in content.items():
+        if isinstance(v, str):
+            new_content[k] = scrub_text(v)
+        else:
+            new_content[k] = v
+    return {**frame, "content": new_content}
+
+
+def scrub_outputs(outputs: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Apply :func:`scrub_output_frame` to every row.
+
+    Args:
+        outputs: Notebook output rows (load shape).
+
+    Returns:
+        A fresh list of scrubbed frames; the originals are not mutated
+        so the audited DB state stays untouched.
+    """
+    return [scrub_output_frame(f) for f in outputs]
+
+
 __all__ = [
     "VALID_SHARE_MODES",
     "create_share",
@@ -325,5 +414,8 @@ __all__ = [
     "list_shares_for_notebook",
     "render_dashboard_html",
     "revoke_share",
+    "scrub_output_frame",
+    "scrub_outputs",
+    "scrub_text",
     "update_share",
 ]

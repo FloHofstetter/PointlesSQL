@@ -90,6 +90,11 @@ PUBLIC_PREFIXES: tuple[str, ...] = (
     # return 410 from the route itself — letting the auth middleware
     # redirect to /auth/login would break the whole publish flow.
     "/share/",
+    # Phase 100 Wave-D: iframe-embed mirror of the share viewer.
+    # Same auth-by-uuid contract as /share/; lives under /embed/
+    # so external doc embeds can frame it like Phase-92.2's
+    # /embed/semantic_search/{fqn}.
+    "/embed/notebook_share/",
 )
 
 
