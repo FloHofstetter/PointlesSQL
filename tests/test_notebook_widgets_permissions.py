@@ -429,3 +429,66 @@ async def test_api_permission_crud(
         params={"path": "p.py", "user_id": 999},
     )
     assert revoked.json()["removed"] is True
+
+
+# -- pql.widgets() kernel shim ----------------------------------------------
+
+
+def test_pql_widgets_empty_when_no_notebook_context(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Without ``POINTLESSQL_NOTEBOOK_ID`` the shim returns ``{}``.
+
+    Used by interactive REPL / subprocess agent runs that don't carry
+    notebook context — the kernel cell ``params = pql.widgets()`` then
+    yields an empty dict instead of raising.
+    """
+    monkeypatch.delenv("POINTLESSQL_NOTEBOOK_ID", raising=False)
+    # ``_set_context`` is the kernel-side runtime injector; clearing
+    # the env alone leaves stale module state behind from earlier tests.
+    from pointlessql.pql.context import _set_context
+    from pointlessql.pql.pql import PQL
+
+    _set_context(notebook_id=None, branch=None, agent_run_id=None)
+    pql = PQL(client=httpx.Client(transport=httpx.MockTransport(lambda r: httpx.Response(200))))
+    assert pql.widgets() == {}
+
+
+def test_pql_widgets_resolves_defaults(
+    monkeypatch: pytest.MonkeyPatch,
+    factory: sessionmaker,  # type: ignore[type-arg]
+) -> None:
+    """Seeded widgets surface through ``pql.widgets()`` with defaults."""
+    notebook_id = _seed_notebook(factory)
+    with factory() as s:
+        notebook_widgets_service.upsert_widget(
+            s,
+            notebook_id=notebook_id,
+            name="region",
+            widget_kind="dropdown",
+            label="Region",
+            config={"options": ["EU", "US", "APAC"]},
+            default_value="EU",
+        )
+        notebook_widgets_service.upsert_widget(
+            s,
+            notebook_id=notebook_id,
+            name="threshold",
+            widget_kind="slider",
+            label="Threshold",
+            config={"min": 0, "max": 100, "step": 1},
+            default_value=50,
+        )
+        s.commit()
+
+    import pointlessql.db as db_module
+    from pointlessql.pql.context import _set_context
+    from pointlessql.pql.pql import PQL
+
+    # Bind the in-memory factory as the module-level singleton so
+    # ``get_session_factory()`` returns it from the PQL shim.
+    monkeypatch.setattr(db_module, "_session_factory", factory)
+    _set_context(notebook_id=notebook_id, branch=None, agent_run_id=None)
+    pql = PQL(client=httpx.Client(transport=httpx.MockTransport(lambda r: httpx.Response(200))))
+    values = pql.widgets()
+    assert values == {"region": "EU", "threshold": 50}

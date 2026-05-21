@@ -73,17 +73,25 @@ def _get_executor(workers: int) -> ThreadPoolExecutor:
 
 
 @router.websocket("/ws/notebook/chat/{editor_session_id}")
-async def notebook_chat_ws(
-    websocket: WebSocket, editor_session_id: str
-) -> None:
+async def notebook_chat_ws(websocket: WebSocket, editor_session_id: str) -> None:
     """Drive one notebook-chat session over a single WebSocket.
 
     Args:
-        websocket: The incoming connection.
+        websocket: The incoming connection.  ``?notebook_id=…`` is
+            an optional query parameter — when present, the
+            Phase-105.6 agent-presence plugin tool fires from the
+            in-process agent runs because the agent factory stamps
+            ``POINTLESSQL_NOTEBOOK_ID`` for the plugin to read.
         editor_session_id: UUID7 minted server-side at notebook-
             editor page render and stored in ``sessionStorage`` so
             browser reload re-attaches to the same agent run.
     """
+    notebook_id_raw = websocket.query_params.get("notebook_id")
+    notebook_id = (
+        notebook_id_raw.strip()
+        if isinstance(notebook_id_raw, str) and notebook_id_raw.strip()
+        else None
+    )
     settings: Settings = websocket.app.state.settings
     # Browsers surface a closed-before-accept handshake as a generic
     # "connection refused" — the WS close code + reason never arrive
@@ -142,6 +150,7 @@ async def notebook_chat_ws(
                 editor_session_id=editor_session_id,
                 chat_session_id=chat_session_id,
                 agent_run_id=agent_run_id,
+                notebook_id=notebook_id,
                 cancel_event=cancel_event,
                 active_turn=active_turn,
             )
@@ -149,7 +158,7 @@ async def notebook_chat_ws(
         pump_task.cancel()
         try:
             await pump_task
-        except (asyncio.CancelledError, Exception):  # noqa: BLE001
+        except asyncio.CancelledError, Exception:  # noqa: BLE001
             pass
         unsubscribe(editor_session_id, queue)
 
@@ -177,6 +186,7 @@ async def _handle_frame(
     editor_session_id: str,
     chat_session_id: int,
     agent_run_id: str,
+    notebook_id: str | None,
     cancel_event: threading.Event,
     active_turn: dict[str, Any],
 ) -> None:
@@ -184,9 +194,7 @@ async def _handle_frame(
     try:
         frame_any: Any = json.loads(frame_text)
     except json.JSONDecodeError:
-        await _send_error(
-            websocket, request_id=None, code="bad_json", message="frame not JSON"
-        )
+        await _send_error(websocket, request_id=None, code="bad_json", message="frame not JSON")
         return
     if not isinstance(frame_any, dict):
         await _send_error(
@@ -198,9 +206,7 @@ async def _handle_frame(
         return
     frame: dict[str, Any] = {str(k): v for k, v in frame_any.items()}  # type: ignore[reportUnknownVariableType]
     request_id_raw = frame.get("id")
-    request_id: int | None = (
-        request_id_raw if isinstance(request_id_raw, int) else None
-    )
+    request_id: int | None = request_id_raw if isinstance(request_id_raw, int) else None
     method_raw = frame.get("method")
     method: str | None = method_raw if isinstance(method_raw, str) else None
     params_raw = frame.get("params")
@@ -220,19 +226,16 @@ async def _handle_frame(
             editor_session_id=editor_session_id,
             chat_session_id=chat_session_id,
             agent_run_id=agent_run_id,
+            notebook_id=notebook_id,
             cancel_event=cancel_event,
             active_turn=active_turn,
         )
     elif method == "cancel":
         cancel_event.set()
-        await _send_reply(
-            websocket, request_id=request_id, result={"cancelled": True}
-        )
+        await _send_reply(websocket, request_id=request_id, result={"cancelled": True})
     elif method == "reset":
         reset_session(factory, chat_session_id=chat_session_id)
-        await _send_reply(
-            websocket, request_id=request_id, result={"reset": True}
-        )
+        await _send_reply(websocket, request_id=request_id, result={"reset": True})
     else:
         await _send_error(
             websocket,
@@ -252,6 +255,7 @@ async def _handle_prompt(
     editor_session_id: str,
     chat_session_id: int,
     agent_run_id: str,
+    notebook_id: str | None,
     cancel_event: threading.Event,
     active_turn: dict[str, Any],
 ) -> None:
@@ -305,6 +309,7 @@ async def _handle_prompt(
                     conversation_history=history,
                     cancel_event=cancel_event,
                     surface="notebook",
+                    notebook_id=notebook_id,
                 )
             except ValidationError as exc:
                 publish(
@@ -325,9 +330,7 @@ async def _handle_prompt(
             if result.cancelled:
                 publish(
                     editor_session_id,
-                    ChatEvent(
-                        kind="cancelled", payload={"turn_id": turn_id}
-                    ),
+                    ChatEvent(kind="cancelled", payload={"turn_id": turn_id}),
                 )
             else:
                 appended = [
@@ -375,13 +378,9 @@ def _reload_history(factory: Any, chat_session_id: int) -> list[dict[str, Any]]:
     return [dict(item) for item in raw if isinstance(item, dict)]  # type: ignore[reportUnknownVariableType]
 
 
-async def _send_notify(
-    websocket: WebSocket, *, kind: str, params: dict[str, Any]
-) -> None:
+async def _send_notify(websocket: WebSocket, *, kind: str, params: dict[str, Any]) -> None:
     """Send a ``{"notify": kind, "params": params}`` frame."""
-    await websocket.send_text(
-        json.dumps({"notify": kind, "params": params})
-    )
+    await websocket.send_text(json.dumps({"notify": kind, "params": params}))
 
 
 async def _send_reply(

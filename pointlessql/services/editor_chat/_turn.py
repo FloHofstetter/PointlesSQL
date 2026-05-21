@@ -73,6 +73,7 @@ async def run_turn(
     cancel_event: threading.Event,
     agent_builder: Any | None = None,
     surface: str = "sql",
+    notebook_id: str | None = None,
 ) -> TurnResult:
     """Execute one chat turn end-to-end with streaming + cancel.
 
@@ -96,6 +97,10 @@ async def run_turn(
             register inside this turn.  ``"sql"`` (default) for
             the Phase-91 SQL chat; ``"notebook"`` for the Phase-96
             notebook AI assistant.  Forwarded to ``build_agent``.
+        notebook_id: Phase 105.6 — optional notebook UUID
+            forwarded to ``build_agent`` so the plugin can fire
+            ``coedit/agent-presence`` broadcasts.  Only meaningful
+            for ``surface="notebook"``; ignored otherwise.
 
     Returns:
         A :class:`TurnResult` carrying the assistant reply, the
@@ -136,6 +141,7 @@ async def run_turn(
             editor_session_id=editor_session_id,
             on_token=on_token,
             surface=cast(ChatSurface, surface),
+            notebook_id=notebook_id,
         )
         try:
             result = agent.run_conversation(

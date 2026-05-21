@@ -17,7 +17,7 @@
 {% if notebook_chat_enabled %}
 <div
   class="pql-chat-drawer pql-notebook-chat-drawer"
-  x-data="notebookChatPanel('{{ notebook_chat_session_id }}')"
+  x-data="notebookChatPanel('{{ notebook_chat_session_id }}', {{ notebook_uuid|tojson }})"
   x-init="connect()"
   {# ``$root`` inside an ``x-data`` scope returns the CURRENT root    #}
   {# (the drawer), not the page-level outer scope, so                 #}

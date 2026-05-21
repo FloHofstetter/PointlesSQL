@@ -1974,7 +1974,7 @@ PointlesSQL
 │   │         count badge on the button.  Workspace-list tag-pills
 │   │         still deferred.
 │   │
-│   ├── Phase 99 — Widget-cells + Notebook permissions            ⏳ partial
+│   ├── Phase 99 — Widget-cells + Notebook permissions            ✅ done 2026-05-21
 │   │     Backend shipped 2026-05-20.  Two new tables (migration
 │   │     ``b944b9be7e03``):
 │   │     * ``notebook_widgets`` — parameter widgets keyed
@@ -2004,12 +2004,22 @@ PointlesSQL
 │   │     kernel would receive.  The permissions panel exposes the
 │   │     ``view < run < edit`` lattice with inline role editing.
 │   │
-│   │     **Still deferred:** ``pql.widgets`` kernel-side shim
-│   │     (env-bridge from WS handler to kernel namespace) +
-│   │     route-layer enforcement (``role_satisfies`` is in place
-│   │     but not yet consulted by the load / save / WS execute
-│   │     paths).  Both are mechanical plumbing — the UI now
-│   │     surfaces the data the runtime needs to honour.
+│   │     **Closure 2026-05-21:** ``pql.widgets()`` kernel shim
+│   │     landed.  The kernel session already stamps
+│   │     ``POINTLESSQL_NOTEBOOK_ID`` via
+│   │     ``services/notebook/kernel_session/session.py``;
+│   │     ``PQL.widgets()`` reads the active notebook id from
+│   │     :mod:`pointlessql.pql.context`, lazy-bootstraps the
+│   │     metadata DB if the subprocess hasn't already, and
+│   │     calls ``resolve_widget_values``.  Outside the editor
+│   │     (interactive REPL / unbound context) the method
+│   │     returns an empty dict so ``params = pql.widgets()``
+│   │     is safe to write unconditionally.  Route-layer
+│   │     enforcement (``actor_has_role``) was already wired
+│   │     into the load (``api_load_notebook``), save
+│   │     (``api_save_notebook``), kernel WS open, and co-edit
+│   │     WS open paths at Wave-C ship — nothing further was
+│   │     needed there.
 │   │
 │   ├── Phase 100 — Publish notebook (external share + dashboard) ⏳ partial
 │   │     Two orthogonal pieces shipped together because they share
@@ -2345,21 +2355,32 @@ PointlesSQL
 │
 │         Phase 105 open follow-ups (out of scope, tracked here so
 │         they don't fall off the radar):
-│         - **hermes-plugin agent-presence wiring** — closes 105.6
-│           fully.  The REST endpoint
-│           ``POST /api/notebooks/{nb}/coedit/agent-presence`` ships
-│           on PointlesSQL but the plugin's ``propose_cell`` /
-│           ``fix_cell`` / ``explain_cell`` tools don't fire the
-│           pre/post calls yet, so the robot-avatar pseudo-peer
-│           never lights up in real agent runs.  Cross-repo commit
-│           on ``hermes-plugin-pointlessql``, ~30 LOC.
-│         - **Sync-timing rebind on ``cellYBinding``** — when the
-│           Y.Doc sync handshake is still in flight, ``cellYBinding``
-│           returns ``null`` and cells mount as standalone
-│           CodeMirror.  Today the binding picks up on the next
-│           mount (cell add/delete or reload); a clean fix needs an
-│           ``ydoc.on('synced', ...)`` listener in the mixin that
-│           rebinds open editors once.
+│         - **hermes-plugin agent-presence wiring** — ✅ closed
+│           2026-05-21.  The notebook chat WS now plumbs
+│           ``?notebook_id=`` through to the agent factory, which
+│           stamps ``POINTLESSQL_NOTEBOOK_ID`` for the plugin.
+│           ``hermes_plugin_pointlessql.tools._common`` ships an
+│           ``agent_presence(client, cell_uuid=…)`` context
+│           manager that sandwiches every propose / fix / explain
+│           tool call with thinking→clear broadcasts to
+│           ``POST /api/notebooks/{nb}/coedit/agent-presence``;
+│           swallowed-failure semantics so a 5xx on presence never
+│           breaks the real tool path.  4 new pytest on the plugin
+│           side.  Cross-repo: PointlesSQL ``feat(notebook)`` +
+│           plugin ``feat(tools)``.
+│         - **Sync-timing rebind on ``cellYBinding``** — ✅ closed
+│           2026-05-21.  ``coedit_client.js`` exposes a new
+│           ``onSynced`` callback that fires once on
+│           ``TAG_SYNC_STEP2``; the mixin in ``coedit.js`` wires
+│           ``_rebindCellEditorsAfterSync`` which walks the cell
+│           editor registry, destroys every un-bound
+│           ``cellEditor``, and re-mounts it with the freshly-
+│           available ``yBinding`` triple.  ``cell.source`` is the
+│           canonical text the standalone update-listener wrote on
+│           every keystroke, so the remount seeds the shared
+│           ``Y.Text`` with identical content.  No new pytest
+│           (frontend-only; covered by the existing Playwright
+│           multi-tab playbook).
 │         - **Cell-remap → editor rebind** — 105.5 stashes the
 │           remap in ``_pendingCellRemap`` but 105.3b doesn't
 │           actively consume it yet.  The first save-after-Pass-3-

@@ -985,6 +985,47 @@ class PQL:
         """
         return list_tables(self._client, catalog, schema)
 
+    def widgets(self) -> dict[str, Any]:
+        """Return the resolved widget values for the active notebook.
+
+        Phase 99 — kernel-side shim over the
+        :mod:`pointlessql.services.notebook.widgets` resolver.  Reads
+        the active notebook UUID from
+        :func:`pointlessql.pql.context.current_notebook_id`; outside
+        the notebook editor (interactive REPL, subprocess agent runs
+        without the env-bridge) the call returns an empty dict so
+        ``params = pql.widgets()`` is safe to write unconditionally.
+
+        Returns:
+            Mapping ``widget_name → value``.  Values flow from the
+            ``notebook_widgets`` table — ``default_value`` overridden
+            by anything the editor's widgets-panel submitted on the
+            current execute (the WS bridge feeds the overrides into
+            the metadata DB on Save; per-execute form-state overrides
+            are not yet wired through the kernel context).  When no
+            notebook context is active the mapping is empty.
+        """
+        from pointlessql.db import get_session_factory, init_db
+        from pointlessql.pql.context import current_notebook_id
+        from pointlessql.services.notebook.widgets import (
+            resolve_widget_values,
+        )
+
+        notebook_id = current_notebook_id()
+        if not notebook_id:
+            return {}
+        try:
+            factory = get_session_factory()
+        except RuntimeError:
+            # Kernel subprocess bypasses the FastAPI lifespan; the
+            # session factory is unbound on first widget read.
+            # ``init_db`` is idempotent — re-running against the same
+            # URL is a no-op after the first call.
+            init_db(Settings().db.url)
+            factory = get_session_factory()
+        with factory() as session:
+            return resolve_widget_values(session, notebook_id=notebook_id)
+
     def _unreachable_msg(self) -> str:
         """Build a user-friendly message when soyuz-catalog is unreachable."""
         url = self._client._base_url  # pyright: ignore[reportPrivateUsage]

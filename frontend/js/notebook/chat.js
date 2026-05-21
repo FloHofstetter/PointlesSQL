@@ -21,22 +21,30 @@ const CHAT_RECONNECT_DELAY_MS = 2000;
  * Build the WS URL for a notebook editor-session-id.
  *
  * @param {string} editorSessionId
+ * @param {string} [notebookUuid] Optional notebook UUID forwarded
+ *   as ``?notebook_id=…`` so the agent factory can stamp
+ *   ``POINTLESSQL_NOTEBOOK_ID`` for the Phase-105.6 plugin
+ *   agent-presence wiring.
  * @returns {string}
  */
-function buildNotebookChatUrl(editorSessionId) {
+function buildNotebookChatUrl(editorSessionId, notebookUuid) {
   const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  return `${proto}//${window.location.host}/ws/notebook/chat/${editorSessionId}`;
+  const base = `${proto}//${window.location.host}/ws/notebook/chat/${editorSessionId}`;
+  if (!notebookUuid) return base;
+  return `${base}?notebook_id=${encodeURIComponent(notebookUuid)}`;
 }
 
 /**
  * Alpine factory.
  *
  * @param {string} editorSessionId
+ * @param {string} [notebookUuid]
  * @returns {object}
  */
-export function notebookChatPanel(editorSessionId) {
+export function notebookChatPanel(editorSessionId, notebookUuid) {
   return {
     editorSessionId,
+    notebookUuid: notebookUuid || '',
     _ws: /** @type {WebSocket | null} */ (null),
     _reconnectHandle: /** @type {number | null} */ (null),
     _nextRequestId: 1,
@@ -61,7 +69,9 @@ export function notebookChatPanel(editorSessionId) {
       if (this._ws && this._ws.readyState === WebSocket.OPEN) return;
       this.status = 'connecting';
       this.statusLabel = 'connecting…';
-      const ws = new WebSocket(buildNotebookChatUrl(this.editorSessionId));
+      const ws = new WebSocket(
+        buildNotebookChatUrl(this.editorSessionId, this.notebookUuid),
+      );
       this._ws = ws;
       ws.onopen = () => {
         this.status = 'connected';

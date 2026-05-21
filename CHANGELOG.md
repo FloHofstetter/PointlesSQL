@@ -6,6 +6,48 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Phase 99 + 105 follow-up closures (2026-05-21).**  Three small
+  cross-cutting deferred items from the post-notebook-blitz hygiene
+  backlog landed together; asset 0.1.0rc81 → 0.1.0rc82.
+  - **Phase 105.6 closure — hermes-plugin agent-presence wiring.**
+    Cross-repo.  The notebook chat WS at
+    ``/ws/notebook/chat/{editor_session_id}`` now accepts an
+    optional ``?notebook_id=`` query parameter; the chat-drawer
+    template forwards the editor's ``notebook_uuid`` so the
+    in-process agent factory can stamp
+    ``POINTLESSQL_NOTEBOOK_ID`` for the plugin.  On the plugin
+    side, ``hermes_plugin_pointlessql.tools._common.agent_presence``
+    is a new context manager that sandwiches every
+    ``propose_cell`` / ``fix_cell`` / ``explain_cell`` invocation
+    with ``thinking`` → ``clear`` POSTs to
+    ``/api/notebooks/{nb}/coedit/agent-presence``; failures are
+    swallowed so the real tool path is never blocked by a presence
+    5xx.  Robot pseudo-peer now lights up in real agent runs.  4
+    new plugin pytest.
+  - **Phase 105 sync-timing rebind on cellYBinding.**  Cells that
+    mounted before the Y.Doc handshake completed got
+    ``cellYBinding(cell)=null`` and stayed standalone — co-edit
+    never picked them up without a manual reload.
+    ``coedit_client.js`` now exposes an ``onSynced`` callback that
+    fires once on ``TAG_SYNC_STEP2``; the mixin in ``coedit.js``
+    wires ``_rebindCellEditorsAfterSync`` which walks the editor
+    registry, destroys every un-bound CodeMirror view, and
+    re-mounts it Y-bound from the canonical ``cell.source`` text
+    the standalone update-listener kept current.
+  - **Phase 99 closure — ``pql.widgets()`` kernel shim.**  The
+    kernel session already stamped ``POINTLESSQL_NOTEBOOK_ID``
+    via ``services/notebook/kernel_session/session.py``;
+    ``PQL.widgets()`` reads the active id from
+    :mod:`pointlessql.pql.context`, lazy-bootstraps the metadata
+    DB if the subprocess doesn't have a bound session factory
+    yet, and calls ``resolve_widget_values``.  Returns ``{}``
+    outside the editor (REPL / unbound context) so
+    ``params = pql.widgets()`` is safe unconditional.  Route-layer
+    ``actor_has_role`` enforcement was already wired into the
+    load / save / kernel-WS-open / coedit-WS-open paths at the
+    Wave-C ship, so no further plumbing was needed there.  2 new
+    pytest.
+
 - **Phase 106 — Hygiene-Wave nach Phase 95–105 (2026-05-21).**
   Two commits flip the post-notebook-blitz code-quality debt back
   to baseline.  No behaviour change, no asset bump.

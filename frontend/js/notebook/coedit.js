@@ -22,6 +22,7 @@
 import { Awareness, encodeAwarenessUpdate } from 'y-protocols/awareness';
 import { Text as YText, UndoManager as YUndoManager } from 'yjs';
 
+import { cellEditor } from './cell_editor.js';
 import { createCoeditClient } from './coedit_client.js';
 
 const CELLS_ORDER_KEY = 'cells_order';
@@ -75,6 +76,7 @@ export function installCoeditLifecycle(state, { userInfo = null } = {}) {
       onStatusChange: (next) => { this.coeditStatus = next; },
       onCellRemap: (remap) => { this._applyCellUuidRemap(remap); },
       onAgentPresence: (presence) => { this._applyAgentPresence(presence); },
+      onSynced: () => { this._rebindCellEditorsAfterSync(); },
     });
     if (haveUser) {
       // Awareness needs an in/out Y.Doc — the client's ``ydoc`` is the
@@ -240,6 +242,52 @@ export function installCoeditLifecycle(state, { userInfo = null } = {}) {
       awareness: this._awareness,
       undoManager: new YUndoManager(ytext),
     };
+  };
+
+  state._rebindCellEditorsAfterSync = function () {
+    // Phase 105 follow-up — sync-timing rebind.  Cells that mounted
+    // before ``createCoeditClient`` finished the sync_step2 handshake
+    // got ``cellYBinding(cell)`` returning ``null`` (synced=false) and
+    // mounted as standalone CodeMirror.  Once ``onSynced`` fires we
+    // walk every editor that's still un-bound, destroy it, and remount
+    // it Y-bound.  ``cell.source`` is the canonical text the standalone
+    // listener wrote on every keystroke, so the remount seeds the
+    // shared ``Y.Text`` with the same content peers would have seen on
+    // a fresh open.  No-op when the editor registry is empty (anon
+    // render / SSR test).
+    const editors = this._editors;
+    if (!editors || typeof editors !== 'object') return;
+    if (!Array.isArray(this.cells)) return;
+    for (const cell of this.cells) {
+      if (!cell || !cell.id) continue;
+      const existing = editors[cell.id];
+      if (!existing || existing._yBinding) continue;
+      const host = document.getElementById(`pql-cell-host-${cell.id}`);
+      if (!host) continue;
+      const binding = this.cellYBinding(cell);
+      if (!binding) continue;
+      const source = typeof existing.getSource === 'function'
+        ? existing.getSource()
+        : String(cell.source || '');
+      try { existing.destroy(); } catch (_e) { /* swallow */ }
+      const fresh = cellEditor({
+        initialSource: source,
+        language:
+          cell.cell_type === 'sql'
+            ? 'sql'
+            : cell.cell_type === 'markdown'
+              ? 'markdown'
+              : 'python',
+        onSourceChange: (value) => this._onCellSourceChange(cell.id, value),
+        yBinding: binding,
+      });
+      editors[cell.id] = fresh;
+      host.dataset.pqlCellInit = '';
+      host.innerHTML = '';
+      // Mount is async; let it run in the background so onSynced
+      // doesn't block the WS message loop.
+      fresh.mount(host).catch(() => { /* swallow */ });
+    }
   };
 
   state._applyCellUuidRemap = function (remap) {

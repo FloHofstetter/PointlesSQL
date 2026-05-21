@@ -61,6 +61,7 @@ export function createCoeditClient({
   onAwarenessUpdate = () => {},
   onCellRemap = () => {},
   onAgentPresence = () => {},
+  onSynced = () => {},
   awareness: initialAwareness = null,
 } = {}) {
   if (!notebookUuid) {
@@ -128,6 +129,12 @@ export function createCoeditClient({
         // updates we had before connecting.  For 105.3's empty-Doc
         // bootstrap this is a no-op; harmless either way.
         _sendFrame(TAG_SYNC_STEP1, Y.encodeStateVector(ydoc));
+        // Phase 105 follow-up — cells that mounted before the
+        // handshake landed got no ``cellYBinding`` (synced was
+        // false) and silently fell back to standalone CodeMirror.
+        // Fire ``onSynced`` so the mixin can rebind their editors
+        // exactly once, the first time the server confirms sync.
+        try { onSynced(); } catch (_e) { /* swallow */ }
       }
     } else if (tag === TAG_CELL_UUID_REMAP) {
       // Phase 105.5 — server-originated advisory.  Payload is a

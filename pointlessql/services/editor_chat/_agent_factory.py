@@ -73,6 +73,7 @@ def build_agent(
     editor_session_id: str,
     on_token: Callable[[str | None], None],
     surface: ChatSurface = "sql",
+    notebook_id: str | None = None,
 ) -> Any:
     """Instantiate a fresh ``AIAgent`` for one turn.
 
@@ -94,6 +95,13 @@ def build_agent(
             register inside this run.  Defaults to ``"sql"`` for
             backwards-compat with Phase-91 callers; the
             Phase-96 notebook chat WS passes ``"notebook"``.
+        notebook_id: Phase 105.6 — when set, stamped into
+            ``POINTLESSQL_NOTEBOOK_ID`` so the plugin's
+            ``propose_cell`` / ``fix_cell`` / ``explain_cell`` tools
+            can fire pre/post ``coedit/agent-presence`` broadcasts
+            that light up a robot pseudo-peer on every connected
+            editor tab.  ``None`` clears the env so a previous
+            notebook's id doesn't leak into a fresh chat session.
 
     Returns:
         An object with ``run_conversation(user_message, *,
@@ -119,9 +127,14 @@ def build_agent(
     if surface == "sql":
         os.environ["POINTLESSQL_CHAT_SESSION_ID"] = editor_session_id
         os.environ.pop("POINTLESSQL_NOTEBOOK_CHAT_SESSION_ID", None)
+        os.environ.pop("POINTLESSQL_NOTEBOOK_ID", None)
     else:
         os.environ["POINTLESSQL_NOTEBOOK_CHAT_SESSION_ID"] = editor_session_id
         os.environ.pop("POINTLESSQL_CHAT_SESSION_ID", None)
+        if notebook_id:
+            os.environ["POINTLESSQL_NOTEBOOK_ID"] = notebook_id
+        else:
+            os.environ.pop("POINTLESSQL_NOTEBOOK_ID", None)
 
     # Import lazily so tests that monkeypatch ``build_agent`` never
     # pull hermes_agent into the process.  hermes_agent has no
