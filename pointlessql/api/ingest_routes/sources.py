@@ -22,7 +22,7 @@ import json
 import logging
 from typing import Any, cast
 
-from fastapi import APIRouter, Body, HTTPException, Request
+from fastapi import APIRouter, Body, Request
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
@@ -35,7 +35,7 @@ from pointlessql.api.ingest_routes._serializers import (
     merge_patch_secrets,
     serialize_source,
 )
-from pointlessql.exceptions import ValidationError
+from pointlessql.exceptions import ConflictError, ResourceNotFoundError, ValidationError
 from pointlessql.models import IngestSource
 from pointlessql.models.ingest import INGEST_SOURCE_KINDS
 
@@ -121,16 +121,12 @@ async def api_create_source(
         ``{"source": {...}}`` for the freshly-created row.
 
     Raises:
-        HTTPException: 400 on validation failure, 409 on duplicate
-            ``(workspace_id, name)``.
+        ConflictError: On duplicate ``(workspace_id, name)``.
     """
     require_user(request)
     user = get_user(request)
     workspace_id = current_workspace_id(request)
-    try:
-        name, kind, config, secrets = _validate_create_body(body)
-    except ValidationError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    name, kind, config, secrets = _validate_create_body(body)
 
     now = datetime.datetime.now(datetime.UTC)
     source = IngestSource(
@@ -153,9 +149,8 @@ async def api_create_source(
             session.commit()
         except IntegrityError as exc:
             session.rollback()
-            raise HTTPException(
-                status_code=409,
-                detail=f"A source named {name!r} already exists in this workspace.",
+            raise ConflictError(
+                f"A source named {name!r} already exists in this workspace.",
             ) from exc
         session.refresh(source)
         out = serialize_source(source)
@@ -174,7 +169,7 @@ async def api_get_source(request: Request, source_id: int) -> dict[str, Any]:
         ``{"source": {...}}`` with secrets redacted.
 
     Raises:
-        HTTPException: 404 when the source doesn't exist in this
+        ResourceNotFoundError: When the source doesn't exist in this
             workspace.
     """
     require_user(request)
@@ -183,7 +178,7 @@ async def api_get_source(request: Request, source_id: int) -> dict[str, Any]:
     with factory() as session:
         row = session.get(IngestSource, source_id)
         if row is None or row.workspace_id != workspace_id:
-            raise HTTPException(status_code=404, detail="source not found")
+            raise ResourceNotFoundError("source not found")
         return {"source": serialize_source(row)}
 
 
@@ -208,7 +203,9 @@ async def api_patch_source(
         ``{"source": {...}}`` after the update.
 
     Raises:
-        HTTPException: 400 / 404 / 409.
+        ValidationError: On invalid patch fields.
+        ResourceNotFoundError: When the source doesn't exist.
+        ConflictError: On duplicate ``(workspace_id, name)``.
     """
     require_user(request)
     workspace_id = current_workspace_id(request)
@@ -216,29 +213,23 @@ async def api_patch_source(
     with factory() as session:
         row = session.get(IngestSource, source_id)
         if row is None or row.workspace_id != workspace_id:
-            raise HTTPException(status_code=404, detail="source not found")
+            raise ResourceNotFoundError("source not found")
         if "name" in body:
             name = str(body.get("name") or "").strip()
             if not name or len(name) > 200:
-                raise HTTPException(
-                    status_code=400, detail="name must be 1-200 characters."
-                )
+                raise ValidationError("name must be 1-200 characters.")
             row.name = name
         if "config" in body:
             cfg = body["config"]
             if not isinstance(cfg, dict):
-                raise HTTPException(
-                    status_code=400, detail="config must be an object."
-                )
+                raise ValidationError("config must be an object.")
             row.config = json.dumps(cfg)
         if "secrets" in body:
             patch_secrets_raw = body["secrets"]
             if patch_secrets_raw is not None and not isinstance(
                 patch_secrets_raw, dict
             ):
-                raise HTTPException(
-                    status_code=400, detail="secrets must be an object."
-                )
+                raise ValidationError("secrets must be an object.")
             patch_secrets: dict[str, Any] | None
             if patch_secrets_raw is None:
                 patch_secrets = None
@@ -256,9 +247,8 @@ async def api_patch_source(
             session.commit()
         except IntegrityError as exc:
             session.rollback()
-            raise HTTPException(
-                status_code=409,
-                detail="A source with this name already exists in this workspace.",
+            raise ConflictError(
+                "A source with this name already exists in this workspace.",
             ) from exc
         session.refresh(row)
         return {"source": serialize_source(row)}
@@ -278,7 +268,7 @@ async def api_delete_source(request: Request, source_id: int) -> dict[str, Any]:
         ``{"deleted": True}`` on success.
 
     Raises:
-        HTTPException: 404 when the source doesn't exist.
+        ResourceNotFoundError: When the source doesn't exist.
     """
     require_user(request)
     workspace_id = current_workspace_id(request)
@@ -286,7 +276,7 @@ async def api_delete_source(request: Request, source_id: int) -> dict[str, Any]:
     with factory() as session:
         row = session.get(IngestSource, source_id)
         if row is None or row.workspace_id != workspace_id:
-            raise HTTPException(status_code=404, detail="source not found")
+            raise ResourceNotFoundError("source not found")
         row.is_active = False
         row.updated_at = datetime.datetime.now(datetime.UTC)
         session.commit()

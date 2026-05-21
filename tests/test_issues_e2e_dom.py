@@ -94,16 +94,30 @@ async def test_issue_detail_page_renders_sidebar(
 
 
 def test_issues_pane_partial_is_referenced_from_detail_pages() -> None:
-    """Every Issues-enabled detail page includes the partial."""
+    """Every Issues-enabled detail page includes the partial (directly or via a sub-partial)."""
+    import re
+
+    include_re = re.compile(r'include\s+"([^"]+)"')
+
+    def references_issues_pane(relpath: str, depth: int = 0) -> bool:
+        if depth > 4:
+            return False
+        path = _TEMPLATES_ROOT / relpath
+        if not path.is_file():
+            return False
+        body = path.read_text()
+        if "_issues_pane.html" in body:
+            return True
+        return any(references_issues_pane(inc, depth + 1) for inc in include_re.findall(body))
+
     for relpath in (
         "pages/table.html",
         "pages/model.html",
         "pages/branch_detail.html",
         "pages/data_product.html",
     ):
-        body = (_TEMPLATES_ROOT / relpath).read_text()
-        assert "_issues_pane.html" in body, (
-            f"missing _issues_pane include in {relpath}"
+        assert references_issues_pane(relpath), (
+            f"missing _issues_pane include reachable from {relpath}"
         )
 
 

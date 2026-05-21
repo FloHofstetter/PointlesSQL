@@ -217,6 +217,7 @@ def parse_sql_to_state(sql: str) -> dict[str, Any] | None:
     try:
         tree = parse_one(sql, dialect="duckdb")
     except Exception:  # noqa: BLE001 — anything sqlglot raises means "give up"
+        # bare-broad-ok: sqlglot reverse-mapping silently returns None on failure
         return None
     if not isinstance(tree, exp.Select):
         return None

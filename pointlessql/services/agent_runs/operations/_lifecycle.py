@@ -357,7 +357,7 @@ def operation_context(
         session_factory,
         op_id=op_id,
         agent_run_id=agent_run_id,
-        op_name=op_name.value,
+        op_name=str(op_name),
         target_table=final_target,
         error_message=None,
     )

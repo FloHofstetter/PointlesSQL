@@ -17,7 +17,7 @@ import logging
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi import APIRouter, Query, Request
 
 from pointlessql.api._audit_helpers import audit, effective_agent_run_id
 from pointlessql.api.dependencies import (
@@ -31,6 +31,7 @@ from pointlessql.api.sql.vector_search._models import (
     VectorIndexSummary,
 )
 from pointlessql.db import get_session_factory
+from pointlessql.exceptions import ResourceNotFoundError
 from pointlessql.models.vector import VectorIndex
 from pointlessql.pql._parsing import parse_full_name
 from pointlessql.pql._vector import create_or_rebuild_index
@@ -171,7 +172,7 @@ async def api_vector_index_delete(request: Request, index_id: int) -> None:
             .one_or_none()
         )
         if row is None:
-            raise HTTPException(status_code=404, detail="vector index not found")
+            raise ResourceNotFoundError("vector index not found")
         target_fqn = f"{row.catalog}.{row.schema}.{row.table}"
         index_path = Path(row.index_path)
         column = row.column

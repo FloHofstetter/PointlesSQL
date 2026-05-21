@@ -61,7 +61,12 @@ if TYPE_CHECKING:
 
 
 REPLAYABLE_OPS: frozenset[str] = frozenset(
-    {OpName.SQL.value, OpName.SQL_EXPLAIN.value, OpName.AUTOLOAD.value}
+    {
+        OpName.SQL.value,
+        OpName.SQL_EXPLAIN.value,
+        OpName.AUTOLOAD.value,
+        OpName.VECTOR_SEARCH.value,
+    }
 )
 DATA_UNAVAILABLE_OPS: frozenset[str] = frozenset(
     {
@@ -92,6 +97,7 @@ UNSAFE_OPS: frozenset[str] = frozenset(
         OpName.CREATE_SCHEMA.value,
         OpName.DROP_SCHEMA.value,
         OpName.ALTER_TABLE.value,
+        OpName.VECTOR_INDEX.value,
     }
 )
 

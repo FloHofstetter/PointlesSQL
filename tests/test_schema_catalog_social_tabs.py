@@ -29,10 +29,13 @@ _TEMPLATES_ROOT = pathlib.Path(
 
 
 def test_schemas_html_has_five_tab_nav_strip() -> None:
-    """``schemas.html`` carries Overview + 4 social tab buttons."""
+    """``schemas.html`` carries the 4 social tab buttons inside the offcanvas drawer.
+
+    Post-77.5 the page itself is the Overview surface and the social
+    tabs moved into a side-drawer — no separate Overview tab needed.
+    """
     body = (_TEMPLATES_ROOT / "pages/schemas.html").read_text()
     for marker in (
-        'data-pql-tab-key="overview"',
         'data-pql-tab-key="discussion"',
         'data-pql-tab-key="endorsements"',
         'data-pql-tab-key="followers"',
@@ -64,10 +67,13 @@ def test_schemas_html_includes_social_partials() -> None:
 
 
 def test_tables_html_has_five_tab_nav_strip() -> None:
-    """``tables.html`` carries Overview + 4 social tab buttons."""
+    """``tables.html`` carries the 4 social tab buttons inside the offcanvas drawer.
+
+    Post-77.5 the page itself is the Overview surface and the social
+    tabs moved into a side-drawer — no separate Overview tab needed.
+    """
     body = (_TEMPLATES_ROOT / "pages/tables.html").read_text()
     for marker in (
-        'data-pql-tab-key="overview"',
         'data-pql-tab-key="discussion"',
         'data-pql-tab-key="endorsements"',
         'data-pql-tab-key="followers"',

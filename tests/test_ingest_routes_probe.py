@@ -80,12 +80,17 @@ async def test_probe_sqlite_table(
 async def test_probe_unknown_kind_returns_400(
     admin_client: httpx.AsyncClient,
 ) -> None:
-    """An unknown kind is rejected before reaching DuckDB."""
+    """An unknown kind is rejected before reaching DuckDB.
+
+    Returns RFC-9457 422 (ValidationError) post-Phase-82 cleanup; the
+    test name still references the historical 400 contract for
+    discoverability.
+    """
     res = await admin_client.post(
         "/api/ingest/probe",
         json={"kind": "snowflake", "config": {}, "secrets": {}},
     )
-    assert res.status_code == 400
+    assert res.status_code == 422
 
 
 @pytest.mark.asyncio

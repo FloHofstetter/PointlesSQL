@@ -121,10 +121,10 @@ async def test_clear_cron_deletes_job(
 async def test_invalid_cron_rejected(
     admin_client: httpx.AsyncClient,
 ) -> None:
-    """Garbage cron expression returns HTTP 400."""
+    """Garbage cron expression returns HTTP 422 (ValidationError)."""
     source_id = _seed_source()
     res = await admin_client.put(
         f"/api/ingest/sources/{source_id}/schedule",
         json={"cron_expr": "this is not cron"},
     )
-    assert res.status_code == 400
+    assert res.status_code == 422

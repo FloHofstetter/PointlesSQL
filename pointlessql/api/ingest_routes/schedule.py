@@ -23,13 +23,14 @@ import logging
 from typing import Any
 
 from croniter import croniter
-from fastapi import APIRouter, Body, HTTPException, Request
+from fastapi import APIRouter, Body, Request
 
 from pointlessql.api.dependencies import (
     current_workspace_id,
     get_user,
     require_user,
 )
+from pointlessql.exceptions import ResourceNotFoundError, ValidationError
 from pointlessql.models import IngestSource, Job
 
 logger = logging.getLogger(__name__)
@@ -64,7 +65,8 @@ async def api_put_schedule(
         ``{"ok": True, "job_id": int | None, "cron_expr": str | None}``.
 
     Raises:
-        HTTPException: 400 on invalid cron; 404 on missing source.
+        ValidationError: When the cron expression is invalid.
+        ResourceNotFoundError: When the source doesn't exist.
     """
     require_user(request)
     user = get_user(request)
@@ -78,16 +80,14 @@ async def api_put_schedule(
         if not cron_expr:
             cron_expr = None
     if cron_expr is not None and not _valid_cron(cron_expr):
-        raise HTTPException(
-            status_code=400, detail=f"invalid cron expression: {cron_expr!r}"
-        )
+        raise ValidationError(f"invalid cron expression: {cron_expr!r}")
 
     factory = request.app.state.session_factory
     now = datetime.datetime.now(datetime.UTC)
     with factory() as session:
         source = session.get(IngestSource, source_id)
         if source is None or source.workspace_id != workspace_id:
-            raise HTTPException(status_code=404, detail="source not found")
+            raise ResourceNotFoundError("source not found")
 
         existing_job = (
             session.get(Job, source.job_id) if source.job_id is not None else None

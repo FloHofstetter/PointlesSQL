@@ -13,9 +13,10 @@ import json
 import logging
 from typing import Any, cast
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Request
 
 from pointlessql.api.dependencies import current_workspace_id, require_user
+from pointlessql.exceptions import PointlessSQLError, ResourceNotFoundError
 from pointlessql.models import IngestSource
 from pointlessql.services.ingest.probe import ProbeError, list_tables
 
@@ -40,8 +41,9 @@ async def api_list_source_tables(
         the source is unreachable.
 
     Raises:
-        HTTPException: 404 when the source doesn't exist or belongs
-            to another workspace.
+        ResourceNotFoundError: When the source doesn't exist or
+            belongs to another workspace.
+        PointlessSQLError: When the source kind is unsupported.
     """
     require_user(request)
     workspace_id = current_workspace_id(request)
@@ -49,14 +51,13 @@ async def api_list_source_tables(
     with factory() as session:
         row = session.get(IngestSource, source_id)
         if row is None or row.workspace_id != workspace_id:
-            raise HTTPException(status_code=404, detail="source not found")
+            raise ResourceNotFoundError("source not found")
         try:
             config = json.loads(row.config or "{}")
             secrets = json.loads(row.secrets or "{}")
         except (ValueError, TypeError) as exc:
-            raise HTTPException(
-                status_code=500,
-                detail=f"source has malformed JSON columns: {exc}",
+            raise PointlessSQLError(
+                f"source has malformed JSON columns: {exc}",
             ) from exc
         kind = row.kind
 

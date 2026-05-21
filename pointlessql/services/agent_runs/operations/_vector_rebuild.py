@@ -91,6 +91,7 @@ def rebuild_vss_indices_after_commit(
     try:
         catalog, schema, table_name = parse_full_name(target_table)
     except Exception:  # noqa: BLE001 — non-3-part FQN is silently skipped
+        # bare-broad-ok: parse_full_name catches malformed FQNs by design
         logger.debug("vss_rebuild: target_table %r is not a 3-part name", target_table)
         return
 

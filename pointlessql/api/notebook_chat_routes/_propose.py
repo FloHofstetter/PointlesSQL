@@ -182,6 +182,12 @@ async def api_fix_cell(
         ``{"target_cell_uuid": str, "new_source": str,
         "rationale": str | None}``.
 
+    Args:
+        request: Incoming request — must carry an
+            ``X-Agent-Run-Id`` matching the session's agent run.
+        editor_session_id: UUID7 of the target chat session.
+        body: JSON payload (see *Body shape* above).
+
     Returns:
         ``{"proposal_id": str, "action": "fix",
         "idempotent_match": bool}``.  ``idempotent_match=True`` when
@@ -191,7 +197,7 @@ async def api_fix_cell(
     Raises:
         HTTPException: 400 on invalid body; 403 on
             X-Agent-Run-Id mismatch; 404 on unknown session.
-    """  # noqa: DOC502
+    """
     target_cell_uuid = body.get("target_cell_uuid")
     new_source = body.get("new_source")
     if not isinstance(target_cell_uuid, str) or not target_cell_uuid:
@@ -288,6 +294,12 @@ async def api_explain_cell(
     conversation resets and Phase 97 revision history can render
     them per cell.
 
+    Args:
+        request: Incoming request — must carry an
+            ``X-Agent-Run-Id`` matching the session's agent run.
+        editor_session_id: UUID7 of the target chat session.
+        body: JSON payload (see *Body shape* above).
+
     Returns:
         ``{"proposal_id": str, "action": "explain",
         "status": "accepted"}``.
@@ -295,7 +307,7 @@ async def api_explain_cell(
     Raises:
         HTTPException: 400 on invalid body; 403 on
             X-Agent-Run-Id mismatch; 404 on unknown session.
-    """  # noqa: DOC502
+    """
     target_cell_uuid = body.get("target_cell_uuid")
     explanation = body.get("explanation")
     if not isinstance(target_cell_uuid, str) or not target_cell_uuid:

@@ -19,7 +19,7 @@ import json
 import logging
 from typing import Any
 
-from fastapi import APIRouter, Body, HTTPException, Request
+from fastapi import APIRouter, Body, Request
 from sqlalchemy import select
 
 from pointlessql.api.dependencies import (
@@ -27,6 +27,7 @@ from pointlessql.api.dependencies import (
     get_user,
     require_user,
 )
+from pointlessql.exceptions import ResourceNotFoundError, ValidationError
 from pointlessql.models import IngestSource, JobRun
 from pointlessql.services.ingest.executor import run_pull
 from pointlessql.services.ingest.pull import PullError, load_mappings
@@ -56,8 +57,8 @@ async def api_pull_now(
         even when some succeed and some fail.
 
     Raises:
-        HTTPException: 404 when the source doesn't exist; 400 when
-            ``mapping_index`` is out of range.
+        ResourceNotFoundError: When the source doesn't exist.
+        ValidationError: When ``mapping_index`` is out of range.
     """
     require_user(request)
     user = get_user(request)
@@ -66,24 +67,20 @@ async def api_pull_now(
     with factory() as session:
         row = session.get(IngestSource, source_id)
         if row is None or row.workspace_id != workspace_id:
-            raise HTTPException(status_code=404, detail="source not found")
+            raise ResourceNotFoundError("source not found")
         if not row.is_active:
-            raise HTTPException(
-                status_code=400, detail="source is paused; cannot pull."
-            )
+            raise ValidationError("source is paused; cannot pull.")
         mappings = load_mappings(row.table_mappings)
         if not mappings:
-            raise HTTPException(
-                status_code=400,
-                detail="no table_mappings configured for this source.",
+            raise ValidationError(
+                "no table_mappings configured for this source.",
             )
 
     body_idx = body.get("mapping_index")
     if body_idx is not None:
         if not isinstance(body_idx, int) or not 0 <= body_idx < len(mappings):
-            raise HTTPException(
-                status_code=400,
-                detail=f"mapping_index out of range (0..{len(mappings) - 1}).",
+            raise ValidationError(
+                f"mapping_index out of range (0..{len(mappings) - 1}).",
             )
         targets = [body_idx]
     else:
@@ -143,7 +140,7 @@ async def api_list_source_runs(
         ``{"latest_per_mapping": [...], "scheduled_history": [...]}``.
 
     Raises:
-        HTTPException: 404 when the source doesn't exist.
+        ResourceNotFoundError: When the source doesn't exist.
     """
     require_user(request)
     workspace_id = current_workspace_id(request)
@@ -151,7 +148,7 @@ async def api_list_source_runs(
     with factory() as session:
         row = session.get(IngestSource, source_id)
         if row is None or row.workspace_id != workspace_id:
-            raise HTTPException(status_code=404, detail="source not found")
+            raise ResourceNotFoundError("source not found")
 
         try:
             mappings = json.loads(row.table_mappings or "[]")

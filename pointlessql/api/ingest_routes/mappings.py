@@ -22,10 +22,10 @@ import json
 import logging
 from typing import Any
 
-from fastapi import APIRouter, Body, HTTPException, Request
+from fastapi import APIRouter, Body, Request
 
 from pointlessql.api.dependencies import current_workspace_id, require_user
-from pointlessql.exceptions import ValidationError
+from pointlessql.exceptions import ResourceNotFoundError, ValidationError
 from pointlessql.models import IngestSource
 from pointlessql.models.ingest import INGEST_PULL_MODES
 
@@ -116,35 +116,30 @@ async def api_replace_mappings(
         ``{"ok": True, "mappings": [...]}`` on success.
 
     Raises:
-        HTTPException: 400 on validation failure, 404 when the source
-            doesn't exist in the caller's workspace.
+        ValidationError: On mapping validation failure.
+        ResourceNotFoundError: When the source doesn't exist in the
+            caller's workspace.
     """
     require_user(request)
     workspace_id = current_workspace_id(request)
     raw_mappings = body.get("mappings")
     if not isinstance(raw_mappings, list):
-        raise HTTPException(
-            status_code=400, detail="mappings must be a list."
-        )
+        raise ValidationError("mappings must be a list.")
 
     validated: list[dict[str, Any]] = []
     for idx, m in enumerate(raw_mappings):  # type: ignore[reportUnknownVariableType]
         if not isinstance(m, dict):
-            raise HTTPException(
-                status_code=400, detail=f"mappings[{idx}] must be an object."
-            )
+            raise ValidationError(f"mappings[{idx}] must be an object.")
         try:
             validated.append(_validate_mapping(m))  # type: ignore[reportUnknownArgumentType]
         except ValidationError as exc:
-            raise HTTPException(
-                status_code=400, detail=f"mappings[{idx}]: {exc}"
-            ) from exc
+            raise ValidationError(f"mappings[{idx}]: {exc}") from exc
 
     factory = request.app.state.session_factory
     with factory() as session:
         row = session.get(IngestSource, source_id)
         if row is None or row.workspace_id != workspace_id:
-            raise HTTPException(status_code=404, detail="source not found")
+            raise ResourceNotFoundError("source not found")
         row.table_mappings = json.dumps(validated, default=str)
         row.updated_at = datetime.datetime.now(datetime.UTC)
         session.commit()

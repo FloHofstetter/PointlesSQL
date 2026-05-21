@@ -73,7 +73,7 @@ async def _execute_one_replay(
         Failures mark the row ``error`` with a single ``error``
         frame so the diff surface still has something to show.
     """
-    from jupyter_client import AsyncKernelManager
+    from jupyter_client import AsyncKernelManager  # pyright: ignore[reportPrivateImportUsage]
 
     # Load the base revision's cells.
     with session_factory() as session:
@@ -122,8 +122,8 @@ async def _execute_one_replay(
     final_status = replay_service.REPLAY_STATUS_OK
     try:
         km = AsyncKernelManager()
-        await km.start_kernel(env=env, cwd=str(cwd))
-        kc = km.client()
+        await km.start_kernel(env=env, cwd=str(cwd))  # pyright: ignore[reportOptionalMemberAccess]
+        kc = km.client()  # pyright: ignore[reportOptionalMemberAccess]
         kc.start_channels()
         await kc.wait_for_ready(timeout=30)
         # Skip markdown cells; only code + sql execute.  SQL cells

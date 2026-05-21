@@ -235,6 +235,12 @@ class KernelSession:
             lookup keyed by ``(user_id, path)``.
         cwd: Working directory the kernel starts in. Almost
             always ``Settings.jupyter.notebooks_dir``.
+        notebook_id: Optional notebook UUID surfaced to the kernel
+            as ``POINTLESSQL_NOTEBOOK_ID`` so ``pql.context``
+            resolves widget values and per-notebook permissions.
+        branch_name: Optional branch binding surfaced as
+            ``POINTLESSQL_BRANCH`` so Delta reads/writes scope to
+            the chosen branch for Phase 102 branch-aware notebooks.
     """
 
     def __init__(

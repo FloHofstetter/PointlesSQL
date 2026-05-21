@@ -114,8 +114,14 @@ async def test_pql_star_toggle_factory_exposes_new_contract(
     admin_client: httpx.AsyncClient,
 ) -> None:
     """``pqlStarToggle`` defines init() + toggle() + starred + count."""
+    # The factory now lives in /static/js/star.js (not inlined in base.html).
     res = await admin_client.get("/")
-    body = res.text
+    assert res.status_code == 200
+    assert "/static/js/star.js" in res.text, "base.html must load star.js"
+
+    star_res = await admin_client.get("/static/js/star.js")
+    assert star_res.status_code == 200
+    body = star_res.text
     assert "window.pqlStarToggle = function" in body
     assert "async init()" in body
     assert "async toggle()" in body

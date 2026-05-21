@@ -10,13 +10,14 @@ from __future__ import annotations
 import logging
 from typing import Any, cast
 
-from fastapi import APIRouter, Body, HTTPException, Request
+from fastapi import APIRouter, Body, Request
 
 from pointlessql.api.dependencies import require_user
 from pointlessql.api.ingest_routes._serializers import (
     SECRETS_REDACTED_SENTINEL,
     merge_patch_secrets,
 )
+from pointlessql.exceptions import ValidationError
 from pointlessql.models import IngestSource
 from pointlessql.models.ingest import INGEST_SOURCE_KINDS
 from pointlessql.services.ingest.probe import ProbeError, probe_source
@@ -87,27 +88,24 @@ async def api_probe(
         "query_ms"}``.
 
     Raises:
-        HTTPException: 400 with structured reason/hint on probe
+        ValidationError: On invalid ``kind`` / structured probe
             failure.
     """
     require_user(request)
     kind = str(body.get("kind") or "").strip()
     if kind not in INGEST_SOURCE_KINDS:
-        raise HTTPException(
-            status_code=400,
-            detail=f"kind must be one of {INGEST_SOURCE_KINDS}, got {kind!r}.",
+        raise ValidationError(
+            f"kind must be one of {INGEST_SOURCE_KINDS}, got {kind!r}.",
         )
     config_raw: object = body.get("config") or {}
     if not isinstance(config_raw, dict):
-        raise HTTPException(status_code=400, detail="config must be an object.")
+        raise ValidationError("config must be an object.")
     config: dict[str, Any] = {
         str(k): v for k, v in cast(dict[Any, Any], config_raw).items()
     }
     source_table = body.get("source_table")
     if source_table is not None and not isinstance(source_table, str):
-        raise HTTPException(
-            status_code=400, detail="source_table must be a string or absent."
-        )
+        raise ValidationError("source_table must be a string or absent.")
 
     secrets = _resolve_secrets_for_probe(request, body)
 

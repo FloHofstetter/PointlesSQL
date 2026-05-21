@@ -145,12 +145,15 @@ async def test_duplicate_name_returns_409(
 async def test_unknown_kind_returns_400(
     admin_client: httpx.AsyncClient,
 ) -> None:
-    """Unknown connector kind is rejected before persistence."""
+    """Unknown connector kind is rejected before persistence.
+
+    Returns RFC-9457 422 (ValidationError) post-Phase-82 cleanup.
+    """
     res = await admin_client.post(
         "/api/ingest/sources",
         json={"name": "weird", "kind": "snowflake", "config": {}, "secrets": {}},
     )
-    assert res.status_code == 400
+    assert res.status_code == 422
 
 
 @pytest.mark.asyncio

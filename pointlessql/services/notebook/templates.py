@@ -115,11 +115,10 @@ def create_from_template(
             in ``.py`` and not already exist.
 
     Returns:
-        Absolute path of the newly created notebook.
-
-    Raises:
-        ValidationError: From the workspace resolver guards or when
-            ``template_id`` is unknown.
+        Absolute path of the newly created notebook.  The template
+        resolver and workspace resolver propagate
+        :class:`ValidationError` when ``template_id`` is unknown or
+        ``dest_path`` is rejected.
     """
     template_path = _resolve_template(template_id)
     body = template_path.read_text()

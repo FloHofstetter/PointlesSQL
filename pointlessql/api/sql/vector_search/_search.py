@@ -13,7 +13,7 @@ import logging
 from datetime import UTC, datetime
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Request
 
 from pointlessql.api._audit_helpers import audit, record_query_async
 from pointlessql.api.dependencies import effective_principal, get_user
@@ -24,7 +24,7 @@ from pointlessql.api.sql.vector_search._models import (
     VectorSearchRequest,
     VectorSearchResponse,
 )
-from pointlessql.exceptions import SQLExecutionError
+from pointlessql.exceptions import ResourceNotFoundError, SQLExecutionError
 from pointlessql.pql._parsing import parse_full_name
 from pointlessql.pql._vector import search as _pql_vector_search
 from pointlessql.services.soyuz_client import make_principal_client, make_soyuz_client
@@ -110,7 +110,7 @@ async def api_sql_vector_search(
             referenced_tables=[body.table],
             error_message=str(exc),
         )
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
+        raise ResourceNotFoundError(str(exc)) from exc
     except Exception as exc:
         finished_at = datetime.now(UTC)
         await record_query_async(

@@ -12,9 +12,12 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import uuid
 from datetime import UTC, datetime
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 from fastapi import APIRouter, Body, Header, Request
 from sqlalchemy import select
@@ -338,5 +341,6 @@ async def api_finish_agent_run(
                 summary_md=summary,
             )
         except Exception:  # noqa: BLE001 — fanout must never break the run
-            pass
+            # bare-broad-ok: terminal-event fanout is best-effort
+            logger.exception("agent_run_fanout_failed run_id=%s", run_id)
     return payload

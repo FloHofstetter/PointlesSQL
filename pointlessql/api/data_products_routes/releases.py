@@ -17,11 +17,12 @@ import logging
 from typing import Any
 from xml.sax.saxutils import escape
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Request
 from fastapi.responses import Response
 from sqlalchemy import desc, select
 
 from pointlessql.api.dependencies import current_workspace_id, require_user
+from pointlessql.exceptions import ResourceNotFoundError
 from pointlessql.models import DataProduct, DataProductRelease
 
 logger = logging.getLogger(__name__)
@@ -45,7 +46,7 @@ def _resolve_dp(
             )
         ).scalar_one_or_none()
         if dp is None:
-            raise HTTPException(status_code=404, detail="data product not found")
+            raise ResourceNotFoundError("data product not found")
         session.expunge(dp)
     return dp
 

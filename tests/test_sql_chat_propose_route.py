@@ -138,14 +138,17 @@ async def test_propose_select_rejected(
     admin_client: httpx.AsyncClient,
     chat_session_with_run: tuple[str, str],
 ) -> None:
-    """SELECT is fenced off — agent must use pql_query instead."""
+    """SELECT is fenced off — agent must use pql_query instead.
+
+    Returns RFC-9457 422 (ValidationError) post-Phase-91 cleanup.
+    """
     editor_session_id, run_id = chat_session_with_run
     response = await admin_client.post(
         f"/api/sql/chat/{editor_session_id}/propose",
         json={"sql": "SELECT 1"},
         headers={"X-Agent-Run-Id": run_id},
     )
-    assert response.status_code == 400
+    assert response.status_code == 422
     assert "pql_query" in response.json()["detail"]
 
 

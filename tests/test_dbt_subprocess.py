@@ -24,10 +24,11 @@ from pointlessql.services.dbt import (
 def test_path_resolution_against_cwd(tmp_path: Path) -> None:
     """Relative project + profiles dirs anchor to the passed cwd."""
     settings = DBTSettings()
+    proj = tmp_path / "examples" / "dbt_project"
     proc = DBTSubprocess(settings=settings, cwd=tmp_path)
-    assert proc.project_dir == (tmp_path / "dbt_project").resolve()
-    assert proc.profiles_dir == (tmp_path / "dbt_project" / "profiles").resolve()
-    assert proc.manifest_path == (tmp_path / "dbt_project" / "target" / "manifest.json").resolve()
+    assert proc.project_dir == proj.resolve()
+    assert proc.profiles_dir == (proj / "profiles").resolve()
+    assert proc.manifest_path == (proj / "target" / "manifest.json").resolve()
 
 
 def test_path_resolution_keeps_absolute_paths(tmp_path: Path) -> None:

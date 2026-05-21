@@ -76,7 +76,8 @@ async def test_pull_now_with_no_mappings_returns_400(
         config={"path": "/tmp/missing.csv"},
     )
     res = await admin_client.post(f"/api/ingest/sources/{source_id}/pulls")
-    assert res.status_code == 400
+    # Phase 82 follow-up: ValidationError maps to RFC-9457 422 (was 400).
+    assert res.status_code == 422
 
 
 @pytest.mark.asyncio

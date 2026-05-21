@@ -23,7 +23,10 @@ import pathlib
 import httpx
 import pytest
 
-from pointlessql.api.feed_routes import _row_from_comment, _row_from_review
+from pointlessql.api.feed_routes._serializers import (  # noqa: PLC2701  # test reaches private serializer module
+    row_from_comment as _row_from_comment,
+    row_from_review as _row_from_review,
+)
 from pointlessql.models.catalog._data_product_comments import DataProductComment
 from pointlessql.models.catalog._data_product_reviews import DataProductReview
 from pointlessql.models.social._social_target import SocialTarget
@@ -166,11 +169,17 @@ def test_feed_html_carries_kind_filter_dropdown() -> None:
 
     Phase 81.K replaced the flat pill row with a checkbox-list
     dropdown driven by ``kindFilter`` (array) and ``kindOptions``.
-    Every entity kind the registry exposes must still appear so
+    The page template now includes a partial; assert the partial
+    carries the markup + the script registers every entity kind so
     newly-registered kinds light up without code change.
     """
-    body = (_TEMPLATES_ROOT / "pages/feed.html").read_text()
-    assert "pql-feed-kind-menu" in body
-    assert "kindOptions" in body
-    assert "'dp'" in body and "'table'" in body and "'model'" in body
-    assert "'notebook'" in body and "'saved_query'" in body
+    activity = (
+        _TEMPLATES_ROOT / "pages/_partials/feed/activity_pane.html"
+    ).read_text()
+    scripts = (
+        _TEMPLATES_ROOT / "pages/_partials/feed/scripts.html"
+    ).read_text()
+    assert "pql-feed-kind-menu" in activity
+    assert "kindFilter" in activity
+    for kind in ("'dp'", "'table'", "'model'", "'notebook'", "'saved_query'"):
+        assert kind in scripts, kind

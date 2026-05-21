@@ -20,11 +20,15 @@ import logging
 import uuid
 from typing import Any
 
-from fastapi import APIRouter, Body, HTTPException, Request
+from fastapi import APIRouter, Body, Request
 
 from pointlessql.api._audit_helpers import effective_agent_run_id
 from pointlessql.api.dependencies import current_workspace_id, require_user
-from pointlessql.exceptions import ValidationError
+from pointlessql.exceptions import (
+    PermissionDeniedError,
+    ResourceNotFoundError,
+    ValidationError,
+)
 from pointlessql.models import ChatProposal, EditorChatSession
 from pointlessql.pql.sql_parser import StmtType, parse_and_classify
 from pointlessql.services.editor_chat import publish_proposal_created
@@ -79,16 +83,17 @@ async def api_propose_sql(
         when a duplicate proposal was returned instead of created.
 
     Raises:
-        HTTPException: 400 on invalid SQL or SELECT; 403 on
-            X-Agent-Run-Id mismatch; 404 on unknown session.
-    """  # noqa: DOC502 — HTTPException is what we raise
+        ValidationError: On invalid SQL or SELECT statements.
+        PermissionDeniedError: On ``X-Agent-Run-Id`` mismatch.
+        ResourceNotFoundError: When the session is unknown.
+    """
     require_user(request)
     workspace_id = current_workspace_id(request)
 
     sql_text = body.get("sql") or body.get("sql_text") or ""
     rationale = body.get("rationale")
     if not isinstance(sql_text, str) or not sql_text.strip():
-        raise HTTPException(status_code=400, detail="sql is required")
+        raise ValidationError("sql is required")
     if rationale is not None and not isinstance(rationale, str):
         rationale = None
 
@@ -103,11 +108,10 @@ async def api_propose_sql(
             .one_or_none()
         )
         if chat_session is None:
-            raise HTTPException(status_code=404, detail="chat session not found")
+            raise ResourceNotFoundError("chat session not found")
         if agent_run_id is None or chat_session.agent_run_id != agent_run_id:
-            raise HTTPException(
-                status_code=403,
-                detail="X-Agent-Run-Id mismatch for this chat session",
+            raise PermissionDeniedError(
+                "X-Agent-Run-Id mismatch for this chat session",
             )
 
         existing = _find_idempotent_match(
@@ -155,25 +159,19 @@ def _classify_proposal_kind(sql_text: str) -> str:
     try:
         _, stype = parse_and_classify(sql_text)
     except ValidationError as exc:
-        raise HTTPException(
-            status_code=400, detail=f"sql parse failed: {exc}"
-        ) from exc
+        raise ValidationError(f"sql parse failed: {exc}") from exc
     if stype is StmtType.SELECT:
-        raise HTTPException(
-            status_code=400,
-            detail=(
-                "SELECT must use pql_query, not pql_propose_sql — "
-                "the chat tool routes reads through the dispatcher "
-                "directly so the human sees rows immediately."
-            ),
+        raise ValidationError(
+            "SELECT must use pql_query, not pql_propose_sql — "
+            "the chat tool routes reads through the dispatcher "
+            "directly so the human sees rows immediately.",
         )
     if stype in _DML_TYPES:
         return "dml"
     if stype in _DDL_TYPES:
         return "ddl"
-    raise HTTPException(
-        status_code=400,
-        detail=f"unsupported statement type: {stype.value}",
+    raise ValidationError(
+        f"unsupported statement type: {stype.value}",
     )
 
 

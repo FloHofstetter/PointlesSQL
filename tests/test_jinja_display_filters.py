@@ -7,7 +7,10 @@ environment in :mod:`pointlessql.api.main`.
 
 from __future__ import annotations
 
-from pointlessql.api.main import _format_hash, _format_uuid
+from pointlessql.api._template_filters import (  # noqa: PLC2701  # tests reach private helpers
+    _format_hash,
+    _format_uuid,
+)
 
 
 class TestFormatUuid:

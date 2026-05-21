@@ -70,7 +70,7 @@ def _seed_product(tmp_path: Path) -> int:
 
 
 def test_entity_kinds_constant_covers_phase77_plan() -> None:
-    """The constant lists every kind the Phase-77 plan calls out."""
+    """The constant lists every kind the Phase-77 plan + later additions."""
     expected = {
         "dp",
         "table",
@@ -84,6 +84,12 @@ def test_entity_kinds_constant_covers_phase77_plan() -> None:
         "saved_query",
         "issue",
         "workspace",
+        # Phase 95 — per-cell social (cell-level comments / reactions /
+        # follows / tags) registered a polymorphic ``notebook_cell``
+        # entity-kind on the same social target.
+        "notebook_cell",
+        # Phase 96 — inline AI-assistant ``agent_memory`` entity-kind.
+        "agent_memory",
     }
     assert set(ENTITY_KINDS) == expected
 

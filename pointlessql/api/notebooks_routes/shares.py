@@ -21,7 +21,7 @@ import logging
 from typing import Any
 
 from fastapi import APIRouter, Body, Query, Request
-from fastapi.responses import HTMLResponse, JSONResponse, Response
+from fastapi.responses import JSONResponse, Response
 from fastapi.templating import Jinja2Templates
 
 from pointlessql.api.dependencies import require_user

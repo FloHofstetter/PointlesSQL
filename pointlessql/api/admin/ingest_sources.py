@@ -14,10 +14,11 @@ import json
 import logging
 from typing import Any, cast
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Request
 from sqlalchemy import select
 
 from pointlessql.api.dependencies import require_admin
+from pointlessql.exceptions import ResourceNotFoundError
 from pointlessql.models import IngestSource, Job, JobRun
 
 logger = logging.getLogger(__name__)
@@ -144,14 +145,14 @@ async def api_admin_ingest_source_health(
         ``{"source": {...}, "runs": [...], "per_day": [...]}``.
 
     Raises:
-        HTTPException: 404 when the source doesn't exist.
+        ResourceNotFoundError: When the source doesn't exist.
     """
     require_admin(request)
     factory = request.app.state.session_factory
     with factory() as session:
         row = session.get(IngestSource, source_id)
         if row is None:
-            raise HTTPException(status_code=404, detail="source not found")
+            raise ResourceNotFoundError("source not found")
         runs: list[JobRun] = []
         if row.job_id is not None:
             runs = list(

@@ -12,11 +12,12 @@ from __future__ import annotations
 import datetime
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Request
 from pydantic import BaseModel
 from sqlalchemy import select
 
 from pointlessql.api.dependencies import get_user, require_user
+from pointlessql.exceptions import ValidationError
 from pointlessql.models.social._feed_mute import FeedMute
 
 router = APIRouter(tags=["feed"])
@@ -164,18 +165,15 @@ async def snooze_thread(
         ``{"ok": true, "muted_until": iso8601}`` with the deadline.
 
     Raises:
-        HTTPException: 400 if ``duration`` is unknown.
+        ValidationError: When ``duration`` is unknown.
     """
     require_user(request)
     caller = get_user(request)
     delta = _SNOOZE_DURATIONS.get(body.duration)
     if delta is None:
-        raise HTTPException(
-            status_code=400,
-            detail=(
-                f"unknown duration {body.duration!r}; "
-                f"expected one of {sorted(_SNOOZE_DURATIONS)}"
-            ),
+        raise ValidationError(
+            f"unknown duration {body.duration!r}; "
+            f"expected one of {sorted(_SNOOZE_DURATIONS)}",
         )
     muted_until = datetime.datetime.now(datetime.UTC) + delta
     factory = request.app.state.session_factory

@@ -110,10 +110,8 @@ def mark_running(
         replay_uuid: 36-char replay UUID.
 
     Returns:
-        The updated row.
-
-    Raises:
-        ValidationError: When the UUID is unknown.
+        The updated row.  The lookup helper raises
+        :class:`ValidationError` (propagated) when the UUID is unknown.
     """
     row = _get_replay(session, replay_uuid=replay_uuid)
     row.status = REPLAY_STATUS_RUNNING

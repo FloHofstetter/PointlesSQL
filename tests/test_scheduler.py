@@ -505,12 +505,15 @@ class TestJobRoutes:
         recording_registry = _RecordingRegistry()
 
         # Swap the module-level registry for the duration of the test.
-        # Sprint 89b moved the registry into api.jobs_routes; patch the
-        # source of truth (Python local-name lookup means a re-export
-        # binding in api.main is not what the route handler reads).
-        from pointlessql.api import jobs_routes as api_jobs_routes
+        # The /api/jobs/{id}/run handler lives in jobs_routes.crud and
+        # imports ``JOB_REGISTRY`` into that module's namespace; patch
+        # the binding the handler actually reads, not the package
+        # re-export.
+        from pointlessql.api.jobs_routes import _access as jobs_access
+        from pointlessql.api.jobs_routes import crud as jobs_crud
 
-        monkeypatch.setattr(api_jobs_routes, "JOB_REGISTRY", recording_registry)
+        monkeypatch.setattr(jobs_crud, "JOB_REGISTRY", recording_registry)
+        monkeypatch.setattr(jobs_access, "JOB_REGISTRY", recording_registry)
 
         factory = app.state.session_factory
         with factory() as session:

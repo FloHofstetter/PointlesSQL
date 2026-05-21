@@ -8,10 +8,11 @@ context the API endpoints use.
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 
 from pointlessql.api.dependencies import current_workspace_id, get_user
+from pointlessql.exceptions import ResourceNotFoundError
 from pointlessql.models import IngestSource
 from pointlessql.models.ingest import INGEST_SOURCE_KINDS
 
@@ -78,7 +79,7 @@ async def ingest_source_detail(
         Detail page HTML, or 404 / login redirect when applicable.
 
     Raises:
-        HTTPException: 404 when the source doesn't exist in the
+        ResourceNotFoundError: When the source doesn't exist in the
             caller's workspace.
     """
     user = get_user(request)
@@ -91,7 +92,7 @@ async def ingest_source_detail(
     with factory() as session:
         row = session.get(IngestSource, source_id)
         if row is None or row.workspace_id != workspace_id:
-            raise HTTPException(status_code=404, detail="source not found")
+            raise ResourceNotFoundError("source not found")
         source_name = row.name
         source_kind = row.kind
     templates = request.app.state.templates

@@ -37,10 +37,13 @@ from __future__ import annotations
 
 import datetime
 import json
+import logging
 import uuid
 from typing import Any, cast
 
 from fastapi import APIRouter, HTTPException, Query, Request
+
+logger = logging.getLogger(__name__)
 from sqlalchemy import and_, desc, select
 
 from pointlessql.api.dependencies import (
@@ -262,7 +265,8 @@ async def open_issue(
             summary_md=f"Issue \"{title.strip()[:120]}\" opened",
         )
     except Exception:  # noqa: BLE001 — fanout best-effort
-        pass
+        # bare-broad-ok: issue-opened fanout is best-effort
+        logger.exception("issue_opened_fanout_failed issue_id=%s", result.get("id"))
     return result
 
 
@@ -665,14 +669,16 @@ async def _transition_state(
         session_factory=factory,
         workspace_id=workspace_id,
     )
-    # Phase 81.K.6 — feed surfacing for state transitions.
+    # Phase 81.K.6 — feed surfacing for state transitions.  ``verb`` is
+    # bound outside the try block so the exception handler's log line
+    # has a stable name even if the fanout-module import explodes.
+    verb = (
+        "closed" if new_state.startswith("closed")
+        else ("resolved" if new_state == "resolved" else "reopened")
+    )
     try:
         from pointlessql.services.notifications.fanout import fanout_event
 
-        verb = (
-            "closed" if new_state.startswith("closed")
-            else ("resolved" if new_state == "resolved" else "reopened")
-        )
         fanout_event(
             factory,
             event_type=f"pointlessql.issue.{verb}",
@@ -684,7 +690,8 @@ async def _transition_state(
             summary_md=f"Issue #{issue_id} {verb}",
         )
     except Exception:  # noqa: BLE001 — fanout best-effort
-        pass
+        # bare-broad-ok: issue-state-change fanout is best-effort
+        logger.exception("issue_state_change_fanout_failed issue_id=%s verb=%s", issue_id, verb)
     return result
 
 

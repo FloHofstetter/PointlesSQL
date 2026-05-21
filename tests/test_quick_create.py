@@ -76,6 +76,9 @@ class TestQuickCreateMenu:
 
     @pytest.mark.asyncio
     async def test_menu_lists_six_base_options(self):
+        # Phase 81.H.2 — the dropdown collapsed into a `/new` card-grid
+        # landing page.  Assert the rail still points at /new and the
+        # landing page hosts the six base "Build/Community" cards.
         factory = app.state.session_factory
         token = _seed(factory)
         async with httpx.AsyncClient(
@@ -83,17 +86,20 @@ class TestQuickCreateMenu:
             base_url="http://test",
             cookies={auth.COOKIE_NAME: token},
         ) as client:
-            resp = await client.get("/")
-        body = resp.text
-        for kind in [
-            "notebook",
-            "sql-query",
-            "dashboard",
-            "topic",
-            "issue",
-            "alert",
-        ]:
-            assert f'data-pql-quick-create="{kind}"' in body, kind
+            home = await client.get("/")
+            new_page = await client.get("/new")
+        assert home.status_code == 200
+        assert 'href="/new"' in home.text
+        assert new_page.status_code == 200
+        for title in (
+            "Notebook",
+            "SQL query",
+            "Dashboard",
+            "Topic",
+            "Issue",
+            "Alert",
+        ):
+            assert f"{title}" in new_page.text, title
 
     @pytest.mark.asyncio
     async def test_admin_sees_extra_options(self):
@@ -104,11 +110,11 @@ class TestQuickCreateMenu:
             base_url="http://test",
             cookies={auth.COOKIE_NAME: token},
         ) as client:
-            resp = await client.get("/")
+            resp = await client.get("/new")
         body = resp.text
-        # First user is auto-admin → admin-gated entries surface.
-        assert 'data-pql-quick-create="data-product"' in body
-        assert 'data-pql-quick-create="job"' in body
+        # First user is auto-admin → admin-gated cards surface.
+        assert "Data product" in body
+        assert "Scheduled job" in body
 
     @pytest.mark.asyncio
     async def test_anonymous_does_not_see_menu(self):

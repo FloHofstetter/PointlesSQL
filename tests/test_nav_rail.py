@@ -165,7 +165,7 @@ class TestRailEntries:
         body = resp.text
 
         assert 'data-pql-rail-toggle="toggle"' in body
-        assert 'aria-label="Toggle sidebar width"' in body
+        assert 'aria-label="Toggle primary navigation"' in body
 
 
 class TestActiveSection:

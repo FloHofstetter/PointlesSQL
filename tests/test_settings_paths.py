@@ -18,8 +18,8 @@ from __future__ import annotations
 import os
 
 from pointlessql.config import MLflowSettings, Settings
-from pointlessql.config import (
-    _settings as settings_mod,  # noqa: PLC2701  # test reaches _PROJECT_ROOT
+from pointlessql.config._settings import (
+    _paths as paths_mod,  # noqa: PLC2701  # test reaches PROJECT_ROOT
 )
 from pointlessql.services.mlflow_subprocess import MLflowSubprocess
 
@@ -30,7 +30,7 @@ def test_database_url_default_is_absolute_project_anchor(tmp_path, monkeypatch) 
     monkeypatch.delenv("POINTLESSQL_DB_URL", raising=False)
 
     s = Settings()
-    expected = settings_mod._PROJECT_ROOT / "pointlessql.db"
+    expected = paths_mod.PROJECT_ROOT / "pointlessql.db"
     assert s.db.url == f"sqlite:///{expected}"
     # The path must be absolute regardless of CWD.
     assert os.path.isabs(s.db.url.removeprefix("sqlite:///"))
@@ -46,8 +46,8 @@ def test_database_url_env_override_still_wins(tmp_path, monkeypatch) -> None:
 
 
 def test_project_root_constant_points_at_repo() -> None:
-    """``_PROJECT_ROOT`` resolves to the repository checkout root."""
-    expected_marker = settings_mod._PROJECT_ROOT / "pyproject.toml"
+    """``PROJECT_ROOT`` resolves to the repository checkout root."""
+    expected_marker = paths_mod.PROJECT_ROOT / "pyproject.toml"
     assert expected_marker.is_file()
 
 

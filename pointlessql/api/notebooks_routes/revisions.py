@@ -176,10 +176,9 @@ async def api_diff_revisions(
     Returns:
         JSON envelope ``{left_uuid, right_uuid, added, removed,
         changed, moved, unchanged}``; each list carries the cell
-        dicts the Monaco diff editor wants.
-
-    Raises:
-        ValidationError: When either UUID is unknown.
+        dicts the Monaco diff editor wants.  The service raises
+        :class:`ValidationError` (propagated via the global handler)
+        when either UUID is unknown.
     """
     require_user(request)
     factory = request.app.state.session_factory

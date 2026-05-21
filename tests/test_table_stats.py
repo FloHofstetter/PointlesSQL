@@ -237,12 +237,12 @@ async def test_profile_enforces_select(
             full_name,
         )
 
-    # Patch check_privilege at its import site — governance_routes
-    # imports the function directly, so this is where the binding
-    # the profile route resolves against actually lives.
-    from pointlessql.api import governance_routes
+    # Patch check_privilege at its import site — `_helpers.py` imports
+    # the function directly into the module namespace, so the binding
+    # `enforce_table_profile_access` resolves against lives there.
+    from pointlessql.api.governance_routes import _helpers as _gov_helpers
 
-    monkeypatch.setattr(governance_routes, "check_privilege", deny)
+    monkeypatch.setattr(_gov_helpers, "check_privilege", deny)
 
     res = await non_admin_client.post("/api/tables/main.sales.orders/profile")
     assert res.status_code == 403

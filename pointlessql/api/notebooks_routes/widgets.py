@@ -150,6 +150,10 @@ async def api_resolve_widget_values(
 
     Returns:
         JSON ``{values: {name: value, …}}``.
+
+    Raises:
+        ValidationError: When ``body`` is not a JSON object or
+            ``path`` is missing.
     """
     require_user(request)
     if not isinstance(body, dict):

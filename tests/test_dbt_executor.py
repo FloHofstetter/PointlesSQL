@@ -34,13 +34,12 @@ from pointlessql.services.dbt._executor import (
 def test_path_resolution_relative_anchors_to_cwd(tmp_path: Path) -> None:
     """Relative project + profiles paths resolve against the executor cwd."""
     settings = DBTSettings()
+    proj = tmp_path / "examples" / "dbt_project"
     ex = DBTExecutor(settings, cwd=tmp_path)
-    assert ex.project_dir == (tmp_path / "dbt_project").resolve()
-    assert ex.profiles_dir == (tmp_path / "dbt_project" / "profiles").resolve()
-    assert ex.manifest_path == (tmp_path / "dbt_project" / "target" / "manifest.json").resolve()
-    assert (
-        ex.run_results_path == (tmp_path / "dbt_project" / "target" / "run_results.json").resolve()
-    )
+    assert ex.project_dir == proj.resolve()
+    assert ex.profiles_dir == (proj / "profiles").resolve()
+    assert ex.manifest_path == (proj / "target" / "manifest.json").resolve()
+    assert ex.run_results_path == (proj / "target" / "run_results.json").resolve()
 
 
 def test_path_resolution_keeps_absolute(tmp_path: Path) -> None:

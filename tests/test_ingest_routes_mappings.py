@@ -74,7 +74,7 @@ async def test_full_mode_mapping_persists(
 async def test_incremental_requires_high_water_col(
     admin_client: httpx.AsyncClient,
 ) -> None:
-    """Incremental mode without high_water_col is rejected (400)."""
+    """Incremental mode without high_water_col is rejected (422)."""
     source_id = _seed_source()
     res = await admin_client.post(
         f"/api/ingest/sources/{source_id}/mappings",
@@ -88,7 +88,7 @@ async def test_incremental_requires_high_water_col(
             ]
         },
     )
-    assert res.status_code == 400
+    assert res.status_code == 422
     assert "high_water_col" in res.json()["detail"]
 
 
@@ -110,7 +110,7 @@ async def test_invalid_target_fqn_rejected(
             ]
         },
     )
-    assert res.status_code == 400
+    assert res.status_code == 422
 
 
 @pytest.mark.asyncio

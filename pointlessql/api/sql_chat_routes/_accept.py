@@ -15,9 +15,10 @@ import datetime
 import logging
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Request
 
 from pointlessql.api.dependencies import require_user
+from pointlessql.exceptions import ConflictError, ResourceNotFoundError
 from pointlessql.models import ChatProposal, EditorChatSession
 from pointlessql.services.editor_chat import ChatEvent, publish
 
@@ -47,9 +48,10 @@ async def api_accept_proposal(
         ``{"sql": str, "agent_run_id": str, "kind": "dml"|"ddl"}``.
 
     Raises:
-        HTTPException: 404 when the proposal is unknown; 409 when
-            already accepted/discarded or older than 24h.
-    """  # noqa: DOC502 — HTTPException raised explicitly
+        ResourceNotFoundError: When the proposal is unknown.
+        ConflictError: When already accepted/discarded or older than
+            24h.
+    """
     require_user(request)
     factory = request.app.state.session_factory
 
@@ -63,12 +65,9 @@ async def api_accept_proposal(
             .one_or_none()
         )
         if proposal is None:
-            raise HTTPException(status_code=404, detail="proposal not found")
+            raise ResourceNotFoundError("proposal not found")
         if proposal.status != "pending":
-            raise HTTPException(
-                status_code=409,
-                detail=f"proposal already {proposal.status}",
-            )
+            raise ConflictError(f"proposal already {proposal.status}")
         # SQLite returns naive datetimes; coerce so the comparison
         # against a tz-aware ``cutoff`` does not raise.
         created_at = proposal.created_at
@@ -78,19 +77,13 @@ async def api_accept_proposal(
             proposal.status = "expired"
             proposal.accepted_at = now
             session.commit()
-            raise HTTPException(
-                status_code=409,
-                detail=(
-                    "proposal is older than 24 hours and cannot be "
-                    "accepted; ask the chat to redraft."
-                ),
+            raise ConflictError(
+                "proposal is older than 24 hours and cannot be "
+                "accepted; ask the chat to redraft.",
             )
         chat_session = session.get(EditorChatSession, proposal.chat_session_id)
         if chat_session is None:
-            raise HTTPException(
-                status_code=409,
-                detail="chat session no longer exists",
-            )
+            raise ConflictError("chat session no longer exists")
         agent_run_id = chat_session.agent_run_id
         editor_session_id = chat_session.editor_session_id
         proposal.status = "accepted"
@@ -130,9 +123,9 @@ async def api_discard_proposal(
         ``{"proposal_id": str, "status": "discarded"}``.
 
     Raises:
-        HTTPException: 404 when the proposal is unknown; 409 when
-            already accepted/discarded/expired.
-    """  # noqa: DOC502 — HTTPException raised explicitly
+        ResourceNotFoundError: When the proposal is unknown.
+        ConflictError: When already accepted/discarded/expired.
+    """
     require_user(request)
     factory = request.app.state.session_factory
     now = datetime.datetime.now(datetime.UTC)
@@ -144,12 +137,9 @@ async def api_discard_proposal(
             .one_or_none()
         )
         if proposal is None:
-            raise HTTPException(status_code=404, detail="proposal not found")
+            raise ResourceNotFoundError("proposal not found")
         if proposal.status != "pending":
-            raise HTTPException(
-                status_code=409,
-                detail=f"proposal already {proposal.status}",
-            )
+            raise ConflictError(f"proposal already {proposal.status}")
         chat_session = session.get(EditorChatSession, proposal.chat_session_id)
         editor_session_id = (
             chat_session.editor_session_id if chat_session else None

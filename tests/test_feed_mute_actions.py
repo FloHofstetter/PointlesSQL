@@ -110,7 +110,7 @@ async def test_snooze_accepts_known_duration(
 async def test_snooze_rejects_unknown_duration(
     admin_client: httpx.AsyncClient,
 ) -> None:
-    """Unknown duration → 400."""
+    """Unknown duration → 422 (ValidationError, RFC-9457)."""
     res = await admin_client.post(
         "/api/feed/snooze",
         json={
@@ -119,7 +119,7 @@ async def test_snooze_rejects_unknown_duration(
             "duration": "7y",
         },
     )
-    assert res.status_code == 400
+    assert res.status_code == 422
 
 
 @pytest.mark.asyncio

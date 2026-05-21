@@ -14,10 +14,11 @@ import json
 import logging
 from typing import Any, cast
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Request
 from sqlalchemy import select
 
 from pointlessql.api.dependencies import current_workspace_id, require_user
+from pointlessql.exceptions import ResourceNotFoundError
 from pointlessql.models import DataProduct, IngestSource
 
 logger = logging.getLogger(__name__)
@@ -42,8 +43,8 @@ async def api_dp_ingest_status(
         ingest source targets this DP.
 
     Raises:
-        HTTPException: 404 when the DP doesn't exist in the caller's
-            workspace.
+        ResourceNotFoundError: When the DP doesn't exist in the
+            caller's workspace.
     """
     require_user(request)
     workspace_id = current_workspace_id(request)
@@ -58,7 +59,7 @@ async def api_dp_ingest_status(
             )
         ).scalar_one_or_none()
         if dp is None:
-            raise HTTPException(status_code=404, detail="data product not found")
+            raise ResourceNotFoundError("data product not found")
         rows = list(
             session.scalars(
                 select(IngestSource).where(

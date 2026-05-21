@@ -10,7 +10,7 @@ from __future__ import annotations
 import datetime
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Request
 from sqlalchemy import select, update
 
 from pointlessql.api.dependencies import (
@@ -18,6 +18,7 @@ from pointlessql.api.dependencies import (
     get_user,
     require_user,
 )
+from pointlessql.exceptions import ResourceNotFoundError
 from pointlessql.models.notifications import UserNotification
 
 router = APIRouter(tags=["feed"])
@@ -77,7 +78,8 @@ async def toggle_notification_read(
         ``{"ok": true, "read": bool}`` with the new state.
 
     Raises:
-        HTTPException: 404 if the row doesn't belong to the caller.
+        ResourceNotFoundError: When the row doesn't belong to the
+            caller.
     """
     require_user(request)
     caller = get_user(request)
@@ -90,7 +92,7 @@ async def toggle_notification_read(
             )
         ).scalar_one_or_none()
         if row is None:
-            raise HTTPException(status_code=404, detail="not found")
+            raise ResourceNotFoundError("notification not found")
         now = datetime.datetime.now(datetime.UTC)
         if row.read_at is None:
             row.read_at = now

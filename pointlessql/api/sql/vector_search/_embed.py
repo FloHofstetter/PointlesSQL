@@ -9,11 +9,12 @@ the JSON fetch carries the session cookie via ``credentials:
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi import APIRouter, Query, Request
 from fastapi.responses import HTMLResponse
 
 from pointlessql.api.dependencies import current_workspace_id, get_templates, get_user
 from pointlessql.db import get_session_factory
+from pointlessql.exceptions import ResourceNotFoundError
 from pointlessql.models.vector import VectorIndex
 from pointlessql.pql._parsing import parse_full_name
 
@@ -42,9 +43,9 @@ async def embed_semantic_search(
         and renders the results inline.
 
     Raises:
-        HTTPException: 404 when no index exists for the requested
+        ResourceNotFoundError: When no index exists for the requested
             ``(table, column)`` in the caller's workspace.
-    """  # noqa: DOC502
+    """
     catalog, schema, table_name = parse_full_name(table_fqn)
     get_user(request)
     workspace_id = current_workspace_id(request)
@@ -62,7 +63,7 @@ async def embed_semantic_search(
             .one_or_none()
         )
     if exists is None:
-        raise HTTPException(status_code=404, detail="vector index not found")
+        raise ResourceNotFoundError("vector index not found")
     embed_data = {
         "table": table_fqn,
         "catalog": catalog,
