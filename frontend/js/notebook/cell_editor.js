@@ -178,13 +178,19 @@ export function cellEditor({
  catch (_e) { this._ytextObserver = null; }
  }
 
+ // Phase 107 hotfix — seed the CodeMirror doc from the current
+ // ytext when Y-bound.  ``y-codemirror.next``'s ``yCollab`` only
+ // applies *future* remote ytext mutations; it does not back-fill
+ // the editor from an already-populated ytext at mount time.
+ // Without this seed, a client connecting to a notebook whose
+ // server-side Y.Doc already carries cell content (i.e. any tab
+ // opened after the first save) sees an empty editor even though
+ // ``ytext`` holds the canonical source.
  this._cmView = new EditorView({
  state: EditorState.create({
- // y-codemirror.next's yCollab seeds the doc from ``ytext`` on
- // mount.  Passing the initial source for an empty ytext lets
- // the first ``ytext.insert`` propagate identical text to peers;
- // for an already-populated ytext yCollab discards the seed.
- doc: yBindingActive ? '' : this._initialSource,
+ doc: yBindingActive
+ ? this._yBinding.ytext.toString()
+ : this._initialSource,
  extensions,
  }),
  parent: host,
