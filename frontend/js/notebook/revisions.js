@@ -100,6 +100,12 @@ export function installRevisions(state) {
   * Two-click selection: first click pins ``left``, second click
   * pins ``right`` and fetches the diff envelope.  Third click
   * resets the pair to start over.
+  *
+  * After both pins are set the pair is normalised chronologically so
+  * L is always the older revision and R the newer one — the diff then
+  * reads as "what was added/removed going forward in time", which
+  * matches the standard `git diff old new` mental model and makes the
+  * red/green colours intuitive.
   */
  state.selectRevisionForDiff = async function (uuid) {
   if (!uuid) return;
@@ -110,18 +116,66 @@ export function installRevisions(state) {
   }
   if (!this.revisions.selectedRightUuid) {
    if (uuid === this.revisions.selectedLeftUuid) {
-    // Clicking the same row twice clears the pin.
     this.revisions.selectedLeftUuid = null;
     return;
    }
-   this.revisions.selectedRightUuid = uuid;
+   const [left, right] = this._orderRevisionsChronologically(
+    this.revisions.selectedLeftUuid,
+    uuid,
+   );
+   this.revisions.selectedLeftUuid = left;
+   this.revisions.selectedRightUuid = right;
    await this.loadRevisionDiff();
    return;
   }
-  // Both pinned — third click resets.
   this.revisions.selectedLeftUuid = uuid;
   this.revisions.selectedRightUuid = null;
   this.revisions.diff = null;
+ };
+
+ /**
+  * Swap the L and R pins in place and re-fetch the diff so the user
+  * can flip the comparison direction without re-pinning from scratch.
+  */
+ state.swapRevisionPins = async function () {
+  const { selectedLeftUuid, selectedRightUuid } = this.revisions;
+  if (!selectedLeftUuid || !selectedRightUuid) return;
+  this.revisions.selectedLeftUuid = selectedRightUuid;
+  this.revisions.selectedRightUuid = selectedLeftUuid;
+  await this.loadRevisionDiff();
+ };
+
+ /**
+  * Return ``[olderUuid, newerUuid]`` based on the ``created_at`` field
+  * already loaded into ``this.revisions.rows``.  Falls back to insert
+  * order when timestamps are missing or equal.
+  */
+ state._orderRevisionsChronologically = function (uuidA, uuidB) {
+  const lookup = Object.fromEntries(
+   this.revisions.rows.map((r) => [r.revision_uuid, r.created_at || '']),
+  );
+  const tsA = lookup[uuidA] || '';
+  const tsB = lookup[uuidB] || '';
+  if (tsA && tsB && tsA !== tsB) {
+   return tsA < tsB ? [uuidA, uuidB] : [uuidB, uuidA];
+  }
+  return [uuidA, uuidB];
+ };
+
+ /**
+  * Per-cell ``+N / -M`` stats for a Changed entry, derived from the
+  * same naive line-diff the rendered block uses so the badge matches
+  * what the reader sees.
+  */
+ state.diffStatsFor = function (entry) {
+  const rows = this.renderUnifiedDiff(entry.old.source, entry.new.source);
+  let adds = 0;
+  let removes = 0;
+  for (const row of rows) {
+   if (row.kind === 'add') adds++;
+   else if (row.kind === 'remove') removes++;
+  }
+  return { adds, removes };
  };
 
  state.clearRevisionDiff = function () {
@@ -160,15 +214,15 @@ export function installRevisions(state) {
 
  /**
   * Render a naive line-by-line diff between two strings.  Returns
-  * an array of ``{kind: 'context' | 'add' | 'remove', text: str}``
-  * rows the panel paints as a tidy unified-diff block.  Not as
-  * smart as Monaco's tokenisation but good enough for cell-source
-  * deltas which are usually small.
+  * an array of ``{kind, text, lnoOld, lnoNew}`` rows the panel paints
+  * as a tidy two-column unified-diff block.  Line numbers are 1-based
+  * and ``null`` when the row doesn't exist on that side.  Not as smart
+  * as Monaco's tokenisation but good enough for cell-source deltas
+  * which are usually small.
   */
  state.renderUnifiedDiff = function (oldText, newText) {
   const a = (oldText || '').split('\n');
   const b = (newText || '').split('\n');
-  // Common prefix/suffix trim so the diff focuses on the change.
   let start = 0;
   while (start < a.length && start < b.length && a[start] === b[start]) start++;
   let endA = a.length;
@@ -178,10 +232,24 @@ export function installRevisions(state) {
    endB--;
   }
   const rows = [];
-  for (let i = 0; i < start; i++) rows.push({ kind: 'context', text: a[i] });
-  for (let i = start; i < endA; i++) rows.push({ kind: 'remove', text: a[i] });
-  for (let i = start; i < endB; i++) rows.push({ kind: 'add', text: b[i] });
-  for (let i = endA; i < a.length; i++) rows.push({ kind: 'context', text: a[i] });
+  for (let i = 0; i < start; i++) {
+   rows.push({ kind: 'context', text: a[i], lnoOld: i + 1, lnoNew: i + 1 });
+  }
+  for (let i = start; i < endA; i++) {
+   rows.push({ kind: 'remove', text: a[i], lnoOld: i + 1, lnoNew: null });
+  }
+  for (let i = start; i < endB; i++) {
+   rows.push({ kind: 'add', text: b[i], lnoOld: null, lnoNew: i + 1 });
+  }
+  const tailOffsetNew = endB - endA;
+  for (let i = endA; i < a.length; i++) {
+   rows.push({
+    kind: 'context',
+    text: a[i],
+    lnoOld: i + 1,
+    lnoNew: i + 1 + tailOffsetNew,
+   });
+  }
   return rows;
  };
 }
