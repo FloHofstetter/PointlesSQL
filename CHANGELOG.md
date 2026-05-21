@@ -40,6 +40,34 @@ All notable changes to this project will be documented in this file.
     with Part P in ``notebook-editor.md`` + new
     ``library-facts.md``.
 
+- **Phase 105.2 — co-edit WebSocket hub (2026-05-21).**
+  Asset 0.1.0rc73 → rc74.  New ``/ws/notebook/coedit/{notebook_id}``
+  endpoint built on the Sprint 105.1 storage primitive: per-notebook
+  in-memory ``_NotebookHub`` keeps the authoritative ``pycrdt.Doc``
+  warm while ≥1 client is connected, with a 1-s periodic flush + a
+  synchronous final flush on last-subscriber-disconnect (plus an
+  opportunistic ``coedit.compact`` when the size/TTL gate trips on
+  teardown).  Wire format is binary, single-byte tag dispatch:
+  ``0x00`` sync_step1 (client state vector → server diff), ``0x01``
+  sync_step2 (server full state on connect or diff reply), ``0x02``
+  sync_update (bidirectional incremental update, server applies +
+  rebroadcasts to other subscribers), ``0x03`` awareness_update
+  (opaque cursor / presence / agent attribution, relayed verbatim,
+  never persisted).  Auth via ``resolve_websocket_user`` +
+  ``actor_has_role(required="edit")``; api-key principals rejected
+  with ``4403`` so the surface stays browser-only.  Backpressure is
+  per-subscriber: a 256-frame outbound queue closes only the
+  overflowed client with ``1011``, other peers keep flowing.  New
+  ``coedit.flush_doc`` helper added to keep the hub's hot path
+  in-process (no per-keystroke DB roundtrip).  Save-race safety with
+  the existing ``/api/notebooks/save`` reconciliation pipeline lands
+  in Sprint 105.5 (save-barrier); single-uvicorn-worker only until a
+  Redis pub/sub broker is added.  8 new pytest covering anonymous /
+  unknown-notebook / viewer-role rejection, the initial sync_step2
+  push, sync_update fanout to other subscribers, awareness
+  relay-without-persist, hub teardown on disconnect, and the
+  final-flush path for updates received just before close.
+
 - **Phase 105.1 — pycrdt CRDT sidecar backend (2026-05-21).**
   Commit ``389f023``.  Asset 0.1.0rc70 → rc71.  Adds
   ``pycrdt>=0.10`` (Y.js-compatible Python binding); new

@@ -2234,7 +2234,16 @@ PointlesSQL
 │   │     plugin lands, the inbox stays empty (and the empty-state
 │   │     copy says so).
 │   │
-│   └── Phase 105 — Real-time co-edit (speculative)               🧊 on ice 2026-05-20
+│   └── Phase 105 — Real-time co-edit (speculative)               ⏳ in progress 2026-05-21
+│         **2026-05-21 update:** 105.1 (CRDT sidecar storage) +
+│         105.2 (WebSocket hub with sync + awareness relay) shipped.
+│         Frontend (105.3 ``y-monaco`` binding) + awareness semantics
+│         (105.4) + save-barrier (105.5) + agent presence (105.6) +
+│         multi-tab replay gate (105.7) + compaction worker (105.8)
+│         remain deferred — the backend pipe is live and any client
+│         speaking the documented binary wire format can join.
+│
+│         Original 2026-05-20 framing kept for context:
 │         Y.js / CRDT layer over the existing WebSocket so
 │         multiple humans + agents can edit cells simultaneously
 │         with visible cursors.

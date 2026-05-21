@@ -76,6 +76,9 @@ def register_routers(app: FastAPI) -> None:
     from pointlessql.api.notebook_chat_ws import (
         router as notebook_chat_ws_router,
     )
+    from pointlessql.api.notebook_coedit_ws import (
+        router as notebook_coedit_ws_router,
+    )
     from pointlessql.api.notebook_kernel_ws import router as notebook_kernel_ws_router
     from pointlessql.api.notebooks_routes import router as notebooks_router
     from pointlessql.api.notifications_routes import router as notifications_router
@@ -124,6 +127,7 @@ def register_routers(app: FastAPI) -> None:
     app.include_router(governance_router)
     app.include_router(notebooks_router)
     app.include_router(notebook_kernel_ws_router)
+    app.include_router(notebook_coedit_ws_router)
     app.include_router(runs_router)
     app.include_router(agent_runs_router)
     app.include_router(agent_reviews_router)

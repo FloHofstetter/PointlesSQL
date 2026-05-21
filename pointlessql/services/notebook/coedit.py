@@ -281,6 +281,37 @@ def _upsert_state(
     return row
 
 
+def flush_doc(
+    session: Session,
+    *,
+    notebook_id: str,
+    doc: Doc,  # pyright: ignore[reportMissingTypeArgument]
+) -> bytes:
+    """Persist *doc*'s current state without touching the live replica.
+
+    The Sprint 105.2 WS hub holds the authoritative :class:`Doc` in
+    memory and edits it directly under the hub's per-notebook lock;
+    this helper just snapshots that in-memory replica back to the
+    sidecar row.  Distinct from :func:`apply_update` (which builds a
+    fresh Doc from disk on every call) so the hot path stays
+    in-process and avoids the per-keystroke read-then-write that the
+    storage primitive's API shape would force.
+
+    Args:
+        session: A SQLAlchemy session.  Caller owns the transaction;
+            this function flushes but does not commit.
+        notebook_id: 36-char :class:`Notebook` UUID.
+        doc: The hub-owned live :class:`pycrdt.Doc` whose current
+            state should be persisted.
+
+    Returns:
+        The new full-state blob after the write.
+    """
+    blob = doc.get_update()
+    _upsert_state(session, notebook_id=notebook_id, blob=blob)
+    return blob
+
+
 __all__ = [
     "CELLS_ORDER_KEY",
     "CELLS_TEXT_KEY",
@@ -289,6 +320,7 @@ __all__ = [
     "apply_update",
     "compact",
     "encode_state_as_update",
+    "flush_doc",
     "get_or_init_ydoc",
     "needs_compaction",
 ]
