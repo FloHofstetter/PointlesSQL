@@ -10,6 +10,7 @@ from fastapi import APIRouter, Body, Query, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy import select
 
+from pointlessql.api import notebook_coedit_ws
 from pointlessql.api.dependencies import current_workspace_id, require_user
 from pointlessql.api.notebooks_routes._shared import get_or_create_notebook_uuid
 from pointlessql.config import Settings
@@ -220,6 +221,11 @@ async def api_save_notebook(
                 status_code=409,
             )
     cells: list[notebook_doc_service.NotebookCell] = []
+    # Phase 105.5 — collect optional client-provided cell_uuids in the
+    # same order as the input cells.  The save-barrier compares them
+    # against the reconciler's output to emit a CRDT remap advisory
+    # for any cell whose canonical UUID changed (e.g. Pass-3 mint).
+    client_cell_uuids: list[str | None] = []
     for index, raw in enumerate(raw_cells):
         if not isinstance(raw, dict):
             raise ValidationError(
@@ -248,6 +254,12 @@ async def api_save_notebook(
         tags: tuple[str, ...] = tuple(
             t for t in raw_tags if isinstance(t, str) and t
         )
+        raw_cell_uuid = raw.get("cell_uuid")
+        if raw_cell_uuid is not None and not isinstance(raw_cell_uuid, str):
+            raise ValidationError(
+                f"body.cells[{index}].cell_uuid must be a string or null"
+            )
+        client_cell_uuids.append(raw_cell_uuid if raw_cell_uuid else None)
         cells.append(
             notebook_doc_service.NotebookCell(
                 id=f"cell-{index}",
@@ -338,6 +350,25 @@ async def api_save_notebook(
         }
         for index, cell in enumerate(cells)
     ]
+    # Phase 105.5 — if the reconciler minted a different UUID than the
+    # client tracked, broadcast a remap so every open browser tab
+    # patches its Y.Doc + Alpine state in lock-step.  No-op when no
+    # client uuids were sent (older clients, pre-105.3 callers) or
+    # when no hub is open.
+    remap: dict[str, str] = {}
+    for client_uuid, result in zip(client_cell_uuids, results, strict=True):
+        if client_uuid is None:
+            continue
+        if client_uuid == result.cell_id:
+            continue
+        remap[client_uuid] = result.cell_id
+    if remap:
+        try:
+            await notebook_coedit_ws.apply_save_remap(notebook_uuid, remap)
+        except Exception:  # noqa: BLE001 — non-fatal best-effort
+            logger.exception(
+                "phase105.5 cell_uuid remap broadcast failed for %s", notebook_uuid
+            )
     logger.info("saved notebook %s (%d cells)", relative, len(cells))
     return JSONResponse(
         {

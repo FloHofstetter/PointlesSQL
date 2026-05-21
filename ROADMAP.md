@@ -2240,12 +2240,14 @@ PointlesSQL
 │         105.3 (browser Y.Doc client scaffold + toolbar live
 │         pill — passive backbone, no editor binding yet) +
 │         105.4 (awareness layer — y-protocols cursor presence +
-│         peer-avatar rail) shipped.  Per-cell ``y-codemirror.next``
-│         binding (105.3b) + save-barrier (105.5) + agent presence
-│         (105.6) + multi-tab replay gate (105.7) + compaction
-│         worker (105.8) remain deferred — the wire is live in both
-│         directions, the browser keeps the Y.Doc in lock-step, and
-│         peer-presence already paints in the toolbar.
+│         peer-avatar rail) + 105.5 (save-path barrier —
+│         cell_uuid_remap broadcast on Pass-3 reconciler drift)
+│         shipped.  Per-cell ``y-codemirror.next`` binding (105.3b)
+│         + agent presence (105.6) + multi-tab replay gate (105.7)
+│         + compaction worker (105.8) remain deferred — the wire
+│         is live in both directions, the browser keeps the Y.Doc
+│         in lock-step, peer-presence paints in the toolbar, and
+│         the save path no longer races the reconciler.
 │
 │         Original 2026-05-20 framing kept for context:
 │         Y.js / CRDT layer over the existing WebSocket so

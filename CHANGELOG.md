@@ -40,6 +40,32 @@ All notable changes to this project will be documented in this file.
     with Part P in ``notebook-editor.md`` + new
     ``library-facts.md``.
 
+- **Phase 105.5 — save-path co-edit barrier (2026-05-21).**
+  Asset 0.1.0rc76 → rc77.  Closes the cell_uuid race between the
+  Sprint-95 ``cell_reconciliation.reconcile()`` three-pass pipeline
+  and the live CRDT replica: when the reconciler returns a
+  different ``cell_id`` than the client tracked, the save handler
+  now emits an atomic remap onto the Phase-105.2 hub.  Mechanics
+  ship in three pieces.  (1) ``/api/notebooks/save`` accepts an
+  optional ``cell_uuid`` per cell — the save handler builds a
+  ``{client_uuid: reconciled_uuid}`` dict from any pair that
+  drifted and calls the new ``apply_save_remap`` helper.  (2) The
+  WebSocket hub gained ``_broadcast_to_all`` (no-exclude fanout)
+  + ``apply_save_remap(notebook_id, remap)`` which rewrites
+  ``cells_text`` / ``cells_order`` under the hub lock with a
+  ``pql-server-remap`` Y origin marker and broadcasts a new
+  ``0x04 TAG_CELL_UUID_REMAP`` frame whose JSON body is the
+  remap dict.  (3) Browser-side, ``coedit_client.js`` decodes
+  the frame, patches the local Y.Doc under the same remote-
+  origin marker so peers don't echo it, and invokes
+  ``onCellRemap`` — the mixin then mirrors the new ids onto
+  ``cells[].cell_uuid`` and the social ``cellCounts`` map and
+  stashes the dict in ``_pendingCellRemap`` so the Phase-105.3b
+  per-cell CodeMirror binding can rebind without a full mount.
+  ``persistence.js`` now sends ``cell_uuid`` in every save body
+  so the server has the input side of the remap.  5 new pytest
+  + the 19/19 Phase-105.1+105.2 regression stays green.
+
 - **Phase 105.4 — co-edit awareness layer (2026-05-21).**
   Asset 0.1.0rc75 → rc76.  Browser-side awareness (cursor presence
   + peer-rail) wired against the Sprint-105.2 hub's existing

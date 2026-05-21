@@ -1,4 +1,4 @@
-"""Phase 105.2 — real-time co-edit WebSocket hub.
+"""Phase 105.2 / 105.5 — real-time co-edit WebSocket hub.
 
 Wires :mod:`pointlessql.services.notebook.coedit` (the storage
 primitive shipped in Sprint 105.1) to multiple browser tabs editing
@@ -18,6 +18,12 @@ Wire format — every frame starts with a single tag byte:
   Server applies + rebroadcasts to other subscribers.
 * ``0x03`` — ``awareness_update``: opaque (cursor / presence /
   agent attribution).  Relayed verbatim, never persisted.
+* ``0x04`` — ``cell_uuid_remap``: server → all clients.  JSON
+  payload ``{old_uuid: new_uuid, ...}`` emitted by Phase 105.5's
+  save-barrier when the three-pass reconciler mints a fresh UUID
+  for a cell the clients already track.  The hub atomically
+  rewrites ``cells_text`` / ``cells_order`` under its lock so the
+  next ``sync_update`` round-trip carries the new keys.
 
 Persistence cadence: the hub flushes the live Doc to
 ``notebook_crdt_state`` once per second when dirty + once
@@ -26,22 +32,23 @@ also opportunistically triggers compaction when
 :func:`coedit_service.needs_compaction` says the blob has crossed
 size or TTL bounds.
 
-Sprint 105.3 layers ``y-monaco`` on the client side; 105.4 puts
-semantics on the awareness channel.  This module stays oblivious to
-both — it is a binary fanout pipe with auth + backpressure.
+Sprint 105.3 layers the client scaffold; 105.4 layers awareness
+semantics on top.  This module stays oblivious to both — it is a
+binary fanout pipe with auth + backpressure.
 """
 
 from __future__ import annotations
 
 import asyncio
 import dataclasses
+import json
 import logging
 import uuid
 from typing import TYPE_CHECKING, Any, Final
 from uuid import uuid4
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
-from pycrdt import Doc
+from pycrdt import Array, Doc, Map, Text
 from sqlalchemy import select
 
 from pointlessql.api.ws_auth import resolve_websocket_user
@@ -68,6 +75,12 @@ TAG_SYNC_STEP1: Final[int] = 0x00
 TAG_SYNC_STEP2: Final[int] = 0x01
 TAG_SYNC_UPDATE: Final[int] = 0x02
 TAG_AWARENESS_UPDATE: Final[int] = 0x03
+TAG_CELL_UUID_REMAP: Final[int] = 0x04
+
+# Importing ``coedit_service`` to keep the type aliases for
+# ``CELLS_ORDER_KEY`` / ``CELLS_TEXT_KEY`` co-located.
+_CELLS_ORDER_KEY: Final[str] = coedit_service.CELLS_ORDER_KEY
+_CELLS_TEXT_KEY: Final[str] = coedit_service.CELLS_TEXT_KEY
 
 # Per-subscriber outbound queue cap.  At 256 frames a slow client
 # disconnects long before they can OOM the host; faster clients
@@ -360,6 +373,100 @@ async def _broadcast(
             )
 
 
+async def _broadcast_to_all(hub: _NotebookHub, frame: bytes) -> None:
+    """Push a server-originated frame to every subscriber.
+
+    Unlike :func:`_broadcast`, this helper carries no ``exclude``
+    parameter — the originating party is the hub itself, not a
+    connected client.  Used by Phase 105.5's save-barrier to fan a
+    ``cell_uuid_remap`` advisory out to every tab editing the
+    affected notebook.
+
+    Backpressure handling mirrors :func:`_broadcast`: a full queue
+    closes the offending subscriber with ``1011`` while leaving the
+    rest of the fanout intact.  Must be called with ``hub.lock`` held.
+    """
+    for sub in hub.subscribers:
+        try:
+            sub.outbound.put_nowait(frame)
+        except asyncio.QueueFull:
+            _LOG.warning(
+                "coedit: outbound overflow during server broadcast for %s on %s",
+                sub.client_id,
+                hub.notebook_id,
+            )
+            asyncio.create_task(
+                _close_overflowed(sub),
+                name=f"coedit-overflow-{sub.client_id}",
+            )
+
+
+async def apply_save_remap(notebook_id: str, remap: dict[str, str]) -> None:
+    """Apply a save-driven ``cell_uuid`` remap to the live hub.
+
+    Called by the ``/api/notebooks/save`` handler after the
+    three-pass reconciler has minted fresh UUIDs for any cell that
+    drifted past the Jaccard gate.  When a hub exists for
+    ``notebook_id``, we:
+
+    1. Rewrite ``cells_text`` so the new key carries the same
+       :class:`pycrdt.Text` value the old key held.
+    2. Replace every occurrence of the old uuid in ``cells_order``.
+    3. Broadcast a ``TAG_CELL_UUID_REMAP`` frame to all subscribers
+       so their local Y.Doc + frontend state pick up the new key
+       within the same Y origin marker (``server-remap``) the doc
+       transaction carries.
+
+    Idempotent + no-op when no hub is open (``remap`` is empty or
+    no one is currently subscribed); the canonical mapping lives in
+    ``notebook_cells`` regardless.
+
+    Args:
+        notebook_id: The :class:`Notebook` UUID whose hub should be
+            mutated.
+        remap: ``{client_provided_uuid: reconciled_uuid}`` mapping
+            covering only cells whose UUID actually changed.
+    """
+    if not remap:
+        return
+    async with _HUBS_LOCK:
+        hub = _HUBS.get(notebook_id)
+    if hub is None:
+        return
+    async with hub.lock:
+        order = hub.doc.get(_CELLS_ORDER_KEY, type=Array)
+        texts = hub.doc.get(_CELLS_TEXT_KEY, type=Map)
+        with hub.doc.transaction(origin="pql-server-remap"):
+            for old_uuid, new_uuid in remap.items():
+                if old_uuid == new_uuid:
+                    continue
+                # Rewrite cells_text in place — Y.Map keys are immutable
+                # so a key change is delete + set carrying the same
+                # Text payload.  Pycrdt's ``Map.__getitem__`` returns
+                # the live reference, so we capture .to_py() to rebuild
+                # the new entry with identical content.
+                if old_uuid in texts:
+                    try:
+                        prior = texts[old_uuid]
+                        prior_value = (
+                            prior.to_py() if hasattr(prior, "to_py") else str(prior)
+                        )
+                    except Exception:  # noqa: BLE001
+                        prior_value = ""
+                    del texts[old_uuid]
+                    texts[new_uuid] = Text(prior_value)
+                # Rewrite cells_order positions — there may be more
+                # than one occurrence in pathological edits, so scan
+                # the full list.
+                for i, value in enumerate(list(order)):
+                    if value == old_uuid:
+                        del order[i]
+                        order.insert(i, new_uuid)
+        hub.dirty = True
+        frame = bytes([TAG_CELL_UUID_REMAP]) + json.dumps(remap).encode("utf-8")
+        await _broadcast_to_all(hub, frame)
+
+
 async def _close_overflowed(sub: _ClientSubscription) -> None:
     """Force-close a subscriber whose outbound queue overflowed."""
     if sub.pump_task is not None:
@@ -505,4 +612,4 @@ async def notebook_coedit_ws(  # noqa: C901 — handshake + dispatch are inheren
         await _release_hub_if_empty(notebook_id, factory)
 
 
-__all__ = ["router"]
+__all__ = ["apply_save_remap", "router"]

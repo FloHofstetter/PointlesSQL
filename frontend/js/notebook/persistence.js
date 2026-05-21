@@ -58,6 +58,12 @@ export function installPersistence(state) {
           source: cell.source,
           result_var: cell.result_var || null,
           tags: Array.isArray(cell.tags) ? cell.tags : [],
+          // Phase 105.5 — surface the client-tracked cell_uuid so
+          // the save-handler can detect Pass-3 reconciler mints and
+          // broadcast a CRDT remap to every connected tab.  Cells
+          // added in-session without a uuid send ``null``; the
+          // reconciler will mint and return one.
+          cell_uuid: cell.cell_uuid || null,
         })),
         proposal_acceptances: proposalAcceptances,
       };

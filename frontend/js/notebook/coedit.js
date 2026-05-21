@@ -67,6 +67,7 @@ export function installCoeditLifecycle(state, { userInfo = null } = {}) {
     this._coedit = createCoeditClient({
       notebookUuid: this.notebookUuid,
       onStatusChange: (next) => { this.coeditStatus = next; },
+      onCellRemap: (remap) => { this._applyCellUuidRemap(remap); },
     });
     if (haveUser) {
       // Awareness needs an in/out Y.Doc — the client's ``ydoc`` is the
@@ -158,6 +159,39 @@ export function installCoeditLifecycle(state, { userInfo = null } = {}) {
       self._coeditBeforeUnload = null;
     };
     window.addEventListener('beforeunload', this._coeditBeforeUnload);
+  };
+
+  state._applyCellUuidRemap = function (remap) {
+    // Phase 105.5 — server told us the canonical cell_uuid changed
+    // for one or more cells (Pass-3 mint in the reconciler).  Patch
+    // every Alpine surface that keys by cell_uuid so the next render
+    // tick reflects the new id.  The Y.Doc was already updated under
+    // the remote-origin marker by ``coedit_client.js`` before this
+    // callback fired; this is the JS-side mirror only.
+    if (!remap || typeof remap !== 'object') return;
+    const keys = Object.keys(remap);
+    if (keys.length === 0) return;
+    if (Array.isArray(this.cells)) {
+      for (const cell of this.cells) {
+        if (cell && cell.cell_uuid && remap[cell.cell_uuid]) {
+          cell.cell_uuid = remap[cell.cell_uuid];
+        }
+      }
+    }
+    if (this.cellCounts && typeof this.cellCounts === 'object') {
+      const next = { ...this.cellCounts };
+      for (const [oldU, newU] of Object.entries(remap)) {
+        if (Object.prototype.hasOwnProperty.call(next, oldU)) {
+          next[newU] = next[oldU];
+          delete next[oldU];
+        }
+      }
+      this.cellCounts = next;
+    }
+    // Stash the latest mapping so Phase-105.3b's per-cell
+    // CodeMirror binding can rebind to the new ``ytext`` reference
+    // without re-mounting the entire editor.
+    this._pendingCellRemap = remap;
   };
 
   state._teardownCoedit = function () {

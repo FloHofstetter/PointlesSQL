@@ -32,6 +32,10 @@ const TAG_SYNC_STEP1 = 0x00;
 const TAG_SYNC_STEP2 = 0x01;
 const TAG_SYNC_UPDATE = 0x02;
 const TAG_AWARENESS_UPDATE = 0x03;
+const TAG_CELL_UUID_REMAP = 0x04;
+
+const CELLS_ORDER_KEY = 'cells_order';
+const CELLS_TEXT_KEY = 'cells_text';
 
 // Marker on Y.Doc local-update events so the client doesn't echo
 // remote updates back as new sync_update frames.  Pycrdt on the
@@ -54,6 +58,7 @@ export function createCoeditClient({
   notebookUuid,
   onStatusChange = () => {},
   onAwarenessUpdate = () => {},
+  onCellRemap = () => {},
   awareness: initialAwareness = null,
 } = {}) {
   if (!notebookUuid) {
@@ -121,6 +126,55 @@ export function createCoeditClient({
         // updates we had before connecting.  For 105.3's empty-Doc
         // bootstrap this is a no-op; harmless either way.
         _sendFrame(TAG_SYNC_STEP1, Y.encodeStateVector(ydoc));
+      }
+    } else if (tag === TAG_CELL_UUID_REMAP) {
+      // Phase 105.5 — server-originated advisory.  Payload is a
+      // JSON ``{old_uuid: new_uuid}`` mapping that the
+      // ``/api/notebooks/save`` handler emitted after the cell-
+      // reconciler minted fresh UUIDs.  Patch the local Y.Doc so
+      // any cells_text / cells_order entries pinned to the stale
+      // key follow over, then surface the dict to the mixin so the
+      // Alpine state (cells[].cell_uuid, cellCounts, etc.) and any
+      // Phase-105.3b CodeMirror binding can rebind to the new key.
+      let remap = null;
+      try {
+        remap = JSON.parse(new TextDecoder().decode(payload));
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.warn('[coedit] malformed cell_uuid_remap', err);
+        return;
+      }
+      if (remap && typeof remap === 'object') {
+        try {
+          ydoc.transact(() => {
+            const order = ydoc.getArray(CELLS_ORDER_KEY);
+            const texts = ydoc.getMap(CELLS_TEXT_KEY);
+            for (const [oldU, newU] of Object.entries(remap)) {
+              if (oldU === newU) continue;
+              if (texts.has(oldU)) {
+                const prior = texts.get(oldU);
+                let priorText = '';
+                try {
+                  priorText = typeof prior === 'string'
+                    ? prior
+                    : (prior && typeof prior.toString === 'function' ? prior.toString() : '');
+                } catch (_e) { /* swallow */ }
+                texts.delete(oldU);
+                texts.set(newU, new Y.Text(priorText));
+              }
+              for (let i = 0; i < order.length; i += 1) {
+                if (order.get(i) === oldU) {
+                  order.delete(i, 1);
+                  order.insert(i, [newU]);
+                }
+              }
+            }
+          }, ORIGIN_REMOTE);
+        } catch (err) {
+          // eslint-disable-next-line no-console
+          console.warn('[coedit] failed to apply local cell_uuid remap', err);
+        }
+        try { onCellRemap(remap); } catch (_e) { /* swallow */ }
       }
     } else if (tag === TAG_AWARENESS_UPDATE) {
       // y-protocols awareness state lands here as opaque bytes.  When
