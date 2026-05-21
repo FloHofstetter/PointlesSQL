@@ -6,6 +6,26 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Phase 102 Track-H promote-reviewer webhook landed (2026-05-22).**
+  Closes the shoreguard-promote-gate item of Phase 102's "still
+  deferred" list.  ``promote_binding`` now consults an external
+  reviewer webhook (``POINTLESSQL_BRANCH_PROMOTE_WEBHOOK_URL``)
+  before recording the lifecycle transition.  2xx approves; 4xx
+  denies with the reviewer's response body surfaced on the UI; any
+  transport error denies-by-default so the gate stays closed.  When
+  ``POINTLESSQL_BRANCH_PROMOTE_WEBHOOK_SECRET`` is set, the call
+  carries a GitHub/Stripe-shape ``X-PointlesSQL-Signature:
+  sha256=<hex>`` over the raw JSON body so shoreguard's intake (or
+  any HMAC-verifying receiver) can authenticate without bespoke
+  code.  Payload now includes ``base_revision_uuid``,
+  ``promoted_by_user_email``, and an ISO ``promote_intent_at``
+  timestamp.  The API route forwards ``user["email"]`` to the
+  service.  5 new pytest cover unset-skip, happy-path-with-HMAC,
+  signature-omitted-without-secret, denial-blocks-promote, and
+  network-failure-denies-by-default.  No DB change; shoreguard
+  adapter remains config-only.
+  Asset 0.1.0rc84 → 0.1.0rc85.
+
 - **Phase 101 reviewer-per-cell flow closed (2026-05-22).**
   Cross-repo.  Phase 101 was ``⏳ partial`` since 2026-05-20 — the
   per-cell authorship backbone, save-path wiring, header chip, and

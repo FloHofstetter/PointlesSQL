@@ -2184,13 +2184,32 @@ PointlesSQL
 │   │     discard actions, and an expandable history list.  Wires
 │   │     the existing REST surface; no backend change needed.
 │   │
+│   │     **Track-H promote-reviewer webhook landed 2026-05-22
+│   │     (asset 0.1.0rc85):** ``promote_binding`` now POSTs the
+│   │     intent to ``POINTLESSQL_BRANCH_PROMOTE_WEBHOOK_URL``
+│   │     before flipping the lifecycle row — HTTP 2xx approves,
+│   │     4xx denies (the ``ValidationError`` carries the reviewer's
+│   │     body so the UI can surface the reason), and any transport
+│   │     failure denies-by-default so the gate stays closed.  When
+│   │     ``POINTLESSQL_BRANCH_PROMOTE_WEBHOOK_SECRET`` is also set
+│   │     the request carries a GitHub/Stripe-shape
+│   │     ``X-PointlesSQL-Signature: sha256=<hex>`` over the raw
+│   │     JSON body so shoreguard (or any standard verifier) can
+│   │     validate the intake without bespoke code.  Payload now
+│   │     includes ``base_revision_uuid`` + ``promoted_by_user_email``
+│   │     + ``promote_intent_at`` ISO timestamp so the reviewer can
+│   │     resolve the exact diff and contact the requester without
+│   │     joining back to PointlesSQL.  5 new pytest cover the
+│   │     unset-skip path, happy-path-with-HMAC, signature-omitted-
+│   │     when-secret-unset, denial-blocks-promote, and
+│   │     network-failure-denies-by-default.  Shoreguard adapter
+│   │     remains config-only — point the env var at shoreguard's
+│   │     approval intake.
+│   │
 │   │     **Still deferred:** kernel-side env-bridge so cells
 │   │     actually route reads + writes through the bound branch
 │   │     (today the binding is recorded but not yet consulted by
-│   │     ``pql.read_table`` / ``pql.write_table``).  Promote-gate
-│   │     to shoreguard remains a future hook — ``promote_binding``
-│   │     today records the lifecycle transition without calling
-│   │     into a reviewer system.
+│   │     ``pql.read_table`` / ``pql.write_table``).
 │   │
 │   ├── Phase 103 — Replay / Scenario-mode                        ✅ done 2026-05-21
 │   │     Backend shipped 2026-05-20.  New ``notebook_replays``

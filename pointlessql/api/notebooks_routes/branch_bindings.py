@@ -115,16 +115,21 @@ async def api_promote_branch(
         raise ValidationError("body.path must be a string")
     notebook_id = _resolve_notebook_uuid(request, path)
     actor_id: int | None = None
+    actor_email: str | None = None
     try:
-        actor_id = (
-            request.state.user.get("id") if request.state.user else None
-        )
+        if request.state.user:
+            actor_id = request.state.user.get("id")
+            actor_email = request.state.user.get("email")
     except AttributeError:
         actor_id = None
+        actor_email = None
     factory = request.app.state.session_factory
     with factory() as session:
         row = notebook_branch_bindings_service.promote_binding(
-            session, notebook_id=notebook_id, promoted_by_user_id=actor_id
+            session,
+            notebook_id=notebook_id,
+            promoted_by_user_id=actor_id,
+            promoted_by_user_email=actor_email,
         )
         envelope = notebook_branch_bindings_service.binding_to_envelope(row)
         session.commit()

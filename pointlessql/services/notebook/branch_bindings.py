@@ -128,11 +128,13 @@ def _consult_promote_webhook(
     *,
     notebook_id: str,
     binding_branch: str,
+    base_revision_uuid: str | None,
     promoted_by_user_id: int | None,
+    promoted_by_user_email: str | None,
 ) -> None:
     """POST the promote-intent to an external reviewer webhook.
 
-    Phase 102 Wave-D — when the
+    Phase 102 Wave-D / Track-H closure — when the
     ``POINTLESSQL_BRANCH_PROMOTE_WEBHOOK_URL`` env var is set, every
     :func:`promote_binding` call first POSTs the binding payload to
     that URL.  HTTP 200 = approved (promote proceeds); 4xx = denied
@@ -141,33 +143,66 @@ def _consult_promote_webhook(
     failure is treated as ``denied`` so the gate stays closed by
     default.
 
-    The webhook URL itself is unauthenticated; the receiving system
-    (shoreguard or any other reviewer) is responsible for HMAC /
-    OIDC validation on its side.  Future shoreguard sign-revision
-    integration plugs in here without touching this module.
+    When ``POINTLESSQL_BRANCH_PROMOTE_WEBHOOK_SECRET`` is also set
+    the request carries a ``X-PointlesSQL-Signature`` header of the
+    form ``sha256=<hex>`` over the raw JSON body — the same shape
+    GitHub + Stripe webhooks use, so any standard verifier (and
+    shoreguard's intake) can be pointed at this without bespoke
+    code.  Without a secret the header is omitted and the receiver
+    must accept unsigned requests on its own risk.
+
+    The webhook URL itself is otherwise unauthenticated; the
+    receiving system (shoreguard or any other reviewer) is
+    responsible for whatever transport-level checks it needs beyond
+    the HMAC signature.
 
     Args:
         notebook_id: Notebook UUID being promoted.
         binding_branch: Branch name about to be promoted.
+        base_revision_uuid: Optional Phase-97 revision the branch
+            forks from — forwarded so the reviewer can resolve the
+            exact diff under review without a follow-up RPC.
         promoted_by_user_id: Acting user id (forwarded for audit).
+        promoted_by_user_email: Acting user's email — populated by
+            the API route so the receiver can surface the reviewer
+            request to the right human without joining back to
+            PointlesSQL.
 
     Raises:
         ValidationError: On non-2xx response or network failure.
     """
+    import hashlib
+    import hmac
+    import json
     import os
 
     url = os.environ.get("POINTLESSQL_BRANCH_PROMOTE_WEBHOOK_URL", "").strip()
     if not url:
         return  # No webhook configured → legacy behaviour, no gate.
-    payload = {
+    payload: dict[str, Any] = {
         "notebook_id": notebook_id,
         "branch_name": binding_branch,
+        "base_revision_uuid": base_revision_uuid,
         "promoted_by_user_id": promoted_by_user_id,
+        "promoted_by_user_email": promoted_by_user_email,
+        "promote_intent_at": datetime.datetime.now(datetime.UTC).isoformat(),
     }
+    raw = json.dumps(payload, separators=(",", ":"), sort_keys=True).encode(
+        "utf-8"
+    )
+    headers = {"content-type": "application/json"}
+    secret = os.environ.get(
+        "POINTLESSQL_BRANCH_PROMOTE_WEBHOOK_SECRET", ""
+    ).strip()
+    if secret:
+        signature = hmac.new(
+            secret.encode("utf-8"), raw, hashlib.sha256
+        ).hexdigest()
+        headers["x-pointlessql-signature"] = f"sha256={signature}"
     try:
         import httpx
 
-        resp = httpx.post(url, json=payload, timeout=10.0)
+        resp = httpx.post(url, content=raw, headers=headers, timeout=10.0)
     except Exception as exc:  # noqa: BLE001
         raise ValidationError(
             f"branch-promote webhook unreachable ({url}): {exc}"
@@ -185,6 +220,7 @@ def promote_binding(
     *,
     notebook_id: str,
     promoted_by_user_id: int | None = None,
+    promoted_by_user_email: str | None = None,
 ) -> NotebookBranchBinding:
     """Mark the current binding as promoted.
 
@@ -205,6 +241,9 @@ def promote_binding(
         session: A SQLAlchemy session.
         notebook_id: ``Notebook.id`` UUID.
         promoted_by_user_id: Audit pointer to the reviewer.
+        promoted_by_user_email: Optional email forwarded to the
+            reviewer webhook so the receiver can address the
+            requester without joining back to PointlesSQL.
 
     Returns:
         The updated row.
@@ -221,7 +260,9 @@ def promote_binding(
     _consult_promote_webhook(
         notebook_id=notebook_id,
         binding_branch=row.branch_name,
+        base_revision_uuid=row.base_revision_uuid,
         promoted_by_user_id=promoted_by_user_id,
+        promoted_by_user_email=promoted_by_user_email,
     )
     now = datetime.datetime.now(datetime.UTC)
     row.promoted_at = now

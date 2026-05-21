@@ -253,3 +253,203 @@ async def test_api_branch_rejects_bad_name(
         json={"path": "x.py", "branch_name": "bad name!"},
     )
     assert resp.status_code == 422
+
+
+# ---------------------------------------------------------------------------
+# Phase 102 Track-H — promote-reviewer webhook gate
+# ---------------------------------------------------------------------------
+
+
+def _captured_webhook(
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    status_code: int = 200,
+    body: str = "",
+    raise_exc: Exception | None = None,
+) -> dict[str, object]:
+    """Patch ``httpx.post`` inside ``branch_bindings`` to capture calls."""
+    captured: dict[str, object] = {}
+
+    def fake_post(
+        url: str,
+        *,
+        content: bytes,
+        headers: dict[str, str],
+        timeout: float,
+    ) -> httpx.Response:
+        captured["url"] = url
+        captured["content"] = content
+        captured["headers"] = headers
+        captured["timeout"] = timeout
+        if raise_exc is not None:
+            raise raise_exc
+        return httpx.Response(status_code, content=body.encode("utf-8"))
+
+    import httpx as _httpx_mod
+
+    monkeypatch.setattr(_httpx_mod, "post", fake_post)
+    return captured
+
+
+def test_promote_webhook_unset_skips_gate(
+    factory: sessionmaker,  # type: ignore[type-arg]
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """No ``POINTLESSQL_BRANCH_PROMOTE_WEBHOOK_URL`` → no HTTP call."""
+    monkeypatch.delenv(
+        "POINTLESSQL_BRANCH_PROMOTE_WEBHOOK_URL", raising=False
+    )
+    captured = _captured_webhook(monkeypatch)
+    nb_id = _seed_notebook(factory)
+    with factory() as session:
+        notebook_branch_bindings_service.bind_branch(
+            session, notebook_id=nb_id, branch_name="exp"
+        )
+        session.commit()
+        notebook_branch_bindings_service.promote_binding(
+            session, notebook_id=nb_id
+        )
+        session.commit()
+    assert captured == {}
+
+
+def test_promote_webhook_happy_path_with_signature(
+    factory: sessionmaker,  # type: ignore[type-arg]
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """200 response → promote proceeds; HMAC header present when secret set."""
+    monkeypatch.setenv(
+        "POINTLESSQL_BRANCH_PROMOTE_WEBHOOK_URL",
+        "https://shoreguard.test/approvals/ingest",
+    )
+    monkeypatch.setenv(
+        "POINTLESSQL_BRANCH_PROMOTE_WEBHOOK_SECRET", "s3cret"
+    )
+    captured = _captured_webhook(monkeypatch, status_code=200)
+
+    nb_id = _seed_notebook(factory)
+    with factory() as session:
+        notebook_branch_bindings_service.bind_branch(
+            session,
+            notebook_id=nb_id,
+            branch_name="exp",
+            base_revision_uuid="rev-123",
+        )
+        session.commit()
+        promoted = notebook_branch_bindings_service.promote_binding(
+            session,
+            notebook_id=nb_id,
+            promoted_by_user_id=7,
+            promoted_by_user_email="reviewer@example.com",
+        )
+        assert promoted.promoted_at is not None
+        session.commit()
+    assert captured["url"] == "https://shoreguard.test/approvals/ingest"
+    import json as _json
+
+    body = _json.loads(captured["content"])  # type: ignore[arg-type]
+    assert body["notebook_id"] == nb_id
+    assert body["branch_name"] == "exp"
+    assert body["base_revision_uuid"] == "rev-123"
+    assert body["promoted_by_user_id"] == 7
+    assert body["promoted_by_user_email"] == "reviewer@example.com"
+    assert "promote_intent_at" in body
+    headers = captured["headers"]  # type: ignore[assignment]
+    assert isinstance(headers, dict)
+    sig = headers["x-pointlessql-signature"]
+    assert sig.startswith("sha256=")
+    # Re-compute HMAC over the same body and assert match.
+    import hashlib
+    import hmac
+
+    expected = hmac.new(
+        b"s3cret", captured["content"], hashlib.sha256  # type: ignore[arg-type]
+    ).hexdigest()
+    assert sig == f"sha256={expected}"
+
+
+def test_promote_webhook_omits_signature_without_secret(
+    factory: sessionmaker,  # type: ignore[type-arg]
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """No secret env var → no ``x-pointlessql-signature`` header."""
+    monkeypatch.setenv(
+        "POINTLESSQL_BRANCH_PROMOTE_WEBHOOK_URL",
+        "https://reviewer.test/intake",
+    )
+    monkeypatch.delenv(
+        "POINTLESSQL_BRANCH_PROMOTE_WEBHOOK_SECRET", raising=False
+    )
+    captured = _captured_webhook(monkeypatch, status_code=200)
+    nb_id = _seed_notebook(factory)
+    with factory() as session:
+        notebook_branch_bindings_service.bind_branch(
+            session, notebook_id=nb_id, branch_name="exp"
+        )
+        session.commit()
+        notebook_branch_bindings_service.promote_binding(
+            session, notebook_id=nb_id
+        )
+        session.commit()
+    headers = captured["headers"]  # type: ignore[assignment]
+    assert isinstance(headers, dict)
+    assert "x-pointlessql-signature" not in headers
+
+
+def test_promote_webhook_denial_blocks_promote(
+    factory: sessionmaker,  # type: ignore[type-arg]
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Non-2xx response → ValidationError; promoted_at stays None."""
+    monkeypatch.setenv(
+        "POINTLESSQL_BRANCH_PROMOTE_WEBHOOK_URL",
+        "https://reviewer.test/intake",
+    )
+    monkeypatch.delenv(
+        "POINTLESSQL_BRANCH_PROMOTE_WEBHOOK_SECRET", raising=False
+    )
+    _captured_webhook(monkeypatch, status_code=403, body="policy denied")
+    nb_id = _seed_notebook(factory)
+    with factory() as session:
+        notebook_branch_bindings_service.bind_branch(
+            session, notebook_id=nb_id, branch_name="exp"
+        )
+        session.commit()
+        with pytest.raises(ValidationError) as exc:
+            notebook_branch_bindings_service.promote_binding(
+                session, notebook_id=nb_id
+            )
+        assert "denied by reviewer" in str(exc.value)
+        assert "policy denied" in str(exc.value)
+        session.rollback()
+        current = notebook_branch_bindings_service.get_current_binding(
+            session, notebook_id=nb_id
+        )
+        assert current is not None
+        assert current["promoted_at"] is None
+
+
+def test_promote_webhook_network_failure_denies_by_default(
+    factory: sessionmaker,  # type: ignore[type-arg]
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Transport error → gate stays closed (deny-by-default)."""
+    monkeypatch.setenv(
+        "POINTLESSQL_BRANCH_PROMOTE_WEBHOOK_URL",
+        "https://reviewer.test/intake",
+    )
+    _captured_webhook(
+        monkeypatch, raise_exc=RuntimeError("connection refused")
+    )
+    nb_id = _seed_notebook(factory)
+    with factory() as session:
+        notebook_branch_bindings_service.bind_branch(
+            session, notebook_id=nb_id, branch_name="exp"
+        )
+        session.commit()
+        with pytest.raises(ValidationError) as exc:
+            notebook_branch_bindings_service.promote_binding(
+                session, notebook_id=nb_id
+            )
+        assert "webhook unreachable" in str(exc.value)
+        session.rollback()
