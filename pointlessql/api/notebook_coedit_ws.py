@@ -467,6 +467,34 @@ async def apply_save_remap(notebook_id: str, remap: dict[str, str]) -> None:
         await _broadcast_to_all(hub, frame)
 
 
+async def broadcast_agent_presence(notebook_id: str, frame: bytes) -> bool:
+    """Fan an agent-presence frame out to every subscriber.
+
+    Phase 105.6 — counterpart to :func:`apply_save_remap`, dedicated
+    to the ``TAG_AGENT_PRESENCE`` byte the REST endpoint at
+    ``/api/notebooks/{notebook_id}/coedit/agent-presence`` emits.
+    No Y.Doc mutation: agent presence is purely informational, the
+    canonical state lives in the agent_run record.
+
+    Args:
+        notebook_id: Target notebook UUID.
+        frame: Fully-formed wire bytes (``tag + payload``).  The
+            caller has already JSON-encoded the body.
+
+    Returns:
+        ``True`` when at least one subscriber was reachable;
+        ``False`` when no hub is open (the caller surfaces this
+        as ``status="no-hub"`` to the agent).
+    """
+    async with _HUBS_LOCK:
+        hub = _HUBS.get(notebook_id)
+    if hub is None:
+        return False
+    async with hub.lock:
+        await _broadcast_to_all(hub, frame)
+    return True
+
+
 async def _close_overflowed(sub: _ClientSubscription) -> None:
     """Force-close a subscriber whose outbound queue overflowed."""
     if sub.pump_task is not None:
@@ -612,4 +640,4 @@ async def notebook_coedit_ws(  # noqa: C901 — handshake + dispatch are inheren
         await _release_hub_if_empty(notebook_id, factory)
 
 
-__all__ = ["apply_save_remap", "router"]
+__all__ = ["apply_save_remap", "broadcast_agent_presence", "router"]

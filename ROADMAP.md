@@ -2239,10 +2239,10 @@ PointlesSQL
 │         105.2 (WebSocket hub) + 105.3 (passive Y.Doc client) +
 │         105.4 (awareness layer + peer rail) + 105.5 (save-path
 │         barrier) + 105.3b (per-cell y-codemirror.next binding)
-│         shipped.  Agent presence (105.6) + multi-tab replay
-│         gate (105.7) + compaction worker (105.8) remain
-│         deferred — typing in one tab now appears live in the
-│         other.
+│         + 105.6 (agent-presence REST endpoint + pseudo-peer
+│         rendering) shipped.  Multi-tab replay gate (105.7) +
+│         compaction worker (105.8) remain deferred —
+│         humans + agents now share the same peer rail.
 │
 │         Original 2026-05-20 framing kept for context:
 │         Y.js / CRDT layer over the existing WebSocket so

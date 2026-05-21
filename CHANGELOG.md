@@ -40,6 +40,30 @@ All notable changes to this project will be documented in this file.
     with Part P in ``notebook-editor.md`` + new
     ``library-facts.md``.
 
+- **Phase 105.6 — agent presence on co-edit (2026-05-21).**
+  Asset 0.1.0rc78 → rc79.  Surfaces a backend agent as a
+  pseudo-peer on the Phase-105.4 avatar rail.  New REST route
+  ``POST /api/notebooks/{notebook_id}/coedit/agent-presence``
+  accepts ``{agent_run_id, name, cell_uuid, action}`` (action ∈
+  ``editing``/``thinking``/``clear``) and broadcasts a new
+  ``0x05 TAG_AGENT_PRESENCE`` wire frame whose body is the
+  JSON payload.  The hub helper
+  ``broadcast_agent_presence(notebook_id, frame)`` reuses
+  ``_broadcast_to_all`` from Sprint 105.5 and returns ``False``
+  when no clients are open — the route surfaces that as
+  ``{"status": "no-hub"}`` so agents can fire-and-forget without
+  treating it as failure.  Client-side, ``coedit_client.js``
+  decodes the JSON and forwards it to a new ``onAgentPresence``
+  callback; the mixin tracks agents in ``_coeditAgentPeers``
+  keyed by ``agent_run_id`` and merges them into ``coeditPeers``
+  with an ``agent`` flag so the existing partial paints the
+  robot-icon branch already shipped in 105.4.  No y-protocols
+  encoding involved on either side — the agent path stays
+  decoupled from the awareness schema so it can reshape
+  independently.  5 new pytest (auth, unknown-notebook,
+  no-hub, broadcast, clear).  hermes-plugin integration on the
+  agent side is a follow-up commit on the plugin repo.
+
 - **Phase 105.3b — per-cell CodeMirror co-edit binding (2026-05-21).**
   Asset 0.1.0rc77 → rc78.  Co-edit goes from "Y.Doc syncs in the
   background" to "your typing appears in the other tab".  The

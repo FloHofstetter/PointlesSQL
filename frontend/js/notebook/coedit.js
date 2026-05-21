@@ -58,6 +58,7 @@ export function installCoeditLifecycle(state, { userInfo = null } = {}) {
   state._coeditUser = userInfo || null;
   state._coeditPeerRefresh = null;
   state._coeditBeforeUnload = null;
+  state._coeditAgentPeers = {};
   state.coeditPeers = [];
 
   state._initCoedit = function () {
@@ -73,6 +74,7 @@ export function installCoeditLifecycle(state, { userInfo = null } = {}) {
       notebookUuid: this.notebookUuid,
       onStatusChange: (next) => { this.coeditStatus = next; },
       onCellRemap: (remap) => { this._applyCellUuidRemap(remap); },
+      onAgentPresence: (presence) => { this._applyAgentPresence(presence); },
     });
     if (haveUser) {
       // Awareness needs an in/out Y.Doc — the client's ``ydoc`` is the
@@ -133,27 +135,64 @@ export function installCoeditLifecycle(state, { userInfo = null } = {}) {
   };
 
   state._renderPeerRail = function () {
-    if (!this._awareness) {
-      this.coeditPeers = [];
-      return;
-    }
-    const localId = this._coeditUser ? Number(this._coeditUser.id) : 0;
     const peers = [];
-    for (const [clientId, value] of this._awareness.getStates()) {
-      if (!value || !value.user) continue;
-      if (Number(value.user.id) === localId) continue;
-      peers.push({
-        clientId,
-        id: Number(value.user.id) || 0,
-        name: String(value.user.name || 'anonymous'),
-        color: String(value.user.color || _userColor(value.user.id)),
-        initials: _initials(value.user.name),
-        agent: value.agent || null,
-      });
+    if (this._awareness) {
+      const localId = this._coeditUser ? Number(this._coeditUser.id) : 0;
+      for (const [clientId, value] of this._awareness.getStates()) {
+        if (!value || !value.user) continue;
+        if (Number(value.user.id) === localId) continue;
+        peers.push({
+          clientId,
+          id: Number(value.user.id) || 0,
+          name: String(value.user.name || 'anonymous'),
+          color: String(value.user.color || _userColor(value.user.id)),
+          initials: _initials(value.user.name),
+          agent: null,
+        });
+      }
     }
-    // Stable ordering so re-renders don't reshuffle avatars.
+    // Phase 105.6 — agent presence: stitch in pseudo-peers driven by
+    // the REST agent-presence endpoint.  Agents carry a synthetic
+    // ``clientId`` (negative so they sort after every real awareness
+    // client) and the ``agent`` flag flips the partial onto the
+    // robot-icon branch.
+    let agentSlot = -1;
+    for (const entry of Object.values(this._coeditAgentPeers || {})) {
+      peers.push({
+        clientId: agentSlot,
+        id: 0,
+        name: String(entry.name || 'agent'),
+        color: '#5a6cf0',  // pinned co-edit-agent indigo for visual contrast
+        initials: 'A',
+        agent: {
+          run_id: String(entry.agent_run_id || ''),
+          action: String(entry.action || 'editing'),
+          cell_uuid: entry.cell_uuid || null,
+        },
+      });
+      agentSlot -= 1;
+    }
     peers.sort((a, b) => a.clientId - b.clientId);
     this.coeditPeers = peers;
+  };
+
+  state._applyAgentPresence = function (presence) {
+    if (!presence || typeof presence !== 'object') return;
+    const runId = String(presence.agent_run_id || '');
+    if (!runId) return;
+    const map = { ...(this._coeditAgentPeers || {}) };
+    if (presence.action === 'clear') {
+      delete map[runId];
+    } else {
+      map[runId] = {
+        agent_run_id: runId,
+        name: String(presence.name || 'agent'),
+        cell_uuid: presence.cell_uuid || null,
+        action: String(presence.action || 'editing'),
+      };
+    }
+    this._coeditAgentPeers = map;
+    this._renderPeerRail();
   };
 
   state._installBeforeUnloadCleanup = function () {

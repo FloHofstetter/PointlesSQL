@@ -33,6 +33,7 @@ const TAG_SYNC_STEP2 = 0x01;
 const TAG_SYNC_UPDATE = 0x02;
 const TAG_AWARENESS_UPDATE = 0x03;
 const TAG_CELL_UUID_REMAP = 0x04;
+const TAG_AGENT_PRESENCE = 0x05;
 
 const CELLS_ORDER_KEY = 'cells_order';
 const CELLS_TEXT_KEY = 'cells_text';
@@ -59,6 +60,7 @@ export function createCoeditClient({
   onStatusChange = () => {},
   onAwarenessUpdate = () => {},
   onCellRemap = () => {},
+  onAgentPresence = () => {},
   awareness: initialAwareness = null,
 } = {}) {
   if (!notebookUuid) {
@@ -175,6 +177,22 @@ export function createCoeditClient({
           console.warn('[coedit] failed to apply local cell_uuid remap', err);
         }
         try { onCellRemap(remap); } catch (_e) { /* swallow */ }
+      }
+    } else if (tag === TAG_AGENT_PRESENCE) {
+      // Phase 105.6 — agent broadcast.  Server-emitted JSON payload
+      // describing a pseudo-peer (agent_run_id, name, cell_uuid,
+      // action).  The mixin layers it into ``coeditPeers`` so the
+      // toolbar avatar rail renders agents alongside humans.
+      let parsed = null;
+      try {
+        parsed = JSON.parse(new TextDecoder().decode(payload));
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.warn('[coedit] malformed agent_presence', err);
+        return;
+      }
+      if (parsed && typeof parsed === 'object') {
+        try { onAgentPresence(parsed); } catch (_e) { /* swallow */ }
       }
     } else if (tag === TAG_AWARENESS_UPDATE) {
       // y-protocols awareness state lands here as opaque bytes.  When
