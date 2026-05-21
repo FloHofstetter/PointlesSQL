@@ -146,6 +146,16 @@ html[data-pql-panel-collapsed] .pql-layout-toggle[data-pql-panel-toggle] .bi {
 .pql-tree-lvl-2 { padding-left: 1.25rem; }
 .pql-tree-lvl-3 { padding-left: 2.5rem; }
 
+/* Phase 107.3 — fixed-width slot for the Edit button in the
+   notebook workspace list.  .ipynb rows have no in-browser editor
+   so the slot is rendered empty; the min-width keeps Schedule…/⋯
+   buttons aligned vertically across all rows. */
+.pql-notebook-row-edit-slot {
+ display: inline-flex;
+ min-width: 5rem;
+ justify-content: flex-start;
+}
+
 .pql-spin { animation: pql-spin 0.8s linear infinite; }
 @keyframes pql-spin { to { transform: rotate(360deg); } }
 

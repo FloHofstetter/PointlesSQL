@@ -136,14 +136,22 @@
 
                             <template x-if="row.kind === 'notebook'">
                                 <span class="ms-auto d-flex gap-2 align-items-center flex-shrink-0">
-                                    <template x-if="row.format === 'py'">
-                                        <button type="button"
-                                                class="btn btn-sm btn-outline-success"
-                                                @click="openEditor(row.path)"
-                                                title="Open in the in-browser editor">
-                                            <i class="bi bi-pencil-square me-1"></i> Edit
-                                        </button>
-                                    </template>
+                                    {# Phase 107.3 — fixed-width slot keeps the
+                                       Schedule…/⋯ buttons vertically aligned
+                                       across rows even when no in-browser
+                                       editor is offered (i.e. .ipynb rows).
+                                       The slot title surfaces the reason. #}
+                                    <span class="pql-notebook-row-edit-slot"
+                                          :title="row.format === 'py' ? '' : 'In-browser editor only available for .py (jupytext Percent) notebooks'">
+                                        <template x-if="row.format === 'py'">
+                                            <button type="button"
+                                                    class="btn btn-sm btn-outline-success"
+                                                    @click="openEditor(row.path)"
+                                                    title="Open in the in-browser editor">
+                                                <i class="bi bi-pencil-square me-1"></i> Edit
+                                            </button>
+                                        </template>
+                                    </span>
                                     <button type="button"
                                             class="btn btn-sm btn-outline-primary"
                                             @click="schedule(row.path)">
