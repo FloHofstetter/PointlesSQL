@@ -170,3 +170,19 @@ async def test_editor_page_ships_coedit_peer_rail(
     resp = await admin_client.get("/notebooks/edit/demo.py")
     assert resp.status_code == 200
     assert 'data-testid="notebook-coedit-peers"' in resp.text
+
+
+async def test_editor_page_ships_y_codemirror_importmap(
+    workspace_dir: Path, admin_client: httpx.AsyncClient
+) -> None:
+    """Phase 105.3b: editor page exposes y-codemirror.next via importmap.
+
+    The per-cell ``yCollab`` extension lives in ``y-codemirror.next``
+    and is pulled in lazily by ``cellEditor()``.  An importmap entry
+    therefore has to reach the editor HTML; otherwise the dynamic
+    ``import('y-codemirror.next')`` would 404 against esm.sh.
+    """
+    (workspace_dir / "demo.py").write_bytes(_DEMO_NOTEBOOK)
+    resp = await admin_client.get("/notebooks/edit/demo.py")
+    assert resp.status_code == 200
+    assert '"y-codemirror.next":' in resp.text

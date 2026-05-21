@@ -22,16 +22,28 @@
  * 3. ``getSource()`` — current document text.
  * 4. ``destroy()`` — remove the EditorView and detach listeners.
  *
- * Three options the parent factory passes:
+ * Options the parent factory passes:
  *
  * * ``initialSource`` — the cell's text on mount.
  * * ``language`` — ``'python'`` | ``'sql'`` | ``'markdown'``.
  * * ``onSourceChange(value)`` — fired on every transaction that
  *   updates the doc.  Parent uses this to flip the per-cell
  *   ``_dirty`` flag (Sprint 66.2).
+ * * ``yBinding`` (Phase 105.3b) — optional
+ *   ``{ ytext, awareness, undoManager }`` triple.  When supplied,
+ *   the editor swaps its local CodeMirror ``history()`` extension
+ *   for ``y-codemirror.next``'s ``yCollab`` extension, which mirrors
+ *   every CodeMirror transaction onto the shared ``ytext`` (then
+ *   onto the WebSocket via the Phase-105.2 hub) and applies remote
+ *   updates back into the editor with a remote-origin marker so the
+ *   parent's dirty flag does not flip on incoming peer edits.  The
+ *   ``onSourceChange`` callback still fires — driven by a
+ *   ``ytext.observe`` listener — so the Alpine ``cell.source``
+ *   mirror keeps up with both local and remote edits.
  */
 
 let _cmModulesCache = null;
+let _yCmModuleCache = null;
 
 async function _loadCodeMirrorModules() {
  if (_cmModulesCache) return _cmModulesCache;
@@ -68,6 +80,16 @@ async function _loadCodeMirrorModules() {
  return _cmModulesCache;
 }
 
+async function _loadYCodeMirrorModule() {
+ // Pulled in lazily so unauthenticated / read-only renders don't
+ // pay the y-codemirror.next download cost when no coedit client
+ // ever materialises.
+ if (_yCmModuleCache) return _yCmModuleCache;
+ const mod = await import('y-codemirror.next');
+ _yCmModuleCache = { yCollab: mod.yCollab };
+ return _yCmModuleCache;
+}
+
 function _languageExtension(modules, language) {
  if (language === 'sql') return modules.sql();
  if (language === 'markdown') return modules.markdown();
@@ -78,12 +100,15 @@ export function cellEditor({
  initialSource = '',
  language = 'python',
  onSourceChange = () => {},
+ yBinding = null,
 } = {}) {
  return {
  _cmView: null,
  _onSourceChange: onSourceChange,
  _language: language,
  _initialSource: initialSource,
+ _yBinding: yBinding,
+ _ytextObserver: null,
 
  async mount(host) {
  if (!host || host.dataset.pqlCellInit === '1') return;
@@ -97,19 +122,27 @@ export function cellEditor({
  } = modules;
 
  const isDark = document.documentElement.dataset.bsTheme === 'dark';
+ const yBindingActive = !!(
+ this._yBinding && this._yBinding.ytext
+ );
+
+ // Phase 105.3b — when a Y.Text is supplied, drive ``onSourceChange``
+ // from the doc itself so both local + remote edits flow through the
+ // same callback.  The CodeMirror update listener stays installed
+ // for non-bound cells (single-tab / unauthenticated renders).
  const updateListener = EditorView.updateListener.of((update) => {
- if (update.docChanged && this._onSourceChange) {
+ if (!yBindingActive && update.docChanged && this._onSourceChange) {
  this._onSourceChange(update.state.doc.toString());
  }
  });
 
- this._cmView = new EditorView({
- state: EditorState.create({
- doc: this._initialSource,
- extensions: [
+ const extensions = [
  lineNumbers(),
  highlightActiveLine(),
- history(),
+ // ``history()`` is replaced by yCollab's undo-manager when the
+ // editor is Y-bound — running both produces double-undo on every
+ // Cmd-Z (Sprint 105.3b lessons).
+ ...(yBindingActive ? [] : [history()]),
  bracketMatching(),
  ...(isDark
  ? [oneDark]
@@ -120,10 +153,54 @@ export function cellEditor({
  ...historyKeymap,
  ]),
  updateListener,
- ],
+ ];
+
+ if (yBindingActive) {
+ const { yCollab } = await _loadYCodeMirrorModule();
+ const { ytext, awareness, undoManager } = this._yBinding;
+ extensions.push(
+ yCollab(ytext, awareness || null, {
+ undoManager: undoManager || undefined,
+ }),
+ );
+ // Mirror Y.Text mutations onto the Alpine ``cell.source`` field
+ // so save still serialises canonical text.  Observer fires for
+ // BOTH local and remote ytext changes — local edits keep the
+ // dirty flag because the parent factory's ``_onCellSourceChange``
+ // sets ``_dirty = true``.  Remote-driven ytext edits also flow
+ // through the same callback; the mixin's remap path (105.5)
+ // takes care of cleaning up dirty flags after save.
+ this._ytextObserver = () => {
+ try { this._onSourceChange(ytext.toString()); }
+ catch (_e) { /* swallow */ }
+ };
+ try { ytext.observe(this._ytextObserver); }
+ catch (_e) { this._ytextObserver = null; }
+ }
+
+ this._cmView = new EditorView({
+ state: EditorState.create({
+ // y-codemirror.next's yCollab seeds the doc from ``ytext`` on
+ // mount.  Passing the initial source for an empty ytext lets
+ // the first ``ytext.insert`` propagate identical text to peers;
+ // for an already-populated ytext yCollab discards the seed.
+ doc: yBindingActive ? '' : this._initialSource,
+ extensions,
  }),
  parent: host,
  });
+
+ // When Y-bound and the ytext is empty but we have a non-empty
+ // initialSource (brand-new cell minted in this tab), seed the
+ // ytext so peers see the content.  yCollab is already wired so
+ // the insert propagates through the WS.
+ if (yBindingActive) {
+ const { ytext } = this._yBinding;
+ if (ytext.length === 0 && this._initialSource) {
+ try { ytext.insert(0, this._initialSource); }
+ catch (_e) { /* swallow */ }
+ }
+ }
  },
 
  setSource(value) {
@@ -147,6 +224,11 @@ export function cellEditor({
  },
 
  destroy() {
+ if (this._ytextObserver && this._yBinding && this._yBinding.ytext) {
+ try { this._yBinding.ytext.unobserve(this._ytextObserver); }
+ catch (_e) { /* swallow */ }
+ this._ytextObserver = null;
+ }
  if (this._cmView) {
  this._cmView.destroy();
  this._cmView = null;

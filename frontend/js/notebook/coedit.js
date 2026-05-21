@@ -1,6 +1,7 @@
 /**
- * Notebook editor — co-edit lifecycle mixin (Phase 105.3 scaffold +
- * Phase 105.4 awareness layer).
+ * Notebook editor — co-edit lifecycle mixin
+ * (Phase 105.3 scaffold + Phase 105.4 awareness +
+ * Phase 105.5 save-path remap + Phase 105.3b per-cell binding).
  *
  * Spins up :func:`createCoeditClient` after the notebook's
  * ``notebook_uuid`` lands, keeps a single status field
@@ -9,18 +10,22 @@
  * current viewer's id/name/colour, and surfaces a deduped peer list
  * (``coeditPeers``) for the toolbar's avatar rail.
  *
- * The client itself is the passive scaffold from
- * ``./coedit_client.js`` — Y.Doc stays in sync with the server but
- * is not yet bound to the per-cell CodeMirror views.  That wiring
- * lands in Phase 105.3b once the save-path barrier (Phase 105.5)
- * has solved the cell_uuid reconciler race.  Awareness frames are
- * already relayed by the Sprint-105.2 hub, so the presence layer
- * works without further server changes.
+ * 105.3b layers per-cell ``y-codemirror.next`` binding on top.  The
+ * mixin now also exposes ``cellYBinding(cell)`` which returns the
+ * ``{ ytext, awareness, undoManager }`` triple that ``cellEditor()``
+ * needs to swap its local history for collaborative editing.  The
+ * triple is only handed back when the client has completed the
+ * initial sync round-trip — pre-sync cells fall back to standalone
+ * CodeMirror (and pick up co-edit on the next mount).
  */
 
 import { Awareness, encodeAwarenessUpdate } from 'y-protocols/awareness';
+import { Text as YText, UndoManager as YUndoManager } from 'yjs';
 
 import { createCoeditClient } from './coedit_client.js';
+
+const CELLS_ORDER_KEY = 'cells_order';
+const CELLS_TEXT_KEY = 'cells_text';
 
 const REMOTE_ORIGIN = 'pql-coedit-remote';
 const PEER_RAIL_RENDER_THROTTLE_MS = 100;
@@ -159,6 +164,43 @@ export function installCoeditLifecycle(state, { userInfo = null } = {}) {
       self._coeditBeforeUnload = null;
     };
     window.addEventListener('beforeunload', this._coeditBeforeUnload);
+  };
+
+  state.cellYBinding = function (cell) {
+    // Phase 105.3b — resolve the ``{ ytext, awareness, undoManager }``
+    // triple ``cellEditor()`` needs to swap its local history for
+    // ``y-codemirror.next``'s ``yCollab`` extension.  Returns null
+    // when the prerequisites are not met (cell missing uuid,
+    // coedit client not synced, or no awareness — anonymous render).
+    // Callers fall back to standalone CodeMirror in that case.
+    if (!cell || !cell.cell_uuid) return null;
+    if (!this._coedit || !this._coedit.synced) return null;
+    if (!this._awareness) return null;
+    const ydoc = this._coedit.ydoc;
+    if (!ydoc) return null;
+    const texts = ydoc.getMap(CELLS_TEXT_KEY);
+    let ytext = texts.has(cell.cell_uuid) ? texts.get(cell.cell_uuid) : null;
+    if (!ytext) {
+      // Cell minted in this tab (no save round-trip yet) → seed the
+      // shared map so peers see the new key.  yCollab will populate
+      // the actual text on first mount.
+      const fresh = new YText();
+      ydoc.transact(() => {
+        texts.set(cell.cell_uuid, fresh);
+        const order = ydoc.getArray(CELLS_ORDER_KEY);
+        let present = false;
+        for (let i = 0; i < order.length; i += 1) {
+          if (order.get(i) === cell.cell_uuid) { present = true; break; }
+        }
+        if (!present) order.push([cell.cell_uuid]);
+      });
+      ytext = fresh;
+    }
+    return {
+      ytext,
+      awareness: this._awareness,
+      undoManager: new YUndoManager(ytext),
+    };
   };
 
   state._applyCellUuidRemap = function (remap) {

@@ -40,6 +40,28 @@ All notable changes to this project will be documented in this file.
     with Part P in ``notebook-editor.md`` + new
     ``library-facts.md``.
 
+- **Phase 105.3b — per-cell CodeMirror co-edit binding (2026-05-21).**
+  Asset 0.1.0rc77 → rc78.  Co-edit goes from "Y.Doc syncs in the
+  background" to "your typing appears in the other tab".  The
+  ``y-codemirror.next`` extension lands in the importmap (lazily
+  imported by ``cellEditor()`` so unauthenticated renders pay zero
+  cost); the cell-editor factory now accepts an optional
+  ``yBinding: { ytext, awareness, undoManager }`` triple that swaps
+  the local CodeMirror ``history()`` extension for ``yCollab``,
+  routing every transaction through the shared ``cells_text``
+  Y.Map.  The coedit mixin gains a ``cellYBinding(cell)`` helper
+  that returns the triple when the client is synced + the cell
+  carries a stable ``cell_uuid`` (otherwise null → standalone
+  CodeMirror, no co-edit).  Cells minted in-session seed a fresh
+  ``Y.Text`` into the shared map so peers see the new cell within
+  the same WS round-trip.  ``markdown_output.js`` passes the
+  binding through for both code/sql mounts and the markdown
+  ``enterMarkdownEdit`` path; a ``ytext.observe`` listener mirrors
+  the live text onto ``cell.source`` so save still serialises the
+  canonical text.  One new pytest asserts the importmap entry
+  reaches the editor HTML; 19/19 105.1 + 105.2 regression + the
+  Phase 105.5 save-barrier suite stay green.
+
 - **Phase 105.5 — save-path co-edit barrier (2026-05-21).**
   Asset 0.1.0rc76 → rc77.  Closes the cell_uuid race between the
   Sprint-95 ``cell_reconciliation.reconcile()`` three-pass pipeline

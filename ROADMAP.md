@@ -2236,18 +2236,13 @@ PointlesSQL
 │   │
 │   └── Phase 105 — Real-time co-edit (speculative)               ⏳ in progress 2026-05-21
 │         **2026-05-21 update:** 105.1 (CRDT sidecar storage) +
-│         105.2 (WebSocket hub with sync + awareness relay) +
-│         105.3 (browser Y.Doc client scaffold + toolbar live
-│         pill — passive backbone, no editor binding yet) +
-│         105.4 (awareness layer — y-protocols cursor presence +
-│         peer-avatar rail) + 105.5 (save-path barrier —
-│         cell_uuid_remap broadcast on Pass-3 reconciler drift)
-│         shipped.  Per-cell ``y-codemirror.next`` binding (105.3b)
-│         + agent presence (105.6) + multi-tab replay gate (105.7)
-│         + compaction worker (105.8) remain deferred — the wire
-│         is live in both directions, the browser keeps the Y.Doc
-│         in lock-step, peer-presence paints in the toolbar, and
-│         the save path no longer races the reconciler.
+│         105.2 (WebSocket hub) + 105.3 (passive Y.Doc client) +
+│         105.4 (awareness layer + peer rail) + 105.5 (save-path
+│         barrier) + 105.3b (per-cell y-codemirror.next binding)
+│         shipped.  Agent presence (105.6) + multi-tab replay
+│         gate (105.7) + compaction worker (105.8) remain
+│         deferred — typing in one tab now appears live in the
+│         other.
 │
 │         Original 2026-05-20 framing kept for context:
 │         Y.js / CRDT layer over the existing WebSocket so
