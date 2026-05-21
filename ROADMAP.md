@@ -2370,6 +2370,53 @@ PointlesSQL
 │           for co-edit; lifting that needs a Redis pub/sub broker
 │           and is its own phase, not a 105 follow-up.
 │
+│   └── Phase 106 — Hygiene-Wave nach Phase 95–105            ✅ done 2026-05-21
+│         **Closed 2026-05-21.**  Post-notebook-blitz code-quality
+│         pass.  Two commits, no behaviour change, no asset bump.
+│         - **106.1 (pydoclint clean).** Migrated the last 30 route
+│           docstrings off the legacy ``HTTPException`` Raises-section
+│           onto the actual domain-exception hierarchy
+│           (``ResourceNotFoundError`` / ``ValidationError`` /
+│           ``ConflictError`` / ``PermissionDeniedError``) — the
+│           global handler at ``pointlessql/api/error_handlers.py``
+│           already mapped these to RFC-9457 Problem+JSON; only the
+│           docstrings lagged.  Removed three stale Raises sections
+│           whose bodies no longer raised; added 4 missing
+│           ``Args:`` blocks.  pydoclint 30 → 0.
+│         - **106.2 (pyright 0 errors).**  Pre-init ``verb`` outside
+│           the try-block in ``social_routes/issues.py`` so the
+│           except-clause logger has a bound name even on import
+│           failure.  Two ``pyright: ignore`` with why-comments for
+│           the ``jupyter_client`` stub gaps in ``replay_worker.py``.
+│           Excluded ``pointlessql/data/notebook_templates/`` from
+│           Pyright in ``pyproject.toml`` — templates are
+│           intentionally incomplete plain-Python snippets resolved
+│           at kernel-runtime, not library code.  Pyright 10 → 0.
+│         - **106.3 (models/notebook.py split).**  Phase 95–105
+│           stacked 18 ORM classes into a single 1343-LOC file.
+│           Split into per-phase subpackage with re-exports in
+│           ``__init__.py`` so existing
+│           ``from pointlessql.models.notebook import …`` imports
+│           stay valid — no compat shim (Memory
+│           ``feedback_no_legacy_shim``).  ``alembic check``
+│           confirms schema unchanged.  Files: ``_core`` (Notebook +
+│           cells) / ``_provenance`` (96) / ``_revisions`` (97) /
+│           ``_tags`` (98.B) / ``_share`` (99/100) / ``_authorship``
+│           (101) / ``_branch`` (102) / ``_replays`` (103) /
+│           ``_proposals`` (104) / ``_coedit`` (105).
+│         - **Deferred sub-phases (tracked).**  106.4 (PQL mixin
+│           extraction) — 24 methods all need ``self._client``; no
+│           clean cluster scissors today.  106.5 (``dict[str, Any]``
+│           hardening) — ``LineageInboundEvent.facets`` *must* stay
+│           ``Any``-shaped for OpenLineage forward-compat
+│           (vendor-extension drift).  106.6 (missing module
+│           docstrings) collapsed to no-op — AST scan via
+│           ``ast.get_docstring()`` shows zero files actually
+│           missing; the initial grep was tripped by ``r"""`` /
+│           pragma-prefixed openers.  106.7 (lifespan-loops reorg)
+│           deferred until a concrete new init step demands it —
+│           current 33-step complexity is structural, not a smell.
+│
 
 ├── Phase 81 — Feed overhaul + help surface + entity ⋯-menu  ✅ done 2026-05-16
 │       Three-track polish bundle.  Track K rebuilt /feed from a

@@ -6,6 +6,63 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Phase 106 — Hygiene-Wave nach Phase 95–105 (2026-05-21).**
+  Two commits flip the post-notebook-blitz code-quality debt back
+  to baseline.  No behaviour change, no asset bump.
+  - **Phase 106.1 (pydoclint clean) + 106.2 (pyright 0 errors).**
+    Commit ``28db246``.  Migrated the last 30 route docstrings off
+    the legacy ``HTTPException`` Raises-section onto the actual
+    domain-exception hierarchy (``ResourceNotFoundError``,
+    ``ValidationError``, ``ConflictError``,
+    ``PermissionDeniedError``) — the global exception handler in
+    ``pointlessql/api/error_handlers.py`` already did the mapping,
+    only the docstrings lagged behind.  Removed three stale Raises
+    sections (``notebook_chat_routes/_propose`` ×2,
+    ``services/notebook/replay.mark_running``,
+    ``services/notebook/templates.create_from_template``) whose
+    bodies no longer raised after earlier service-layer refactors.
+    Added 4 missing ``Args:`` blocks (notebook-chat propose / fix /
+    explain + ``KernelSession.__init__`` for ``branch_name`` +
+    ``notebook_id``).  Pre-initialised ``verb`` in
+    ``social_routes/issues.py`` outside the try-block so Pyright
+    can prove it bound at the except-clause logger call.  Suppressed
+    two unfixable ``jupyter_client`` stub gaps in
+    ``replay_worker.py`` with inline ``pyright: ignore`` +
+    why-comments.  Excluded
+    ``pointlessql/data/notebook_templates/`` from Pyright in
+    ``pyproject.toml`` — templates are intentionally incomplete
+    plain-Python snippets resolved at kernel-runtime, not library
+    code.  Pyright went 10 → 0 errors; pydoclint went 30 → 0
+    violations.
+  - **Phase 106.3 (models/notebook.py split).** Commit ``fef6d68``.
+    Phase 95–105 stacked 18 SQLAlchemy classes into a single
+    1343-LOC file.  Split into a per-phase subpackage:
+    ``_core`` (Notebook + Cell + Output + Run + RunSource + JobLink),
+    ``_provenance`` (96), ``_revisions`` (97), ``_tags`` (98.B),
+    ``_share`` (99/100), ``_authorship`` (101), ``_branch`` (102),
+    ``_replays`` (103), ``_proposals`` (104), ``_coedit`` (105).
+    ``__init__.py`` re-exports every name verbatim so existing
+    ``from pointlessql.models.notebook import …`` imports stay
+    valid — no legacy shim, no compat alias (Memory
+    ``feedback_no_legacy_shim``).  ``alembic check`` confirms the
+    schema is byte-identical.
+  - **Deferred (tracked, not landed).** 106.4 (PQL mixin
+    extraction) — the 24 ``PQL`` methods all hard-depend on
+    ``self._client``; no cluster scissors cleanly today, and the
+    UnityCatalogClient-style mixin precedent would just shuffle
+    code without removing coupling.  106.5 (``dict[str, Any]``
+    hardening at LineageInboundEvent + AdminConsoleBody +
+    Proposal-bodies) — the inbound-OpenLineage facet bag *must*
+    stay ``Any``-shaped for forward-compat with vendor extensions
+    (the parser's own comment makes that explicit).  106.6
+    (missing module docstrings) collapsed to a no-op after an
+    AST-based ``ast.get_docstring()`` scan replaced the initial
+    grep heuristic — zero files actually lacked docstrings; the
+    grep was tripped up by ``r"""`` / pragma-prefixed openers.
+    106.7 (lifespan-loops reorg) deliberately deferred until a
+    concrete new init step demands it; the current 33-step
+    complexity is structural, not a smell.
+
 - **Phase 97 closure — Pin-to-memory shipped end-to-end
   (2026-05-21).**  Three commits + a feed-card polish flip
   Phase 97 from ⏳ partial → ✅ done.  Asset 0.1.0rc68 → rc72.
