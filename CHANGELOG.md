@@ -6,6 +6,19 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Phase 100 + 103 + 104 status flip in ROADMAP (2026-05-21).**
+  No new code — these three phases were already closed by Wave-D
+  in-flight commits (``e91da74`` share secret-scrub + iframe-embed;
+  ``b9d67d8`` replay worker; plugin ``0147d29``
+  ``pql_propose_cell_sequence``) but their entries in
+  ``ROADMAP.md`` still carried ``⏳ partial`` markers + ``Still
+  deferred`` paragraphs.  Flipped each to ``✅ done`` with a
+  closure paragraph pointing at the landing commit.  Added a
+  5-pytest closure suite for the previously-untested
+  ``pql_propose_cell_sequence`` plugin tool (gating, schema
+  rejection on empty/bad cells, happy-path URL + headers shape).
+  Asset 0.1.0rc82 → rc83.
+
 - **Phase 99 + 105 follow-up closures (2026-05-21).**  Three small
   cross-cutting deferred items from the post-notebook-blitz hygiene
   backlog landed together; asset 0.1.0rc81 → 0.1.0rc82.

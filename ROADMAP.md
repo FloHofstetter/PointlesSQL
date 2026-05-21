@@ -2021,7 +2021,7 @@ PointlesSQL
 │   │     WS open paths at Wave-C ship — nothing further was
 │   │     needed there.
 │   │
-│   ├── Phase 100 — Publish notebook (external share + dashboard) ⏳ partial
+│   ├── Phase 100 — Publish notebook (external share + dashboard) ✅ done 2026-05-21
 │   │     Two orthogonal pieces shipped together because they share
 │   │     a route + rendering pipeline:
 │   │     (a) **Public share via UUID** — ChatGPT-shared-chat
@@ -2085,10 +2085,20 @@ PointlesSQL
 │   │     public viewer had been 303-redirecting every visitor
 │   │     to ``/auth/login`` since initial Phase-100 ship.
 │   │
-│   │     **Still deferred:** iframe-embed analog of Phase-92.2's
-│   │     ``/embed/semantic_search/{fqn}``, and the secret-scrub
-│   │     pass before serving (today the publisher is expected to
-│   │     vet the content; the route does not redact).
+│   │     **Wave-D-4 closure 2026-05-21:** iframe-embed analog of
+│   │     Phase-92.2's ``/embed/semantic_search/{fqn}`` shipped as
+│   │     ``GET /embed/notebook_share/{share_uuid}`` (commit
+│   │     ``e91da74``); same content + scrub as the public viewer
+│   │     with ``compact=True`` so the iframe parent owns the
+│   │     chrome.  Secret-scrub pass landed alongside —
+│   │     ``services/notebook/shares.scrub_outputs`` regex-redacts
+│   │     AWS / GCP / GitHub / Slack tokens + ``password=``-style
+│   │     keys-in-values across every output frame before render.
+│   │     Both the public viewer and the embed route consume the
+│   │     scrubbed copy so a publisher who forgets to vet outputs
+│   │     gets defence-in-depth instead of a leak.  ``/embed/`` is
+│   │     in the auth middleware's ``PUBLIC_PREFIXES`` allowlist
+│   │     so unauthenticated iframes resolve without a redirect.
 │   │
 │   ├── Phase 101 — Agent-co-authored cells + Reviewer-per-cell   ⏳ partial
 │   │     Per-cell attribution backbone (Phase 101) shipped 2026-05-20:
@@ -2172,7 +2182,7 @@ PointlesSQL
 │   │     today records the lifecycle transition without calling
 │   │     into a reviewer system.
 │   │
-│   ├── Phase 103 — Replay / Scenario-mode                        ⏳ partial
+│   ├── Phase 103 — Replay / Scenario-mode                        ✅ done 2026-05-21
 │   │     Backend shipped 2026-05-20.  New ``notebook_replays``
 │   │     table + migration ``311c87f25421`` records one row per
 │   │     replay attempt of a Phase-97 :class:`NotebookRevision`.
@@ -2200,14 +2210,23 @@ PointlesSQL
 │   │     row; the kernel re-execution worker stays deferred so
 │   │     the row just sits until that lands.
 │   │
-│   │     **Still deferred:** the actual kernel-driven re-execution
-│   │     loop (the worker that takes a replay row from ``pending``
-│   │     → ``running`` → ``ok`` and uploads the outputs).  Worker
-│   │     plumbing is straightforward papermill / kernel-session
-│   │     orchestration; the scaffolding for the audit + diff
-│   │     surface is the load-bearing piece and is in place.
+│   │     **Wave-D-5 closure 2026-05-21:** kernel-driven re-execution
+│   │     worker landed as ``services/notebook/replay_worker.py``
+│   │     (commit ``b9d67d8``).  ``ReplayWorker`` is a small async
+│   │     loop wired into the FastAPI lifespan next to the scheduler;
+│   │     each tick picks at most one ``pending`` row, marks it
+│   │     ``running``, spins up a fresh ``AsyncKernelManager``,
+│   │     re-runs every code/sql cell from the pinned revision under
+│   │     ``POINTLESSQL_BRANCH`` (when bound) +
+│   │     ``POINTLESSQL_PRINCIPAL``, captures stream / display /
+│   │     execute_result / error frames in the Phase-96 output shape,
+│   │     and writes them via ``record_finished``.  Short-circuits on
+│   │     the first cell error so the diff surface immediately shows
+│   │     the failure cause.  Disabled in fast-test lifespan and
+│   │     opt-out via ``POINTLESSQL_REPLAY_WORKER_DISABLED=1`` for
+│   │     CI installs that never replay.  10 pytest cover the lifecycle.
 │   │
-│   ├── Phase 104 — NL→Notebook (full cell-sequence generation)   ⏳ partial
+│   ├── Phase 104 — NL→Notebook (full cell-sequence generation)   ✅ done 2026-05-21
 │   │     Backend shipped 2026-05-20.  New
 │   │     ``notebook_cell_sequence_proposals`` table + migration
 │   │     ``d737762ace76``.  One row carries the full proposed
@@ -2238,11 +2257,22 @@ PointlesSQL
 │   │     first time a proposal arrives so the user doesn't miss
 │   │     it.
 │   │
-│   │     **Still deferred:** the hermes-plugin
-│   │     ``pql_propose_cell_sequence`` LLM tool that drives the
-│   │     actual code-gen + fires the window event.  Until the
-│   │     plugin lands, the inbox stays empty (and the empty-state
-│   │     copy says so).
+│   │     **Wave-D-6 closure 2026-05-21:** hermes-plugin
+│   │     ``pql_propose_cell_sequence`` LLM tool shipped (plugin
+│   │     commit ``0147d29``).  Registered under
+│   │     ``POINTLESSQL_NOTEBOOK_CHAT_SESSION_ID`` like the other
+│   │     three cell tools; validates each cell entry's
+│   │     ``{cell_type, source, position}`` shape locally so a
+│   │     drifting LLM gets a 422 with an example instead of a
+│   │     server 500, then POSTs the ``{prompt, cells, rationale}``
+│   │     payload to ``/api/notebook/chat/{nb}/propose-sequence``.
+│   │     The Wave-C inbox listens for ``pql:cell-sequence-proposed``
+│   │     and renders Accept-all / Discard for the human; on Accept
+│   │     the editor iterates ``insertCellFromProposal`` for every
+│   │     ordered cell then POSTs the accept route, fanning out
+│   │     per-cell Phase-96 provenance.  5 new plugin pytest cover
+│   │     gating, schema rejection, empty-cells, bad cell_type, and
+│   │     the happy-path URL + headers shape.
 │   │
 │   └── Phase 105 — Real-time co-edit                              ✅ done 2026-05-21
 │         **Closed 2026-05-21.**  Full track shipped in one
