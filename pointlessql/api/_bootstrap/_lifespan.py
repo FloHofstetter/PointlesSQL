@@ -24,6 +24,7 @@ import logging
 import os
 from collections.abc import AsyncIterator, Callable
 from contextlib import AbstractAsyncContextManager, asynccontextmanager
+from typing import Any
 
 from fastapi import FastAPI
 from fastapi.templating import Jinja2Templates
@@ -389,9 +390,34 @@ def make_lifespan(
         notebooks_dir.mkdir(parents=True, exist_ok=True)
         app.state.kernel_registry = KernelRegistry(notebooks_dir=notebooks_dir)
 
+        # Phase 103 Wave-D — notebook replay re-execution worker.
+        # Tiny serial loop next to the scheduler that drains pending
+        # NotebookReplay rows.  Disabled in fast-test lifespan so
+        # pytest stays deterministic; opt-out via
+        # ``POINTLESSQL_REPLAY_WORKER_DISABLED=1`` for ops who don't
+        # want it running on production (e.g. CI installs that won't
+        # ever replay).
+        replay_worker: Any = None
+        if (
+            not fast_test_lifespan
+            and os.environ.get("POINTLESSQL_REPLAY_WORKER_DISABLED") != "1"
+        ):
+            from pointlessql.services.notebook.replay_worker import (
+                ReplayWorker as _ReplayWorker,
+            )
+
+            replay_worker = _ReplayWorker(
+                session_factory=app.state.session_factory,
+                notebooks_dir=notebooks_dir,
+            )
+            replay_worker.start()
+        app.state.replay_worker = replay_worker
+
         try:
             yield
         finally:
+            if replay_worker is not None:
+                await replay_worker.stop()
             await app.state.kernel_registry.shutdown_all()
             if app.state.mlflow_subprocess is not None:
                 await app.state.mlflow_subprocess.stop()

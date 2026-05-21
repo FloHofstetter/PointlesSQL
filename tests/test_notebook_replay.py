@@ -308,3 +308,32 @@ async def test_api_replay_lifecycle(
     )
     assert diff.status_code == 200
     assert diff.json()["replay_uuid"] == replay_uuid
+
+
+# -- Phase 103 Wave-D — replay-worker tick semantics --------------------------
+
+
+async def test_run_pending_replays_returns_zero_when_idle(
+    factory: sessionmaker,  # type: ignore[type-arg]
+    tmp_path: Path,
+) -> None:
+    """No pending row → tick returns 0 without spinning up a kernel."""
+    from pointlessql.services.notebook.replay_worker import run_pending_replays
+
+    processed = await run_pending_replays(
+        session_factory=factory, notebooks_dir=tmp_path
+    )
+    assert processed == 0
+
+
+async def test_replay_worker_class_idempotent_start_stop(
+    factory: sessionmaker, tmp_path: Path  # type: ignore[type-arg]
+) -> None:
+    """``start`` is a no-op after first call; ``stop`` without start is safe."""
+    from pointlessql.services.notebook.replay_worker import ReplayWorker
+
+    w = ReplayWorker(session_factory=factory, notebooks_dir=tmp_path)
+    await w.stop()  # no-op before start
+    w.start()
+    w.start()  # idempotent — same task stays bound
+    await w.stop()
