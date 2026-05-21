@@ -14,7 +14,7 @@ from typing import Any
 from fastapi import APIRouter, Body, Request
 from fastapi.responses import JSONResponse
 
-from pointlessql.api.dependencies import require_user
+from pointlessql.api.dependencies import current_workspace_id, require_user
 from pointlessql.api.notebooks_routes._shared import get_or_create_notebook_uuid
 from pointlessql.config import Settings
 from pointlessql.exceptions import ValidationError
@@ -69,6 +69,38 @@ async def api_list_notebook_tags(
             "path": path,
             "notebook_id": notebook_id,
             "tags": rows,
+            "curated": list(notebook_tags_service.CURATED_NOTEBOOK_TAGS),
+        }
+    )
+
+
+@router.get("/api/notebooks/tags/bulk")
+async def api_list_notebook_tags_bulk(request: Request) -> JSONResponse:
+    """Return every tag attached to every notebook in the active workspace.
+
+    The workspace tree on ``/notebooks/workspace`` needs tag-pills next
+    to each row plus a tag-filter dropdown; per-row GET would be N
+    HTTP calls.  Single bulk lookup keyed by ``file_path`` matches the
+    tree shape directly.
+
+    Args:
+        request: Incoming request; any authenticated user.
+
+    Returns:
+        JSON ``{"tags": {<path>: [<tag>, ...]}, "curated": [...]}`` —
+        notebooks without tags are omitted from ``tags``; the frontend
+        defaults to an empty list.
+    """
+    require_user(request)
+    workspace_id = current_workspace_id(request)
+    factory = request.app.state.session_factory
+    with factory() as session:
+        tags = notebook_tags_service.list_tags_bulk(
+            session, workspace_id=workspace_id
+        )
+    return JSONResponse(
+        {
+            "tags": tags,
             "curated": list(notebook_tags_service.CURATED_NOTEBOOK_TAGS),
         }
     )

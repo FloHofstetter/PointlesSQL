@@ -141,6 +141,24 @@
       <span x-show="commentCount > 0" x-cloak
             class="ms-1" x-text="commentCount"></span>
      </button>
+     {# Phase 101 Wave-D — per-cell Review affordance.  Opens the
+        review composer inside the cell-thread drawer (gated on a
+        minted cell_uuid, same as the 💬 chip).  The green ✓ count
+        surfaces approved reviews; the orange ⚠ count surfaces
+        changes-requested.  Both badges hidden at zero. #}
+     <button type="button"
+             class="btn btn-sm pql-cell-thread__review-chip"
+             :class="approvedReviewCount > 0 ? 'btn-outline-success' : (changesRequestedCount > 0 ? 'btn-outline-warning' : 'btn-outline-secondary')"
+             @click="cell.cell_uuid ? toggleReviewComposer() : save().then(() => toggleReviewComposer())"
+             :aria-expanded="reviewComposerOpen"
+             data-testid="cell-review-chip"
+             title="Post a review decision for this cell">
+      <i class="bi bi-clipboard-check" aria-hidden="true"></i>
+      <span x-show="approvedReviewCount > 0" x-cloak
+            class="ms-1 text-success" x-text="`✓${approvedReviewCount}`"></span>
+      <span x-show="changesRequestedCount > 0" x-cloak
+            class="ms-1 text-warning" x-text="`⚠${changesRequestedCount}`"></span>
+     </button>
      <div class="dropdown">
       <button class="btn btn-sm btn-outline-secondary dropdown-toggle"
               type="button"

@@ -28,6 +28,23 @@
                     title="Create an empty .py notebook">
                 <i class="bi bi-plus-lg me-1"></i> New notebook…
             </button>
+
+            {# Phase 98.B Wave-D — per-tag filter dropdown.  Only visible
+               once at least one notebook in the workspace carries a
+               tag; the empty case keeps the header uncluttered. #}
+            <div class="ms-2" x-show="availableTags().length > 0" x-cloak>
+                <select class="form-select form-select-sm"
+                        style="min-width: 9rem;"
+                        @change="setTagFilter($event.target.value)"
+                        :value="tagFilter || ''"
+                        title="Filter notebooks by tag">
+                    <option value="">All tags</option>
+                    <template x-for="tag in availableTags()" :key="tag">
+                        <option :value="tag" x-text="tag" :selected="tagFilter === tag"></option>
+                    </template>
+                </select>
+            </div>
+
             <button class="btn btn-link p-0 text-muted ms-auto"
                     @click="reload()" title="Refresh">
                 <i class="bi bi-arrow-clockwise" :class="loading ? 'pql-spin' : ''"></i>
@@ -100,6 +117,19 @@
                                           style="font-size: 0.6rem;"
                                           title="Notebook declares Papermill parameters">
                                         PARAMS
+                                    </span>
+                                </template>
+
+                                {# Phase 98.B Wave-D — per-notebook tag pills,
+                                   indexed by path from the bulk endpoint. #}
+                                <template x-if="row.kind === 'notebook' && tagsFor(row.path).length > 0">
+                                    <span class="d-inline-flex flex-wrap gap-1 ms-1">
+                                        <template x-for="tag in tagsFor(row.path)" :key="tag">
+                                            <span class="badge bg-secondary-subtle text-secondary-emphasis"
+                                                  style="font-size: 0.6rem;"
+                                                  x-text="tag"
+                                                  :title="`Tag: ${tag}`"></span>
+                                        </template>
                                     </span>
                                 </template>
                             </span>

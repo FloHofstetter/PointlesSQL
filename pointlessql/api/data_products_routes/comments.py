@@ -65,11 +65,15 @@ _DISCUSSION_MENTION_AMBIGUOUS = "audit.discussion.mention_ambiguous"
 _BODY_PREVIEW_LEN = 140
 
 # Phase 76.1 — comment-category enum + reactions canonical set.
+# Phase 101 Wave-D added ``review`` for cell-level review decisions
+# (notebook_cell entity-kind); kept in lockstep with
+# ``_polymorphic_handlers._shared.ALLOWED_CATEGORIES``.
 ALLOWED_CATEGORIES: tuple[str, ...] = (
     "general",
     "question",
     "announcement",
     "idea",
+    "review",
 )
 ALLOWED_EMOJI: tuple[str, ...] = ("👍", "❤️", "🎉", "😄", "😕", "👀")
 

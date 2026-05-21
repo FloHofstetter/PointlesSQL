@@ -58,10 +58,93 @@
   </template>
  </div>
 
+ {# Phase 101 Wave-D — Review composer + review list section.
+    Sits above the regular comment stream so it stays prominent and
+    so the reviewer sees existing reviews when composing.  The
+    composer is gated on ``reviewComposerOpen``; opening it via the
+    cell-header chip auto-opens the surrounding thread too. #}
+ <div class="pql-notebook-cell__thread-reviews mb-3"
+      x-show="loaded && (reviewComposerOpen || reviewComments.length > 0)"
+      x-cloak>
+  <template x-if="reviewComments.length > 0">
+   <div>
+    <div class="text-muted small mb-2 d-flex align-items-center">
+     <i class="bi bi-clipboard-check me-1"></i>
+     <strong>Reviews</strong>
+     <span class="ms-auto badge bg-light text-dark"
+           x-text="reviewComments.length"></span>
+    </div>
+    <template x-for="c in reviewComments" :key="c.id">
+     <div class="card mb-2 border-info-subtle">
+      <div class="card-body py-2">
+       <div class="small mb-1 d-flex align-items-center">
+        <span :class="decisionFor(c).className">
+         <i class="bi" :class="decisionFor(c).icon" aria-hidden="true"></i>
+         <strong class="ms-1" x-text="decisionFor(c).label"></strong>
+        </span>
+        <span class="mx-2 text-muted">·</span>
+        <strong class="text-muted"
+                x-text="(c.author && (c.author.display_name || c.author.email)) || 'unknown'"></strong>
+        <span class="mx-1 text-muted">·</span>
+        <span class="text-muted"
+              x-text="pqlRelativeTime(c.created_at)"
+              :title="pqlAbsTime(c.created_at)"></span>
+        <button type="button"
+                class="btn btn-link btn-sm p-0 ms-auto text-muted"
+                @click="deleteComment(c.id)"
+                title="Delete review">
+         <i class="bi bi-trash" aria-hidden="true"></i>
+        </button>
+       </div>
+       <div class="pql-comment-body small"
+            x-show="bodyWithoutPrefix(c)"
+            x-text="bodyWithoutPrefix(c)"></div>
+      </div>
+     </div>
+    </template>
+   </div>
+  </template>
+
+  <div class="card border-primary-subtle"
+       x-show="reviewComposerOpen"
+       x-cloak>
+   <div class="card-body py-2">
+    <div class="d-flex align-items-center mb-2">
+     <strong class="small">Post a review</strong>
+     <button type="button"
+             class="btn-close btn-close-sm ms-auto"
+             @click="reviewComposerOpen = false"
+             aria-label="Close review composer"></button>
+    </div>
+    <form @submit.prevent="submitReview()">
+     <div class="btn-group btn-group-sm mb-2" role="group" aria-label="Review decision">
+      <template x-for="d in reviewDecisions" :key="d.id">
+       <button type="button"
+               class="btn"
+               :class="reviewDecision === d.id ? 'btn-primary' : 'btn-outline-primary'"
+               @click="reviewDecision = d.id">
+        <i class="bi" :class="d.icon" aria-hidden="true"></i>
+        <span class="ms-1" x-text="d.label"></span>
+       </button>
+      </template>
+     </div>
+     <textarea class="form-control form-control-sm mb-2" rows="2"
+               x-model="reviewBody"
+               placeholder="Optional context for the review decision…"></textarea>
+     <button class="btn btn-primary btn-sm" type="submit"
+             :disabled="reviewSubmitting">
+      <span x-show="!reviewSubmitting" x-cloak>Post review</span>
+      <span x-show="reviewSubmitting" x-cloak>Posting…</span>
+     </button>
+    </form>
+   </div>
+  </div>
+ </div>
+
  <div class="pql-notebook-cell__thread-comments"
       x-show="loaded"
       x-cloak>
-  <template x-for="c in comments" :key="c.id">
+  <template x-for="c in nonReviewComments" :key="c.id">
    <div class="card mb-2"
         x-show="!c.deleted_at">
     <div class="card-body py-2">
@@ -82,7 +165,7 @@
     </div>
    </div>
   </template>
-  <template x-if="comments.length === 0">
+  <template x-if="nonReviewComments.length === 0">
    <div class="text-muted small py-2">
     No comments on this cell yet.
    </div>

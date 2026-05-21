@@ -21,6 +21,27 @@
 
 const ALLOWED_EMOJI = ["👍", "❤️", "🎉", "😄", "😕", "👀"];
 
+// Phase 101 Wave-D — review decisions encoded as a leading body_md
+// line.  The polymorphic comments table carries ``category`` but no
+// dedicated decision column; adding one would be a migration for what
+// is effectively a UI affordance.  Keeping the decision in the body
+// keeps the round-trip stable (the JS extracts it back on render) and
+// degrades gracefully on older clients that just see a regular review
+// comment.
+const REVIEW_DECISIONS = [
+    { id: "approved", label: "Approved", icon: "bi-check-circle-fill", className: "text-success", prefix: "✅ **Approved**" },
+    { id: "changes_requested", label: "Changes requested", icon: "bi-exclamation-triangle-fill", className: "text-warning", prefix: "⚠️ **Changes requested**" },
+    { id: "comment", label: "Comment only", icon: "bi-chat-left-text", className: "text-muted", prefix: "💬 **Reviewed**" },
+];
+
+function extractReviewDecision(body_md) {
+    const head = (body_md || "").split("\n")[0].trim();
+    for (const d of REVIEW_DECISIONS) {
+        if (head === d.prefix) return d;
+    }
+    return REVIEW_DECISIONS[2];
+}
+
 function csrfTokenFromCookie() {
     const m = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/);
     return m ? decodeURIComponent(m[1]) : "";
@@ -84,6 +105,11 @@ export function cellThread({ notebookUuid, cell, initialCounts, curatedTags = []
         // /api/notebook/chat/cell/{uuid}/explanations route.
         explanations: [],
         explanationsLoaded: false,
+        // Phase 101 Wave-D — review-compose UI state.
+        reviewComposerOpen: false,
+        reviewDecision: "approved",
+        reviewBody: "",
+        reviewSubmitting: false,
 
         init() {
             if (initialCounts) this._applyCounts(initialCounts);
@@ -95,6 +121,41 @@ export function cellThread({ notebookUuid, cell, initialCounts, curatedTags = []
                 || this.followerCount > 0
                 || this.reactions.some((r) => r.count > 0)
             );
+        },
+
+        get reviewComments() {
+            return this.comments.filter((c) => c.category === "review" && !c.deleted_at);
+        },
+
+        get nonReviewComments() {
+            return this.comments.filter((c) => c.category !== "review");
+        },
+
+        get reviewDecisions() { return REVIEW_DECISIONS; },
+
+        decisionFor(comment) {
+            return extractReviewDecision(comment.body_md);
+        },
+
+        bodyWithoutPrefix(comment) {
+            const d = extractReviewDecision(comment.body_md);
+            const body = comment.body_md || "";
+            if (body.startsWith(d.prefix)) {
+                return body.slice(d.prefix.length).replace(/^\n+/, "");
+            }
+            return body;
+        },
+
+        get approvedReviewCount() {
+            return this.reviewComments.filter(
+                (c) => this.decisionFor(c).id === "approved",
+            ).length;
+        },
+
+        get changesRequestedCount() {
+            return this.reviewComments.filter(
+                (c) => this.decisionFor(c).id === "changes_requested",
+            ).length;
         },
 
         // Resolve the live cell from the parent scope on every read.
@@ -229,6 +290,41 @@ export function cellThread({ notebookUuid, cell, initialCounts, curatedTags = []
                 this.error = err.message || "post failed";
             } finally {
                 this.submitting = false;
+            }
+        },
+
+        // Phase 101 Wave-D — submit a per-cell review decision.  Posts
+        // a comment with ``category='review'`` and a decision-prefix
+        // line that the renderer extracts back into the badge + label.
+        async submitReview() {
+            if (this.reviewSubmitting || !this.baseUrl) return;
+            const decision = REVIEW_DECISIONS.find((d) => d.id === this.reviewDecision)
+                || REVIEW_DECISIONS[0];
+            const body = (this.reviewBody || "").trim();
+            const fullBody = body ? `${decision.prefix}\n\n${body}` : decision.prefix;
+            this.reviewSubmitting = true;
+            try {
+                const created = await jsonFetch(`${this.baseUrl}/comments`, {
+                    method: "POST",
+                    body: JSON.stringify({ body_md: fullBody, category: "review" }),
+                });
+                this.comments.push(created);
+                this.commentCount += 1;
+                this.reviewBody = "";
+                this.reviewComposerOpen = false;
+            } catch (err) {
+                this.error = err.message || "review failed";
+            } finally {
+                this.reviewSubmitting = false;
+            }
+        },
+
+        toggleReviewComposer() {
+            this.reviewComposerOpen = !this.reviewComposerOpen;
+            // Auto-open the thread when composing a review so the user
+            // can see existing reviews while writing theirs.
+            if (this.reviewComposerOpen && !this.open) {
+                this.toggle();
             }
         },
 

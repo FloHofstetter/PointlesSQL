@@ -75,6 +75,14 @@ export function notebookWorkspace() {
   error: null,
   open: {},
 
+  // Phase 98.B Wave-D — workspace-tree tag display.  ``tagsByPath``
+  // maps each notebook's relative path to its tag list; loaded from
+  // the bulk endpoint after ``fetchTree`` to keep tree + tags in
+  // sync.  ``tagFilter`` is a single-tag filter (null = no filter)
+  // applied by :func:`flatRows`.
+  tagsByPath: {},
+  tagFilter: null,
+
   isOpen(key) { return !!this.open[key]; },
 
   toggle(key) {
@@ -82,7 +90,29 @@ export function notebookWorkspace() {
    try { sessionStorage.setItem(OPEN_KEY, JSON.stringify(this.open)); } catch (e) {}
   },
 
-  flatRows() { return flatten(this.tree, this.open); },
+  flatRows() {
+   const rows = flatten(this.tree, this.open);
+   if (!this.tagFilter) return rows;
+   return rows.filter((row) => {
+    if (row.kind !== 'notebook') return true;
+    const tags = this.tagsByPath[row.path] || [];
+    return tags.includes(this.tagFilter);
+   });
+  },
+
+  tagsFor(path) { return this.tagsByPath[path] || []; },
+
+  availableTags() {
+   const set = new Set();
+   for (const tags of Object.values(this.tagsByPath)) {
+    for (const tag of tags) set.add(tag);
+   }
+   return [...set].sort();
+  },
+
+  setTagFilter(value) {
+   this.tagFilter = value || null;
+  },
 
   async load() {
    try {
@@ -94,12 +124,27 @@ export function notebookWorkspace() {
 
    if (!this.tree) await this.fetchTree();
    else this.fetchTree();
+   this.fetchTagsBulk();
   },
 
   async reload() {
    try { sessionStorage.removeItem(STORAGE_KEY); } catch (e) {}
    this.tree = null;
    await this.fetchTree();
+   this.fetchTagsBulk();
+  },
+
+  async fetchTagsBulk() {
+   try {
+    const res = await fetch('/api/notebooks/tags/bulk');
+    if (!res.ok) return;
+    const body = await res.json();
+    // Reactive replace — Alpine 3 picks up the new object on next tick.
+    this.tagsByPath = body.tags || {};
+   } catch (e) {
+    // Tags are a workspace-tree polish; failure here must not block
+    // the tree itself rendering.
+   }
   },
 
   async fetchTree() {

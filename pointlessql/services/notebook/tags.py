@@ -155,6 +155,33 @@ def remove_tag(session: Session, *, notebook_id: str, raw_tag: str) -> bool:
     return True
 
 
+def list_tags_bulk(
+    session: Session, *, workspace_id: int
+) -> dict[str, list[str]]:
+    """Return every tag attached to every notebook in one workspace.
+
+    Args:
+        session: A SQLAlchemy session.
+        workspace_id: Scope the lookup to one tenant.
+
+    Returns:
+        ``{file_path: [tag, tag, ...]}`` keyed by notebook ``file_path``
+        (not UUID) so the workspace tree — which addresses notebooks by
+        relative path — can index directly.  Notebooks with no tags are
+        omitted; callers should default to an empty list per row.
+    """
+    stmt = (
+        select(Notebook.file_path, NotebookTag.tag)
+        .join(NotebookTag, NotebookTag.notebook_id == Notebook.id)
+        .where(Notebook.workspace_id == workspace_id)
+        .order_by(Notebook.file_path.asc(), NotebookTag.created_at.asc())
+    )
+    out: dict[str, list[str]] = {}
+    for file_path, tag in session.execute(stmt).all():
+        out.setdefault(file_path, []).append(tag)
+    return out
+
+
 def list_notebooks_for_tag(
     session: Session, *, workspace_id: int, tag: str
 ) -> list[str]:
@@ -186,5 +213,6 @@ __all__ = [
     "add_tag",
     "list_notebooks_for_tag",
     "list_tags",
+    "list_tags_bulk",
     "remove_tag",
 ]

@@ -202,3 +202,35 @@ async def test_api_tag_requires_auth(
         "/api/notebooks/tags", params={"path": "anything.py"}
     )
     assert resp.status_code in (401, 403)
+
+
+async def test_api_tags_bulk_returns_per_path_map(
+    workspace_dir: Path, admin_client: httpx.AsyncClient
+) -> None:
+    """Bulk endpoint indexes tags by relative path so the workspace tree."""
+    await admin_client.post("/api/notebooks/create", json={"path": "a.py"})
+    await admin_client.post("/api/notebooks/create", json={"path": "b.py"})
+    await admin_client.post(
+        "/api/notebooks/tags", json={"path": "a.py", "tag": "etl"}
+    )
+    await admin_client.post(
+        "/api/notebooks/tags", json={"path": "a.py", "tag": "prod"}
+    )
+    await admin_client.post(
+        "/api/notebooks/tags", json={"path": "b.py", "tag": "draft"}
+    )
+
+    resp = await admin_client.get("/api/notebooks/tags/bulk")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert "etl" in body["curated"]
+    assert sorted(body["tags"]["a.py"]) == ["etl", "prod"]
+    assert body["tags"]["b.py"] == ["draft"]
+
+
+async def test_api_tags_bulk_requires_auth(
+    workspace_dir: Path, anonymous_client: httpx.AsyncClient
+) -> None:
+    """Anonymous callers hit the auth gate on the bulk endpoint too."""
+    resp = await anonymous_client.get("/api/notebooks/tags/bulk")
+    assert resp.status_code in (401, 403)

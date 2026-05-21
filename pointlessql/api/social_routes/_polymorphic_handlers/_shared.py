@@ -51,6 +51,11 @@ ALLOWED_CATEGORIES: tuple[str, ...] = (
     "question",
     "announcement",
     "idea",
+    # Phase 101 Wave-D — review-decision category.  Surfaces a
+    # ``notebook_cell`` comment as an explicit review pass; the
+    # cell-thread UI renders the badge and the per-cell social
+    # bulk-counts roll up review counts separately.
+    "review",
 )
 ALLOWED_EMOJI: tuple[str, ...] = ("👍", "❤️", "🎉", "😄", "😕", "👀")
 

@@ -121,6 +121,32 @@ async def test_notebook_cell_comment_round_trip(
 
 
 @pytest.mark.asyncio
+async def test_notebook_cell_review_category_round_trip(
+    admin_client: httpx.AsyncClient,
+) -> None:
+    """Phase 101 Wave-D — ``category='review'`` is accepted on cell comments."""
+    ref = _nb_cell_ref()
+    res = await admin_client.post(
+        f"/api/social/notebook_cell/{ref}/comments",
+        json={"body_md": "✅ **Approved**\n\nLGTM", "category": "review"},
+    )
+    assert res.status_code == 200, res.text
+    payload = res.json()
+    assert payload["category"] == "review"
+    assert payload["body_md"].startswith("✅ **Approved**")
+
+    list_res = await admin_client.get(
+        f"/api/social/notebook_cell/{ref}/comments"
+    )
+    assert list_res.status_code == 200
+    reviews = [
+        c for c in list_res.json()["comments"]
+        if c["category"] == "review"
+    ]
+    assert len(reviews) >= 1
+
+
+@pytest.mark.asyncio
 async def test_notebook_cell_follow_round_trip(
     admin_client: httpx.AsyncClient,
 ) -> None:
