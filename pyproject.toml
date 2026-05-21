@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "pointlessql"
-version = "0.1.0rc70"
+version = "0.1.0rc71"
 description = "A web UI for Unity Catalog and other open-source Databricks components"
 license = "Apache-2.0"
 readme = "README.md"
@@ -59,6 +59,13 @@ dependencies = [
     "mcp[cli]>=1.2",
     "openai>=1.50",
     "anthropic>=0.40",
+    # Phase 105 — Y.js / CRDT backbone for real-time co-edit.
+    # ``pycrdt`` is the actively maintained successor to ``y-py``;
+    # its wire format is byte-identical to Y.js so ``y-monaco`` on
+    # the client side talks to the server without a brücke layer.
+    # C-extension (binding to yrs).  Sprint 105.1 verifies install
+    # via ``uv sync`` before the rest of the phase builds on it.
+    "pycrdt>=0.10",
 ]
 
 [project.optional-dependencies]
