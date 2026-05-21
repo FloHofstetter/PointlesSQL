@@ -190,6 +190,65 @@ async def api_diff_revisions(
     return JSONResponse(envelope)
 
 
+@router.post("/api/notebooks/revisions/{revision_uuid}/signature")
+async def api_set_revision_signature(
+    request: Request,
+    revision_uuid: str,
+    body: dict[str, Any] = Body(...),
+) -> JSONResponse:
+    """Persist an external signature on a revision (Phase 97 Wave-D).
+
+    Admin-only receive surface for the deferred shoreguard sign-revision
+    API or any other out-of-band signer (enterprise reviewer, CI job).
+    Verification is not done on the server — the ``signature_alg``
+    field tells consumers how to verify (e.g. ``ed25519:<key-id>``).
+    The admin gate is the integrity barrier; a hostile admin could
+    forge a signature, but a hostile admin can do anything else too.
+
+    Args:
+        request: Incoming request; admin required.
+        revision_uuid: 36-char revision UUID.
+        body: ``{"signature": <str>, "signature_alg": <str>}``.
+
+    Returns:
+        Updated envelope with ``signed=true``.
+
+    Raises:
+        AuthorizationError: When the caller is not an admin.
+        ValidationError: On bad input shape or unknown revision.
+    """
+    require_user(request)
+    user = getattr(request.state, "user", None) or {}
+    if not bool(user.get("is_admin")):
+        from pointlessql.exceptions import AuthorizationError
+
+        raise AuthorizationError(
+            principal=str(user.get("email") or "(anonymous)"),
+            privilege="sign",
+            securable_type="notebook_revision",
+            full_name=revision_uuid,
+        )
+    signature = body.get("signature") if isinstance(body, dict) else None
+    signature_alg = body.get("signature_alg") if isinstance(body, dict) else None
+    if not isinstance(signature, str) or not isinstance(signature_alg, str):
+        raise ValidationError(
+            "body.signature and body.signature_alg must both be strings"
+        )
+    factory = request.app.state.session_factory
+    with factory() as session:
+        notebook_revisions_service.set_revision_signature(
+            session,
+            revision_uuid=revision_uuid,
+            signature=signature,
+            signature_alg=signature_alg,
+        )
+        envelope = notebook_revisions_service.get_revision(
+            session, revision_uuid=revision_uuid
+        )
+        session.commit()
+    return JSONResponse(envelope or {})
+
+
 @router.get("/api/notebooks/revisions/{revision_uuid}")
 async def api_get_revision(
     request: Request,

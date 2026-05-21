@@ -124,6 +124,62 @@ def get_current_binding(
     return binding_to_envelope(row) if row is not None else None
 
 
+def _consult_promote_webhook(
+    *,
+    notebook_id: str,
+    binding_branch: str,
+    promoted_by_user_id: int | None,
+) -> None:
+    """POST the promote-intent to an external reviewer webhook.
+
+    Phase 102 Wave-D — when the
+    ``POINTLESSQL_BRANCH_PROMOTE_WEBHOOK_URL`` env var is set, every
+    :func:`promote_binding` call first POSTs the binding payload to
+    that URL.  HTTP 200 = approved (promote proceeds); 4xx = denied
+    (promote blocked with ``ValidationError`` carrying the response
+    body so the UI can surface the reviewer's reason).  Any network
+    failure is treated as ``denied`` so the gate stays closed by
+    default.
+
+    The webhook URL itself is unauthenticated; the receiving system
+    (shoreguard or any other reviewer) is responsible for HMAC /
+    OIDC validation on its side.  Future shoreguard sign-revision
+    integration plugs in here without touching this module.
+
+    Args:
+        notebook_id: Notebook UUID being promoted.
+        binding_branch: Branch name about to be promoted.
+        promoted_by_user_id: Acting user id (forwarded for audit).
+
+    Raises:
+        ValidationError: On non-2xx response or network failure.
+    """
+    import os
+
+    url = os.environ.get("POINTLESSQL_BRANCH_PROMOTE_WEBHOOK_URL", "").strip()
+    if not url:
+        return  # No webhook configured → legacy behaviour, no gate.
+    payload = {
+        "notebook_id": notebook_id,
+        "branch_name": binding_branch,
+        "promoted_by_user_id": promoted_by_user_id,
+    }
+    try:
+        import httpx
+
+        resp = httpx.post(url, json=payload, timeout=10.0)
+    except Exception as exc:  # noqa: BLE001
+        raise ValidationError(
+            f"branch-promote webhook unreachable ({url}): {exc}"
+        ) from exc
+    if 200 <= resp.status_code < 300:
+        return
+    raise ValidationError(
+        f"branch-promote denied by reviewer "
+        f"(HTTP {resp.status_code}): {resp.text[:200]}"
+    )
+
+
 def promote_binding(
     session: Session,
     *,
@@ -136,6 +192,15 @@ def promote_binding(
     :mod:`pointlessql.services.agent_runs.memory._branch`; this
     method only records the lifecycle transition on the binding.
 
+    When ``POINTLESSQL_BRANCH_PROMOTE_WEBHOOK_URL`` is set, the
+    intent is POSTed to the configured reviewer first
+    (:func:`_consult_promote_webhook`) — a non-2xx response blocks
+    the promote with a :class:`ValidationError` carrying the
+    reviewer's reason.  This is the Phase 102 Wave-D scaffolding
+    that lets shoreguard (or any external reviewer system) gate the
+    transition without coupling promote_binding to a specific
+    backend.
+
     Args:
         session: A SQLAlchemy session.
         notebook_id: ``Notebook.id`` UUID.
@@ -145,13 +210,19 @@ def promote_binding(
         The updated row.
 
     Raises:
-        ValidationError: When no current binding exists.
+        ValidationError: When no current binding exists, or when the
+            reviewer webhook denies the promote.
     """
     row = _current(session, notebook_id=notebook_id)
     if row is None:
         raise ValidationError(
             f"notebook {notebook_id!r} has no active branch binding to promote"
         )
+    _consult_promote_webhook(
+        notebook_id=notebook_id,
+        binding_branch=row.branch_name,
+        promoted_by_user_id=promoted_by_user_id,
+    )
     now = datetime.datetime.now(datetime.UTC)
     row.promoted_at = now
     row.promoted_by_user_id = promoted_by_user_id

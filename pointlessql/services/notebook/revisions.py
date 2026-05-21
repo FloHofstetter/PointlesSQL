@@ -177,6 +177,52 @@ def row_to_envelope(row: NotebookRevision) -> dict[str, Any]:
     }
 
 
+def set_revision_signature(
+    session: Session,
+    *,
+    revision_uuid: str,
+    signature: str,
+    signature_alg: str,
+) -> NotebookRevision:
+    """Persist a signature blob produced by an external signer.
+
+    Phase 97 reserved ``signature`` + ``signature_alg`` for the
+    forthcoming shoreguard sign-revision API.  Phase 97 Wave-D ships
+    the *receiving* half: any out-of-band signer (shoreguard, an
+    enterprise reviewer, a CI step) POSTs the signature back here and
+    the row gets ``signed=true`` for the UI badge.  No verification is
+    done on receipt — the alg field tells consumers how to verify
+    (e.g. ``ed25519:<key-id>``) and the receiver's role gate is the
+    admin-only REST surface.
+
+    Args:
+        session: A SQLAlchemy session.
+        revision_uuid: 36-char revision UUID.
+        signature: Base64 / hex signature blob.
+        signature_alg: Algorithm identifier (free-text; consumers parse).
+
+    Returns:
+        The updated row.
+
+    Raises:
+        ValidationError: When the UUID is unknown or *signature* /
+            *signature_alg* are empty.
+    """
+    if not signature or not signature_alg:
+        raise ValidationError("signature and signature_alg must both be non-empty")
+    row = session.execute(
+        select(NotebookRevision).where(
+            NotebookRevision.revision_uuid == revision_uuid
+        )
+    ).scalar_one_or_none()
+    if row is None:
+        raise ValidationError(f"revision {revision_uuid!r} not found")
+    row.signature = signature
+    row.signature_alg = signature_alg
+    session.flush()
+    return row
+
+
 def _parent_uuid(row: NotebookRevision) -> str | None:
     """Resolve the parent revision's UUID without an explicit JOIN."""
     if row.parent_revision_id is None:
@@ -333,4 +379,5 @@ __all__ = [
     "create_revision",
     "get_revision",
     "list_revisions",
+    "set_revision_signature",
 ]

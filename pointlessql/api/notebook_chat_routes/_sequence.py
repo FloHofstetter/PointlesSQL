@@ -17,14 +17,51 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from fastapi import APIRouter, Body, Request
+from fastapi import APIRouter, Body, HTTPException, Request
 from fastapi.responses import JSONResponse
 
 from pointlessql.api.dependencies import require_user
 from pointlessql.exceptions import ValidationError
+from pointlessql.models import EditorChatSession
 from pointlessql.services.notebook import (
     cell_sequence_proposals as cell_sequence_proposals_service,
 )
+
+
+def _resolve_chat_session_int_id(request: Request, raw: str) -> int:
+    """Resolve ``raw`` (integer string or editor_session_id UUID) to int id.
+
+    Phase 104 originally took ``chat_session_id: int`` directly; Phase 104
+    Wave-D accepts the matching editor_session_id (UUID7) too so the
+    hermes-plugin tool can address the session by the same id it uses
+    for ``propose-cell``.  Plain integer strings keep working for backward
+    compatibility.
+
+    Args:
+        request: Incoming request.
+        raw: Path-segment value — digits or a 36-char UUID.
+
+    Returns:
+        The ``editor_chat_sessions.id`` integer.
+
+    Raises:
+        HTTPException: 404 when the UUID is unknown; 422 when *raw* is
+            neither a parseable integer nor a recognised UUID.
+    """
+    if raw.isdigit():
+        return int(raw)
+    factory = request.app.state.session_factory
+    with factory() as session:
+        row = (
+            session.query(EditorChatSession)
+            .filter(EditorChatSession.editor_session_id == raw)
+            .one_or_none()
+        )
+    if row is None:
+        raise HTTPException(
+            status_code=404, detail="notebook chat session not found"
+        )
+    return int(row.id)
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +74,7 @@ router = APIRouter(tags=["notebook-chat"])
 )
 async def api_propose_sequence(
     request: Request,
-    chat_session_id: int,
+    chat_session_id: str,
     body: dict[str, Any] = Body(...),
 ) -> JSONResponse:
     """Insert a new sequence proposal.
@@ -46,6 +83,11 @@ async def api_propose_sequence(
         prompt: Verbatim user prompt that drove the suggestion.
         cells: Ordered list of cell dicts.
         rationale: Optional narrative.
+
+    ``chat_session_id`` accepts the integer ``editor_chat_sessions.id``
+    (legacy / Phase-104 original) or the ``editor_session_id`` UUID7
+    (Phase 104 Wave-D — symmetry with the ``propose-cell`` route the
+    hermes-plugin already uses).
     """
     require_user(request)
     if not isinstance(body, dict):
@@ -59,11 +101,12 @@ async def api_propose_sequence(
         raise ValidationError("body.cells must be a list")
     if rationale is not None and not isinstance(rationale, str):
         raise ValidationError("body.rationale must be a string or null")
+    int_session_id = _resolve_chat_session_int_id(request, chat_session_id)
     factory = request.app.state.session_factory
     with factory() as session:
         row = cell_sequence_proposals_service.propose_sequence(
             session,
-            chat_session_id=chat_session_id,
+            chat_session_id=int_session_id,
             prompt=prompt,
             cells=cells,
             rationale=rationale,
@@ -143,13 +186,14 @@ async def api_discard_sequence(
     "/api/notebook/chat/{chat_session_id}/sequences/pending"
 )
 async def api_list_pending_sequences(
-    request: Request, chat_session_id: int
+    request: Request, chat_session_id: str
 ) -> JSONResponse:
     """List pending sequence proposals for a chat session."""
     require_user(request)
+    int_session_id = _resolve_chat_session_int_id(request, chat_session_id)
     factory = request.app.state.session_factory
     with factory() as session:
         rows = cell_sequence_proposals_service.list_pending_for_session(
-            session, chat_session_id=chat_session_id
+            session, chat_session_id=int_session_id
         )
     return JSONResponse({"proposals": rows})
