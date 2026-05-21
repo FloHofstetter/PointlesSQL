@@ -1,0 +1,201 @@
+/**
+ * Phase 105.3 — co-edit Y.Doc client (passive scaffold).
+ *
+ * Owns the WebSocket lifecycle against
+ * ``/ws/notebook/coedit/{notebook_uuid}`` (the Sprint 105.2 hub) and
+ * keeps a local :class:`Y.Doc` in lock-step with the server's
+ * authoritative replica.  The wire format mirrors the server side
+ * one-to-one:
+ *
+ *   * ``0x00`` sync_step1  — client → server state-vector handshake.
+ *   * ``0x01`` sync_step2  — server → client full-state on connect.
+ *   * ``0x02`` sync_update — bidirectional incremental update.
+ *   * ``0x03`` awareness   — opaque presence bytes, relayed.
+ *
+ * This module deliberately does NOT bind the Y.Doc to any
+ * CodeMirror view yet — that wiring lands in Phase 105.3b once the
+ * save-path race against the cell_uuid reconciler (the Phase 105.5
+ * barrier) is in place.  For 105.3 the client connects, keeps the
+ * Doc in sync, and exposes the connection status so the toolbar
+ * can paint a live / offline pill.  Awareness payloads are passed
+ * through to ``onAwarenessUpdate`` so Phase 105.4 can layer cursor
+ * semantics on top without touching the wire code.
+ */
+
+import * as Y from 'yjs';
+
+const TAG_SYNC_STEP1 = 0x00;
+const TAG_SYNC_STEP2 = 0x01;
+const TAG_SYNC_UPDATE = 0x02;
+const TAG_AWARENESS_UPDATE = 0x03;
+
+// Marker on Y.Doc local-update events so the client doesn't echo
+// remote updates back as new sync_update frames.  Pycrdt on the
+// server side discards no-op merges, but the round-trip is wasted
+// bandwidth either way.
+const ORIGIN_REMOTE = 'pql-coedit-remote';
+
+// Capped exponential backoff for transient WS failures.  Hub-level
+// 4xxx close codes (auth / role / missing notebook) skip reconnect
+// entirely — see the close handler below.
+const _RECONNECT_BASE_MS = 1000;
+const _RECONNECT_MAX_MS = 30000;
+
+function _wsUrlFor(notebookUuid) {
+  const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  return `${proto}//${window.location.host}/ws/notebook/coedit/${encodeURIComponent(notebookUuid)}`;
+}
+
+export function createCoeditClient({
+  notebookUuid,
+  onStatusChange = () => {},
+  onAwarenessUpdate = () => {},
+} = {}) {
+  if (!notebookUuid) {
+    throw new Error('createCoeditClient: notebookUuid is required');
+  }
+
+  const ydoc = new Y.Doc();
+  let ws = null;
+  let status = 'idle';
+  let synced = false;
+  let reconnectTimer = null;
+  let reconnectAttempts = 0;
+  let closedByUser = false;
+
+  function _setStatus(next) {
+    if (next === status) return;
+    status = next;
+    try { onStatusChange(next); } catch (_e) { /* swallow */ }
+  }
+
+  function _sendFrame(tag, payload) {
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    const body = payload instanceof Uint8Array ? payload : new Uint8Array(payload);
+    const frame = new Uint8Array(1 + body.length);
+    frame[0] = tag;
+    frame.set(body, 1);
+    ws.send(frame);
+  }
+
+  function _onLocalUpdate(update, origin) {
+    // Remote-origin updates were applied by us; the server already
+    // saw the originating sync_update frame.
+    if (origin === ORIGIN_REMOTE) return;
+    // Pre-handshake updates would race against sync_step2 — defer
+    // until the initial sync round-trip completes.
+    if (!synced) return;
+    _sendFrame(TAG_SYNC_UPDATE, update);
+  }
+
+  ydoc.on('update', _onLocalUpdate);
+
+  function _handleFrame(frame) {
+    if (!frame || frame.length === 0) return;
+    const tag = frame[0];
+    const payload = frame.subarray(1);
+    if (tag === TAG_SYNC_STEP2 || tag === TAG_SYNC_UPDATE) {
+      try {
+        Y.applyUpdate(ydoc, payload, ORIGIN_REMOTE);
+      } catch (err) {
+        // Malformed update — server validates on its side, so this
+        // is normally unreachable.  Log + drop; the connection stays.
+        // eslint-disable-next-line no-console
+        console.warn('[coedit] malformed update from server', err);
+        return;
+      }
+      if (!synced && tag === TAG_SYNC_STEP2) {
+        synced = true;
+        _setStatus('live');
+        // Echo our own state-vector so the server backfills any
+        // updates we had before connecting.  For 105.3's empty-Doc
+        // bootstrap this is a no-op; harmless either way.
+        _sendFrame(TAG_SYNC_STEP1, Y.encodeStateVector(ydoc));
+      }
+    } else if (tag === TAG_AWARENESS_UPDATE) {
+      try { onAwarenessUpdate(payload); } catch (_e) { /* swallow */ }
+    }
+    // Unknown tags are silently dropped to stay forward-compatible
+    // with a future server that adds frame types.
+  }
+
+  function _scheduleReconnect() {
+    if (closedByUser || reconnectTimer) return;
+    const delay = Math.min(
+      _RECONNECT_MAX_MS,
+      _RECONNECT_BASE_MS * Math.pow(2, reconnectAttempts),
+    );
+    reconnectAttempts += 1;
+    reconnectTimer = setTimeout(() => {
+      reconnectTimer = null;
+      _open();
+    }, delay);
+  }
+
+  function _open() {
+    if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
+      return;
+    }
+    _setStatus('connecting');
+    try {
+      ws = new WebSocket(_wsUrlFor(notebookUuid));
+    } catch (_err) {
+      _setStatus('error');
+      _scheduleReconnect();
+      return;
+    }
+    ws.binaryType = 'arraybuffer';
+
+    ws.addEventListener('open', () => {
+      reconnectAttempts = 0;
+      _sendFrame(TAG_SYNC_STEP1, Y.encodeStateVector(ydoc));
+    });
+
+    ws.addEventListener('message', (ev) => {
+      if (typeof ev.data === 'string') return;
+      _handleFrame(new Uint8Array(ev.data));
+    });
+
+    ws.addEventListener('close', (ev) => {
+      synced = false;
+      if (ev.code === 4401 || ev.code === 4403 || ev.code === 4404) {
+        // Auth / role / missing-notebook — no reconnect makes sense.
+        _setStatus('unauthorized');
+        return;
+      }
+      _setStatus('offline');
+      _scheduleReconnect();
+    });
+
+    ws.addEventListener('error', () => {
+      // Close fires next with a real status update.
+    });
+  }
+
+  return {
+    ydoc,
+    get status() { return status; },
+    get synced() { return synced; },
+    connect() {
+      closedByUser = false;
+      reconnectAttempts = 0;
+      _open();
+    },
+    sendAwarenessUpdate(payload) {
+      _sendFrame(TAG_AWARENESS_UPDATE, payload);
+    },
+    close() {
+      closedByUser = true;
+      if (reconnectTimer) {
+        clearTimeout(reconnectTimer);
+        reconnectTimer = null;
+      }
+      try { ydoc.off('update', _onLocalUpdate); } catch (_e) { /* swallow */ }
+      if (ws) {
+        try { ws.close(); } catch (_e) { /* swallow */ }
+        ws = null;
+      }
+      _setStatus('idle');
+    },
+  };
+}

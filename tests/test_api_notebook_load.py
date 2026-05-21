@@ -109,3 +109,25 @@ async def test_editor_page_non_admin_accessible(
     resp = await non_admin_client.get("/notebooks/edit/demo.py")
     assert resp.status_code == 200
     assert "notebookEditor(" in resp.text
+
+
+async def test_editor_page_ships_coedit_scaffold(
+    workspace_dir: Path, admin_client: httpx.AsyncClient
+) -> None:
+    """Phase 105.3: editor HTML carries the y-* importmap + live pill.
+
+    Smoke-level check that the three scaffold pieces shipped with
+    105.3 actually reach the rendered page:
+
+    * ``yjs`` importmap entry (in the inherited ``base.html``).
+    * ``y-protocols/awareness`` importmap entry (reserved for the
+      Phase-105.4 cursor presence layer).
+    * The toolbar live-pill ``data-testid="notebook-coedit-pill"``.
+    """
+    (workspace_dir / "demo.py").write_bytes(_DEMO_NOTEBOOK)
+    resp = await admin_client.get("/notebooks/edit/demo.py")
+    assert resp.status_code == 200
+    body = resp.text
+    assert '"yjs":' in body
+    assert '"y-protocols/awareness":' in body
+    assert 'data-testid="notebook-coedit-pill"' in body

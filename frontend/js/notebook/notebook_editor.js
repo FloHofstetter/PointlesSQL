@@ -25,6 +25,7 @@ import { installCellFacts } from './cell_facts.js';
 import { installCellLineage } from './cell_lineage.js';
 import { installCellOperations } from './cell_operations.js';
 import { installChatIntegration } from './chat_integration.js';
+import { installCoeditLifecycle } from './coedit.js';
 import { installJobsOrchestration } from './jobs_orchestration.js';
 import { installKernelExecution } from './kernel_execution.js';
 import { installMarkdownOutput } from './markdown_output.js';
@@ -213,6 +214,11 @@ export function notebookEditor({ initialPath = '' } = {}) {
  this._renderAllOutputs();
  this._installKeymap();
  this._connectKernel();
+ // Phase 105.3 — open the co-edit WebSocket once the notebook
+ // UUID is known.  Passive scaffold: keeps a server-mirrored
+ // Y.Doc warm + drives the toolbar live pill.  No editor
+ // binding yet (lands in 105.3b after the 105.5 save-barrier).
+ this._initCoedit();
  // Phase 96 — listen for chat-panel accept events so the
  // editor can apply proposed cell inserts / fixes.
  this._installChatProposalListener();
@@ -279,6 +285,7 @@ export function notebookEditor({ initialPath = '' } = {}) {
  }
  this._removeChatProposalListener();
  this._removeSequenceListener();
+ this._teardownCoedit();
  },
  };
  installJobsOrchestration(state);
@@ -298,5 +305,6 @@ export function notebookEditor({ initialPath = '' } = {}) {
  installSequenceProposals(state);
  installWidgetsPanel(state);
  installPermissionsPanel(state);
+ installCoeditLifecycle(state);
  return state;
 }

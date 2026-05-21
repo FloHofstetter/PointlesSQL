@@ -36,6 +36,20 @@
         }"
         x-text="`Kernel: ${kernelStatus}`"></span>
 
+  {# Phase 105.3 — co-edit channel live pill.  Driven by the
+     installCoeditLifecycle mixin; idle / connecting / live /
+     offline / unauthorized / error map to dot colour + label
+     via ``coeditDotClass`` / ``coeditLabel``. #}
+  <span class="d-inline-flex align-items-center gap-1 small text-muted"
+        data-testid="notebook-coedit-pill"
+        :title="coeditTooltip()">
+   <span class="d-inline-block rounded-circle"
+         style="width: 0.6rem; height: 0.6rem;"
+         :class="coeditDotClass()"
+         aria-hidden="true"></span>
+   <span x-text="coeditLabel()"></span>
+  </span>
+
   <div class="pql-toolbar-group" role="group" aria-label="Kernel control">
    <button type="button"
            class="btn btn-sm btn-outline-warning"

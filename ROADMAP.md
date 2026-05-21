@@ -2236,12 +2236,14 @@ PointlesSQL
 │   │
 │   └── Phase 105 — Real-time co-edit (speculative)               ⏳ in progress 2026-05-21
 │         **2026-05-21 update:** 105.1 (CRDT sidecar storage) +
-│         105.2 (WebSocket hub with sync + awareness relay) shipped.
-│         Frontend (105.3 ``y-monaco`` binding) + awareness semantics
-│         (105.4) + save-barrier (105.5) + agent presence (105.6) +
-│         multi-tab replay gate (105.7) + compaction worker (105.8)
-│         remain deferred — the backend pipe is live and any client
-│         speaking the documented binary wire format can join.
+│         105.2 (WebSocket hub with sync + awareness relay) +
+│         105.3 (browser Y.Doc client scaffold + toolbar live
+│         pill — passive backbone, no editor binding yet) shipped.
+│         Per-cell ``y-codemirror.next`` binding (105.3b) + awareness
+│         semantics (105.4) + save-barrier (105.5) + agent presence
+│         (105.6) + multi-tab replay gate (105.7) + compaction
+│         worker (105.8) remain deferred — the wire is live in both
+│         directions and the browser keeps the Y.Doc in lock-step.
 │
 │         Original 2026-05-20 framing kept for context:
 │         Y.js / CRDT layer over the existing WebSocket so

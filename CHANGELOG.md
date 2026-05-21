@@ -40,6 +40,34 @@ All notable changes to this project will be documented in this file.
     with Part P in ``notebook-editor.md`` + new
     ``library-facts.md``.
 
+- **Phase 105.3 — co-edit Y.Doc client scaffold (2026-05-21).**
+  Asset 0.1.0rc74 → rc75.  Browser-side scaffold for the Sprint
+  105.2 ``/ws/notebook/coedit/{notebook_uuid}`` hub: new
+  ``frontend/js/notebook/coedit_client.js`` owns a local ``Y.Doc``
+  and the WebSocket lifecycle, including exponential-backoff
+  reconnect (capped at 30 s) and a no-reconnect fast-path for the
+  hub's auth/role/missing 4401/4403/4404 close codes.  Wire
+  protocol mirrors the server exactly — sync_step1 / sync_step2 /
+  sync_update / awareness — and the client suppresses local-update
+  echoes via the ``pql-coedit-remote`` Y origin marker so remote
+  updates are not bounced back as new frames.  Importmap in
+  ``base.html`` extended with pinned esm.sh entries for
+  ``yjs@13.6.18`` + ``y-protocols@1.0.6/{sync,awareness}`` +
+  ``lib0@0.2.99/{encoding,decoding}`` (reserved for the 105.4
+  awareness layer).  New ``installCoeditLifecycle`` mixin wires
+  the client into ``notebookEditor`` ``init()`` / ``destroy()``
+  and exposes the connection state via ``coeditStatus`` /
+  ``coeditLabel`` / ``coeditDotClass`` / ``coeditTooltip``; the
+  notebook toolbar now paints a small live pill
+  (``data-testid="notebook-coedit-pill"``) so the user can see
+  whether co-edit is live, reconnecting, view-only, or offline.
+  Deliberate scope: the Y.Doc is kept in sync as a passive
+  backbone — no CodeMirror binding yet.  Per-cell ``y-codemirror.next``
+  wiring ships in Phase 105.3b once the Phase-105.5 save-path
+  barrier removes the ``cell_uuid`` reconciler race.  One new
+  pytest in ``test_api_notebook_load.py`` asserts the importmap
+  + toolbar pill reach the rendered HTML.
+
 - **Phase 105.2 — co-edit WebSocket hub (2026-05-21).**
   Asset 0.1.0rc73 → rc74.  New ``/ws/notebook/coedit/{notebook_id}``
   endpoint built on the Sprint 105.1 storage primitive: per-notebook
