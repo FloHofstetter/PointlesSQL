@@ -42,8 +42,6 @@ import uuid
 from typing import Any, cast
 
 from fastapi import APIRouter, HTTPException, Query, Request
-
-logger = logging.getLogger(__name__)
 from sqlalchemy import and_, desc, select
 
 from pointlessql.api.dependencies import (
@@ -72,6 +70,8 @@ from pointlessql.services.workspace.governance import (
     EVENT_TYPE_ISSUE_STATE_CHANGED,
     emit_governance_event,
 )
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["social"])
 

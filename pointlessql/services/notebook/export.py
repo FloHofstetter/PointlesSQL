@@ -177,8 +177,16 @@ _HTML_HEADER = """\
     color: var(--pql-text);
     border: 1px solid var(--pql-border);
   }}
-  .pql-cell__type-chip--code {{ background: rgba(127, 177, 255, 0.18); color: var(--pql-code-fg); border-color: var(--pql-code-fg); }}
-  .pql-cell__type-chip--sql  {{ background: rgba(192, 132, 252, 0.18); color: var(--pql-sql-fg);  border-color: var(--pql-sql-fg); }}
+  .pql-cell__type-chip--code {{
+    background: rgba(127, 177, 255, 0.18);
+    color: var(--pql-code-fg);
+    border-color: var(--pql-code-fg);
+  }}
+  .pql-cell__type-chip--sql {{
+    background: rgba(192, 132, 252, 0.18);
+    color: var(--pql-sql-fg);
+    border-color: var(--pql-sql-fg);
+  }}
   .pql-cell__hash {{
     color: var(--pql-text-muted); font-size: 0.72rem;
     font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
@@ -409,8 +417,9 @@ def render_notebook_body_html(
                 f"{_html.escape(content_hash[:8])}</code>"
             )
         if frames:
+            plural = "s" if len(frames) != 1 else ""
             pieces.append(
-                f'<span class="pql-cell__out-count">{len(frames)} output{"s" if len(frames) != 1 else ""}</span>'
+                f'<span class="pql-cell__out-count">{len(frames)} output{plural}</span>'
             )
         pieces.append("</div>")
         pieces.append('<div class="pql-cell__body">')

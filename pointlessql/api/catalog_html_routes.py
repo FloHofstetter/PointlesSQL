@@ -358,7 +358,12 @@ def _vector_indices_for_table(
             )
     except Exception:  # noqa: BLE001 — page renders even when DB is unhappy
         # bare-broad-ok: DB miss must not break table-detail HTML render
-        logger.exception("vector_indexes_for_table failed catalog=%s schema=%s table=%s", catalog, schema, table)
+        logger.exception(
+            "vector_indexes_for_table failed catalog=%s schema=%s table=%s",
+            catalog,
+            schema,
+            table,
+        )
         return []
     return [
         {

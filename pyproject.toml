@@ -169,6 +169,13 @@ pydocstyle.convention = "google"
 # routinely exceed 100 chars.  Lint compliance there gives us no
 # real signal — the migrations are mechanical schema deltas.
 "pointlessql/alembic/versions/**" = ["D", "E501"]
+# Notebook starter templates ship as jupytext percent-format snippets.
+# Their first markdown cell carries the description (no module docstring
+# needed), and they routinely reference variables that the user wires up
+# at kernel runtime (e.g. ``features`` from a ``%sql -o features`` magic
+# in a previous cell, or ``df`` populated from a Delta read).  Pyright
+# already excludes this tree; ruff needs the matching tolerance.
+"pointlessql/data/notebook_templates/**" = ["D", "F401", "F821"]
 
 [tool.pyright]
 pythonVersion = "3.14"

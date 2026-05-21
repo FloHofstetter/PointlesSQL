@@ -4,6 +4,28 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Phase 106 lint-baseline hygiene (2026-05-22).**  Two stale
+  module-level ``logger = logging.getLogger(__name__)`` placements
+  left over from the 106.1 docstring sweep (``agent_runs_routes/
+  ingestion.py`` and ``social_routes/issues.py``) tripped E402 on
+  every subsequent ``ruff check`` — moved both assignments below
+  the import block.  Wrapped three over-100-char source lines
+  (``catalog_html_routes.logger.exception`` call and two minified
+  CSS rules inside ``services/notebook/export.py``'s f-string
+  scaffold) onto their natural line breaks.  Added a
+  ``pointlessql/data/notebook_templates/**`` per-file-ignore for
+  ``D`` / ``F401`` / ``F821`` in ``pyproject.toml`` — these are
+  jupytext-percent starter snippets that legitimately reference
+  variables (``features``, ``df``) the user wires up at kernel
+  runtime via ``%sql -o features`` magics in earlier cells; same
+  rationale already applied to Pyright in 106.2.  Closes the
+  106.6 line item that the prior CHANGELOG hand-wave marked as
+  a no-op — the AST scan correctly reported zero missing module
+  docstrings, but the actual lint baseline still wasn't green.
+  Net: ``uv run ruff check pointlessql/`` 28 errors → 0.
+
 ### Added
 
 - **Phase 102 Track-H promote-reviewer webhook landed (2026-05-22).**

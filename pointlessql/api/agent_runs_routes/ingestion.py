@@ -17,8 +17,6 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any
 
-logger = logging.getLogger(__name__)
-
 from fastapi import APIRouter, Body, Header, Request
 from sqlalchemy import select
 
@@ -44,6 +42,8 @@ from pointlessql.services.agent_runs import (
     event_type_for_status,
 )
 from pointlessql.services.notifications.fanout import fanout_event
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
