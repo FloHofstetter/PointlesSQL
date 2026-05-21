@@ -139,10 +139,15 @@ export function installCoeditLifecycle(state, { userInfo = null } = {}) {
   state._renderPeerRail = function () {
     const peers = [];
     if (this._awareness) {
-      const localId = this._coeditUser ? Number(this._coeditUser.id) : 0;
+      // Filter self by Y.js clientID, not user.id — two browser tabs from
+      // the same logged-in user share one user.id but get distinct
+      // awareness clientIDs, and the multi-tab replay expects each tab to
+      // see the other as a peer ("two clientIds, one id").  Filtering by
+      // user.id would erase that case and silently drop the peer rail.
+      const localClientId = this._awareness.clientID;
       for (const [clientId, value] of this._awareness.getStates()) {
         if (!value || !value.user) continue;
-        if (Number(value.user.id) === localId) continue;
+        if (clientId === localClientId) continue;
         peers.push({
           clientId,
           id: Number(value.user.id) || 0,

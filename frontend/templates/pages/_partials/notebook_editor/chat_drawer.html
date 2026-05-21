@@ -17,7 +17,11 @@
 {% if notebook_chat_enabled %}
 <div
   class="pql-chat-drawer pql-notebook-chat-drawer"
-  x-data="notebookChatPanel('{{ notebook_chat_session_id }}', {{ notebook_uuid|tojson }})"
+  {# ``notebook_uuid`` is a server-side UUID4 string — no quote-injection #}
+  {# surface.  Using a single-quoted JS literal avoids the ``|tojson``    #}
+  {# trap where the JSON-emitted ``"…"`` quotes close the outer ``x-data``#}
+  {# attribute mid-expression (caught by the Phase-95 walkthrough replay).#}
+  x-data="notebookChatPanel('{{ notebook_chat_session_id }}', '{{ notebook_uuid or '' }}')"
   x-init="connect()"
   {# ``$root`` inside an ``x-data`` scope returns the CURRENT root    #}
   {# (the drawer), not the page-level outer scope, so                 #}

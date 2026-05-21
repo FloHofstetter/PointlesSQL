@@ -4,6 +4,29 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Notebook editor — two replay-surfaced bugs (2026-05-22, rc87 → rc88).**
+  A replay-pass on `phase95_walkthrough.py` (post Phase 106 hygiene wave)
+  surfaced two latent frontend regressions that none of the lint or
+  type gates can catch.
+  - `chat_drawer.html` rendered ``x-data="notebookChatPanel('…', {{
+    notebook_uuid|tojson }})"`` inside a double-quoted attribute.
+    Jinja's `|tojson` emits raw `"…"` quotes that close the attribute
+    mid-expression, leaving a syntactically invalid `x-data` and 11
+    cascading Alpine errors (`connect is not defined`, `statusLabel`,
+    `messages`, `streaming`, `proposals`, `lastError`, plus a
+    `prompt called on object` from Alpine's `with`-shadowing of
+    `window.prompt`).  Switched to a single-quoted JS literal —
+    `notebook_uuid` is a server-side UUID4, no quote-injection
+    surface.  Editor now mounts with 0 console errors.
+  - `coedit.js` peer-rail filtered self by `user.id` rather than the
+    Y.js `clientID`, erasing exactly the "two browser tabs from the
+    same logged-in user" case that the Phase 105.7 multi-tab playbook
+    explicitly asserts ("two clientIds, one id").  Awareness already
+    saw both tabs (`awarenessSize=2`); the mirror to `coeditPeers`
+    just rejected them.  Filter now keys on `_awareness.clientID`.
+
 ### Changed
 
 - **Phase 106.5 typed proposal bodies — closes the open dict[str, Any]
