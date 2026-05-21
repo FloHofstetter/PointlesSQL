@@ -28,6 +28,34 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Phase 102 Track-I closes branch-aware notebooks (2026-05-22).**
+  The kernel env-bridge had already been wired during Wave-D —
+  ``PQL.read_table`` / ``PQL.write_table`` call
+  ``_branch_remap``, which consults
+  ``pointlessql.pql.context.current_branch()``;
+  ``KernelSession.start()`` injects ``POINTLESSQL_BRANCH`` into
+  the subprocess env when a binding is active; the registry
+  propagates ``branch_name`` from the WS open path.  What was
+  missing was test coverage proving the chain end-to-end (the
+  ROADMAP still flagged Phase 102 as ``⏳ partial`` because no
+  test demonstrated the routing).  Added 9 pytest:
+  - ``TestPQLBranchRemap`` in ``tests/test_pql.py`` covers the
+    routing layer — no-branch passthrough, schema rewrite (``cat.
+    main.tbl`` → ``cat.feature_x.tbl``), two-part-name
+    passthrough, env-var seeds context on import, and
+    mid-session ``_set_context`` updates routing on the next
+    call.
+  - ``tests/test_kernel_session_branch_env.py`` covers the
+    kernel start-path with a faked ``AsyncKernelManager`` —
+    ``POINTLESSQL_BRANCH`` is forwarded when set; absent when
+    ``branch_name=None``; works without a notebook id for
+    replay-mode spawns; and the chain ``KernelRegistry.get_or_start``
+    → ``KernelSession.start()`` → ``start_kernel(env=...)``
+    end-to-end carries the value through.
+  Flips Phase 102 to ✅ done and removes the "still deferred"
+  paragraph from the ROADMAP.
+  Asset 0.1.0rc85 → 0.1.0rc86.
+
 - **Phase 102 Track-H promote-reviewer webhook landed (2026-05-22).**
   Closes the shoreguard-promote-gate item of Phase 102's "still
   deferred" list.  ``promote_binding`` now consults an external

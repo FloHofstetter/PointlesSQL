@@ -355,3 +355,91 @@ class TestPQLConnectionError:
         df = pd.DataFrame({"x": [1]})
         with pytest.raises(CatalogUnavailableError, match="Cannot reach soyuz-catalog"):
             pql.write_table(df, "cat.sch.tbl")
+
+
+# ------------------------------------------------------------------
+# Phase 102 — branch env-bridge: _branch_remap
+# ------------------------------------------------------------------
+
+
+class TestPQLBranchRemap:
+    """End-to-end behaviour of the Phase-102 kernel-side branch routing.
+
+    The kernel session injects ``POINTLESSQL_BRANCH`` into the
+    subprocess env at start; ``pql.context`` initialises
+    ``current_branch()`` from that env on first import; and
+    ``PQL._branch_remap`` is the function that rewrites the schema
+    segment of a 3-part FQN on every read / write.  These tests
+    cover the routing layer in isolation so the higher-level kernel
+    tests can trust that "set the env var → schema gets remapped"
+    holds.
+    """
+
+    def _pql(self) -> PQL:
+        return PQL(client=MagicMock(), engine=MagicMock(spec=Engine))
+
+    def test_no_branch_passes_through(self) -> None:
+        from pointlessql.pql.context import _set_context
+
+        _set_context(branch=None, notebook_id=None, agent_run_id=None)
+        try:
+            assert self._pql()._branch_remap("cat.main.tbl") == "cat.main.tbl"
+        finally:
+            _set_context(branch=None, notebook_id=None, agent_run_id=None)
+
+    def test_active_branch_rewrites_schema_segment(self) -> None:
+        from pointlessql.pql.context import _set_context
+
+        _set_context(branch="feature_x", notebook_id=None, agent_run_id=None)
+        try:
+            assert self._pql()._branch_remap("cat.main.tbl") == "cat.feature_x.tbl"
+        finally:
+            _set_context(branch=None, notebook_id=None, agent_run_id=None)
+
+    def test_two_part_name_untouched_even_with_branch(self) -> None:
+        from pointlessql.pql.context import _set_context
+
+        _set_context(branch="feature_x", notebook_id=None, agent_run_id=None)
+        try:
+            assert self._pql()._branch_remap("main.tbl") == "main.tbl"
+        finally:
+            _set_context(branch=None, notebook_id=None, agent_run_id=None)
+
+    def test_env_var_seeds_context_at_import(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """``POINTLESSQL_BRANCH`` set before import → ``current_branch()`` sees it.
+
+        The kernel session start-time env injection relies on
+        ``pql.context``'s module-level ``_CTX`` initialiser reading
+        ``os.environ`` exactly once at import.  This test reloads the
+        module under a patched environ to verify that contract.
+        """
+        import importlib
+
+        monkeypatch.setenv("POINTLESSQL_BRANCH", "from_env_branch")
+        from pointlessql.pql import context as ctx_module
+
+        reloaded = importlib.reload(ctx_module)
+        try:
+            assert reloaded.current_branch() == "from_env_branch"
+        finally:
+            monkeypatch.delenv("POINTLESSQL_BRANCH", raising=False)
+            importlib.reload(ctx_module)
+
+    def test_mid_session_set_context_updates_routing(self) -> None:
+        """``_set_context`` is the kernel-side runtime injector that
+        the WS prelude calls when a binding changes between cells.
+        ``_branch_remap`` must observe the *new* value on the next
+        call, no kernel restart required.
+        """
+        from pointlessql.pql.context import _set_context
+
+        pql = self._pql()
+        _set_context(branch="branch_a", notebook_id=None, agent_run_id=None)
+        try:
+            assert pql._branch_remap("cat.main.tbl") == "cat.branch_a.tbl"
+            _set_context(branch="branch_b", notebook_id=None, agent_run_id=None)
+            assert pql._branch_remap("cat.main.tbl") == "cat.branch_b.tbl"
+            _set_context(branch=None, notebook_id=None, agent_run_id=None)
+            assert pql._branch_remap("cat.main.tbl") == "cat.main.tbl"
+        finally:
+            _set_context(branch=None, notebook_id=None, agent_run_id=None)

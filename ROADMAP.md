@@ -2159,7 +2159,7 @@ PointlesSQL
 │   │     already extracts back into the badge.  3 new PointlesSQL
 │   │     pytest + 7 new plugin pytest; no UI change needed.
 │   │
-│   ├── Phase 102 — Branch-aware notebooks                        ⏳ partial
+│   ├── Phase 102 — Branch-aware notebooks                        ✅ done 2026-05-22
 │   │     Backend shipped 2026-05-20.  New
 │   │     ``notebook_branch_bindings`` table + migration
 │   │     ``095e6a40fa0e`` records which Delta-branch a notebook
@@ -2206,10 +2206,25 @@ PointlesSQL
 │   │     remains config-only — point the env var at shoreguard's
 │   │     approval intake.
 │   │
-│   │     **Still deferred:** kernel-side env-bridge so cells
-│   │     actually route reads + writes through the bound branch
-│   │     (today the binding is recorded but not yet consulted by
-│   │     ``pql.read_table`` / ``pql.write_table``).
+│   │     **Track-I env-bridge audit + tests landed 2026-05-22
+│   │     (asset 0.1.0rc86):** the env-bridge had actually been
+│   │     wired throughout Wave-D (``pql.read_table`` /
+│   │     ``pql.write_table`` already call ``PQL._branch_remap``,
+│   │     which consults ``current_branch()`` from
+│   │     ``pointlessql.pql.context``; ``KernelSession.start()``
+│   │     injects ``POINTLESSQL_BRANCH`` into the subprocess env;
+│   │     ``KernelRegistry.get_or_start`` accepts and forwards
+│   │     ``branch_name``).  What was missing was test coverage
+│   │     proving the chain end-to-end.  Closed with 9 new pytest:
+│   │     ``TestPQLBranchRemap`` in ``test_pql.py`` covers the
+│   │     routing layer (no-branch passthrough, schema rewrite,
+│   │     two-part-name passthrough, env-var-seeds-context-at-
+│   │     import, mid-session ``_set_context`` updates routing on
+│   │     next call) and ``test_kernel_session_branch_env.py``
+│   │     covers the kernel start-path (env var forwarded; absent
+│   │     when ``branch_name=None`` so context falls back; works
+│   │     without a notebook id for replay-mode spawns; registry
+│   │     propagates the value end-to-end).  Closes Phase 102.
 │   │
 │   ├── Phase 103 — Replay / Scenario-mode                        ✅ done 2026-05-21
 │   │     Backend shipped 2026-05-20.  New ``notebook_replays``
