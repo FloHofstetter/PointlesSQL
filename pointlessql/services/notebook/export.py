@@ -44,68 +44,156 @@ logger = logging.getLogger(__name__)
 
 _HTML_HEADER = """\
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-pql-theme="auto">
 <head>
 <meta charset="utf-8">
 <title>{title}</title>
 <style>
+  :root {{
+    /* PointlesSQL brand palette — light defaults. */
+    --pql-bg:            #ffffff;
+    --pql-bg-elev:       #f8f9fa;
+    --pql-bg-tertiary:   #f1f3f5;
+    --pql-text:          #1f2328;
+    --pql-text-muted:    #6e7781;
+    --pql-border:        #d0d7de;
+    --pql-accent:        #76b900;
+    --pql-accent-bg:     rgba(118, 185, 0, 0.12);
+    --pql-code-fg:       #0969da;
+    --pql-sql-fg:        #8250df;
+    --pql-stderr-bg:     #fff8c5;
+    --pql-stderr-bdr:    #d4a72c;
+    --pql-tb-bg:         #ffebe9;
+    --pql-tb-bdr:        #ff8182;
+  }}
+  @media (prefers-color-scheme: dark) {{
+    :root[data-pql-theme="auto"] {{
+      --pql-bg:          #0d1117;
+      --pql-bg-elev:     #161b22;
+      --pql-bg-tertiary: #1c2128;
+      --pql-text:        #e6edf3;
+      --pql-text-muted:  #8b949e;
+      --pql-border:      #30363d;
+      --pql-accent:      #76b900;
+      --pql-accent-bg:   rgba(118, 185, 0, 0.18);
+      --pql-code-fg:     #7fb1ff;
+      --pql-sql-fg:      #c084fc;
+      --pql-stderr-bg:   rgba(255, 192, 77, 0.15);
+      --pql-stderr-bdr:  rgba(255, 192, 77, 0.45);
+      --pql-tb-bg:       rgba(255, 122, 136, 0.15);
+      --pql-tb-bdr:      rgba(255, 122, 136, 0.45);
+    }}
+  }}
+  :root[data-pql-theme="dark"] {{
+    --pql-bg:          #0d1117;
+    --pql-bg-elev:     #161b22;
+    --pql-bg-tertiary: #1c2128;
+    --pql-text:        #e6edf3;
+    --pql-text-muted:  #8b949e;
+    --pql-border:      #30363d;
+    --pql-accent:      #76b900;
+    --pql-accent-bg:   rgba(118, 185, 0, 0.18);
+    --pql-code-fg:     #7fb1ff;
+    --pql-sql-fg:      #c084fc;
+    --pql-stderr-bg:   rgba(255, 192, 77, 0.15);
+    --pql-stderr-bdr:  rgba(255, 192, 77, 0.45);
+    --pql-tb-bg:       rgba(255, 122, 136, 0.15);
+    --pql-tb-bdr:      rgba(255, 122, 136, 0.45);
+  }}
+  html, body {{
+    background: var(--pql-bg);
+    color: var(--pql-text);
+  }}
   body {{
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
                  "Helvetica Neue", Arial, sans-serif;
-    color: #1f2328;
     line-height: 1.5;
     margin: 0;
     padding: 2rem 3rem;
     max-width: 960px;
   }}
+  .pql-export__topbar {{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: -1rem -1rem 1.25rem -1rem;
+    padding: 0.4rem 0.85rem;
+    background: var(--pql-bg-elev);
+    border: 1px solid var(--pql-border);
+    border-radius: 0.5rem;
+    font-size: 0.85rem;
+  }}
+  .pql-export__brand {{
+    color: var(--pql-accent);
+    font-weight: 600;
+    letter-spacing: 0.02em;
+  }}
+  .pql-export__theme-toggle {{
+    background: var(--pql-bg-tertiary);
+    color: var(--pql-text);
+    border: 1px solid var(--pql-border);
+    border-radius: 0.3rem;
+    padding: 0.15rem 0.55rem;
+    font-size: 0.78rem;
+    cursor: pointer;
+    font-family: inherit;
+  }}
+  .pql-export__theme-toggle:hover {{ background: var(--pql-accent-bg); }}
   h1.pql-export__title {{
     font-size: 1.75rem;
     margin: 0 0 0.25rem 0;
+    color: var(--pql-text);
   }}
   .pql-export__meta {{
-    color: #6e7781;
+    color: var(--pql-text-muted);
     font-size: 0.9rem;
     margin-bottom: 2rem;
   }}
   .pql-cell {{
-    border-left: 3px solid #d0d7de;
+    border-left: 3px solid var(--pql-border);
     padding: 0.5rem 0.75rem 0.5rem 1rem;
     margin: 0 0 1.25rem 0;
     page-break-inside: avoid;
   }}
-  .pql-cell--code {{ border-left-color: #0969da; }}
-  .pql-cell--sql {{ border-left-color: #8250df; }}
+  .pql-cell--code {{ border-left-color: var(--pql-code-fg); }}
+  .pql-cell--sql {{ border-left-color: var(--pql-sql-fg); }}
   .pql-cell--markdown {{ border-left: none; padding-left: 0; }}
   pre {{
-    background: #f6f8fa;
-    border: 1px solid #d0d7de;
+    background: var(--pql-bg-elev);
+    border: 1px solid var(--pql-border);
     border-radius: 6px;
     padding: 0.75rem;
     overflow: auto;
     font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
     font-size: 0.875rem;
+    color: var(--pql-text);
   }}
+  code {{ color: var(--pql-text); }}
+  a {{ color: var(--pql-accent); }}
   .pql-output {{
     margin-top: 0.5rem;
     padding: 0.5rem 0;
   }}
   .pql-output--stream-stderr pre {{
-    background: #fff8c5;
-    border-color: #d4a72c;
+    background: var(--pql-stderr-bg);
+    border-color: var(--pql-stderr-bdr);
   }}
   .pql-output--traceback pre {{
-    background: #ffebe9;
-    border-color: #ff8182;
+    background: var(--pql-tb-bg);
+    border-color: var(--pql-tb-bdr);
   }}
   table {{
     border-collapse: collapse;
     margin: 0.5rem 0;
+    background: var(--pql-bg);
   }}
   th, td {{
-    border: 1px solid #d0d7de;
+    border: 1px solid var(--pql-border);
     padding: 0.25rem 0.5rem;
     font-size: 0.875rem;
+    color: var(--pql-text);
   }}
+  th {{ background: var(--pql-bg-tertiary); }}
   @page {{
     margin: 1.5cm;
     @top-right {{
@@ -120,13 +208,39 @@ _HTML_HEADER = """\
     }}
   }}
   @media print {{
-    body {{ padding: 0; max-width: none; }}
+    body {{ padding: 0; max-width: none; background: #ffffff; color: #1f2328; }}
+    .pql-export__topbar, .pql-export__theme-toggle {{ display: none; }}
   }}
 </style>
 </head>
 <body>
+<div class="pql-export__topbar">
+  <span class="pql-export__brand">PointlesSQL · shared notebook</span>
+  <button type="button" class="pql-export__theme-toggle"
+          id="pql-export-theme-toggle"
+          aria-label="Toggle dark / light theme">Theme: auto</button>
+</div>
 <h1 class="pql-export__title">{title}</h1>
 <div class="pql-export__meta">Exported {exported_at} · {cell_count} cells</div>
+<script>
+(function () {{
+  var root = document.documentElement;
+  var btn  = document.getElementById('pql-export-theme-toggle');
+  if (!btn) return;
+  var stored = null;
+  try {{ stored = localStorage.getItem('pql-export-theme'); }} catch (_) {{}}
+  if (stored === 'dark' || stored === 'light') root.setAttribute('data-pql-theme', stored);
+  var labelFor = function (v) {{ return 'Theme: ' + v; }};
+  btn.textContent = labelFor(root.getAttribute('data-pql-theme') || 'auto');
+  btn.addEventListener('click', function () {{
+   var cur = root.getAttribute('data-pql-theme') || 'auto';
+   var next = cur === 'auto' ? 'light' : cur === 'light' ? 'dark' : 'auto';
+   root.setAttribute('data-pql-theme', next);
+   try {{ localStorage.setItem('pql-export-theme', next); }} catch (_) {{}}
+   btn.textContent = labelFor(next);
+  }});
+}})();
+</script>
 """
 
 _HTML_FOOTER = "</body>\n</html>\n"
@@ -276,6 +390,7 @@ def render_notebook_pdf(
     try:
         from weasyprint import HTML  # type: ignore[import-not-found]
     except Exception:  # noqa: BLE001 — optional dep
+        # bare-broad-ok: weasyprint is optional; callers fall back to HTML render
         return None
     body = render_notebook_html(
         title=title,

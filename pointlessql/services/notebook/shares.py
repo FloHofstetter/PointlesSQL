@@ -309,9 +309,12 @@ def render_dashboard_html(
     ).replace(
         "<body>",
         '<body data-mode="dashboard">'
-        '<div style="background:#dbeafe;color:#1e40af;'
-        'padding:0.25rem 0.75rem;font-size:0.85rem;'
-        'border-bottom:1px solid #93c5fd;margin:-2rem -3rem 1.5rem -3rem;">'
+        '<div style="background:var(--pql-accent-bg);'
+        'color:var(--pql-accent);'
+        'padding:0.3rem 0.85rem;font-size:0.8rem;font-weight:600;'
+        'letter-spacing:0.04em;'
+        'border-bottom:1px solid var(--pql-border);'
+        'margin:-2rem -3rem 1.5rem -3rem;">'
         "DASHBOARD · code cells hidden"
         "</div>",
         1,
