@@ -41,6 +41,9 @@ class KernelRegistry:
         user_id: int,
         user_email: str,
         notebook_path: str,
+        *,
+        notebook_id: str | None = None,
+        branch_name: str | None = None,
     ) -> KernelSession:
         """Return the kernel for ``(user_id, notebook_path)``, launching if absent.
 
@@ -48,6 +51,14 @@ class KernelRegistry:
             user_id: Authenticated user id.
             user_email: Used as ``POINTLESSQL_PRINCIPAL`` on start.
             notebook_path: Relative notebook path (stable key).
+            notebook_id: Phase-77.6 notebook UUID surfaced to the
+                kernel via ``POINTLESSQL_NOTEBOOK_ID`` so binding
+                lookups + future widget-resolve queries can address
+                the notebook by its stable id (Phase 99 / 102 Wave-D).
+            branch_name: Active Phase-102 branch binding surfaced via
+                ``POINTLESSQL_BRANCH``; ``PQL._branch_remap`` reads
+                it on every read / write to route the FQN to the
+                bound branch schema.
 
         Returns:
             A running :class:`KernelSession`.
@@ -60,6 +71,8 @@ class KernelRegistry:
                     user_email=user_email,
                     notebook_path=notebook_path,
                     cwd=self._notebooks_dir,
+                    notebook_id=notebook_id,
+                    branch_name=branch_name,
                 )
                 await session.start()
                 self._sessions[key] = session

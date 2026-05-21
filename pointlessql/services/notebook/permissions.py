@@ -177,8 +177,51 @@ def get_effective_role(
     return row.role if row is not None else None
 
 
+def actor_has_role(
+    session: Session,
+    *,
+    notebook_id: str,
+    user_id: int,
+    is_admin: bool,
+    required: str,
+) -> bool:
+    """Decide if *user_id* may take an action that needs *required*.
+
+    Admins bypass the lattice entirely; non-admins consult the explicit
+    grant via :func:`get_effective_role` + :func:`role_satisfies`.  An
+    un-granted notebook (no row) is workspace-public by default — the
+    layer assumes "anything in your workspace" stays viewable + runnable
+    unless an explicit grant trims it down.  ``edit`` is the only role
+    we hard-enforce per-notebook today.
+
+    Args:
+        session: A SQLAlchemy session.
+        notebook_id: ``Notebook.id`` UUID.
+        user_id: ``users.id`` of the acting principal.
+        is_admin: Workspace-admin flag (admins always pass).
+        required: One of :data:`VALID_ROLES`.
+
+    Returns:
+        ``True`` when the actor is allowed to proceed.
+    """
+    if is_admin:
+        return True
+    have = get_effective_role(
+        session, notebook_id=notebook_id, user_id=user_id
+    )
+    # Phase 99 Wave-D — workspace-default is the same role lattice as
+    # ``run`` so existing "any authenticated user can open + execute"
+    # behaviour is preserved when no explicit grant exists.  Explicit
+    # grants narrow this; an admin who pins a user to ``view`` then
+    # blocks them from save/run.
+    if have is None:
+        return _ROLE_RANK.get(required, 99) <= _ROLE_RANK["run"]
+    return role_satisfies(have, required)
+
+
 __all__ = [
     "VALID_ROLES",
+    "actor_has_role",
     "get_effective_role",
     "grant_permission",
     "list_permissions",

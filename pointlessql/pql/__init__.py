@@ -59,7 +59,7 @@ Write-side helpers:
   path (or ``None`` if missing) without instantiating a full PQL.
 """
 
-from pointlessql.pql import memory
+from pointlessql.pql import context, memory, widgets
 from pointlessql.pql._branch_errors import (
     BranchAlreadyExistsError,
     BranchCloudUnsupportedError,
@@ -127,6 +127,7 @@ __all__ = [
     "SQLResult",
     "StmtType",
     "classify",
+    "context",
     "contract",
     "create_branch_schema",
     "discard_branch_schema",
@@ -144,5 +145,6 @@ __all__ = [
     "register_delta_view",
     "safe_delta_version",
     "translate_merge_ast",
+    "widgets",
     "write_table",
 ]

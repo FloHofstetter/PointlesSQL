@@ -151,6 +151,15 @@ class PQL:
 
         Args:
             full_name: Three-part name ``"catalog.schema.table"``.
+                When the kernel's :mod:`pointlessql.pql.context` carries
+                an active branch binding (Phase 102 Wave-D), the
+                schema segment is rewritten on the fly so the read
+                follows the binding without the caller spelling it
+                out.  Reads falling through to a table the branch
+                does not carry surface ``BranchNotFoundError`` and
+                callers can fall back to the canonical FQN with
+                ``with_branch=False``-style overrides in a future
+                follow-up.
 
         Returns:
             The table contents in the engine's native frame type
@@ -159,7 +168,7 @@ class PQL:
         return read_table(
             client=self._client,
             engine=self._engine,
-            full_name=full_name,
+            full_name=self._branch_remap(full_name),
             unreachable_msg=self._unreachable_msg(),
         )
 
@@ -296,7 +305,7 @@ class PQL:
             client=self._client,
             engine=self._engine,
             df=df,
-            full_name=full_name,
+            full_name=self._branch_remap(full_name),
             mode=mode,
             unreachable_msg=self._unreachable_msg(),
             agent_run_id=self._current_run_id,
@@ -980,3 +989,31 @@ class PQL:
         """Build a user-friendly message when soyuz-catalog is unreachable."""
         url = self._client._base_url  # pyright: ignore[reportPrivateUsage]
         return f"Cannot reach soyuz-catalog at {url}. Is the server running?"
+
+    def _branch_remap(self, full_name: str) -> str:
+        """Rewrite a 3-part FQN into the bound branch's sibling schema.
+
+        Phase 102 records the branch binding metadata; this remap is
+        the Phase 102 Wave-D kernel-side bridge.  When
+        :func:`pointlessql.pql.context.current_branch` returns ``None``
+        (interactive use outside the editor, or no active binding),
+        the FQN passes through unchanged.
+
+        Args:
+            full_name: Caller-supplied ``catalog.schema.table``.
+
+        Returns:
+            ``catalog.<branch_name>.table`` when a binding is active;
+            else *full_name* unchanged.  Two-part / one-part names
+            pass through too — only true 3-part names get remapped.
+        """
+        from pointlessql.pql.context import current_branch
+
+        branch = current_branch()
+        if not branch:
+            return full_name
+        parts = full_name.split(".")
+        if len(parts) != 3:
+            return full_name
+        catalog, _schema, table = parts
+        return f"{catalog}.{branch}.{table}"

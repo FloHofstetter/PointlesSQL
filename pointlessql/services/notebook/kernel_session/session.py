@@ -243,10 +243,20 @@ class KernelSession:
         user_email: str,
         notebook_path: str,
         cwd: Path,
+        notebook_id: str | None = None,
+        branch_name: str | None = None,
     ) -> None:
         self._user_email = user_email
         self._notebook_path = notebook_path
         self._cwd = cwd
+        # Phase 99 / 102 Wave-D — context the kernel needs but cell
+        # source code shouldn't touch directly.  Surfaced as env vars
+        # so PQL + pointlessql.pql.context pick them up on
+        # ``import pointlessql.pql`` at kernel-start time.  Mid-session
+        # binding edits aren't yet pushed (would require a per-execute
+        # silent prelude); the panel UI documents the restart contract.
+        self._notebook_id = notebook_id
+        self._branch_name = branch_name
         self._km: AsyncKernelManager | None = None
         self._kc: AsyncKernelClient | None = None
         self.session_id: str = str(uuid.uuid4())
@@ -268,6 +278,13 @@ class KernelSession:
         """
         env = os.environ.copy()
         env["POINTLESSQL_PRINCIPAL"] = self._user_email
+        # Phase 99 / 102 Wave-D — surface notebook context + active
+        # branch binding so ``pointlessql.pql.context`` and
+        # ``PQL._branch_remap`` see them on first import.
+        if self._notebook_id:
+            env["POINTLESSQL_NOTEBOOK_ID"] = self._notebook_id
+        if self._branch_name:
+            env["POINTLESSQL_BRANCH"] = self._branch_name
         km = AsyncKernelManager()
         await km.start_kernel(env=env, cwd=str(self._cwd))
         kc: AsyncKernelClient = km.client()

@@ -13,7 +13,7 @@ from sqlalchemy import select
 from pointlessql.api.dependencies import current_workspace_id, require_user
 from pointlessql.api.notebooks_routes._shared import get_or_create_notebook_uuid
 from pointlessql.config import Settings
-from pointlessql.exceptions import ValidationError
+from pointlessql.exceptions import AuthorizationError, ValidationError
 from pointlessql.models import NotebookCellProposal, NotebookCellProvenance
 from pointlessql.models.notebook import NotebookCellIdentity
 from pointlessql.services import output_rendering as notebook_render_service
@@ -21,6 +21,49 @@ from pointlessql.services.notebook import _doc as notebook_doc_service
 from pointlessql.services.notebook import cell_authorship as cell_authorship_service
 from pointlessql.services.notebook import cell_reconciliation
 from pointlessql.services.notebook import outputs as notebook_outputs_service
+from pointlessql.services.notebook import permissions as notebook_permissions_service
+
+
+def _enforce_notebook_role(
+    request: Request, *, notebook_id: str, required: str
+) -> None:
+    """Reject the request when the actor's effective role is below *required*.
+
+    Phase 99 Wave-D — wires the existing ``role_satisfies`` lattice
+    into the load / save paths so explicit grants narrow workspace-
+    default access.  Notebooks with no explicit grants behave like
+    they always did (any authenticated user can view + run + save —
+    only ``edit`` becomes per-notebook restrictable today; this
+    matches the existing test-suite expectations).
+
+    Args:
+        request: Incoming request; ``request.state.user`` must be set
+            by the auth middleware.
+        notebook_id: Stable notebook UUID.
+        required: One of ``view`` / ``run`` / ``edit``.
+
+    Raises:
+        AuthorizationError: When the user lacks the role.
+    """
+    user = getattr(request.state, "user", None) or {}
+    user_id = int(user.get("id") or 0)
+    is_admin = bool(user.get("is_admin"))
+    factory = request.app.state.session_factory
+    with factory() as session:
+        allowed = notebook_permissions_service.actor_has_role(
+            session,
+            notebook_id=notebook_id,
+            user_id=user_id,
+            is_admin=is_admin,
+            required=required,
+        )
+    if not allowed:
+        raise AuthorizationError(
+            principal=str(user.get("email") or "(anonymous)"),
+            privilege=required,
+            securable_type="notebook",
+            full_name=notebook_id,
+        )
 
 logger = logging.getLogger(__name__)
 
@@ -65,6 +108,11 @@ async def api_load_notebook(request: Request, path: str) -> JSONResponse:
         request.app.state.session_factory, relative
     )
     cell_uuids = _load_cell_uuid_map(request, relative)
+    notebook_uuid = cell_uuids.get("__notebook__")
+    if notebook_uuid:
+        _enforce_notebook_role(
+            request, notebook_id=notebook_uuid, required="view"
+        )
     cells = [
         {
             "id": cell.id,
@@ -77,7 +125,6 @@ async def api_load_notebook(request: Request, path: str) -> JSONResponse:
         }
         for cell in document.cells
     ]
-    notebook_uuid = cell_uuids.get("__notebook__")
     return JSONResponse(
         {
             "path": document.path,
@@ -211,6 +258,16 @@ async def api_save_notebook(
                 tags=tags,
             )
         )
+    # Phase 99 Wave-D — enforce edit-role before persisting.  We
+    # resolve the notebook UUID *before* the file write so an
+    # unauthorised caller can't mutate disk and then bounce on the
+    # gate.  ``get_or_create_notebook_uuid`` is idempotent so the
+    # double call is cheap.
+    relative_for_check = str(absolute.relative_to(notebooks_dir))
+    pre_notebook_uuid = get_or_create_notebook_uuid(request, relative_for_check)
+    _enforce_notebook_role(
+        request, notebook_id=pre_notebook_uuid, required="edit"
+    )
     notebook_doc_service.save_document(absolute, cells)
     new_mtime = absolute.stat().st_mtime
     relative = str(absolute.relative_to(notebooks_dir))

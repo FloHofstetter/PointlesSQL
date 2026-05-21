@@ -186,6 +186,89 @@ def test_role_satisfies_lattice() -> None:
     assert not notebook_perms_service.role_satisfies(None, "view")
 
 
+def test_actor_has_role_admin_bypasses(factory: sessionmaker) -> None:  # type: ignore[type-arg]
+    """Admins pass every required role even without an explicit grant."""
+    nb_id = _seed_notebook(factory)
+    user_id = _seed_user(factory)
+    with factory() as session:
+        for needed in ("view", "run", "edit"):
+            assert notebook_perms_service.actor_has_role(
+                session,
+                notebook_id=nb_id,
+                user_id=user_id,
+                is_admin=True,
+                required=needed,
+            )
+
+
+def test_actor_has_role_workspace_default_grants_run(
+    factory: sessionmaker,  # type: ignore[type-arg]
+) -> None:
+    """No grant → workspace-default lets view+run through but not edit."""
+    nb_id = _seed_notebook(factory)
+    user_id = _seed_user(factory)
+    with factory() as session:
+        assert notebook_perms_service.actor_has_role(
+            session,
+            notebook_id=nb_id,
+            user_id=user_id,
+            is_admin=False,
+            required="view",
+        )
+        assert notebook_perms_service.actor_has_role(
+            session,
+            notebook_id=nb_id,
+            user_id=user_id,
+            is_admin=False,
+            required="run",
+        )
+        assert not notebook_perms_service.actor_has_role(
+            session,
+            notebook_id=nb_id,
+            user_id=user_id,
+            is_admin=False,
+            required="edit",
+        )
+
+
+def test_actor_has_role_explicit_view_blocks_run(
+    factory: sessionmaker,  # type: ignore[type-arg]
+) -> None:
+    """Explicit ``view`` grant narrows below workspace-default ``run``."""
+    nb_id = _seed_notebook(factory)
+    user_id = _seed_user(factory)
+    with factory() as session:
+        notebook_perms_service.grant_permission(
+            session,
+            notebook_id=nb_id,
+            user_id=user_id,
+            role="view",
+            granted_by_user_id=None,
+        )
+        session.commit()
+        assert notebook_perms_service.actor_has_role(
+            session,
+            notebook_id=nb_id,
+            user_id=user_id,
+            is_admin=False,
+            required="view",
+        )
+        assert not notebook_perms_service.actor_has_role(
+            session,
+            notebook_id=nb_id,
+            user_id=user_id,
+            is_admin=False,
+            required="run",
+        )
+        assert not notebook_perms_service.actor_has_role(
+            session,
+            notebook_id=nb_id,
+            user_id=user_id,
+            is_admin=False,
+            required="edit",
+        )
+
+
 def test_grant_and_revoke_permission(factory: sessionmaker) -> None:  # type: ignore[type-arg]
     """Grant inserts; revoke deletes; revoke-missing returns False."""
     nb_id = _seed_notebook(factory)

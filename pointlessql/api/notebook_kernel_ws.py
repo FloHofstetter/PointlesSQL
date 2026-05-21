@@ -649,7 +649,58 @@ async def notebook_kernel_ws(websocket: WebSocket) -> None:
         return
     user_id = int(user.get("id") or 0)
     user_email = str(user.get("email") or "")
-    session = await registry.get_or_start(user_id, user_email, relative_path)
+    is_admin = bool(user.get("is_admin"))
+    # Phase 99 / 102 Wave-D — resolve notebook UUID + active branch
+    # binding so the kernel session sees them as env vars at startup.
+    # Falls back gracefully (None) on cold notebooks that haven't
+    # been minted a UUID yet — the kernel just runs against main.
+    factory_for_lookup = websocket.app.state.session_factory
+    notebook_id: str | None = None
+    branch_name: str | None = None
+    try:
+        with factory_for_lookup() as _session:
+            from pointlessql.models.notebook import Notebook as _NotebookModel
+            from pointlessql.services.notebook import (
+                branch_bindings as _branch_bindings_service,
+            )
+            from pointlessql.services.notebook import (
+                permissions as _notebook_permissions_service,
+            )
+
+            row = (
+                _session.query(_NotebookModel)
+                .filter_by(file_path=relative_path)
+                .one_or_none()
+            )
+            if row is not None:
+                notebook_id = row.id
+                binding = _branch_bindings_service.get_current_binding(
+                    _session, notebook_id=row.id
+                )
+                if binding:
+                    branch_name = binding.get("branch_name")
+                # Phase 99 Wave-D — gate the WS at open time on the
+                # ``run`` role.  Explicit ``view``-only grants block
+                # the kernel from starting for this user; admins +
+                # un-granted (workspace-default) callers pass.
+                if not _notebook_permissions_service.actor_has_role(
+                    _session,
+                    notebook_id=row.id,
+                    user_id=user_id,
+                    is_admin=is_admin,
+                    required="run",
+                ):
+                    await websocket.close(code=4403)
+                    return
+    except Exception:  # noqa: BLE001
+        logger.exception("kernel context resolve failed; running against main")
+    session = await registry.get_or_start(
+        user_id,
+        user_email,
+        relative_path,
+        notebook_id=notebook_id,
+        branch_name=branch_name,
+    )
     factory = websocket.app.state.session_factory
     await websocket.accept()
     sub = session.subscribe()
