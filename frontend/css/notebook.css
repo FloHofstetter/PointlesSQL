@@ -47,6 +47,22 @@
  white-space: nowrap;
 }
 
+/* Phase 107.1 — Panel-toggle buttons collapse to icon-only when
+   inactive so 10 panels (Jobs/Variables/Tags/Branch/Replays/
+   Proposals/Widgets/Access/History/AI) fit a single toolbar row
+   even at 1080 px viewport width.  The label stays in the DOM for
+   screen readers; ``.active`` (toggled by Alpine ``:class``)
+   reveals it visually so the user can spot the open panel at a
+   glance.  ``title=""`` on each button keeps a mouseover tooltip
+   for discovery. */
+.pql-toolbar-panel-btn .pql-toolbar-panel-btn__label {
+ display: none;
+ margin-left: 0.3rem;
+}
+.pql-toolbar-panel-btn.active .pql-toolbar-panel-btn__label {
+ display: inline;
+}
+
 .pql-notebook-cell {
  border: 1px solid var(--bs-border-color);
  border-radius: 0.25rem;

@@ -178,6 +178,43 @@ export function notebookEditor({ initialPath = '', currentUser = null } = {}) {
   return `${m}m ${s}s`;
  },
 
+ /**
+  * Phase 107.2 — count of currently-open editor panels.
+  *
+  * Drives the toolbar's "Close all (N)" affordance, which surfaces
+  * once ≥2 panels stack on top of each other.  Includes the
+  * Phase-96 chat drawer even though it's fixed-position rather than
+  * inline-stacked, so "Close all" maps to the user's "clear my
+  * workspace" intent regardless of the underlying layout.
+  */
+ openPanelCount() {
+  let n = 0;
+  if (this.jobsPanelOpen) n++;
+  if (this.inspectorOpen) n++;
+  if (this.tagsPickerOpen) n++;
+  if (this.branchBinding && this.branchBinding.open) n++;
+  if (this.replays && this.replays.open) n++;
+  if (this.sequenceProposals && this.sequenceProposals.open) n++;
+  if (this.widgetsPanel && this.widgetsPanel.open) n++;
+  if (this.permissionsPanel && this.permissionsPanel.open) n++;
+  if (this.revisions && this.revisions.open) n++;
+  if (this.chatPanelOpen) n++;
+  return n;
+ },
+
+ closeAllPanels() {
+  this.jobsPanelOpen = false;
+  this.inspectorOpen = false;
+  this.tagsPickerOpen = false;
+  if (this.branchBinding) this.branchBinding.open = false;
+  if (this.replays) this.replays.open = false;
+  if (this.sequenceProposals) this.sequenceProposals.open = false;
+  if (this.widgetsPanel) this.widgetsPanel.open = false;
+  if (this.permissionsPanel) this.permissionsPanel.open = false;
+  if (this.revisions) this.revisions.open = false;
+  this.chatPanelOpen = false;
+ },
+
  async init() {
  try {
  const res = await window.pqlApi.fetch(
