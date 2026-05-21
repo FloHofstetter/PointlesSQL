@@ -2234,15 +2234,15 @@ PointlesSQL
 │   │     plugin lands, the inbox stays empty (and the empty-state
 │   │     copy says so).
 │   │
-│   └── Phase 105 — Real-time co-edit (speculative)               ⏳ in progress 2026-05-21
-│         **2026-05-21 update:** 105.1 (CRDT sidecar storage) +
-│         105.2 (WebSocket hub) + 105.3 (passive Y.Doc client) +
-│         105.4 (awareness layer + peer rail) + 105.5 (save-path
-│         barrier) + 105.3b (per-cell y-codemirror.next binding)
-│         + 105.6 (agent-presence REST endpoint + pseudo-peer
-│         rendering) + 105.7 (multi-tab Playwright replay
-│         playbook) shipped.  Scheduled compaction worker
-│         (105.8) is the only remaining sub-phase.
+│   └── Phase 105 — Real-time co-edit                              ✅ done 2026-05-21
+│         **Closed 2026-05-21.**  Full track shipped in one
+│         session: 105.1 (CRDT sidecar storage) + 105.2 (WS hub)
+│         + 105.3 (passive Y.Doc client + live pill) + 105.4
+│         (awareness + peer rail) + 105.5 (save-path barrier) +
+│         105.3b (per-cell y-codemirror.next binding) + 105.6
+│         (agent-presence REST + pseudo-peer rendering) + 105.7
+│         (multi-tab Playwright playbook) + 105.8 (compaction
+│         scheduler executor).
 │
 │         Original 2026-05-20 framing kept for context:
 │         Y.js / CRDT layer over the existing WebSocket so

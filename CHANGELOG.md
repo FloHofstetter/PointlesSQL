@@ -40,6 +40,21 @@ All notable changes to this project will be documented in this file.
     with Part P in ``notebook-editor.md`` + new
     ``library-facts.md``.
 
+- **Phase 105.8 — coedit compaction scheduler executor (2026-05-21).**
+  Asset 0.1.0rc80 → rc81.  Closes the Phase-105 track.  New
+  scheduler ``kind="coedit_compaction"`` registered in
+  ``build_default_registry``; the executor walks every
+  ``notebook_crdt_state`` row, skips notebooks with a live
+  Sprint-105.2 hub (the hub's own teardown flush handles those),
+  and compacts any inactive blob that has crossed the size or
+  TTL gate already exposed by
+  ``coedit_service.needs_compaction``.  Wraps the sync DB pass in
+  ``asyncio.to_thread`` so it does not stall the scheduler loop;
+  per-row failures are logged + skipped, the loop keeps going.
+  Opt-in via the scheduler admin UI — no default cron entry.
+  4 new pytest (compact-on-stale, skip-active-hub, swallow-fail,
+  registry-binding).  Closes Phase 105 sub-phase backlog.
+
 - **Phase 105.7 — multi-tab co-edit Playwright playbook (2026-05-21).**
   Asset 0.1.0rc79 → rc80.  Closes the e2e-replay gate for the
   Phase-105 stack: a new ``docs/e2e-walkthroughs/notebook-coedit-multi-tab.md``
