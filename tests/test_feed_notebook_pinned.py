@@ -244,3 +244,67 @@ def test_resolve_notebook_followers_pulls_subscribers(
     assert nonadmin_user_id in followers
     # The actor (admin) is *not* in the follower set — admin hasn't followed.
     assert admin_user_id not in followers
+
+
+def test_emit_pin_summary_uses_notebook_path_not_uuid(
+    admin_user_id: int,
+    nonadmin_user_id: int,
+    clean_pin_notifications: None,
+) -> None:
+    """``summary_md`` resolves the notebook ``file_path`` so the feed
+    card never surfaces a raw 36-char UUID to the user."""
+    del clean_pin_notifications
+    import datetime
+    import uuid
+    from unittest.mock import MagicMock
+
+    from pointlessql.api.notebooks_routes.facts import _emit_pin_feed_event
+    from pointlessql.models import Notebook
+    from pointlessql.models.social._social_follow import SocialFollow
+    from pointlessql.services.social import get_or_create_target
+
+    nb_id = str(uuid.uuid4())
+    file_path = f"smoke-pin-summary-{nb_id[:8]}.py"
+    factory = app.state.session_factory
+    with factory() as session:
+        session.add(
+            Notebook(id=nb_id, workspace_id=1, file_path=file_path)
+        )
+        anchor = get_or_create_target(
+            session, workspace_id=1, kind="notebook", ref=nb_id
+        )
+        session.add(
+            SocialFollow(
+                workspace_id=1,
+                social_target_id=int(anchor.id),
+                user_id=nonadmin_user_id,
+                created_at=datetime.datetime.now(datetime.UTC),
+            )
+        )
+        session.commit()
+
+    fake_request = MagicMock()
+    fake_request.app.state.session_factory = factory
+    envelope = {
+        "fact_uuid": str(uuid.uuid4()),
+        "notebook_id": nb_id,
+        "cell_content_hash": None,
+        "title": "Smoke pin",
+    }
+    _emit_pin_feed_event(
+        fake_request,
+        envelope=envelope,
+        workspace_id=1,
+        actor_user_id=admin_user_id,
+    )
+    with factory() as session:
+        row = session.execute(
+            select(UserNotification).where(
+                UserNotification.event_type == "notebook_revision_pinned",
+                UserNotification.recipient_user_id == nonadmin_user_id,
+            )
+        ).scalar_one()
+        assert file_path in row.summary_md, row.summary_md
+        # Crucially: the 36-char notebook UUID must NOT appear in the
+        # rendered summary line — that's the regression we're guarding.
+        assert nb_id not in row.summary_md, row.summary_md

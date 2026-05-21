@@ -316,6 +316,9 @@ def _emit_pin_feed_event(
     originating pin always completes.
     """
     try:
+        from sqlalchemy import select
+
+        from pointlessql.models import Notebook
         from pointlessql.services.notifications.fanout import fanout_event
 
         fact_uuid = envelope.get("fact_uuid")
@@ -326,10 +329,21 @@ def _emit_pin_feed_event(
             return
         kind = "notebook_cell_output" if cell_hash else "notebook_revision"
         source_url = f"/library/facts/{fact_uuid}"
-        notebook_hint = (
-            f"notebook ``{notebook_id}``" if notebook_id else "a notebook"
-        )
-        summary_md = f"Pinned **{title}** from {notebook_hint}"
+        # Resolve the human-readable notebook path once at emit time so
+        # the feed card never shows a raw 36-char UUID in the summary
+        # (which is what the user sees on /feed before clicking through).
+        notebook_label = "a notebook"
+        if notebook_id:
+            with request.app.state.session_factory() as session:
+                nb = session.execute(
+                    select(Notebook.file_path).where(Notebook.id == notebook_id)
+                ).scalar_one_or_none()
+                if nb:
+                    notebook_label = nb
+        # Keep the line plain-text — the feed renderer binds via
+        # ``x-text`` (textContent), so Markdown sigils like ``**`` /
+        # ``` `` ``` would surface literally to the reader.
+        summary_md = f"{title} — {notebook_label}"
         extra_recipients = (
             _resolve_notebook_followers(
                 request.app.state.session_factory,

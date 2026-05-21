@@ -118,6 +118,44 @@
                         aria-label="Dismiss"></button>
             </div>
 
+            {# First-run welcome card — visible at the top of the feed
+               for users who joined recently AND haven't followed any
+               entity yet.  Dismissal persists in localStorage.
+
+               Gated on ``filter === 'all'`` because the Mentions /
+               My activity / Following filters carry their own
+               purpose-specific empty-state messages (Phase 81.K.8);
+               stacking the welcome card on top of them is redundant
+               and visually noisy.
+
+               Phase 97.X.3.2 — hoisted above the skeleton + empty-
+               states so first-run guidance is the *first* thing a
+               new user sees, not buried beneath the "No activity
+               yet" copy.  #}
+            <div class="card border-primary mb-3"
+                 x-show="welcomeVisible && filter === 'all'"
+                 x-cloak>
+                <div class="card-body d-flex gap-3 align-items-start">
+                    <i class="bi bi-stars fs-2 text-primary"></i>
+                    <div class="flex-grow-1">
+                        <h6 class="card-title mb-1">Welcome to PointlesSQL.</h6>
+                        <p class="card-text text-muted small mb-2">
+                            Your feed builds itself as you follow data products, models, and the people who own them.
+                            Here are some quick starts:
+                        </p>
+                        <div class="d-flex flex-wrap gap-2">
+                            <a class="btn btn-sm btn-outline-primary" href="/topics">Browse topics</a>
+                            <a class="btn btn-sm btn-outline-primary" href="/data-products">Browse data products</a>
+                            <a class="btn btn-sm btn-outline-primary" href="/users">Find people</a>
+                        </div>
+                    </div>
+                    <button type="button"
+                            class="btn-close"
+                            aria-label="Dismiss welcome"
+                            @click="dismissWelcome()"></button>
+                </div>
+            </div>
+
             {# Loading skeleton — used only on first paint; future
                navigations use the boost-nav loading_skeleton.js. #}
             <template x-if="!loaded">
@@ -177,39 +215,6 @@
                     {% endwith %}
                 </div>
             </template>
-
-            {# First-run welcome card — visible at the top of the feed
-               for users who joined recently AND haven't followed any
-               entity yet.  Dismissal persists in localStorage.
-
-               Gated on ``filter === 'all'`` because the Mentions /
-               My activity / Following filters carry their own
-               purpose-specific empty-state messages (Phase 81.K.8);
-               stacking the welcome card on top of them is redundant
-               and visually noisy. #}
-            <div class="card border-primary mb-3"
-                 x-show="welcomeVisible && filter === 'all'"
-                 x-cloak>
-                <div class="card-body d-flex gap-3 align-items-start">
-                    <i class="bi bi-stars fs-2 text-primary"></i>
-                    <div class="flex-grow-1">
-                        <h6 class="card-title mb-1">Welcome to PointlesSQL.</h6>
-                        <p class="card-text text-muted small mb-2">
-                            Your feed builds itself as you follow data products, models, and the people who own them.
-                            Here are some quick starts:
-                        </p>
-                        <div class="d-flex flex-wrap gap-2">
-                            <a class="btn btn-sm btn-outline-primary" href="/topics">Browse topics</a>
-                            <a class="btn btn-sm btn-outline-primary" href="/data-products">Browse data products</a>
-                            <a class="btn btn-sm btn-outline-primary" href="/users">Find people</a>
-                        </div>
-                    </div>
-                    <button type="button"
-                            class="btn-close"
-                            aria-label="Dismiss welcome"
-                            @click="dismissWelcome()"></button>
-                </div>
-            </div>
 
             {# Day-grouped feed — Alpine computed ``groupedDays``
                returns ``[{iso, label, rows: [...]}, ...]`` sorted

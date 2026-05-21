@@ -39,6 +39,8 @@ window.feedPage = function () {
         workspace: 'bi-building',
         notification: 'bi-bell', comment: 'bi-chat-left-text',
         review: 'bi-star',
+        notebook_revision: 'bi-pin-angle-fill',
+        notebook_cell_output: 'bi-pin-angle-fill',
     };
     const KIND_LABELS = {
         dp: 'Data Product', table: 'Table', model: 'Model',
@@ -47,7 +49,18 @@ window.feedPage = function () {
         saved_query: 'Saved query', issue: 'Issue',
         workspace: 'Workspace',
         notification: 'Update', comment: 'Comment', review: 'Review',
+        notebook_revision: 'Pinned revision',
+        notebook_cell_output: 'Pinned cell',
     };
+    // Entity kinds whose ``entity_ref`` is an opaque UUID with no
+    // standalone display value — the summary already names the
+    // parent surface (e.g. ``phase95_walkthrough.py``), so the
+    // header line skips the link label and lets the kind badge
+    // carry the affordance.
+    const HIDE_ENTITY_REF_KINDS = new Set([
+        'notebook_revision',
+        'notebook_cell_output',
+    ]);
 
     return {
         loaded: false,
@@ -462,10 +475,16 @@ window.feedPage = function () {
             if (rk === 'badge_award') return 'earned a badge for';
             if (rk === 'issue') return 'on';
             if (rk === 'branch') return 'on';
+            if (rk === 'fact') return 'pinned';
             return '';
         },
 
         entityLinkLabel(r) {
+            if (r.entity_kind && HIDE_ENTITY_REF_KINDS.has(r.entity_kind)) {
+                // UUID-only refs (e.g. pin fact_uuid) — skip the link
+                // label; the kind badge + summary carry the affordance.
+                return '';
+            }
             if (r.entity_ref) return r.entity_ref;
             if (r.entity_kind) return this.kindLabel(r.entity_kind);
             return 'open';
