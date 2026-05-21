@@ -15,7 +15,13 @@
 
 {% block content %}
 <div class="pql-notebook-shell"
-     x-data='notebookEditor({ initialPath: {{ notebook_path | tojson }} })'
+     x-data='notebookEditor({
+       initialPath: {{ notebook_path | tojson }},
+       currentUser: {
+         id: {{ current_user_id | tojson }},
+         name: {{ current_user_name | tojson }}
+       }
+     })'
      x-init="init()"
      @beforeunload.window="destroy()"
      @pql:cell-tag-changed="dirty = true; _scheduleAutosave && _scheduleAutosave()">

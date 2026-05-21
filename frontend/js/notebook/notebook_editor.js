@@ -60,7 +60,7 @@ async function _computeContentHash(source) {
  return h.toString(16).padStart(16, '0');
 }
 
-export function notebookEditor({ initialPath = '' } = {}) {
+export function notebookEditor({ initialPath = '', currentUser = null } = {}) {
  const state = {
  path: initialPath,
  cells: [],
@@ -305,6 +305,6 @@ export function notebookEditor({ initialPath = '' } = {}) {
  installSequenceProposals(state);
  installWidgetsPanel(state);
  installPermissionsPanel(state);
- installCoeditLifecycle(state);
+ installCoeditLifecycle(state, { userInfo: currentUser });
  return state;
 }

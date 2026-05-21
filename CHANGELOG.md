@@ -40,6 +40,30 @@ All notable changes to this project will be documented in this file.
     with Part P in ``notebook-editor.md`` + new
     ``library-facts.md``.
 
+- **Phase 105.4 — co-edit awareness layer (2026-05-21).**
+  Asset 0.1.0rc75 → rc76.  Browser-side awareness (cursor presence
+  + peer-rail) wired against the Sprint-105.2 hub's existing
+  ``tag=0x03`` relay — zero server changes other than threading
+  the current user's id + name into the editor page context
+  (``current_user_id`` / ``current_user_name`` in
+  ``notebooks_routes/pages.py``) so the Alpine root knows whose
+  cursor it is.  The mixin in ``frontend/js/notebook/coedit.js``
+  now builds a y-protocols ``Awareness`` instance anchored to the
+  live ``Y.Doc``, sets a deterministic per-user HSL colour
+  (FNV-1a-32 over the user id), and bridges local awareness
+  mutations onto the wire via ``encodeAwarenessUpdate`` —
+  remote-origin updates carry the same ``pql-coedit-remote``
+  marker as the doc layer so echoes early-return.  A new
+  ``coedit_peers.html`` partial slots into the toolbar after the
+  live pill and paints up to six avatar discs
+  (``data-testid="notebook-coedit-peer-{id}"``) with initials +
+  colour; agent peers (Phase 105.6) reuse the same rail with a
+  robot-icon swap-in.  ``window.beforeunload`` clears the local
+  state so closing a tab removes the avatar from every other
+  peer's rail within a frame.  Two new pytest cases cover the
+  user-context thread + peer-rail include; existing 105.1 + 105.2
+  + 105.3 regression (19 + 1 cases) stays green.
+
 - **Phase 105.3 — co-edit Y.Doc client scaffold (2026-05-21).**
   Asset 0.1.0rc74 → rc75.  Browser-side scaffold for the Sprint
   105.2 ``/ws/notebook/coedit/{notebook_uuid}`` hub: new

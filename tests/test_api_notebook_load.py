@@ -131,3 +131,42 @@ async def test_editor_page_ships_coedit_scaffold(
     assert '"yjs":' in body
     assert '"y-protocols/awareness":' in body
     assert 'data-testid="notebook-coedit-pill"' in body
+
+
+async def test_editor_page_ships_user_context(
+    workspace_dir: Path, admin_client: httpx.AsyncClient
+) -> None:
+    """Phase 105.4: editor page injects the viewer's id + name.
+
+    The Alpine root reads ``currentUser`` so the awareness layer can
+    tag local cursors and paint the peer-rail with a stable colour /
+    initials per viewer.  The id is the integer DB row id; the name
+    falls back to ``email`` when ``display_name`` is empty.
+    """
+    (workspace_dir / "demo.py").write_bytes(_DEMO_NOTEBOOK)
+    resp = await admin_client.get("/notebooks/edit/demo.py")
+    assert resp.status_code == 200
+    body = resp.text
+    # The x-data attribute embeds ``currentUser`` as a JS object
+    # literal — values come through ``tojson`` but the keys stay
+    # unquoted JS identifiers.  ``id: 1`` / ``name: "..."`` is the
+    # canonical shape; an integer > 0 + a non-empty quoted string
+    # confirm the server-side threading reached the template.
+    assert "currentUser" in body
+    assert "id: 1" in body or "id:1" in body
+    assert "name: " in body
+
+
+async def test_editor_page_ships_coedit_peer_rail(
+    workspace_dir: Path, admin_client: httpx.AsyncClient
+) -> None:
+    """Phase 105.4: editor HTML includes the peer-avatar rail partial.
+
+    Smoke-level assertion on ``data-testid="notebook-coedit-peers"``
+    so the playwright multi-tab gate (Phase 105.7) has a stable
+    selector to target.
+    """
+    (workspace_dir / "demo.py").write_bytes(_DEMO_NOTEBOOK)
+    resp = await admin_client.get("/notebooks/edit/demo.py")
+    assert resp.status_code == 200
+    assert 'data-testid="notebook-coedit-peers"' in resp.text

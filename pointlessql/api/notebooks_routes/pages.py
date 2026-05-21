@@ -8,7 +8,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 from sqlalchemy import select
 
-from pointlessql.api.dependencies import current_workspace_id, require_user
+from pointlessql.api.dependencies import current_workspace_id, get_user, require_user
 from pointlessql.api.notebooks_routes._shared import (
     get_or_create_notebook_uuid,
     templates,
@@ -51,6 +51,7 @@ async def notebook_editor_page(request: Request, path: str) -> HTMLResponse:
     )
     relative = str(absolute.relative_to(notebooks_dir))
     notebook_uuid = get_or_create_notebook_uuid(request, relative)
+    user = get_user(request)
     return templates(request).TemplateResponse(
         request,
         "pages/notebook_editor.html",
@@ -60,6 +61,15 @@ async def notebook_editor_page(request: Request, path: str) -> HTMLResponse:
             "curated_cell_tags": list(CURATED_CELL_TAGS),
             "notebook_chat_enabled": settings.editor_chat.enabled,
             "notebook_chat_session_id": str(uuid.uuid4()),
+            # Phase 105.4 — current viewer info threaded into the
+            # editor's Alpine root so the awareness layer can paint
+            # peer avatars + tag local cursors with a stable id/name.
+            "current_user_id": int(user.get("id") or 0),
+            "current_user_name": (
+                str(user.get("display_name") or "").strip()
+                or str(user.get("email") or "").strip()
+                or "anonymous"
+            ),
             "active_page": "workspace",
             "active_catalog": None,
             "active_schema": None,
@@ -112,6 +122,7 @@ async def notebook_editor_by_uuid(
         notebooks_dir, file_path, must_exist=True
     )
     relative = str(absolute.relative_to(notebooks_dir))
+    user = get_user(request)
     return templates(request).TemplateResponse(
         request,
         "pages/notebook_editor.html",
@@ -121,6 +132,12 @@ async def notebook_editor_by_uuid(
             "curated_cell_tags": list(CURATED_CELL_TAGS),
             "notebook_chat_enabled": settings.editor_chat.enabled,
             "notebook_chat_session_id": str(uuid.uuid4()),
+            "current_user_id": int(user.get("id") or 0),
+            "current_user_name": (
+                str(user.get("display_name") or "").strip()
+                or str(user.get("email") or "").strip()
+                or "anonymous"
+            ),
             "active_page": "workspace",
             "active_catalog": None,
             "active_schema": None,

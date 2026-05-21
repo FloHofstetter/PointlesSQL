@@ -1,5 +1,6 @@
 /**
- * Phase 105.3 — co-edit Y.Doc client (passive scaffold).
+ * Phase 105.3 — co-edit Y.Doc client (passive scaffold) +
+ * Phase 105.4 — awareness-frame wiring.
  *
  * Owns the WebSocket lifecycle against
  * ``/ws/notebook/coedit/{notebook_uuid}`` (the Sprint 105.2 hub) and
@@ -17,12 +18,15 @@
  * save-path race against the cell_uuid reconciler (the Phase 105.5
  * barrier) is in place.  For 105.3 the client connects, keeps the
  * Doc in sync, and exposes the connection status so the toolbar
- * can paint a live / offline pill.  Awareness payloads are passed
- * through to ``onAwarenessUpdate`` so Phase 105.4 can layer cursor
- * semantics on top without touching the wire code.
+ * can paint a live / offline pill.  Awareness payloads are forwarded
+ * via ``onAwarenessUpdate`` and — when a y-protocols ``Awareness``
+ * instance is supplied — applied with the same ``pql-coedit-remote``
+ * origin marker the Y.Doc uses, so the mixin (``coedit.js``) can
+ * filter remote-driven state changes from local cursor moves.
  */
 
 import * as Y from 'yjs';
+import { applyAwarenessUpdate } from 'y-protocols/awareness';
 
 const TAG_SYNC_STEP1 = 0x00;
 const TAG_SYNC_STEP2 = 0x01;
@@ -50,12 +54,18 @@ export function createCoeditClient({
   notebookUuid,
   onStatusChange = () => {},
   onAwarenessUpdate = () => {},
+  awareness: initialAwareness = null,
 } = {}) {
   if (!notebookUuid) {
     throw new Error('createCoeditClient: notebookUuid is required');
   }
 
   const ydoc = new Y.Doc();
+  // Late-binding: callers create the y-protocols Awareness instance
+  // against ``ydoc`` after the client exists (the mixin path), so
+  // ``setAwareness`` lets them attach it without rebuilding the
+  // closure-captured handler.
+  let awareness = initialAwareness;
   let ws = null;
   let status = 'idle';
   let synced = false;
@@ -113,6 +123,20 @@ export function createCoeditClient({
         _sendFrame(TAG_SYNC_STEP1, Y.encodeStateVector(ydoc));
       }
     } else if (tag === TAG_AWARENESS_UPDATE) {
+      // y-protocols awareness state lands here as opaque bytes.  When
+      // a local Awareness instance is wired up, apply the diff with
+      // the same remote-origin marker the Y.Doc uses so the mixin's
+      // ``update`` listener can early-return for echoes.  The raw
+      // callback still fires for callers that prefer to deserialise
+      // the payload themselves (e.g. Phase 105.6 agent presence).
+      if (awareness !== null) {
+        try {
+          applyAwarenessUpdate(awareness, payload, ORIGIN_REMOTE);
+        } catch (err) {
+          // eslint-disable-next-line no-console
+          console.warn('[coedit] malformed awareness frame', err);
+        }
+      }
       try { onAwarenessUpdate(payload); } catch (_e) { /* swallow */ }
     }
     // Unknown tags are silently dropped to stay forward-compatible
@@ -184,6 +208,10 @@ export function createCoeditClient({
     sendAwarenessUpdate(payload) {
       _sendFrame(TAG_AWARENESS_UPDATE, payload);
     },
+    setAwareness(next) {
+      awareness = next || null;
+    },
+    get awareness() { return awareness; },
     close() {
       closedByUser = true;
       if (reconnectTimer) {

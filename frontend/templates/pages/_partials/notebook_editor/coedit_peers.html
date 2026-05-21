@@ -1,0 +1,30 @@
+{# Phase 105.4 — Co-edit peer avatar rail.
+
+   Renders up to 6 remote peers as colour-coded initials discs.  Self
+   is filtered out by ``installCoeditLifecycle``; the y-protocols
+   awareness layer keeps the list deduplicated by clientID.  Agents
+   (Phase 105.6) reuse the same rail with a robot icon swap-in. #}
+<span class="d-inline-flex align-items-center gap-1"
+      data-testid="notebook-coedit-peers"
+      x-show="coeditPeers && coeditPeers.length > 0"
+      x-cloak>
+ <template x-for="peer in coeditPeers.slice(0, 6)" :key="peer.clientId">
+  <span class="d-inline-flex align-items-center justify-content-center rounded-circle text-white small fw-semibold"
+        style="width: 1.5rem; height: 1.5rem; font-size: 0.65rem; line-height: 1;"
+        :style="`background-color: ${peer.color};`"
+        :data-testid="`notebook-coedit-peer-${peer.id}`"
+        :title="peer.agent ? `${peer.name} (agent)` : peer.name">
+   <template x-if="peer.agent">
+    <i class="bi bi-robot" aria-hidden="true"></i>
+   </template>
+   <template x-if="!peer.agent">
+    <span x-text="peer.initials"></span>
+   </template>
+  </span>
+ </template>
+ <span class="badge bg-secondary"
+       x-show="coeditPeers.length > 6"
+       x-cloak
+       x-text="`+${coeditPeers.length - 6}`"
+       :title="`${coeditPeers.length - 6} more peer(s)`"></span>
+</span>
