@@ -40,6 +40,20 @@ All notable changes to this project will be documented in this file.
     with Part P in ``notebook-editor.md`` + new
     ``library-facts.md``.
 
+- **Phase 105.7 — multi-tab co-edit Playwright playbook (2026-05-21).**
+  Asset 0.1.0rc79 → rc80.  Closes the e2e-replay gate for the
+  Phase-105 stack: a new ``docs/e2e-walkthroughs/notebook-coedit-multi-tab.md``
+  playbook drives two browser tabs against the same notebook
+  and verifies the full co-edit pipeline end-to-end.  Steps
+  cover the toolbar live pill, peer-avatar rail population, A-
+  to-B and B-to-A typing propagation under 2 s, save without
+  editor reset on the peer (105.5 barrier), agent-presence
+  REST broadcast (105.6 robot avatar) and tab-close peer
+  cleanup (105.4 ``beforeunload``).  Selector table maps every
+  Phase-105 ``data-testid`` to its source sub-phase so future
+  selector sweeps have a single index.  Code-only change is the
+  README index addition; no PointlesSQL runtime touched.
+
 - **Phase 105.6 — agent presence on co-edit (2026-05-21).**
   Asset 0.1.0rc78 → rc79.  Surfaces a backend agent as a
   pseudo-peer on the Phase-105.4 avatar rail.  New REST route

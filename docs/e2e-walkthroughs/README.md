@@ -77,6 +77,7 @@ Reload `auth.md` first; later ones reuse seeded users + catalog.
 | [`branches.md`](branches.md) | `/branches`, `/branches/{fqn}` (notebook + UI) | 16.5 |
 | [`notebook-overview.md`](notebook-overview.md) | `/notebooks/edit/{path}` cell editor + WS kernel | 66 |
 | [`notebook-jobs.md`](notebook-jobs.md) | Schedule + Run-Once + Variable Inspector + Jobs panel | 67 |
+| [`notebook-coedit-multi-tab.md`](notebook-coedit-multi-tab.md) | Two-tab real-time co-edit (CRDT + awareness + agent presence) | 105.7 |
 | [`social.md`](social.md) | DP Discussion+Reviews tabs · `/users` · `/agents` · `/topics` · `/feed` · `/notifications` · `/me/settings` | 76 |
 
 ### `Mode: hybrid` — notebook / CLI + browser (8)
