@@ -76,7 +76,10 @@ export function notebookDialogs() {
    this.pathDialog.open = true;
    void this._loadTemplatesOnce();
    this.$nextTick(() => {
-    const el = document.getElementById('pql-notebook-path-input');
+    // Phase 114.1 — scope-local $refs, so the same modal partial
+    // can mount in both the workspace-page factory and the
+    // workspace-sidebar factory without an ID collision.
+    const el = this.$refs ? this.$refs.pathInput : null;
     if (el) {
      el.focus();
      el.setSelectionRange(0, el.value.length - 3);
@@ -92,7 +95,7 @@ export function notebookDialogs() {
    this.pathDialog.submitting = false;
    this.pathDialog.open = true;
    this.$nextTick(() => {
-    const el = document.getElementById('pql-notebook-path-input');
+    const el = this.$refs ? this.$refs.pathInput : null;
     if (el) {
      el.focus();
      el.setSelectionRange(0, el.value.length - 3);

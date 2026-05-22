@@ -19,7 +19,9 @@
     <a href="/runs">Runs</a>.
 </p>
 
-<div x-data="notebookWorkspace()" x-init="load()">
+<div x-data="notebookWorkspace()"
+     x-init="load()"
+     @pql:workspace:tree-changed.window="reload()">
     <div class="card">
         <div class="card-header d-flex align-items-center gap-2 py-2">
             <span class="text-uppercase small fw-semibold text-muted">Notebooks</span>

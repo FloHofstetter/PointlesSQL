@@ -25,6 +25,7 @@
  */
 
 import { notebookDialogs } from './notebooks_workspace_dialogs.js';
+import { notebookModalApis } from '../components/notebook_modal_apis.js';
 
 const STORAGE_KEY = 'pql.notebooks';
 const OPEN_KEY = 'pql.notebooks.open';
@@ -61,6 +62,7 @@ function flatten(tree, open) {
 export function notebookWorkspace() {
  return {
   ...notebookDialogs(),
+  ...notebookModalApis(),
 
   // Phase 98.B — starter-template gallery state.  Kept on the outer
   // factory rather than the dialogs mixin so the field is visible
@@ -183,43 +185,10 @@ export function notebookWorkspace() {
 
   // Public entry points called from the template @click bindings.
   // They simply open the corresponding modal; the modal's submit
-  // handler then calls the matching ``_*Api`` method below.
+  // handler then calls the matching ``_*Api`` method spread in from
+  // ``notebookModalApis()``.
   createNotebook() { this.openCreate(); },
   renameNotebook(path) { this.openRename(path); },
   deleteNotebook(path) { this.openDeleteDialog(path); },
-
-  async _createNotebookApi(path) {
-   const res = await window.pqlApi.fetch('/api/notebooks/create', {
-    method: 'POST',
-    body: { path: path },
-   });
-   if (!res.ok) return;
-   const created = (res.data && res.data.path) || path;
-   try { sessionStorage.removeItem(STORAGE_KEY); } catch (e) {}
-   this.openEditor(created);
-  },
-
-  async _renameNotebookApi(fromPath, toPath) {
-   const res = await window.pqlApi.fetch('/api/notebooks/rename', {
-    method: 'POST',
-    body: { from_path: fromPath, to_path: toPath },
-   });
-   if (!res.ok) return;
-   try { sessionStorage.removeItem(STORAGE_KEY); } catch (e) {}
-   if (window.pqlToast) window.pqlToast.success('Renamed.');
-   await this.reload();
-  },
-
-  async _deleteNotebookApi(path) {
-   const qs = new URLSearchParams({ path: path, confirm: 'true' });
-   const res = await window.pqlApi.fetch(
-    '/api/notebooks/delete?' + qs.toString(),
-    { method: 'DELETE' },
-   );
-   if (!res.ok) return;
-   try { sessionStorage.removeItem(STORAGE_KEY); } catch (e) {}
-   if (window.pqlToast) window.pqlToast.success('Deleted.');
-   await this.reload();
-  },
  };
 }

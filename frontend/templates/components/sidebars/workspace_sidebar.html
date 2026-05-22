@@ -1,29 +1,65 @@
 {#
    Workspace context-panel.
 
-   Flat list of all ``.py`` / ``.ipynb`` notebooks the scheduler can
-   pick up.  Click navigates to ``/notebooks/workspace?path=<path>``
-   so the file browser opens to that file.  Driven by
-   ``workspaceSidebar()`` in
+   Phase 114.1 — nested folder tree (was a flat 30-item list).
+   Headers carry a "+ New" button + a refresh affordance; below the
+   header is a filename filter input; the body renders the tree
+   with click-to-expand chevrons.  Active highlight follows both
+   ``/notebooks/workspace?path=…`` and ``/notebooks/edit/{path}``.
+
+   Driven by ``workspaceSidebar()`` in
    ``frontend/js/components/sidebars/workspace_sidebar.js``.
 
-   Tree is admin-only; the rail item is already ``is_admin``-gated.
+   The sidebar mounts its own copy of ``notebook_modals.html``
+   inside this scope so "+ New" works on every page that exposes
+   the workspace context panel (admin-only).  Modal IDs are
+   scope-local via Alpine ``$refs`` to avoid collision with the
+   workspace-page factory which also mounts these modals.
 #}
 {% from "_macros/help_icon.html" import info %}
-<div class="pql-sidebar border-end"
+<div class="pql-sidebar border-end pql-workspace-tree"
      x-data="workspaceSidebar()"
-     x-init="load()"
-     @htmx:after-swap.window="activePath = (window.location.pathname === '/notebooks/workspace' ? new URLSearchParams(window.location.search).get('path') || '' : '')">
-    <div class="p-3 d-flex align-items-center justify-content-between border-bottom">
-        <span class="text-uppercase small fw-semibold text-muted">
+     x-init="load(); initWorkspaceSidebar()"
+     @pql:workspace:tree-changed.window="onTreeChanged()"
+     @htmx:after-swap.window="activePath = (function() {
+       const p = window.location.pathname;
+       if (p === '/notebooks/workspace') {
+         return new URLSearchParams(window.location.search).get('path') || '';
+       }
+       if (p.startsWith('/notebooks/edit/')) {
+         try { return decodeURI(p.slice('/notebooks/edit/'.length)); }
+         catch (e) { return p.slice('/notebooks/edit/'.length); }
+       }
+       return '';
+     })()">
+    <div class="p-2 d-flex align-items-center justify-content-between border-bottom gap-2">
+        <span class="text-uppercase small fw-semibold text-muted text-truncate">
             <a href="/notebooks/workspace" class="text-muted text-decoration-none">Workspace</a>
             {{ info('workspace.context-panel') }}
         </span>
-        <button class="btn btn-sm btn-link p-0 text-muted"
-                @click="reload()"
-                title="Refresh">
-            <i class="bi bi-arrow-clockwise" :class="loading ? 'pql-spin' : ''"></i>
-        </button>
+        <div class="d-flex align-items-center gap-1 flex-shrink-0">
+            <button class="btn btn-sm btn-link p-0 text-muted"
+                    @click="createNotebook()"
+                    title="New notebook…">
+                <i class="bi bi-plus-square"></i>
+            </button>
+            <button class="btn btn-sm btn-link p-0 text-muted"
+                    @click="reload()"
+                    title="Refresh">
+                <i class="bi bi-arrow-clockwise" :class="loading ? 'pql-spin' : ''"></i>
+            </button>
+        </div>
+    </div>
+
+    <div class="pql-workspace-tree__search px-2 py-2 border-bottom">
+        <div class="position-relative">
+            <i class="bi bi-search position-absolute pql-workspace-tree__search-icon"></i>
+            <input type="search"
+                   class="form-control form-control-sm pql-workspace-tree__search-input"
+                   placeholder="Filter notebooks…"
+                   x-model.debounce.80ms="searchQuery"
+                   @keydown.escape.prevent="clearSearch()">
+        </div>
     </div>
 
     <div class="pql-sidebar-body">
@@ -48,30 +84,51 @@
             </div>
         </template>
 
+        <template x-if="items.length > 0 && filteredRows().length === 0 && searchQuery.trim()">
+            <div class="text-muted small p-3">
+                No notebooks match <code x-text="searchQuery.trim()"></code>.
+            </div>
+        </template>
+
         <template x-if="items.length > 0">
             <ul class="list-unstyled mb-0">
-                <template x-for="n in items" :key="n.path">
+                <template x-for="row in filteredRows()" :key="row.kind + ':' + row.path">
                     <li>
-                        <a :href="'/notebooks/workspace?path=' + encodeURIComponent(n.path)"
-                           class="pql-context-row"
-                           :class="{ active: isActive(n.path) }"
-                           :title="n.path">
-                            <i class="bi bi-file-earmark-code flex-shrink-0 text-muted"></i>
-                            <span class="pql-context-row__name" x-text="leafName(n.path)"></span>
-                            <span class="badge"
-                                  :class="formatBadge(n.format)"
-                                  x-text="n.format"></span>
+                        <a :href="hrefFor(row)"
+                           class="pql-tree-item pql-tree-item--compact"
+                           :class="{ active: row.kind === 'notebook' && isActive(row.path) }"
+                           :style="'padding-left:' + (0.5 + row.depth * 0.75) + 'rem;'"
+                           :title="row.path"
+                           @click="onRowClick($event, row)">
+                            <template x-if="row.kind === 'dir'">
+                                <i class="bi pql-tree-chevron-icon"
+                                   :class="isOpen(row.path) ? 'bi-chevron-down' : 'bi-chevron-right'"></i>
+                            </template>
+                            <template x-if="row.kind !== 'dir'">
+                                <span class="pql-tree-chevron-icon"></span>
+                            </template>
+                            <i class="bi pql-tree-row-icon" :class="iconClassFor(row)"></i>
+                            <span class="pql-tree-row-name" x-text="row.name"></span>
+                            <template x-if="row.kind === 'notebook' && row.parameters_tagged">
+                                <span class="badge bg-success-subtle text-success-emphasis pql-tree-row-badge"
+                                      title="Notebook declares Papermill parameters">
+                                    PARAMS
+                                </span>
+                            </template>
+                            <template x-if="row.kind === 'notebook' && row.format">
+                                <span class="badge pql-tree-row-badge"
+                                      :class="formatBadge(row.format)"
+                                      x-text="row.format"></span>
+                            </template>
                         </a>
                     </li>
                 </template>
             </ul>
         </template>
-
-        <template x-if="items.length >= 30">
-            <div class="pql-context-panel__hint mt-2">
-                Showing 30 most-recent files —
-                <a href="/notebooks/workspace" class="text-decoration-none">browse all →</a>
-            </div>
-        </template>
     </div>
+
+    {# Sidebar-local modals.  Mounted inside this scope so
+       ``$refs.pathInput`` resolves without colliding with the
+       workspace page's copy. #}
+    {% include "pages/_partials/notebooks_workspace/notebook_modals.html" %}
 </div>
