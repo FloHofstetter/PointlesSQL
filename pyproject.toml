@@ -115,6 +115,12 @@ dev = [
     "detect-secrets>=1.5",
     "bandit>=1.9.4",
     "mlflow >= 3.11, < 3.12",
+    # Phase 108 — headless browser tests for the multi-tab co-edit CI
+    # gate.  The Python ``playwright`` package downloads its own
+    # bundled Chromium via ``playwright install chromium`` — system
+    # browsers are not used.  Only the new ``e2e/`` tests import it;
+    # the rest of the suite never touches Playwright.
+    "playwright>=1.50",
 ]
 docs = [
     "mkdocs>=1.6",
@@ -152,6 +158,10 @@ pydocstyle.convention = "google"
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["D"]
+# Phase 108 e2e tests live at ``e2e/`` (sibling of ``tests/``) and
+# follow the same docstring exemption — test packages don't need
+# Google-style module docstrings since they don't ship as a library.
+"e2e/**" = ["D"]
 # Phase 31.1/31.3 — ``tests/conftest.py`` sets env vars and rebinds
 # the bcrypt hasher *before* importing the application, which trips
 # the "imports at top of file" / "import block sorting" rules even
@@ -204,11 +214,19 @@ allow-init-docstring = false
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+# ``testpaths = ["tests"]`` keeps the default ``pytest`` invocation
+# focused on the unit/integration suite under ``tests/``.  The Phase
+# 108 e2e tree lives at ``e2e/`` (sibling, not child) so the
+# ``tests/conftest.py`` autouse-fixture cascade — which short-circuits
+# the FastAPI lifespan and rebinds ``app.state`` per test — does not
+# clobber the live uvicorn server the e2e tests need.  CI runs
+# ``pytest e2e/ -m e2e`` explicitly in its own job.
 testpaths = ["tests"]
-addopts = "-m 'not integration'"
+addopts = "-m 'not integration and not e2e'"
 markers = [
     "integration: requires a live Unity Catalog server",
     "postgres: requires a live PostgreSQL server (set TEST_DATABASE_URL)",
+    "e2e: requires a headless browser via Playwright; lives under e2e/",
 ]
 
 [tool.coverage.run]
