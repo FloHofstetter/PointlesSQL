@@ -65,23 +65,70 @@
     Save
     <kbd class="ms-1">⌘S</kbd>
    </button>
-   {# Phase 113.6 — Run all.  Sequentially executes every non-markdown
-      cell from top to bottom; halts on first error.  While running,
-      the button shows a cancel affordance that flips the runAll
-      guard to false (the loop then exits between cells). #}
-   <button type="button"
-           class="btn btn-sm btn-outline-success"
-           @click="runAllInProgress ? cancelRunAll() : runAllCells()"
-           :disabled="kernelStatus !== 'ready' && !runAllInProgress"
-           data-testid="notebook-run-all"
-           :title="runAllInProgress ? 'Stop running all cells' : 'Run all cells from top to bottom (halts on first error)'">
-    <template x-if="!runAllInProgress">
-     <span><i class="bi bi-fast-forward-fill" aria-hidden="true"></i> Run all</span>
-    </template>
-    <template x-if="runAllInProgress">
-     <span><i class="bi bi-x-circle" aria-hidden="true"></i> Stop run</span>
-    </template>
-   </button>
+   {# Phase 113.6 — Run all.  Bootstrap split-button: main action runs
+      the entire notebook top→bottom; the caret toggles a dropdown
+      with above/below variants (relative to the currently focused
+      cell) plus a Stop-run entry.  While running, the main button
+      morphs into a one-click cancel.  The dropdown items are
+      disabled when the kernel is not ready, when a run is in flight,
+      or when their "focused cell" precondition is not met. #}
+   <div class="btn-group" role="group" aria-label="Run notebook cells">
+    <button type="button"
+            class="btn btn-sm btn-outline-success"
+            @click="runAllInProgress ? cancelRunAll() : runAllCells()"
+            :disabled="kernelStatus !== 'ready' && !runAllInProgress"
+            data-testid="notebook-run-all"
+            :title="runAllInProgress ? 'Stop running all cells' : 'Run all cells from top to bottom (halts on first error)'">
+     <template x-if="!runAllInProgress">
+      <span><i class="bi bi-fast-forward-fill" aria-hidden="true"></i> Run all</span>
+     </template>
+     <template x-if="runAllInProgress">
+      <span><i class="bi bi-x-circle" aria-hidden="true"></i> Stop run</span>
+     </template>
+    </button>
+    <button type="button"
+            class="btn btn-sm btn-outline-success dropdown-toggle dropdown-toggle-split"
+            data-bs-toggle="dropdown"
+            aria-expanded="false"
+            data-testid="notebook-run-all-caret"
+            title="Run variants">
+     <span class="visually-hidden">Toggle Run dropdown</span>
+    </button>
+    <ul class="dropdown-menu dropdown-menu-end">
+     <li>
+      <button class="dropdown-item" type="button"
+              @click="runAllCells()"
+              :disabled="kernelStatus !== 'ready' || runAllInProgress">
+       <i class="bi bi-fast-forward-fill me-2"></i>Run all cells
+      </button>
+     </li>
+     <li><hr class="dropdown-divider"></li>
+     <li>
+      <button class="dropdown-item" type="button"
+              @click="runAllAboveFocused()"
+              :disabled="kernelStatus !== 'ready' || runAllInProgress || focusedCellIndex() <= 0"
+              :title="focusedCellIndex() < 0 ? 'Click into a cell first' : ''">
+       <i class="bi bi-arrow-bar-up me-2"></i>Run all above selected cell
+      </button>
+     </li>
+     <li>
+      <button class="dropdown-item" type="button"
+              @click="runAllBelowFocused()"
+              :disabled="kernelStatus !== 'ready' || runAllInProgress || focusedCellIndex() < 0"
+              :title="focusedCellIndex() < 0 ? 'Click into a cell first' : ''">
+       <i class="bi bi-arrow-bar-down me-2"></i>Run selected cell + all below
+      </button>
+     </li>
+     <li><hr class="dropdown-divider"></li>
+     <li>
+      <button class="dropdown-item text-danger" type="button"
+              @click="cancelRunAll()"
+              :disabled="!runAllInProgress">
+       <i class="bi bi-x-circle me-2"></i>Stop run
+      </button>
+     </li>
+    </ul>
+   </div>
    <button type="button"
            class="btn btn-sm btn-outline-secondary"
            @click="openRunModal('schedule')"

@@ -380,6 +380,7 @@
    <template x-if="!(cell.cell_type === 'markdown' && cell.view_mode)">
     <div class="pql-notebook-cell__editor"
          :id="`pql-cell-host-${cell.id}`"
+         @focusin="_focusedCellId = cell.id"
          @keydown.shift.enter.prevent="cell.cell_type === 'markdown' ? exitMarkdownEdit(cell) : runCellAndAdvance(cell)"
          @keydown.ctrl.enter.prevent="runCell(cell)"
          @keydown.meta.enter.prevent="runCell(cell)"

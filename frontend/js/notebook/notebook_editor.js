@@ -65,6 +65,10 @@ export function notebookEditor({ initialPath = '', currentUser = null } = {}) {
  path: initialPath,
  currentUser: currentUser || {},
  cells: [],
+ // Phase 113.6 — id of the cell whose editor currently has focus.
+ // Drives the toolbar's Run-all split-button "above/below selected"
+ // items.  Updated by @focusin on each cell's editor host.
+ _focusedCellId: null,
  outputs: [],
  dirty: false,
  loading: true,

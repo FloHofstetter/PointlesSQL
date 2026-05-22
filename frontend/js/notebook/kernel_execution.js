@@ -290,6 +290,30 @@ export function installKernelExecution(state, deps) {
     await this.runRange(idx, this.cells.length);
   };
 
+  // Toolbar split-button variants — operate on the currently focused
+  // cell (``_focusedCellId``, set by ``@focusin`` on each editor host).
+  state.runAllAboveFocused = async function () {
+    const cell = this.focusedCell();
+    if (!cell) return;
+    await this.runAllAbove(cell);
+  };
+
+  state.runAllBelowFocused = async function () {
+    const cell = this.focusedCell();
+    if (!cell) return;
+    await this.runAllBelow(cell);
+  };
+
+  state.focusedCell = function () {
+    if (!this._focusedCellId) return null;
+    return this.cells.find((c) => c.id === this._focusedCellId) || null;
+  };
+
+  state.focusedCellIndex = function () {
+    if (!this._focusedCellId) return -1;
+    return this.cells.findIndex((c) => c.id === this._focusedCellId);
+  };
+
   state.cancelRunAll = function () {
     this.runAllInProgress = false;
   };
