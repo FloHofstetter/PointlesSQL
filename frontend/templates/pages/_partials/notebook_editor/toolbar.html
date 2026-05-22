@@ -67,14 +67,14 @@
    </button>
    <button type="button"
            class="btn btn-sm btn-outline-secondary"
-           @click="openScheduleModal()"
+           @click="openRunModal('schedule')"
            title="Schedule this notebook on cron">
     <i class="bi bi-clock" aria-hidden="true"></i>
     Schedule
    </button>
    <button type="button"
            class="btn btn-sm btn-outline-secondary"
-           @click="openRunOnceModal()"
+           @click="openRunModal('run-now')"
            title="Run this notebook as a one-shot job">
     <i class="bi bi-lightning" aria-hidden="true"></i>
     Run as job

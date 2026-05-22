@@ -28,46 +28,63 @@ export function installJobsOrchestration(state) {
     return suffix ? `${slug}:${suffix}:${stamp}` : slug;
   };
 
-  // ---- Phase 67.2: Schedule modal --------------------------------------
+  // ---- Sprint 113.3: unified Run-notebook modal -----------------------
+  // Collapses the former Phase 67.2 Schedule modal + Phase 67.3 Run-Once
+  // modal into one tabbed surface.  The Schedule + Run-now flows share
+  // their parameter form, their error/submit state, and their close
+  // mechanism; only the tab-specific REST call diverges.
 
-  state.openScheduleModal = function () {
-    this.scheduleError = '';
+  state.openRunModal = function (tab) {
+    const nextTab = tab === 'schedule' ? 'schedule' : 'run-now';
+    // Per `feedback_alpine_nested_object_replace.md`, mutate the
+    // existing object's fields rather than replacing the reference —
+    // an Alpine binding on `:disabled` / `x-show` can otherwise drop.
+    this.runModal.error = '';
+    this.runModal.status = '';
+    this.runModal.parameters = {};
+    if (!this.runModal.name) {
+      this.runModal.name = this._buildDefaultJobName('schedule');
+    }
+    if (!this.runModal.cronExpr) {
+      this.runModal.cronExpr = '0 5 * * *';
+    }
     this.loadParameters();
-    this.scheduleForm = {
-      name: this._buildDefaultJobName('schedule'),
-      cronExpr: '0 5 * * *',
-      parameters: {},
-    };
-    this.scheduleModalOpen = true;
+    this.runModal.tab = nextTab;
+    this.runModal.open = true;
   };
 
-  state.closeScheduleModal = function () {
-    this.scheduleModalOpen = false;
-    this.scheduleSubmitting = false;
+  state.closeRunModal = function () {
+    this.runModal.open = false;
+    this.runModal.submitting = false;
+    this.runModal.status = '';
   };
 
-  state.submitSchedule = async function () {
-    if (this.scheduleSubmitting) return;
-    this.scheduleError = '';
-    const name = (this.scheduleForm.name || '').trim();
-    const cronExpr = (this.scheduleForm.cronExpr || '').trim();
+  state.submitRunModal = async function () {
+    if (this.runModal.submitting) return;
+    if (this.runModal.tab === 'schedule') {
+      await this._submitRunModalSchedule();
+    } else {
+      await this._submitRunModalRunNow();
+    }
+  };
+
+  state._submitRunModalSchedule = async function () {
+    this.runModal.error = '';
+    const name = (this.runModal.name || '').trim();
+    const cronExpr = (this.runModal.cronExpr || '').trim();
     if (!name) {
-      this.scheduleError = 'Job name is required.';
+      this.runModal.error = 'Job name is required.';
       return;
     }
     if (!cronExpr) {
-      this.scheduleError = 'Cron expression is required.';
+      this.runModal.error = 'Cron expression is required.';
       return;
     }
     if (cronExpr.split(/\s+/).filter(Boolean).length !== 5) {
-      this.scheduleError = 'Cron expression must have exactly 5 fields.';
+      this.runModal.error = 'Cron expression must have exactly 5 fields.';
       return;
     }
-    const overrides = {};
-    for (const p of this.parameters || []) {
-      const raw = this.scheduleForm.parameters[p.name];
-      if (raw !== undefined && raw !== '') overrides[p.name] = raw;
-    }
+    const overrides = this._collectRunModalParams();
     const body = {
       name,
       cron_expr: cronExpr,
@@ -77,7 +94,7 @@ export function installJobsOrchestration(state) {
         parameters: overrides,
       },
     };
-    this.scheduleSubmitting = true;
+    this.runModal.submitting = true;
     try {
       const res = await window.pqlApi.fetch('/api/jobs', {
         method: 'POST',
@@ -85,47 +102,26 @@ export function installJobsOrchestration(state) {
         headers: { 'Content-Type': 'application/json' },
       });
       if (res.ok) {
-        this.closeScheduleModal();
+        this.closeRunModal();
         if (window.pqlToast) {
           window.pqlToast.success(`Scheduled "${name}".`);
         }
         if (this.loadNotebookJobs) this.loadNotebookJobs();
       } else {
         const detail = (res.data && (res.data.detail || res.data.error)) || '';
-        this.scheduleError = detail || `Failed (HTTP ${res.status}).`;
+        this.runModal.error = detail || `Failed (HTTP ${res.status}).`;
       }
     } catch (err) {
-      this.scheduleError = (err && err.message) || String(err);
+      this.runModal.error = (err && err.message) || String(err);
     } finally {
-      this.scheduleSubmitting = false;
+      this.runModal.submitting = false;
     }
   };
 
-  // ---- Phase 67.3: Run-Once modal --------------------------------------
-
-  state.openRunOnceModal = function () {
-    this.runOnceError = '';
-    this.runOnceStatus = '';
-    this.loadParameters();
-    this.runOnceForm = { parameters: {} };
-    this.runOnceModalOpen = true;
-  };
-
-  state.closeRunOnceModal = function () {
-    this.runOnceModalOpen = false;
-    this.runOnceSubmitting = false;
-    this.runOnceStatus = '';
-  };
-
-  state.submitRunOnce = async function () {
-    if (this.runOnceSubmitting) return;
-    this.runOnceError = '';
-    const overrides = {};
-    for (const p of this.parameters || []) {
-      const raw = this.runOnceForm.parameters[p.name];
-      if (raw !== undefined && raw !== '') overrides[p.name] = raw;
-    }
-    this.runOnceSubmitting = true;
+  state._submitRunModalRunNow = async function () {
+    this.runModal.error = '';
+    const overrides = this._collectRunModalParams();
+    this.runModal.submitting = true;
     try {
       const res = await window.pqlApi.fetch('/api/notebooks/run-once', {
         method: 'POST',
@@ -134,18 +130,27 @@ export function installJobsOrchestration(state) {
       });
       if (!res.ok) {
         const detail = (res.data && (res.data.detail || res.data.error)) || '';
-        this.runOnceError = detail || `Failed (HTTP ${res.status}).`;
+        this.runModal.error = detail || `Failed (HTTP ${res.status}).`;
         return;
       }
       const { job_id, job_run_id } = res.data || {};
-      this.runOnceStatus = `Run #${job_run_id} started — polling…`;
+      this.runModal.status = `Run #${job_run_id} started — polling…`;
       await this._pollJobRun(job_id, job_run_id);
       if (this.loadNotebookJobs) this.loadNotebookJobs();
     } catch (err) {
-      this.runOnceError = (err && err.message) || String(err);
+      this.runModal.error = (err && err.message) || String(err);
     } finally {
-      this.runOnceSubmitting = false;
+      this.runModal.submitting = false;
     }
+  };
+
+  state._collectRunModalParams = function () {
+    const overrides = {};
+    for (const p of this.parameters || []) {
+      const raw = this.runModal.parameters[p.name];
+      if (raw !== undefined && raw !== '') overrides[p.name] = raw;
+    }
+    return overrides;
   };
 
   // ---- Phase 67.4: Notebook-Jobs panel ---------------------------------
@@ -179,6 +184,10 @@ export function installJobsOrchestration(state) {
     const cap = 5000;
     for (let i = 0; i < 240; i++) {
       await new Promise((r) => setTimeout(r, delay));
+      // Sprint 113.3 — short-circuit if the user closed the modal
+      // mid-poll.  Without this the in-flight loop would keep
+      // re-setting runModal.status after teardown.
+      if (!this.runModal || !this.runModal.open) return;
       delay = Math.min(delay * 1.4, cap);
       try {
         const res = await window.pqlApi.fetch(
@@ -193,7 +202,7 @@ export function installJobsOrchestration(state) {
         if (listing.ok && Array.isArray(listing.data)) {
           const run = listing.data.find((r) => r.id === runId);
           if (run && run.status !== 'running') {
-            this.runOnceStatus =
+            this.runModal.status =
               `Run #${runId} ${run.status}` +
               (run.error ? ` — ${run.error}` : '.');
             return;
@@ -203,6 +212,6 @@ export function installJobsOrchestration(state) {
         /* swallow + retry */
       }
     }
-    this.runOnceStatus = `Run #${runId} still running after timeout — check /jobs.`;
+    this.runModal.status = `Run #${runId} still running after timeout — check /jobs.`;
   };
 }

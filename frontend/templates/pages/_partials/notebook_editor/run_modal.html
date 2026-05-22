@@ -1,0 +1,133 @@
+ {# Sprint 113.3 — unified Run-notebook modal.
+
+    Collapses the former Phase 67.2 Schedule modal + Phase 67.3
+    Run-Once modal into one tabbed surface.  The Parameter-override
+    form is shared between both tabs (it is identical between the
+    two surfaces today); the tab-specific blocks carry name + cron
+    on the Schedule tab and the in-flight run status on the Run-now
+    tab.  Bootstrap-modal toggle uses :class instead of x-show per
+    `feedback_bootstrap_modal_x_show.md`. #}
+ <div class="modal fade pql-notebook-modal"
+      :class="{ 'd-block': runModal.open }"
+      x-show="runModal.open"
+      x-cloak
+      tabindex="-1"
+      role="dialog"
+      aria-labelledby="runNotebookModalLabel"
+      @keydown.escape.window="closeRunModal()">
+  <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
+   <div class="modal-content">
+    <div class="modal-header">
+     <h5 class="modal-title" id="runNotebookModalLabel">
+      <i class="bi bi-play-circle me-1"></i>
+      Run notebook
+     </h5>
+     <button type="button" class="btn-close" @click="closeRunModal()"
+             aria-label="Close"></button>
+    </div>
+    <div class="modal-body">
+     <ul class="nav nav-pills nav-fill mb-3" role="tablist">
+      <li class="nav-item" role="presentation">
+       <button type="button"
+               class="nav-link"
+               :class="{ active: runModal.tab === 'run-now' }"
+               @click="runModal.tab = 'run-now'"
+               data-testid="run-modal-tab-run-now"
+               role="tab">
+        <i class="bi bi-lightning me-1"></i>Run now
+       </button>
+      </li>
+      <li class="nav-item" role="presentation">
+       <button type="button"
+               class="nav-link"
+               :class="{ active: runModal.tab === 'schedule' }"
+               @click="runModal.tab = 'schedule'"
+               data-testid="run-modal-tab-schedule"
+               role="tab">
+        <i class="bi bi-clock me-1"></i>Schedule
+       </button>
+      </li>
+     </ul>
+
+     <div class="alert alert-danger small"
+          x-show="runModal.error"
+          x-cloak
+          x-text="runModal.error"></div>
+
+     {# Schedule-tab-only: job name + cron expression. #}
+     <div x-show="runModal.tab === 'schedule'" x-cloak>
+      <div class="mb-3">
+       <label class="form-label" for="run-modal-name-input">Job name</label>
+       <input id="run-modal-name-input" type="text" class="form-control"
+              x-model="runModal.name"
+              placeholder="notebook:demo:flo">
+      </div>
+      <div class="mb-3">
+       <label class="form-label" for="run-modal-cron-input">Cron expression</label>
+       <input id="run-modal-cron-input" type="text"
+              class="form-control font-monospace"
+              x-model="runModal.cronExpr"
+              placeholder="0 5 * * *">
+       <small class="form-text text-muted"
+              x-text="describeCron(runModal.cronExpr)"></small>
+      </div>
+     </div>
+
+     {# Shared: parameter overrides form. #}
+     <div class="mb-2" x-show="parameters && parameters.length > 0" x-cloak>
+      <label class="form-label">Parameter overrides</label>
+      <template x-for="p in parameters" :key="p.name">
+       <div class="row align-items-center mb-2">
+        <div class="col-sm-4">
+         <code x-text="p.name"></code>
+         <small class="text-muted ms-1"
+                x-text="p.inferred_type || 'str'"></small>
+        </div>
+        <div class="col-sm-8">
+         <input type="text" class="form-control form-control-sm"
+                :placeholder="`default: ${p.default}`"
+                x-model="runModal.parameters[p.name]">
+        </div>
+       </div>
+      </template>
+     </div>
+     <div class="form-text"
+          x-show="!parameters || parameters.length === 0">
+      <span x-show="runModal.tab === 'schedule'">
+       This notebook declares no <code>parameters</code>-tagged cell.
+       Add one with <code>tags=["parameters"]</code> to expose
+       overridable inputs.
+      </span>
+      <span x-show="runModal.tab === 'run-now'">
+       This notebook declares no parameters. The run uses the notebook
+       defaults as written on disk.
+      </span>
+     </div>
+
+     {# Run-now-tab-only: in-flight status badge. #}
+     <div class="alert alert-info small mt-3"
+          x-show="runModal.tab === 'run-now' && runModal.status"
+          x-cloak
+          x-text="runModal.status"></div>
+    </div>
+    <div class="modal-footer">
+     <button type="button" class="btn btn-secondary"
+             @click="closeRunModal()">Cancel</button>
+     <button type="button" class="btn btn-primary"
+             :disabled="runModal.submitting"
+             @click="submitRunModal()"
+             data-testid="run-modal-submit">
+      <span x-show="runModal.submitting"
+            class="spinner-border spinner-border-sm me-1"
+            x-cloak></span>
+      <span x-show="runModal.tab === 'schedule'">Save schedule</span>
+      <span x-show="runModal.tab === 'run-now'">Run now</span>
+     </button>
+    </div>
+   </div>
+  </div>
+ </div>
+ <div class="modal-backdrop fade show"
+      x-show="runModal.open"
+      x-cloak
+      @click="closeRunModal()"></div>

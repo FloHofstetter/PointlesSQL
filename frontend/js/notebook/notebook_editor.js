@@ -80,17 +80,21 @@ export function notebookEditor({ initialPath = '', currentUser = null } = {}) {
  // this array to render typed override forms.
  parameters: [],
  _parametersLoaded: false,
- // Phase 67.2 Schedule modal state.
- scheduleModalOpen: false,
- scheduleSubmitting: false,
- scheduleError: '',
- scheduleForm: { name: '', cronExpr: '0 5 * * *', parameters: {} },
- // Phase 67.3 Run-Once modal state.
- runOnceModalOpen: false,
- runOnceSubmitting: false,
- runOnceError: '',
- runOnceStatus: '',
- runOnceForm: { parameters: {} },
+ // Sprint 113.3 — unified Run-notebook modal state.
+ // Collapses the former Phase 67.2 Schedule modal + Phase 67.3 Run-Once
+ // modal into one tabbed surface.  Submitting + error + parameters are
+ // shared between the two tabs (run-now / schedule); name + cronExpr
+ // only apply on the schedule tab, status only on the run-now tab.
+ runModal: {
+  open: false,
+  tab: 'run-now',
+  submitting: false,
+  error: '',
+  parameters: {},
+  name: '',
+  cronExpr: '0 5 * * *',
+  status: '',
+ },
  // Phase 67.4 Notebook-Jobs panel state.
  jobsPanelOpen: false,
  jobsPanel: { scheduled_jobs: [], recent_runs: [] },
