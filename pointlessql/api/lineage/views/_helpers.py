@@ -1,23 +1,11 @@
-"""Per-row lineage trace routes.
+# pyright: reportUnusedFunction=false, reportPrivateUsage=false
+"""Shared helpers for the row-trace and column-trace route surfaces.
 
- fills ``lineage_row_edges`` from every PQL merge / write
-that carried ``_lineage_row_id``.  This module exposes:
-
-* ``GET /api/lineage/row-trace?table=&row_id=`` — JSON walkback to
-  the bronze root, with the originating ``_source_file`` stamped on
-  the deepest step when the bronze table can be opened.
-* ``GET /tables/{full_name}/rows/{row_id}/trace`` — HTML page that
-  renders the same walkback as a Bootstrap list-group for human
-  reviewers.
-
-Both endpoints require the same SELECT privilege on the *input*
-table that the table-detail page does — the trace doesn't reveal
-data values, but it does reveal the existence of a row in a
-specific bronze file.
-
-Operation-level details (`op_name`, principal) are joined off the
-referenced ``agent_run_operations`` row so each step in the trace
-also names the run + primitive that produced it.
+The row-trace and column-trace endpoints each go through the same
+auth gate, op-metadata join, value-change attachment, CDF-event
+attachment, and PII-masking pass.  Pulling all of that into one
+``_helpers`` module keeps the route bodies short and the test surface
+narrow (single import path for each helper).
 """
 
 from __future__ import annotations
@@ -25,43 +13,31 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from fastapi import APIRouter, Query, Request
-from fastapi.responses import HTMLResponse
+from fastapi import Request
 from sqlalchemy import select
 
 from pointlessql.api.dependencies import (
-    current_workspace_id,
     effective_principal,
-    get_templates,
     get_uc_client,
     get_user,
 )
-from pointlessql.api.error_responses import STANDARD_ERROR_RESPONSES
 from pointlessql.exceptions import (
     CatalogNotFoundError,
     CatalogUnavailableError,
-    ValidationError,
 )
 from pointlessql.models import AgentRunOperation
 from pointlessql.services.authorization import SELECT, check_privilege
 from pointlessql.services.cdf_tail import fetch_events_for_row as fetch_cdf_events_for_row
 from pointlessql.services.lineage_edges import (
-    ColumnPredecessorRef,
-    ColumnTraceStep,
     LineageStep,
     PredecessorRef,
     fetch_value_changes_for_row,
     lookup_bronze_source_file,
-    walk_back,
-    walk_back_columns,
 )
 from pointlessql.services.pii import _mask as pii_mask
 from pointlessql.services.pii import _resolver as pii_resolver
-from pointlessql.types import TableFqn
 
 logger = logging.getLogger(__name__)
-
-router = APIRouter(tags=["lineage"])
 
 _MAX_HOPS = 20
 
@@ -358,7 +334,7 @@ async def _enrich_with_source_file(request: Request, steps: list[LineageStep]) -
     client = get_uc_client(request)
     try:
         info = await client.get_table(parts[0], parts[1], parts[2])
-    except CatalogNotFoundError, CatalogUnavailableError:
+    except (CatalogNotFoundError, CatalogUnavailableError):
         return steps
     except Exception:  # noqa: BLE001 — best-effort enrichment
         logger.debug(
@@ -437,348 +413,3 @@ def _load_op_metadata(op_ids: set[int]) -> dict[int, dict[str, Any]]:
         for row in session.execute(stmt).all():
             result[int(row[0])] = {"op_name": row[1], "agent_run_id": row[2]}
         return result
-
-
-@router.get("/api/lineage/row-trace", responses=STANDARD_ERROR_RESPONSES)
-async def api_row_trace(
-    request: Request,
-    table: str = Query(..., description="Three-part UC name"),
-    row_id: str = Query(..., description="_lineage_row_id of the row to trace"),
-) -> dict[str, Any]:
-    """Return the lineage walkback for one row as JSON.
-
-    Args:
-        request: FastAPI request (carries the UC client).
-        table: Three-part UC name of the row's table.
-        row_id: ``_lineage_row_id`` value to trace.
-
-    Returns:
-        ``{"table": str, "row_id": str, "steps": [...]}`` where
-        ``steps`` is the deterministic walkback (depth-0 is the
-        input row itself; subsequent depths are predecessors).
-        Empty ``steps`` list when the row exists at the input table
-        but has no incoming edge —  callers render this
-        as "lineage break".
-
-    Raises:
-        ValidationError: 400 when ``row_id`` is empty.
-    """
-    if not row_id:
-        raise ValidationError("row_id is required")
-    await _enforce_select(request, table)
-
-    factory = _get_session_factory()
-    steps = walk_back(factory, table=table, row_id=row_id, max_hops=_MAX_HOPS)
-    steps = await _enrich_with_source_file(request, steps)
-
-    op_meta = _load_op_metadata(_collect_op_ids(steps))
-    step_dicts = [_step_to_dict(s, op_meta) for s in steps]
-    step_dicts = _attach_value_changes(factory, step_dicts)
-    step_dicts = _attach_cdf_events(factory, step_dicts, workspace_id=current_workspace_id(request))
-    step_dicts = await _apply_pii_masking(request, step_dicts)
-    return {
-        "table": table,
-        "row_id": row_id,
-        "steps": step_dicts,
-    }
-
-
-@router.get(
-    "/catalogs/{catalog_name}/schemas/{schema_name}/tables/{table_name}/rows/{row_id}/trace",
-    response_class=HTMLResponse,
-)
-async def html_row_trace(
-    request: Request,
-    catalog_name: str,
-    schema_name: str,
-    table_name: str,
-    row_id: str,
-) -> HTMLResponse:
-    """Render the row-trace UI page.
-
-    Args:
-        request: FastAPI request.
-        catalog_name: Catalog containing the row.
-        schema_name: Schema containing the row.
-        table_name: Table containing the row.
-        row_id: ``_lineage_row_id`` value to trace.
-
-    Returns:
-        Rendered ``pages/row_trace.html`` with the steps,
-        catalog/schema/table parts (for breadcrumb), and the
-        original row id.
-    """
-    full_name = TableFqn.from_parts(catalog_name, schema_name, table_name)
-    await _enforce_select(request, full_name)
-
-    factory = _get_session_factory()
-    steps = walk_back(factory, table=full_name, row_id=row_id, max_hops=_MAX_HOPS)
-    steps = await _enrich_with_source_file(request, steps)
-    op_meta = _load_op_metadata(_collect_op_ids(steps))
-    step_dicts = [_step_to_dict(s, op_meta) for s in steps]
-    step_dicts = _attach_value_changes(factory, step_dicts)
-    step_dicts = _attach_cdf_events(factory, step_dicts, workspace_id=current_workspace_id(request))
-    step_dicts = await _apply_pii_masking(request, step_dicts)
-
-    return get_templates(request).TemplateResponse(
-        request,
-        "pages/row_trace.html",
-        {
-            "catalog_name": catalog_name,
-            "schema_name": schema_name,
-            "table_name": table_name,
-            "full_name": full_name,
-            "row_id": row_id,
-            "steps": step_dicts,
-            "active_catalog": catalog_name,
-            "active_schema": schema_name,
-            "active_table": table_name,
-        },
-    )
-
-
-def _column_predecessor_to_dict(
-    pred: ColumnPredecessorRef, op_meta: dict[int, dict[str, Any]]
-) -> dict[str, Any]:
-    """Project a :class:`ColumnPredecessorRef` into the JSON payload shape.
-
-    Args:
-        pred: One predecessor edge feeding a column-trace step.
-        op_meta: Op metadata joined off ``agent_run_operations``.
-
-    Returns:
-        Dict with ``table`` / ``column`` / ``op_id`` / ``op_name`` /
-        ``run_id`` / ``transform_kind`` / ``transform_detail`` keys.
-    """
-    meta = op_meta.get(pred.op_id) if pred.op_id is not None else None
-    return {
-        "table": pred.table,
-        "column": pred.column,
-        "op_id": pred.op_id,
-        "op_name": meta.get("op_name") if meta else None,
-        "run_id": pred.run_id,
-        "transform_kind": pred.transform_kind,
-        "transform_detail": pred.transform_detail,
-    }
-
-
-def _column_step_to_dict(
-    step: ColumnTraceStep, op_meta: dict[int, dict[str, Any]]
-) -> dict[str, Any]:
-    """Project a :class:`ColumnTraceStep` into the JSON payload shape.
-
-    Args:
-        step: One column-trace walkback step.
-        op_meta: Op metadata joined off ``agent_run_operations``.
-
-    Returns:
-        Dict with ``depth`` / ``table`` / ``column`` / ``op_id`` /
-        ``op_name`` / ``run_id`` / ``predecessors`` keys.
-        ``predecessors`` length > 1 indicates fan-in (multiple
-        source columns feeding one target column in a single op).
-    """
-    meta = op_meta.get(step.op_id) if step.op_id is not None else None
-    return {
-        "depth": step.depth,
-        "table": step.table,
-        "column": step.column,
-        "op_id": step.op_id,
-        "op_name": meta.get("op_name") if meta else None,
-        "run_id": step.run_id,
-        "predecessors": [_column_predecessor_to_dict(p, op_meta) for p in step.predecessors],
-    }
-
-
-def _collect_column_op_ids(steps: list[ColumnTraceStep]) -> set[int]:
-    """Collect every ``op_id`` referenced by *steps* or their predecessors.
-
-    Args:
-        steps: Walkback result.
-
-    Returns:
-        Set of op IDs to look up in ``agent_run_operations``.
-    """
-    ids: set[int] = set()
-    for step in steps:
-        if step.op_id is not None:
-            ids.add(step.op_id)
-        for pred in step.predecessors:
-            if pred.op_id is not None:
-                ids.add(pred.op_id)
-    return ids
-
-
-@router.get("/api/lineage/column-trace", responses=STANDARD_ERROR_RESPONSES)
-async def api_column_trace(
-    request: Request,
-    table: str = Query(..., description="Three-part UC name"),
-    column: str = Query(..., description="Column name to trace"),
-) -> dict[str, Any]:
-    """Return the column-lineage walkback for one column as JSON.
-
-    sibling to :func:`api_row_trace`.  Each step
-    lists every predecessor edge that fed the current
-    ``(table, column)`` pair, classified by ``transform_kind``.
-
-    Args:
-        request: FastAPI request.
-        table: Three-part UC name of the column's table.
-        column: Column name to trace.
-
-    Returns:
-        ``{"table", "column", "steps": [...]}``.
-
-    Raises:
-        ValidationError: 400 when ``column`` is empty.
-    """
-    if not column:
-        raise ValidationError("column is required")
-    await _enforce_select(request, table)
-
-    factory = _get_session_factory()
-    steps = walk_back_columns(factory, table=table, column=column, max_hops=_MAX_HOPS)
-    op_meta = _load_op_metadata(_collect_column_op_ids(steps))
-    return {
-        "table": table,
-        "column": column,
-        "steps": [_column_step_to_dict(s, op_meta) for s in steps],
-    }
-
-
-@router.get(
-    "/catalogs/{catalog_name}/schemas/{schema_name}/tables/{table_name}"
-    "/columns/{column_name}/trace",
-    response_class=HTMLResponse,
-)
-async def html_column_trace(
-    request: Request,
-    catalog_name: str,
-    schema_name: str,
-    table_name: str,
-    column_name: str,
-) -> HTMLResponse:
-    """Render the column-trace UI page.
-
-    Args:
-        request: FastAPI request.
-        catalog_name: Catalog containing the column's table.
-        schema_name: Schema containing the column's table.
-        table_name: Table containing the column.
-        column_name: Column name to trace.
-
-    Returns:
-        Rendered ``pages/column_trace.html`` with the steps,
-        catalog/schema/table parts (for breadcrumb), and the
-        column name.
-    """
-    full_name = TableFqn.from_parts(catalog_name, schema_name, table_name)
-    await _enforce_select(request, full_name)
-
-    factory = _get_session_factory()
-    steps = walk_back_columns(factory, table=full_name, column=column_name, max_hops=_MAX_HOPS)
-    op_meta = _load_op_metadata(_collect_column_op_ids(steps))
-
-    return get_templates(request).TemplateResponse(
-        request,
-        "pages/column_trace.html",
-        {
-            "catalog_name": catalog_name,
-            "schema_name": schema_name,
-            "table_name": table_name,
-            "full_name": full_name,
-            "column_name": column_name,
-            "steps": [_column_step_to_dict(s, op_meta) for s in steps],
-            "active_catalog": catalog_name,
-            "active_schema": schema_name,
-            "active_table": table_name,
-        },
-    )
-
-
-@router.get("/api/lineage/value-changes", responses=STANDARD_ERROR_RESPONSES)
-async def api_value_changes(
-    request: Request,
-    table: str = Query(..., description="Three-part UC name"),
-    row_id: str = Query(..., description="_lineage_row_id of the target row"),
-    column: str | None = Query(None, description="Optional column-name filter"),
-) -> dict[str, Any]:
-    """Return per-cell preimage/postimage history for one target row.
-
-    value-level analog of the row-trace and
-    column-trace endpoints.  Returns every ``lineage_value_changes``
-    row that lands on ``(table, row_id)``, optionally narrowed to one
-    column.  Same SELECT-privilege enforcement as ``row-trace`` /
-    ``column-trace``.
-
-    Args:
-        request: FastAPI request.
-        table: Three-part UC name of the row's table.
-        row_id: ``_lineage_row_id`` of the target row.
-        column: Optional column name filter.
-
-    Returns:
-        ``{"table", "row_id", "column", "changes": [{"run_id",
-        "op_id", "target_column", "old_value", "new_value",
-        "created_at"}, ...]}`` ordered by ``created_at`` ascending.
-
-    Raises:
-        ValidationError: 400 when ``row_id`` is empty.
-    """
-    if not row_id:
-        raise ValidationError("row_id is required")
-    await _enforce_select(request, table)
-
-    factory = _get_session_factory()
-    rows = fetch_value_changes_for_row(
-        factory,
-        target_table=table,
-        target_row_id=row_id,
-        column=column,
-    )
-    return {
-        "table": table,
-        "row_id": row_id,
-        "column": column,
-        "changes": [
-            {
-                "run_id": r.run_id,
-                "op_id": r.op_id,
-                "target_column": r.target_column,
-                "old_value": r.old_value,
-                "new_value": r.new_value,
-                "created_at": r.created_at.isoformat() if r.created_at else None,
-            }
-            for r in rows
-        ],
-    }
-
-
-@router.get("/lineage", response_class=HTMLResponse)
-async def lineage_index_page(request: Request) -> HTMLResponse:
-    """Render the Lineage explorer index — Phase 80.4.
-
-    Standalone landing page surfacing the three primary lineage
-    actions (trace a row, trace a column, browse recent traces).
-    The two trace forms POST-redirect into the existing per-row /
-    per-column trace pages, so no new API surface is needed.
-
-    Recent traces are read client-side from
-    ``localStorage["pql.recentTraces"]`` so the page is fully
-    static server-side; the Alpine factory in the template hydrates
-    it after first paint.
-
-    Args:
-        request: Starlette request used to look up the templates
-            environment and thread the standard user / workspace
-            context.
-
-    Returns:
-        ``HTMLResponse`` with the rendered explorer page.
-    """
-    return get_templates(request).TemplateResponse(
-        request,
-        "pages/lineage_index.html",
-        {
-            "active_page": "lineage",
-        },
-    )
