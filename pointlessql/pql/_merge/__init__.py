@@ -48,7 +48,7 @@ from pointlessql.pql._merge._constants import (
     SCD2_VALID_TO,
     MergeStrategy,
 )
-from pointlessql.pql._merge._lineage import _capture_value_changes
+from pointlessql.pql._merge._lineage import _capture_value_changes, _detect_rejects
 from pointlessql.pql._merge._main import merge_table
 
 # Re-export ``_get_table`` so tests that monkeypatch
@@ -63,6 +63,7 @@ __all__ = [
     "SCD2_VALID_FROM",
     "SCD2_VALID_TO",
     "_capture_value_changes",
+    "_detect_rejects",
     "_get_table",
     "merge_table",
 ]
