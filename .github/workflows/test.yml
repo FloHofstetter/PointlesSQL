@@ -147,6 +147,53 @@ jobs:
           path: coverage.xml
           if-no-files-found: ignore
 
+  e2e-browser:
+    name: e2e — headless multi-tab co-edit
+    runs-on: ubuntu-latest
+    needs: gate
+    # Phase 108.2 — the headless multi-tab co-edit gate.  Lands behind
+    # ``continue-on-error: true`` for the first wave of green runs so a
+    # transient flake (port collision, Chromium boot timeout, slow
+    # WebSocket sync on a noisy runner) does not block unrelated PRs.
+    # Flip to ``false`` once we've collected ~10 successive green runs
+    # — track via the Memory entry that lands with this commit.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure git for private soyuz-catalog pull
+        env:
+          SOYUZ_READ_TOKEN: ${{ secrets.SOYUZ_READ_TOKEN }}
+        run: |
+          LEN=$(printf '%s' "$SOYUZ_READ_TOKEN" | wc -c)
+          if [ "$LEN" -lt 30 ]; then
+            echo "::error::SOYUZ_READ_TOKEN is missing or truncated (${LEN} bytes)." >&2
+            exit 1
+          fi
+          git config --global \
+            url."https://x-access-token:${SOYUZ_READ_TOKEN}@github.com/".insteadOf \
+            "https://github.com/"
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - name: Set up Python
+        run: uv python install 3.14
+      - name: Install dependencies
+        run: uv sync --all-extras
+      - name: Install Playwright Chromium
+        # ``--with-deps`` pulls the apt packages Chromium needs at
+        # runtime on the GitHub Ubuntu runner.  Adds ~30 s on a cold
+        # cache; the uv cache covers the wheel, only the browser
+        # binary needs the download every time.
+        run: uv run playwright install chromium --with-deps
+      - name: Pytest — e2e (multi-tab co-edit + smoke)
+        # ``testpaths = ["tests"]`` plus the default ``addopts``
+        # already deselect e2e for normal lanes.  We point pytest at
+        # ``e2e/`` explicitly here and pass ``-m e2e`` for an extra
+        # safety belt — anything in ``e2e/`` that forgot the marker
+        # would be silently ignored.
+        run: uv run pytest -q e2e/ -m e2e
+
   postgres:
     name: postgres dialect lane
     runs-on: ubuntu-latest
