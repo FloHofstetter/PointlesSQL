@@ -99,15 +99,72 @@
     <div class="d-flex align-items-center gap-2">
      {# Phase 95.x layout — Run button moved to the very left of the
         cell header, before the type-pill, so the kernel-action sits
-        where the eye lands first when scanning a notebook. #}
-     <button type="button"
-             class="btn btn-sm btn-outline-success"
-             @click="runCell(cell)"
-             :disabled="cell.cell_type === 'markdown' || kernelStatus !== 'ready'"
-             title="Run this cell">
-      <i class="bi bi-play-fill" aria-hidden="true"></i>
-      Run
-     </button>
+        where the eye lands first when scanning a notebook.
+
+        Phase 113.6 — converted to a Bootstrap split-button: main
+        action runs the cell as before; the caret opens a dropdown
+        with above/below variants relative to THIS cell (no need to
+        track focus separately).  Markdown cells get the plain Run
+        button only (no caret), since none of the variants makes
+        sense there. #}
+     <template x-if="cell.cell_type === 'markdown'">
+      <button type="button"
+              class="btn btn-sm btn-outline-success"
+              disabled
+              title="Markdown cells render in-place; nothing to run">
+       <i class="bi bi-play-fill" aria-hidden="true"></i>
+       Run
+      </button>
+     </template>
+     <template x-if="cell.cell_type !== 'markdown'">
+      <div class="btn-group" role="group" aria-label="Run cell">
+       <button type="button"
+               class="btn btn-sm btn-outline-success"
+               @click="runCell(cell)"
+               :disabled="kernelStatus !== 'ready' || runAllInProgress"
+               title="Run this cell (Cmd/Ctrl+Enter)">
+        <i class="bi bi-play-fill" aria-hidden="true"></i>
+        Run
+       </button>
+       <button type="button"
+               class="btn btn-sm btn-outline-success dropdown-toggle dropdown-toggle-split"
+               data-bs-toggle="dropdown"
+               aria-expanded="false"
+               :disabled="kernelStatus !== 'ready' || runAllInProgress"
+               data-testid="cell-run-caret"
+               title="Run variants for this cell">
+        <span class="visually-hidden">Toggle run dropdown</span>
+       </button>
+       <ul class="dropdown-menu">
+        <li>
+         <button class="dropdown-item" type="button"
+                 @click="runCell(cell)">
+          <i class="bi bi-play-fill me-2"></i>Run this cell
+         </button>
+        </li>
+        <li>
+         <button class="dropdown-item" type="button"
+                 @click="runCellAndAdvance(cell)">
+          <i class="bi bi-play-fill me-2"></i>Run this + advance
+         </button>
+        </li>
+        <li><hr class="dropdown-divider"></li>
+        <li>
+         <button class="dropdown-item" type="button"
+                 :disabled="cells.findIndex(c => c.id === cell.id) <= 0"
+                 @click="runAllAbove(cell)">
+          <i class="bi bi-arrow-bar-up me-2"></i>Run all above this cell
+         </button>
+        </li>
+        <li>
+         <button class="dropdown-item" type="button"
+                 @click="runAllBelow(cell)">
+          <i class="bi bi-arrow-bar-down me-2"></i>Run this cell + all below
+         </button>
+        </li>
+       </ul>
+      </div>
+     </template>
      <span class="pql-notebook-cell__type-pill"
            :data-cell-type="cell.cell_type"
            x-text="cellLabel(cell)"></span>
@@ -287,22 +344,6 @@
         </button>
        </li>
        <li><hr class="dropdown-divider"></li>
-       <li><h6 class="dropdown-header">Run</h6></li>
-       <li>
-        <button class="dropdown-item" type="button"
-                :disabled="kernelStatus !== 'ready' || runAllInProgress"
-                @click="runAllAbove(cell)">
-         <i class="bi bi-arrow-bar-up me-2"></i>Run all above
-        </button>
-       </li>
-       <li>
-        <button class="dropdown-item" type="button"
-                :disabled="kernelStatus !== 'ready' || runAllInProgress"
-                @click="runAllBelow(cell)">
-         <i class="bi bi-arrow-bar-down me-2"></i>Run this + all below
-        </button>
-       </li>
-       <li><hr class="dropdown-divider"></li>
        <li><h6 class="dropdown-header">View</h6></li>
        <li>
         <button class="dropdown-item" type="button"
@@ -380,7 +421,6 @@
    <template x-if="!(cell.cell_type === 'markdown' && cell.view_mode)">
     <div class="pql-notebook-cell__editor"
          :id="`pql-cell-host-${cell.id}`"
-         @focusin="_focusedCellId = cell.id"
          @keydown.shift.enter.prevent="cell.cell_type === 'markdown' ? exitMarkdownEdit(cell) : runCellAndAdvance(cell)"
          @keydown.ctrl.enter.prevent="runCell(cell)"
          @keydown.meta.enter.prevent="runCell(cell)"
