@@ -70,6 +70,7 @@ async def notebook_editor_page(request: Request, path: str) -> HTMLResponse:
                 or str(user.get("email") or "").strip()
                 or "anonymous"
             ),
+            "current_user_email": str(user.get("email") or "").strip(),
             "active_page": "workspace",
             "active_catalog": None,
             "active_schema": None,
@@ -138,6 +139,7 @@ async def notebook_editor_by_uuid(
                 or str(user.get("email") or "").strip()
                 or "anonymous"
             ),
+            "current_user_email": str(user.get("email") or "").strip(),
             "active_page": "workspace",
             "active_catalog": None,
             "active_schema": None,

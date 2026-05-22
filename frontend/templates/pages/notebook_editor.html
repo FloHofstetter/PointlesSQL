@@ -26,7 +26,8 @@
        initialPath: {{ notebook_path | tojson }},
        currentUser: {
          id: {{ current_user_id | tojson }},
-         name: {{ current_user_name | tojson }}
+         name: {{ current_user_name | tojson }},
+         email: {{ current_user_email | tojson }}
        }
      })'
      x-init="init()"
@@ -132,7 +133,7 @@
         the outer notebookEditor scope so we don't pay for a
         nested x-data per cell. #}
      <span class="pql-cell-author-chip text-muted small"
-           x-show="attributionFor(cell)"
+           x-show="shouldShowAuthorChip(cell)"
            x-cloak
            :title="authorChipTooltip(cell)">
       <i class="bi" :class="authorChipIcon(cell)" aria-hidden="true"></i>

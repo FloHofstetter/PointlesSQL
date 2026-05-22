@@ -45,6 +45,34 @@ export function installCellAuthorship(state) {
  };
 
  /**
+  * Whether the per-cell author chip should paint at all.
+  *
+  * Suppresses the chip when the only contributor IS the viewing user
+  * (single-author notebook in their own workspace): the email of both
+  * ``first_author`` and ``last_modifier`` matches ``currentUser.email``
+  * and no agent ever touched the cell.  That is the default-state
+  * case the plan flagged — chips should surface deltas from default,
+  * not echo "you wrote this" on every cell.
+  *
+  * Agent-authored or mixed-author cells still paint normally.
+  */
+ state.shouldShowAuthorChip = function (cell) {
+  const attr = this.attributionFor(cell);
+  if (!attr) return false;
+  const viewer = (this.currentUser && this.currentUser.email) || '';
+  if (!viewer) return true;
+  const first = attr.first_author || {};
+  const last = attr.last_modifier || {};
+  const allHuman =
+   first.kind !== 'agent' && (!last.kind || last.kind !== 'agent');
+  if (!allHuman) return true;
+  const firstEmail = (first.email || '').toLowerCase();
+  const lastEmail = (last.email || firstEmail || '').toLowerCase();
+  const viewerEmail = viewer.toLowerCase();
+  return !(firstEmail === viewerEmail && lastEmail === viewerEmail);
+ };
+
+ /**
   * Format the chip label.  Compresses ``first.last@org`` to the
   * local-part — full mail goes into the tooltip via :title.
   */

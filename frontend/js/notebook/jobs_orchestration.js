@@ -24,7 +24,11 @@ export function installJobsOrchestration(state) {
 
   state._buildDefaultJobName = function (suffix) {
     const slug = String(this.path || 'notebook').replace(/[^A-Za-z0-9_-]+/g, '_');
-    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const d = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    const stamp =
+      `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}` +
+      `-${pad(d.getHours())}${pad(d.getMinutes())}`;
     return suffix ? `${slug}:${suffix}:${stamp}` : slug;
   };
 

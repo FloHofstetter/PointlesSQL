@@ -21,6 +21,7 @@
      x-cloak
      role="dialog"
      aria-label="Notebook side panel"
+     x-effect="document.documentElement.toggleAttribute('data-pql-right-drawer-open', rightDrawer.open)"
      @keydown.escape.window="rightDrawer.open = false">
  <div class="pql-right-drawer__header">
   <ul class="nav nav-tabs flex-grow-1" role="tablist">

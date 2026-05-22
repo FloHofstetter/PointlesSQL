@@ -67,6 +67,26 @@
  html[data-pql-panel-collapsed][data-pql-meta-collapsed] .pql-shell--has-meta {
   grid-template-columns: var(--pql-icon-rail-width) minmax(0, 1fr);
  }
+ /* Phase 113.2 follow-up — while the unified right drawer is open it
+    overlays the right edge at ``z=1040`` and would otherwise eclipse
+    the meta panel column (Phase 112).  Auto-collapse the meta panel
+    for the duration of the drawer's open state without touching the
+    user's persistent ``data-pql-meta-collapsed`` preference, then
+    restore on close. */
+ html[data-pql-right-drawer-open] .pql-shell--has-meta {
+  grid-template-columns:
+   var(--pql-icon-rail-width)
+   var(--pql-context-panel-width)
+   minmax(0, 1fr);
+ }
+ html[data-pql-right-drawer-open][data-pql-panel-collapsed] .pql-shell--has-meta {
+  grid-template-columns:
+   var(--pql-icon-rail-width)
+   minmax(0, 1fr);
+ }
+ html[data-pql-right-drawer-open] .pql-shell--has-meta .pql-meta-panel {
+  display: none;
+ }
 }
 
 /* Mobile (<md): Bootstrap's ``.offcanvas-md`` already moves the

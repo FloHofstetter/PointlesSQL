@@ -63,6 +63,7 @@ async function _computeContentHash(source) {
 export function notebookEditor({ initialPath = '', currentUser = null } = {}) {
  const state = {
  path: initialPath,
+ currentUser: currentUser || {},
  cells: [],
  outputs: [],
  dirty: false,
