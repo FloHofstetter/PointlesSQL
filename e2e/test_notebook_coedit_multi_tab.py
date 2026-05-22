@@ -12,9 +12,12 @@ caught the three bugs surfaced manually on 2026-05-22:
   notebookChatPanel`` factory liveness check.
 * **Bug-2 class** — ``coedit.js`` peer-rail self-filter by
   ``user.id`` that erased the same-user multi-tab case.  Caught by:
-  peer rail eventually populates after both tabs have nudged the
-  awareness layer (Y.js ``clientID`` differs between tabs, so the
-  rail must contain at least one peer).
+  peer rail populates without any external trigger once both tabs
+  finish their initial Y.Doc sync round-trip (Y.js ``clientID``
+  differs between tabs, so the rail must contain at least one
+  peer).  Also exercises the Phase 108 ``onSynced`` rebroadcast
+  fix — without it the initial setLocalState frame is lost while
+  the WS is still connecting.
 * **Bug-3 class** — ``cell_editor.js`` Phase 107 hotfix where a
   fresh tab mounted CodeMirror with an empty doc despite the
   server-side ``ytext`` being populated.  Caught by: third-tab mount
@@ -146,37 +149,28 @@ def _open_editor_tab(
     )
 
 
-def _nudge_awareness(page: Any) -> None:
-    """Force a post-uplink ``setLocalState`` so the wire frame goes out.
+def _wait_for_alpine_scope(page: Any, timeout_ms: int = 5_000) -> None:
+    """Spin until the Alpine root scope has bound ``_awareness``.
 
-    There is a latent race in ``installCoeditLifecycle``: the first
-    ``setLocalState`` call (lines 89–96 in ``frontend/js/notebook/
-    coedit.js``) happens before the ``update`` event handler that
-    pushes onto the WS is wired (line 98 ``_wireAwarenessUplink``).
-    The initial broadcast is therefore lost; the awareness layer is
-    only visible to peers after some later event (typing, cursor
-    move) re-emits.
-
-    In real interactive use this is fine — users type within seconds.
-    In CI we need to trigger it deterministically.  Calling
-    ``setLocalState`` from the page evaluate is the most direct
-    route: it fires the ``update`` event, the now-attached uplink
-    listener catches it, the frame goes out, peers see us.
+    Used after page load to make sure the editor's Alpine factory has
+    finished initialising before subsequent assertions reach for
+    ``_awareness`` or ``coeditPeers``.  Doesn't fail on miss — the
+    downstream peer-rail wait surfaces the real timeout with a
+    clearer error.
     """
-    try:
-        page.evaluate(
+    deadline = time.time() + (timeout_ms / 1000.0)
+    while time.time() < deadline:
+        ready = page.evaluate(
             """() => {
                 const root = document.querySelector('.pql-notebook-shell');
-                if (!root || !window.Alpine) return;
+                if (!root || !window.Alpine) return false;
                 const scope = window.Alpine.$data(root);
-                const aw = scope && scope._awareness;
-                if (!aw) return;
-                const prior = aw.getLocalState() || {};
-                aw.setLocalState({ ...prior, cursor: { ping: Date.now() } });
+                return !!(scope && scope._awareness);
             }"""
         )
-    except Exception:  # noqa: BLE001 — best-effort nudge, downstream wait surfaces real failure
-        pass
+        if ready:
+            return
+        time.sleep(0.1)
 
 
 def _peer_count(page: Any) -> int:
@@ -223,9 +217,12 @@ def test_phase105_7_multi_tab_coedit_core_invariants(
     tab1 = _open_editor_tab(playwright_context, live_server_url, notebook_path)
     tab2 = _open_editor_tab(playwright_context, live_server_url, notebook_path)
 
-    # Nudge awareness on both tabs so initial state hits the wire.
-    _nudge_awareness(tab1)
-    _nudge_awareness(tab2)
+    # Wait for Alpine to bind ``_awareness`` on both tabs before
+    # checking the peer rail.  Phase 108 fix in ``coedit.js`` rebroadcasts
+    # the local awareness state inside the ``onSynced`` callback so the
+    # initial frame no longer needs an external nudge.
+    _wait_for_alpine_scope(tab1)
+    _wait_for_alpine_scope(tab2)
 
     # Each tab eventually sees the other as a peer.
     _wait_for_peer_count(tab1, 1, _PEER_RAIL_TIMEOUT_MS)

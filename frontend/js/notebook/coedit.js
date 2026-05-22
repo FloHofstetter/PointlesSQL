@@ -76,7 +76,17 @@ export function installCoeditLifecycle(state, { userInfo = null } = {}) {
       onStatusChange: (next) => { this.coeditStatus = next; },
       onCellRemap: (remap) => { this._applyCellUuidRemap(remap); },
       onAgentPresence: (presence) => { this._applyAgentPresence(presence); },
-      onSynced: () => { this._rebindCellEditorsAfterSync(); },
+      onSynced: () => {
+        this._rebindCellEditorsAfterSync();
+        // Phase 108 fix — the initial ``setLocalState`` below fires
+        // its ``update`` event before the WS finishes connecting, so
+        // ``sendAwarenessUpdate`` short-circuits on the readyState
+        // gate and the broadcast frame is dropped.  Once the server
+        // confirms sync (sync_step2) the socket is provably open;
+        // re-emit the local state vector so peers see us without
+        // waiting for the first user input.
+        this._broadcastLocalAwareness();
+      },
     });
     if (haveUser) {
       // Awareness needs an in/out Y.Doc — the client's ``ydoc`` is the
@@ -86,6 +96,16 @@ export function installCoeditLifecycle(state, { userInfo = null } = {}) {
       // also keeps the awareness clientID aligned with every local
       // doc-update, which 105.3b's ``y-codemirror.next`` will rely on.
       this._awareness = new Awareness(this._coedit.ydoc);
+      this._coedit.setAwareness(this._awareness);
+      // Phase 108 fix — wire the WS uplink + peer-rail refresh
+      // BEFORE the first ``setLocalState`` so any late callers that
+      // mutate awareness (e.g. yCollab cursor tracking) fire through
+      // an attached listener.  The initial broadcast itself rides
+      // the ``onSynced`` rebroadcast above; the in-process listener
+      // ordering only matters for subsequent state mutations.
+      this._wireAwarenessUplink();
+      this._wirePeerRailRefresh();
+      this._installBeforeUnloadCleanup();
       this._awareness.setLocalState({
         user: {
           id: Number(user.id),
@@ -94,12 +114,23 @@ export function installCoeditLifecycle(state, { userInfo = null } = {}) {
         },
         cursor: null,
       });
-      this._coedit.setAwareness(this._awareness);
-      this._wireAwarenessUplink();
-      this._wirePeerRailRefresh();
-      this._installBeforeUnloadCleanup();
     }
     this._coedit.connect();
+  };
+
+  state._broadcastLocalAwareness = function () {
+    // Encode the current local awareness state and push it onto the
+    // WS.  Used by the ``onSynced`` hook to recover the broadcast
+    // that the initial ``setLocalState`` lost while the socket was
+    // still connecting.  No-op when there is no awareness instance
+    // (anonymous render).
+    const aw = this._awareness;
+    const client = this._coedit;
+    if (!aw || !client) return;
+    try {
+      const payload = encodeAwarenessUpdate(aw, [aw.clientID]);
+      client.sendAwarenessUpdate(payload);
+    } catch (_err) { /* swallow */ }
   };
 
   state._wireAwarenessUplink = function () {
@@ -123,12 +154,28 @@ export function installCoeditLifecycle(state, { userInfo = null } = {}) {
   state._wirePeerRailRefresh = function () {
     const aw = this._awareness;
     const self = this;
-    const refresh = () => {
-      if (self._coeditPeerRefresh) return;
-      self._coeditPeerRefresh = setTimeout(() => {
-        self._coeditPeerRefresh = null;
-        self._renderPeerRail();
-      }, PEER_RAIL_RENDER_THROTTLE_MS);
+    const refresh = (changes) => {
+      if (!self._coeditPeerRefresh) {
+        self._coeditPeerRefresh = setTimeout(() => {
+          self._coeditPeerRefresh = null;
+          self._renderPeerRail();
+        }, PEER_RAIL_RENDER_THROTTLE_MS);
+      }
+      // Phase 108 fix — when a NEW peer's state arrives in the
+      // ``added`` set, re-emit our own state so the new joiner
+      // sees us.  y-protocols awareness is diff-only: our own
+      // ``onSynced`` rebroadcast may have happened before the new
+      // peer could subscribe, so without this rebroadcast they
+      // would never receive our identity.  Bounded loop: the
+      // recipient's own re-broadcast surfaces as ``updated`` here,
+      // not ``added``, so we don't re-fire.
+      if (
+        changes
+        && Array.isArray(changes.added)
+        && changes.added.some((id) => id !== aw.clientID)
+      ) {
+        self._broadcastLocalAwareness();
+      }
     };
     aw.on('change', refresh);
     // Paint once immediately so the local user shows in dev tools
