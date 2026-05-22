@@ -98,8 +98,9 @@ export function notebookEditor({ initialPath = '', currentUser = null } = {}) {
  // Phase 67.4 Notebook-Jobs panel state.
  jobsPanelOpen: false,
  jobsPanel: { scheduled_jobs: [], recent_runs: [] },
- // Phase 67.5 Variable Inspector state.
- inspectorOpen: false,
+ // Phase 67.5 Variable Inspector state (visibility now lives on
+ // ``rightDrawer.tab`` per Sprint 113.2; the data fields stay here
+ // because kernel_execution.js + WS frames write them by name).
  inspectorVars: [],
  inspectorDetail: null,
  inspectorDetailFor: null,
@@ -128,13 +129,18 @@ export function notebookEditor({ initialPath = '', currentUser = null } = {}) {
  // count badge.
  notebookUuid: null,
  cellCounts: {},
- // Phase 96 — AI-assistant chat panel state + provenance buffer.
- // ``chatPanelOpen`` toggles the offcanvas drawer.  ``_pendingProvenance``
+ // Phase 96 — AI-assistant provenance buffer.  ``_pendingProvenance``
  // collects accepted-proposal records between Insert/Apply click and
  // the next /api/notebooks/save call, which flushes them as
- // notebook_cell_provenance rows.
- chatPanelOpen: false,
+ // notebook_cell_provenance rows.  Visibility of the chat panel
+ // itself now lives on ``rightDrawer.tab`` (Sprint 113.2).
  _pendingProvenance: [],
+ // Sprint 113.2 — unified right-edge drawer.  Collapses the former
+ // Chat (Phase 96) + Variables (Phase 67.5) + Social (Phase 77.6)
+ // overlays into one fixed-position drawer with a tab strip.  All
+ // six tab bodies stay in the DOM (x-show, not x-if) so the chat
+ // WebSocket subscription survives tab switches.
+ rightDrawer: { open: false, tab: 'chat' },
  // Sprint 112.5 — bounded ring buffer of recent notebook-wide cell
  // runs, populated by the kernel ``execute_reply`` handler in
  // ``kernel_execution.js``.  Surfaced in the meta panel's Activity
@@ -286,26 +292,44 @@ export function notebookEditor({ initialPath = '', currentUser = null } = {}) {
   * cell-diff drawer is still a wide overlay opened from the meta
   * panel's "See all & diff" button.
   */
+ /**
+  * Sprint 113.2 — toggle the unified right drawer to a specific
+  * tab.  Re-clicking the toolbar button for the currently-open tab
+  * closes the drawer (toggle semantics); clicking a different
+  * toolbar button switches the tab without re-opening if the
+  * drawer is already open (which it always is in that path).
+  */
+ openRightDrawer(tab) {
+  const next = String(tab || 'chat');
+  if (this.rightDrawer.open && this.rightDrawer.tab === next) {
+   this.rightDrawer.open = false;
+   return;
+  }
+  this.rightDrawer.tab = next;
+  this.rightDrawer.open = true;
+  if (next === 'variables' && typeof this.requestVariableSnapshot === 'function') {
+   this.requestVariableSnapshot();
+  }
+ },
+
  openPanelCount() {
   let n = 0;
   if (this.jobsPanelOpen) n++;
-  if (this.inspectorOpen) n++;
   if (this.replays && this.replays.open) n++;
   if (this.sequenceProposals && this.sequenceProposals.open) n++;
   if (this.widgetsPanel && this.widgetsPanel.open) n++;
   if (this.revisions && this.revisions.open) n++;
-  if (this.chatPanelOpen) n++;
+  if (this.rightDrawer && this.rightDrawer.open) n++;
   return n;
  },
 
  closeAllPanels() {
   this.jobsPanelOpen = false;
-  this.inspectorOpen = false;
   if (this.replays) this.replays.open = false;
   if (this.sequenceProposals) this.sequenceProposals.open = false;
   if (this.widgetsPanel) this.widgetsPanel.open = false;
   if (this.revisions) this.revisions.open = false;
-  this.chatPanelOpen = false;
+  this.rightDrawer.open = false;
  },
 
  async init() {

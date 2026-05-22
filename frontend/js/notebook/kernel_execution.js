@@ -179,9 +179,12 @@ export function installKernelExecution(state, deps) {
     }
   };
 
+  // Sprint 113.2 — inspector visibility moved onto the unified
+  // right drawer.  Kept as a thin alias for legacy callers.
   state.toggleInspector = function () {
-    this.inspectorOpen = !this.inspectorOpen;
-    if (this.inspectorOpen) this.requestVariableSnapshot();
+    if (typeof this.openRightDrawer === 'function') {
+      this.openRightDrawer('variables');
+    }
   };
 
   state.runCell = async function (cell) {

@@ -135,8 +135,8 @@
    </button>
    <button type="button"
            class="btn btn-sm btn-outline-secondary pql-toolbar-panel-btn"
-           @click="toggleInspector()"
-           :class="{ active: inspectorOpen }"
+           @click="openRightDrawer('variables')"
+           :class="{ active: rightDrawer.open && rightDrawer.tab === 'variables' }"
            title="Live kernel variable inspector (refreshes after every cell run)">
     <i class="bi bi-eye" aria-hidden="true"></i>
     <span class="pql-toolbar-panel-btn__label">Variables</span>
@@ -197,11 +197,11 @@
           x-cloak></span>
    </button>
    {% if notebook_chat_enabled %}
-   {# Phase 96 — toggle the AI-assistant chat drawer. #}
+   {# Sprint 113.2 — opens the unified right-drawer's Chat tab. #}
    <button type="button"
            class="btn btn-sm btn-outline-secondary pql-toolbar-panel-btn"
-           @click="toggleChatPanel()"
-           :class="{ active: chatPanelOpen }"
+           @click="openRightDrawer('chat')"
+           :class="{ active: rightDrawer.open && rightDrawer.tab === 'chat' }"
            data-testid="notebook-chat-toggle"
            title="Open AI assistant (propose / fix / explain cells)">
     <i class="bi bi-robot" aria-hidden="true"></i>
@@ -231,15 +231,14 @@
      "Loading…" affordance. #}
 
   {% if notebook_uuid %}
-  {# Phase 77.6 — Social drawer toggle.  Notebook editor is full-
-     screen by design so the social surface lives in a side-drawer
-     instead of a tab strip.  Bootstrap offcanvas-end drives the
-     slide-out; state is persisted across cell re-executes via
-     localStorage by the ``notebookSocialDrawer`` factory below. #}
+  {# Sprint 113.2 — Social toggle now opens the unified right
+     drawer's Discussion tab (Discussion / Endorsements / Followers
+     / README are 4 of the drawer's 6 tabs). #}
   <button class="btn btn-sm btn-outline-secondary"
-          type="button" data-bs-toggle="offcanvas"
-          data-bs-target="#pql-notebook-social-drawer"
-          title="Open social drawer (Discussion / Endorsements / Followers / README)">
+          type="button"
+          @click="openRightDrawer('discussion')"
+          :class="{ active: rightDrawer.open && ['discussion','endorsements','followers','readme'].includes(rightDrawer.tab) }"
+          title="Open social panel (Discussion / Endorsements / Followers / README)">
    <i class="bi bi-people" aria-hidden="true"></i>
    Social
   </button>

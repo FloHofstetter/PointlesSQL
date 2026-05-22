@@ -203,23 +203,24 @@ async def test_saved_query_endorsement_round_trip(
 
 
 def test_notebook_editor_template_carries_drawer_marker() -> None:
-    """``notebook_editor.html`` + its partials wire the social drawer.
+    """Editor template + its partials wire the right-edge social tabs.
 
-    Phase 86 split the editor template into page-scoped partials —
-    the drawer markup now lives in
-    ``_partials/notebook_editor/social_drawer.html`` and the Alpine
-    factory wiring in
-    ``_partials/notebook_editor/scripts.html``.  This test
-    concatenates the three relevant files so the assertion still
-    catches a drawer regression without owning a stale literal.
+    Phase 86 split the editor template into page-scoped partials; the
+    Phase-77.6 social drawer originally lived in its own
+    ``social_drawer.html`` partial.  Sprint 113.2 collapsed that
+    surface (plus the Chat drawer and Variables Inspector) into one
+    unified tabbed right-edge drawer at
+    ``_partials/notebook_editor/right_drawer.html`` — Discussion,
+    Endorsements, Followers and README are now 4 of the 6 tabs there.
+    This test asserts the social scope still wires up.
     """
     parts = [
         (_TEMPLATES_ROOT / "pages/notebook_editor.html").read_text(),
-        (_TEMPLATES_ROOT / "pages/_partials/notebook_editor/social_drawer.html").read_text(),
+        (_TEMPLATES_ROOT / "pages/_partials/notebook_editor/right_drawer.html").read_text(),
         (_TEMPLATES_ROOT / "pages/_partials/notebook_editor/scripts.html").read_text(),
     ]
     body = "\n".join(parts)
-    assert "pql-notebook-social-drawer" in body
+    assert "pql-right-drawer" in body
     assert 'socialTabs({' in body
     assert 'kind: "notebook"' in body
     assert "window.notebookDiscussion = notebookDiscussion" in body

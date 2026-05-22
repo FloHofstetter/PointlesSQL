@@ -13,8 +13,14 @@
  */
 
 export function installChatIntegration(state) {
+  // Sprint 113.2 — chat-tab visibility now rides on the unified
+  // right-drawer scope.  Kept as a thin alias so external callers
+  // (proposal-accept listeners, plugin code) that flipped this
+  // boolean directly keep working.
   state.toggleChatPanel = function () {
-    this.chatPanelOpen = !this.chatPanelOpen;
+    if (typeof this.openRightDrawer === 'function') {
+      this.openRightDrawer('chat');
+    }
   };
 
   state._applyAcceptedProposal = async function (payload) {

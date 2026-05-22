@@ -43,7 +43,9 @@ how to set `ANTHROPIC_API_KEY`.  Set the key and reload.
 3. Click the toolbar **AI** button.
 
 Expected DOM:
-- `.pql-notebook-chat-drawer` becomes visible (`x-show` flips).
+- `.pql-right-drawer` becomes visible (Sprint 113.2 collapsed the
+  former `.pql-notebook-chat-drawer` into one tabbed right-edge
+  drawer; the **Chat** tab inside the drawer is auto-selected).
 - Status label reads `connected`.
 - Empty message list.
 
