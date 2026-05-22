@@ -65,6 +65,23 @@
     Save
     <kbd class="ms-1">⌘S</kbd>
    </button>
+   {# Phase 113.6 — Run all.  Sequentially executes every non-markdown
+      cell from top to bottom; halts on first error.  While running,
+      the button shows a cancel affordance that flips the runAll
+      guard to false (the loop then exits between cells). #}
+   <button type="button"
+           class="btn btn-sm btn-outline-success"
+           @click="runAllInProgress ? cancelRunAll() : runAllCells()"
+           :disabled="kernelStatus !== 'ready' && !runAllInProgress"
+           data-testid="notebook-run-all"
+           :title="runAllInProgress ? 'Stop running all cells' : 'Run all cells from top to bottom (halts on first error)'">
+    <template x-if="!runAllInProgress">
+     <span><i class="bi bi-fast-forward-fill" aria-hidden="true"></i> Run all</span>
+    </template>
+    <template x-if="runAllInProgress">
+     <span><i class="bi bi-x-circle" aria-hidden="true"></i> Stop run</span>
+    </template>
+   </button>
    <button type="button"
            class="btn btn-sm btn-outline-secondary"
            @click="openRunModal('schedule')"

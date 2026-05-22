@@ -287,6 +287,22 @@
         </button>
        </li>
        <li><hr class="dropdown-divider"></li>
+       <li><h6 class="dropdown-header">Run</h6></li>
+       <li>
+        <button class="dropdown-item" type="button"
+                :disabled="kernelStatus !== 'ready' || runAllInProgress"
+                @click="runAllAbove(cell)">
+         <i class="bi bi-arrow-bar-up me-2"></i>Run all above
+        </button>
+       </li>
+       <li>
+        <button class="dropdown-item" type="button"
+                :disabled="kernelStatus !== 'ready' || runAllInProgress"
+                @click="runAllBelow(cell)">
+         <i class="bi bi-arrow-bar-down me-2"></i>Run this + all below
+        </button>
+       </li>
+       <li><hr class="dropdown-divider"></li>
        <li><h6 class="dropdown-header">View</h6></li>
        <li>
         <button class="dropdown-item" type="button"

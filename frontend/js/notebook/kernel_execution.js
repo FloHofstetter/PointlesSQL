@@ -239,6 +239,61 @@ export function installKernelExecution(state, deps) {
     }
   };
 
+  // Phase 113.6 — bulk-run helpers (Run all / Run above / Run below).
+  // Cells are awaited sequentially so a downstream cell sees the
+  // kernel state left by upstream cells (the Jupyter default).
+  // Markdown cells are skipped silently.  Errors halt the run so the
+  // user can fix the failing cell before continuing — also matches
+  // Jupyter's "Run All" default.
+  state.runAllInProgress = false;
+
+  state.runRange = async function (from, to) {
+    if (!this._kernel || this._kernel.readyState !== WebSocket.OPEN) {
+      this.errorMessage = 'Kernel not connected.';
+      return;
+    }
+    if (this.runAllInProgress) return;
+    const start = Math.max(0, from | 0);
+    const end = Math.min(this.cells.length, to | 0);
+    if (end <= start) return;
+    this.runAllInProgress = true;
+    try {
+      for (let i = start; i < end; i++) {
+        if (!this.runAllInProgress) break;
+        const cell = this.cells[i];
+        if (!cell || cell.cell_type === 'markdown') continue;
+        try {
+          await this.runCell(cell);
+        } catch (e) {
+          this.errorMessage = (e && e.message) || String(e);
+          break;
+        }
+      }
+    } finally {
+      this.runAllInProgress = false;
+    }
+  };
+
+  state.runAllCells = async function () {
+    await this.runRange(0, this.cells.length);
+  };
+
+  state.runAllAbove = async function (cell) {
+    const idx = this.cells.findIndex((c) => c.id === cell.id);
+    if (idx <= 0) return;
+    await this.runRange(0, idx);
+  };
+
+  state.runAllBelow = async function (cell) {
+    const idx = this.cells.findIndex((c) => c.id === cell.id);
+    if (idx < 0) return;
+    await this.runRange(idx, this.cells.length);
+  };
+
+  state.cancelRunAll = function () {
+    this.runAllInProgress = false;
+  };
+
   state.restartKernel = async function () {
     if (!this._kernel) return;
     try {
