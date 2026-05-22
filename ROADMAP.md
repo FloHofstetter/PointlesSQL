@@ -2538,35 +2538,67 @@ PointlesSQL
 │           concrete new init step demands it — current 33-step
 │           complexity is structural, not a smell.
 │
-│   ├── Phase 111 — Restschuld V (modularization wave, ongoing)  🟦 partial 2026-05-22
-│   │     Continuation of the Phase 110 trim line, picking off the
-│   │     remaining > 700 LOC files Phase 110 deferred.
+│   ├── Phase 111 — Restschuld V (modularization wave)  ✅ done 2026-05-22
+│   │     **Closed 2026-05-22.**  Seven commits, no behaviour change,
+│   │     no asset bump.  Continuation of the Phase 110 trim line —
+│   │     every > 700-LOC module landed under a per-concern package.
 │   │     - **111.1 (commit ``46c282c``).** ``pql/sql_parser.py``
 │   │       (762 LOC) → ``sql_parser/`` package per concern (types /
 │   │       parse / prepare / refs / column_lineage / limit).
 │   │     - **111.2 (commit ``d04cbf3``).** ``pql/_merge.py``
 │   │       (770 LOC) → ``_merge/`` package per concern (constants /
-│   │       resolve / strategies / lineage / stats / main).
-│   │       Drive-by fix: ``_merge_rows_affected`` had ``except
-│   │       TypeError, ValueError:`` — same Python-2 syntax bug as
-│   │       Phase 110.4 (caught only ``TypeError``, shadowed
-│   │       ``ValueError`` as local).  Rewrote as ``except
-│   │       (TypeError, ValueError):``.
+│   │       resolve / strategies / lineage / stats / main).  Originally
+│   │       framed as a Py2-syntax bug fix on
+│   │       ``_merge_rows_affected``'s ``except TypeError, ValueError:``;
+│   │       the user corrected that framing — Python 3.14 (PEP 758)
+│   │       legalises unparenthesised ``except`` tuples, so the change
+│   │       is cosmetic only.
 │   │     - **111.3 (commit ``1673579``).** ``services/run_diff.py``
 │   │       (724 LOC) → ``run_diff/`` package per concern (serialize /
-│   │       align / detail / lineage / column).  5 public symbols
-│   │       re-exported from the package ``__init__`` so the route
-│   │       module and three test files need no edits.
+│   │       align / detail / lineage / column).
+│   │     - **111.4 (commit ``0e24c97``).** ``runs_routes/_loaders.py``
+│   │       (733 LOC) → ``_loaders/`` package per axis (runs / outputs /
+│   │       operations / audit / lineage).
+│   │     - **111.5 (commit ``1e42413``).** ``services/social/
+│   │       entity_registry.py`` (729 LOC) → ``entity_registry/``
+│   │       package per concern (spec / url_builders / registry_data /
+│   │       api).  Data-heavy: the 17-entry ``REGISTRY`` dict made up
+│   │       most of the file.
+│   │     - **111.6 (commit ``869daf5``).** ``api/notebook_coedit_ws.py``
+│   │       (779 LOC) → ``notebook_coedit_ws/`` package per layer
+│   │       (constants / state / seed / hub / broadcast / remap /
+│   │       endpoint).  Six external private-name references (``_HUBS``
+│   │       in five tests + the coedit_compaction executor) preserved
+│   │       via ``__init__.py`` re-export.
+│   │     - **111.7 (commit ``230a709``).** ``pql/pql.py`` (1060 LOC)
+│   │       → ``PQLBase`` + ``_DataOpsMixin`` + ``_GovernanceMixin`` +
+│   │       slim ``PQL(``mixins``)``.  Public API surface unchanged;
+│   │       ``make_soyuz_client`` / ``make_principal_client`` /
+│   │       ``make_engine`` re-exported from ``pql.py`` so the
+│   │       documented ``patch("pointlessql.pql.pql.make_soyuz_client")``
+│   │       test pattern keeps working.  ``PQLBase`` uses call-time
+│   │       facade lookup so monkeypatches are honoured.
+│   │     - **Follow-up (commit ``bf6bd1c``).** ``_merge/__init__.py``
+│   │       re-export missed ``_detect_rejects`` in 111.2 → fixed
+│   │       (regression sweep at 111.7 close caught it).
 │   │
-│   │     All three splits: ruff / pyright / pydoclint clean.  Per-
-│   │     area test suites green (89 sql_parser + 10 merge + 16
-│   │     run_diff).
+│   │     All seven splits: ruff / pyright (0 errors) / pydoclint
+│   │     clean.  Pyright warnings stable at 655.  351 / 352 focused
+│   │     regression tests green (1 pre-existing
+│   │     ``TestReplayUnknownOpName`` failure unrelated to this trim).
 │   │
-│   │     Deferred Restschuld V candidates (each is its own commit
-│   │     when prioritised): ``pql/pql.py`` (1060, public API —
-│   │     sensitive), ``notebook_coedit_ws.py`` (779, fresh from
-│   │     Phase 109), ``runs_routes/_loaders.py`` (733, flat-helper
-│   │     file), ``social/entity_registry.py`` (729, mostly data).
+│   │     Restschuld pipeline now drained: every previously > 700 LOC
+│   │     module across pql/ + api/ + services/ has been split.  The
+│   │     largest file in pointlessql/ post-111 is ``api/admin/console/
+│   │     _legacy_pages.py`` (~600 LOC after 110.3).
+│   │
+│   │     Side note from this phase: corrected my own mistaken framing
+│   │     of ``except A, B:`` as a Py2-syntax bug.  PEP 758 in Python
+│   │     3.14 legalises the form — both 110.4 and 111.2 "drive-by
+│   │     fixes" were cosmetic only; 15 other occurrences across the
+│   │     codebase are valid syntax and left untouched.  Memory entry
+│   │     ``feedback_pep758_except_syntax`` documents the rule so it
+│   │     does not recur.
 │   │
 │   ├── Phase 110 — Restschuld IV (modularization wave for files > 700 LOC)  ✅ done 2026-05-22
 │   │     **Closed 2026-05-22.**  Nine commits, no behaviour change,
