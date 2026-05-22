@@ -125,6 +125,7 @@ from pointlessql.models.lineage import (
 )
 from pointlessql.models.notebook import (
     NOTEBOOK_CELL_SEQUENCE_PROPOSAL_STATUSES,
+    CoeditBusMessage,
     Notebook,
     NotebookBranchBinding,
     NotebookCellAuthorship,
@@ -242,6 +243,7 @@ __all__ = [
     "NOTEBOOK_CELL_PROPOSAL_ACTIONS",
     "NOTEBOOK_CELL_PROPOSAL_STATUSES",
     "NOTEBOOK_CELL_SEQUENCE_PROPOSAL_STATUSES",
+    "CoeditBusMessage",
     "Notebook",
     "NotebookBranchBinding",
     "NotebookCellAuthorship",

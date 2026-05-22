@@ -135,8 +135,13 @@ def make_lifespan(
         ) or settings
         app.state.templates = templates
         if not fast_test_lifespan or not hasattr(app.state, "session_factory"):
-            init_db(settings.db.url)
+            engine = init_db(settings.db.url)
+            app.state.engine = engine
             app.state.session_factory = get_session_factory()
+        if not hasattr(app.state, "engine") or app.state.engine is None:
+            # fast-test path: derive the engine from the pre-wired factory.
+            with app.state.session_factory() as _session:
+                app.state.engine = _session.get_bind()
 
         # API keys are persisted in the ``api_keys`` table.  The env
         # var ``POINTLESSQL_API_KEYS`` stays valid as a *bootstrap* path
@@ -390,6 +395,44 @@ def make_lifespan(
         notebooks_dir.mkdir(parents=True, exist_ok=True)
         app.state.kernel_registry = KernelRegistry(notebooks_dir=notebooks_dir)
 
+        # Phase 109 — cross-worker co-edit fanout bus.  Opt-in
+        # (``coedit.bus_enabled``) and PG-only — SQLite installs stay
+        # single-worker and skip the bus entirely.  The bus owns its own
+        # async PG connection for ``LISTEN coedit_bus`` plus a cleanup
+        # loop that sweeps expired outbox rows; both are started here
+        # and drained in the ``finally`` block below.  Hub instrumentation
+        # in ``notebook_coedit_ws`` consults ``app.state.coedit_bus``
+        # before publishing.
+        app.state.coedit_bus = None
+        coedit_bus: Any = None
+        if (
+            settings.coedit.bus_enabled
+            and not fast_test_lifespan
+        ):
+            from sqlalchemy.engine import Engine as _Engine
+
+            engine_any = app.state.engine
+            if (
+                isinstance(engine_any, _Engine)
+                and engine_any.dialect.name == "postgresql"
+            ):
+                from pointlessql.services.notebook.coedit_bus import CoeditBus
+
+                coedit_bus = CoeditBus(
+                    engine_any,
+                    ttl_seconds=settings.coedit.bus_message_ttl_seconds,
+                    cleanup_interval_seconds=(
+                        settings.coedit.bus_cleanup_interval_seconds
+                    ),
+                )
+                await coedit_bus.start()
+                app.state.coedit_bus = coedit_bus
+            else:
+                logger.info(
+                    "coedit-bus: enabled but engine is not Postgres; "
+                    "single-worker only — skipping",
+                )
+
         # Phase 103 Wave-D — notebook replay re-execution worker.
         # Tiny serial loop next to the scheduler that drains pending
         # NotebookReplay rows.  Disabled in fast-test lifespan so
@@ -418,6 +461,8 @@ def make_lifespan(
         finally:
             if replay_worker is not None:
                 await replay_worker.stop()
+            if coedit_bus is not None:
+                await coedit_bus.stop()
             await app.state.kernel_registry.shutdown_all()
             if app.state.mlflow_subprocess is not None:
                 await app.state.mlflow_subprocess.stop()

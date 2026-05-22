@@ -32,6 +32,7 @@ from pointlessql.config._settings._auth import (
 )
 from pointlessql.config._settings._features import (
     BranchSettings,
+    CoeditSettings,
     ConventionsSettings,
     DataProductsSettings,
     EditorChatSettings,
@@ -93,6 +94,7 @@ class Settings(BaseSettings):
     mlflow: MLflowSettings = Field(default_factory=MLflowSettings)
     dbt: DBTSettings = Field(default_factory=DBTSettings)
     lens: LensSettings = Field(default_factory=LensSettings)
+    coedit: CoeditSettings = Field(default_factory=CoeditSettings)
 
 
 __all__ = [
@@ -102,6 +104,7 @@ __all__ = [
     "AuthSettings",
     "BranchSettings",
     "CDFTailSettings",
+    "CoeditSettings",
     "ConventionsSettings",
     "DBTSettings",
     "DataProductsSettings",

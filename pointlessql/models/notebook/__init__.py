@@ -14,6 +14,7 @@ from __future__ import annotations
 from pointlessql.models.notebook._authorship import NotebookCellAuthorship
 from pointlessql.models.notebook._branch import NotebookBranchBinding
 from pointlessql.models.notebook._coedit import NotebookCrdtState
+from pointlessql.models.notebook._coedit_bus import CoeditBusMessage
 from pointlessql.models.notebook._core import (
     Notebook,
     NotebookCellIdentity,
@@ -41,6 +42,7 @@ from pointlessql.models.notebook._tags import NotebookTag
 
 __all__ = [
     "NOTEBOOK_CELL_SEQUENCE_PROPOSAL_STATUSES",
+    "CoeditBusMessage",
     "Notebook",
     "NotebookBranchBinding",
     "NotebookCellAuthorship",

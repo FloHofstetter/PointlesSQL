@@ -197,6 +197,36 @@ class NotificationsSettings(BaseSettings):
     digest_poll_interval_seconds: int = 300
 
 
+class CoeditSettings(BaseSettings):
+    """Phase 109 — cross-worker co-edit hub fanout.
+
+    Reads ``POINTLESSQL_COEDIT_*`` environment variables.  The
+    Phase-105.2 hub holds the live :class:`pycrdt.Doc` in the
+    uvicorn worker that first claimed it; once multiple uvicorn
+    workers serve the same install, updates from one worker need a
+    pub/sub backbone to reach editors on the other workers.
+
+    ``bus_enabled`` flips the PG ``LISTEN/NOTIFY``-backed bus on.
+    Default ``False`` so existing single-worker deployments stay
+    behaviour-identical after upgrade.  Requires ``POINTLESSQL_DB_URL``
+    pointing at PostgreSQL — SQLite installs ignore the flag.
+
+    ``bus_message_ttl_seconds`` bounds how long an outbox row stays
+    durable.  60 s is enough for a worker that bounced through a
+    quick restart; longer outages re-converge via the CRDT
+    sync_step1/2 handshake on reconnect.
+
+    ``bus_cleanup_interval_seconds`` is the cadence of the
+    background sweep that DELETEs expired outbox rows.
+    """
+
+    model_config = SettingsConfigDict(env_prefix="POINTLESSQL_COEDIT_")
+
+    bus_enabled: bool = False
+    bus_message_ttl_seconds: int = 60
+    bus_cleanup_interval_seconds: int = 30
+
+
 class LensSettings(BaseSettings):
     """Lens read-only Q&A surface configuration (Phase 65).
 
