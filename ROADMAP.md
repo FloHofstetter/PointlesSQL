@@ -2538,23 +2538,35 @@ PointlesSQL
 │           concrete new init step demands it — current 33-step
 │           complexity is structural, not a smell.
 │
-│   ├── Phase 111 — Restschuld V (sql_parser modularization, ongoing)  🟦 partial 2026-05-22
+│   ├── Phase 111 — Restschuld V (modularization wave, ongoing)  🟦 partial 2026-05-22
 │   │     Continuation of the Phase 110 trim line, picking off the
 │   │     remaining > 700 LOC files Phase 110 deferred.
 │   │     - **111.1 (commit ``46c282c``).** ``pql/sql_parser.py``
 │   │       (762 LOC) → ``sql_parser/`` package per concern (types /
-│   │       parse / prepare / refs / column_lineage / limit).  11
-│   │       public symbols re-exported from the package ``__init__``
-│   │       so the four cross-module callers + pql package + tests
-│   │       need no edits.  ruff / pyright / pydoclint clean; 89
-│   │       sql_parser-related tests green.
+│   │       parse / prepare / refs / column_lineage / limit).
+│   │     - **111.2 (commit ``d04cbf3``).** ``pql/_merge.py``
+│   │       (770 LOC) → ``_merge/`` package per concern (constants /
+│   │       resolve / strategies / lineage / stats / main).
+│   │       Drive-by fix: ``_merge_rows_affected`` had ``except
+│   │       TypeError, ValueError:`` — same Python-2 syntax bug as
+│   │       Phase 110.4 (caught only ``TypeError``, shadowed
+│   │       ``ValueError`` as local).  Rewrote as ``except
+│   │       (TypeError, ValueError):``.
+│   │     - **111.3 (commit ``1673579``).** ``services/run_diff.py``
+│   │       (724 LOC) → ``run_diff/`` package per concern (serialize /
+│   │       align / detail / lineage / column).  5 public symbols
+│   │       re-exported from the package ``__init__`` so the route
+│   │       module and three test files need no edits.
+│   │
+│   │     All three splits: ruff / pyright / pydoclint clean.  Per-
+│   │     area test suites green (89 sql_parser + 10 merge + 16
+│   │     run_diff).
+│   │
 │   │     Deferred Restschuld V candidates (each is its own commit
 │   │     when prioritised): ``pql/pql.py`` (1060, public API —
 │   │     sensitive), ``notebook_coedit_ws.py`` (779, fresh from
-│   │     Phase 109), ``pql/_merge.py`` (770), ``runs_routes/
-│   │     _loaders.py`` (733, flat-helper file), ``social/
-│   │     entity_registry.py`` (729, mostly data), ``services/
-│   │     run_diff.py`` (724).
+│   │     Phase 109), ``runs_routes/_loaders.py`` (733, flat-helper
+│   │     file), ``social/entity_registry.py`` (729, mostly data).
 │   │
 │   ├── Phase 110 — Restschuld IV (modularization wave for files > 700 LOC)  ✅ done 2026-05-22
 │   │     **Closed 2026-05-22.**  Nine commits, no behaviour change,
