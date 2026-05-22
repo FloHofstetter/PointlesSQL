@@ -2538,6 +2538,24 @@ PointlesSQL
 │           concrete new init step demands it — current 33-step
 │           complexity is structural, not a smell.
 │
+│   ├── Phase 111 — Restschuld V (sql_parser modularization, ongoing)  🟦 partial 2026-05-22
+│   │     Continuation of the Phase 110 trim line, picking off the
+│   │     remaining > 700 LOC files Phase 110 deferred.
+│   │     - **111.1 (commit ``46c282c``).** ``pql/sql_parser.py``
+│   │       (762 LOC) → ``sql_parser/`` package per concern (types /
+│   │       parse / prepare / refs / column_lineage / limit).  11
+│   │       public symbols re-exported from the package ``__init__``
+│   │       so the four cross-module callers + pql package + tests
+│   │       need no edits.  ruff / pyright / pydoclint clean; 89
+│   │       sql_parser-related tests green.
+│   │     Deferred Restschuld V candidates (each is its own commit
+│   │     when prioritised): ``pql/pql.py`` (1060, public API —
+│   │     sensitive), ``notebook_coedit_ws.py`` (779, fresh from
+│   │     Phase 109), ``pql/_merge.py`` (770), ``runs_routes/
+│   │     _loaders.py`` (733, flat-helper file), ``social/
+│   │     entity_registry.py`` (729, mostly data), ``services/
+│   │     run_diff.py`` (724).
+│   │
 │   ├── Phase 110 — Restschuld IV (modularization wave for files > 700 LOC)  ✅ done 2026-05-22
 │   │     **Closed 2026-05-22.**  Nine commits, no behaviour change,
 │   │     no asset bump.  Continuation of the Phase 87 / 88 / 89
