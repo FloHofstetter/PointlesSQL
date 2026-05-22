@@ -1,56 +1,40 @@
  <div class="pql-notebook-toolbar" role="toolbar" aria-label="Notebook toolbar">
   <i class="bi bi-journal-code" aria-hidden="true"></i>
-  <span class="pql-notebook-path" :title="path" x-text="path"></span>
-  <span class="badge bg-info text-dark"
-        x-show="parameters && parameters.length > 0"
-        x-cloak
-        :title="`This notebook declares ${parameters.length} papermill parameter(s).`">
-   <i class="bi bi-sliders" aria-hidden="true"></i>
-   <span x-text="`${parameters.length} param${parameters.length === 1 ? '' : 's'}`"></span>
-  </span>
-  <span class="badge bg-warning"
-        x-show="dirty && !saving"
-        x-cloak
-        title="Notebook has unsaved changes">
-   <i class="bi bi-exclamation-circle" aria-hidden="true"></i>
-   Unsaved
-  </span>
-  <span class="badge bg-info"
-        x-show="saving"
-        x-cloak>
-   <span class="spinner-border spinner-border-sm me-1" role="status"></span>
-   Saving…
-  </span>
-  <span class="text-success small"
-        x-show="!dirty && !saving && lastSavedAt"
-        x-cloak
-        title="Last saved time">
-   <i class="bi bi-check-circle" aria-hidden="true"></i>
-   Saved
-  </span>
-  <span class="badge ms-auto"
-        :class="{
-          'bg-secondary': kernelStatus === 'disconnected' || kernelStatus === 'closed',
-          'bg-warning': kernelStatus === 'connecting',
-          'bg-success': kernelStatus === 'ready'
-        }"
-        x-text="`Kernel: ${kernelStatus}`"></span>
-
-  {# Phase 105.3 — co-edit channel live pill.  Driven by the
-     installCoeditLifecycle mixin; idle / connecting / live /
-     offline / unauthorized / error map to dot colour + label
-     via ``coeditDotClass`` / ``coeditLabel``. #}
-  <span class="d-inline-flex align-items-center gap-1 small text-muted"
-        data-testid="notebook-coedit-pill"
-        :title="coeditTooltip()">
+  {# Sprint 112.5 — vital-signs cluster.  Three coloured dots
+     (save / kernel / co-edit) replace the five separate status
+     badges + path text that used to live here.  Full status
+     labels live in the right meta panel; the dots are the at-a-
+     glance "everything fine?" indicator that still works when
+     the meta panel is collapsed.  Each dot's colour class is
+     bound via a getter on the editor scope so the mapping stays
+     declarative; tooltips name the state via the same getters
+     used by the old pill labels. #}
+  <span class="pql-notebook-vitals d-inline-flex align-items-center gap-2 ms-1"
+        role="status"
+        aria-label="Notebook live status">
    <span class="d-inline-block rounded-circle"
-         style="width: 0.6rem; height: 0.6rem;"
-         :class="coeditDotClass()"
+         style="width: 0.55rem; height: 0.55rem;"
+         :class="saveDotClass()"
+         :title="saveDotTooltip()"
+         data-testid="notebook-save-dot"
          aria-hidden="true"></span>
-   <span x-text="coeditLabel()"></span>
+   <span class="d-inline-block rounded-circle"
+         style="width: 0.55rem; height: 0.55rem;"
+         :class="kernelDotClass()"
+         :title="kernelDotTooltip()"
+         data-testid="notebook-kernel-dot"
+         aria-hidden="true"></span>
+   <span class="d-inline-block rounded-circle"
+         style="width: 0.55rem; height: 0.55rem;"
+         :class="coeditDotClass()"
+         :title="coeditTooltip()"
+         data-testid="notebook-coedit-dot"
+         aria-hidden="true"></span>
   </span>
 
   {% include "pages/_partials/notebook_editor/coedit_peers.html" %}
+
+  <span class="ms-auto"></span>
 
   <div class="pql-toolbar-group" role="group" aria-label="Kernel control">
    <button type="button"
@@ -95,16 +79,10 @@
     <i class="bi bi-lightning" aria-hidden="true"></i>
     Run as job
    </button>
-   {#- Phase 100 — Publish/Share button.  Opens the share modal with
-       create-share form + list of existing shares. -#}
-   <button type="button"
-           class="btn btn-sm btn-outline-secondary"
-           @click="openShareDialog()"
-           data-testid="notebook-share-button"
-           title="Publish this notebook to a public share link">
-    <i class="bi bi-share" aria-hidden="true"></i>
-    Share
-   </button>
+   {#- Phase 112 — Share moved into the right meta panel.  The
+       create-share form, snapshot mode, dashboard toggle, and the
+       list of existing shares all live in the "Share / publish"
+       accordion section there.  No toolbar button needed. -#}
    {#- Phase 98.D — Export dropdown.  Routes are server-side rendered
        to a self-contained HTML or PDF (WeasyPrint with HTML fallback)
        — no client-side dependency. -#}
@@ -167,38 +145,13 @@
           x-text="inspectorVars.length"
           x-cloak></span>
    </button>
-   {# Phase 98.B — Notebook-level tag picker.  Backend (REST +
-      curated vocab) shipped earlier; this toolbar entry wires the
-      panel toggle.  Count badge surfaces only once the first
-      ``loadNotebookTags()`` call has returned. #}
-   <button type="button"
-           class="btn btn-sm btn-outline-secondary pql-toolbar-panel-btn"
-           @click="toggleTagsPicker()"
-           :class="{ active: tagsPickerOpen }"
-           title="Tag this notebook (etl / draft / prod / …)">
-    <i class="bi bi-tags" aria-hidden="true"></i>
-    <span class="pql-toolbar-panel-btn__label">Tags</span>
-    <span class="badge bg-secondary ms-1"
-          x-show="notebookTagsLoaded && notebookTags.length > 0"
-          x-text="notebookTags.length"
-          x-cloak></span>
-   </button>
-   {# Phase 102 — Delta branch binding.  Toggle the inline panel with
-      bind / promote / discard actions. #}
-   <button type="button"
-           class="btn btn-sm btn-outline-secondary pql-toolbar-panel-btn"
-           @click="toggleBranchBinding()"
-           :class="{ active: branchBinding.open }"
-           data-testid="notebook-branch-button"
-           title="Bind this notebook to a Delta branch (Phase 102)">
-    <i class="bi bi-diagram-3" aria-hidden="true"></i>
-    <span class="pql-toolbar-panel-btn__label">Branch</span>
-    <span class="badge ms-1"
-          :class="branchBinding.current && branchBinding.current.promoted_at ? 'bg-success' : 'bg-warning text-dark'"
-          x-show="branchBinding.loaded && branchBinding.current"
-          x-cloak
-          x-text="branchBinding.current ? branchBinding.current.branch_name : ''"></span>
-   </button>
+   {# Phase 112 — Tags / Branch / Access / History toolbar buttons
+      removed.  Their state + actions live unchanged in their
+      mixin files (notebook_tags.js, branch_binding.js,
+      permissions_panel.js, revisions.js) but the user-facing
+      surface is now the right meta panel's accordion sections.
+      Revisions still exposes a wide drawer for cell-diff workflows;
+      it is opened from the meta panel's "See all & diff" button. #}
    {# Phase 103 — Replays / scenario-mode list.  Click opens a panel
       with recent replay rows and their per-cell diff status. #}
    <button type="button"
@@ -243,35 +196,6 @@
           x-text="widgetsPanel.widgets.length"
           x-cloak></span>
    </button>
-   {# Phase 99 — Per-notebook permission grants (view/run/edit). #}
-   <button type="button"
-           class="btn btn-sm btn-outline-secondary pql-toolbar-panel-btn"
-           @click="togglePermissionsPanel()"
-           :class="{ active: permissionsPanel.open }"
-           data-testid="notebook-permissions-button"
-           title="Per-notebook permission grants (Phase 99)">
-    <i class="bi bi-shield-lock" aria-hidden="true"></i>
-    <span class="pql-toolbar-panel-btn__label">Access</span>
-    <span class="badge bg-secondary ms-1"
-          x-show="permissionsPanel.loaded && permissionsPanel.rows.length > 0"
-          x-text="permissionsPanel.rows.length"
-          x-cloak></span>
-   </button>
-   {# Phase 97 Wave-D — revision history + cell-diff drawer.  Click
-      mints / lists snapshots; selecting two rows runs the diff. #}
-   <button type="button"
-           class="btn btn-sm btn-outline-secondary pql-toolbar-panel-btn"
-           @click="toggleRevisionsPanel()"
-           :class="{ active: revisions.open }"
-           data-testid="notebook-revisions-button"
-           title="Revision history + cell diff (Phase 97)">
-    <i class="bi bi-clock-history" aria-hidden="true"></i>
-    <span class="pql-toolbar-panel-btn__label">History</span>
-    <span class="badge bg-secondary ms-1"
-          x-show="revisions.loaded && revisions.rows.length > 0"
-          x-text="revisions.rows.length"
-          x-cloak></span>
-   </button>
    {% if notebook_chat_enabled %}
    {# Phase 96 — toggle the AI-assistant chat drawer. #}
    <button type="button"
@@ -301,11 +225,10 @@
    Close all (<span x-text="openPanelCount()"></span>)
   </button>
 
-  <span class="badge bg-secondary"
-        x-show="loading"
-        x-cloak>
-   Loading…
-  </span>
+  {# Sprint 112.5 — Loading badge folded into the save-dot's
+     "loading" state.  No separate badge in the toolbar; the
+     meta-panel summary status line still carries the textual
+     "Loading…" affordance. #}
 
   {% if notebook_uuid %}
   {# Phase 77.6 — Social drawer toggle.  Notebook editor is full-

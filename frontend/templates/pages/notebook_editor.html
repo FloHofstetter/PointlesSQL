@@ -1,4 +1,11 @@
 {% extends "base.html" %}
+{# Phase 112 — Notebook editor opts in to the right meta panel.
+   ``meta_panel_target`` tells base.html to render the empty
+   ``<aside id="pql-meta-panel">`` as a target; the content lives
+   inside the ``notebookEditor()`` x-data wrapper below and is
+   moved into the aside via Alpine's ``<template x-teleport>`` so
+   it stays inside the editor's reactive scope. #}
+{% set meta_panel_target = True %}
 {% block title %}{{ notebook_path }} · Notebook · PointlesSQL{% endblock %}
 
 {% set breadcrumbs = [
@@ -29,9 +36,12 @@
 
  {% include "pages/_partials/notebook_editor/toolbar.html" %}
 
- {% include "pages/_partials/notebook_editor/notebook_tag_picker_panel.html" %}
-
- {% include "pages/_partials/notebook_editor/branch_binding_panel.html" %}
+ {# Phase 112 — Meta panel (right rail).  Teleports into the
+    empty ``#pql-meta-panel .pql-meta-panel__inner`` rendered by
+    base.html so the sections read the surrounding x-data scope. #}
+ <template x-teleport="#pql-meta-panel .pql-meta-panel__inner">
+  {% include "pages/_partials/notebook_editor/meta_panel.html" %}
+ </template>
 
  {% include "pages/_partials/notebook_editor/replays_panel.html" %}
 
@@ -39,7 +49,10 @@
 
  {% include "pages/_partials/notebook_editor/widgets_panel.html" %}
 
- {% include "pages/_partials/notebook_editor/permissions_panel.html" %}
+ {# Revisions stays a fixed inline drawer because its diff +
+    cell-facts-pin UI needs more than the 280 px meta-panel
+    column. It's now opened from the meta-panel "See all & diff"
+    button via ``toggleRevisionsPanel()``. #}
  {% include "pages/_partials/notebook_editor/revisions_panel.html" %}
 
  {% include "pages/_partials/notebook_editor/chat_drawer.html" %}
@@ -361,8 +374,6 @@
  {% include "pages/_partials/notebook_editor/schedule_modal.html" %}
 
  {% include "pages/_partials/notebook_editor/run_once_modal.html" %}
-
- {% include "pages/_partials/notebook_editor/share_modal.html" %}
 </div>
 
 {% include "pages/_partials/notebook_editor/scripts.html" %}

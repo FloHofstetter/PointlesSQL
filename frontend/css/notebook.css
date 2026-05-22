@@ -25,16 +25,12 @@
  border-radius: 0.25rem;
 }
 
-.pql-notebook-toolbar .pql-notebook-path {
- flex: 0 1 auto;
- min-width: 0;
- max-width: 100%;
- overflow: hidden;
- text-overflow: ellipsis;
- white-space: nowrap;
- font-family: var(--bs-font-monospace, monospace);
- font-size: 0.85rem;
- color: var(--bs-body-color);
+/* Sprint 112.5 — vital-signs cluster (save / kernel / co-edit dots)
+   replaces the textual notebook path + status badges that used to
+   sit at the toolbar's leading edge.  Tight spacing keeps the three
+   dots reading as a single visual unit. */
+.pql-notebook-toolbar .pql-notebook-vitals {
+ flex: 0 0 auto;
 }
 
 .pql-notebook-toolbar .pql-toolbar-group {

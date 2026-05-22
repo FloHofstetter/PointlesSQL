@@ -32,6 +32,31 @@ export function installCellLineage(state) {
   return this.cellLineageBulk[cell.content_hash] || [];
  };
 
+/**
+  * Notebook-level lineage roll-up.
+  *
+  * Aggregates the per-cell ``cellLineageBulk`` map into a small
+  * summary the meta panel renders (write-target tables + op counts).
+  * Pure derived state; no extra fetch — the bulk endpoint already
+  * pulls every NotebookCellRun for this notebook.
+  */
+ state.notebookLineageSummary = function () {
+  const writes = new Map();
+  for (const lineage of Object.values(this.cellLineageBulk || {})) {
+   for (const op of lineage || []) {
+    const tbl = op && op.target_table;
+    if (!tbl) continue;
+    writes.set(tbl, (writes.get(tbl) || 0) + 1);
+   }
+  }
+  let totalOps = 0;
+  for (const v of writes.values()) totalOps += v;
+  const tables = Array.from(writes.entries())
+   .map(([table, count]) => ({ table, count }))
+   .sort((a, b) => b.count - a.count);
+  return { writeTables: tables, totalOps };
+ };
+
  /**
   * Fetch ``{content_hash: [badge, ...]}`` for the whole notebook.
   * Refreshed implicitly on save (called from ``installPersistence``)

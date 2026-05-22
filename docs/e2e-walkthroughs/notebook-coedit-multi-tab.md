@@ -33,9 +33,11 @@ steps once and continue here.
 
 1. **Tab 1: open the notebook editor.**
    - Action: `browser_navigate(url='http://127.0.0.1:8000/notebooks/edit/coedit-multi-tab.py')`.
-   - Assert: the `[data-testid="notebook-coedit-pill"]` element
-     paints; its inner text settles on **"Live"** within 3 s
-     (initial sync_step2 completed against the Sprint-105.2 hub).
+   - Assert: the `[data-testid="notebook-coedit-dot"]` element
+     paints; its class settles on **`bg-success`** within 3 s
+     (initial sync_step2 completed against the Sprint-105.2 hub —
+     Sprint 112.5 collapsed the verbose toolbar pill into a single
+     colour-coded dot whose tooltip preserves the old "Live" label).
    - Assert: the importmap script in the page source contains
      `"yjs":`, `"y-protocols/awareness":`, and
      `"y-codemirror.next":` entries (Phase 105.3 + 105.3b).
@@ -136,7 +138,7 @@ browser_wait_for(text='Saved')
 
 # Agent presence smoke
 browser_evaluate(function='''() => fetch(
-  `/api/notebooks/${document.querySelector("[data-testid=notebook-coedit-pill]")
+  `/api/notebooks/${document.querySelector("[data-testid=notebook-coedit-dot]")
        .closest("[x-data]")
        ?.__x?.$data?.notebookUuid}/coedit/agent-presence`,
   {method: "POST", headers: {"Content-Type":"application/json"},
@@ -154,7 +156,7 @@ browser_wait_for(textGone='hello-from-tab-2-peer-clientId')  # ad-hoc assertion
 
 | Selector | Source |
 | --- | --- |
-| `[data-testid="notebook-coedit-pill"]` | toolbar live pill (Phase 105.3) |
+| `[data-testid="notebook-coedit-dot"]` | toolbar co-edit status dot (Sprint 112.5; replaces the verbose `notebook-coedit-pill`) |
 | `[data-testid="notebook-coedit-peers"]` | peer-avatar rail container (Phase 105.4) |
 | `[data-testid^="notebook-coedit-peer-"]` | per-peer avatar disc (Phase 105.4) |
 | `#pql-cell-host-{cell.id}` | per-cell editor host (Sprint 66) |

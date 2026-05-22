@@ -43,6 +43,17 @@
             } catch (e) {}
         })();
         (function () {
+            // Phase 112 — meta panel (right rail) collapse state.
+            // Same shape as the context-panel toggle above; persists
+            // per-user so the right rail reads in its remembered
+            // state on first paint of every page.
+            try {
+                if (localStorage.getItem('pql.meta-panel.collapsed') === '1') {
+                    document.documentElement.setAttribute('data-pql-meta-collapsed', '1');
+                }
+            } catch (e) {}
+        })();
+        (function () {
             // Phase 80.1 — primary-rail state init.  Default is
             // ``expanded`` (220px, with labels + group headers).  The
             // attribute is read by both ``base.css`` (rail width
@@ -159,6 +170,22 @@
                     aria-label="Toggle side panel">
                 <i class="bi bi-layout-sidebar"></i>
             </button>
+            {# Phase 112 — Meta-panel (right rail) toggle.  Only paints
+               on pages that render a meta panel; the body-class
+               ``data-pql-has-meta-panel`` is set by base.html below
+               when ``{% block meta_panel %}`` resolves non-empty (or
+               the page declares ``meta_panel_target = True`` to mount
+               an Alpine x-teleport target).  Hidden via CSS otherwise
+               so we don't dangle a toggle that toggles nothing. #}
+            <button type="button"
+                    class="btn btn-link text-body p-1 pql-layout-toggle pql-layout-toggle--meta"
+                    data-pql-meta-toggle="toggle"
+                    data-bs-toggle="tooltip"
+                    data-bs-placement="bottom"
+                    data-bs-title="Toggle metadata panel"
+                    aria-label="Toggle metadata panel">
+                <i class="bi bi-layout-sidebar-inset-reverse"></i>
+            </button>
         </div>
         {% endif %}
         <a class="navbar-brand d-flex align-items-center gap-2 me-2" href="/">
@@ -197,6 +224,21 @@
                 data-bs-title="Search (Cmd+K)"
                 onclick="window.dispatchEvent(new CustomEvent('pql:open-palette'))">
             <i class="bi bi-search fs-5"></i>
+        </button>
+        {# Phase 112 — Mobile-only meta-panel offcanvas trigger.  The
+           same ``#pql-meta-panel`` aside switches between static
+           4th-column rail (md+) and offcanvas drawer (<md) through
+           Bootstrap's ``.offcanvas-md`` variant.  ``:has()`` lookup
+           in CSS keeps the button hidden on pages that don't render
+           a meta panel; we still emit the markup so the topbar
+           stays static across boost-swaps. #}
+        <button type="button"
+                class="btn btn-link text-body p-0 me-2 d-md-none pql-meta-mobile-trigger"
+                aria-label="Toggle metadata panel"
+                data-bs-toggle="offcanvas"
+                data-bs-target="#pql-meta-panel"
+                aria-controls="pql-meta-panel">
+            <i class="bi bi-info-square fs-5"></i>
         </button>
         <div class="dropdown me-2 d-none d-md-block"
              data-bs-toggle="tooltip"
@@ -252,7 +294,19 @@
         </div>
     </nav>
 
-    <div class="pql-shell{% if hide_sidebar %} pql-shell--no-sidebar{% endif %}">
+    {# Phase 112 — meta panel detection.  A page opts in either by
+       overriding ``{% block meta_panel %}`` with non-empty content
+       (works for any non-Alpine page) or by setting
+       ``meta_panel_target = True`` in its template scope (used by
+       the notebook editor to mount an Alpine ``x-teleport`` target
+       while still letting the meta-panel sections read the
+       ``notebookEditor()`` x-data scope from inside <main>).  In
+       either case the same ``<aside>`` paints, ``.pql-shell``
+       carries ``pql-shell--has-meta``, and the topbar toggle lights
+       up via the ``body:has(.pql-shell--has-meta)`` rule. #}
+    {% set _meta_block_content = self.meta_panel()|trim %}
+    {% set _has_meta_panel = (_meta_block_content|length > 0) or (meta_panel_target is defined and meta_panel_target) %}
+    <div class="pql-shell{% if hide_sidebar %} pql-shell--no-sidebar{% endif %}{% if _has_meta_panel %} pql-shell--has-meta{% endif %}">
         {% if not hide_sidebar %}
         {# Desktop (>= md): icon-rail + context-panel are siblings
            of <main>.  Each is sticky-positioned by its own CSS.
@@ -298,6 +352,32 @@
                picks them up there. #}
             {% block content %}{% endblock %}
         </main>
+        {% if _has_meta_panel %}
+        {# Phase 112 — Meta panel (right rail).  At md+ this is the
+           4th grid column; below md the same DOM serves as an
+           ``offcanvas-end`` drawer thanks to Bootstrap's
+           responsive ``.offcanvas-md`` variant.  Pages that need
+           the meta panel to share an Alpine ``x-data`` scope
+           (e.g. notebook editor) leave ``{% block meta_panel %}``
+           empty and ``x-teleport`` content into
+           ``#pql-meta-panel .pql-meta-panel__inner`` from inside
+           <main>; pages with static metadata write content
+           directly into the block. #}
+        <aside class="pql-meta-panel offcanvas-md offcanvas-end"
+               id="pql-meta-panel"
+               tabindex="-1"
+               aria-labelledby="pql-meta-panel-label">
+            <div class="offcanvas-header d-md-none">
+                <h5 class="offcanvas-title" id="pql-meta-panel-label">Page info</h5>
+                <button type="button"
+                        class="btn-close"
+                        data-bs-dismiss="offcanvas"
+                        data-bs-target="#pql-meta-panel"
+                        aria-label="Close"></button>
+            </div>
+            <div class="pql-meta-panel__inner">{% block meta_panel %}{% endblock %}</div>
+        </aside>
+        {% endif %}
     </div>
 
     {% include "components/command_palette.html" %}
@@ -582,6 +662,35 @@
                 if (mode === 'collapse') setCollapsed(true);
                 else if (mode === 'expand') setCollapsed(false);
                 else setCollapsed(!root.hasAttribute('data-pql-panel-collapsed'));
+            });
+        })();
+        (function () {
+            // Phase 112 — meta panel (right rail) expand/collapse.
+            // Same shape as the context-panel toggle above; flips
+            // ``data-pql-meta-collapsed`` on <html> so the
+            // ``html[data-pql-meta-collapsed] .pql-shell--has-meta``
+            // layout.css rule drops the column without remount.
+            const root = document.documentElement;
+            const KEY = 'pql.meta-panel.collapsed';
+            function setCollapsed(flag) {
+                if (flag) {
+                    root.setAttribute('data-pql-meta-collapsed', '1');
+                } else {
+                    root.removeAttribute('data-pql-meta-collapsed');
+                }
+                try {
+                    if (flag) localStorage.setItem(KEY, '1');
+                    else localStorage.removeItem(KEY);
+                } catch (e) {}
+            }
+            document.addEventListener('click', function (ev) {
+                const btn = ev.target.closest('[data-pql-meta-toggle]');
+                if (!btn) return;
+                ev.preventDefault();
+                const mode = btn.dataset.pqlMetaToggle;
+                if (mode === 'collapse') setCollapsed(true);
+                else if (mode === 'expand') setCollapsed(false);
+                else setCollapsed(!root.hasAttribute('data-pql-meta-collapsed'));
             });
         })();
         (function () {

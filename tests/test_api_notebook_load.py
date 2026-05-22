@@ -122,7 +122,9 @@ async def test_editor_page_ships_coedit_scaffold(
     * ``yjs`` importmap entry (in the inherited ``base.html``).
     * ``y-protocols/awareness`` importmap entry (reserved for the
       Phase-105.4 cursor presence layer).
-    * The toolbar live-pill ``data-testid="notebook-coedit-pill"``.
+    * The toolbar co-edit status dot ``data-testid="notebook-coedit-dot"``
+      (Sprint 112.5 — replaces the verbose ``notebook-coedit-pill``
+      with one of three vital-sign dots in the toolbar).
     """
     (workspace_dir / "demo.py").write_bytes(_DEMO_NOTEBOOK)
     resp = await admin_client.get("/notebooks/edit/demo.py")
@@ -130,7 +132,7 @@ async def test_editor_page_ships_coedit_scaffold(
     body = resp.text
     assert '"yjs":' in body
     assert '"y-protocols/awareness":' in body
-    assert 'data-testid="notebook-coedit-pill"' in body
+    assert 'data-testid="notebook-coedit-dot"' in body
 
 
 async def test_editor_page_ships_user_context(

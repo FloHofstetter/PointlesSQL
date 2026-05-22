@@ -17,6 +17,19 @@
     ``html[data-pql-rail-state="collapsed"]`` below. */
  --pql-icon-rail-width: 220px;
  --pql-context-panel-width: 240px;
+ /* Meta panel — third grid column (right rail). 280 px is wide
+    enough for accordion sections with form-row inputs at the
+    default 13 px font; consumers that need more space (revisions
+    diff drawer, etc.) open as overlays on top instead of resizing
+    this column. */
+ --pql-meta-panel-width: 280px;
+ /* Status footer bar (.pql-footer-bar) — fixed 28 px strip at the
+    page bottom on md+. Side panels (.pql-context-panel, .pql-meta-panel,
+    .pql-sidebar-shell, .pql-sidebar) subtract this from their sticky
+    max-height so the footer is never eclipsed. Mobile (<md) hides
+    the footer entirely, so the side panels recover the full height
+    via the media-query overrides in layout.css. */
+ --pql-footer-bar-height: 28px;
 
  /* Spacing — 4-px scale, eight steps cover every utility we use today */
  --pql-space-1: 0.25rem;

@@ -108,9 +108,33 @@ export function installKernelExecution(state, deps) {
       // start stamped earlier; if missing (race or pre-mixin frame)
       // skip silently rather than report a bogus value.
       const startedAt = this._runStartedAt[hash];
+      let durationMs = null;
       if (startedAt != null) {
-        this._runDurationMs[hash] = performance.now() - startedAt;
+        durationMs = performance.now() - startedAt;
+        this._runDurationMs[hash] = durationMs;
         delete this._runStartedAt[hash];
+      }
+      // Sprint 112.5 — push the run onto the bounded ring buffer
+      // that drives the meta panel's Activity section.  Skip the
+      // ``__pql_*`` synthetic probes (variable inspector etc.)
+      // since they are not user-visible cells.
+      if (cell && !String(hash).startsWith('__pql_') && Array.isArray(this._recentRunsRing)) {
+        const idx = this.cells.findIndex((c) => c.id === cell.id);
+        const labelSrc = (cell.source || '').replace(/\s+/g, ' ').trim();
+        const label = labelSrc.length > 48 ? `${labelSrc.slice(0, 48)}…` : labelSrc;
+        this._recentRunsRing.unshift({
+          cellId: cell.id,
+          cellIndex: idx >= 0 ? idx + 1 : null,
+          cellType: cell.cell_type,
+          label: label || '(empty)',
+          status: status || 'ok',
+          execCount: execCount != null ? execCount : null,
+          durationMs,
+          finishedAt: Date.now(),
+        });
+        if (this._recentRunsRing.length > 5) {
+          this._recentRunsRing.length = 5;
+        }
       }
       // Auto-refresh the variable inspector only for user-driven runs.
       // The inspector's own probe carries ``__pql_vars__`` /

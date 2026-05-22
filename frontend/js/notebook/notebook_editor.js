@@ -131,6 +131,12 @@ export function notebookEditor({ initialPath = '', currentUser = null } = {}) {
  // notebook_cell_provenance rows.
  chatPanelOpen: false,
  _pendingProvenance: [],
+ // Sprint 112.5 — bounded ring buffer of recent notebook-wide cell
+ // runs, populated by the kernel ``execute_reply`` handler in
+ // ``kernel_execution.js``.  Surfaced in the meta panel's Activity
+ // section via ``recentNotebookRuns()``.  Size 5 keeps the surface
+ // glanceable; older entries are pushed off the tail.
+ _recentRunsRing: [],
 
  /**
   * Phase 95.2 — fetch per-cell social counts for this notebook.
@@ -179,6 +185,89 @@ export function notebookEditor({ initialPath = '', currentUser = null } = {}) {
  },
 
  /**
+  * Sprint 112.5 — colour class for the toolbar save dot.
+  *
+  * Maps the editor's load/save/dirty axis onto a single Bootstrap
+  * background utility so the toolbar shows one at-a-glance state
+  * instead of four separate badges.
+  */
+ saveDotClass() {
+  if (this.loading || this.saving) return 'bg-warning';
+  if (this.dirty) return 'bg-warning';
+  if (this.lastSavedAt) return 'bg-success';
+  return 'bg-secondary';
+ },
+
+ /**
+  * Tooltip for the toolbar save dot.  Mirrors what the old
+  * Loading / Saving / Unsaved / Saved badges used to spell out.
+  */
+ saveDotTooltip() {
+  if (this.loading) return 'Loading notebook…';
+  if (this.saving) return 'Saving…';
+  if (this.dirty) return 'Unsaved changes';
+  if (this.lastSavedAt) return 'All changes saved';
+  return 'No save state yet';
+ },
+
+ /**
+  * Sprint 112.5 — colour class for the toolbar kernel dot.
+  */
+ kernelDotClass() {
+  switch (this.kernelStatus) {
+   case 'ready': return 'bg-success';
+   case 'connecting': return 'bg-warning';
+   case 'disconnected':
+   case 'closed':
+   default: return 'bg-secondary';
+  }
+ },
+
+ /**
+  * Tooltip for the toolbar kernel dot.
+  */
+ kernelDotTooltip() {
+  switch (this.kernelStatus) {
+   case 'ready': return 'Kernel ready';
+   case 'connecting': return 'Kernel connecting…';
+   case 'closed': return 'Kernel closed';
+   default: return 'Kernel disconnected';
+  }
+ },
+
+ /**
+  * Sprint 112.5 — Activity section recent-runs feed.
+  *
+  * Bounded snapshot of the last five cell runs across the whole
+  * notebook.  Each row carries cell index, label, status,
+  * duration (ms), and a startedAt epoch-ms timestamp for
+  * relative-time rendering.  The ring is appended to by
+  * ``installKernelExecution``'s execute_reply handler and never
+  * grows beyond ``_recentRunsRing.length`` cap of 5.
+  */
+ recentNotebookRuns() {
+  return Array.isArray(this._recentRunsRing) ? this._recentRunsRing : [];
+ },
+
+ /**
+  * Sprint 112.5 — derived "currently running" cell, if any.
+  *
+  * Reads the kernel-execution mixin's ``_runStartedAt`` map
+  * (populated on ``execute_input`` iopub frame, cleared on
+  * ``execute_reply``) and returns the matching cell + start
+  * timestamp.  Returns ``null`` when no run is in flight.
+  */
+ currentlyRunningCell() {
+  const starts = this._runStartedAt || {};
+  for (const hash of Object.keys(starts)) {
+   if (String(hash).startsWith('__pql_')) continue;
+   const cell = this.cells.find((c) => c.content_hash === hash);
+   if (cell) return { cell, startedAt: starts[hash] };
+  }
+  return null;
+ },
+
+ /**
   * Phase 107.2 — count of currently-open editor panels.
   *
   * Drives the toolbar's "Close all (N)" affordance, which surfaces
@@ -186,17 +275,20 @@ export function notebookEditor({ initialPath = '', currentUser = null } = {}) {
   * Phase-96 chat drawer even though it's fixed-position rather than
   * inline-stacked, so "Close all" maps to the user's "clear my
   * workspace" intent regardless of the underlying layout.
+  *
+  * Phase 112 — Tags / Branch / Access surfaces moved into the
+  * right meta panel and no longer drive separate toggle panels,
+  * so they drop from the count.  Revisions stays here because its
+  * cell-diff drawer is still a wide overlay opened from the meta
+  * panel's "See all & diff" button.
   */
  openPanelCount() {
   let n = 0;
   if (this.jobsPanelOpen) n++;
   if (this.inspectorOpen) n++;
-  if (this.tagsPickerOpen) n++;
-  if (this.branchBinding && this.branchBinding.open) n++;
   if (this.replays && this.replays.open) n++;
   if (this.sequenceProposals && this.sequenceProposals.open) n++;
   if (this.widgetsPanel && this.widgetsPanel.open) n++;
-  if (this.permissionsPanel && this.permissionsPanel.open) n++;
   if (this.revisions && this.revisions.open) n++;
   if (this.chatPanelOpen) n++;
   return n;
@@ -205,12 +297,9 @@ export function notebookEditor({ initialPath = '', currentUser = null } = {}) {
  closeAllPanels() {
   this.jobsPanelOpen = false;
   this.inspectorOpen = false;
-  this.tagsPickerOpen = false;
-  if (this.branchBinding) this.branchBinding.open = false;
   if (this.replays) this.replays.open = false;
   if (this.sequenceProposals) this.sequenceProposals.open = false;
   if (this.widgetsPanel) this.widgetsPanel.open = false;
-  if (this.permissionsPanel) this.permissionsPanel.open = false;
   if (this.revisions) this.revisions.open = false;
   this.chatPanelOpen = false;
  },

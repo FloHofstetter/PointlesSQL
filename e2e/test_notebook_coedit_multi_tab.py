@@ -131,21 +131,27 @@ def _open_editor_tab(
     page.goto(
         f"{live_server_url}/notebooks/edit/{path}", wait_until="domcontentloaded"
     )
-    pill = page.locator('[data-testid="notebook-coedit-pill"]')
-    pill.wait_for(timeout=_LIVE_PILL_TIMEOUT_MS)
+    # Sprint 112.5 — the verbose ``notebook-coedit-pill`` (dot + label)
+    # collapsed into one of three vital-sign dots in the toolbar.  The
+    # dot has no visible text; its class binds via ``coeditDotClass()``,
+    # which returns ``bg-success`` once the y-protocols sync completes
+    # and ``coeditStatus === 'live'``.  We poll the class instead of
+    # the inner text.
+    dot = page.locator('[data-testid="notebook-coedit-dot"]')
+    dot.wait_for(timeout=_LIVE_PILL_TIMEOUT_MS)
     deadline = time.time() + (_LIVE_PILL_TIMEOUT_MS / 1000.0)
-    text = ""
+    class_attr = ""
     while time.time() < deadline:
         try:
-            text = pill.inner_text(timeout=1_000).strip().lower()
+            class_attr = dot.get_attribute("class", timeout=1_000) or ""
         except Exception:  # noqa: BLE001 — Playwright surfaces many TimeoutError variants
-            text = ""
-        if "live" in text:
+            class_attr = ""
+        if "bg-success" in class_attr:
             return page
         time.sleep(0.1)
     raise AssertionError(
-        f"live pill never showed 'Live' on {path!r}; "
-        f"last text={text!r}, console_errors={console_errors!r}"
+        f"co-edit dot never reached the live (bg-success) class on {path!r}; "
+        f"last class={class_attr!r}, console_errors={console_errors!r}"
     )
 
 

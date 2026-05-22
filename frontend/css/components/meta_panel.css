@@ -1,0 +1,229 @@
+/* ----------------------------------------------------------------
+ * Meta panel — right rail rendered as a third grid column on
+ * pages that thread content into the ``{% block meta_panel %}``
+ * slot of ``base.html``. Mirrors ``.pql-context-panel`` (left rail)
+ * in skin and sticky behaviour so the layout reads as a symmetric
+ * "frame around content". Notebook editor (Phase 112) is the first
+ * consumer; other detail pages roll in via per-page block overrides
+ * in follow-up sprints.
+ * ------------------------------------------------------------- */
+
+.pql-meta-panel {
+ background: var(--bs-tertiary-bg);
+ border-left: 1px solid var(--bs-border-color-translucent);
+}
+
+/* Mobile-only trigger button in the topbar.  Only paints when the
+   current page actually renders a meta panel; otherwise it would
+   be a tap target that opens nothing. */
+.pql-meta-mobile-trigger { display: none; }
+body:has(.pql-shell--has-meta) .pql-meta-mobile-trigger {
+ display: inline-flex;
+ align-items: center;
+}
+@media (min-width: 768px) {
+ /* Topbar trigger is mobile-only; the static rail lives in the
+    grid at md+. */
+ .pql-meta-mobile-trigger { display: none !important; }
+}
+
+@media (min-width: 768px) {
+ .pql-meta-panel {
+  position: sticky;
+  top: var(--pql-topbar-height);
+  max-height: calc(100vh - var(--pql-topbar-height) - var(--pql-footer-bar-height));
+  overflow-y: auto;
+ }
+}
+
+.pql-meta-panel__header {
+ display: flex;
+ align-items: center;
+ gap: 0.5rem;
+ padding: 0.6rem 0.85rem;
+ border-bottom: 1px solid var(--bs-border-color-translucent);
+ font-size: 0.85rem;
+ font-weight: var(--pql-weight-semibold);
+ color: var(--bs-secondary-color);
+ text-transform: uppercase;
+ letter-spacing: 0.04em;
+}
+
+.pql-meta-panel__inner {
+ padding: 0 0.25rem 1rem;
+}
+
+/* Always-visible "summary" block above the accordion.  Sprint 112.5
+   redesign: identity card with filename + parent-dir on separate
+   lines, single consolidated status row with leading colour dot,
+   Modified / Format meta-list, and a badges row. */
+.pql-meta-panel__summary {
+ position: relative;
+ padding: 0.7rem 0.85rem 0.6rem;
+ border-bottom: 1px solid var(--bs-border-color-translucent);
+}
+.pql-meta-panel__collapse-btn {
+ position: absolute;
+ top: 0.35rem;
+ right: 0.45rem;
+ line-height: 1;
+ color: var(--bs-secondary-color);
+ text-decoration: none;
+}
+.pql-meta-panel__collapse-btn:hover { color: var(--bs-body-color); }
+
+.pql-meta-panel__summary__title-row {
+ display: flex;
+ align-items: flex-start;
+ gap: 0.5rem;
+ padding-right: 1.5rem;
+ margin-bottom: 0.4rem;
+}
+.pql-meta-panel__summary__icon {
+ flex: 0 0 auto;
+ color: var(--bs-secondary-color);
+ font-size: 1.1rem;
+ line-height: 1.3;
+}
+.pql-meta-panel__summary__title {
+ font-size: 1rem;
+ font-weight: var(--pql-weight-semibold);
+ word-break: break-word;
+ line-height: 1.25;
+}
+.pql-meta-panel__summary__parent {
+ font-size: 0.72rem;
+ color: var(--bs-secondary-color);
+ word-break: break-all;
+ line-height: 1.25;
+}
+.pql-meta-panel__summary__status {
+ display: flex;
+ align-items: center;
+ gap: 0.2rem;
+ font-size: 0.78rem;
+ color: var(--bs-body-color);
+ margin-bottom: 0.4rem;
+}
+.pql-meta-panel__summary__list {
+ display: grid;
+ grid-template-columns: max-content 1fr;
+ gap: 0.1rem 0.6rem;
+ margin: 0 0 0.4rem;
+ font-size: 0.75rem;
+}
+.pql-meta-panel__summary__list dt {
+ color: var(--bs-secondary-color);
+ font-weight: var(--pql-weight-regular);
+}
+.pql-meta-panel__summary__list dd {
+ margin: 0;
+ color: var(--bs-body-color);
+}
+.pql-meta-panel__summary__badges {
+ display: flex;
+ flex-wrap: wrap;
+ gap: 0.25rem;
+}
+
+/* Accordion sections — flush variant matches the panel's flat
+   chrome.  Each ``.accordion-button`` is small + uppercase so it
+   reads as a heading row, not a chunky button. */
+.pql-meta-panel .accordion {
+ --bs-accordion-bg: transparent;
+ --bs-accordion-active-bg: transparent;
+ --bs-accordion-btn-padding-y: 0.4rem;
+ --bs-accordion-btn-padding-x: 0.85rem;
+ --bs-accordion-body-padding-y: 0.6rem;
+ --bs-accordion-body-padding-x: 0.85rem;
+ --bs-accordion-btn-focus-box-shadow: none;
+}
+.pql-meta-panel .accordion-button {
+ font-size: 0.72rem;
+ font-weight: var(--pql-weight-semibold);
+ text-transform: uppercase;
+ letter-spacing: 0.04em;
+ color: var(--bs-secondary-color);
+}
+.pql-meta-panel .accordion-button:not(.collapsed) {
+ color: var(--bs-body-color);
+ box-shadow: none;
+}
+.pql-meta-panel .accordion-button .badge {
+ margin-left: 0.4rem;
+ font-size: 0.65rem;
+}
+.pql-meta-panel .accordion-item {
+ border: 0;
+ border-bottom: 1px solid var(--bs-border-color-translucent);
+}
+.pql-meta-panel .accordion-body {
+ font-size: 0.82rem;
+}
+.pql-meta-panel .accordion-body .text-muted {
+ font-size: 0.75rem;
+}
+
+/* Section internals -- tighter spacing than the legacy inline
+   panels carried, since the column is narrower. */
+.pql-meta-panel .form-label {
+ font-size: 0.72rem;
+ margin-bottom: 0.2rem;
+}
+.pql-meta-panel .pql-meta-panel-share__row {
+ display: flex;
+ flex-direction: column;
+ gap: 0.2rem;
+ padding: 0.4rem 0;
+ border-bottom: 1px dashed var(--bs-border-color-translucent);
+ font-size: 0.75rem;
+}
+.pql-meta-panel .pql-meta-panel-share__row:last-child {
+ border-bottom: 0;
+}
+.pql-meta-panel .pql-meta-panel-share__url {
+ font-size: 0.7rem;
+ word-break: break-all;
+}
+
+.pql-meta-panel .pql-meta-panel-revision-row {
+ display: flex;
+ flex-direction: column;
+ gap: 0.1rem;
+ padding: 0.35rem 0;
+ border-bottom: 1px dashed var(--bs-border-color-translucent);
+ font-size: 0.75rem;
+}
+.pql-meta-panel .pql-meta-panel-revision-row:last-child {
+ border-bottom: 0;
+}
+
+/* Sprint 112.5 — Activity / Live section rows.  Each row carries
+   its own label-on-top / body-below pattern so kernel, running,
+   peers, and recent-runs all sit on the same visual rhythm. */
+.pql-meta-panel .pql-meta-panel-activity__row {
+ padding: 0.4rem 0;
+ border-bottom: 1px dashed var(--bs-border-color-translucent);
+}
+.pql-meta-panel .pql-meta-panel-activity__row:last-child {
+ border-bottom: 0;
+}
+.pql-meta-panel .pql-meta-panel-activity__row--running {
+ padding-left: 0.4rem;
+ border-left: 2px solid var(--bs-warning);
+}
+.pql-meta-panel .pql-meta-panel-activity__run-row {
+ display: flex;
+ align-items: center;
+ gap: 0.35rem;
+ padding: 0.2rem 0;
+ font-size: 0.72rem;
+}
+
+/* Mobile offcanvas: the same DOM serves as an offcanvas-end drawer
+   below md.  Bootstrap's ``.offcanvas-md`` class handles the
+   responsive switch (hidden + slide-in at <md, inline at md+);
+   we just tune the drawer width on mobile. */
+.pql-meta-panel.offcanvas-md {
+ --bs-offcanvas-width: min(360px, 100vw);
+}

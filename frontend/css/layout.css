@@ -8,7 +8,7 @@
 
 .pql-shell {
  display: grid;
- min-height: calc(100vh - var(--pql-topbar-height));
+ min-height: calc(100vh - var(--pql-topbar-height) - var(--pql-footer-bar-height));
  grid-template-columns: minmax(0, 1fr);
 }
 .pql-shell--no-sidebar {
@@ -37,7 +37,44 @@
  html[data-pql-panel-collapsed] .pql-sidebar-shell {
   display: none;
  }
+
+ /* Meta panel (right rail) — adds a 4th grid column on pages that
+    opt in via ``.pql-shell--has-meta``. Combined collapse states
+    are explicit so any pairwise combination of left-context
+    collapse + meta collapse stays a clean grid. */
+ .pql-shell--has-meta {
+  grid-template-columns:
+   var(--pql-icon-rail-width)
+   var(--pql-context-panel-width)
+   minmax(0, 1fr)
+   var(--pql-meta-panel-width);
+ }
+ html[data-pql-panel-collapsed] .pql-shell--has-meta {
+  grid-template-columns:
+   var(--pql-icon-rail-width)
+   minmax(0, 1fr)
+   var(--pql-meta-panel-width);
+ }
+ html[data-pql-meta-collapsed] .pql-shell--has-meta {
+  grid-template-columns:
+   var(--pql-icon-rail-width)
+   var(--pql-context-panel-width)
+   minmax(0, 1fr);
+ }
+ html[data-pql-meta-collapsed] .pql-shell--has-meta .pql-meta-panel {
+  display: none;
+ }
+ html[data-pql-panel-collapsed][data-pql-meta-collapsed] .pql-shell--has-meta {
+  grid-template-columns: var(--pql-icon-rail-width) minmax(0, 1fr);
+ }
 }
+
+/* Mobile (<md): Bootstrap's ``.offcanvas-md`` already moves the
+   aside off-screen via ``visibility: hidden`` + ``position: fixed``
+   + ``transform: translateX(...)``.  We don't override that — the
+   topbar offcanvas-trigger flips Bootstrap's ``.show`` class and
+   slides the drawer in.  At md+ Bootstrap restores normal
+   block flow, so the static rail re-paints in the grid column. */
 
 /* Phase 81.K.12 — layout toggles live in the topbar.  The legacy
    ``.pql-panel-toggle`` selector is kept as a no-op so any stale
@@ -54,9 +91,21 @@
 .pql-layout-toggle:hover { background: var(--bs-secondary-bg); }
 .pql-layout-toggle .bi { transition: transform 0.15s ease-in-out; }
 html[data-pql-rail-state="collapsed"] .pql-layout-toggle[data-pql-rail-toggle] .bi,
-html[data-pql-panel-collapsed] .pql-layout-toggle[data-pql-panel-toggle] .bi {
+html[data-pql-panel-collapsed] .pql-layout-toggle[data-pql-panel-toggle] .bi,
+html[data-pql-meta-collapsed] .pql-layout-toggle[data-pql-meta-toggle] .bi {
  color: var(--pql-color-accent);
 }
+
+/* The meta-toggle button is rendered in every base.html topbar so
+   the HTML stays static, but it only resolves visually on pages
+   that opt in via ``.pql-shell--has-meta``.  ``:has()`` lights up
+   only when the shell carries that class.  Modern-evergreen
+   browsers (Chrome 105+, Safari 15.4+, Firefox 121+) cover the
+   whole user base; older browsers keep the legacy 3-column shell
+   and never see a meta panel, so the toggle simply stays hidden
+   for them as it does for non-meta pages. */
+.pql-layout-toggle--meta { display: none; }
+body:has(.pql-shell--has-meta) .pql-layout-toggle--meta { display: inline-flex; }
 
 /* Sidebar wrapper: static column ≥ md, slides in as an offcanvas drawer < md.
  Bootstrap's ``.offcanvas-md`` handles the responsive switch — we only tune
@@ -69,7 +118,7 @@ html[data-pql-panel-collapsed] .pql-layout-toggle[data-pql-panel-toggle] .bi {
 .pql-sidebar-shell {
  position: sticky;
  top: var(--pql-topbar-height);
- max-height: calc(100vh - var(--pql-topbar-height));
+ max-height: calc(100vh - var(--pql-topbar-height) - var(--pql-footer-bar-height));
  overflow-y: auto;
  background: transparent;
  /* column divider so the section panels that
@@ -93,7 +142,7 @@ html[data-pql-panel-collapsed] .pql-layout-toggle[data-pql-panel-toggle] .bi {
 }
 @media (min-width: 768px) {
 .pql-sidebar {
- max-height: calc(100vh - var(--pql-topbar-height));
+ max-height: calc(100vh - var(--pql-topbar-height) - var(--pql-footer-bar-height));
  }
 }
 
@@ -191,7 +240,7 @@ html[data-pql-panel-collapsed] .pql-layout-toggle[data-pql-panel-toggle] .bi {
 
 .pql-notebook-iframe {
  width: 100%;
- height: calc(100vh - var(--pql-topbar-height));
+ height: calc(100vh - var(--pql-topbar-height) - var(--pql-footer-bar-height));
  border: none;
  display: block;
 }
