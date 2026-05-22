@@ -2538,6 +2538,66 @@ PointlesSQL
 │           concrete new init step demands it — current 33-step
 │           complexity is structural, not a smell.
 │
+│   ├── Phase 110 — Restschuld IV (modularization wave for files > 700 LOC)  ✅ done 2026-05-22
+│   │     **Closed 2026-05-22.**  Nine commits, no behaviour change,
+│   │     no asset bump.  Continuation of the Phase 87 / 88 / 89
+│   │     "Restschuld" trim line.  Every previously > 700-LOC module
+│   │     touched in this phase landed under ~430 LOC per per-axis
+│   │     file with its public surface preserved through the new
+│   │     package's ``__init__.py`` re-exports.
+│   │     - **110.1 (commit ``848bd26``).** ``services/scheduler/
+│   │       executors.py`` (879 LOC) → ``executors/`` package with
+│   │       six per-kind files (pg_sync / python / papermill /
+│   │       alert_check / coedit_compaction / branch_cleanup).
+│   │     - **110.2 (commit ``2fefb34``).** ``services/scheduler/
+│   │       runs.py`` (860 LOC) → ``runs/`` package along the
+│   │       per-concern axes: ``_db`` / ``_tasks`` / ``_telemetry`` /
+│   │       ``_execute``.  ``_sleep`` test hook moved into the
+│   │       package ``__init__`` with a call-time lookup so
+│   │       ``monkeypatch.setattr(runs, "_sleep", ...)`` keeps
+│   │       reaching the retry-backoff site in ``_tasks``.
+│   │     - **110.3 (commit ``c0f44bf``).** ``api/admin/console.py``
+│   │       (830 LOC) → ``console/`` package with one file per HTML
+│   │       surface (landing / review-destinations / audit-sinks /
+│   │       api-keys / system-info / sources / audit-trio).
+│   │     - **110.4 (commit ``38c387e``).** ``api/lineage/views.py``
+│   │       (784 LOC) → ``views/`` package per route family
+│   │       (row-trace / column-trace / value-changes / index) on
+│   │       top of one shared ``_helpers`` module.  Drive-by fix:
+│   │       latent ``except A, B:`` Python-2 syntax in
+│   │       ``_enrich_with_source_file`` now reads ``except (A, B):``.
+│   │     - **110.5 (commit ``f72b1a4``).** ``api/data_products_routes/
+│   │       comments.py`` (883 LOC) → ``comments/`` package per CRUD
+│   │       verb with separate ``_constants`` / ``_mentions`` /
+│   │       ``_helpers`` modules.  Four route handlers re-exported
+│   │       so ``social_routes.comments`` (polymorphic dispatcher)
+│   │       keeps its import path.
+│   │     - **110.6 (commit ``c357215``).** ``api/notebook_kernel_ws.py``
+│   │       (835 LOC) → ``notebook_kernel_ws/`` package per layer
+│   │       (``_protocol`` / ``_pump`` / ``_handlers`` / ``_route``).
+│   │     - **110.7 (commit ``8afd04f``).** ``api/social_routes/
+│   │       issues.py`` (749 LOC) → ``issues/`` package per CRUD verb
+│   │       (open / list / detail / state).
+│   │     - **110.8 (commit ``a514aa9``).** ``services/data_products/
+│   │       active_reviewer.py`` (760 LOC) → ``active_reviewer/``
+│   │       package per concern (verdict / prompt / config / writers /
+│   │       run).
+│   │     - **110.9 (commit ``2f49c14``).** ``api/sql/write.py``
+│   │       (730 LOC) → ``write/`` package per route family
+│   │       (``_helpers`` / ``_autoload`` / ``_table`` / ``_dml``).
+│   │       Route bodies look up ``_build_pql`` +
+│   │       ``_materialise_select_to_pandas`` via the write package
+│   │       at call time so existing tests that monkeypatch
+│   │       ``pql_write_routes._build_pql`` keep reaching the route
+│   │       call site.
+│   │
+│   │     Verified after every sub-phase: ``ruff check`` 0,
+│   │     ``pyright`` 0 errors / 655 warnings stable, ``pydoclint``
+│   │     0 violations, ``alembic check`` 0 drift, all per-area test
+│   │     suites green (87 scheduler + 58 dag/scheduler + 33 admin
+│   │     console + 38 lineage + 64 comment + 3 kernel-ws + 37 issue
+│   │     + 15 active-reviewer + 12 pql-write).
+│   │
 │   ├── Phase 109 — Multi-worker co-edit hub (PG LISTEN/NOTIFY bus)  ✅ done 2026-05-22
 │   │     **Closed 2026-05-22.**  Four commits, no asset bump.
 │   │     Forward-looking infrastructure that closes the single-
