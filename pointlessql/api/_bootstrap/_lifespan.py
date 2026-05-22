@@ -425,7 +425,16 @@ def make_lifespan(
                         settings.coedit.bus_cleanup_interval_seconds
                     ),
                 )
+                # Wire the dispatch callback BEFORE start() so the
+                # first inbound NOTIFY can already fan out into a hub.
+                from pointlessql.api.notebook_coedit_ws import (
+                    apply_remote_bus_frame,
+                    bind_coedit_bus,
+                )
+
+                coedit_bus.set_dispatch_callback(apply_remote_bus_frame)
                 await coedit_bus.start()
+                bind_coedit_bus(coedit_bus)
                 app.state.coedit_bus = coedit_bus
             else:
                 logger.info(
@@ -462,6 +471,9 @@ def make_lifespan(
             if replay_worker is not None:
                 await replay_worker.stop()
             if coedit_bus is not None:
+                from pointlessql.api.notebook_coedit_ws import bind_coedit_bus
+
+                bind_coedit_bus(None)
                 await coedit_bus.stop()
             await app.state.kernel_registry.shutdown_all()
             if app.state.mlflow_subprocess is not None:

@@ -65,6 +65,7 @@ if TYPE_CHECKING:
     from sqlalchemy.orm import sessionmaker
 
     from pointlessql.config import Settings
+    from pointlessql.services.notebook.coedit_bus import CoeditBus
 
 _LOG = logging.getLogger(__name__)
 router = APIRouter()
@@ -76,6 +77,17 @@ TAG_SYNC_STEP2: Final[int] = 0x01
 TAG_SYNC_UPDATE: Final[int] = 0x02
 TAG_AWARENESS_UPDATE: Final[int] = 0x03
 TAG_CELL_UUID_REMAP: Final[int] = 0x04
+# Phase 105.6 — agent-presence ride-along; defined alongside its
+# REST emitter in ``notebook_coedit_agent_routes.py`` but Phase 109
+# needs the constant for the cross-worker dispatch switch.
+TAG_AGENT_PRESENCE: Final[int] = 0x05
+
+# Tags that ride the Phase-109 cross-worker bus.  Handshake bytes
+# (sync_step1/2) stay strictly local — they are per-client and
+# the answering hub has the authoritative state.
+_BUS_RELAYED_TAGS: Final[frozenset[int]] = frozenset(
+    {TAG_SYNC_UPDATE, TAG_AWARENESS_UPDATE, TAG_CELL_UUID_REMAP, TAG_AGENT_PRESENCE}
+)
 
 # Importing ``coedit_service`` to keep the type aliases for
 # ``CELLS_ORDER_KEY`` / ``CELLS_TEXT_KEY`` co-located.
@@ -143,10 +155,36 @@ class _NotebookHub:
 
 
 # Module-level singleton — the asyncio loop is single-threaded per
-# uvicorn worker so a plain dict + lock pair is enough.  Multi-worker
-# deployments need a Redis pub/sub broker; out of scope for 105.2.
+# uvicorn worker so a plain dict + lock pair is enough.  Phase 109's
+# cross-worker fanout rides PG LISTEN/NOTIFY through
+# :class:`pointlessql.services.notebook.coedit_bus.CoeditBus`; the
+# bus stays optional (default-off feature flag) so single-worker
+# installs are unaffected.
 _HUBS: dict[str, _NotebookHub] = {}
 _HUBS_LOCK = asyncio.Lock()
+
+# Phase 109 — module-level handle on the bus.  Wrapped in a single-
+# slot list so the assignment site does not trip pyright's
+# ``reportConstantRedefinition`` (uppercase names are read-only).
+# Set by the FastAPI lifespan via :func:`bind_coedit_bus` after the
+# bus has started so publish sites can reach it without threading
+# the WebSocket / Request through every helper.  Stays empty on
+# single-worker or SQLite installs.
+_bus_ref: list[CoeditBus | None] = [None]
+
+
+def bind_coedit_bus(bus: CoeditBus | None) -> None:
+    """Attach (or detach) the cross-worker bus to this hub module.
+
+    Called from the FastAPI lifespan once at startup with the live
+    :class:`CoeditBus`, and again at teardown with ``None``.  When
+    set, the WS dispatch path publishes outbound frames over the
+    bus after the local fanout completes.
+
+    Args:
+        bus: Live :class:`CoeditBus` or ``None`` to detach.
+    """
+    _bus_ref[0] = bus
 
 
 def _extract_seed_cells(
@@ -401,6 +439,124 @@ async def _broadcast_to_all(hub: _NotebookHub, frame: bytes) -> None:
             )
 
 
+async def _publish_to_bus(notebook_id: str, frame: bytes) -> None:
+    """Best-effort cross-worker fanout for *frame*.
+
+    No-op when the bus is unbound (default single-worker config) or
+    when the frame's tag is not in :data:`_BUS_RELAYED_TAGS`.  Errors
+    are logged + swallowed inside :meth:`CoeditBus.publish`; the
+    local broadcast has already happened so a transient PG outage
+    costs only cross-worker consistency, not the editor UX.
+    """
+    bus = _bus_ref[0]
+    if bus is None or not frame:
+        return
+    if frame[0] not in _BUS_RELAYED_TAGS:
+        return
+    await bus.publish(notebook_id, frame)
+
+
+async def apply_remote_bus_frame(
+    notebook_uuid: str, payload: bytes, source_pid: int
+) -> None:
+    """Bus dispatch callback — apply a frame received from another worker.
+
+    Invoked by :class:`CoeditBus` after a NOTIFY/SELECT round-trip
+    when ``source_pid`` is not our own PID.  Mirrors the WS receive
+    path: applies CRDT updates to the local hub's Doc and broadcasts
+    to every locally-connected subscriber.  Does **not** re-publish
+    to the bus — Phase 109's frame-once invariant relies on the
+    publisher being the only worker that puts a given frame on the
+    bus.
+
+    No-op when the local worker is not currently hosting
+    ``notebook_uuid`` (no entry in :data:`_HUBS`).  This is the
+    common case for any worker that doesn't have a live editor on
+    that notebook.
+
+    Args:
+        notebook_uuid: Target notebook id.
+        payload: Tag-prefixed wire bytes — same frame the originating
+            worker received from a WS client (or generated server-side
+            in :func:`apply_save_remap` / :func:`broadcast_agent_presence`).
+        source_pid: ``os.getpid()`` of the publisher.  Used for
+            log correlation; self-loop suppression already happened
+            inside :class:`CoeditBus`.
+    """
+    if not payload:
+        return
+    tag = payload[0]
+    inner = payload[1:]
+    async with _HUBS_LOCK:
+        hub = _HUBS.get(notebook_uuid)
+    if hub is None:
+        return
+    async with hub.lock:
+        if tag == TAG_SYNC_UPDATE:
+            try:
+                hub.doc.apply_update(inner)
+            except Exception:  # noqa: BLE001 — malformed remote update
+                _LOG.exception(
+                    "coedit-bus: malformed sync_update from pid=%d nb=%s",
+                    source_pid,
+                    notebook_uuid,
+                )
+                return
+            hub.dirty = True
+            await _broadcast_to_all(hub, payload)
+        elif tag == TAG_AWARENESS_UPDATE:
+            await _broadcast_to_all(hub, payload)
+        elif tag == TAG_CELL_UUID_REMAP:
+            try:
+                remap = json.loads(inner.decode("utf-8"))
+            except Exception:  # noqa: BLE001 — malformed remap json
+                _LOG.exception(
+                    "coedit-bus: malformed cell_uuid_remap from pid=%d nb=%s",
+                    source_pid,
+                    notebook_uuid,
+                )
+                return
+            if not isinstance(remap, dict):
+                return
+            _apply_remap_locked(hub, remap)
+            await _broadcast_to_all(hub, payload)
+        elif tag == TAG_AGENT_PRESENCE:
+            await _broadcast_to_all(hub, payload)
+        else:
+            _LOG.debug(
+                "coedit-bus: ignoring unknown remote tag 0x%02x", tag
+            )
+
+
+def _apply_remap_locked(hub: _NotebookHub, remap: dict[str, str]) -> None:
+    """Apply a cell-uuid remap to *hub.doc* under an open ``hub.lock``.
+
+    Shared body between :func:`apply_save_remap` (called by the save
+    handler) and :func:`apply_remote_bus_frame` (called by the bus
+    listener on remote workers).
+    """
+    order = hub.doc.get(_CELLS_ORDER_KEY, type=Array)
+    texts = hub.doc.get(_CELLS_TEXT_KEY, type=Map)
+    with hub.doc.transaction(origin="pql-server-remap"):
+        for old_uuid, new_uuid in remap.items():
+            if old_uuid == new_uuid:
+                continue
+            if old_uuid in texts:
+                try:
+                    prior = texts[old_uuid]
+                    prior_value = (
+                        prior.to_py() if hasattr(prior, "to_py") else str(prior)
+                    )
+                except Exception:  # noqa: BLE001
+                    prior_value = ""
+                del texts[old_uuid]
+                texts[new_uuid] = Text(prior_value)
+            for i, value in enumerate(list(order)):
+                if value == old_uuid:
+                    del order[i]
+                    order.insert(i, new_uuid)
+
+
 async def apply_save_remap(notebook_id: str, remap: dict[str, str]) -> None:
     """Apply a save-driven ``cell_uuid`` remap to the live hub.
 
@@ -431,40 +587,16 @@ async def apply_save_remap(notebook_id: str, remap: dict[str, str]) -> None:
         return
     async with _HUBS_LOCK:
         hub = _HUBS.get(notebook_id)
-    if hub is None:
-        return
-    async with hub.lock:
-        order = hub.doc.get(_CELLS_ORDER_KEY, type=Array)
-        texts = hub.doc.get(_CELLS_TEXT_KEY, type=Map)
-        with hub.doc.transaction(origin="pql-server-remap"):
-            for old_uuid, new_uuid in remap.items():
-                if old_uuid == new_uuid:
-                    continue
-                # Rewrite cells_text in place — Y.Map keys are immutable
-                # so a key change is delete + set carrying the same
-                # Text payload.  Pycrdt's ``Map.__getitem__`` returns
-                # the live reference, so we capture .to_py() to rebuild
-                # the new entry with identical content.
-                if old_uuid in texts:
-                    try:
-                        prior = texts[old_uuid]
-                        prior_value = (
-                            prior.to_py() if hasattr(prior, "to_py") else str(prior)
-                        )
-                    except Exception:  # noqa: BLE001
-                        prior_value = ""
-                    del texts[old_uuid]
-                    texts[new_uuid] = Text(prior_value)
-                # Rewrite cells_order positions — there may be more
-                # than one occurrence in pathological edits, so scan
-                # the full list.
-                for i, value in enumerate(list(order)):
-                    if value == old_uuid:
-                        del order[i]
-                        order.insert(i, new_uuid)
-        hub.dirty = True
-        frame = bytes([TAG_CELL_UUID_REMAP]) + json.dumps(remap).encode("utf-8")
-        await _broadcast_to_all(hub, frame)
+    frame = bytes([TAG_CELL_UUID_REMAP]) + json.dumps(remap).encode("utf-8")
+    if hub is not None:
+        async with hub.lock:
+            _apply_remap_locked(hub, remap)
+            hub.dirty = True
+            await _broadcast_to_all(hub, frame)
+    # Bus publish happens regardless of local-hub presence — another
+    # worker may be hosting the notebook even if this one isn't.  No-op
+    # in single-worker installs (bus is None).
+    await _publish_to_bus(notebook_id, frame)
 
 
 async def broadcast_agent_presence(notebook_id: str, frame: bytes) -> bool:
@@ -488,11 +620,16 @@ async def broadcast_agent_presence(notebook_id: str, frame: bytes) -> bool:
     """
     async with _HUBS_LOCK:
         hub = _HUBS.get(notebook_id)
-    if hub is None:
-        return False
-    async with hub.lock:
-        await _broadcast_to_all(hub, frame)
-    return True
+    local_delivered = hub is not None
+    if hub is not None:
+        async with hub.lock:
+            await _broadcast_to_all(hub, frame)
+    # Always relay agent-presence over the bus — other workers may
+    # host the same notebook even if we don't.  Caller's "delivered"
+    # semantics describe local-hub state only; cross-worker fanout is
+    # informational.
+    await _publish_to_bus(notebook_id, frame)
+    return local_delivered
 
 
 async def _close_overflowed(sub: _ClientSubscription) -> None:
@@ -605,6 +742,7 @@ async def notebook_coedit_ws(  # noqa: C901 — handshake + dispatch are inheren
                         continue
                 await sub.outbound.put(bytes([TAG_SYNC_STEP2]) + diff)
             elif tag in (TAG_SYNC_UPDATE, TAG_SYNC_STEP2):
+                relay_frame = bytes([TAG_SYNC_UPDATE]) + payload
                 async with hub.lock:
                     try:
                         hub.doc.apply_update(payload)
@@ -614,14 +752,12 @@ async def notebook_coedit_ws(  # noqa: C901 — handshake + dispatch are inheren
                         )
                         continue
                     hub.dirty = True
-                    await _broadcast(
-                        hub,
-                        bytes([TAG_SYNC_UPDATE]) + payload,
-                        exclude=sub,
-                    )
+                    await _broadcast(hub, relay_frame, exclude=sub)
+                await _publish_to_bus(notebook_id, relay_frame)
             elif tag == TAG_AWARENESS_UPDATE:
                 async with hub.lock:
                     await _broadcast(hub, frame, exclude=sub)
+                await _publish_to_bus(notebook_id, frame)
             else:
                 _LOG.debug(
                     "coedit: unknown tag 0x%02x from %s", tag, sub.client_id
