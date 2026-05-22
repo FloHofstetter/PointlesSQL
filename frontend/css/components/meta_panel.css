@@ -33,6 +33,19 @@ body:has(.pql-shell--has-meta) .pql-meta-mobile-trigger {
   top: var(--pql-topbar-height);
   max-height: calc(100vh - var(--pql-topbar-height) - var(--pql-footer-bar-height));
   overflow-y: auto;
+  /* Phase 113.4 — see icon_rail.css. */
+  overscroll-behavior-y: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--bs-border-color) transparent;
+ }
+ .pql-meta-panel::-webkit-scrollbar { width: 6px; }
+ .pql-meta-panel::-webkit-scrollbar-track { background: transparent; }
+ .pql-meta-panel::-webkit-scrollbar-thumb {
+  background: var(--bs-border-color);
+  border-radius: 3px;
+ }
+ .pql-meta-panel::-webkit-scrollbar-thumb:hover {
+  background: var(--bs-secondary-color);
  }
 }
 

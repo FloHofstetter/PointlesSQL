@@ -141,12 +141,27 @@ body:has(.pql-shell--has-meta) .pql-layout-toggle--meta { display: inline-flex; 
  max-height: calc(100vh - var(--pql-topbar-height) - var(--pql-footer-bar-height));
  overflow-y: auto;
  background: transparent;
+ /* Phase 113.4 — wheel events that exhaust the secondary panel's
+    own scroll must not bleed into the window scroll.  Same rationale
+    as ``.pql-icon-rail`` in icon_rail.css. */
+ overscroll-behavior-y: contain;
+ scrollbar-width: thin;
+ scrollbar-color: var(--bs-border-color) transparent;
  /* column divider so the section panels that
  don't bring their own.border-end (runs/sql/jobs/...)
  still read as a column. Federation + Dashboards bring
  ``.pql-sidebar.border-end`` on the inner <aside>; that
  sits flush against this border so they don't double up. */
  border-right: 1px solid var(--bs-border-color-translucent);
+ }
+ .pql-sidebar-shell::-webkit-scrollbar { width: 6px; }
+ .pql-sidebar-shell::-webkit-scrollbar-track { background: transparent; }
+ .pql-sidebar-shell::-webkit-scrollbar-thumb {
+  background: var(--bs-border-color);
+  border-radius: 3px;
+ }
+ .pql-sidebar-shell::-webkit-scrollbar-thumb:hover {
+  background: var(--bs-secondary-color);
  }
 }
 

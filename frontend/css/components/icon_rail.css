@@ -28,7 +28,29 @@
     top: var(--pql-topbar-height);
     max-height: calc(100vh - var(--pql-topbar-height));
     overflow-y: auto;
+    /* Phase 113.4 — wheel events that exhaust the rail's internal
+       scroll must NOT leak into the document scroll.  Without
+       overscroll-behavior the rail's 287px of overflow at 900px
+       viewports felt like "the rail scrolls with the page" because
+       the last wheel ticks scrolled past the rail boundary into
+       window scroll.  Same treatment for ``.pql-context-panel`` and
+       ``.pql-meta-panel`` below. */
+    overscroll-behavior-y: contain;
+    /* Thin custom scrollbar so users see overflow exists.  The
+       default browser scrollbar in dark mode renders nearly
+       invisibly against the dark rail bg. */
+    scrollbar-width: thin;
+    scrollbar-color: var(--bs-border-color) transparent;
     z-index: 1010;
+}
+.pql-icon-rail::-webkit-scrollbar { width: 6px; }
+.pql-icon-rail::-webkit-scrollbar-track { background: transparent; }
+.pql-icon-rail::-webkit-scrollbar-thumb {
+    background: var(--bs-border-color);
+    border-radius: 3px;
+}
+.pql-icon-rail::-webkit-scrollbar-thumb:hover {
+    background: var(--bs-secondary-color);
 }
 
 @media (min-width: 768px) {
