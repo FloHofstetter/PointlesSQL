@@ -2538,6 +2538,66 @@ PointlesSQL
 │           concrete new init step demands it — current 33-step
 │           complexity is structural, not a smell.
 │
+│   └── Phase 108 — Multi-tab co-edit CI gate + Phase 103 worker test  ✅ done 2026-05-22
+│         **Closed 2026-05-22.**  Three commits, test-only (no
+│         asset bump).  Adds the first headless-browser test job
+│         to the PointlesSQL CI plus the missing kernel-execution
+│         coverage for Phase 103's replay worker.
+│         - **108.1 (e2e fixtures, commit ``3eea7d4``).**  Adds a
+│           sibling ``e2e/`` test tree (outside ``tests/`` to escape
+│           the autouse-fixture cascade that short-circuits the
+│           FastAPI lifespan).  ``e2e/conftest.py`` provides
+│           ``live_server_url`` (free port + tempfile SQLite +
+│           alembic upgrade + seeded admin + uvicorn in background
+│           thread + ``/healthz`` probe), ``admin_session_cookies``
+│           (CSRF + form-encoded login flow), ``playwright_browser``
+│           (headless bundled Chromium), and ``playwright_context``
+│           (function-scope, auth cookies pre-injected).  ``playwright
+│           >=1.50`` added to the dev group; ``e2e`` pytest marker
+│           registered + auto-deselected from the default lane.
+│         - **108.2 (multi-tab gate, commit ``ec6b5a4``).**
+│           ``e2e/test_notebook_coedit_multi_tab.py`` asserts three
+│           regression guards for the 2026-05-22 bug class:
+│           ``[data-testid="notebook-coedit-pill"]`` reaches "Live"
+│           in two tabs (Y.Doc sync handshake intact); peer rail
+│           populates after both tabs nudge their awareness state
+│           (regression guard for coedit.js ``user.id`` vs
+│           ``clientID`` self-filter); zero script-level console
+│           errors AND ``window.notebookChatPanel`` remains a
+│           callable factory (regression guard for chat_drawer.html
+│           ``|tojson`` attribute-quoting class).  New
+│           ``e2e-browser`` CI job runs after ``gate``, installs
+│           Playwright Chromium with ``--with-deps``, executes
+│           ``pytest e2e/ -m e2e``.  ``continue-on-error: true``
+│           for the first wave of green runs — flip once ≈10
+│           successive greens collected.  Deferred from the
+│           original 11-assertion plan: cell-level text propagation,
+│           save-no-reset timing, fresh-tab ytext hydration (Phase
+│           107 hotfix).  Too brittle without the human pacing of
+│           the manual Phase 105.7 playbook; reopens as a follow-up
+│           sub-phase once the basic gate is observed stable in CI.
+│         - **108.3 (replay-worker happy-path, commit ``c05c94a``).**
+│           ``test_replay_worker_executes_cell_and_records_output``
+│           seeds a NotebookRevision with a single ``print(2 + 2)``
+│           cell, inserts a pending replay row, drives one tick of
+│           ``run_pending_replays`` directly, and asserts the row
+│           settles to ``ok`` with ``"4"`` in its captured stream
+│           frames.  This was the last untested path for Phase 103;
+│           service / REST / lifespan / lifecycle were already
+│           covered.  Bounded by ``asyncio.wait_for(60s)`` so a
+│           stuck ipykernel surfaces as a test timeout.
+│         - **Latent bug surfaced (not fixed in this phase).**  In
+│           ``coedit.js`` line 88–98 the initial ``awareness.
+│           setLocalState(...)`` fires before ``_wireAwarenessUplink``
+│           attaches the WS push listener — the initial broadcast
+│           is silently lost.  In real interactive use the next user
+│           action (cursor move, keystroke) re-emits and peers see
+│           each other; in headless tests we explicitly nudge the
+│           awareness layer via ``setLocalState`` in page-evaluate.
+│           Reorder the lines (uplink BEFORE first setLocalState)
+│           in a follow-up.
+│
+
 
 ├── Phase 81 — Feed overhaul + help surface + entity ⋯-menu  ✅ done 2026-05-16
 │       Three-track polish bundle.  Track K rebuilt /feed from a
