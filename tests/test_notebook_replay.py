@@ -337,3 +337,82 @@ async def test_replay_worker_class_idempotent_start_stop(
     w.start()
     w.start()  # idempotent — same task stays bound
     await w.stop()
+
+
+async def test_replay_worker_executes_cell_and_records_output(
+    factory: sessionmaker, tmp_path: Path  # type: ignore[type-arg]
+) -> None:
+    """End-to-end: worker spins a real kernel, runs a cell, persists outputs.
+
+    Phase 108.3 — the existing :func:`test_run_pending_replays_returns_zero_when_idle`
+    and :func:`test_replay_worker_class_idempotent_start_stop` cover
+    the empty-queue and lifecycle paths.  This test exercises the
+    happy path that connects them: insert a pending replay row, run
+    the per-tick driver, and assert the row settles to ``ok`` with
+    the cell's stdout captured in ``outputs_json``.
+
+    Uses ``run_pending_replays`` directly (not ``ReplayWorker.start()``)
+    so the test does not race against the 5-s tick scheduler — one
+    driver call is deterministic and faster.
+    """
+    import asyncio
+
+    from pointlessql.models import NotebookReplay
+    from pointlessql.services.notebook.replay_worker import run_pending_replays
+
+    nb_id, rev_uuid = _seed_notebook_with_revision(
+        factory,
+        cells=[
+            {
+                "content_hash": "h-print4",
+                "cell_type": "code",
+                "source": "print(2 + 2)",
+            }
+        ],
+    )
+    with factory() as session:
+        row = notebook_replay_service.start_replay(
+            session, notebook_id=nb_id, base_revision_uuid=rev_uuid
+        )
+        replay_uuid = row.replay_uuid
+        session.commit()
+
+    # One pass should pick up the single pending row and drive it
+    # through to a terminal status.  The kernel boot adds the bulk of
+    # the wall-clock here; ``asyncio.wait_for`` caps the runaway
+    # case so a stuck ipykernel surfaces as a test timeout rather
+    # than a frozen test runner.
+    processed = await asyncio.wait_for(
+        run_pending_replays(session_factory=factory, notebooks_dir=tmp_path),
+        timeout=60.0,
+    )
+    assert processed == 1, "expected one pending replay to be processed"
+
+    with factory() as session:
+        finished = (
+            session.query(NotebookReplay)
+            .filter_by(replay_uuid=replay_uuid)
+            .one()
+        )
+        assert finished.status == "ok", (
+            f"replay did not succeed: status={finished.status!r} "
+            f"outputs={finished.outputs_json!r}"
+        )
+        assert finished.finished_at is not None
+        outputs = json.loads(finished.outputs_json or "[]")
+        # The worker collects every kernel reply frame; the ``print``
+        # call surfaces as a ``stream`` frame whose ``content.text``
+        # is ``"4\n"``.
+        stream_frames = [
+            frame
+            for frame in outputs
+            if frame.get("msg_type") == "stream"
+        ]
+        assert stream_frames, (
+            f"expected at least one stream frame; got {outputs!r}"
+        )
+        joined = "".join(
+            frame.get("content", {}).get("text", "")
+            for frame in stream_frames
+        )
+        assert "4" in joined, f"stdout did not contain '4': {joined!r}"
