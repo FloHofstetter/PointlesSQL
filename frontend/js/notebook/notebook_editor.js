@@ -385,10 +385,66 @@ export function notebookEditor({ initialPath = '', currentUser = null } = {}) {
  // poll-on-open so a slow inspect call never blocks page load.
  this.loadParameters();
  this.loadNotebookJobs();
+ // Phase 113.7 — dynamic scroll-past-end.  Sized so the last cell's
+ // top edge can scroll up until it sits flush with the topbar
+ // (rather than a fixed ``50vh`` which is wrong for both tiny and
+ // tall cells).  Resize observers refire when cells are added,
+ // removed, or their CodeMirror content grows.
+ this._setupScrollPastEnd();
  } catch (err) {
  this.errorMessage = (err && err.message) || String(err);
  this.loading = false;
  }
+ },
+
+ _setupScrollPastEnd() {
+ const shell = this.$el.querySelector('.pql-notebook-shell') || this.$el;
+ const content = shell.closest('.pql-content');
+ if (!shell || !content) return;
+ // Stop oscillation: ResizeObserver re-fires after we mutate the
+ // padding-bottom.  A tiny re-entrancy guard + a 1-px settle gate
+ // keep us from looping forever on rounding noise.
+ let recomputing = false;
+ const TARGET_TOP_OFFSET = 8;   // px below the topbar
+ const SETTLE_EPSILON = 1;
+ const recompute = () => {
+ if (recomputing) return;
+ const cells = shell.querySelectorAll('.pql-notebook-cell');
+ if (!cells.length) {
+ shell.style.removeProperty('--pql-scroll-past-end');
+ return;
+ }
+ const last = cells[cells.length - 1];
+ // Where the last cell's top sits in the content's scroll frame
+ // (independent of the current scroll position).
+ const lastRect = last.getBoundingClientRect();
+ const contentRect = content.getBoundingClientRect();
+ const cellTopInScrollFrame =
+   lastRect.top - contentRect.top + content.scrollTop;
+ const visible = content.clientHeight;
+ // We want max-scroll to land the last cell's top at
+ // ``contentTop + TARGET_TOP_OFFSET``.  That means
+ // ``content.scrollHeight == cellTopInScrollFrame + visible - offset``.
+ const desiredScrollHeight =
+   cellTopInScrollFrame + visible - TARGET_TOP_OFFSET;
+ const currentScrollHeight = content.scrollHeight;
+ const currentPadding =
+   parseFloat(getComputedStyle(shell).paddingBottom) || 0;
+ const delta = desiredScrollHeight - currentScrollHeight;
+ if (Math.abs(delta) < SETTLE_EPSILON) return;
+ const newPadding = Math.max(0, Math.round(currentPadding + delta));
+ recomputing = true;
+ shell.style.setProperty('--pql-scroll-past-end', newPadding + 'px');
+ // Yield so the observer's re-fire happens after the guard clears
+ // — keeps subsequent legitimate resize events working.
+ requestAnimationFrame(() => { recomputing = false; });
+ };
+ recompute();
+ if (this._scrollPastEndRo) this._scrollPastEndRo.disconnect();
+ const ro = new ResizeObserver(recompute);
+ ro.observe(shell);
+ ro.observe(content);
+ this._scrollPastEndRo = ro;
  },
 
  /**
@@ -441,6 +497,10 @@ export function notebookEditor({ initialPath = '', currentUser = null } = {}) {
  this._removeChatProposalListener();
  this._removeSequenceListener();
  this._teardownCoedit();
+ if (this._scrollPastEndRo) {
+ this._scrollPastEndRo.disconnect();
+ this._scrollPastEndRo = null;
+ }
  },
  };
  installJobsOrchestration(state);

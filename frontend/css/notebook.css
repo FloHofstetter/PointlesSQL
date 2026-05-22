@@ -11,16 +11,14 @@
  display: flex;
  flex-direction: column;
  gap: 0.75rem;
- /* Phase 113.7 — "scroll past end" affordance (VSCode / JupyterLab
-    parity).  Without this the last cell sits in the bottom third of
-    the viewport with the cell editor hugging the footer, which makes
-    bottom-of-cell edits cramped.  ``min()`` keeps the affordance
-    reasonable on short viewports — at 720p we still get ~480px of
-    free scroll past the last cell instead of an impossible 540 px. */
- padding-bottom: min(
-  75vh,
-  calc(100vh - var(--pql-topbar-height) - var(--pql-footer-bar-height) - 6rem)
- );
+ /* Phase 113.7 — "scroll past end" affordance.  ``--pql-scroll-past-end``
+    is set from notebook_editor.js by a ResizeObserver pass that
+    computes ``content_visible_height - last_cell_height - 8``, so
+    the last cell can scroll up until its TOP edge sits ~8 px below
+    the topbar — flush ("anrennen") regardless of how tall or short
+    the last cell is.  Static ``50vh`` fallback covers the first
+    paint and the case where JS hasn't initialised. */
+ padding-bottom: var(--pql-scroll-past-end, 50vh);
 }
 
 .pql-notebook-toolbar {
