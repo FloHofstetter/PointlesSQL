@@ -14,12 +14,12 @@
     display: flex;
     align-items: center;
     gap: 0.4rem;
-    padding: 0.3rem 0.75rem 0.3rem 1rem;
+    padding: 0.4rem 0.75rem 0.4rem 1rem;
     border-left: 3px solid transparent;
     text-decoration: none;
     color: var(--bs-body-color);
-    font-size: 0.8125rem;
-    line-height: 1.2;
+    font-size: 0.875rem;
+    line-height: 1.35;
     min-width: 0;
 }
 
