@@ -142,20 +142,27 @@
       <i class="bi" :class="authorChipIcon(cell)" aria-hidden="true"></i>
       <span x-text="authorChipLabel(cell)"></span>
      </span>
-     {# Phase 98.C Wave-D — lineage chips for cells with recorded
-        write-ops.  Looked up by content_hash via the outer-scope
-        ``lineageFor`` mixin so the inner per-cell scope stays empty
-        of x-data (nested-x-data trap dodged). #}
+     {# Phase 98.C Wave-D / Sprint 113.1 — lineage chips capped at 1.
+        Tail badges roll into a ``+N more`` overflow chip whose
+        tooltip lists every additional target table; the full list
+        also re-appears as a read-only section inside the per-cell
+        ⋯ overflow menu below. #}
      <template x-if="lineageFor(cell).length > 0">
       <span class="d-inline-flex align-items-center gap-1"
             data-testid="cell-lineage-strip">
-       <template x-for="badge in lineageFor(cell)" :key="`${badge.op_name}|${badge.target_table}`">
+       <template x-for="badge in lineageFor(cell).slice(0, 1)" :key="`${badge.op_name}|${badge.target_table}`">
         <span class="badge bg-info-subtle text-info-emphasis"
               style="font-size: 0.65rem;"
               :title="`${badge.op_name} → ${badge.target_table || '(none)'}\n${badge.rows_affected != null ? badge.rows_affected + ' rows · ' : ''}${badge.delta_version_after != null ? 'v' + badge.delta_version_after + ' · ' : ''}${badge.started_at}`">
          <i class="bi bi-diagram-2 me-1" aria-hidden="true"></i>
          <span x-text="badge.target_table || badge.op_name"></span>
         </span>
+       </template>
+       <template x-if="lineageFor(cell).length > 1">
+        <span class="badge bg-info-subtle text-info-emphasis pql-cell-lineage-overflow"
+              data-testid="cell-lineage-overflow"
+              :title="lineageOverflowTitle(cell)"
+              x-text="`+${lineageFor(cell).length - 1} more`"></span>
        </template>
       </span>
      </template>
@@ -219,67 +226,125 @@
       <span x-show="changesRequestedCount > 0" x-cloak
             class="ms-1 text-warning" x-text="`⚠${changesRequestedCount}`"></span>
      </button>
+     {# Sprint 113.1 — single ⋯ overflow menu replaces the former
+        type-dropdown + history-toggle + 5-button move/insert/delete
+        cluster (15 → 1 visible affordance per cell).  All click
+        handlers live on the outer notebookEditor() scope so this
+        block adds no new x-data layer. #}
      <div class="dropdown">
-      <button class="btn btn-sm btn-outline-secondary dropdown-toggle"
+      <button class="btn btn-sm btn-outline-secondary"
               type="button"
               data-bs-toggle="dropdown"
               aria-expanded="false"
-              title="Cell type">
-       <span x-text="cell.cell_type"></span>
+              data-testid="cell-overflow-toggle"
+              title="More cell actions">
+       <i class="bi bi-three-dots" aria-hidden="true"></i>
       </button>
-      <ul class="dropdown-menu dropdown-menu-end">
-       <li><button class="dropdown-item" type="button"
-                   @click="convertCellType(cell, 'code')">Code</button></li>
-       <li><button class="dropdown-item" type="button"
-                   @click="convertCellType(cell, 'sql')">SQL</button></li>
-       <li><button class="dropdown-item" type="button"
-                   @click="convertCellType(cell, 'markdown')">Markdown</button></li>
-       <li><hr class="dropdown-divider"></li>
+      <ul class="dropdown-menu dropdown-menu-end pql-cell-overflow-menu">
+       <li><h6 class="dropdown-header">Cell type</h6></li>
+       <li>
+        <button class="dropdown-item" type="button"
+                @click="convertCellType(cell, 'code')">
+         <i class="bi bi-code me-2"></i>Code
+         <i class="bi bi-check2 ms-2"
+            x-show="cell.cell_type === 'code'"
+            x-cloak></i>
+        </button>
+       </li>
+       <li>
+        <button class="dropdown-item" type="button"
+                @click="convertCellType(cell, 'sql')">
+         <i class="bi bi-table me-2"></i>SQL
+         <i class="bi bi-check2 ms-2"
+            x-show="cell.cell_type === 'sql'"
+            x-cloak></i>
+        </button>
+       </li>
+       <li>
+        <button class="dropdown-item" type="button"
+                @click="convertCellType(cell, 'markdown')">
+         <i class="bi bi-markdown me-2"></i>Markdown
+         <i class="bi bi-check2 ms-2"
+            x-show="cell.cell_type === 'markdown'"
+            x-cloak></i>
+        </button>
+       </li>
        <li>
         <button class="dropdown-item" type="button"
                 @click="toggleParamsTag(cell)">
          <span x-show="!cellHasParamsTag(cell)" x-cloak>
-          <i class="bi bi-sliders me-1"></i>Mark as parameters
+          <i class="bi bi-sliders me-2"></i>Mark as parameters
          </span>
          <span x-show="cellHasParamsTag(cell)" x-cloak>
-          <i class="bi bi-x-circle me-1"></i>Unmark parameters
+          <i class="bi bi-x-circle me-2"></i>Unmark parameters
          </span>
         </button>
        </li>
+       <li><hr class="dropdown-divider"></li>
+       <li><h6 class="dropdown-header">View</h6></li>
+       <li>
+        <button class="dropdown-item" type="button"
+                @click="toggleHistoryFor(cell)">
+         <i class="bi bi-clock-history me-2"></i>Show last 5 runs
+        </button>
+       </li>
+       <li><hr class="dropdown-divider"></li>
+       <li><h6 class="dropdown-header">Structure</h6></li>
+       <li>
+        <button class="dropdown-item" type="button"
+                @click="addCellAbove(cell)">
+         <i class="bi bi-arrow-bar-up me-2"></i>Insert cell above
+        </button>
+       </li>
+       <li>
+        <button class="dropdown-item" type="button"
+                @click="addCellBelow(cell)">
+         <i class="bi bi-arrow-bar-down me-2"></i>Insert cell below
+        </button>
+       </li>
+       <li>
+        <button class="dropdown-item" type="button"
+                @click="moveCellUp(cell)">
+         <i class="bi bi-chevron-up me-2"></i>Move up
+        </button>
+       </li>
+       <li>
+        <button class="dropdown-item" type="button"
+                @click="moveCellDown(cell)">
+         <i class="bi bi-chevron-down me-2"></i>Move down
+        </button>
+       </li>
+       <li><hr class="dropdown-divider"></li>
+       <li>
+        <button class="dropdown-item text-danger" type="button"
+                @click="deleteCell(cell)"
+                data-testid="cell-delete-item">
+         <i class="bi bi-trash me-2"></i>Delete cell
+        </button>
+       </li>
+       <template x-if="lineageFor(cell).length > 1">
+        <li>
+         <hr class="dropdown-divider">
+        </li>
+       </template>
+       <template x-if="lineageFor(cell).length > 1">
+        <li><h6 class="dropdown-header">Lineage</h6></li>
+       </template>
+       <template x-for="badge in lineageFor(cell)" :key="`${badge.op_name}|${badge.target_table}`">
+        <template x-if="lineageFor(cell).length > 1">
+         <li>
+          <div class="dropdown-item-text small">
+           <i class="bi bi-diagram-2 me-2" aria-hidden="true"></i>
+           <span x-text="badge.op_name"></span>
+           <span class="text-muted"> → </span>
+           <span x-text="badge.target_table || '(none)'"></span>
+           <div class="text-muted ps-4"
+                x-text="`${badge.rows_affected != null ? badge.rows_affected + ' rows · ' : ''}${badge.delta_version_after != null ? 'v' + badge.delta_version_after + ' · ' : ''}${badge.started_at || ''}`"></div>
+          </div>
+         </li>
+        </template>
+       </template>
       </ul>
-     </div>
-     <button type="button"
-             class="btn btn-sm btn-outline-secondary"
-             @click="toggleHistoryFor(cell)"
-             title="Show last 5 runs of this cell">
-      <i class="bi bi-clock-history" aria-hidden="true"></i>
-     </button>
-     <div class="btn-group" role="group" aria-label="Cell management">
-      <button type="button" class="btn btn-sm btn-outline-secondary"
-              @click="addCellAbove(cell)"
-              title="Insert cell above">
-       <i class="bi bi-arrow-bar-up" aria-hidden="true"></i>
-      </button>
-      <button type="button" class="btn btn-sm btn-outline-secondary"
-              @click="addCellBelow(cell)"
-              title="Insert cell below">
-       <i class="bi bi-arrow-bar-down" aria-hidden="true"></i>
-      </button>
-      <button type="button" class="btn btn-sm btn-outline-secondary"
-              @click="moveCellUp(cell)"
-              title="Move cell up">
-       <i class="bi bi-chevron-up" aria-hidden="true"></i>
-      </button>
-      <button type="button" class="btn btn-sm btn-outline-secondary"
-              @click="moveCellDown(cell)"
-              title="Move cell down">
-       <i class="bi bi-chevron-down" aria-hidden="true"></i>
-      </button>
-      <button type="button" class="btn btn-sm btn-outline-danger"
-              @click="deleteCell(cell)"
-              title="Delete cell">
-       <i class="bi bi-trash" aria-hidden="true"></i>
-      </button>
      </div>
     </div>
    </div>

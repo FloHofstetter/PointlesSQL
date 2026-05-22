@@ -32,6 +32,20 @@ export function installCellLineage(state) {
   return this.cellLineageBulk[cell.content_hash] || [];
  };
 
+ /**
+  * Tooltip body for the cell-header ``+N more`` lineage overflow
+  * chip — Sprint 113.1 caps the visible strip at one badge, so the
+  * tail tables move into a hover preview and a read-only section
+  * inside the per-cell ⋯ overflow menu.
+  */
+ state.lineageOverflowTitle = function (cell) {
+  const tail = (this.lineageFor(cell) || []).slice(1);
+  if (!tail.length) return '';
+  return tail
+   .map((b) => `${b.op_name} → ${b.target_table || '(none)'}`)
+   .join('\n');
+ };
+
 /**
   * Notebook-level lineage roll-up.
   *

@@ -323,6 +323,28 @@
  color: var(--bs-success-text-emphasis, var(--bs-success));
 }
 
+/* Sprint 113.1 — capped lineage strip + ⋯ overflow menu. */
+.pql-notebook-cell__header .pql-cell-lineage-overflow {
+ font-size: 0.65rem;
+ cursor: default;
+}
+
+.pql-notebook-cell__header .pql-cell-overflow-menu {
+ --bs-dropdown-min-width: 13rem;
+ --bs-dropdown-font-size: 0.85rem;
+}
+
+.pql-notebook-cell__header .pql-cell-overflow-menu .dropdown-header {
+ font-size: 0.7rem;
+ text-transform: uppercase;
+ letter-spacing: 0.06em;
+}
+
+.pql-notebook-cell__header .pql-cell-overflow-menu .dropdown-item-text {
+ white-space: normal;
+ word-break: break-word;
+}
+
 .pql-notebook-cell__editor {
  min-height: 80px;
 }
