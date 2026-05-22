@@ -20,6 +20,15 @@
 <link rel="stylesheet" href="/static/css/notebook.css?v={{ asset_version }}">
 {% endblock %}
 
+{# Phase 113.5 — lock the body scroll for the notebook editor.
+   Without this the rail/ctx/meta sticky elements get released from
+   their containing block when scrolling near the document bottom
+   (sticky's spec behaviour), and the rail visually lifts above the
+   topbar.  Shell-locked layout (body height=100vh, content scrolls
+   internally) matches VSCode/JupyterLab/Cursor patterns and keeps
+   every side panel rock-solid regardless of cell count. #}
+{% block body_data_attrs %}data-pql-shell-locked="1"{% endblock %}
+
 {% block content %}
 <div class="pql-notebook-shell"
      x-data='notebookEditor({

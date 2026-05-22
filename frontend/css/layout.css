@@ -103,6 +103,55 @@
 .pql-panel-toggle { display: none !important; }
 .pql-content { position: relative; }
 
+/* ----------------------------------------------------------------
+ * Phase 113.5 — Shell-locked layout.
+ *
+ * For pages that opt in via ``<body data-pql-shell-locked>``, the
+ * BODY does not scroll.  Instead the grid shell fills the viewport
+ * height below the topbar, and the content cell scrolls internally.
+ * This avoids ``position: sticky`` releasing its element when the
+ * document scroll approaches the end of the containing block — a
+ * spec-correct behaviour that visually "lifts" the rail above the
+ * topbar at scroll-near-bottom on tall notebooks.
+ *
+ * Side-panel sticky rules above stay — they don't fight this since
+ * the parent scroll context becomes the content cell instead of the
+ * window, but they also become inert because the side panels are
+ * already inside fixed-height grid columns under this regime.
+ * ------------------------------------------------------------- */
+@media (min-width: 768px) {
+ body[data-pql-shell-locked] {
+  height: 100vh;
+  overflow: hidden;
+ }
+ body[data-pql-shell-locked] .pql-shell {
+  height: calc(
+   100vh - var(--pql-topbar-height) - var(--pql-footer-bar-height)
+  );
+  min-height: 0;
+ }
+ body[data-pql-shell-locked] .pql-content {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--bs-border-color) transparent;
+ }
+ body[data-pql-shell-locked] .pql-content::-webkit-scrollbar {
+  width: 8px;
+ }
+ body[data-pql-shell-locked] .pql-content::-webkit-scrollbar-track {
+  background: transparent;
+ }
+ body[data-pql-shell-locked] .pql-content::-webkit-scrollbar-thumb {
+  background: var(--bs-border-color);
+  border-radius: 4px;
+ }
+ body[data-pql-shell-locked] .pql-content::-webkit-scrollbar-thumb:hover {
+  background: var(--bs-secondary-color);
+ }
+}
+
 .pql-layout-toggle {
  line-height: 1;
  font-size: 1rem;
