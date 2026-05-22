@@ -2538,6 +2538,72 @@ PointlesSQL
 │           concrete new init step demands it — current 33-step
 │           complexity is structural, not a smell.
 │
+│   ├── Phase 109 — Multi-worker co-edit hub (PG LISTEN/NOTIFY bus)  ✅ done 2026-05-22
+│   │     **Closed 2026-05-22.**  Four commits, no asset bump.
+│   │     Forward-looking infrastructure that closes the single-
+│   │     process limit Phase 105.2 explicitly punted on (see
+│   │     ``notebook_coedit_ws.py:145-147`` pre-109 comment).
+│   │     Multiple uvicorn workers serving the same notebook now
+│   │     exchange CRDT updates via Postgres LISTEN/NOTIFY — no
+│   │     Redis / RabbitMQ dep.
+│   │     - **109.1 (scaffold, commit ``d64722c``).**  New ORM
+│   │       ``CoeditBusMessage`` outbox + alembic migration
+│   │       ``b1a3c5e7f9a1``.  ``services/notebook/coedit_bus.py``
+│   │       ``CoeditBus`` class: one long-lived psycopg async
+│   │       connection in autocommit ``LISTEN coedit_bus``,
+│   │       reconnect ladder ``(1, 2, 5, 10, 30) s``, sync publish
+│   │       via ``asyncio.to_thread`` (INSERT + ``pg_notify`` in
+│   │       one transaction so the row is visible by the time
+│   │       remote workers ``SELECT``).  Source-PID stamp +
+│   │       listener-side gate suppress self-loops.  Cleanup loop
+│   │       drops rows older than ``ttl_seconds`` (default 60 s)
+│   │       every ``cleanup_interval_seconds`` (default 30 s).
+│   │       New ``CoeditSettings`` with
+│   │       ``POINTLESSQL_COEDIT_BUS_ENABLED`` (default off).
+│   │       Lifespan exposes ``app.state.engine`` so the bus can
+│   │       avoid sessionmaker-internals digging.  4 PG-marked
+│   │       integration tests in ``tests/test_coedit_bus.py``.
+│   │     - **109.2 (hub wiring, commit ``b832567``).**  Module-
+│   │       level ``_bus_ref`` set by ``bind_coedit_bus`` from
+│   │       lifespan.  Publish sites: WS receive loop (sync_update
+│   │       + awareness after local broadcast),
+│   │       ``apply_save_remap`` (cell_uuid_remap after local
+│   │       broadcast, publishes even when no local hub since
+│   │       another worker may host the same notebook), and
+│   │       ``broadcast_agent_presence`` (agent_presence same
+│   │       behaviour).  Receive side: ``apply_remote_bus_frame``
+│   │       callback looks up ``_HUBS[nb]``, replays the frame
+│   │       into the local hub for tags 0x02-0x05, never
+│   │       re-publishes (publish-exactly-once invariant).  New
+│   │       ``_apply_remap_locked`` helper shared between
+│   │       ``apply_save_remap`` and the bus-receive path.
+│   │       Handshake tags 0x00/0x01 stay strictly local — pre-
+│   │       client and the local hub has the authoritative state.
+│   │     - **109.3 (admin status, commit ``fbc40ee``).**
+│   │       ``GET /api/admin/coedit-bus/status`` returns
+│   │       ``{enabled: false}`` on single-worker / SQLite
+│   │       installs; on PG with the bus active it carries
+│   │       ``own_pid``, ``listener_alive``, ``listener_ready``,
+│   │       ``cleanup_alive``, ``inflight_outbox_rows`` for
+│   │       operator diagnostics.  2 pytest covering the
+│   │       disabled-default + admin-only-access paths.
+│   │     - **109.4 (docs, this commit).**  New section in
+│   │       ``docs/admin/postgres-deployment.md`` documenting the
+│   │       env vars, the multi-worker startup command, the
+│   │       diagnostic endpoint, and the explicit out-of-scope
+│   │       list (cross-region, sticky routing, bus-level auth).
+│   │     Trade-offs deliberately accepted:
+│   │     * NOTIFY payload is row-id only (sidesteps the 8 KB
+│   │       limit); the real frame lives in the BYTEA column.
+│   │     * Single-worker behaviour unchanged.  Operators flip
+│   │       the env var to opt in — no surprise extra DB writes
+│   │       on existing PG installs.
+│   │     * 60 s TTL trades brief durability for a bounded
+│   │       outbox; longer outages re-converge through the CRDT
+│   │       sync_step1/2 handshake on reconnect.
+│   │     * No new dependency.  psycopg3 (already a core dep)
+│   │       carries the async LISTEN/NOTIFY surface.
+│   │
 │   └── Phase 108 — Multi-tab co-edit CI gate + Phase 103 worker test  ✅ done 2026-05-22
 │         **Closed 2026-05-22.**  Three commits, test-only (no
 │         asset bump).  Adds the first headless-browser test job

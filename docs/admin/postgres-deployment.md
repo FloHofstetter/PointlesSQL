@@ -209,6 +209,50 @@ The Grafana dashboard from the Sprint 30.2 overlay surfaces all
 three.  See
 [Grafana → Running with Postgres](../integrations/grafana.md#running-with-postgres).
 
+## Multi-worker co-edit bus (Phase 109)
+
+The notebook co-edit hub (`/ws/notebook/coedit/{nb}`) holds the
+authoritative `pycrdt.Doc` in the uvicorn worker that first claimed
+the notebook.  Single-worker deployments work as-is.  To run more
+than one uvicorn worker against the same install, enable the
+Phase-109 PG LISTEN/NOTIFY bus:
+
+```bash
+POINTLESSQL_COEDIT_BUS_ENABLED=1 \
+POINTLESSQL_DB_URL=postgresql://... \
+uvicorn pointlessql.api.main:app --workers 4 --host 0.0.0.0 --port 8000
+```
+
+What the bus does:
+
+* On startup, every worker opens one dedicated psycopg async
+  connection and `LISTEN coedit_bus`.
+* When a frame arrives over the WebSocket (sync_update, awareness,
+  cell_uuid_remap, agent_presence), the worker fans out locally and
+  also writes a row to `coedit_bus_messages` + emits a `pg_notify`
+  carrying the row id.
+* Other workers receive the notify, fetch the row, and replay the
+  frame into their local hub.  Frames originating from the same
+  PID are skipped (self-loop suppression by `source_pid` column).
+* A background task sweeps `coedit_bus_messages` every 30 s,
+  deleting rows older than 60 s.
+
+Operator knobs (defaults shown):
+
+| Env var | Default | Notes |
+|---------|---------|-------|
+| `POINTLESSQL_COEDIT_BUS_ENABLED` | `false` | Master switch.  PG only — SQLite installs ignore. |
+| `POINTLESSQL_COEDIT_BUS_MESSAGE_TTL_SECONDS` | `60` | Outbox row lifetime; longer outages re-converge via CRDT sync. |
+| `POINTLESSQL_COEDIT_BUS_CLEANUP_INTERVAL_SECONDS` | `30` | Cleanup sweep cadence. |
+
+Diagnostics: `GET /api/admin/coedit-bus/status` returns a JSON
+snapshot (`listener_alive`, `listener_ready`, `cleanup_alive`,
+`inflight_outbox_rows`) for an authenticated admin.
+
+Out of scope: cross-region (PG NOTIFY is single-cluster), sticky
+session routing (the bus makes it unnecessary), bus-level auth
+(WS handshake already gates editor access).
+
 ## Related
 
 - [Configuration reference](../reference/configuration.md) — env var reference
