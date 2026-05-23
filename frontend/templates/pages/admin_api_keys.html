@@ -96,7 +96,13 @@
                         {% if k.lineage_inbound %}
                         <span class="badge bg-success">lineage_inbound</span>
                         {% endif %}
-                        {% if not k.supervisor and not k.auditor and not k.lineage_inbound %}
+                        {% if k.analyst %}
+                        <span class="badge bg-primary">analyst</span>
+                        {% endif %}
+                        {% if k.sql_execute %}
+                        <span class="badge bg-dark">sql_execute</span>
+                        {% endif %}
+                        {% if not k.supervisor and not k.auditor and not k.lineage_inbound and not k.analyst and not k.sql_execute %}
                         <span class="text-muted">agent</span>
                         {% endif %}
                     </td>
@@ -189,6 +195,20 @@
                        x-model="form.lineageInbound">
                 <label class="form-check-label small" for="kk-lineage-inbound">
                     <code>lineage_inbound</code> — may POST OpenLineage events to /api/lineage/openlineage
+                </label>
+            </div>
+            <div class="form-check form-check-inline">
+                <input type="checkbox" class="form-check-input" id="kk-analyst"
+                       x-model="form.analyst">
+                <label class="form-check-label small" for="kk-analyst">
+                    <code>analyst</code> — may invoke /api/lens/* read-only Q&amp;A surface + MCP
+                </label>
+            </div>
+            <div class="form-check form-check-inline">
+                <input type="checkbox" class="form-check-input" id="kk-sql-execute"
+                       x-model="form.sqlExecute">
+                <label class="form-check-label small" for="kk-sql-execute">
+                    <code>sql_execute</code> — may invoke /api/2.0/sql/statements (DBX-compatible public SQL API)
                 </label>
             </div>
         </div>
@@ -293,6 +313,8 @@ window.apiKeyCreate = function () {
             supervisor: false,
             auditor: false,
             lineageInbound: false,
+            analyst: false,
+            sqlExecute: false,
         },
         creating: false,
         error: '',
@@ -309,6 +331,8 @@ window.apiKeyCreate = function () {
                 supervisor: this.form.supervisor,
                 auditor: this.form.auditor,
                 lineage_inbound: this.form.lineageInbound,
+                analyst: this.form.analyst,
+                sql_execute: this.form.sqlExecute,
                 workspace_id: this.form.workspaceId,
             };
             const res = await window.pqlApi.fetch('/api/admin/api-keys', {
@@ -326,6 +350,8 @@ window.apiKeyCreate = function () {
                 this.form.supervisor = false;
                 this.form.auditor = false;
                 this.form.lineageInbound = false;
+                this.form.analyst = false;
+                this.form.sqlExecute = false;
             } else {
                 this.error = res.error || 'Failed to create key.';
                 window.pqlToast?.error(this.error);

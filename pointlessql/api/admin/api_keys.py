@@ -43,6 +43,8 @@ def _serialize(row: Any) -> dict[str, Any]:
         "supervisor": bool(row.supervisor),
         "auditor": bool(getattr(row, "auditor", False)),
         "lineage_inbound": bool(getattr(row, "lineage_inbound", False)),
+        "analyst": bool(getattr(row, "analyst", False)),
+        "sql_execute": bool(getattr(row, "sql_execute", False)),
         "created_at": row.created_at.isoformat() if row.created_at else None,
         "revoked_at": row.revoked_at.isoformat() if row.revoked_at else None,
         "last_used_at": (row.last_used_at.isoformat() if row.last_used_at else None),
@@ -99,6 +101,8 @@ async def api_admin_create_api_key(
     supervisor = bool(body.get("supervisor", False))
     auditor = bool(body.get("auditor", False))
     lineage_inbound = bool(body.get("lineage_inbound", False))
+    analyst = bool(body.get("analyst", False))
+    sql_execute = bool(body.get("sql_execute", False))
     workspace_id_raw = body.get("workspace_id", 1)
     if not isinstance(workspace_id_raw, int) or workspace_id_raw < 1:
         raise ValidationError("workspace_id must be a positive integer")
@@ -110,6 +114,8 @@ async def api_admin_create_api_key(
             supervisor=supervisor,
             auditor=auditor,
             lineage_inbound=lineage_inbound,
+            analyst=analyst,
+            sql_execute=sql_execute,
             created_by_user_id=user.get("id") or None,
             workspace_id=workspace_id_raw,
         )
@@ -123,6 +129,8 @@ async def api_admin_create_api_key(
             "supervisor": supervisor,
             "auditor": auditor,
             "lineage_inbound": lineage_inbound,
+            "analyst": analyst,
+            "sql_execute": sql_execute,
             "workspace_id": workspace_id_raw,
         },
     )
@@ -133,6 +141,8 @@ async def api_admin_create_api_key(
         "supervisor": bool(row.supervisor),
         "auditor": bool(getattr(row, "auditor", False)),
         "lineage_inbound": bool(getattr(row, "lineage_inbound", False)),
+        "analyst": bool(getattr(row, "analyst", False)),
+        "sql_execute": bool(getattr(row, "sql_execute", False)),
         "created_at": row.created_at.isoformat() if row.created_at else None,
     }
 

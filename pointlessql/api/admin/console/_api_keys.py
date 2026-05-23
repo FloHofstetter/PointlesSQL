@@ -56,6 +56,8 @@ async def admin_api_keys_index(request: Request, include_revoked: bool = False) 
                 "supervisor": bool(k.supervisor),
                 "auditor": bool(k.auditor),
                 "lineage_inbound": bool(getattr(k, "lineage_inbound", False)),
+                "analyst": bool(getattr(k, "analyst", False)),
+                "sql_execute": bool(getattr(k, "sql_execute", False)),
                 "workspace_id": k.workspace_id,
                 "workspace_slug": ws.slug if ws else None,
                 "created_at": k.created_at.isoformat() if k.created_at else "",
