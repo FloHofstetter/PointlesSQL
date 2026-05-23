@@ -2538,6 +2538,84 @@ PointlesSQL
 │           concrete new init step demands it — current 33-step
 │           complexity is structural, not a smell.
 │
+│   ├── Phase 120 — API-key ACLs + usage dashboard               ✅ done 2026-05-23
+│   │     **Closed 2026-05-23.**  Seven sub-phases bundled in one
+│   │     session, asset 0.1.0rc124 → rc125.  Final wave of the
+│   │     three-phase API-key upgrade (118+119+120).  Adds the
+│   │     coarse-pre-filter layer below UC SELECT grants: per-key
+│   │     catalog/schema allowlist + per-key IP allowlist + 30-day
+│   │     usage dashboard.  Every existing key keeps unchanged
+│   │     behaviour (zero rows = unrestricted, same as pre-120).
+│   │     - **120.1 — Schema.**  Alembic migration
+│   │       ``f7h9j1k3l5n7`` adds three tables: ``api_key_catalog_grants``
+│   │       (composite unique on ``api_key_id+catalog_name+schema_name``;
+│   │       ``schema_name=NULL`` is wildcard), ``api_key_ip_grants``
+│   │       (composite unique on ``api_key_id+cidr``),
+│   │       ``api_key_usage_buckets`` (composite unique on
+│   │       ``api_key_id+bucket_minute+source_ip`` for UPSERT
+│   │       efficiency).  All FK to ``api_keys.id`` with
+│   │       ``ondelete='CASCADE'``.
+│   │     - **120.2 — Pure-function checks.**
+│   │       ``services/api_keys/_acl.py`` with
+│   │       ``check_catalog_allowed(grants, sql, *, default_catalog,
+│   │       default_schema)`` (walks the sqlglot AST via
+│   │       ``parse_one + find_all(exp.Table)`` — same pattern as
+│   │       Phase 117's ``qualify_sql``) and
+│   │       ``check_ip_allowed(grants, source_ip)`` (CIDR matching
+│   │       via the stdlib ``ipaddress`` module, IPv4 + IPv6
+│   │       support, fails-closed when source_ip is None and grants
+│   │       are non-empty).  ``validate_cidr`` canonicalises +
+│   │       rejects garbage at insert time.
+│   │     - **120.3 — Route wiring.**  IP gate in
+│   │       ``auth_middleware`` runs immediately after
+│   │       ``verify_bearer`` — denied requests get 403 +
+│   │       ``IP_NOT_ALLOWED`` + ``api_key.access_denied.ip``
+│   │       audit row, never reaching the route.  Catalog gate in
+│   │       ``external_sql_routes`` runs after parse + qualify —
+│   │       denied requests get the DBX-shape FAILED envelope with
+│   │       ``PERMISSION_DENIED`` + ``api_key.access_denied.catalog``
+│   │       audit.  Both gated on ``api_key_acl.enforce_*`` config
+│   │       flags so operators can switch off either side during
+│   │       incident response without a redeploy.
+│   │     - **120.4 — Grants CRUD.**  Five endpoints under
+│   │       ``/api/admin/api-keys/{name}/grants[…]``: list
+│   │       (catalog + ip combined), add catalog, delete catalog,
+│   │       add ip, delete ip.  Each mutation audits with the
+│   │       relevant detail.  Duplicate inserts translate the unique
+│   │       constraint violation to 422.
+│   │     - **120.5 — Usage tracking.**  New
+│   │       ``services/api_keys/_usage.py`` with ``record_use`` (hot
+│   │       path enqueues into in-process ``Counter`` on
+│   │       ``app.state``), ``flush_buffer`` (drain → INSERT-or-update
+│   │       per ``(key, minute, ip)`` tuple),
+│   │       ``cleanup_stale_usage`` (retention sweep),
+│   │       ``get_usage_summary`` (30-day daily aggregate +
+│   │       top-10 source IPs).  Two new lifespan loops
+│   │       (``_api_key_usage_flush_loop`` 30s,
+│   │       ``_api_key_usage_retention_loop`` daily).
+│   │       ``GET /api/admin/api-keys/{name}/usage`` returns the
+│   │       JSON shape for tooling.
+│   │     - **120.6 — Detail page.**  ``GET /admin/api-keys/{name}``
+│   │       renders ``admin_api_key_detail.html``: metadata card +
+│   │       30-day bar chart (drawn via plain
+│   │       ``<canvas>`` 2D context — no Chart.js dependency for
+│   │       a single 60-line histogram) + top-source-IPs table +
+│   │       grants editor (add/list/delete for both grant types).
+│   │       List page row gets a "Manage" link.
+│   │     - **120.7 — Doc + asset.**  New walkthrough
+│   │       ``docs/admin/api-key-acls.md`` covering catalog +
+│   │       IP allowlists, usage dashboard, settings reference,
+│   │       layered enforcement model (IP → catalog → UC), audit
+│   │       event catalogue, known limitations.  Asset rc124 →
+│   │       rc125.
+│   │
+│   │     **Verification.**  56 new pytest across 4 files (20
+│   │     pure-function ACL + 6 route-gate + 9 grants CRUD + 10
+│   │     usage + 11 lifecycle gates from 119 still passing in
+│   │     this surface).  156 api-key + admin + external-sql tests
+│   │     pass.  Ruff + pyright + pydoclint clean across the new
+│   │     code surface.
+│   │
 │   ├── Phase 119 — API-key lifecycle (TTL+rotation+quarantine) ✅ done 2026-05-23
 │   │     **Closed 2026-05-23.**  Six sub-phases bundled in one
 │   │     session, asset 0.1.0rc123 → rc124.  Adds the three

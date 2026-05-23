@@ -6,6 +6,33 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Phase 120 — API-key ACLs + usage dashboard (2026-05-23,
+  rc124 → rc125).**  Final wave of the three-phase API-key
+  upgrade (118+119+120).  Adds the coarse-pre-filter layer below
+  UC SELECT grants: per-key catalog/schema allowlist + per-key
+  IP allowlist + 30-day usage dashboard.  Every existing key
+  keeps unchanged behaviour (zero rows = unrestricted, same as
+  pre-120 — admins opt in per key).  IP gate runs in
+  ``auth_middleware`` immediately after the Bearer match;
+  denials return 403 + ``IP_NOT_ALLOWED`` + a distinct
+  ``api_key.access_denied.ip`` audit row.  Catalog gate runs in
+  the public SQL Statement Execution API after parse + qualify;
+  denials return the DBX-shape FAILED envelope with
+  ``PERMISSION_DENIED`` + ``api_key.access_denied.catalog``
+  audit.  Both gated on global ``api_key_acl.enforce_*`` config
+  flags for incident-response escape hatches.  Five new admin
+  endpoints: list/add/delete for both grant types.  Usage
+  tracking via in-process ``collections.Counter`` flushed every
+  30s into ``api_key_usage_buckets``; daily retention sweep
+  prunes beyond 30d.  New per-key detail page
+  ``/admin/api-keys/{name}`` with grants editor + 30-day bar
+  chart (plain ``<canvas>`` — no Chart.js bundle for a 60-line
+  histogram) + top-source-IPs table.  56 new pytest; new
+  walkthrough at ``docs/admin/api-key-acls.md`` covering the
+  enforcement model, all four CRUD endpoints, the usage
+  dashboard, the layered model (IP → catalog → UC), audit
+  catalogue, and known limitations.
+
 - **Phase 119 — API-key lifecycle: TTL + rotation + quarantine
   (2026-05-23, rc123 → rc124).**  Adds the three operational
   primitives that turn the Phase-118 token format into a
