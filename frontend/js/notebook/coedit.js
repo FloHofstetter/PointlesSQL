@@ -536,6 +536,22 @@ export function installCoeditLifecycle(state, { userInfo = null } = {}) {
     }
   };
 
+  // Phase 116 — vital-pill class for the toolbar status cluster.
+  // Mirrors ``coeditDotClass`` but emits the pill design's class
+  // pair so the toolbar's status reads as semantic state instead
+  // of decoration.  ``vitalPillClass('coedit')`` on the editor
+  // root scope delegates to this method.
+  state.coeditPillClass = function () {
+    switch (this.coeditStatus) {
+      case 'live': return 'pql-vital-pill pql-vital-pill--success';
+      case 'connecting':
+      case 'offline': return 'pql-vital-pill pql-vital-pill--warning';
+      case 'error': return 'pql-vital-pill pql-vital-pill--danger';
+      case 'unauthorized':
+      default: return 'pql-vital-pill pql-vital-pill--idle';
+    }
+  };
+
   state.coeditTooltip = function () {
     switch (this.coeditStatus) {
       case 'live': return 'Co-edit channel connected — changes sync across open tabs.';

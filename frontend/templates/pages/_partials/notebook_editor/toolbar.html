@@ -1,35 +1,35 @@
  <div class="pql-notebook-toolbar" role="toolbar" aria-label="Notebook toolbar">
   <i class="bi bi-journal-code" aria-hidden="true"></i>
-  {# Sprint 112.5 — vital-signs cluster.  Three coloured dots
-     (save / kernel / co-edit) replace the five separate status
-     badges + path text that used to live here.  Full status
-     labels live in the right meta panel; the dots are the at-a-
-     glance "everything fine?" indicator that still works when
-     the meta panel is collapsed.  Each dot's colour class is
-     bound via a getter on the editor scope so the mapping stays
-     declarative; tooltips name the state via the same getters
-     used by the old pill labels. #}
-  <span class="pql-notebook-vitals d-inline-flex align-items-center gap-2 ms-1"
+  {# Phase 116 — vital-signs cluster v2: three pill chips with
+     icons + state-driven colour utility (``.pql-vital-pill``
+     family).  Same three signals (save / kernel / co-edit) the
+     Sprint 112.5 dots carried, but at ~10× the visual weight so
+     the cluster reads as semantic status, not macOS window-
+     control decoration.  Tooltip text is unchanged. #}
+  <span class="pql-notebook-vitals d-inline-flex align-items-center gap-1 ms-1"
         role="status"
         aria-label="Notebook live status">
-   <span class="d-inline-block rounded-circle"
-         style="width: 0.55rem; height: 0.55rem;"
-         :class="saveDotClass()"
-         :title="saveDotTooltip()"
+   <span :class="vitalPillClass('save')"
+         :title="vitalPillTooltip('save')"
          data-testid="notebook-save-dot"
-         aria-hidden="true"></span>
-   <span class="d-inline-block rounded-circle"
-         style="width: 0.55rem; height: 0.55rem;"
-         :class="kernelDotClass()"
-         :title="kernelDotTooltip()"
+         aria-hidden="true">
+    <i :class="vitalPillIcon('save')"></i>
+   </span>
+   <span :class="vitalPillClass('kernel')"
+         :title="vitalPillTooltip('kernel')"
          data-testid="notebook-kernel-dot"
-         aria-hidden="true"></span>
-   <span class="d-inline-block rounded-circle"
-         style="width: 0.55rem; height: 0.55rem;"
-         :class="coeditDotClass()"
-         :title="coeditTooltip()"
+         aria-hidden="true">
+    <i :class="vitalPillIcon('kernel')"></i>
+   </span>
+   <span :class="vitalPillClass('coedit')"
+         :title="vitalPillTooltip('coedit')"
          data-testid="notebook-coedit-dot"
-         aria-hidden="true"></span>
+         aria-hidden="true">
+    <i :class="vitalPillIcon('coedit')"></i>
+    <template x-if="Array.isArray(coeditPeers) && coeditPeers.length > 0">
+     <span class="pql-vital-pill__count" x-text="coeditPeers.length"></span>
+    </template>
+   </span>
   </span>
 
   {% include "pages/_partials/notebook_editor/coedit_peers.html" %}
@@ -56,13 +56,20 @@
   </div>
 
   <div class="pql-toolbar-group" role="group" aria-label="Save and run">
+   {# Phase 116 — Save button carries its own state.  Outlined
+      when dirty (call-to-action); filled when clean (state
+      acknowledgement); spinner when saving; warning-outlined when
+      an external mtime conflict needs resolving.  The button
+      stays clickable in the "clean" branch so the ⌘S keybind
+      still routes through ``save()`` (handler no-ops there). #}
    <button type="button"
-           class="btn btn-sm btn-outline-primary"
+           :class="saveButtonClass()"
            @click="save()"
            :disabled="saving || mtimeConflict"
-           title="Save notebook (Cmd/Ctrl+S)">
-    <i class="bi bi-save" aria-hidden="true"></i>
-    Save
+           :title="saveButtonLabel() + ' (Cmd/Ctrl+S)'"
+           data-testid="notebook-save-btn">
+    <i :class="saveButtonIcon()" aria-hidden="true"></i>
+    <span x-text="saveButtonLabel()"></span>
     <kbd class="ms-1">⌘S</kbd>
    </button>
    {# Phase 113.6 — Run all.  Sequentially executes every non-markdown
@@ -70,8 +77,11 @@
       button morphs into a one-click cancel.  Above/below variants
       live on the per-cell Run split-button (that's where the cell
       context is unambiguous). #}
+   {# Phase 116 — Run-all flips to ``btn-danger`` when running so
+      the "click to stop the dangerous thing" reads at a glance,
+      not just by parsing the icon swap. #}
    <button type="button"
-           class="btn btn-sm btn-outline-success"
+           :class="runAllButtonClass()"
            @click="runAllInProgress ? cancelRunAll() : runAllCells()"
            :disabled="kernelStatus !== 'ready' && !runAllInProgress"
            data-testid="notebook-run-all"
@@ -80,7 +90,7 @@
      <span><i class="bi bi-fast-forward-fill" aria-hidden="true"></i> Run all</span>
     </template>
     <template x-if="runAllInProgress">
-     <span><i class="bi bi-x-circle" aria-hidden="true"></i> Stop run</span>
+     <span><i class="bi bi-stop-fill" aria-hidden="true"></i> Stop run</span>
     </template>
    </button>
    <button type="button"

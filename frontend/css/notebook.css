@@ -33,13 +33,57 @@
  border-radius: 0.25rem;
 }
 
-/* Sprint 112.5 — vital-signs cluster (save / kernel / co-edit dots)
-   replaces the textual notebook path + status badges that used to
-   sit at the toolbar's leading edge.  Tight spacing keeps the three
-   dots reading as a single visual unit. */
+/* Phase 116 — vital-signs cluster v2.  Three rounded pills
+   carrying icons + state-driven colour utility; replaces the
+   Sprint 112.5 0.55 rem solid circles which read as decorative
+   macOS window controls on a fresh load.  Same three signals
+   (save / kernel / co-edit), now legible. */
 .pql-notebook-toolbar .pql-notebook-vitals {
  flex: 0 0 auto;
 }
+.pql-vital-pill {
+ display: inline-flex;
+ align-items: center;
+ justify-content: center;
+ gap: 0.25rem;
+ width: 1.6rem;
+ height: 1.25rem;
+ padding: 0 0.35rem;
+ border-radius: 0.625rem;
+ font-size: 0.7rem;
+ line-height: 1;
+ background: var(--bs-secondary-bg, #e9ecef);
+ color: var(--bs-secondary-color, #6c757d);
+ transition: background 120ms ease, color 120ms ease;
+}
+.pql-vital-pill .bi {
+ font-size: 0.75rem;
+}
+.pql-vital-pill__count {
+ font-weight: 600;
+ font-size: 0.65rem;
+ letter-spacing: -0.02em;
+}
+.pql-vital-pill--idle {
+ background: var(--bs-secondary-bg, #e9ecef);
+ color: var(--bs-secondary-color, #6c757d);
+}
+.pql-vital-pill--success {
+ background: var(--bs-success-bg-subtle, rgba(25, 135, 84, 0.18));
+ color: var(--bs-success-text-emphasis, #198754);
+}
+.pql-vital-pill--warning {
+ background: var(--bs-warning-bg-subtle, rgba(255, 193, 7, 0.20));
+ color: var(--bs-warning-text-emphasis, #997404);
+}
+.pql-vital-pill--danger {
+ background: var(--bs-danger-bg-subtle, rgba(220, 53, 69, 0.18));
+ color: var(--bs-danger-text-emphasis, #b02a37);
+}
+/* ``.pql-spin`` rotation animation is defined globally in
+   layout.css (used by the workspace-sidebar refresh button and
+   other spinning indicators); reused here for the saving / kernel-
+   connecting pill icons. */
 
 .pql-notebook-toolbar .pql-toolbar-group {
  display: inline-flex;
@@ -65,6 +109,19 @@
 }
 .pql-toolbar-panel-btn.active .pql-toolbar-panel-btn__label {
  display: inline;
+}
+/* Phase 116 — strengthen the "open" state.  Bootstrap's
+   ``.btn-outline-secondary.active`` swaps the muted outline for
+   a filled body-bg + body-color which actually READS as inverted
+   (less obvious as a status flag).  We override with a subtle
+   accent-tinted fill so "this panel is currently open" reads at
+   a glance, matching the audit / lens active-link styling. */
+.pql-toolbar-panel-btn.active,
+.pql-toolbar-panel-btn.active:hover,
+.pql-toolbar-panel-btn.active:focus {
+ background: var(--pql-color-accent-bg, rgba(118, 185, 0, 0.12));
+ border-color: var(--pql-color-accent, #76b900);
+ color: var(--pql-color-accent, #76b900);
 }
 
 .pql-notebook-cell {

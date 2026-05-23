@@ -248,6 +248,131 @@ export function notebookEditor({ initialPath = '', currentUser = null } = {}) {
  },
 
  /**
+  * Phase 116 — vital-pill class for the toolbar status cluster.
+  *
+  * Replaces the three 0.55 rem solid circles with rounded pills
+  * carrying an icon + state-driven Bootstrap colour utility.
+  * Same three signals (save / kernel / co-edit), ~10× the visual
+  * weight, so the cluster actually reads as status instead of
+  * macOS window-control decoration.  Meta-panel keeps using the
+  * older ``*DotClass()`` getters so the verbose mirror surface
+  * stays unchanged.
+  */
+ vitalPillClass(kind) {
+  if (kind === 'save') {
+   if (this.loading || this.saving) return 'pql-vital-pill pql-vital-pill--warning';
+   if (this.dirty) return 'pql-vital-pill pql-vital-pill--warning';
+   if (this.lastSavedAt) return 'pql-vital-pill pql-vital-pill--success';
+   return 'pql-vital-pill pql-vital-pill--idle';
+  }
+  if (kind === 'kernel') {
+   switch (this.kernelStatus) {
+    case 'ready': return 'pql-vital-pill pql-vital-pill--success';
+    case 'connecting': return 'pql-vital-pill pql-vital-pill--warning';
+    case 'closed':
+    case 'disconnected':
+    default: return 'pql-vital-pill pql-vital-pill--idle';
+   }
+  }
+  // Co-edit pill class lives on the co-edit mixin; this branch
+  // is reached when the mixin extends the getter.  Default to
+  // idle so the pill still paints if the mixin is absent.
+  if (typeof this.coeditPillClass === 'function') {
+   return this.coeditPillClass();
+  }
+  return 'pql-vital-pill pql-vital-pill--idle';
+ },
+
+ /**
+  * Phase 116 — vital-pill icon (Bootstrap-Icons class) per kind.
+  *
+  * Save pill switches between floppy (idle / dirty) and a spinning
+  * arrow (saving) and a check (clean / just saved).  Kernel pill
+  * switches between cpu, spinning arrow (busy / connecting), and
+  * a cross (disconnected).  Co-edit pill stays as people, with a
+  * single-person fallback in the idle state.
+  */
+ vitalPillIcon(kind) {
+  if (kind === 'save') {
+   if (this.loading || this.saving) return 'bi bi-arrow-repeat pql-spin';
+   if (this.dirty) return 'bi bi-exclamation-circle';
+   if (this.lastSavedAt) return 'bi bi-check2';
+   return 'bi bi-floppy';
+  }
+  if (kind === 'kernel') {
+   switch (this.kernelStatus) {
+    case 'ready': return 'bi bi-cpu';
+    case 'connecting': return 'bi bi-arrow-repeat pql-spin';
+    case 'closed':
+    case 'disconnected':
+    default: return 'bi bi-x-circle';
+   }
+  }
+  if (kind === 'coedit') {
+   if (Array.isArray(this.coeditPeers) && this.coeditPeers.length > 0) {
+    return 'bi bi-people-fill';
+   }
+   return 'bi bi-person';
+  }
+  return 'bi bi-question-circle';
+ },
+
+ /**
+  * Phase 116 — tooltip text per pill kind.  Reuses the same
+  * strings the old ``*Tooltip()`` getters used so the textual
+  * status the user reads on hover stays identical.
+  */
+ vitalPillTooltip(kind) {
+  if (kind === 'save') return this.saveDotTooltip();
+  if (kind === 'kernel') return this.kernelDotTooltip();
+  if (kind === 'coedit' && typeof this.coeditTooltip === 'function') {
+   return this.coeditTooltip();
+  }
+  return '';
+ },
+
+ /**
+  * Phase 116 — Save button class composition.
+  *
+  * Desktop-app pattern: outlined when there are unsaved changes
+  * (call-to-action), filled when the notebook is clean (state
+  * acknowledgement), warning when an external mtime conflict
+  * blocks saving.  The button stays focusable + Cmd/Ctrl+S still
+  * routes through ``save()`` even in the "clean" branch (the
+  * handler no-ops there so reflex-saving has no side-effect).
+  */
+ saveButtonClass() {
+  if (this.mtimeConflict) return 'btn btn-sm btn-outline-warning';
+  if (this.saving) return 'btn btn-sm btn-outline-primary';
+  if (this.dirty || !this.lastSavedAt) return 'btn btn-sm btn-outline-primary';
+  return 'btn btn-sm btn-primary';
+ },
+
+ saveButtonIcon() {
+  if (this.mtimeConflict) return 'bi bi-exclamation-triangle';
+  if (this.saving) return 'bi bi-arrow-repeat pql-spin';
+  if (this.dirty || !this.lastSavedAt) return 'bi bi-save';
+  return 'bi bi-check2';
+ },
+
+ saveButtonLabel() {
+  if (this.mtimeConflict) return 'Resolve';
+  if (this.saving) return 'Saving';
+  if (this.dirty || !this.lastSavedAt) return 'Save';
+  return 'Saved';
+ },
+
+ /**
+  * Phase 116 — Run-all button class.  Outlined-success at rest;
+  * fills to ``btn-danger`` mid-run so the "click to stop"
+  * affordance reads as the dangerous action it is.
+  */
+ runAllButtonClass() {
+  if (this.runAllInProgress) return 'btn btn-sm btn-danger';
+  return 'btn btn-sm btn-outline-success';
+ },
+
+ /**
   * Sprint 112.5 — Activity section recent-runs feed.
   *
   * Bounded snapshot of the last five cell runs across the whole
