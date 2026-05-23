@@ -34,11 +34,11 @@ logger = logging.getLogger(__name__)
 # IS intentional.  ``__all__`` makes pyright agree that these names
 # are deliberately exported to ``main.py``.
 __all__ = [
+    "_active_reviewer_loop",
+    "_api_key_lifecycle_sweep_loop",
     "_audit_retention_loop",
     "_branch_cleanup_loop",
     "_cdf_tail_loop",
-    "_active_reviewer_loop",
-    "_user_badges_loop",
     "_data_product_cooccurrence_loop",
     "_data_product_freshness_loop",
     "_data_product_passport_loop",
@@ -46,6 +46,7 @@ __all__ = [
     "_data_product_trending_loop",
     "_external_writes_loop",
     "_lineage_pruner_loop",
+    "_user_badges_loop",
     "_user_notification_digest_loop",
     "_workspace_repos_sync_loop",
 ]
@@ -76,6 +77,43 @@ async def _audit_retention_loop(  # pyright: ignore[reportUnusedFunction]
             await asyncio.to_thread(audit_service.cleanup_old_entries, factory, retention)
         except Exception:  # noqa: BLE001 — retention loop must survive everything
             logger.exception("audit: retention loop tick raised")
+        try:
+            await asyncio.sleep(interval)
+        except asyncio.CancelledError:
+            return
+
+
+async def _api_key_lifecycle_sweep_loop(  # pyright: ignore[reportUnusedFunction]
+    factory: Any,
+    settings: Settings,
+) -> None:
+    """Run :func:`run_lifecycle_sweep` once per configured cadence.
+
+    Marks expired keys (auto-quarantine if enabled) + emits one
+    ``api_key.expiry_warning`` audit row per key entering the
+    ``expiry_warning_days`` window.  Survives transient failures so a
+    DB hiccup never takes the lifespan down.
+
+    Args:
+        factory: SQLAlchemy session factory.
+        settings: Snapshotted :class:`Settings` — only
+            ``api_key_lifecycle.*`` is read.
+    """
+    from pointlessql.services.api_keys._lifecycle_sweep import run_lifecycle_sweep
+
+    interval = max(60, settings.api_key_lifecycle.sweep_interval_seconds)
+    warning_days = settings.api_key_lifecycle.expiry_warning_days
+    quarantine = settings.api_key_lifecycle.quarantine_on_expiry
+    while True:
+        try:
+            await asyncio.to_thread(
+                run_lifecycle_sweep,
+                factory,
+                expiry_warning_days=warning_days,
+                quarantine_on_expiry=quarantine,
+            )
+        except Exception:  # noqa: BLE001 — sweep loop must survive everything
+            logger.exception("api-keys: lifecycle sweep loop tick raised")
         try:
             await asyncio.sleep(interval)
         except asyncio.CancelledError:

@@ -31,6 +31,7 @@ from fastapi.templating import Jinja2Templates
 
 from pointlessql.api._bootstrap._loops import (
     _active_reviewer_loop,  # pyright: ignore[reportPrivateUsage]
+    _api_key_lifecycle_sweep_loop,  # pyright: ignore[reportPrivateUsage]
     _audit_retention_loop,  # pyright: ignore[reportPrivateUsage]
     _branch_cleanup_loop,  # pyright: ignore[reportPrivateUsage]
     _cdf_tail_loop,  # pyright: ignore[reportPrivateUsage]
@@ -171,6 +172,18 @@ def make_lifespan(
             audit_task = asyncio.create_task(
                 _audit_retention_loop(app.state.session_factory, settings),
                 name="audit-retention",
+            )
+
+        # Phase 119 — periodic API-key lifecycle sweep.  Marks
+        # expired keys (auto-quarantine if enabled) + emits one
+        # expiry-warning audit row per key approaching its TTL.
+        # Same opt-out as audit retention: not started under
+        # ``fast_test_lifespan``.
+        api_key_lifecycle_task: asyncio.Task[None] | None = None
+        if not fast_test_lifespan:
+            api_key_lifecycle_task = asyncio.create_task(
+                _api_key_lifecycle_sweep_loop(app.state.session_factory, settings),
+                name="api-key-lifecycle",
             )
 
         # Periodic external-write scanner.  Disabled by default
@@ -481,6 +494,7 @@ def make_lifespan(
             if app.state.dbt_subprocess is not None:
                 await app.state.dbt_subprocess.stop()
             await _cancel_task(audit_task)
+            await _cancel_task(api_key_lifecycle_task)
             await _cancel_task(external_writes_task)
             await _cancel_task(cdf_tail_task)
             await _cancel_task(data_product_freshness_task)

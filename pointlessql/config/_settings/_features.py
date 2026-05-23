@@ -69,6 +69,34 @@ class SqlExecutionApiSettings(BaseSettings):
     cancel_interrupt_grace_seconds: int = 5
 
 
+class ApiKeyLifecycleSettings(BaseSettings):
+    """Phase 119 — API-key TTL / rotation / quarantine periodic maintenance.
+
+    Reads ``POINTLESSQL_API_KEY_LIFECYCLE_*`` environment variables.
+
+    The ``default_ttl_days`` field is **not enforced** as a hard
+    server-side default — instead it acts as the suggested value
+    the admin UI form pre-fills, so admins explicitly opt in to a
+    TTL per key.  Backward compatibility for pre-Phase-119 keys is
+    via ``expires_at=NULL`` which the verify path treats as "no
+    expiry".
+
+    ``sweep_interval_seconds`` is how often the background loop
+    wakes up to mark expired keys + emit warning audit rows.  An
+    hourly cadence is plenty for human-scale TTLs (days to months)
+    while keeping the loop near-idle (each tick is a single
+    indexed SELECT).
+    """
+
+    model_config = SettingsConfigDict(env_prefix="POINTLESSQL_API_KEY_LIFECYCLE_")
+
+    default_ttl_days: int | None = None
+    rotation_grace_seconds: int = 86_400
+    expiry_warning_days: int = 14
+    quarantine_on_expiry: bool = True
+    sweep_interval_seconds: int = 3_600
+
+
 class EditorChatSettings(BaseSettings):
     """Editor-chat configuration — shared by SQL + notebook surfaces.
 
