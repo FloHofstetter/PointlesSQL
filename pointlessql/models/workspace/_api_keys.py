@@ -88,7 +88,23 @@ class ApiKey(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
     secret_hash: Mapped[str] = mapped_column(String(128), nullable=False)
-    secret_prefix: Mapped[str] = mapped_column(String(8), nullable=False)
+    # Phase 118 widened from VARCHAR(8) to VARCHAR(32) so the new
+    # ``pql_{env}_v1_xxxxxxxxxx`` prefix (~24 chars) fits.  Legacy
+    # keys keep their original 8-char prefix unchanged.
+    secret_prefix: Mapped[str] = mapped_column(String(32), nullable=False)
+    # Phase 118 — token format discriminator.  ``'legacy'`` for pre-118
+    # ``secrets.token_urlsafe(32)`` tokens; ``'v1'`` for the
+    # ``pql_{env}_v1_{body40}_{crc8}`` format.  Drives badge rendering
+    # and lets future code drop legacy support cleanly.
+    token_format: Mapped[str] = mapped_column(
+        String(8), nullable=False, default="legacy", server_default=text("'legacy'")
+    )
+    # Phase 118 — env discriminator.  ``'live'`` / ``'test'`` for v1
+    # tokens, ``'legacy'`` for pre-118 keys.  Test keys are visually
+    # distinct in audit logs; refusal in production is wired by config.
+    token_env: Mapped[str] = mapped_column(
+        String(8), nullable=False, default="legacy", server_default=text("'legacy'")
+    )
     supervisor: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     auditor: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False, server_default=text("false")
