@@ -50,6 +50,14 @@ def _serialize(row: Any) -> dict[str, Any]:
         "created_at": row.created_at.isoformat() if row.created_at else None,
         "revoked_at": row.revoked_at.isoformat() if row.revoked_at else None,
         "last_used_at": (row.last_used_at.isoformat() if row.last_used_at else None),
+        "expires_at": (row.expires_at.isoformat() if getattr(row, "expires_at", None) else None),
+        "rotated_at": (row.rotated_at.isoformat() if getattr(row, "rotated_at", None) else None),
+        "grace_until": (row.grace_until.isoformat() if getattr(row, "grace_until", None) else None),
+        "quarantined_at": (
+            row.quarantined_at.isoformat() if getattr(row, "quarantined_at", None) else None
+        ),
+        "quarantine_reason": getattr(row, "quarantine_reason", None),
+        "rotated_from_id": getattr(row, "rotated_from_id", None),
     }
 
 
@@ -180,6 +188,204 @@ async def api_admin_revoke_api_key(request: Request, name: str) -> dict[str, Any
         raise CatalogNotFoundError(f"api_key {name!r} not found or already revoked")
     await audit(request, "api_key.revoked", f"api_key:{name}")
     return {"name": name, "revoked": True}
+
+
+# ---------------------------------------------------------------------------
+# Phase 119 — lifecycle endpoints
+# ---------------------------------------------------------------------------
+
+
+@router.post("/api/admin/api-keys/{name}/rotate")
+async def api_admin_rotate_api_key(
+    request: Request, name: str, body: dict[str, Any] | None = Body(default=None)
+) -> dict[str, Any]:
+    """Mint a successor key; predecessor stays valid through grace window.
+
+    Args:
+        request: Incoming FastAPI request.
+        name: Predecessor key name.
+        body: Optional JSON ``{successor_name?: str, grace_seconds?: int}``.
+
+    Returns:
+        ``{predecessor, successor: {name, secret, secret_prefix, ...},
+        grace_seconds}``.  ``secret`` is the plaintext, persist it now
+        or lose it.
+
+    Raises:
+        CatalogNotFoundError: No active, un-rotated key with that name.
+        ValidationError: ``grace_seconds`` not a non-negative int or
+            ``successor_name`` not a non-empty string.
+    """
+    require_admin(request)
+    payload = body or {}
+    successor_name_raw = payload.get("successor_name")
+    if successor_name_raw is not None and (
+        not isinstance(successor_name_raw, str) or not successor_name_raw.strip()
+    ):
+        raise ValidationError("successor_name must be a non-empty string when provided")
+    grace_seconds = payload.get("grace_seconds", 86_400)
+    if not isinstance(grace_seconds, int) or grace_seconds < 0:
+        raise ValidationError("grace_seconds must be a non-negative integer")
+    user = get_user(request)
+    rotated = api_keys_service.rotate_api_key(
+        request.app.state.session_factory,
+        name=name,
+        successor_name=successor_name_raw.strip() if isinstance(successor_name_raw, str) else None,
+        grace_seconds=grace_seconds,
+        created_by_user_id=user.get("id") or None,
+    )
+    if rotated is None:
+        raise CatalogNotFoundError(
+            f"api_key {name!r} not found, already revoked, or already rotated"
+        )
+    successor_row, plaintext = rotated
+    await audit(
+        request,
+        "api_key.rotated",
+        f"api_key:{name}",
+        {
+            "successor": successor_row.name,
+            "grace_seconds": grace_seconds,
+        },
+    )
+    return {
+        "predecessor": name,
+        "grace_seconds": grace_seconds,
+        "successor": {
+            "name": successor_row.name,
+            "secret": plaintext,
+            "secret_prefix": successor_row.secret_prefix,
+            "token_format": getattr(successor_row, "token_format", "v1") or "v1",
+            "token_env": getattr(successor_row, "token_env", "live") or "live",
+            "supervisor": bool(successor_row.supervisor),
+            "auditor": bool(getattr(successor_row, "auditor", False)),
+            "lineage_inbound": bool(getattr(successor_row, "lineage_inbound", False)),
+            "analyst": bool(getattr(successor_row, "analyst", False)),
+            "sql_execute": bool(getattr(successor_row, "sql_execute", False)),
+        },
+    }
+
+
+@router.post("/api/admin/api-keys/{name}/quarantine")
+async def api_admin_quarantine_api_key(
+    request: Request, name: str, body: dict[str, Any] = Body(...)
+) -> dict[str, Any]:
+    """Soft-disable a key (auth returns 401 until ``unquarantine``).
+
+    Args:
+        request: Incoming FastAPI request.
+        name: Key name.
+        body: JSON ``{reason: str}`` — short admin note.
+
+    Returns:
+        ``{"name": ..., "quarantined": True, "reason": ...}``.
+
+    Raises:
+        ValidationError: ``reason`` missing or empty.
+        CatalogNotFoundError: Key missing, revoked, or already
+            quarantined.
+    """
+    require_admin(request)
+    reason_raw = body.get("reason")
+    if not isinstance(reason_raw, str) or not reason_raw.strip():
+        raise ValidationError("reason must be a non-empty string")
+    applied = api_keys_service.quarantine_api_key(
+        request.app.state.session_factory, name=name, reason=reason_raw
+    )
+    if not applied:
+        raise CatalogNotFoundError(
+            f"api_key {name!r} not found, revoked, or already quarantined"
+        )
+    await audit(
+        request,
+        "api_key.quarantined",
+        f"api_key:{name}",
+        {"reason": reason_raw.strip()[:200]},
+    )
+    return {"name": name, "quarantined": True, "reason": reason_raw.strip()[:200]}
+
+
+@router.post("/api/admin/api-keys/{name}/unquarantine")
+async def api_admin_unquarantine_api_key(
+    request: Request, name: str
+) -> dict[str, Any]:
+    """Lift a quarantine.
+
+    Args:
+        request: Incoming FastAPI request.
+        name: Key name.
+
+    Returns:
+        ``{"name": ..., "quarantined": False}``.
+
+    Raises:
+        CatalogNotFoundError: Key missing or not currently quarantined.
+    """
+    require_admin(request)
+    applied = api_keys_service.unquarantine_api_key(
+        request.app.state.session_factory, name=name
+    )
+    if not applied:
+        raise CatalogNotFoundError(
+            f"api_key {name!r} not found or not currently quarantined"
+        )
+    await audit(request, "api_key.unquarantined", f"api_key:{name}")
+    return {"name": name, "quarantined": False}
+
+
+@router.patch("/api/admin/api-keys/{name}")
+async def api_admin_update_api_key(
+    request: Request, name: str, body: dict[str, Any] = Body(...)
+) -> dict[str, Any]:
+    """Update mutable lifecycle fields on a key.
+
+    v1 only exposes ``expires_at`` (set or clear) — scope edits would
+    require an audit-trail design and ship in a later phase.
+
+    Args:
+        request: Incoming FastAPI request.
+        name: Key name.
+        body: JSON ``{expires_at: ISO-8601 str | null}``.  ``null``
+            clears the TTL.
+
+    Returns:
+        ``{"name": ..., "expires_at": ISO-8601 str | None}``.
+
+    Raises:
+        ValidationError: ``expires_at`` not parseable.
+        CatalogNotFoundError: Key missing or revoked.
+    """
+    from datetime import datetime as _datetime
+
+    require_admin(request)
+    if "expires_at" not in body:
+        raise ValidationError("body must contain 'expires_at' (ISO-8601 or null)")
+    raw = body["expires_at"]
+    expires_at: _datetime | None
+    if raw is None:
+        expires_at = None
+    elif isinstance(raw, str):
+        try:
+            expires_at = _datetime.fromisoformat(raw)
+        except ValueError as exc:
+            raise ValidationError(f"expires_at not parseable: {exc}") from exc
+    else:
+        raise ValidationError("expires_at must be an ISO-8601 string or null")
+    applied = api_keys_service.update_api_key_ttl(
+        request.app.state.session_factory, name=name, expires_at=expires_at
+    )
+    if not applied:
+        raise CatalogNotFoundError(f"api_key {name!r} not found or revoked")
+    await audit(
+        request,
+        "api_key.ttl_updated",
+        f"api_key:{name}",
+        {"expires_at": expires_at.isoformat() if expires_at else None},
+    )
+    return {
+        "name": name,
+        "expires_at": expires_at.isoformat() if expires_at else None,
+    }
 
 
 __all__ = ["router"]

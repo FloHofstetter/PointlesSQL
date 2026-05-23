@@ -258,3 +258,146 @@ async def test_list_includes_token_format_and_env(
     assert keys[0]["token_format"] == "v1"
     assert keys[0]["token_env"] == "test"
     _wipe()
+
+
+# ---------------------------------------------------------------------------
+# Phase 119 — lifecycle admin endpoints
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_rotate_mints_successor_with_same_scopes(
+    admin_client: httpx.AsyncClient,
+) -> None:
+    _wipe()
+    await admin_client.post(
+        "/api/admin/api-keys",
+        json={"name": "rot", "supervisor": True, "auditor": True, "env": "test"},
+    )
+    resp = await admin_client.post(
+        "/api/admin/api-keys/rot/rotate", json={"grace_seconds": 3600}
+    )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["predecessor"] == "rot"
+    assert body["grace_seconds"] == 3600
+    succ = body["successor"]
+    assert succ["name"].startswith("rot-rotated-")
+    assert succ["secret"].startswith("pql_test_v1_")  # env inherited
+    assert succ["supervisor"] is True and succ["auditor"] is True
+    _wipe()
+
+
+@pytest.mark.asyncio
+async def test_rotate_returns_404_for_missing_or_already_rotated(
+    admin_client: httpx.AsyncClient,
+) -> None:
+    _wipe()
+    resp_missing = await admin_client.post("/api/admin/api-keys/none/rotate")
+    assert resp_missing.status_code == 404
+    await admin_client.post("/api/admin/api-keys", json={"name": "twice"})
+    first = await admin_client.post("/api/admin/api-keys/twice/rotate")
+    assert first.status_code == 200
+    second = await admin_client.post("/api/admin/api-keys/twice/rotate")
+    assert second.status_code == 404
+    _wipe()
+
+
+@pytest.mark.asyncio
+async def test_rotate_rejects_invalid_grace_seconds(
+    admin_client: httpx.AsyncClient,
+) -> None:
+    _wipe()
+    await admin_client.post("/api/admin/api-keys", json={"name": "k"})
+    resp = await admin_client.post(
+        "/api/admin/api-keys/k/rotate", json={"grace_seconds": -1}
+    )
+    assert resp.status_code == 422
+    _wipe()
+
+
+@pytest.mark.asyncio
+async def test_quarantine_and_unquarantine_round_trip(
+    admin_client: httpx.AsyncClient,
+) -> None:
+    _wipe()
+    create = await admin_client.post("/api/admin/api-keys", json={"name": "q1"})
+    secret = create.json()["secret"]
+
+    q_resp = await admin_client.post(
+        "/api/admin/api-keys/q1/quarantine", json={"reason": "drill"}
+    )
+    assert q_resp.status_code == 200 and q_resp.json()["quarantined"] is True
+
+    # Bearer auth must fail while quarantined.
+    from pointlessql.api.main import app
+    from pointlessql.services import api_keys as api_keys_service
+
+    api_keys_service.invalidate_cache()
+    assert (
+        api_keys_service.verify_bearer(f"Bearer {secret}", app.state.session_factory)
+        is None
+    )
+
+    u_resp = await admin_client.post("/api/admin/api-keys/q1/unquarantine")
+    assert u_resp.status_code == 200 and u_resp.json()["quarantined"] is False
+
+    # Cache was invalidated; auth works again.
+    assert (
+        api_keys_service.verify_bearer(f"Bearer {secret}", app.state.session_factory)
+        is not None
+    )
+    _wipe()
+
+
+@pytest.mark.asyncio
+async def test_quarantine_rejects_missing_reason(
+    admin_client: httpx.AsyncClient,
+) -> None:
+    _wipe()
+    await admin_client.post("/api/admin/api-keys", json={"name": "noargs"})
+    resp = await admin_client.post(
+        "/api/admin/api-keys/noargs/quarantine", json={}
+    )
+    assert resp.status_code == 422
+    _wipe()
+
+
+@pytest.mark.asyncio
+async def test_patch_expires_at_set_then_clear(
+    admin_client: httpx.AsyncClient,
+) -> None:
+    from datetime import UTC, datetime, timedelta
+
+    _wipe()
+    await admin_client.post("/api/admin/api-keys", json={"name": "ttl"})
+    future = (datetime.now(UTC) + timedelta(days=30)).isoformat()
+    set_resp = await admin_client.patch(
+        "/api/admin/api-keys/ttl", json={"expires_at": future}
+    )
+    assert set_resp.status_code == 200
+    listing = await admin_client.get("/api/admin/api-keys")
+    row = next(k for k in listing.json()["keys"] if k["name"] == "ttl")
+    assert row["expires_at"] is not None
+
+    clear_resp = await admin_client.patch(
+        "/api/admin/api-keys/ttl", json={"expires_at": None}
+    )
+    assert clear_resp.status_code == 200
+    listing2 = await admin_client.get("/api/admin/api-keys")
+    row2 = next(k for k in listing2.json()["keys"] if k["name"] == "ttl")
+    assert row2["expires_at"] is None
+    _wipe()
+
+
+@pytest.mark.asyncio
+async def test_patch_rejects_unparseable_expires_at(
+    admin_client: httpx.AsyncClient,
+) -> None:
+    _wipe()
+    await admin_client.post("/api/admin/api-keys", json={"name": "bad"})
+    resp = await admin_client.patch(
+        "/api/admin/api-keys/bad", json={"expires_at": "not-a-datetime"}
+    )
+    assert resp.status_code == 422
+    _wipe()

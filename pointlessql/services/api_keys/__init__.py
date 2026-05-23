@@ -33,7 +33,7 @@ import logging
 import os
 import time
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any, Literal, Protocol
 
 from sqlalchemy import select, update
@@ -343,6 +343,7 @@ def create_api_key(
     created_by_user_id: int | None = None,
     workspace_id: int = 1,
     env: Literal["live", "test"] = "live",
+    expires_at: datetime | None = None,
 ) -> tuple[ApiKey, str]:
     """Generate + persist a fresh Bearer-token credential.
 
@@ -379,6 +380,10 @@ def create_api_key(
             visually distinct in audit logs and git leaks.  Defaults
             to ``'live'`` so existing call-sites keep producing
             production-grade keys without an explicit argument.
+        expires_at: Optional Phase 119 TTL deadline.  ``None`` (the
+            default) means the key never expires, matching pre-119
+            behaviour.  Aware ``datetime`` recommended; naive values
+            are treated as UTC by the verify path.
 
     Returns:
         ``(row, plaintext_secret)``.  The row is detached after
@@ -416,6 +421,7 @@ def create_api_key(
             workspace_id=workspace_id,
             token_format="v1",
             token_env=env,
+            expires_at=expires_at,
         )
         session.add(row)
         session.commit()
@@ -457,6 +463,153 @@ def list_api_keys(
         for row in rows:
             session.expunge(row)
         return rows
+
+
+# ---------------------------------------------------------------------------
+# Phase 119 — lifecycle admin helpers
+# ---------------------------------------------------------------------------
+
+
+def rotate_api_key(
+    session_factory: _SessionFactory,
+    *,
+    name: str,
+    successor_name: str | None = None,
+    grace_seconds: int = 86_400,
+    created_by_user_id: int | None = None,
+) -> tuple[ApiKey, str] | None:
+    """Mint a successor key with the predecessor's scopes + env.
+
+    The predecessor row stays valid until ``now() + grace_seconds``
+    so clients can pick up the new secret without an auth gap.  After
+    the grace window closes the predecessor's auth path returns 401
+    + ``api_key.auth_denied.rotated``.
+
+    Args:
+        session_factory: Sessionmaker callable.
+        name: Predecessor key name.
+        successor_name: Optional name for the successor; defaults to
+            ``f"{name}-rotated-{epoch}"``.
+        grace_seconds: Window in seconds during which the predecessor
+            stays valid.  Defaults to 24 h.
+        created_by_user_id: Admin who triggered the rotation.
+
+    Returns:
+        ``(successor_row, plaintext)`` when the predecessor was found
+        and rotated; ``None`` when the predecessor doesn't exist or
+        is already revoked / rotated.
+    """
+    with session_factory() as session:
+        pred = session.scalar(select(ApiKey).where(ApiKey.name == name))
+        if pred is None or pred.revoked_at is not None or pred.rotated_at is not None:
+            return None
+        pred_env = getattr(pred, "token_env", "live") or "live"
+        env_for_successor: Literal["live", "test"] = (
+            "test" if pred_env == "test" else "live"
+        )
+        successor_name_resolved = successor_name or (
+            f"{name}-rotated-{int(datetime.now(UTC).timestamp())}"
+        )
+        plaintext = generate_v1_token(env_for_successor)
+        now_dt = datetime.now(UTC)
+        successor = ApiKey(
+            name=successor_name_resolved,
+            secret_hash=_hash_secret(plaintext),
+            secret_prefix=display_prefix_for(plaintext),
+            supervisor=bool(pred.supervisor),
+            auditor=bool(pred.auditor),
+            lineage_inbound=bool(getattr(pred, "lineage_inbound", False)),
+            analyst=bool(getattr(pred, "analyst", False)),
+            sql_execute=bool(getattr(pred, "sql_execute", False)),
+            created_at=now_dt,
+            created_by_user_id=created_by_user_id,
+            workspace_id=int(pred.workspace_id),
+            token_format="v1",
+            token_env=env_for_successor,
+            expires_at=_as_aware_utc(getattr(pred, "expires_at", None)),
+            rotated_from_id=int(pred.id),
+        )
+        session.add(successor)
+        # Mark predecessor.  Grace window keeps it valid temporarily.
+        pred.rotated_at = now_dt
+        pred.grace_until = now_dt + timedelta(seconds=grace_seconds)
+        session.commit()
+        session.refresh(successor)
+        session.expunge(successor)
+    invalidate_cache()
+    return successor, plaintext
+
+
+def quarantine_api_key(
+    session_factory: _SessionFactory, *, name: str, reason: str
+) -> bool:
+    """Soft-disable a key.  Returns ``True`` when applied.
+
+    Quarantined keys return 401 + ``api_key.auth_denied.quarantined``
+    on every auth attempt, but the row is preserved so audit
+    attribution keeps resolving and ``unquarantine_api_key`` can lift
+    the block cleanly.
+
+    Args:
+        session_factory: Sessionmaker callable.
+        name: Key name.
+        reason: Short admin note (≤ 200 chars).  Required — the
+            verify path treats ``quarantine_reason IS NULL`` as
+            "not quarantined" so a stray timestamp doesn't lock out
+            a key by accident.
+
+    Returns:
+        ``True`` on success; ``False`` when the key is missing,
+        revoked, or already quarantined.
+
+    Raises:
+        ValueError: When *reason* is empty after trimming.
+    """
+    cleaned = reason.strip()[:200]
+    if not cleaned:
+        raise ValueError("quarantine reason must be a non-empty string")
+    with session_factory() as session:
+        row = session.scalar(select(ApiKey).where(ApiKey.name == name))
+        if row is None or row.revoked_at is not None or row.quarantined_at is not None:
+            return False
+        row.quarantined_at = datetime.now(UTC)
+        row.quarantine_reason = cleaned
+        session.commit()
+    invalidate_cache()
+    return True
+
+
+def unquarantine_api_key(session_factory: _SessionFactory, *, name: str) -> bool:
+    """Clear quarantine on *name*.  Returns ``True`` when applied."""
+    with session_factory() as session:
+        row = session.scalar(select(ApiKey).where(ApiKey.name == name))
+        if row is None or row.quarantined_at is None:
+            return False
+        row.quarantined_at = None
+        row.quarantine_reason = None
+        session.commit()
+    invalidate_cache()
+    return True
+
+
+def update_api_key_ttl(
+    session_factory: _SessionFactory,
+    *,
+    name: str,
+    expires_at: datetime | None,
+) -> bool:
+    """Update a key's ``expires_at`` (None = no expiry).  ``True`` on success."""
+    with session_factory() as session:
+        row = session.scalar(select(ApiKey).where(ApiKey.name == name))
+        if row is None or row.revoked_at is not None:
+            return False
+        row.expires_at = expires_at
+        # Clear the expiry-warning dedup marker so the sweep can fire
+        # again with the new deadline.
+        row.expiry_warned_at = None
+        session.commit()
+    invalidate_cache()
+    return True
 
 
 # ---------------------------------------------------------------------------
