@@ -1,0 +1,327 @@
+{% extends "base.html" %}
+{% from "_macros/timestamps.html" import relative_time %}
+{% block title %}API key · {{ key.name }} · PointlesSQL{% endblock %}
+
+{% set breadcrumbs = [
+    {"label": "Home", "href": "/"},
+    {"label": "Admin", "href": "/admin"},
+    {"label": "API keys", "href": "/admin/api-keys"},
+    {"label": key.name}
+] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-3">
+    <div class="d-flex align-items-center gap-2">
+        <i class="bi bi-key fs-3"></i>
+        <h1 class="h4 mb-0">{{ key.name }}</h1>
+        {% if key.token_format == 'v1' %}
+            {% if key.token_env == 'test' %}
+            <span class="badge bg-warning text-dark">test</span>
+            {% else %}
+            <span class="badge bg-success">live</span>
+            {% endif %}
+        {% else %}
+        <span class="badge bg-secondary">legacy</span>
+        {% endif %}
+    </div>
+    <a class="btn btn-sm btn-outline-secondary" href="/admin/api-keys">
+        <i class="bi bi-arrow-left"></i> Back to list
+    </a>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-header"><strong>Metadata</strong></div>
+            <div class="card-body small">
+                <dl class="row mb-0">
+                    <dt class="col-5">Prefix</dt>
+                    <dd class="col-7 font-monospace">{{ key.secret_prefix }}…</dd>
+                    <dt class="col-5">Created</dt>
+                    <dd class="col-7">{{ relative_time(key.created_at) }}</dd>
+                    <dt class="col-5">Last used</dt>
+                    <dd class="col-7">{{ key.last_used_at[:19] if key.last_used_at else '—' }}</dd>
+                    {% if key.expires_at %}
+                    <dt class="col-5">Expires</dt>
+                    <dd class="col-7">{{ key.expires_at[:19] }}</dd>
+                    {% endif %}
+                    {% if key.quarantined_at %}
+                    <dt class="col-5">Quarantined</dt>
+                    <dd class="col-7">{{ key.quarantined_at[:19] }}<br><span class="text-danger">{{ key.quarantine_reason }}</span></dd>
+                    {% endif %}
+                </dl>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-8" x-data="apiKeyUsageChart('{{ key.name }}')">
+        <div class="card h-100">
+            <div class="card-header d-flex align-items-center justify-content-between">
+                <strong>Usage — last 30 days</strong>
+                <span class="small text-muted" x-text="totalLabel"></span>
+            </div>
+            <div class="card-body">
+                <canvas x-ref="chart" height="100"></canvas>
+                <div class="mt-3" x-show="topIps.length > 0">
+                    <div class="form-text mb-1">Top source IPs</div>
+                    <table class="table table-sm mb-0">
+                        <tbody>
+                            <template x-for="ip in topIps" :key="ip.ip">
+                                <tr>
+                                    <td class="font-monospace" x-text="ip.ip || '(none)'"></td>
+                                    <td class="text-end" x-text="ip.count"></td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="mt-2 text-muted small" x-show="topIps.length === 0 && !loading">
+                    No usage recorded in the last 30 days.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row" x-data="apiKeyGrants('{{ key.name }}')" x-init="load()">
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header"><strong>Catalog grants</strong></div>
+            <div class="card-body small">
+                <p class="text-muted mb-2">
+                    Zero rows = unrestricted (back-compat).
+                    Each row narrows the key to the listed
+                    <code>catalog</code> (and optional <code>schema</code>).
+                </p>
+                <table class="table table-sm" x-show="catalogGrants.length > 0">
+                    <thead><tr><th>Catalog</th><th>Schema</th><th></th></tr></thead>
+                    <tbody>
+                        <template x-for="g in catalogGrants" :key="g.id">
+                            <tr>
+                                <td class="font-monospace" x-text="g.catalog_name"></td>
+                                <td class="font-monospace" x-text="g.schema_name || '*'"></td>
+                                <td class="text-end">
+                                    <button type="button" class="btn btn-sm btn-outline-danger"
+                                            @click="removeCatalog(g.id)"
+                                            :disabled="busy">
+                                        Delete
+                                    </button>
+                                </td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+                <div class="row g-2">
+                    <div class="col-md-5">
+                        <input type="text" class="form-control form-control-sm"
+                               placeholder="catalog_name" x-model="newCatalog.catalog_name">
+                    </div>
+                    <div class="col-md-5">
+                        <input type="text" class="form-control form-control-sm"
+                               placeholder="schema (optional)" x-model="newCatalog.schema_name">
+                    </div>
+                    <div class="col-md-2">
+                        <button type="button" class="btn btn-sm btn-primary w-100"
+                                @click="addCatalog()" :disabled="busy">
+                            Add
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header"><strong>IP allowlist</strong></div>
+            <div class="card-body small">
+                <p class="text-muted mb-2">
+                    Zero rows = unrestricted.  Each row whitelists a
+                    <code>CIDR</code> the request must source from.
+                </p>
+                <table class="table table-sm" x-show="ipGrants.length > 0">
+                    <thead><tr><th>CIDR</th><th>Label</th><th></th></tr></thead>
+                    <tbody>
+                        <template x-for="g in ipGrants" :key="g.id">
+                            <tr>
+                                <td class="font-monospace" x-text="g.cidr"></td>
+                                <td x-text="g.label || '—'"></td>
+                                <td class="text-end">
+                                    <button type="button" class="btn btn-sm btn-outline-danger"
+                                            @click="removeIp(g.id)"
+                                            :disabled="busy">
+                                        Delete
+                                    </button>
+                                </td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+                <div class="row g-2">
+                    <div class="col-md-5">
+                        <input type="text" class="form-control form-control-sm"
+                               placeholder="CIDR e.g. 10.0.0.0/8" x-model="newIp.cidr">
+                    </div>
+                    <div class="col-md-5">
+                        <input type="text" class="form-control form-control-sm"
+                               placeholder="label (optional)" x-model="newIp.label">
+                    </div>
+                    <div class="col-md-2">
+                        <button type="button" class="btn btn-sm btn-primary w-100"
+                                @click="addIp()" :disabled="busy">
+                            Add
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+window.apiKeyGrants = function (keyName) {
+    return {
+        keyName,
+        catalogGrants: [],
+        ipGrants: [],
+        newCatalog: { catalog_name: '', schema_name: '' },
+        newIp: { cidr: '', label: '' },
+        busy: false,
+
+        async load() {
+            const res = await window.pqlApi.fetch(
+                '/api/admin/api-keys/' + encodeURIComponent(this.keyName) + '/grants',
+            );
+            if (res.ok) {
+                this.catalogGrants = res.data.catalog_grants;
+                this.ipGrants = res.data.ip_grants;
+            }
+        },
+
+        async addCatalog() {
+            if (!this.newCatalog.catalog_name.trim()) return;
+            this.busy = true;
+            const body = {
+                catalog_name: this.newCatalog.catalog_name.trim(),
+            };
+            if (this.newCatalog.schema_name.trim()) {
+                body.schema_name = this.newCatalog.schema_name.trim();
+            }
+            const res = await window.pqlApi.fetch(
+                '/api/admin/api-keys/' + encodeURIComponent(this.keyName) + '/grants/catalog',
+                { method: 'POST', body },
+            );
+            this.busy = false;
+            if (res.ok) {
+                this.newCatalog = { catalog_name: '', schema_name: '' };
+                window.pqlToast?.success('Catalog grant added.');
+                await this.load();
+            } else {
+                window.pqlToast?.error(res.error || 'Failed to add catalog grant.');
+            }
+        },
+
+        async removeCatalog(id) {
+            if (!window.confirm('Remove this catalog grant?')) return;
+            this.busy = true;
+            const res = await window.pqlApi.fetch(
+                '/api/admin/api-keys/' + encodeURIComponent(this.keyName) + '/grants/catalog/' + id,
+                { method: 'DELETE' },
+            );
+            this.busy = false;
+            if (res.ok) {
+                window.pqlToast?.success('Grant removed.');
+                await this.load();
+            } else {
+                window.pqlToast?.error(res.error || 'Failed to remove grant.');
+            }
+        },
+
+        async addIp() {
+            if (!this.newIp.cidr.trim()) return;
+            this.busy = true;
+            const body = { cidr: this.newIp.cidr.trim() };
+            if (this.newIp.label.trim()) body.label = this.newIp.label.trim();
+            const res = await window.pqlApi.fetch(
+                '/api/admin/api-keys/' + encodeURIComponent(this.keyName) + '/grants/ip',
+                { method: 'POST', body },
+            );
+            this.busy = false;
+            if (res.ok) {
+                this.newIp = { cidr: '', label: '' };
+                window.pqlToast?.success('IP grant added.');
+                await this.load();
+            } else {
+                window.pqlToast?.error(res.error || 'Failed to add IP grant.');
+            }
+        },
+
+        async removeIp(id) {
+            if (!window.confirm('Remove this IP grant?')) return;
+            this.busy = true;
+            const res = await window.pqlApi.fetch(
+                '/api/admin/api-keys/' + encodeURIComponent(this.keyName) + '/grants/ip/' + id,
+                { method: 'DELETE' },
+            );
+            this.busy = false;
+            if (res.ok) {
+                window.pqlToast?.success('Grant removed.');
+                await this.load();
+            } else {
+                window.pqlToast?.error(res.error || 'Failed to remove grant.');
+            }
+        },
+    };
+};
+
+window.apiKeyUsageChart = function (keyName) {
+    return {
+        keyName,
+        totalLabel: 'Loading…',
+        topIps: [],
+        loading: true,
+
+        init() {
+            this.load();
+        },
+
+        async load() {
+            const res = await window.pqlApi.fetch(
+                '/api/admin/api-keys/' + encodeURIComponent(this.keyName) + '/usage',
+            );
+            this.loading = false;
+            if (!res.ok) {
+                this.totalLabel = 'Failed to load';
+                return;
+            }
+            const days = res.data.days;
+            this.topIps = res.data.top_ips;
+            const total = days.reduce((sum, d) => sum + d.count, 0);
+            this.totalLabel = `${total} request${total === 1 ? '' : 's'} (30d)`;
+            // Render a simple chart via a canvas without Chart.js to avoid
+            // pulling in another bundle.  Vertical bars, equal width.
+            const canvas = this.$refs.chart;
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            if (!ctx) return;
+            const w = canvas.clientWidth || 600;
+            const h = canvas.clientHeight || 100;
+            canvas.width = w;
+            canvas.height = h;
+            ctx.clearRect(0, 0, w, h);
+            const peak = Math.max(1, ...days.map(d => d.count));
+            const barWidth = Math.max(2, Math.floor(w / days.length) - 2);
+            ctx.fillStyle = '#0d6efd';
+            days.forEach((d, i) => {
+                const barHeight = Math.round((d.count / peak) * (h - 6));
+                const x = i * (barWidth + 2);
+                const y = h - barHeight;
+                ctx.fillRect(x, y, barWidth, barHeight);
+            });
+        },
+    };
+};
+</script>
+{% endblock %}

@@ -210,3 +210,51 @@ class TestApiKeysPageContent:
         assert "revoked" in body
         # Hide-revoked link visible (we're showing them).
         assert "Hide revoked" in body
+
+
+@pytest.mark.asyncio
+async def test_detail_page_renders_for_existing_key() -> None:
+    """Phase 120.6 — per-key detail page renders + carries the key name."""
+    factory = app.state.session_factory
+    admin_token, _ = _seed_users(factory)
+    _seed_workspaces(factory)
+    now = datetime.datetime.now(datetime.UTC)
+    with factory() as session:
+        session.add(
+            ApiKey(
+                name="detail-smoke",
+                secret_hash="0" * 64,
+                secret_prefix="pql_live_v1_xxxxxxxxxx",
+                supervisor=False,
+                auditor=False,
+                workspace_id=1,
+                created_at=now,
+                token_format="v1",
+                token_env="live",
+            )
+        )
+        session.commit()
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app),
+        base_url="http://test",
+        cookies={auth.COOKIE_NAME: admin_token},
+    ) as client:
+        resp = await client.get("/admin/api-keys/detail-smoke")
+    assert resp.status_code == 200, resp.text
+    assert "detail-smoke" in resp.text
+    assert "Catalog grants" in resp.text
+    assert "IP allowlist" in resp.text
+
+
+@pytest.mark.asyncio
+async def test_detail_page_404_for_missing_key() -> None:
+    factory = app.state.session_factory
+    admin_token, _ = _seed_users(factory)
+    _seed_workspaces(factory)
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app),
+        base_url="http://test",
+        cookies={auth.COOKIE_NAME: admin_token},
+    ) as client:
+        resp = await client.get("/admin/api-keys/nonexistent-key")
+    assert resp.status_code == 404

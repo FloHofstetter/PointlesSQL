@@ -168,6 +168,11 @@
                                     @click="revoke()">
                                 <i class="bi bi-x-octagon"></i> Revoke
                             </button>
+                            <a class="btn btn-outline-secondary"
+                               href="/admin/api-keys/{{ k.name | urlencode }}"
+                               title="Manage grants + view usage.">
+                                <i class="bi bi-gear"></i> Manage
+                            </a>
                         </div>
                         {% else %}
                         <span class="text-muted small">—</span>
