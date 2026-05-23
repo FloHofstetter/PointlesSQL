@@ -93,7 +93,7 @@ export function installCellOperations(state, deps) {
     this.dirty = true;
   };
 
-  state._moveCellTo = async function (fromIdx, toIdx) {
+  state._moveCellTo = async function (fromIdx, toIdx, { broadcast = true } = {}) {
     if (fromIdx === toIdx) return;
     if (fromIdx < 0 || fromIdx >= this.cells.length) return;
     if (toIdx < 0 || toIdx >= this.cells.length) return;
@@ -103,10 +103,10 @@ export function installCellOperations(state, deps) {
     this.dirty = true;
     // Phase 115 — mirror the reorder onto the shared Y.Array so
     // peer tabs converge without waiting for the save round-trip.
-    // No-op when co-edit is not active or the cell has no uuid yet
-    // (un-saved cells live only in the local Alpine array until the
-    // save-path reconciler assigns a uuid).
-    if (typeof this._syncCellsOrderToYDoc === 'function') {
+    // ``broadcast=false`` is used by the live-drag preview in
+    // ``cell_dnd.js`` so peers see ONLY the final position once
+    // ``drop`` fires, not every intermediate splice.
+    if (broadcast && typeof this._syncCellsOrderToYDoc === 'function') {
       this._syncCellsOrderToYDoc(cell);
     }
   };

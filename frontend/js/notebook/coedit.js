@@ -402,6 +402,13 @@ export function installCoeditLifecycle(state, { userInfo = null } = {}) {
       // flag depending on the y-protocols path; both branches are
       // safe to ignore when the origin matches our local tag.
       if (event.transaction && event.transaction.local) return;
+      // Phase 115.2 — while the user is actively dragging a cell,
+      // ``this.cells`` is in an intermediate state that does NOT
+      // match ``cells_order`` (we only write to Y.Doc on drop).
+      // Skipping reconcile here keeps the live-preview reorder
+      // from being clobbered by a peer's unrelated edit; the
+      // post-drop sync will reconverge on the user's release.
+      if (self._dragInProgress) return;
       self._reconcileCellsFromOrder();
     });
     this._cellsOrderObserverInstalled = true;

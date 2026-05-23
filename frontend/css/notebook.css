@@ -724,25 +724,32 @@
 }
 
 /* Phase 115 — cell header acts as the desktop-window-style drag
-   handle.  ``cursor: grab`` over the header background hints the
-   affordance; interactive children (buttons, dropdowns, inputs)
-   keep their natural ``cursor: pointer`` / ``text`` via natural
-   specificity from Bootstrap.  ``:active`` flips to ``grabbing``
-   for symmetry with native OS chrome. */
+   handle.  ``user-select: none`` is load-bearing: without it the
+   browser starts a text-selection on mousedown over the header
+   text (type-pill, exec-count) and the HTML5 ``dragstart`` event
+   never fires — manual mouse-drag silently fails.  Interactive
+   children that need selection (the SQL result-var ``<input>``)
+   re-enable it via the natural ``input { user-select: text }``
+   browser default.  ``cursor: grab`` hints the affordance;
+   ``:active`` flips to ``grabbing`` for OS-chrome symmetry. */
 .pql-notebook-cell__header {
  cursor: grab;
+ user-select: none;
+ -webkit-user-select: none;
 }
 .pql-notebook-cell__header:active {
  cursor: grabbing;
 }
 .pql-notebook-cell--dragging {
- opacity: 0.45;
+ opacity: 0.4;
 }
-/* Inset box-shadow (not border) avoids row-height jitter as the
-   drop-edge flips between adjacent rows during a drag. */
-.pql-notebook-cell--drop-above {
- box-shadow: inset 0 2px 0 0 var(--pql-color-accent, #76b900);
-}
-.pql-notebook-cell--drop-below {
- box-shadow: inset 0 -2px 0 0 var(--pql-color-accent, #76b900);
+/* Phase 115.2 — FLIP-driven live reorder transition.  When the
+   user drags one cell over another, ``onCellDragOver`` re-splices
+   ``this.cells`` immediately so the dragged-over cell physically
+   slides out of the way; the FLIP helper sets ``transform`` to
+   the inverse-delta, then transitions to identity over 180 ms.
+   The ``will-change`` hint nudges the compositor; ``transition``
+   is set inline by the helper so non-drag layouts pay nothing. */
+.pql-notebook-cell {
+ will-change: transform;
 }

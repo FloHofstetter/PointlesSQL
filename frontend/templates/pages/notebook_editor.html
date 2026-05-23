@@ -95,13 +95,9 @@
          curatedTags: {{ curated_cell_tags|tojson }}
        })'
        x-effect="applyCounts(cellCountsFor(cell))"
-       :class="{
-         'pql-notebook-cell--drop-above': cellDropIndicator(cell) === 'above',
-         'pql-notebook-cell--drop-below': cellDropIndicator(cell) === 'below',
-         'pql-notebook-cell--dragging':   dragState.draggingCellId === cell.id,
-       }"
+       :class="{ 'pql-notebook-cell--dragging': dragState.draggingCellId === cell.id }"
+       :data-cell-id="cell.id"
        @dragover.prevent="onCellDragOver($event, cell)"
-       @dragleave="onCellDragLeave($event, cell)"
        @drop.prevent="onCellDrop($event, cell)">
    {# Phase 115 — entire cell header acts as a desktop-window-style
       drag handle.  Buttons / dropdowns / inputs inside the header
