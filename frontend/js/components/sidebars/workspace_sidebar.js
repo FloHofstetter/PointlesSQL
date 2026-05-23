@@ -21,6 +21,7 @@
 import { makeSidebar } from './_base.js';
 import { notebookDialogs } from '../../pages/notebooks_workspace_dialogs.js';
 import { notebookModalApis } from '../notebook_modal_apis.js';
+import { installWorkspaceContextMenu } from '../workspace_context_menu.js';
 
 const OPEN_KEY = 'pql.workspace.sidebar.open';
 
@@ -193,6 +194,19 @@ export function workspaceSidebar() {
 
             createNotebook() { this.openCreate(); },
 
+            renameNotebook(path) { this.openRename(path); },
+            deleteNotebook(path) { this.openDeleteDialog(path); },
+            openEditor(path) {
+                window.location.href = '/notebooks/edit/' + encodeURI(path);
+            },
+            schedule(path) {
+                const qs = new URLSearchParams({
+                    prefill_kind: 'papermill',
+                    prefill_notebook_path: path,
+                });
+                window.location.href = '/jobs?' + qs.toString();
+            },
+
             clearSearch() { this.searchQuery = ''; },
 
             // Refresh hook fired by the shared modal APIs after
@@ -201,5 +215,6 @@ export function workspaceSidebar() {
             onTreeChanged() { this.reload(); },
         },
     });
+    installWorkspaceContextMenu(base, { surface: 'sidebar' });
     return base;
 }

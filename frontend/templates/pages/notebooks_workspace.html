@@ -21,7 +21,10 @@
 
 <div x-data="notebookWorkspace()"
      x-init="load()"
-     @pql:workspace:tree-changed.window="reload()">
+     @pql:workspace:tree-changed.window="reload()"
+     @click.outside="closeContextMenu()"
+     @keydown.escape.window="closeContextMenu()"
+     @scroll.window="closeContextMenu()">
     <div class="card">
         <div class="card-header d-flex align-items-center gap-2 py-2">
             <span class="text-uppercase small fw-semibold text-muted">Notebooks</span>
@@ -81,10 +84,17 @@
                 </div>
             </template>
 
-            <ul class="list-unstyled mb-0" x-show="tree && flatRows().length > 0" x-cloak>
+            <ul class="list-unstyled mb-0"
+                tabindex="0"
+                @keydown="onTreeKeydown($event)"
+                x-show="tree && flatRows().length > 0" x-cloak>
                 <template x-for="row in flatRows()" :key="row.path">
                     <li>
                         <div class="pql-tree-item"
+                             :tabindex="focusedPath === row.path ? '0' : '-1'"
+                             :data-pql-tree-row="row.path"
+                             @focus="onRowFocus(row)"
+                             @contextmenu="openContextMenu($event, row)"
                              :style="'padding-left: ' + (row.depth * 1) + 'rem;'">
                             <template x-if="row.kind === 'dir'">
                                 <button class="pql-tree-chevron"
@@ -194,6 +204,33 @@
     </div>
 
     {% include "pages/_partials/notebooks_workspace/notebook_modals.html" %}
+
+    {# Phase 114.2 — floating right-click context menu. #}
+    <ul class="pql-context-menu"
+        x-show="contextMenu.open"
+        x-cloak
+        :style="'top:' + contextMenu.y + 'px; left:' + contextMenu.x + 'px;'"
+        @click.stop>
+        <template x-for="(item, idx) in contextMenu.items" :key="item.key">
+            <li>
+                <template x-if="item.divider">
+                    <div class="pql-context-menu__divider" role="separator"></div>
+                </template>
+                <template x-if="!item.divider">
+                    <button type="button"
+                            class="pql-context-menu__item"
+                            :class="{ 'text-danger': item.danger }"
+                            @click="runContextMenuItem(item)">
+                        <i class="bi pql-context-menu__icon" :class="item.icon"></i>
+                        <span x-text="item.label"></span>
+                        <template x-if="item.shortcut">
+                            <span class="pql-context-menu__shortcut" x-text="item.shortcut"></span>
+                        </template>
+                    </button>
+                </template>
+            </li>
+        </template>
+    </ul>
 </div>
 
 {# notebookWorkspace() factory lives in

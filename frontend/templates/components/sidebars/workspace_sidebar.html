@@ -21,6 +21,9 @@
      x-data="workspaceSidebar()"
      x-init="load(); initWorkspaceSidebar()"
      @pql:workspace:tree-changed.window="onTreeChanged()"
+     @click.outside="closeContextMenu()"
+     @keydown.escape.window="closeContextMenu()"
+     @scroll.window="closeContextMenu()"
      @htmx:after-swap.window="activePath = (function() {
        const p = window.location.pathname;
        if (p === '/notebooks/workspace') {
@@ -62,7 +65,9 @@
         </div>
     </div>
 
-    <div class="pql-sidebar-body">
+    <div class="pql-sidebar-body"
+         tabindex="0"
+         @keydown="onTreeKeydown($event)">
         <template x-if="error">
             <div class="alert alert-danger m-2 small" x-text="error"></div>
         </template>
@@ -99,6 +104,10 @@
                            :class="{ active: row.kind === 'notebook' && isActive(row.path) }"
                            :style="'padding-left:' + (0.5 + row.depth * 0.75) + 'rem;'"
                            :title="row.path"
+                           :tabindex="focusedPath === row.path ? '0' : '-1'"
+                           :data-pql-tree-row="row.path"
+                           @focus="onRowFocus(row)"
+                           @contextmenu="openContextMenu($event, row)"
                            @click="onRowClick($event, row)">
                             <template x-if="row.kind === 'dir'">
                                 <i class="bi pql-tree-chevron-icon"
@@ -126,6 +135,34 @@
             </ul>
         </template>
     </div>
+
+    {# Phase 114.2 — floating right-click context menu.  One per
+       factory scope; positioned via ``contextMenu.x/y``. #}
+    <ul class="pql-context-menu"
+        x-show="contextMenu.open"
+        x-cloak
+        :style="'top:' + contextMenu.y + 'px; left:' + contextMenu.x + 'px;'"
+        @click.stop>
+        <template x-for="(item, idx) in contextMenu.items" :key="item.key">
+            <li>
+                <template x-if="item.divider">
+                    <div class="pql-context-menu__divider" role="separator"></div>
+                </template>
+                <template x-if="!item.divider">
+                    <button type="button"
+                            class="pql-context-menu__item"
+                            :class="{ 'text-danger': item.danger }"
+                            @click="runContextMenuItem(item)">
+                        <i class="bi pql-context-menu__icon" :class="item.icon"></i>
+                        <span x-text="item.label"></span>
+                        <template x-if="item.shortcut">
+                            <span class="pql-context-menu__shortcut" x-text="item.shortcut"></span>
+                        </template>
+                    </button>
+                </template>
+            </li>
+        </template>
+    </ul>
 
     {# Sidebar-local modals.  Mounted inside this scope so
        ``$refs.pathInput`` resolves without colliding with the

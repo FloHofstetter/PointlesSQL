@@ -26,6 +26,7 @@
 
 import { notebookDialogs } from './notebooks_workspace_dialogs.js';
 import { notebookModalApis } from '../components/notebook_modal_apis.js';
+import { installWorkspaceContextMenu } from '../components/workspace_context_menu.js';
 
 const STORAGE_KEY = 'pql.notebooks';
 const OPEN_KEY = 'pql.notebooks.open';
@@ -60,7 +61,7 @@ function flatten(tree, open) {
 }
 
 export function notebookWorkspace() {
- return {
+ const state = {
   ...notebookDialogs(),
   ...notebookModalApis(),
 
@@ -191,4 +192,7 @@ export function notebookWorkspace() {
   renameNotebook(path) { this.openRename(path); },
   deleteNotebook(path) { this.openDeleteDialog(path); },
  };
+ installWorkspaceContextMenu(state, { surface: 'fullpage' });
+ return state;
 }
+
