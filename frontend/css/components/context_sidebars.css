@@ -96,14 +96,19 @@
 }
 
 .pql-tree-item--compact {
+    /* Phase 115.3 — row geometry aligned with the audit / lens
+       context-panel link rows (``.pql-context-panel__link``: 0.45rem
+       1rem, 0.875rem font, 0.5rem gap).  Tree-indent is folded into
+       ``padding-left`` inline, so the base padding stays symmetric
+       and the row still reads as a "panel item" not a "code line". */
     display: flex;
     align-items: center;
-    gap: 0.35rem;
-    padding: 0.25rem 0.5rem;
+    gap: 0.5rem;
+    padding: 0.45rem 0.75rem;
     border-left: 3px solid transparent;
     text-decoration: none;
     color: var(--bs-body-color);
-    font-size: 0.8125rem;
+    font-size: 0.875rem;
     line-height: 1.3;
     min-width: 0;
 }
@@ -146,11 +151,26 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    font-family: var(--bs-font-monospace);
+    /* Phase 115.3 — keep filenames in the body font (not monospace).
+       Monospace earns its keep in code; in a navigation panel it
+       just lengthens characters and makes truncation kick in
+       sooner. */
 }
 
 .pql-tree-item--compact .pql-tree-row-badge {
     flex-shrink: 0;
     font-size: 0.575rem;
     padding: 0.1em 0.35em;
+}
+
+/* Phase 115.3 — small dot replaces the wide "PARAMS" badge.
+   Keeps the parameters-declared signal but does not steal
+   row-width from the filename. */
+.pql-tree-row-params-dot {
+    flex-shrink: 0;
+    width: 0.4rem;
+    height: 0.4rem;
+    border-radius: 50%;
+    background: var(--bs-success, #198754);
+    margin-left: 0.25rem;
 }

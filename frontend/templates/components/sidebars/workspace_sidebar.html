@@ -141,16 +141,16 @@
                                        @keydown.escape.prevent="cancelInlineRename()"
                                        @blur="commitInlineRename(row)">
                             </template>
+                            {# Phase 115.3 — drop the redundant py/ipynb badge
+                               (the icon colour already encodes type) and
+                               collapse the PARAMS badge to a small dot so
+                               long filenames aren't truncated by the
+                               right-side chrome.  Both signals are still
+                               surfaced via ``title`` for hover. #}
                             <template x-if="row.kind === 'notebook' && row.parameters_tagged">
-                                <span class="badge bg-success-subtle text-success-emphasis pql-tree-row-badge"
-                                      title="Notebook declares Papermill parameters">
-                                    PARAMS
-                                </span>
-                            </template>
-                            <template x-if="row.kind === 'notebook' && row.format">
-                                <span class="badge pql-tree-row-badge"
-                                      :class="formatBadge(row.format)"
-                                      x-text="row.format"></span>
+                                <span class="pql-tree-row-params-dot"
+                                      title="Notebook declares Papermill parameters"
+                                      aria-label="Has parameters"></span>
                             </template>
                         </a>
                     </li>
