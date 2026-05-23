@@ -141,3 +141,25 @@ class ApiKey(Base):
     workspace_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("workspaces.id"), nullable=False, server_default="1"
     )
+    # Phase 119 — lifecycle columns.  All NULL-able with NULL = no
+    # constraint, so every pre-119 key keeps unchanged behaviour
+    # until an admin opts in by setting a TTL or rotating.
+    expires_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    rotated_from_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("api_keys.id", ondelete="SET NULL"), nullable=True
+    )
+    rotated_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    grace_until: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    quarantined_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    quarantine_reason: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    expiry_warned_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )

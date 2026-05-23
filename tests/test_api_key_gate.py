@@ -374,3 +374,33 @@ async def test_gate_disabled_ignores_bearer_header(auth_cookies) -> None:
     ) as c:
         response = await c.get("/api/agent-runs")
     assert response.status_code == 200
+
+
+def test_phase119_lifecycle_columns_present_with_null_defaults() -> None:
+    """Phase 119 — every new key starts with NULL lifecycle columns."""
+    _wipe_api_keys()
+    row, _ = api_keys_service.create_api_key(
+        app.state.session_factory, name="lifecycle-default"
+    )
+    assert row.expires_at is None
+    assert row.rotated_from_id is None
+    assert row.rotated_at is None
+    assert row.grace_until is None
+    assert row.quarantined_at is None
+    assert row.quarantine_reason is None
+    assert row.expiry_warned_at is None
+    _wipe_api_keys()
+
+
+def test_phase119_columns_introspectable_on_model() -> None:
+    columns = ApiKey.__table__.columns.keys()
+    for column in (
+        "expires_at",
+        "rotated_from_id",
+        "rotated_at",
+        "grace_until",
+        "quarantined_at",
+        "quarantine_reason",
+        "expiry_warned_at",
+    ):
+        assert column in columns
