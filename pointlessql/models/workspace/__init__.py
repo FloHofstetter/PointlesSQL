@@ -16,6 +16,11 @@ Layout:
 
 from __future__ import annotations
 
+from pointlessql.models.workspace._api_key_grants import (
+    ApiKeyCatalogGrant,
+    ApiKeyIpGrant,
+    ApiKeyUsageBucket,
+)
 from pointlessql.models.workspace._api_keys import ApiKey
 from pointlessql.models.workspace._core import (
     WORKSPACE_PIN_MODES,
@@ -44,6 +49,9 @@ __all__ = [
     "WORKSPACE_REPO_SYNC_STATES",
     "WORKSPACE_ROLES",
     "ApiKey",
+    "ApiKeyCatalogGrant",
+    "ApiKeyIpGrant",
+    "ApiKeyUsageBucket",
     "SqlStatement",
     "Workspace",
     "WorkspaceCatalogPin",
