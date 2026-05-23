@@ -2538,6 +2538,64 @@ PointlesSQL
 │           concrete new init step demands it — current 33-step
 │           complexity is structural, not a smell.
 │
+│   ├── Phase 115 — Cell drag-drop reorder                      ✅ done 2026-05-23
+│   │     **Closed 2026-05-23.**  Single sprint, one commit,
+│   │     pushed to origin/main.  Asset 0.1.0rc115 → rc116.
+│   │     Adds VSCode-style grip-handle drag-drop reorder to
+│   │     notebook cells, and incidentally closes a latent
+│   │     multi-tab co-edit gap that the existing Move-up/down
+│   │     buttons had quietly left open since Phase 105.
+│   │     - **Track A — Grip-handle DnD.**  New
+│   │       ``installCellDnd(state)`` mixin
+│   │       (``frontend/js/notebook/cell_dnd.js``); only the new
+│   │       far-left grip button on each cell header is
+│   │       ``draggable="true"`` so CodeMirror's native text-
+│   │       selection drag inside the editor body keeps working.
+│   │       Drop indicator computed from cursor-Y vs row midpoint
+│   │       (``above`` / ``below``); rendered via two
+│   │       ``pql-notebook-cell--drop-{above,below}`` classes that
+│   │       paint an inset 2-px accent shadow — inset (not border)
+│   │       to avoid layout jitter between rows during a drag.
+│   │       The Move-up / Move-down dropdown items keep working
+│   │       unchanged because the underlying primitive was
+│   │       refactored from ``_moveCell(cell, delta)`` to
+│   │       ``_moveCellTo(fromIdx, toIdx)`` with the old
+│   │       signatures preserved as thin wrappers.
+│   │     - **Track B — CRDT sync of cells_order.**  Before this
+│   │       sprint, ``moveCellUp/Down`` mutated only the local
+│   │       Alpine ``this.cells`` array; the Y.Array
+│   │       ``cells_order`` was never touched (no observer either
+│   │       side, confirmed by ``grep``).  Co-edit peers only
+│   │       converged on the next save round-trip.  Now
+│   │       ``_moveCellTo`` write-throughs the reorder via
+│   │       ``ydoc.transact`` under origin ``pql-local-reorder``;
+│   │       a new ``cells_order`` observer (installed in
+│   │       ``onSynced``) fires ``_reconcileCellsFromOrder`` on
+│   │       remote mutations, which rebuilds the Alpine array
+│   │       using ``x-for :key="cell.id"`` stable ordinals so
+│   │       CodeMirror mounts are NOT remounted.  Orphan-uuid
+│   │       cells (uuid present in ``this.cells`` but not yet in
+│   │       ``cells_order``, e.g. when a stale notebook seed
+│   │       diverges) are preserved at the tail instead of being
+│   │       silently dropped — caught during the multi-tab
+│   │       replay below.
+│   │
+│   │     Gates clean (0 ruff, 0 pyright errors, pydoclint
+│   │     clean, alembic no-op — no Python touched).  Playwright-
+│   │     MCP replay covered: programmatic ``_moveCellTo`` reorder
+│   │     (Alpine + Y.Array stay in sync), synthetic
+│   │     dragstart/dragover/drop on grip + target cell (full DnD
+│   │     lifecycle + drop-indicator + dragging classes verified),
+│   │     ``moveCellUp/Down`` regression via the underlying
+│   │     wrapper, and a real two-tab session where tab A's
+│   │     reorder propagated to tab B without a save round-trip
+│   │     (Y.Array yPos stayed identical 11 across both tabs).
+│   │     Surfaced + fixed during replay: the first reconcile
+│   │     draft only preserved cells whose uuids were in
+│   │     ``cells_order``, which silently dropped 5/12 cells in
+│   │     tab B on legacy notebooks where the server seed mixes
+│   │     dashless-hex and dashed UUID formats.
+│   │
 │   ├── Phase 114 — Workspace navigation overhaul              ✅ done 2026-05-23
 │   │     **Closed 2026-05-23.**  Three sub-sprints, three
 │   │     commits, all pushed to origin/main.  Asset 0.1.0rc112

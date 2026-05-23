@@ -78,6 +78,7 @@ export function installCoeditLifecycle(state, { userInfo = null } = {}) {
       onAgentPresence: (presence) => { this._applyAgentPresence(presence); },
       onSynced: () => {
         this._rebindCellEditorsAfterSync();
+        this._installCellsOrderObserver();
         // Phase 108 fix — the initial ``setLocalState`` below fires
         // its ``update`` event before the WS finishes connecting, so
         // ``sendAwarenessUpdate`` short-circuits on the readyState
@@ -294,6 +295,116 @@ export function installCoeditLifecycle(state, { userInfo = null } = {}) {
       awareness: this._awareness,
       undoManager: new YUndoManager(ytext),
     };
+  };
+
+  state._syncCellsOrderToYDoc = function (cell) {
+    // Phase 115 — local reorder write-through.  Translates the
+    // current ``this.cells`` Alpine order into a ``cells_order``
+    // Y.Array delete+insert under the local origin so peers receive
+    // the move without waiting for the save round-trip.  Skipped when
+    // co-edit is not active, the doc has not synced yet, or the cell
+    // has no ``cell_uuid`` (un-saved cells are not in the Y.Array
+    // until ``cellYBinding`` seeds them at first edit).
+    if (!cell || !cell.cell_uuid) return;
+    if (!this._coedit || !this._coedit.synced) return;
+    const ydoc = this._coedit.ydoc;
+    if (!ydoc) return;
+    const order = ydoc.getArray(CELLS_ORDER_KEY);
+    let fromIdx = -1;
+    for (let i = 0; i < order.length; i += 1) {
+      if (order.get(i) === cell.cell_uuid) { fromIdx = i; break; }
+    }
+    if (fromIdx < 0) return;
+    // Find the uuid currently AFTER ``cell`` in the local Alpine
+    // array — that's the anchor we insert before in the Y.Array.
+    // Walking the local array (not the Y.Array) keeps the two
+    // representations consistent even when some cells are uuid-less.
+    const localIdx = this.cells.findIndex((c) => c && c.id === cell.id);
+    if (localIdx < 0) return;
+    let anchorUuid = null;
+    for (let i = localIdx + 1; i < this.cells.length; i += 1) {
+      const c = this.cells[i];
+      if (c && c.cell_uuid && c.cell_uuid !== cell.cell_uuid) {
+        anchorUuid = c.cell_uuid;
+        break;
+      }
+    }
+    ydoc.transact(() => {
+      order.delete(fromIdx, 1);
+      if (anchorUuid == null) {
+        order.push([cell.cell_uuid]);
+        return;
+      }
+      let insertIdx = -1;
+      for (let i = 0; i < order.length; i += 1) {
+        if (order.get(i) === anchorUuid) { insertIdx = i; break; }
+      }
+      if (insertIdx < 0) order.push([cell.cell_uuid]);
+      else order.insert(insertIdx, [cell.cell_uuid]);
+    }, 'pql-local-reorder');
+  };
+
+  state._reconcileCellsFromOrder = function () {
+    // Phase 115 — peer reorder reconcile.  Reads the canonical
+    // ``cells_order`` uuid list from the Y.Doc and rebuilds the
+    // Alpine ``cells`` array so the DOM order matches.  Cells
+    // without a ``cell_uuid`` (freshly added locally, not yet
+    // saved) are preserved at the tail in their current relative
+    // order — they will join the canonical order once the save
+    // reconciler assigns a uuid and broadcasts it back.
+    if (!this._coedit || !this._coedit.synced) return;
+    if (!Array.isArray(this.cells)) return;
+    const ydoc = this._coedit.ydoc;
+    if (!ydoc) return;
+    const order = ydoc.getArray(CELLS_ORDER_KEY);
+    const remoteUuids = order.toArray();
+    const remoteSet = new Set(remoteUuids);
+    const byUuid = new Map();
+    const orphans = [];                       // cell has uuid but is NOT in cells_order
+    const localOnly = [];                     // cell has no uuid yet (un-saved)
+    for (const c of this.cells) {
+      if (!c) continue;
+      if (!c.cell_uuid) { localOnly.push(c); continue; }
+      if (remoteSet.has(c.cell_uuid)) byUuid.set(c.cell_uuid, c);
+      else orphans.push(c);                   // preserve — server seed may be stale
+    }
+    const reordered = [];
+    for (const uuid of remoteUuids) {
+      const cell = byUuid.get(uuid);
+      if (cell) reordered.push(cell);
+    }
+    // Tail: cells whose uuids weren't in the canonical order (legacy
+    // notebooks where ``cells_order`` was seeded before some cells
+    // gained uuids), then cells that have no uuid yet at all.
+    reordered.push(...orphans);
+    reordered.push(...localOnly);
+    // Bail when the order is identical to avoid Alpine re-keying
+    // churn (and the cascading editor remount risk).
+    if (reordered.length === this.cells.length) {
+      let identical = true;
+      for (let i = 0; i < reordered.length; i += 1) {
+        if (reordered[i].id !== this.cells[i].id) { identical = false; break; }
+      }
+      if (identical) return;
+    }
+    this.cells = reordered;
+  };
+
+  state._installCellsOrderObserver = function () {
+    if (!this._coedit || !this._coedit.ydoc) return;
+    if (this._cellsOrderObserverInstalled) return;
+    const order = this._coedit.ydoc.getArray(CELLS_ORDER_KEY);
+    const self = this;
+    order.observe((event) => {
+      // Skip echoes of our own ``_syncCellsOrderToYDoc`` transaction —
+      // ``this.cells`` already reflects the move locally.  Remote
+      // mutations carry a different (or absent) ``transaction.local``
+      // flag depending on the y-protocols path; both branches are
+      // safe to ignore when the origin matches our local tag.
+      if (event.transaction && event.transaction.local) return;
+      self._reconcileCellsFromOrder();
+    });
+    this._cellsOrderObserverInstalled = true;
   };
 
   state._rebindCellEditorsAfterSync = function () {

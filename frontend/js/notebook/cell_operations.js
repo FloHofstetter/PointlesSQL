@@ -93,14 +93,28 @@ export function installCellOperations(state, deps) {
     this.dirty = true;
   };
 
+  state._moveCellTo = async function (fromIdx, toIdx) {
+    if (fromIdx === toIdx) return;
+    if (fromIdx < 0 || fromIdx >= this.cells.length) return;
+    if (toIdx < 0 || toIdx >= this.cells.length) return;
+    const cell = this.cells[fromIdx];
+    this.cells.splice(fromIdx, 1);
+    this.cells.splice(toIdx, 0, cell);
+    this.dirty = true;
+    // Phase 115 — mirror the reorder onto the shared Y.Array so
+    // peer tabs converge without waiting for the save round-trip.
+    // No-op when co-edit is not active or the cell has no uuid yet
+    // (un-saved cells live only in the local Alpine array until the
+    // save-path reconciler assigns a uuid).
+    if (typeof this._syncCellsOrderToYDoc === 'function') {
+      this._syncCellsOrderToYDoc(cell);
+    }
+  };
+
   state._moveCell = async function (cell, delta) {
     const idx = this.cells.findIndex((c) => c.id === cell.id);
     if (idx < 0) return;
-    const target = idx + delta;
-    if (target < 0 || target >= this.cells.length) return;
-    const [removed] = this.cells.splice(idx, 1);
-    this.cells.splice(target, 0, removed);
-    this.dirty = true;
+    await this._moveCellTo(idx, idx + delta);
   };
 
   state.moveCellUp = async function (cell) {

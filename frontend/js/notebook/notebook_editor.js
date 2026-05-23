@@ -23,6 +23,7 @@ import { installBranchBinding } from './branch_binding.js';
 import { installCellAuthorship } from './cell_authorship.js';
 import { installCellFacts } from './cell_facts.js';
 import { installCellLineage } from './cell_lineage.js';
+import { installCellDnd } from './cell_dnd.js';
 import { installCellOperations } from './cell_operations.js';
 import { installChatIntegration } from './chat_integration.js';
 import { installCoeditLifecycle } from './coedit.js';
@@ -506,6 +507,7 @@ export function notebookEditor({ initialPath = '', currentUser = null } = {}) {
  installJobsOrchestration(state);
  installKernelExecution(state, { computeContentHash: _computeContentHash });
  installCellOperations(state, { computeContentHash: _computeContentHash });
+ installCellDnd(state);
  installMarkdownOutput(state, { computeContentHash: _computeContentHash });
  installPersistence(state);
  installChatIntegration(state);

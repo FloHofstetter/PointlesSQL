@@ -6,6 +6,31 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- **Phase 115 — Cell drag-drop reorder (2026-05-23, rc115 →
+  rc116).**  Notebook editor cells gain a far-left grip handle
+  for VSCode-style drag-drop reordering.  Only the grip carries
+  ``draggable="true"`` so CodeMirror's text-selection drag inside
+  the editor body still works; the drop indicator paints an inset
+  2-px accent shadow above or below the target based on cursor-Y
+  vs row midpoint.  The underlying move primitive was refactored
+  from ``_moveCell(cell, delta)`` to ``_moveCellTo(fromIdx,
+  toIdx)`` so the existing Move-up / Move-down dropdown items
+  route through the same code path.  Same sprint closes a latent
+  Phase-105 multi-tab gap — ``moveCellUp/Down`` previously
+  mutated only the local Alpine array and left ``cells_order``
+  Y.Array untouched, so co-edit peers only converged on the next
+  save round-trip.  ``_moveCellTo`` now write-throughs the
+  reorder under origin ``pql-local-reorder`` and a new
+  ``cells_order`` observer (installed in ``onSynced``)
+  reconciles remote mutations into Alpine using ``x-for
+  :key="cell.id"`` stable ordinals so CodeMirror mounts are NOT
+  remounted.  Orphan-uuid cells (uuid in ``this.cells`` but
+  missing from a stale ``cells_order`` seed) are preserved at
+  the tail instead of being silently dropped — caught and fixed
+  mid-replay.  Gates clean; multi-tab Playwright replay
+  verified the Y.Array position stayed identical across two tabs
+  after a programmatic move.
+
 - **Phase 113 — Editor surface consolidation (2026-05-22, rc96 →
   rc99).**  Three sub-sprints, three commits, all pushed to
   origin/main.  Continues the Phase 112.5 toolbar↔meta-panel

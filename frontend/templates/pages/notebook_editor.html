@@ -94,9 +94,30 @@
          initialCounts: cellCountsFor(cell),
          curatedTags: {{ curated_cell_tags|tojson }}
        })'
-       x-effect="applyCounts(cellCountsFor(cell))">
+       x-effect="applyCounts(cellCountsFor(cell))"
+       :class="{
+         'pql-notebook-cell--drop-above': cellDropIndicator(cell) === 'above',
+         'pql-notebook-cell--drop-below': cellDropIndicator(cell) === 'below',
+         'pql-notebook-cell--dragging':   dragState.draggingCellId === cell.id,
+       }"
+       @dragover.prevent="onCellDragOver($event, cell)"
+       @dragleave="onCellDragLeave($event, cell)"
+       @drop.prevent="onCellDrop($event, cell)">
    <div class="pql-notebook-cell__header">
     <div class="d-flex align-items-center gap-2">
+     {# Phase 115 — grip-handle for drag-drop reorder.  Only the
+        grip itself is ``draggable``; the cell body (incl. the
+        CodeMirror host) keeps its native text-selection behaviour. #}
+     <button type="button"
+             class="pql-cell-grip"
+             draggable="true"
+             @dragstart="onCellDragStart($event, cell)"
+             @dragend="onCellDragEnd($event)"
+             title="Drag to reorder cell"
+             aria-label="Drag to reorder cell"
+             data-testid="cell-grip">
+      <i class="bi bi-grip-vertical" aria-hidden="true"></i>
+     </button>
      {# Phase 95.x layout — Run button moved to the very left of the
         cell header, before the type-pill, so the kernel-action sits
         where the eye lands first when scanning a notebook.
