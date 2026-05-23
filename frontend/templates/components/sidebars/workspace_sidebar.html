@@ -67,7 +67,9 @@
 
     <div class="pql-sidebar-body"
          tabindex="0"
-         @keydown="onTreeKeydown($event)">
+         @keydown="onTreeKeydown($event)"
+         @dragover.prevent="onRootDragOver($event)"
+         @drop.prevent="onRootDrop($event)">
         <template x-if="error">
             <div class="alert alert-danger m-2 small" x-text="error"></div>
         </template>
@@ -101,13 +103,22 @@
                     <li>
                         <a :href="hrefFor(row)"
                            class="pql-tree-item pql-tree-item--compact"
-                           :class="{ active: row.kind === 'notebook' && isActive(row.path) }"
+                           :class="{
+                             active: row.kind === 'notebook' && isActive(row.path),
+                             'pql-tree-item--drop-target': isDropTarget(row),
+                           }"
                            :style="'padding-left:' + (0.5 + row.depth * 0.75) + 'rem;'"
                            :title="row.path"
                            :tabindex="focusedPath === row.path ? '0' : '-1'"
                            :data-pql-tree-row="row.path"
+                           :draggable="row.kind === 'notebook'"
                            @focus="onRowFocus(row)"
                            @contextmenu="openContextMenu($event, row)"
+                           @dblclick.prevent="row.kind === 'notebook' && startInlineRename(row)"
+                           @dragstart="onDragStart($event, row)"
+                           @dragover="onDragOver($event, row)"
+                           @dragleave="onDragLeave($event, row)"
+                           @drop="onDrop($event, row)"
                            @click="onRowClick($event, row)">
                             <template x-if="row.kind === 'dir'">
                                 <i class="bi pql-tree-chevron-icon"
@@ -117,7 +128,19 @@
                                 <span class="pql-tree-chevron-icon"></span>
                             </template>
                             <i class="bi pql-tree-row-icon" :class="iconClassFor(row)"></i>
-                            <span class="pql-tree-row-name" x-text="row.name"></span>
+                            <template x-if="!isInlineRenaming(row)">
+                                <span class="pql-tree-row-name" x-text="row.name"></span>
+                            </template>
+                            <template x-if="isInlineRenaming(row)">
+                                <input type="text"
+                                       class="pql-inline-rename"
+                                       :data-pql-inline-rename="row.path"
+                                       x-model="inlineRenameValue"
+                                       @click.stop.prevent
+                                       @keydown.enter.prevent="commitInlineRename(row)"
+                                       @keydown.escape.prevent="cancelInlineRename()"
+                                       @blur="commitInlineRename(row)">
+                            </template>
                             <template x-if="row.kind === 'notebook' && row.parameters_tagged">
                                 <span class="badge bg-success-subtle text-success-emphasis pql-tree-row-badge"
                                       title="Notebook declares Papermill parameters">

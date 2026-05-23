@@ -80,3 +80,28 @@
     outline: 2px solid var(--pql-color-accent, #76b900);
     outline-offset: -2px;
 }
+
+/* Phase 114.3 — drag-drop highlight + inline rename input. */
+.pql-tree-item--drop-target {
+    outline: 2px dashed var(--pql-color-accent, #76b900);
+    outline-offset: -2px;
+    background: var(--pql-color-accent-bg, rgba(118, 185, 0, 0.12));
+}
+
+.pql-inline-rename {
+    flex: 1 1 auto;
+    min-width: 0;
+    padding: 0.05rem 0.35rem;
+    font-family: var(--bs-font-monospace);
+    font-size: inherit;
+    line-height: inherit;
+    border: 1px solid var(--pql-color-accent, #76b900);
+    border-radius: 0.2rem;
+    background: var(--bs-body-bg);
+    color: var(--bs-body-color);
+    outline: none;
+}
+
+.pql-inline-rename:focus {
+    box-shadow: 0 0 0 0.15rem var(--pql-color-accent-bg, rgba(118, 185, 0, 0.25));
+}
