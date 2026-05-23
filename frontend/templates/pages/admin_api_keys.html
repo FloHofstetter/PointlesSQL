@@ -128,18 +128,47 @@
                     <td data-label="Last used" class="small text-nowrap">{{ k.last_used_at[:10] if k.last_used_at else '—' }}</td>
                     <td data-label="Status">
                         {% if k.revoked_at %}
-                        <span class="badge bg-secondary">revoked {{ k.revoked_at[:10] }}</span>
+                        <span class="badge bg-secondary" title="Revoked {{ k.revoked_at }}">revoked</span>
+                        {% elif k.quarantined_at %}
+                        <span class="badge bg-danger" title="{{ k.quarantine_reason or 'quarantined' }}">quarantined</span>
+                        {% elif k.rotated_at and k.grace_until %}
+                        <span class="badge bg-warning text-dark" title="In rotation grace window until {{ k.grace_until }}">rotated</span>
+                        {% elif k.expires_at %}
+                        <span class="badge bg-info text-dark" title="Expires {{ k.expires_at }}">expiring</span>
                         {% else %}
                         <span class="badge bg-success">active</span>
                         {% endif %}
                     </td>
                     <td data-label="Actions">
                         {% if not k.revoked_at %}
-                        <button type="button" class="btn btn-outline-danger btn-sm"
-                                :disabled="busy"
-                                @click="revoke()">
-                            Revoke
-                        </button>
+                        <div class="btn-group btn-group-sm" role="group">
+                            <button type="button" class="btn btn-outline-secondary"
+                                    :disabled="busy"
+                                    @click="rotate()"
+                                    title="Mint a successor key; predecessor stays valid 24h for rollover.">
+                                <i class="bi bi-arrow-repeat"></i> Rotate
+                            </button>
+                            {% if k.quarantined_at %}
+                            <button type="button" class="btn btn-outline-warning"
+                                    :disabled="busy"
+                                    @click="unquarantine()"
+                                    title="Lift the quarantine; key resumes authorising.">
+                                <i class="bi bi-shield-check"></i> Unquarantine
+                            </button>
+                            {% else %}
+                            <button type="button" class="btn btn-outline-warning"
+                                    :disabled="busy"
+                                    @click="quarantine()"
+                                    title="Soft-disable; preserves audit attribution.">
+                                <i class="bi bi-shield-exclamation"></i> Quarantine
+                            </button>
+                            {% endif %}
+                            <button type="button" class="btn btn-outline-danger"
+                                    :disabled="busy"
+                                    @click="revoke()">
+                                <i class="bi bi-x-octagon"></i> Revoke
+                            </button>
+                        </div>
                         {% else %}
                         <span class="text-muted small">—</span>
                         {% endif %}
@@ -191,6 +220,18 @@
                     <option value="test">test</option>
                 </select>
                 <div class="form-text">Embedded in the token (<code>pql_live_v1_…</code> / <code>pql_test_v1_…</code>).</div>
+            </div>
+
+            <div class="col-md-2">
+                <label class="form-label small mb-1">TTL</label>
+                <select class="form-select form-select-sm" x-model="form.ttlDays">
+                    <option value="0">No expiry</option>
+                    <option value="30">30 days</option>
+                    <option value="90">90 days</option>
+                    <option value="180">180 days</option>
+                    <option value="365">1 year</option>
+                </select>
+                <div class="form-text">Auto-quarantined after TTL; first warning lands 14d before expiry.</div>
             </div>
         </div>
 
@@ -322,6 +363,64 @@ window.apiKeyRow = function (name, revoked) {
                 window.pqlToast.error(res.error || 'Failed to revoke key.');
             }
         },
+
+        async rotate() {
+            if (!window.confirm('Rotate API key "' + this.name + '"? A successor will be minted; the current key stays valid for 24h so clients can pick up the new secret.')) {
+                return;
+            }
+            this.busy = true;
+            const res = await window.pqlApi.fetch(
+                '/api/admin/api-keys/' + encodeURIComponent(this.name) + '/rotate',
+                { method: 'POST', body: {} },
+            );
+            this.busy = false;
+            if (res.ok) {
+                const modal = window.__apiKeyModal;
+                if (modal && res.data?.successor) {
+                    modal.show(res.data.successor.name, res.data.successor.secret);
+                }
+                window.pqlToast?.success('Successor key created. Pick up the new secret within 24h.');
+                // Note: do NOT auto-reload here — the user must copy the new
+                // secret first.  The modal's dismiss path reloads.
+            } else {
+                window.pqlToast.error(res.error || 'Failed to rotate key.');
+            }
+        },
+
+        async quarantine() {
+            const reason = window.prompt('Reason for quarantining "' + this.name + '"? (≤200 chars; required for audit trail)');
+            if (!reason || !reason.trim()) {
+                return;
+            }
+            this.busy = true;
+            const res = await window.pqlApi.fetch(
+                '/api/admin/api-keys/' + encodeURIComponent(this.name) + '/quarantine',
+                { method: 'POST', body: { reason: reason.trim() } },
+            );
+            this.busy = false;
+            if (res.ok) {
+                window.pqlApi.reloadWithToast('Key quarantined; auth will fail until unquarantined.');
+            } else {
+                window.pqlToast.error(res.error || 'Failed to quarantine key.');
+            }
+        },
+
+        async unquarantine() {
+            if (!window.confirm('Lift quarantine on "' + this.name + '"? Bearer auth will resume immediately.')) {
+                return;
+            }
+            this.busy = true;
+            const res = await window.pqlApi.fetch(
+                '/api/admin/api-keys/' + encodeURIComponent(this.name) + '/unquarantine',
+                { method: 'POST' },
+            );
+            this.busy = false;
+            if (res.ok) {
+                window.pqlApi.reloadWithToast('Quarantine lifted; key resumes authorising.');
+            } else {
+                window.pqlToast.error(res.error || 'Failed to unquarantine key.');
+            }
+        },
     };
 };
 
@@ -331,6 +430,7 @@ window.apiKeyCreate = function () {
             name: '',
             workspaceId: {{ default_workspace_id }},
             env: 'live',
+            ttlDays: '0',
             supervisor: false,
             auditor: false,
             lineageInbound: false,
@@ -347,6 +447,7 @@ window.apiKeyCreate = function () {
         async create() {
             this.error = '';
             this.creating = true;
+            const ttlDays = parseInt(this.form.ttlDays, 10) || 0;
             const body = {
                 name: this.form.name.trim(),
                 supervisor: this.form.supervisor,
@@ -357,26 +458,37 @@ window.apiKeyCreate = function () {
                 workspace_id: this.form.workspaceId,
                 env: this.form.env,
             };
-            const res = await window.pqlApi.fetch('/api/admin/api-keys', {
+            const createRes = await window.pqlApi.fetch('/api/admin/api-keys', {
                 method: 'POST',
                 body,
             });
+            if (createRes.ok && ttlDays > 0) {
+                // PATCH the freshly-created key to apply the TTL.  Single
+                // create-then-patch is simpler than a unified body field
+                // and works with the existing PATCH /api/admin/api-keys/{name}.
+                const expiresAt = new Date(Date.now() + ttlDays * 86400 * 1000).toISOString();
+                await window.pqlApi.fetch(
+                    '/api/admin/api-keys/' + encodeURIComponent(createRes.data.name),
+                    { method: 'PATCH', body: { expires_at: expiresAt } },
+                );
+            }
             this.creating = false;
-            if (res.ok) {
+            if (createRes.ok) {
                 const modal = window.__apiKeyModal;
                 if (modal) {
-                    modal.show(res.data.name, res.data.secret);
+                    modal.show(createRes.data.name, createRes.data.secret);
                 }
-                window.pqlToast?.success(`API key "${res.data.name}" created.`);
+                window.pqlToast?.success(`API key "${createRes.data.name}" created.`);
                 this.form.name = '';
                 this.form.env = 'live';
+                this.form.ttlDays = '0';
                 this.form.supervisor = false;
                 this.form.auditor = false;
                 this.form.lineageInbound = false;
                 this.form.analyst = false;
                 this.form.sqlExecute = false;
             } else {
-                this.error = res.error || 'Failed to create key.';
+                this.error = createRes.error || 'Failed to create key.';
                 window.pqlToast?.error(this.error);
             }
         },
