@@ -171,12 +171,14 @@ from pointlessql.models.social import (
 from pointlessql.models.system_keys import SystemKey
 from pointlessql.models.vector import VectorIndex
 from pointlessql.models.workspace import (
+    SQL_STATEMENT_STATES,
     WORKSPACE_PIN_MODES,
     WORKSPACE_REPO_PROVIDER_KINDS,
     WORKSPACE_REPO_SECRET_KINDS,
     WORKSPACE_REPO_SYNC_STATES,
     WORKSPACE_ROLES,
     ApiKey,
+    SqlStatement,
     Workspace,
     WorkspaceCatalogPin,
     WorkspaceMember,
@@ -276,9 +278,11 @@ __all__ = [
     "VERDICT_ORIGINAL_APPROVED",
     "SINK_TYPES",
     "SAVED_VIEW_PARAM_TYPES",
+    "SQL_STATEMENT_STATES",
     "SavedAuditQuery",
     "SavedQuery",
     "SavedView",
+    "SqlStatement",
     "SyncRun",
     "SystemKey",
     "TableStats",

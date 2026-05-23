@@ -55,6 +55,7 @@ from pointlessql.config._settings import (
     ServerSettings,
     Settings,
     SoyuzSettings,
+    SqlExecutionApiSettings,
     SQLSettings,
     WorkspaceReposSettings,
 )
@@ -87,6 +88,7 @@ __all__ = [
     "ServerSettings",
     "Settings",
     "SoyuzSettings",
+    "SqlExecutionApiSettings",
     "WorkspaceReposSettings",
     "configure_logging",
     "job_run_id_var",

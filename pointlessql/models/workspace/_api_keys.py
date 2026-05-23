@@ -55,6 +55,13 @@ class ApiKey(Base):
             up the ladder so analyst-keys also pass auditor gates,
             because "when did this table last change" is an
             analyst-shaped question.
+        sql_execute: When ``True``, the key may invoke the public
+            DBX-compatible SQL Statement Execution API
+            (``/api/2.0/sql/statements``).  Independent of every
+            other scope: this surface is read-only (SELECT only) but
+            executes arbitrary user-supplied SQL against soyuz-enforced
+            UC SELECT grants — narrow enough to issue to a dbt /
+            BI-tool integration without granting Lens or audit reads.
         created_at: Timestamp the key was created.
         created_by_user_id: Admin who created the key, or ``None``
             for env-var-bootstrapped keys + CLI-provisioned keys.
@@ -93,6 +100,11 @@ class ApiKey(Base):
         Boolean, nullable=False, default=False, server_default=text("false")
     )
     analyst: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=text("false")
+    )
+    # Phase 117 — gates the public DBX-compatible SQL Statement
+    # Execution API.  Independent of every other scope.
+    sql_execute: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False, server_default=text("false")
     )
     created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)

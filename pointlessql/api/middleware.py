@@ -154,6 +154,8 @@ async def auth_middleware(request: Request, call_next: Any) -> Response:
             request.state.api_key_auditor = entry.auditor
             request.state.api_key_lineage_inbound = entry.lineage_inbound
             request.state.api_key_analyst = entry.analyst
+            request.state.api_key_sql_execute = entry.sql_execute
+            request.state.api_key_id = entry.id
             request.state.api_key_workspace_id = entry.workspace_id
             api_key_workspace_id = entry.workspace_id
             request.state.user = UserInfo(

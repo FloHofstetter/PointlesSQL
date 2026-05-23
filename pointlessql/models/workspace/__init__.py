@@ -31,14 +31,20 @@ from pointlessql.models.workspace._repos import (
     WorkspaceRepo,
     WorkspaceRepoSecret,
 )
+from pointlessql.models.workspace._sql_statements import (
+    SQL_STATEMENT_STATES,
+    SqlStatement,
+)
 
 __all__ = [
+    "SQL_STATEMENT_STATES",
     "WORKSPACE_PIN_MODES",
     "WORKSPACE_REPO_PROVIDER_KINDS",
     "WORKSPACE_REPO_SECRET_KINDS",
     "WORKSPACE_REPO_SYNC_STATES",
     "WORKSPACE_ROLES",
     "ApiKey",
+    "SqlStatement",
     "Workspace",
     "WorkspaceCatalogPin",
     "WorkspaceMember",

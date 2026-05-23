@@ -2538,6 +2538,115 @@ PointlesSQL
 │           concrete new init step demands it — current 33-step
 │           complexity is structural, not a smell.
 │
+│   ├── Phase 117 — External SQL Statement Execution API       ✅ done 2026-05-23
+│   │     **Closed 2026-05-23.**  Six sub-phases bundled in one
+│   │     session, asset 0.1.0rc120 → rc121.  PointlesSQL's first
+│   │     **token-only public REST surface** — a Databricks-compat
+│   │     SQL Statement Execution API at
+│   │     ``/api/2.0/sql/statements`` that lets external clients
+│   │     (curl, dbt, BI, application backends) run SELECT queries
+│   │     against the lakehouse without driving the browser UI.
+│   │     Wire shape mirrors the documented DBX schema so the
+│   │     official ``databricks-sql-python`` adapter + dbt-databricks
+│   │     runner can swap base URLs.  v1 SELECT-only; DML / DDL
+│   │     ships separately (needs approval-flow integration).
+│   │     - **117.1 — DB schema + scope.**  New
+│   │       ``api_keys.sql_execute`` boolean column (Alembic
+│   │       migration ``c2d4e6f8a0b2``).  New ``sql_statements``
+│   │       table storing per-submission lifecycle (PENDING →
+│   │       RUNNING → SUCCEEDED / FAILED / CANCELED) + gzipped DBX
+│   │       envelope payload for polling clients.  New
+│   │       ``require_sql_execute`` FastAPI dependency that rejects
+│   │       cookie-only callers — this surface is for external
+│   │       integrations, not in-browser humans.  KeyEntry
+│   │       extended with the new scope flag + the key id (needed
+│   │       for per-key rate limiting); ``parse_keys`` /
+│   │       ``bootstrap_from_env`` learned the new
+│   │       ``name:secret:sql_execute`` env-var form.
+│   │     - **117.2 — Route + executor.**  New router
+│   │       ``external_sql_routes.py`` with four endpoints (POST
+│   │       submit, GET poll, GET chunk, POST cancel).  New service
+│   │       package ``services/sql_statements/`` with the executor
+│   │       coroutine + in-process task registry so cancel can both
+│   │       ``task.cancel()`` and call ``conn.interrupt()`` on the
+│   │       DuckDB handle.  Wraps the existing
+│   │       ``enforce_select_per_table`` + ``run_sql_sync`` pipeline
+│   │       — soyuz UC SELECT grants apply uniformly across the
+│   │       editor and the public surface.
+│   │     - **117.3 — Poll + cancel + retention.**  GET endpoints
+│   │       gunzip the stored envelope; POST cancel sets the
+│   │       persistent ``cancel_requested`` flag and best-effort
+│   │       interrupts the live DuckDB conn.  Retention sweeper
+│   │       ``cleanup_stale_statements`` registers a
+│   │       ``sql_statements_retention`` scheduler executor for
+│   │       periodic pruning (default 24h).
+│   │     - **117.4 — Qualify + parameter binding.**  Default
+│   │       ``catalog``/``schema`` body fields drive a sqlglot AST
+│   │       rewrite that fills in 1- and 2-part table refs before
+│   │       the existing 3-part-strict parser sees them.  Typed
+│   │       ``:name`` parameter binding (STRING / INT / LONG /
+│   │       DOUBLE / FLOAT / BOOLEAN / DATE / TIMESTAMP / NULL) via
+│   │       sqlglot literal substitution — injection-safe by
+│   │       construction.  ``format=ARROW_STREAM`` /
+│   │       ``disposition=EXTERNAL_LINKS`` rejected with 400 +
+│   │       ``INVALID_PARAMETER_VALUE`` (deferred to v2).
+│   │     - **117.5 — Rate limit + feature flag.**  Per-API-key-id
+│   │       fixed-window bucket via the existing rate-limit DB
+│   │       table (no new infra dep).  Defaults 60/min/key, tunable
+│   │       via ``POINTLESSQL_RATE_LIMIT_SQL_STATEMENTS_APIKEY_*``.
+│   │       Exceeded → 429 with DBX-shape
+│   │       ``REQUEST_LIMIT_EXCEEDED`` + ``Retry-After`` header.
+│   │       New ``SqlExecutionApiSettings`` group with
+│   │       ``enabled=False`` kill-switch (503 +
+│   │       ``WORKSPACE_TEMPORARILY_UNAVAILABLE``) for incident
+│   │       response.
+│   │     - **117.6 — Docs + asset bump.**  New walkthrough
+│   │       ``docs/e2e-walkthroughs/external-sql-api.md`` covering
+│   │       sync / async / cancel / parameter / default-catalog /
+│   │       failure paths.  Asset rc120 → rc121.
+│   │
+│   │     **Custom error envelope.**  The global FastAPI handler
+│   │     stringifies ``HTTPException.detail``, which would mangle
+│   │     the DBX JSON shape.  Routes raise a private
+│   │     ``_DbxApiError`` short-circuit exception that a per-route
+│   │     ``_wrap_dbx`` decorator catches and ships as
+│   │     ``JSONResponse({"detail": body})`` with the headers
+│   │     preserved.  Failure envelopes (parse / permission /
+│   │     non-SELECT) land at HTTP 200 with
+│   │     ``status.state="FAILED"`` to match DBX exactly; only body
+│   │     validation / auth / rate-limit / disabled go via HTTP
+│   │     status codes.
+│   │
+│   │     **Verification.**  39 new pytest across 4 files (envelope
+│   │     mapping + type translation, default-catalog qualify,
+│   │     parameter binding incl. injection round-trip, full route
+│   │     lifecycle incl. cancel + rate-limit + 503).  Ruff +
+│   │     pyright + pydoclint clean.  Hand-curl smoke via the
+│   │     walkthrough playbook covers the DBX-shape happy path.
+│   │     ``databricks-sql-python`` client end-to-end verification
+│   │     deferred (tracked).
+│   │
+│   ├── Phase 116 — Notebook editor toolbar redesign            ✅ done 2026-05-23
+│   │     **Closed 2026-05-23.**  Single sprint, commit
+│   │     ``12fa00c``, pushed to origin/main.  Asset 0.1.0rc119 →
+│   │     rc120.  Replaces decorative dot-trio with stateful pill
+│   │     chips, makes Save / Run-all carry their own state, and
+│   │     strengthens panel-toggle ``.active`` to match the audit
+│   │     active-link treatment.  Design principle:
+│   │     **"status lives on the action"** — each piece of state has
+│   │     a natural home on its action button (Save state on Save
+│   │     button, Run state on Run-all); the cluster is the
+│   │     at-a-glance backup when the action is scrolled out of
+│   │     view.  Vital-pills v2: 3 rounded 1.6×1.25rem chips
+│   │     (``pql-vital-pill``) with state-tinted icons (floppy /
+│   │     cpu / person / people-fill).  Co-edit pill gains an
+│   │     inline peer-count badge.  Meta-panel keeps using the old
+│   │     dot-classes so the verbose mirror surface stays
+│   │     untouched.  Pattern note: root-scope
+│   │     ``vitalPillClass(kind)`` delegates to mixin-defined
+│   │     ``this.coeditPillClass()`` for ``kind='coedit'`` — the
+│   │     concern split stays intact.
+│   │
 │   ├── Phase 115 — Cell drag-drop reorder                      ✅ done 2026-05-23
 │   │     **Closed 2026-05-23.**  Single sprint, one commit,
 │   │     pushed to origin/main.  Asset 0.1.0rc115 → rc116.

@@ -4,7 +4,51 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- **Phase 117 — External SQL Statement Execution API (2026-05-23,
+  rc120 → rc121).**  PointlesSQL gains its first token-only public
+  REST surface: a Databricks-compatible SQL Statement Execution
+  API at ``/api/2.0/sql/statements`` (POST submit, GET poll, GET
+  chunk, POST cancel).  External clients (curl, dbt, BI tools,
+  application backends) can now run SELECT queries without
+  driving the browser UI; wire shape mirrors the documented DBX
+  schema so the official ``databricks-sql-python`` adapter +
+  dbt-databricks runner work with a base-URL swap.  Auth is
+  Bearer-only via the existing ``api_keys`` table (new
+  ``sql_execute`` scope flag); per-key rate limit (60/min by
+  default) and a feature-flag kill-switch
+  (``POINTLESSQL_SQL_EXECUTION_API_ENABLED=0`` → 503) live
+  alongside.  Execution wraps the same ``run_sql_sync`` +
+  ``enforce_select_per_table`` pipeline the editor uses, so UC
+  SELECT grants apply uniformly.  Slow queries (past the DBX-
+  style ``wait_timeout``) return a PENDING envelope the client
+  polls; results gzip-cached in a new ``sql_statements`` table
+  with 24h retention.  Typed ``:name`` parameter binding via
+  sqlglot AST substitution (STRING / INT / LONG / DOUBLE / FLOAT
+  / BOOLEAN / DATE / TIMESTAMP / NULL) is injection-safe by
+  construction.  Default ``catalog``/``schema`` body fields drive
+  a sqlglot pre-pass that qualifies 1- and 2-part table refs
+  before the parser.  v1 is SELECT-only; DML / DDL ships
+  separately with the approval-flow integration.  39 new pytest;
+  new walkthrough at
+  ``docs/e2e-walkthroughs/external-sql-api.md``.
+
 ### Changed
+
+- **Phase 116 — Notebook editor toolbar redesign (2026-05-23,
+  rc119 → rc120).**  Replaces the decorative dot-trio with
+  stateful pill chips, makes Save / Run-all carry their own
+  state, and strengthens panel-toggle ``.active`` to match the
+  audit active-link treatment.  Design principle: **"status
+  lives on the action"** — each piece of state has a natural
+  home on its action button (Save state on Save button, Run
+  state on Run-all); the cluster is the at-a-glance backup when
+  the action is scrolled out of view.  Co-edit pill gains an
+  inline peer-count badge.  Pattern note: root-scope
+  ``vitalPillClass(kind)`` delegates to mixin-defined
+  ``this.coeditPillClass()`` for ``kind='coedit'`` so the
+  concern split stays intact.
 
 - **Phase 115 — Cell drag-drop reorder (2026-05-23, rc115 →
   rc116).**  Notebook editor cells gain a far-left grip handle

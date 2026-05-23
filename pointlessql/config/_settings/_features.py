@@ -35,6 +35,40 @@ class SQLSettings(BaseSettings):
     cost_gate_threshold_rows: int = 1_000_000
 
 
+class SqlExecutionApiSettings(BaseSettings):
+    """Phase 117 — public DBX-compatible SQL Statement Execution API.
+
+    Reads ``POINTLESSQL_SQL_EXECUTION_API_*`` environment variables.
+    The surface is independent of the in-app SQL editor
+    (:class:`SQLSettings`) — disabling it does not disable the
+    editor and vice versa.  Operators can stand the public API
+    down without a redeploy by flipping ``enabled=False``; the
+    router refuses every request with 503 in that mode.
+
+    ``max_wait_timeout_seconds`` caps the per-request ``wait_timeout``
+    body field at the DBX upper bound (50s); ``default_wait_timeout``
+    is what a missing field defaults to.  ``max_row_limit`` caps the
+    per-request ``row_limit`` regardless of the editor's
+    ``max_rows`` — a 100k cap fits a typical BI / dbt pull without
+    blowing the in-DB ``result_payload`` storage budget.
+
+    ``result_payload_retention_hours`` is how long the statement
+    store keeps SUCCEEDED rows before the retention sweep prunes
+    them.  Short enough to bound disk under burst loads, long
+    enough that a polling client can fetch results across business
+    days.
+    """
+
+    model_config = SettingsConfigDict(env_prefix="POINTLESSQL_SQL_EXECUTION_API_")
+
+    enabled: bool = True
+    max_wait_timeout_seconds: int = 50
+    default_wait_timeout_seconds: int = 10
+    max_row_limit: int = 100_000
+    result_payload_retention_hours: int = 24
+    cancel_interrupt_grace_seconds: int = 5
+
+
 class EditorChatSettings(BaseSettings):
     """Editor-chat configuration — shared by SQL + notebook surfaces.
 

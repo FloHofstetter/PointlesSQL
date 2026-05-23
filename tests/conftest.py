@@ -469,6 +469,7 @@ def _make_api_key_fixture(
     supervisor: bool = False,
     auditor: bool = False,
     lineage_inbound: bool = False,
+    sql_execute: bool = False,
 ) -> ApiKeyFixture:
     """Persist one ``ApiKey`` and pack it into an :class:`ApiKeyFixture`."""
     _wipe_api_keys()
@@ -478,6 +479,7 @@ def _make_api_key_fixture(
         supervisor=supervisor,
         auditor=auditor,
         lineage_inbound=lineage_inbound,
+        sql_execute=sql_execute,
     )
     return ApiKeyFixture(
         secret=plaintext,
@@ -504,6 +506,16 @@ def supervisor_secret() -> Iterator[ApiKeyFixture]:
 def auditor_secret() -> Iterator[ApiKeyFixture]:
     """Yield a freshly-created auditor-scoped ``ApiKey``."""
     fixture = _make_api_key_fixture(name="auditor-fixture", auditor=True)
+    try:
+        yield fixture
+    finally:
+        _wipe_api_keys()
+
+
+@pytest.fixture
+def sql_execute_secret() -> Iterator[ApiKeyFixture]:
+    """Yield a freshly-created sql_execute-scoped ``ApiKey``."""
+    fixture = _make_api_key_fixture(name="sql-execute-fixture", sql_execute=True)
     try:
         yield fixture
     finally:

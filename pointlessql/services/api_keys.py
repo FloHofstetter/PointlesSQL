@@ -59,7 +59,10 @@ class KeyEntry:
     auditor: bool = False
     lineage_inbound: bool = False
     analyst: bool = False
+    sql_execute: bool = False
     workspace_id: int = 1
+    id: int = 0
+    created_by_user_id: int | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -99,7 +102,7 @@ def invalidate_cache() -> None:
 # ---------------------------------------------------------------------------
 
 
-def parse_keys(raw: str | None) -> dict[str, tuple[str, bool, bool, bool, bool]]:
+def parse_keys(raw: str | None) -> dict[str, tuple[str, bool, bool, bool, bool, bool]]:
     """Parse ``POINTLESSQL_API_KEYS`` env value.
 
     Format:
@@ -109,6 +112,7 @@ def parse_keys(raw: str | None) -> dict[str, tuple[str, bool, bool, bool, bool]]
     - ``name:secret:auditor`` — auditor scope.
     - ``name:secret:lineage_inbound`` — Phase-40 federation scope.
     - ``name:secret:analyst`` — Phase 65 Lens read-only Q&A scope.
+    - ``name:secret:sql_execute`` — Phase 117 public SQL API scope.
 
     Anything else as the third token raises so a typo can't silently
     grant a privileged scope.  A single env entry maps to exactly one
@@ -120,7 +124,8 @@ def parse_keys(raw: str | None) -> dict[str, tuple[str, bool, bool, bool, bool]]
 
     Returns:
         Mapping ``{name: (secret, supervisor, auditor, lineage_inbound,
-        analyst)}``.  Empty when *raw* is missing or whitespace-only.
+        analyst, sql_execute)}``.  Empty when *raw* is missing or
+        whitespace-only.
 
     Raises:
         ValueError: When a pair lacks a colon, has empty name/secret,
@@ -129,7 +134,7 @@ def parse_keys(raw: str | None) -> dict[str, tuple[str, bool, bool, bool, bool]]
     """
     if raw is None or not raw.strip():
         return {}
-    out: dict[str, tuple[str, bool, bool, bool, bool]] = {}
+    out: dict[str, tuple[str, bool, bool, bool, bool, bool]] = {}
     for chunk in raw.replace(",", "\n").splitlines():
         pair = chunk.strip()
         if not pair:
@@ -140,8 +145,9 @@ def parse_keys(raw: str | None) -> dict[str, tuple[str, bool, bool, bool, bool]]
                 f"POINTLESSQL_API_KEYS entry {pair!r} must be in "
                 f"'name:secret', 'name:secret:supervisor', "
                 f"'name:secret:auditor', "
-                f"'name:secret:lineage_inbound', or "
-                f"'name:secret:analyst' form"
+                f"'name:secret:lineage_inbound', "
+                f"'name:secret:analyst', or "
+                f"'name:secret:sql_execute' form"
             )
         name = parts[0].strip()
         secret = parts[1].strip()
@@ -151,6 +157,7 @@ def parse_keys(raw: str | None) -> dict[str, tuple[str, bool, bool, bool, bool]]
         auditor = False
         lineage_inbound = False
         analyst = False
+        sql_execute = False
         if len(parts) == 3:
             scope = parts[2].strip().lower()
             if scope == "supervisor":
@@ -161,15 +168,18 @@ def parse_keys(raw: str | None) -> dict[str, tuple[str, bool, bool, bool, bool]]
                 lineage_inbound = True
             elif scope == "analyst":
                 analyst = True
+            elif scope == "sql_execute":
+                sql_execute = True
             else:
                 raise ValueError(
                     f"POINTLESSQL_API_KEYS entry {pair!r} has unknown "
                     f"scope {scope!r} — only 'supervisor', 'auditor', "
-                    f"'lineage_inbound', and 'analyst' are recognised"
+                    f"'lineage_inbound', 'analyst', and 'sql_execute' "
+                    f"are recognised"
                 )
         if name in out:
             raise ValueError(f"POINTLESSQL_API_KEYS entry name {name!r} is duplicated")
-        out[name] = (secret, supervisor, auditor, lineage_inbound, analyst)
+        out[name] = (secret, supervisor, auditor, lineage_inbound, analyst, sql_execute)
     return out
 
 
@@ -202,7 +212,14 @@ def bootstrap_from_env(session_factory: _SessionFactory, env: dict[str, str] | N
     inserted = 0
     with session_factory() as session:
         existing_names = {n for (n,) in session.execute(select(ApiKey.name)).all()}
-        for name, (secret, supervisor, auditor, lineage_inbound, analyst) in parsed.items():
+        for name, (
+            secret,
+            supervisor,
+            auditor,
+            lineage_inbound,
+            analyst,
+            sql_execute,
+        ) in parsed.items():
             if name in existing_names:
                 continue
             session.add(
@@ -214,6 +231,7 @@ def bootstrap_from_env(session_factory: _SessionFactory, env: dict[str, str] | N
                     auditor=auditor,
                     lineage_inbound=lineage_inbound,
                     analyst=analyst,
+                    sql_execute=sql_execute,
                     created_at=datetime.now(UTC),
                     workspace_id=1,
                 )
@@ -240,6 +258,7 @@ def create_api_key(
     auditor: bool = False,
     lineage_inbound: bool = False,
     analyst: bool = False,
+    sql_execute: bool = False,
     created_by_user_id: int | None = None,
     workspace_id: int = 1,
 ) -> tuple[ApiKey, str]:
@@ -262,6 +281,10 @@ def create_api_key(
         analyst: When ``True``, the key may invoke the Lens read-only
             Q&A surface (``/api/lens/*`` and the MCP server).
             Promotes up the ladder to also pass auditor gates.
+        sql_execute: When ``True``, the key may invoke the public
+            DBX-compatible SQL Statement Execution API
+            (``/api/2.0/sql/statements``).  Independent of every
+            other scope.
         created_by_user_id: Admin who created the key.  ``None`` for
             CLI-provisioned or env-var-bootstrapped keys.
         workspace_id: Workspace the key pins to.  Defaults to the
@@ -298,6 +321,7 @@ def create_api_key(
             auditor=auditor,
             lineage_inbound=lineage_inbound,
             analyst=analyst,
+            sql_execute=sql_execute,
             created_at=datetime.now(UTC),
             created_by_user_id=created_by_user_id,
             workspace_id=workspace_id,
@@ -406,7 +430,10 @@ def verify_bearer(
             auditor=bool(row.auditor),
             lineage_inbound=bool(getattr(row, "lineage_inbound", False)),
             analyst=bool(getattr(row, "analyst", False)),
+            sql_execute=bool(getattr(row, "sql_execute", False)),
             workspace_id=int(row.workspace_id),
+            id=int(row.id),
+            created_by_user_id=row.created_by_user_id,
         )
         # Best-effort last-used update — failures don't affect auth.
         try:

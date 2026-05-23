@@ -274,6 +274,43 @@ def require_analyst(request: Request) -> None:
     )
 
 
+def require_sql_execute(request: Request) -> None:
+    """Raise :class:`AuthorizationError` if the caller lacks sql_execute scope.
+
+    Phase 117: ``/api/2.0/sql/statements`` is the public DBX-compatible
+    SQL Statement Execution API.  This surface is **token-only** —
+    cookie sessions (browser) are deliberately rejected with 401 by
+    the middleware before we reach this gate.  Even an admin cookie
+    does not pass: the public API is for external clients (dbt, BI,
+    httpx), not for in-browser humans.
+
+    Pass conditions:
+
+    * Bearer key with ``sql_execute=True`` flag.
+
+    Admin / supervisor / auditor / analyst scopes do NOT promote
+    into ``sql_execute`` because the surface targets external
+    integrations that need narrow grants (e.g. a dbt-databricks
+    runner shouldn't also inherit Lens read-only-Q&A).
+
+    Args:
+        request: Incoming FastAPI request.
+
+    Raises:
+        AuthorizationError: When the caller is not authenticated via
+            a Bearer key with the sql_execute flag set.
+    """
+    if getattr(request.state, "api_key_sql_execute", False):
+        return
+    user = get_user(request)
+    raise AuthorizationError(
+        principal=user.get("email", "") or "anonymous",
+        privilege="sql_execute",
+        securable_type="system",
+        full_name="sql_statements_api",
+    )
+
+
 def require_lineage_inbound(request: Request) -> None:
     """Raise :class:`AuthorizationError` if the caller lacks lineage_inbound scope.
 
