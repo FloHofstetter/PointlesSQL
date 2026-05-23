@@ -91,6 +91,74 @@ def _hash_secret(secret: str) -> str:
     return hashlib.sha256(secret.encode("utf-8")).hexdigest()
 
 
+def _as_aware_utc(value: datetime | None) -> datetime | None:
+    """Coerce a possibly-naive timestamp to a UTC-aware ``datetime``.
+
+    SQLite returns ``DateTime(timezone=True)`` columns as naive ``datetime``
+    on read; Postgres returns them aware.  Phase 119's lifecycle gates
+    compare against ``datetime.now(UTC)`` (aware), which would raise
+    ``TypeError`` on the SQLite path.  Treating naive timestamps as UTC
+    matches what we wrote and unifies the two dialects.
+    """
+    if value is None:
+        return None
+    if value.tzinfo is None:
+        return value.replace(tzinfo=UTC)
+    return value
+
+
+def _emit_auth_denied_audit(
+    session_factory: _SessionFactory,
+    row: ApiKey,
+    action: str,
+    detail: dict[str, Any],
+) -> None:
+    """Best-effort audit row for a rejected Bearer attempt.
+
+    Phase 119 — quarantine / expiry / post-grace-rotation rejections
+    each emit a distinct ``api_key.auth_denied.*`` action so admins
+    can debug "why is my key suddenly failing".  Audit failures are
+    swallowed: a broken audit table must never break auth itself.
+
+    Args:
+        session_factory: Sessionmaker for the audit DB.
+        row: The ``ApiKey`` row that was matched but rejected.
+        action: Audit action verb, e.g. ``api_key.auth_denied.expired``.
+        detail: JSON-serialisable extra context.
+    """
+    # Local import: services/audit pulls in the audit-write surface
+    # which itself imports the api_keys service in some legacy paths;
+    # top-level import would create a cycle on cold start.
+    from pointlessql.services.audit import _core as audit_core
+
+    try:
+        # _SessionFactory is a runtime-compatible Protocol over
+        # ``sessionmaker[Session]`` (both produce a session when
+        # called).  Pyright treats them as distinct nominal types;
+        # ``cast`` is the boundary annotation, not a runtime change.
+        from typing import cast as _cast
+
+        from sqlalchemy.orm import Session, sessionmaker
+
+        audit_core.log_action(
+            _cast(sessionmaker[Session], session_factory),
+            user_id=0,
+            user_email=f"api_key:{row.name}",
+            action=action,
+            target=f"api_key:{row.name}",
+            detail=detail,
+            actor_role="system",
+            workspace_id=int(row.workspace_id),
+        )
+    except Exception:  # noqa: BLE001 — audit must never break auth
+        logger.debug(
+            "Failed to emit auth-denied audit for api_key %s (%s)",
+            row.name,
+            action,
+            exc_info=True,
+        )
+
+
 def invalidate_cache() -> None:
     """Clear the in-memory verify-bearer cache.
 
@@ -457,6 +525,48 @@ def verify_bearer(
         # equality — keeps the surface uniform with the env-var path.
         if not hmac.compare_digest(row.secret_hash, digest):
             return None
+        # Phase 119 — lifecycle gates.  Each returns ``None`` (i.e. 401
+        # at the middleware) and emits an audit row so admins can
+        # debug rejected requests.  Audit failures are swallowed so a
+        # broken audit table can never break auth.
+        now_dt = datetime.now(UTC)
+        if (
+            getattr(row, "quarantined_at", None) is not None
+            and getattr(row, "quarantine_reason", None)
+        ):
+            _emit_auth_denied_audit(
+                session_factory,
+                row,
+                "api_key.auth_denied.quarantined",
+                {"quarantine_reason": str(row.quarantine_reason)},
+            )
+            return None
+        expires_at = _as_aware_utc(getattr(row, "expires_at", None))
+        if expires_at is not None and expires_at <= now_dt:
+            _emit_auth_denied_audit(
+                session_factory,
+                row,
+                "api_key.auth_denied.expired",
+                {"expired_at": expires_at.isoformat()},
+            )
+            return None
+        # Rotation: a predecessor key (rotated_at set) is valid only
+        # while inside its grace window.  After the window closes, it
+        # behaves like a soft-revoked key.
+        rotated_at = _as_aware_utc(getattr(row, "rotated_at", None))
+        if rotated_at is not None:
+            grace_until = _as_aware_utc(getattr(row, "grace_until", None))
+            if grace_until is None or grace_until <= now_dt:
+                _emit_auth_denied_audit(
+                    session_factory,
+                    row,
+                    "api_key.auth_denied.rotated",
+                    {
+                        "rotated_at": rotated_at.isoformat(),
+                        "grace_until": grace_until.isoformat() if grace_until else None,
+                    },
+                )
+                return None
         entry = KeyEntry(
             name=row.name,
             supervisor=bool(row.supervisor),
