@@ -31,15 +31,19 @@ import hashlib
 import hmac
 import logging
 import os
-import secrets
 import time
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import Any, Protocol
+from typing import Any, Literal, Protocol
 
 from sqlalchemy import select, update
 
 from pointlessql.models import ApiKey
+from pointlessql.services.api_keys._token_format import (
+    display_prefix_for,
+    generate_v1_token,
+    parse_v1_token,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -222,11 +226,18 @@ def bootstrap_from_env(session_factory: _SessionFactory, env: dict[str, str] | N
         ) in parsed.items():
             if name in existing_names:
                 continue
+            parsed_v1 = parse_v1_token(secret)
+            if parsed_v1 is not None:
+                token_env_for_row = parsed_v1[0]
+                token_format_for_row = "v1"
+            else:
+                token_env_for_row = "legacy"
+                token_format_for_row = "legacy"
             session.add(
                 ApiKey(
                     name=name,
                     secret_hash=_hash_secret(secret),
-                    secret_prefix=secret[:8],
+                    secret_prefix=display_prefix_for(secret),
                     supervisor=supervisor,
                     auditor=auditor,
                     lineage_inbound=lineage_inbound,
@@ -234,6 +245,8 @@ def bootstrap_from_env(session_factory: _SessionFactory, env: dict[str, str] | N
                     sql_execute=sql_execute,
                     created_at=datetime.now(UTC),
                     workspace_id=1,
+                    token_format=token_format_for_row,
+                    token_env=token_env_for_row,
                 )
             )
             inserted += 1
@@ -261,6 +274,7 @@ def create_api_key(
     sql_execute: bool = False,
     created_by_user_id: int | None = None,
     workspace_id: int = 1,
+    env: Literal["live", "test"] = "live",
 ) -> tuple[ApiKey, str]:
     """Generate + persist a fresh Bearer-token credential.
 
@@ -292,11 +306,18 @@ def create_api_key(
             installs and existing automation keep working without
             naming a workspace explicitly.  The admin UI exposes a
             chooser at creation time.
+        env: One of ``'live'`` or ``'test'``.  Embedded in the v1
+            token format (``pql_{env}_v1_...``) so test keys are
+            visually distinct in audit logs and git leaks.  Defaults
+            to ``'live'`` so existing call-sites keep producing
+            production-grade keys without an explicit argument.
 
     Returns:
         ``(row, plaintext_secret)``.  The row is detached after
         commit so the caller can serialise it without holding the
-        session open.
+        session open.  The plaintext is the full
+        ``pql_{env}_v1_{body40}_{crc8}`` token; persist it now or
+        lose it.
 
     Raises:
         ValueError: When *name* is blank, longer than 64 chars, or
@@ -308,7 +329,7 @@ def create_api_key(
     cleaned = name.strip()
     if not cleaned or len(cleaned) > 64:
         raise ValueError("API key name must be a non-empty string up to 64 chars")
-    plaintext = secrets.token_urlsafe(32)
+    plaintext = generate_v1_token(env)
     with session_factory() as session:
         existing = session.scalar(select(ApiKey).where(ApiKey.name == cleaned))
         if existing is not None:
@@ -316,7 +337,7 @@ def create_api_key(
         row = ApiKey(
             name=cleaned,
             secret_hash=_hash_secret(plaintext),
-            secret_prefix=plaintext[:8],
+            secret_prefix=display_prefix_for(plaintext),
             supervisor=supervisor,
             auditor=auditor,
             lineage_inbound=lineage_inbound,
@@ -325,6 +346,8 @@ def create_api_key(
             created_at=datetime.now(UTC),
             created_by_user_id=created_by_user_id,
             workspace_id=workspace_id,
+            token_format="v1",
+            token_env=env,
         )
         session.add(row)
         session.commit()
@@ -392,7 +415,8 @@ def verify_bearer(
     Returns:
         The matching :class:`KeyEntry` or ``None`` when the header is
         missing, malformed, secret unknown, key revoked, or factory
-        unavailable.
+        unavailable.  Tokens that match the v1 prefix shape but carry
+        a wrong CRC are rejected before any DB roundtrip.
     """
     if session_factory is None or not authorization_header:
         return None
@@ -402,6 +426,15 @@ def verify_bearer(
     presented = header[7:].strip()
     if not presented:
         return None
+    # Phase 118 — short-circuit v1-shaped tokens with bad CRC before
+    # the DB lookup.  A v1 prefix means the issuer is unambiguous; a
+    # mismatched CRC is a typo / truncation / tampered token, never a
+    # legacy key.  Legacy tokens (no ``pql_*_v1_`` prefix) are
+    # detected by ``parse_v1_token`` returning ``None`` and fall
+    # through to the SHA-256 lookup path unchanged.
+    if presented.startswith("pql_") and "_v1_" in presented[:14]:
+        if parse_v1_token(presented) is None:
+            return None
     digest = _hash_secret(presented)
 
     cached = _resolve_cache.get(digest)

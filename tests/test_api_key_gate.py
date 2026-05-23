@@ -139,12 +139,63 @@ def test_create_and_verify_roundtrip() -> None:
         app.state.session_factory, name="hermes", supervisor=False
     )
     assert row.name == "hermes"
-    assert row.secret_prefix == plaintext[:8]
+    # Phase 118 — default env is "live", token_format defaults to "v1".
+    assert row.token_format == "v1"
+    assert row.token_env == "live"
+    assert plaintext.startswith("pql_live_v1_")
+    # The stored prefix is the v1 display prefix (24 chars), not the raw 8.
+    assert row.secret_prefix.startswith("pql_live_v1_")
+    assert len(row.secret_prefix) == len("pql_live_v1_") + 10
 
     entry = api_keys_service.verify_bearer(f"Bearer {plaintext}", app.state.session_factory)
     assert entry is not None
     assert entry.name == "hermes"
     assert entry.supervisor is False
+    _wipe_api_keys()
+
+
+def test_create_with_test_env_yields_test_token() -> None:
+    _wipe_api_keys()
+    row, plaintext = api_keys_service.create_api_key(
+        app.state.session_factory, name="staging-key", env="test"
+    )
+    assert plaintext.startswith("pql_test_v1_")
+    assert row.token_env == "test"
+    assert row.token_format == "v1"
+    entry = api_keys_service.verify_bearer(f"Bearer {plaintext}", app.state.session_factory)
+    assert entry is not None and entry.name == "staging-key"
+    _wipe_api_keys()
+
+
+def test_v1_token_with_bad_crc_rejected_without_db_lookup() -> None:
+    _wipe_api_keys()
+    _, plaintext = api_keys_service.create_api_key(
+        app.state.session_factory, name="crc-victim"
+    )
+    # Flip the last hex char of the CRC.
+    tampered = plaintext[:-1] + ("0" if plaintext[-1] != "0" else "1")
+    entry = api_keys_service.verify_bearer(f"Bearer {tampered}", app.state.session_factory)
+    assert entry is None
+    _wipe_api_keys()
+
+
+def test_legacy_secret_in_env_still_verifies() -> None:
+    """Bootstrap path accepts a legacy ``secrets.token_urlsafe`` secret."""
+    _wipe_api_keys()
+    legacy_secret = "kMqz4_AB-CdEfGhIjKlMnOpQrStUvWxYz0123456789x"
+    inserted = api_keys_service.bootstrap_from_env(
+        app.state.session_factory,
+        env={"POINTLESSQL_API_KEYS": f"legacy-bootstrap:{legacy_secret}"},
+    )
+    assert inserted == 1
+    row = api_keys_service.list_api_keys(app.state.session_factory)[0]
+    assert row.token_format == "legacy"
+    assert row.token_env == "legacy"
+    assert row.secret_prefix == legacy_secret[:8]
+    entry = api_keys_service.verify_bearer(
+        f"Bearer {legacy_secret}", app.state.session_factory
+    )
+    assert entry is not None and entry.name == "legacy-bootstrap"
     _wipe_api_keys()
 
 
