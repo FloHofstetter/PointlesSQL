@@ -103,21 +103,18 @@
        @dragover.prevent="onCellDragOver($event, cell)"
        @dragleave="onCellDragLeave($event, cell)"
        @drop.prevent="onCellDrop($event, cell)">
-   <div class="pql-notebook-cell__header">
+   {# Phase 115 — entire cell header acts as a desktop-window-style
+      drag handle.  Buttons / dropdowns / inputs inside the header
+      stay interactive (click and drag are distinct gestures; HTML5
+      DnD does not block button clicks).  The result-var ``<input>``
+      below is the one element that needs ``draggable="false"`` so
+      its text-selection drag wins over the header drag. #}
+   <div class="pql-notebook-cell__header"
+        draggable="true"
+        data-testid="cell-header-drag-handle"
+        @dragstart="onCellDragStart($event, cell)"
+        @dragend="onCellDragEnd($event)">
     <div class="d-flex align-items-center gap-2">
-     {# Phase 115 — grip-handle for drag-drop reorder.  Only the
-        grip itself is ``draggable``; the cell body (incl. the
-        CodeMirror host) keeps its native text-selection behaviour. #}
-     <button type="button"
-             class="pql-cell-grip"
-             draggable="true"
-             @dragstart="onCellDragStart($event, cell)"
-             @dragend="onCellDragEnd($event)"
-             title="Drag to reorder cell"
-             aria-label="Drag to reorder cell"
-             data-testid="cell-grip">
-      <i class="bi bi-grip-vertical" aria-hidden="true"></i>
-     </button>
      {# Phase 95.x layout — Run button moved to the very left of the
         cell header, before the type-pill, so the kernel-action sits
         where the eye lands first when scanning a notebook.
@@ -206,7 +203,10 @@
               @change="cell.result_var = $event.target.value || 'df'; cell._dirty = true; dirty = true"
               placeholder="df"
               title="Name to bind the resulting DataFrame to in the kernel namespace"
-              size="6">
+              size="6"
+              {# Phase 115 — let text-selection drag inside the input
+                 win over the header-as-drag-handle behaviour. #}
+              draggable="false">
       </div>
      </template>
     </div>

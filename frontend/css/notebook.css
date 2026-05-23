@@ -723,31 +723,17 @@
  min-width: 12rem;
 }
 
-/* Phase 115 — grip-handle drag-drop reorder. */
-.pql-cell-grip {
- display: inline-flex;
- align-items: center;
- justify-content: center;
- width: 1.25rem;
- height: 1.5rem;
- padding: 0;
- border: 0;
- background: transparent;
- color: var(--bs-secondary-color);
+/* Phase 115 — cell header acts as the desktop-window-style drag
+   handle.  ``cursor: grab`` over the header background hints the
+   affordance; interactive children (buttons, dropdowns, inputs)
+   keep their natural ``cursor: pointer`` / ``text`` via natural
+   specificity from Bootstrap.  ``:active`` flips to ``grabbing``
+   for symmetry with native OS chrome. */
+.pql-notebook-cell__header {
  cursor: grab;
- opacity: 0.35;
- transition: opacity 120ms ease;
 }
-.pql-cell-grip:hover,
-.pql-notebook-cell:hover .pql-cell-grip {
- opacity: 1;
-}
-.pql-cell-grip:active {
+.pql-notebook-cell__header:active {
  cursor: grabbing;
-}
-.pql-cell-grip:focus-visible {
- outline: 2px solid var(--pql-color-accent, #76b900);
- outline-offset: 2px;
 }
 .pql-notebook-cell--dragging {
  opacity: 0.45;
