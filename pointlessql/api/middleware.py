@@ -201,6 +201,24 @@ async def auth_middleware(request: Request, call_next: Any) -> Response:
                 is_supervisor=entry.supervisor,
                 is_auditor=entry.auditor,
             )
+            # Phase 120 — record this successful auth into the
+            # in-process usage buffer.  Flush is the background
+            # ``_api_key_usage_flush_loop``.
+            try:
+                from pointlessql.api.rate_limit_middleware import (
+                    _client_ip,  # pyright: ignore[reportPrivateUsage]
+                )
+                from pointlessql.services.api_keys._usage import record_use
+
+                rl_settings = getattr(settings_for_acl, "rate_limit", None)
+                trust_xff = bool(getattr(rl_settings, "trust_x_forwarded_for", False))
+                record_use(
+                    request.app.state,
+                    api_key_id=entry.id,
+                    source_ip=_client_ip(request, trust_xff),
+                )
+            except Exception:  # noqa: BLE001 — usage logging is non-critical
+                logger.debug("Failed to record api-key usage", exc_info=True)
 
     # Resolve the active workspace for the request.  The resolver
     # tolerates every absence (no factory, no user, no header, fresh

@@ -36,6 +36,8 @@ logger = logging.getLogger(__name__)
 __all__ = [
     "_active_reviewer_loop",
     "_api_key_lifecycle_sweep_loop",
+    "_api_key_usage_flush_loop",
+    "_api_key_usage_retention_loop",
     "_audit_retention_loop",
     "_branch_cleanup_loop",
     "_cdf_tail_loop",
@@ -77,6 +79,68 @@ async def _audit_retention_loop(  # pyright: ignore[reportUnusedFunction]
             await asyncio.to_thread(audit_service.cleanup_old_entries, factory, retention)
         except Exception:  # noqa: BLE001 — retention loop must survive everything
             logger.exception("audit: retention loop tick raised")
+        try:
+            await asyncio.sleep(interval)
+        except asyncio.CancelledError:
+            return
+
+
+async def _api_key_usage_flush_loop(  # pyright: ignore[reportUnusedFunction]
+    factory: Any,
+    app_state: Any,
+    settings: Settings,
+) -> None:
+    """Flush the in-process usage Counter every ``usage_flush_interval_seconds``.
+
+    Survives transient DB failures so a single bad commit can't lose
+    the buffer beyond the current tick.
+
+    Args:
+        factory: SQLAlchemy session factory.
+        app_state: ``app.state`` carrying the live ``api_key_usage_buffer``
+            Counter.
+        settings: Snapshotted :class:`Settings` — only
+            ``api_key_acl.usage_flush_interval_seconds`` is read.
+    """
+    from pointlessql.services.api_keys._usage import flush_buffer
+
+    interval = max(5, settings.api_key_acl.usage_flush_interval_seconds)
+    while True:
+        try:
+            await asyncio.to_thread(flush_buffer, factory, app_state)
+        except Exception:  # noqa: BLE001 — flush loop must survive everything
+            logger.exception("api-keys: usage flush loop tick raised")
+        try:
+            await asyncio.sleep(interval)
+        except asyncio.CancelledError:
+            return
+
+
+async def _api_key_usage_retention_loop(  # pyright: ignore[reportUnusedFunction]
+    factory: Any,
+    settings: Settings,
+) -> None:
+    """Prune ``api_key_usage_buckets`` rows older than the retention window.
+
+    Daily cadence is plenty for a 30-day window; the loop just sleeps
+    on its own short cadence and the underlying delete is a no-op when
+    nothing's beyond the cutoff.
+
+    Args:
+        factory: SQLAlchemy session factory.
+        settings: Snapshotted :class:`Settings` — only
+            ``api_key_acl.usage_retention_days`` is read.
+    """
+    from pointlessql.services.api_keys._usage import cleanup_stale_usage
+
+    # Per-day cadence; tunable later if a deployment wants finer pruning.
+    interval = 86_400
+    retention = settings.api_key_acl.usage_retention_days
+    while True:
+        try:
+            await asyncio.to_thread(cleanup_stale_usage, factory, retention_days=retention)
+        except Exception:  # noqa: BLE001 — retention loop must survive everything
+            logger.exception("api-keys: usage retention loop tick raised")
         try:
             await asyncio.sleep(interval)
         except asyncio.CancelledError:

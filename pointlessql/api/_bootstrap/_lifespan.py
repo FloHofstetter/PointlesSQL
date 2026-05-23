@@ -32,6 +32,8 @@ from fastapi.templating import Jinja2Templates
 from pointlessql.api._bootstrap._loops import (
     _active_reviewer_loop,  # pyright: ignore[reportPrivateUsage]
     _api_key_lifecycle_sweep_loop,  # pyright: ignore[reportPrivateUsage]
+    _api_key_usage_flush_loop,  # pyright: ignore[reportPrivateUsage]
+    _api_key_usage_retention_loop,  # pyright: ignore[reportPrivateUsage]
     _audit_retention_loop,  # pyright: ignore[reportPrivateUsage]
     _branch_cleanup_loop,  # pyright: ignore[reportPrivateUsage]
     _cdf_tail_loop,  # pyright: ignore[reportPrivateUsage]
@@ -184,6 +186,23 @@ def make_lifespan(
             api_key_lifecycle_task = asyncio.create_task(
                 _api_key_lifecycle_sweep_loop(app.state.session_factory, settings),
                 name="api-key-lifecycle",
+            )
+
+        # Phase 120 — periodic API-key usage flush + retention sweep.
+        # Flush drains the in-process Counter every 30s by default;
+        # retention prunes buckets older than 30d once per day.
+        api_key_usage_flush_task: asyncio.Task[None] | None = None
+        api_key_usage_retention_task: asyncio.Task[None] | None = None
+        if not fast_test_lifespan:
+            api_key_usage_flush_task = asyncio.create_task(
+                _api_key_usage_flush_loop(
+                    app.state.session_factory, app.state, settings
+                ),
+                name="api-key-usage-flush",
+            )
+            api_key_usage_retention_task = asyncio.create_task(
+                _api_key_usage_retention_loop(app.state.session_factory, settings),
+                name="api-key-usage-retention",
             )
 
         # Periodic external-write scanner.  Disabled by default
@@ -495,6 +514,8 @@ def make_lifespan(
                 await app.state.dbt_subprocess.stop()
             await _cancel_task(audit_task)
             await _cancel_task(api_key_lifecycle_task)
+            await _cancel_task(api_key_usage_flush_task)
+            await _cancel_task(api_key_usage_retention_task)
             await _cancel_task(external_writes_task)
             await _cancel_task(cdf_tail_task)
             await _cancel_task(data_product_freshness_task)
