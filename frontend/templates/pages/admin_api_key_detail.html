@@ -177,9 +177,12 @@
         </div>
     </div>
 </div>
-{% endblock %}
 
-{% block extra_js %}
+{# Phase 120.6 — keep the script INSIDE the content block so HTMX boost
+   (hx-target="#main-content") swaps both the markup and its handlers.
+   Defining the helpers in {% block extra_js %} put them after </main>
+   which never gets re-evaluated on boosted navigation, leaving the
+   page's x-data refs orphaned. #}
 <script>
 window.apiKeyGrants = function (keyName) {
     return {
@@ -325,3 +328,4 @@ window.apiKeyUsageChart = function (keyName) {
 };
 </script>
 {% endblock %}
+

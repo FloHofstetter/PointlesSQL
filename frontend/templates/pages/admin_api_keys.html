@@ -127,14 +127,18 @@
                     <td data-label="Created" class="small text-nowrap">{{ relative_time(k.created_at) }}</td>
                     <td data-label="Last used" class="small text-nowrap">{{ k.last_used_at[:10] if k.last_used_at else '—' }}</td>
                     <td data-label="Status">
-                        {% if k.revoked_at %}
+                        {% if k.lifecycle_state == 'revoked' %}
                         <span class="badge bg-secondary" title="Revoked {{ k.revoked_at }}">revoked</span>
-                        {% elif k.quarantined_at %}
+                        {% elif k.lifecycle_state == 'quarantined' %}
                         <span class="badge bg-danger" title="{{ k.quarantine_reason or 'quarantined' }}">quarantined</span>
-                        {% elif k.rotated_at and k.grace_until %}
+                        {% elif k.lifecycle_state == 'rotated' %}
                         <span class="badge bg-warning text-dark" title="In rotation grace window until {{ k.grace_until }}">rotated</span>
+                        {% elif k.lifecycle_state == 'expired' %}
+                        <span class="badge bg-secondary" title="Expired {{ k.expires_at }}; sweep will auto-quarantine">expired</span>
+                        {% elif k.lifecycle_state == 'expiring' %}
+                        <span class="badge bg-warning text-dark" title="Expires {{ k.expires_at }}">expiring</span>
                         {% elif k.expires_at %}
-                        <span class="badge bg-info text-dark" title="Expires {{ k.expires_at }}">expiring</span>
+                        <span class="badge bg-success" title="Expires {{ k.expires_at }}">active · TTL</span>
                         {% else %}
                         <span class="badge bg-success">active</span>
                         {% endif %}
@@ -142,37 +146,34 @@
                     <td data-label="Actions">
                         {% if not k.revoked_at %}
                         <div class="btn-group btn-group-sm" role="group">
+                            <a class="btn btn-outline-primary"
+                               href="/admin/api-keys/{{ k.name | urlencode }}"
+                               hx-boost="false"
+                               title="Manage grants + view usage.">
+                                <i class="bi bi-gear"></i>                            </a>
                             <button type="button" class="btn btn-outline-secondary"
                                     :disabled="busy"
                                     @click="rotate()"
-                                    title="Mint a successor key; predecessor stays valid 24h for rollover.">
-                                <i class="bi bi-arrow-repeat"></i> Rotate
-                            </button>
+                                    title="Rotate — mint a successor key; predecessor stays valid 24h.">
+                                <i class="bi bi-arrow-repeat"></i>                            </button>
                             {% if k.quarantined_at %}
                             <button type="button" class="btn btn-outline-warning"
                                     :disabled="busy"
                                     @click="unquarantine()"
-                                    title="Lift the quarantine; key resumes authorising.">
-                                <i class="bi bi-shield-check"></i> Unquarantine
-                            </button>
+                                    title="Unquarantine — key resumes authorising.">
+                                <i class="bi bi-shield-check"></i>                            </button>
                             {% else %}
                             <button type="button" class="btn btn-outline-warning"
                                     :disabled="busy"
                                     @click="quarantine()"
-                                    title="Soft-disable; preserves audit attribution.">
-                                <i class="bi bi-shield-exclamation"></i> Quarantine
-                            </button>
+                                    title="Quarantine — soft-disable; preserves audit attribution.">
+                                <i class="bi bi-shield-exclamation"></i>                            </button>
                             {% endif %}
                             <button type="button" class="btn btn-outline-danger"
                                     :disabled="busy"
-                                    @click="revoke()">
-                                <i class="bi bi-x-octagon"></i> Revoke
-                            </button>
-                            <a class="btn btn-outline-secondary"
-                               href="/admin/api-keys/{{ k.name | urlencode }}"
-                               title="Manage grants + view usage.">
-                                <i class="bi bi-gear"></i> Manage
-                            </a>
+                                    @click="revoke()"
+                                    title="Revoke — permanent; row stays for audit attribution.">
+                                <i class="bi bi-x-octagon"></i>                            </button>
                         </div>
                         {% else %}
                         <span class="text-muted small">—</span>

@@ -47,11 +47,47 @@ async def admin_api_keys_index(request: Request, include_revoked: bool = False) 
             session.expunge(row)
 
     workspace_by_id = {w.id: w for w in workspaces}
+    from datetime import UTC, datetime, timedelta
+
+    now = datetime.now(UTC)
+    warning_cutoff = now + timedelta(
+        days=request.app.state.settings.api_key_lifecycle.expiry_warning_days
+    )
+
+    def _lifecycle_state(row: object) -> str:
+        """Compute the user-facing lifecycle pill for an api_key row."""
+        if getattr(row, "revoked_at", None) is not None:
+            return "revoked"
+        if getattr(row, "quarantined_at", None) is not None:
+            return "quarantined"
+        rotated_at = getattr(row, "rotated_at", None)
+        grace_until = getattr(row, "grace_until", None)
+        if rotated_at is not None and grace_until is not None:
+            grace_aware = (
+                grace_until
+                if grace_until.tzinfo
+                else grace_until.replace(tzinfo=UTC)
+            )
+            if grace_aware > now:
+                return "rotated"
+        expires_at = getattr(row, "expires_at", None)
+        if expires_at is not None:
+            expires_aware = (
+                expires_at if expires_at.tzinfo else expires_at.replace(tzinfo=UTC)
+            )
+            if expires_aware <= now:
+                # Past TTL but the sweep hasn't auto-quarantined yet.
+                return "expired"
+            if expires_aware <= warning_cutoff:
+                return "expiring"
+        return "active"
+
     key_rows = []
     for k in keys:
         ws = workspace_by_id.get(k.workspace_id)
         key_rows.append(
             {
+                "lifecycle_state": _lifecycle_state(k),
                 "name": k.name,
                 "secret_prefix": k.secret_prefix,
                 "supervisor": bool(k.supervisor),
@@ -66,6 +102,25 @@ async def admin_api_keys_index(request: Request, include_revoked: bool = False) 
                 "created_at": k.created_at.isoformat() if k.created_at else "",
                 "last_used_at": k.last_used_at.isoformat() if k.last_used_at else None,
                 "revoked_at": k.revoked_at.isoformat() if k.revoked_at else None,
+                # Phase 119 — lifecycle columns so the row template can
+                # surface "expiring" / "rotated" / "quarantined" pills.
+                "expires_at": (
+                    k.expires_at.isoformat() if getattr(k, "expires_at", None) else None
+                ),
+                "quarantined_at": (
+                    k.quarantined_at.isoformat()
+                    if getattr(k, "quarantined_at", None)
+                    else None
+                ),
+                "quarantine_reason": getattr(k, "quarantine_reason", None),
+                "rotated_at": (
+                    k.rotated_at.isoformat() if getattr(k, "rotated_at", None) else None
+                ),
+                "grace_until": (
+                    k.grace_until.isoformat()
+                    if getattr(k, "grace_until", None)
+                    else None
+                ),
             }
         )
 
