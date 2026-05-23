@@ -6,6 +6,29 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Phase 118 — API-key token format aufwertung (2026-05-23,
+  rc122 → rc123).**  Replaces the opaque
+  ``secrets.token_urlsafe(32)`` blob with a professional Stripe
+  + GitHub PAT v2 style envelope:
+  ``pql_{env}_v1_{body40}_{crc8}``.  Visible prefix discriminates
+  ``live`` vs ``test`` keys at-a-glance (badged in the admin
+  list), CRC32 suffix enables offline secret-scanner validation,
+  and the GitHub-Secret-Scanning-Partner-Program regex is
+  exported as a single-source-of-truth constant.  Backward
+  compatible: legacy ``token_urlsafe`` keys keep working forever
+  via a parse-v1-first-then-fall-through codepath; no forced
+  rotation.  ``verify_bearer`` short-circuits v1-shaped tokens
+  with a bad CRC before any DB lookup (typo / truncation /
+  tamper → fast 401 with no DB cost).  ``create_api_key``
+  accepts a new ``env: Literal["live", "test"]`` kwarg defaulting
+  to ``"live"``; the admin POST body exposes it as ``env`` and
+  rejects unknown values with 422.  New columns: ``token_format``
+  ('legacy' | 'v1'), ``token_env`` ('legacy' | 'live' | 'test'),
+  widened ``secret_prefix`` 8 → 32 chars.  18 new pytest; new
+  walkthrough at ``docs/admin/api-key-format.md`` covering the
+  format spec, the why-not-JWT rationale, the why-SHA-256
+  rationale, and the GitHub Partner Program registration steps.
+
 - **Phase 117 — External SQL Statement Execution API (2026-05-23,
   rc120 → rc121).**  PointlesSQL gains its first token-only public
   REST surface: a Databricks-compatible SQL Statement Execution

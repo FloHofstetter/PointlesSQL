@@ -2538,6 +2538,59 @@ PointlesSQL
 │           concrete new init step demands it — current 33-step
 │           complexity is structural, not a smell.
 │
+│   ├── Phase 118 — API-key token format aufwertung             ✅ done 2026-05-23
+│   │     **Closed 2026-05-23.**  Five sub-phases bundled in one
+│   │     session, asset 0.1.0rc122 → rc123.  Replaces the
+│   │     ``secrets.token_urlsafe(32)`` opaque blob with a
+│   │     professional Stripe + GitHub PAT v2 style envelope:
+│   │     ``pql_{env}_v1_{body40}_{crc8}``.  Two coexisting
+│   │     formats — legacy keys never need rotation.
+│   │     - **118.1 — Schema.**  Alembic migration
+│   │       ``d3e5f7g9b1c4`` adds ``token_format`` + ``token_env``
+│   │       VARCHAR(8) columns (server_default ``'legacy'``) and
+│   │       widens ``secret_prefix`` from VARCHAR(8) → VARCHAR(32)
+│   │       so the 24-char v1 visible prefix fits.
+│   │     - **118.2 — Format module.**  Promoted the single-file
+│   │       ``services/api_keys.py`` to a package and added
+│   │       ``_token_format.py`` with ``generate_v1_token(env)``
+│   │       (≥235-bit body entropy), ``parse_v1_token`` (regex +
+│   │       CRC32 validation), ``display_prefix_for`` (24-char v1 /
+│   │       8-char legacy), and a ``V1_REGEX`` constant shared with
+│   │       the GitHub Secret Scanning Partner Program form.
+│   │     - **118.3 — Wire create + verify.**  ``create_api_key``
+│   │       accepts ``env: Literal["live", "test"] = "live"``;
+│   │       ``verify_bearer`` short-circuits v1-shaped tokens with
+│   │       a bad CRC before any DB lookup.  Legacy tokens flow
+│   │       through unchanged — ``parse_v1_token`` returns ``None``
+│   │       and the existing SHA-256 lookup runs.  Env-var
+│   │       bootstrap auto-tags rows ``'v1'`` or ``'legacy'`` based
+│   │       on the secret it sees.
+│   │     - **118.4 — Admin surface.**  POST body accepts ``env``;
+│   │       list + create responses include ``token_format`` +
+│   │       ``token_env``.  HTML row shows a coloured badge after
+│   │       the secret prefix (``live`` green / ``test`` yellow /
+│   │       ``legacy`` grey with tooltip).  Create modal gains an
+│   │       Environment chooser.
+│   │     - **118.5 — Doc + asset.**  New walkthrough
+│   │       ``docs/admin/api-key-format.md`` covering format spec,
+│   │       CRC validation, why-not-JWT, why-SHA-256, and the
+│   │       GitHub Secret Scanning Partner Program registration
+│   │       steps.  Asset rc122 → rc123.
+│   │
+│   │     **Why.**  After Phase 117 shipped the public SQL surface,
+│   │     the user inspected the resulting keys and asked whether
+│   │     they could look more professional (à la Stripe / GitHub
+│   │     / OpenAI / Anthropic).  Phase 118 is the answer: visible
+│   │     prefix discriminates env at-a-glance, CRC enables offline
+│   │     secret-scanner validation, regex is GitHub-scanning-
+│   │     compatible so a leaked v1 key in a public repo can be
+│   │     auto-revoked once we register with the partner program.
+│   │
+│   │     **Verification.**  18 new pytest (12 format module + 4
+│   │     gate + 4 admin route).  Existing 57 admin + workspace +
+│   │     legacy + page tests unaffected.  Ruff + pyright +
+│   │     pydoclint clean across the new code surface.
+│   │
 │   ├── Phase 117 — External SQL Statement Execution API       ✅ done 2026-05-23
 │   │     **Closed 2026-05-23.**  Six sub-phases bundled in one
 │   │     session, asset 0.1.0rc120 → rc121.  PointlesSQL's first
