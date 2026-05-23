@@ -2538,6 +2538,66 @@ PointlesSQL
 │           concrete new init step demands it — current 33-step
 │           complexity is structural, not a smell.
 │
+│   ├── Phase 114 — Workspace navigation overhaul              ✅ done 2026-05-23
+│   │     **Closed 2026-05-23.**  Three sub-sprints, three
+│   │     commits, all pushed to origin/main.  Asset 0.1.0rc112
+│   │     → rc115.  Brings the workspace tree to VSCode-Explorer
+│   │     parity on both surfaces (sidebar + ``/notebooks/workspace``
+│   │     full page) — fixing four concrete defects in one phase.
+│   │     - **114.1 (commit ``1ea7220``, asset rc112 → rc113).**
+│   │       Sidebar rebuilt from a flat 30-item list into a
+│   │       nested folder tree (mirrors the full-page UX in a
+│   │       denser column).  Filename filter input at the top,
+│   │       ancestor auto-expansion for matches, edit-route
+│   │       active highlight (``/notebooks/edit/{path}``) — the
+│   │       sidebar finally shows which file is currently open
+│   │       in the editor.  New "+ New" button mounts the create-
+│   │       notebook modal inside the sidebar's own scope via a
+│   │       refactor of ``notebookDialogs()`` from
+│   │       ``getElementById`` to scope-local ``$refs.pathInput``
+│   │       so the workspace-page modal and the sidebar modal can
+│   │       coexist on the same DOM.  Shared CRUD helpers
+│   │       extracted into ``notebook_modal_apis.js`` mixin so the
+│   │       sidebar and page factory both spread the same
+│   │       implementation.  CustomEvent
+│   │       ``pql:workspace:tree-changed`` keeps both surfaces in
+│   │       sync after any mutation.
+│   │     - **114.2 (commit ``3132940``, asset rc113 → rc114).**
+│   │       Right-click context menu + keyboard navigation.
+│   │       Single shared ``installWorkspaceContextMenu()`` mixin
+│   │       wires a floating menu (z-index 1050, above the right
+│   │       drawer, below modals) on both factories.  Notebook
+│   │       items: Open in editor · Open in new tab · Schedule… ·
+│   │       Rename… (F2) · Copy path · Delete… (Del).  Folder
+│   │       items: Expand/Collapse · New notebook here · Copy
+│   │       path.  Keyboard from the tree body: ↑/↓ move focus,
+│   │       →/← expand/collapse folders, Enter opens or toggles,
+│   │       F2 renames, Delete deletes, ``/`` focuses the filter
+│   │       input, Escape closes.  Menu closes on outside click,
+│   │       scroll, window resize, or Escape.
+│   │     - **114.3 (commit ``d1415ec``, asset rc114 → rc115).**
+│   │       Drag-drop move + inline rename.  New
+│   │       ``installWorkspaceDnd()`` mixin spread on both
+│   │       factories — reuses ``_renameNotebookApi`` (move =
+│   │       rename with a different parent prefix); zero backend
+│   │       changes.  Notebook rows draggable (folders not — the
+│   │       backend rename helper only handles files); folder
+│   │       rows accept drops with an accent-dashed outline; the
+│   │       panel root accepts drops too (move to workspace
+│   │       root).  Drop guards: same-parent, descendant-of-self,
+│   │       non-folder target.  Inline rename via F2 OR double-
+│   │       click; Enter commits, Escape cancels, blur commits
+│   │       (matches VSCode).  Auto-selects the basename so the
+│   │       suffix doesn't need re-typing.
+│   │
+│   │     Gates clean across all three sprints (0 ruff, 0
+│   │     pyright errors, pydoclint clean, alembic clean).
+│   │     Playwright-MCP replay confirmed: 0 console errors on
+│   │     both ``/notebooks/edit/...`` and
+│   │     ``/notebooks/workspace`` paths; the create-modal $refs
+│   │     refactor verified by both sidebar and page modals open
+│   │     independently without ID-collision side effects.
+│   │
 │   ├── Phase 113 — Editor surface consolidation                ✅ done 2026-05-22
 │   │     **Closed 2026-05-22.**  Three sub-sprints, three
 │   │     commits, all pushed to origin/main.  Asset 0.1.0rc96
