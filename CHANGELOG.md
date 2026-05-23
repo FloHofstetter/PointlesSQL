@@ -6,6 +6,36 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Phase 119 — API-key lifecycle: TTL + rotation + quarantine
+  (2026-05-23, rc123 → rc124).**  Adds the three operational
+  primitives that turn the Phase-118 token format into a
+  credentials story you can run incident-response on.  Seven new
+  ``api_keys`` columns (all NULL-able, default = "no constraint"
+  so every existing key keeps unchanged behaviour): ``expires_at``,
+  ``rotated_from_id`` (self-FK), ``rotated_at``, ``grace_until``,
+  ``quarantined_at``, ``quarantine_reason``, ``expiry_warned_at``.
+  ``verify_bearer`` now consults each gate in turn — quarantine,
+  expiry, post-grace rotation — and emits a distinct
+  ``api_key.auth_denied.*`` audit row per rejection so admins can
+  debug "why is my key failing".  Four new admin endpoints:
+  ``POST …/rotate`` (mints successor with same scopes + env;
+  predecessor stays valid through configurable grace window
+  default 24h), ``POST …/quarantine`` (soft-disable + required
+  reason for audit context), ``POST …/unquarantine``, ``PATCH …``
+  (update ``expires_at``).  New background sweep
+  ``run_lifecycle_sweep`` runs hourly by default: auto-quarantines
+  expired keys with reason ``"auto:expired"`` + emits one
+  ``api_key.expiry_warning`` audit row per key entering the
+  14-day-default warning window.  ``update_api_key_ttl`` clears
+  the warning marker so a TTL bump re-arms naturally.  Admin UI
+  gains status pills (revoked / quarantined / rotated / expiring
+  / active), an action button-group (Rotate / Quarantine /
+  Unquarantine / Revoke), and a TTL chooser in the create modal.
+  19 new pytest; new walkthrough at
+  ``docs/admin/api-key-lifecycle.md`` covering states, rotation
+  playbook, quarantine-vs-revoke decision, TTL guidance, and the
+  audit-event catalogue.
+
 - **Phase 118 — API-key token format aufwertung (2026-05-23,
   rc122 → rc123).**  Replaces the opaque
   ``secrets.token_urlsafe(32)`` blob with a professional Stripe

@@ -2538,6 +2538,69 @@ PointlesSQL
 │           concrete new init step demands it — current 33-step
 │           complexity is structural, not a smell.
 │
+│   ├── Phase 119 — API-key lifecycle (TTL+rotation+quarantine) ✅ done 2026-05-23
+│   │     **Closed 2026-05-23.**  Six sub-phases bundled in one
+│   │     session, asset 0.1.0rc123 → rc124.  Adds the three
+│   │     operational primitives that turn the Phase-118 token format
+│   │     into a credentials story you can run incident-response on:
+│   │     TTL with 14-day warning, rotation with 24h grace window,
+│   │     soft quarantine that's reversible.  Every existing key
+│   │     keeps unchanged behaviour — all seven new columns default
+│   │     NULL = "no constraint", and admins opt in per key.
+│   │     - **119.1 — Schema.**  Alembic migration
+│   │       ``e5g7h9j1k3l5`` adds 7 nullable columns to ``api_keys``:
+│   │       ``expires_at``, ``rotated_from_id`` (self-FK,
+│   │       ``ondelete='SET NULL'``), ``rotated_at``, ``grace_until``,
+│   │       ``quarantined_at``, ``quarantine_reason`` (max 200),
+│   │       ``expiry_warned_at`` (dedup marker).
+│   │     - **119.2 — verify_bearer gates.**  Quarantine check, expiry
+│   │       check, post-grace rotation check — each rejection emits a
+│   │       distinct ``api_key.auth_denied.*`` audit row (audit
+│   │       failures swallowed so a broken audit table can never
+│   │       break auth).  Helper ``_as_aware_utc`` normalises naive
+│   │       SQLite TZ reads to UTC-aware so comparisons work on both
+│   │       dialects without branching.
+│   │     - **119.3 — Admin endpoints.**  ``POST …/rotate`` (mints
+│   │       successor, sets predecessor grace), ``POST …/quarantine``
+│   │       (soft-disable + reason), ``POST …/unquarantine``,
+│   │       ``PATCH …`` (update ``expires_at``).  Service-layer
+│   │       additions ``rotate_api_key`` / ``quarantine_api_key`` /
+│   │       ``unquarantine_api_key`` / ``update_api_key_ttl`` —
+│   │       each calls ``invalidate_cache()`` so user-visible
+│   │       latency is ~0 in the single-worker case.
+│   │     - **119.4 — Sweep + lifespan.**  New
+│   │       ``services/api_keys/_lifecycle_sweep.py`` with
+│   │       ``run_lifecycle_sweep`` — per tick auto-quarantines
+│   │       expired keys (or audit-only if flag off) + emits one
+│   │       ``api_key.expiry_warning`` per key entering the window.
+│   │       ``update_api_key_ttl`` clears ``expiry_warned_at`` so a
+│   │       TTL bump re-arms the warning naturally.  Wired as
+│   │       ``_api_key_lifecycle_sweep_loop`` next to the
+│   │       audit-retention loop in lifespan.  New
+│   │       ``ApiKeyLifecycleSettings`` group (env prefix
+│   │       ``POINTLESSQL_API_KEY_LIFECYCLE_``) with 5 tunables.
+│   │     - **119.5 — Admin HTML.**  Status column gains four new
+│   │       pills (revoked / quarantined / rotated / expiring /
+│   │       active) with tooltip context.  Actions column becomes
+│   │       a button-group with Rotate / Quarantine /
+│   │       Unquarantine / Revoke; rotate replays through the
+│   │       existing "API key created" modal so operators get 24h
+│   │       to copy the new secret.  Create modal gains a TTL
+│   │       chooser (None / 30d / 90d / 180d / 1 year) — non-zero
+│   │       fires a follow-up PATCH to set ``expires_at``.
+│   │     - **119.6 — Doc + asset.**  New walkthrough
+│   │       ``docs/admin/api-key-lifecycle.md`` covers states,
+│   │       rotation playbook, quarantine-vs-revoke decision,
+│   │       TTL guidance, sweep behaviour, audit-event catalogue,
+│   │       settings reference, known limitations.  Asset
+│   │       rc123 → rc124.
+│   │
+│   │     **Verification.**  19 new pytest across two files (11 in
+│   │     test_api_key_lifecycle.py covering gates + sweep + dedup,
+│   │     8 in test_admin_api_keys_routes.py covering all four new
+│   │     admin endpoints).  Existing 66 api-key tests pass.  Ruff
+│   │     + pyright + pydoclint clean across the new surface.
+│   │
 │   ├── Phase 118 — API-key token format aufwertung             ✅ done 2026-05-23
 │   │     **Closed 2026-05-23.**  Five sub-phases bundled in one
 │   │     session, asset 0.1.0rc122 → rc123.  Replaces the
