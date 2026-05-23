@@ -31,6 +31,7 @@ from pointlessql.config._settings._auth import (
     OIDCSettings,
 )
 from pointlessql.config._settings._features import (
+    ApiKeyAclSettings,
     ApiKeyLifecycleSettings,
     BranchSettings,
     CoeditSettings,
@@ -89,6 +90,7 @@ class Settings(BaseSettings):
     api_key_lifecycle: ApiKeyLifecycleSettings = Field(
         default_factory=ApiKeyLifecycleSettings
     )
+    api_key_acl: ApiKeyAclSettings = Field(default_factory=ApiKeyAclSettings)
     editor_chat: EditorChatSettings = Field(default_factory=EditorChatSettings)
     agent_runs: AgentRunsSettings = Field(default_factory=AgentRunsSettings)
     audit_stream: AuditStreamSettings = Field(default_factory=AuditStreamSettings)
@@ -107,6 +109,7 @@ class Settings(BaseSettings):
 
 __all__ = [
     "AgentRunsSettings",
+    "ApiKeyAclSettings",
     "ApiKeyLifecycleSettings",
     "AuditSettings",
     "AuditStreamSettings",

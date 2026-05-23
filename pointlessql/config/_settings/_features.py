@@ -69,6 +69,33 @@ class SqlExecutionApiSettings(BaseSettings):
     cancel_interrupt_grace_seconds: int = 5
 
 
+class ApiKeyAclSettings(BaseSettings):
+    """Phase 120 — per-API-key ACL + usage-aggregation settings.
+
+    Reads ``POINTLESSQL_API_KEY_ACL_*`` environment variables.
+
+    ``enforce_catalog_grants`` and ``enforce_ip_grants`` are global
+    kill-switches.  When ``False`` the corresponding ACL check
+    short-circuits to "allowed" for every request — useful during
+    incident response if a misconfigured grant locks out a critical
+    integration.
+
+    ``usage_flush_interval_seconds`` is how often the in-process
+    Counter is drained into the ``api_key_usage_buckets`` table.
+    Default 30 s matches the scheduler tick.
+
+    ``usage_retention_days`` bounds the dashboard window; older
+    buckets are pruned by the retention sweep.
+    """
+
+    model_config = SettingsConfigDict(env_prefix="POINTLESSQL_API_KEY_ACL_")
+
+    enforce_catalog_grants: bool = True
+    enforce_ip_grants: bool = True
+    usage_flush_interval_seconds: int = 30
+    usage_retention_days: int = 30
+
+
 class ApiKeyLifecycleSettings(BaseSettings):
     """Phase 119 — API-key TTL / rotation / quarantine periodic maintenance.
 

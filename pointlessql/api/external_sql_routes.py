@@ -426,6 +426,65 @@ async def submit_statement(
     workspace_id = int(getattr(request.state, "workspace_id", 1) or 1)
     actor_email = effective_principal(request) or f"api_key:{api_key_name}"
 
+    # Phase 120 — per-key catalog ACL.  Runs after parse + qualify so
+    # the AST walker sees the same fully-qualified table refs the
+    # downstream UC enforcement sees.  Zero grants = unrestricted
+    # (back-compat for every pre-120 key).
+    settings_obj = getattr(request.app.state, "settings", None)
+    enforce_catalog = (
+        settings_obj is not None
+        and getattr(settings_obj, "api_key_acl", None) is not None
+        and bool(settings_obj.api_key_acl.enforce_catalog_grants)
+        and api_key_id > 0
+    )
+    if enforce_catalog:
+        from pointlessql.services.api_keys._acl import (
+            check_catalog_allowed,
+            load_catalog_grants_for,
+        )
+        from pointlessql.services.audit import _core as audit_core
+
+        catalog_grants = load_catalog_grants_for(
+            request.app.state.session_factory, api_key_id=api_key_id
+        )
+        result = check_catalog_allowed(
+            catalog_grants,
+            prepared_sql,
+            default_catalog=catalog,
+            default_schema=schema_name,
+        )
+        if not result.allowed:
+            try:
+                audit_core.log_action(
+                    request.app.state.session_factory,
+                    user_id=0,
+                    user_email=actor_email,
+                    action="api_key.access_denied.catalog",
+                    target=f"api_key:{api_key_name}",
+                    detail={
+                        "catalog": result.denied_catalog,
+                        "schema": result.denied_schema,
+                        "key_name": api_key_name,
+                    },
+                    actor_role="system",
+                    workspace_id=workspace_id,
+                )
+            except Exception:  # noqa: BLE001 — audit must never break auth
+                logger.debug(
+                    "Failed to emit api_key.access_denied.catalog audit",
+                    exc_info=True,
+                )
+            return JSONResponse(
+                error_envelope(
+                    statement_id=statement_id,
+                    error_code="PERMISSION_DENIED",
+                    message=(
+                        f"api key {api_key_name!r} is not granted access to "
+                        f"{result.denied_catalog}.{result.denied_schema or '*'}"
+                    ),
+                )
+            )
+
     _persist_pending(
         request,
         statement_id=statement_id,

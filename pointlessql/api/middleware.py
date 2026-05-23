@@ -149,6 +149,41 @@ async def auth_middleware(request: Request, call_next: Any) -> Response:
             factory,
         )
         if entry is not None:
+            # Phase 120 — IP allowlist gate.  Runs before any state is
+            # attached so a denied request looks indistinguishable from
+            # an unauthenticated one + emits a distinct audit row.
+            settings_for_acl = getattr(request.app.state, "settings", None)
+            enforce_ip = (
+                settings_for_acl is not None
+                and getattr(settings_for_acl, "api_key_acl", None) is not None
+                and bool(settings_for_acl.api_key_acl.enforce_ip_grants)
+            )
+            if enforce_ip and factory is not None:
+                from pointlessql.api.rate_limit_middleware import (
+                    _client_ip,  # pyright: ignore[reportPrivateUsage]
+                )
+                from pointlessql.services.api_keys._acl import (
+                    check_ip_allowed,
+                    load_ip_grants_for,
+                )
+
+                ip_grants = load_ip_grants_for(factory, api_key_id=entry.id)
+                rl_settings = getattr(settings_for_acl, "rate_limit", None)
+                trust_xff = bool(
+                    getattr(rl_settings, "trust_x_forwarded_for", False)
+                )
+                source_ip = _client_ip(request, trust_xff)
+                if not check_ip_allowed(ip_grants, source_ip):
+                    _emit_ip_denied_audit(factory, entry, source_ip)
+                    return JSONResponse(
+                        status_code=403,
+                        content={
+                            "error_code": "IP_NOT_ALLOWED",
+                            "message": (
+                                f"source IP {source_ip!r} is not in the allowlist for this key"
+                            ),
+                        },
+                    )
             request.state.api_key_name = entry.name
             request.state.api_key_supervisor = entry.supervisor
             request.state.api_key_auditor = entry.auditor
@@ -257,6 +292,28 @@ def _read_workspace_slug_from_session(request: Request) -> str | None:
         return None
     cleaned = raw.strip()
     return cleaned or None
+
+
+def _emit_ip_denied_audit(factory: Any, entry: Any, source_ip: str) -> None:
+    """Audit a 403 IP_NOT_ALLOWED rejection.  Best-effort; swallows failures."""
+    try:
+        from pointlessql.services.audit import _core as audit_core
+
+        audit_core.log_action(
+            factory,
+            user_id=0,
+            user_email=f"api_key:{entry.name}",
+            action="api_key.access_denied.ip",
+            target=f"api_key:{entry.name}",
+            detail={"source_ip": source_ip, "key_name": entry.name},
+            actor_role="system",
+            client_ip=source_ip,
+            workspace_id=int(entry.workspace_id),
+        )
+    except Exception:  # noqa: BLE001 — audit must never break auth
+        logger.debug(
+            "Failed to emit api_key.access_denied.ip audit for %s", entry.name, exc_info=True
+        )
 
 
 def _workspace_forbidden(path: str) -> Response:
