@@ -198,3 +198,63 @@ async def test_non_admin_cannot_revoke(non_admin_client: httpx.AsyncClient) -> N
     resp = await non_admin_client.post("/api/admin/api-keys/anything/revoke")
     assert resp.status_code == 403
     _wipe()
+
+
+@pytest.mark.asyncio
+async def test_create_returns_token_format_and_env_fields(
+    admin_client: httpx.AsyncClient,
+) -> None:
+    """Phase 118 — create response surfaces token_format + token_env."""
+    _wipe()
+    response = await admin_client.post(
+        "/api/admin/api-keys", json={"name": "v1-key"}
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["token_format"] == "v1"
+    assert body["token_env"] == "live"
+    assert body["secret"].startswith("pql_live_v1_")
+    _wipe()
+
+
+@pytest.mark.asyncio
+async def test_create_with_env_test_yields_test_token(
+    admin_client: httpx.AsyncClient,
+) -> None:
+    _wipe()
+    response = await admin_client.post(
+        "/api/admin/api-keys", json={"name": "staging", "env": "test"}
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["token_env"] == "test"
+    assert body["secret"].startswith("pql_test_v1_")
+    _wipe()
+
+
+@pytest.mark.asyncio
+async def test_create_rejects_unknown_env(
+    admin_client: httpx.AsyncClient,
+) -> None:
+    _wipe()
+    response = await admin_client.post(
+        "/api/admin/api-keys", json={"name": "k", "env": "prod"}
+    )
+    assert response.status_code == 422
+    _wipe()
+
+
+@pytest.mark.asyncio
+async def test_list_includes_token_format_and_env(
+    admin_client: httpx.AsyncClient,
+) -> None:
+    _wipe()
+    await admin_client.post(
+        "/api/admin/api-keys", json={"name": "k", "env": "test"}
+    )
+    listing = await admin_client.get("/api/admin/api-keys")
+    keys = listing.json()["keys"]
+    assert len(keys) == 1
+    assert keys[0]["token_format"] == "v1"
+    assert keys[0]["token_env"] == "test"
+    _wipe()

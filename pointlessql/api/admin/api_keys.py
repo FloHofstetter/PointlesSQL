@@ -45,6 +45,8 @@ def _serialize(row: Any) -> dict[str, Any]:
         "lineage_inbound": bool(getattr(row, "lineage_inbound", False)),
         "analyst": bool(getattr(row, "analyst", False)),
         "sql_execute": bool(getattr(row, "sql_execute", False)),
+        "token_format": getattr(row, "token_format", "legacy") or "legacy",
+        "token_env": getattr(row, "token_env", "legacy") or "legacy",
         "created_at": row.created_at.isoformat() if row.created_at else None,
         "revoked_at": row.revoked_at.isoformat() if row.revoked_at else None,
         "last_used_at": (row.last_used_at.isoformat() if row.last_used_at else None),
@@ -81,18 +83,22 @@ async def api_admin_create_api_key(
     Args:
         request: Incoming FastAPI request.
         body: JSON ``{name: str, supervisor?: bool, auditor?: bool,
-            workspace_id?: int}``.  ``workspace_id`` defaults to ``1``
-            (the install-default workspace) so single-tenant clients
-            never have to name one.
+            lineage_inbound?: bool, analyst?: bool, sql_execute?: bool,
+            workspace_id?: int, env?: 'live' | 'test'}``.  ``workspace_id``
+            defaults to ``1`` (the install-default workspace) so
+            single-tenant clients never have to name one.  ``env``
+            defaults to ``'live'``; ``'test'`` mints visually distinct
+            keys for staging / CI integration.
 
     Returns:
         ``{name, secret, secret_prefix, supervisor, auditor,
-        created_at}`` — ``secret`` is the plaintext, persist it
-        now or lose it.
+        lineage_inbound, analyst, sql_execute, token_format,
+        token_env, created_at}`` — ``secret`` is the full plaintext
+        token, persist it now or lose it.
 
     Raises:
-        ValidationError: ``name`` missing or empty, or
-            ``workspace_id`` not a positive int.
+        ValidationError: ``name`` missing or empty, ``workspace_id``
+            not a positive int, or ``env`` not ``'live'`` / ``'test'``.
     """
     require_admin(request)
     name_raw = body.get("name")
@@ -106,6 +112,9 @@ async def api_admin_create_api_key(
     workspace_id_raw = body.get("workspace_id", 1)
     if not isinstance(workspace_id_raw, int) or workspace_id_raw < 1:
         raise ValidationError("workspace_id must be a positive integer")
+    env_raw = body.get("env", "live")
+    if env_raw not in ("live", "test"):
+        raise ValidationError("env must be 'live' or 'test'")
     user = get_user(request)
     try:
         row, plaintext = api_keys_service.create_api_key(
@@ -118,6 +127,7 @@ async def api_admin_create_api_key(
             sql_execute=sql_execute,
             created_by_user_id=user.get("id") or None,
             workspace_id=workspace_id_raw,
+            env=env_raw,
         )
     except ValueError as exc:
         raise ValidationError(str(exc)) from exc
@@ -132,6 +142,7 @@ async def api_admin_create_api_key(
             "analyst": analyst,
             "sql_execute": sql_execute,
             "workspace_id": workspace_id_raw,
+            "env": env_raw,
         },
     )
     return {
@@ -143,6 +154,8 @@ async def api_admin_create_api_key(
         "lineage_inbound": bool(getattr(row, "lineage_inbound", False)),
         "analyst": bool(getattr(row, "analyst", False)),
         "sql_execute": bool(getattr(row, "sql_execute", False)),
+        "token_format": getattr(row, "token_format", "v1") or "v1",
+        "token_env": getattr(row, "token_env", env_raw) or env_raw,
         "created_at": row.created_at.isoformat() if row.created_at else None,
     }
 

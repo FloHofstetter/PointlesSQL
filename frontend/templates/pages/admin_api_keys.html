@@ -85,7 +85,18 @@
                 <tr data-api-key-name="{{ k.name }}"
                     x-data='apiKeyRow({{ k.name|tojson }}, {{ (k.revoked_at is not none)|tojson }})'>
                     <td data-label="Name"><strong>{{ k.name }}</strong></td>
-                    <td data-label="Prefix" class="font-monospace small">{{ k.secret_prefix }}…</td>
+                    <td data-label="Prefix" class="font-monospace small">
+                        {{ k.secret_prefix }}…
+                        {% if k.token_format == 'v1' %}
+                            {% if k.token_env == 'test' %}
+                            <span class="badge bg-warning text-dark ms-1" title="Test-mode token; visually distinct in audit logs.">test</span>
+                            {% else %}
+                            <span class="badge bg-success ms-1" title="Production (live) token.">live</span>
+                            {% endif %}
+                        {% else %}
+                        <span class="badge bg-secondary ms-1" title="Legacy ``secrets.token_urlsafe`` token; pre-Phase-118 format.  Still valid; rotate via create+revoke to upgrade.">legacy</span>
+                        {% endif %}
+                    </td>
                     <td data-label="Scopes" class="small">
                         {% if k.supervisor %}
                         <span class="badge bg-warning text-dark">supervisor</span>
@@ -161,7 +172,7 @@
                 <div class="form-text">Unique label, max 64 chars.  Used as audit attribution.</div>
             </div>
 
-            <div class="col-md-6">
+            <div class="col-md-4">
                 <label class="form-label small mb-1">Workspace</label>
                 <select class="form-select form-select-sm" x-model.number="form.workspaceId">
                     {% for ws in workspace_choices %}
@@ -171,6 +182,15 @@
                     {% endfor %}
                 </select>
                 <div class="form-text">Bearer requests inherit this as resolved workspace.</div>
+            </div>
+
+            <div class="col-md-2">
+                <label class="form-label small mb-1">Environment</label>
+                <select class="form-select form-select-sm" x-model="form.env">
+                    <option value="live">live</option>
+                    <option value="test">test</option>
+                </select>
+                <div class="form-text">Embedded in the token (<code>pql_live_v1_…</code> / <code>pql_test_v1_…</code>).</div>
             </div>
         </div>
 
@@ -310,6 +330,7 @@ window.apiKeyCreate = function () {
         form: {
             name: '',
             workspaceId: {{ default_workspace_id }},
+            env: 'live',
             supervisor: false,
             auditor: false,
             lineageInbound: false,
@@ -334,6 +355,7 @@ window.apiKeyCreate = function () {
                 analyst: this.form.analyst,
                 sql_execute: this.form.sqlExecute,
                 workspace_id: this.form.workspaceId,
+                env: this.form.env,
             };
             const res = await window.pqlApi.fetch('/api/admin/api-keys', {
                 method: 'POST',
@@ -347,6 +369,7 @@ window.apiKeyCreate = function () {
                 }
                 window.pqlToast?.success(`API key "${res.data.name}" created.`);
                 this.form.name = '';
+                this.form.env = 'live';
                 this.form.supervisor = false;
                 this.form.auditor = false;
                 this.form.lineageInbound = false;
