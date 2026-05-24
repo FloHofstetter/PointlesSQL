@@ -1,6 +1,6 @@
 # Browser Notebook editor walkthrough
 
-> **Mode:** `browser` · **Phase:** 66 · **Surface:** `/notebooks/edit/{path}` cell-by-cell editor
+> **Mode:** `browser` · **Surface:** `/notebooks/edit/{path}` cell-by-cell editor
 
 End-to-end exercise of the resurrected notebook editor (Phases 66.0
 → 66.7).  Admin creates a notebook from the workspace tree, opens

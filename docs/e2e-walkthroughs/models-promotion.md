@@ -1,6 +1,6 @@
 # E2E walkthrough — Champion/Challenger model promotion
 
-> **Mode:** `hermes` · **Phase:** 21 · **Surface:** Hermes plugin promote-tool
+> **Mode:** `hermes` · **Surface:** Hermes plugin promote-tool
 
 This playbook validates the supervisor-only promotion-hop UI added
 in. The vertical slice: an operator browses to a

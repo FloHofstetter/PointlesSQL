@@ -1,6 +1,6 @@
 # Operational walkthrough
 
-> **Mode:** `browser` · **Phase:** 9 · **Surface:** /healthz + /metrics + X-Request-ID
+> **Mode:** `browser` · **Surface:** /healthz + /metrics + X-Request-ID
 
 Exercises the cross-cutting operational surface: the public
 `/healthz` probe, the admin-gated Prometheus `/metrics` endpoint,

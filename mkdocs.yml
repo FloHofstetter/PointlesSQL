@@ -176,7 +176,7 @@ nav:
               - Model compare: e2e-walkthroughs/model-compare.md
               - Models promotion: e2e-walkthroughs/models-promotion.md
               - Inference lineage: e2e-walkthroughs/inference-lineage.md
-              - Reflexive tools: e2e-walkthroughs/sprint_13_11_reflexive_tools.md
+              - Reflexive tools: e2e-walkthroughs/reflexive_tools.md
   - Reference:
       - reference/index.md
       - Python API:

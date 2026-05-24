@@ -1,6 +1,6 @@
 # Catalog-browsing walkthrough
 
-> **Mode:** `browser` · **Phase:** 1 · **Surface:** /catalogs/* + sidebar tree
+> **Mode:** `browser` · **Surface:** /catalogs/* + sidebar tree
 
 Click-through of the read-only browsing surface: the `/`
 welcome screen, the catalog/schema/table detail pages, the

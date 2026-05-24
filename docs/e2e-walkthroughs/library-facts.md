@@ -1,4 +1,4 @@
-# library/facts — pin-to-memory browse page (Phase 97.X.2 / 97.X.3)
+# library/facts — pin-to-memory browse page
 
 **Mode**: playbook
 **Phase**: 97 — Pin-to-Memory

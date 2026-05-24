@@ -1,6 +1,6 @@
 # Native notebook editor walkthrough
 
-> **Mode:** `browser` · **Phase:** 12.10 · **Surface:** Native .py notebook editor
+> **Mode:** `browser` · **Surface:** Native .py notebook editor
 
 > **⚠️ Partial refresh status (Sprint H.3, 2026-05-12):**  Routes
 > updated for Phase-12.12's `/notebooks/edit/` →
@@ -16,7 +16,7 @@
 > the source of truth.  Comprehensive refresh queued as a
 > follow-up phase (out of scope for the Sprint-H.3 sweep).
 > File-path links in the "Critical files" footers may also point
-> at pre-Phase-12.12 module locations (e.g.
+> at previous module locations (e.g.
 > `notebook_workspace.py` is now `notebook/_workspace.py`).
 
 Verifies the Monaco-based notebook editor end-to-end —
@@ -29,7 +29,7 @@ playbook (the embedded JupyterLab iframe retired).
 ## Preconditions
 
 - Stack up with the e2e overlay; **any authenticated user** can
-  reach the editor (Phase 70 dropped the admin gate). Run both
+  reach the editor. Run both
   admin and member personas through the full walkthrough.
 - `notebooks/` is writable by the PointlesSQL process (default
  for both local dev and the Docker overlay).
@@ -290,7 +290,7 @@ This class of bug escaped every –63 gate because
 templates + Alpine x-data expressions, and the playbook (which
 was going to catch it) landed in the same sprint as the bug.
 **Lesson**: run the playbook as a gate, not a close-out, when
-the sprint touches Alpine scopes.
+the Alpine scopes.
 
 **BUG-64-02** (commit TBD). After BUG-64-01's x-data fix, Alpine
 mounted the editor scope but `mount()` froze on the very first
@@ -470,8 +470,7 @@ markdown cell.
 
 **No backend changes.** The ``notebook_cell_runs`` schema from
 Alembic 017 already reserves the ``execution_count``,
-``started_at``, ``finished_at`` columns — will be the
-sprint that actually writes them back from the server.
+``started_at``, ``finished_at`` columns — will be the actually writes them back from the server.
 
 ### What the replay caught
 
@@ -1772,8 +1771,7 @@ catch-and-log in mount hid.
 
 ### close
 
- is the final sprint of. The phase-12.7
-ROADMAP node flips ``⏳ open`` → ``✅ done``. Summary of what
+ is the final sprint of. the ROADMAP node flips ``⏳ open`` → ``✅ done``. Summary of what
 landed across the phase:
 
 - **** — module split + closure-refs factory + BUG-64-02
@@ -1917,7 +1915,7 @@ post-fix renderer's widget branch without manual cache-bust.
  (``rgb(30, 30, 30)`` → ``rgb(255, 255, 254)``) — confirms the
  per-tab listener picks up cross-tab broadcasts as designed.
 
-## Part P — : pin-to-memory (Phase 97.X.1 / 97.X.2 / 97.X.3)
+## Part P — : pin-to-memory
 
 **Preconditions.**
 
@@ -1969,7 +1967,7 @@ branch live.
 
 **P5 — Phase 97 closure.** Open
 [ROADMAP.md](https://github.com/FloHofstetter/PointlesSQL/blob/main/ROADMAP.md);
-scroll to the Phase 97 node. Assert: marker reads ✅ shipped
+scroll to the node. Assert: marker reads ✅ shipped
 with commit refs for 97.X.1 / 97.X.2 / 97.X.3; the
 ``Pin-to-memory`` sub-bullet is closed; the ``Shoreguard
 signing`` sub-bullet is annotated as a genuine blocker waiting

@@ -1,6 +1,6 @@
 # Incident-Responder e2e walkthrough
 
-> **Mode:** `hermes` · **Phase:** 19 · **Surface:** Hermes one-shot persona
+> **Mode:** `hermes` · **Surface:** Hermes one-shot persona
 
 exercises the Hermes-one-shot Incident-Responder
 persona against a synthetic broken agent run. Asserts the three

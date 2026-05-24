@@ -1,8 +1,8 @@
 # Data Products — yaml-declared UC schemas
 
-> **Mode:** `hybrid` · **Phase:** 50 · **Surface:** yaml reload (curl) + `/data-products` browse + 5-tab detail
+> **Mode:** `hybrid` · **Surface:** yaml reload (curl) + `/data-products` browse + 5-tab detail
 
-Replays the Phase-50 happy path: a data team commits a
+Replays the happy path: a data team commits a
 `pointlessql.yaml` declaring their schema as a data product;
 PointlesSQL caches it; subsequent `pql.write` calls are
 contract-checked, the cockpit shows compliance, and a stale
@@ -155,14 +155,13 @@ Browser-only verifications after the curl reload completes:
 7. `browser_evaluate('() => fetch("/api/data-products").then(r => r.json())')`
    — assert the JSON keys match what the cards rendered.
 
-## Marketplace polish (Phase 71)
+## Marketplace polish
 
-> **Phase:** 71 · **Surface:** ``/data-products`` browse + the
+> **Surface:** ``/data-products`` browse + the
 > per-product detail tabs (Discussion / Reviews / README) + the
 > new ``/notifications`` inbox.
 
-Phase 71 layered six social affordances on top of the Phase-50
-data-product surface.  Replay these after the curl-reload above
+Phase 71 layered six social affordances on top of the data-product surface.  Replay these after the curl-reload above
 has the cached product visible:
 
 1. **Discussion tab**:

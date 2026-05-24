@@ -1,8 +1,8 @@
 # Agent-review detail walkthrough
 
-> **Mode:** `browser` · **Phase:** 19 · **Surface:** `/agent-reviews/{review_id}`
+> **Mode:** `browser` · **Surface:** `/agent-reviews/{review_id}`
 
-Covers the per-review detail page surfaced by Phase 19's
+Covers the per-review detail page surfaced 's
 Audit-Reviewer-Agent: a markdown summary card, an optional raw
 replay-payload card (tool-call transcript), a metadata sidebar,
 and a dispatcher fan-out card listing every webhook destination
@@ -135,5 +135,4 @@ deep-dive for one row.
 
 ## Found bugs
 
-_None recorded yet — first replay is part of the Phase 41
-Playwright-coverage pass._
+_None recorded yet — first replay is part of the Playwright-coverage pass._

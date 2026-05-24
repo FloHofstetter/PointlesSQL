@@ -1,6 +1,6 @@
 # UX overhaul walkthrough
 
-> **Mode:** `browser` · **Phase:** 17 · **Surface:** Sidebar + theme + density overhaul
+> **Mode:** `browser` · **Surface:** Sidebar + theme + density overhaul
 
 's UX-overhaul pass — exercises the keyboard-shortcut registry,
 the shared `pqlApi` fetch + toast flow, and the new

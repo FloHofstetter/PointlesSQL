@@ -1,8 +1,8 @@
 # Agent EXPLAIN-driven self-rewrite loop walkthrough
 
-> **Mode:** `hybrid` · **Phase:** 39 · **Surface:** Hermes plugin + run-detail tab
+> **Mode:** `hybrid` · **Surface:** Hermes plugin + run-detail tab
 
-Exercises the Phase-39 explain-first rewrite loop end to end:
+Exercises the explain-first rewrite loop end to end:
 
 - The Hermes plugin's [`pql_query`](../../../hermes-plugin-pointlessql/hermes_plugin_pointlessql/tools/query.py)
   tool calls `GET /api/sql/explain` before `POST /api/sql/execute`.

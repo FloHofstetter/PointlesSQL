@@ -1,6 +1,6 @@
 # List-page polish walkthrough
 
-> **Mode:** `browser` · **Phase:** 17 · **Surface:** List-page polish (sticky headers, density)
+> **Mode:** `browser` · **Surface:** List-page polish (sticky headers, density)
 
 Covers the list-page polish: client-side search, sortable
 column headers, filter chips, cron humanization, "last run" column

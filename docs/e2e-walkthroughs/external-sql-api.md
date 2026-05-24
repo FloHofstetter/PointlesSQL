@@ -263,7 +263,7 @@ phase-117 ROADMAP entry as `BUG-117-Xn` items.
 
 ## Out of scope for v1
 
-- DML / DDL (Phase 117 is SELECT-only; DML lands in Phase 118 with
+- DML / DDL (Phase 117 is SELECT-only; DML lands with
   the approval-flow integration).
 - `format=ARROW_STREAM` (rejected with 400).
 - `disposition=EXTERNAL_LINKS` (rejected with 400; would need S3 /

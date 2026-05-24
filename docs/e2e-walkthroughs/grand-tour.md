@@ -1,6 +1,6 @@
 # Grand Tour — the whole product in one walkthrough
 
-> **Mode:** `browser` · **Phase:** 0 · **Surface:** 30-min single-coherent UI tour
+> **Mode:** `browser` · **Surface:** 30-min single-coherent UI tour
 
 A single 30-40 minute click-through that visits every major UI
 surface PointlesSQL ships: catalog browsing, lineage row+column+value
@@ -52,7 +52,7 @@ already run and the demo user exists.
  the agent-review card (latest verdict, severity badge).
  - Assert: top-right user menu shows `demo@local` and an admin
  badge (first-user bootstrap).
- - Note: the topbar workspace switcher (Phase 28) is **hidden**
+ - Note: the topbar workspace switcher is **hidden**
  on the seeded stack because only the bootstrap `default`
  workspace exists. To see it, create a second workspace via
  `/admin/workspaces` first; the switcher then renders as a
@@ -335,7 +335,7 @@ the same DAG as the upstream training source.
 
 1. **Admin landing → audit log**.
  - Action: click the gear icon in the icon-rail. Lands on `/admin`
- (Phase 33 landing) — a 5-card grid of admin surfaces:
+ — a 5-card grid of admin surfaces:
  Audit log, External writes, Workspaces, Audit sinks, Review
  destinations. Click "Audit log" (or directly `/admin/audit`).
  - Assert: paginated table of audit events; filter chips for
@@ -411,7 +411,7 @@ the same DAG as the upstream training source.
 2. **Volume browser**.
  - Action: navigate to `/volumes/demo_ml.bronze.demo_vol`.
  - Assert: page renders the volume metadata (storage_location,
- EXTERNAL type, the phase-2 demo comment) plus an "Upload a
+ EXTERNAL type, the demo comment) plus an "Upload a
  file" form and a Files panel. The Files panel may show
  `houses.csv` if the seed-demo's `_step_volumes_notebooks`
  upload landed (it's best-effort: the multipart POST can

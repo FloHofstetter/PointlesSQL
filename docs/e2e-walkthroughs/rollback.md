@@ -1,6 +1,6 @@
 # Rollback walkthrough
 
-> **Mode:** `browser` · **Phase:** 16 · **Surface:** /runs/{id} admin rollback card
+> **Mode:** `browser` · **Surface:** /runs/{id} admin rollback card
 
 **** — closes (First-Class Rollback). Replay
 this playbook to verify the audit→action loop in headful Firefox:

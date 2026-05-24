@@ -1,10 +1,9 @@
 # Admin console walkthrough
 
-> **Mode:** `browser` · **Phase:** 33 · **Surface:** /admin/* landing + 7 cards
+> **Mode:** `browser` · **Surface:** /admin/* landing + 7 cards
 
-End-to-end exercise of every page reachable from the Phase 33
-admin landing at `/admin`: the 7-card landing index, the
-`/admin/external-writes` scanner (Phase 14), the
+End-to-end exercise of every page reachable from the admin landing at `/admin`: the 7-card landing index, the
+`/admin/external-writes` scanner, the
 `/admin/api-keys` CRUD with plaintext-secret modal,
 `/admin/review-destinations`, and `/admin/system-info`. Audit
 sinks have their own playbook ([audit-sinks.md](audit-sinks.md));
@@ -39,7 +38,7 @@ nav-from-landing flow is exercised end-to-end.
      "Admin". Right-aligned hint reads "Operator-only surfaces.".
 
 2. **Verify all 8 cards in the grid** (load-bearing — the count
-   grew from 7 to 8 in Phase 40.6 with the addition of the CDF
+   grew from 7 to 8 with the addition of the CDF
    subscriptions card).
    - Action:
      ```js

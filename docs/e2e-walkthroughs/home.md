@@ -1,6 +1,6 @@
 # Home dashboard walkthrough
 
-> **Mode:** `browser` · **Phase:** 1 · **Surface:** / landing + sparkline + recent-cards
+> **Mode:** `browser` · **Surface:** / landing + sparkline + recent-cards
 
 Covers the home page: welcome header, 7-day success-rate
 sparkline, latest-runs table, Recent catalogs card driven by

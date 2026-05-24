@@ -79,7 +79,7 @@ Claude Code through Playwright MCP.
 [models-tab.md](../e2e-walkthroughs/models-tab.md) ·
 [models-promotion.md](../e2e-walkthroughs/models-promotion.md) ·
 [inference-lineage.md](../e2e-walkthroughs/inference-lineage.md) ·
-[sprint_13_11_reflexive_tools.md](../e2e-walkthroughs/sprint_13_11_reflexive_tools.md)
+[reflexive_tools.md](../e2e-walkthroughs/reflexive_tools.md)
 
 ## Replay convention
 

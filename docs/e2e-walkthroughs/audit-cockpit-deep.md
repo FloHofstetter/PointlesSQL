@@ -1,22 +1,18 @@
 # Audit cockpit deepening walkthrough
 
-> **Mode:** `browser` · **Phase:** 18.6+ · **Surface:** /audit/inbox + /audit/search + /audit/by-table + /audit/queries
+> **Mode:** `browser` · **Surface:** /audit/inbox + /audit/search + /audit/by-table + /audit/queries
 
-End-to-end exercise of the Phase 18.6 → 18.x audit cockpit
-surfaces that grew on top of the Sprint 19 daily Audit-Reviewer
+End-to-end exercise of the → 18.x audit cockpit
+surfaces that grew on top of the daily Audit-Reviewer
 loop:
 
-- [`audit_inbox.html`](../../frontend/templates/pages/audit_inbox.html)
-  — Sprint 18.6 anomaly inbox (cross-run cross-metric σ-breach
+- [`audit_inbox.html`](../../frontend/templates/pages/audit_inbox.html).6 anomaly inbox (cross-run cross-metric σ-breach
   feed)
-- [`audit_search.html`](../../frontend/templates/pages/audit_search.html)
-  — Sprint 18.7 FTS over runs / ops / queries / tool_calls /
+- [`audit_search.html`](../../frontend/templates/pages/audit_search.html).7 FTS over runs / ops / queries / tool_calls /
   audit_log
-- [`audit_by_table.html`](../../frontend/templates/pages/audit_by_table.html)
-  — Sprint 18.8 reverse index (which runs touched / wrote /
+- [`audit_by_table.html`](../../frontend/templates/pages/audit_by_table.html).8 reverse index (which runs touched / wrote /
   read a given table)
-- [`audit_queries.html`](../../frontend/templates/pages/audit_queries.html)
-  — Sprint 18.x admin SQL workbench against the audit tables
+- [`audit_queries.html`](../../frontend/templates/pages/audit_queries.html).x admin SQL workbench against the audit tables
   (5 seeded starter queries + custom CRUD)
 
 This is the "auditor's morning" companion to
@@ -58,8 +54,7 @@ this one drives the human cockpit via the browser.
    - Assert: counter line reads
      `0 of 0 breach(es) — metrics rejects, errored_ops, 7d
      baseline at 2σ`. The list shows "No active anomalies for
-     the chosen filters." This text is load-bearing — Sprint
-     18.6's anomaly engine returns an empty list, not 404, when
+     the chosen filters." This text is load-bearing.6's anomaly engine returns an empty list, not 404, when
      no metric breaches σ.
 
 3. **Cycle severity filter**.
@@ -206,7 +201,7 @@ this one drives the human cockpit via the browser.
 
 ### Part E — CDF system errors (3 steps)
 
-Phase 42 adds a server-rendered "System errors" band above the
+adds a server-rendered "System errors" band above the
 sigma anomaly cards on `/audit/inbox`. It surfaces foreign-Delta
 CDF subscriptions whose last tail tick stamped `last_error`.
 Point-in-time state — the next successful tick clears it.
@@ -280,7 +275,7 @@ Browser replay for the four cockpit pages:
   2 of 2 breaches against `seed-full-stack-demo` data. Search
   page renders an `<input type="text">` (NOT `role="searchbox"`)
   — see BUG-41-01.
-- **2026-05-06 — data-path verified end-to-end (Phase 38.3).**
+- **2026-05-06 — data-path verified end-to-end.**
   Replayed against `seed-broken-run.py` + a partial
   `seed-full-stack-demo.py` run (mlflow/sklearn extras absent
   in the e2e venv, so `_step_train` bails — bronze/silver/gold
@@ -297,7 +292,7 @@ Browser replay for the four cockpit pages:
     serves the populated cockpit branch (heading flips to "Runs
     that touched …", Touched tab counter reads "2 run(s)
     touched …"); empty-path branch (BUG-37-05 picker route)
-    not re-checked but covered by the Phase 37.1 close.
+    not re-checked but covered by the close.
   - Part D — `GET /api/saved-audit-queries` returns all 5
     starter slugs; `POST /api/saved-audit-queries/top-mutating-
     principals-30d/run` returns `{rows: [..], columns:
@@ -310,7 +305,7 @@ Browser replay for the four cockpit pages:
   the actual element is `<input type="text"
   placeholder="e.g. silver.orders …">` with no
   `role=searchbox`. Selector should be by placeholder text.
-  Surfaced 2026-05-07 during Phase 41 smoke replay.
+  Surfaced 2026-05-07 smoke replay.
 
 
 

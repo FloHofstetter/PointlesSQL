@@ -1,6 +1,6 @@
-# Notebook AI-Assistant walkthrough (Phase 96)
+# Notebook AI-Assistant walkthrough
 
-End-to-end replay of the Phase-96 inline AI assistant in the
+End-to-end replay of the inline AI assistant in the
 notebook editor.  Covers all three plugin tools:
 
 * `pql_propose_cell` — add a new cell.
@@ -16,9 +16,9 @@ cell's stable UUID.
 
 - A running PointlesSQL with `POINTLESSQL_EDITOR_CHAT_ENABLED=true`
   (the default in dev).  The same flag gates both the SQL editor
-  chat (Phase 91) and the notebook AI assistant (Phase 96) —
+  chat and the notebook AI assistant —
   the env-var prefix renamed from `POINTLESSQL_SQL_CHAT_*` to
-  `POINTLESSQL_EDITOR_CHAT_*` in Phase 96.
+  `POINTLESSQL_EDITOR_CHAT_*` .
 - An LLM provider key in the env (else the WS closes with
   `LLM_NOT_CONFIGURED`).
 - An authenticated browser session.
@@ -126,7 +126,7 @@ Expected sequence:
 
 3. In the notebook, click the 💬 chip on the first code cell
    to open the per-cell social drawer.
-4. Scroll to the **AI Explanations** section (Phase 96 addition).
+4. Scroll to the **AI Explanations** section.
 
 Expected:
 - The explanation appears as a bordered card with the agent run

@@ -24,8 +24,7 @@ playbooks on top of the same harness (jobs, notebook, OIDC,
 ## Inventory (full)
 
 61 walkthroughs total (55 + 1 lens-overview + 1 lens-mcp + 1
-playwright-MCP carve-out from Phase 53 + 1 notebook-overview from
-Phase 66 + 1 notebook-jobs from Phase 67 + 1 social from Phase 76).  Each carries a
+playwright-MCP carve-out + 1 notebook-overview + 1 notebook-jobs + 1 social ).  Each carries a
 `> **Mode:**` tag in its first content block; this section is the
 grep-friendly index.
 
@@ -33,68 +32,68 @@ grep-friendly index.
 
 Reload `auth.md` first; later ones reuse seeded users + catalog.
 
-| Walkthrough | Surface | Phase |
-|---|---|---|
-| [`auth.md`](auth.md) | `/login`, `/register`, redirect-to-login | 9 |
-| [`home.md`](home.md) | `/` landing, sparkline, recent-cards | 1 |
-| [`catalog-browsing.md`](catalog-browsing.md) | `/catalogs/*` + sidebar tree | 1 |
-| [`grand-tour.md`](grand-tour.md) | 30-min single-coherent UI tour | 0 |
-| [`inline-editors.md`](inline-editors.md) | editable / props / tags / perms / lineage cards | 1 |
-| [`federation.md`](federation.md) | `/connections`, `/external-locations`, `/credentials` | 1 |
-| [`foreign-catalog-sync.md`](foreign-catalog-sync.md) | foreign-catalog modal + sync history | 1 |
-| [`jobs-dag.md`](jobs-dag.md) | `/jobs` + DAG editor + run-detail | 11 |
-| [`notebook-editor.md`](notebook-editor.md) | native `.py` notebook editor | 12.10 |
-| [`notebook-jobs.md`](notebook-jobs.md) | schedule notebook as job | 12.6 |
-| [`notebook_full_walkthrough.md`](notebook_full_walkthrough.md) | `.py` notebook full lifecycle | 12.10 |
-| [`oidc.md`](oidc.md) | OIDC SSO sidecar | 9 |
-| [`operational.md`](operational.md) | `/healthz`, `/metrics`, `X-Request-ID` | 9 |
-| [`csrf.md`](csrf.md) | CSRF cookie + token refresh | 9 |
-| [`rate-limit.md`](rate-limit.md) | rate-limit middleware UI | 9 |
-| [`error-handling.md`](error-handling.md) | 403 / 404 / 500 pages | 9 |
-| [`mobile.md`](mobile.md) | mobile breakpoint + drawer | 17 |
-| [`command-palette.md`](command-palette.md) | Ctrl-K palette overlay | 17 |
-| [`contextual-panels.md`](contextual-panels.md) | sidebar context-panel | 17 |
-| [`ux-overhaul.md`](ux-overhaul.md) | sidebar + theme + density | 17 |
-| [`list-polish.md`](list-polish.md) | sticky headers, density toggles | 17 |
-| [`sql-editor.md`](sql-editor.md) | `/sql` + saved queries | 12 |
-| [`sql-editor-writes.md`](sql-editor-writes.md) | `/sql` write traffic + audit linkage | 63 |
-| [`dashboards.md`](dashboards.md) | `/dashboards`, `/dashboards/{id}` | 12.5 |
-| [`alerts.md`](alerts.md) | `/alerts` + destinations + Atom feed | 18.x |
-| [`rollback.md`](rollback.md) | `/runs/{id}` admin rollback card | 16 |
-| [`time-travel.md`](time-travel.md) | `/admin/audit/by-table` row-at-version | 20 |
-| [`run-comparisons.md`](run-comparisons.md) | `/runs/a/diff/b` + `/jobs/.../compare` | 18.4 |
-| [`audit-cockpit-deep.md`](audit-cockpit-deep.md) | `/audit/inbox` + search + by-table + queries | 18.6+ |
-| [`audit-sinks.md`](audit-sinks.md) | `/admin/audit-sinks` CRUD | 20 |
-| [`admin-audit.md`](admin-audit.md) | `/admin/audit` | 29 |
-| [`admin-cdf-tail.md`](admin-cdf-tail.md) | `/admin/cdf-tail` + table CDF tab | 40.6 |
-| [`admin-console.md`](admin-console.md) | `/admin/*` 7-card landing | 33 |
-| [`multi-workspace-setup.md`](multi-workspace-setup.md) | `/admin/workspaces` CRUD | 29 |
-| [`models-tab.md`](models-tab.md) | `/models` + 5-tab detail | 21.5 |
-| [`model-compare.md`](model-compare.md) | `/models/{fqn}/compare?v1=&v2=` | 21 |
-| [`agent-review-detail.md`](agent-review-detail.md) | `/agent-reviews/{id}` | 19 |
-| [`volumes.md`](volumes.md) | `/volumes` + `/volumes/{fqn}` upload + convert | 12.5 |
-| [`dbt-pipeline.md`](dbt-pipeline.md) | `/dbt` cockpit + iframe | 36 |
-| [`branches.md`](branches.md) | `/branches`, `/branches/{fqn}` (notebook + UI) | 16.5 |
-| [`notebook-overview.md`](notebook-overview.md) | `/notebooks/edit/{path}` cell editor + WS kernel | 66 |
-| [`notebook-jobs.md`](notebook-jobs.md) | Schedule + Run-Once + Variable Inspector + Jobs panel | 67 |
-| [`notebook-coedit-multi-tab.md`](notebook-coedit-multi-tab.md) | Two-tab real-time co-edit (CRDT + awareness + agent presence) | 105.7 |
-| [`social.md`](social.md) | DP Discussion+Reviews tabs · `/users` · `/agents` · `/topics` · `/feed` · `/notifications` · `/me/settings` | 76 |
+| Walkthrough | Surface |
+|---|---|
+| [`auth.md`](auth.md) | `/login`, `/register`, redirect-to-login | |
+| [`home.md`](home.md) | `/` landing, sparkline, recent-cards | |
+| [`catalog-browsing.md`](catalog-browsing.md) | `/catalogs/*` + sidebar tree | |
+| [`grand-tour.md`](grand-tour.md) | 30-min single-coherent UI tour | |
+| [`inline-editors.md`](inline-editors.md) | editable / props / tags / perms / lineage cards | |
+| [`federation.md`](federation.md) | `/connections`, `/external-locations`, `/credentials` | |
+| [`foreign-catalog-sync.md`](foreign-catalog-sync.md) | foreign-catalog modal + sync history | |
+| [`jobs-dag.md`](jobs-dag.md) | `/jobs` + DAG editor + run-detail | |
+| [`notebook-editor.md`](notebook-editor.md) | native `.py` notebook editor | |
+| [`notebook-jobs.md`](notebook-jobs.md) | schedule notebook as job | |
+| [`notebook_full_walkthrough.md`](notebook_full_walkthrough.md) | `.py` notebook full lifecycle | |
+| [`oidc.md`](oidc.md) | OIDC SSO sidecar | |
+| [`operational.md`](operational.md) | `/healthz`, `/metrics`, `X-Request-ID` | |
+| [`csrf.md`](csrf.md) | CSRF cookie + token refresh | |
+| [`rate-limit.md`](rate-limit.md) | rate-limit middleware UI | |
+| [`error-handling.md`](error-handling.md) | 403 / 404 / 500 pages | |
+| [`mobile.md`](mobile.md) | mobile breakpoint + drawer | |
+| [`command-palette.md`](command-palette.md) | Ctrl-K palette overlay | |
+| [`contextual-panels.md`](contextual-panels.md) | sidebar context-panel | |
+| [`ux-overhaul.md`](ux-overhaul.md) | sidebar + theme + density | |
+| [`list-polish.md`](list-polish.md) | sticky headers, density toggles | |
+| [`sql-editor.md`](sql-editor.md) | `/sql` + saved queries | |
+| [`sql-editor-writes.md`](sql-editor-writes.md) | `/sql` write traffic + audit linkage | |
+| [`dashboards.md`](dashboards.md) | `/dashboards`, `/dashboards/{id}` | |
+| [`alerts.md`](alerts.md) | `/alerts` + destinations + Atom feed | |
+| [`rollback.md`](rollback.md) | `/runs/{id}` admin rollback card | |
+| [`time-travel.md`](time-travel.md) | `/admin/audit/by-table` row-at-version | |
+| [`run-comparisons.md`](run-comparisons.md) | `/runs/a/diff/b` + `/jobs/.../compare` | |
+| [`audit-cockpit-deep.md`](audit-cockpit-deep.md) | `/audit/inbox` + search + by-table + queries | |
+| [`audit-sinks.md`](audit-sinks.md) | `/admin/audit-sinks` CRUD | |
+| [`admin-audit.md`](admin-audit.md) | `/admin/audit` | |
+| [`admin-cdf-tail.md`](admin-cdf-tail.md) | `/admin/cdf-tail` + table CDF tab | |
+| [`admin-console.md`](admin-console.md) | `/admin/*` 7-card landing | |
+| [`multi-workspace-setup.md`](multi-workspace-setup.md) | `/admin/workspaces` CRUD | |
+| [`models-tab.md`](models-tab.md) | `/models` + 5-tab detail | |
+| [`model-compare.md`](model-compare.md) | `/models/{fqn}/compare?v1=&v2=` | |
+| [`agent-review-detail.md`](agent-review-detail.md) | `/agent-reviews/{id}` | |
+| [`volumes.md`](volumes.md) | `/volumes` + `/volumes/{fqn}` upload + convert | |
+| [`dbt-pipeline.md`](dbt-pipeline.md) | `/dbt` cockpit + iframe | |
+| [`branches.md`](branches.md) | `/branches`, `/branches/{fqn}` (notebook + UI) | |
+| [`notebook-overview.md`](notebook-overview.md) | `/notebooks/edit/{path}` cell editor + WS kernel | |
+| [`notebook-jobs.md`](notebook-jobs.md) | Schedule + Run-Once + Variable Inspector + Jobs panel | |
+| [`notebook-coedit-multi-tab.md`](notebook-coedit-multi-tab.md) | Two-tab real-time co-edit (CRDT + awareness + agent presence) | |
+| [`social.md`](social.md) | DP Discussion+Reviews tabs · `/users` · `/agents` · `/topics` · `/feed` · `/notifications` · `/me/settings` | |
 
 ### `Mode: hybrid` — notebook / CLI + browser (8)
 
 Browser steps are present but only after a notebook or CLI
 prelude completes. Replay needs both contexts.
 
-| Walkthrough | Surface | Phase |
-|---|---|---|
-| [`hermes_medallion.md`](hermes_medallion.md) | Hermes session + run-detail (the "done moment") | 13.7 |
-| [`agent_drift_monitor.md`](agent_drift_monitor.md) | notebook + `/runs/{id}` | 13.x |
-| [`inference-lineage.md`](inference-lineage.md) | notebook + run-detail Graph tab | 21.7 |
-| [`full-stack-demo.md`](full-stack-demo.md) | seed + multi-page UI | 12+ |
-| [`config-matrix.md`](config-matrix.md) | env overlays + UI smoke | 23 |
-| [`explain-rewrite.md`](explain-rewrite.md) | Hermes plugin + run-detail Rewrites tab | 39 |
-| [`packaging.md`](packaging.md) | docker CLI + home-page smoke | 10 |
-| [`data_products.md`](data_products.md) | yaml reload + `/data-products` browse | 50 |
+| Walkthrough | Surface |
+|---|---|
+| [`hermes_medallion.md`](hermes_medallion.md) | Hermes session + run-detail (the "done moment") | |
+| [`agent_drift_monitor.md`](agent_drift_monitor.md) | notebook + `/runs/{id}` | |
+| [`inference-lineage.md`](inference-lineage.md) | notebook + run-detail Graph tab | |
+| [`full-stack-demo.md`](full-stack-demo.md) | seed + multi-page UI | |
+| [`config-matrix.md`](config-matrix.md) | env overlays + UI smoke | |
+| [`explain-rewrite.md`](explain-rewrite.md) | Hermes plugin + run-detail Rewrites tab | |
+| [`packaging.md`](packaging.md) | docker CLI + home-page smoke | |
+| [`data_products.md`](data_products.md) | yaml reload + `/data-products` browse | |
 
 ### `Mode: hermes` — Hermes / operational, no browser (6)
 
@@ -102,23 +101,23 @@ Pure agent-runtime or ops-runbook playbooks. Do not load
 Playwright MCP for these — they call the Hermes CLI or curl
 endpoints directly.
 
-| Walkthrough | Surface | Phase |
-|---|---|---|
-| [`audit-reviewer-daily.md`](audit-reviewer-daily.md) | Hermes cron + sink delivery | 19 |
-| [`compliance-bot.md`](compliance-bot.md) | Hermes one-shot persona | 19 |
-| [`incident-responder.md`](incident-responder.md) | Hermes one-shot persona | 19 |
-| [`agent-ml-registry.md`](agent-ml-registry.md) | Hermes plugin tools | 21 |
-| [`models-promotion.md`](models-promotion.md) | Hermes plugin promote-tool | 21 |
-| [`sprint_13_11_reflexive_tools.md`](sprint_13_11_reflexive_tools.md) | Hermes reflexive tools | 13.11 |
+| Walkthrough | Surface |
+|---|---|
+| [`audit-reviewer-daily.md`](audit-reviewer-daily.md) | Hermes cron + sink delivery | |
+| [`compliance-bot.md`](compliance-bot.md) | Hermes one-shot persona | |
+| [`incident-responder.md`](incident-responder.md) | Hermes one-shot persona | |
+| [`agent-ml-registry.md`](agent-ml-registry.md) | Hermes plugin tools | |
+| [`models-promotion.md`](models-promotion.md) | Hermes plugin promote-tool | |
+| [`reflexive_tools.md`](reflexive_tools.md) | Hermes reflexive tools | |
 
 ### `Mode: curl` — JSON API, no UI (1)
 
-Phase-51 yaml-canonical surface. The admin pages here are
+yaml-canonical surface. The admin pages here are
 JSON-only by design — there is no HTML UI to drive.
 
-| Walkthrough | Surface | Phase |
-|---|---|---|
-| [`git-backed-workspaces.md`](git-backed-workspaces.md) | `/api/admin/repos` + webhook | 51 |
+| Walkthrough | Surface |
+|---|---|
+| [`git-backed-workspaces.md`](git-backed-workspaces.md) | `/api/admin/repos` + webhook | |
 
 ---
 
@@ -255,45 +254,44 @@ model lives in soyuz:
  inference → promote) — fully HTTP-only, no PointlesSQL
  imports on the agent side.
 
-**Phase 37 — admin + audit cockpit + dbt**.  Five new
+**admin + audit cockpit + dbt**.  Five new
 playbooks (one rewritten + four new) closing coverage gaps
-that opened in Phase 14, 17, 18.6+, 28, 33, and 36.  Replay
+that opened 17, 18.6+, 28, 33, and 36.  Replay
 them after `auth.md` (admin user must exist + be signed in):
 
-19. [`admin-console.md`](admin-console.md) — Phase-33
- admin landing 7-card grid + ``/admin/external-writes``
- (Phase 14) + ``/admin/api-keys`` (with the plaintext-
+19. [`admin-console.md`](admin-console.md) — admin landing 7-card grid + ``/admin/external-writes``
+ () + ``/admin/api-keys`` (with the plaintext-
  secret modal + load-bearing
  secret-not-in-outerHTML assertion) + ``/admin/review-
  destinations`` + ``/admin/system-info``.  ``/admin/audit-
  sinks`` and ``/admin/workspaces`` cross-link out to the
  dedicated playbooks.
 20. [`audit-cockpit-deep.md`](audit-cockpit-deep.md) — the
- four Phase-18.6 → 18.x cockpit pages: anomaly inbox +
- FTS search (Sprint 18.7's custom path-segment tokenizer
+ four → 18.x cockpit pages: anomaly inbox +
+ FTS search ('s custom path-segment tokenizer
  verified) + by-table reverse index +
  saved audit queries workbench.  Distinguishes "chrome"
  path (works on ``seed-e2e.py``) from "data" path (needs
  ``seed-full-stack-demo.py --demo-rollback --keep-state``).
 21. [`run-comparisons.md`](run-comparisons.md) — both
  compare surfaces in one playbook: the structured 6-tab
- audit run-diff at ``/runs/{a}/diff/{b}`` (Sprint 18.4)
+ audit run-diff at ``/runs/{a}/diff/{b}`` ()
  with Chart.js bars + the side-by-side jobs run-compare
  at ``/jobs/{job_id}/runs/{a}/compare?with={b}``
- (Sprint 12.x).  Carries the Phase-18 prior-art mitigation
+ ().  Carries the prior-art mitigation
  for Chart.js async render against hidden tab-panes.
 22. [`alerts.md`](alerts.md) — alert list + detail +
  destination CRUD with HMAC redaction + the per-user
  ``/alerts/feed.atom`` + ``/alerts/feed.json`` pull feed
  URLs.  Cross-link in from grand-tour Act 9.
-23. [`dbt-pipeline.md`](dbt-pipeline.md) — Phase-36 dbt
+23. [`dbt-pipeline.md`](dbt-pipeline.md) — dbt
  cockpit at ``/dbt`` covering both states (iframe to
  ``/dbt-docs/`` + warning card when subprocess is
- down).  The Phase-36.B read-only API surface
+ down).  The read-only API surface
  (``/api/dbt/manifest``, ``/coverage``, ``/test-failures``)
  is exercised programmatically pending the still-paused
- Phase-36.4 chrome work (filed as BUG-37-06).
-24. [`explain-rewrite.md`](explain-rewrite.md) — Phase-39 agent
+ chrome work (filed as).
+24. [`explain-rewrite.md`](explain-rewrite.md) — agent
  EXPLAIN-driven self-rewrite loop.  Hermes plugin's
  ``pql_query`` calls ``GET /api/sql/explain`` first; on
  ``cost_gate_denied`` the LLM rewrites and retries (cap 3),
@@ -301,8 +299,7 @@ them after `auth.md` (admin user must exist + be signed in):
  carries a "Rewrites" sub-tab on the Operations top-tab and
  the audit Grafana dashboard gets panel 21 ("Rewrite savings —
  averted cost-gate denials per week").
-25. [`admin-cdf-tail.md`](admin-cdf-tail.md) — Phase-40.6
- foreign-Delta CDF tail subscriptions admin page +
+25. [`admin-cdf-tail.md`](admin-cdf-tail.md) — foreign-Delta CDF tail subscriptions admin page +
  table-detail "CDF events" tab + auditor-scope plugin tools.
  Pull-modell counterpart to push-modell OpenLineage; per-table
  opt-in registry + idempotent ``DeltaTable.load_cdf()``-driven
@@ -310,15 +307,15 @@ them after `auth.md` (admin user must exist + be signed in):
 
 [`audit-sinks.md`](audit-sinks.md) was rewritten from a
 curl-only operational runbook into a UI-driven walkthrough
-during Phase-37 Wave 0a — the original "no UI yet" caveat is
-gone.  Wave 0a also surfaced BUG-37-01 (Alpine ``x-data``
+during Wave 0a — the original "no UI yet" caveat is
+gone.  Wave 0a also surfaced (Alpine ``x-data``
 attribute escaping on four admin row templates), fixed in
 ``a744b52``.
 
-**Phase 76 — full social network**.  Replay after
+**full social network**.  Replay after
 ``auth.md`` and ``data_products.md``:
 
-26. [`social.md`](social.md) — Phase-76 close-out replay.
+26. [`social.md`](social.md) — close-out replay.
  Walks the full social surface: the new DP Discussion tab
  (cite-token render via ``body_md_resolved`` + ``@``-mention
  picker + threaded replies + accepted-answer marking +
@@ -329,9 +326,9 @@ attribute escaping on four admin row templates), fixed in
  follow, ``/feed`` aggregation, ``/notifications`` + topbar
  SSE bell, ``/me/settings`` digest toggle, and the Alpine
  x-data smoke across all six social pages that inherited
- the Phase-76.6.4 quote-fix. Closes Bug 1 / 4 / 5 / 6 / 7 /
- 12 / 14 surfaced during the Phase-76 replay; Bug 13
- (endorsement render block) stays deferred to Phase 77.
+ the quote-fix. Closes Bug 1 / 4 / 5 / 6 / 7 /
+ 12 / 14 surfaced during the replay; Bug 13
+ (endorsement render block) stays deferred .
 
 ## Stack start
 
@@ -356,9 +353,9 @@ The seed script is idempotent — re-running is safe and turns
 into a no-op once the demo catalog, schemas, tables, and
 Postgres Connection exist.
 
-If the cached `pointlessql-pointlessql` image predates Sprint
-11 (when `pyarrow` was added to the main deps), rebuild before
-first seed:
+If the cached `pointlessql-pointlessql` image predates the
+addition of `pyarrow` to the main deps, rebuild before first
+seed:
 
 ```bash
 docker compose -f docker/docker-compose.yml -f docker/docker-compose.e2e.yml \

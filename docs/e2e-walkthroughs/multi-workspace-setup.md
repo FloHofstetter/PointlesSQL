@@ -1,8 +1,8 @@
 # Multi-workspace setup walkthrough
 
-> **Mode:** `browser` · **Phase:** 29 · **Surface:** /admin/workspaces CRUD
+> **Mode:** `browser` · **Surface:** /admin/workspaces CRUD
 
-End-to-end exercise for the Phase-28 workspace surface: create a
+End-to-end exercise for the workspace surface: create a
 second workspace, add a member, switch between them in the UI,
 verify isolation, and exercise the cross-workspace lens.
 

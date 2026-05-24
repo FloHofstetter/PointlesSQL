@@ -1,6 +1,6 @@
 # Notebook full walkthrough —
 
-> **Mode:** `browser` · **Phase:** 12.10 · **Surface:** .py notebook full lifecycle
+> **Mode:** `browser` · **Surface:** .py notebook full lifecycle
 
 > **⚠️ Partial refresh status (Sprint H.3, 2026-05-12):**  Routes
 > updated for Phase-12.12's `/notebook/editor?path=` →
@@ -10,7 +10,7 @@
 > and may now live under a `pql-notebook-output-*` or
 > `pql-cell-output-*` namespace — confirm in DevTools before
 > asserting.  File-path links to `services/notebook_doc.py` etc.
-> may point at pre-Phase-12.12 module locations (now
+> may point at previous module locations (now
 > `services/notebook/_doc.py` etc.).
 
 Deterministic click-through of every output-rendering + editing

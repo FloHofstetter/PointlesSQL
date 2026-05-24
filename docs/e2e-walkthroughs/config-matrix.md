@@ -1,6 +1,6 @@
 # Config-matrix walkthrough
 
-> **Mode:** `hybrid` · **Phase:** 23 · **Surface:** Env overlays + UI smoke
+> **Mode:** `hybrid` · **Surface:** Env overlays + UI smoke
 
 Proves the three orthogonal runtime-config axes — engine,
 log format, and metadata DB — all still pass a golden-path browser

@@ -1,6 +1,6 @@
 # Mobile + responsive walkthrough
 
-> **Mode:** `browser` · **Phase:** 17 · **Surface:** Mobile breakpoint + hamburger drawer
+> **Mode:** `browser` · **Surface:** Mobile breakpoint + hamburger drawer
 
 's mobile pass — exercised at three viewport sizes
 (375 × 812, 768 × 1024, 1280 × 800) to cover the three breakpoint

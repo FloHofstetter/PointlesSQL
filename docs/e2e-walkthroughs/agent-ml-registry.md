@@ -1,6 +1,6 @@
 # E2E walkthrough — Agent-driven ML Registry flow
 
-> **Mode:** `hermes` · **Phase:** 21 · **Surface:** Hermes plugin tools
+> **Mode:** `hermes` · **Surface:** Hermes plugin tools
 
 This playbook validates the eight Hermes-plugin tools that close
 out cross-repo. The vertical slice: an agent connected

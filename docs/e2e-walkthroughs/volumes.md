@@ -1,8 +1,8 @@
 # Volumes walkthrough
 
-> **Mode:** `browser` · **Phase:** 12.5 · **Surface:** `/volumes` list + `/volumes/{full_name}` detail (upload, convert-to-Delta, delete)
+> **Mode:** `browser` · **Surface:** `/volumes` list + `/volumes/{full_name}` detail (upload, convert-to-Delta, delete)
 
-Covers the volumes surface that landed in Sprint 57 (Phase 12.5):
+Covers the volumes surface that landed :
 the list page at `/volumes`, the detail page at
 `/volumes/{full_name}` with its upload card, file table,
 convert-to-Delta button (csv/parquet/json) and per-file delete.
@@ -18,7 +18,7 @@ interaction translates 1:1 to one of those routes.
 - A volume named `demo.sales.uploads` exists in soyuz-catalog
   with `volume_type=MANAGED` and a `file://` storage_location.
   Seed via `scripts/seed-e2e.py` (which calls the soyuz volume
-  REST endpoint added in Sprint 57). If the seed predates that
+  REST endpoint added ). If the seed predates that
   sprint, recreate the volume manually:
   ```bash
   curl -X POST http://127.0.0.1:8080/api/2.1/unity-catalog/volumes \
@@ -138,5 +138,4 @@ interaction translates 1:1 to one of those routes.
 
 ## Found bugs
 
-_None recorded yet — first replay is part of the Phase 41
-Playwright-coverage pass._
+_None recorded yet — first replay is part of the Playwright-coverage pass._

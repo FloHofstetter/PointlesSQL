@@ -1,6 +1,6 @@
 # Models browse walkthrough
 
-> **Mode:** `browser` · **Phase:** 21.5 · **Surface:** /models + 5-tab detail
+> **Mode:** `browser` · **Surface:** /models + 5-tab detail
 
 Exercises the registered-models browse surface
 end-to-end: surface a registered model in the sidebar tree and the
@@ -208,4 +208,4 @@ Condensed browser replay for the eleven prose steps:
 - Inference lineage from a model to downstream prediction tables
 .
 - Forced autolog on PQL training hooks.
-- Permissions UI (sprint TBD).
+- Permissions UI.

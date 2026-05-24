@@ -1,8 +1,8 @@
 # Lens overview walkthrough
 
-> **Mode:** `browser` · **Phase:** 65 · **Surface:** /lens chat-style Q&A
+> **Mode:** `browser` · **Surface:** /lens chat-style Q&A
 
-End-to-end exercise of the new Lens read-only Q&A surface (Phase 65.5):
+End-to-end exercise of the new Lens read-only Q&A surface:
 admin sets up a BYO LLM-provider key, an analyst opens a chat
 session, asks a question that triggers a tool call, pins the answer,
 and re-opens the pinned page.

@@ -1,6 +1,6 @@
 # Contextual side-panels walkthrough
 
-> **Mode:** `browser` · **Phase:** 17 · **Surface:** Sidebar context-panel
+> **Mode:** `browser` · **Surface:** Sidebar context-panel
 
 Exercises the context-panels: the 240-px sidebar to the
 right of the icon-rail. Each rail icon now opens its own

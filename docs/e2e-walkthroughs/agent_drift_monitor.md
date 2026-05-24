@@ -1,6 +1,6 @@
 # Agent: Drift-Monitor walkthrough
 
-> **Mode:** `hybrid` · **Phase:** 13.x · **Surface:** Notebook + /runs/{id}
+> **Mode:** `hybrid` · **Surface:** Notebook + /runs/{id}
 
 **** — replay this playbook to verify the Drift-Monitor
 agent end-to-end: a Hermes-style external runtime registers an

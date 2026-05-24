@@ -1,6 +1,6 @@
 # Delta-Branching walkthrough
 
-> **Mode:** `hybrid` · **Phase:** 16.5 · **Surface:** Notebook + /branches UI
+> **Mode:** `hybrid` · **Surface:** Notebook + /branches UI
 
 Exercises the zero-copy branching primitives end-to-end:
 create a branch, write to it, prove the parent stays untouched,

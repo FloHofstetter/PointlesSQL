@@ -1,6 +1,6 @@
 # CSRF protection walkthrough
 
-> **Mode:** `browser` · **Phase:** 9 · **Surface:** CSRF cookie + token refresh
+> **Mode:** `browser` · **Surface:** CSRF cookie + token refresh
 
 Exercises the double-submit-cookie CSRF protection on the
 three HTML form routes (`/auth/login`, `/auth/register`,

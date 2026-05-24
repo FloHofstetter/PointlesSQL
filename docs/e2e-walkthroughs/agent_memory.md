@@ -1,6 +1,6 @@
 # E2E walkthrough — Agent-memory page
 
-> **Mode:** browser · **Phase:** 90 · **Surface:** `/memory/<agent-id>`
+> **Mode:** browser · **Surface:** `/memory/<agent-id>`
 
 This playbook validates the agent-memory "brain browser" page
 that Phase 90 ships on top of the existing `agent_runs` +
@@ -23,7 +23,7 @@ uv run pointlessql         # http://127.0.0.1:8000
 
 Seed at least one agent run with mixed operation types so the
 recall filter has something to chew on.  The simplest way is to
-run the Phase-21 `agent-ml-registry` walkthrough first — it
+run the `agent-ml-registry` walkthrough first — it
 emits 5+ operations under `agent_id="hermes-ml-smoke"`.  If you
 don't have that data, fall back to:
 
@@ -169,12 +169,12 @@ Expect: the endorsement count increments to 1.
 3. Operations tab: the replay run contributes one new SQL op
    whose `params_json["_replay_recorded_only"]` is `true`.
 
-## Known caveats (Phase 90 scope)
+## Known caveats
 
 * **Replay records intent, not execution.**  Replayable ops are
   re-recorded against the new run with `_replay_recorded_only:
   true` stamped in params.  Real execution (re-running SQL
-  against the branch's DuckDB views) lands in Phase 91 alongside
+  against the branch's DuckDB views) lands alongside
   the NL→SQL chat panel.
 * **Version-pinning is metadata.**  `pin_to_version=true` stamps
   the source's `delta_version_before` into

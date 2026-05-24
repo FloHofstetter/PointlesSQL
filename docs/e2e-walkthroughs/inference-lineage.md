@@ -1,6 +1,6 @@
 # E2E walkthrough — Inference-Lineage
 
-> **Mode:** `hybrid` · **Phase:** 21.7 · **Surface:** Notebook + run-detail Graph tab
+> **Mode:** `hybrid` · **Surface:** Notebook + run-detail Graph tab
 
 This playbook validates the `models:/{fqn}/{version}` inference-
 lineage path: the model-detail Lineage DAG must show source-tables

@@ -1,6 +1,6 @@
 # Compliance-Bot e2e walkthrough
 
-> **Mode:** `hermes` · **Phase:** 19 · **Surface:** Hermes one-shot persona
+> **Mode:** `hermes` · **Surface:** Hermes one-shot persona
 
 exercises the Hermes-one-shot Compliance-Bot persona
 against a freshly-seeded PointlesSQL. Asserts the canonical

@@ -1,8 +1,8 @@
 # Notebook co-edit — multi-tab replay
 
-> **Mode:** `browser` · **Phase:** 105.7 · **Surface:** `/notebooks/edit/{path}` + `/ws/notebook/coedit/{uuid}`
+> **Mode:** `browser` · **Surface:** `/notebooks/edit/{path}` + `/ws/notebook/coedit/{uuid}`
 
-Exercises the Phase-105 real-time co-edit pipeline against a live
+Exercises the real-time co-edit pipeline against a live
 stack with two browser tabs sharing the same notebook.  Verifies
 that text typed in tab A appears in tab B sub-second, that the
 peer-avatar rail paints the other tab's user, and that closing
@@ -35,12 +35,11 @@ steps once and continue here.
    - Action: `browser_navigate(url='http://127.0.0.1:8000/notebooks/edit/coedit-multi-tab.py')`.
    - Assert: the `[data-testid="notebook-coedit-dot"]` element
      paints; its class settles on **`bg-success`** within 3 s
-     (initial sync_step2 completed against the Sprint-105.2 hub —
-     Sprint 112.5 collapsed the verbose toolbar pill into a single
+     (initial sync_step2 completed against the Sprint-105.2 hub.5 collapsed the verbose toolbar pill into a single
      colour-coded dot whose tooltip preserves the old "Live" label).
    - Assert: the importmap script in the page source contains
      `"yjs":`, `"y-protocols/awareness":`, and
-     `"y-codemirror.next":` entries (Phase 105.3 + 105.3b).
+     `"y-codemirror.next":` entries.
 
 2. **Tab 2: open the same notebook in a sibling tab.**
    - Action: `browser_tabs(action='new')`.
@@ -76,12 +75,11 @@ steps once and continue here.
    - Assert (tab 1): the "Saved" badge replaces "Unsaved"
      within 2 s; the cell content stays intact.
    - Assert (tab 2): no editor reset; the cell content stays
-     identical to the pre-save state.  The Phase-105.5
-     save-barrier ensures any reconciled cell_uuid changes
+     identical to the pre-save state.  the save-barrier ensures any reconciled cell_uuid changes
      reach tab 2 via a `tag=0x04` advisory before it can
      desync.
 
-7. **Optional: agent presence smoke (Phase 105.6).**
+7. **Optional: agent presence smoke.**
    - Action (any tab): from a CLI with admin auth (or via
      `browser_evaluate` calling `fetch`),
      POST to
@@ -157,9 +155,9 @@ browser_wait_for(textGone='hello-from-tab-2-peer-clientId')  # ad-hoc assertion
 | Selector | Source |
 | --- | --- |
 | `[data-testid="notebook-coedit-dot"]` | toolbar co-edit status dot (Sprint 112.5; replaces the verbose `notebook-coedit-pill`) |
-| `[data-testid="notebook-coedit-peers"]` | peer-avatar rail container (Phase 105.4) |
-| `[data-testid^="notebook-coedit-peer-"]` | per-peer avatar disc (Phase 105.4) |
-| `#pql-cell-host-{cell.id}` | per-cell editor host (Sprint 66) |
+| `[data-testid="notebook-coedit-peers"]` | peer-avatar rail container |
+| `[data-testid^="notebook-coedit-peer-"]` | per-peer avatar disc |
+| `#pql-cell-host-{cell.id}` | per-cell editor host |
 | `.cm-content` | CodeMirror editable surface |
 
 ## Found bugs

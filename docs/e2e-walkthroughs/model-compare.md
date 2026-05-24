@@ -1,9 +1,9 @@
 # Model compare walkthrough
 
-> **Mode:** `browser` · **Phase:** 21 · **Surface:** `/models/{full_name}/compare?v1=X&v2=Y`
+> **Mode:** `browser` · **Surface:** `/models/{full_name}/compare?v1=X&v2=Y`
 
 Covers the side-by-side model-version comparison view that
-landed with Phase 21.5: two cards with v1 + v2 metadata, a
+landed : two cards with v1 + v2 metadata, a
 metrics table with Δ + Δ% direction-classified (`better` /
 `worse` / `neutral`), and params + tags diff cards (added /
 removed / changed). Driven by the cross-link aggregator that
@@ -119,5 +119,4 @@ rows on `mlflow_run_id`.
 
 ## Found bugs
 
-_None recorded yet — first replay is part of the Phase 41
-Playwright-coverage pass._
+_None recorded yet — first replay is part of the Playwright-coverage pass._

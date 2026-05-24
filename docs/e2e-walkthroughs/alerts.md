@@ -1,6 +1,6 @@
 # Alerts walkthrough
 
-> **Mode:** `browser` · **Phase:** 18.x · **Surface:** /alerts + /alerts/{id}
+> **Mode:** `browser` · **Surface:** /alerts + /alerts/{id}
 
 End-to-end exercise of the alert subscription surfaces:
 
@@ -14,7 +14,7 @@ End-to-end exercise of the alert subscription surfaces:
   Feed reader
 
 Alerts are referenced in `grand-tour.md` Act 9 but had no
-dedicated deep-dive playbook before Phase 37 Wave 4.
+dedicated deep-dive playbook Wave 4.
 
 ## Preconditions
 
@@ -25,8 +25,7 @@ dedicated deep-dive playbook before Phase 37 Wave 4.
     exec pointlessql python /app/scripts/seed-e2e.py
   ```
   `seed-e2e.py` is enough — alerts only need a saved audit
-  query as their data source. The 5 starter saved queries from
-  Sprint 32 ship with every fresh DB.
+  query as their data source. The 5 starter saved queries ship with every fresh DB.
 - [`auth.md`](auth.md) ran first.
 - Playwright MCP Firefox lock-file gotcha: see CLAUDE.md
   line 227-235.

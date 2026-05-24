@@ -1,6 +1,6 @@
 # Run-comparisons walkthrough
 
-> **Mode:** `browser` · **Phase:** 18.4 · **Surface:** /runs/a/diff/b + /jobs/.../compare
+> **Mode:** `browser` · **Surface:** /runs/a/diff/b + /jobs/.../compare
 
 PointlesSQL has TWO compare surfaces with similar names but
 different routes, different audiences, and different tab
@@ -113,7 +113,7 @@ a side-by-side of the two runs' rendered notebook iframes.
    - Action: navigate to `/jobs`, click any job that has ≥ 2
      runs in its history table. The job-detail page shows the
      "Runs" table with each row's id; the page has a "Compare"
-     UI affordance (per Sprint 12.x).
+     UI affordance ().
    - Assert: arrives at `/jobs/{job_id}` with at least 2 entries
      in the run history.
 
@@ -164,7 +164,7 @@ Browser replay for both compare surfaces:
    `.diff-row` class — see BUG-41-02).
 4. `browser_click("Charts")`
    — `browser_wait_for("canvas")` (Chart.js renders); assert ≥ 1
-   chart canvas is visible (Phase 18.4 prior-art mitigation).
+   chart canvas is visible.
 5. `browser_click("Conformance")` — assert per-rule status pills.
 6. `browser_navigate('http://127.0.0.1:8000/jobs/<job_id>/runs/<a>/compare?with=<b>')`
    — assert the side-by-side jobs run-compare loads.
@@ -178,7 +178,7 @@ Browser replay for both compare surfaces:
   DOM. The compare page uses standard `<table>` rows for
   per-axis diffs (Operations / Tool calls / Queries / etc).
   Selector replaced with `table tbody tr`. Surfaced 2026-05-07
-  during Phase 41 smoke replay; the page itself renders fine
+  smoke replay; the page itself renders fine
   (4 metric cards across the top, 6 tabs in the tab list, A/B
   identity panels populated).
 

@@ -1,8 +1,8 @@
 # Lens MCP server walkthrough
 
-> **Mode:** `hermes` · **Phase:** 65 · **Surface:** `pointlessql lens-mcp` (stdio) + `/mcp/health` + `/mcp/info`
+> **Mode:** `hermes` · **Surface:** `pointlessql lens-mcp` (stdio) + `/mcp/health` + `/mcp/info`
 
-End-to-end exercise of the Lens MCP server (Phase 65.4): mint an
+End-to-end exercise of the Lens MCP server: mint an
 analyst-scoped api-key, spawn the `lens-mcp` subprocess, send a raw
 MCP `initialize` + `tools/list` + `tools/call` round-trip via stdio,
 and verify the audit row landed.  Validates the IDE-consumer path

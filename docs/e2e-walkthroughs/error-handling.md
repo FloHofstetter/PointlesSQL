@@ -1,6 +1,6 @@
 # Error-handling walkthrough
 
-> **Mode:** `browser` · **Phase:** 9 · **Surface:** 403 + 404 + 500 pages
+> **Mode:** `browser` · **Surface:** 403 + 404 + 500 pages
 
 Exercises the RFC 9457 error envelope and the HTMX toast
 bridge. Every non-OK response in PointlesSQL flows through one of

@@ -1,8 +1,8 @@
-# SQL editor — write statements (Phase 63)
+# SQL editor — write statements
 
-> **Mode:** `browser` · **Phase:** 63 · **Surface:** /sql write traffic + audit linkage
+> **Mode:** `browser` · **Surface:** /sql write traffic + audit linkage
 
-Exercises the Phase-63 dispatcher that turned the SELECT-only
+Exercises the dispatcher that turned the SELECT-only
 editor into an AST-classifying frontend over typed primitives.
 Walks INSERT FROM SELECT, CREATE TABLE AS SELECT, UPDATE,
 DELETE, DROP TABLE, CREATE / DROP SCHEMA, MERGE, the
@@ -149,7 +149,7 @@ audit-trail wiring (every editor write lands an
       that fails (e.g. UPDATE on a missing table).
     - Assert: response carries `failed_index = 1` and the
       `rollback` field lists the prior write op that was
-      undone via `pql.rollback` (Phase 16).
+      undone via `pql.rollback`.
 
 15. **CREATE / DROP CATALOG rejected at parse time.**
     - Action: run `CREATE CATALOG hive`.

@@ -1,6 +1,6 @@
 # Audit-Reviewer-Agent daily-review walkthrough
 
-> **Mode:** `hermes` · **Phase:** 19 · **Surface:** Hermes cron + sink delivery
+> **Mode:** `hermes` · **Surface:** Hermes cron + sink delivery
 
 Exercises the reference Hermes cron: a daily 06:00 UTC
 agent run that summarises yesterday's PointlesSQL audit activity and
@@ -60,7 +60,7 @@ output. There is no browser, no Alpine, no `mcp__playwright__*` calls.
  POINTLESSQL_API_KEY=<token from step 1>
  POINTLESSQL_AUDITOR_MODE=1
  POINTLESSQL_PRINCIPAL=audit-reviewer-agent
- # Optional — Sprint 28.5 multi-workspace re-target.  Omit for
+ # Optional.5 multi-workspace re-target.  Omit for
  # single-workspace installs; the api_key's pinned workspace is
  # already the resolver's API-key tier.
  # POINTLESSQL_WORKSPACE=default

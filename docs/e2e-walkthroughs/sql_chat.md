@@ -1,6 +1,6 @@
 # SQL chat walkthrough
 
-Walks through the Phase-91 NL→SQL chat drawer end-to-end:
+Walks through the NL→SQL chat drawer end-to-end:
 ask a SELECT question, propose a DML, accept the draft, then
 refine a zero-rows turn.  Replays cleanly via Playwright (the
 fake-LLM fixture lives in `tests/test_sql_chat_ws.py`); a

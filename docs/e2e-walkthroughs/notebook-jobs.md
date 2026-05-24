@@ -6,7 +6,7 @@
 > Run-Once + Variable Inspector + in-editor Jobs panel.
 > Requires Phase 66 (live notebook editor) to be running.
 
-Replays the Phase 67 surface end-to-end: declare a parameters
+Replays the surface end-to-end: declare a parameters
 cell, schedule the notebook on cron, trigger a one-shot run with
 overrides, watch the variable inspector refresh, and verify the
 run appears in `/jobs` plus the in-editor panel.

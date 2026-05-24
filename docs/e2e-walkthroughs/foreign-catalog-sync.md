@@ -1,6 +1,6 @@
 # Foreign-catalog sync walkthrough
 
-> **Mode:** `browser` · **Phase:** 1 · **Surface:** Create-foreign-catalog modal + sync history
+> **Mode:** `browser` · **Surface:** Create-foreign-catalog modal + sync history
 
 Cross-feature smoke test: creates a foreign catalog via the
 `/` modal pointing at the seeded `pg_e2e` Connection, runs

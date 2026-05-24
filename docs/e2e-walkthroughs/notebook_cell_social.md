@@ -1,6 +1,6 @@
 # E2E walkthrough — Per-cell social in the notebook editor
 
-> **Mode:** browser · **Phase:** 95 · **Surface:** `/notebooks/edit/<path>`
+> **Mode:** browser · **Surface:** `/notebooks/edit/<path>`
 
 This playbook validates Phase 95's cell-level social surface end to
 end: open a notebook, comment on a single cell, react to it, follow
@@ -35,7 +35,7 @@ the second cell (index 2 in the file order).  Confirm the cell
 header shows:
 
 * Left cluster: cell-type pill, `[N]` exec-count placeholder,
-  duration field, **tag picker icon** (Phase 95.3 — `<i class="bi bi-tag">`).
+  duration field, **tag picker icon**.
 * Right cluster: dirty dot (if pending), **💬 chip** (Phase 95.2 —
   `<i class="bi bi-chat-dots">`), Run, type-dropdown, History,
   cell-management group.

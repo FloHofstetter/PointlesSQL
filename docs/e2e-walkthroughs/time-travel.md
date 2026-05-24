@@ -1,6 +1,6 @@
 # Time-travel value-query walkthrough
 
-> **Mode:** `browser` · **Phase:** 20 · **Surface:** /admin/audit/by-table row-at-version
+> **Mode:** `browser` · **Surface:** /admin/audit/by-table row-at-version
 
 Exercises the time-travel surface: a table-detail
 "view at version N" picker plus a row-trace "at this Delta version,

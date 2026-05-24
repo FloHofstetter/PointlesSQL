@@ -1,6 +1,6 @@
 # Dashboards + run-compare walkthrough
 
-> **Mode:** `browser` · **Phase:** 12.5 · **Surface:** /dashboards + /dashboards/{id}
+> **Mode:** `browser` · **Surface:** /dashboards + /dashboards/{id}
 
 Exercises the dashboards surface (list, create modal, detail,
 Refresh, sidebar tree) and the run-compare view launched from a

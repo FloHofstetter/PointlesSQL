@@ -1,6 +1,6 @@
 # Admin audit-log walkthrough
 
-> **Mode:** `browser` · **Phase:** 29 · **Surface:** /admin/audit
+> **Mode:** `browser` · **Surface:** /admin/audit
 
 Exercises the admin audit-log viewer at `/admin/audit`:
 admin-only access, server-side filter form

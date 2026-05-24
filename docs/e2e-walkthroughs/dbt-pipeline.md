@@ -1,6 +1,6 @@
 # dbt Pipelines walkthrough
 
-> **Mode:** `browser` · **Phase:** 36 · **Surface:** /dbt cockpit + iframe
+> **Mode:** `browser` · **Surface:** /dbt cockpit + iframe
 
 Exercises the dbt cockpit at `/dbt`:
 
@@ -87,7 +87,7 @@ Exercises the dbt cockpit at `/dbt`:
 
 ### Part B — dbt API surface (read-only, exists today) (5 steps)
 
-The Phase 36.B routes work even when the subprocess is down —
+The routes work even when the subprocess is down —
 they read `target/manifest.json` directly from disk. The
 cockpit's manifest summary card-row + Recent-runs +
 Test-failures sub-tabs (Phase 37.1, BUG-37-06 fix) consume
@@ -135,7 +135,7 @@ to document the consumer contract.
 
 The default e2e Docker image does not install `[dbt]`. The
 project also carries a `[tool.uv] override-dependencies` for
-`mashumaro>=3.17` (Phase 36.7 close, 2026-05-06) — without
+`mashumaro>=3.17` — without
 that override `dbt-core <=1.11`'s `mashumaro<3.15` upper bound
 clashes with mashumaro 3.17's Python-3.14 fix
 (dbt-labs/dbt-core#12098).
@@ -237,7 +237,7 @@ Browser replay for the `/dbt` cockpit (both states):
 
 ## Verification log
 
-- **2026-05-06 — Sprint 36.7 close, end-to-end verified.**
+- **2026-05-06.7 close, end-to-end verified.**
   Replayed Part C end-to-end against the e2e stack (dbt-core
   1.11.8 + dbt-duckdb 1.10.1 + mashumaro 3.17 [override] +
   Python 3.14.4): `dbt compile` and `dbt docs generate` both
@@ -251,7 +251,7 @@ Browser replay for the `/dbt` cockpit (both states):
 
 ## Found bugs
 
-- **BUG-37-06** ✅ Fixed — Phase 36.4 chrome landed:
+- **BUG-37-06** ✅ Fixed.4 chrome landed:
   - Manifest summary card-row above the tab nav (model count,
     test count, coverage ratio); fetched from
     `/api/dbt/manifest` + `/api/dbt/coverage`.

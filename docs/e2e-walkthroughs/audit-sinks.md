@@ -1,11 +1,11 @@
 # Audit-stream sinks walkthrough
 
-> **Mode:** `browser` · **Phase:** 20 · **Surface:** /admin/audit-sinks CRUD
+> **Mode:** `browser` · **Surface:** /admin/audit-sinks CRUD
 
 Exercises the admin Audit-sinks UI at `/admin/audit-sinks`: create
 a webhook sink with HMAC secret, verify secret redaction in the
 rendered HTML, fire a synthetic test envelope, toggle the sink
-on/off, and delete it. Phase 33.2 added the browser surface; this
+on/off, and delete it. added the browser surface; this
 playbook drives it end-to-end and asserts the no-secret-in-DOM
 contract that admin pages share with `/admin/api-keys` and
 `/admin/review-destinations`.

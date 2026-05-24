@@ -1,6 +1,6 @@
 # Full-stack demo: raw CSV → ML + every JSON API in ~30 seconds
 
-> **Mode:** `hybrid` · **Phase:** 12+ · **Surface:** Notebook + multi-page UI
+> **Mode:** `hybrid` · **Surface:** Notebook + multi-page UI
 
 `scripts/seed-full-stack-demo.py` is the local-replay companion to the
 [agent bring-up recipe](../guides/agent-bring-up.md). In one autonomous

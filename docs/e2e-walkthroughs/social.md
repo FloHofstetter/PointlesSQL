@@ -1,8 +1,8 @@
 # Social — full social network around data products
 
-> **Mode:** `browser` · **Phase:** 76 · **Surface:** `/data-products/{cat}/{sch}` Discussion + Reviews tabs · `/users/{id}` · `/agents/{slug}` · `/topics/{slug}` · `/feed` · `/notifications` · `/me/settings` · `/data-products/trending` · `/data-products/candidates`
+> **Mode:** `browser` · **Surface:** `/data-products/{cat}/{sch}` Discussion + Reviews tabs · `/users/{id}` · `/agents/{slug}` · `/topics/{slug}` · `/feed` · `/notifications` · `/me/settings` · `/data-products/trending` · `/data-products/candidates`
 
-Replays the Phase-76 happy path: the data-product surface is now a
+Replays the happy path: the data-product surface is now a
 full social network. Users follow other users, topics aggregate
 data products, agents post first-class comments / reviews /
 endorsements (always alongside a human principal), and cross-DP
@@ -53,7 +53,7 @@ serialise time and rendered as safe internal anchors in the UI.
 6. Hover over the DP citation; assert the cursor flips to
    pointer + the link target is `/data-products/main/customer_360`.
 
-> **Why this works**: Phase 76.7 added a parallel
+> **Why this works**: added a parallel
 > `body_md_resolved` field to the comment / reply / review /
 > endorsement serialiser; `frontend/js/citation_render.js` HTML-
 > escapes the body, then rewrites markdown anchors
@@ -63,7 +63,7 @@ serialise time and rendered as safe internal anchors in the UI.
 
 ### 2. `@`-mention picker typeahead
 
-Intent: regression-guard for Phase 76.6.3 (mention-picker
+Intent: regression-guard (mention-picker
 response-key drift).
 
 1. With the Discussion tab still active, click into
@@ -82,7 +82,7 @@ response-key drift).
 
 ### 3. Agent author badge on a new comment
 
-Intent: confirm Bug 12 (Phase 76.5 agent first-class actor) is
+Intent: confirm Bug 12 is
 visible in the UI — agent posts always render the human author
 **plus** an `<a>`-linked agent badge to its right.
 
@@ -111,7 +111,7 @@ visible in the UI — agent posts always render the human author
      `h3.pql-agent-display-name`, `h4.pql-agent-run-count`,
      `ul.list-group.pql-agent-comments`.
 
-> **Why this works**: Phase 76.5 enforced the "human always
+> **Why this works**: enforced the "human always
 > accountable" rule — every comment / review / endorsement keeps
 > `author_user_id NOT NULL` and adds `author_agent_id` as an
 > optional column. The serialiser returns both objects; the
@@ -120,7 +120,7 @@ visible in the UI — agent posts always render the human author
 
 ### 4. Discussion tab deep-link via `?tab=discussion`
 
-Intent: regression-guard for Phase 76.6.4 — the lazy-loader for
+Intent: regression-guard — the lazy-loader for
 the Discussion tab now fires on init activation, not only on
 manual `shown.bs.tab` events.
 
@@ -177,7 +177,7 @@ Intent: same render-completeness assertions on the Reviews tab.
 Intent: confirm the endorsement serialiser carries
 `note_md_resolved` + `agent` even though the DP detail page
 currently has no render block for endorsements. This stays
-deferred as Phase 77 territory.
+deferred.
 
 1. Curl as admin:
 
@@ -202,7 +202,7 @@ deferred as Phase 77 territory.
 
 ### 8. User profile + follow-user
 
-Intent: walk Phase 76.2 (profiles + user-to-user follows).
+Intent: walk (profiles + user-to-user follows).
 
 1. `browser_navigate('http://127.0.0.1:8000/users/me')`
    - Assert: `h4.pql-profile-display-name`,
@@ -225,7 +225,7 @@ Intent: walk Phase 76.2 (profiles + user-to-user follows).
 
 ### 9. Agent profile
 
-Intent: walk Phase 76.5 agent identity surface.
+Intent: walk agent identity surface.
 
 1. `browser_navigate('http://127.0.0.1:8000/agents/nightly-bot')`
    - Assert: `h3.pql-agent-display-name` with the agent slug
@@ -238,7 +238,7 @@ Intent: walk Phase 76.5 agent identity surface.
 
 ### 10. Topic detail + follow-topic
 
-Intent: walk Phase 76.3 (topics taxonomy + per-topic follows).
+Intent: walk (topics taxonomy + per-topic follows).
 
 1. `browser_navigate('http://127.0.0.1:8000/topics')`
    - Assert: page loads with a list of topics; at minimum
@@ -271,7 +271,7 @@ from everything the viewer follows.
 
 ### 12. Topbar bell + `/notifications`
 
-Intent: regression-guard for Phase 76.6 (SSE bell).
+Intent: regression-guard (SSE bell).
 
 1. From any social page,
    `browser_evaluate` the bell badge:
@@ -288,7 +288,7 @@ Intent: regression-guard for Phase 76.6 (SSE bell).
 
 ### 13. `/me/settings` digest toggle
 
-Intent: walk Phase 76.4 (notification preferences).
+Intent: walk (notification preferences).
 
 1. `browser_navigate('http://127.0.0.1:8000/me/settings')`
    - Assert: `div.form-check.pql-me-digest-toggle` rendered with
@@ -301,9 +301,7 @@ Intent: walk Phase 76.4 (notification preferences).
 
 ### 14. Trending + Candidates
 
-Intent: regression-guard the Phase 72.3 trending page and the
-Phase 73.1 candidates page (both inherited the Phase 76.6.4
-Alpine x-data quote fix).
+Intent: regression-guard the trending page and the candidates page (both inherited the Alpine x-data quote fix).
 
 1. `browser_navigate('http://127.0.0.1:8000/data-products/trending')`
    - Assert: no JS console errors;
@@ -322,7 +320,7 @@ Alpine x-data quote fix).
 
 ### 15. Cross-page Alpine x-data sanity
 
-Intent: regression-guard for Phase 76.6.2 + 76.6.4 — the same
+Intent: regression-guard + 76.6.4 — the same
 Jinja `tojson` outer-quote bug would have broken every Alpine
 component on these pages.
 
@@ -347,8 +345,7 @@ component on these pages.
   intercepts. Do not assert anonymous access.
 - **No endorsement render block on the DP detail page.** The
   server serialiser is wired (`note_md_resolved` + `agent`) but
-  the template has no Alpine block to render endorsements yet —
-  Phase 77 territory. Step 7 stays a curl-only verification on
+  the template has no Alpine block to render endorsements yet —. Step 7 stays a curl-only verification on
   purpose.
 - **Mentions are always rendered alongside the human author,
   never instead of it.** If a future template change ever
@@ -361,7 +358,7 @@ component on these pages.
 
 ## Found bugs
 
-The following bugs surfaced in the Phase-76.7 replay session and
+The following bugs surfaced in the replay session and
 all landed in the same close-out push (`f8dbe2e..9bb9b11`):
 
 - **Bug 1** — Alpine `x-data` SyntaxError on
@@ -419,5 +416,5 @@ Deferred (not blocking):
 - **Bug 13** — Endorsements have no frontend render block in
   `data_product.html`. The server-side projection
   (`note_md_resolved` + `agent`) is in place ready for a future
-  endorsements-UI surface (Phase 77 candidate). Step 7 above
+  endorsements-UI surface. Step 7 above
   remains a curl-only verification until that surface lands.

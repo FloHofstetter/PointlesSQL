@@ -1,6 +1,6 @@
 # OIDC walkthrough
 
-> **Mode:** `browser` · **Phase:** 9 · **Surface:** OIDC SSO sidecar pass
+> **Mode:** `browser` · **Surface:** OIDC SSO sidecar pass
 
 Exercises the OAuth2 authorization-code + PKCE flow against the
 `ghcr.io/navikt/mock-oauth2-server` sidecar added to

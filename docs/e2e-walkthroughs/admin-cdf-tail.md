@@ -1,8 +1,8 @@
 # Admin CDF subscriptions walkthrough
 
-> **Mode:** `browser` · **Phase:** 40.6 · **Surface:** /admin/cdf-tail + table CDF tab
+> **Mode:** `browser` · **Surface:** /admin/cdf-tail + table CDF tab
 
-End-to-end exercise of the Phase 40.6 foreign-Delta CDF tail UI:
+End-to-end exercise of the foreign-Delta CDF tail UI:
 admin landing card → `/admin/cdf-subscriptions` registry CRUD →
 `Run tail now` trigger → table-detail "CDF events" tab. Mirror
 of the push-modell `/admin/external-writes` flow, but for the

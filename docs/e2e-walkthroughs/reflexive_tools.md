@@ -1,6 +1,6 @@
 # Reflexive supervision tools walkthrough
 
-> **Mode:** `hermes` · **Phase:** 13.11 · **Surface:** Hermes reflexive tools
+> **Mode:** `hermes` · **Surface:** Hermes reflexive tools
 
 ** close-out replay.** This playbook proves the five
 sub-sprints of actually close the read-loop the
