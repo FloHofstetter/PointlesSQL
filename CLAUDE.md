@@ -269,3 +269,16 @@ not sufficient for the in-session tool surface.
   it there instead of adding a workaround here. This keeps both
   codebases clean and avoids stale workaround code that outlives
   the bug
+- **Source comments + docstrings MUST NOT reference Phase /
+  Sprint / Wave numbers or BUG-NN-NN markers.** That metadata
+  belongs in `ROADMAP.md` + `CHANGELOG.md` + git history only.
+
+  Why: phase tags read as cryptic insider language to anyone
+  outside the project, and they rot — "Phase 99" means nothing
+  once Phase 200 is the current frontier. A comment that needs
+  phase context to be understood has the wrong shape; rewrite
+  it as a feature description.
+
+  Exception: `pointlessql/alembic/versions/*.py` migration files
+  (the phase tag in the filename + docstring is the schema-change
+  identity, not project-management noise).

@@ -10,7 +10,7 @@ and value level.
 
 📚 **Documentation**: run `uv run mkdocs serve` and open
 <http://127.0.0.1:8000>.  The docs site goes public as part of
-the launch sprint; until then, browse the markdown source under
+the public launch; until then, browse the markdown source under
 [`docs/`](docs/).
 
 ## Why PointlesSQL
@@ -32,14 +32,14 @@ add-on observability layer:
   config decision, not the default.
 - **Branch isolation per agent run** — Delta-Lake-native shallow
   clones let each agent run write to an isolated branch that
-  promotes via human review (Phase 16.5).
+  promotes via human review.
 - **First-class rollback** — `pql.rollback(run_id)` is a
   supervised action with cryptographic preview, not a manual
   Delta `RESTORE` ritual.
 - **Review-bot infrastructure** — the same audit primitives feed
   a daily Audit-Reviewer, a Compliance-Bot, and an Incident-
-  Responder agent (Phase 19), so the audit trail becomes
-  actionable rather than just stored.
+  Responder agent, so the audit trail becomes actionable rather
+  than just stored.
 
 PointlesSQL doesn't replace your query engine, your catalog, or
 your agent framework — it composes them under a forced-audit
@@ -47,18 +47,24 @@ contract.
 
 ## Status
 
-Phase 21 (audit-first ML registry) closed 2026-04-30.  The stack
-ships:
+Production stack with the following surfaces shipped:
 
 - **Catalog browser** with inline metadata edit
 - **PQL library** — `from pointlessql import PQL` — read / write
   / merge / branch / rollback Delta tables by UC name
 - **Audit Cockpit** — `agent_run_operations` with row, column,
   value, and inference-level lineage
-- **Native notebook editor** with pyright LSP and per-notebook
-  ipykernel
+- **Native notebook editor** with pyright LSP, per-notebook
+  ipykernel, and real-time CRDT-based multi-tab co-edit
 - **MLflow registry surface** with champion/challenger promotion
   and forced-autolog training audit
+- **Delta branching** — shallow-clone branches per agent run with
+  control-room promote/discard/preview UI
+- **External SQL API** — DBX-compatible `/api/2.0/sql/statements`
+  with per-API-key catalog + IP ACLs and usage aggregation
+- **Audit-Reviewer agent infrastructure** — three personas
+  (daily reviewer, compliance bot, incident responder) backed by
+  the same audit primitives
 
 See [`ROADMAP.md`](ROADMAP.md) for the per-sprint detail and
 [`CHANGELOG.md`](CHANGELOG.md) for release notes.  The
@@ -76,7 +82,7 @@ ten-minute read that links the pieces together.
 - **SQLAlchemy 2.0 + Alembic** — own metadata DB (sessions, UI
   preferences, audit trail); soyuz-catalog owns the lakehouse
   metadata
-- **`mlflow`** — registry subprocess (Phase 21)
+- **`mlflow`** — registry subprocess
 - **pytest + ruff + pyright + pydoclint + pre-commit**
 
 ## Architecture
@@ -148,8 +154,9 @@ docker compose up -d
 
 Delta tables are stored in `./warehouse/` (bind-mounted into both
 containers). Notebooks are stored in `./notebooks/` as
-``.py`` jupytext Percent-format files (Sprint 63 retired the
-JupyterLab iframe; see the [migration note](#migrating-from-the-jupyterlab-iframe-sprint-63)).
+``.py`` jupytext Percent-format files; the JupyterLab iframe was
+retired in favour of the native editor (see the
+[migration note](#migrating-from-the-jupyterlab-iframe)).
 
 ## Quick start (local development)
 
@@ -194,8 +201,7 @@ inline.
 **4. Use PQL in the notebook:**
 
 Click the **Notebook** tab in the navbar.  The native Monaco-based
-editor (Phase 12.6) opens at ``notebooks/scratch.py``.  In a new
-code cell:
+editor opens at ``notebooks/scratch.py``.  In a new code cell:
 
 ```python
 from pointlessql import PQL
@@ -216,10 +222,10 @@ pql.write_table(df, "my_catalog.my_schema.new_table")
 
 New tables appear immediately in the sidebar.
 
-## Migrating from the JupyterLab iframe (Sprint 63)
+## Migrating from the JupyterLab iframe
 
-Phase 12.6 Sprint 63 retired the embedded JupyterLab subprocess
-that Sprint 3 set up.  The native editor that replaced it supports
+The embedded JupyterLab subprocess that the early prototype set up
+has been retired.  The native editor that replaced it supports
 **``.py`` jupytext Percent-format notebooks only** — papermill-
 generated ``.ipynb`` files under ``notebooks/runs/`` continue to
 work as run artefacts and the workspace browser still lists
@@ -263,12 +269,9 @@ checklist.
 
 ## Configuration
 
-PointlesSQL is configured via environment variables:
-
-Sprint 45 split the flat `Settings` into nine sub-models with
-per-sub-model `env_prefix`. Every variable below follows the
-`POINTLESSQL_<SUBMODEL>_<FIELD>` pattern; see `.env.example` for
-the full list and `CHANGELOG.md` for the Sprint-45 rename map.
+PointlesSQL is configured via environment variables.  Every
+variable follows the `POINTLESSQL_<SUBMODEL>_<FIELD>` pattern;
+see `.env.example` for the full list.
 
 | Variable | Default | Description |
 |---|---|---|
