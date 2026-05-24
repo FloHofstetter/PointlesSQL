@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "pointlessql"
-version = "0.1.0rc128"
+version = "0.1.0rc129"
 description = "A web UI for Unity Catalog and other open-source Databricks components"
 license = "Apache-2.0"
 readme = "README.md"
@@ -152,12 +152,18 @@ target-version = "py314"
 extend-exclude = ["notebooks/scratch*"]
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "UP", "D", "BLE", "D401"]
+select = ["E", "F", "I", "UP", "D", "BLE", "D401", "TID"]
 ignore = ["D107"]  # __init__ docstrings — handled by class docstring per pydoclint
 pydocstyle.convention = "google"
 # Phase 121.5 — D401 ("imperative mood") is not in the google preset
 # default but catches the "Cached X" / "Convenience wrapper" first-line
 # anti-pattern.  15 sites surfaced + fixed in the same sprint.
+# Phase 121.3 — TID enables flake8-tidy-imports; the banned-api rule
+# below blocks direct generated-client imports from the API layer so
+# every UC call routes through ``UnityCatalogClient``.
+
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
+"soyuz_catalog_client.api".msg = "Use UnityCatalogClient facade from pointlessql.services.unitycatalog instead.  Direct generated-client calls in api/ bypass error wrapping + principal forwarding."
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["D"]
@@ -189,6 +195,23 @@ pydocstyle.convention = "google"
 # in a previous cell, or ``df`` populated from a Delta read).  Pyright
 # already excludes this tree; ruff needs the matching tolerance.
 "pointlessql/data/notebook_templates/**" = ["D", "F401", "F821"]
+# Phase 121.3 — the TID251 (banned-api) rule above forbids direct
+# ``soyuz_catalog_client.api.*`` imports from the API layer.  Three
+# layers legitimately bypass the facade:
+#   * the facade itself wraps the generated client (every method
+#     calls into ``soyuz_catalog_client.api``);
+#   * the PQL sync layer (``pointlessql/pql/**``) needs sync-mode
+#     calls the async facade doesn't expose;
+#   * ``services/branch_tags.py`` + ``services/soyuz_lineage.py``
+#     have sync write-paths used by the PQL primitives;
+#   * the lifespan bootstrap creates the app-state client.
+"pointlessql/services/unitycatalog/**" = ["TID251"]
+"pointlessql/pql/**" = ["TID251"]
+"pointlessql/services/branch_tags.py" = ["TID251"]
+"pointlessql/services/soyuz_lineage.py" = ["TID251"]
+"pointlessql/services/agent_runs/mlflow_soyuz_link.py" = ["TID251"]
+"pointlessql/services/dbt/_bridge.py" = ["TID251"]
+"pointlessql/api/_bootstrap/**" = ["TID251"]
 
 [tool.pyright]
 pythonVersion = "3.14"

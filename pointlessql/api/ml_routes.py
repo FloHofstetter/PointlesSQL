@@ -20,12 +20,12 @@ from typing import Any
 from fastapi import APIRouter, Request
 from sqlalchemy import select
 
-from pointlessql.api.dependencies import require_supervisor
+from pointlessql.api.dependencies import get_uc_client, require_supervisor
 from pointlessql.exceptions import CatalogNotFoundError
 from pointlessql.models import AgentRun
 from pointlessql.services.agent_runs.mlflow_detector import get_mlflow_module
 from pointlessql.services.agent_runs.mlflow_soyuz_link import parse_link_marker
-from pointlessql.services.soyuz_client import make_soyuz_client
+from pointlessql.services.unitycatalog import UnityCatalogClient
 
 _logger = logging.getLogger(__name__)
 
@@ -70,7 +70,9 @@ def _fetch_mlflow_run(mlflow_run_id: str) -> dict[str, Any]:
     }
 
 
-def _fetch_linked_model_versions(agent_run_id: str) -> list[dict[str, Any]]:
+async def _fetch_linked_model_versions(
+    uc: UnityCatalogClient, agent_run_id: str
+) -> list[dict[str, Any]]:
     """Scan soyuz for model-versions whose comment carries a marker for this run.
 
     Best-effort: a soyuz outage reduces the result to an empty list.
@@ -78,37 +80,32 @@ def _fetch_linked_model_versions(agent_run_id: str) -> list[dict[str, Any]]:
     catalog/schema, which is fine at PointlesSQL's scale; future
     optimisation = a real soyuz tag index once tags-on-models lands.
 
+    Phase 121.3: rewired through :class:`UnityCatalogClient` instead of
+    the generated client directly, so principal forwarding + error
+    wrapping behave identically with the rest of the API surface.
+
     Args:
+        uc: Per-request UC facade carrying the effective principal.
         agent_run_id: The run UUID to match against marker payloads.
 
     Returns:
         list[dict[str, Any]]: One entry per linked model-version.
     """
     try:
-        soyuz = make_soyuz_client()
-        from soyuz_catalog_client.api.model_versions import (
-            list_model_versions_api_2_1_unity_catalog_models_full_name_versions_get as _list_mv,
-        )
-        from soyuz_catalog_client.api.registered_models import (
-            list_registered_models_api_2_1_unity_catalog_models_get as _list_rm,
-        )
-
         # Soyuz allows a metastore-wide list when both catalog/schema are unset.
-        rm_page = _list_rm.sync(client=soyuz, max_results=1000)
-        registered = getattr(rm_page, "registered_models", None)
+        registered = await uc.list_registered_models(max_results=1000)
         if not registered:
             return []
         results: list[dict[str, Any]] = []
         for rm in registered:
-            full_name = getattr(rm, "full_name", None)
-            if not full_name:
+            full_name = rm.get("full_name")
+            if not isinstance(full_name, str) or not full_name:
                 continue
-            mv_page = _list_mv.sync(client=soyuz, full_name=full_name, max_results=1000)
-            versions = getattr(mv_page, "model_versions", None)
+            versions = await uc.list_model_versions(full_name, max_results=1000)
             if not versions:
                 continue
             for mv in versions:
-                marker = parse_link_marker(getattr(mv, "comment", None))
+                marker = parse_link_marker(mv.get("comment"))
                 if marker is None:
                     continue
                 if marker.get("agent_run_id") != agent_run_id:
@@ -116,9 +113,9 @@ def _fetch_linked_model_versions(agent_run_id: str) -> list[dict[str, Any]]:
                 results.append(
                     {
                         "full_name": full_name,
-                        "version": getattr(mv, "version", None),
-                        "status": getattr(mv, "status", None),
-                        "source": getattr(mv, "source", None),
+                        "version": mv.get("version"),
+                        "status": mv.get("status"),
+                        "source": mv.get("source"),
                         "linked_at": marker.get("linked_at"),
                         "mlflow_run_id": marker.get("mlflow_run_id"),
                     }
@@ -173,7 +170,8 @@ async def get_ml_context(request: Request, run_id: str) -> dict[str, Any]:
     if mlflow_run_id:
         mlflow_payload = _fetch_mlflow_run(mlflow_run_id)
 
-    model_versions = _fetch_linked_model_versions(run_id)
+    uc = get_uc_client(request)
+    model_versions = await _fetch_linked_model_versions(uc, run_id)
 
     return {
         "agent_run": agent_run_payload,
