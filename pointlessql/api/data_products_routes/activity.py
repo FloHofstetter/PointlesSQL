@@ -5,10 +5,15 @@ from __future__ import annotations
 from dataclasses import asdict
 from typing import Any
 
-from fastapi import APIRouter, Query, Request
+from fastapi import APIRouter, Depends, Request
 
 from pointlessql.api.data_products_routes._shared import load_one
-from pointlessql.api.dependencies import current_workspace_id, require_user
+from pointlessql.api.dependencies import (
+    PaginationParams,
+    current_workspace_id,
+    pagination,
+    require_user,
+)
 from pointlessql.services.data_products import fetch_activity_for_dp
 
 router = APIRouter(tags=["data-products"])
@@ -19,8 +24,7 @@ async def get_data_product_activity(
     catalog: str,
     schema: str,
     request: Request,
-    limit: int = Query(default=50, ge=1, le=200),
-    offset: int = Query(default=0, ge=0),
+    paging: PaginationParams = Depends(pagination),
 ) -> dict[str, Any]:
     """Return the merged activity feed for one data product.
 
@@ -28,9 +32,8 @@ async def get_data_product_activity(
         catalog: UC catalog segment.
         schema: UC schema segment.
         request: Incoming FastAPI request.
-        limit: Max rows returned (server cap 200).
-        offset: Pagination offset (post-merge, so the four streams
-            are merged then paginated together).
+        paging: Shared offset/limit pagination dep (post-merge,
+            so the four streams are merged then paginated together).
 
     Returns:
         ``{"data_product_id": int, "activity": [...]}`` rows in
@@ -46,8 +49,8 @@ async def get_data_product_activity(
             session,
             workspace_id=workspace_id,
             dp=row,
-            limit=limit,
-            offset=offset,
+            limit=paging.limit,
+            offset=paging.offset,
         )
     return {
         "data_product_id": row.id,

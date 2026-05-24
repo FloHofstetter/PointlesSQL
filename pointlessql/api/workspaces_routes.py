@@ -23,12 +23,14 @@ from __future__ import annotations
 
 from typing import Any, cast
 
-from fastapi import APIRouter, Query, Request
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse
 from sqlalchemy import select
 
 from pointlessql.api.dependencies import (
+    PaginationParams,
     get_user,
+    pagination,
     require_admin,
     require_user,
 )
@@ -272,7 +274,7 @@ async def reorder_pins(
 async def workspace_activity(
     slug: str,
     request: Request,
-    limit: int = Query(default=50, ge=1, le=200),
+    paging: PaginationParams = Depends(pagination),
 ) -> dict[str, Any]:
     """Workspace-scoped recent activity — every inbox event in the workspace."""
     require_user(request)
@@ -283,7 +285,8 @@ async def workspace_activity(
             select(UserNotification)
             .where(UserNotification.workspace_id == ws.id)
             .order_by(UserNotification.created_at.desc())
-            .limit(limit)
+            .limit(paging.limit)
+            .offset(paging.offset)
         ).scalars().all()
         return {
             "workspace_slug": slug,

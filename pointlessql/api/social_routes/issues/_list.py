@@ -5,10 +5,15 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from fastapi import APIRouter, Query, Request
+from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy import and_, desc, select
 
-from pointlessql.api.dependencies import current_workspace_id, require_user
+from pointlessql.api.dependencies import (
+    PaginationParams,
+    current_workspace_id,
+    pagination,
+    require_user,
+)
 from pointlessql.api.social_routes._issue_helpers import (
     ensure_parent_supports_issues,
     hydrate_emails,
@@ -28,7 +33,7 @@ async def list_issues_for_parent(
     parent_ref: str,
     request: Request,
     state: str | None = Query(default=None),
-    limit: int = Query(default=50, ge=1, le=200),
+    paging: PaginationParams = Depends(pagination),
 ) -> dict[str, Any]:
     """List every issue opened against ``parent_kind/parent_ref``."""
     require_user(request)
@@ -52,7 +57,8 @@ async def list_issues_for_parent(
                 select(Issue)
                 .where(and_(*conditions))
                 .order_by(desc(Issue.opened_at))
-                .limit(limit)
+                .limit(paging.limit)
+                .offset(paging.offset)
             )
             .scalars()
             .all()
@@ -88,7 +94,7 @@ async def list_issues_global(
     milestone_id: int | None = Query(default=None),
     parent_kind: str | None = Query(default=None),
     label: str | None = Query(default=None),
-    limit: int = Query(default=50, ge=1, le=200),
+    paging: PaginationParams = Depends(pagination),
 ) -> dict[str, Any]:
     """Cross-entity issues listing for the global ``/issues`` page."""
     require_user(request)
@@ -118,7 +124,8 @@ async def list_issues_global(
                 select(Issue)
                 .where(and_(*conditions))
                 .order_by(desc(Issue.opened_at))
-                .limit(limit)
+                .limit(paging.limit)
+                .offset(paging.offset)
             )
             .scalars()
             .all()

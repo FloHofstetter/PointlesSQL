@@ -11,10 +11,15 @@ import datetime
 import logging
 from typing import Any
 
-from fastapi import APIRouter, Query, Request
+from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import HTMLResponse
 
-from pointlessql.api.dependencies import get_templates, require_auditor
+from pointlessql.api.dependencies import (
+    PaginationParams,
+    get_templates,
+    pagination,
+    require_auditor,
+)
 from pointlessql.exceptions import ValidationError
 from pointlessql.services import audit_fts
 
@@ -54,8 +59,7 @@ async def api_audit_search(
     axis: str = Query(default="all", description="runs|ops|queries|tool_calls|audit_log|all"),
     since: str | None = Query(default=None, description="ISO-8601 lower bound"),
     until: str | None = Query(default=None, description="ISO-8601 upper bound (exclusive)"),
-    limit: int = Query(default=50, ge=1, le=500),
-    offset: int = Query(default=0, ge=0),
+    paging: PaginationParams = Depends(pagination),
     kind: str | None = Query(
         default=None,
         description="Polymorphic entity kind (dp|table|model|branch|…)",
@@ -79,8 +83,8 @@ async def api_audit_search(
         since: ISO-8601 lower bound on the source row's primary
             timestamp (per-axis JOIN).  ``None`` is "no bound".
         until: ISO-8601 upper bound (exclusive).
-        limit: Max rows (1–500); FTS rank-ascending.
-        offset: Zero-based offset for the page.
+        paging: Shared offset/limit pagination dep (defaults
+            offset=0, limit=100, max 1000).
         kind: Restrict to a polymorphic entity kind (Phase 78
             polish).  Only the ``audit_log`` axis carries a
             kind discriminator; filtering on other axes narrows
@@ -108,8 +112,8 @@ async def api_audit_search(
         axis=axis,  # type: ignore[arg-type]
         since=since_dt,
         until=until_dt,
-        limit=limit,
-        offset=offset,
+        limit=paging.limit,
+        offset=paging.offset,
         workspace_id=workspace_id,
         kind=kind,
     )

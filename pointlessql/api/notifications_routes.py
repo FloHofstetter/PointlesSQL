@@ -16,11 +16,17 @@ from __future__ import annotations
 import datetime
 from typing import Any
 
-from fastapi import APIRouter, Query, Request
+from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy import func, select
 
-from pointlessql.api.dependencies import current_workspace_id, get_user, require_user
+from pointlessql.api.dependencies import (
+    PaginationParams,
+    current_workspace_id,
+    get_user,
+    pagination,
+    require_user,
+)
 from pointlessql.exceptions import ResourceNotFoundError
 from pointlessql.models.auth import User
 from pointlessql.models.catalog._data_products import DataProduct
@@ -77,8 +83,7 @@ async def list_notifications(
     request: Request,
     unread: bool = Query(default=False),
     event_type: str | None = Query(default=None),
-    limit: int = Query(default=50, ge=1, le=200),
-    offset: int = Query(default=0, ge=0),
+    paging: PaginationParams = Depends(pagination),
 ) -> dict[str, Any]:
     """List the caller's notifications with optional unread + type filters."""
     require_user(request)
@@ -99,7 +104,7 @@ async def list_notifications(
             stmt = stmt.where(UserNotification.read_at.is_(None))
         if event_type:
             stmt = stmt.where(UserNotification.event_type == event_type)
-        stmt = stmt.limit(limit).offset(offset)
+        stmt = stmt.limit(paging.limit).offset(paging.offset)
         rows = session.execute(stmt).scalars().all()
 
         actor_ids = {r.actor_user_id for r in rows if r.actor_user_id is not None}
@@ -135,7 +140,7 @@ async def list_notifications(
         )
         for r in rows
     ]
-    return {"notifications": payload, "offset": offset, "limit": limit}
+    return {"notifications": payload, "offset": paging.offset, "limit": paging.limit}
 
 
 @router.get("/api/notifications/unread-count")
