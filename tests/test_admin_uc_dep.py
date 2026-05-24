@@ -6,7 +6,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from pointlessql.api.dependencies import admin_uc, get_uc_client, require_admin
+from pointlessql.api.dependencies import admin_uc, get_uc_client
 from pointlessql.exceptions import AuthorizationError
 from pointlessql.types import UserInfo
 

@@ -5,8 +5,8 @@ from __future__ import annotations
 import pytest
 
 from pointlessql.api.social_routes._ref_kinds import (
-    RefKind,
     _REF_KINDS,
+    RefKind,
     find_ref_kind,
     register_ref_kind,
 )

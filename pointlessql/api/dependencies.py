@@ -168,7 +168,7 @@ def admin_uc(request: Request) -> UnityCatalogClient:
     Raises:
         AuthorizationError: When the caller is not an admin (via
             :func:`require_admin`).
-    """
+    """  # noqa: DOC502
     require_admin(request)
     return get_uc_client(request)
 

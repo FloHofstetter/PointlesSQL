@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "pointlessql"
-version = "0.1.0rc134"
+version = "0.1.0rc135"
 description = "A web UI for Unity Catalog and other open-source Databricks components"
 license = "Apache-2.0"
 readme = "README.md"
@@ -166,7 +166,15 @@ pydocstyle.convention = "google"
 "soyuz_catalog_client.api".msg = "Use UnityCatalogClient facade from pointlessql.services.unitycatalog instead.  Direct generated-client calls in api/ bypass error wrapping + principal forwarding."
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["D"]
+# Phase 121.8a — tests/ legitimately bypass the UnityCatalogClient
+# facade in two cases: (i) setup/teardown that creates or drops
+# catalog/schema/table fixtures via the generated client because the
+# facade intentionally hides those admin paths, and (ii) error
+# injection that monkey-patches the generated-client transport.  The
+# TID251 banned-api rule below stays enforced for ``pointlessql/api/``
+# where the facade discipline matters, but tests can speak the
+# generated client directly without per-line noqa noise.
+"tests/**" = ["D", "TID251"]
 # Phase 108 e2e tests live at ``e2e/`` (sibling of ``tests/``) and
 # follow the same docstring exemption — test packages don't need
 # Google-style module docstrings since they don't ship as a library.
@@ -176,7 +184,7 @@ pydocstyle.convention = "google"
 # the "imports at top of file" / "import block sorting" rules even
 # though the ordering is load-bearing.  E402 + I001 are silenced for
 # the conftest only; the real conftest body still gets full lint.
-"tests/conftest.py" = ["D", "E402", "I001"]
+"tests/conftest.py" = ["D", "E402", "I001", "TID251"]
 # Notebooks use jupytext percent format with markdown cells carrying
 # the prose — module-level Python docstrings would duplicate the
 # first markdown cell.  Sprint 13.5's agent_drift_monitor.py is the

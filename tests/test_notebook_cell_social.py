@@ -16,11 +16,11 @@ import uuid
 
 import httpx
 import pytest
-from pointlessql.exceptions import BadRequestError
 from sqlalchemy import inspect
 
 from pointlessql.api.main import app
 from pointlessql.api.social_routes._kind_dispatch import parse_ref
+from pointlessql.exceptions import BadRequestError
 from pointlessql.models.notebook import Notebook
 from pointlessql.services.social import entity_registry
 
