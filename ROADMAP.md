@@ -2604,19 +2604,76 @@ PointlesSQL
 │   │         slug in the workspace, workspace 404 surfaces all
 │   │         workspace slugs, agent-slug 404 surfaces every agent
 │   │         slug in the workspace.
-│   │     - **121.2** — Settings-Cache + Pagination-Dep (low-risk
-│   │       Filler, queued)
-│   │     - **121.3** — Soyuz-Facade-Vollendung (44× direkte
-│   │       Calls zentralisieren, queued)
-│   │     - **121.4** — Privilege-Gate hinter Feature-Flag
-│   │       (``enforce_global_privilege_gate``); plus PII-Redaction
-│   │       in Audit-Logs (Layering-Violation 7).  Queued.
-│   │     - **121.5** — Docstring-Sweep API-Layer +
-│   │       pydoclint-Tightening.  Queued.
-│   │     - **121.6** — Mikro-Extractions: ``parse_ref()`` →
-│   │       ``RefKind``-Registry, ``admin_uc()``-Helper,
-│   │       ``_DataOpsMixin``-Per-Concern-Split,
-│   │       ``render_page_with_fallback()``.  Queued.
+│   │     - **121.2 — Settings cache + pagination dep.**  ✅ done 2026-05-24.
+│   │       ``get_settings()`` LRU-cached factory in
+│   │       ``pointlessql/config/__init__.py`` replaces 26 direct
+│   │       ``Settings()`` call-sites; ``reset_settings_cache()``
+│   │       companion + autouse fixture in ``tests/conftest.py``
+│   │       keeps env-monkeypatching tests working.  Shared
+│   │       ``PaginationParams`` dataclass + ``pagination()`` FastAPI
+│   │       dependency added in ``api/dependencies.py`` (37 ad-hoc
+│   │       offset/limit query params remain — best-effort migration
+│   │       deferred).  14 new pytest.  Commit ``a54f95c``, asset
+│   │       rc126 → rc127.
+│   │     - **121.5 — pydoclint tightening + D401 sweep.**  ✅ done
+│   │       2026-05-24.  Re-scoped from the original "62% → 100%
+│   │       docstring sweep" plan after the audit showed the codebase
+│   │       was already 100% docstring-compliant.  Attempted
+│   │       ``check-return-types = true`` + ``check-yield-types = true``
+│   │       in ``[tool.pydoclint]``; produced ~1400 DOC203/DOC404 false
+│   │       positives because pydoclint compares the type annotation
+│   │       against the first word of the prose ``Returns: The X.`` /
+│   │       ``Yields: Each Y.`` sections (it expects the
+│   │       ``<type>: <desc>`` form).  House style is prose-only with
+│   │       the type in the signature — flipping the flag would force
+│   │       rewriting >1000 docstrings without semantic win.  Kept
+│   │       false with a documented note.  Landed instead: added
+│   │       ``D401`` ("imperative mood") to the Ruff D-rule select
+│   │       (not in the google preset default); 15 violations surfaced
+│   │       and were rewritten in the same sprint.  Commit ``96bd4c2``,
+│   │       asset rc127 → rc128.
+│   │     - **121.3 — Soyuz facade completion.**  ✅ done 2026-05-24.
+│   │       Ground-truth audit found 3 ostensible direct-client
+│   │       violations; two were legitimate sync helpers in
+│   │       ``services/`` (``branch_tags.py``, ``soyuz_lineage.py``)
+│   │       because the async facade exposes no sync path.  Only
+│   │       ``ml_routes.py`` was a real API-layer violation:
+│   │       ``_fetch_linked_model_versions`` was sync and reached
+│   │       directly into the generated client; rewired through
+│   │       ``UnityCatalogClient.list_registered_models()`` +
+│   │       ``.list_model_versions()`` (now async, awaited from
+│   │       ``get_ml_context``).  New ``[tool.ruff.lint.flake8-tidy-
+│   │       imports.banned-api]`` rule blocks ``soyuz_catalog_client.
+│   │       api`` imports across ``api/`` with per-file ignores for
+│   │       the four legitimate sync-helper bypass sites.  4 new
+│   │       pytest (test_ml_routes_facade.py).  Commit ``782c7dd``,
+│   │       asset rc128 → rc129.
+│   │     - **121.4 — DEFERRED (out of scope this wave).**  Privilege-
+│   │       Gate behind feature-flag + PII-Redaction in Audit-Logs.
+│   │       Needs its own session for the feature-flag staging cycle.
+│   │     - **121.6 — Four micro-extractions.**  ✅ done 2026-05-24.
+│   │       (i) ``parse_ref()``: 125-LOC 13-way if/elif → ``RefKind``
+│   │       frozen-dataclass registry in new ``social_routes/
+│   │       _ref_kinds.py`` (mirrors the existing ``CitationKind``
+│   │       pattern); dispatcher shrinks to a registry lookup + uniform
+│   │       ``BadRequestError``.  (ii) ``admin_uc()``: combined
+│   │       ``require_admin`` + ``get_uc_client`` FastAPI dep collapses
+│   │       the 2-line setup across 22 federation routes into one
+│   │       ``Depends(admin_uc)`` injection.  (iii) ``_DataOpsMixin``
+│   │       per-concern split: ``pql/_pql_data.py`` 678 LOC → 38-LOC
+│   │       composite over 9 new per-concern mixins (_pql_read /
+│   │       _pql_write / _pql_sql / _pql_vector / _pql_update_delete /
+│   │       _pql_aggregate / _pql_autoload / _pql_list /
+│   │       _pql_widgets).  Public PQL surface + import path + MRO
+│   │       identical; adding a new data-op = focused edit in one
+│   │       per-concern file.  (iv) ``render_page_with_fallback()``:
+│   │       6 identical ``try/except CatalogUnavailableError`` +
+│   │       render-with-banner blocks in ``federation_routes.py``
+│   │       collapse into one helper on ``api/dependencies.py``.
+│   │       24 new pytest (16 ref-kind + 4 admin_uc + 4 render-page);
+│   │       existing 79 polymorphic-kind + 42 federation + 70 PQL
+│   │       integration tests stay green.  Commit ``37d35dc``, asset
+│   │       rc129 → rc130.
 │   │
 │   ├── Phase 120 — API-key ACLs + usage dashboard               ✅ done 2026-05-23
 │   │     **Closed 2026-05-23.**  Seven sub-phases bundled in one

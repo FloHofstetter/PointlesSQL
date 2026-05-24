@@ -4,6 +4,64 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- **Phase 121.6 — Four micro-extractions (2026-05-24, rc129 → rc130).**
+  (i) ``social_routes._kind_dispatch.parse_ref()``: 125-LOC 13-way
+  if/elif chain → ``RefKind`` frozen-dataclass registry in new
+  ``social_routes/_ref_kinds.py`` mirroring the existing
+  ``CitationKind`` pattern; dispatcher shrinks to a registry lookup
+  + uniform ``BadRequestError``.  (ii) ``admin_uc()``: combined
+  ``require_admin`` + ``get_uc_client`` FastAPI dep collapses the
+  2-line setup across 22 federation routes into one
+  ``Depends(admin_uc)`` injection.  (iii) ``_DataOpsMixin``
+  per-concern split: ``pql/_pql_data.py`` shrunk from 678 LOC to a
+  38-LOC composite over 9 new per-concern mixins (read/write/sql/
+  vector/update_delete/aggregate/autoload/list/widgets); public PQL
+  surface + import path + MRO identical.  (iv)
+  ``render_page_with_fallback()``: 6 identical try/except
+  ``CatalogUnavailableError`` + render-with-banner blocks in
+  ``federation_routes.py`` collapse into one helper on
+  ``api/dependencies.py``.  24 new pytest.
+
+- **Phase 121.3 — Soyuz facade completion (2026-05-24, rc128 → rc129).**
+  Ground-truth audit found 3 ostensible direct-client violations;
+  two were legitimate sync helpers in ``services/``
+  (``branch_tags.py``, ``soyuz_lineage.py``).  ``ml_routes.py``'s
+  ``_fetch_linked_model_versions`` was the real API-layer violation;
+  rewired through ``UnityCatalogClient.list_registered_models()`` +
+  ``.list_model_versions()`` (now async, awaited from
+  ``get_ml_context``).  New
+  ``[tool.ruff.lint.flake8-tidy-imports.banned-api]`` rule blocks
+  ``soyuz_catalog_client.api`` imports project-wide, with per-file
+  ignores for the facade itself + the PQL sync layer + four
+  legitimate sync-helper bypass sites.  4 new pytest.
+
+- **Phase 121.5 — pydoclint tightening + D401 sweep (2026-05-24,
+  rc127 → rc128).**  Re-scoped from "62% → 100% docstring sweep"
+  after the audit showed the codebase was already 100% compliant.
+  Attempted ``check-return-types = true`` + ``check-yield-types =
+  true``; produced ~1400 DOC203/DOC404 false positives against the
+  codebase's prose-style ``Returns: The X.`` sections.  Kept the
+  pydoclint flags false with a documented note; instead added
+  ``D401`` ("imperative mood") to the ruff D-rule select list — not
+  in the google preset default but catches the "Cached X" /
+  "Convenience wrapper" first-line anti-pattern.  15 violations
+  surfaced + rewritten in the same sprint.
+
+- **Phase 121.2 — Settings cache + pagination dep (2026-05-24,
+  rc126 → rc127).**  ``get_settings()`` LRU-cached factory in
+  ``pointlessql/config/__init__.py`` replaces 26 direct ``Settings()``
+  call-sites across api/services/pql/cli/conventions/data_products.
+  pydantic-settings was re-reading env vars on every construction;
+  the cache makes 91 import sites pay-once.  Companion
+  ``reset_settings_cache()`` + autouse fixture in
+  ``tests/conftest.py`` keeps env-monkeypatching tests working.
+  Shared ``PaginationParams`` dataclass + ``pagination()`` FastAPI
+  dependency added in ``api/dependencies.py`` for future list
+  routes (37 ad-hoc Query offset+limit declarations remain —
+  best-effort migration deferred).  14 new pytest.
+
 ### Added
 
 - **Phase 120 — API-key ACLs + usage dashboard (2026-05-23,
