@@ -2648,9 +2648,27 @@ PointlesSQL
 │   │       the four legitimate sync-helper bypass sites.  4 new
 │   │       pytest (test_ml_routes_facade.py).  Commit ``782c7dd``,
 │   │       asset rc128 → rc129.
-│   │     - **121.4 — DEFERRED (out of scope this wave).**  Privilege-
-│   │       Gate behind feature-flag + PII-Redaction in Audit-Logs.
-│   │       Needs its own session for the feature-flag staging cycle.
+│   │     - **121.4 — Privilege-Gate scaffold + PrivilegeSettings.**
+│   │       ✅ done 2026-05-24.  Re-scoped from the original "full
+│   │       privilege-gate + 15–20 route migrations" after audit
+│   │       showed most inline ``is_admin`` checks are conditional
+│   │       UI logic (not route-entry gates) and the existing seven
+│   │       ``require_*`` gates already cover static role checks.
+│   │       Landed: (a) ``require_role(*roles)`` factory dep in
+│   │       ``api/dependencies.py`` generalises the single-role
+│   │       gates into one parametrised form (admin / supervisor /
+│   │       auditor / analyst / user; admin strictly stronger; OR
+│   │       semantics across the role set).  Token-only gates
+│   │       (sql_execute, lineage_inbound) deliberately keep their
+│   │       dedicated dep.  (b) ``PrivilegeSettings`` sub-model in
+│   │       ``config/_settings/_privileges.py`` with single field
+│   │       ``enforce_global_privilege_gate: bool = False`` reserves
+│   │       the env name + documents intent for the future
+│   │       ``require_privilege(privilege, securable_type)`` dep
+│   │       that will consult ``services/authorization.check_privilege``
+│   │       at request time.  17 new pytest.  No existing
+│   │       require_* sites migrated — both forms coexist.  Commit
+│   │       ``be0a838``, asset rc133 → rc134.
 │   │     - **121.6 — Four micro-extractions.**  ✅ done 2026-05-24.
 │   │       (i) ``parse_ref()``: 125-LOC 13-way if/elif → ``RefKind``
 │   │       frozen-dataclass registry in new ``social_routes/
@@ -2674,6 +2692,37 @@ PointlesSQL
 │   │       existing 79 polymorphic-kind + 42 federation + 70 PQL
 │   │       integration tests stay green.  Commit ``37d35dc``, asset
 │   │       rc129 → rc130.
+│   │     - **121.7 — Residuals consolidation.**  ✅ done 2026-05-24.
+│   │       Three follow-up items that were left deferred at the end
+│   │       of Phase 121 wave:
+│   │       - **121.7a — admin_uc final cleanup.**  ``volumes_routes
+│   │         .api_convert_volume_file_to_delta`` was the last
+│   │         ``require_admin + get_uc_client`` couplet outside
+│   │         federation_routes; migrated to ``Depends(admin_uc)``.
+│   │         Commit ``6432829``, asset rc130 → rc131.
+│   │       - **121.7b — Pagination dep rollout.**  6 list-endpoint
+│   │         routes migrated from ad-hoc ``offset/limit = Query(...)``
+│   │         to ``Depends(pagination)``: 3 offset+limit-pair JSON
+│   │         endpoints (notifications, audit/search, dp activity)
+│   │         + 3 limit-only direct-SQLAlchemy endpoints (social
+│   │         issues x2, workspace activity — adds offset support
+│   │         additively).  9 other sites stay un-migrated: they
+│   │         delegate ``limit=`` to service helpers that do not
+│   │         accept ``offset``, so the migration would need
+│   │         service-signature changes (out of scope per the
+│   │         121.7 plan).  Commit ``6128cd6``, asset rc131 → rc132.
+│   │       - **121.7c — PII redaction in audit log details.**
+│   │         Extends the existing services/pii infrastructure
+│   │         (value-change rows only) to also redact PII-keyed
+│   │         values in ``audit_log.detail`` dicts.  New
+│   │         ``services/pii/_audit_redactor.redact_audit_detail()``
+│   │         walks the detail dict recursively, scrubs values
+│   │         under keys matching the existing ``PII_NAME_PATTERN``
+│   │         regex via either placeholder or HMAC-SHA256 digest.
+│   │         ``log_action`` pipes detail through the redactor when
+│   │         new ``audit.redact_detail_payloads=True`` setting
+│   │         flipped (default False for backward-compat).  13 new
+│   │         pytest.  Commit ``67f4e64``, asset rc132 → rc133.
 │   │
 │   ├── Phase 120 — API-key ACLs + usage dashboard               ✅ done 2026-05-23
 │   │     **Closed 2026-05-23.**  Seven sub-phases bundled in one

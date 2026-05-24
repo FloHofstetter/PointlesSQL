@@ -4,7 +4,61 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- **Phase 121.4 — require_role factory + PrivilegeSettings scaffold
+  (2026-05-24, rc133 → rc134).**  Adds two pieces of privilege-
+  subsystem groundwork that the existing seven hand-rolled
+  ``require_*`` gates left missing.  (a) ``require_role(*roles)``
+  factory dep in ``api/dependencies.py`` generalises the single-
+  role gates into one parametrised form (admin / supervisor /
+  auditor / analyst / user; admin strictly stronger; OR semantics
+  across the role set).  Routes that need "admin OR auditor"
+  declare ``Depends(require_role("admin", "auditor"))`` instead
+  of hand-rolling an OR gate.  Token-only gates (sql_execute,
+  lineage_inbound) keep their dedicated dep.  (b)
+  ``PrivilegeSettings`` sub-model in
+  ``config/_settings/_privileges.py`` with single field
+  ``enforce_global_privilege_gate: bool = False`` reserves the
+  env name + documents intent for the future
+  ``require_privilege(privilege, securable_type)`` dep that will
+  consult ``services/authorization.check_privilege`` at request
+  time.  17 new pytest.
+
+- **Phase 121.7c — PII redaction in audit log details
+  (2026-05-24, rc132 → rc133).**  Extends the existing
+  services/pii infrastructure (value-change rows only) to also
+  redact PII-keyed values in ``audit_log.detail`` dicts.  New
+  ``services/pii/_audit_redactor.redact_audit_detail()`` walks
+  the detail dict recursively and scrubs values under keys
+  matching the existing ``PII_NAME_PATTERN`` regex via either
+  ``REDACTED_PLACEHOLDER`` literal or HMAC-SHA256 digest.
+  ``log_action`` pipes detail through the redactor when the new
+  ``audit.redact_detail_payloads=True`` setting is flipped
+  (default False for backward-compat; reuses ``audit.pii_mode``
+  for the redaction shape).  13 new pytest.
+
 ### Changed
+
+- **Phase 121.7b — Pagination dep rollout (2026-05-24, rc131 →
+  rc132).**  Six list-endpoint routes migrated from ad-hoc
+  ``offset = Query(...)``/``limit = Query(...)`` declarations to
+  ``Depends(pagination)`` (introduced in Phase 121.2): three
+  offset+limit-pair JSON endpoints (notifications, audit/search,
+  data-products activity) plus three direct-SQLAlchemy
+  limit-only endpoints where ``.offset(paging.offset)`` chains
+  cleanly (social issues x2, workspace activity — adds offset
+  support additively).  Nine other ad-hoc-pagination sites stay
+  un-migrated: they delegate ``limit=`` to service helpers that
+  do not accept ``offset``, so the migration would need service-
+  signature changes (out of scope per the 121.7 plan).
+
+- **Phase 121.7a — admin_uc final cleanup (2026-05-24, rc130 →
+  rc131).**  ``volumes_routes.api_convert_volume_file_to_delta``
+  — the last ``require_admin(request); client = get_uc_client
+  (request)`` couplet outside ``federation_routes`` — migrated
+  to ``Depends(admin_uc)``.  Fully enforces the Phase 121.6
+  convention that admin-only UC routes use one combined dep.
 
 - **Phase 121.6 — Four micro-extractions (2026-05-24, rc129 → rc130).**
   (i) ``social_routes._kind_dispatch.parse_ref()``: 125-LOC 13-way
