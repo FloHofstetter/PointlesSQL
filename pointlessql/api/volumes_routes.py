@@ -21,13 +21,19 @@ from pathlib import Path
 from typing import Any, cast
 
 import httpx
-from fastapi import APIRouter, Body, File, Form, Request, UploadFile
+from fastapi import APIRouter, Body, Depends, File, Form, Request, UploadFile
 from fastapi.responses import HTMLResponse, Response
 
 from pointlessql.api._audit_helpers import audit
-from pointlessql.api.dependencies import get_templates, get_uc_client, get_user, require_admin
+from pointlessql.api.dependencies import (
+    admin_uc,
+    get_templates,
+    get_uc_client,
+    get_user,
+)
 from pointlessql.config import Settings
 from pointlessql.exceptions import ValidationError
+from pointlessql.services.unitycatalog import UnityCatalogClient
 
 logger = logging.getLogger(__name__)
 
@@ -275,6 +281,7 @@ async def api_convert_volume_file_to_delta(
     request: Request,
     full_name: str,
     body: dict[str, Any] = Body(...),
+    client: UnityCatalogClient = Depends(admin_uc),
 ) -> dict[str, Any]:
     """Read a CSV / Parquet / JSON file in the volume into a new Delta table.
 
@@ -286,6 +293,8 @@ async def api_convert_volume_file_to_delta(
             - ``path`` (str, required): Volume-relative source path.
             - ``table_name`` (str, required): Target table name within
               the same schema as the volume.
+        client: Per-request admin-gated UC facade injected by
+            :func:`admin_uc`.
 
     Returns:
         Dict with the created table row from UC.
@@ -302,7 +311,6 @@ async def api_convert_volume_file_to_delta(
     from pointlessql.services import volumes as vol_service
 
     user = get_user(request)
-    require_admin(request)
     settings: Settings = request.app.state.settings
     payload = body or {}
     rel_path = payload.get("path")
@@ -313,7 +321,6 @@ async def api_convert_volume_file_to_delta(
         raise ValidationError("Body must carry a non-empty 'table_name'.")
 
     catalog_name, schema_name, volume_name = await volume_full_name_split(full_name)
-    client = get_uc_client(request)
     # Raw soyuz GET — the UnityCatalogClient wrapper does not expose
     # volumes yet.  Keep the call narrow; result is a dict, not a
     # typed model.
