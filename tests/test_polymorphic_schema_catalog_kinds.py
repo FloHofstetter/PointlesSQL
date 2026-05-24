@@ -132,9 +132,10 @@ def test_parse_ref_accepts_schema_two_part_id() -> None:
 
 def test_parse_ref_rejects_schema_single_part() -> None:
     """Schema refs need exactly two parts."""
-    from fastapi import HTTPException
+    # Phase 121.1.e — converted from HTTPException to BadRequestError.
+    from pointlessql.exceptions import BadRequestError
 
-    with pytest.raises(HTTPException) as exc:
+    with pytest.raises(BadRequestError) as exc:
         parse_ref("schema", "main")
     assert exc.value.status_code == 400
     assert "catalog.schema" in exc.value.detail
@@ -147,9 +148,10 @@ def test_parse_ref_accepts_catalog_bare_id() -> None:
 
 def test_parse_ref_rejects_catalog_with_dot() -> None:
     """Catalog refs must be bare identifiers."""
-    from fastapi import HTTPException
+    # Phase 121.1.e — converted from HTTPException to BadRequestError.
+    from pointlessql.exceptions import BadRequestError
 
-    with pytest.raises(HTTPException) as exc:
+    with pytest.raises(BadRequestError) as exc:
         parse_ref("catalog", "main.sales")
     assert exc.value.status_code == 400
     assert "bare identifier" in exc.value.detail

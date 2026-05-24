@@ -8,6 +8,7 @@ error handler serializes into a consistent JSON envelope.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import Any
 
 from pointlessql.types import ErrorCode
@@ -45,6 +46,52 @@ class PointlessSQLError(Exception):
             or ``None`` when the exception has no structured extras.
         """
         return None
+
+    @classmethod
+    def not_found(
+        cls,
+        *,
+        what: str,
+        where: str | None = None,
+        alternatives: Sequence[str] = (),
+        hint: str | None = None,
+    ) -> PointlessSQLError:
+        """Build an instance with a uniformly-formatted 'X not found' message.
+
+        Callers pick the right subclass (``ResourceNotFoundError`` for
+        operator-DB resources, ``CatalogNotFoundError`` for lakehouse
+        misses) and the helper composes a single human-readable
+        message that scales from "Catalog 'foo' not found." to
+        "Catalog 'foo' not found in workspace 'default'. Available:
+        bar, baz. Run `pql catalog ls`."
+
+        Args:
+            what: Subject phrase including the missed identifier
+                (e.g. ``"Catalog 'foo'"``).
+            where: Optional scope phrase appended verbatim
+                (e.g. ``"in workspace 'default'"``).
+            alternatives: Candidate identifiers shown after
+                ``Available:``.  Sorted and truncated to 5 with a
+                ``(+N more)`` tail when longer.
+            hint: Optional trailing sentence pointing at the
+                discovery path (CLI command, settings page, …).
+
+        Returns:
+            An instance of the calling subclass with ``status_code``
+            and ``error_code`` from the subclass.
+        """
+        parts = [f"{what} not found"]
+        if where:
+            parts.append(where)
+        msg = " ".join(parts) + "."
+        if alternatives:
+            ordered = sorted(alternatives)
+            shown = ", ".join(ordered[:5])
+            more = "" if len(ordered) <= 5 else f" (+{len(ordered) - 5} more)"
+            msg += f" Available: {shown}{more}."
+        if hint:
+            msg += f" {hint}"
+        return cls(msg)
 
 
 class CatalogUnavailableError(PointlessSQLError):
@@ -311,3 +358,24 @@ class ConflictError(PointlessSQLError):
 
     status_code: int = 409
     error_code: ErrorCode = ErrorCode.CONFLICT
+
+
+class BadRequestError(PointlessSQLError):
+    """Raised for semantic input rejects that pass schema validation.
+
+    Pydantic body validation produces 422 + ``ErrorCode.VALIDATION_ERROR``
+    via the central :class:`fastapi.exceptions.RequestValidationError`
+    handler.  :class:`BadRequestError` covers the inputs that survive
+    schema validation but still fail business rules — missing
+    cross-field invariants, malformed identifiers, references to
+    already-archived resources.  Subclasses (:class:`ConflictError`,
+    :class:`ValidationError`) carry more specific codes; reach for
+    the bare 400 only when no narrower exception fits.
+
+    Attributes:
+        status_code: Always 400.
+        error_code: Always ``ErrorCode.BAD_REQUEST``.
+    """
+
+    status_code: int = 400
+    error_code: ErrorCode = ErrorCode.BAD_REQUEST

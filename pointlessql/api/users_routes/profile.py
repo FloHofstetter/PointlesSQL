@@ -21,11 +21,15 @@ import datetime
 import json
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Request
 from sqlalchemy import func, select
 
 from pointlessql.api.dependencies import get_user, require_user
-from pointlessql.exceptions import AuthorizationError
+from pointlessql.exceptions import (
+    AuthorizationError,
+    BadRequestError,
+    ResourceNotFoundError,
+)
 from pointlessql.models.auth import User
 from pointlessql.models.catalog._data_product_comments import DataProductComment
 from pointlessql.models.catalog._data_product_reviews import DataProductReview
@@ -81,8 +85,7 @@ async def get_user_profile(
     with factory() as session:
         user = session.get(User, user_id)
         if user is None:
-            # bare-http-ok: profile target must exist.
-            raise HTTPException(status_code=404, detail="user not found")
+            raise ResourceNotFoundError.not_found(what=f"user id={user_id}")
         profile = session.get(UserProfile, user_id)
 
         followers_count = int(
@@ -251,25 +254,17 @@ async def update_user_profile(
     links = body.get("links")
 
     if bio_md is not None and not isinstance(bio_md, str):
-        # bare-http-ok: bio must be a string.
-        raise HTTPException(status_code=400, detail="bio_md must be a string")
+        raise BadRequestError("bio_md must be a string")
     if bio_md is not None and len(bio_md) > _BIO_MAX:
-        # bare-http-ok: cap stored bio size.
-        raise HTTPException(
-            status_code=400, detail=f"bio_md exceeds {_BIO_MAX} chars"
-        )
+        raise BadRequestError(f"bio_md exceeds {_BIO_MAX} chars")
     if links is not None:
         if not isinstance(links, list):
-            # bare-http-ok: malformed links payload type.
-            raise HTTPException(
-                status_code=400,
-                detail=f"links must be a list of at most {_LINKS_MAX} entries",
+            raise BadRequestError(
+                f"links must be a list of at most {_LINKS_MAX} entries"
             )
         if len(links) > _LINKS_MAX:  # pyright: ignore[reportUnknownArgumentType]
-            # bare-http-ok: bounded list.
-            raise HTTPException(
-                status_code=400,
-                detail=f"links must be a list of at most {_LINKS_MAX} entries",
+            raise BadRequestError(
+                f"links must be a list of at most {_LINKS_MAX} entries"
             )
         for entry in links:  # pyright: ignore[reportUnknownVariableType]
             if (
@@ -277,10 +272,8 @@ async def update_user_profile(
                 or "url" not in entry
                 or not isinstance(entry.get("url"), str)  # pyright: ignore[reportUnknownMemberType]
             ):
-                # bare-http-ok: per-link shape boundary.
-                raise HTTPException(
-                    status_code=400,
-                    detail="each link must be an object with a 'url' string",
+                raise BadRequestError(
+                    "each link must be an object with a 'url' string"
                 )
 
     now = datetime.datetime.now(datetime.UTC)
@@ -288,8 +281,7 @@ async def update_user_profile(
     with factory() as session:
         target = session.get(User, user_id)
         if target is None:
-            # bare-http-ok: unknown user_id.
-            raise HTTPException(status_code=404, detail="user not found")
+            raise ResourceNotFoundError.not_found(what=f"user id={user_id}")
         profile = session.get(UserProfile, user_id)
         if profile is None:
             profile = UserProfile(

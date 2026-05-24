@@ -86,7 +86,9 @@ async def test_mismatched_header_returns_403(pinned_api_key: tuple[str, int]) ->
         )
     assert response.status_code == 403
     body = response.json()
-    assert body.get("error") == "workspace.context_mismatch"
+    # Phase 121.1.b — middleware emits RFC 9457 problem+json now.
+    assert body["status"] == 403
+    assert body["code"] == "workspace_context_mismatch"
 
 
 @pytest.mark.asyncio

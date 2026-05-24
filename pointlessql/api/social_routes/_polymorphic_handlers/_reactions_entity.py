@@ -10,7 +10,7 @@ from __future__ import annotations
 import datetime
 from typing import Any
 
-from fastapi import HTTPException, Request
+from fastapi import Request
 from sqlalchemy import select
 
 from pointlessql.api.dependencies import (
@@ -21,6 +21,7 @@ from pointlessql.api.social_routes._polymorphic_handlers._shared import (
     ALLOWED_EMOJI,
     resolve_target_id,
 )
+from pointlessql.exceptions import BadRequestError
 from pointlessql.models.social._social_reaction import SocialReaction
 from pointlessql.services.social.audit_mirror import mirror_social_to_audit
 
@@ -32,11 +33,7 @@ from pointlessql.services.social.audit_mirror import mirror_social_to_audit
 def validate_emoji_field(emoji: str | None) -> str:
     """Normalise + validate a reaction emoji against the GitHub-6 set."""
     if not emoji or emoji not in ALLOWED_EMOJI:
-        # bare-http-ok: emoji is a fixed allow-list.
-        raise HTTPException(
-            status_code=400,
-            detail=f"emoji must be one of {ALLOWED_EMOJI}",
-        )
+        raise BadRequestError(f"emoji must be one of {ALLOWED_EMOJI}")
     return emoji
 
 

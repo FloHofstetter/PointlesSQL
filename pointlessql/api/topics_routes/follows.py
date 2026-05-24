@@ -10,26 +10,38 @@ from __future__ import annotations
 import datetime
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Request
 from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
 
 from pointlessql.api.dependencies import current_workspace_id, get_user, require_user
+from pointlessql.exceptions import ResourceNotFoundError
 from pointlessql.models.social._topic import Topic, UserTopicFollow
 
 router = APIRouter(tags=["topics"])
 
 
 def _resolve_topic(session: Any, workspace_id: int, slug: str) -> Topic:
-    """Return the topic row or raise 404."""
+    """Return the topic row or raise 404 enriched with workspace-known slugs."""
     topic = session.execute(
         select(Topic).where(
             Topic.workspace_id == workspace_id, Topic.slug == slug
         )
     ).scalar_one_or_none()
     if topic is None:
-        # bare-http-ok: topic must exist.
-        raise HTTPException(status_code=404, detail="topic not found")
+        # Phase 121.1.i — enrich the 404 with the workspace's known
+        # topic slugs so callers see "did you mean…?" alternatives
+        # instead of a bare "not found".
+        known = list(
+            session.execute(
+                select(Topic.slug).where(Topic.workspace_id == workspace_id)
+            ).scalars()
+        )
+        raise ResourceNotFoundError.not_found(
+            what=f"topic {slug!r}",
+            alternatives=known,
+            hint="See /topics for the full list.",
+        )
     return topic
 
 

@@ -35,11 +35,12 @@ import json
 import logging
 from typing import Final, Literal
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Request
 from pydantic import BaseModel, Field
 
 from pointlessql.api import notebook_coedit_ws
 from pointlessql.api.dependencies import require_user
+from pointlessql.exceptions import ResourceNotFoundError
 from pointlessql.models import Notebook
 
 logger = logging.getLogger(__name__)
@@ -91,9 +92,7 @@ async def api_agent_presence(
     with factory() as session:
         notebook = session.get(Notebook, notebook_id)
         if notebook is None:
-            raise HTTPException(
-                status_code=404, detail="notebook not found"
-            )
+            raise ResourceNotFoundError("notebook not found.")
 
     payload = {
         "agent_run_id": body.agent_run_id,

@@ -21,9 +21,10 @@ import datetime
 import logging
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Request
 
 from pointlessql.api.dependencies import require_user
+from pointlessql.exceptions import ConflictError, ResourceNotFoundError
 from pointlessql.models import (
     EditorChatSession,
     NotebookCellProposal,
@@ -55,8 +56,9 @@ async def api_accept_proposal(
         propose; ``position_*`` is ignored by the frontend for fix.
 
     Raises:
-        HTTPException: 404 when the proposal is unknown; 409 when
-            already accepted / discarded / older than 24 h.
+        ResourceNotFoundError: When the proposal is unknown.
+        ConflictError: When already accepted / discarded / older
+            than 24 h.
     """  # noqa: DOC502
     require_user(request)
     factory = request.app.state.session_factory
@@ -70,25 +72,14 @@ async def api_accept_proposal(
             .one_or_none()
         )
         if proposal is None:
-            # bare-http-ok: 404 for unknown proposal id.
-            raise HTTPException(status_code=404, detail="proposal not found")
+            raise ResourceNotFoundError.not_found(what=f"proposal {proposal_id!r}")
         if proposal.action == "explain":
-            # bare-http-ok: 409 — explain proposals are auto-accepted
-            # at create time so the accept endpoint is unreachable for
-            # them by design.
-            raise HTTPException(
-                status_code=409,
-                detail=(
-                    "explain proposals are auto-accepted at create-time; "
-                    "no accept endpoint applies"
-                ),
+            raise ConflictError(
+                "explain proposals are auto-accepted at create-time; "
+                "no accept endpoint applies"
             )
         if proposal.status != "pending":
-            # bare-http-ok: 409 for terminal-state proposal.
-            raise HTTPException(
-                status_code=409,
-                detail=f"proposal already {proposal.status}",
-            )
+            raise ConflictError(f"proposal already {proposal.status}")
         created_at = proposal.created_at
         if created_at.tzinfo is None:
             created_at = created_at.replace(tzinfo=datetime.UTC)
@@ -96,23 +87,13 @@ async def api_accept_proposal(
             proposal.status = "expired"
             proposal.accepted_at = now
             session.commit()
-            # bare-http-ok: 409 for expired proposal — the row was
-            # flipped to ``expired`` so the audit trail stays honest.
-            raise HTTPException(
-                status_code=409,
-                detail=(
-                    "proposal is older than 24 hours and cannot be "
-                    "accepted; ask the chat to redraft."
-                ),
+            raise ConflictError(
+                "proposal is older than 24 hours and cannot be "
+                "accepted; ask the chat to redraft."
             )
         chat_session = session.get(EditorChatSession, proposal.chat_session_id)
         if chat_session is None:
-            # bare-http-ok: 409 — chat session deleted while accept
-            # was in flight.  Rare race; surface as conflict.
-            raise HTTPException(
-                status_code=409,
-                detail="chat session no longer exists",
-            )
+            raise ConflictError("chat session no longer exists")
         agent_run_id = chat_session.agent_run_id
         editor_session_id = chat_session.editor_session_id
         action = proposal.action
@@ -165,10 +146,11 @@ async def api_discard_proposal(
         ``{"proposal_id": str, "status": "discarded"}``.
 
     Raises:
-        HTTPException: 404 when the proposal is unknown; 409 when
-            already in a terminal state (accepted/discarded/expired
-            — except for explain proposals which start as
-            ``accepted`` and may be discarded to retract).
+        ResourceNotFoundError: When the proposal is unknown.
+        ConflictError: When already in a terminal state
+            (accepted/discarded/expired — except for explain
+            proposals which start as ``accepted`` and may be
+            discarded to retract).
     """  # noqa: DOC502
     require_user(request)
     factory = request.app.state.session_factory
@@ -181,22 +163,14 @@ async def api_discard_proposal(
             .one_or_none()
         )
         if proposal is None:
-            # bare-http-ok: 404 for unknown proposal id.
-            raise HTTPException(status_code=404, detail="proposal not found")
+            raise ResourceNotFoundError.not_found(what=f"proposal {proposal_id!r}")
         # explain proposals start as 'accepted' but can still be
         # discarded (to retract a stale note); propose/fix must be
         # pending.
         if proposal.action != "explain" and proposal.status != "pending":
-            # bare-http-ok: 409 for terminal-state propose/fix.
-            raise HTTPException(
-                status_code=409,
-                detail=f"proposal already {proposal.status}",
-            )
+            raise ConflictError(f"proposal already {proposal.status}")
         if proposal.action == "explain" and proposal.status == "discarded":
-            # bare-http-ok: 409 — explain already retracted.
-            raise HTTPException(
-                status_code=409, detail="proposal already discarded"
-            )
+            raise ConflictError("proposal already discarded")
         chat_session = session.get(EditorChatSession, proposal.chat_session_id)
         editor_session_id = (
             chat_session.editor_session_id if chat_session else None

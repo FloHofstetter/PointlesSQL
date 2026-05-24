@@ -17,11 +17,11 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from fastapi import APIRouter, Body, HTTPException, Request
+from fastapi import APIRouter, Body, Request
 from fastapi.responses import JSONResponse
 
 from pointlessql.api.dependencies import require_user
-from pointlessql.exceptions import ValidationError
+from pointlessql.exceptions import ResourceNotFoundError, ValidationError
 from pointlessql.models import EditorChatSession
 from pointlessql.services.notebook import (
     cell_sequence_proposals as cell_sequence_proposals_service,
@@ -58,9 +58,7 @@ def _resolve_chat_session_int_id(request: Request, raw: str) -> int:
             .one_or_none()
         )
     if row is None:
-        raise HTTPException(
-            status_code=404, detail="notebook chat session not found"
-        )
+        raise ResourceNotFoundError("notebook chat session not found.")
     return int(row.id)
 
 logger = logging.getLogger(__name__)

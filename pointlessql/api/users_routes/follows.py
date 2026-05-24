@@ -17,11 +17,12 @@ from __future__ import annotations
 import datetime
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Request
 from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
 
 from pointlessql.api.dependencies import current_workspace_id, get_user, require_user
+from pointlessql.exceptions import BadRequestError, ResourceNotFoundError
 from pointlessql.models.auth import User
 from pointlessql.models.notifications import UserNotification
 from pointlessql.models.social._user_follow import UserFollow
@@ -58,16 +59,14 @@ async def follow_user(
     require_user(request)
     caller = get_user(request)
     if user_id == caller["id"]:
-        # bare-http-ok: cannot self-follow.
-        raise HTTPException(status_code=400, detail="cannot follow yourself")
+        raise BadRequestError("cannot follow yourself")
     workspace_id = current_workspace_id(request)
     factory = request.app.state.session_factory
     added = False
     with factory() as session:
         target = session.get(User, user_id)
         if target is None:
-            # bare-http-ok: target must exist.
-            raise HTTPException(status_code=404, detail="user not found")
+            raise ResourceNotFoundError.not_found(what=f"user id={user_id}")
         try:
             session.add(
                 UserFollow(

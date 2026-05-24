@@ -16,11 +16,12 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy import desc, select
 
 from pointlessql.api.dependencies import get_user
+from pointlessql.exceptions import ResourceNotFoundError
 from pointlessql.models.auth import User
 from pointlessql.models.workspace._core import WorkspaceMember
 
@@ -143,8 +144,7 @@ async def user_profile_page(
             )
         ).first()
     if target is None:
-        # bare-http-ok: profile target must exist.
-        raise HTTPException(status_code=404, detail="user not found")
+        raise ResourceNotFoundError("user not found.")
 
     templates = request.app.state.templates
     return templates.TemplateResponse(

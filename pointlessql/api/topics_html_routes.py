@@ -10,11 +10,12 @@ Both bounce anonymous visitors to ``/auth/login?next=...``.
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy import select
 
 from pointlessql.api.dependencies import current_workspace_id, get_user
+from pointlessql.exceptions import ResourceNotFoundError
 from pointlessql.models.social._topic import Topic
 
 router = APIRouter(tags=["topics"])
@@ -53,8 +54,7 @@ async def topic_detail_page(
             )
         ).scalar_one_or_none()
     if topic is None:
-        # bare-http-ok: topic must exist for the page.
-        raise HTTPException(status_code=404, detail="topic not found")
+        raise ResourceNotFoundError(f"topic {slug!r} not found.")
     templates = request.app.state.templates
     return templates.TemplateResponse(
         request,

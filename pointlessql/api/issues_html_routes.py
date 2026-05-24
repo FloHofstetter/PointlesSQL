@@ -14,11 +14,12 @@ the deep-link survives the OIDC round-trip.
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy import select
 
 from pointlessql.api.dependencies import current_workspace_id, get_user
+from pointlessql.exceptions import ResourceNotFoundError
 from pointlessql.models.social._issue import Issue
 from pointlessql.models.social._social_target import SocialTarget
 
@@ -64,8 +65,7 @@ async def issue_detail_page(
             )
         ).scalar_one_or_none()
         if issue is None:
-            # bare-http-ok: HTML route for an issue id that doesn't exist.
-            raise HTTPException(status_code=404, detail="issue not found")
+            raise ResourceNotFoundError(f"issue id={issue_id} not found.")
         parent_row = session.execute(
             select(
                 SocialTarget.entity_kind, SocialTarget.entity_ref

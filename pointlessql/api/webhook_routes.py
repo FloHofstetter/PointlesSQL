@@ -29,6 +29,7 @@ from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request, Response
 
+from pointlessql.exceptions import ResourceNotFoundError
 from pointlessql.git import resolve_provider
 from pointlessql.models.workspace._repos import WorkspaceRepo
 from pointlessql.services.workspace.repos import (
@@ -69,8 +70,9 @@ async def receive_repo_webhook(
     with factory() as session:
         repo = session.get(WorkspaceRepo, repo_id)
         if repo is None:
-            # bare-http-ok: pure 404 — no domain exception applies.
-            raise HTTPException(status_code=404, detail=f"workspace_repo {repo_id} not found")
+            raise ResourceNotFoundError.not_found(
+                what=f"workspace_repo id={repo_id}"
+            )
         provider_kind = repo.provider_kind
         webhook_secret = repo.webhook_secret
         default_branch = repo.default_branch

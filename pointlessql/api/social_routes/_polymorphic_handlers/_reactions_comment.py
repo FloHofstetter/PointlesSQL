@@ -10,7 +10,7 @@ from __future__ import annotations
 import datetime
 from typing import Any
 
-from fastapi import HTTPException, Request
+from fastapi import Request
 from sqlalchemy import select
 
 from pointlessql.api.dependencies import (
@@ -24,6 +24,7 @@ from pointlessql.api.social_routes._polymorphic_handlers._shared import (
     ALLOWED_EMOJI,
     resolve_target_id,
 )
+from pointlessql.exceptions import ResourceNotFoundError
 from pointlessql.models.catalog._data_product_comment_reaction import (
     DataProductCommentReaction,
 )
@@ -55,8 +56,7 @@ def load_comment_on_target(
         or comment.social_target_id != target_id
         or comment.deleted_at is not None
     ):
-        # bare-http-ok: target comment must exist + be live on this entity.
-        raise HTTPException(status_code=404, detail="comment not found")
+        raise ResourceNotFoundError.not_found(what=f"comment id={comment_id}")
     return comment
 
 

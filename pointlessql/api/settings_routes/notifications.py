@@ -18,9 +18,10 @@ from __future__ import annotations
 import json
 from typing import Any, cast
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Request
 
 from pointlessql.api.dependencies import get_user, require_user
+from pointlessql.exceptions import BadRequestError, ResourceNotFoundError
 from pointlessql.models.auth import User
 from pointlessql.services.workspace.governance import GOVERNANCE_EVENT_TYPES
 
@@ -96,17 +97,13 @@ async def update_notification_prefs(request: Request) -> dict[str, Any]:
     caller = get_user(request)
     body: Any = await request.json()
     if not isinstance(body, dict):
-        # bare-http-ok: body must be a JSON object.
-        raise HTTPException(
-            status_code=400, detail="body must be a JSON object"
-        )
+        raise BadRequestError("body must be a JSON object")
 
     factory = request.app.state.session_factory
     with factory() as session:
         user = session.get(User, caller["id"])
         if user is None:
-            # bare-http-ok: caller must exist.
-            raise HTTPException(status_code=404, detail="user not found")
+            raise ResourceNotFoundError("user not found.")
         try:
             current_any: Any = json.loads(user.notification_prefs_json or "{}")
         except (ValueError, TypeError):

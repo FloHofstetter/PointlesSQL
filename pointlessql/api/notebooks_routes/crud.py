@@ -5,12 +5,12 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from fastapi import APIRouter, Body, HTTPException, Query, Request
+from fastapi import APIRouter, Body, Query, Request
 from fastapi.responses import JSONResponse
 
 from pointlessql.api.dependencies import require_user
 from pointlessql.config import Settings
-from pointlessql.exceptions import ValidationError
+from pointlessql.exceptions import BadRequestError, ValidationError
 from pointlessql.services.notebook import _workspace as notebook_workspace_service
 from pointlessql.services.notebook import outputs as notebook_outputs_service
 
@@ -128,8 +128,8 @@ async def api_delete_notebook(
         # bare-http-ok: explicit opt-in flag for a destructive
         # delete route; converting to a domain exception would add
         # no information beyond the literal "confirm=true required"
-        # detail that the browser modal already special-cases.
-        raise HTTPException(status_code=400, detail="confirm=true required")
+        # detail string is special-cased by the browser modal.
+        raise BadRequestError("confirm=true required")
     settings: Settings = request.app.state.settings
     notebooks_dir = settings.jupyter.notebooks_dir.resolve()
     notebook_workspace_service.delete_notebook(notebooks_dir, path)

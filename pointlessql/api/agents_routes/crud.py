@@ -10,11 +10,15 @@ import datetime
 import re
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Request
 from sqlalchemy import func, select
 
 from pointlessql.api.dependencies import current_workspace_id, get_user, require_user
-from pointlessql.exceptions import AuthorizationError
+from pointlessql.exceptions import (
+    AuthorizationError,
+    BadRequestError,
+    ResourceNotFoundError,
+)
 from pointlessql.models.agent._agents import AVATAR_KINDS, Agent
 from pointlessql.models.auth import User
 from pointlessql.services import audit as audit_service
@@ -134,21 +138,11 @@ async def create_agent(request: Request) -> dict[str, Any]:
     principal_user_id_raw = body.get("principal_user_id")
     avatar_kind = (body.get("avatar_kind") or "custom").strip().lower()
     if not display_name:
-        # bare-http-ok: display_name required.
-        raise HTTPException(
-            status_code=400, detail="display_name is required"
-        )
+        raise BadRequestError("display_name is required")
     if principal_user_id_raw is None:
-        # bare-http-ok: principal_user_id required.
-        raise HTTPException(
-            status_code=400, detail="principal_user_id is required"
-        )
+        raise BadRequestError("principal_user_id is required")
     if avatar_kind not in AVATAR_KINDS:
-        # bare-http-ok: bounded enum.
-        raise HTTPException(
-            status_code=400,
-            detail=f"avatar_kind must be one of {AVATAR_KINDS}",
-        )
+        raise BadRequestError(f"avatar_kind must be one of {AVATAR_KINDS}")
     principal_user_id = int(principal_user_id_raw)
 
     now = datetime.datetime.now(datetime.UTC)
@@ -156,9 +150,8 @@ async def create_agent(request: Request) -> dict[str, Any]:
     with factory() as session:
         principal = session.get(User, principal_user_id)
         if principal is None:
-            # bare-http-ok: principal must exist.
-            raise HTTPException(
-                status_code=404, detail="principal_user_id not found"
+            raise ResourceNotFoundError.not_found(
+                what=f"principal user id={principal_user_id}"
             )
         slug_base = _slugify(display_name)
         slug = slug_base
@@ -238,8 +231,7 @@ async def verify_agent(slug: str, request: Request) -> dict[str, Any]:
             )
         ).scalar_one_or_none()
         if agent is None:
-            # bare-http-ok: agent must exist.
-            raise HTTPException(status_code=404, detail="agent not found")
+            raise ResourceNotFoundError("agent not found.")
         agent.is_verified = True
         agent.verified_by_user_id = caller["id"]
         agent.verified_at = now

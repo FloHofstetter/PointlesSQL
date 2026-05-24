@@ -10,7 +10,7 @@ from __future__ import annotations
 import datetime
 from typing import Any
 
-from fastapi import HTTPException, Request
+from fastapi import Request
 from sqlalchemy import select
 
 from pointlessql.api.dependencies import (
@@ -22,7 +22,11 @@ from pointlessql.api.social_routes._polymorphic_handlers._shared import (
     resolve_target_id,
     serialise_endorsement,
 )
-from pointlessql.exceptions import AuthorizationError
+from pointlessql.exceptions import (
+    AuthorizationError,
+    BadRequestError,
+    ResourceNotFoundError,
+)
 from pointlessql.models.auth import User
 from pointlessql.models.catalog._data_product_endorsement import (
     ENDORSEMENT_TYPES,
@@ -119,7 +123,7 @@ async def apply_polymorphic_endorsement(
         row unchanged (matches the DP-path contract).
 
     Raises:
-        HTTPException: 400 when ``endorsement_type`` is missing or
+        BadRequestError: When ``endorsement_type`` is missing or
             outside the typed allow-list.
     """
     require_user(request)
@@ -131,13 +135,8 @@ async def apply_polymorphic_endorsement(
     body = await request.json()
     endorsement_type = body.get("endorsement_type") or ""
     if endorsement_type not in ENDORSEMENT_TYPES:
-        # bare-http-ok: typed enum boundary.
-        raise HTTPException(
-            status_code=400,
-            detail=(
-                f"endorsement_type must be one of "
-                f"{sorted(ENDORSEMENT_TYPES)!r}"
-            ),
+        raise BadRequestError(
+            f"endorsement_type must be one of {sorted(ENDORSEMENT_TYPES)!r}"
         )
     note_md = (body.get("note_md") or "").strip()
     now = datetime.datetime.now(datetime.UTC)
@@ -219,7 +218,7 @@ async def remove_polymorphic_endorsement(
         ``{"id": int, "removed_at": str | None}``.
 
     Raises:
-        HTTPException: 404 when the endorsement is missing or
+        ResourceNotFoundError: When the endorsement is missing or
             scoped to a different entity.
         AuthorizationError: When the caller is neither the original
             applier nor an install-admin.
@@ -237,9 +236,8 @@ async def remove_polymorphic_endorsement(
             or endorsement.workspace_id != workspace_id
             or endorsement.social_target_id != target_id
         ):
-            # bare-http-ok: cross-entity ids 404.
-            raise HTTPException(
-                status_code=404, detail="endorsement not found"
+            raise ResourceNotFoundError.not_found(
+                what=f"endorsement id={endorsement_id}"
             )
         is_applier = endorsement.applied_by_user_id == user["id"]
         is_admin = bool(user.get("is_admin"))

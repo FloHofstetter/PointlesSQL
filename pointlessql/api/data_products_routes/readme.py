@@ -24,12 +24,16 @@ import datetime
 import difflib
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Request
 from sqlalchemy import desc, func, select
 
 from pointlessql.api.data_products_routes._shared import load_one
 from pointlessql.api.dependencies import current_workspace_id, get_user, require_user
-from pointlessql.exceptions import AuthorizationError
+from pointlessql.exceptions import (
+    AuthorizationError,
+    BadRequestError,
+    ResourceNotFoundError,
+)
 from pointlessql.models.auth import User
 from pointlessql.models.social._entity_readme import EntityReadme
 from pointlessql.services.social._target_resolver import resolve_dp_target
@@ -105,7 +109,7 @@ async def get_latest_readme(
         if latest is None:
             # bare-http-ok: cleaner than a 200 + null body — clients can
             # branch on the status to render the "no README yet" state.
-            raise HTTPException(status_code=404, detail="no readme")
+            raise ResourceNotFoundError("No README yet for this data product.")
         author = session.get(User, latest.updated_by_user_id)
         author_email = author.email if author else None
         author_display = author.display_name if author else None
@@ -204,7 +208,7 @@ async def get_readme_version(
         ).scalar_one_or_none()
         if version is None:
             # bare-http-ok: missing version surfaces as 404.
-            raise HTTPException(status_code=404, detail="version not found")
+            raise ResourceNotFoundError("README version not found.")
         author = session.get(User, version.updated_by_user_id)
         author_email = author.email if author else None
         author_display = author.display_name if author else None
@@ -242,7 +246,7 @@ async def upsert_readme(
     body_md = body.get("body_md", "")
     if not isinstance(body_md, str):
         # bare-http-ok: payload contract — body must be string.
-        raise HTTPException(status_code=400, detail="body_md must be a string")
+        raise BadRequestError("body_md must be a string")
 
     now = datetime.datetime.now(datetime.UTC)
     with factory() as session:
@@ -326,9 +330,8 @@ async def readme_diff(
         from_v = int(qs.get("from", ""))
         to_v = int(qs.get("to", ""))
     except (TypeError, ValueError):
-        # bare-http-ok: both query params required + integer.
-        raise HTTPException(
-            status_code=400, detail="from and to must be integer query params"
+        raise BadRequestError(
+            "from and to must be integer query params"
         ) from None
 
     with factory() as session:
@@ -351,8 +354,7 @@ async def readme_diff(
         )
     by_v = {r.version_int: r for r in rows}
     if from_v not in by_v or to_v not in by_v:
-        # bare-http-ok: one of the requested versions doesn't exist.
-        raise HTTPException(status_code=404, detail="version not found")
+        raise ResourceNotFoundError("README version not found.")
 
     a = by_v[from_v].body_md.splitlines()
     b = by_v[to_v].body_md.splitlines()

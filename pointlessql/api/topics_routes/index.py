@@ -15,11 +15,12 @@ from __future__ import annotations
 import datetime
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Request
 from sqlalchemy import func, select
 
 from pointlessql.api.dependencies import current_workspace_id, get_user, require_user
 from pointlessql.api.topics_routes._slug import slugify
+from pointlessql.exceptions import BadRequestError, PermissionDeniedError
 from pointlessql.models.social._topic import (
     DataProductTopic,
     Topic,
@@ -152,20 +153,14 @@ async def create_topic(request: Request) -> dict[str, Any]:
         # Phase 76.3 scope pick: steward+ may create topics.  We
         # treat "supervisor" + "admin" as the steward+ tier here;
         # plain members read but cannot create new taxonomy.
-        # bare-http-ok: tier guard.
-        raise HTTPException(
-            status_code=403, detail="topic creation requires steward+ role"
-        )
+        raise PermissionDeniedError("topic creation requires steward+ role")
     workspace_id = current_workspace_id(request)
 
     body = await request.json()
     display_name = (body.get("display_name") or "").strip()
     description_md = (body.get("description_md") or "").strip()
     if not display_name:
-        # bare-http-ok: display_name is required.
-        raise HTTPException(
-            status_code=400, detail="display_name is required"
-        )
+        raise BadRequestError("display_name is required")
 
     factory = request.app.state.session_factory
     now = datetime.datetime.now(datetime.UTC)

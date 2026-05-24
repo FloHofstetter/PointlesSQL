@@ -7,12 +7,13 @@ import datetime
 import logging
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Request
 from sqlalchemy import select
 
 from pointlessql.api.dependencies import current_workspace_id, require_admin
 from pointlessql.config import Settings
 from pointlessql.data_products import load_contracts_for_workspace
+from pointlessql.exceptions import BadRequestError
 from pointlessql.models.catalog._data_products import DataProduct
 from pointlessql.services.workspace.governance import (
     EVENT_TYPE_DATA_PRODUCT_SCHEMA_CHANGED,
@@ -75,15 +76,12 @@ async def reload_data_products(request: Request) -> dict[str, Any]:
         # bare-http-ok: nothing was discoverable; surface a config hint
         # rather than a silent empty success so the admin learns to
         # either populate the env path or sync at least one repo.
-        raise HTTPException(
-            status_code=400,
-            detail=(
-                "no data-product yaml found.  Either set "
-                "data_products.yaml_search_paths "
-                "(POINTLESSQL_DATA_PRODUCTS_YAML_SEARCH_PATHS) to a "
-                "directory or yaml file, or register and sync a "
-                "workspace_repo whose tree contains pointlessql.yaml."
-            ),
+        raise BadRequestError(
+            "no data-product yaml found.  Either set "
+            "data_products.yaml_search_paths "
+            "(POINTLESSQL_DATA_PRODUCTS_YAML_SEARCH_PATHS) to a "
+            "directory or yaml file, or register and sync a "
+            "workspace_repo whose tree contains pointlessql.yaml."
         )
 
     # Phase 71 follow-up B.1: per-product schema-change detection.

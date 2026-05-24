@@ -5,14 +5,14 @@ from __future__ import annotations
 import datetime
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Request
 
 from pointlessql.api.data_products_routes._shared import load_one
 from pointlessql.api.data_products_routes.comments._constants import (
     DISCUSSION_DELETED,
 )
 from pointlessql.api.dependencies import current_workspace_id, get_user, require_user
-from pointlessql.exceptions import AuthorizationError
+from pointlessql.exceptions import AuthorizationError, ResourceNotFoundError
 from pointlessql.models.catalog._data_product_comments import DataProductComment
 from pointlessql.services.social.audit_mirror import mirror_social_to_audit
 
@@ -59,8 +59,7 @@ async def delete_data_product_comment(
             or comment.workspace_id != workspace_id
             or comment.data_product_id != row.id
         ):
-            # bare-http-ok: comment must exist in the addressed product.
-            raise HTTPException(status_code=404, detail="comment not found")
+            raise ResourceNotFoundError.not_found(what=f"comment id={comment_id}")
 
         is_author = comment.author_user_id == user["id"]
         is_steward = (

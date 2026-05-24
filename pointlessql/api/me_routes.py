@@ -21,6 +21,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy import func, select
 
 from pointlessql.api.dependencies import get_user, require_user
+from pointlessql.exceptions import ResourceNotFoundError
 from pointlessql.models.auth import User
 
 router = APIRouter(tags=["me"])
@@ -192,11 +193,10 @@ async def get_me_settings(request: Request) -> dict[str, Any]:
     with factory() as session:
         row = session.get(User, user["id"])
     if row is None:
-        # bare-http-ok: middleware should have populated request.state.user
-        # already, but if the DB row was deleted out from under the
-        # session we surface that as 404 rather than a 500.
-        from fastapi import HTTPException
-        raise HTTPException(status_code=404, detail="user not found")
+        # Middleware should have populated request.state.user already,
+        # but if the DB row was deleted out from under the session we
+        # surface that as 404 rather than a 500.
+        raise ResourceNotFoundError("user not found.")
     return _serialise_settings(row)
 
 
@@ -215,10 +215,9 @@ async def put_me_settings(request: Request) -> dict[str, Any]:
     with factory() as session:
         row = session.get(User, user["id"])
         if row is None:
-            # bare-http-ok: same "user row vanished mid-session" path as the
-            # GET; harmless 404 instead of a 500.
-            from fastapi import HTTPException
-            raise HTTPException(status_code=404, detail="user not found")
+            # Same "user row vanished mid-session" path as the GET;
+            # harmless 404 instead of a 500.
+            raise ResourceNotFoundError("user not found.")
         if "digest_email_optin" in body:
             row.digest_email_optin = bool(body["digest_email_optin"])
         session.add(row)

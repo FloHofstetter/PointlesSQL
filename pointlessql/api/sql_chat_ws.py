@@ -30,6 +30,7 @@ from typing import TYPE_CHECKING, Any
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
+from pointlessql.api._ws_error import send_error as _send_error
 from pointlessql.api.ws_auth import resolve_websocket_user
 from pointlessql.exceptions import ValidationError
 from pointlessql.services.editor_chat import (
@@ -454,20 +455,6 @@ async def _send_reply(
     if request_id is None:
         return
     await websocket.send_text(json.dumps({"id": request_id, "result": result}))
-
-
-async def _send_error(
-    websocket: WebSocket,
-    *,
-    request_id: int | None,
-    code: str,
-    message: str,
-) -> None:
-    """Send a ``{"id": ..., "error": {"code": ..., "message": ...}}`` frame."""
-    body: dict[str, Any] = {"error": {"code": code, "message": message}}
-    if request_id is not None:
-        body["id"] = request_id
-    await websocket.send_text(json.dumps(body))
 
 
 __all__ = ["router"]

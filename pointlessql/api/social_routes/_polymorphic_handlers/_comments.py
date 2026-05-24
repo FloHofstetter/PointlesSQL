@@ -11,7 +11,7 @@ import datetime
 import json
 from typing import Any
 
-from fastapi import HTTPException, Request
+from fastapi import Request
 from sqlalchemy import select
 
 from pointlessql.api._social_serializers import agent_payload
@@ -36,7 +36,11 @@ from pointlessql.api.social_routes._polymorphic_handlers._shared import (
     resolve_target_id,
     serialise_comment,
 )
-from pointlessql.exceptions import AuthorizationError
+from pointlessql.exceptions import (
+    AuthorizationError,
+    BadRequestError,
+    ResourceNotFoundError,
+)
 from pointlessql.models.agent._agents import Agent
 from pointlessql.models.auth import User
 from pointlessql.models.catalog._data_product_comments import DataProductComment
@@ -194,9 +198,10 @@ async def post_polymorphic_comment(
         Serialised comment row.
 
     Raises:
-        HTTPException: 400 on empty body, missing parent, unknown
-            category, or over-deep nesting; 404 when ``as_agent``
-            slug does not resolve.  Indirect: also raised inside
+        BadRequestError: On empty body, missing parent, unknown
+            category, or over-deep nesting.
+        ResourceNotFoundError: When ``as_agent`` slug does not
+            resolve.  Indirect: also raised inside
             :func:`resolve_agent_for_principal` for unauthorised
             ``as_agent`` callers (surfaces as 403 via the global
             handler).
@@ -215,8 +220,7 @@ async def post_polymorphic_comment(
     body = await request.json()
     body_md = (body.get("body_md") or "").strip()
     if not body_md:
-        # bare-http-ok: request body is required.
-        raise HTTPException(status_code=400, detail="body_md is required")
+        raise BadRequestError("body_md is required")
     parent_comment_id_raw = body.get("parent_comment_id")
     parent_comment_id = (
         int(parent_comment_id_raw)
@@ -233,10 +237,8 @@ async def post_polymorphic_comment(
         requested_category is not None
         and requested_category not in ALLOWED_CATEGORIES
     ):
-        # bare-http-ok: category must be one of the canonical four.
-        raise HTTPException(
-            status_code=400,
-            detail=f"category must be one of {ALLOWED_CATEGORIES}",
+        raise BadRequestError(
+            f"category must be one of {ALLOWED_CATEGORIES}"
         )
 
     with factory() as session:
@@ -247,16 +249,12 @@ async def post_polymorphic_comment(
                 or parent.workspace_id != workspace_id
                 or parent.social_target_id != target_id
             ):
-                # bare-http-ok: parent must exist on the same entity.
-                raise HTTPException(
-                    status_code=400,
-                    detail="parent_comment_id refers to an unknown comment",
+                raise BadRequestError(
+                    "parent_comment_id refers to an unknown comment"
                 )
             if chain_depth(session, parent_comment_id) >= MAX_THREAD_DEPTH:
-                # bare-http-ok: enforce thread-depth ceiling.
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"thread depth exceeds {MAX_THREAD_DEPTH}",
+                raise BadRequestError(
+                    f"thread depth exceeds {MAX_THREAD_DEPTH}"
                 )
             effective_category = parent.category
         else:
@@ -375,8 +373,8 @@ async def delete_polymorphic_comment(
             install-admin.  Non-DP entities have no per-entity
             steward concept, so only the author and admin can
             delete.
-        HTTPException: 404 when the comment is missing or scoped
-            to a different entity.
+        ResourceNotFoundError: When the comment is missing or
+            scoped to a different entity.
     """
     require_user(request)
     user = get_user(request)
@@ -390,9 +388,8 @@ async def delete_polymorphic_comment(
             or comment.workspace_id != workspace_id
             or comment.social_target_id != target_id
         ):
-            # bare-http-ok: cross-entity ids 404.
-            raise HTTPException(
-                status_code=404, detail="comment not found"
+            raise ResourceNotFoundError.not_found(
+                what=f"comment id={comment_id}"
             )
 
         is_author = comment.author_user_id == user["id"]

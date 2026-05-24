@@ -22,7 +22,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, Body, HTTPException, Request
+from fastapi import APIRouter, Body, Request
 from sqlalchemy import select
 
 from pointlessql.api._audit_helpers import audit
@@ -388,10 +388,10 @@ async def delete_repo_route(repo_id: int, request: Request) -> dict[str, Any]:
         ``{"deleted": True}`` on success.
         ``_load_repo`` raises :class:`ResourceNotFoundError` for
         unknown repos; the post-cascade race surfaces as a 404
-        ``HTTPException``.
+        :class:`ResourceNotFoundError`.
 
     Raises:
-        HTTPException: A concurrent delete vanished the row
+        ResourceNotFoundError: A concurrent delete vanished the row
             between :func:`_load_repo` and the cascade.
     """
     require_admin(request)
@@ -402,8 +402,9 @@ async def delete_repo_route(repo_id: int, request: Request) -> dict[str, Any]:
         factory, repo_id=repo.id, base_dir=settings.workspace_repos.base_dir
     )
     if not deleted:
-        # bare-http-ok: race or concurrent delete.
-        raise HTTPException(status_code=404, detail=f"workspace_repo {repo_id} disappeared")
+        raise ResourceNotFoundError(
+            f"workspace_repo {repo_id} disappeared mid-request."
+        )
     await audit(
         request,
         "workspace_repo.deleted",

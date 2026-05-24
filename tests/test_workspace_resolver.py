@@ -163,7 +163,10 @@ async def test_middleware_403s_user_requesting_unjoined_workspace() -> None:
         )
     assert response.status_code == 403
     body = response.json()
-    assert body == {"error": "workspace.context_mismatch"}
+    # Phase 121.1.b — middleware emits RFC 9457 problem+json now.
+    assert body["status"] == 403
+    assert body["code"] == "workspace_context_mismatch"
+    assert "workspace" in body["detail"].lower()
 
     # The mismatch must surface as an audit_log row.
     with _factory()() as session:
@@ -214,7 +217,10 @@ async def test_middleware_403s_api_key_with_mismatched_header() -> None:
                 },
             )
         assert response.status_code == 403
-        assert response.json() == {"error": "workspace.context_mismatch"}
+        # Phase 121.1.b — middleware emits RFC 9457 problem+json now.
+        body = response.json()
+        assert body["status"] == 403
+        assert body["code"] == "workspace_context_mismatch"
     finally:
         _wipe_api_keys()
         # Use `other` so pyright/ruff don't complain about unused.

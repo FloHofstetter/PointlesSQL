@@ -17,6 +17,7 @@ from sqlalchemy import select
 from pointlessql.api.dependencies import (
     current_workspace_id,
 )
+from pointlessql.exceptions import BadRequestError, ResourceNotFoundError
 from pointlessql.models.auth import User
 from pointlessql.models.catalog._data_product_comment_reaction import (
     DataProductCommentReaction,
@@ -238,8 +239,9 @@ def resolve_target_id(
         row is created on demand if it does not yet exist.
 
     Raises:
-        HTTPException: 404 when ``kind='dp'`` and no DataProduct
+        ResourceNotFoundError: When ``kind='dp'`` and no DataProduct
             exists at the requested ``catalog.schema``.
+        BadRequestError: When the ``dp`` ref shape is malformed.
     """
     from pointlessql.services.social._target_resolver import resolve_dp_target
 
@@ -249,11 +251,7 @@ def resolve_target_id(
         if kind == "dp":
             parts = ref.split(".", 1)
             if len(parts) != 2 or not all(parts):
-                # bare-http-ok: ref shape is the API contract.
-                raise HTTPException(
-                    status_code=400,
-                    detail="kind='dp' ref must be 'catalog.schema'",
-                )
+                raise BadRequestError("kind='dp' ref must be 'catalog.schema'")
             try:
                 target = resolve_dp_target(
                     session,
@@ -262,8 +260,7 @@ def resolve_target_id(
                     schema_name=parts[1],
                 )
             except LookupError as exc:
-                # bare-http-ok: DP not found in this workspace.
-                raise HTTPException(status_code=404, detail=str(exc)) from exc
+                raise ResourceNotFoundError(str(exc)) from exc
         else:
             target = get_or_create_target(
                 session,
@@ -285,21 +282,15 @@ def readme_supported(kind: str) -> None:
     """
     spec = registry_get(kind)
     if not spec.supports_readme:
-        # bare-http-ok: READMEs are entity-kind opt-in.
-        raise HTTPException(
-            status_code=404,
-            detail=f"kind={kind!r} does not support READMEs",
-        )
+        raise ResourceNotFoundError(f"kind={kind!r} does not support READMEs")
 
 
 def endorsements_supported(kind: str) -> None:
     """Raise 404 when *kind* has ``supports_endorsements=False``."""
     spec = registry_get(kind)
     if not spec.supports_endorsements:
-        # bare-http-ok: endorsements are entity-kind opt-in.
-        raise HTTPException(
-            status_code=404,
-            detail=f"kind={kind!r} does not support endorsements",
+        raise ResourceNotFoundError(
+            f"kind={kind!r} does not support endorsements"
         )
 
 
@@ -307,7 +298,9 @@ def reviews_supported(kind: str) -> None:
     """Raise 501 when *kind* has ``supports_reviews=False``."""
     spec = registry_get(kind)
     if not spec.supports_reviews:
-        # bare-http-ok: reviews are entity-kind opt-in.
+        # bare-http-ok: 501 has no domain-exception counterpart —
+        # reviews opt-out is a registry-level statement, not a
+        # transient miss.
         raise HTTPException(
             status_code=501,
             detail=(

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Request
 from sqlalchemy import select
 
 from pointlessql.api.data_products_routes._shared import load_one
@@ -12,7 +12,11 @@ from pointlessql.api.data_products_routes.comments._constants import (
     DISCUSSION_ANSWER_ACCEPTED,
 )
 from pointlessql.api.dependencies import current_workspace_id, get_user, require_user
-from pointlessql.exceptions import AuthorizationError
+from pointlessql.exceptions import (
+    AuthorizationError,
+    BadRequestError,
+    ResourceNotFoundError,
+)
 from pointlessql.models.catalog._data_product_comments import DataProductComment
 from pointlessql.services.notifications.fanout import fanout_event
 from pointlessql.services.social.audit_mirror import mirror_social_to_audit
@@ -54,8 +58,9 @@ async def accept_answer(
     Raises:
         AuthorizationError: When the caller is not steward, admin,
             or the question-thread OP.
-        HTTPException: 404 if the comment is missing; 400 if the
-            comment is not a reply in a ``question`` thread.
+        ResourceNotFoundError: When the comment is missing.
+        BadRequestError: When the comment is not a reply in a
+            ``question`` thread.
     """
     require_user(request)
     user = get_user(request)
@@ -71,16 +76,10 @@ async def accept_answer(
             or comment.data_product_id != row.id
             or comment.deleted_at is not None
         ):
-            # bare-http-ok: target reply must exist + be live.
-            raise HTTPException(status_code=404, detail="comment not found")
+            raise ResourceNotFoundError.not_found(what=f"comment id={comment_id}")
 
         if comment.parent_comment_id is None:
-            # bare-http-ok: only replies (not the question itself)
-            # can be marked.
-            raise HTTPException(
-                status_code=400,
-                detail="accept-answer is only valid on a reply",
-            )
+            raise BadRequestError("accept-answer is only valid on a reply")
         top_level = session.get(DataProductComment, comment.parent_comment_id)
         # Walk up to the actual top-level question (replies may be
         # depth 3-5 after the threading lift).
@@ -91,10 +90,8 @@ async def accept_answer(
                 DataProductComment, top_level.parent_comment_id
             )
         if top_level is None or top_level.category != "question":
-            # bare-http-ok: thread must be a question.
-            raise HTTPException(
-                status_code=400,
-                detail="accept-answer requires a 'question' top-level thread",
+            raise BadRequestError(
+                "accept-answer requires a 'question' top-level thread"
             )
 
         is_steward = (

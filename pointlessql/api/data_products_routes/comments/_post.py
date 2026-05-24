@@ -6,7 +6,7 @@ import datetime
 import json
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Request
 
 from pointlessql.api._social_serializers import agent_payload
 from pointlessql.api.data_products_routes._shared import (
@@ -32,6 +32,7 @@ from pointlessql.api.data_products_routes.comments._mentions import (
     resolve_mentions,
 )
 from pointlessql.api.dependencies import current_workspace_id, get_user, require_user
+from pointlessql.exceptions import BadRequestError
 from pointlessql.models.agent._agents import Agent
 from pointlessql.models.auth import User
 from pointlessql.models.catalog._data_product_comments import DataProductComment
@@ -96,8 +97,7 @@ async def post_data_product_comment(
     body = await request.json()
     body_md = (body.get("body_md") or "").strip()
     if not body_md:
-        # bare-http-ok: request body is required + non-empty.
-        raise HTTPException(status_code=400, detail="body_md is required")
+        raise BadRequestError("body_md is required")
     parent_comment_id_raw = body.get("parent_comment_id")
     parent_comment_id = (
         int(parent_comment_id_raw) if parent_comment_id_raw is not None else None
@@ -109,11 +109,7 @@ async def post_data_product_comment(
         else None
     )
     if requested_category is not None and requested_category not in ALLOWED_CATEGORIES:
-        # bare-http-ok: category must be one of the canonical four.
-        raise HTTPException(
-            status_code=400,
-            detail=f"category must be one of {ALLOWED_CATEGORIES}",
-        )
+        raise BadRequestError(f"category must be one of {ALLOWED_CATEGORIES}")
 
     # Phase 76.5 — resolve the optional ``as_agent`` slug *before*
     # writing the comment so the authorship-discriminator is set
@@ -134,17 +130,11 @@ async def post_data_product_comment(
                 or parent.workspace_id != workspace_id
                 or parent.data_product_id != row.id
             ):
-                # bare-http-ok: parent must exist in the same product.
-                raise HTTPException(
-                    status_code=400,
-                    detail="parent_comment_id refers to an unknown comment",
+                raise BadRequestError(
+                    "parent_comment_id refers to an unknown comment"
                 )
             if chain_depth(session, parent_comment_id) >= MAX_THREAD_DEPTH:
-                # bare-http-ok: enforce thread-depth ceiling.
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"thread depth exceeds {MAX_THREAD_DEPTH}",
-                )
+                raise BadRequestError(f"thread depth exceeds {MAX_THREAD_DEPTH}")
             # Replies inherit category from the top-level ancestor.
             effective_category = parent.category
         else:

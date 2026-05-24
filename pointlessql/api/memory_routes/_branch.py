@@ -10,11 +10,12 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Request
 from pydantic import BaseModel, Field
 
 from pointlessql.api.dependencies import require_user
 from pointlessql.exceptions import (
+    BadRequestError,
     CatalogNotFoundError,
     CatalogUnavailableError,
     ValidationError,
@@ -87,12 +88,12 @@ async def branch_endpoint(
             unreachable_msg=unreachable,
         )
     except ValidationError as exc:
-        # bare-http-ok: surfaces caller-supplied validation issues.
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    except CatalogNotFoundError as exc:
-        # bare-http-ok: source schema / table missing in soyuz.
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except CatalogUnavailableError as exc:
-        # bare-http-ok: soyuz down → 503 Service Unavailable.
-        raise HTTPException(status_code=503, detail=str(exc)) from exc
+        # surfaces caller-supplied validation issues.
+        raise BadRequestError(str(exc)) from exc
+    except CatalogNotFoundError:
+        # CatalogNotFoundError carries 404 + catalog_not_found code.
+        raise
+    except CatalogUnavailableError:
+        # CatalogUnavailableError carries 502 + catalog_unavailable code.
+        raise
     return result

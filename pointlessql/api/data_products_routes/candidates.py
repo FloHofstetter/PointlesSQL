@@ -20,7 +20,7 @@ import logging
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy import select
 
@@ -29,7 +29,7 @@ from pointlessql.api.dependencies import (
     get_user,
     require_user,
 )
-from pointlessql.exceptions import AuthorizationError
+from pointlessql.exceptions import AuthorizationError, ResourceNotFoundError
 from pointlessql.models.catalog._data_product_candidate import (
     DataProductPromotionCandidate,
 )
@@ -168,8 +168,7 @@ async def dismiss_candidate(
             )
         ).scalar_one_or_none()
         if candidate is None:
-            # bare-http-ok: candidate row not present.
-            raise HTTPException(status_code=404, detail="candidate not found")
+            raise ResourceNotFoundError.not_found(what=f"candidate id={candidate_id}")
         catalog_name = candidate.catalog_name
         schema_name = candidate.schema_name
         if candidate.status == "open":
@@ -242,8 +241,7 @@ async def generate_candidate_draft(
             )
         ).scalar_one_or_none()
         if candidate is None:
-            # bare-http-ok: candidate row not present.
-            raise HTTPException(status_code=404, detail="candidate not found")
+            raise ResourceNotFoundError.not_found(what=f"candidate id={candidate_id}")
         candidate_catalog = candidate.catalog_name
         candidate_schema = candidate.schema_name
 

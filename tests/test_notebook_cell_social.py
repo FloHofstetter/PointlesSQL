@@ -16,7 +16,7 @@ import uuid
 
 import httpx
 import pytest
-from fastapi import HTTPException
+from pointlessql.exceptions import BadRequestError
 from sqlalchemy import inspect
 
 from pointlessql.api.main import app
@@ -88,7 +88,8 @@ def test_parse_ref_accepts_well_formed_composite() -> None:
 )
 def test_parse_ref_rejects_malformed(bad_ref: str) -> None:
     """Malformed composite refs raise 400 with the contract message."""
-    with pytest.raises(HTTPException) as exc:
+    # Phase 121.1.e — converted from HTTPException to BadRequestError.
+    with pytest.raises(BadRequestError) as exc:
         parse_ref("notebook_cell", bad_ref)
     assert exc.value.status_code == 400
     assert "notebook_uuid" in exc.value.detail or "UUID" in exc.value.detail

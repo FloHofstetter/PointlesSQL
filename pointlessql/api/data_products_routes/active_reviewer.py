@@ -22,7 +22,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Request
 from sqlalchemy import select
 
 from pointlessql.api.data_products_routes._shared import load_one
@@ -32,7 +32,7 @@ from pointlessql.api.dependencies import (
     require_admin,
     require_user,
 )
-from pointlessql.exceptions import AuthorizationError
+from pointlessql.exceptions import AuthorizationError, BadRequestError
 from pointlessql.models.catalog._data_product_active_reviewer_config import (
     ACTIVE_REVIEWER_PROVIDERS,
     ACTIVE_REVIEWER_RUNNERS,
@@ -179,7 +179,7 @@ async def upsert_active_reviewer_config(
         Serialised row.
 
     Raises:
-        HTTPException: 400 on invalid body shape.
+        BadRequestError: On invalid body shape.
     """
     require_user(request)
     user = get_user(request)
@@ -190,52 +190,34 @@ async def upsert_active_reviewer_config(
 
     raw_body = await request.json()
     if not isinstance(raw_body, dict):
-        # bare-http-ok: malformed body shape.
-        raise HTTPException(status_code=400, detail="body must be a JSON object")
+        raise BadRequestError("body must be a JSON object")
     body: dict[str, Any] = raw_body
     enabled = bool(body.get("enabled", False))
     runner = str(body.get("runner") or "")
     if runner not in ACTIVE_REVIEWER_RUNNERS:
-        # bare-http-ok: bad runner enum.
-        raise HTTPException(
-            status_code=400,
-            detail=f"runner must be one of {list(ACTIVE_REVIEWER_RUNNERS)!r}",
+        raise BadRequestError(
+            f"runner must be one of {list(ACTIVE_REVIEWER_RUNNERS)!r}"
         )
     llm_provider_raw = body.get("llm_provider")
     llm_provider: str | None = None
     if llm_provider_raw is not None and llm_provider_raw != "":
         if llm_provider_raw not in ACTIVE_REVIEWER_PROVIDERS:
-            # bare-http-ok: bad provider enum.
-            raise HTTPException(
-                status_code=400,
-                detail=(
-                    "llm_provider must be one of "
-                    f"{list(ACTIVE_REVIEWER_PROVIDERS)!r} or null"
-                ),
+            raise BadRequestError(
+                "llm_provider must be one of "
+                f"{list(ACTIVE_REVIEWER_PROVIDERS)!r} or null"
             )
         llm_provider = str(llm_provider_raw)
     llm_model = body.get("llm_model")
     if llm_model is not None and not isinstance(llm_model, str):
-        # bare-http-ok: malformed llm_model type.
-        raise HTTPException(
-            status_code=400, detail="llm_model must be a string or null"
-        )
+        raise BadRequestError("llm_model must be a string or null")
     prompt_override = body.get("prompt_override_md")
     if prompt_override is not None and not isinstance(prompt_override, str):
-        # bare-http-ok: malformed prompt_override_md type.
-        raise HTTPException(
-            status_code=400,
-            detail="prompt_override_md must be a string or null",
-        )
+        raise BadRequestError("prompt_override_md must be a string or null")
     if prompt_override is not None and not prompt_override.strip():
         prompt_override = None
     agent_slug_raw = body.get("agent_slug")
     if agent_slug_raw is not None and not isinstance(agent_slug_raw, str):
-        # bare-http-ok: malformed agent_slug type.
-        raise HTTPException(
-            status_code=400,
-            detail="agent_slug must be a string or null",
-        )
+        raise BadRequestError("agent_slug must be a string or null")
     agent_slug = (
         agent_slug_raw.strip().lower() if isinstance(agent_slug_raw, str) else None
     )
@@ -286,7 +268,7 @@ async def run_active_reviewer_now(
         ``{"data_product_id": int, "result": <dict>}``.
 
     Raises:
-        HTTPException: 400 when no config row exists or the LLM
+        BadRequestError: When no config row exists or the LLM
             credential is missing for the configured provider.
     """
     require_user(request)
@@ -307,9 +289,7 @@ async def run_active_reviewer_now(
             model_default=settings.data_products.active_reviewer_model,
         )
     except ValueError as exc:
-        # bare-http-ok: service-level invariant fail (missing config / DP).
-        raise HTTPException(status_code=400, detail=str(exc)) from None
+        raise BadRequestError(str(exc)) from None
     except RuntimeError as exc:
-        # bare-http-ok: missing LLM credential for configured provider.
-        raise HTTPException(status_code=400, detail=str(exc)) from None
+        raise BadRequestError(str(exc)) from None
     return {"data_product_id": row.id, "result": result}

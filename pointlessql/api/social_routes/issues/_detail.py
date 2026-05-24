@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, cast
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Request
 from sqlalchemy import select
 
 from pointlessql.api.dependencies import current_workspace_id, get_user, require_user
@@ -16,6 +16,11 @@ from pointlessql.api.social_routes._issue_helpers import (
     validate_labels,
 )
 from pointlessql.api.social_routes.issues._open import MAX_TITLE
+from pointlessql.exceptions import (
+    BadRequestError,
+    PermissionDeniedError,
+    ResourceNotFoundError,
+)
 from pointlessql.models.social._issue import Issue
 from pointlessql.services.social.audit_mirror import mirror_social_to_audit
 
@@ -35,8 +40,7 @@ async def get_issue(issue_id: int, request: Request) -> dict[str, Any]:
             )
         ).scalar_one_or_none()
         if issue is None:
-            # bare-http-ok: API contract / request validation.
-            raise HTTPException(status_code=404, detail="issue not found")
+            raise ResourceNotFoundError.not_found(what=f"issue id={issue_id}")
         parent_kind, parent_ref = hydrate_parent(
             session, issue.parent_social_target_id
         )
@@ -68,10 +72,7 @@ async def patch_issue(
     workspace_id = current_workspace_id(request)
     payload_raw = await request.json()
     if not isinstance(payload_raw, dict):
-        # bare-http-ok: API contract / request validation.
-        raise HTTPException(
-            status_code=400, detail="request body must be a JSON object"
-        )
+        raise BadRequestError("request body must be a JSON object")
     payload: dict[str, Any] = cast(dict[str, Any], payload_raw)
     factory = request.app.state.session_factory
     with factory() as session:
@@ -81,55 +82,34 @@ async def patch_issue(
             )
         ).scalar_one_or_none()
         if issue is None:
-            # bare-http-ok: API contract / request validation.
-            raise HTTPException(status_code=404, detail="issue not found")
+            raise ResourceNotFoundError.not_found(what=f"issue id={issue_id}")
         if not can_edit_issue(user, issue):
-            raise HTTPException(
-                status_code=403, detail="only opener or admin may edit"
-            )
+            raise PermissionDeniedError("Only the issue opener or an admin may edit.")
         if "title" in payload:
             new_title_raw = payload["title"]
             if not isinstance(new_title_raw, str) or not new_title_raw.strip():
-                # bare-http-ok: API contract / request validation.
-                raise HTTPException(
-                    status_code=400,
-                    detail="title must be a non-empty string",
-                )
+                raise BadRequestError("title must be a non-empty string")
             if len(new_title_raw) > MAX_TITLE:
-                # bare-http-ok: API contract / request validation.
-                raise HTTPException(
-                    status_code=400, detail="title too long"
-                )
+                raise BadRequestError("title too long")
             issue.title = new_title_raw.strip()
         if "body_md" in payload:
             new_body_raw = payload["body_md"]
             if not isinstance(new_body_raw, str):
-                # bare-http-ok: API contract / request validation.
-                raise HTTPException(
-                    status_code=400, detail="body_md must be a string"
-                )
+                raise BadRequestError("body_md must be a string")
             issue.body_md = new_body_raw
         if "assignee_user_id" in payload:
             new_assignee_raw = payload["assignee_user_id"]
             if new_assignee_raw is not None and not isinstance(
                 new_assignee_raw, int
             ):
-                # bare-http-ok: API contract / request validation.
-                raise HTTPException(
-                    status_code=400,
-                    detail="assignee_user_id must be int or null",
-                )
+                raise BadRequestError("assignee_user_id must be int or null")
             issue.assignee_user_id = new_assignee_raw
         if "milestone_id" in payload:
             new_milestone_raw = payload["milestone_id"]
             if new_milestone_raw is not None and not isinstance(
                 new_milestone_raw, int
             ):
-                # bare-http-ok: API contract / request validation.
-                raise HTTPException(
-                    status_code=400,
-                    detail="milestone_id must be int or null",
-                )
+                raise BadRequestError("milestone_id must be int or null")
             issue.milestone_id = new_milestone_raw
         if "labels" in payload:
             issue.labels_json = validate_labels(payload["labels"])

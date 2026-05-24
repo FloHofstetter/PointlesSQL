@@ -11,13 +11,13 @@ from __future__ import annotations
 import json
 from typing import Any, cast
 
-from fastapi import HTTPException
 from sqlalchemy import select
 
 from pointlessql.api.social_routes._kind_dispatch import (
     parse_dp_ref,
     parse_ref,
 )
+from pointlessql.exceptions import BadRequestError, ResourceNotFoundError
 from pointlessql.models.auth import User
 from pointlessql.models.social._issue import Issue
 from pointlessql.models.social._social_target import SocialTarget
@@ -34,11 +34,7 @@ def ensure_parent_supports_issues(kind: str) -> None:
     """Raise 404 when the parent kind has ``supports_issues=False``."""
     spec = registry_get(kind)
     if not spec.supports_issues:
-        # bare-http-ok: issues are entity-kind opt-in.
-        raise HTTPException(
-            status_code=404,
-            detail=f"kind={kind!r} does not support issues",
-        )
+        raise ResourceNotFoundError(f"kind={kind!r} does not support issues.")
 
 
 def resolve_parent_target_id(
@@ -61,7 +57,7 @@ def resolve_parent_target_id(
         ``kind='dp'`` so the back-pointer is populated.
 
     Raises:
-        HTTPException: 404 when ``kind='dp'`` and the DP row is
+        ResourceNotFoundError: When ``kind='dp'`` and the DP row is
             missing in the workspace.
     """
     if kind == "dp":
@@ -73,10 +69,7 @@ def resolve_parent_target_id(
                 schema_name=ref.split(".", 1)[1],
             )
         except LookupError as exc:
-            # bare-http-ok: DP not found in this workspace.
-            raise HTTPException(
-                status_code=404, detail=str(exc)
-            ) from exc
+            raise ResourceNotFoundError(str(exc)) from exc
     else:
         target = get_or_create_target(
             session,
@@ -106,7 +99,7 @@ def validate_labels(raw: Any) -> str:
         Canonical JSON-encoded list of label slugs.
 
     Raises:
-        HTTPException: 400 on malformed input or > :data:`_MAX_LABELS`.
+        BadRequestError: On malformed input or > :data:`_MAX_LABELS`.
     """
     if raw is None:
         return "[]"
@@ -115,33 +108,18 @@ def validate_labels(raw: Any) -> str:
         try:
             parsed = json.loads(raw)
         except json.JSONDecodeError as exc:
-            # bare-http-ok: labels-string is not valid JSON.
-            raise HTTPException(
-                status_code=400, detail=f"labels not JSON: {exc}"
-            ) from exc
+            raise BadRequestError(f"labels not JSON: {exc}") from exc
     else:
         parsed = raw
     if not isinstance(parsed, list):
-        # bare-http-ok: labels must be a JSON array.
-        raise HTTPException(
-            status_code=400,
-            detail="labels must be a JSON array of strings",
-        )
+        raise BadRequestError("labels must be a JSON array of strings")
     parsed_list = cast(list[Any], parsed)
     if len(parsed_list) > _MAX_LABELS:
-        # bare-http-ok: per-issue label cap.
-        raise HTTPException(
-            status_code=400,
-            detail=f"too many labels (max {_MAX_LABELS})",
-        )
+        raise BadRequestError(f"too many labels (max {_MAX_LABELS})")
     cleaned: list[str] = []
     for item in parsed_list:
         if not isinstance(item, str) or not item:
-            # bare-http-ok: every label must be a non-empty string slug.
-            raise HTTPException(
-                status_code=400,
-                detail="every label must be a non-empty string slug",
-            )
+            raise BadRequestError("every label must be a non-empty string slug")
         cleaned.append(item)
     return json.dumps(cleaned)
 

@@ -15,7 +15,6 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from fastapi import HTTPException
 from sqlalchemy import select
 
 from pointlessql.data_products import DataProductContract
@@ -159,9 +158,16 @@ def resolve_agent_for_principal(
             )
         ).scalar_one_or_none()
         if agent is None:
-            # bare-http-ok: as_agent must resolve.
-            raise HTTPException(
-                status_code=404, detail=f"unknown agent slug: {agent_slug}"
+            # Phase 121.1.i — enrich the 404 with the workspace's
+            # known agent slugs so callers can self-correct typos.
+            known = list(
+                session.execute(
+                    select(Agent.slug).where(Agent.workspace_id == workspace_id)
+                ).scalars()
+            )
+            raise ResourceNotFoundError.not_found(
+                what=f"agent slug {agent_slug!r}",
+                alternatives=known,
             )
         is_principal = agent.principal_user_id == user["id"]
         is_admin = bool(user["is_admin"])

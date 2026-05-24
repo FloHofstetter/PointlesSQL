@@ -34,11 +34,15 @@ class ErrorCode(StrEnum):
 
     # Auth / authz.
     AUTHENTICATION_ERROR = "authentication_error"
+    NOT_AUTHENTICATED = "not_authenticated"
     AUTHORIZATION_ERROR = "authorization_error"
     PERMISSION_DENIED = "permission_denied"
+    IP_NOT_ALLOWED = "ip_not_allowed"
+    WORKSPACE_CONTEXT_MISMATCH = "workspace_context_mismatch"
     OIDC_ERROR = "oidc_error"
 
     # Validation / request shape.
+    BAD_REQUEST = "bad_request"
     VALIDATION_ERROR = "validation_error"
     SQL_PARSE_ERROR = "sql_parse_error"
 

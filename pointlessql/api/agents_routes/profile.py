@@ -4,10 +4,11 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Request
 from sqlalchemy import func, select
 
 from pointlessql.api.dependencies import current_workspace_id, require_user
+from pointlessql.exceptions import ResourceNotFoundError
 from pointlessql.models.agent._agents import Agent
 from pointlessql.models.agent._runs import AgentRun
 from pointlessql.models.auth import User
@@ -41,8 +42,7 @@ async def agent_profile(slug: str, request: Request) -> dict[str, Any]:
             )
         ).scalar_one_or_none()
         if agent is None:
-            # bare-http-ok: agent must exist.
-            raise HTTPException(status_code=404, detail="agent not found")
+            raise ResourceNotFoundError("agent not found.")
         principal = session.get(User, agent.principal_user_id)
         recent_comments = (
             session.execute(

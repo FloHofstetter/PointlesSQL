@@ -13,7 +13,7 @@ import datetime
 import secrets
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy import select
 
@@ -22,6 +22,7 @@ from pointlessql.api.dependencies import (
     get_user,
     require_user,
 )
+from pointlessql.exceptions import BadRequestError, ResourceNotFoundError
 from pointlessql.models.notifications import UserWebhookSubscription
 
 router = APIRouter(tags=["me"])
@@ -111,13 +112,9 @@ async def create_subscription(request: Request) -> dict[str, Any]:
     event_type_filter = (body.get("event_type_filter") or "").strip()
     dp_ref_filter = body.get("dp_ref_filter") or None
     if not webhook_url:
-        # bare-http-ok: required.
-        raise HTTPException(status_code=400, detail="webhook_url is required")
+        raise BadRequestError("webhook_url is required")
     if not event_type_filter:
-        # bare-http-ok: required.
-        raise HTTPException(
-            status_code=400, detail="event_type_filter is required"
-        )
+        raise BadRequestError("event_type_filter is required")
 
     hmac_secret = secrets.token_urlsafe(64)
     now = datetime.datetime.now(datetime.UTC)
@@ -150,10 +147,7 @@ async def update_subscription(
     with factory() as session:
         row = session.get(UserWebhookSubscription, sub_id)
         if row is None or row.user_id != user["id"]:
-            # bare-http-ok: not the caller's subscription.
-            raise HTTPException(
-                status_code=404, detail="subscription not found"
-            )
+            raise ResourceNotFoundError("subscription not found.")
         if "is_active" in body:
             row.is_active = 1 if bool(body["is_active"]) else 0
         if "webhook_url" in body:

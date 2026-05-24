@@ -27,11 +27,12 @@ import logging
 import uuid
 from typing import Any, Literal
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Request
 from pydantic import BaseModel, Field, field_validator
 
 from pointlessql.api._audit_helpers import effective_agent_run_id
 from pointlessql.api.dependencies import current_workspace_id, require_user
+from pointlessql.exceptions import PermissionDeniedError, ResourceNotFoundError
 from pointlessql.models import (
     EditorChatSession,
     NotebookCellProposal,
@@ -144,17 +145,14 @@ def _resolve_session(
         )
         if chat_session is None:
             # bare-http-ok: 404 for missing chat session — no domain
-            # exception class for this transient WS-state mismatch.
-            raise HTTPException(
-                status_code=404, detail="notebook chat session not found"
-            )
+            # transient WS-state mismatch.
+            raise ResourceNotFoundError("notebook chat session not found.")
         if agent_run_id is None or chat_session.agent_run_id != agent_run_id:
-            # bare-http-ok: 403 mirrors the Phase-91 SQL chat propose
+            # 403 mirrors the Phase-91 SQL chat propose
             # route — agents may only push proposals into the session
-            # whose agent_run they own; no domain auth class fits.
-            raise HTTPException(
-                status_code=403,
-                detail="X-Agent-Run-Id mismatch for this chat session",
+            # the caller must drive an agent_run they own.
+            raise PermissionDeniedError(
+                "X-Agent-Run-Id mismatch for this chat session."
             )
         # Detach by reading the few fields we need then closing.
         session.expunge(chat_session)

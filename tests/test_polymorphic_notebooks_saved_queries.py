@@ -154,9 +154,10 @@ def test_parse_ref_accepts_notebook_uuid() -> None:
 
 def test_parse_ref_rejects_short_notebook_ref() -> None:
     """Non-UUID refs raise 400 with the contract message."""
-    from fastapi import HTTPException
+    # Phase 121.1.e — converted from HTTPException to BadRequestError.
+    from pointlessql.exceptions import BadRequestError
 
-    with pytest.raises(HTTPException) as exc:
+    with pytest.raises(BadRequestError) as exc:
         parse_ref("notebook", "abc")
     assert exc.value.status_code == 400
     assert "36-char UUID" in exc.value.detail
@@ -169,9 +170,10 @@ def test_parse_ref_accepts_saved_query_slug() -> None:
 
 def test_parse_ref_rejects_saved_query_with_slash() -> None:
     """Refs with a forward-slash raise 400."""
-    from fastapi import HTTPException
+    # Phase 121.1.e — converted from HTTPException to BadRequestError.
+    from pointlessql.exceptions import BadRequestError
 
-    with pytest.raises(HTTPException) as exc:
+    with pytest.raises(BadRequestError) as exc:
         parse_ref("saved_query", "bad/slash")
     assert exc.value.status_code == 400
 

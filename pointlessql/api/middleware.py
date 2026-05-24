@@ -29,8 +29,9 @@ from typing import Any
 from uuid import uuid4
 
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse, RedirectResponse, Response
+from fastapi.responses import RedirectResponse, Response
 
+from pointlessql.api._error_envelope_writer import problem_response
 from pointlessql.api.csrf_middleware import csrf_middleware as _csrf_middleware
 from pointlessql.api.rate_limit_middleware import (
     rate_limit_middleware as _rate_limit_middleware,
@@ -39,7 +40,7 @@ from pointlessql.config import request_id_var
 from pointlessql.services import api_keys as api_keys_service
 from pointlessql.services import auth as auth_service
 from pointlessql.services.workspace import _crud as workspaces_service
-from pointlessql.types import UserInfo
+from pointlessql.types import ErrorCode, UserInfo
 
 #: Header carrying the active workspace slug for non-cookie callers
 #: (Hermes plugin, ops curl, CI scripts).  See
@@ -175,14 +176,15 @@ async def auth_middleware(request: Request, call_next: Any) -> Response:
                 source_ip = _client_ip(request, trust_xff)
                 if not check_ip_allowed(ip_grants, source_ip):
                     _emit_ip_denied_audit(factory, entry, source_ip)
-                    return JSONResponse(
+                    return problem_response(
+                        request,
                         status_code=403,
-                        content={
-                            "error_code": "IP_NOT_ALLOWED",
-                            "message": (
-                                f"source IP {source_ip!r} is not in the allowlist for this key"
-                            ),
-                        },
+                        error_code=ErrorCode.IP_NOT_ALLOWED,
+                        detail=(
+                            f"source IP {source_ip!r} is not in the allowlist "
+                            f"for this key"
+                        ),
+                        extra={"source_ip": source_ip, "api_key_name": entry.name},
                     )
             request.state.api_key_name = entry.name
             request.state.api_key_supervisor = entry.supervisor
@@ -270,7 +272,7 @@ async def auth_middleware(request: Request, call_next: Any) -> Response:
                     resolved_id=workspace_id,
                     api_key_workspace_id=api_key_workspace_id,
                 )
-                return _workspace_forbidden(path)
+                return _workspace_forbidden(request)
         elif user_id_for_resolve is not None and not workspaces_service.is_member(
             factory, workspace_id=workspace_id, user_id=user_id_for_resolve
         ):
@@ -281,7 +283,7 @@ async def auth_middleware(request: Request, call_next: Any) -> Response:
                 resolved_id=workspace_id,
                 api_key_workspace_id=None,
             )
-            return _workspace_forbidden(path)
+            return _workspace_forbidden(request)
 
     # Public paths pass through regardless of auth.
     if any(path.startswith(p) for p in PUBLIC_PREFIXES):
@@ -293,7 +295,13 @@ async def auth_middleware(request: Request, call_next: Any) -> Response:
 
     # Unauthenticated — redirect HTML requests, 401 for API.
     if path.startswith("/api/"):
-        return JSONResponse({"error": "Not authenticated"}, status_code=401)
+        return problem_response(
+            request,
+            status_code=401,
+            error_code=ErrorCode.NOT_AUTHENTICATED,
+            detail="Authentication required.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     return RedirectResponse(url="/auth/login", status_code=303)
 
 
@@ -334,13 +342,23 @@ def _emit_ip_denied_audit(factory: Any, entry: Any, source_ip: str) -> None:
         )
 
 
-def _workspace_forbidden(path: str) -> Response:
-    """Return a 403 in the right format for the request's path family."""
-    if path.startswith("/api/"):
-        return JSONResponse({"error": "workspace.context_mismatch"}, status_code=403)
-    return JSONResponse(
-        {"error": "workspace.context_mismatch"},
+def _workspace_forbidden(request: Request) -> Response:
+    """Return a 403 RFC 9457 problem+json for a workspace-membership mismatch.
+
+    Previously this branched on the path prefix to emit two distinct
+    bodies; both surfaces now share the same RFC 9457 envelope built
+    by :func:`pointlessql.api._error_envelope_writer.problem_response`.
+    The audit row (see :func:`_audit_workspace_mismatch`) is written
+    synchronously before this returns so a swallowed-audit failure
+    cannot prevent the user from receiving the 403.
+    """
+    return problem_response(
+        request,
         status_code=403,
+        error_code=ErrorCode.WORKSPACE_CONTEXT_MISMATCH,
+        detail=(
+            "The active workspace does not match your membership for this resource."
+        ),
     )
 
 

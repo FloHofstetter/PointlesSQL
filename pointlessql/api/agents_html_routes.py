@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy import select
 
 from pointlessql.api.dependencies import current_workspace_id, get_user
+from pointlessql.exceptions import ResourceNotFoundError
 from pointlessql.models.agent._agents import Agent
 
 router = APIRouter(tags=["agents"])
@@ -47,8 +48,7 @@ async def agent_profile_page(
             )
         ).scalar_one_or_none()
     if agent is None:
-        # bare-http-ok: agent must exist.
-        raise HTTPException(status_code=404, detail="agent not found")
+        raise ResourceNotFoundError("agent not found.")
     templates = request.app.state.templates
     return templates.TemplateResponse(
         request,

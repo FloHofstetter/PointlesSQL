@@ -15,10 +15,11 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi import APIRouter, Query, Request
 from sqlalchemy import func, select
 
 from pointlessql.api.dependencies import current_workspace_id, require_user
+from pointlessql.exceptions import BadRequestError, ResourceNotFoundError
 from pointlessql.models.catalog._data_product_comments import DataProductComment
 from pointlessql.models.notebook import Notebook
 from pointlessql.models.social._social_follow import SocialFollow
@@ -47,17 +48,14 @@ def bulk_counts(
         ``counts`` object.
 
     Raises:
-        HTTPException: 400 when the notebook UUID is malformed.
-            404 when the notebook does not exist in the active
-            workspace.
+        BadRequestError: When the notebook UUID is malformed.
+        ResourceNotFoundError: When the notebook does not exist in
+            the active workspace (cross-workspace probes also 404
+            so workspace existence is not leaked).
     """
     require_user(request)
     if len(notebook_id) != 36 or notebook_id.count("-") != 4:
-        # bare-http-ok: UUID shape is the API contract.
-        raise HTTPException(
-            status_code=400,
-            detail="notebook_id must be a 36-char UUID",
-        )
+        raise BadRequestError("notebook_id must be a 36-char UUID")
     workspace_id = current_workspace_id(request)
     factory = request.app.state.session_factory
     prefix = f"{notebook_id}:"
@@ -65,12 +63,10 @@ def bulk_counts(
         owner = session.execute(
             select(Notebook.workspace_id).where(Notebook.id == notebook_id)
         ).first()
-        if owner is None:
-            # bare-http-ok: notebook UUID not found.
-            raise HTTPException(status_code=404, detail="notebook not found")
-        if int(owner[0]) != workspace_id:
-            # bare-http-ok: cross-workspace probe blocked.
-            raise HTTPException(status_code=404, detail="notebook not found")
+        if owner is None or int(owner[0]) != workspace_id:
+            raise ResourceNotFoundError.not_found(
+                what=f"notebook {notebook_id!r}"
+            )
 
         target_rows = session.execute(
             select(SocialTarget.id, SocialTarget.entity_ref).where(

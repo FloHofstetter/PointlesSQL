@@ -11,12 +11,12 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Request
 from sqlalchemy import desc, select
 
 from pointlessql.api.data_products_routes._shared import load_one
 from pointlessql.api.dependencies import current_workspace_id, get_user, require_user
-from pointlessql.exceptions import AuthorizationError
+from pointlessql.exceptions import AuthorizationError, ResourceNotFoundError
 from pointlessql.models.catalog._data_product_passport import DataProductPassport
 from pointlessql.services.data_products import refresh_passport_for_dp
 
@@ -151,6 +151,5 @@ async def post_refresh_passport(
         trigger="manual",
     )
     if version_int == 0:
-        # bare-http-ok: DP row not present.
-        raise HTTPException(status_code=404, detail="data product not found")
+        raise ResourceNotFoundError("data product not found.")
     return {"version_int": version_int}

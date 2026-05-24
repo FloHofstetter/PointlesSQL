@@ -205,4 +205,7 @@ async def test_ip_grant_present_but_source_blocked(
         )
     assert resp.status_code == 403
     body = resp.json()
-    assert body["error_code"] == "IP_NOT_ALLOWED"
+    # Phase 121.1.b — middleware emits RFC 9457 problem+json now.
+    assert body["status"] == 403
+    assert body["code"] == "ip_not_allowed"
+    assert body["source_ip"] == "127.0.0.1"

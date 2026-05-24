@@ -18,7 +18,7 @@ from __future__ import annotations
 import datetime
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Request
 from sqlalchemy import func, select
 
 from pointlessql.api._social_serializers import agent_payload as _agent_payload
@@ -27,6 +27,7 @@ from pointlessql.api.data_products_routes._shared import (
     resolve_agent_for_principal,
 )
 from pointlessql.api.dependencies import current_workspace_id, get_user, require_user
+from pointlessql.exceptions import BadRequestError
 from pointlessql.models.agent._agents import Agent
 from pointlessql.models.auth import User
 from pointlessql.models.catalog._data_product_reviews import DataProductReview
@@ -228,17 +229,13 @@ async def upsert_data_product_review(
     body = await request.json()
     raw_stars = body.get("stars")
     if raw_stars is None:
-        # bare-http-ok: required field.
-        raise HTTPException(status_code=400, detail="stars is required")
+        raise BadRequestError("stars is required")
     try:
         stars = int(raw_stars)
     except (TypeError, ValueError):
-        # bare-http-ok: stars must be int.
-        raise HTTPException(status_code=400, detail="stars must be an int") from None
+        raise BadRequestError("stars must be an int") from None
     if stars < 1 or stars > 5:
-        # bare-http-ok: stars range — DB CHECK is the canonical gate
-        # but we raise a clean 400 instead of a 500 from an IntegrityError.
-        raise HTTPException(status_code=400, detail="stars must be in 1..5")
+        raise BadRequestError("stars must be in 1..5")
     body_md = (body.get("body_md") or "").strip()
 
     author_agent_id: int | None = None

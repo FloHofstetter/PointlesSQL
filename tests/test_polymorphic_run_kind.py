@@ -90,9 +90,10 @@ def test_parse_ref_accepts_valid_uuid() -> None:
 
 def test_parse_ref_rejects_malformed_uuid() -> None:
     """Non-UUID refs raise 400 with the contract message."""
-    from fastapi import HTTPException
+    # Phase 121.1.e — converted from HTTPException to BadRequestError.
+    from pointlessql.exceptions import BadRequestError
 
-    with pytest.raises(HTTPException) as exc:
+    with pytest.raises(BadRequestError) as exc:
         parse_ref("run", "not-a-uuid")
     assert exc.value.status_code == 400
     assert "36-char UUID" in exc.value.detail

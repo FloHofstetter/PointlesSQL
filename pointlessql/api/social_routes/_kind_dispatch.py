@@ -12,6 +12,7 @@ from __future__ import annotations
 
 from fastapi import HTTPException
 
+from pointlessql.exceptions import BadRequestError
 from pointlessql.services.social import entity_registry
 
 # Per-kind ref-shape contract.  Keys map to a one-line validator
@@ -50,14 +51,16 @@ def parse_dp_ref(kind: str, ref: str) -> tuple[str, str]:
             or *ref* is malformed.
     """
     if kind not in entity_registry.all_kinds():
-        # bare-http-ok: unknown kind is a client mistake.
-        raise HTTPException(
-            status_code=400, detail=f"unknown entity_kind: {kind!r}"
+        known = sorted(entity_registry.all_kinds())
+        shown = ", ".join(known[:5])
+        more = "" if len(known) <= 5 else f" (+{len(known) - 5} more)"
+        raise BadRequestError(
+            f"unknown entity_kind: {kind!r}. Known: {shown}{more}."
         )
     if kind != "dp":
-        # bare-http-ok: kind registered but not handled by the DP
-        # delegator.  Callers should use ``parse_ref`` + the
-        # polymorphic handlers when this happens.
+        # bare-http-ok: 501 has no domain-exception counterpart — kind is
+        # registered but this code path is the DP delegator only; callers
+        # should route through ``parse_ref`` + the polymorphic handlers.
         raise HTTPException(
             status_code=501,
             detail=(
@@ -67,11 +70,7 @@ def parse_dp_ref(kind: str, ref: str) -> tuple[str, str]:
         )
     parts = ref.split(".", 1)
     if len(parts) != 2 or not parts[0] or not parts[1]:
-        # bare-http-ok: ref shape is the API contract.
-        raise HTTPException(
-            status_code=400,
-            detail="kind='dp' ref must be 'catalog.schema'",
-        )
+        raise BadRequestError("kind='dp' ref must be 'catalog.schema'.")
     return parts[0], parts[1]
 
 
@@ -92,56 +91,41 @@ def parse_ref(kind: str, ref: str) -> str:
             wired through the polymorphic handlers.
     """
     if kind not in entity_registry.all_kinds():
-        # bare-http-ok: unknown kind is a client mistake.
-        raise HTTPException(
-            status_code=400, detail=f"unknown entity_kind: {kind!r}"
+        known = sorted(entity_registry.all_kinds())
+        shown = ", ".join(known[:5])
+        more = "" if len(known) <= 5 else f" (+{len(known) - 5} more)"
+        raise BadRequestError(
+            f"unknown entity_kind: {kind!r}. Known: {shown}{more}."
         )
     if kind == "dp":
-        # bare-http-ok: dp uses parse_dp_ref + DP handlers.
-        raise HTTPException(
-            status_code=400,
-            detail=(
-                "kind='dp' is handled by the DP delegator path; "
-                "use parse_dp_ref"
-            ),
+        raise BadRequestError(
+            "kind='dp' is handled by the DP delegator path; use parse_dp_ref."
         )
     if kind == "table":
         parts = ref.split(".", 2)
         if len(parts) != 3 or not all(parts):
-            # bare-http-ok: ref shape is the API contract.
-            raise HTTPException(
-                status_code=400,
-                detail="kind='table' ref must be 'catalog.schema.table'",
+            raise BadRequestError(
+                "kind='table' ref must be 'catalog.schema.table'."
             )
         return ref
     if kind == "branch":
         if "__branch_" not in ref or "." not in ref:
-            # bare-http-ok: branch FQN must encode catalog.schema__branch_xxx.
-            raise HTTPException(
-                status_code=400,
-                detail=(
-                    "kind='branch' ref must be a branch FQN "
-                    "('catalog.schema__branch_xxx')"
-                ),
+            raise BadRequestError(
+                "kind='branch' ref must be a branch FQN "
+                "('catalog.schema__branch_xxx')."
             )
         return ref
     if kind == "model":
         parts = ref.split(".", 2)
         if len(parts) != 3 or not all(parts):
-            # bare-http-ok: ref shape is the API contract.
-            raise HTTPException(
-                status_code=400,
-                detail="kind='model' ref must be 'catalog.schema.name'",
+            raise BadRequestError(
+                "kind='model' ref must be 'catalog.schema.name'."
             )
         return ref
     if kind == "run":
         # Phase 77.4 — run refs are canonical 36-char UUIDs as text.
         if len(ref) != 36 or ref.count("-") != 4:
-            # bare-http-ok: ref shape is the API contract.
-            raise HTTPException(
-                status_code=400,
-                detail="kind='run' ref must be a 36-char UUID",
-            )
+            raise BadRequestError("kind='run' ref must be a 36-char UUID.")
         return ref
     if kind == "issue":
         # Phase 77.7 — issue refs are the integer issues.id serialised
@@ -149,11 +133,7 @@ def parse_ref(kind: str, ref: str) -> str:
         # upfront so a malformed ref doesn't fall through to a
         # downstream lookup with a fuzzy error.
         if not ref or not ref.isdigit():
-            # bare-http-ok: ref shape is the API contract.
-            raise HTTPException(
-                status_code=400,
-                detail="kind='issue' ref must be a numeric issue id",
-            )
+            raise BadRequestError("kind='issue' ref must be a numeric issue id.")
         return ref
     if kind == "schema":
         # Phase 77.5 — schema refs are ``catalog.schema`` two-part
@@ -161,51 +141,33 @@ def parse_ref(kind: str, ref: str) -> str:
         # joined by exactly one dot.
         parts = ref.split(".", 1)
         if len(parts) != 2 or not all(parts):
-            # bare-http-ok: ref shape is the API contract.
-            raise HTTPException(
-                status_code=400,
-                detail="kind='schema' ref must be 'catalog.schema'",
-            )
+            raise BadRequestError("kind='schema' ref must be 'catalog.schema'.")
         return ref
     if kind == "catalog":
         # Phase 77.5 — catalog refs are bare UC catalog names —
         # one ASCII identifier, no dots.
         if not ref or "." in ref or "/" in ref:
-            # bare-http-ok: ref shape is the API contract.
-            raise HTTPException(
-                status_code=400,
-                detail="kind='catalog' ref must be a bare identifier",
+            raise BadRequestError(
+                "kind='catalog' ref must be a bare identifier."
             )
         return ref
     if kind == "notebook":
         # Phase 77.6 — notebook refs are the 36-char UUID stored
         # on ``notebooks.id``.
         if len(ref) != 36 or ref.count("-") != 4:
-            # bare-http-ok: ref shape is the API contract.
-            raise HTTPException(
-                status_code=400,
-                detail="kind='notebook' ref must be a 36-char UUID",
-            )
+            raise BadRequestError("kind='notebook' ref must be a 36-char UUID.")
         return ref
     if kind == "saved_query":
         # Phase 77.6 — saved-query refs are the slug stored on the
         # saved_audit_queries row.  Accept the same shape as
         # citations (lowercase alphanumerics + hyphens).
         if not ref or "/" in ref:
-            # bare-http-ok: ref shape is the API contract.
-            raise HTTPException(
-                status_code=400,
-                detail="kind='saved_query' ref must be a slug",
-            )
+            raise BadRequestError("kind='saved_query' ref must be a slug.")
         return ref
     if kind == "workspace":
         # Phase 77.10 — workspace refs are the workspace slug.
         if not ref or "/" in ref or "." in ref:
-            # bare-http-ok: ref shape is the API contract.
-            raise HTTPException(
-                status_code=400,
-                detail="kind='workspace' ref must be a slug",
-            )
+            raise BadRequestError("kind='workspace' ref must be a slug.")
         return ref
     if kind == "notebook_cell":
         # Phase 95 — composite ref ``{notebook_uuid}:{cell_uuid}``.
@@ -220,17 +182,15 @@ def parse_ref(kind: str, ref: str) -> str:
             or len(cell_uuid) != 36
             or cell_uuid.count("-") != 4
         ):
-            # bare-http-ok: ref shape is the API contract.
-            raise HTTPException(
-                status_code=400,
-                detail=(
-                    "kind='notebook_cell' ref must be "
-                    "'{notebook_uuid}:{cell_uuid}' (two 36-char UUIDs)"
-                ),
+            raise BadRequestError(
+                "kind='notebook_cell' ref must be "
+                "'{notebook_uuid}:{cell_uuid}' (two 36-char UUIDs)."
             )
         return ref
     if kind not in _POLYMORPHIC_KINDS:
-        # bare-http-ok: registered but no polymorphic handler yet.
+        # bare-http-ok: 501 has no domain-exception counterpart — kind is
+        # registered but no polymorphic handler is wired through yet.
+        # Later Phase-77 sub-phases add the missing ones.
         raise HTTPException(
             status_code=501,
             detail=(

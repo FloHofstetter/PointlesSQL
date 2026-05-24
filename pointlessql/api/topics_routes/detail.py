@@ -15,12 +15,16 @@ from __future__ import annotations
 import datetime
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Request
 from sqlalchemy import delete, func, select
 
 from pointlessql.api.data_products_routes._shared import load_one
 from pointlessql.api.dependencies import current_workspace_id, get_user, require_user
-from pointlessql.exceptions import AuthorizationError
+from pointlessql.exceptions import (
+    AuthorizationError,
+    BadRequestError,
+    ResourceNotFoundError,
+)
 from pointlessql.models.catalog._data_products import DataProduct
 from pointlessql.models.notifications import UserNotification
 from pointlessql.models.social._topic import (
@@ -65,8 +69,7 @@ async def topic_detail(slug: str, request: Request) -> dict[str, Any]:
             )
         ).scalar_one_or_none()
         if topic is None:
-            # bare-http-ok: topic must exist.
-            raise HTTPException(status_code=404, detail="topic not found")
+            raise ResourceNotFoundError(f"topic {slug!r} not found.")
 
         dps = (
             session.execute(
@@ -163,8 +166,7 @@ async def set_dp_topics(
     body = await request.json()
     raw_value: Any = body.get("topics") or []
     if not isinstance(raw_value, list):
-        # bare-http-ok: topics must be a list.
-        raise HTTPException(status_code=400, detail="topics must be a list")
+        raise BadRequestError("topics must be a list")
     slugs: list[str] = [
         str(s).strip().lower() for s in raw_value if str(s).strip()  # pyright: ignore[reportUnknownVariableType,reportUnknownArgumentType]
     ]
@@ -187,11 +189,7 @@ async def set_dp_topics(
             found_slugs = {t.slug for t in found}
             missing = [s for s in slugs if s not in found_slugs]
             if missing:
-                # bare-http-ok: refuse on unknown slug.
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"unknown topic slug(s): {missing}",
-                )
+                raise BadRequestError(f"unknown topic slug(s): {missing}")
             topics_by_slug: dict[str, Topic] = {t.slug: t for t in found}
         else:
             topics_by_slug = {}

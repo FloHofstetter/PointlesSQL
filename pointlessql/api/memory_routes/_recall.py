@@ -10,9 +10,10 @@ from __future__ import annotations
 
 import datetime
 
-from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi import APIRouter, Query, Request
 
 from pointlessql.api.dependencies import require_user
+from pointlessql.exceptions import BadRequestError
 from pointlessql.services.agent_runs.memory._recall import recall_operations
 from pointlessql.types import OpName
 
@@ -37,10 +38,7 @@ def _parse_op_name(value: str | None) -> OpName | None:
     try:
         return OpName(value)
     except ValueError as exc:
-        # bare-http-ok: caller-supplied query string out of contract.
-        raise HTTPException(
-            status_code=400, detail=f"unknown op_name {value!r}"
-        ) from exc
+        raise BadRequestError(f"unknown op_name {value!r}") from exc
 
 
 def _parse_iso_datetime(value: str | None, *, field: str) -> datetime.datetime | None:
@@ -62,10 +60,8 @@ def _parse_iso_datetime(value: str | None, *, field: str) -> datetime.datetime |
     try:
         return datetime.datetime.fromisoformat(value)
     except ValueError as exc:
-        # bare-http-ok: caller-supplied query string out of contract.
-        raise HTTPException(
-            status_code=400,
-            detail=f"{field}: expected ISO-8601 datetime, got {value!r}",
+        raise BadRequestError(
+            f"{field}: expected ISO-8601 datetime, got {value!r}"
         ) from exc
 
 
@@ -119,7 +115,7 @@ async def recall_endpoint(
     except ValueError as exc:
         # bare-http-ok: surfaces the recall_operations ValueError
         # (e.g. unknown status filter) as a 400 with the cause text.
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        raise BadRequestError(str(exc)) from exc
 
     return {
         "agent_id": agent_id,

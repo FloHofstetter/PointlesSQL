@@ -7,7 +7,7 @@ import logging
 import uuid
 from typing import Any, cast
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Request
 
 from pointlessql.api.dependencies import current_workspace_id, get_user, require_user
 from pointlessql.api.social_routes._issue_helpers import (
@@ -19,6 +19,7 @@ from pointlessql.api.social_routes._issue_helpers import (
     serialise_issue,
     validate_labels,
 )
+from pointlessql.exceptions import BadRequestError
 from pointlessql.models.social._issue import Issue
 from pointlessql.models.social._social_target import SocialTarget
 from pointlessql.services.social.audit_mirror import mirror_social_to_audit
@@ -54,9 +55,9 @@ async def open_issue(
         The new issue as a JSON dict.
 
     Raises:
-        HTTPException: 400 on bad body / parent ref / labels;
-            404 when the parent kind opts out of issues or the DP
-            parent is missing.
+        BadRequestError: On bad body / parent ref / labels.
+        ResourceNotFoundError: When the parent kind opts out of
+            issues or the DP parent is missing.
     """
     require_user(request)
     user = get_user(request)
@@ -65,45 +66,26 @@ async def open_issue(
 
     payload_raw = await request.json()
     if not isinstance(payload_raw, dict):
-        # bare-http-ok: API contract / request validation.
-        raise HTTPException(
-            status_code=400, detail="request body must be a JSON object"
-        )
+        raise BadRequestError("request body must be a JSON object")
     payload: dict[str, Any] = cast(dict[str, Any], payload_raw)
     title_raw = payload.get("title")
     if not isinstance(title_raw, str) or not title_raw.strip():
-        # bare-http-ok: API contract / request validation.
-        raise HTTPException(
-            status_code=400, detail="title is required and non-empty"
-        )
+        raise BadRequestError("title is required and non-empty")
     title: str = title_raw
     if len(title) > MAX_TITLE:
-        # bare-http-ok: API contract / request validation.
-        raise HTTPException(
-            status_code=400,
-            detail=f"title too long (max {MAX_TITLE} chars)",
-        )
+        raise BadRequestError(f"title too long (max {MAX_TITLE} chars)")
     body_md_raw = payload.get("body_md", "") or ""
     if not isinstance(body_md_raw, str):
-        # bare-http-ok: API contract / request validation.
-        raise HTTPException(
-            status_code=400, detail="body_md must be a string"
-        )
+        raise BadRequestError("body_md must be a string")
     body_md: str = body_md_raw
     labels_json = validate_labels(payload.get("labels"))
     assignee_raw = payload.get("assignee_user_id")
     if assignee_raw is not None and not isinstance(assignee_raw, int):
-        # bare-http-ok: API contract / request validation.
-        raise HTTPException(
-            status_code=400, detail="assignee_user_id must be an int or null"
-        )
+        raise BadRequestError("assignee_user_id must be an int or null")
     assignee_user_id: int | None = assignee_raw
     milestone_raw = payload.get("milestone_id")
     if milestone_raw is not None and not isinstance(milestone_raw, int):
-        # bare-http-ok: API contract / request validation.
-        raise HTTPException(
-            status_code=400, detail="milestone_id must be an int or null"
-        )
+        raise BadRequestError("milestone_id must be an int or null")
     milestone_id: int | None = milestone_raw
 
     workspace_id = current_workspace_id(request)

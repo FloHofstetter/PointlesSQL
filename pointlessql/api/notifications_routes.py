@@ -16,11 +16,12 @@ from __future__ import annotations
 import datetime
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi import APIRouter, Query, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy import func, select
 
 from pointlessql.api.dependencies import current_workspace_id, get_user, require_user
+from pointlessql.exceptions import ResourceNotFoundError
 from pointlessql.models.auth import User
 from pointlessql.models.catalog._data_products import DataProduct
 from pointlessql.models.notifications import UserNotification
@@ -173,8 +174,8 @@ async def mark_read(
             or row.recipient_user_id != user["id"]
         ):
             # bare-http-ok: cross-user / cross-workspace ids surface as 404
-            # rather than 403 so the inbox doesn't leak existence info.
-            raise HTTPException(status_code=404, detail="notification not found")
+            # 404 (not 403) so the inbox doesn't leak existence info.
+            raise ResourceNotFoundError("notification not found.")
         if row.read_at is None:
             row.read_at = datetime.datetime.now(datetime.UTC)
             session.add(row)

@@ -24,7 +24,7 @@ from __future__ import annotations
 import datetime
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Request
 from sqlalchemy import select
 
 from pointlessql.api._social_serializers import agent_payload as _agent_payload
@@ -37,7 +37,7 @@ from pointlessql.api.dependencies import (
     get_user,
     require_user,
 )
-from pointlessql.exceptions import AuthorizationError
+from pointlessql.exceptions import AuthorizationError, BadRequestError, ResourceNotFoundError
 from pointlessql.models.agent._agents import Agent
 from pointlessql.models.auth import User
 from pointlessql.models.catalog._data_product_endorsement import (
@@ -224,13 +224,8 @@ async def apply_endorsement(
     body = await request.json()
     endorsement_type = body.get("endorsement_type") or ""
     if endorsement_type not in ENDORSEMENT_TYPES:
-        # bare-http-ok: typed enum boundary.
-        raise HTTPException(
-            status_code=400,
-            detail=(
-                f"endorsement_type must be one of "
-                f"{sorted(ENDORSEMENT_TYPES)!r}"
-            ),
+        raise BadRequestError(
+            f"endorsement_type must be one of {sorted(ENDORSEMENT_TYPES)!r}"
         )
     _check_gate(user, row, endorsement_type)
     note_md = (body.get("note_md") or "").strip()
@@ -364,8 +359,7 @@ async def remove_endorsement(
             or endorsement.workspace_id != workspace_id
             or endorsement.data_product_id != row.id
         ):
-            # bare-http-ok: cross-product / cross-workspace ids 404.
-            raise HTTPException(status_code=404, detail="endorsement not found")
+            raise ResourceNotFoundError.not_found(what=f"endorsement id={endorsement_id}")
         _check_gate(user, row, endorsement.endorsement_type)
         if endorsement.removed_at is None:
             endorsement.removed_at = datetime.datetime.now(datetime.UTC)

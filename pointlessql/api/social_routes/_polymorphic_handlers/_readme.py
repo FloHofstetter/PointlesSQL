@@ -10,7 +10,7 @@ from __future__ import annotations
 import datetime
 from typing import Any
 
-from fastapi import HTTPException, Request
+from fastapi import Request
 from sqlalchemy import desc, func, select
 
 from pointlessql.api.dependencies import (
@@ -22,7 +22,11 @@ from pointlessql.api.social_routes._polymorphic_handlers._shared import (
     resolve_target_id,
     serialise_readme,
 )
-from pointlessql.exceptions import AuthorizationError
+from pointlessql.exceptions import (
+    AuthorizationError,
+    BadRequestError,
+    ResourceNotFoundError,
+)
 from pointlessql.models.auth import User
 from pointlessql.models.social._entity_readme import EntityReadme
 
@@ -45,8 +49,8 @@ async def get_polymorphic_readme(
         Serialised latest README row.
 
     Raises:
-        HTTPException: 404 when the entity has no README yet, or
-            when the registry says READMEs aren't supported for
+        ResourceNotFoundError: When the entity has no README yet,
+            or when the registry says READMEs aren't supported for
             this kind.
     """
     require_user(request)
@@ -65,8 +69,7 @@ async def get_polymorphic_readme(
             .limit(1)
         ).scalar_one_or_none()
         if latest is None:
-            # bare-http-ok: no README yet — clients branch on 404.
-            raise HTTPException(status_code=404, detail="no readme")
+            raise ResourceNotFoundError(f"No README yet for {kind}:{ref}.")
         author = session.get(User, latest.updated_by_user_id)
         author_email = author.email if author else None
         author_display = author.display_name if author else None
@@ -97,8 +100,9 @@ async def put_polymorphic_readme(
             Non-DP entities have no per-entity steward concept,
             so only install-admins can edit READMEs in this
             iteration.
-        HTTPException: 400 when ``body_md`` isn't a string; 404
-            when the registry says READMEs aren't supported.
+        BadRequestError: When ``body_md`` isn't a string.
+        ResourceNotFoundError: When the registry says READMEs
+            aren't supported for this kind.
     """
     require_user(request)
     user = get_user(request)
@@ -116,10 +120,7 @@ async def put_polymorphic_readme(
     body = await request.json()
     body_md = body.get("body_md", "")
     if not isinstance(body_md, str):
-        # bare-http-ok: payload contract — body must be string.
-        raise HTTPException(
-            status_code=400, detail="body_md must be a string"
-        )
+        raise BadRequestError("body_md must be a string")
 
     now = datetime.datetime.now(datetime.UTC)
     with factory() as session:

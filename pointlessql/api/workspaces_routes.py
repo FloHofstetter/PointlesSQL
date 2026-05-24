@@ -23,7 +23,7 @@ from __future__ import annotations
 
 from typing import Any, cast
 
-from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi import APIRouter, Query, Request
 from fastapi.responses import HTMLResponse
 from sqlalchemy import select
 
@@ -31,6 +31,11 @@ from pointlessql.api.dependencies import (
     get_user,
     require_admin,
     require_user,
+)
+from pointlessql.exceptions import (
+    BadRequestError,
+    ConflictError,
+    ResourceNotFoundError,
 )
 from pointlessql.models.notifications import UserNotification
 from pointlessql.models.social._social_target import SocialTarget
@@ -52,15 +57,19 @@ def _resolve_workspace(session: Any, slug: str) -> Workspace:
         The :class:`Workspace` row.
 
     Raises:
-        HTTPException: 404 when no workspace exists for *slug*.
+        ResourceNotFoundError: 404 enriched with the known workspace
+            slugs when no workspace exists for *slug*.
     """
     ws = session.execute(
         select(Workspace).where(Workspace.slug == slug)
     ).scalar_one_or_none()
     if ws is None:
-        # bare-http-ok: workspace not found.
-        raise HTTPException(
-            status_code=404, detail=f"workspace {slug!r} not found"
+        # Phase 121.1.i — surface every known workspace slug so
+        # callers can self-correct typos without a second round-trip.
+        known = list(session.execute(select(Workspace.slug)).scalars())
+        raise ResourceNotFoundError.not_found(
+            what=f"workspace {slug!r}",
+            alternatives=known,
         )
     return ws
 
@@ -159,17 +168,11 @@ async def add_pin(slug: str, request: Request) -> dict[str, Any]:
     user = get_user(request)
     payload_raw = await request.json()
     if not isinstance(payload_raw, dict):
-        # bare-http-ok: request body must be a JSON object.
-        raise HTTPException(
-            status_code=400, detail="request body must be a JSON object"
-        )
+        raise BadRequestError("request body must be a JSON object")
     payload: dict[str, Any] = cast(dict[str, Any], payload_raw)
     target_id = payload.get("social_target_id")
     if not isinstance(target_id, int) or target_id <= 0:
-        # bare-http-ok: target id must be a positive integer.
-        raise HTTPException(
-            status_code=400, detail="social_target_id must be a positive int"
-        )
+        raise BadRequestError("social_target_id must be a positive int")
     factory = request.app.state.session_factory
     with factory() as session:
         ws = _resolve_workspace(session, slug)
@@ -180,10 +183,7 @@ async def add_pin(slug: str, request: Request) -> dict[str, Any]:
             )
         ).scalar_one_or_none()
         if existing is not None:
-            # bare-http-ok: pin already exists.
-            raise HTTPException(
-                status_code=409, detail="entity already pinned"
-            )
+            raise ConflictError("entity already pinned")
         max_order_row = session.execute(
             select(WorkspacePinnedEntity.pin_order)
             .where(WorkspacePinnedEntity.workspace_id == ws.id)
@@ -223,10 +223,7 @@ async def remove_pin(
             )
         ).scalar_one_or_none()
         if pin is None:
-            # bare-http-ok: pin row not found.
-            raise HTTPException(
-                status_code=404, detail="pin not found"
-            )
+            raise ResourceNotFoundError.not_found(what="pin")
         session.delete(pin)
         session.commit()
     return {"deleted": True, "social_target_id": social_target_id}
@@ -246,17 +243,11 @@ async def reorder_pins(
     require_admin(request)
     payload_raw = await request.json()
     if not isinstance(payload_raw, dict):
-        # bare-http-ok: request body must be a JSON object.
-        raise HTTPException(
-            status_code=400, detail="request body must be a JSON object"
-        )
+        raise BadRequestError("request body must be a JSON object")
     payload: dict[str, Any] = cast(dict[str, Any], payload_raw)
     order_raw = payload.get("order")
     if not isinstance(order_raw, list):
-        # bare-http-ok: order must be a list of social_target ids.
-        raise HTTPException(
-            status_code=400, detail="order must be a list of ids"
-        )
+        raise BadRequestError("order must be a list of ids")
     order = cast(list[Any], order_raw)
     factory = request.app.state.session_factory
     with factory() as session:

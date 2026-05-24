@@ -19,12 +19,13 @@ from __future__ import annotations
 import datetime
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Request
 from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
 
 from pointlessql.api.data_products_routes._shared import load_one
 from pointlessql.api.dependencies import current_workspace_id, get_user, require_user
+from pointlessql.exceptions import BadRequestError, ResourceNotFoundError
 from pointlessql.models.catalog._data_product_comment_reaction import (
     DataProductCommentReaction,
 )
@@ -52,11 +53,7 @@ _AUDIT_REACTION_DP_REMOVED = "audit.reaction.dp_removed"
 def _validate_emoji(emoji: str | None) -> str:
     """Reject anything outside the six-emoji canonical set."""
     if not emoji or emoji not in ALLOWED_EMOJI:
-        # bare-http-ok: emoji must be one of the canonical six.
-        raise HTTPException(
-            status_code=400,
-            detail=f"emoji must be one of {ALLOWED_EMOJI}",
-        )
+        raise BadRequestError(f"emoji must be one of {ALLOWED_EMOJI}")
     return emoji
 
 
@@ -106,8 +103,7 @@ async def add_comment_reaction(
             or comment.data_product_id != row.id
             or comment.deleted_at is not None
         ):
-            # bare-http-ok: target comment must exist + be live.
-            raise HTTPException(status_code=404, detail="comment not found")
+            raise ResourceNotFoundError.not_found(what=f"comment id={comment_id}")
         comment_author_id = int(comment.author_user_id)
         target = resolve_dp_target(
             session,
@@ -233,8 +229,7 @@ async def remove_comment_reaction(
             or comment.workspace_id != workspace_id
             or comment.data_product_id != row.id
         ):
-            # bare-http-ok: target comment must exist.
-            raise HTTPException(status_code=404, detail="comment not found")
+            raise ResourceNotFoundError.not_found(what=f"comment id={comment_id}")
 
         result = session.execute(
             delete(DataProductCommentReaction).where(
@@ -297,8 +292,7 @@ async def list_comment_reactions(
             or comment.workspace_id != workspace_id
             or comment.data_product_id != row.id
         ):
-            # bare-http-ok: target comment must exist.
-            raise HTTPException(status_code=404, detail="comment not found")
+            raise ResourceNotFoundError.not_found(what=f"comment id={comment_id}")
         rows = (
             session.execute(
                 select(

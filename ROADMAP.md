@@ -2538,6 +2538,86 @@ PointlesSQL
 │           concrete new init step demands it — current 33-step
 │           complexity is structural, not a smell.
 │
+│   ├── Phase 121 — Code Quality Wave VI (error-envelope unification)  ⏳ in progress
+│   │     **121.1 closed 2026-05-24.**  Three-axis quality pass after the
+│   │     Restschuld I–V modularization waves drained the >700-LOC
+│   │     backlog.  Plan-source: ``/home/flo/.claude/plans/ich-denke-
+│   │     es-ist-squishy-pnueli.md``.  Sub-Sprint 121.1 closed; 121.2–
+│   │     121.6 stay queued as separate sub-sprints.
+│   │     - **121.1 — Error-Envelope + Human-Feedback.**  ✅ done 2026-05-24.
+│   │       Unifies three parallel envelope shapes (RFC 9457 / DBX /
+│   │       legacy ``{"error":}``); converts 201 → 13 ``HTTPException``-
+│   │       sites in ``pointlessql/api/``.  The 13 remaining are all
+│   │       intentional: 8× 501 NotImplemented in social_routes
+│   │       (registry-level opt-outs), 2× 412 Precondition Failed in
+│   │       branches_routes (tests pin the status), 1× 401 HMAC-failure
+│   │       in webhook_routes, 2× 502 upstream-proxy in dbt/mlflow.
+│   │       Asset rc125 → rc126.
+│   │       - 121.1.0 Compat-Sweep Hermes-Plugin + CLI — 0 Hits for
+│   │         every legacy-string pattern (plugin already RFC 9457-
+│   │         aware via ``tools/_common.py:83-86``).  No deprecation
+│   │         cycle needed.
+│   │       - 121.1.a Foundations: ``BadRequestError`` +
+│   │         ``PointlessSQLError.not_found()`` classmethod (sorted +
+│   │         truncated alternatives + hint) + 4 new ``ErrorCode``
+│   │         members (``BAD_REQUEST`` / ``IP_NOT_ALLOWED`` /
+│   │         ``WORKSPACE_CONTEXT_MISMATCH`` / ``NOT_AUTHENTICATED``)
+│   │         + ``api/_error_envelope_writer.py`` helper that wraps
+│   │         the existing ``_problem_body`` so middleware sites
+│   │         emit identical RFC 9457 ``application/problem+json``
+│   │         bodies.  13 new pytest in ``test_exceptions_helpers.py``.
+│   │       - 121.1.b Middleware-Shape-Unification — 3 sites in
+│   │         ``api/middleware.py`` (IP_NOT_ALLOWED line 178,
+│   │         Anonymous 401 line 296, ``_workspace_forbidden`` line
+│   │         337) all flow through ``problem_response()``; audit-
+│   │         write ordering preserved (audit runs synchronously
+│   │         before the response ships).
+│   │       - 121.1.c ``_DbxApiError`` promoted to
+│   │         ``api/_dbx_error_wrapper.py`` (move-only with re-export
+│   │         at the old path).  10 new contract pytest in
+│   │         ``tests/test_external_sql_dbx_envelope.py`` pin the
+│   │         ``{"detail": {"error_code", "message"}}`` wire shape
+│   │         + ``_wrap_dbx`` decorator behaviour for 400/429/503.
+│   │       - 121.1.d ``api/_ws_error.py`` consolidates the two
+│   │         byte-identical ``_send_error`` helpers in
+│   │         ``sql_chat_ws.py`` + ``notebook_chat_ws.py``.  Wire
+│   │         shape ``{"id"?, "error": {"code", "message"}}``
+│   │         locked by ``chat.js:214`` + ``notebook/chat.js:196``
+│   │         consumers; 3 new pytest in ``test_ws_error.py`` pin it.
+│   │       - 121.1.e Sweep social-family — 84 → 8 intentional 501s.
+│   │         Conversion mix: ``BadRequestError`` for shape rejects,
+│   │         ``ResourceNotFoundError`` for missing rows,
+│   │         ``ConflictError`` for state conflicts,
+│   │         ``PermissionDeniedError`` for cross-workspace probes.
+│   │       - 121.1.f Sweep data_products-family — 52 → 0.
+│   │       - 121.1.g Sweep mid-size routes (notebook_chat /
+│   │         memory / users / topics / workspaces / agents /
+│   │         me / branches / webhook / settings) — 60 → 3
+│   │         intentional (2× 412 branch-precondition, 1× 401
+│   │         webhook-HMAC).
+│   │       - 121.1.h Sweep long-tail (admin/repos, dbt/proxy,
+│   │         mlflow_proxy, notebook_coedit_agent_routes,
+│   │         notebooks_routes/crud + 5 HTML routes) — 13 → 2
+│   │         intentional (dbt + mlflow 502 upstream-proxy).
+│   │       - 121.1.i Human-Feedback-Enrichment — 3 hot-spot
+│   │         enrichments: topic-slug 404 surfaces every known
+│   │         slug in the workspace, workspace 404 surfaces all
+│   │         workspace slugs, agent-slug 404 surfaces every agent
+│   │         slug in the workspace.
+│   │     - **121.2** — Settings-Cache + Pagination-Dep (low-risk
+│   │       Filler, queued)
+│   │     - **121.3** — Soyuz-Facade-Vollendung (44× direkte
+│   │       Calls zentralisieren, queued)
+│   │     - **121.4** — Privilege-Gate hinter Feature-Flag
+│   │       (``enforce_global_privilege_gate``); plus PII-Redaction
+│   │       in Audit-Logs (Layering-Violation 7).  Queued.
+│   │     - **121.5** — Docstring-Sweep API-Layer +
+│   │       pydoclint-Tightening.  Queued.
+│   │     - **121.6** — Mikro-Extractions: ``parse_ref()`` →
+│   │       ``RefKind``-Registry, ``admin_uc()``-Helper,
+│   │       ``_DataOpsMixin``-Per-Concern-Split,
+│   │       ``render_page_with_fallback()``.  Queued.
+│   │
 │   ├── Phase 120 — API-key ACLs + usage dashboard               ✅ done 2026-05-23
 │   │     **Closed 2026-05-23.**  Seven sub-phases bundled in one
 │   │     session, asset 0.1.0rc124 → rc125.  Final wave of the

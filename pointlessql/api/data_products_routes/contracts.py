@@ -27,7 +27,7 @@ import shutil
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Request
 from pydantic import ValidationError
 from sqlalchemy import select
 
@@ -37,7 +37,12 @@ from pointlessql.api.dependencies import (
     require_user,
 )
 from pointlessql.data_products import load_contract
-from pointlessql.exceptions import AuthorizationError
+from pointlessql.exceptions import (
+    AuthorizationError,
+    BadRequestError,
+    ConflictError,
+    ResourceNotFoundError,
+)
 from pointlessql.models.catalog._data_product_yaml_draft import (
     DataProductYamlDraft,
 )
@@ -85,11 +90,7 @@ def _build_payload(body: dict[str, Any]) -> DraftContract:
     schema = body.get("schema") or body.get("schema_name")
     tables = body.get("tables")
     if not catalog or not schema or tables is None:
-        # bare-http-ok: required fields missing.
-        raise HTTPException(
-            status_code=400,
-            detail="catalog, schema, and tables are required",
-        )
+        raise BadRequestError("catalog, schema, and tables are required")
     try:
         return build_contract(
             str(catalog),
@@ -102,8 +103,7 @@ def _build_payload(body: dict[str, Any]) -> DraftContract:
             steward_email=body.get("steward_email"),
         )
     except ValidationError as exc:
-        # bare-http-ok: pydantic ValidationError surfaced as 400.
-        raise HTTPException(status_code=400, detail=str(exc)) from None
+        raise BadRequestError(str(exc)) from None
 
 
 def _require_steward_or_admin(request: Request) -> Any:
@@ -301,14 +301,10 @@ async def promote_draft(
             writable_dir = candidate
             break
     if writable_dir is None:
-        # bare-http-ok: cannot promote without a target directory.
-        raise HTTPException(
-            status_code=400,
-            detail=(
-                "no writable yaml_search_paths directory found; "
-                "configure POINTLESSQL_DATA_PRODUCTS_YAML_SEARCH_PATHS "
-                "to point at an existing directory before promoting"
-            ),
+        raise BadRequestError(
+            "no writable yaml_search_paths directory found; "
+            "configure POINTLESSQL_DATA_PRODUCTS_YAML_SEARCH_PATHS "
+            "to point at an existing directory before promoting"
         )
 
     with factory() as session:
@@ -319,26 +315,18 @@ async def promote_draft(
             )
         ).scalar_one_or_none()
         if row is None:
-            # bare-http-ok: draft not present.
-            raise HTTPException(status_code=404, detail="draft not found")
+            raise ResourceNotFoundError.not_found(what=f"draft id={draft_id}")
         if row.promoted_at is not None:
-            # bare-http-ok: already promoted.
-            raise HTTPException(
-                status_code=400, detail="draft already promoted"
-            )
+            raise ConflictError("draft already promoted")
         if row.discarded_at is not None:
-            # bare-http-ok: cannot promote a discarded draft.
-            raise HTTPException(
-                status_code=400, detail="draft was discarded; cannot promote"
-            )
+            raise ConflictError("draft was discarded; cannot promote")
         draft_path = Path(row.draft_path)
         target = writable_dir / _draft_filename(row.catalog_name, row.schema_name)
         catalog_name = row.catalog_name
         schema_name = row.schema_name
 
     if not draft_path.exists():
-        # bare-http-ok: draft yaml missing on disk.
-        raise HTTPException(status_code=400, detail="draft file missing")
+        raise BadRequestError("draft file missing")
     shutil.copyfile(draft_path, target)
 
     load_contract(target, factory=factory, workspace_id=workspace_id)
@@ -397,8 +385,7 @@ async def discard_draft(
             )
         ).scalar_one_or_none()
         if row is None:
-            # bare-http-ok: draft not present.
-            raise HTTPException(status_code=404, detail="draft not found")
+            raise ResourceNotFoundError.not_found(what=f"draft id={draft_id}")
         if row.discarded_at is None:
             row.discarded_at = datetime.datetime.now(datetime.UTC)
             session.add(row)

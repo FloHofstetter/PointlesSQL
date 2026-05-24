@@ -17,10 +17,16 @@ from __future__ import annotations
 import datetime
 from typing import Any, cast
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Request
 from sqlalchemy import select
 
 from pointlessql.api.dependencies import current_workspace_id, require_user
+from pointlessql.exceptions import (
+    BadRequestError,
+    ConflictError,
+    PermissionDeniedError,
+    ResourceNotFoundError,
+)
 from pointlessql.models.social._issue_label import IssueLabel
 from pointlessql.models.social._issue_milestone import IssueMilestone
 
@@ -67,10 +73,7 @@ async def list_labels(
     """List every label registered for a workspace."""
     require_user(request)
     if workspace_id != current_workspace_id(request):
-        # bare-http-ok: cross-workspace reads forbidden by policy.
-        raise HTTPException(
-            status_code=403, detail="cross-workspace label read forbidden"
-        )
+        raise PermissionDeniedError("Cross-workspace label read forbidden.")
     factory = request.app.state.session_factory
     with factory() as session:
         rows = (
@@ -92,23 +95,14 @@ async def create_label(
     """Register a new label."""
     require_user(request)
     if workspace_id != current_workspace_id(request):
-        # bare-http-ok: cross-workspace writes forbidden by policy.
-        raise HTTPException(
-            status_code=403, detail="cross-workspace label write forbidden"
-        )
+        raise PermissionDeniedError("Cross-workspace label write forbidden.")
     payload_raw = await request.json()
     if not isinstance(payload_raw, dict):
-        # bare-http-ok: request body must be a JSON object.
-        raise HTTPException(
-            status_code=400, detail="request body must be a JSON object"
-        )
+        raise BadRequestError("request body must be a JSON object")
     payload: dict[str, Any] = cast(dict[str, Any], payload_raw)
     slug_raw = payload.get("slug")
     if not isinstance(slug_raw, str) or not slug_raw:
-        # bare-http-ok: slug field validation.
-        raise HTTPException(
-            status_code=400, detail="slug must be a non-empty string"
-        )
+        raise BadRequestError("slug must be a non-empty string")
     slug: str = slug_raw
     label_text_raw = payload.get("label_text") or slug
     label_text: str = str(label_text_raw)
@@ -122,10 +116,7 @@ async def create_label(
             )
         ).scalar_one_or_none()
         if existing is not None:
-            # bare-http-ok: idempotency violation on a UNIQUE constraint.
-            raise HTTPException(
-                status_code=409, detail=f"label slug {slug!r} already exists"
-            )
+            raise ConflictError(f"label slug {slug!r} already exists")
         label = IssueLabel(
             workspace_id=workspace_id,
             slug=slug,
@@ -145,10 +136,7 @@ async def delete_label(
     """Drop a label.  Existing issue label-arrays are NOT updated."""
     require_user(request)
     if workspace_id != current_workspace_id(request):
-        # bare-http-ok: cross-workspace writes forbidden by policy.
-        raise HTTPException(
-            status_code=403, detail="cross-workspace label write forbidden"
-        )
+        raise PermissionDeniedError("Cross-workspace label write forbidden.")
     factory = request.app.state.session_factory
     with factory() as session:
         label = session.execute(
@@ -158,8 +146,7 @@ async def delete_label(
             )
         ).scalar_one_or_none()
         if label is None:
-            # bare-http-ok: label not found.
-            raise HTTPException(status_code=404, detail="label not found")
+            raise ResourceNotFoundError.not_found(what=f"label id={label_id}")
         session.delete(label)
         session.commit()
     return {"deleted": True, "id": label_id}
@@ -177,11 +164,7 @@ async def list_milestones(
     """List every milestone for a workspace."""
     require_user(request)
     if workspace_id != current_workspace_id(request):
-        # bare-http-ok: cross-workspace reads forbidden by policy.
-        raise HTTPException(
-            status_code=403,
-            detail="cross-workspace milestone read forbidden",
-        )
+        raise PermissionDeniedError("Cross-workspace milestone read forbidden.")
     factory = request.app.state.session_factory
     with factory() as session:
         rows = (
@@ -203,22 +186,14 @@ async def create_milestone(
     """Create a milestone."""
     require_user(request)
     if workspace_id != current_workspace_id(request):
-        # bare-http-ok: cross-workspace writes forbidden by policy.
-        raise HTTPException(
-            status_code=403,
-            detail="cross-workspace milestone write forbidden",
-        )
+        raise PermissionDeniedError("Cross-workspace milestone write forbidden.")
     payload_raw = await request.json()
     if not isinstance(payload_raw, dict):
-        # bare-http-ok: request body must be a JSON object.
-        raise HTTPException(
-            status_code=400, detail="request body must be a JSON object"
-        )
+        raise BadRequestError("request body must be a JSON object")
     payload: dict[str, Any] = cast(dict[str, Any], payload_raw)
     title_raw = payload.get("title")
     if not isinstance(title_raw, str) or not title_raw.strip():
-        # bare-http-ok: title is required.
-        raise HTTPException(status_code=400, detail="title is required")
+        raise BadRequestError("title is required")
     title: str = title_raw
     description_raw = payload.get("description_md")
     description_md: str | None = (
@@ -228,17 +203,11 @@ async def create_milestone(
     due_at: datetime.datetime | None = None
     if due_at_raw is not None:
         if not isinstance(due_at_raw, str):
-            # bare-http-ok: due_at field validation.
-            raise HTTPException(
-                status_code=400, detail="due_at must be an ISO 8601 string"
-            )
+            raise BadRequestError("due_at must be an ISO 8601 string")
         try:
             due_at = datetime.datetime.fromisoformat(due_at_raw)
         except (TypeError, ValueError) as exc:
-            # bare-http-ok: due_at not ISO 8601.
-            raise HTTPException(
-                status_code=400, detail=f"due_at not ISO 8601: {exc}"
-            ) from exc
+            raise BadRequestError(f"due_at not ISO 8601: {exc}") from exc
     factory = request.app.state.session_factory
     with factory() as session:
         m = IssueMilestone(
@@ -260,11 +229,7 @@ async def delete_milestone(
     """Drop a milestone.  Issues stay; their ``milestone_id`` may dangle."""
     require_user(request)
     if workspace_id != current_workspace_id(request):
-        # bare-http-ok: cross-workspace writes forbidden by policy.
-        raise HTTPException(
-            status_code=403,
-            detail="cross-workspace milestone write forbidden",
-        )
+        raise PermissionDeniedError("Cross-workspace milestone write forbidden.")
     factory = request.app.state.session_factory
     with factory() as session:
         m = session.execute(
@@ -274,9 +239,8 @@ async def delete_milestone(
             )
         ).scalar_one_or_none()
         if m is None:
-            # bare-http-ok: milestone not found.
-            raise HTTPException(
-                status_code=404, detail="milestone not found"
+            raise ResourceNotFoundError.not_found(
+                what=f"milestone id={milestone_id}"
             )
         session.delete(m)
         session.commit()

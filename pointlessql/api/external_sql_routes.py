@@ -24,9 +24,7 @@ import gzip
 import json
 import logging
 import re
-from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
-from functools import wraps
 from typing import Any
 from uuid import uuid4
 
@@ -35,6 +33,15 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import update
 from sqlglot.errors import ParseError
 
+from pointlessql.api._dbx_error_wrapper import (
+    _dbx_error_response as _dbx_error_response,
+)
+from pointlessql.api._dbx_error_wrapper import (
+    _DbxApiError as _DbxApiError,
+)
+from pointlessql.api._dbx_error_wrapper import (
+    _wrap_dbx as _wrap_dbx,
+)
 from pointlessql.api.dependencies import effective_principal, require_sql_execute
 from pointlessql.models import SqlStatement
 from pointlessql.services import rate_limit as rate_limit_service
@@ -52,56 +59,6 @@ from pointlessql.services.sql_statements._envelope import status_envelope
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["sql-statements"])
-
-
-class _DbxApiError(Exception):
-    """Raised inside route helpers to short-circuit with a DBX-shape JSON.
-
-    The global FastAPI exception handler stringifies
-    ``StarletteHTTPException.detail``, which would mangle our JSON
-    envelope.  Each route function catches this locally and turns it
-    into a :class:`JSONResponse` with the headers preserved.
-    """
-
-    def __init__(
-        self,
-        status_code: int,
-        body: dict[str, Any],
-        *,
-        headers: dict[str, str] | None = None,
-    ) -> None:
-        super().__init__(body.get("message") or f"DbxApiError {status_code}")
-        self.status_code = status_code
-        self.body = body
-        self.headers = headers or {}
-
-
-def _dbx_error_response(exc: _DbxApiError) -> JSONResponse:
-    """Convert a :class:`_DbxApiError` to a JSONResponse + headers."""
-    return JSONResponse(
-        {"detail": exc.body},
-        status_code=exc.status_code,
-        headers=exc.headers,
-    )
-
-
-def _wrap_dbx(
-    handler: Callable[..., Awaitable[JSONResponse]],
-) -> Callable[..., Awaitable[JSONResponse]]:
-    """Catch ``_DbxApiError`` from a route handler and ship JSON.
-
-    The global FastAPI error handler would stringify the dict
-    ``detail``; this wrapper short-circuits before it.
-    """
-
-    @wraps(handler)
-    async def _wrapped(*args: Any, **kwargs: Any) -> JSONResponse:
-        try:
-            return await handler(*args, **kwargs)
-        except _DbxApiError as exc:
-            return _dbx_error_response(exc)
-
-    return _wrapped
 
 
 # Accept "10s" / "10000ms" / bare "10".  DBX docs use the "<n>s" form

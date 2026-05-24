@@ -144,9 +144,10 @@ def test_parse_ref_accepts_numeric_issue_id() -> None:
 
 def test_parse_ref_rejects_non_numeric_issue_id() -> None:
     """A non-numeric ref raises 400 with the contract message."""
-    from fastapi import HTTPException
+    # Phase 121.1.e — converted from HTTPException to BadRequestError.
+    from pointlessql.exceptions import BadRequestError
 
-    with pytest.raises(HTTPException) as exc:
+    with pytest.raises(BadRequestError) as exc:
         parse_ref("issue", "abc")
     assert exc.value.status_code == 400
     assert "numeric issue id" in exc.value.detail

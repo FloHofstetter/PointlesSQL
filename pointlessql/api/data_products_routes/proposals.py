@@ -20,7 +20,7 @@ from pathlib import Path
 from typing import Any
 
 import yaml
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Request
 from sqlalchemy import select
 
 from pointlessql.api.data_products_routes._shared import load_one
@@ -30,7 +30,11 @@ from pointlessql.api.dependencies import (
     require_user,
 )
 from pointlessql.data_products import load_contract
-from pointlessql.exceptions import AuthorizationError
+from pointlessql.exceptions import (
+    AuthorizationError,
+    BadRequestError,
+    ResourceNotFoundError,
+)
 from pointlessql.models.catalog._data_product_proposal import (
     DataProductSchemaProposal,
 )
@@ -114,8 +118,7 @@ def _validate_diff(diff: Any) -> dict[str, Any]:
         HTTPException: 400 on unsupported diff op keys.
     """
     if not isinstance(diff, dict):
-        # bare-http-ok: invalid type.
-        raise HTTPException(status_code=400, detail="diff must be an object")
+        raise BadRequestError("diff must be an object")
     allowed_keys: set[str] = {
         "add_columns",
         "remove_columns",
@@ -127,11 +130,7 @@ def _validate_diff(diff: Any) -> dict[str, Any]:
     for key, val in raw_items:
         key_str = str(key)
         if key_str not in allowed_keys:
-            # bare-http-ok: unknown diff op.
-            raise HTTPException(
-                status_code=400,
-                detail=f"unknown diff key '{key_str}'",
-            )
+            raise BadRequestError(f"unknown diff key '{key_str}'")
         out[key_str] = val
     return out
 
@@ -359,10 +358,8 @@ async def open_proposal(
     if agent_run_id and not summary_md:
         summary_md = "agent-proposed schema change"
     if not proposer_user_id and not agent_run_id:
-        # bare-http-ok: invariant invalid before insert.
-        raise HTTPException(
-            status_code=400,
-            detail="proposer_user_id or X-Agent-Run-Id header required",
+        raise BadRequestError(
+            "proposer_user_id or X-Agent-Run-Id header required"
         )
 
     with factory() as session:
@@ -434,13 +431,10 @@ def _load_proposal_for_resolve(
         )
     ).scalar_one_or_none()
     if proposal is None:
-        # bare-http-ok: row not present.
-        raise HTTPException(status_code=404, detail="proposal not found")
+        raise ResourceNotFoundError.not_found(what=f"proposal id={proposal_id}")
     if proposal.status != "open":
-        # bare-http-ok: already resolved.
-        raise HTTPException(
-            status_code=400,
-            detail=f"proposal already resolved (status={proposal.status})",
+        raise BadRequestError(
+            f"proposal already resolved (status={proposal.status})"
         )
     return proposal
 
@@ -481,8 +475,7 @@ async def approve_proposal(
     body: dict[str, Any] = raw_body if isinstance(raw_body, dict) else {}
     kind = str(body.get("kind", "inplace"))
     if kind not in ("inplace", "draft"):
-        # bare-http-ok: unknown kind.
-        raise HTTPException(status_code=400, detail="kind must be 'inplace' or 'draft'")
+        raise BadRequestError("kind must be 'inplace' or 'draft'")
     resolution_note = body.get("resolution_note_md")
     now = datetime.datetime.now(datetime.UTC)
 
@@ -499,24 +492,16 @@ async def approve_proposal(
     diff_dict: dict[str, Any] = diff if isinstance(diff, dict) else {}
     if kind == "inplace":
         if not _is_safe_for_inplace(diff_dict):
-            # bare-http-ok: destructive diff cannot be applied in-place.
-            raise HTTPException(
-                status_code=400,
-                detail=(
-                    "diff contains unsafe ops; only "
-                    "add_columns + change_descriptions are allowed "
-                    "in-place — re-run with kind='draft'"
-                ),
+            raise BadRequestError(
+                "diff contains unsafe ops; only "
+                "add_columns + change_descriptions are allowed "
+                "in-place — re-run with kind='draft'"
             )
         yaml_path = _find_yaml_for_dp(settings, workspace_id, catalog, schema)
         if yaml_path is None:
-            # bare-http-ok: no on-disk yaml to rewrite.
-            raise HTTPException(
-                status_code=400,
-                detail=(
-                    "no yaml file resolved for this DP; configure "
-                    "yaml_search_paths or use kind='draft'"
-                ),
+            raise BadRequestError(
+                "no yaml file resolved for this DP; configure "
+                "yaml_search_paths or use kind='draft'"
             )
         new_text = _apply_diff_to_yaml(
             yaml_path.read_text(encoding="utf-8"), diff_dict
@@ -577,8 +562,7 @@ async def approve_proposal(
     with factory() as session:
         proposal = session.get(DataProductSchemaProposal, proposal_id)
         if proposal is None:
-            # bare-http-ok: row vanished mid-call.
-            raise HTTPException(status_code=404, detail="proposal not found")
+            raise ResourceNotFoundError.not_found(what=f"proposal id={proposal_id}")
         proposal.status = new_status
         proposal.resolved_at = now
         proposal.resolved_by_user_id = user["id"]

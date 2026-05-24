@@ -7,7 +7,7 @@ import json
 import logging
 from typing import Any, cast
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Request
 from sqlalchemy import select
 
 from pointlessql.api.dependencies import current_workspace_id, get_user, require_user
@@ -16,6 +16,11 @@ from pointlessql.api.social_routes._issue_helpers import (
     hydrate_emails,
     hydrate_parent,
     serialise_issue,
+)
+from pointlessql.exceptions import (
+    BadRequestError,
+    PermissionDeniedError,
+    ResourceNotFoundError,
 )
 from pointlessql.models.social._issue import (
     ISSUE_CLOSED_REASONS,
@@ -51,12 +56,10 @@ async def _transition_state(
             )
         ).scalar_one_or_none()
         if issue is None:
-            # bare-http-ok: API contract / request validation.
-            raise HTTPException(status_code=404, detail="issue not found")
+            raise ResourceNotFoundError.not_found(what=f"issue id={issue_id}")
         if not can_edit_issue(user, issue):
-            raise HTTPException(
-                status_code=403,
-                detail="only opener or admin may transition state",
+            raise PermissionDeniedError(
+                "Only the issue opener or an admin may transition state."
             )
         prior_state = issue.state
         issue.state = new_state
@@ -165,10 +168,8 @@ async def close_issue(
         closed_reason_raw is not None
         and closed_reason_raw not in ISSUE_CLOSED_REASONS
     ):
-        # bare-http-ok: API contract / request validation.
-        raise HTTPException(
-            status_code=400,
-            detail=f"closed_reason must be one of {ISSUE_CLOSED_REASONS}",
+        raise BadRequestError(
+            f"closed_reason must be one of {ISSUE_CLOSED_REASONS}"
         )
     closed_reason: str | None = (
         str(closed_reason_raw) if closed_reason_raw is not None else None

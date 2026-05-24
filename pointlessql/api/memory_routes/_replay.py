@@ -10,12 +10,13 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 from pointlessql.api.dependencies import require_user
 from pointlessql.exceptions import (
+    BadRequestError,
     CatalogUnavailableError,
     ValidationError,
 )
@@ -74,11 +75,9 @@ async def replay_endpoint(
     try:
         policy_enum = ReplayPolicy(body.policy)
     except ValueError as exc:
-        # bare-http-ok: policy must be one of the enum values.
-        raise HTTPException(
-            status_code=400,
-            detail=f"unknown policy {body.policy!r}; "
-            f"must be one of {[p.value for p in ReplayPolicy]}",
+        raise BadRequestError(
+            f"unknown policy {body.policy!r}; "
+            f"must be one of {[p.value for p in ReplayPolicy]}"
         ) from exc
 
     settings = request.app.state.settings
@@ -98,14 +97,15 @@ async def replay_endpoint(
             unreachable_msg="soyuz-catalog unreachable",
         )
     except ReplayUnsafeOpError as exc:
-        # bare-http-ok: STRICT policy hit an unsafe op.
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
-    except ValidationError as exc:
-        # bare-http-ok: malformed source run reference.
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    except CatalogUnavailableError as exc:
-        # bare-http-ok: soyuz down → 503.
-        raise HTTPException(status_code=503, detail=str(exc)) from exc
+        raise ValidationError(str(exc)) from exc
+    except ValidationError:
+        # ValidationError already carries status 422 + validation_error code;
+        # let the global exception handler render it.
+        raise
+    except CatalogUnavailableError:
+        # CatalogUnavailableError already carries status 502; central
+        # handler renders it as problem+json.
+        raise
 
     payload: dict[str, Any] = {
         "replay_run_id": str(result.replay_run_id),

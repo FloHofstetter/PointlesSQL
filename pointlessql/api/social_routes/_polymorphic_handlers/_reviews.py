@@ -10,7 +10,7 @@ from __future__ import annotations
 import datetime
 from typing import Any
 
-from fastapi import HTTPException, Request
+from fastapi import Request
 from sqlalchemy import func, select
 
 from pointlessql.api.dependencies import (
@@ -22,6 +22,7 @@ from pointlessql.api.social_routes._polymorphic_handlers._shared import (
     reviews_supported,
     serialise_review,
 )
+from pointlessql.exceptions import BadRequestError
 from pointlessql.models.auth import User
 from pointlessql.models.catalog._data_product_reviews import DataProductReview
 from pointlessql.services.notifications.fanout import fanout_event
@@ -146,9 +147,9 @@ async def upsert_polymorphic_review(
         Serialised review row.
 
     Raises:
-        HTTPException: 400 on invalid stars or missing payload; 501
-            when *kind* has reviews disabled.
-    """
+        BadRequestError: On invalid stars or missing payload.
+        HTTPException: 501 when *kind* has reviews disabled.
+    """  # noqa: DOC502 — raised by reviews_supported helper
     require_user(request)
     reviews_supported(kind)
     user = get_user(request)
@@ -158,18 +159,13 @@ async def upsert_polymorphic_review(
     body = await request.json()
     raw_stars = body.get("stars")
     if raw_stars is None:
-        # bare-http-ok: required field.
-        raise HTTPException(status_code=400, detail="stars is required")
+        raise BadRequestError("stars is required")
     try:
         stars = int(raw_stars)
     except (TypeError, ValueError):
-        # bare-http-ok: stars must be int.
-        raise HTTPException(
-            status_code=400, detail="stars must be an int"
-        ) from None
+        raise BadRequestError("stars must be an int") from None
     if stars < 1 or stars > 5:
-        # bare-http-ok: stars range — DB CHECK is the canonical gate.
-        raise HTTPException(status_code=400, detail="stars must be in 1..5")
+        raise BadRequestError("stars must be in 1..5")
     body_md = (body.get("body_md") or "").strip()
 
     now = datetime.datetime.now(datetime.UTC)
