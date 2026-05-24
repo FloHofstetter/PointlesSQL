@@ -10,10 +10,14 @@ from __future__ import annotations
 
 import logging
 
-from fastapi import APIRouter, Query, Request
+from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import JSONResponse
 
-from pointlessql.api.dependencies import require_user
+from pointlessql.api.dependencies import (
+    PaginationParams,
+    pagination,
+    require_user,
+)
 from pointlessql.api.notebooks_routes._shared import get_or_create_notebook_uuid
 from pointlessql.config import Settings
 from pointlessql.exceptions import ValidationError
@@ -99,14 +103,14 @@ async def api_notebook_attribution_bulk(
 async def api_agent_authored_cells(
     request: Request,
     agent_id: int,
-    limit: int = Query(100, ge=1, le=500),
+    paging: PaginationParams = Depends(pagination),
 ) -> JSONResponse:
     """Return cells minted by one agent, newest first.
 
     Args:
         request: Incoming request; any authenticated user.
         agent_id: ``agents.id``.
-        limit: Newest-N cap (1–500, default 100).
+        paging: Shared offset+limit pair (default page size 100, max 1000).
 
     Returns:
         JSON ``{"agent_id": ..., "cells": [...]}``.
@@ -115,6 +119,9 @@ async def api_agent_authored_cells(
     factory = request.app.state.session_factory
     with factory() as session:
         cells = cell_authorship_service.list_authored_by_agent(
-            session, agent_id=agent_id, limit=limit
+            session,
+            agent_id=agent_id,
+            limit=paging.limit,
+            offset=paging.offset,
         )
     return JSONResponse({"agent_id": agent_id, "cells": cells})

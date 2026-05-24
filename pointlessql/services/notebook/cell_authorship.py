@@ -220,7 +220,11 @@ def list_for_notebook(
 
 
 def list_authored_by_agent(
-    session: Session, *, agent_id: int, limit: int = 100
+    session: Session,
+    *,
+    agent_id: int,
+    limit: int = 100,
+    offset: int = 0,
 ) -> list[dict[str, Any]]:
     """Return cells minted by one agent.
 
@@ -228,6 +232,8 @@ def list_authored_by_agent(
         session: A SQLAlchemy session.
         agent_id: ``agents.id``.
         limit: Newest-N cap (default 100).
+        offset: Zero-indexed row offset for paginated reads.
+            Defaults to 0 (no skip).
 
     Returns:
         List of ``{cell_uuid, created_at}`` dicts in newest-first
@@ -238,6 +244,7 @@ def list_authored_by_agent(
         select(NotebookCellAuthorship)
         .where(NotebookCellAuthorship.first_author_agent_id == agent_id)
         .order_by(NotebookCellAuthorship.created_at.desc())
+        .offset(max(0, int(offset)))
         .limit(limit)
     ).scalars().all()
     return [

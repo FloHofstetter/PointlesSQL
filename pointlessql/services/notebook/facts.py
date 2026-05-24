@@ -200,6 +200,7 @@ def list_facts(
     notebook_id: str | None = None,
     include_unpinned: bool = False,
     limit: int = 50,
+    offset: int = 0,
 ) -> list[NotebookRevisionFact]:
     """List facts for a workspace, newest-pinned first.
 
@@ -211,6 +212,8 @@ def list_facts(
         include_unpinned: When ``True``, include soft-deleted rows in
             the result (audit-grade browse).  Default ``False``.
         limit: Newest-N cap (1–500).
+        offset: Zero-indexed row offset for paginated reads.
+            Defaults to 0 (no skip).  Not capped — only ``limit`` is.
 
     Returns:
         List of :class:`NotebookRevisionFact` rows in
@@ -220,6 +223,7 @@ def list_facts(
         select(NotebookRevisionFact)
         .where(NotebookRevisionFact.workspace_id == workspace_id)
         .order_by(desc(NotebookRevisionFact.pinned_at))
+        .offset(max(0, int(offset)))
         .limit(max(1, min(500, int(limit))))
     )
     if not include_unpinned:

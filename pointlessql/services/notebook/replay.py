@@ -172,13 +172,29 @@ def get_replay(
 
 
 def list_replays(
-    session: Session, *, notebook_id: str, limit: int = 50
+    session: Session,
+    *,
+    notebook_id: str,
+    limit: int = 50,
+    offset: int = 0,
 ) -> list[dict[str, Any]]:
-    """Return replays for a notebook, newest first."""
+    """Return replays for a notebook, newest first.
+
+    Args:
+        session: A SQLAlchemy session.
+        notebook_id: ``Notebook.id`` UUID.
+        limit: Newest-N cap; defaults to 50.
+        offset: Zero-indexed row offset for paginated reads.
+            Defaults to 0 (no skip).
+
+    Returns:
+        List of envelope dicts ordered ``started_at desc``.
+    """
     rows = session.execute(
         select(NotebookReplay)
         .where(NotebookReplay.notebook_id == notebook_id)
         .order_by(NotebookReplay.started_at.desc())
+        .offset(max(0, int(offset)))
         .limit(limit)
     ).scalars().all()
     return [_row_to_envelope(r, include_outputs=False) for r in rows]

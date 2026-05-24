@@ -23,10 +23,14 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from fastapi import APIRouter, Body, Query, Request
+from fastapi import APIRouter, Body, Depends, Query, Request
 from fastapi.responses import JSONResponse
 
-from pointlessql.api.dependencies import require_user
+from pointlessql.api.dependencies import (
+    PaginationParams,
+    pagination,
+    require_user,
+)
 from pointlessql.api.notebooks_routes._shared import get_or_create_notebook_uuid
 from pointlessql.config import Settings
 from pointlessql.exceptions import ValidationError
@@ -54,14 +58,14 @@ def _resolve_notebook_uuid(request: Request, path: str) -> str:
 async def api_list_revisions(
     request: Request,
     path: str = Query(..., min_length=1),
-    limit: int = Query(50, ge=1, le=200),
+    paging: PaginationParams = Depends(pagination),
 ) -> JSONResponse:
     """List revisions for a notebook, newest first.
 
     Args:
         request: Incoming request; any authenticated user.
         path: Relative notebook path under ``notebooks_dir``.
-        limit: Newest-N cap (1–200, default 50).
+        paging: Shared offset+limit pair (default page size 100, max 1000).
 
     Returns:
         JSON ``{"path": ..., "notebook_id": ..., "revisions": [...]}``.
@@ -71,7 +75,10 @@ async def api_list_revisions(
     factory = request.app.state.session_factory
     with factory() as session:
         rows = notebook_revisions_service.list_revisions(
-            session, notebook_id=notebook_id, limit=limit
+            session,
+            notebook_id=notebook_id,
+            limit=paging.limit,
+            offset=paging.offset,
         )
     return JSONResponse(
         {"path": path, "notebook_id": notebook_id, "revisions": rows}

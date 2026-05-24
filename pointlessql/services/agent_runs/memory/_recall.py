@@ -34,6 +34,7 @@ def recall_operations(
     since: datetime.datetime | None = None,
     until: datetime.datetime | None = None,
     limit: int = 200,
+    offset: int = 0,
 ) -> list[AgentRunOperation]:
     """Query the operation log for an agent across all its runs.
 
@@ -61,6 +62,8 @@ def recall_operations(
         until: Upper bound (exclusive) on ``started_at``.
         limit: Max rows to return.  Capped at 1000 silently so a
             malformed UI request can't pull a multi-million-row log.
+        offset: Zero-indexed row offset for paginated reads.
+            Defaults to 0 (no skip).  Not capped — only ``limit`` is.
 
     Returns:
         Operations ordered ``started_at DESC``.  Empty list when no
@@ -104,7 +107,11 @@ def recall_operations(
     if until is not None:
         stmt = stmt.where(AgentRunOperation.started_at < until)
 
-    stmt = stmt.order_by(AgentRunOperation.started_at.desc()).limit(capped_limit)
+    stmt = (
+        stmt.order_by(AgentRunOperation.started_at.desc())
+        .offset(max(0, int(offset)))
+        .limit(capped_limit)
+    )
 
     with session_factory() as session:
         return list(session.scalars(stmt).all())

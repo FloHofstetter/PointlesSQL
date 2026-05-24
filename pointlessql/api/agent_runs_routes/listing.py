@@ -13,10 +13,11 @@ import json
 from datetime import UTC, datetime
 from typing import Any
 
-from fastapi import APIRouter, Query, Request
+from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy import select
 
 from pointlessql.api.agent_runs_routes._serializers import serialize_agent_run
+from pointlessql.api.dependencies import PaginationParams, pagination
 from pointlessql.exceptions import ValidationError
 from pointlessql.models import AgentRunOperation
 from pointlessql.models.agent._runs import AgentRun
@@ -30,7 +31,7 @@ async def api_list_agent_run_operations(
     target: str | None = Query(default=None, description="catalog.schema.table"),
     errored: bool = Query(default=False, description="Only return rows with error_message"),
     since: str | None = Query(default=None, description="ISO-8601 lower bound on started_at"),
-    limit: int = Query(default=50, ge=1, le=500),
+    paging: PaginationParams = Depends(pagination),
 ) -> dict[str, Any]:
     """List ``agent_run_operations`` rows with the given filters applied.
 
@@ -51,7 +52,7 @@ async def api_list_agent_run_operations(
             rows with a non-null ``error_message`` are returned.
         since: ISO-8601 timestamp (UTC); rows with
             ``started_at >= since`` are kept.  ``None`` keeps all.
-        limit: Hard cap (default 50, max 500).
+        paging: Shared offset+limit pair (default page size 100, max 1000).
 
     Returns:
         ``{"operations": [...]}`` with each entry shaped like the
@@ -87,7 +88,7 @@ async def api_list_agent_run_operations(
             stmt = stmt.where(AgentRunOperation.error_message.is_not(None))
         if since_dt is not None:
             stmt = stmt.where(AgentRunOperation.started_at >= since_dt)
-        stmt = stmt.limit(limit)
+        stmt = stmt.offset(paging.offset).limit(paging.limit)
         for row in session.scalars(stmt).all():
             duration_ms: int | None = None
             if row.finished_at is not None and row.started_at is not None:
@@ -120,7 +121,7 @@ async def api_list_agent_run_operations(
 @router.get("/api/agent-runs")
 async def api_list_agent_runs(
     request: Request,
-    limit: int = Query(default=100, ge=1, le=500),
+    paging: PaginationParams = Depends(pagination),
     principal: str | None = Query(default=None),
     agent_id: str | None = Query(default=None),
     status: str | None = Query(default=None),
@@ -139,7 +140,7 @@ async def api_list_agent_runs(
 
     Args:
         request: Incoming FastAPI request.
-        limit: Maximum number of rows to return (1-500).
+        paging: Shared offset+limit pair (default page size 100, max 1000).
         principal: Exact-match filter on
             ``agent_runs.principal``.
         agent_id: Exact-match filter on ``agent_runs.agent_id``.
@@ -170,7 +171,8 @@ async def api_list_agent_runs(
             select(AgentRun)
             .where(AgentRun.workspace_id == workspace_id)
             .order_by(AgentRun.started_at.desc())
-            .limit(limit)
+            .offset(paging.offset)
+            .limit(paging.limit)
         )
         if principal is not None and principal.strip():
             stmt = stmt.where(AgentRun.principal == principal.strip())

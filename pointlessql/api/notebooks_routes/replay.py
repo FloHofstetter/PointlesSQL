@@ -5,10 +5,14 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from fastapi import APIRouter, Body, Query, Request
+from fastapi import APIRouter, Body, Depends, Query, Request
 from fastapi.responses import JSONResponse
 
-from pointlessql.api.dependencies import require_user
+from pointlessql.api.dependencies import (
+    PaginationParams,
+    pagination,
+    require_user,
+)
 from pointlessql.api.notebooks_routes._shared import get_or_create_notebook_uuid
 from pointlessql.config import Settings
 from pointlessql.exceptions import ValidationError
@@ -147,7 +151,7 @@ async def api_replay_diff(
 async def api_list_replays(
     request: Request,
     path: str = Query(..., min_length=1),
-    limit: int = Query(50, ge=1, le=200),
+    paging: PaginationParams = Depends(pagination),
 ) -> JSONResponse:
     """List replays for one notebook, newest first."""
     require_user(request)
@@ -155,7 +159,10 @@ async def api_list_replays(
     factory = request.app.state.session_factory
     with factory() as session:
         rows = notebook_replay_service.list_replays(
-            session, notebook_id=notebook_id, limit=limit
+            session,
+            notebook_id=notebook_id,
+            limit=paging.limit,
+            offset=paging.offset,
         )
     return JSONResponse(
         {"path": path, "notebook_id": notebook_id, "replays": rows}

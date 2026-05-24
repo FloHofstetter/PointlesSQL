@@ -23,10 +23,15 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from fastapi import APIRouter, Body, Query, Request
+from fastapi import APIRouter, Body, Depends, Query, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 
-from pointlessql.api.dependencies import current_workspace_id, require_user
+from pointlessql.api.dependencies import (
+    PaginationParams,
+    current_workspace_id,
+    pagination,
+    require_user,
+)
 from pointlessql.api.notebooks_routes._shared import (
     get_or_create_notebook_uuid,
     templates,
@@ -144,7 +149,7 @@ async def api_list_facts(
     request: Request,
     notebook_path: str | None = Query(default=None),
     include_unpinned: bool = Query(default=False),
-    limit: int = Query(default=50, ge=1, le=500),
+    paging: PaginationParams = Depends(pagination),
 ) -> JSONResponse:
     """List facts in the active workspace, newest-pinned first.
 
@@ -154,7 +159,8 @@ async def api_list_facts(
             list to facts whose revision lives under the given path.
         include_unpinned: When ``True``, soft-deleted rows are
             included for audit-grade browse.
-        limit: 1–500 cap; default 50.
+        paging: Shared offset+limit pair (default page size 100,
+            max 1000; the service still caps ``limit`` to 500).
 
     Returns:
         JSON ``{"facts": [envelope, ...], "workspace_id": ...}``.
@@ -171,7 +177,8 @@ async def api_list_facts(
             workspace_id=workspace_id,
             notebook_id=notebook_id,
             include_unpinned=include_unpinned,
-            limit=limit,
+            limit=paging.limit,
+            offset=paging.offset,
         )
         envelopes = [notebook_facts_service.row_to_envelope(r) for r in rows]
     return JSONResponse(

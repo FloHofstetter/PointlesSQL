@@ -235,7 +235,11 @@ def _parent_uuid(row: NotebookRevision) -> str | None:
 
 
 def list_revisions(
-    session: Session, *, notebook_id: str, limit: int = 50
+    session: Session,
+    *,
+    notebook_id: str,
+    limit: int = 50,
+    offset: int = 0,
 ) -> list[dict[str, Any]]:
     """Return revisions for one notebook, newest first.
 
@@ -243,6 +247,8 @@ def list_revisions(
         session: A SQLAlchemy session.
         notebook_id: ``Notebook.id`` UUID.
         limit: Newest-N cap; defaults to 50.
+        offset: Zero-indexed row offset for paginated reads.
+            Defaults to 0 (no skip).
 
     Returns:
         List of revision dicts in ``created_at desc`` order.
@@ -251,6 +257,7 @@ def list_revisions(
         select(NotebookRevision)
         .where(NotebookRevision.notebook_id == notebook_id)
         .order_by(NotebookRevision.created_at.desc())
+        .offset(max(0, int(offset)))
         .limit(limit)
     ).scalars().all()
     return [row_to_envelope(r) for r in rows]

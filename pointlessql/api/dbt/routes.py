@@ -30,14 +30,20 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from fastapi import APIRouter, Body, Query, Request
+from fastapi import APIRouter, Body, Depends, Query, Request
 from sqlalchemy import select
 
 from pointlessql.api._audit_helpers import audit
 from pointlessql.api.dbt._executor import executor as build_executor
 from pointlessql.api.dbt._lifecycle import result_payload
 from pointlessql.api.dbt._run_test import load_manifest_or_404, run_or_test
-from pointlessql.api.dependencies import get_user, require_admin, require_supervisor
+from pointlessql.api.dependencies import (
+    PaginationParams,
+    get_user,
+    pagination,
+    require_admin,
+    require_supervisor,
+)
 from pointlessql.exceptions import AuthenticationError
 from pointlessql.models.agent._audit import AgentRunOperation
 from pointlessql.models.agent._runs import AgentRun
@@ -224,7 +230,7 @@ async def api_dbt_test_failures(
             "agent_runs.id whose failures to list; omit for recent failures across all dbt runs"
         ),
     ),
-    limit: int = Query(default=100, ge=1, le=500),
+    paging: PaginationParams = Depends(pagination),
 ) -> dict[str, Any]:
     """Return the dbt-test failures for one agent run.
 
@@ -243,7 +249,7 @@ async def api_dbt_test_failures(
         agent_run_id: UUID of the run whose failures to list.  When
             omitted, returns recent failures across every dbt-cli
             run for the cockpit's "Test failures" tab.
-        limit: Hard row cap (1-500, default 100).
+        paging: Shared offset+limit pair (default page size 100, max 1000).
 
     Returns:
         ``{"agent_run_id": str | None, "row_count": int, "rows": [...]}``.
@@ -263,7 +269,8 @@ async def api_dbt_test_failures(
                 .where(LineageRowReject.run_id == agent_run_id)
                 .where(LineageRowReject.reason == "expectation_failed")
                 .order_by(LineageRowReject.id.asc())
-                .limit(limit)
+                .offset(paging.offset)
+                .limit(paging.limit)
             )
         else:
             stmt = (
@@ -273,7 +280,8 @@ async def api_dbt_test_failures(
                 .where(LineageRowReject.reason == "expectation_failed")
                 .where(AgentRun.agent_id == "dbt-cli")
                 .order_by(LineageRowReject.id.desc())
-                .limit(limit)
+                .offset(paging.offset)
+                .limit(paging.limit)
             )
         for reject, op in session.execute(stmt).all():
             params: dict[str, Any] = {}

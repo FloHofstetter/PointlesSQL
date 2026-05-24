@@ -295,7 +295,11 @@ def discard_binding(
 
 
 def list_bindings(
-    session: Session, *, notebook_id: str, limit: int = 50
+    session: Session,
+    *,
+    notebook_id: str,
+    limit: int = 50,
+    offset: int = 0,
 ) -> list[dict[str, Any]]:
     """Return historical bindings for a notebook, newest first.
 
@@ -303,6 +307,8 @@ def list_bindings(
         session: A SQLAlchemy session.
         notebook_id: ``Notebook.id`` UUID.
         limit: Newest-N cap.
+        offset: Zero-indexed row offset for paginated reads.
+            Defaults to 0 (no skip).
 
     Returns:
         List of binding dicts ordered ``created_at desc``.
@@ -311,6 +317,7 @@ def list_bindings(
         select(NotebookBranchBinding)
         .where(NotebookBranchBinding.notebook_id == notebook_id)
         .order_by(NotebookBranchBinding.created_at.desc())
+        .offset(max(0, int(offset)))
         .limit(limit)
     ).scalars().all()
     return [binding_to_envelope(r) for r in rows]

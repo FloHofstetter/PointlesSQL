@@ -10,9 +10,13 @@ from __future__ import annotations
 
 import datetime
 
-from fastapi import APIRouter, Query, Request
+from fastapi import APIRouter, Depends, Query, Request
 
-from pointlessql.api.dependencies import require_user
+from pointlessql.api.dependencies import (
+    PaginationParams,
+    pagination,
+    require_user,
+)
 from pointlessql.exceptions import BadRequestError
 from pointlessql.services.agent_runs.memory._recall import recall_operations
 from pointlessql.types import OpName
@@ -74,7 +78,7 @@ async def recall_endpoint(
     status: str | None = Query(default=None),
     since: str | None = Query(default=None),
     until: str | None = Query(default=None),
-    limit: int = Query(default=200, ge=1, le=1000),
+    paging: PaginationParams = Depends(pagination),
 ) -> dict[str, object]:
     """Filter the agent's operation log.
 
@@ -86,7 +90,8 @@ async def recall_endpoint(
         status: One of ``"success"`` / ``"failed"`` / ``"running"``.
         since: ISO-8601 inclusive lower bound on ``started_at``.
         until: ISO-8601 exclusive upper bound on ``started_at``.
-        limit: Cap on returned rows (1..1000).
+        paging: Shared offset+limit pair (default page size 100, max 1000;
+            the service still caps ``limit`` to 1000).
 
     Returns:
         ``{"agent_id": str, "operations": [...], "count": int}``.
@@ -110,7 +115,8 @@ async def recall_endpoint(
             status=status,
             since=since_dt,
             until=until_dt,
-            limit=limit,
+            limit=paging.limit,
+            offset=paging.offset,
         )
     except ValueError as exc:
         # bare-http-ok: surfaces the recall_operations ValueError
