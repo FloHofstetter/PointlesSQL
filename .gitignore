@@ -86,3 +86,10 @@ pointlessql.db-wal
 # Playwright-MCP / browser-replay sessions.  Always per-session,
 # never useful in history.
 *.log
+
+# Phase 121.9 — Playwright-MCP replay-session output directories.
+# Pattern: ``phase{NN}-replay/`` at repo root, mirroring the per-
+# phase playbook structure under ``docs/e2e-walkthroughs/``.  The
+# canonical playbook lives in docs; per-session PNG dumps +
+# REPLAY_REPORT.md are ephemeral debugging artefacts, never tracked.
+phase*-replay/
