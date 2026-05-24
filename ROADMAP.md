@@ -2538,12 +2538,16 @@ PointlesSQL
 │           concrete new init step demands it — current 33-step
 │           complexity is structural, not a smell.
 │
-│   ├── Phase 121 — Code Quality Wave VI (error-envelope unification)  ⏳ in progress
-│   │     **121.1 closed 2026-05-24.**  Three-axis quality pass after the
-│   │     Restschuld I–V modularization waves drained the >700-LOC
-│   │     backlog.  Plan-source: ``/home/flo/.claude/plans/ich-denke-
-│   │     es-ist-squishy-pnueli.md``.  Sub-Sprint 121.1 closed; 121.2–
-│   │     121.6 stay queued as separate sub-sprints.
+│   ├── Phase 121 — Code Quality Wave VI (error-envelope unification)  ✅ done 2026-05-24
+│   │     **All 12 sub-sprints closed 2026-05-24.**  Three-axis quality
+│   │     pass after the Restschuld I–V modularization waves drained the
+│   │     >700-LOC backlog.  Plan-source: ``/home/flo/.claude/plans/ich-
+│   │     denke-es-ist-squishy-pnueli.md``.  Wave ran in three batches:
+│   │     121.1 (error envelope) shipped first, 121.2–121.7 + 121.4 in
+│   │     the second batch (settings + lint + facade + micro-extractions
+│   │     + residuals + privilege scaffold + PII redaction), 121.8a/b
+│   │     in the final close-out batch (tests lint baseline + pagination
+│   │     service-layer rollout).
 │   │     - **121.1 — Error-Envelope + Human-Feedback.**  ✅ done 2026-05-24.
 │   │       Unifies three parallel envelope shapes (RFC 9457 / DBX /
 │   │       legacy ``{"error":}``); converts 201 → 13 ``HTTPException``-
@@ -2723,6 +2727,32 @@ PointlesSQL
 │   │         new ``audit.redact_detail_payloads=True`` setting
 │   │         flipped (default False for backward-compat).  13 new
 │   │         pytest.  Commit ``67f4e64``, asset rc132 → rc133.
+│   │     - **121.8 — Wave close-out.**  ✅ done 2026-05-24.  Drains
+│   │       the two carry-overs that survived 121.7:
+│   │       - **121.8a — Tests lint baseline.**  ``tests/**``
+│   │         per-file-ignore extended with ``TID251`` (the Phase
+│   │         121.3 banned-api rule for direct generated-client
+│   │         imports is API-layer-only — tests legitimately bypass
+│   │         the facade for setup/teardown and error injection).
+│   │         Auto-fixed 3× I001 + 1× F401.  Added ``# noqa: DOC502``
+│   │         to ``admin_uc`` (delegated raise via ``require_admin``).
+│   │         ``ruff check tests/ pointlessql/`` + ``pydoclint
+│   │         dependencies.py`` both report 0 violations.  Commit
+│   │         ``5462b46``, asset rc134 → rc135.
+│   │       - **121.8b — Pagination service-layer rollout.**  Closes
+│   │         the 9 sites 121.7b deferred: 6 service helpers
+│   │         (``list_replays`` / ``list_revisions`` / ``list_facts``
+│   │         / ``list_bindings`` / ``list_authored_by_agent`` /
+│   │         ``recall_operations``) gain optional ``offset: int = 0``;
+│   │         6 corresponding routes flip to ``Depends(pagination)``
+│   │         and forward ``paging.offset`` through.  3 inline-SQL
+│   │         routes (``api_list_agent_runs`` /
+│   │         ``api_list_agent_run_operations`` /
+│   │         ``api_dbt_test_failures``) gain
+│   │         ``.offset(paging.offset)`` chained before ``.limit()``.
+│   │         Defaults preserve backward-compat for in-tree ``pql``
+│   │         facade callers (``list_facts_for_notebook`` /
+│   │         ``recall``).  Commit ``85a4a42``, asset rc135 → rc136.
 │   │
 │   ├── Phase 120 — API-key ACLs + usage dashboard               ✅ done 2026-05-23
 │   │     **Closed 2026-05-23.**  Seven sub-phases bundled in one

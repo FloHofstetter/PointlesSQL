@@ -6,6 +6,27 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Phase 121.8b — Pagination service-layer rollout (2026-05-24,
+  rc135 → rc136).**  Closes the nine sites Phase 121.7b deferred
+  because their service-helper signatures only accepted ``limit=``.
+  Six service helpers (``list_replays`` / ``list_revisions`` /
+  ``list_facts`` / ``list_bindings`` / ``list_authored_by_agent`` /
+  ``recall_operations``) gain an optional ``offset: int = 0``
+  parameter with ``max(0, int(offset))`` chained before
+  ``.limit()``.  The six corresponding routes (replay / revisions /
+  facts / branch-history / authored-cells / recall) flip from
+  ``Query(default=…)`` to
+  ``paging: PaginationParams = Depends(pagination)`` and forward
+  ``paging.limit`` + ``paging.offset`` through.  The three
+  inline-SQL routes (``api_list_agent_runs`` /
+  ``api_list_agent_run_operations`` / ``api_dbt_test_failures``)
+  gain ``.offset(paging.offset)`` chained before
+  ``.limit(paging.limit)``.  Defaults preserve current behaviour
+  for in-tree ``pql`` facade callers
+  (``list_facts_for_notebook`` / ``recall``) that don't pass
+  ``offset=``.  Default page size shifts 50/100 → 100, upper
+  bound le=200/500 → le=1000 — same precedent as 121.7b.
+
 - **Phase 121.4 — require_role factory + PrivilegeSettings scaffold
   (2026-05-24, rc133 → rc134).**  Adds two pieces of privilege-
   subsystem groundwork that the existing seven hand-rolled
@@ -39,6 +60,23 @@ All notable changes to this project will be documented in this file.
   for the redaction shape).  13 new pytest.
 
 ### Changed
+
+- **Phase 121.8a — Tests lint baseline (2026-05-24, rc134 →
+  rc135).**  ``tests/**`` per-file-ignore extended with
+  ``TID251`` — the Phase 121.3 banned-api rule that blocks direct
+  generated-client imports is API-layer-only; tests legitimately
+  bypass the facade for setup/teardown (creating and dropping
+  catalog/schema/table fixtures the facade intentionally hides)
+  and for error injection (monkey-patching the generated-client
+  transport).  Auto-fixed three I001 import-order drifts and one
+  F401 unused import.  Added ``# noqa: DOC502`` to
+  ``api/dependencies.admin_uc`` — its two-line body delegates to
+  ``require_admin`` for the raise, so pydoclint sees no ``raise``
+  in the body, but the ``Raises:`` block accurately documents
+  the propagated exception for callers.  Net effect:
+  ``ruff check tests/ pointlessql/`` and
+  ``pydoclint pointlessql/api/dependencies.py`` both report zero
+  violations.
 
 - **Phase 121.7b — Pagination dep rollout (2026-05-24, rc131 →
   rc132).**  Six list-endpoint routes migrated from ad-hoc
