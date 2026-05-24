@@ -300,7 +300,7 @@ class CoeditBus:
             )
 
     def _fetch_row(self, row_id: int) -> CoeditBusMessage | None:
-        """Synchronously fetch a single outbox row by id."""
+        """Fetch a single outbox row by id (synchronous)."""
         with self.engine.connect() as conn:
             return conn.execute(
                 select(CoeditBusMessage).where(CoeditBusMessage.id == row_id)

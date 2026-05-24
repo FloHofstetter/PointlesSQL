@@ -166,7 +166,7 @@ def _wrap_with_high_water(
 def _max_high_water_sql(
     spec: ReaderSpec, high_water_col: str, last_value: str | None
 ) -> str:
-    """SQL that returns ``MAX(high_water_col)`` over the same window."""
+    """Build the SQL string that returns ``MAX(high_water_col)`` over the same window."""
     base_sql = spec.sql.rstrip(";").strip()
     col_q = quote_sql_identifier(high_water_col)
     where = ""

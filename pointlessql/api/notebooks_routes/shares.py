@@ -224,7 +224,7 @@ async def api_revoke_share(
 async def _render_share(
     request: Request, share_uuid: str, *, compact: bool
 ) -> Response:
-    """Common body of :func:`public_share_view` + :func:`public_share_embed`.
+    """Render the shared body used by :func:`public_share_view` + :func:`public_share_embed`.
 
     Resolves the row, picks the revision or live source, scrubs outputs,
     then renders the cells fragment into the stripped-down public Jinja

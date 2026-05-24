@@ -38,7 +38,7 @@ class HermesEmbedder:
         self.model = model or "pending"
 
     def embed(self, texts: Sequence[str]) -> list[list[float]]:
-        """Always raises until hermes-agent ships an ``embed`` tool.
+        """Raise unconditionally until hermes-agent ships an ``embed`` tool.
 
         Args:
             texts: Unused; the call short-circuits before touching the

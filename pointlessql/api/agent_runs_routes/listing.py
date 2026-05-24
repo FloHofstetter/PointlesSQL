@@ -32,7 +32,7 @@ async def api_list_agent_run_operations(
     since: str | None = Query(default=None, description="ISO-8601 lower bound on started_at"),
     limit: int = Query(default=50, ge=1, le=500),
 ) -> dict[str, Any]:
-    """Filterable list of ``agent_run_operations`` rows.
+    """List ``agent_run_operations`` rows with the given filters applied.
 
     Backs the ``pql_recent_failures`` Hermes tool — when an agent is
     about to retry a write, asking "did this exact target fail

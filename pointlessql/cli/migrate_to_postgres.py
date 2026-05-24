@@ -483,7 +483,7 @@ def cli_entrypoint(  # pragma: no cover — exercised via the Typer wrapper
     batch_size: int = 1000,
     dry_run: bool = False,
 ) -> int:
-    """Synchronous wrapper that the Typer command calls."""
+    """Wrap :func:`migrate` synchronously for the Typer command entrypoint."""
     try:
         summary = migrate(
             source_url=source_url,

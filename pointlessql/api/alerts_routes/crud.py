@@ -133,7 +133,7 @@ async def api_update_alert(
     slug: str,
     body: dict[str, Any] = Body(...),
 ) -> dict[str, Any]:
-    """Partially update an alert.  Only owner + admin may mutate.
+    """Patch an alert in place.  Only owner + admin may mutate.
 
     Args:
         request: Incoming request.

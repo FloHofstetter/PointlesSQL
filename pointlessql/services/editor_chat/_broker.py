@@ -117,7 +117,7 @@ def publish_proposal_created(
     kind: str,
     rationale: str | None,
 ) -> int:
-    """Convenience wrapper for the SQL propose-route's fan-out frame."""
+    """Publish the SQL propose-route's fan-out frame — convenience wrapper."""
     return publish(
         editor_session_id,
         ChatEvent(

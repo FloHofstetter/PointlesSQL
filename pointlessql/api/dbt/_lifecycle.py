@@ -86,7 +86,7 @@ def finish_owned_run(
 
 
 def result_payload(result: DBTRunResult, agent_run_id: str | None) -> dict[str, Any]:
-    """Common envelope for the executor's CLI outcome.
+    """Build the common envelope for the executor's CLI outcome.
 
     Args:
         result: Executor outcome.

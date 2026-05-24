@@ -116,7 +116,7 @@ def resolve_dp_target(
     catalog_name: str,
     schema_name: str,
 ) -> SocialTarget:
-    """Convenience wrapper for the legacy DP path.
+    """Resolve a DP target via legacy `(workspace_id, catalog, schema)` lookup.
 
     Looks up the :class:`DataProduct` row for
     ``(workspace_id, catalog_name, schema_name)`` and then calls

@@ -348,7 +348,7 @@ class GenericGitProvider:
         headers: Mapping[str, str],
         webhook_secret: str,
     ) -> WebhookVerification:
-        """Generic provider has no shared-secret webhook handshake."""
+        """Return an unverified result — generic provider has no webhook handshake."""
         del body, headers, webhook_secret
         return WebhookVerification(
             verified=False,
@@ -360,7 +360,7 @@ class GenericGitProvider:
         body: bytes,
         headers: Mapping[str, str],
     ) -> WebhookEvent | None:
-        """Generic provider does not parse webhook payloads."""
+        """Return ``None`` — generic provider does not parse webhook payloads."""
         del body, headers
         return None
 

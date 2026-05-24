@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "pointlessql"
-version = "0.1.0rc127"
+version = "0.1.0rc128"
 description = "A web UI for Unity Catalog and other open-source Databricks components"
 license = "Apache-2.0"
 readme = "README.md"
@@ -152,9 +152,12 @@ target-version = "py314"
 extend-exclude = ["notebooks/scratch*"]
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "UP", "D", "BLE"]
+select = ["E", "F", "I", "UP", "D", "BLE", "D401"]
 ignore = ["D107"]  # __init__ docstrings — handled by class docstring per pydoclint
 pydocstyle.convention = "google"
+# Phase 121.5 — D401 ("imperative mood") is not in the google preset
+# default but catches the "Cached X" / "Convenience wrapper" first-line
+# anti-pattern.  15 sites surfaced + fixed in the same sprint.
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["D"]
@@ -208,6 +211,14 @@ reportUnnecessaryIsInstance = "warning"
 [tool.pydoclint]
 style = "google"
 arg-type-hints-in-docstring = false
+# Phase 121.5 audit (2026-05-24): tried flipping check-return-types +
+# check-yield-types to true; produced ~1400 DOC203/DOC404 hits because
+# pydoclint compares the type annotation against the first word of the
+# prose ``Returns: The X.`` / ``Yields: Each Y.`` sections (it expects
+# the ``<type>: <desc>`` form).  The codebase's house style is prose-
+# only Returns/Yields with the type living in the signature — flipping
+# the flag would force rewriting >1000 docstrings without semantic win.
+# Kept false; tightening lives in the ruff D-rule expansion below.
 check-return-types = false
 check-yield-types = false
 allow-init-docstring = false

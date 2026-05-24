@@ -231,7 +231,7 @@ async def _data_product_trending_loop(  # pyright: ignore[reportUnusedFunction]
     factory: Any,
     settings: Settings,
 ) -> None:
-    """Cached "trending in agent workloads" refresh (Phase 72.3).
+    """Refresh the cached "trending in agent workloads" view (Phase 72.3).
 
     Active only when ``data_products.trending_refresh_interval_seconds``
     is non-zero — same opt-in discipline as the freshness scanner.

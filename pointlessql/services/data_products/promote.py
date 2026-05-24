@@ -363,7 +363,7 @@ def candidate_row_count(
     workspace_id: int,
     status: str | None = None,
 ) -> int:
-    """Convenience: count candidate rows for tests + tab badge.
+    """Count candidate rows — convenience helper for tests + tab badge.
 
     Args:
         session: Live SQLAlchemy session.

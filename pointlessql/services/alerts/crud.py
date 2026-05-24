@@ -296,7 +296,7 @@ def update_by_slug(
     threshold: int | None = None,
     is_active: bool | None = None,
 ) -> dict[str, Any] | None:
-    """Partially update an alert and re-sync its backing Job.
+    """Patch an alert in place and re-sync its backing Job.
 
     Args:
         factory: SQLAlchemy session factory.
