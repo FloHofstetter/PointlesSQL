@@ -65,9 +65,7 @@ def _serialise_version(
 
 def _require_steward_or_admin(user: Any, row: Any) -> None:
     """Raise unless the caller is the DP's steward or an install-admin."""
-    is_steward = (
-        row.steward_user_id is not None and row.steward_user_id == user["id"]
-    )
+    is_steward = row.steward_user_id is not None and row.steward_user_id == user["id"]
     is_admin = bool(user.get("is_admin"))
     if not (is_steward or is_admin):
         raise AuthorizationError(
@@ -155,11 +153,7 @@ async def list_readme_history(
         author_ids = {r.updated_by_user_id for r in rows}
         author_map: dict[int, tuple[str, str]] = {}
         if author_ids:
-            users = (
-                session.execute(select(User).where(User.id.in_(author_ids)))
-                .scalars()
-                .all()
-            )
+            users = session.execute(select(User).where(User.id.in_(author_ids))).scalars().all()
             author_map = {u.id: (u.email, u.display_name) for u in users}
 
     payload = [
@@ -329,10 +323,8 @@ async def readme_diff(
     try:
         from_v = int(qs.get("from", ""))
         to_v = int(qs.get("to", ""))
-    except (TypeError, ValueError):
-        raise BadRequestError(
-            "from and to must be integer query params"
-        ) from None
+    except TypeError, ValueError:
+        raise BadRequestError("from and to must be integer query params") from None
 
     with factory() as session:
         target = resolve_dp_target(

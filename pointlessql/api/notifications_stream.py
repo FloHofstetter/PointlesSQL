@@ -47,9 +47,7 @@ def _register_listener(user_id: int) -> asyncio.Queue[dict[str, Any]]:
     return queue
 
 
-def _unregister_listener(
-    user_id: int, queue: asyncio.Queue[dict[str, Any]]
-) -> None:
+def _unregister_listener(user_id: int, queue: asyncio.Queue[dict[str, Any]]) -> None:
     """Drop the queue from the listener map on disconnect."""
     listeners = _LISTENERS.get(user_id, [])
     try:
@@ -106,9 +104,7 @@ async def _stream_events(
             if await request.is_disconnected():
                 return
             try:
-                payload = await asyncio.wait_for(
-                    queue.get(), timeout=_KEEPALIVE_SECONDS
-                )
+                payload = await asyncio.wait_for(queue.get(), timeout=_KEEPALIVE_SECONDS)
             except TimeoutError:
                 yield b": keep-alive\n\n"
                 continue

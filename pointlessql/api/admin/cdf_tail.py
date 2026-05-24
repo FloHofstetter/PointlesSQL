@@ -1,4 +1,4 @@
-"""Admin CRUD endpoints for the Phase 40.5 CDF tail subscriptions.
+"""Admin CRUD endpoints for the CDF tail subscriptions.
 
 Counterpart to :mod:`pointlessql.api.admin_expected_producers_routes`:
 where that registry holds *push-modell* expectations (``producer X

@@ -10,7 +10,7 @@ Covers the dispatch of every supported StmtType through
   CREATE/DROP SCHEMA, ALTER TABLE.
 
 ALTER TABLE returns the structured "use the table-detail UI"
-error per the Phase 63.3 deferral.
+error per the deferral.
 
 Tests use the same UnityCatalogClient mock pattern as
 ``test_sql_execute.py`` so the SELECT-write-DDL paths share one
@@ -73,9 +73,7 @@ def _patch_for_principal(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @pytest.fixture
-def patched_primitives_table_lookup(
-    monkeypatch: pytest.MonkeyPatch, orders_delta: str
-) -> None:
+def patched_primitives_table_lookup(monkeypatch: pytest.MonkeyPatch, orders_delta: str) -> None:
     """Make :func:`pql._update_delete._get_table.sync` resolve via the mock.
 
     The dispatcher's UPDATE / DELETE branches call
@@ -101,9 +99,7 @@ def patched_primitives_table_lookup(
         name="orders",
     )
     monkeypatch.setattr(ud, "_get_table", fake_get)
-    monkeypatch.setattr(
-        pointlessql.db, "_session_factory", app.state.session_factory
-    )
+    monkeypatch.setattr(pointlessql.db, "_session_factory", app.state.session_factory)
 
 
 @pytest.fixture
@@ -222,12 +218,7 @@ async def test_dispatcher_alter_table_returns_use_ui_message(
     app.state.uc_client = _make_uc_mock(storage_location=orders_delta)
     resp = await admin_client.post(
         "/api/sql/execute",
-        json={
-            "sql": (
-                "ALTER TABLE main.sales.orders SET TBLPROPERTIES("
-                "\"comment\" = \"new\")"
-            )
-        },
+        json={"sql": ('ALTER TABLE main.sales.orders SET TBLPROPERTIES("comment" = "new")')},
     )
     assert resp.status_code == 400
     body = resp.json()
@@ -310,10 +301,7 @@ async def test_dispatcher_update_emits_dml(
     resp = await admin_client.post(
         "/api/sql/execute",
         json={
-            "sql": (
-                "UPDATE main.sales.orders SET name = 'updated' "
-                "WHERE country = 'AT'"
-            ),
+            "sql": ("UPDATE main.sales.orders SET name = 'updated' WHERE country = 'AT'"),
         },
     )
     assert resp.status_code == 200, resp.text
@@ -361,10 +349,7 @@ async def test_batch_stops_at_first_error(
     resp = await admin_client.post(
         "/api/sql/execute_batch",
         json={
-            "sql": (
-                "SELECT 1; "
-                "DROP TABLE main.silver.does_not_exist"
-            ),
+            "sql": ("SELECT 1; DROP TABLE main.silver.does_not_exist"),
         },
     )
     assert resp.status_code == 200, resp.text

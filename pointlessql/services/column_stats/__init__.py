@@ -1,6 +1,6 @@
 """Column-statistics computation for the chat NL→SQL describe tool.
 
-The Phase 91 ``pql_describe_columns_with_stats`` plugin tool calls
+The ``pql_describe_columns_with_stats`` plugin tool calls
 ``GET /api/catalogs/{c}/schemas/{s}/tables/{t}/stats`` to learn what
 a table looks like before drafting SQL.  This package owns the
 read-side pandas reduction; the route layer in

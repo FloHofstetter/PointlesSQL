@@ -29,7 +29,7 @@ async def api_inspect_notebook(request: Request, path: str) -> list[dict[str, An
 
     Papermill's introspector only accepts ``.ipynb`` JSON; ``.py``
     jupytext-Percent notebooks (PointlesSQL's canonical on-disk
-    format since Phase 12.10) get a transient conversion through a
+    format ) get a transient conversion through a
     :class:`tempfile.NamedTemporaryFile` before the call so the
     caller never sees the difference.
 
@@ -113,6 +113,4 @@ async def api_notebooks_tree(request: Request) -> list[dict[str, Any]]:
     """
     require_user(request)
     settings: Settings = request.app.state.settings
-    return notebook_workspace_service.list_workspace_tree(
-        settings.jupyter.notebooks_dir.resolve()
-    )
+    return notebook_workspace_service.list_workspace_tree(settings.jupyter.notebooks_dir.resolve())

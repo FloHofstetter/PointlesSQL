@@ -1,4 +1,4 @@
-"""Tests for the Phase-71.6 enriched data-product browse listing.
+"""Tests for the enriched data-product browse listing.
 
 Covers ``GET /api/data-products`` carrying the new aggregate
 fields (``follow_count``, ``comment_count_7d``, ``has_readme``,
@@ -35,7 +35,6 @@ data_product:
       columns:
         - {name: order_id, type: long, nullable: false}
 """
-
 
 
 def _seed_product(tmp_path: Path) -> int:
@@ -101,17 +100,13 @@ async def test_comment_count_7d_counts_only_recent_live(
     body = (await admin_client.get("/api/data-products")).json()
     assert body["data_products"][0]["comment_count_7d"] == 1
     # soft-delete and re-check
-    await admin_client.delete(
-        f"/api/data-products/main/sales_gold/comments/{posted.json()['id']}"
-    )
+    await admin_client.delete(f"/api/data-products/main/sales_gold/comments/{posted.json()['id']}")
     body2 = (await admin_client.get("/api/data-products")).json()
     assert body2["data_products"][0]["comment_count_7d"] == 0
 
 
 @pytest.mark.asyncio
-async def test_has_readme_flips_on_put(
-    tmp_path: Path, admin_client: httpx.AsyncClient
-) -> None:
+async def test_has_readme_flips_on_put(tmp_path: Path, admin_client: httpx.AsyncClient) -> None:
     """``has_readme`` is false until a PUT lands."""
     _seed_product(tmp_path)
     pre = (await admin_client.get("/api/data-products")).json()
@@ -142,9 +137,7 @@ async def test_freshness_status_on_time_then_stale(
     with factory() as session:
         dp = session.execute(select(DataProduct)).scalar_one()
         # Push last_loaded_at 2h into the past; sla_minutes=60 → stale.
-        dp.last_loaded_at = datetime.datetime.now(datetime.UTC) - datetime.timedelta(
-            hours=2
-        )
+        dp.last_loaded_at = datetime.datetime.now(datetime.UTC) - datetime.timedelta(hours=2)
         session.add(dp)
         session.commit()
     body2 = (await admin_client.get("/api/data-products")).json()
@@ -152,9 +145,7 @@ async def test_freshness_status_on_time_then_stale(
 
 
 @pytest.mark.asyncio
-async def test_freshness_status_no_sla(
-    tmp_path: Path, admin_client: httpx.AsyncClient
-) -> None:
+async def test_freshness_status_no_sla(tmp_path: Path, admin_client: httpx.AsyncClient) -> None:
     """Products without an SLA report ``freshness_status='no_sla'``."""
     _seed_product(tmp_path)
     factory = app.state.session_factory

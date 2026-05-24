@@ -107,9 +107,7 @@ class DataProductPromotionCandidate(Base):
     first_seen_at: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True), nullable=False
     )
-    last_seen_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
+    last_seen_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     distinct_run_count: Mapped[int] = mapped_column(Integer, nullable=False)
     write_op_count: Mapped[int] = mapped_column(Integer, nullable=False)
     distinct_table_count: Mapped[int] = mapped_column(Integer, nullable=False)
@@ -126,6 +124,4 @@ class DataProductPromotionCandidate(Base):
         ForeignKey("data_products.id", ondelete="SET NULL"),
         nullable=True,
     )
-    refreshed_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
+    refreshed_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)

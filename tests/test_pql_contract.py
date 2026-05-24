@@ -1,4 +1,4 @@
-"""Tests for the Phase-73.2 ``pql.contract()`` inline DSL + routes.
+"""Tests for the ``pql.contract()`` inline DSL + routes.
 
 Covers:
 
@@ -228,9 +228,7 @@ async def test_promote_draft_loads_contract(
     active_dir = tmp_path / "active"
     active_dir.mkdir(parents=True)
     monkeypatch.setattr(app.state.settings.data_products, "draft_dir", draft_dir)
-    monkeypatch.setattr(
-        app.state.settings.data_products, "yaml_search_paths", [active_dir]
-    )
+    monkeypatch.setattr(app.state.settings.data_products, "yaml_search_paths", [active_dir])
 
     save_res = await admin_client.post(
         "/api/contracts/save",
@@ -252,9 +250,7 @@ async def test_promote_draft_loads_contract(
         dp = session.execute(select(DataProduct)).scalar_one()
         assert dp.catalog_name == "main"
         row = session.execute(
-            select(DataProductYamlDraft).where(
-                DataProductYamlDraft.id == draft_id
-            )
+            select(DataProductYamlDraft).where(DataProductYamlDraft.id == draft_id)
         ).scalar_one()
         assert row.promoted_at is not None
 
@@ -266,9 +262,7 @@ async def test_promote_unknown_draft_404(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Promote on a non-existent draft id → 404."""
-    monkeypatch.setattr(
-        app.state.settings.data_products, "yaml_search_paths", [tmp_path]
-    )
+    monkeypatch.setattr(app.state.settings.data_products, "yaml_search_paths", [tmp_path])
     res = await admin_client.post("/api/contracts/drafts/99999/promote")
     assert res.status_code == 404
 

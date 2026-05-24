@@ -64,6 +64,4 @@ class SocialStar(Base):
         ForeignKey("social_targets.id", ondelete="CASCADE"),
         nullable=False,
     )
-    created_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)

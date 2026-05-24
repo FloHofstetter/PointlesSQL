@@ -1,4 +1,4 @@
-"""Tests for the Phase-71 follow-up B.2 — contract_violated emit.
+"""Tests for the follow-up B.2 — contract_violated emit.
 
 The post-commit hook
 :func:`pointlessql.services.agent_runs.operations._contract_events.record_contract_event_after_commit`
@@ -107,8 +107,7 @@ def _count_violated_envelopes() -> int:
         return len(
             session.execute(
                 select(GovernanceEvent).where(
-                    GovernanceEvent.event_type
-                    == EVENT_TYPE_DATA_PRODUCT_CONTRACT_VIOLATED
+                    GovernanceEvent.event_type == EVENT_TYPE_DATA_PRODUCT_CONTRACT_VIOLATED
                 )
             )
             .scalars()
@@ -120,9 +119,7 @@ def _count_dp_contract_events() -> int:
     """Count rows in the authoritative per-write audit table."""
     factory = app.state.session_factory
     with factory() as session:
-        return len(
-            session.execute(select(DataProductContractEvent)).scalars().all()
-        )
+        return len(session.execute(select(DataProductContractEvent)).scalars().all())
 
 
 @pytest.mark.asyncio

@@ -30,9 +30,7 @@ _PROPOSAL_TTL_HOURS: int = 24
 
 
 @router.post("/api/sql/chat/proposals/{proposal_id}/accept")
-async def api_accept_proposal(
-    request: Request, proposal_id: str
-) -> dict[str, Any]:
+async def api_accept_proposal(request: Request, proposal_id: str) -> dict[str, Any]:
     """Mark *proposal_id* accepted; return SQL + agent_run_id.
 
     The actual ``/api/sql/execute`` call still comes from the
@@ -78,8 +76,7 @@ async def api_accept_proposal(
             proposal.accepted_at = now
             session.commit()
             raise ConflictError(
-                "proposal is older than 24 hours and cannot be "
-                "accepted; ask the chat to redraft.",
+                "proposal is older than 24 hours and cannot be accepted; ask the chat to redraft.",
             )
         chat_session = session.get(EditorChatSession, proposal.chat_session_id)
         if chat_session is None:
@@ -110,9 +107,7 @@ async def api_accept_proposal(
 
 
 @router.post("/api/sql/chat/proposals/{proposal_id}/discard")
-async def api_discard_proposal(
-    request: Request, proposal_id: str
-) -> dict[str, Any]:
+async def api_discard_proposal(request: Request, proposal_id: str) -> dict[str, Any]:
     """Mark *proposal_id* discarded; fan-out a WS notification.
 
     Args:
@@ -141,9 +136,7 @@ async def api_discard_proposal(
         if proposal.status != "pending":
             raise ConflictError(f"proposal already {proposal.status}")
         chat_session = session.get(EditorChatSession, proposal.chat_session_id)
-        editor_session_id = (
-            chat_session.editor_session_id if chat_session else None
-        )
+        editor_session_id = chat_session.editor_session_id if chat_session else None
         proposal.status = "discarded"
         proposal.accepted_at = now
         session.commit()

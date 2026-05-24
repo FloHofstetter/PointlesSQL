@@ -61,9 +61,7 @@ def stub_branch_tags(monkeypatch: pytest.MonkeyPatch) -> None:
         del request
         return (object(), object())
 
-    monkeypatch.setattr(
-        branches_routes, "_make_settings_client", _stub_client
-    )
+    monkeypatch.setattr(branches_routes, "_make_settings_client", _stub_client)
     monkeypatch.setattr(
         branches_routes.branch_tags,
         "read_branch_tags_sync",
@@ -121,10 +119,7 @@ def _peer_user_id() -> int:
     factory = app.state.session_factory
     with factory() as session:
         row = session.execute(
-            select(User.id)
-            .where(User.email != "test@test.com")
-            .order_by(User.id)
-            .limit(1)
+            select(User.id).where(User.email != "test@test.com").order_by(User.id).limit(1)
         ).scalar_one_or_none()
         if row is not None:
             return int(row)
@@ -244,9 +239,7 @@ async def test_polymorphic_branch_comment_roundtrip(
         json={"body_md": "branch.html smoke"},
     )
     assert res_post.status_code == 200, res_post.text
-    res_list = await admin_client.get(
-        f"/api/social/branch/{_BRANCH_FQN}/comments"
-    )
+    res_list = await admin_client.get(f"/api/social/branch/{_BRANCH_FQN}/comments")
     assert res_list.status_code == 200
     bodies = [c["body_md"] for c in res_list.json()["comments"]]
     assert "branch.html smoke" in bodies

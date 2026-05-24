@@ -44,18 +44,14 @@ def upgrade() -> None:
             server_default=sa.text("(CURRENT_TIMESTAMP)"),
             nullable=False,
         ),
-        sa.Column(
-            "compacted_at", sa.DateTime(timezone=True), nullable=True
-        ),
+        sa.Column("compacted_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column(
             "version",
             sa.Integer(),
             server_default=sa.text("1"),
             nullable=False,
         ),
-        sa.ForeignKeyConstraint(
-            ["notebook_id"], ["notebooks.id"], ondelete="CASCADE"
-        ),
+        sa.ForeignKeyConstraint(["notebook_id"], ["notebooks.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("notebook_id"),
     )
 

@@ -7,7 +7,7 @@ Two unrelated groups live here:
   can re-import it without dragging the full :class:`PQL` class
   import graph along.
 * The ``Arrow*`` / ``Duckdb*`` / ``Delta*`` :class:`typing.Protocol`
-  classes — Phase 79.1 typing shims for the third-party return
+  classes.1 typing shims for the third-party return
   values the engine touches (pyarrow / duckdb / deltalake all ship
   without ``py.typed`` markers, so every chained access surfaces
   as ``Unknown`` to pyright).  The Protocols describe the *subset*
@@ -108,15 +108,11 @@ class ArrowTable(Protocol):
     @property
     def schema(self) -> ArrowSchema: ...
 
-    def append_column(
-        self, field_or_name: str, column: ArrowArray
-    ) -> ArrowTable: ...
+    def append_column(self, field_or_name: str, column: ArrowArray) -> ArrowTable: ...
 
     def column(self, name: str) -> ArrowArray: ...
 
-    def set_column(
-        self, index: int, field_or_name: str, column: ArrowArray
-    ) -> ArrowTable: ...
+    def set_column(self, index: int, field_or_name: str, column: ArrowArray) -> ArrowTable: ...
 
     def to_pandas(self) -> Any: ...
 

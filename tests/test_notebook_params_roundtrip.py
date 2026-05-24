@@ -61,12 +61,8 @@ async def test_mark_params_save_reload(
     assert cells[1]["tags"] == []
 
 
-async def test_unmark_params(
-    workspace_dir: Path, admin_client: httpx.AsyncClient
-) -> None:
-    (workspace_dir / "u.py").write_text(
-        '# %% tags=["parameters"]\nx = 1\n'
-    )
+async def test_unmark_params(workspace_dir: Path, admin_client: httpx.AsyncClient) -> None:
+    (workspace_dir / "u.py").write_text('# %% tags=["parameters"]\nx = 1\n')
     payload = {
         "path": "u.py",
         "cells": [
@@ -96,9 +92,7 @@ async def test_inspect_finds_marked_params(
     }
     save_resp = await admin_client.post("/api/notebooks/save", json=payload)
     assert save_resp.status_code == 200, save_resp.text
-    inspect_resp = await admin_client.get(
-        "/api/notebooks/inspect", params={"path": "e2e.py"}
-    )
+    inspect_resp = await admin_client.get("/api/notebooks/inspect", params={"path": "e2e.py"})
     assert inspect_resp.status_code == 200, inspect_resp.text
     names = {p["name"] for p in inspect_resp.json()}
     assert "foo" in names

@@ -1,4 +1,4 @@
-"""Tests for the Sprint 13.11.5 _json_safe coercion helper.
+"""Tests for the _json_safe coercion helper.
 
 the validation-error handler used to crash
 when a request validator surfaced raw ``bytes`` in the ``input``

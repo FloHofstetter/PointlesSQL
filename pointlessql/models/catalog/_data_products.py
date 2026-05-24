@@ -134,9 +134,7 @@ class DataProduct(Base):
     last_alerted_at: Mapped[datetime.datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
-    created_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
 class DataProductContractEvent(Base):
@@ -198,6 +196,4 @@ class DataProductContractEvent(Base):
     )
     outcome: Mapped[str] = mapped_column(String(32), nullable=False)
     details_json: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
-    created_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)

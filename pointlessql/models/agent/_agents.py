@@ -87,9 +87,7 @@ class Agent(Base):
     )
     avatar_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     home_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
-    principal_user_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("users.id"), nullable=False
-    )
+    principal_user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
     is_verified: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False, server_default="0"
     )
@@ -99,12 +97,6 @@ class Agent(Base):
     verified_at: Mapped[datetime.datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
-    bio_md: Mapped[str] = mapped_column(
-        Text, nullable=False, default="", server_default=""
-    )
-    created_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
-    created_by_user_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("users.id"), nullable=False
-    )
+    bio_md: Mapped[str] = mapped_column(Text, nullable=False, default="", server_default="")
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_by_user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)

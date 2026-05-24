@@ -46,9 +46,7 @@ async def api_cell_lineage_bulk(
     require_user(request)
     settings: Settings = request.app.state.settings
     notebooks_dir = settings.jupyter.notebooks_dir.resolve()
-    absolute = notebook_doc_service.resolve_py_notebook_path(
-        notebooks_dir, path, must_exist=True
-    )
+    absolute = notebook_doc_service.resolve_py_notebook_path(notebooks_dir, path, must_exist=True)
     relative = str(absolute.relative_to(notebooks_dir))
     factory = request.app.state.session_factory
     with factory() as session:
@@ -85,9 +83,7 @@ async def api_cell_lineage(
     require_user(request)
     settings: Settings = request.app.state.settings
     notebooks_dir = settings.jupyter.notebooks_dir.resolve()
-    absolute = notebook_doc_service.resolve_py_notebook_path(
-        notebooks_dir, path, must_exist=True
-    )
+    absolute = notebook_doc_service.resolve_py_notebook_path(notebooks_dir, path, must_exist=True)
     relative = str(absolute.relative_to(notebooks_dir))
     factory = request.app.state.session_factory
     with factory() as session:

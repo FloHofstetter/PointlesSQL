@@ -14,7 +14,7 @@ remains coherent.
 
 @mention resolution: the POST handler scans ``body_md`` for
 ``@<email>`` tokens, looks them up in ``users``, and stores the
-resolved id list in ``mentioned_user_ids_json`` so the Phase 71.4
+resolved id list in ``mentioned_user_ids_json`` so the
 notification fan-out picks them up without re-parsing markdown.
 """
 
@@ -38,17 +38,17 @@ class DataProductComment(Base):
             tenant as the product.
         data_product_id: FK on ``data_products.id`` with
             ``ondelete='CASCADE'`` so a yaml deletion cleans up
-            stray comments.  Nullable since Phase 77.0.G — the
-            polymorphic anchor in ``social_target_id`` is the
-            kind-agnostic primary join key now.
-        social_target_id: Phase 77.0.B polymorphic anchor.  Every
-            comment is anchored on a ``social_targets`` row whose
+            stray comments.  Nullable — the polymorphic anchor in
+            ``social_target_id`` is the kind-agnostic primary
+            join key now.
+        social_target_id: Polymorphic anchor.  Every comment is
+            anchored on a ``social_targets`` row whose
             ``entity_kind`` discriminator decides whether the row
             renders under a DP / table / model / notebook / etc.
         parent_comment_id: Optional self-FK for replies.  NULL on
             top-level comments.  App-level guard caps the chain
-            depth (Phase 76.1 lifted 2 → 5 with auto-collapse on
-            render at depth ≥ 3).
+            depth (up to 5 with auto-collapse on render at depth
+            ≥ 3).
         author_user_id: FK on ``users.id``.  Who posted.  Always
             a human — caller when direct, agent's principal when
             ``author_agent_id`` is set.
@@ -64,7 +64,7 @@ class DataProductComment(Base):
         category: GitHub-Discussions-style category — one of
             ``general`` / ``question`` / ``announcement`` /
             ``idea``.  Top-level only (replies inherit from
-            their parent at serialise time).  Phase 76.1.
+            their parent at serialise time).
         is_accepted_answer: True when a steward or the OP marked
             this reply as the answer to a ``question`` thread.
             Atomicity is enforced in the accept-answer route —
@@ -101,10 +101,8 @@ class DataProductComment(Base):
         ForeignKey("data_products.id", ondelete="CASCADE"),
         nullable=True,
     )
-    # polymorphic anchor.  Nullable in this
-    # revision so the legacy DP write path keeps working while
-    # the dual-write phase rolls out; flipped to NOT NULL +
-    # ``data_product_id`` dropped in Phase 77.0.G.
+    # polymorphic anchor.  NOT NULL since the legacy
+    # ``data_product_id`` column was dropped.
     social_target_id: Mapped[int] = mapped_column(
         Integer,
         ForeignKey("social_targets.id"),
@@ -115,9 +113,7 @@ class DataProductComment(Base):
         ForeignKey("data_product_comments.id", ondelete="CASCADE"),
         nullable=True,
     )
-    author_user_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("users.id"), nullable=False
-    )
+    author_user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
     # presentation-layer override.  When set, the
     # comment is rendered as authored *by the agent on behalf of*
     # ``author_user_id`` (the principal).  The audit chain stays
@@ -138,9 +134,7 @@ class DataProductComment(Base):
     is_accepted_answer: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False, server_default="0"
     )
-    created_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     deleted_at: Mapped[datetime.datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )

@@ -67,10 +67,7 @@ def test_table_citation_resolves_through_registry() -> None:
 
     body = "see #table:main.sales_gold.orders for reference"
     out = resolve_citations(body, app.state.session_factory, workspace_id=1)
-    assert (
-        "[#main.sales_gold.orders](/catalogs/main/schemas/sales_gold/tables/orders)"
-        in out
-    )
+    assert "[#main.sales_gold.orders](/catalogs/main/schemas/sales_gold/tables/orders)" in out
 
 
 def test_table_citation_ignores_malformed_token() -> None:
@@ -87,7 +84,7 @@ def test_table_citation_ignores_malformed_token() -> None:
 async def test_social_dispatcher_routes_table_writes_after_77_1_5(
     admin_client: httpx.AsyncClient,
 ) -> None:
-    """Table writes through /api/social succeed after Phase 77.1.5.
+    """Table writes through /api/social succeed .
 
     Pre-77.1.5 this returned 501 because the dispatcher had no
     per-kind handler.  77.1.5 wired the polymorphic backend, so

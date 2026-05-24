@@ -34,7 +34,7 @@ export function installCellLineage(state) {
 
  /**
   * Tooltip body for the cell-header ``+N more`` lineage overflow
-  * chip — Sprint 113.1 caps the visible strip at one badge, so the
+  * chip.1 caps the visible strip at one badge, so the
   * tail tables move into a hover preview and a read-only section
   * inside the per-cell ⋯ overflow menu.
   */

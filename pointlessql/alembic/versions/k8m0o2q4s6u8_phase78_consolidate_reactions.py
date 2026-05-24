@@ -88,10 +88,7 @@ def upgrade() -> None:
     )
 
     pre_count = bind.execute(
-        text(
-            "SELECT COUNT(*) FROM data_product_reactions "
-            "WHERE social_target_id IS NOT NULL"
-        )
+        text("SELECT COUNT(*) FROM data_product_reactions WHERE social_target_id IS NOT NULL")
     ).scalar()
     bind.execute(
         text(
@@ -168,9 +165,7 @@ def downgrade() -> None:
             name="uq_dp_reactions_polymorphic",
         ),
     )
-    op.create_index(
-        "ix_dp_reactions_dp", "data_product_reactions", ["data_product_id"]
-    )
+    op.create_index("ix_dp_reactions_dp", "data_product_reactions", ["data_product_id"])
     op.create_index(
         "ix_data_product_reactions_social_target",
         "data_product_reactions",

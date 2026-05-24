@@ -1,4 +1,4 @@
-"""Tests for the Phase 120.4 grants CRUD admin endpoints."""
+"""Tests for the grants CRUD admin endpoints."""
 
 from __future__ import annotations
 
@@ -94,9 +94,7 @@ async def test_delete_catalog_grant(admin_client: httpx.AsyncClient) -> None:
         json={"catalog_name": "main", "schema_name": "sales"},
     )
     grant_id = add_resp.json()["id"]
-    del_resp = await admin_client.delete(
-        f"/api/admin/api-keys/del-cg/grants/catalog/{grant_id}"
-    )
+    del_resp = await admin_client.delete(f"/api/admin/api-keys/del-cg/grants/catalog/{grant_id}")
     assert del_resp.status_code == 200 and del_resp.json()["deleted"] is True
     listing = await admin_client.get("/api/admin/api-keys/del-cg/grants")
     assert listing.json()["catalog_grants"] == []
@@ -142,9 +140,7 @@ async def test_delete_ip_grant(admin_client: httpx.AsyncClient) -> None:
         json={"cidr": "10.0.0.0/8"},
     )
     grant_id = add_resp.json()["id"]
-    del_resp = await admin_client.delete(
-        f"/api/admin/api-keys/delip/grants/ip/{grant_id}"
-    )
+    del_resp = await admin_client.delete(f"/api/admin/api-keys/delip/grants/ip/{grant_id}")
     assert del_resp.status_code == 200
     listing = await admin_client.get("/api/admin/api-keys/delip/grants")
     assert listing.json()["ip_grants"] == []

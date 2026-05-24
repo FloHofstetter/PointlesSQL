@@ -75,12 +75,8 @@ def test_issue_state_check_constraint_blocks_garbage() -> None:
     """A state outside ``ISSUE_STATES`` raises IntegrityError."""
     factory = app.state.session_factory
     with factory() as session:
-        anchor = SocialTarget(
-            workspace_id=1, entity_kind="issue", entity_ref="ck-state-1"
-        )
-        parent = SocialTarget(
-            workspace_id=1, entity_kind="table", entity_ref="a.b.c"
-        )
+        anchor = SocialTarget(workspace_id=1, entity_kind="issue", entity_ref="ck-state-1")
+        parent = SocialTarget(workspace_id=1, entity_kind="table", entity_ref="a.b.c")
         session.add_all([anchor, parent])
         session.flush()
         bad = Issue(
@@ -102,12 +98,8 @@ def test_issue_closed_reason_check_constraint_blocks_garbage() -> None:
     """A closed_reason outside the locked vocab raises IntegrityError."""
     factory = app.state.session_factory
     with factory() as session:
-        anchor = SocialTarget(
-            workspace_id=1, entity_kind="issue", entity_ref="ck-reason-1"
-        )
-        parent = SocialTarget(
-            workspace_id=1, entity_kind="table", entity_ref="a.b.c"
-        )
+        anchor = SocialTarget(workspace_id=1, entity_kind="issue", entity_ref="ck-reason-1")
+        parent = SocialTarget(workspace_id=1, entity_kind="table", entity_ref="a.b.c")
         session.add_all([anchor, parent])
         session.flush()
         bad = Issue(
@@ -131,12 +123,8 @@ def test_issue_social_target_unique_collision_rejected() -> None:
     """Two issues sharing the same self social_target_id are rejected."""
     factory = app.state.session_factory
     with factory() as session:
-        anchor = SocialTarget(
-            workspace_id=1, entity_kind="issue", entity_ref="uq-1"
-        )
-        parent = SocialTarget(
-            workspace_id=1, entity_kind="table", entity_ref="a.b.c"
-        )
+        anchor = SocialTarget(workspace_id=1, entity_kind="issue", entity_ref="uq-1")
+        parent = SocialTarget(workspace_id=1, entity_kind="table", entity_ref="a.b.c")
         session.add_all([anchor, parent])
         session.flush()
         first = Issue(
@@ -165,12 +153,8 @@ def test_issue_label_slug_per_workspace_unique() -> None:
     """Re-using a slug inside one workspace raises IntegrityError."""
     factory = app.state.session_factory
     with factory() as session:
-        a = IssueLabel(
-            workspace_id=1, slug="bug", label_text="Bug", color_hex="#ff0000"
-        )
-        b = IssueLabel(
-            workspace_id=1, slug="bug", label_text="Bug dup", color_hex="#000000"
-        )
+        a = IssueLabel(workspace_id=1, slug="bug", label_text="Bug", color_hex="#ff0000")
+        b = IssueLabel(workspace_id=1, slug="bug", label_text="Bug dup", color_hex="#000000")
         session.add_all([a, b])
         with pytest.raises(IntegrityError):
             session.flush()

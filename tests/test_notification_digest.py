@@ -1,4 +1,4 @@
-"""Tests for the Phase-71 follow-up B.3 — daily marketplace digest.
+"""Tests for the follow-up B.3 — daily marketplace digest.
 
 Covers:
 

@@ -67,9 +67,7 @@ class WorkspacePinnedEntity(Base):
         ForeignKey("social_targets.id", ondelete="CASCADE"),
         nullable=False,
     )
-    pin_order: Mapped[int] = mapped_column(
-        Integer, nullable=False, server_default="0"
-    )
+    pin_order: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
     pinned_by_user_id: Mapped[int] = mapped_column(
         Integer,
         ForeignKey("users.id"),

@@ -82,9 +82,7 @@ def normalize_parameters(raw: Any) -> list[dict[str, Any]]:
         entry = cast(dict[str, Any], entry_raw)
         name = entry.get("name")
         if not isinstance(name, str) or not _PARAM_NAME_RE.match(name):
-            raise ValidationError(
-                "Parameter 'name' must match [a-zA-Z_][a-zA-Z0-9_]*."
-            )
+            raise ValidationError("Parameter 'name' must match [a-zA-Z_][a-zA-Z0-9_]*.")
         if name in seen:
             raise ValidationError(f"Duplicate parameter name: {name!r}")
         seen.add(name)
@@ -163,9 +161,7 @@ def cross_check_placeholders(sql: str, parameters: list[dict[str, Any]]) -> None
     used = set(referenced_placeholders(sql))
     missing = used - declared
     if missing:
-        raise ValidationError(
-            f"Placeholders without declared parameters: {sorted(missing)}"
-        )
+        raise ValidationError(f"Placeholders without declared parameters: {sorted(missing)}")
 
 
 def render_sql_with_params(
@@ -265,7 +261,7 @@ def serialize(row: SavedView) -> dict[str, Any]:
     """
     try:
         parameters = json.loads(row.parameters_json or "[]")
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         parameters = []
     return {
         "id": int(row.id),
@@ -393,9 +389,7 @@ def list_visible(
     if not include_inactive:
         stmt = stmt.where(SavedView.is_active.is_(True))
     if dp_id is not None and target_fqn is not None:
-        stmt = stmt.where(
-            or_(SavedView.dp_id == dp_id, SavedView.target_fqn == target_fqn)
-        )
+        stmt = stmt.where(or_(SavedView.dp_id == dp_id, SavedView.target_fqn == target_fqn))
     elif dp_id is not None:
         stmt = stmt.where(SavedView.dp_id == dp_id)
     elif target_fqn is not None:

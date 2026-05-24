@@ -66,14 +66,10 @@ class QueryResult(BaseModel):
     cost_explanation: str = ""
 
 
-async def _execute_query(
-    ctx: SessionContext, args: QueryArgs
-) -> QueryResult:
+async def _execute_query(ctx: SessionContext, args: QueryArgs) -> QueryResult:
     """Validate, cost-gate, execute the SELECT, return rows."""
     settings = ctx.settings
-    default_limit = (
-        args.limit if args.limit is not None else settings.lens.default_query_limit
-    )
+    default_limit = args.limit if args.limit is not None else settings.lens.default_query_limit
 
     # Cost-gate first; skip the actual DuckDB execution when no
     # uc_client is wired (test paths can verify the gate behaviour
@@ -108,8 +104,8 @@ async def _execute_query(
 
     # Production path: DuckDB execution requires the route layer to
     # have populated ``approved_tables`` and (eventually) wired a PQL
-    # connection through ctx.  In Sprint 65.3 we do not yet route
-    # through PQL — the executor is added in Sprint 65.5 once the
+    # connection through ctx.  we do not yet route
+    # through PQL — the executor is added once the
     # browser chat-loop is in place and the route fills approved
     # tables from `check_privilege(SELECT)`.  For now we return the
     # gated SQL + cost so the audit-trail stays informative.

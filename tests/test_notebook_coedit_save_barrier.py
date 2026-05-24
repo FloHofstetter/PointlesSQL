@@ -61,26 +61,16 @@ def fresh_notebook_on_disk(workspace_dir: Path) -> Iterator[str]:
     factory = app.state.session_factory
     with factory() as session:
         nb_rows = list(
-            session.execute(
-                sqlalchemy.select(Notebook).where(Notebook.file_path == rel)
-            ).scalars()
+            session.execute(sqlalchemy.select(Notebook).where(Notebook.file_path == rel)).scalars()
         )
         for nb in nb_rows:
             notebook_coedit_ws._HUBS.pop(nb.id, None)
+            session.execute(delete(NotebookCrdtState).where(NotebookCrdtState.notebook_id == nb.id))
             session.execute(
-                delete(NotebookCrdtState).where(
-                    NotebookCrdtState.notebook_id == nb.id
-                )
+                delete(NotebookPermission).where(NotebookPermission.notebook_id == nb.id)
             )
             session.execute(
-                delete(NotebookPermission).where(
-                    NotebookPermission.notebook_id == nb.id
-                )
-            )
-            session.execute(
-                delete(NotebookCellIdentity).where(
-                    NotebookCellIdentity.notebook_id == nb.id
-                )
+                delete(NotebookCellIdentity).where(NotebookCellIdentity.notebook_id == nb.id)
             )
             session.delete(nb)
         session.commit()
@@ -162,9 +152,7 @@ def test_save_with_drifted_cell_uuid_broadcasts_remap(
         real_cell_uuid = first.json()["cells"][0]["cell_uuid"]
         bogus_client_uuid = "bogus-" + uuid.uuid4().hex[:8]
         assert bogus_client_uuid != real_cell_uuid
-        with client.websocket_connect(
-            f"/ws/notebook/coedit/{notebook_uuid}"
-        ) as ws:
+        with client.websocket_connect(f"/ws/notebook/coedit/{notebook_uuid}") as ws:
             ws.receive_bytes()  # initial sync_step2
             client.post(
                 "/api/notebooks/save",
@@ -211,9 +199,7 @@ def test_save_with_drifted_uuid_rewrites_hub_doc(
         notebook_uuid = first.json()["notebook_uuid"]
         real_cell_uuid = first.json()["cells"][0]["cell_uuid"]
         bogus_client_uuid = "bogus-" + uuid.uuid4().hex[:8]
-        with client.websocket_connect(
-            f"/ws/notebook/coedit/{notebook_uuid}"
-        ) as ws:
+        with client.websocket_connect(f"/ws/notebook/coedit/{notebook_uuid}") as ws:
             initial = ws.receive_bytes()
             doc = _build_seeded_client_doc(initial[1:])
             doc[CELLS_TEXT_KEY][bogus_client_uuid] = Text("payload-text")
@@ -299,9 +285,7 @@ def test_save_with_partial_drift_remap_excludes_unchanged_uuids(
         cell_a_uuid = first.json()["cells"][0]["cell_uuid"]
         cell_b_uuid = first.json()["cells"][1]["cell_uuid"]
         bogus_b = "bogus-" + uuid.uuid4().hex[:8]
-        with client.websocket_connect(
-            f"/ws/notebook/coedit/{notebook_uuid}"
-        ) as ws:
+        with client.websocket_connect(f"/ws/notebook/coedit/{notebook_uuid}") as ws:
             ws.receive_bytes()  # initial sync_step2
             client.post(
                 "/api/notebooks/save",

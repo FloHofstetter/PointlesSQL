@@ -62,6 +62,4 @@ class UserFollow(Base):
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
     )
-    created_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)

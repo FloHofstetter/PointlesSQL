@@ -33,16 +33,12 @@ from pointlessql.models.catalog._data_product_comments import DataProductComment
 from pointlessql.models.catalog._data_product_reviews import DataProductReview
 from pointlessql.models.social._social_target import SocialTarget
 
-_TEMPLATES_ROOT = pathlib.Path(
-    "/home/flo/git/PointlesSQL/frontend/templates"
-)
+_TEMPLATES_ROOT = pathlib.Path("/home/flo/git/PointlesSQL/frontend/templates")
 
 
 def test_row_from_comment_uses_target_when_supplied() -> None:
     """Polymorphic anchor drives kind/ref/url when joined."""
-    target = SocialTarget(
-        id=42, workspace_id=1, entity_kind="table", entity_ref="m.s.t"
-    )
+    target = SocialTarget(id=42, workspace_id=1, entity_kind="table", entity_ref="m.s.t")
     comment = DataProductComment(
         id=7,
         workspace_id=1,
@@ -76,9 +72,7 @@ def test_row_from_comment_falls_back_to_dp_when_no_target() -> None:
 
 def test_row_from_review_uses_target_when_supplied() -> None:
     """Polymorphic anchor drives kind/ref/url on reviews too."""
-    target = SocialTarget(
-        id=99, workspace_id=1, entity_kind="model", entity_ref="m.s.n"
-    )
+    target = SocialTarget(id=99, workspace_id=1, entity_kind="model", entity_ref="m.s.n")
     review = DataProductReview(
         id=3,
         workspace_id=1,
@@ -108,9 +102,7 @@ async def test_feed_lists_table_comment_after_authoring(
     res = await admin_client.get("/api/feed?filter=my&limit=200")
     assert res.status_code == 200
     summaries = [r.get("summary_md") for r in res.json()["rows"]]
-    assert any(
-        "test table feed comment" in (s or "") for s in summaries
-    )
+    assert any("test table feed comment" in (s or "") for s in summaries)
 
 
 @pytest.mark.asyncio
@@ -122,9 +114,7 @@ async def test_feed_kind_filter_narrows_to_table(
         "/api/social/table/main.sales.orders/comments",
         json={"body_md": "narrow-to-table fixture"},
     )
-    res = await admin_client.get(
-        "/api/feed?filter=my&kind=table&limit=200"
-    )
+    res = await admin_client.get("/api/feed?filter=my&kind=table&limit=200")
     assert res.status_code == 200
     body = res.json()
     assert body["kind"] == "table"
@@ -141,9 +131,7 @@ async def test_feed_kind_filter_accepts_comma_separated(
         "/api/social/table/main.sales.orders/comments",
         json={"body_md": "kind-comma-table fixture"},
     )
-    res = await admin_client.get(
-        "/api/feed?filter=my&kind=table,model&limit=200"
-    )
+    res = await admin_client.get("/api/feed?filter=my&kind=table,model&limit=200")
     assert res.status_code == 200
     body = res.json()
     kinds = {r.get("entity_kind") for r in body["rows"]}
@@ -155,9 +143,7 @@ async def test_feed_kind_filter_dp_keeps_legacy_view(
     admin_client: httpx.AsyncClient,
 ) -> None:
     """``?kind=dp`` keeps the legacy DP-only response shape."""
-    res = await admin_client.get(
-        "/api/feed?filter=all&kind=dp&limit=200"
-    )
+    res = await admin_client.get("/api/feed?filter=all&kind=dp&limit=200")
     assert res.status_code == 200
     body = res.json()
     assert body["kind"] == "dp"
@@ -175,12 +161,8 @@ def test_feed_html_carries_kind_filter_dropdown() -> None:
     carries the markup + the script registers every entity kind so
     newly-registered kinds light up without code change.
     """
-    activity = (
-        _TEMPLATES_ROOT / "pages/_partials/feed/activity_pane.html"
-    ).read_text()
-    scripts = (
-        _TEMPLATES_ROOT / "pages/_partials/feed/scripts.html"
-    ).read_text()
+    activity = (_TEMPLATES_ROOT / "pages/_partials/feed/activity_pane.html").read_text()
+    scripts = (_TEMPLATES_ROOT / "pages/_partials/feed/scripts.html").read_text()
     assert "pql-feed-kind-menu" in activity
     assert "kindFilter" in activity
     for kind in ("'dp'", "'table'", "'model'", "'notebook'", "'saved_query'"):

@@ -1,5 +1,5 @@
 /*
- * mention_autocomplete.js — Phase 76.6.1
+ * mention_autocomplete.js
  *
  * Token-aware typeahead for the Discussion comment textarea.
  * Watches keystrokes for one of four prefixes and renders a

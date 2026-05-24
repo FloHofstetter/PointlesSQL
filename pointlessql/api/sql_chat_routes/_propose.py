@@ -75,6 +75,7 @@ class ProposeSqlBody(BaseModel):
         stripped = value.strip()
         return stripped or None
 
+
 _IDEMPOTENCY_WINDOW_SECONDS: int = 60
 
 _DDL_TYPES: frozenset[StmtType] = frozenset(
@@ -146,9 +147,7 @@ async def api_propose_sql(
                 "X-Agent-Run-Id mismatch for this chat session",
             )
 
-        existing = _find_idempotent_match(
-            session, chat_session.id, sql_text, kind
-        )
+        existing = _find_idempotent_match(session, chat_session.id, sql_text, kind)
         if existing is not None:
             return {
                 "proposal_id": existing.proposal_id,

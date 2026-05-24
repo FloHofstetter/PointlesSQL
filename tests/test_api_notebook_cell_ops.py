@@ -1,4 +1,4 @@
-"""Server-side cell-management roundtrip tests for Sprint 66.4.
+"""Server-side cell-management roundtrip tests .
 
 Cell ops (add / delete / move / convert) are pure client-side state;
 the server-visible contract is that POST /api/notebooks/save accepts
@@ -76,9 +76,7 @@ async def test_save_after_move_cell_up(
     assert rcells[1]["source"].strip() == "print('a')"
 
 
-async def test_save_after_delete_cell(
-    workspace_dir: Path, admin_client: httpx.AsyncClient
-) -> None:
+async def test_save_after_delete_cell(workspace_dir: Path, admin_client: httpx.AsyncClient) -> None:
     """Deleting cells via save (omitting them from the payload) shrinks the file."""
     (workspace_dir / "demo.py").write_bytes(b"# %%\n1\n# %%\n2\n# %%\n3\n")
     body = await _save(

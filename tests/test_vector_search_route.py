@@ -62,9 +62,7 @@ def _patch_for_principal(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @pytest.fixture
-def docs_delta_with_index(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> str:
+def docs_delta_with_index(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> str:
     loc = str(tmp_path / "docs")
     df = pd.DataFrame(
         {

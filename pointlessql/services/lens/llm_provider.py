@@ -173,7 +173,7 @@ class OpenAIProvider(_BaseProvider):
                     import json
 
                     args = json.loads(call.function.arguments or "{}")  # pyright: ignore[reportAttributeAccessIssue]
-                except (ValueError, TypeError):
+                except ValueError, TypeError:
                     args = {}
                 tool_calls.append(
                     ToolCall(
@@ -312,10 +312,7 @@ def _estimate_cost_usd(
     )
     pricing = table.get(model, _FALLBACK_PRICING)
     in_per_million, out_per_million = pricing
-    return (
-        (tokens_in / 1_000_000.0) * in_per_million
-        + (tokens_out / 1_000_000.0) * out_per_million
-    )
+    return (tokens_in / 1_000_000.0) * in_per_million + (tokens_out / 1_000_000.0) * out_per_million
 
 
 def get_provider(provider_name: str, api_key: str) -> LensProvider:

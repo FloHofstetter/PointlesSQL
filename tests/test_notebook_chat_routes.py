@@ -79,9 +79,7 @@ def nb_chat_session_with_run(
                 # Also clean any provenance rows referencing these.
                 for prov in (
                     session.query(NotebookCellProvenance)
-                    .filter(
-                        NotebookCellProvenance.proposal_id == prop.proposal_id
-                    )
+                    .filter(NotebookCellProvenance.proposal_id == prop.proposal_id)
                     .all()
                 ):
                     session.delete(prov)
@@ -308,9 +306,7 @@ async def test_accept_propose_returns_payload(
         headers={"X-Agent-Run-Id": run_id},
     )
     proposal_id = create.json()["proposal_id"]
-    resp = await admin_client.post(
-        f"/api/notebook/chat/proposals/{proposal_id}/accept"
-    )
+    resp = await admin_client.post(f"/api/notebook/chat/proposals/{proposal_id}/accept")
     assert resp.status_code == 200, resp.text
     body = resp.json()
     assert body["action"] == "propose"
@@ -331,9 +327,7 @@ async def test_accept_on_explain_is_409(
         headers={"X-Agent-Run-Id": run_id},
     )
     proposal_id = create.json()["proposal_id"]
-    resp = await admin_client.post(
-        f"/api/notebook/chat/proposals/{proposal_id}/accept"
-    )
+    resp = await admin_client.post(f"/api/notebook/chat/proposals/{proposal_id}/accept")
     assert resp.status_code == 409
 
 
@@ -349,9 +343,7 @@ async def test_discard_propose_flips_status(
         headers={"X-Agent-Run-Id": run_id},
     )
     proposal_id = create.json()["proposal_id"]
-    resp = await admin_client.post(
-        f"/api/notebook/chat/proposals/{proposal_id}/discard"
-    )
+    resp = await admin_client.post(f"/api/notebook/chat/proposals/{proposal_id}/discard")
     assert resp.status_code == 200
     assert resp.json()["status"] == "discarded"
 
@@ -394,17 +386,11 @@ async def test_explanations_endpoint_returns_accepted_chronological(
         headers={"X-Agent-Run-Id": run_id},
     )
     discard_id = discard_one.json()["proposal_id"]
-    await admin_client.post(
-        f"/api/notebook/chat/proposals/{discard_id}/discard"
-    )
+    await admin_client.post(f"/api/notebook/chat/proposals/{discard_id}/discard")
 
-    resp = await admin_client.get(
-        f"/api/notebook/chat/cell/{cell_uuid}/explanations"
-    )
+    resp = await admin_client.get(f"/api/notebook/chat/cell/{cell_uuid}/explanations")
     assert resp.status_code == 200, resp.text
-    bodies = [
-        item["explanation"] for item in resp.json()["explanations"]
-    ]
+    bodies = [item["explanation"] for item in resp.json()["explanations"]]
     assert bodies == ["first", "second"]
     assert "to-discard" not in bodies
     assert first.json()["proposal_id"] != second.json()["proposal_id"]
@@ -418,7 +404,7 @@ async def test_explanations_endpoint_returns_accepted_chronological(
 def test_editor_chat_namespace_canonical() -> None:
     """``pointlessql.services.editor_chat`` is the canonical path;
 
-    ``sql_chat`` was renamed in Phase 96 and must not be re-introduced.
+    ``sql_chat`` was renamed and must not be re-introduced.
     """
     import importlib
 

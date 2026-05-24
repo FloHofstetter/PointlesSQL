@@ -48,18 +48,14 @@ def _serialise_agent(agent: Agent, principal_email: str | None = None) -> dict[s
         "principal_email": principal_email,
         "is_verified": bool(agent.is_verified),
         "verified_by_user_id": agent.verified_by_user_id,
-        "verified_at": agent.verified_at.isoformat()
-        if agent.verified_at
-        else None,
+        "verified_at": agent.verified_at.isoformat() if agent.verified_at else None,
         "bio_md": agent.bio_md,
         "created_at": agent.created_at.isoformat(),
     }
 
 
 @router.get("/api/agents")
-async def list_agents(
-    request: Request, q: str | None = None
-) -> dict[str, Any]:
+async def list_agents(request: Request, q: str | None = None) -> dict[str, Any]:
     """Return the workspace's registered agents.
 
     Args:
@@ -75,32 +71,20 @@ async def list_agents(
     workspace_id = current_workspace_id(request)
     factory = request.app.state.session_factory
     with factory() as session:
-        stmt = (
-            select(Agent)
-            .where(Agent.workspace_id == workspace_id)
-            .order_by(Agent.display_name)
-        )
+        stmt = select(Agent).where(Agent.workspace_id == workspace_id).order_by(Agent.display_name)
         if q:
             needle = f"{q.strip().lower()}%"
             stmt = stmt.where(
-                func.lower(Agent.slug).like(needle)
-                | func.lower(Agent.display_name).like(needle)
+                func.lower(Agent.slug).like(needle) | func.lower(Agent.display_name).like(needle)
             )
         rows = session.execute(stmt).scalars().all()
         principals = {
             int(uid): email
             for uid, email in session.execute(
-                select(User.id, User.email).where(
-                    User.id.in_({a.principal_user_id for a in rows})
-                )
+                select(User.id, User.email).where(User.id.in_({a.principal_user_id for a in rows}))
             ).all()
         }
-    return {
-        "agents": [
-            _serialise_agent(a, principals.get(int(a.principal_user_id)))
-            for a in rows
-        ]
-    }
+    return {"agents": [_serialise_agent(a, principals.get(int(a.principal_user_id))) for a in rows]}
 
 
 @router.post("/api/agents")
@@ -150,17 +134,16 @@ async def create_agent(request: Request) -> dict[str, Any]:
     with factory() as session:
         principal = session.get(User, principal_user_id)
         if principal is None:
-            raise ResourceNotFoundError.not_found(
-                what=f"principal user id={principal_user_id}"
-            )
+            raise ResourceNotFoundError.not_found(what=f"principal user id={principal_user_id}")
         slug_base = _slugify(display_name)
         slug = slug_base
         n = 1
-        while session.execute(
-            select(Agent.id).where(
-                Agent.workspace_id == workspace_id, Agent.slug == slug
-            )
-        ).first() is not None:
+        while (
+            session.execute(
+                select(Agent.id).where(Agent.workspace_id == workspace_id, Agent.slug == slug)
+            ).first()
+            is not None
+        ):
             n += 1
             slug = f"{slug_base}-{n}"
         agent = Agent(
@@ -226,9 +209,7 @@ async def verify_agent(slug: str, request: Request) -> dict[str, Any]:
     factory = request.app.state.session_factory
     with factory() as session:
         agent = session.execute(
-            select(Agent).where(
-                Agent.workspace_id == workspace_id, Agent.slug == slug
-            )
+            select(Agent).where(Agent.workspace_id == workspace_id, Agent.slug == slug)
         ).scalar_one_or_none()
         if agent is None:
             raise ResourceNotFoundError("agent not found.")

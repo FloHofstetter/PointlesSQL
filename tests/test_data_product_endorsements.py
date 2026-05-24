@@ -1,4 +1,4 @@
-"""Tests for the Phase-72.4 typed manual endorsements.
+"""Tests for the typed manual endorsements.
 
 Covers:
 
@@ -56,9 +56,7 @@ async def auditor_client(
     """Pre-authenticated client whose user has ``is_auditor=True``."""
     factory = app.state.session_factory
     with factory() as session:
-        u = session.execute(
-            select(User).where(User.email == "test@test.com")
-        ).scalar_one()
+        u = session.execute(select(User).where(User.email == "test@test.com")).scalar_one()
         u.is_admin = False
         u.is_auditor = True
         session.add(u)
@@ -87,9 +85,7 @@ def _seed_dp(tmp_path: Path) -> int:
 
 
 @pytest.mark.asyncio
-async def test_apply_each_type(
-    tmp_path: Path, admin_client: httpx.AsyncClient
-) -> None:
+async def test_apply_each_type(tmp_path: Path, admin_client: httpx.AsyncClient) -> None:
     """Admin can apply each of the four typed endorsements."""
     _seed_dp(tmp_path)
     for et in (
@@ -107,9 +103,7 @@ async def test_apply_each_type(
 
 
 @pytest.mark.asyncio
-async def test_apply_unknown_type_400(
-    tmp_path: Path, admin_client: httpx.AsyncClient
-) -> None:
+async def test_apply_unknown_type_400(tmp_path: Path, admin_client: httpx.AsyncClient) -> None:
     """Unknown endorsement_type returns 400."""
     _seed_dp(tmp_path)
     res = await admin_client.post(
@@ -180,9 +174,7 @@ async def test_reapply_after_remove_creates_new_row(
             json={"endorsement_type": "under-review"},
         )
     ).json()
-    await admin_client.delete(
-        f"/api/data-products/main/sales_gold/endorsements/{first['id']}"
-    )
+    await admin_client.delete(f"/api/data-products/main/sales_gold/endorsements/{first['id']}")
     second = (
         await admin_client.post(
             "/api/data-products/main/sales_gold/endorsements",
@@ -233,9 +225,7 @@ async def test_auditor_cannot_apply_production_ready(
 
 
 @pytest.mark.asyncio
-async def test_apply_writes_audit_log_row(
-    tmp_path: Path, admin_client: httpx.AsyncClient
-) -> None:
+async def test_apply_writes_audit_log_row(tmp_path: Path, admin_client: httpx.AsyncClient) -> None:
     """Each apply drops ``endorsement.applied`` into audit_log."""
     _seed_dp(tmp_path)
     await admin_client.post(
@@ -245,9 +235,7 @@ async def test_apply_writes_audit_log_row(
     factory = app.state.session_factory
     with factory() as session:
         rows = (
-            session.execute(
-                select(AuditLog).where(AuditLog.action == "endorsement.applied")
-            )
+            session.execute(select(AuditLog).where(AuditLog.action == "endorsement.applied"))
             .scalars()
             .all()
         )
@@ -256,9 +244,7 @@ async def test_apply_writes_audit_log_row(
 
 
 @pytest.mark.asyncio
-async def test_remove_writes_audit_log_row(
-    tmp_path: Path, admin_client: httpx.AsyncClient
-) -> None:
+async def test_remove_writes_audit_log_row(tmp_path: Path, admin_client: httpx.AsyncClient) -> None:
     """Each remove drops ``endorsement.removed`` into audit_log."""
     _seed_dp(tmp_path)
     applied = (
@@ -267,15 +253,11 @@ async def test_remove_writes_audit_log_row(
             json={"endorsement_type": "production-ready"},
         )
     ).json()
-    await admin_client.delete(
-        f"/api/data-products/main/sales_gold/endorsements/{applied['id']}"
-    )
+    await admin_client.delete(f"/api/data-products/main/sales_gold/endorsements/{applied['id']}")
     factory = app.state.session_factory
     with factory() as session:
         rows = (
-            session.execute(
-                select(AuditLog).where(AuditLog.action == "endorsement.removed")
-            )
+            session.execute(select(AuditLog).where(AuditLog.action == "endorsement.removed"))
             .scalars()
             .all()
         )
@@ -304,8 +286,11 @@ async def test_cross_workspace_iso(
     with factory() as session:
         session.add(
             Workspace(
-                id=2, slug="second", name="Second",
-                description="iso", created_at=now,
+                id=2,
+                slug="second",
+                name="Second",
+                description="iso",
+                created_at=now,
             )
         )
         nonadmin = session.execute(
@@ -313,7 +298,9 @@ async def test_cross_workspace_iso(
         ).scalar_one()
         session.add(
             WorkspaceMember(
-                workspace_id=2, user_id=nonadmin.id, role="member",
+                workspace_id=2,
+                user_id=nonadmin.id,
+                role="member",
                 created_at=now,
             )
         )

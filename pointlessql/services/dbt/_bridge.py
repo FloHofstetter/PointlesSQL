@@ -130,7 +130,7 @@ def parse_run_results(path: Path) -> list[dict[str, Any]]:
     The file is only written when dbt reaches the post-execute phase,
     so a compile failure leaves the previous run's results intact.
     Callers should check the executor exit code before trusting an
-    "old run_results.json" — Sprint 36.2 routes always pair
+    "old run_results.json".2 routes always pair
     executor results with a fresh exit code.
 
     Args:
@@ -449,7 +449,7 @@ def emit_test_failure_rejects(
     Per-row extraction (one reject per failing data row, with the
     real ``_lineage_row_id``) is deferred — it would require ``dbt
     test --store-failures`` and a follow-up SELECT against
-    ``dbt_test__audit.<test_name>``.  This sprint emits a single
+    ``dbt_test__audit.<test_name>``.  This a single
     aggregate reject per test instead.
 
     Args:

@@ -1,7 +1,7 @@
 """pre-merge reject detection unit tests.
 
 The end-to-end ``pql.merge(track_rejects=True)`` flow needs deltalake
-+ soyuz and is exercised by the Sprint 15.5.5 live replay.  These
++ soyuz and is exercised by the live replay.  These
 tests cover the pure-Python helper :func:`_detect_rejects` and the
 ``record_rejects`` persistence helper.
 """

@@ -59,9 +59,7 @@ def _require_steward_or_admin(user: Any, dp_row: Any) -> None:
             the registered steward of *dp_row*.
     """
     is_admin = bool(user.get("is_admin"))
-    is_steward = (
-        dp_row.steward_user_id is not None and dp_row.steward_user_id == user["id"]
-    )
+    is_steward = dp_row.steward_user_id is not None and dp_row.steward_user_id == user["id"]
     if is_admin or is_steward:
         return
     raise AuthorizationError(
@@ -86,9 +84,7 @@ def _serialise_config(
         "llm_provider": row.llm_provider,
         "llm_model": row.llm_model,
         "prompt_override_md": row.prompt_override_md,
-        "last_run_at": (
-            row.last_run_at.isoformat() if row.last_run_at else None
-        ),
+        "last_run_at": (row.last_run_at.isoformat() if row.last_run_at else None),
         "last_run_comment_id": row.last_run_comment_id,
         "acting_user_id": row.acting_user_id,
         "agent_slug": row.agent_slug,
@@ -195,16 +191,13 @@ async def upsert_active_reviewer_config(
     enabled = bool(body.get("enabled", False))
     runner = str(body.get("runner") or "")
     if runner not in ACTIVE_REVIEWER_RUNNERS:
-        raise BadRequestError(
-            f"runner must be one of {list(ACTIVE_REVIEWER_RUNNERS)!r}"
-        )
+        raise BadRequestError(f"runner must be one of {list(ACTIVE_REVIEWER_RUNNERS)!r}")
     llm_provider_raw = body.get("llm_provider")
     llm_provider: str | None = None
     if llm_provider_raw is not None and llm_provider_raw != "":
         if llm_provider_raw not in ACTIVE_REVIEWER_PROVIDERS:
             raise BadRequestError(
-                "llm_provider must be one of "
-                f"{list(ACTIVE_REVIEWER_PROVIDERS)!r} or null"
+                f"llm_provider must be one of {list(ACTIVE_REVIEWER_PROVIDERS)!r} or null"
             )
         llm_provider = str(llm_provider_raw)
     llm_model = body.get("llm_model")
@@ -218,9 +211,7 @@ async def upsert_active_reviewer_config(
     agent_slug_raw = body.get("agent_slug")
     if agent_slug_raw is not None and not isinstance(agent_slug_raw, str):
         raise BadRequestError("agent_slug must be a string or null")
-    agent_slug = (
-        agent_slug_raw.strip().lower() if isinstance(agent_slug_raw, str) else None
-    )
+    agent_slug = agent_slug_raw.strip().lower() if isinstance(agent_slug_raw, str) else None
     if agent_slug == "":
         agent_slug = None
 

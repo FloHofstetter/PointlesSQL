@@ -1,4 +1,4 @@
-"""Tests for the Phase-66.5 SQL-cell helpers + WS execute path."""
+"""Tests for the SQL-cell helpers + WS execute path."""
 
 from __future__ import annotations
 
@@ -49,7 +49,7 @@ def test_build_kernel_wrapper_escapes_sql() -> None:
         result_var="df",
     )
     # repr() picks one quote style; the escaped form must appear.
-    assert "SELECT 'hello'" in snippet or 'SELECT \\\'hello\\\'' in snippet
+    assert "SELECT 'hello'" in snippet or "SELECT \\'hello\\'" in snippet
 
 
 class _FakeUcClient:
@@ -65,9 +65,7 @@ class _FakeUcClient:
 @pytest.mark.asyncio
 async def test_resolve_approved_tables_happy_path(monkeypatch: pytest.MonkeyPatch) -> None:
     """Returns the storage-location map after a successful privilege check."""
-    fake = _FakeUcClient(
-        {"main.public.foo": {"storage_location": "/tmp/foo"}}
-    )
+    fake = _FakeUcClient({"main.public.foo": {"storage_location": "/tmp/foo"}})
 
     async def _fake_check_privilege(*args, **kwargs) -> None:
         return None
@@ -105,9 +103,7 @@ async def test_resolve_approved_tables_denied(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """``check_privilege`` raising propagates as ``AuthorizationError``."""
-    fake = _FakeUcClient(
-        {"main.public.foo": {"storage_location": "/tmp/foo"}}
-    )
+    fake = _FakeUcClient({"main.public.foo": {"storage_location": "/tmp/foo"}})
 
     async def _denied(*args, **kwargs) -> None:
         raise AuthorizationError(

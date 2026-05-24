@@ -31,7 +31,7 @@ class NotebookCellSequenceProposal(Base):
     DataFrame → plot → markdown`` sequence the user can insert as a
     block.  Each row carries the full cell list as JSON so insertion
     is atomic (no partial accept-then-discard pollution) and the
-    reviewer-per-cell flow from Phase 101 can fan out comments to
+    reviewer-per-cell flow can fan out comments to
     each cell individually after acceptance.
 
     Lifecycle: ``pending`` → ``accepted`` | ``discarded`` |
@@ -59,9 +59,7 @@ class NotebookCellSequenceProposal(Base):
     __tablename__ = "notebook_cell_sequence_proposals"
 
     __table_args__ = (
-        UniqueConstraint(
-            "proposal_id", name="uq_nb_cell_sequence_proposal_uuid"
-        ),
+        UniqueConstraint("proposal_id", name="uq_nb_cell_sequence_proposal_uuid"),
         Index(
             "ix_nb_cell_sequence_session",
             "chat_session_id",

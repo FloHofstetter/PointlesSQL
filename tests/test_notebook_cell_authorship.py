@@ -1,4 +1,4 @@
-"""Tests for Phase 101 — per-cell authorship attribution."""
+"""Tests — per-cell authorship attribution."""
 
 from __future__ import annotations
 
@@ -244,9 +244,7 @@ def test_get_attribution_returns_envelope(
             email="user@test",
         )
         session.commit()
-        envelope = cell_authorship_service.get_attribution(
-            session, cell_uuid=cell_uuid
-        )
+        envelope = cell_authorship_service.get_attribution(session, cell_uuid=cell_uuid)
         assert envelope is not None
         assert envelope["first_author"]["kind"] == "user"
         assert envelope["first_author"]["email"] == "user@test"
@@ -257,9 +255,7 @@ def test_get_attribution_unknown_cell_returns_none(
 ) -> None:
     """Missing row → ``None``, not exception."""
     with factory() as session:
-        out = cell_authorship_service.get_attribution(
-            session, cell_uuid=str(uuid.uuid4())
-        )
+        out = cell_authorship_service.get_attribution(session, cell_uuid=str(uuid.uuid4()))
         assert out is None
 
 
@@ -276,9 +272,7 @@ def test_list_authored_by_agent(factory: sessionmaker) -> None:  # type: ignore[
             agent_run_id="r1",
         )
         session.commit()
-        cells = cell_authorship_service.list_authored_by_agent(
-            session, agent_id=agent_id
-        )
+        cells = cell_authorship_service.list_authored_by_agent(session, agent_id=agent_id)
         assert len(cells) == 1
         assert cells[0]["cell_uuid"] == cell_uuid
         assert cells[0]["agent_run_id"] == "r1"
@@ -356,9 +350,7 @@ def test_list_for_notebook_returns_mapping(
             session, cell_uuid=cell_b, kind="user", email="b@test"
         )
         session.commit()
-        out = cell_authorship_service.list_for_notebook(
-            session, notebook_id=nb_id
-        )
+        out = cell_authorship_service.list_for_notebook(session, notebook_id=nb_id)
     assert set(out.keys()) == {cell_a, cell_b}
     assert out[cell_a]["first_author"]["email"] == "a@test"
     assert out[cell_b]["first_author"]["email"] == "b@test"
@@ -379,9 +371,7 @@ async def test_api_notebook_attribution_bulk(
     """GET /api/notebooks/attribution/bulk returns ``{cell_uuid: envelope}``."""
     nb_path = workspace_dir / "bulk.py"
     nb_path.write_text("# %%\nprint(1)\n")
-    resp = await admin_client.get(
-        "/api/notebooks/attribution/bulk", params={"path": "bulk.py"}
-    )
+    resp = await admin_client.get("/api/notebooks/attribution/bulk", params={"path": "bulk.py"})
     assert resp.status_code == 200, resp.text
     body = resp.json()
     assert body["path"] == "bulk.py"

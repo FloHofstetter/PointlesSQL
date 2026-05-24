@@ -7,8 +7,7 @@
  * ``roles`` array.
  *
  * Route enforcement (actually blocking actions on a notebook based
- * on the lattice) is still on the deferred list per Phase 99's
- * memory note; this panel is the CRUD surface only.
+ * on the lattice) is still on the deferred list per * memory note; this panel is the CRUD surface only.
  */
 
 export function installPermissionsPanel(state) {

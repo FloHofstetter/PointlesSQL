@@ -1,4 +1,4 @@
-"""Fan-out helper for Phase 71.4 data-product social events.
+"""Fan-out helper data-product social events.
 
 Given one event (someone commented / reviewed / followed a DP),
 resolve the recipient set and bulk-insert one
@@ -44,7 +44,7 @@ def _opted_in_inbox(prefs_json: str | None, event_type: str) -> bool:
         return True
     try:
         prefs_any: Any = json.loads(prefs_json)
-    except (ValueError, TypeError):
+    except ValueError, TypeError:
         return True
     if not isinstance(prefs_any, dict):
         return True
@@ -134,14 +134,10 @@ def fanout_event(
 
             # filter recipients by per-user inbox opt-out.
             pref_rows = session.execute(
-                select(User.id, User.notification_prefs_json).where(
-                    User.id.in_(recipients)
-                )
+                select(User.id, User.notification_prefs_json).where(User.id.in_(recipients))
             ).all()
             opted_in: set[int] = {
-                int(uid)
-                for uid, prefs in pref_rows
-                if _opted_in_inbox(prefs, event_type)
+                int(uid) for uid, prefs in pref_rows if _opted_in_inbox(prefs, event_type)
             }
             if not opted_in:
                 return 0
@@ -194,12 +190,9 @@ def fanout_event(
         # underlying audit row + governance event already persisted;
         # losing an inbox row is annoying but never load-bearing.
         logger.exception(
-            "user_notifications fan-out failed for event_type=%s "
-            "kind=%s ref=%s",
+            "user_notifications fan-out failed for event_type=%s kind=%s ref=%s",
             event_type,
             entity_kind,
             entity_ref,
         )
         return 0
-
-

@@ -41,18 +41,12 @@ def upgrade() -> None:
         sa.Column("discarded_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("superseded_at", sa.DateTime(timezone=True), nullable=True),
         sa.ForeignKeyConstraint(["created_by_user_id"], ["users.id"]),
-        sa.ForeignKeyConstraint(
-            ["notebook_id"], ["notebooks.id"], ondelete="CASCADE"
-        ),
+        sa.ForeignKeyConstraint(["notebook_id"], ["notebooks.id"], ondelete="CASCADE"),
         sa.ForeignKeyConstraint(["promoted_by_user_id"], ["users.id"]),
         sa.PrimaryKeyConstraint("id"),
     )
-    with op.batch_alter_table(
-        "notebook_branch_bindings", schema=None
-    ) as batch_op:
-        batch_op.create_index(
-            "ix_nb_branch_binding_branch", ["branch_name"], unique=False
-        )
+    with op.batch_alter_table("notebook_branch_bindings", schema=None) as batch_op:
+        batch_op.create_index("ix_nb_branch_binding_branch", ["branch_name"], unique=False)
         batch_op.create_index(
             "ix_nb_branch_binding_notebook_active",
             ["notebook_id", "superseded_at"],
@@ -62,9 +56,7 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     """Drop ``notebook_branch_bindings``."""
-    with op.batch_alter_table(
-        "notebook_branch_bindings", schema=None
-    ) as batch_op:
+    with op.batch_alter_table("notebook_branch_bindings", schema=None) as batch_op:
         batch_op.drop_index("ix_nb_branch_binding_notebook_active")
         batch_op.drop_index("ix_nb_branch_binding_branch")
     op.drop_table("notebook_branch_bindings")

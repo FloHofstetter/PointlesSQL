@@ -85,9 +85,7 @@ async def test_feed_comment_row_carries_entity_kind_and_registry_url(
     now = datetime.datetime.now(datetime.UTC)
     with factory() as session:
         admin_id = int(
-            session.execute(
-                select(User.id).where(User.email == "test@test.com")
-            ).scalar_one()
+            session.execute(select(User.id).where(User.email == "test@test.com")).scalar_one()
         )
         from pointlessql.services.social import get_or_create_target
 
@@ -138,9 +136,7 @@ async def test_feed_notification_row_carries_polymorphic_source_markers(
     now = datetime.datetime.now(datetime.UTC)
     with factory() as session:
         admin_id = int(
-            session.execute(
-                select(User.id).where(User.email == "test@test.com")
-            ).scalar_one()
+            session.execute(select(User.id).where(User.email == "test@test.com")).scalar_one()
         )
         session.add(
             UserNotification(
@@ -149,9 +145,7 @@ async def test_feed_notification_row_carries_polymorphic_source_markers(
                 event_type="phase77i.synth.event",
                 source_entity_kind="table",
                 source_entity_ref="main.sales_gold.orders",
-                source_url=(
-                    "/catalogs/main/schemas/sales_gold/tables/orders"
-                ),
+                source_url=("/catalogs/main/schemas/sales_gold/tables/orders"),
                 summary_md="phase77i notification test",
                 actor_user_id=None,
                 created_at=now,
@@ -166,6 +160,4 @@ async def test_feed_notification_row_carries_polymorphic_source_markers(
     row = matching[0]
     assert row["entity_kind"] == "table"
     assert row["entity_ref"] == "main.sales_gold.orders"
-    assert row["source_url"] == (
-        "/catalogs/main/schemas/sales_gold/tables/orders"
-    )
+    assert row["source_url"] == ("/catalogs/main/schemas/sales_gold/tables/orders")

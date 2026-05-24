@@ -334,7 +334,7 @@ async def _enrich_with_source_file(request: Request, steps: list[LineageStep]) -
     client = get_uc_client(request)
     try:
         info = await client.get_table(parts[0], parts[1], parts[2])
-    except (CatalogNotFoundError, CatalogUnavailableError):
+    except CatalogNotFoundError, CatalogUnavailableError:
         return steps
     except Exception:  # noqa: BLE001 — best-effort enrichment
         logger.debug(

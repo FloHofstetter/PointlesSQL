@@ -97,10 +97,7 @@ _REF_KINDS: list[RefKind] = [
     RefKind(
         key="branch",
         validate=_is_branch_fqn,
-        message=(
-            "kind='branch' ref must be a branch FQN "
-            "('catalog.schema__branch_xxx')."
-        ),
+        message=("kind='branch' ref must be a branch FQN ('catalog.schema__branch_xxx')."),
     ),
     RefKind(
         key="model",
@@ -146,8 +143,7 @@ _REF_KINDS: list[RefKind] = [
         key="notebook_cell",
         validate=_is_notebook_cell_ref,
         message=(
-            "kind='notebook_cell' ref must be "
-            "'{notebook_uuid}:{cell_uuid}' (two 36-char UUIDs)."
+            "kind='notebook_cell' ref must be '{notebook_uuid}:{cell_uuid}' (two 36-char UUIDs)."
         ),
     ),
 ]

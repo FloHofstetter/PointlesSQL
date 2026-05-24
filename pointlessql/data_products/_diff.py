@@ -68,12 +68,10 @@ class ContractDiffResult:
             "missing_columns": list(self.missing_columns),
             "extra_columns": list(self.extra_columns),
             "type_mismatches": [
-                {"name": n, "contract": c, "actual": a}
-                for (n, c, a) in self.type_mismatches
+                {"name": n, "contract": c, "actual": a} for (n, c, a) in self.type_mismatches
             ],
             "nullability_mismatches": [
-                {"name": n, "contract": c, "actual": a}
-                for (n, c, a) in self.nullability_mismatches
+                {"name": n, "contract": c, "actual": a} for (n, c, a) in self.nullability_mismatches
             ],
             "dropped_pk_columns": list(self.dropped_pk_columns),
             "is_breaking": self.is_breaking,
@@ -149,9 +147,7 @@ def _diff_columns(
     ``True`` and surfaces real mismatches.
     """
     actual_by_name: dict[str, ActualColumn] = {col.name: col for col in actual}
-    contract_by_name: dict[str, DataProductColumnSpec] = {
-        col.name: col for col in contract.columns
-    }
+    contract_by_name: dict[str, DataProductColumnSpec] = {col.name: col for col in contract.columns}
 
     missing: list[str] = []
     type_mismatches: list[tuple[str, str, str]] = []

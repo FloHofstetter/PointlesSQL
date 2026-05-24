@@ -1,4 +1,4 @@
-"""Tests for the Sprint-54 chart_config persistence surface."""
+"""Tests for chart_config persistence surface."""
 
 from __future__ import annotations
 

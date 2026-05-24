@@ -1,4 +1,4 @@
-"""Unit tests for Phase 56 Jinja macros.
+"""Unit tests Jinja macros.
 
 Covers:
 
@@ -50,8 +50,7 @@ class TestTruncateCell:
 
     def test_none_renders_empty(self, macro_env) -> None:
         template = macro_env.from_string(
-            '{% from "_macros/truncate.html" import truncate_cell %}'
-            "{{ truncate_cell(text) }}"
+            '{% from "_macros/truncate.html" import truncate_cell %}{{ truncate_cell(text) }}'
         )
         rendered = template.render(text=None)
         assert rendered == '<span class="font-monospace small"></span>'
@@ -59,7 +58,7 @@ class TestTruncateCell:
     def test_custom_klass(self, macro_env) -> None:
         template = macro_env.from_string(
             '{% from "_macros/truncate.html" import truncate_cell %}'
-            "{{ truncate_cell(text, max=80, klass=\"text-muted\") }}"
+            '{{ truncate_cell(text, max=80, klass="text-muted") }}'
         )
         rendered = template.render(text="hello")
         assert 'class="text-muted"' in rendered

@@ -58,9 +58,7 @@ def _admin_user_id() -> int:
     factory = app.state.session_factory
     with factory() as session:
         return int(
-            session.execute(
-                select(User.id).where(User.email == "test@test.com")
-            ).scalar_one()
+            session.execute(select(User.id).where(User.email == "test@test.com")).scalar_one()
         )
 
 
@@ -166,9 +164,7 @@ async def test_endorsement_audit_carries_agent_id(
     factory = app.state.session_factory
     with factory() as session:
         rows = (
-            session.execute(
-                select(AuditLog).where(AuditLog.action == "endorsement.applied")
-            )
+            session.execute(select(AuditLog).where(AuditLog.action == "endorsement.applied"))
             .scalars()
             .all()
         )

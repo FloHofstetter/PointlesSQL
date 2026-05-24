@@ -157,12 +157,8 @@ def _enforce_rate_limit(request: Request) -> None:
         # unit tests that hand-set api_key flags on request.state.
         return
     factory = request.app.state.session_factory
-    bucket = rate_limit_service.bucket_for(
-        "sql_statements", "apikey", str(api_key_id)
-    )
-    allowed, retry_after = rate_limit_service.check_and_record(
-        factory, bucket, count, window
-    )
+    bucket = rate_limit_service.bucket_for("sql_statements", "apikey", str(api_key_id))
+    allowed, retry_after = rate_limit_service.check_and_record(factory, bucket, count, window)
     if not allowed:
         raise _DbxApiError(
             429,
@@ -288,9 +284,7 @@ async def submit_statement(
             400,
             {
                 "error_code": "INVALID_PARAMETER_VALUE",
-                "message": (
-                    f"disposition={disposition!r} is not supported in v1; only 'INLINE'."
-                ),
+                "message": (f"disposition={disposition!r} is not supported in v1; only 'INLINE'."),
             },
         )
 
@@ -307,7 +301,7 @@ async def submit_statement(
     raw_row_limit = payload.get("row_limit") or settings.sql.max_rows
     try:
         row_limit = max(1, min(int(raw_row_limit), int(sql_cfg.max_row_limit)))
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         raise _DbxApiError(
             400,
             {
@@ -485,7 +479,7 @@ async def submit_statement(
             cancel_statement(request.app.state, statement_id)
             try:
                 await asyncio.wait_for(asyncio.shield(task), timeout=2.0)
-            except (TimeoutError, asyncio.CancelledError, Exception):  # noqa: BLE001
+            except TimeoutError, asyncio.CancelledError, Exception:  # noqa: BLE001
                 pass
             return JSONResponse(status_envelope(statement_id=statement_id, state="CANCELED"))
         # CONTINUE: leave task running, client polls.

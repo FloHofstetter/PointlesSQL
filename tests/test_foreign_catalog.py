@@ -1,4 +1,4 @@
-"""Tests for the Sprint 17 foreign-catalog UI + API surface.
+"""Tests for the foreign-catalog UI + API surface.
 
 Covers:
 - ``POST /api/catalogs`` (admin-only) for managed and foreign variants.

@@ -72,8 +72,7 @@ def fresh_notebook_with_blob() -> Iterator[str]:
                 y_doc_blob=blob,
                 # Backdate updated_at so the TTL-based needs_compaction
                 # branch fires deterministically.
-                updated_at=datetime.datetime.now(datetime.UTC)
-                - datetime.timedelta(days=30),
+                updated_at=datetime.datetime.now(datetime.UTC) - datetime.timedelta(days=30),
                 compacted_at=None,
             )
         )
@@ -82,9 +81,7 @@ def fresh_notebook_with_blob() -> Iterator[str]:
     notebook_coedit_ws._HUBS.pop(notebook_id, None)
     with factory() as session:
         session.execute(
-            delete(NotebookCrdtState).where(
-                NotebookCrdtState.notebook_id == notebook_id
-            )
+            delete(NotebookCrdtState).where(NotebookCrdtState.notebook_id == notebook_id)
         )
         session.execute(delete(Notebook).where(Notebook.id == notebook_id))
         session.commit()

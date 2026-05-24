@@ -96,7 +96,7 @@ def test_prepare_preserves_alias() -> None:
     assert '"main.sales.orders" AS o' in prepared.rewritten_sql
 
 
-# --- Phase 63.1: parse_and_classify / classify / extract_write_target ----
+# --- parse_and_classify / classify / extract_write_target ----
 
 
 @pytest.mark.parametrize(
@@ -172,9 +172,7 @@ def test_extract_write_target_raises_for_select() -> None:
 
 
 def test_extract_source_refs_excludes_target() -> None:
-    ast, stype = parse_and_classify(
-        "INSERT INTO main.s.t SELECT id FROM main.b.s"
-    )
+    ast, stype = parse_and_classify("INSERT INTO main.s.t SELECT id FROM main.b.s")
     assert extract_source_refs(ast, stype) == ["main.b.s"]
 
 

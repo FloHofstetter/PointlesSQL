@@ -1,4 +1,4 @@
-"""Tests for the Sprint 33.4 ``GET /admin/system-info`` HTML page.
+"""Tests for the ``GET /admin/system-info`` HTML page.
 
 Read-only panel covering PII mode, OIDC group mapping, system_keys
 inventory, and API-key scope counts.  All values come from

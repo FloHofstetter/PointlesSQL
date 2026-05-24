@@ -63,18 +63,12 @@ async def admin_api_keys_index(request: Request, include_revoked: bool = False) 
         rotated_at = getattr(row, "rotated_at", None)
         grace_until = getattr(row, "grace_until", None)
         if rotated_at is not None and grace_until is not None:
-            grace_aware = (
-                grace_until
-                if grace_until.tzinfo
-                else grace_until.replace(tzinfo=UTC)
-            )
+            grace_aware = grace_until if grace_until.tzinfo else grace_until.replace(tzinfo=UTC)
             if grace_aware > now:
                 return "rotated"
         expires_at = getattr(row, "expires_at", None)
         if expires_at is not None:
-            expires_aware = (
-                expires_at if expires_at.tzinfo else expires_at.replace(tzinfo=UTC)
-            )
+            expires_aware = expires_at if expires_at.tzinfo else expires_at.replace(tzinfo=UTC)
             if expires_aware <= now:
                 # Past TTL but the sweep hasn't auto-quarantined yet.
                 return "expired"
@@ -108,18 +102,14 @@ async def admin_api_keys_index(request: Request, include_revoked: bool = False) 
                     k.expires_at.isoformat() if getattr(k, "expires_at", None) else None
                 ),
                 "quarantined_at": (
-                    k.quarantined_at.isoformat()
-                    if getattr(k, "quarantined_at", None)
-                    else None
+                    k.quarantined_at.isoformat() if getattr(k, "quarantined_at", None) else None
                 ),
                 "quarantine_reason": getattr(k, "quarantine_reason", None),
                 "rotated_at": (
                     k.rotated_at.isoformat() if getattr(k, "rotated_at", None) else None
                 ),
                 "grace_until": (
-                    k.grace_until.isoformat()
-                    if getattr(k, "grace_until", None)
-                    else None
+                    k.grace_until.isoformat() if getattr(k, "grace_until", None) else None
                 ),
             }
         )

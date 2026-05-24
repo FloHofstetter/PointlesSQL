@@ -209,9 +209,7 @@ async def test_list_job_logs_filters_by_task(
     run_id = _seed_run(job_id)
     _seed_log(run_id, task_id=task_id, message="task line")
     _seed_log(run_id, task_id=None, message="job line")
-    resp = await admin_client.get(
-        f"/api/jobs/{job_id}/runs/{run_id}/logs?task_id={task_id}"
-    )
+    resp = await admin_client.get(f"/api/jobs/{job_id}/runs/{run_id}/logs?task_id={task_id}")
     assert resp.status_code == 200
     body = resp.json()
     messages = {row.get("message") or row.get("line") for row in body}
@@ -257,9 +255,7 @@ async def test_compare_404_for_non_papermill_job(
     job_id = _seed_job()  # kind=python by default
     run_id = _seed_run(job_id)
     other_run_id = _seed_run(job_id)
-    resp = await admin_client.get(
-        f"/jobs/{job_id}/runs/{run_id}/compare?to={other_run_id}"
-    )
+    resp = await admin_client.get(f"/jobs/{job_id}/runs/{run_id}/compare?to={other_run_id}")
     assert resp.status_code == 404
 
 

@@ -8,7 +8,7 @@
  *
  * Drag-drop rules:
  * - Only notebook rows are draggable.  Folder drag is intentionally
- *   omitted in this sprint because the backend rename helper only
+ *   omitted in this the backend rename helper only
  *   supports files; folder-rename arrives in a follow-up.
  * - Only folder rows accept drops.  Drop onto the panel root
  *   moves the notebook to the workspace root.
@@ -16,7 +16,7 @@
  * - Drop onto an existing target name surfaces the backend's 422.
  *
  * Inline rename:
- * - F2 (from sprint 114.2) and double-click both set
+ * - F2 () and double-click both set
  *   ``inlineRenameFor = path``.  The template swaps the label span
  *   for an input.  Enter / blur commit; Escape cancels.
  */

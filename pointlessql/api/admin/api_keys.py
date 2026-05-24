@@ -293,9 +293,7 @@ async def api_admin_quarantine_api_key(
         request.app.state.session_factory, name=name, reason=reason_raw
     )
     if not applied:
-        raise CatalogNotFoundError(
-            f"api_key {name!r} not found, revoked, or already quarantined"
-        )
+        raise CatalogNotFoundError(f"api_key {name!r} not found, revoked, or already quarantined")
     await audit(
         request,
         "api_key.quarantined",
@@ -306,9 +304,7 @@ async def api_admin_quarantine_api_key(
 
 
 @router.post("/api/admin/api-keys/{name}/unquarantine")
-async def api_admin_unquarantine_api_key(
-    request: Request, name: str
-) -> dict[str, Any]:
+async def api_admin_unquarantine_api_key(request: Request, name: str) -> dict[str, Any]:
     """Lift a quarantine.
 
     Args:
@@ -322,13 +318,9 @@ async def api_admin_unquarantine_api_key(
         CatalogNotFoundError: Key missing or not currently quarantined.
     """
     require_admin(request)
-    applied = api_keys_service.unquarantine_api_key(
-        request.app.state.session_factory, name=name
-    )
+    applied = api_keys_service.unquarantine_api_key(request.app.state.session_factory, name=name)
     if not applied:
-        raise CatalogNotFoundError(
-            f"api_key {name!r} not found or not currently quarantined"
-        )
+        raise CatalogNotFoundError(f"api_key {name!r} not found or not currently quarantined")
     await audit(request, "api_key.unquarantined", f"api_key:{name}")
     return {"name": name, "quarantined": False}
 
@@ -433,9 +425,7 @@ async def api_admin_list_grants(request: Request, name: str) -> dict[str, Any]:
         cg = session.scalars(
             select(ApiKeyCatalogGrant).where(ApiKeyCatalogGrant.api_key_id == row.id)
         ).all()
-        ig = session.scalars(
-            select(ApiKeyIpGrant).where(ApiKeyIpGrant.api_key_id == row.id)
-        ).all()
+        ig = session.scalars(select(ApiKeyIpGrant).where(ApiKeyIpGrant.api_key_id == row.id)).all()
         return {
             "catalog_grants": [
                 {
@@ -488,9 +478,7 @@ async def api_admin_add_catalog_grant(
     if not isinstance(catalog_raw, str) or not catalog_raw.strip():
         raise ValidationError("catalog_name must be a non-empty string")
     schema_raw = body.get("schema_name")
-    if schema_raw is not None and (
-        not isinstance(schema_raw, str) or not schema_raw.strip()
-    ):
+    if schema_raw is not None and (not isinstance(schema_raw, str) or not schema_raw.strip()):
         raise ValidationError("schema_name must be a non-empty string or null")
     user = get_user(request)
     factory = request.app.state.session_factory
@@ -637,9 +625,7 @@ async def api_admin_add_ip_grant(
 
 
 @router.delete("/api/admin/api-keys/{name}/grants/ip/{grant_id}")
-async def api_admin_delete_ip_grant(
-    request: Request, name: str, grant_id: int
-) -> dict[str, Any]:
+async def api_admin_delete_ip_grant(request: Request, name: str, grant_id: int) -> dict[str, Any]:
     """Delete an IP grant.
 
     Args:
@@ -680,9 +666,7 @@ async def api_admin_delete_ip_grant(
 
 
 @router.get("/api/admin/api-keys/{name}/usage")
-async def api_admin_get_usage(
-    request: Request, name: str, days: int = 30
-) -> dict[str, Any]:
+async def api_admin_get_usage(request: Request, name: str, days: int = 30) -> dict[str, Any]:
     """Return the last *days* days of usage for *name*.
 
     Args:

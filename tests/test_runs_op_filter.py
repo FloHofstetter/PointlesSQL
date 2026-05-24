@@ -1,4 +1,4 @@
-"""Tests for Sprint 18.1 cross-axis ``?op_id=`` filter.
+"""Tests cross-axis ``?op_id=`` filter.
 
 Covers:
 

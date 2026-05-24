@@ -211,4 +211,3 @@ async def api_delete_alert(request: Request, slug: str) -> Response:
         raise CatalogNotFoundError(f"Alert {slug!r} not found.")
     await audit(request, "alert.deleted", f"alert:{slug}", None)
     return Response(status_code=204)
-

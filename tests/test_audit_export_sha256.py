@@ -1,4 +1,4 @@
-"""Tests for the Phase 75.1 verifiable audit export.
+"""Tests for the verifiable audit export.
 
 Covers:
 
@@ -91,9 +91,7 @@ def test_export_sha256_sidecar_matches_sha256sum_format(
         factory,
         out=out,
         fmt="json",
-        filters=ExportFilters(
-            since=None, until=None, action=None, actor=None, target=None
-        ),
+        filters=ExportFilters(since=None, until=None, action=None, actor=None, target=None),
     )
     sha_path = Path(result["sha256_path"])
     sha_line = sha_path.read_text(encoding="ascii")
@@ -118,9 +116,7 @@ def test_export_manifest_carries_filters_and_count(tmp_path: Path) -> None:
             target=None,
         ),
     )
-    manifest = json.loads(
-        Path(result["manifest_path"]).read_text(encoding="utf-8")
-    )
+    manifest = json.loads(Path(result["manifest_path"]).read_text(encoding="utf-8"))
     assert manifest["entry_count"] == result["entry_count"]
     assert manifest["data_sha256"] == result["sha256"]
     assert manifest["fmt"] == "json"
@@ -138,9 +134,7 @@ def test_export_writes_mode_0600(tmp_path: Path) -> None:
         factory,
         out=out,
         fmt="json",
-        filters=ExportFilters(
-            since=None, until=None, action=None, actor=None, target=None
-        ),
+        filters=ExportFilters(since=None, until=None, action=None, actor=None, target=None),
     )
     for path_key in ("data_path", "sha256_path", "manifest_path"):
         path = Path(result[path_key])
@@ -157,9 +151,7 @@ def test_export_csv_round_trip(tmp_path: Path) -> None:
         factory,
         out=out,
         fmt="csv",
-        filters=ExportFilters(
-            since=None, until=None, action=None, actor=None, target=None
-        ),
+        filters=ExportFilters(since=None, until=None, action=None, actor=None, target=None),
     )
     body = out.read_text(encoding="utf-8")
     # Header line + N data rows.
@@ -173,19 +165,14 @@ async def test_tarball_endpoint_streams_three_member_archive(
     admin_client: httpx.AsyncClient,
 ) -> None:
     _seed_audit_rows(3)
-    resp = await admin_client.get(
-        "/admin/audit/export.tar.gz?fmt=json&since=all"
-    )
+    resp = await admin_client.get("/admin/audit/export.tar.gz?fmt=json&since=all")
     assert resp.status_code == 200
     assert resp.headers["content-type"] == "application/gzip"
     tar = tarfile.open(fileobj=io.BytesIO(resp.content), mode="r:gz")
     members = tar.getnames()
     sha_members = [m for m in members if m.endswith(".sha256")]
     manifest_members = [m for m in members if m.endswith(".manifest.json")]
-    data_members = [
-        m for m in members
-        if m not in sha_members and m not in manifest_members
-    ]
+    data_members = [m for m in members if m not in sha_members and m not in manifest_members]
     assert len(data_members) == 1
     assert len(sha_members) == 1
     assert len(manifest_members) == 1

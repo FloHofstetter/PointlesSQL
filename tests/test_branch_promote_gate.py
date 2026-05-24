@@ -45,17 +45,13 @@ def stub_promote(monkeypatch: pytest.MonkeyPatch) -> None:
     def _ok_promote(**_kwargs: Any) -> dict[str, Any]:
         return {"promoted": True, "branch_fqn": _BRANCH_FQN}
 
-    monkeypatch.setattr(
-        branches_routes, "promote_branch_schema", _ok_promote
-    )
+    monkeypatch.setattr(branches_routes, "promote_branch_schema", _ok_promote)
 
     def _stub_client(request: Any) -> tuple[Any, Any]:
         del request
         return (object(), object())
 
-    monkeypatch.setattr(
-        branches_routes, "_make_settings_client", _stub_client
-    )
+    monkeypatch.setattr(branches_routes, "_make_settings_client", _stub_client)
 
 
 @pytest.fixture
@@ -109,9 +105,7 @@ def _admin_user_id() -> int:
     factory = app.state.session_factory
     with factory() as session:
         return int(
-            session.execute(
-                select(User.id).where(User.email == "test@test.com")
-            ).scalar_one()
+            session.execute(select(User.id).where(User.email == "test@test.com")).scalar_one()
         )
 
 
@@ -122,10 +116,7 @@ def _peer_user_id() -> int:
     factory = app.state.session_factory
     with factory() as session:
         row = session.execute(
-            select(User.id)
-            .where(User.email != "test@test.com")
-            .order_by(User.id)
-            .limit(1)
+            select(User.id).where(User.email != "test@test.com").order_by(User.id).limit(1)
         ).scalar_one_or_none()
         if row is not None:
             return int(row)

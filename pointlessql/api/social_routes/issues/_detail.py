@@ -35,23 +35,15 @@ async def get_issue(issue_id: int, request: Request) -> dict[str, Any]:
     factory = request.app.state.session_factory
     with factory() as session:
         issue = session.execute(
-            select(Issue).where(
-                Issue.id == issue_id, Issue.workspace_id == workspace_id
-            )
+            select(Issue).where(Issue.id == issue_id, Issue.workspace_id == workspace_id)
         ).scalar_one_or_none()
         if issue is None:
             raise ResourceNotFoundError.not_found(what=f"issue id={issue_id}")
-        parent_kind, parent_ref = hydrate_parent(
-            session, issue.parent_social_target_id
-        )
+        parent_kind, parent_ref = hydrate_parent(session, issue.parent_social_target_id)
         emails = hydrate_emails(
             session,
             [issue.opened_by_user_id]
-            + (
-                [issue.assignee_user_id]
-                if issue.assignee_user_id
-                else []
-            ),
+            + ([issue.assignee_user_id] if issue.assignee_user_id else []),
         )
         return serialise_issue(
             issue,
@@ -63,9 +55,7 @@ async def get_issue(issue_id: int, request: Request) -> dict[str, Any]:
 
 
 @router.patch("/api/issues/{issue_id}")
-async def patch_issue(
-    issue_id: int, request: Request
-) -> dict[str, Any]:
+async def patch_issue(issue_id: int, request: Request) -> dict[str, Any]:
     """Update opener-editable fields on an issue."""
     require_user(request)
     user = get_user(request)
@@ -77,9 +67,7 @@ async def patch_issue(
     factory = request.app.state.session_factory
     with factory() as session:
         issue = session.execute(
-            select(Issue).where(
-                Issue.id == issue_id, Issue.workspace_id == workspace_id
-            )
+            select(Issue).where(Issue.id == issue_id, Issue.workspace_id == workspace_id)
         ).scalar_one_or_none()
         if issue is None:
             raise ResourceNotFoundError.not_found(what=f"issue id={issue_id}")
@@ -99,32 +87,22 @@ async def patch_issue(
             issue.body_md = new_body_raw
         if "assignee_user_id" in payload:
             new_assignee_raw = payload["assignee_user_id"]
-            if new_assignee_raw is not None and not isinstance(
-                new_assignee_raw, int
-            ):
+            if new_assignee_raw is not None and not isinstance(new_assignee_raw, int):
                 raise BadRequestError("assignee_user_id must be int or null")
             issue.assignee_user_id = new_assignee_raw
         if "milestone_id" in payload:
             new_milestone_raw = payload["milestone_id"]
-            if new_milestone_raw is not None and not isinstance(
-                new_milestone_raw, int
-            ):
+            if new_milestone_raw is not None and not isinstance(new_milestone_raw, int):
                 raise BadRequestError("milestone_id must be int or null")
             issue.milestone_id = new_milestone_raw
         if "labels" in payload:
             issue.labels_json = validate_labels(payload["labels"])
         session.commit()
-        parent_kind, parent_ref = hydrate_parent(
-            session, issue.parent_social_target_id
-        )
+        parent_kind, parent_ref = hydrate_parent(session, issue.parent_social_target_id)
         emails = hydrate_emails(
             session,
             [issue.opened_by_user_id]
-            + (
-                [issue.assignee_user_id]
-                if issue.assignee_user_id
-                else []
-            ),
+            + ([issue.assignee_user_id] if issue.assignee_user_id else []),
         )
         result = serialise_issue(
             issue,

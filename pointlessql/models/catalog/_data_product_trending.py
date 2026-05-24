@@ -68,15 +68,9 @@ class DataProductTrending(Base):
         ForeignKey("data_products.id", ondelete="CASCADE"),
         nullable=False,
     )
-    window_start: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
-    window_end: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
+    window_start: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    window_end: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     agent_run_count: Mapped[int] = mapped_column(Integer, nullable=False)
     write_count: Mapped[int] = mapped_column(Integer, nullable=False)
     rank: Mapped[int] = mapped_column(Integer, nullable=False)
-    refreshed_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
+    refreshed_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)

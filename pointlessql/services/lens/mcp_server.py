@@ -81,9 +81,7 @@ def resolve_lens_key(
             f"'Authorization: Bearer <secret>' (SSE)."
         )
     header = (
-        bearer_value
-        if bearer_value.lower().startswith("bearer ")
-        else f"Bearer {bearer_value}"
+        bearer_value if bearer_value.lower().startswith("bearer ") else f"Bearer {bearer_value}"
     )
     entry = verify_bearer(header, factory)
     if entry is None:
@@ -162,9 +160,7 @@ def create_lens_mcp_server(
     cached_ctx: SessionContext | None = None
     if api_key_secret is not None:
         key = resolve_lens_key(factory, bearer_value=api_key_secret)
-        cached_ctx = build_session_context_for_key(
-            key=key, factory=factory, settings=settings
-        )
+        cached_ctx = build_session_context_for_key(key=key, factory=factory, settings=settings)
 
     for tool in ALL_TOOLS:
         _register_tool_on_mcp(mcp, tool, cached_ctx, factory, settings)
@@ -201,9 +197,7 @@ def _register_tool_on_mcp(
     mcp.add_tool(_wrapped, name=tool.name, description=tool.description)
 
 
-def _ephemeral_context(
-    factory: sessionmaker[Session], settings: Settings
-) -> SessionContext:
+def _ephemeral_context(factory: sessionmaker[Session], settings: Settings) -> SessionContext:
     """Build a default workspace=1 context.
 
     Fallback used when the SSE transport hasn't injected a per-request

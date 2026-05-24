@@ -69,10 +69,7 @@ def get_or_create_target(
         msg = "kind='dp' requires a data_product_id back-pointer"
         raise ValueError(msg)
     if kind != "dp" and data_product_id is not None:
-        msg = (
-            f"kind={kind!r} must not carry a data_product_id "
-            "(only kind='dp' rows do)"
-        )
+        msg = f"kind={kind!r} must not carry a data_product_id (only kind='dp' rows do)"
         raise ValueError(msg)
 
     existing = session.execute(
@@ -143,10 +140,7 @@ def resolve_dp_target(
         )
     ).scalar_one_or_none()
     if dp is None:
-        msg = (
-            f"no DataProduct at {catalog_name}.{schema_name} "
-            f"in workspace {workspace_id}"
-        )
+        msg = f"no DataProduct at {catalog_name}.{schema_name} in workspace {workspace_id}"
         raise LookupError(msg)
     return get_or_create_target(
         session,
@@ -166,7 +160,7 @@ def resolve_workspace_for_entity(
 
     For ``kind='dp'`` this is straightforward — the DP carries
     its own ``workspace_id``.  For other kinds the resolver is
-    intentionally minimal in Phase 77.0; each later sub-phase
+    intentionally minimal each later sub-phase
     extends this when it registers its kind (e.g. tables resolve
     via the workspace's pinned-catalog set in 77.1).
 
@@ -210,9 +204,7 @@ def resolve_workspace_for_entity(
     return None
 
 
-def _workspace_for_notebook_cell(
-    session_factory: Any, entity_ref: str
-) -> int | None:
+def _workspace_for_notebook_cell(session_factory: Any, entity_ref: str) -> int | None:
     """Probe the workspace owning a ``"{notebook_uuid}:{cell_uuid}"`` ref.
 
     notebook-cell social anchors join through the parent
@@ -243,9 +235,7 @@ def _workspace_for_notebook_cell(
         return int(row[0])
 
 
-def _workspace_for_catalog(
-    session_factory: Any, catalog_name: str
-) -> int | None:
+def _workspace_for_catalog(session_factory: Any, catalog_name: str) -> int | None:
     """Probe ``workspace_catalog_pins`` for the workspace owning *catalog_name*.
 
     Args:
@@ -254,7 +244,7 @@ def _workspace_for_catalog(
 
     Returns:
         The pinned workspace id, or ``None`` when no workspace has
-        the catalog pinned.  Phase 77.5 factored this out of the
+        the catalog pinned. This factored this out of the
         ``kind='table'`` path so schemas + catalogs share the same
         probe.
     """

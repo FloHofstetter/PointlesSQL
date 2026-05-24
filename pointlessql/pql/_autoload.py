@@ -481,12 +481,8 @@ def _inject_audit_columns(
             ArrowArray,
             pa.array([ingested_at] * n, type=pa.timestamp("us", tz="UTC")),
         ),
-        "_source_file": cast(
-            ArrowArray, pa.array([base_name] * n, type=pa.string())
-        ),
-        "_source_system": cast(
-            ArrowArray, pa.array([source_system] * n, type=pa.string())
-        ),
+        "_source_file": cast(ArrowArray, pa.array([base_name] * n, type=pa.string())),
+        "_source_system": cast(ArrowArray, pa.array([source_system] * n, type=pa.string())),
         "_lineage_row_id": cast(
             ArrowArray,
             pa.array(
@@ -656,9 +652,7 @@ def _append_to_delta(target_location: str, arrow_table: ArrowTable) -> None:
     # ``ArrowTable`` Protocol matches the pyarrow.Table runtime shape;
     # deltalake's stub typing wants its own ArrowArrayExportable union,
     # so we drop to Any at the boundary.
-    deltalake.write_deltalake(
-        target_location, cast(Any, arrow_table), mode="append"
-    )
+    deltalake.write_deltalake(target_location, cast(Any, arrow_table), mode="append")
 
 
 def _register_target_in_uc(

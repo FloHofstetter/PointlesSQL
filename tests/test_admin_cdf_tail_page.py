@@ -1,4 +1,4 @@
-"""Tests for the Phase 40.6 admin CDF subscriptions HTML page."""
+"""Tests for the admin CDF subscriptions HTML page."""
 
 from __future__ import annotations
 

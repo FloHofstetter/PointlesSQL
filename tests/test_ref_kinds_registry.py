@@ -1,4 +1,4 @@
-"""Tests for the Phase 121.6 Item A ``RefKind`` registry."""
+"""Tests for the Item A ``RefKind`` registry."""
 
 from __future__ import annotations
 
@@ -75,17 +75,12 @@ def test_register_new_kind_appends() -> None:
         ("workspace", ["my-ws"], ["", "with/slash", "with.dot"]),
         (
             "notebook_cell",
-            [
-                "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee:"
-                "ffffffff-aaaa-bbbb-cccc-dddddddddddd"
-            ],
+            ["aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee:ffffffff-aaaa-bbbb-cccc-dddddddddddd"],
             ["no-colon-pair", "short:short", ""],
         ),
     ],
 )
-def test_ref_kind_validators(
-    kind: str, good_refs: list[str], bad_refs: list[str]
-) -> None:
+def test_ref_kind_validators(kind: str, good_refs: list[str], bad_refs: list[str]) -> None:
     """Every registered kind validates its happy + sad refs."""
     spec = find_ref_kind(kind)
     assert spec is not None
@@ -96,7 +91,7 @@ def test_ref_kind_validators(
 
 
 def test_registry_holds_eleven_polymorphic_kinds() -> None:
-    """The 11 polymorphic kinds enumerated by Phase 77 are all registered."""
+    """The 11 polymorphic kinds enumerated are all registered."""
     keys = {spec.key for spec in _REF_KINDS}
     expected = {
         "table",

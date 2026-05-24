@@ -170,9 +170,7 @@ async def auth_middleware(request: Request, call_next: Any) -> Response:
 
                 ip_grants = load_ip_grants_for(factory, api_key_id=entry.id)
                 rl_settings = getattr(settings_for_acl, "rate_limit", None)
-                trust_xff = bool(
-                    getattr(rl_settings, "trust_x_forwarded_for", False)
-                )
+                trust_xff = bool(getattr(rl_settings, "trust_x_forwarded_for", False))
                 source_ip = _client_ip(request, trust_xff)
                 if not check_ip_allowed(ip_grants, source_ip):
                     _emit_ip_denied_audit(factory, entry, source_ip)
@@ -180,10 +178,7 @@ async def auth_middleware(request: Request, call_next: Any) -> Response:
                         request,
                         status_code=403,
                         error_code=ErrorCode.IP_NOT_ALLOWED,
-                        detail=(
-                            f"source IP {source_ip!r} is not in the allowlist "
-                            f"for this key"
-                        ),
+                        detail=(f"source IP {source_ip!r} is not in the allowlist for this key"),
                         extra={"source_ip": source_ip, "api_key_name": entry.name},
                     )
             request.state.api_key_name = entry.name
@@ -356,9 +351,7 @@ def _workspace_forbidden(request: Request) -> Response:
         request,
         status_code=403,
         error_code=ErrorCode.WORKSPACE_CONTEXT_MISMATCH,
-        detail=(
-            "The active workspace does not match your membership for this resource."
-        ),
+        detail=("The active workspace does not match your membership for this resource."),
     )
 
 

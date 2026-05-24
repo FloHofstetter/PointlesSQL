@@ -32,9 +32,9 @@ def extract_seed_cells(
     The Y.Doc's :class:`pycrdt.Map` keys live for the duration of
     the live session; the canonical mapping is to the stable
     :class:`NotebookCellIdentity` row.  Cells with no live identity
-    row (brand-new notebook never saved since Phase 95 landed) get a
+    row (brand-new notebook never saved landed) get a
     transient uuid4 so the doc is still navigable; the next save
-    materialises a stable id and Sprint 105.5's save-barrier will
+    materialises a stable id and save-barrier will
     broadcast a remap.
 
     Args:

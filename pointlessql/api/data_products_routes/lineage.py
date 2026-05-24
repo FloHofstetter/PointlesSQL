@@ -38,9 +38,7 @@ async def get_data_product_lineage(
     """
     workspace_id = current_workspace_id(request)
     factory = request.app.state.session_factory
-    _row, contract, _email, _display = load_one(
-        factory, workspace_id, catalog, schema
-    )
+    _row, contract, _email, _display = load_one(factory, workspace_id, catalog, schema)
 
     table_fqns = {f"{catalog}.{schema}.{t.name}" for t in contract.tables}
     nodes: dict[str, dict[str, Any]] = {
@@ -66,12 +64,8 @@ async def get_data_product_lineage(
         ).all()
         for src, tgt in inbound:
             if src and src not in nodes:
-                nodes[src] = {
-                    "data": {"id": src, "label": src.split(".")[-1], "kind": "producer"}
-                }
-            edges.append(
-                {"data": {"source": src, "target": tgt, "kind": "produces"}}
-            )
+                nodes[src] = {"data": {"id": src, "label": src.split(".")[-1], "kind": "producer"}}
+            edges.append({"data": {"source": src, "target": tgt, "kind": "produces"}})
 
         outbound = session.execute(
             select(LineageRowEdge.source_table, LineageRowEdge.target_table)
@@ -80,12 +74,8 @@ async def get_data_product_lineage(
         ).all()
         for src, tgt in outbound:
             if tgt and tgt not in nodes:
-                nodes[tgt] = {
-                    "data": {"id": tgt, "label": tgt.split(".")[-1], "kind": "consumer"}
-                }
-            edges.append(
-                {"data": {"source": src, "target": tgt, "kind": "consumed_by"}}
-            )
+                nodes[tgt] = {"data": {"id": tgt, "label": tgt.split(".")[-1], "kind": "consumer"}}
+            edges.append({"data": {"source": src, "target": tgt, "kind": "consumed_by"}})
 
     return {
         "nodes": list(nodes.values()),

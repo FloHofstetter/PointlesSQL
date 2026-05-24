@@ -1,4 +1,4 @@
-"""API + service tests for Phase 98.B — notebook tags + template gallery."""
+"""API + service tests — notebook tags + template gallery."""
 
 from __future__ import annotations
 
@@ -82,9 +82,7 @@ def test_create_from_template_rejects_unknown(workspace_dir: Path) -> None:
 # -- REST: GET /api/notebooks/templates --------------------------------------
 
 
-async def test_api_list_templates(
-    workspace_dir: Path, admin_client: httpx.AsyncClient
-) -> None:
+async def test_api_list_templates(workspace_dir: Path, admin_client: httpx.AsyncClient) -> None:
     """Gallery endpoint returns the four shipped templates."""
     resp = await admin_client.get("/api/notebooks/templates")
     assert resp.status_code == 200
@@ -123,9 +121,7 @@ async def test_api_create_from_template_rejects_unknown_id(
 # -- REST: tag CRUD -----------------------------------------------------------
 
 
-async def test_api_tag_crud_roundtrip(
-    workspace_dir: Path, admin_client: httpx.AsyncClient
-) -> None:
+async def test_api_tag_crud_roundtrip(workspace_dir: Path, admin_client: httpx.AsyncClient) -> None:
     """Create → list → add tag → list (1 row) → delete → list (0 rows)."""
     await admin_client.post("/api/notebooks/create", json={"path": "n1.py"})
 
@@ -134,26 +130,18 @@ async def test_api_tag_crud_roundtrip(
     assert listed.json()["tags"] == []
     assert "etl" in listed.json()["curated"]
 
-    added = await admin_client.post(
-        "/api/notebooks/tags", json={"path": "n1.py", "tag": "ETL"}
-    )
+    added = await admin_client.post("/api/notebooks/tags", json={"path": "n1.py", "tag": "ETL"})
     assert added.status_code == 200
     assert added.json()["tag"] == "etl"
 
-    after_add = await admin_client.get(
-        "/api/notebooks/tags", params={"path": "n1.py"}
-    )
+    after_add = await admin_client.get("/api/notebooks/tags", params={"path": "n1.py"})
     tags = [row["tag"] for row in after_add.json()["tags"]]
     assert tags == ["etl"]
 
     # idempotent re-add → still one row
-    again = await admin_client.post(
-        "/api/notebooks/tags", json={"path": "n1.py", "tag": "etl"}
-    )
+    again = await admin_client.post("/api/notebooks/tags", json={"path": "n1.py", "tag": "etl"})
     assert again.status_code == 200
-    after_again = await admin_client.get(
-        "/api/notebooks/tags", params={"path": "n1.py"}
-    )
+    after_again = await admin_client.get("/api/notebooks/tags", params={"path": "n1.py"})
     assert len([row["tag"] for row in after_again.json()["tags"]]) == 1
 
     deleted = await admin_client.request(
@@ -198,9 +186,7 @@ async def test_api_tag_requires_auth(
     workspace_dir: Path, anonymous_client: httpx.AsyncClient
 ) -> None:
     """Anonymous callers hit the auth gate."""
-    resp = await anonymous_client.get(
-        "/api/notebooks/tags", params={"path": "anything.py"}
-    )
+    resp = await anonymous_client.get("/api/notebooks/tags", params={"path": "anything.py"})
     assert resp.status_code in (401, 403)
 
 
@@ -210,15 +196,9 @@ async def test_api_tags_bulk_returns_per_path_map(
     """Bulk endpoint indexes tags by relative path so the workspace tree."""
     await admin_client.post("/api/notebooks/create", json={"path": "a.py"})
     await admin_client.post("/api/notebooks/create", json={"path": "b.py"})
-    await admin_client.post(
-        "/api/notebooks/tags", json={"path": "a.py", "tag": "etl"}
-    )
-    await admin_client.post(
-        "/api/notebooks/tags", json={"path": "a.py", "tag": "prod"}
-    )
-    await admin_client.post(
-        "/api/notebooks/tags", json={"path": "b.py", "tag": "draft"}
-    )
+    await admin_client.post("/api/notebooks/tags", json={"path": "a.py", "tag": "etl"})
+    await admin_client.post("/api/notebooks/tags", json={"path": "a.py", "tag": "prod"})
+    await admin_client.post("/api/notebooks/tags", json={"path": "b.py", "tag": "draft"})
 
     resp = await admin_client.get("/api/notebooks/tags/bulk")
     assert resp.status_code == 200

@@ -68,9 +68,7 @@ async def notebook_kernel_ws(websocket: WebSocket) -> None:
         await websocket.close(code=4404)
         return
     relative_path = str(absolute.relative_to(notebooks_dir))
-    registry: KernelRegistry | None = getattr(
-        websocket.app.state, "kernel_registry", None
-    )
+    registry: KernelRegistry | None = getattr(websocket.app.state, "kernel_registry", None)
     if registry is None:
         await websocket.close(code=4503)
         return
@@ -94,16 +92,10 @@ async def notebook_kernel_ws(websocket: WebSocket) -> None:
                 permissions as _notebook_permissions_service,
             )
 
-            row = (
-                _session.query(_NotebookModel)
-                .filter_by(file_path=relative_path)
-                .one_or_none()
-            )
+            row = _session.query(_NotebookModel).filter_by(file_path=relative_path).one_or_none()
             if row is not None:
                 notebook_id = row.id
-                binding = _branch_bindings_service.get_current_binding(
-                    _session, notebook_id=row.id
-                )
+                binding = _branch_bindings_service.get_current_binding(_session, notebook_id=row.id)
                 if binding:
                     branch_name = binding.get("branch_name")
                 # gate the WS at open time on the
@@ -203,9 +195,7 @@ async def notebook_kernel_ws(websocket: WebSocket) -> None:
                 )
                 continue
             request_id_raw = frame.get("id")
-            request_id = (
-                int(request_id_raw) if isinstance(request_id_raw, int) else None
-            )
+            request_id = int(request_id_raw) if isinstance(request_id_raw, int) else None
             method = frame.get("method")
             params = frame.get("params") or {}
             if not isinstance(params, dict):

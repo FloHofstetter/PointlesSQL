@@ -23,11 +23,7 @@ import pytest
 from pointlessql.api.main import app
 
 _PARAM_NOTEBOOK = (
-    '# %% tags=["parameters"]\n'
-    'cutoff_date = "2026-01-01"\n'
-    "\n"
-    "# %%\n"
-    "print(cutoff_date)\n"
+    '# %% tags=["parameters"]\ncutoff_date = "2026-01-01"\n\n# %%\nprint(cutoff_date)\n'
 )
 
 

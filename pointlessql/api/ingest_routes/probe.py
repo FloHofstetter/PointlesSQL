@@ -27,9 +27,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["ingest", "probe"])
 
 
-def _resolve_secrets_for_probe(
-    request: Request, body: dict[str, Any]
-) -> dict[str, Any]:
+def _resolve_secrets_for_probe(request: Request, body: dict[str, Any]) -> dict[str, Any]:
     """Stitch redacted ``"***"`` values back from the persisted source.
 
     The probe button on the *edit* form posts the same body shape the
@@ -47,28 +45,18 @@ def _resolve_secrets_for_probe(
     raw: object = body.get("secrets") or {}
     if not isinstance(raw, dict):
         raw = {}
-    body_secrets: dict[str, Any] = {
-        str(k): v for k, v in cast(dict[Any, Any], raw).items()
-    }
+    body_secrets: dict[str, Any] = {str(k): v for k, v in cast(dict[Any, Any], raw).items()}
     source_id = body.get("source_id")
     if source_id is None:
         # Stripping any leftover ``***`` sentinel — on create-probe we
         # have nothing to merge against, so a redacted value means
         # "no value".
-        return {
-            k: v
-            for k, v in body_secrets.items()
-            if v != SECRETS_REDACTED_SENTINEL
-        }
+        return {k: v for k, v in body_secrets.items() if v != SECRETS_REDACTED_SENTINEL}
     factory = request.app.state.session_factory
     with factory() as session:
         row = session.get(IngestSource, int(source_id))
         if row is None:
-            return {
-                k: v
-                for k, v in body_secrets.items()
-                if v != SECRETS_REDACTED_SENTINEL
-            }
+            return {k: v for k, v in body_secrets.items() if v != SECRETS_REDACTED_SENTINEL}
         return merge_patch_secrets(row.secrets or "{}", body_secrets)
 
 
@@ -100,9 +88,7 @@ async def api_probe(
     config_raw: object = body.get("config") or {}
     if not isinstance(config_raw, dict):
         raise ValidationError("config must be an object.")
-    config: dict[str, Any] = {
-        str(k): v for k, v in cast(dict[Any, Any], config_raw).items()
-    }
+    config: dict[str, Any] = {str(k): v for k, v in cast(dict[Any, Any], config_raw).items()}
     source_table = body.get("source_table")
     if source_table is not None and not isinstance(source_table, str):
         raise ValidationError("source_table must be a string or absent.")
@@ -111,7 +97,10 @@ async def api_probe(
 
     try:
         result = probe_source(
-            kind, config, secrets, source_table=source_table  # type: ignore[arg-type]
+            kind,
+            config,
+            secrets,
+            source_table=source_table,  # type: ignore[arg-type]
         )
     except ProbeError as exc:
         return _probe_error_response(exc)

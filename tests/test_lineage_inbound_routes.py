@@ -1,4 +1,4 @@
-"""Tests for the Phase-40 inbound OpenLineage route.
+"""Tests for the inbound OpenLineage route.
 
 Covers ``POST /api/lineage/openlineage`` end to end:
 

@@ -1,9 +1,8 @@
 """Tests for the Bearer-token API-key gate.
 
-Originally Sprint 13.7.0.5 (env-var-based store).  Sprint 13.11.4a
-promoted the store to a real DB table; this file was rewritten in
-the same sprint so the env-var format extension and the DB-backed
-verify path are both covered.
+Covers both the env-var format extension and the DB-backed verify
+path, so the historical env-var seed and the table-backed store
+stay regression-free side-by-side.
 
 The bootstrap path (``bootstrap_from_env``) keeps the historical
 ``POINTLESSQL_API_KEYS`` env var valid as a clean-machine auth
@@ -169,9 +168,7 @@ def test_create_with_test_env_yields_test_token() -> None:
 
 def test_v1_token_with_bad_crc_rejected_without_db_lookup() -> None:
     _wipe_api_keys()
-    _, plaintext = api_keys_service.create_api_key(
-        app.state.session_factory, name="crc-victim"
-    )
+    _, plaintext = api_keys_service.create_api_key(app.state.session_factory, name="crc-victim")
     # Flip the last hex char of the CRC.
     tampered = plaintext[:-1] + ("0" if plaintext[-1] != "0" else "1")
     entry = api_keys_service.verify_bearer(f"Bearer {tampered}", app.state.session_factory)
@@ -192,9 +189,7 @@ def test_legacy_secret_in_env_still_verifies() -> None:
     assert row.token_format == "legacy"
     assert row.token_env == "legacy"
     assert row.secret_prefix == legacy_secret[:8]
-    entry = api_keys_service.verify_bearer(
-        f"Bearer {legacy_secret}", app.state.session_factory
-    )
+    entry = api_keys_service.verify_bearer(f"Bearer {legacy_secret}", app.state.session_factory)
     assert entry is not None and entry.name == "legacy-bootstrap"
     _wipe_api_keys()
 
@@ -376,12 +371,10 @@ async def test_gate_disabled_ignores_bearer_header(auth_cookies) -> None:
     assert response.status_code == 200
 
 
-def test_phase119_lifecycle_columns_present_with_null_defaults() -> None:
+def test_lifecycle_columns_present_with_null_defaults() -> None:
     """every new key starts with NULL lifecycle columns."""
     _wipe_api_keys()
-    row, _ = api_keys_service.create_api_key(
-        app.state.session_factory, name="lifecycle-default"
-    )
+    row, _ = api_keys_service.create_api_key(app.state.session_factory, name="lifecycle-default")
     assert row.expires_at is None
     assert row.rotated_from_id is None
     assert row.rotated_at is None
@@ -392,7 +385,7 @@ def test_phase119_lifecycle_columns_present_with_null_defaults() -> None:
     _wipe_api_keys()
 
 
-def test_phase119_columns_introspectable_on_model() -> None:
+def test_lifecycle_columns_introspectable_on_model() -> None:
     columns = ApiKey.__table__.columns.keys()
     for column in (
         "expires_at",

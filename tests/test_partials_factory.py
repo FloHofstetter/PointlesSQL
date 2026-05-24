@@ -24,13 +24,7 @@ def _frontend() -> Path:
 
 def test_endorsements_pane_partial_exists() -> None:
     """The endorsement pane partial is on disk + non-empty."""
-    path = (
-        _frontend()
-        / "templates"
-        / "partials"
-        / "social"
-        / "_endorsements_pane.html"
-    )
+    path = _frontend() / "templates" / "partials" / "social" / "_endorsements_pane.html"
     assert path.exists(), f"missing partial: {path}"
     body = path.read_text(encoding="utf-8")
     assert "tab-endorsements" in body
@@ -41,13 +35,7 @@ def test_endorsements_pane_partial_exists() -> None:
 
 def test_followers_pane_partial_exists() -> None:
     """The followers pane partial is on disk + non-empty."""
-    path = (
-        _frontend()
-        / "templates"
-        / "partials"
-        / "social"
-        / "_followers_pane.html"
-    )
+    path = _frontend() / "templates" / "partials" / "social" / "_followers_pane.html"
     assert path.exists(), f"missing partial: {path}"
     body = path.read_text(encoding="utf-8")
     assert "tab-followers" in body
@@ -58,9 +46,7 @@ def test_followers_pane_partial_exists() -> None:
 
 def test_social_tabs_factory_registered_in_bootstrap() -> None:
     """``socialTabs`` is re-attached to window via bootstrap.js."""
-    bootstrap = (_frontend() / "js" / "bootstrap.js").read_text(
-        encoding="utf-8"
-    )
+    bootstrap = (_frontend() / "js" / "bootstrap.js").read_text(encoding="utf-8")
     assert "from './social_tabs.js'" in bootstrap
     assert "window.socialTabs = socialTabs" in bootstrap
 
@@ -73,9 +59,7 @@ def test_social_tabs_factory_exposes_partial_bindings() -> None:
     in the browser (Alpine treats unknown names as undefined).  This
     test fails first so the rename never lands.
     """
-    factory = (_frontend() / "js" / "social_tabs.js").read_text(
-        encoding="utf-8"
-    )
+    factory = (_frontend() / "js" / "social_tabs.js").read_text(encoding="utf-8")
     for binding in (
         "endorsementsLoaded",
         "endorsements",

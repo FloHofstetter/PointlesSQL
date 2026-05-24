@@ -1,4 +1,4 @@
-"""Tests for Sprint-56 column statistics."""
+"""Tests for column statistics."""
 
 from __future__ import annotations
 

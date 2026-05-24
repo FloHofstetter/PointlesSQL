@@ -35,9 +35,7 @@ async def get_data_product(
     """
     workspace_id = current_workspace_id(request)
     factory = request.app.state.session_factory
-    row, contract, steward_email, steward_display = load_one(
-        factory, workspace_id, catalog, schema
-    )
+    row, contract, steward_email, steward_display = load_one(factory, workspace_id, catalog, schema)
 
     with factory() as session:
         events = (

@@ -52,17 +52,11 @@ def resolve_mentions(session: Any, emails: list[str]) -> list[int]:
     if not emails:
         return []
     lowered = list({e.lower() for e in emails})
-    users = (
-        session.execute(
-            select(User.id, User.email).where(User.email.in_(lowered))
-        ).all()
-    )
+    users = session.execute(select(User.id, User.email).where(User.email.in_(lowered))).all()
     return [int(uid) for uid, _email in users]
 
 
-def resolve_displayname_mentions(
-    session: Any, tokens: list[str]
-) -> tuple[list[int], list[str]]:
+def resolve_displayname_mentions(session: Any, tokens: list[str]) -> tuple[list[int], list[str]]:
     """Map ``@display_name`` mentions to user ids with disambiguation.
 
     Two users sharing the same ``display_name`` are unresolvable —
@@ -82,13 +76,9 @@ def resolve_displayname_mentions(
     if not tokens:
         return [], []
     lowered = list({t.lower() for t in tokens})
-    rows = (
-        session.execute(
-            select(User.id, User.display_name).where(
-                func.lower(User.display_name).in_(lowered)
-            )
-        ).all()
-    )
+    rows = session.execute(
+        select(User.id, User.display_name).where(func.lower(User.display_name).in_(lowered))
+    ).all()
     by_name: dict[str, list[int]] = {}
     for uid, name in rows:
         by_name.setdefault(name.lower(), []).append(int(uid))

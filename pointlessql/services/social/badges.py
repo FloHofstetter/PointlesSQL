@@ -76,37 +76,28 @@ def award_badges(session_factory: Any) -> int:
     inserted = 0
     now = datetime.datetime.now(datetime.UTC)
     with session_factory() as session:
-        existing_rows = (
-            session.execute(select(UserBadge.user_id, UserBadge.badge_key)).all()
-        )
-        existing: set[tuple[int, str]] = {
-            (int(uid), key) for uid, key in existing_rows
-        }
+        existing_rows = session.execute(select(UserBadge.user_id, UserBadge.badge_key)).all()
+        existing: set[tuple[int, str]] = {(int(uid), key) for uid, key in existing_rows}
 
         steward_counts = dict(
             session.execute(
-                select(
-                    DataProduct.steward_user_id, func.count()
-                )
+                select(DataProduct.steward_user_id, func.count())
                 .where(DataProduct.steward_user_id.is_not(None))
                 .group_by(DataProduct.steward_user_id)
             ).all()
         )
         reviewer_counts = dict(
             session.execute(
-                select(
-                    DataProductReview.author_user_id, func.count()
-                ).group_by(DataProductReview.author_user_id)
+                select(DataProductReview.author_user_id, func.count()).group_by(
+                    DataProductReview.author_user_id
+                )
             ).all()
         )
         mention_counts = dict(
             session.execute(
-                select(
-                    UserNotification.recipient_user_id, func.count()
-                )
+                select(UserNotification.recipient_user_id, func.count())
                 .where(
-                    UserNotification.event_type
-                    == "pointlessql.data_product.commented",
+                    UserNotification.event_type == "pointlessql.data_product.commented",
                     UserNotification.actor_user_id.is_not(None),
                 )
                 .group_by(UserNotification.recipient_user_id)
@@ -114,18 +105,14 @@ def award_badges(session_factory: Any) -> int:
         )
         accepted_counts = dict(
             session.execute(
-                select(
-                    DataProductComment.author_user_id, func.count()
-                )
+                select(DataProductComment.author_user_id, func.count())
                 .where(DataProductComment.is_accepted_answer.is_(True))
                 .group_by(DataProductComment.author_user_id)
             ).all()
         )
         endorser_counts = dict(
             session.execute(
-                select(
-                    DataProductEndorsement.applied_by_user_id, func.count()
-                )
+                select(DataProductEndorsement.applied_by_user_id, func.count())
                 .where(DataProductEndorsement.removed_at.is_(None))
                 .group_by(DataProductEndorsement.applied_by_user_id)
             ).all()
@@ -133,9 +120,7 @@ def award_badges(session_factory: Any) -> int:
         # per-kind aggregates.
         commenter_table_counts = dict(
             session.execute(
-                select(
-                    DataProductComment.author_user_id, func.count()
-                )
+                select(DataProductComment.author_user_id, func.count())
                 .join(
                     SocialTarget,
                     SocialTarget.id == DataProductComment.social_target_id,
@@ -149,9 +134,7 @@ def award_badges(session_factory: Any) -> int:
         )
         endorser_model_counts = dict(
             session.execute(
-                select(
-                    DataProductEndorsement.applied_by_user_id, func.count()
-                )
+                select(DataProductEndorsement.applied_by_user_id, func.count())
                 .join(
                     SocialTarget,
                     SocialTarget.id == DataProductEndorsement.social_target_id,

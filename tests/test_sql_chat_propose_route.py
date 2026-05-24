@@ -110,11 +110,7 @@ async def test_propose_dml_creates_row(
 
     factory = app.state.session_factory
     with factory() as session:
-        row = (
-            session.query(ChatProposal)
-            .filter(ChatProposal.proposal_id == proposal_id)
-            .one()
-        )
+        row = session.query(ChatProposal).filter(ChatProposal.proposal_id == proposal_id).one()
         assert row.status == "pending"
         assert row.rationale == "drop sample dupes"
 

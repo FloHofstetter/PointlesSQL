@@ -46,10 +46,7 @@ def upgrade() -> None:
     bind = op.get_bind()
 
     null_count = bind.execute(
-        text(
-            "SELECT COUNT(*) FROM data_product_follows "
-            "WHERE social_target_id IS NULL"
-        )
+        text("SELECT COUNT(*) FROM data_product_follows WHERE social_target_id IS NULL")
     ).scalar()
     if null_count and int(null_count) > 0:
         raise RuntimeError(

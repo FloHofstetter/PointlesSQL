@@ -1,4 +1,4 @@
-"""Tests for the Phase 120.5 usage record + flush + retention path."""
+"""Tests for the usage record + flush + retention path."""
 
 from __future__ import annotations
 

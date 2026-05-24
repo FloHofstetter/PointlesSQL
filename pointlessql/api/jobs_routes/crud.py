@@ -306,5 +306,3 @@ async def api_unpause_job(request: Request, job_id: int) -> dict[str, Any]:
         session.expunge(row)
     await audit(request, "unpause_job", f"job:{row.name}")
     return serialize_job(row)
-
-

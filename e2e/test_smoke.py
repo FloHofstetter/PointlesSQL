@@ -1,4 +1,4 @@
-"""Smoke test — verifies the Phase 108 e2e fixture stack boots.
+"""Smoke test — verifies the e2e fixture stack boots.
 
 If this test passes we know:
 

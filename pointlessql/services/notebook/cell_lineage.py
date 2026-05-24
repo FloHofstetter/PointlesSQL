@@ -15,8 +15,8 @@ hand-rolling SQL at the route layer.  The route surface is in
 
 Only cell-runs that already have a non-null ``agent_run_id`` are
 matched — pure-Python notebook cells without an agent-run context
-silently return an empty list.  That matches the Phase 98.C
-contract: badges surface what the audit trail already captured.
+silently return an empty list.  That matches the contract: badges
+surface what the audit trail already captured.
 """
 
 from __future__ import annotations

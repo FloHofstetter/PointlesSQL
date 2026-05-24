@@ -42,9 +42,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from pointlessql.models.base import Base
 
-SINK_TYPES: frozenset[str] = frozenset(
-    {"webhook", "s3", "aws_cloudtrail", "stdout_json", "syslog"}
-)
+SINK_TYPES: frozenset[str] = frozenset({"webhook", "s3", "aws_cloudtrail", "stdout_json", "syslog"})
 """Allowed values for :attr:`AuditSink.type`.
 
 Webhook reuses the saved-query webhook pipeline (HMAC + retries).

@@ -1,4 +1,4 @@
-"""Unit tests for the Phase 16.5.6 branch auto-cleanup pass."""
+"""Unit tests for the branch auto-cleanup pass."""
 
 from __future__ import annotations
 

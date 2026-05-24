@@ -212,7 +212,7 @@
            title="Cell modified since last save">●</span>
      {# per-cell author chip.  Hidden when no
         authorship row is known for this cell yet (un-saved cells
-        + cells from before Phase 101 shipped).  Methods live on
+        + cells from shipped).  Methods live on
         the outer notebookEditor scope so we don't pay for a
         nested x-data per cell. #}
      <span class="pql-cell-author-chip text-muted small"
@@ -274,7 +274,7 @@
         action buttons sit together on the right edge. #}
      {% include "pages/_partials/notebook_editor/cell_tag_picker.html" %}
      {# 💬 chip toggles the inline cell-thread below.
-        Cells minted before Phase 95 carry no ``cell_uuid``; the
+        Cells minted carry no ``cell_uuid``; the
         save-path reconciler assigns one.  The chip stays visible
         either way — first click on an un-saved cell fires a save
         and only then expands the thread. #}

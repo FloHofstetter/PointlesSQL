@@ -109,9 +109,7 @@ def resolve_embedder(spec: str | Embedder, *, model: str | None = None) -> Embed
     try:
         klass = EMBEDDERS[spec]
     except KeyError as exc:
-        raise ValueError(
-            f"unknown embedder {spec!r}; known: {sorted(EMBEDDERS)!r}"
-        ) from exc
+        raise ValueError(f"unknown embedder {spec!r}; known: {sorted(EMBEDDERS)!r}") from exc
     # Every concrete embedder accepts a ``model`` kwarg; the Protocol
     # only declares the attribute, so cast to keep pyright happy.
     return klass(model=model) if model else klass()  # type: ignore[call-arg]

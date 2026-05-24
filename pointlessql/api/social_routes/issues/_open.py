@@ -36,9 +36,7 @@ MAX_TITLE = 255
 
 
 @router.post("/api/social/{parent_kind}/{parent_ref:path}/issues")
-async def open_issue(
-    parent_kind: str, parent_ref: str, request: Request
-) -> dict[str, Any]:
+async def open_issue(parent_kind: str, parent_ref: str, request: Request) -> dict[str, Any]:
     """Open a new issue against a parent entity.
 
     Request body shape:
@@ -132,21 +130,16 @@ async def open_issue(
         session.commit()
 
         # Hydration for the response.
-        parent_kind_hyd, parent_ref_hyd = hydrate_parent(
-            session, parent_target_id
-        )
+        parent_kind_hyd, parent_ref_hyd = hydrate_parent(session, parent_target_id)
         emails = hydrate_emails(
             session,
-            [int(user["id"])]
-            + ([assignee_user_id] if assignee_user_id else []),
+            [int(user["id"])] + ([assignee_user_id] if assignee_user_id else []),
         )
         result = serialise_issue(
             issue,
             parent_kind=parent_kind_hyd,
             parent_ref=parent_ref_hyd,
-            assignee_email=emails.get(int(assignee_user_id))
-            if assignee_user_id
-            else None,
+            assignee_email=emails.get(int(assignee_user_id)) if assignee_user_id else None,
             opener_email=emails.get(int(user["id"])),
         )
 
@@ -195,7 +188,7 @@ async def open_issue(
             workspace_id=workspace_id,
             actor_user_id=int(user["id"]),
             source_url=f"/issues/{result['id']}",
-            summary_md=f"Issue \"{title.strip()[:120]}\" opened",
+            summary_md=f'Issue "{title.strip()[:120]}" opened',
         )
     except Exception:  # noqa: BLE001 — fanout best-effort
         # bare-broad-ok: issue-opened fanout is best-effort

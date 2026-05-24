@@ -1,4 +1,4 @@
-"""Tests for the Phase 40.5 CDF tail subscriptions + worker."""
+"""Tests for the CDF tail subscriptions + worker."""
 
 from __future__ import annotations
 

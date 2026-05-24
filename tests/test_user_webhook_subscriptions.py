@@ -1,4 +1,4 @@
-"""Tests for the Phase-72.6 per-user webhook subscriptions.
+"""Tests for the per-user webhook subscriptions.
 
 Covers:
 
@@ -126,13 +126,9 @@ async def test_delete_removes_row(
             },
         )
     ).json()
-    res = await admin_client.delete(
-        f"/api/me/subscriptions/{created['id']}"
-    )
+    res = await admin_client.delete(f"/api/me/subscriptions/{created['id']}")
     assert res.json() == {"deleted": True}
-    rows = (await admin_client.get("/api/me/subscriptions")).json()[
-        "subscriptions"
-    ]
+    rows = (await admin_client.get("/api/me/subscriptions")).json()["subscriptions"]
     assert rows == []
 
 
@@ -189,11 +185,7 @@ def _seed_sub(
     now = datetime.datetime.now(datetime.UTC)
     with factory() as session:
         admin_id = (
-            session.execute(
-                select(User).where(User.email == "test@test.com")
-            )
-            .scalar_one()
-            .id
+            session.execute(select(User).where(User.email == "test@test.com")).scalar_one().id
         )
         sub = UserWebhookSubscription(
             workspace_id=1,

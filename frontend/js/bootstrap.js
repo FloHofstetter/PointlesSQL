@@ -115,7 +115,7 @@ window.sqlEditor = sqlEditor;
 // table.html + branch_detail.html via the kind-agnostic
 // ``_endorsements_pane.html`` + ``_followers_pane.html`` partials.
 // ``data_product.html`` keeps its inline x-data + DP-flavoured
-// partials until Phase 77.11 polish unifies the two.
+// partials polish unifies the two.
 import { socialTabs } from './social_tabs.js';
 
 window.socialTabs = socialTabs;

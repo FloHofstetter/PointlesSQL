@@ -87,9 +87,7 @@ class VectorIndex(Base):
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    workspace_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("workspaces.id"), nullable=False
-    )
+    workspace_id: Mapped[int] = mapped_column(Integer, ForeignKey("workspaces.id"), nullable=False)
     catalog: Mapped[str] = mapped_column(String(255), nullable=False)
     schema: Mapped[str] = mapped_column(String(255), nullable=False)
     table: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -100,9 +98,7 @@ class VectorIndex(Base):
     metric: Mapped[str] = mapped_column(
         String(16), nullable=False, default="cosine", server_default="cosine"
     )
-    hnsw_m: Mapped[int] = mapped_column(
-        Integer, nullable=False, default=16, server_default="16"
-    )
+    hnsw_m: Mapped[int] = mapped_column(Integer, nullable=False, default=16, server_default="16")
     hnsw_ef_construction: Mapped[int] = mapped_column(
         Integer, nullable=False, default=128, server_default="128"
     )

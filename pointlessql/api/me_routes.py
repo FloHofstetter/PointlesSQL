@@ -76,9 +76,7 @@ async def me_index_page(
             )
             counts["dashboards_mine"] = int(
                 session.scalar(
-                    select(func.count())
-                    .select_from(Dashboard)
-                    .where(Dashboard.owner_id == user_id)
+                    select(func.count()).select_from(Dashboard).where(Dashboard.owner_id == user_id)
                 )
                 or 0
             )
@@ -104,9 +102,8 @@ async def me_index_page(
         # upgrade race: leave counts at zero, render the cards as
         # 0-state.  Logged for diagnostics but never surfaced.
         import logging as _logging
-        _logging.getLogger(__name__).debug(
-            "me hub: counts query failed", exc_info=True
-        )
+
+        _logging.getLogger(__name__).debug("me hub: counts query failed", exc_info=True)
         pass
 
     templates = request.app.state.templates
@@ -142,9 +139,7 @@ async def me_settings_page(
     """Render the self-service settings form."""
     user = get_user(request)
     if user["id"] == 0:
-        return RedirectResponse(
-            url="/auth/login?next=/me/settings", status_code=303
-        )
+        return RedirectResponse(url="/auth/login?next=/me/settings", status_code=303)
     factory = request.app.state.session_factory
     with factory() as session:
         row = session.get(User, user["id"])

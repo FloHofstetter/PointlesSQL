@@ -83,9 +83,7 @@ def start_replay(
         )
     ).scalar_one_or_none()
     if rev is None:
-        raise ValidationError(
-            f"revision {base_revision_uuid!r} not found under notebook"
-        )
+        raise ValidationError(f"revision {base_revision_uuid!r} not found under notebook")
     row = NotebookReplay(
         replay_uuid=str(_uuid.uuid4()),
         notebook_id=notebook_id,
@@ -100,9 +98,7 @@ def start_replay(
     return row
 
 
-def mark_running(
-    session: Session, *, replay_uuid: str
-) -> NotebookReplay:
+def mark_running(session: Session, *, replay_uuid: str) -> NotebookReplay:
     """Transition the replay row to ``running``.
 
     Args:
@@ -143,9 +139,7 @@ def record_finished(
             outside the terminal set.
     """
     if status not in VALID_TERMINAL_STATUSES:
-        raise ValidationError(
-            f"status must be one of {VALID_TERMINAL_STATUSES}; got {status!r}"
-        )
+        raise ValidationError(f"status must be one of {VALID_TERMINAL_STATUSES}; got {status!r}")
     row = _get_replay(session, replay_uuid=replay_uuid)
     outputs = outputs or []
     row.status = status
@@ -159,9 +153,7 @@ def record_finished(
     return row
 
 
-def get_replay(
-    session: Session, *, replay_uuid: str
-) -> dict[str, Any] | None:
+def get_replay(session: Session, *, replay_uuid: str) -> dict[str, Any] | None:
     """Return the replay envelope (or ``None`` if unknown)."""
     row = session.execute(
         select(NotebookReplay).where(NotebookReplay.replay_uuid == replay_uuid)
@@ -190,19 +182,21 @@ def list_replays(
     Returns:
         List of envelope dicts ordered ``started_at desc``.
     """
-    rows = session.execute(
-        select(NotebookReplay)
-        .where(NotebookReplay.notebook_id == notebook_id)
-        .order_by(NotebookReplay.started_at.desc())
-        .offset(max(0, int(offset)))
-        .limit(limit)
-    ).scalars().all()
+    rows = (
+        session.execute(
+            select(NotebookReplay)
+            .where(NotebookReplay.notebook_id == notebook_id)
+            .order_by(NotebookReplay.started_at.desc())
+            .offset(max(0, int(offset)))
+            .limit(limit)
+        )
+        .scalars()
+        .all()
+    )
     return [_row_to_envelope(r, include_outputs=False) for r in rows]
 
 
-def compute_replay_diff(
-    session: Session, *, replay_uuid: str
-) -> dict[str, Any]:
+def compute_replay_diff(session: Session, *, replay_uuid: str) -> dict[str, Any]:
     """Return the cell-by-cell side-by-side diff envelope.
 
     Args:
@@ -221,14 +215,10 @@ def compute_replay_diff(
     """
     row = _get_replay(session, replay_uuid=replay_uuid)
     base = session.execute(
-        select(NotebookRevision).where(
-            NotebookRevision.revision_uuid == row.base_revision_uuid
-        )
+        select(NotebookRevision).where(NotebookRevision.revision_uuid == row.base_revision_uuid)
     ).scalar_one_or_none()
     if base is None:
-        raise ValidationError(
-            f"base revision {row.base_revision_uuid!r} missing"
-        )
+        raise ValidationError(f"base revision {row.base_revision_uuid!r} missing")
     base_cells = json.loads(base.cells_json)
     base_outputs = json.loads(base.outputs_json)
     replay_outputs = json.loads(row.outputs_json)
@@ -266,9 +256,7 @@ def compute_replay_diff(
     }
 
 
-def _get_replay(
-    session: Session, *, replay_uuid: str
-) -> NotebookReplay:
+def _get_replay(session: Session, *, replay_uuid: str) -> NotebookReplay:
     """Resolve a replay row or raise ValidationError."""
     row = session.execute(
         select(NotebookReplay).where(NotebookReplay.replay_uuid == replay_uuid)
@@ -299,9 +287,7 @@ def _diff_summary(
 ) -> dict[str, int]:
     """Compute the {stable,changed,missing,new} digest."""
     base = session.execute(
-        select(NotebookRevision).where(
-            NotebookRevision.revision_uuid == base_revision_uuid
-        )
+        select(NotebookRevision).where(NotebookRevision.revision_uuid == base_revision_uuid)
     ).scalar_one_or_none()
     if base is None:
         return {"stable": 0, "changed": 0, "missing": 0, "new": 0}
@@ -325,9 +311,7 @@ def _diff_summary(
     return counts
 
 
-def _row_to_envelope(
-    row: NotebookReplay, *, include_outputs: bool
-) -> dict[str, Any]:
+def _row_to_envelope(row: NotebookReplay, *, include_outputs: bool) -> dict[str, Any]:
     """Serialise one replay row for REST output."""
     envelope: dict[str, Any] = {
         "replay_uuid": row.replay_uuid,
@@ -337,9 +321,7 @@ def _row_to_envelope(
         "status": row.status,
         "started_at": row.started_at.isoformat() if row.started_at else None,
         "finished_at": row.finished_at.isoformat() if row.finished_at else None,
-        "diff_summary": (
-            json.loads(row.diff_summary_json) if row.diff_summary_json else None
-        ),
+        "diff_summary": (json.loads(row.diff_summary_json) if row.diff_summary_json else None),
         "triggered_by_user_id": row.triggered_by_user_id,
     }
     if include_outputs:

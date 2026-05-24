@@ -65,9 +65,7 @@ def upgrade() -> None:
             nullable=False,
             server_default=sa.text("CURRENT_TIMESTAMP"),
         ),
-        sa.UniqueConstraint(
-            "workspace_id", "file_path", name="uq_notebooks_path_per_workspace"
-        ),
+        sa.UniqueConstraint("workspace_id", "file_path", name="uq_notebooks_path_per_workspace"),
     )
     op.create_index("ix_notebooks_path", "notebooks", ["file_path"])
 
@@ -82,9 +80,7 @@ def upgrade() -> None:
     seen: set[tuple[int, str]] = set()
     if "notebook_outputs" in existing:
         rows = bind.execute(
-            sa.text(
-                "SELECT DISTINCT workspace_id, file_path FROM notebook_outputs"
-            )
+            sa.text("SELECT DISTINCT workspace_id, file_path FROM notebook_outputs")
         ).all()
         for ws_id, path in rows:
             seen.add((int(ws_id) if ws_id is not None else 1, str(path)))
@@ -94,18 +90,12 @@ def upgrade() -> None:
         cols = {c["name"] for c in insp.get_columns(source_table)}
         if "workspace_id" in cols:
             rows = bind.execute(
-                sa.text(
-                    f"SELECT DISTINCT workspace_id, file_path FROM {source_table}"
-                )
+                sa.text(f"SELECT DISTINCT workspace_id, file_path FROM {source_table}")
             ).all()
             for ws_id, path in rows:
-                seen.add(
-                    (int(ws_id) if ws_id is not None else 1, str(path))
-                )
+                seen.add((int(ws_id) if ws_id is not None else 1, str(path)))
         else:
-            rows = bind.execute(
-                sa.text(f"SELECT DISTINCT file_path FROM {source_table}")
-            ).all()
+            rows = bind.execute(sa.text(f"SELECT DISTINCT file_path FROM {source_table}")).all()
             for (path,) in rows:
                 seen.add((1, str(path)))
     if seen:

@@ -34,7 +34,7 @@ async def api_notebook_jobs(
 ) -> dict[str, Any]:
     """List scheduled jobs + recent runs for one notebook.
 
-    Powers the Phase 67.4 in-editor side-panel that surfaces
+    Powers the in-editor side-panel that surfaces
     "what runs does this notebook have?" without making the user
     navigate to ``/jobs`` and filter manually. Joins
     :class:`NotebookJobLink` → :class:`Job` for the scheduled set,
@@ -174,10 +174,7 @@ async def api_run_once(
 
     stamp = datetime.now(UTC)
     safe_path = path.replace("/", "_").replace(".", "_")
-    job_name = (
-        f"notebook-runonce:{safe_path}:{user['id']}:"
-        f"{stamp.strftime('%Y%m%d-%H%M%S-%f')}"
-    )
+    job_name = f"notebook-runonce:{safe_path}:{user['id']}:{stamp.strftime('%Y%m%d-%H%M%S-%f')}"
     config_blob = _json.dumps(
         {"notebook_path": path, "parameters": parameters},
     )
@@ -224,7 +221,11 @@ async def api_run_once(
     # status.
     asyncio.create_task(
         scheduler_service.execute_run(
-            factory, settings, JOB_REGISTRY, job_id, "manual",
+            factory,
+            settings,
+            JOB_REGISTRY,
+            job_id,
+            "manual",
         ),
     )
 

@@ -82,9 +82,7 @@ async def execute_tool_with_audit(
     except LensToolError:
         raise
     except Exception as exc:  # noqa: BLE001 — wrap+rethrow as LensToolError below
-        logger.exception(
-            "Lens tool %s raised unexpectedly", tool_name
-        )
+        logger.exception("Lens tool %s raised unexpectedly", tool_name)
         duration_ms = int((time.monotonic() - start) * 1000)
         if ctx.lens_session_id is not None:
             append_message(
@@ -143,9 +141,7 @@ def _resolve_tool_or_audit(
     raise UnknownLensToolError(tool_name)
 
 
-def _validate_or_audit(
-    tool: ToolDef, ctx: SessionContext, raw_args: dict[str, Any]
-) -> object:
+def _validate_or_audit(tool: ToolDef, ctx: SessionContext, raw_args: dict[str, Any]) -> object:
     """Validate *raw_args* against the tool's input model; audit on fail."""
     try:
         return tool.input_model.model_validate(raw_args)

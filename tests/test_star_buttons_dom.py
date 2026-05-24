@@ -146,8 +146,8 @@ async def test_model_html_renders_star_button(
     assert 'pqlStarToggle({kind: "model"' in body
     assert "main.ml_silver.churn" in body
     # Button surface contracts.
-    assert "@click=\"toggle()\"" in body
-    assert 'bi-star-fill' in body
+    assert '@click="toggle()"' in body
+    assert "bi-star-fill" in body
 
 
 # ---------------------------------------------------------------------------
@@ -172,7 +172,7 @@ async def test_branch_detail_renders_star_button(
         "/home/flo/git/PointlesSQL/frontend/templates/pages/branch_detail.html"
     ).read_text()
     assert 'pqlStarToggle({kind: "branch"' in template
-    assert 'branch_schema_fqn' in template
+    assert "branch_schema_fqn" in template
     assert '@click="toggle()"' in template
 
 

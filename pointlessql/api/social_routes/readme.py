@@ -33,9 +33,7 @@ router = APIRouter(tags=["social"])
 
 
 @router.get("/api/social/{kind}/{ref:path}/readme")
-async def get_social_readme(
-    kind: str, ref: str, request: Request
-) -> dict[str, Any]:
+async def get_social_readme(kind: str, ref: str, request: Request) -> dict[str, Any]:
     """Dispatch a latest-README GET by entity kind."""
     if kind == "dp":
         catalog, schema = parse_dp_ref(kind, ref)
@@ -45,9 +43,7 @@ async def get_social_readme(
 
 
 @router.get("/api/social/{kind}/{ref:path}/readme/history")
-async def list_social_readme_history(
-    kind: str, ref: str, request: Request
-) -> dict[str, Any]:
+async def list_social_readme_history(kind: str, ref: str, request: Request) -> dict[str, Any]:
     """Dispatch a README history list by entity kind.
 
     Non-DP kinds return 501.  README history + diff stays DP-only
@@ -70,9 +66,7 @@ async def get_social_readme_version(
     """Dispatch a README version GET by entity kind."""
     if kind == "dp":
         catalog, schema = parse_dp_ref(kind, ref)
-        return await get_readme_version(
-            catalog, schema, version_int, request
-        )
+        return await get_readme_version(catalog, schema, version_int, request)
     # bare-http-ok: version-fetch endpoint is DP-only by design.
     raise HTTPException(
         status_code=501,
@@ -81,9 +75,7 @@ async def get_social_readme_version(
 
 
 @router.put("/api/social/{kind}/{ref:path}/readme")
-async def put_social_readme(
-    kind: str, ref: str, request: Request
-) -> dict[str, Any]:
+async def put_social_readme(kind: str, ref: str, request: Request) -> dict[str, Any]:
     """Dispatch a README upsert by entity kind."""
     if kind == "dp":
         catalog, schema = parse_dp_ref(kind, ref)
@@ -93,9 +85,7 @@ async def put_social_readme(
 
 
 @router.get("/api/social/{kind}/{ref:path}/readme/diff")
-async def get_social_readme_diff(
-    kind: str, ref: str, request: Request
-) -> dict[str, Any]:
+async def get_social_readme_diff(kind: str, ref: str, request: Request) -> dict[str, Any]:
     """Dispatch a README diff by entity kind."""
     if kind == "dp":
         catalog, schema = parse_dp_ref(kind, ref)

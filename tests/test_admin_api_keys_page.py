@@ -1,4 +1,4 @@
-"""Tests for the Sprint 33.4 ``GET /admin/api-keys`` HTML page.
+"""Tests for the ``GET /admin/api-keys`` HTML page.
 
 The JSON CRUD under ``/api/admin/api-keys`` already has its own
 test suite (``test_admin_api_keys_routes.py``); this file exercises

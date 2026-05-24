@@ -41,9 +41,7 @@ from pointlessql.services.workspace.governance import (
 # ---------------------------------------------------------------------------
 
 
-async def list_polymorphic_reviews(
-    kind: str, ref: str, request: Request
-) -> dict[str, Any]:
+async def list_polymorphic_reviews(kind: str, ref: str, request: Request) -> dict[str, Any]:
     """Return every review on a polymorphic entity + summary.
 
     Args:
@@ -80,11 +78,7 @@ async def list_polymorphic_reviews(
         author_ids = {r.author_user_id for r in rows}
         author_map: dict[int, tuple[str, str | None]] = {}
         if author_ids:
-            users = (
-                session.execute(select(User).where(User.id.in_(author_ids)))
-                .scalars()
-                .all()
-            )
+            users = session.execute(select(User).where(User.id.in_(author_ids))).scalars().all()
             author_map = {u.id: (u.email, u.display_name) for u in users}
 
         avg_stars, count = (
@@ -106,11 +100,11 @@ async def list_polymorphic_reviews(
     payload: list[dict[str, Any]] = []
     my_review: dict[str, Any] | None = None
     for r in rows:
-        author_email, author_display = author_map.get(
-            r.author_user_id, (None, None)
-        )
+        author_email, author_display = author_map.get(r.author_user_id, (None, None))
         body_resolved = resolve_citations(
-            r.body_md, factory, workspace_id,
+            r.body_md,
+            factory,
+            workspace_id,
         )
         s = serialise_review(
             r,
@@ -130,9 +124,7 @@ async def list_polymorphic_reviews(
     }
 
 
-async def upsert_polymorphic_review(
-    kind: str, ref: str, request: Request
-) -> dict[str, Any]:
+async def upsert_polymorphic_review(kind: str, ref: str, request: Request) -> dict[str, Any]:
     """Idempotent upsert of the caller's review on a polymorphic entity.
 
     Body: ``{"stars": int (1..5), "body_md": str?}``.
@@ -161,7 +153,7 @@ async def upsert_polymorphic_review(
         raise BadRequestError("stars is required")
     try:
         stars = int(raw_stars)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         raise BadRequestError("stars must be an int") from None
     if stars < 1 or stars > 5:
         raise BadRequestError("stars must be in 1..5")
@@ -251,14 +243,14 @@ async def upsert_polymorphic_review(
         author_email=author_email,
         author_display_name=author_display,
         body_md_resolved=resolve_citations(
-            review.body_md, factory, workspace_id,
+            review.body_md,
+            factory,
+            workspace_id,
         ),
     )
 
 
-async def delete_polymorphic_review(
-    kind: str, ref: str, request: Request
-) -> dict[str, Any]:
+async def delete_polymorphic_review(kind: str, ref: str, request: Request) -> dict[str, Any]:
     """Remove the caller's review on a polymorphic entity.
 
     Self only — there is no per-entity moderator role for reviews.
@@ -294,4 +286,3 @@ async def delete_polymorphic_review(
         session.delete(existing)
         session.commit()
     return {"deleted": True}
-

@@ -64,9 +64,7 @@ def _parse_iso_datetime(value: str | None, *, field: str) -> datetime.datetime |
     try:
         return datetime.datetime.fromisoformat(value)
     except ValueError as exc:
-        raise BadRequestError(
-            f"{field}: expected ISO-8601 datetime, got {value!r}"
-        ) from exc
+        raise BadRequestError(f"{field}: expected ISO-8601 datetime, got {value!r}") from exc
 
 
 @router.get("/{agent_id}/recall")

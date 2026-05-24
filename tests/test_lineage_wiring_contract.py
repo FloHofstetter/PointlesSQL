@@ -14,7 +14,7 @@ that contract so the wiring cannot silently regress.
 
 The five scenarios mirror the four lineage axes the demo
 exercises (Sprint 15 row-edges, Sprint 15.7 value-changes,
-Sprint 21.7 source_model_uri) plus the Sprint 15.8 INFO-log
+Sprint 21.7 source_model_uri) plus the INFO-log
 diagnostic that flags drops at SELECT time.  All five pass
 against the current production code; the actual demo fix lives
 in ``scripts/seed-full-stack-demo.py``.
@@ -346,7 +346,7 @@ def test_pql_sql_logs_when_lineage_row_id_dropped_at_select(
 ) -> None:
     """Stripping ``_lineage_row_id`` from a lineage-bearing source logs INFO.
 
-    Pins Sprint 15.8.2's diagnostic: when the agent's SELECT references
+    Pins diagnostic: when the agent's SELECT references
     a table whose schema carries ``_lineage_row_id`` but the projection
     omits it, ``run_sql`` flags the op via INFO log and stamps
     ``lineage_row_id_dropped_at_select=True`` on ``params_json``.  This
@@ -395,7 +395,7 @@ def test_pql_sql_does_not_log_when_lineage_row_id_projected(
 ) -> None:
     """Projecting ``_lineage_row_id`` keeps the diagnostic silent.
 
-    Negative pin for the Sprint 15.8.2 diagnostic — projecting the
+    Negative pin for the diagnostic — projecting the
     column passes through cleanly and never trips the warning.
     """
     factory = app.state.session_factory

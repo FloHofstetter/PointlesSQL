@@ -130,9 +130,7 @@ async def run_git(
     )
 
     try:
-        stdout_b, stderr_b = await asyncio.wait_for(
-            proc.communicate(), timeout=timeout_seconds
-        )
+        stdout_b, stderr_b = await asyncio.wait_for(proc.communicate(), timeout=timeout_seconds)
     except TimeoutError:
         logger.warning("git timed out after %.1fs; killing pid=%s", timeout_seconds, proc.pid)
         try:

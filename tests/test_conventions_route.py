@@ -1,4 +1,4 @@
-"""Tests for the Sprint 13.7.3 ``GET /api/conventions`` route.
+"""Tests for the ``GET /api/conventions`` route.
 
 Read-only public surface that lets the
 ``hermes-plugin-pointlessql`` ``pql_conventions`` tool dump the

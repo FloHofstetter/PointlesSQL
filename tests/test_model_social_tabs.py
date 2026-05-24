@@ -136,9 +136,9 @@ async def test_model_html_renders_extracted_partials(
     """discussion / reviews / readme are per-page partials.
 
     The three social-flavoured tabs live in
-    ``pages/_partials/model/{discussion,reviews,readme}.html`` after
-    Phase 78 polish; this test confirms the model_detail HTML still
-    renders the per-tab DOM after the extraction.
+    ``pages/_partials/model/{discussion,reviews,readme}.html``;
+    this test confirms the model_detail HTML still renders the
+    per-tab DOM after the extraction.
     """
     res = await admin_client.get("/models/main.ml_silver.churn")
     body = res.text
@@ -173,19 +173,19 @@ async def test_data_product_html_renders_shared_partials(
         with tempfile.TemporaryDirectory() as td:
             yaml_path = pathlib.Path(td) / "pointlessql.yaml"
             yaml_path.write_text(
-                'data_product:\n'
+                "data_product:\n"
                 '  name: "Polish Probe"\n'
                 '  version: "0.1.0"\n'
                 '  description: "phase78 polish probe"\n'
-                '  catalog: main\n'
-                '  schema: phase78_probe\n'
-                '  steward_email: alice@pql.test\n'
-                '  sla_minutes: 60\n'
-                '  tables:\n'
-                '    - name: pings\n'
-                '      primary_key: [id]\n'
-                '      columns:\n'
-                '        - {name: id, type: long, nullable: false}\n',
+                "  catalog: main\n"
+                "  schema: phase78_probe\n"
+                "  steward_email: alice@pql.test\n"
+                "  sla_minutes: 60\n"
+                "  tables:\n"
+                "    - name: pings\n"
+                "      primary_key: [id]\n"
+                "      columns:\n"
+                "        - {name: id, type: long, nullable: false}\n",
                 encoding="utf-8",
             )
             load_contract(yaml_path, factory=factory)
@@ -209,7 +209,7 @@ async def test_model_html_includes_polymorphic_partials(
     body = res.text
     # Strings unique to each partial.
     assert "Endorsements express peer trust." in body
-    assert "Following non-data-product entities lands in Phase 77.8" in body
+    assert "Following non-data-product entities lands " in body
 
 
 @pytest.mark.asyncio
@@ -228,9 +228,7 @@ async def test_model_social_endpoints_roundtrip(
     )
     assert res_post.status_code == 200, res_post.text
 
-    res_list = await admin_client.get(
-        "/api/social/model/main.ml_silver.churn/comments"
-    )
+    res_list = await admin_client.get("/api/social/model/main.ml_silver.churn/comments")
     assert res_list.status_code == 200
     bodies = [c["body_md"] for c in res_list.json()["comments"]]
     assert "model.html smoke" in bodies

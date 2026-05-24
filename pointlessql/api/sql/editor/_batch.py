@@ -154,9 +154,7 @@ async def api_sql_execute_batch(
         # different transaction surface).
         for run_id in reversed(write_run_ids):
             try:
-                rollback_log.append(
-                    await _rollback_run(request, run_id=run_id)
-                )
+                rollback_log.append(await _rollback_run(request, run_id=run_id))
             except Exception as exc:  # noqa: BLE001 — best-effort
                 # bare-broad-ok: per-run rollback errors are appended
                 # to the structured rollback_log returned to the
@@ -213,14 +211,11 @@ async def _rollback_run(request: Request, *, run_id: str) -> dict[str, Any]:
 
     def _ops() -> list[tuple[int, str | None]]:
         with factory() as session:
-            rows = (
-                session.execute(
-                    select(AgentRunOperation.ordinal, AgentRunOperation.target_table)
-                    .where(AgentRunOperation.agent_run_id == run_id)
-                    .order_by(AgentRunOperation.ordinal.desc())
-                )
-                .all()
-            )
+            rows = session.execute(
+                select(AgentRunOperation.ordinal, AgentRunOperation.target_table)
+                .where(AgentRunOperation.agent_run_id == run_id)
+                .order_by(AgentRunOperation.ordinal.desc())
+            ).all()
             return [(int(r[0]), r[1]) for r in rows]
 
     ops = await asyncio.to_thread(_ops)

@@ -22,12 +22,11 @@ in ordinal order, and routes each one to one of three outcomes:
   dispatcher raises; otherwise the skip is recorded with reason
   ``"unsafe_op"``.
 
-**Phase 90 scope note**: ``replayable`` outcomes currently record
-*intent* rather than executing the primitive.  Real execution
-(rebuilding a DuckDB approved-tables map for the branch,
-re-running SQL against branch storage) lands together with the
-Phase 91 NL→SQL chat panel, which has the same plumbing
-requirement.  The dispatcher's audit + UI surface is fully
+**Scope note**: ``replayable`` outcomes currently record *intent*
+rather than executing the primitive.  Real execution (rebuilding a
+DuckDB approved-tables map for the branch, re-running SQL against
+branch storage) is deferred — it shares plumbing with the NL→SQL
+chat panel.  The dispatcher's audit + UI surface is fully
 functional today; the executed-vs-recorded distinction is called
 out in the replay-run's operation rows so the UI can render the
 disclaimer.
@@ -266,9 +265,7 @@ def _load_source_run(
     with session_factory() as session:
         run = session.get(AgentRun, str(source_run_id))
         if run is None:
-            raise ValidationError(
-                f"replay: source run {source_run_id!r} is not registered"
-            )
+            raise ValidationError(f"replay: source run {source_run_id!r} is not registered")
         count = session.scalar(
             select(AgentRunOperation.id)
             .where(AgentRunOperation.agent_run_id == str(source_run_id))
@@ -345,9 +342,7 @@ def _replay_one_op(
     try:
         params: dict[str, Any] = json.loads(op.params_json) if op.params_json else {}
     except (TypeError, ValueError) as exc:
-        raise ValidationError(
-            f"replay: op {op.id} has malformed params_json"
-        ) from exc
+        raise ValidationError(f"replay: op {op.id} has malformed params_json") from exc
 
     rewritten_params: dict[str, Any] = dict(params)
     if op.op_name in {OpName.SQL.value, OpName.SQL_EXPLAIN.value}:

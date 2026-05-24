@@ -4,7 +4,7 @@ The Hermes plugin's explain-first ``pql_query`` flow POSTs one row
 here per rewrite-loop resolution: auto-success, auto-failure,
 escalation to human approval, or "agent accepted the original cost-
 gate verdict".  The run-detail UI surfaces the rows in a sub-tab on
-the Operations top-tab, and the Sprint 39.4 Grafana panel computes
+the Operations top-tab, and the Grafana panel computes
 weekly cost savings from the ``auto_rewrite_succeeded`` rows.
 
 Auth model: any authenticated caller (session or API-key) whose

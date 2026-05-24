@@ -82,28 +82,19 @@ async def list_topics(
     with factory() as session:
         dp_counts = dict(
             session.execute(
-                select(
-                    DataProductTopic.topic_id, func.count()
-                ).group_by(DataProductTopic.topic_id)
+                select(DataProductTopic.topic_id, func.count()).group_by(DataProductTopic.topic_id)
             ).all()
         )
         follower_counts = dict(
             session.execute(
-                select(
-                    UserTopicFollow.topic_id, func.count()
-                ).group_by(UserTopicFollow.topic_id)
+                select(UserTopicFollow.topic_id, func.count()).group_by(UserTopicFollow.topic_id)
             ).all()
         )
-        stmt = (
-            select(Topic)
-            .where(Topic.workspace_id == workspace_id)
-            .order_by(Topic.display_name)
-        )
+        stmt = select(Topic).where(Topic.workspace_id == workspace_id).order_by(Topic.display_name)
         if q:
             needle = f"{q.strip().lower()}%"
             stmt = stmt.where(
-                func.lower(Topic.slug).like(needle)
-                | func.lower(Topic.display_name).like(needle)
+                func.lower(Topic.slug).like(needle) | func.lower(Topic.display_name).like(needle)
             )
         rows = session.execute(stmt).scalars().all()
 

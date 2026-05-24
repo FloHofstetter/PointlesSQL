@@ -109,9 +109,7 @@ async def test_table_post_comment_creates_polymorphic_row(
         assert anchor.entity_kind == "table"
         assert anchor.entity_ref == _TABLE_REF
         comment = session.execute(
-            select(DataProductComment).where(
-                DataProductComment.social_target_id == target_id
-            )
+            select(DataProductComment).where(DataProductComment.social_target_id == target_id)
         ).scalar_one()
         assert comment.data_product_id is None
         assert comment.body_md == "first table comment"
@@ -135,21 +133,17 @@ async def test_table_post_comment_writes_generic_audit_prefix(
     factory = app.state.session_factory
     with factory() as session:
         audit_rows = (
-            session.execute(
-                select(AuditLog).where(
-                    AuditLog.action == "audit.discussion.posted"
-                )
-            )
+            session.execute(select(AuditLog).where(AuditLog.action == "audit.discussion.posted"))
             .scalars()
             .all()
         )
         targets = [r.target for r in audit_rows]
-        assert any(
-            t.startswith(f"table:{_TABLE_REF}#") for t in targets
-        ), f"expected generic table: prefix, got {targets!r}"
-        assert not any(
-            t.startswith(f"data_product:{_TABLE_REF}#") for t in targets
-        ), "legacy data_product prefix must not leak for kind='table'"
+        assert any(t.startswith(f"table:{_TABLE_REF}#") for t in targets), (
+            f"expected generic table: prefix, got {targets!r}"
+        )
+        assert not any(t.startswith(f"data_product:{_TABLE_REF}#") for t in targets), (
+            "legacy data_product prefix must not leak for kind='table'"
+        )
 
 
 @pytest.mark.asyncio
@@ -161,9 +155,7 @@ async def test_table_list_comments_returns_polymorphic_shape(
         f"/api/social/table/{_TABLE_REF}/comments",
         json={"body_md": "shape probe"},
     )
-    res = await admin_socket.get(
-        f"/api/social/table/{_TABLE_REF}/comments"
-    )
+    res = await admin_socket.get(f"/api/social/table/{_TABLE_REF}/comments")
     assert res.status_code == 200, res.text
     payload = res.json()
     assert payload["entity_kind"] == "table"
@@ -182,9 +174,7 @@ async def test_table_delete_comment_soft_deletes_row(
         json={"body_md": "doomed"},
     )
     comment_id = post.json()["id"]
-    res = await admin_socket.delete(
-        f"/api/social/table/{_TABLE_REF}/comments/{comment_id}"
-    )
+    res = await admin_socket.delete(f"/api/social/table/{_TABLE_REF}/comments/{comment_id}")
     assert res.status_code == 200, res.text
     assert res.json()["deleted_at"] is not None
 
@@ -209,9 +199,7 @@ async def test_table_endorsement_apply_and_list(
     assert res.status_code == 200, res.text
     payload = res.json()
     assert payload["endorsement_type"] == "verified-by-steward"
-    listing = await admin_socket.get(
-        f"/api/social/table/{_TABLE_REF}/endorsements"
-    )
+    listing = await admin_socket.get(f"/api/social/table/{_TABLE_REF}/endorsements")
     assert listing.status_code == 200
     j = listing.json()
     assert j["entity_kind"] == "table"
@@ -245,9 +233,7 @@ async def test_table_endorsement_remove(
         json={"endorsement_type": "under-review"},
     )
     end_id = posted.json()["id"]
-    res = await admin_socket.delete(
-        f"/api/social/table/{_TABLE_REF}/endorsements/{end_id}"
-    )
+    res = await admin_socket.delete(f"/api/social/table/{_TABLE_REF}/endorsements/{end_id}")
     assert res.status_code == 200, res.text
     assert res.json()["removed_at"] is not None
     factory = app.state.session_factory
@@ -280,9 +266,7 @@ async def test_table_readme_put_and_get(
     factory = app.state.session_factory
     with factory() as session:
         row = session.execute(
-            select(EntityReadme).where(
-                EntityReadme.body_md.like("%Bronze layer%")
-            )
+            select(EntityReadme).where(EntityReadme.body_md.like("%Bronze layer%"))
         ).scalar_one()
         anchor = session.get(SocialTarget, row.social_target_id)
         assert anchor is not None
@@ -322,14 +306,10 @@ async def test_table_follow_now_writes_polymorphic_row(
     sibling polymorphic table; 77.8.D flipped the handler to use
     it.  Two consecutive POSTs are idempotent.
     """
-    res = await admin_socket.post(
-        f"/api/social/table/{_TABLE_REF}/follow"
-    )
+    res = await admin_socket.post(f"/api/social/table/{_TABLE_REF}/follow")
     assert res.status_code == 200, res.text
     assert res.json() == {"followed": True, "already": False}
-    again = await admin_socket.post(
-        f"/api/social/table/{_TABLE_REF}/follow"
-    )
+    again = await admin_socket.post(f"/api/social/table/{_TABLE_REF}/follow")
     assert again.status_code == 200, again.text
     assert again.json() == {"followed": True, "already": True}
 
@@ -339,21 +319,13 @@ async def test_table_followers_count_reflects_polymorphic_writes(
     admin_socket: httpx.AsyncClient,
 ) -> None:
     """Follower count now mirrors the actual polymorphic row state."""
-    await admin_socket.delete(
-        f"/api/social/table/{_TABLE_REF}/follow"
-    )
-    res = await admin_socket.get(
-        f"/api/social/table/{_TABLE_REF}/followers/count"
-    )
+    await admin_socket.delete(f"/api/social/table/{_TABLE_REF}/follow")
+    res = await admin_socket.get(f"/api/social/table/{_TABLE_REF}/followers/count")
     assert res.status_code == 200, res.text
     assert res.json() == {"count": 0, "following": False}
 
-    await admin_socket.post(
-        f"/api/social/table/{_TABLE_REF}/follow"
-    )
-    res2 = await admin_socket.get(
-        f"/api/social/table/{_TABLE_REF}/followers/count"
-    )
+    await admin_socket.post(f"/api/social/table/{_TABLE_REF}/follow")
+    res2 = await admin_socket.get(f"/api/social/table/{_TABLE_REF}/followers/count")
     assert res2.status_code == 200, res2.text
     assert res2.json() == {"count": 1, "following": True}
 
@@ -386,7 +358,7 @@ async def test_branch_post_comment_creates_polymorphic_row(
 async def test_branch_approved_for_promotion_endorsement(
     admin_socket: httpx.AsyncClient,
 ) -> None:
-    """The Phase 77.3.A endorsement type is applicable on branch entities."""
+    """The endorsement type is applicable on branch entities."""
     res = await admin_socket.post(
         f"/api/social/branch/{_BRANCH_REF}/endorsements",
         json={"endorsement_type": "branch-approved-for-promotion"},
@@ -427,9 +399,7 @@ async def test_branch_ref_malformed_returns_400(
     admin_socket: httpx.AsyncClient,
 ) -> None:
     """A branch ref missing the __branch_ separator returns 400."""
-    res = await admin_socket.get(
-        "/api/social/branch/just_some_string/comments"
-    )
+    res = await admin_socket.get("/api/social/branch/just_some_string/comments")
     assert res.status_code == 400, res.text
 
 
@@ -443,9 +413,7 @@ async def test_table_reviews_return_501(
     admin_socket: httpx.AsyncClient,
 ) -> None:
     """Reviews on kind='table' return 501 — supports_reviews=False."""
-    res = await admin_socket.get(
-        f"/api/social/table/{_TABLE_REF}/reviews"
-    )
+    res = await admin_socket.get(f"/api/social/table/{_TABLE_REF}/reviews")
     assert res.status_code == 501, res.text
 
 

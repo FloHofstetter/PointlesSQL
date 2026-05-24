@@ -63,7 +63,7 @@ def _latest_write_for_table(storage_location: str) -> datetime.datetime | None:
     if isinstance(raw, int | float):
         try:
             return datetime.datetime.fromtimestamp(raw / 1000.0, tz=datetime.UTC)
-        except (OverflowError, OSError, ValueError):
+        except OverflowError, OSError, ValueError:
             return None
     if isinstance(raw, str):
         try:
@@ -133,9 +133,7 @@ async def scan_all(
 
     with factory() as session:
         rows = (
-            session.execute(
-                select(DataProduct).where(DataProduct.sla_minutes.is_not(None))
-            )
+            session.execute(select(DataProduct).where(DataProduct.sla_minutes.is_not(None)))
             .scalars()
             .all()
         )

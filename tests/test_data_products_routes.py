@@ -1,4 +1,4 @@
-"""Tests for the Phase-50.2 data-product HTTP surface.
+"""Tests for the data-product HTTP surface.
 
 Covers the JSON list/detail/diff/lineage endpoints and the HTML
 index + detail pages.  Uses the centralised ``admin_client`` /
@@ -39,7 +39,6 @@ data_product:
       columns:
         - {name: order_id, type: long, nullable: false}
 """
-
 
 
 def _seed_yaml_and_load(tmp_path: Path) -> int:
@@ -196,9 +195,7 @@ async def test_lineage_returns_empty_graph_when_no_edges(
     res = await admin_client.get("/api/data-products/main/sales_gold/lineage")
     assert res.status_code == 200
     body = res.json()
-    assert any(
-        node["data"]["id"] == "main.sales_gold.orders" for node in body["nodes"]
-    )
+    assert any(node["data"]["id"] == "main.sales_gold.orders" for node in body["nodes"])
     assert body["edges"] == []
 
 

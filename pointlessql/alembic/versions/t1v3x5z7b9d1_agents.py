@@ -73,9 +73,7 @@ def upgrade() -> None:
             sa.ForeignKey("users.id"),
             nullable=True,
         ),
-        sa.Column(
-            "verified_at", sa.DateTime(timezone=True), nullable=True
-        ),
+        sa.Column("verified_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("bio_md", sa.Text(), nullable=False, server_default=""),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column(
@@ -106,9 +104,7 @@ def upgrade() -> None:
     # ``ck_dp_comment_category`` CHECK from migration
     # ``p7r9t1v3x5z7`` doesn't round-trip its name through the
     # table-recreate copy strategy.
-    op.execute(
-        "ALTER TABLE data_product_comments ADD COLUMN author_agent_id INTEGER"
-    )
+    op.execute("ALTER TABLE data_product_comments ADD COLUMN author_agent_id INTEGER")
     # PG would also benefit from the FK; SQLite stores FKs at
     # CREATE TABLE time only and ignores ALTER-added ones, so we
     # accept the FK existing only on Postgres deployments.  This
@@ -118,7 +114,5 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     """Reverse the agent-authorship extension + drop agents."""
-    op.execute(
-        "ALTER TABLE data_product_comments DROP COLUMN author_agent_id"
-    )
+    op.execute("ALTER TABLE data_product_comments DROP COLUMN author_agent_id")
     op.drop_table("agents")

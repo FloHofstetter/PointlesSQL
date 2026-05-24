@@ -45,14 +45,10 @@ def upgrade() -> None:
             nullable=False,
         ),
         sa.Column("finished_at", sa.DateTime(timezone=True), nullable=True),
-        sa.Column(
-            "outputs_json", sa.Text(), server_default="[]", nullable=False
-        ),
+        sa.Column("outputs_json", sa.Text(), server_default="[]", nullable=False),
         sa.Column("diff_summary_json", sa.Text(), nullable=True),
         sa.Column("triggered_by_user_id", sa.Integer(), nullable=True),
-        sa.ForeignKeyConstraint(
-            ["notebook_id"], ["notebooks.id"], ondelete="CASCADE"
-        ),
+        sa.ForeignKeyConstraint(["notebook_id"], ["notebooks.id"], ondelete="CASCADE"),
         sa.ForeignKeyConstraint(["triggered_by_user_id"], ["users.id"]),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("replay_uuid", name="uq_notebook_replays_uuid"),

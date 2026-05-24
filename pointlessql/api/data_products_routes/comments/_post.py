@@ -99,14 +99,10 @@ async def post_data_product_comment(
     if not body_md:
         raise BadRequestError("body_md is required")
     parent_comment_id_raw = body.get("parent_comment_id")
-    parent_comment_id = (
-        int(parent_comment_id_raw) if parent_comment_id_raw is not None else None
-    )
+    parent_comment_id = int(parent_comment_id_raw) if parent_comment_id_raw is not None else None
     requested_category_raw = body.get("category")
     requested_category = (
-        str(requested_category_raw).strip().lower()
-        if requested_category_raw is not None
-        else None
+        str(requested_category_raw).strip().lower() if requested_category_raw is not None else None
     )
     if requested_category is not None and requested_category not in ALLOWED_CATEGORIES:
         raise BadRequestError(f"category must be one of {ALLOWED_CATEGORIES}")
@@ -130,9 +126,7 @@ async def post_data_product_comment(
                 or parent.workspace_id != workspace_id
                 or parent.data_product_id != row.id
             ):
-                raise BadRequestError(
-                    "parent_comment_id refers to an unknown comment"
-                )
+                raise BadRequestError("parent_comment_id refers to an unknown comment")
             if chain_depth(session, parent_comment_id) >= MAX_THREAD_DEPTH:
                 raise BadRequestError(f"thread depth exceeds {MAX_THREAD_DEPTH}")
             # Replies inherit category from the top-level ancestor.
@@ -224,9 +218,7 @@ async def post_data_product_comment(
     )
 
     # per-user inbox fan-out + governance CloudEvent.
-    source_url = (
-        f"/data-products/{catalog}/{schema}#tab-discussion-comment-{comment_id}"
-    )
+    source_url = f"/data-products/{catalog}/{schema}#tab-discussion-comment-{comment_id}"
     summary = f"@{author_email or 'someone'} commented on {catalog}.{schema}"
     fanout_event(
         factory,
@@ -263,7 +255,6 @@ async def post_data_product_comment(
         body_md_resolved=resolve_citations(body_md, factory, workspace_id),
         agent=post_agent_payload,
         reactions=[
-            {"emoji": e, "count": 0, "has_current_user_reacted": False}
-            for e in ALLOWED_EMOJI
+            {"emoji": e, "count": 0, "has_current_user_reacted": False} for e in ALLOWED_EMOJI
         ],
     )

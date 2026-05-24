@@ -7,7 +7,7 @@
  * (``_mountAllEditors``), and the markdown edit/view toggle
  * (``_renderMarkdown``, ``enterMarkdownEdit``,
  * ``exitMarkdownEdit``). Extracted from ``notebook_editor.js``
- * in Phase 70.7.
+ * .
  */
 
 import { cellEditor } from './cell_editor.js';

@@ -17,17 +17,17 @@ Layout:
                         :class:`DataProductContractEvent`
                         + ``CONTRACT_EVENT_OUTCOMES`` constant.
 * ``_data_product_comments`` — :class:`DataProductComment`
-                        (Phase 71.1, threaded discussion rows).
+                        (threaded discussion rows).
 * ``_data_product_reviews``  — :class:`DataProductReview`
-                        (Phase 71.2, one-per-user star + body row).
+                        (one-per-user star + body row).
 * ``_data_product_trending`` — :class:`DataProductTrending`
-                        (Phase 72.3, cached trending rank rows).
+                        (cached trending rank rows).
 * ``_data_product_endorsement`` — :class:`DataProductEndorsement`
-                        (Phase 72.4, typed manual endorsements).
+                        (typed manual endorsements).
 * ``_data_product_candidate`` — :class:`DataProductPromotionCandidate`
-                        (Phase 73.1, promote-to-DP candidate cache).
+                        (promote-to-DP candidate cache).
 * ``_data_product_yaml_draft`` — :class:`DataProductYamlDraft`
-                        (Phase 73.1, draft yaml file tracking).
+                        (draft yaml file tracking).
 * ``_sync``           — :class:`SyncRun` (foreign-catalog sync run
                         history).
 """

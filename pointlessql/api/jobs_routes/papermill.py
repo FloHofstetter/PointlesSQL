@@ -134,4 +134,3 @@ async def job_run_compare(
             "active_table": None,
         },
     )
-

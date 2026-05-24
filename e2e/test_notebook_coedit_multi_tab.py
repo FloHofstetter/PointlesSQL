@@ -1,6 +1,6 @@
 """headless multi-tab co-edit CI gate.
 
-Translates the Phase 105.7 ``docs/e2e-walkthroughs/notebook-coedit-
+Translates the ``docs/e2e-walkthroughs/notebook-coedit-
 multi-tab.md`` playbook into an automated Playwright test focused on
 the *high-leverage regression guards* — the ones that would have
 caught the three bugs surfaced manually on 2026-05-22:
@@ -15,7 +15,7 @@ caught the three bugs surfaced manually on 2026-05-22:
   peer rail populates without any external trigger once both tabs
   finish their initial Y.Doc sync round-trip (Y.js ``clientID``
   differs between tabs, so the rail must contain at least one
-  peer).  Also exercises the Phase 108 ``onSynced`` rebroadcast
+  peer).  Also exercises the ``onSynced`` rebroadcast
   fix — without it the initial setLocalState frame is lost while
   the WS is still connecting.
 * **Bug-3 class** — ``cell_editor.js`` Phase 107 hotfix where a

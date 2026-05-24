@@ -44,9 +44,7 @@ def apply_remap_locked(hub: NotebookHub, remap: dict[str, str]) -> None:
             if old_uuid in texts:
                 try:
                     prior = texts[old_uuid]
-                    prior_value = (
-                        prior.to_py() if hasattr(prior, "to_py") else str(prior)
-                    )
+                    prior_value = prior.to_py() if hasattr(prior, "to_py") else str(prior)
                 except Exception:  # noqa: BLE001
                     # bare-broad-ok: drop unreadable y-text contents during remap
                     prior_value = ""
@@ -58,16 +56,14 @@ def apply_remap_locked(hub: NotebookHub, remap: dict[str, str]) -> None:
                     order.insert(i, new_uuid)
 
 
-async def apply_remote_bus_frame(
-    notebook_uuid: str, payload: bytes, source_pid: int
-) -> None:
+async def apply_remote_bus_frame(notebook_uuid: str, payload: bytes, source_pid: int) -> None:
     """Bus dispatch callback — apply a frame received from another worker.
 
     Invoked by :class:`CoeditBus` after a NOTIFY/SELECT round-trip
     when ``source_pid`` is not our own PID.  Mirrors the WS receive
     path: applies CRDT updates to the local hub's Doc and broadcasts
     to every locally-connected subscriber.  Does **not** re-publish
-    to the bus — Phase 109's frame-once invariant relies on the
+    to the bus — frame-once invariant relies on the
     publisher being the only worker that puts a given frame on the
     bus.
 
@@ -125,9 +121,7 @@ async def apply_remote_bus_frame(
         elif tag == TAG_AGENT_PRESENCE:
             await broadcast_to_all(hub, payload)
         else:
-            _LOG.debug(
-                "coedit-bus: ignoring unknown remote tag 0x%02x", tag
-            )
+            _LOG.debug("coedit-bus: ignoring unknown remote tag 0x%02x", tag)
 
 
 async def apply_save_remap(notebook_id: str, remap: dict[str, str]) -> None:

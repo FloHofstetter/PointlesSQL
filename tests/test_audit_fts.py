@@ -415,9 +415,7 @@ async def test_api_audit_search_offset_route(
             tables=["main.bronze.t"],
             notebook=f"routepager-{i}.py",
         )
-    r = await admin_client.get(
-        "/api/audit/search?q=routepager&axis=runs&limit=1&offset=1"
-    )
+    r = await admin_client.get("/api/audit/search?q=routepager&axis=runs&limit=1&offset=1")
     assert r.status_code == 200, r.text
     body = r.json()
     assert body["offset"] == 1
@@ -453,9 +451,7 @@ def test_search_finds_full_body_beyond_140_chars(fts_index: None) -> None:
         target="dp:main.gold#tab-discussion-comment-999",
         detail=detail,
     )
-    result = audit_fts.search(
-        app.state.session_factory, query=marker, axis="audit_log"
-    )
+    result = audit_fts.search(app.state.session_factory, query=marker, axis="audit_log")
     assert result["available"]
     assert result["total_count"] >= 1
     assert any(marker in (r["snippet"] or "") for r in result["results"])

@@ -1,4 +1,4 @@
-"""Tests for Sprint 21 observability: metrics, /metrics route, webhook."""
+"""Tests observability: metrics, /metrics route, webhook."""
 
 from __future__ import annotations
 

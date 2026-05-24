@@ -39,31 +39,13 @@ depends_on: str | Sequence[str] | None = None
 
 def upgrade() -> None:
     """Add agent-authorship columns on endorsements + reviews + reviewer cfg."""
-    op.execute(
-        "ALTER TABLE data_product_endorsements "
-        "ADD COLUMN applied_by_agent_id INTEGER"
-    )
-    op.execute(
-        "ALTER TABLE data_product_reviews "
-        "ADD COLUMN author_agent_id INTEGER"
-    )
-    op.execute(
-        "ALTER TABLE data_product_active_reviewer_configs "
-        "ADD COLUMN agent_slug VARCHAR(60)"
-    )
+    op.execute("ALTER TABLE data_product_endorsements ADD COLUMN applied_by_agent_id INTEGER")
+    op.execute("ALTER TABLE data_product_reviews ADD COLUMN author_agent_id INTEGER")
+    op.execute("ALTER TABLE data_product_active_reviewer_configs ADD COLUMN agent_slug VARCHAR(60)")
 
 
 def downgrade() -> None:
     """Drop the columns added in :func:`upgrade`."""
-    op.execute(
-        "ALTER TABLE data_product_active_reviewer_configs "
-        "DROP COLUMN agent_slug"
-    )
-    op.execute(
-        "ALTER TABLE data_product_reviews "
-        "DROP COLUMN author_agent_id"
-    )
-    op.execute(
-        "ALTER TABLE data_product_endorsements "
-        "DROP COLUMN applied_by_agent_id"
-    )
+    op.execute("ALTER TABLE data_product_active_reviewer_configs DROP COLUMN agent_slug")
+    op.execute("ALTER TABLE data_product_reviews DROP COLUMN author_agent_id")
+    op.execute("ALTER TABLE data_product_endorsements DROP COLUMN applied_by_agent_id")

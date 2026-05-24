@@ -53,9 +53,9 @@ class Dashboard(Base):
         updated_at: Timestamp of the most recent mutation.
         source: Discriminator picked at insert time.  ``'ui'`` for
             rows created via the admin pages (the legacy default);
-            ``'repo:<slug>'`` for rows materialised by the Phase
-            51.3 yaml loader from a ``pointlessql.yaml`` shipped
-            inside a synced workspace_repo.
+            ``'repo:<slug>'`` for rows materialised by the yaml
+            loader from a ``pointlessql.yaml`` shipped inside a
+            synced workspace_repo.
         repo_yaml_path: Absolute filesystem path of the
             originating yaml when ``source`` carries the
             ``repo:`` prefix; ``None`` otherwise.
@@ -180,7 +180,7 @@ class QueryHistory(Base):
             session does not cascade-erase its query history.
         notebook_path: Owning ``.py`` notebook path when the query
             executed inside a notebook cell; ``None`` for plain
-            editor traffic.  Added in Phase 66.5 (SQL cells) so the
+            editor traffic.  Added (SQL cells) so the
             ``/queries`` page can deep-link back to the originating
             notebook cell.
         notebook_content_hash: FNV-1a-64 content hash of the cell
@@ -313,8 +313,7 @@ class SavedQuery(Base):
         updated_at: Timestamp of the most recent mutation.
         source: Discriminator picked at insert time.  ``'ui'`` for
             rows saved through the editor (the legacy default);
-            ``'repo:<slug>'`` for rows materialised by the Phase
-            51.3 yaml loader.
+            ``'repo:<slug>'`` for rows materialised by the yaml loader.
         repo_yaml_path: Absolute filesystem path of the
             originating yaml when ``source`` carries the
             ``repo:`` prefix; ``None`` otherwise.

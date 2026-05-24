@@ -215,9 +215,7 @@ def write_sidecars(
         "data_sha256": sha,
         "data_filename": data_path.name,
     }
-    manifest_path.write_text(
-        json.dumps(manifest, indent=2, sort_keys=True), encoding="utf-8"
-    )
+    manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True), encoding="utf-8")
     os.chmod(manifest_path, 0o600)
     return sha_path, manifest_path
 

@@ -101,10 +101,7 @@ async def follow_user(
                         event_type=EVENT_TYPE_USER_FOLLOWED,
                         source_data_product_id=None,
                         source_url=f"/users/{caller['id']}",
-                        summary_md=(
-                            f"@{caller.get('email') or 'someone'} started "
-                            f"following you"
-                        ),
+                        summary_md=(f"@{caller.get('email') or 'someone'} started following you"),
                         actor_user_id=caller["id"],
                         created_at=datetime.datetime.now(datetime.UTC),
                     )
@@ -187,15 +184,12 @@ async def list_followers(
     require_user(request)
     factory = request.app.state.session_factory
     with factory() as session:
-        rows = (
-            session.execute(
-                select(User.id, User.email, User.display_name)
-                .join(UserFollow, UserFollow.follower_user_id == User.id)
-                .where(UserFollow.followed_user_id == user_id)
-                .order_by(User.display_name)
-            )
-            .all()
-        )
+        rows = session.execute(
+            select(User.id, User.email, User.display_name)
+            .join(UserFollow, UserFollow.follower_user_id == User.id)
+            .where(UserFollow.followed_user_id == user_id)
+            .order_by(User.display_name)
+        ).all()
     return {
         "user_id": user_id,
         "followers": [
@@ -223,15 +217,12 @@ async def list_following(
     require_user(request)
     factory = request.app.state.session_factory
     with factory() as session:
-        rows = (
-            session.execute(
-                select(User.id, User.email, User.display_name)
-                .join(UserFollow, UserFollow.followed_user_id == User.id)
-                .where(UserFollow.follower_user_id == user_id)
-                .order_by(User.display_name)
-            )
-            .all()
-        )
+        rows = session.execute(
+            select(User.id, User.email, User.display_name)
+            .join(UserFollow, UserFollow.followed_user_id == User.id)
+            .where(UserFollow.follower_user_id == user_id)
+            .order_by(User.display_name)
+        ).all()
     return {
         "user_id": user_id,
         "following": [

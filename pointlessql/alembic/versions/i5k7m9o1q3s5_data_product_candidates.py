@@ -45,9 +45,7 @@ def upgrade() -> None:
         sa.Column("write_op_count", sa.Integer(), nullable=False),
         sa.Column("distinct_table_count", sa.Integer(), nullable=False),
         sa.Column("sample_target_table", sa.String(length=767), nullable=False),
-        sa.Column(
-            "status", sa.String(length=20), nullable=False, server_default="open"
-        ),
+        sa.Column("status", sa.String(length=20), nullable=False, server_default="open"),
         sa.Column(
             "dismissed_by_user_id",
             sa.Integer(),
@@ -123,8 +121,7 @@ def upgrade() -> None:
             name="uq_dp_yaml_draft_content",
         ),
         sa.CheckConstraint(
-            "source_kind IN ('candidate_generate', 'pql_contract', "
-            "'agent_proposal')",
+            "source_kind IN ('candidate_generate', 'pql_contract', 'agent_proposal')",
             name="ck_dp_yaml_draft_source",
         ),
     )
@@ -137,11 +134,7 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     """Drop both tables."""
-    op.drop_index(
-        "ix_dp_yaml_draft_ws_open", table_name="data_product_yaml_drafts"
-    )
+    op.drop_index("ix_dp_yaml_draft_ws_open", table_name="data_product_yaml_drafts")
     op.drop_table("data_product_yaml_drafts")
-    op.drop_index(
-        "ix_dp_candidate_ws_status", table_name="data_product_candidates"
-    )
+    op.drop_index("ix_dp_candidate_ws_status", table_name="data_product_candidates")
     op.drop_table("data_product_candidates")

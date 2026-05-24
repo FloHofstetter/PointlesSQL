@@ -87,9 +87,7 @@ async def test_sqlite_returns_user_tables(
         conn.execute("CREATE TABLE users (id INTEGER)")
         conn.execute("CREATE TABLE orders (id INTEGER)")
         conn.commit()
-    source_id = _seed_source(
-        name="sqlite-test", kind="sqlite", config={"path": str(db)}
-    )
+    source_id = _seed_source(name="sqlite-test", kind="sqlite", config={"path": str(db)})
     res = await admin_client.get(f"/api/ingest/sources/{source_id}/tables")
     body = res.json()
     # sqlite_scanner may not install offline; accept either path.

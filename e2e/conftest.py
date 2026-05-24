@@ -1,6 +1,6 @@
 """End-to-end test fixtures — live uvicorn server + headless Chromium.
 
-Phase 108 introduces a parallel test tree at ``e2e/`` (sibling of
+introduces a parallel test tree at ``e2e/`` (sibling of
 ``tests/``, not a child) for headless-browser tests that drive the
 real Phase-105 multi-tab co-edit flow.
 

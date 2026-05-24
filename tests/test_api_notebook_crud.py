@@ -32,9 +32,7 @@ def workspace_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 # -- POST /api/notebooks/create --
 
 
-async def test_create_happy_path(
-    workspace_dir: Path, admin_client: httpx.AsyncClient
-) -> None:
+async def test_create_happy_path(workspace_dir: Path, admin_client: httpx.AsyncClient) -> None:
     """Create writes an empty ``.py`` file and returns the relative path."""
     resp = await admin_client.post(
         "/api/notebooks/create",
@@ -45,9 +43,7 @@ async def test_create_happy_path(
     assert (workspace_dir / "demo.py").is_file()
 
 
-async def test_create_already_exists(
-    workspace_dir: Path, admin_client: httpx.AsyncClient
-) -> None:
+async def test_create_already_exists(workspace_dir: Path, admin_client: httpx.AsyncClient) -> None:
     """Pre-existing file → 422 with the validation envelope."""
     (workspace_dir / "exists.py").write_bytes(b"")
     resp = await admin_client.post(
@@ -84,9 +80,7 @@ async def test_create_non_admin_accessible(
 # -- POST /api/notebooks/rename --
 
 
-async def test_rename_happy_path(
-    workspace_dir: Path, admin_client: httpx.AsyncClient
-) -> None:
+async def test_rename_happy_path(workspace_dir: Path, admin_client: httpx.AsyncClient) -> None:
     """Rename moves the file and returns the from/to pair."""
     (workspace_dir / "old.py").write_bytes(b"# %%\n1+1\n")
     resp = await admin_client.post(
@@ -99,9 +93,7 @@ async def test_rename_happy_path(
     assert (workspace_dir / "new.py").is_file()
 
 
-async def test_rename_target_exists(
-    workspace_dir: Path, admin_client: httpx.AsyncClient
-) -> None:
+async def test_rename_target_exists(workspace_dir: Path, admin_client: httpx.AsyncClient) -> None:
     """Existing target → 422; original file must remain untouched."""
     (workspace_dir / "src.py").write_bytes(b"")
     (workspace_dir / "dst.py").write_bytes(b"")
@@ -126,24 +118,16 @@ async def test_delete_requires_confirm(
     assert (workspace_dir / "kept.py").exists()
 
 
-async def test_delete_happy_path(
-    workspace_dir: Path, admin_client: httpx.AsyncClient
-) -> None:
+async def test_delete_happy_path(workspace_dir: Path, admin_client: httpx.AsyncClient) -> None:
     """Confirmed delete removes the file and returns its path."""
     (workspace_dir / "doomed.py").write_bytes(b"")
-    resp = await admin_client.delete(
-        "/api/notebooks/delete?path=doomed.py&confirm=true"
-    )
+    resp = await admin_client.delete("/api/notebooks/delete?path=doomed.py&confirm=true")
     assert resp.status_code == 200, resp.text
     assert resp.json() == {"path": "doomed.py"}
     assert not (workspace_dir / "doomed.py").exists()
 
 
-async def test_delete_unknown_path(
-    workspace_dir: Path, admin_client: httpx.AsyncClient
-) -> None:
+async def test_delete_unknown_path(workspace_dir: Path, admin_client: httpx.AsyncClient) -> None:
     """Unknown target → 422 (resolves but not a file)."""
-    resp = await admin_client.delete(
-        "/api/notebooks/delete?path=ghost.py&confirm=true"
-    )
+    resp = await admin_client.delete("/api/notebooks/delete?path=ghost.py&confirm=true")
     assert resp.status_code == 422

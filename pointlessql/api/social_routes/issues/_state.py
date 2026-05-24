@@ -51,16 +51,12 @@ async def _transition_state(
     factory = request.app.state.session_factory
     with factory() as session:
         issue = session.execute(
-            select(Issue).where(
-                Issue.id == issue_id, Issue.workspace_id == workspace_id
-            )
+            select(Issue).where(Issue.id == issue_id, Issue.workspace_id == workspace_id)
         ).scalar_one_or_none()
         if issue is None:
             raise ResourceNotFoundError.not_found(what=f"issue id={issue_id}")
         if not can_edit_issue(user, issue):
-            raise PermissionDeniedError(
-                "Only the issue opener or an admin may transition state."
-            )
+            raise PermissionDeniedError("Only the issue opener or an admin may transition state.")
         prior_state = issue.state
         issue.state = new_state
         if new_state == "open":
@@ -70,17 +66,11 @@ async def _transition_state(
             issue.closed_at = datetime.datetime.now(datetime.UTC)
             issue.closed_reason = closed_reason
         session.commit()
-        parent_kind, parent_ref = hydrate_parent(
-            session, issue.parent_social_target_id
-        )
+        parent_kind, parent_ref = hydrate_parent(session, issue.parent_social_target_id)
         emails = hydrate_emails(
             session,
             [issue.opened_by_user_id]
-            + (
-                [issue.assignee_user_id]
-                if issue.assignee_user_id
-                else []
-            ),
+            + ([issue.assignee_user_id] if issue.assignee_user_id else []),
         )
         result = serialise_issue(
             issue,
@@ -122,7 +112,8 @@ async def _transition_state(
     # bound outside the try block so the exception handler's log line
     # has a stable name even if the fanout-module import explodes.
     verb = (
-        "closed" if new_state.startswith("closed")
+        "closed"
+        if new_state.startswith("closed")
         else ("resolved" if new_state == "resolved" else "reopened")
     )
     try:
@@ -145,9 +136,7 @@ async def _transition_state(
 
 
 @router.post("/api/issues/{issue_id}/close")
-async def close_issue(
-    issue_id: int, request: Request
-) -> dict[str, Any]:
+async def close_issue(issue_id: int, request: Request) -> dict[str, Any]:
     """Close an open issue.
 
     Body (optional):
@@ -161,19 +150,12 @@ async def close_issue(
         raw = await request.json()
         if isinstance(raw, dict):
             payload = cast(dict[str, Any], raw)
-    except (ValueError, json.JSONDecodeError):
+    except ValueError, json.JSONDecodeError:
         payload = {}
     closed_reason_raw = payload.get("closed_reason")
-    if (
-        closed_reason_raw is not None
-        and closed_reason_raw not in ISSUE_CLOSED_REASONS
-    ):
-        raise BadRequestError(
-            f"closed_reason must be one of {ISSUE_CLOSED_REASONS}"
-        )
-    closed_reason: str | None = (
-        str(closed_reason_raw) if closed_reason_raw is not None else None
-    )
+    if closed_reason_raw is not None and closed_reason_raw not in ISSUE_CLOSED_REASONS:
+        raise BadRequestError(f"closed_reason must be one of {ISSUE_CLOSED_REASONS}")
+    closed_reason: str | None = str(closed_reason_raw) if closed_reason_raw is not None else None
     not_planned = bool(payload.get("not_planned"))
     new_state = "closed_not_planned" if not_planned else "closed"
     return await _transition_state(
@@ -185,8 +167,6 @@ async def close_issue(
 
 
 @router.post("/api/issues/{issue_id}/reopen")
-async def reopen_issue(
-    issue_id: int, request: Request
-) -> dict[str, Any]:
+async def reopen_issue(issue_id: int, request: Request) -> dict[str, Any]:
     """Reopen a closed issue.  Clears ``closed_at`` + ``closed_reason``."""
     return await _transition_state(issue_id, request, new_state="open")

@@ -12,7 +12,7 @@ Coverage:
 * Reactions: POST creates a row in ``data_product_reactions`` with
   ``data_product_id=NULL`` and ``social_target_id`` populated;
   idempotent via the 77.8.C UNIQUE; comment-reactions round-trip
-  on non-DP kinds after the Phase 78 polish unlock.
+  on non-DP kinds after the polish unlock.
 * DP follow / reaction routes still work bit-identically through
   the legacy tables — regression guard.
 * Audit prefix uses the generic ``{kind}:`` form for non-DP rows.
@@ -90,11 +90,7 @@ def test_social_follows_table_exists() -> None:
 
 def test_polymorphic_reaction_unique_present() -> None:
     """SocialReaction is keyed on the polymorphic UNIQUE."""
-    constraints = [
-        c.name
-        for c in SocialReaction.__table__.constraints
-        if c.name is not None
-    ]
+    constraints = [c.name for c in SocialReaction.__table__.constraints if c.name is not None]
     assert "uq_social_reactions_one_per_user_per_emoji" in constraints
 
 
@@ -108,23 +104,17 @@ async def test_star_polymorphic_round_trip_on_table(
     admin_client: httpx.AsyncClient,
 ) -> None:
     """POST/GET/DELETE round-trip for a star on kind='table'."""
-    res_post = await admin_client.post(
-        f"/api/social/table/{_TABLE_REF}/star"
-    )
+    res_post = await admin_client.post(f"/api/social/table/{_TABLE_REF}/star")
     assert res_post.status_code == 200, res_post.text
     body = res_post.json()
     assert body["starred"] is True
     assert body["count"] >= 1
 
-    res_get = await admin_client.get(
-        f"/api/social/table/{_TABLE_REF}/star"
-    )
+    res_get = await admin_client.get(f"/api/social/table/{_TABLE_REF}/star")
     assert res_get.status_code == 200
     assert res_get.json()["starred"] is True
 
-    res_del = await admin_client.delete(
-        f"/api/social/table/{_TABLE_REF}/star"
-    )
+    res_del = await admin_client.delete(f"/api/social/table/{_TABLE_REF}/star")
     assert res_del.status_code == 200
     assert res_del.json()["starred"] is False
 
@@ -170,9 +160,7 @@ async def test_star_dp_kind_404s_without_seeded_dp(
     DP exists, the star ends up in ``social_stars`` keyed by the
     same ``social_target_id`` the DP handlers already manage.
     """
-    res = await admin_client.post(
-        "/api/social/dp/main.no_such_dp/star"
-    )
+    res = await admin_client.post("/api/social/dp/main.no_such_dp/star")
     assert res.status_code == 404, res.text
 
 
@@ -235,9 +223,7 @@ async def test_followers_list_admin_only_for_polymorphic(
 ) -> None:
     """Admin sees the follower roster; non-admin gets empty list."""
     await admin_client.post(f"/api/social/table/{_TABLE_REF}/follow")
-    res = await admin_client.get(
-        f"/api/social/table/{_TABLE_REF}/followers"
-    )
+    res = await admin_client.get(f"/api/social/table/{_TABLE_REF}/followers")
     assert res.status_code == 200, res.text
     body = res.json()
     assert body["entity_kind"] == "table"
@@ -286,9 +272,7 @@ async def test_reactions_polymorphic_list_aggregates(
         f"/api/social/table/{_TABLE_REF}/reactions",
         json={"emoji": "👍"},
     )
-    res = await admin_client.get(
-        f"/api/social/table/{_TABLE_REF}/reactions"
-    )
+    res = await admin_client.get(f"/api/social/table/{_TABLE_REF}/reactions")
     assert res.status_code == 200
     body = res.json()
     rows = {r["emoji"]: r for r in body["reactions"]}
@@ -387,7 +371,7 @@ async def test_comment_reaction_rejects_mismatched_entity(
 
 
 # ---------------------------------------------------------------------------
-# DP regression — DP follow route writes to social_follows after Phase 78
+# DP regression — DP follow route writes to social_follows
 # ---------------------------------------------------------------------------
 
 
@@ -402,9 +386,7 @@ async def test_dp_follow_route_writes_to_social_follows(
     looks up the social_target_id via :func:`resolve_dp_target`
     and writes through the same path as every other kind.
     """
-    res = await admin_client.post(
-        "/api/data-products/main/sales_gold/follow"
-    )
+    res = await admin_client.post("/api/data-products/main/sales_gold/follow")
     # 200 or 404 (no DP yet in this test isolate) — what matters is
     # that the route is registered and hasn't regressed.
     assert res.status_code in (200, 404), res.text

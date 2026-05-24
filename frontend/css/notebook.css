@@ -34,8 +34,7 @@
 }
 
 /* vital-signs cluster v2.  Three rounded pills
-   carrying icons + state-driven colour utility; replaces the
-   Sprint 112.5 0.55 rem solid circles which read as decorative
+   carrying icons + state-driven colour utility; replaces the 0.55 rem solid circles which read as decorative
    macOS window controls on a fresh load.  Same three signals
    (save / kernel / co-edit), now legible. */
 .pql-notebook-toolbar .pql-notebook-vitals {

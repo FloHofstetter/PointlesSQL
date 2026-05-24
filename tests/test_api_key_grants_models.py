@@ -1,4 +1,4 @@
-"""Schema-level smoke tests for the Phase 120 ACL + usage tables."""
+"""Schema-level smoke tests for the ACL + usage tables."""
 
 from __future__ import annotations
 

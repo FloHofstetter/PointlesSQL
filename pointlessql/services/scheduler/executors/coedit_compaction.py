@@ -64,13 +64,10 @@ async def _coedit_compaction_executor(
         skipped_below_threshold = 0
         failed = 0
         with factory() as session:
-            rows = list(
-                session.execute(select(NotebookCrdtState)).scalars().all()
-            )
+            rows = list(session.execute(select(NotebookCrdtState)).scalars().all())
             for row in rows:
                 if (
-                    row.notebook_id
-                    in notebook_coedit_ws._HUBS  # noqa: SLF001  # pyright: ignore[reportPrivateUsage]
+                    row.notebook_id in notebook_coedit_ws._HUBS  # noqa: SLF001  # pyright: ignore[reportPrivateUsage]
                 ):
                     skipped_active += 1
                     continue

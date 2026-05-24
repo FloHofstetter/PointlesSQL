@@ -60,9 +60,7 @@ def upgrade() -> None:
     )
 
     with op.batch_alter_table("data_product_endorsements") as batch_op:
-        batch_op.drop_constraint(
-            "ck_dp_endorsement_type", type_="check"
-        )
+        batch_op.drop_constraint("ck_dp_endorsement_type", type_="check")
         batch_op.create_check_constraint(
             "ck_dp_endorsement_type",
             _make_check_sql(_NEW_TYPES),
@@ -72,9 +70,7 @@ def upgrade() -> None:
 def downgrade() -> None:
     """Reverse: drop the column + restore the original 4-type CHECK."""
     with op.batch_alter_table("data_product_endorsements") as batch_op:
-        batch_op.drop_constraint(
-            "ck_dp_endorsement_type", type_="check"
-        )
+        batch_op.drop_constraint("ck_dp_endorsement_type", type_="check")
         batch_op.create_check_constraint(
             "ck_dp_endorsement_type",
             _make_check_sql(_OLD_TYPES),

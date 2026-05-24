@@ -2,7 +2,7 @@
 
 The notebook ``.py`` marker grammar already round-trips arbitrary
 ``tags=["..."]`` lists losslessly through
-:mod:`pointlessql.services.notebook._doc`.  Phase 95.3 adds a hybrid
+:mod:`pointlessql.services.notebook._doc`. This adds a hybrid
 UI picker: a curated dropdown of light-categorisation tags plus a
 ``Custom…`` escape for free-text entries.
 

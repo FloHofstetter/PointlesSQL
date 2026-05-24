@@ -88,31 +88,21 @@ class EditorChatSession(Base):
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    editor_session_id: Mapped[str] = mapped_column(
-        String(36), nullable=False, unique=True
-    )
+    editor_session_id: Mapped[str] = mapped_column(String(36), nullable=False, unique=True)
     workspace_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("workspaces.id"), nullable=False, server_default="1"
     )
-    user_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("users.id"), nullable=False
-    )
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
     agent_run_id: Mapped[str] = mapped_column(
         String(36),
         ForeignKey("agent_runs.id"),
         nullable=False,
         unique=True,
     )
-    conversation_json: Mapped[str] = mapped_column(
-        Text, nullable=False, server_default="[]"
-    )
-    turn_count: Mapped[int] = mapped_column(
-        Integer, nullable=False, server_default="0"
-    )
+    conversation_json: Mapped[str] = mapped_column(Text, nullable=False, server_default="[]")
+    turn_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
     current_turn_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
-    created_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     last_active_at: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True), nullable=False
     )

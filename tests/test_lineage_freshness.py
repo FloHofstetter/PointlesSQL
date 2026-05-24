@@ -1,6 +1,6 @@
-"""Tests for the Phase-40 lineage-freshness compute + admin CRUD.
+"""Tests for the lineage-freshness compute + admin CRUD.
 
-Sprint 40.4 introduces ``expected_lineage_inbound`` registrations,
+introduces ``expected_lineage_inbound`` registrations,
 the ``compute_freshness`` helper that turns rows into per-pair
 verdicts, and the ``/api/admin/expected-producers`` JSON CRUD
 endpoints.

@@ -68,24 +68,14 @@ class LensSession(Base):
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    workspace_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("workspaces.id"), nullable=False
-    )
-    owner_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("users.id"), nullable=False
-    )
+    workspace_id: Mapped[int] = mapped_column(Integer, ForeignKey("workspaces.id"), nullable=False)
+    owner_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
     title: Mapped[str] = mapped_column(String(200), nullable=False)
     llm_provider: Mapped[str] = mapped_column(String(32), nullable=False)
     llm_model: Mapped[str] = mapped_column(String(128), nullable=False)
-    total_cost_estimate: Mapped[float] = mapped_column(
-        Float, nullable=False, default=0.0
-    )
-    created_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
-    updated_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
+    total_cost_estimate: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    updated_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     last_message_at: Mapped[datetime.datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )

@@ -1,4 +1,4 @@
-"""Tests for Phase 100 — publish notebook (share UUIDs + dashboard mode)."""
+"""Tests — publish notebook (share UUIDs + dashboard mode)."""
 
 from __future__ import annotations
 
@@ -22,9 +22,7 @@ def workspace_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 
 
 def _write_notebook(workspace_dir: Path, name: str) -> None:
-    (workspace_dir / name).write_text(
-        "# %% [markdown]\n# # Hello\n\n# %%\nprint(1)\n"
-    )
+    (workspace_dir / name).write_text("# %% [markdown]\n# # Hello\n\n# %%\nprint(1)\n")
 
 
 # -- service: dashboard render ------------------------------------------------
@@ -122,9 +120,7 @@ async def test_api_create_dashboard_share(
     )
     assert create.status_code == 201
     assert create.json()["dashboard_mode"] is True
-    viewed = await admin_client.get(
-        f"/share/notebook/{create.json()['share_uuid']}"
-    )
+    viewed = await admin_client.get(f"/share/notebook/{create.json()['share_uuid']}")
     assert "Dashboard" in viewed.text
     assert "dashboard_mode" not in viewed.text  # template flag, not output
 
@@ -142,9 +138,7 @@ async def test_api_revoke_share_returns_410(
     )
     share_uuid = create.json()["share_uuid"]
 
-    revoked = await admin_client.delete(
-        f"/api/notebooks/shares/{share_uuid}"
-    )
+    revoked = await admin_client.delete(f"/api/notebooks/shares/{share_uuid}")
     assert revoked.json()["revoked"] is True
 
     viewed = await admin_client.get(f"/share/notebook/{share_uuid}")
@@ -239,7 +233,7 @@ async def test_embed_route_returns_same_body_as_share_route(
     # brand topbar via the ``pql-public--compact`` class on ``<body>``).
     assert '<body class="pql-public--compact">' in embed.text
     assert '<body class="pql-public--compact">' not in direct.text
-    assert '<body>' in direct.text
+    assert "<body>" in direct.text
     # The notebook body fragment (cells + outputs) is identical in both.
     for marker in ('class="pql-cell pql-cell--code"', 'class="pql-cell pql-cell--markdown"'):
         assert (marker in direct.text) == (marker in embed.text)
@@ -258,9 +252,7 @@ async def test_api_list_shares_includes_revoked(
     )
     share_uuid = create.json()["share_uuid"]
     await admin_client.delete(f"/api/notebooks/shares/{share_uuid}")
-    listed = await admin_client.get(
-        "/api/notebooks/shares", params={"path": "x.py"}
-    )
+    listed = await admin_client.get("/api/notebooks/shares", params={"path": "x.py"})
     rows = listed.json()["shares"]
     assert len(rows) == 1
     assert rows[0]["active"] is False

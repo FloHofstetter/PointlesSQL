@@ -85,9 +85,5 @@ class EntityReadme(Base):
     )
     version_int: Mapped[int] = mapped_column(Integer, nullable=False)
     body_md: Mapped[str] = mapped_column(Text, nullable=False, default="")
-    updated_by_user_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("users.id"), nullable=False
-    )
-    updated_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
+    updated_by_user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
+    updated_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)

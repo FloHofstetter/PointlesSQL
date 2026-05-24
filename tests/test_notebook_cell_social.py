@@ -64,10 +64,7 @@ def test_notebook_cell_url_builder_round_trips() -> None:
         == f"/notebooks/uuid/{nb}?cell={cell}"
     )
     assert entity_registry.url_for("notebook_cell", "garbage") == "/notebooks"
-    assert (
-        entity_registry.url_for("notebook_cell", "incomplete:")
-        == "/notebooks"
-    )
+    assert entity_registry.url_for("notebook_cell", "incomplete:") == "/notebooks"
 
 
 def test_parse_ref_accepts_well_formed_composite() -> None:
@@ -109,16 +106,12 @@ async def test_notebook_cell_comment_round_trip(
     payload = res.json()
     assert payload["body_md"] == "this cell broke for me"
 
-    list_res = await admin_client.get(
-        f"/api/social/notebook_cell/{ref}/comments"
-    )
+    list_res = await admin_client.get(f"/api/social/notebook_cell/{ref}/comments")
     assert list_res.status_code == 200, list_res.text
     listing = list_res.json()
     assert listing["entity_kind"] == "notebook_cell"
     assert listing["entity_ref"] == ref
-    assert any(
-        c["body_md"] == "this cell broke for me" for c in listing["comments"]
-    )
+    assert any(c["body_md"] == "this cell broke for me" for c in listing["comments"])
 
 
 @pytest.mark.asyncio
@@ -136,14 +129,9 @@ async def test_notebook_cell_review_category_round_trip(
     assert payload["category"] == "review"
     assert payload["body_md"].startswith("✅ **Approved**")
 
-    list_res = await admin_client.get(
-        f"/api/social/notebook_cell/{ref}/comments"
-    )
+    list_res = await admin_client.get(f"/api/social/notebook_cell/{ref}/comments")
     assert list_res.status_code == 200
-    reviews = [
-        c for c in list_res.json()["comments"]
-        if c["category"] == "review"
-    ]
+    reviews = [c for c in list_res.json()["comments"] if c["category"] == "review"]
     assert len(reviews) >= 1
 
 
@@ -153,11 +141,11 @@ async def test_notebook_cell_comment_as_agent_principal_ok(
 ) -> None:
     """``?as_agent=`` on the polymorphic POST.
 
-    The polymorphic comment POST previously dropped ``as_agent`` for
-    non-DP kinds (silent ignore).  Closure widens the Phase 76.5
-    speak-as-agent envelope to every kind, so cell-level review
-    decisions authored via ``pql_review_cell`` carry the agent chip
-    on the rendered review badge.
+    The polymorphic comment POST previously dropped ``as_agent``
+    for non-DP kinds (silent ignore).  The speak-as-agent envelope
+    is now widened to every kind, so cell-level review decisions
+    authored via ``pql_review_cell`` carry the agent chip on the
+    rendered review badge.
     """
     factory = app.state.session_factory
     principal_id: int
@@ -167,9 +155,7 @@ async def test_notebook_cell_comment_as_agent_principal_ok(
 
     with factory() as session:
         principal_id = int(
-            session.execute(
-                select(_User.id).where(_User.email == "test@test.com")
-            ).scalar_one()
+            session.execute(select(_User.id).where(_User.email == "test@test.com")).scalar_one()
         )
 
     create = await admin_client.post(
@@ -211,9 +197,7 @@ async def test_notebook_cell_comment_as_agent_non_principal_rejected(
 
     with factory() as session:
         principal_id = int(
-            session.execute(
-                select(_User.id).where(_User.email == "test@test.com")
-            ).scalar_one()
+            session.execute(select(_User.id).where(_User.email == "test@test.com")).scalar_one()
         )
     create = await admin_client.post(
         "/api/agents",
@@ -254,16 +238,12 @@ async def test_notebook_cell_follow_round_trip(
     res = await admin_client.post(f"/api/social/notebook_cell/{ref}/follow")
     assert res.status_code == 200, res.text
 
-    count_res = await admin_client.get(
-        f"/api/social/notebook_cell/{ref}/followers/count"
-    )
+    count_res = await admin_client.get(f"/api/social/notebook_cell/{ref}/followers/count")
     assert count_res.status_code == 200
     assert count_res.json()["count"] >= 1
     assert count_res.json()["following"] is True
 
-    drop_res = await admin_client.delete(
-        f"/api/social/notebook_cell/{ref}/follow"
-    )
+    drop_res = await admin_client.delete(f"/api/social/notebook_cell/{ref}/follow")
     assert drop_res.status_code == 200, drop_res.text
 
 

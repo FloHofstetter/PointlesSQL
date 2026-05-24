@@ -22,7 +22,7 @@ directly.  The roadmap revisit threshold for materialising results
 is >100M datapoints/year *or* >2s p95 on
 ``/api/audit/anomalies``.
 
-This was a single 913-LOC file until Phase 49b; the public surface
+This was a single 913-LOC file the public surface
 is unchanged.  Imports of the original module path keep working
 because every public symbol is re-exported here.
 """

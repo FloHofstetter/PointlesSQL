@@ -107,19 +107,16 @@ def compute_badges_for_dp(
     # count sla_violated envelopes mentioning this DP within
     # the window; if zero, treat as 100%; otherwise return
     # ``max(0, 100 - violation_count * 5)`` so a single
-    # violation reads as 95%.  Phase 72.3's trending refresh
+    # violation reads as 95%.  trending refresh
     # will replace this with a per-tick percentage once the
     # cache lands.
     violation_count = int(
         session.execute(
             select(func.count(GovernanceEvent.id)).where(
                 GovernanceEvent.workspace_id == workspace_id,
-                GovernanceEvent.event_type
-                == "pointlessql.data_product.sla_violated",
+                GovernanceEvent.event_type == "pointlessql.data_product.sla_violated",
                 GovernanceEvent.fired_at >= thirty_days_ago,
-                GovernanceEvent.payload_json.like(
-                    f"%{dp.catalog_name}.{dp.schema_name}%"
-                ),
+                GovernanceEvent.payload_json.like(f"%{dp.catalog_name}.{dp.schema_name}%"),
             )
         ).scalar_one()
         or 0
@@ -178,10 +175,8 @@ def compute_badges_bulk(
     # per-DP LIKE filters that don't merge into a single GROUP BY.
     # Iterating is N queries per badge, which stays cheap for the
     # < 50 DPs we render on a browse page.  The trending refresh
-    # in Sprint 72.3 owns the bulk-aggregation pattern for the
+    # owns the bulk-aggregation pattern for the
     # rollups that actually need it.
     for dp in dps:
-        out[dp.id] = compute_badges_for_dp(
-            session, workspace_id=workspace_id, dp=dp, now=now
-        )
+        out[dp.id] = compute_badges_for_dp(session, workspace_id=workspace_id, dp=dp, now=now)
     return out

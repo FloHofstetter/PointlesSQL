@@ -38,7 +38,7 @@ def _seed_workspace(slug: str, name: str) -> int:
         ws = Workspace(
             slug=slug,
             name=name,
-            description="Test fixture for Sprint 29.3.",
+            description="Test fixture .",
             created_at=datetime.datetime.now(datetime.UTC),
         )
         session.add(ws)

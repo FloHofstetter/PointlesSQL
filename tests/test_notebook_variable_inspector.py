@@ -1,4 +1,4 @@
-"""Tests for the Phase 67.5 Variable Inspector helpers.
+"""Tests for the Variable Inspector helpers.
 
 The kernel-side ``__pql_inspect__`` / ``__pql_inspect_detail__``
 helpers are defined inline in :data:`_NOTEBOOK_BOOTSTRAP_CODE`. We
@@ -172,9 +172,7 @@ def test_inspect_truncates_long_reprs(bootstrap_ns: dict) -> None:
     "varname",
     ["with space", "", "x-y"],
 )
-def test_inspect_detail_rejects_invalid_identifier(
-    bootstrap_ns: dict, varname: str
-) -> None:
+def test_inspect_detail_rejects_invalid_identifier(bootstrap_ns: dict, varname: str) -> None:
     g = bootstrap_ns
     g["__pql_inspect_detail__"](varname)
     assert g["_capture"] == []

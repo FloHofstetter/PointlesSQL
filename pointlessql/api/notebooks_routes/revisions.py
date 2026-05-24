@@ -47,9 +47,7 @@ def _resolve_notebook_uuid(request: Request, path: str) -> str:
     """Resolve a ``?path=`` query into the stable notebook UUID."""
     settings: Settings = request.app.state.settings
     notebooks_dir = settings.jupyter.notebooks_dir.resolve()
-    absolute = notebook_doc_service.resolve_py_notebook_path(
-        notebooks_dir, path, must_exist=True
-    )
+    absolute = notebook_doc_service.resolve_py_notebook_path(notebooks_dir, path, must_exist=True)
     relative = str(absolute.relative_to(notebooks_dir))
     return get_or_create_notebook_uuid(request, relative)
 
@@ -80,9 +78,7 @@ async def api_list_revisions(
             limit=paging.limit,
             offset=paging.offset,
         )
-    return JSONResponse(
-        {"path": path, "notebook_id": notebook_id, "revisions": rows}
-    )
+    return JSONResponse({"path": path, "notebook_id": notebook_id, "revisions": rows})
 
 
 @router.post("/api/notebooks/revisions", status_code=201)
@@ -114,9 +110,7 @@ async def api_create_revision(
         raise ValidationError("body.message must be a string or null")
     settings: Settings = request.app.state.settings
     notebooks_dir = settings.jupyter.notebooks_dir.resolve()
-    absolute = notebook_doc_service.resolve_py_notebook_path(
-        notebooks_dir, path, must_exist=True
-    )
+    absolute = notebook_doc_service.resolve_py_notebook_path(notebooks_dir, path, must_exist=True)
     relative = str(absolute.relative_to(notebooks_dir))
     notebook_id = get_or_create_notebook_uuid(request, relative)
     document = notebook_doc_service.load_document(absolute, relative)
@@ -237,9 +231,7 @@ async def api_set_revision_signature(
     signature = body.get("signature") if isinstance(body, dict) else None
     signature_alg = body.get("signature_alg") if isinstance(body, dict) else None
     if not isinstance(signature, str) or not isinstance(signature_alg, str):
-        raise ValidationError(
-            "body.signature and body.signature_alg must both be strings"
-        )
+        raise ValidationError("body.signature and body.signature_alg must both be strings")
     factory = request.app.state.session_factory
     with factory() as session:
         notebook_revisions_service.set_revision_signature(
@@ -248,9 +240,7 @@ async def api_set_revision_signature(
             signature=signature,
             signature_alg=signature_alg,
         )
-        envelope = notebook_revisions_service.get_revision(
-            session, revision_uuid=revision_uuid
-        )
+        envelope = notebook_revisions_service.get_revision(session, revision_uuid=revision_uuid)
         session.commit()
     return JSONResponse(envelope or {})
 
@@ -276,9 +266,7 @@ async def api_get_revision(
     require_user(request)
     factory = request.app.state.session_factory
     with factory() as session:
-        envelope = notebook_revisions_service.get_revision(
-            session, revision_uuid=revision_uuid
-        )
+        envelope = notebook_revisions_service.get_revision(session, revision_uuid=revision_uuid)
     if envelope is None:
         raise ValidationError(f"revision {revision_uuid!r} not found")
     return JSONResponse(envelope)

@@ -104,7 +104,7 @@ def row_from_notification(
 ) -> dict[str, Any]:
     """Normalise a ``UserNotification`` to the feed row shape.
 
-    Phase 81.K.2 adds the coarse ``render_kind`` discriminator + actor
+    adds the coarse ``render_kind`` discriminator + actor
     display-name resolution so the Alpine renderer can branch on a
     single field instead of substring-matching ``event_type``.
 
@@ -117,9 +117,7 @@ def row_from_notification(
     Returns:
         Feed-row dict ready for JSON serialisation.
     """
-    source_url = row.source_url or dp_url_from_id(
-        fqn_map, row.source_data_product_id
-    )
+    source_url = row.source_url or dp_url_from_id(fqn_map, row.source_data_product_id)
     render_kind = classify_notification(row.event_type or "")
     return {
         "id": row.id,
@@ -134,9 +132,7 @@ def row_from_notification(
         "entity_ref": row.source_entity_ref,
         "actor_user_id": row.actor_user_id,
         "actor_display_name": (
-            actor_names.get(int(row.actor_user_id))
-            if row.actor_user_id is not None
-            else None
+            actor_names.get(int(row.actor_user_id)) if row.actor_user_id is not None else None
         ),
         "created_at": row.created_at.isoformat(),
         "read_at": row.read_at.isoformat() if row.read_at else None,
@@ -172,9 +168,7 @@ def row_from_comment(
         source_url = entity_registry.url_for(entity_kind, entity_ref)
     else:
         entity_kind = "dp"
-        entity_ref = (
-            fqn_map.get(int(dp_id)) if dp_id is not None else None
-        )
+        entity_ref = fqn_map.get(int(dp_id)) if dp_id is not None else None
         source_url = dp_url_from_id(fqn_map, dp_id)
     return {
         "kind": "comment",
@@ -223,9 +217,7 @@ def row_from_review(
         source_url = entity_registry.url_for(entity_kind, entity_ref)
     else:
         entity_kind = "dp"
-        entity_ref = (
-            fqn_map.get(int(dp_id)) if dp_id is not None else None
-        )
+        entity_ref = fqn_map.get(int(dp_id)) if dp_id is not None else None
         source_url = dp_url_from_id(fqn_map, dp_id)
     return {
         "kind": "review",
@@ -245,9 +237,7 @@ def row_from_review(
     }
 
 
-def active_mute_keys(
-    session: Any, user_id: int
-) -> set[tuple[str, str]]:
+def active_mute_keys(session: Any, user_id: int) -> set[tuple[str, str]]:
     """Return ``{(entity_kind, entity_ref)}`` the caller has muted.
 
     the feed handler calls this once per request and
@@ -276,9 +266,7 @@ def active_mute_keys(
     return {(str(k), str(r)) for k, r in rows}
 
 
-def build_actor_names(
-    session: Any, rows_iter: Any
-) -> dict[int, str]:
+def build_actor_names(session: Any, rows_iter: Any) -> dict[int, str]:
     """Resolve ``{user_id: display_name}`` for actors in a row batch.
 
     the renderer needs actor display names to attribute
@@ -304,9 +292,7 @@ def build_actor_names(
                 ids.add(int(v))
     if not ids:
         return {}
-    pairs = session.execute(
-        select(User.id, User.display_name).where(User.id.in_(ids))
-    ).all()
+    pairs = session.execute(select(User.id, User.display_name).where(User.id.in_(ids))).all()
     return {int(uid): str(name) for uid, name in pairs}
 
 
@@ -325,8 +311,8 @@ def build_fqn_map(session: Any, workspace_id: int) -> dict[int, str]:
         Dict mapping data-product id to ``catalog.schema`` FQN.
     """
     rows = session.execute(
-        select(
-            DataProduct.id, DataProduct.catalog_name, DataProduct.schema_name
-        ).where(DataProduct.workspace_id == workspace_id)
+        select(DataProduct.id, DataProduct.catalog_name, DataProduct.schema_name).where(
+            DataProduct.workspace_id == workspace_id
+        )
     ).all()
     return {int(dp_id): f"{cat}.{sch}" for dp_id, cat, sch in rows}

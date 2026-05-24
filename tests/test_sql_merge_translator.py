@@ -59,9 +59,7 @@ def silver_delta(tmp_path: Path) -> str:
 # ─── Supported shapes ────────────────────────────────────────────────
 
 
-def test_simple_upsert_parses(
-    conn: duckdb.DuckDBPyConnection, silver_delta: str
-) -> None:
+def test_simple_upsert_parses(conn: duckdb.DuckDBPyConnection, silver_delta: str) -> None:
     sql = (
         "MERGE INTO main.silver.orders t "
         "USING main.bronze.staging s "

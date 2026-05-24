@@ -73,6 +73,7 @@ def require_job_owner_or_admin(request: Request, job: Any) -> None:
         full_name=str(job.name),
     )
 
+
 def load_papermill_run_output_path(request: Request, job_id: int, run_id: int) -> Path:
     """Validate *run_id* belongs to papermill *job_id* and return its runs dir.
 

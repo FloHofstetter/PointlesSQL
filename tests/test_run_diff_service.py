@@ -1,4 +1,4 @@
-"""Pure-unit tests for the Sprint 13.11.4b run-diff service."""
+"""Pure-unit tests for the run-diff service."""
 
 from __future__ import annotations
 

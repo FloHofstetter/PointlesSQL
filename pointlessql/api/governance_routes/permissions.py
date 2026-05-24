@@ -70,4 +70,3 @@ async def api_get_effective_permissions(
     """Return effective (inherited) permissions for a securable."""
     client = get_uc_client(request)
     return await client.get_effective_permissions(securable_type, full_name)
-

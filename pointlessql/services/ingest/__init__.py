@@ -5,7 +5,7 @@ Wraps DuckDB readers (``read_csv``, ``read_parquet``, ``read_json``,
 for S3/HTTP) behind one stable shape so the API / form / scheduled
 executor share a single source of truth.
 
-The seven first-party connector kinds shipped in Phase 82 each have:
+The seven first-party connector kinds shipped each have:
 
 * A **reader builder** in :mod:`.connectors` that turns ``(config,
   secrets, source_table?)`` into a :class:`ReaderSpec`

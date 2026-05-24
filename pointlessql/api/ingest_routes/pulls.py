@@ -152,7 +152,7 @@ async def api_list_source_runs(
 
         try:
             mappings = json.loads(row.table_mappings or "[]")
-        except (ValueError, TypeError):
+        except ValueError, TypeError:
             mappings = []
         latest: list[dict[str, Any]] = []
         if isinstance(mappings, list):
@@ -185,12 +185,8 @@ async def api_list_source_runs(
                         "id": int(jr.id),
                         "status": jr.status,
                         "trigger": jr.trigger,
-                        "started_at": jr.started_at.isoformat()
-                        if jr.started_at
-                        else None,
-                        "finished_at": jr.finished_at.isoformat()
-                        if jr.finished_at
-                        else None,
+                        "started_at": jr.started_at.isoformat() if jr.started_at else None,
+                        "finished_at": jr.finished_at.isoformat() if jr.finished_at else None,
                         "error": jr.error,
                     }
                 )

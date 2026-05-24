@@ -1,12 +1,11 @@
 """Draft ``pointlessql.yaml`` file tracking rows.
 
-Tracks every yaml draft authored by Phase 73 surfaces:
+Tracks every yaml draft authored surfaces:
 
-* ``source_kind='candidate_generate'`` — Sprint 73.1's
-  "Generate draft yaml" flow on the candidates page.
-* ``source_kind='pql_contract'`` — Sprint 73.2's notebook
+* ``source_kind='candidate_generate'`` — "Generate draft yaml" flow on the candidates page.
+* ``source_kind='pql_contract'`` — notebook
   ``pql.contract(...).save()`` call.
-* ``source_kind='agent_proposal'`` — Sprint 73.3's schema-
+* ``source_kind='agent_proposal'`` — schema-
   change proposal approval (draft path).
 
 The draft file lives on disk under
@@ -88,8 +87,7 @@ class DataProductYamlDraft(Base):
             "schema_name",
         ),
         CheckConstraint(
-            "source_kind IN ('candidate_generate', 'pql_contract', "
-            "'agent_proposal')",
+            "source_kind IN ('candidate_generate', 'pql_contract', 'agent_proposal')",
             name="ck_dp_yaml_draft_source",
         ),
     )
@@ -113,9 +111,7 @@ class DataProductYamlDraft(Base):
         ForeignKey("agent_runs.id", ondelete="SET NULL"),
         nullable=True,
     )
-    created_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     promoted_at: Mapped[datetime.datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )

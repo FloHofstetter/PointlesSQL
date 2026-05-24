@@ -62,9 +62,7 @@ async def delete_data_product_comment(
             raise ResourceNotFoundError.not_found(what=f"comment id={comment_id}")
 
         is_author = comment.author_user_id == user["id"]
-        is_steward = (
-            row.steward_user_id is not None and row.steward_user_id == user["id"]
-        )
+        is_steward = row.steward_user_id is not None and row.steward_user_id == user["id"]
         is_admin = bool(user.get("is_admin"))
         if not (is_author or is_steward or is_admin):
             raise AuthorizationError(
@@ -103,7 +101,5 @@ async def delete_data_product_comment(
 
     return {
         "id": comment.id,
-        "deleted_at": (
-            comment.deleted_at.isoformat() if comment.deleted_at else None
-        ),
+        "deleted_at": (comment.deleted_at.isoformat() if comment.deleted_at else None),
     }

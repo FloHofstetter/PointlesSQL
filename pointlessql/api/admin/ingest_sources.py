@@ -35,7 +35,7 @@ def _source_summary(
     """Project a source + its recent JobRuns into a rollup dict."""
     try:
         mappings_raw = json.loads(row.table_mappings or "[]")
-    except (ValueError, TypeError):
+    except ValueError, TypeError:
         mappings_raw = []
     mappings: list[dict[str, Any]] = (
         [m for m in cast(list[Any], mappings_raw) if isinstance(m, dict)]
@@ -68,11 +68,7 @@ def _source_summary(
         "cron_expr": job.cron_expr if job is not None else None,
         "is_paused": bool(job.is_paused) if job is not None else None,
         "last_pull_ts": (last_stats or {}).get("ts"),
-        "last_pull_ok": (
-            bool((last_stats or {}).get("ok"))
-            if last_stats is not None
-            else None
-        ),
+        "last_pull_ok": (bool((last_stats or {}).get("ok")) if last_stats is not None else None),
         "last_pull_rows": (last_stats or {}).get("rows_written"),
         "errors_7d": errors_7d,
         "successes_7d": successes_7d,
@@ -94,18 +90,13 @@ async def api_admin_list_ingest_sources(request: Request) -> dict[str, Any]:
     cutoff = datetime.datetime.now(datetime.UTC) - datetime.timedelta(days=7)
     with factory() as session:
         rows = list(
-            session.scalars(
-                select(IngestSource).order_by(IngestSource.created_at.desc())
-            ).all()
+            session.scalars(select(IngestSource).order_by(IngestSource.created_at.desc())).all()
         )
         job_ids = [r.job_id for r in rows if r.job_id is not None]
         jobs_by_id: dict[int, Job] = {}
         if job_ids:
             jobs_by_id = {
-                int(j.id): j
-                for j in session.scalars(
-                    select(Job).where(Job.id.in_(job_ids))
-                ).all()
+                int(j.id): j for j in session.scalars(select(Job).where(Job.id.in_(job_ids))).all()
             }
         runs_by_job: dict[int, list[JobRun]] = {}
         if job_ids:
@@ -120,11 +111,7 @@ async def api_admin_list_ingest_sources(request: Request) -> dict[str, Any]:
             _source_summary(
                 r,
                 job=(jobs_by_id.get(r.job_id) if r.job_id is not None else None),
-                runs_7d=(
-                    runs_by_job.get(r.job_id, [])
-                    if r.job_id is not None
-                    else []
-                ),
+                runs_7d=(runs_by_job.get(r.job_id, []) if r.job_id is not None else []),
             )
             for r in rows
         ]
@@ -132,9 +119,7 @@ async def api_admin_list_ingest_sources(request: Request) -> dict[str, Any]:
 
 
 @router.get("/api/admin/ingest-sources/{source_id}/health")
-async def api_admin_ingest_source_health(
-    request: Request, source_id: int
-) -> dict[str, Any]:
+async def api_admin_ingest_source_health(request: Request, source_id: int) -> dict[str, Any]:
     """Per-source drilldown: last 30 JobRuns + per-day rollup.
 
     Args:
@@ -184,18 +169,11 @@ async def api_admin_ingest_source_health(
                 "id": int(jr.id),
                 "status": jr.status,
                 "trigger": jr.trigger,
-                "started_at": jr.started_at.isoformat()
-                if jr.started_at
-                else None,
-                "finished_at": jr.finished_at.isoformat()
-                if jr.finished_at
-                else None,
+                "started_at": jr.started_at.isoformat() if jr.started_at else None,
+                "finished_at": jr.finished_at.isoformat() if jr.finished_at else None,
                 "error": jr.error,
             }
             for jr in runs
         ],
-        "per_day": [
-            {"day": day, **counts}
-            for day, counts in sorted(per_day.items())
-        ],
+        "per_day": [{"day": day, **counts} for day, counts in sorted(per_day.items())],
     }

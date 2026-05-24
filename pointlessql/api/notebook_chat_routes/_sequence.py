@@ -32,7 +32,7 @@ def _resolve_chat_session_int_id(request: Request, raw: str) -> int:
     """Resolve ``raw`` (integer string or editor_session_id UUID) to int id.
 
     int`` directly; Phase 104
-    Wave-D accepts the matching editor_session_id (UUID7) too so the
+    accepts the matching editor_session_id (UUID7) too so the
     hermes-plugin tool can address the session by the same id it uses
     for ``propose-cell``.  Plain integer strings keep working for backward
     compatibility.
@@ -60,6 +60,7 @@ def _resolve_chat_session_int_id(request: Request, raw: str) -> int:
     if row is None:
         raise ResourceNotFoundError("notebook chat session not found.")
     return int(row.id)
+
 
 logger = logging.getLogger(__name__)
 
@@ -118,34 +119,24 @@ async def api_propose_sequence(
 
 
 @router.get("/api/notebook/chat/sequences/{proposal_id}")
-async def api_get_sequence(
-    request: Request, proposal_id: str
-) -> JSONResponse:
+async def api_get_sequence(request: Request, proposal_id: str) -> JSONResponse:
     """Return one sequence proposal envelope."""
     require_user(request)
     factory = request.app.state.session_factory
     with factory() as session:
-        envelope = cell_sequence_proposals_service.get_sequence(
-            session, proposal_id=proposal_id
-        )
+        envelope = cell_sequence_proposals_service.get_sequence(session, proposal_id=proposal_id)
     if envelope is None:
-        raise ValidationError(
-            f"sequence proposal {proposal_id!r} not found"
-        )
+        raise ValidationError(f"sequence proposal {proposal_id!r} not found")
     return JSONResponse(envelope)
 
 
 @router.post("/api/notebook/chat/sequences/{proposal_id}/accept")
-async def api_accept_sequence(
-    request: Request, proposal_id: str
-) -> JSONResponse:
+async def api_accept_sequence(request: Request, proposal_id: str) -> JSONResponse:
     """Flip a sequence proposal to ``accepted``."""
     require_user(request)
     actor_id: int | None = None
     try:
-        actor_id = (
-            request.state.user.get("id") if request.state.user else None
-        )
+        actor_id = request.state.user.get("id") if request.state.user else None
     except AttributeError:
         actor_id = None
     factory = request.app.state.session_factory
@@ -155,37 +146,25 @@ async def api_accept_sequence(
             proposal_id=proposal_id,
             accepted_by_user_id=actor_id,
         )
-        envelope = cell_sequence_proposals_service.get_sequence(
-            session, proposal_id=proposal_id
-        )
+        envelope = cell_sequence_proposals_service.get_sequence(session, proposal_id=proposal_id)
         session.commit()
     return JSONResponse(envelope or {})
 
 
 @router.post("/api/notebook/chat/sequences/{proposal_id}/discard")
-async def api_discard_sequence(
-    request: Request, proposal_id: str
-) -> JSONResponse:
+async def api_discard_sequence(request: Request, proposal_id: str) -> JSONResponse:
     """Flip a sequence proposal to ``discarded``."""
     require_user(request)
     factory = request.app.state.session_factory
     with factory() as session:
-        cell_sequence_proposals_service.discard_sequence(
-            session, proposal_id=proposal_id
-        )
-        envelope = cell_sequence_proposals_service.get_sequence(
-            session, proposal_id=proposal_id
-        )
+        cell_sequence_proposals_service.discard_sequence(session, proposal_id=proposal_id)
+        envelope = cell_sequence_proposals_service.get_sequence(session, proposal_id=proposal_id)
         session.commit()
     return JSONResponse(envelope or {})
 
 
-@router.get(
-    "/api/notebook/chat/{chat_session_id}/sequences/pending"
-)
-async def api_list_pending_sequences(
-    request: Request, chat_session_id: str
-) -> JSONResponse:
+@router.get("/api/notebook/chat/{chat_session_id}/sequences/pending")
+async def api_list_pending_sequences(request: Request, chat_session_id: str) -> JSONResponse:
     """List pending sequence proposals for a chat session."""
     require_user(request)
     int_session_id = _resolve_chat_session_int_id(request, chat_session_id)

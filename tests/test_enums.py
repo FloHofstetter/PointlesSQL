@@ -126,7 +126,7 @@ def test_strenum_member_equals_string_literal() -> None:
 def test_cloudevents_registry_matches_legacy_constants() -> None:
     """Every constant in :mod:`cloudevents.types` matches the legacy literal.
 
-    Sprint 48.3 introduced ``pointlessql.services.cloudevents.types``
+    introduced ``pointlessql.services.cloudevents.types``
     as the single registry for CloudEvents ``type`` literals.  The
     legacy ``EVENT_TYPE_*`` constants on
     :mod:`services.agent_runs.events` and

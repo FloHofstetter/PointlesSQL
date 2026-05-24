@@ -63,8 +63,8 @@ class NotebookHub:
 
 
 # Module-level singleton — the asyncio loop is single-threaded per
-# uvicorn worker so a plain dict + lock pair is enough.  Phase 109's
-# cross-worker fanout rides PG LISTEN/NOTIFY through
+# uvicorn worker so a plain dict + lock pair is enough.  Cross-worker
+# fanout rides PG LISTEN/NOTIFY through
 # :class:`pointlessql.services.notebook.coedit_bus.CoeditBus`; the
 # bus stays optional (default-off feature flag) so single-worker
 # installs are unaffected.

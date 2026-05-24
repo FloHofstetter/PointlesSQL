@@ -149,9 +149,7 @@ def reconcile(
     for row in existing:
         by_hash.setdefault(row.current_content_hash, []).append(row)
     for i, new in enumerate(new_cells):
-        candidates = [
-            row for row in by_hash.get(new.content_hash, []) if row.id not in matched_ids
-        ]
+        candidates = [row for row in by_hash.get(new.content_hash, []) if row.id not in matched_ids]
         if not candidates:
             continue
         pick = min(candidates, key=lambda row: abs(row.ordinal_hint - i))
@@ -217,9 +215,7 @@ def reconcile(
     return [r for r in results if r is not None]
 
 
-def _soft_delete_remaining(
-    session: Session, notebook_id: str, *, matched_ids: set[str]
-) -> None:
+def _soft_delete_remaining(session: Session, notebook_id: str, *, matched_ids: set[str]) -> None:
     """Mark unmatched live rows for *notebook_id* as removed.
 
     Runs as the close-out step of :func:`reconcile`.  Rows already

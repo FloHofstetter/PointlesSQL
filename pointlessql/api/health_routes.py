@@ -1,4 +1,4 @@
-"""Backend health probe for the Phase 80.7 status footer.
+"""Backend health probe for the status footer.
 
 Exposes a single read-only endpoint ``GET /api/health/backends``
 that the status footer polls every 60s.  Returns a dict with one

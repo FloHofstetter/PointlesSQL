@@ -310,18 +310,14 @@ def _materialise_source(
             _materialise_select_to_pandas,  # pyright: ignore[reportPrivateUsage]
         )
 
-        return _materialise_select_to_pandas(
-            select_body.sql(dialect="duckdb"), approved
-        )
+        return _materialise_select_to_pandas(select_body.sql(dialect="duckdb"), approved)
     raise SQLMergeUnsupportedError(
         f"MERGE USING must be a table or a (SELECT …) subquery; "
         f"saw {type(using_node).__name__ if using_node is not None else 'None'}.",
     )
 
 
-def _read_delta_as_pandas(
-    table_node: exp.Table, approved: dict[str, str]
-) -> Any:
+def _read_delta_as_pandas(table_node: exp.Table, approved: dict[str, str]) -> Any:
     """Read a 3-part Delta table reference into a pandas DataFrame.
 
     Args:

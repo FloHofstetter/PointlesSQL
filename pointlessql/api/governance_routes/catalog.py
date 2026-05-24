@@ -145,4 +145,3 @@ async def api_update_schema(
     result = await client.update_schema(catalog_name, schema_name, patch)
     await audit(request, "update_schema", f"schema:{full_name}", json.dumps(patch))
     return result
-

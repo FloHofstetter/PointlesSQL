@@ -325,9 +325,8 @@ async def api_finish_agent_run(
         # list is a no-op so this wiring is safe regardless of
         # whether anyone currently follows runs.
         verb = "completed" if terminal_event.endswith(".completed") else "failed"
-        summary = (
-            f"Agent run #{run_id} {verb}"
-            + (f" (exit {exit_code})" if exit_code is not None else "")
+        summary = f"Agent run #{run_id} {verb}" + (
+            f" (exit {exit_code})" if exit_code is not None else ""
         )
         try:
             fanout_event(

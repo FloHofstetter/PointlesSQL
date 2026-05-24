@@ -41,11 +41,11 @@ async def handle_execute(
     """Handle a JSON-RPC ``execute`` request.
 
     Persists a fresh ``notebook_cell_run_sources`` row before sending
-    the kernel ``execute_request`` so the run-history popover (Sprint
-    66.7) sees a row even if the kernel hangs and never replies.
-    SQL cells (``cell_type == 'sql'``) get their source wrapped with
-    a call to the kernel-bootstrap ``__pql_sql_run`` helper after a
-    server-side privilege check resolves the ``approved_tables`` map.
+    the kernel ``execute_request`` so the run-history popover sees a
+    row even if the kernel hangs and never replies.  SQL cells
+    (``cell_type == 'sql'``) get their source wrapped with a call to
+    the kernel-bootstrap ``__pql_sql_run`` helper after a server-
+    side privilege check resolves the ``approved_tables`` map.
     """
     content_hash = params.get("content_hash")
     source = params.get("source")
@@ -168,9 +168,7 @@ async def handle_execute(
                     result_var=block.result_var,
                 ).strip()
             )
-        kernel_source = notebook_magic_commands.apply_sql_resolutions(
-            pre.source, wrappers=wrappers
-        )
+        kernel_source = notebook_magic_commands.apply_sql_resolutions(pre.source, wrappers=wrappers)
     else:
         kernel_source = source
     started_at = datetime.datetime.now(datetime.UTC)
@@ -237,9 +235,7 @@ async def handle_interrupt(
             message=str(exc),
         )
         return
-    await websocket.send_text(
-        json.dumps({"id": request_id, "result": {"status": "interrupted"}})
-    )
+    await websocket.send_text(json.dumps({"id": request_id, "result": {"status": "interrupted"}}))
 
 
 async def handle_restart(

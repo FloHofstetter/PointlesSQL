@@ -75,9 +75,7 @@ def upsert_cell_authorship(
     """
     if kind == "user":
         if not email:
-            raise ValidationError(
-                "upsert_cell_authorship: kind='user' requires email"
-            )
+            raise ValidationError("upsert_cell_authorship: kind='user' requires email")
     elif kind == "agent":
         # inline editor
         # chat has no registered ``Agent`` DB row, so ``agent_id`` is
@@ -86,8 +84,7 @@ def upsert_cell_authorship(
         # "AI assistant" label when ``agent_id`` is null.
         if agent_id is None and not agent_run_id:
             raise ValidationError(
-                "upsert_cell_authorship: kind='agent' requires "
-                "agent_id or agent_run_id"
+                "upsert_cell_authorship: kind='agent' requires agent_id or agent_run_id"
             )
     else:
         raise ValidationError(f"unknown author kind: {kind!r}")
@@ -98,9 +95,7 @@ def upsert_cell_authorship(
 
     now = when or datetime.datetime.now(datetime.UTC)
     row = session.execute(
-        select(NotebookCellAuthorship).where(
-            NotebookCellAuthorship.cell_uuid == cell_uuid
-        )
+        select(NotebookCellAuthorship).where(NotebookCellAuthorship.cell_uuid == cell_uuid)
     ).scalar_one_or_none()
     if row is None:
         row = NotebookCellAuthorship(
@@ -125,9 +120,7 @@ def upsert_cell_authorship(
     return row
 
 
-def get_attribution(
-    session: Session, *, cell_uuid: str
-) -> dict[str, Any] | None:
+def get_attribution(session: Session, *, cell_uuid: str) -> dict[str, Any] | None:
     """Return the attribution envelope for one cell.
 
     Args:
@@ -140,9 +133,7 @@ def get_attribution(
         exists.
     """
     row = session.execute(
-        select(NotebookCellAuthorship).where(
-            NotebookCellAuthorship.cell_uuid == cell_uuid
-        )
+        select(NotebookCellAuthorship).where(NotebookCellAuthorship.cell_uuid == cell_uuid)
     ).scalar_one_or_none()
     if row is None:
         return None
@@ -160,15 +151,11 @@ def get_attribution(
             "agent_id": row.last_modifier_agent_id,
         },
         "created_at": row.created_at.isoformat() if row.created_at else None,
-        "last_modified_at": (
-            row.last_modified_at.isoformat() if row.last_modified_at else None
-        ),
+        "last_modified_at": (row.last_modified_at.isoformat() if row.last_modified_at else None),
     }
 
 
-def list_for_notebook(
-    session: Session, *, notebook_id: str
-) -> dict[str, dict[str, Any]]:
+def list_for_notebook(session: Session, *, notebook_id: str) -> dict[str, dict[str, Any]]:
     """Return ``{cell_uuid: envelope}`` for every cell in one notebook.
 
     Lets the editor render the per-cell author chip without firing
@@ -184,14 +171,18 @@ def list_for_notebook(
         notebook but have no authorship row yet (rare — only happens
         between cell mint and first save commit) are simply absent.
     """
-    rows = session.execute(
-        select(NotebookCellAuthorship)
-        .join(
-            NotebookCellIdentity,
-            NotebookCellIdentity.id == NotebookCellAuthorship.cell_uuid,
+    rows = (
+        session.execute(
+            select(NotebookCellAuthorship)
+            .join(
+                NotebookCellIdentity,
+                NotebookCellIdentity.id == NotebookCellAuthorship.cell_uuid,
+            )
+            .where(NotebookCellIdentity.notebook_id == notebook_id)
         )
-        .where(NotebookCellIdentity.notebook_id == notebook_id)
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     out: dict[str, dict[str, Any]] = {}
     for row in rows:
         out[row.cell_uuid] = {
@@ -207,13 +198,9 @@ def list_for_notebook(
                 "email": row.last_modifier_email,
                 "agent_id": row.last_modifier_agent_id,
             },
-            "created_at": (
-                row.created_at.isoformat() if row.created_at else None
-            ),
+            "created_at": (row.created_at.isoformat() if row.created_at else None),
             "last_modified_at": (
-                row.last_modified_at.isoformat()
-                if row.last_modified_at
-                else None
+                row.last_modified_at.isoformat() if row.last_modified_at else None
             ),
         }
     return out
@@ -240,13 +227,17 @@ def list_authored_by_agent(
         order — the agent-profile page surfaces this as "cells
         authored by this agent".
     """
-    rows = session.execute(
-        select(NotebookCellAuthorship)
-        .where(NotebookCellAuthorship.first_author_agent_id == agent_id)
-        .order_by(NotebookCellAuthorship.created_at.desc())
-        .offset(max(0, int(offset)))
-        .limit(limit)
-    ).scalars().all()
+    rows = (
+        session.execute(
+            select(NotebookCellAuthorship)
+            .where(NotebookCellAuthorship.first_author_agent_id == agent_id)
+            .order_by(NotebookCellAuthorship.created_at.desc())
+            .offset(max(0, int(offset)))
+            .limit(limit)
+        )
+        .scalars()
+        .all()
+    )
     return [
         {
             "cell_uuid": r.cell_uuid,

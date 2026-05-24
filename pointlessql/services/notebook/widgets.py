@@ -55,9 +55,7 @@ def _normalise_name(raw: str) -> str:
     """
     name = (raw or "").strip()
     if not _NAME_PATTERN.fullmatch(name):
-        raise ValidationError(
-            "widget name must match [A-Za-z_][A-Za-z0-9_]* and be 1-64 chars"
-        )
+        raise ValidationError("widget name must match [A-Za-z_][A-Za-z0-9_]* and be 1-64 chars")
     return name
 
 
@@ -116,9 +114,7 @@ def upsert_widget(
         ValidationError: On bad input shape or unknown notebook.
     """
     if widget_kind not in VALID_WIDGET_KINDS:
-        raise ValidationError(
-            f"widget_kind must be one of {sorted(VALID_WIDGET_KINDS)}"
-        )
+        raise ValidationError(f"widget_kind must be one of {sorted(VALID_WIDGET_KINDS)}")
     _validate_config(widget_kind, config)
     normalised = _normalise_name(name)
     nb = session.get(Notebook, notebook_id)
@@ -132,11 +128,7 @@ def upsert_widget(
         )
     ).scalar_one_or_none()
     config_blob = json.dumps(config, sort_keys=True)
-    default_blob = (
-        json.dumps(default_value, sort_keys=True)
-        if default_value is not None
-        else None
-    )
+    default_blob = json.dumps(default_value, sort_keys=True) if default_value is not None else None
     if row is None:
         row = NotebookWidget(
             notebook_id=notebook_id,
@@ -161,9 +153,7 @@ def upsert_widget(
     return row
 
 
-def list_widgets(
-    session: Session, *, notebook_id: str
-) -> list[dict[str, Any]]:
+def list_widgets(session: Session, *, notebook_id: str) -> list[dict[str, Any]]:
     """Return every widget on a notebook in display order.
 
     Args:
@@ -173,11 +163,15 @@ def list_widgets(
     Returns:
         List of widget dicts ordered by ``position, id``.
     """
-    rows = session.execute(
-        select(NotebookWidget)
-        .where(NotebookWidget.notebook_id == notebook_id)
-        .order_by(NotebookWidget.position.asc(), NotebookWidget.id.asc())
-    ).scalars().all()
+    rows = (
+        session.execute(
+            select(NotebookWidget)
+            .where(NotebookWidget.notebook_id == notebook_id)
+            .order_by(NotebookWidget.position.asc(), NotebookWidget.id.asc())
+        )
+        .scalars()
+        .all()
+    )
     return [widget_to_envelope(r) for r in rows]
 
 
@@ -189,16 +183,12 @@ def widget_to_envelope(row: NotebookWidget) -> dict[str, Any]:
         "widget_kind": row.widget_kind,
         "label": row.label,
         "config": json.loads(row.config_json),
-        "default_value": (
-            json.loads(row.default_value) if row.default_value is not None else None
-        ),
+        "default_value": (json.loads(row.default_value) if row.default_value is not None else None),
         "position": row.position,
     }
 
 
-def delete_widget(
-    session: Session, *, notebook_id: str, name: str
-) -> bool:
+def delete_widget(session: Session, *, notebook_id: str, name: str) -> bool:
     """Delete one widget; idempotent.
 
     Args:

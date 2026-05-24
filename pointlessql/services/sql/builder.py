@@ -68,9 +68,7 @@ def build_sql_from_state(state: dict[str, Any]) -> str:
         raise ValueError("table_fqn is required.")
     parts = table_fqn.split(".")
     if len(parts) != 3:
-        raise ValueError(
-            f"table_fqn must be three-part (catalog.schema.table); got {table_fqn!r}."
-        )
+        raise ValueError(f"table_fqn must be three-part (catalog.schema.table); got {table_fqn!r}.")
 
     select_items: list[Expression] = []
     aggregates = cast(list[dict[str, Any]], state.get("aggregates") or [])
@@ -112,9 +110,7 @@ def build_sql_from_state(state: dict[str, Any]) -> str:
         if clause is None:
             continue
         where_expr = (
-            clause
-            if where_expr is None
-            else cast(Expression, exp.and_(where_expr, clause))
+            clause if where_expr is None else cast(Expression, exp.and_(where_expr, clause))
         )
     if where_expr is not None:
         select = select.where(where_expr)
@@ -138,9 +134,7 @@ def build_sql_from_state(state: dict[str, Any]) -> str:
     return select.sql(dialect="duckdb", pretty=True)
 
 
-def _filter_to_expression(
-    column: str, op: str, value: Any
-) -> Expression | None:
+def _filter_to_expression(column: str, op: str, value: Any) -> Expression | None:
     """Map one builder filter row to a sqlglot expression.
 
     Args:
@@ -260,9 +254,7 @@ def parse_sql_to_state(sql: str) -> dict[str, Any] | None:
                 return None
             continue
         agg_expr = select_expr.unalias() if isinstance(select_expr, exp.Alias) else select_expr
-        alias_str = (
-            select_expr.alias if isinstance(select_expr, exp.Alias) else None
-        )
+        alias_str = select_expr.alias if isinstance(select_expr, exp.Alias) else None
         fn_name = type(agg_expr).__name__.upper() if isinstance(agg_expr, exp.Func) else None
         if fn_name not in SUPPORTED_AGGS:
             return None
@@ -273,9 +265,7 @@ def parse_sql_to_state(sql: str) -> dict[str, Any] | None:
             col_name = inner.name
         else:
             return None
-        state["aggregates"].append(
-            {"fn": fn_name, "column": col_name, "alias": alias_str}
-        )
+        state["aggregates"].append({"fn": fn_name, "column": col_name, "alias": alias_str})
 
     where = tree.args.get("where")
     if where is not None:
@@ -299,7 +289,7 @@ def parse_sql_to_state(sql: str) -> dict[str, Any] | None:
     if isinstance(limit_expr, exp.Limit) and isinstance(limit_expr.expression, exp.Literal):
         try:
             state["limit"] = int(limit_expr.expression.this)
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             state["limit"] = None
 
     return state
@@ -399,11 +389,11 @@ def _literal_to_python(node: Expression) -> Any | None:
             i = int(raw)
             if str(i) == str(raw):
                 return i
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             pass
         try:
             return float(raw)
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             return raw
     if isinstance(node, exp.Boolean):
         return bool(node.this)

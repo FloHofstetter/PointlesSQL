@@ -1,6 +1,6 @@
 """Polymorphic follow rows for every entity kind.
 
-Phase 77.8 introduced this kind-agnostic sibling alongside the
+introduced this kind-agnostic sibling alongside the
 legacy ``data_product_follows`` (which had a composite PK on
 ``(workspace_id, data_product_id, user_id)`` that the 77.0.G
 polymorphic rewrite couldn't relax without an SQLite-unfriendly
@@ -68,6 +68,4 @@ class SocialFollow(Base):
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
     )
-    created_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)

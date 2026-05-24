@@ -76,18 +76,14 @@ def _seed_run(job_id: int, status: str = "succeeded") -> int:
         return int(run.id)
 
 
-async def test_empty_when_no_jobs(
-    workspace_dir: Path, admin_client: httpx.AsyncClient
-) -> None:
+async def test_empty_when_no_jobs(workspace_dir: Path, admin_client: httpx.AsyncClient) -> None:
     """No links → empty lists for both."""
     resp = await admin_client.get("/api/notebooks/jobs", params={"path": "nojobs.py"})
     assert resp.status_code == 200, resp.text
     assert resp.json() == {"scheduled_jobs": [], "recent_runs": []}
 
 
-async def test_lists_scheduled_jobs(
-    workspace_dir: Path, admin_client: httpx.AsyncClient
-) -> None:
+async def test_lists_scheduled_jobs(workspace_dir: Path, admin_client: httpx.AsyncClient) -> None:
     """A linked job appears in scheduled_jobs."""
     _seed_job_with_link("demo.py", name="daily-demo")
     resp = await admin_client.get("/api/notebooks/jobs", params={"path": "demo.py"})
@@ -100,9 +96,7 @@ async def test_lists_scheduled_jobs(
     assert job["cron_expr"] == "0 5 * * *"
 
 
-async def test_lists_recent_runs(
-    workspace_dir: Path, admin_client: httpx.AsyncClient
-) -> None:
+async def test_lists_recent_runs(workspace_dir: Path, admin_client: httpx.AsyncClient) -> None:
     """Runs from any linked job appear newest-first."""
     job_id = _seed_job_with_link("etl.py", name="etl-daily")
     run_a = _seed_run(job_id, status="succeeded")
@@ -128,16 +122,12 @@ async def test_other_notebook_excluded(
     assert resp.json()["recent_runs"] == []
 
 
-async def test_limit_honored(
-    workspace_dir: Path, admin_client: httpx.AsyncClient
-) -> None:
+async def test_limit_honored(workspace_dir: Path, admin_client: httpx.AsyncClient) -> None:
     """``?limit=1`` trims recent_runs to one row."""
     job_id = _seed_job_with_link("multi.py")
     _seed_run(job_id)
     _seed_run(job_id)
-    resp = await admin_client.get(
-        "/api/notebooks/jobs", params={"path": "multi.py", "limit": 1}
-    )
+    resp = await admin_client.get("/api/notebooks/jobs", params={"path": "multi.py", "limit": 1})
     assert resp.status_code == 200, resp.text
     assert len(resp.json()["recent_runs"]) == 1
 
@@ -146,9 +136,7 @@ async def test_non_admin_accessible(
     workspace_dir: Path, non_admin_client: httpx.AsyncClient
 ) -> None:
     """any authenticated user can read the jobs panel."""
-    resp = await non_admin_client.get(
-        "/api/notebooks/jobs", params={"path": "x.py"}
-    )
+    resp = await non_admin_client.get("/api/notebooks/jobs", params={"path": "x.py"})
     assert resp.status_code == 200
 
 

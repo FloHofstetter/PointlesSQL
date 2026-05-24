@@ -37,9 +37,7 @@ async def agent_profile(slug: str, request: Request) -> dict[str, Any]:
     factory = request.app.state.session_factory
     with factory() as session:
         agent = session.execute(
-            select(Agent).where(
-                Agent.workspace_id == workspace_id, Agent.slug == slug
-            )
+            select(Agent).where(Agent.workspace_id == workspace_id, Agent.slug == slug)
         ).scalar_one_or_none()
         if agent is None:
             raise ResourceNotFoundError("agent not found.")
@@ -62,9 +60,7 @@ async def agent_profile(slug: str, request: Request) -> dict[str, Any]:
         # historical runs may not match (no FK), which is fine.
         run_count = int(
             session.execute(
-                select(func.count()).select_from(AgentRun).where(
-                    AgentRun.agent_id == slug
-                )
+                select(func.count()).select_from(AgentRun).where(AgentRun.agent_id == slug)
             ).scalar_one()
         )
 

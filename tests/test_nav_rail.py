@@ -144,12 +144,12 @@ class TestRailEntries:
         # on the desktop rail.  Each group label must appear at least
         # twice (desktop rail + mobile nav_links).
         for group in ["Home", "Watch", "Build", "Data", "Community"]:
-            assert (
-                f'class="pql-icon-rail__group">{group}<' in body
-            ), f"missing rail group header: {group}"
-            assert (
-                f'class="pql-mobile-nav__group">{group}<' in body
-            ), f"missing mobile group header: {group}"
+            assert f'class="pql-icon-rail__group">{group}<' in body, (
+                f"missing rail group header: {group}"
+            )
+            assert f'class="pql-mobile-nav__group">{group}<' in body, (
+                f"missing mobile group header: {group}"
+            )
 
     @pytest.mark.asyncio
     async def test_rail_toggle_button_present(self):
@@ -205,9 +205,7 @@ class TestActiveSection:
         # the same anchor.
         assert 'data-section="runs"' in body
         # At least one link with section=runs is active.
-        assert (
-            'class="pql-icon-rail__link active"' in body
-        ), "active class missing on rail"
+        assert 'class="pql-icon-rail__link active"' in body, "active class missing on rail"
 
 
 class TestRailStateInit:

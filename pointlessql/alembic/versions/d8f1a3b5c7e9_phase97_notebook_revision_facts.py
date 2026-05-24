@@ -108,12 +108,8 @@ def upgrade() -> None:
         ),
         sa.Column("unpinned_at", sa.DateTime(timezone=True), nullable=True),
         sa.ForeignKeyConstraint(["workspace_id"], ["workspaces.id"]),
-        sa.ForeignKeyConstraint(
-            ["social_target_id"], ["social_targets.id"], ondelete="CASCADE"
-        ),
-        sa.ForeignKeyConstraint(
-            ["revision_id"], ["notebook_revisions.id"], ondelete="CASCADE"
-        ),
+        sa.ForeignKeyConstraint(["social_target_id"], ["social_targets.id"], ondelete="CASCADE"),
+        sa.ForeignKeyConstraint(["revision_id"], ["notebook_revisions.id"], ondelete="CASCADE"),
         sa.ForeignKeyConstraint(["pinned_by_user_id"], ["users.id"]),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("fact_uuid"),
@@ -152,9 +148,7 @@ def upgrade() -> None:
         )
 
     with op.batch_alter_table("agent_run_operations", recreate="auto") as batch_op:
-        batch_op.drop_constraint(
-            "ck_agent_run_operations_op_name", type_="check"
-        )
+        batch_op.drop_constraint("ck_agent_run_operations_op_name", type_="check")
         batch_op.create_check_constraint(
             "ck_agent_run_operations_op_name",
             _op_name_ck(_OP_NAMES_NEW),
@@ -164,9 +158,7 @@ def upgrade() -> None:
 def downgrade() -> None:
     """Drop the facts table + revert both CHECK constraints."""
     with op.batch_alter_table("agent_run_operations", recreate="auto") as batch_op:
-        batch_op.drop_constraint(
-            "ck_agent_run_operations_op_name", type_="check"
-        )
+        batch_op.drop_constraint("ck_agent_run_operations_op_name", type_="check")
         batch_op.create_check_constraint(
             "ck_agent_run_operations_op_name",
             _op_name_ck(_OP_NAMES_OLD),

@@ -1,10 +1,10 @@
 """Unit tests for :mod:`pointlessql.services.notebook._workspace`.
 
-Sprint 27 adds the workspace file-browser surface on top of the Sprint 24
-executor. These tests exercise the two pure helpers the service exposes
-(``list_workspace_tree`` and ``resolve_upload_target``) without touching
-the HTTP layer — the API-level contract is covered by
-``tests/test_api_notebook_workspace.py``.
+The service adds a workspace file-browser surface on top of the
+executor. These tests exercise the two pure helpers the service
+exposes (``list_workspace_tree`` and ``resolve_upload_target``)
+without touching the HTTP layer — the API-level contract is
+covered by ``tests/test_api_notebook_workspace.py``.
 """
 
 from __future__ import annotations

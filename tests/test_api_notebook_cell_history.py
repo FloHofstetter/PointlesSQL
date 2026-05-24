@@ -27,9 +27,7 @@ def seed_runs() -> None:
         )
 
 
-async def test_cell_history_happy_path(
-    seed_runs: None, admin_client: httpx.AsyncClient
-) -> None:
+async def test_cell_history_happy_path(seed_runs: None, admin_client: httpx.AsyncClient) -> None:
     """Returns up to ``limit`` rows newest-first for the cell."""
     resp = await admin_client.get(
         "/api/notebooks/cell-history?path=demo.py&content_hash=abcd1234abcd1234&limit=5"
@@ -57,9 +55,7 @@ async def test_cell_history_non_admin_accessible(
     non_admin_client: httpx.AsyncClient,
 ) -> None:
     """any authenticated user can read cell history."""
-    resp = await non_admin_client.get(
-        "/api/notebooks/cell-history?path=demo.py&content_hash=ff"
-    )
+    resp = await non_admin_client.get("/api/notebooks/cell-history?path=demo.py&content_hash=ff")
     assert resp.status_code == 200
     assert resp.json()["runs"] == []
 

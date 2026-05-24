@@ -97,7 +97,7 @@ export function commandPalette() {
             // wire the footer-bar "Show keyboard shortcuts"
             // button to the existing help overlay.  The button has
             // dispatched ``pql:show-shortcuts`` since the footer landed
-            // in Phase 80.7, but no listener was attached — clicking it
+            // but no listener was attached — clicking it
             // did nothing.  Listening here (instead of a free-floating
             // window listener) keeps the help state co-located with the
             // ``helpOpen`` Alpine flag that drives the dialog template.

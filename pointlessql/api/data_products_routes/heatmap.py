@@ -23,9 +23,7 @@ router = APIRouter(tags=["data-products", "heatmap"])
 
 
 @router.get("/api/data-products/{catalog}/{schema}/heatmap")
-async def api_dp_heatmap(
-    request: Request, catalog: str, schema: str
-) -> dict[str, Any]:
+async def api_dp_heatmap(request: Request, catalog: str, schema: str) -> dict[str, Any]:
     """Return per-day action counts for the last 365 days.
 
     Args:
@@ -42,9 +40,7 @@ async def api_dp_heatmap(
     target = f"dp:{catalog}.{schema}"
     today = datetime.datetime.now(datetime.UTC).date()
     cutoff = today - datetime.timedelta(days=364)
-    cutoff_dt = datetime.datetime.combine(
-        cutoff, datetime.time.min, tzinfo=datetime.UTC
-    )
+    cutoff_dt = datetime.datetime.combine(cutoff, datetime.time.min, tzinfo=datetime.UTC)
 
     factory = request.app.state.session_factory
     counts_by_day: dict[str, int] = {}

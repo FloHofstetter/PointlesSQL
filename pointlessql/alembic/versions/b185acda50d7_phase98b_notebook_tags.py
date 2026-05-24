@@ -40,13 +40,9 @@ def upgrade() -> None:
             server_default=sa.text("(CURRENT_TIMESTAMP)"),
             nullable=False,
         ),
-        sa.ForeignKeyConstraint(
-            ["notebook_id"], ["notebooks.id"], ondelete="CASCADE"
-        ),
+        sa.ForeignKeyConstraint(["notebook_id"], ["notebooks.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
-        sa.UniqueConstraint(
-            "notebook_id", "tag", name="uq_notebook_tags_notebook_tag"
-        ),
+        sa.UniqueConstraint("notebook_id", "tag", name="uq_notebook_tags_notebook_tag"),
     )
     with op.batch_alter_table("notebook_tags", schema=None) as batch_op:
         batch_op.create_index("ix_notebook_tags_tag", ["tag"], unique=False)

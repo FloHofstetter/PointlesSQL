@@ -81,11 +81,7 @@ async def test_add_secret_then_revoke(admin_client: httpx.AsyncClient) -> None:
     )
     repo_id = create.json()["id"]
 
-    fake_key = (
-        "-----BEGIN OPENSSH PRIVATE KEY-----\n"
-        "fake\n"
-        "-----END OPENSSH PRIVATE KEY-----\n"
-    )
+    fake_key = "-----BEGIN OPENSSH PRIVATE KEY-----\nfake\n-----END OPENSSH PRIVATE KEY-----\n"
     add = await admin_client.post(
         f"/api/admin/repos/{repo_id}/secrets",
         json={"kind": "deploy_key", "plaintext": fake_key},
@@ -113,9 +109,7 @@ async def test_rotate_webhook_secret(admin_client: httpx.AsyncClient) -> None:
     original = create.json()["webhook_secret"]
     repo_id = create.json()["id"]
 
-    rotate = await admin_client.post(
-        f"/api/admin/repos/{repo_id}/rotate-webhook-secret"
-    )
+    rotate = await admin_client.post(f"/api/admin/repos/{repo_id}/rotate-webhook-secret")
     assert rotate.status_code == 200
     assert rotate.json()["webhook_secret"] != original
 

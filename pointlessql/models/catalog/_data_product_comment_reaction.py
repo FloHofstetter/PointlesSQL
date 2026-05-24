@@ -62,9 +62,7 @@ class DataProductCommentReaction(Base):
         nullable=False,
     )
     emoji: Mapped[str] = mapped_column(String(10), nullable=False)
-    created_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     # polymorphic anchor (see _data_product_comments.py).
     # On a comment-reaction the anchor matches the *comment's* target,
     # not a separate one — see services/social/_target_resolver.py.

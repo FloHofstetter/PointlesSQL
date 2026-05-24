@@ -95,21 +95,15 @@ def pin_revision_fact(
     if len(title) > 200:
         raise ValidationError("title must be at most 200 characters")
     if pinned_by_user_id is None and not pinned_by_agent_id:
-        raise ValidationError(
-            "pin requires either pinned_by_user_id or pinned_by_agent_id"
-        )
+        raise ValidationError("pin requires either pinned_by_user_id or pinned_by_agent_id")
     revision = session.execute(
-        select(NotebookRevision).where(
-            NotebookRevision.revision_uuid == revision_uuid
-        )
+        select(NotebookRevision).where(NotebookRevision.revision_uuid == revision_uuid)
     ).scalar_one_or_none()
     if revision is None:
         raise ValidationError(f"revision {revision_uuid!r} not found")
     notebook = session.get(Notebook, revision.notebook_id)
     if notebook is None or int(notebook.workspace_id) != int(workspace_id):
-        raise ValidationError(
-            f"revision {revision_uuid!r} is not in workspace {workspace_id}"
-        )
+        raise ValidationError(f"revision {revision_uuid!r} is not in workspace {workspace_id}")
     # Idempotent active-row lookup.  We re-query rather than relying on
     # the partial UNIQUE to raise so the caller gets a clean return
     # value instead of an IntegrityError to translate.
@@ -171,9 +165,7 @@ def unpin_fact(session: Session, *, fact_uuid: str) -> NotebookRevisionFact:
             already unpinned.
     """
     row = session.execute(
-        select(NotebookRevisionFact).where(
-            NotebookRevisionFact.fact_uuid == fact_uuid
-        )
+        select(NotebookRevisionFact).where(NotebookRevisionFact.fact_uuid == fact_uuid)
     ).scalar_one_or_none()
     if row is None:
         raise ValidationError(f"fact {fact_uuid!r} not found")
@@ -187,9 +179,7 @@ def unpin_fact(session: Session, *, fact_uuid: str) -> NotebookRevisionFact:
 def get_fact(session: Session, *, fact_uuid: str) -> NotebookRevisionFact | None:
     """Return one fact by UUID regardless of pinned/unpinned state."""
     return session.execute(
-        select(NotebookRevisionFact).where(
-            NotebookRevisionFact.fact_uuid == fact_uuid
-        )
+        select(NotebookRevisionFact).where(NotebookRevisionFact.fact_uuid == fact_uuid)
     ).scalar_one_or_none()
 
 
@@ -260,19 +250,23 @@ def list_facts_for_cells(
     """
     if not cell_content_hashes:
         return {}
-    rows = session.execute(
-        select(NotebookRevisionFact)
-        .join(
-            NotebookRevision,
-            NotebookRevision.id == NotebookRevisionFact.revision_id,
+    rows = (
+        session.execute(
+            select(NotebookRevisionFact)
+            .join(
+                NotebookRevision,
+                NotebookRevision.id == NotebookRevisionFact.revision_id,
+            )
+            .where(
+                NotebookRevisionFact.workspace_id == workspace_id,
+                NotebookRevisionFact.cell_content_hash.in_(cell_content_hashes),
+                NotebookRevision.notebook_id == notebook_id,
+                NotebookRevisionFact.unpinned_at.is_(None),
+            )
         )
-        .where(
-            NotebookRevisionFact.workspace_id == workspace_id,
-            NotebookRevisionFact.cell_content_hash.in_(cell_content_hashes),
-            NotebookRevision.notebook_id == notebook_id,
-            NotebookRevisionFact.unpinned_at.is_(None),
-        )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     grouped: dict[str, list[NotebookRevisionFact]] = {}
     for row in rows:
         key = row.cell_content_hash or ""
@@ -298,16 +292,12 @@ def row_to_envelope(row: NotebookRevisionFact) -> dict[str, Any]:
         "pinned_by_user_id": row.pinned_by_user_id,
         "pinned_by_agent_id": row.pinned_by_agent_id,
         "pinned_at": row.pinned_at.isoformat() if row.pinned_at else None,
-        "unpinned_at": (
-            row.unpinned_at.isoformat() if row.unpinned_at else None
-        ),
+        "unpinned_at": (row.unpinned_at.isoformat() if row.unpinned_at else None),
         "active": row.unpinned_at is None,
     }
 
 
-def get_fact_detail(
-    session: Session, *, fact_uuid: str
-) -> dict[str, Any] | None:
+def get_fact_detail(session: Session, *, fact_uuid: str) -> dict[str, Any] | None:
     """Return one fact's row + the linked revision UUID + snapshot.
 
     The revision UUID is resolved via a single extra get so the
@@ -319,12 +309,8 @@ def get_fact_detail(
         return None
     envelope = row_to_envelope(row)
     revision = session.get(NotebookRevision, row.revision_id)
-    envelope["revision_uuid"] = (
-        revision.revision_uuid if revision is not None else None
-    )
-    envelope["notebook_id"] = (
-        revision.notebook_id if revision is not None else None
-    )
+    envelope["revision_uuid"] = revision.revision_uuid if revision is not None else None
+    envelope["notebook_id"] = revision.notebook_id if revision is not None else None
     envelope["result_snapshot_json"] = row.result_snapshot_json
     return envelope
 

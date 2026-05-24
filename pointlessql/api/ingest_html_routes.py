@@ -24,9 +24,7 @@ async def ingest_sources_list(request: Request) -> HTMLResponse | RedirectRespon
     """List the workspace's ingest sources."""
     user = get_user(request)
     if user["id"] == 0:
-        return RedirectResponse(
-            url="/auth/login?next=/ingest/sources", status_code=303
-        )
+        return RedirectResponse(url="/auth/login?next=/ingest/sources", status_code=303)
     templates = request.app.state.templates
     return templates.TemplateResponse(
         request,
@@ -39,16 +37,12 @@ async def ingest_sources_list(request: Request) -> HTMLResponse | RedirectRespon
     )
 
 
-@router.get(
-    "/ingest/sources/new", response_class=HTMLResponse, response_model=None
-)
+@router.get("/ingest/sources/new", response_class=HTMLResponse, response_model=None)
 async def ingest_sources_new(request: Request) -> HTMLResponse | RedirectResponse:
     """Render the connect-a-source form."""
     user = get_user(request)
     if user["id"] == 0:
-        return RedirectResponse(
-            url="/auth/login?next=/ingest/sources/new", status_code=303
-        )
+        return RedirectResponse(url="/auth/login?next=/ingest/sources/new", status_code=303)
     templates = request.app.state.templates
     return templates.TemplateResponse(
         request,
@@ -66,9 +60,7 @@ async def ingest_sources_new(request: Request) -> HTMLResponse | RedirectRespons
     response_class=HTMLResponse,
     response_model=None,
 )
-async def ingest_source_detail(
-    request: Request, source_id: int
-) -> HTMLResponse | RedirectResponse:
+async def ingest_source_detail(request: Request, source_id: int) -> HTMLResponse | RedirectResponse:
     """Render the per-source detail page.
 
     Args:

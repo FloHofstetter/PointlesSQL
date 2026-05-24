@@ -92,23 +92,17 @@ def test_round_trip_is_null() -> None:
 
 def test_parse_returns_none_for_join() -> None:
     """Multi-table SQL is rejected (builder doesn't support JOIN)."""
-    assert parse_sql_to_state(
-        "SELECT * FROM a.b.c JOIN d.e.f ON c.id = f.id"
-    ) is None
+    assert parse_sql_to_state("SELECT * FROM a.b.c JOIN d.e.f ON c.id = f.id") is None
 
 
 def test_parse_returns_none_for_subquery() -> None:
     """Subqueries are rejected."""
-    assert parse_sql_to_state(
-        "SELECT * FROM (SELECT 1) t"
-    ) is None
+    assert parse_sql_to_state("SELECT * FROM (SELECT 1) t") is None
 
 
 def test_parse_returns_none_for_unsupported_select_item() -> None:
     """A computed expression outside an aggregate is rejected."""
-    assert parse_sql_to_state(
-        "SELECT col1 + col2 FROM a.b.c"
-    ) is None
+    assert parse_sql_to_state("SELECT col1 + col2 FROM a.b.c") is None
 
 
 @pytest.mark.asyncio

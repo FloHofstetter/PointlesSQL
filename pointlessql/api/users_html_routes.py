@@ -132,16 +132,12 @@ async def user_profile_page(
     """Render the per-user profile page."""
     user = get_user(request)
     if user["id"] == 0:
-        return RedirectResponse(
-            url=f"/auth/login?next=/users/{user_id}", status_code=303
-        )
+        return RedirectResponse(url=f"/auth/login?next=/users/{user_id}", status_code=303)
 
     factory = request.app.state.session_factory
     with factory() as session:
         target = session.execute(
-            select(User.id, User.email, User.display_name).where(
-                User.id == user_id
-            )
+            select(User.id, User.email, User.display_name).where(User.id == user_id)
         ).first()
     if target is None:
         raise ResourceNotFoundError("user not found.")

@@ -96,9 +96,7 @@ def test_create_builds_index_file(fake_embedder: _FakeEmbedder, delta_path: str)
     assert file_path.parent.name == "_vss"
 
 
-def test_create_then_search_returns_topk(
-    fake_embedder: _FakeEmbedder, delta_path: str
-) -> None:
+def test_create_then_search_returns_topk(fake_embedder: _FakeEmbedder, delta_path: str) -> None:
     create_or_rebuild_index(
         client=None,  # type: ignore[arg-type]
         table="main.silver.docs",

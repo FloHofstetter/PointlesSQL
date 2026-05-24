@@ -272,9 +272,7 @@ def _check_role(role: str, user: UserInfo, request: Request) -> bool:
             request.state, "api_key_supervisor", False
         )
     if role == "auditor":
-        return bool(user.get("is_auditor")) or getattr(
-            request.state, "api_key_auditor", False
-        )
+        return bool(user.get("is_auditor")) or getattr(request.state, "api_key_auditor", False)
     if role == "analyst":
         return (
             bool(user.get("is_auditor"))
@@ -699,7 +697,7 @@ def is_htmx_partial(request: Request) -> bool:
     The common shape for inline edits, Load-More buttons, and toast
     targets.  Boosted navigations are *not* partials — they want the
     full HTML shell.  Three call sites had this same expression
-    spelled out by hand before Phase 86 centralised it.
+    spelled out by hand centralised it.
 
     Args:
         request: Incoming FastAPI request.
@@ -718,7 +716,7 @@ def wants_json(request: Request) -> bool:
     type ``application/problem+json``) that does not also include
     ``text/html`` — browsers send ``text/html`` first, so they land
     on the HTML shell.  Promoted from ``error_handlers._wants_json``
-    in Phase 86 so non-error routes can negotiate the same way.
+    so non-error routes can negotiate the same way.
 
     Args:
         request: Incoming FastAPI request.
@@ -804,6 +802,4 @@ async def render_page_with_fallback(
     context: dict[str, Any] = {context_key: items, "error": error}
     if extra_context:
         context.update(extra_context)
-    return get_templates(request).TemplateResponse(
-        request, template_name, context
-    )
+    return get_templates(request).TemplateResponse(request, template_name, context)

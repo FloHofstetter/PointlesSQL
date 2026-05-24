@@ -113,8 +113,7 @@ def upsert_provider_endpoint(
     """  # noqa: DOC502 — UnknownLensProviderError raised by service
     if body.provider not in LENS_PROVIDERS:
         raise UnknownLensProviderError(
-            f"Provider {body.provider!r} is not recognised; valid: "
-            f"{sorted(LENS_PROVIDERS)}"
+            f"Provider {body.provider!r} is not recognised; valid: {sorted(LENS_PROVIDERS)}"
         )
     factory = request.app.state.session_factory
     workspace_id = current_workspace_id(request)
@@ -157,9 +156,7 @@ def delete_provider_endpoint(
     """
     factory = request.app.state.session_factory
     workspace_id = current_workspace_id(request)
-    deleted = delete_provider_creds(
-        factory, workspace_id=workspace_id, provider=provider
-    )
+    deleted = delete_provider_creds(factory, workspace_id=workspace_id, provider=provider)
     if not deleted:
         raise ResourceNotFoundError(f"lens_provider_creds: {provider}")
 
@@ -193,9 +190,7 @@ def test_provider_endpoint(
     factory = request.app.state.session_factory
     workspace_id = current_workspace_id(request)
     try:
-        cleartext = decrypt_provider_key(
-            factory, workspace_id=workspace_id, provider=provider
-        )
+        cleartext = decrypt_provider_key(factory, workspace_id=workspace_id, provider=provider)
     except UnknownLensProviderError as exc:
         return {"ok": False, "reason": str(exc)}
     if not cleartext:

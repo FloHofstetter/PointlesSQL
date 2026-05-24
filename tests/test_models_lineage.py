@@ -188,7 +188,7 @@ async def test_api_model_lineage_unauthenticated(
     assert resp.status_code == 401
 
 
-# ---------- Phase 62: table-relations reverse-index ----------
+# ---------- table-relations reverse-index ----------
 
 
 def _seed_inference_edge(

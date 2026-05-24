@@ -139,7 +139,7 @@ async def test_run_view_mounts_socialtabs_factory_with_run_kind(
     assert "socialTabs(" in body
     # The kind literal + the actual UUID are both serialised into
     # the x-data attribute.
-    assert "\"run\"" in body or "'run'" in body
+    assert '"run"' in body or "'run'" in body
     assert run_id in body
     # DP-flavoured endorsement vocabulary on runs.
     assert "verified-by-steward" in body
@@ -173,4 +173,4 @@ async def test_run_view_includes_polymorphic_partials(
     # Strings unique to each partial (canonical strings from
     # the 77.1.5 partials' source).
     assert "Endorsements express peer trust." in body
-    assert "Following non-data-product entities lands in Phase 77.8" in body
+    assert "Following non-data-product entities lands " in body

@@ -30,9 +30,7 @@ from pointlessql.models.social._social_target import SocialTarget
 from pointlessql.services.unitycatalog import UnityCatalogClient
 
 
-def _stub_uc_client(
-    monkeypatch: pytest.MonkeyPatch, full_name: str
-) -> None:
+def _stub_uc_client(monkeypatch: pytest.MonkeyPatch, full_name: str) -> None:
     """Inject a UC client stub for the table_detail HTML route."""
     catalog, schema, table = full_name.split(".", 2)
     client = MagicMock(spec=UnityCatalogClient)
@@ -88,9 +86,7 @@ async def test_table_html_carries_four_social_tabs(
 ) -> None:
     """All four new tab buttons are present on the rendered page."""
     _stub_uc_client(monkeypatch, "main.sales_gold.orders")
-    res = await admin_client.get(
-        "/catalogs/main/schemas/sales_gold/tables/orders"
-    )
+    res = await admin_client.get("/catalogs/main/schemas/sales_gold/tables/orders")
     assert res.status_code == 200, res.text
     body = res.text
     for tab_id in (
@@ -115,9 +111,7 @@ async def test_table_html_mounts_social_tabs_factory(
 ) -> None:
     """``socialTabs`` x-data is on .tab-content with kind='table'."""
     _stub_uc_client(monkeypatch, "main.sales_gold.orders")
-    res = await admin_client.get(
-        "/catalogs/main/schemas/sales_gold/tables/orders"
-    )
+    res = await admin_client.get("/catalogs/main/schemas/sales_gold/tables/orders")
     body = res.text
     assert "socialTabs(" in body
     # Jinja's |tojson may emit "table" or 'table' depending on
@@ -139,9 +133,7 @@ async def test_table_html_inline_factories_present(
 ) -> None:
     """``tableDiscussion`` + ``tableReadme`` are exposed on window."""
     _stub_uc_client(monkeypatch, "main.sales_gold.orders")
-    res = await admin_client.get(
-        "/catalogs/main/schemas/sales_gold/tables/orders"
-    )
+    res = await admin_client.get("/catalogs/main/schemas/sales_gold/tables/orders")
     body = res.text
     assert "window.tableDiscussion = tableDiscussion" in body
     assert "window.tableReadme = tableReadme" in body
@@ -156,13 +148,11 @@ async def test_table_html_includes_polymorphic_partials(
 ) -> None:
     """Endorsements + Followers partials are rendered into the page."""
     _stub_uc_client(monkeypatch, "main.sales_gold.orders")
-    res = await admin_client.get(
-        "/catalogs/main/schemas/sales_gold/tables/orders"
-    )
+    res = await admin_client.get("/catalogs/main/schemas/sales_gold/tables/orders")
     body = res.text
     # Strings unique to each partial.
     assert "Endorsements express peer trust." in body
-    assert "Following non-data-product entities lands in Phase 77.8" in body
+    assert "Following non-data-product entities lands " in body
 
 
 @pytest.mark.asyncio
@@ -182,9 +172,7 @@ async def test_table_social_endpoints_roundtrip(
     )
     assert res_post.status_code == 200, res_post.text
 
-    res_list = await admin_client.get(
-        "/api/social/table/main.sales_gold.orders/comments"
-    )
+    res_list = await admin_client.get("/api/social/table/main.sales_gold.orders/comments")
     assert res_list.status_code == 200
     bodies = [c["body_md"] for c in res_list.json()["comments"]]
     assert "table.html smoke" in bodies

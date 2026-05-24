@@ -57,9 +57,7 @@ def record_use(app_state: Any, *, api_key_id: int, source_ip: str | None) -> Non
     buffer[(api_key_id, bucket, source_ip or "")] += 1
 
 
-def flush_buffer(
-    session_factory: sessionmaker[Session], app_state: Any
-) -> int:
+def flush_buffer(session_factory: sessionmaker[Session], app_state: Any) -> int:
     """Drain the in-process Counter into ``api_key_usage_buckets``.
 
     Per-tick read-modify-write UPSERT so concurrent flushes from
@@ -116,9 +114,7 @@ def flush_buffer(
     return touched
 
 
-def cleanup_stale_usage(
-    session_factory: sessionmaker[Session], *, retention_days: int
-) -> int:
+def cleanup_stale_usage(session_factory: sessionmaker[Session], *, retention_days: int) -> int:
     """Delete usage buckets older than *retention_days*.
 
     Args:
@@ -176,9 +172,7 @@ def get_usage_summary(
     ip_counts: Counter[str] = Counter()
     for bucket_minute, source_ip, count in rows:
         bucket_aware = (
-            bucket_minute
-            if bucket_minute.tzinfo
-            else bucket_minute.replace(tzinfo=datetime.UTC)
+            bucket_minute if bucket_minute.tzinfo else bucket_minute.replace(tzinfo=datetime.UTC)
         )
         date_key = bucket_aware.date()
         daily_counts[date_key] = daily_counts.get(date_key, 0) + count
@@ -189,9 +183,5 @@ def get_usage_summary(
     for i in range(days - 1, -1, -1):
         d = today - datetime.timedelta(days=i)
         days_list.append({"date": d.isoformat(), "count": daily_counts.get(d, 0)})
-    top_ips = [
-        {"ip": ip, "count": int(c)} for ip, c in ip_counts.most_common(10)
-    ]
+    top_ips = [{"ip": ip, "count": int(c)} for ip, c in ip_counts.most_common(10)]
     return {"days": days_list, "top_ips": top_ips}
-
-

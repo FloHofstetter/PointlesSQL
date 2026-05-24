@@ -138,22 +138,12 @@ async def list_data_product_reviews(
         author_ids = {r.author_user_id for r in rows}
         author_map: dict[int, tuple[str, str]] = {}
         if author_ids:
-            users = (
-                session.execute(select(User).where(User.id.in_(author_ids)))
-                .scalars()
-                .all()
-            )
+            users = session.execute(select(User).where(User.id.in_(author_ids))).scalars().all()
             author_map = {u.id: (u.email, u.display_name) for u in users}
-        agent_ids = {
-            r.author_agent_id for r in rows if r.author_agent_id is not None
-        }
+        agent_ids = {r.author_agent_id for r in rows if r.author_agent_id is not None}
         agent_map: dict[int, Agent] = {}
         if agent_ids:
-            agents = (
-                session.execute(select(Agent).where(Agent.id.in_(agent_ids)))
-                .scalars()
-                .all()
-            )
+            agents = session.execute(select(Agent).where(Agent.id.in_(agent_ids))).scalars().all()
             agent_map = {a.id: a for a in agents}
 
         summary = _summary_for(session, workspace_id, row.id)
@@ -162,17 +152,15 @@ async def list_data_product_reviews(
     my_review: dict[str, Any] | None = None
     for r in rows:
         author_email, author_display = author_map.get(r.author_user_id, (None, None))
-        agent_obj = (
-            agent_map.get(r.author_agent_id)
-            if r.author_agent_id is not None
-            else None
-        )
+        agent_obj = agent_map.get(r.author_agent_id) if r.author_agent_id is not None else None
         s = _serialise_review(
             r,
             author_email=author_email,
             author_display_name=author_display,
             body_md_resolved=resolve_citations(
-                r.body_md, factory, workspace_id,
+                r.body_md,
+                factory,
+                workspace_id,
             ),
             agent=_agent_payload(agent_obj),
         )
@@ -232,7 +220,7 @@ async def upsert_data_product_review(
         raise BadRequestError("stars is required")
     try:
         stars = int(raw_stars)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         raise BadRequestError("stars must be an int") from None
     if stars < 1 or stars > 5:
         raise BadRequestError("stars must be in 1..5")
@@ -306,10 +294,7 @@ async def upsert_data_product_review(
     # PUT — including the upsert case — because a star change is
     # something followers want to know about.
     source_url = f"/data-products/{catalog}/{schema}#tab-reviews"
-    summary = (
-        f"@{author_email or 'someone'} reviewed {catalog}.{schema} "
-        f"({stars}/5)"
-    )
+    summary = f"@{author_email or 'someone'} reviewed {catalog}.{schema} ({stars}/5)"
     fanout_event(
         factory,
         event_type=EVENT_TYPE_DATA_PRODUCT_REVIEWED,
@@ -345,7 +330,9 @@ async def upsert_data_product_review(
         author_email=author_email,
         author_display_name=author_display,
         body_md_resolved=resolve_citations(
-            review.body_md, factory, workspace_id,
+            review.body_md,
+            factory,
+            workspace_id,
         ),
         agent=review_agent_payload,
     )

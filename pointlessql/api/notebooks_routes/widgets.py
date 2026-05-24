@@ -24,17 +24,13 @@ def _resolve_notebook_uuid(request: Request, path: str) -> str:
     """Resolve a ``?path=`` query into the stable notebook UUID."""
     settings: Settings = request.app.state.settings
     notebooks_dir = settings.jupyter.notebooks_dir.resolve()
-    absolute = notebook_doc_service.resolve_py_notebook_path(
-        notebooks_dir, path, must_exist=True
-    )
+    absolute = notebook_doc_service.resolve_py_notebook_path(notebooks_dir, path, must_exist=True)
     relative = str(absolute.relative_to(notebooks_dir))
     return get_or_create_notebook_uuid(request, relative)
 
 
 @router.get("/api/notebooks/widgets")
-async def api_list_widgets(
-    request: Request, path: str = Query(..., min_length=1)
-) -> JSONResponse:
+async def api_list_widgets(request: Request, path: str = Query(..., min_length=1)) -> JSONResponse:
     """List every widget on a notebook in display order.
 
     Args:
@@ -48,18 +44,12 @@ async def api_list_widgets(
     notebook_id = _resolve_notebook_uuid(request, path)
     factory = request.app.state.session_factory
     with factory() as session:
-        widgets = notebook_widgets_service.list_widgets(
-            session, notebook_id=notebook_id
-        )
-    return JSONResponse(
-        {"path": path, "notebook_id": notebook_id, "widgets": widgets}
-    )
+        widgets = notebook_widgets_service.list_widgets(session, notebook_id=notebook_id)
+    return JSONResponse({"path": path, "notebook_id": notebook_id, "widgets": widgets})
 
 
 @router.put("/api/notebooks/widgets")
-async def api_upsert_widget(
-    request: Request, body: dict[str, Any] = Body(...)
-) -> JSONResponse:
+async def api_upsert_widget(request: Request, body: dict[str, Any] = Body(...)) -> JSONResponse:
     """Insert or replace one widget definition.
 
     Args:

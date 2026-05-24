@@ -146,9 +146,11 @@ def test_editor_chat_session_editor_id_unique() -> None:
         session.rollback()
 
     with factory() as session:
-        for sess in session.query(EditorChatSession).filter(
-            EditorChatSession.editor_session_id == "ed-session-dup"
-        ).all():
+        for sess in (
+            session.query(EditorChatSession)
+            .filter(EditorChatSession.editor_session_id == "ed-session-dup")
+            .all()
+        ):
             session.delete(sess)
         for run in (
             session.get(AgentRun, run_a),
@@ -187,9 +189,9 @@ def test_editor_chat_session_agent_run_unique() -> None:
         session.rollback()
 
     with factory() as session:
-        for sess in session.query(EditorChatSession).filter(
-            EditorChatSession.agent_run_id == run_id
-        ).all():
+        for sess in (
+            session.query(EditorChatSession).filter(EditorChatSession.agent_run_id == run_id).all()
+        ):
             session.delete(sess)
         run = session.get(AgentRun, run_id)
         if run is not None:
@@ -244,9 +246,7 @@ def test_chat_proposal_kind_check(bad_kind: str) -> None:
         )
         session.add(chat_session)
         session.flush()
-        session.add(
-            _make_proposal(chat_session_id=chat_session.id, kind=bad_kind)
-        )
+        session.add(_make_proposal(chat_session_id=chat_session.id, kind=bad_kind))
         with pytest.raises(IntegrityError):
             session.commit()
         session.rollback()
@@ -254,10 +254,7 @@ def test_chat_proposal_kind_check(bad_kind: str) -> None:
     with factory() as session:
         sess = (
             session.query(EditorChatSession)
-            .filter(
-                EditorChatSession.editor_session_id
-                == f"ed-session-bad-kind-{bad_kind}"
-            )
+            .filter(EditorChatSession.editor_session_id == f"ed-session-bad-kind-{bad_kind}")
             .one_or_none()
         )
         if sess is not None:
@@ -282,11 +279,7 @@ def test_chat_proposal_status_check(bad_status: str) -> None:
         )
         session.add(chat_session)
         session.flush()
-        session.add(
-            _make_proposal(
-                chat_session_id=chat_session.id, status=bad_status
-            )
-        )
+        session.add(_make_proposal(chat_session_id=chat_session.id, status=bad_status))
         with pytest.raises(IntegrityError):
             session.commit()
         session.rollback()
@@ -294,10 +287,7 @@ def test_chat_proposal_status_check(bad_status: str) -> None:
     with factory() as session:
         sess = (
             session.query(EditorChatSession)
-            .filter(
-                EditorChatSession.editor_session_id
-                == f"ed-session-bad-status-{bad_status}"
-            )
+            .filter(EditorChatSession.editor_session_id == f"ed-session-bad-status-{bad_status}")
             .one_or_none()
         )
         if sess is not None:
@@ -317,35 +307,25 @@ def test_chat_proposal_unique_proposal_id() -> None:
     with factory() as session:
         session.add(_make_agent_run(run_a))
         session.add(_make_agent_run(run_b))
-        sa = _make_session(
-            user_id=1, agent_run_id=run_a, editor_session_id="ed-prop-dup-a"
-        )
-        sb = _make_session(
-            user_id=1, agent_run_id=run_b, editor_session_id="ed-prop-dup-b"
-        )
+        sa = _make_session(user_id=1, agent_run_id=run_a, editor_session_id="ed-prop-dup-a")
+        sb = _make_session(user_id=1, agent_run_id=run_b, editor_session_id="ed-prop-dup-b")
         session.add(sa)
         session.add(sb)
         session.flush()
-        session.add(
-            _make_proposal(chat_session_id=sa.id, proposal_id=proposal_uuid)
-        )
+        session.add(_make_proposal(chat_session_id=sa.id, proposal_id=proposal_uuid))
         session.commit()
         sa_id = sa.id
         sb_id = sb.id
 
     with factory() as session:
-        session.add(
-            _make_proposal(chat_session_id=sb_id, proposal_id=proposal_uuid)
-        )
+        session.add(_make_proposal(chat_session_id=sb_id, proposal_id=proposal_uuid))
         with pytest.raises(IntegrityError):
             session.commit()
         session.rollback()
 
     with factory() as session:
         for prop in (
-            session.query(ChatProposal)
-            .filter(ChatProposal.proposal_id == proposal_uuid)
-            .all()
+            session.query(ChatProposal).filter(ChatProposal.proposal_id == proposal_uuid).all()
         ):
             session.delete(prop)
         for sid in (sa_id, sb_id):
@@ -364,9 +344,7 @@ def _cleanup_session(session_id: int, run_id: str) -> None:
     factory = app.state.session_factory
     with factory() as session:
         for prop in (
-            session.query(ChatProposal)
-            .filter(ChatProposal.chat_session_id == session_id)
-            .all()
+            session.query(ChatProposal).filter(ChatProposal.chat_session_id == session_id).all()
         ):
             session.delete(prop)
         sess = session.get(EditorChatSession, session_id)

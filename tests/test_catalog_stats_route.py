@@ -82,9 +82,7 @@ async def test_stats_route_returns_payload(
     _patch_compute: dict[str, int],
 ) -> None:
     """Admin GETs the stats payload as JSON."""
-    response = await admin_client.get(
-        "/api/catalogs/main/schemas/sales/tables/orders/stats"
-    )
+    response = await admin_client.get("/api/catalogs/main/schemas/sales/tables/orders/stats")
     assert response.status_code == 200
     body = response.json()
     assert body["row_count"] == 1234
@@ -97,9 +95,7 @@ async def test_stats_route_anonymous_rejected(
     anonymous_client: httpx.AsyncClient,
 ) -> None:
     """Unauthenticated requests get rejected before the compute runs."""
-    response = await anonymous_client.get(
-        "/api/catalogs/main/schemas/sales/tables/orders/stats"
-    )
+    response = await anonymous_client.get("/api/catalogs/main/schemas/sales/tables/orders/stats")
     assert response.status_code in (401, 403)
 
 
@@ -119,9 +115,7 @@ async def test_stats_route_path_parameters_propagated(
     original = cs.compute_table_stats
     cs.compute_table_stats = fake_compute  # type: ignore[assignment]
     try:
-        response = await admin_client.get(
-            "/api/catalogs/foo/schemas/bar/tables/baz/stats"
-        )
+        response = await admin_client.get("/api/catalogs/foo/schemas/bar/tables/baz/stats")
         assert response.status_code == 200
         assert seen["fqn"] == "foo.bar.baz"
     finally:

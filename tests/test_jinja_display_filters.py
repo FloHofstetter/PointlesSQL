@@ -1,4 +1,4 @@
-"""Unit tests for the Phase 56.5 display-layer Jinja filters.
+"""Unit tests for the display-layer Jinja filters.
 
 Covers ``format_uuid`` (Phase-53 Pattern 6) and ``format_hash``
 (Phase-53 Pattern 7) registered against the FastAPI Jinja2Templates
@@ -58,10 +58,7 @@ class TestFormatHash:
         assert _format_hash(None) == ""
 
     def test_custom_label(self) -> None:
-        assert (
-            _format_hash("0" * 64, sentinel_label="—")
-            == "—"
-        )
+        assert _format_hash("0" * 64, sentinel_label="—") == "—"
 
     def test_short_zero_string_also_caught(self) -> None:
         # The sentinel could be 32 hex (md5) or 64 (sha256); the filter
@@ -74,14 +71,9 @@ def test_filters_registered_on_jinja_env() -> None:
     from pointlessql.api.main import _TEMPLATES
 
     env = _TEMPLATES.env
-    template = env.from_string(
-        "{{ uid|format_uuid }} | {{ h|format_hash }}"
-    )
+    template = env.from_string("{{ uid|format_uuid }} | {{ h|format_hash }}")
     rendered = template.render(
         uid="dbca5242d30d4686b4683acc417277eb",
         h="0" * 64,
     )
-    assert rendered == (
-        "dbca5242-d30d-4686-b468-3acc417277eb"
-        " | (no source captured)"
-    )
+    assert rendered == ("dbca5242-d30d-4686-b468-3acc417277eb | (no source captured)")

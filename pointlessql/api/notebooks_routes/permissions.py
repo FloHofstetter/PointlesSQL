@@ -30,9 +30,7 @@ def _resolve_notebook_uuid(request: Request, path: str) -> str:
     """Resolve a ``?path=`` query into the stable notebook UUID."""
     settings: Settings = request.app.state.settings
     notebooks_dir = settings.jupyter.notebooks_dir.resolve()
-    absolute = notebook_doc_service.resolve_py_notebook_path(
-        notebooks_dir, path, must_exist=True
-    )
+    absolute = notebook_doc_service.resolve_py_notebook_path(notebooks_dir, path, must_exist=True)
     relative = str(absolute.relative_to(notebooks_dir))
     return get_or_create_notebook_uuid(request, relative)
 
@@ -54,9 +52,7 @@ async def api_list_permissions(
     notebook_id = _resolve_notebook_uuid(request, path)
     factory = request.app.state.session_factory
     with factory() as session:
-        rows = notebook_perms_service.list_permissions(
-            session, notebook_id=notebook_id
-        )
+        rows = notebook_perms_service.list_permissions(session, notebook_id=notebook_id)
     return JSONResponse(
         {
             "path": path,
@@ -68,9 +64,7 @@ async def api_list_permissions(
 
 
 @router.put("/api/notebooks/permissions")
-async def api_grant_permission(
-    request: Request, body: dict[str, Any] = Body(...)
-) -> JSONResponse:
+async def api_grant_permission(request: Request, body: dict[str, Any] = Body(...)) -> JSONResponse:
     """Insert or update one ``(notebook, user)`` grant.
 
     Args:
@@ -98,9 +92,7 @@ async def api_grant_permission(
     notebook_id = _resolve_notebook_uuid(request, path)
     actor_id: int | None = None
     try:
-        actor_id = (
-            request.state.user.get("id") if request.state.user else None
-        )
+        actor_id = request.state.user.get("id") if request.state.user else None
     except AttributeError:
         actor_id = None
     factory = request.app.state.session_factory

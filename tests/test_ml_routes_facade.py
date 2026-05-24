@@ -60,9 +60,7 @@ async def test_fetch_linked_model_versions_filters_by_marker() -> None:
             }
         }
     )
-    other_marker = _json.dumps(
-        {_LINK_MARKER_KEY: {"agent_run_id": other_run}}
-    )
+    other_marker = _json.dumps({_LINK_MARKER_KEY: {"agent_run_id": other_run}})
 
     # model_a has two versions: one matching, one not.
     # model_b has zero versions.

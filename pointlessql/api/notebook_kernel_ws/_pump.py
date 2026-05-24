@@ -134,30 +134,19 @@ async def handle_kernel_message(
     # instead of persisting them in ``notebook_outputs``: variable
     # snapshots are transient (re-emitted after every cell run) and
     # would otherwise clutter cell-output replay.
-    if (
-        channel == "iopub"
-        and msg.msg_type in {"display_data", "execute_result"}
-    ):
-        data_bundle: Any = (
-            msg.content.get("data") if isinstance(msg.content, dict) else None
-        )
+    if channel == "iopub" and msg.msg_type in {"display_data", "execute_result"}:
+        data_bundle: Any = msg.content.get("data") if isinstance(msg.content, dict) else None
         if isinstance(data_bundle, dict):
             vars_payload = data_bundle.get("application/x-pql-vars+json")
-            detail_payload = data_bundle.get(
-                "application/x-pql-vardetail+json"
-            )
+            detail_payload = data_bundle.get("application/x-pql-vardetail+json")
             if vars_payload is not None or detail_payload is not None:
                 notify_payload: dict[str, Any] = {
                     "notify": (
-                        "variable_detail"
-                        if detail_payload is not None
-                        else "variable_snapshot"
+                        "variable_detail" if detail_payload is not None else "variable_snapshot"
                     ),
                     "params": {
                         "kernel_session_id": session.session_id,
-                        "payload": detail_payload
-                        if detail_payload is not None
-                        else vars_payload,
+                        "payload": detail_payload if detail_payload is not None else vars_payload,
                     },
                 }
                 await websocket.send_text(json.dumps(notify_payload))
@@ -193,9 +182,7 @@ async def handle_kernel_message(
     ):
         status = str(msg.content.get("status", "ok"))
         execution_count_raw = msg.content.get("execution_count")
-        execution_count = (
-            int(execution_count_raw) if isinstance(execution_count_raw, int) else None
-        )
+        execution_count = int(execution_count_raw) if isinstance(execution_count_raw, int) else None
         finished_at = datetime.datetime.now(datetime.UTC)
         try:
             notebook_outputs_service.upsert_cell_run(
@@ -209,9 +196,7 @@ async def handle_kernel_message(
             )
         except Exception:  # noqa: BLE001
             logger.exception("notebook_cell_run upsert (finish) failed")
-        run_source_id = pending_run_sources.pop(
-            (msg.content_hash, session.session_id), None
-        )
+        run_source_id = pending_run_sources.pop((msg.content_hash, session.session_id), None)
         if run_source_id is not None:
             try:
                 notebook_outputs_service.record_cell_run_finish(
@@ -225,9 +210,7 @@ async def handle_kernel_message(
                 logger.exception("notebook_cell_run_source finish failed")
         # SQL-cell audit row.  Only writes when the cell was wrapped
         # via __pql_sql_run; pure-Python cells never enter this path.
-        sql_meta = sql_cell_metadata.pop(
-            (msg.content_hash, session.session_id), None
-        )
+        sql_meta = sql_cell_metadata.pop((msg.content_hash, session.session_id), None)
         if sql_meta is not None:
             started_at = cell_run_started_at.pop(
                 (msg.content_hash, session.session_id), finished_at
@@ -247,9 +230,7 @@ async def handle_kernel_message(
                     status=QueryStatus.SUCCEEDED if status == "ok" else QueryStatus.FAILED,
                     row_count=None,
                     duration_ms=duration_ms,
-                    referenced_tables=list(
-                        sql_meta.get("approved_tables") or []
-                    ),
+                    referenced_tables=list(sql_meta.get("approved_tables") or []),
                     workspace_id=workspace_id,
                     notebook_path=file_path,
                     notebook_content_hash=msg.content_hash,

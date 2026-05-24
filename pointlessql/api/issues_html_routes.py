@@ -33,9 +33,7 @@ async def issues_index_page(
     """Render the global cross-entity issues index."""
     user = get_user(request)
     if user["id"] == 0:
-        return RedirectResponse(
-            url="/auth/login?next=/issues", status_code=303
-        )
+        return RedirectResponse(url="/auth/login?next=/issues", status_code=303)
     templates = request.app.state.templates
     return templates.TemplateResponse(
         request,
@@ -44,32 +42,24 @@ async def issues_index_page(
     )
 
 
-@router.get(
-    "/issues/{issue_id}", response_class=HTMLResponse, response_model=None
-)
-async def issue_detail_page(
-    issue_id: int, request: Request
-) -> HTMLResponse | RedirectResponse:
+@router.get("/issues/{issue_id}", response_class=HTMLResponse, response_model=None)
+async def issue_detail_page(issue_id: int, request: Request) -> HTMLResponse | RedirectResponse:
     """Render a single issue's detail page."""
     user = get_user(request)
     if user["id"] == 0:
-        return RedirectResponse(
-            url=f"/auth/login?next=/issues/{issue_id}", status_code=303
-        )
+        return RedirectResponse(url=f"/auth/login?next=/issues/{issue_id}", status_code=303)
     workspace_id = current_workspace_id(request)
     factory = request.app.state.session_factory
     with factory() as session:
         issue = session.execute(
-            select(Issue).where(
-                Issue.id == issue_id, Issue.workspace_id == workspace_id
-            )
+            select(Issue).where(Issue.id == issue_id, Issue.workspace_id == workspace_id)
         ).scalar_one_or_none()
         if issue is None:
             raise ResourceNotFoundError(f"issue id={issue_id} not found.")
         parent_row = session.execute(
-            select(
-                SocialTarget.entity_kind, SocialTarget.entity_ref
-            ).where(SocialTarget.id == issue.parent_social_target_id)
+            select(SocialTarget.entity_kind, SocialTarget.entity_ref).where(
+                SocialTarget.id == issue.parent_social_target_id
+            )
         ).first()
         parent_kind = str(parent_row[0]) if parent_row else None
         parent_ref = str(parent_row[1]) if parent_row else None

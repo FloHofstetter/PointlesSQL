@@ -1,6 +1,6 @@
 """External SQL Statement Execution API state.
 
-Phase 117 introduces a public, token-authenticated REST surface for
+introduces a public, token-authenticated REST surface for
 external SQL clients (curl, dbt, BI tools) that mirrors the
 Databricks SQL Statement Execution API.  Each submitted statement
 gets one row in :class:`SqlStatement` whose lifecycle parallels the
@@ -114,9 +114,7 @@ class SqlStatement(Base):
     )
 
     statement_id: Mapped[str] = mapped_column(String(36), primary_key=True)
-    api_key_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("api_keys.id"), nullable=False
-    )
+    api_key_id: Mapped[int] = mapped_column(Integer, ForeignKey("api_keys.id"), nullable=False)
     submitted_by_user_id: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     workspace_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("workspaces.id"), nullable=False, default=1
@@ -129,9 +127,7 @@ class SqlStatement(Base):
     error_code: Mapped[str | None] = mapped_column(String(64), nullable=True)
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     result_payload: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
-    submitted_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
+    submitted_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     started_at: Mapped[datetime.datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )

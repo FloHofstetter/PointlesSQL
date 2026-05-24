@@ -119,16 +119,10 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     """Drop the 3 ACL + usage tables."""
-    op.drop_index(
-        "ix_api_key_usage_buckets_bucket_minute", table_name="api_key_usage_buckets"
-    )
-    op.drop_index(
-        "ix_api_key_usage_buckets_api_key_id", table_name="api_key_usage_buckets"
-    )
+    op.drop_index("ix_api_key_usage_buckets_bucket_minute", table_name="api_key_usage_buckets")
+    op.drop_index("ix_api_key_usage_buckets_api_key_id", table_name="api_key_usage_buckets")
     op.drop_table("api_key_usage_buckets")
     op.drop_index("ix_api_key_ip_grants_api_key_id", table_name="api_key_ip_grants")
     op.drop_table("api_key_ip_grants")
-    op.drop_index(
-        "ix_api_key_catalog_grants_api_key_id", table_name="api_key_catalog_grants"
-    )
+    op.drop_index("ix_api_key_catalog_grants_api_key_id", table_name="api_key_catalog_grants")
     op.drop_table("api_key_catalog_grants")

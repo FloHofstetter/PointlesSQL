@@ -68,12 +68,8 @@ class LensPinnedAnswer(Base):
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    workspace_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("workspaces.id"), nullable=False
-    )
-    owner_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("users.id"), nullable=False
-    )
+    workspace_id: Mapped[int] = mapped_column(Integer, ForeignKey("workspaces.id"), nullable=False)
+    owner_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
     slug: Mapped[str] = mapped_column(String(128), nullable=False)
     title: Mapped[str] = mapped_column(String(200), nullable=False)
     source_message_id: Mapped[int | None] = mapped_column(
@@ -84,12 +80,6 @@ class LensPinnedAnswer(Base):
     content_snapshot: Mapped[str] = mapped_column(Text, nullable=False)
     sql_text: Mapped[str | None] = mapped_column(Text, nullable=True)
     result_preview: Mapped[object | None] = mapped_column(JSON, nullable=True)
-    is_shared: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, default=False
-    )
-    created_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
-    updated_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
+    is_shared: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    updated_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)

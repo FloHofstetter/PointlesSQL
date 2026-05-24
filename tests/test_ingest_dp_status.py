@@ -114,9 +114,7 @@ async def test_dp_ingest_status_lists_matching_sources(
     _seed_source(target_fqn="main.demo.customers")
     # Unrelated source, different schema — should NOT appear.
     _seed_source(target_fqn="main.other.foo")
-    res = await admin_client.get(
-        "/api/data-products/main/demo/ingest-status"
-    )
+    res = await admin_client.get("/api/data-products/main/demo/ingest-status")
     assert res.status_code == 200, res.text
     sources = res.json()["sources"]
     fqns = {s["target_fqn"] for s in sources}
@@ -130,9 +128,7 @@ async def test_dp_ingest_status_404_for_missing(
     admin_client: httpx.AsyncClient,
 ) -> None:
     """Unknown DP returns 404."""
-    res = await admin_client.get(
-        "/api/data-products/main/no-such-schema/ingest-status"
-    )
+    res = await admin_client.get("/api/data-products/main/no-such-schema/ingest-status")
     assert res.status_code == 404
 
 
@@ -142,8 +138,6 @@ async def test_dp_ingest_status_empty_when_no_match(
 ) -> None:
     """DP with no ingest source returns an empty list."""
     _seed_dp()
-    res = await admin_client.get(
-        "/api/data-products/main/demo/ingest-status"
-    )
+    res = await admin_client.get("/api/data-products/main/demo/ingest-status")
     assert res.status_code == 200
     assert res.json()["sources"] == []

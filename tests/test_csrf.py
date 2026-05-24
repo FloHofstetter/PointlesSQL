@@ -1,4 +1,4 @@
-"""Tests for the Sprint 42 CSRF middleware and token rotation.
+"""Tests for the CSRF middleware and token rotation.
 
 Covers the double-submit-cookie enforcement on the three HTML form
 routes (``/auth/login``, ``/auth/register``, ``/auth/logout``),

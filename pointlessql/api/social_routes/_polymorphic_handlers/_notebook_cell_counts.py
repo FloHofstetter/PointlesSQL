@@ -7,7 +7,7 @@ aggregated counts for every cell of one notebook in a single query.
 
 Counts are eventually-consistent — the editor calls this once on
 notebook open and again after each save (debounced).  No SSE / WS
-push for Phase 95 (the existing notification stream already covers
+push (the existing notification stream already covers
 the realtime path for users actively watching a thread).
 """
 
@@ -64,9 +64,7 @@ def bulk_counts(
             select(Notebook.workspace_id).where(Notebook.id == notebook_id)
         ).first()
         if owner is None or int(owner[0]) != workspace_id:
-            raise ResourceNotFoundError.not_found(
-                what=f"notebook {notebook_id!r}"
-            )
+            raise ResourceNotFoundError.not_found(what=f"notebook {notebook_id!r}")
 
         target_rows = session.execute(
             select(SocialTarget.id, SocialTarget.entity_ref).where(
@@ -128,10 +126,6 @@ def bulk_counts(
             "followers": follower_counts.get(target_id, 0),
         }
         # Keep the response compact — omit cells with zero activity.
-        if (
-            bucket["comments"]
-            or bucket["reactions"]
-            or bucket["followers"]
-        ):
+        if bucket["comments"] or bucket["reactions"] or bucket["followers"]:
             counts[cell_id] = bucket
     return {"notebook_id": notebook_id, "counts": counts}

@@ -30,9 +30,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["data-products", "releases"])
 
 
-def _resolve_dp(
-    request: Request, catalog: str, schema: str
-) -> DataProduct:
+def _resolve_dp(request: Request, catalog: str, schema: str) -> DataProduct:
     """Resolve the workspace-scoped DataProduct row or 404."""
     require_user(request)
     workspace_id = current_workspace_id(request)
@@ -51,9 +49,7 @@ def _resolve_dp(
     return dp
 
 
-def _load_releases(
-    request: Request, dp_id: int, limit: int = 100
-) -> list[DataProductRelease]:
+def _load_releases(request: Request, dp_id: int, limit: int = 100) -> list[DataProductRelease]:
     """Return the last *limit* releases for *dp_id*, newest first."""
     factory = request.app.state.session_factory
     with factory() as session:
@@ -71,9 +67,7 @@ def _load_releases(
 
 
 @router.get("/api/data-products/{catalog}/{schema}/releases")
-async def api_dp_releases(
-    request: Request, catalog: str, schema: str
-) -> dict[str, Any]:
+async def api_dp_releases(request: Request, catalog: str, schema: str) -> dict[str, Any]:
     """List recorded releases for a DataProduct.
 
     Args:
@@ -92,9 +86,7 @@ async def api_dp_releases(
                 "id": int(r.id),
                 "version": r.version,
                 "contract_yaml_hash": r.contract_yaml_hash,
-                "released_at": r.released_at.isoformat()
-                if r.released_at
-                else None,
+                "released_at": r.released_at.isoformat() if r.released_at else None,
                 "notes_md": r.notes_md,
                 "signed_off_by_email": r.signed_off_by_email or None,
             }
@@ -104,9 +96,7 @@ async def api_dp_releases(
 
 
 @router.get("/api/data-products/{catalog}/{schema}/releases.atom")
-async def api_dp_releases_atom(
-    request: Request, catalog: str, schema: str
-) -> Response:
+async def api_dp_releases_atom(request: Request, catalog: str, schema: str) -> Response:
     """Atom feed of recorded releases.
 
     Args:
@@ -122,9 +112,7 @@ async def api_dp_releases_atom(
     base_url = str(request.url).rsplit("/releases.atom", 1)[0]
     feed_id = f"urn:pointlessql:dp:{catalog}.{schema}:releases"
     updated = (
-        rows[0].released_at.isoformat()
-        if rows
-        else datetime.datetime.now(datetime.UTC).isoformat()
+        rows[0].released_at.isoformat() if rows else datetime.datetime.now(datetime.UTC).isoformat()
     )
     title = f"{catalog}.{schema} releases"
     entries: list[str] = []
@@ -141,8 +129,8 @@ async def api_dp_releases_atom(
             f"    <title>v{escape(r.version)}</title>\n"
             f"    <updated>{escape(published)}</updated>\n"
             f"    <published>{escape(published)}</published>\n"
-            f"    <link href=\"{escape(base_url)}\" />\n"
-            f"    <content type=\"text\">{escape(body)}</content>\n"
+            f'    <link href="{escape(base_url)}" />\n'
+            f'    <content type="text">{escape(body)}</content>\n'
             f"  </entry>"
         )
     body_xml = (
@@ -151,8 +139,8 @@ async def api_dp_releases_atom(
         f"  <id>{escape(feed_id)}</id>\n"
         f"  <title>{escape(title)}</title>\n"
         f"  <updated>{escape(updated)}</updated>\n"
-        f"  <link href=\"{escape(base_url)}\" rel=\"alternate\" />\n"
-        f"  <link href=\"{escape(str(request.url))}\" rel=\"self\" />\n"
+        f'  <link href="{escape(base_url)}" rel="alternate" />\n'
+        f'  <link href="{escape(str(request.url))}" rel="self" />\n'
         + "\n".join(entries)
         + "\n</feed>\n"
     )

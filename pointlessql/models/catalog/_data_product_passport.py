@@ -96,7 +96,5 @@ class DataProductPassport(Base):
     downstream_tables_json: Mapped[str] = mapped_column(Text, nullable=False)
     column_count: Mapped[int] = mapped_column(Integer, nullable=False)
     edge_count: Mapped[int] = mapped_column(Integer, nullable=False)
-    refreshed_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
+    refreshed_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     refresh_trigger: Mapped[str] = mapped_column(String(20), nullable=False)

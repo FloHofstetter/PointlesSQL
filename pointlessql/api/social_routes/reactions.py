@@ -4,7 +4,7 @@ For ``kind='dp'`` the call delegates to the existing DP reaction
 handlers so that the legacy fan-out + audit prefix semantics
 stay intact.  For every other kind the entity-level **and**
 comment-level reaction endpoints route to the polymorphic
-handlers landed in Phase 77.8.D (entity) and Phase 78 polish
+handlers landed (entity) and Phase 78 polish
 (comment).  ``data_product_comment_reactions`` is already
 polymorphic-safe — it keys on ``comment_id`` — so the unlock
 is purely a routing change.
@@ -40,9 +40,7 @@ from pointlessql.api.social_routes._polymorphic_handlers import (
 router = APIRouter(tags=["social"])
 
 
-@router.post(
-    "/api/social/{kind}/{ref:path}/comments/{comment_id}/reactions"
-)
+@router.post("/api/social/{kind}/{ref:path}/comments/{comment_id}/reactions")
 async def add_social_comment_reaction(
     kind: str, ref: str, comment_id: int, request: Request
 ) -> dict[str, Any]:
@@ -51,51 +49,37 @@ async def add_social_comment_reaction(
         catalog, schema = parse_dp_ref(kind, ref)
         return await add_comment_reaction(catalog, schema, comment_id, request)
     polymorphic_ref = parse_ref(kind, ref)
-    return await apply_polymorphic_comment_reaction(
-        kind, polymorphic_ref, comment_id, request
-    )
+    return await apply_polymorphic_comment_reaction(kind, polymorphic_ref, comment_id, request)
 
 
-@router.delete(
-    "/api/social/{kind}/{ref:path}/comments/{comment_id}/reactions/{emoji}"
-)
+@router.delete("/api/social/{kind}/{ref:path}/comments/{comment_id}/reactions/{emoji}")
 async def remove_social_comment_reaction(
     kind: str, ref: str, comment_id: int, emoji: str, request: Request
 ) -> dict[str, Any]:
     """Dispatch a comment-reaction DELETE polymorphically."""
     if kind == "dp":
         catalog, schema = parse_dp_ref(kind, ref)
-        return await remove_comment_reaction(
-            catalog, schema, comment_id, emoji, request
-        )
+        return await remove_comment_reaction(catalog, schema, comment_id, emoji, request)
     polymorphic_ref = parse_ref(kind, ref)
     return await remove_polymorphic_comment_reaction(
         kind, polymorphic_ref, comment_id, emoji, request
     )
 
 
-@router.get(
-    "/api/social/{kind}/{ref:path}/comments/{comment_id}/reactions"
-)
+@router.get("/api/social/{kind}/{ref:path}/comments/{comment_id}/reactions")
 async def list_social_comment_reactions(
     kind: str, ref: str, comment_id: int, request: Request
 ) -> dict[str, Any]:
     """Dispatch a comment-reaction list polymorphically."""
     if kind == "dp":
         catalog, schema = parse_dp_ref(kind, ref)
-        return await list_comment_reactions(
-            catalog, schema, comment_id, request
-        )
+        return await list_comment_reactions(catalog, schema, comment_id, request)
     polymorphic_ref = parse_ref(kind, ref)
-    return await list_polymorphic_comment_reactions(
-        kind, polymorphic_ref, comment_id, request
-    )
+    return await list_polymorphic_comment_reactions(kind, polymorphic_ref, comment_id, request)
 
 
 @router.post("/api/social/{kind}/{ref:path}/reactions")
-async def add_social_entity_reaction(
-    kind: str, ref: str, request: Request
-) -> dict[str, Any]:
+async def add_social_entity_reaction(kind: str, ref: str, request: Request) -> dict[str, Any]:
     """Dispatch an entity-level reaction POST by kind."""
     if kind == "dp":
         catalog, schema = parse_dp_ref(kind, ref)
@@ -113,15 +97,11 @@ async def remove_social_entity_reaction(
         catalog, schema = parse_dp_ref(kind, ref)
         return await remove_dp_reaction(catalog, schema, emoji, request)
     polymorphic_ref = parse_ref(kind, ref)
-    return await remove_polymorphic_reaction(
-        kind, polymorphic_ref, emoji, request
-    )
+    return await remove_polymorphic_reaction(kind, polymorphic_ref, emoji, request)
 
 
 @router.get("/api/social/{kind}/{ref:path}/reactions")
-async def list_social_entity_reactions(
-    kind: str, ref: str, request: Request
-) -> dict[str, Any]:
+async def list_social_entity_reactions(kind: str, ref: str, request: Request) -> dict[str, Any]:
     """Dispatch an entity-level reaction list by kind."""
     if kind == "dp":
         catalog, schema = parse_dp_ref(kind, ref)

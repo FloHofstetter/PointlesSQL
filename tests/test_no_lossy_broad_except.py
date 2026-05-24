@@ -25,7 +25,7 @@ FAIL conditions:
 
 The check runs in pure ``ast`` + line-content scan, no astroid
 dep.  Pre-existing 142 well-formed sites pass; the 36 Bucket-C +
-~11 silent-without-marker sites fail until Sprint 44.2 converts
+~11 silent-without-marker sites fail converts
 them.
 """
 

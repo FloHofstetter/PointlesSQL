@@ -217,9 +217,7 @@ def delete_table_rows(
         return dict(stats)
 
 
-def _resolve_existing_location(
-    client: Client, full_name: str, unreachable_msg: str
-) -> str:
+def _resolve_existing_location(client: Client, full_name: str, unreachable_msg: str) -> str:
     """Return the Delta storage URI for an existing table.
 
     Args:
@@ -267,5 +265,5 @@ def _coerce_int(value: Any) -> int | None:
         return None
     try:
         return int(value)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return None

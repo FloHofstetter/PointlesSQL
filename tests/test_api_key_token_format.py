@@ -1,4 +1,4 @@
-"""Tests for the Phase 118 v1 token format module."""
+"""Tests for the v1 token format module."""
 
 from __future__ import annotations
 

@@ -1,4 +1,4 @@
-"""Tests for the Phase 40.6 CDF events tab on the table-detail page."""
+"""Tests for the CDF events tab on the table-detail page."""
 
 from __future__ import annotations
 

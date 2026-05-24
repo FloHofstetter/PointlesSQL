@@ -174,8 +174,7 @@ async def test_post_message_runs_chat_loop_with_mock_provider(
         )
 
     with patch(
-        "pointlessql.services.lens.llm_provider.AnthropicProvider."
-        "chat_with_tools",
+        "pointlessql.services.lens.llm_provider.AnthropicProvider.chat_with_tools",
         new=fake_chat,
     ):
         resp = await admin_client.post(
@@ -243,8 +242,7 @@ async def test_post_message_dispatches_tool_call_then_continues(
         )
 
     with patch(
-        "pointlessql.services.lens.llm_provider.AnthropicProvider."
-        "chat_with_tools",
+        "pointlessql.services.lens.llm_provider.AnthropicProvider.chat_with_tools",
         new=fake_chat,
     ):
         resp = await admin_client.post(
@@ -281,9 +279,7 @@ async def test_admin_lens_providers_crud_roundtrip(
     listed = await admin_client.get("/api/admin/lens-providers")
     assert any(p["provider"] == "openai" for p in listed.json()["providers"])
 
-    test = await admin_client.post(
-        "/api/admin/lens-providers/openai/test"
-    )
+    test = await admin_client.post("/api/admin/lens-providers/openai/test")
     assert test.status_code == 200
     assert test.json()["ok"] is True
 
@@ -312,9 +308,7 @@ async def test_lens_sessions_analyst_key_passes(
     """Analyst-scoped api_key passes the require_analyst gate."""
     _ensure_keys_table()
     factory = app.state.session_factory
-    _, secret = create_api_key(
-        factory, name="lens-chat-analyst", analyst=True
-    )
+    _, secret = create_api_key(factory, name="lens-chat-analyst", analyst=True)
     resp = await anonymous_client.post(
         "/api/lens/sessions",
         headers={"Authorization": f"Bearer {secret}"},
@@ -338,7 +332,5 @@ def test_decrypt_provider_key_after_upsert() -> None:
         provider="openai",
         api_key="sk-rt-roundtrip",  # pragma: allowlist secret
     )
-    out = decrypt_provider_key(
-        factory, workspace_id=1, provider="openai"
-    )
+    out = decrypt_provider_key(factory, workspace_id=1, provider="openai")
     assert out == "sk-rt-roundtrip"  # pragma: allowlist secret

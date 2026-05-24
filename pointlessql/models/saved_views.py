@@ -85,12 +85,8 @@ class SavedView(Base):
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    workspace_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("workspaces.id"), nullable=False
-    )
-    owner_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("users.id"), nullable=False
-    )
+    workspace_id: Mapped[int] = mapped_column(Integer, ForeignKey("workspaces.id"), nullable=False)
+    owner_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
     slug: Mapped[str] = mapped_column(String(200), nullable=False)
     title: Mapped[str] = mapped_column(String(200), nullable=False)
     description: Mapped[str | None] = mapped_column(String(2000), nullable=True)
@@ -105,9 +101,5 @@ class SavedView(Base):
     is_active: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=True, server_default="1"
     )
-    created_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
-    updated_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    updated_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)

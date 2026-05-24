@@ -1,4 +1,4 @@
-"""Tests for the Phase-73.1 promote-to-DP scanner + draft yaml flow.
+"""Tests for the promote-to-DP scanner + draft yaml flow.
 
 Covers:
 
@@ -70,9 +70,7 @@ def _seed_run_op(
             session.flush()
         ordinal = (
             session.execute(
-                select(AgentRunOperation).where(
-                    AgentRunOperation.agent_run_id == run_id
-                )
+                select(AgentRunOperation).where(AgentRunOperation.agent_run_id == run_id)
             )
             .scalars()
             .all()
@@ -96,9 +94,7 @@ def _seed_workspace_two(user_id: int) -> None:
     """Seed workspace id=2 + add the test user as a member."""
     factory = app.state.session_factory
     with factory() as session:
-        existing = session.execute(
-            select(Workspace).where(Workspace.id == 2)
-        ).scalar_one_or_none()
+        existing = session.execute(select(Workspace).where(Workspace.id == 2)).scalar_one_or_none()
         if existing is None:
             ws = Workspace(
                 id=2,
@@ -137,9 +133,7 @@ def test_scan_threshold_min_runs() -> None:
     run = str(uuid.uuid4())
     for _ in range(15):
         _seed_run_op(target_table="catA.schemA.tbl", run_id=run)
-    inserted = scan_candidates(
-        app.state.session_factory, min_runs=3, min_ops=5
-    )
+    inserted = scan_candidates(app.state.session_factory, min_runs=3, min_ops=5)
     assert inserted == 0
 
 
@@ -147,9 +141,7 @@ def test_scan_threshold_min_ops() -> None:
     """Three runs, one op each → fails min_ops gate."""
     for _ in range(3):
         _seed_run_op(target_table="catB.schemB.tbl")
-    inserted = scan_candidates(
-        app.state.session_factory, min_runs=3, min_ops=10
-    )
+    inserted = scan_candidates(app.state.session_factory, min_runs=3, min_ops=10)
     assert inserted == 0
 
 
@@ -159,9 +151,7 @@ def test_scan_creates_candidate_above_thresholds() -> None:
         run = str(uuid.uuid4())
         for _ in range(5):
             _seed_run_op(target_table="catC.schemC.tbl", run_id=run)
-    inserted = scan_candidates(
-        app.state.session_factory, min_runs=3, min_ops=10
-    )
+    inserted = scan_candidates(app.state.session_factory, min_runs=3, min_ops=10)
     assert inserted == 1
     factory = app.state.session_factory
     with factory() as session:
@@ -195,9 +185,7 @@ data_product:
         run = str(uuid.uuid4())
         for _ in range(5):
             _seed_run_op(target_table="catD.schemD.tbl", run_id=run)
-    inserted = scan_candidates(
-        app.state.session_factory, min_runs=3, min_ops=10
-    )
+    inserted = scan_candidates(app.state.session_factory, min_runs=3, min_ops=10)
     assert inserted == 0
 
 
@@ -247,9 +235,7 @@ def test_scan_cross_workspace_isolation() -> None:
                 workspace_id=2,
                 run_id=run,
             )
-    inserted = scan_candidates(
-        app.state.session_factory, min_runs=3, min_ops=10
-    )
+    inserted = scan_candidates(app.state.session_factory, min_runs=3, min_ops=10)
     assert inserted == 1
     factory = app.state.session_factory
     with factory() as session:
@@ -312,9 +298,7 @@ async def test_dismiss_route_flips_status(
 ) -> None:
     """POST .../dismiss flips status to 'dismissed'."""
     candidate = _seed_candidate_basic()
-    res = await admin_client.post(
-        f"/api/data-products/candidates/{candidate.id}/dismiss"
-    )
+    res = await admin_client.post(f"/api/data-products/candidates/{candidate.id}/dismiss")
     assert res.status_code == 200, res.text
     factory = app.state.session_factory
     with factory() as session:

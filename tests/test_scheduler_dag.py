@@ -1,4 +1,4 @@
-"""Tests for Sprint 20 DAG engine: topology, retries, concurrency, logging."""
+"""Tests DAG engine: topology, retries, concurrency, logging."""
 
 from __future__ import annotations
 

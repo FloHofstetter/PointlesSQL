@@ -35,11 +35,7 @@ def test_model_supports_reviews_after_77_2_1() -> None:
 
 def test_polymorphic_unique_present_in_schema() -> None:
     """The new UNIQUE shows up on the model table args."""
-    constraints = [
-        c.name
-        for c in DataProductReview.__table__.constraints
-        if c.name is not None
-    ]
+    constraints = [c.name for c in DataProductReview.__table__.constraints if c.name is not None]
     assert "uq_dp_review_polymorphic_one_per_user" in constraints
     # Phase 78 polish dropped the legacy DP-id UNIQUE; the
     # polymorphic constraint covers DP rows via the 1:1
@@ -119,15 +115,11 @@ async def test_model_review_delete_removes_row(
         f"/api/social/model/{ref}/reviews",
         json={"stars": 2, "body_md": ""},
     )
-    res_del = await admin_client.delete(
-        f"/api/social/model/{ref}/reviews"
-    )
+    res_del = await admin_client.delete(f"/api/social/model/{ref}/reviews")
     assert res_del.status_code == 200
     assert res_del.json() == {"deleted": True}
 
-    res_again = await admin_client.delete(
-        f"/api/social/model/{ref}/reviews"
-    )
+    res_again = await admin_client.delete(f"/api/social/model/{ref}/reviews")
     assert res_again.status_code == 200
     assert res_again.json() == {"deleted": False}
 
@@ -150,9 +142,7 @@ async def test_table_review_still_returns_501(
     admin_client: httpx.AsyncClient,
 ) -> None:
     """Tables stay reviews-off in the registry."""
-    res = await admin_client.get(
-        "/api/social/table/main.sales_gold.orders/reviews"
-    )
+    res = await admin_client.get("/api/social/table/main.sales_gold.orders/reviews")
     assert res.status_code == 501
     assert "does not support reviews" in res.text
 
@@ -184,9 +174,7 @@ async def test_polymorphic_review_writes_null_dp_id(
     factory = app.state.session_factory
     with factory() as session:
         row = session.execute(
-            select(DataProductReview).where(
-                DataProductReview.id == res.json()["id"]
-            )
+            select(DataProductReview).where(DataProductReview.id == res.json()["id"])
         ).scalar_one()
         assert row.data_product_id is None
         assert row.social_target_id is not None

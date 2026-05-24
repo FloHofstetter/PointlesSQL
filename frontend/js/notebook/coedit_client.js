@@ -3,7 +3,7 @@
  * awareness-frame wiring.
  *
  * Owns the WebSocket lifecycle against
- * ``/ws/notebook/coedit/{notebook_uuid}`` (the Sprint 105.2 hub) and
+ * ``/ws/notebook/coedit/{notebook_uuid}`` (the hub) and
  * keeps a local :class:`Y.Doc` in lock-step with the server's
  * authoritative replica.  The wire format mirrors the server side
  * one-to-one:
@@ -14,9 +14,8 @@
  *   * ``0x03`` awareness   — opaque presence bytes, relayed.
  *
  * This module deliberately does NOT bind the Y.Doc to any
- * CodeMirror view yet — that wiring lands in Phase 105.3b once the
- * save-path race against the cell_uuid reconciler (the Phase 105.5
- * barrier) is in place.  For 105.3 the client connects, keeps the
+ * CodeMirror view yet — that wiring lands once the
+ * save-path race against the cell_uuid reconciler (the * barrier) is in place.  For 105.3 the client connects, keeps the
  * Doc in sync, and exposes the connection status so the toolbar
  * can paint a live / offline pill.  Awareness payloads are forwarded
  * via ``onAwarenessUpdate`` and — when a y-protocols ``Awareness``

@@ -95,7 +95,7 @@ def _as_aware_utc(value: datetime | None) -> datetime | None:
     """Coerce a possibly-naive timestamp to a UTC-aware ``datetime``.
 
     SQLite returns ``DateTime(timezone=True)`` columns as naive ``datetime``
-    on read; Postgres returns them aware.  Phase 119's lifecycle gates
+    on read; Postgres returns them aware.  lifecycle gates
     compare against ``datetime.now(UTC)`` (aware), which would raise
     ``TypeError`` on the SQLite path.  Treating naive timestamps as UTC
     matches what we wrote and unifies the two dialects.
@@ -504,9 +504,7 @@ def rotate_api_key(
         if pred is None or pred.revoked_at is not None or pred.rotated_at is not None:
             return None
         pred_env = getattr(pred, "token_env", "live") or "live"
-        env_for_successor: Literal["live", "test"] = (
-            "test" if pred_env == "test" else "live"
-        )
+        env_for_successor: Literal["live", "test"] = "test" if pred_env == "test" else "live"
         successor_name_resolved = successor_name or (
             f"{name}-rotated-{int(datetime.now(UTC).timestamp())}"
         )
@@ -540,9 +538,7 @@ def rotate_api_key(
     return successor, plaintext
 
 
-def quarantine_api_key(
-    session_factory: _SessionFactory, *, name: str, reason: str
-) -> bool:
+def quarantine_api_key(session_factory: _SessionFactory, *, name: str, reason: str) -> bool:
     """Soft-disable a key.  Returns ``True`` when applied.
 
     Quarantined keys return 401 + ``api_key.auth_denied.quarantined``
@@ -683,9 +679,8 @@ def verify_bearer(
         # debug rejected requests.  Audit failures are swallowed so a
         # broken audit table can never break auth.
         now_dt = datetime.now(UTC)
-        if (
-            getattr(row, "quarantined_at", None) is not None
-            and getattr(row, "quarantine_reason", None)
+        if getattr(row, "quarantined_at", None) is not None and getattr(
+            row, "quarantine_reason", None
         ):
             _emit_auth_denied_audit(
                 session_factory,

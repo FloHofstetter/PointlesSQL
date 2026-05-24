@@ -112,8 +112,7 @@ def write_endorsement(
             :data:`ENDORSEMENT_TYPES`.
         note_md: Optional rationale.
         now: Wall-clock anchor.
-        applied_by_agent_id: Optional agent identity (Phase
-            76.5.1) — when set, the endorsement renders as
+        applied_by_agent_id: Optional agent identity — when set, the endorsement renders as
             applied *by the agent on behalf of*
             ``applied_by_user_id``.
 

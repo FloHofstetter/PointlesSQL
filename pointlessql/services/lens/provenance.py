@@ -149,14 +149,10 @@ def _resolve_mode(query: ProvenanceQuery) -> ProvenanceMode:
     return "table"
 
 
-def _summarize_column(
-    query: ProvenanceQuery, transformations: list[Transformation]
-) -> str:
+def _summarize_column(query: ProvenanceQuery, transformations: list[Transformation]) -> str:
     """Build a one-line column-scope summary."""
     if not transformations:
-        return (
-            f"No column lineage recorded for {query.table_fqn}.{query.column}."
-        )
+        return f"No column lineage recorded for {query.table_fqn}.{query.column}."
     n = len(transformations)
     return (
         f"{query.table_fqn}.{query.column} traces back through "
@@ -167,10 +163,7 @@ def _summarize_column(
 def _summarize_row(query: ProvenanceQuery, row_steps: list[RowStep]) -> str:
     """Build a one-line row-scope summary."""
     if not row_steps:
-        return (
-            f"No row lineage recorded for {query.table_fqn} row "
-            f"{query.row_id}."
-        )
+        return f"No row lineage recorded for {query.table_fqn} row {query.row_id}."
     n = len(row_steps)
     return (
         f"Row {query.row_id} in {query.table_fqn} traces back through "
@@ -188,10 +181,7 @@ def _summarize_row_value(
     if not value_changes:
         return f"{base} No per-cell value changes recorded for column {query.column}."
     n = len(value_changes)
-    return (
-        f"{base} {n} value change{'s' if n != 1 else ''} recorded for "
-        f"column {query.column}."
-    )
+    return f"{base} {n} value change{'s' if n != 1 else ''} recorded for column {query.column}."
 
 
 def _collect_sources_from_columns(
@@ -227,9 +217,7 @@ def _collect_sources_from_row_steps(
     return sorted(seen.values(), key=lambda s: s.table_fqn)
 
 
-def _trace_columns(
-    factory: sessionmaker[Session], query: ProvenanceQuery
-) -> list[Transformation]:
+def _trace_columns(factory: sessionmaker[Session], query: ProvenanceQuery) -> list[Transformation]:
     """Walk column lineage and flatten to the wire shape."""
     if not query.column:
         return []
@@ -314,9 +302,7 @@ def _trace_value_changes(
     return out, truncated
 
 
-def provenance(
-    factory: sessionmaker[Session], query: ProvenanceQuery
-) -> ProvenanceTrace:
+def provenance(factory: sessionmaker[Session], query: ProvenanceQuery) -> ProvenanceTrace:
     """Walk the unified lineage trace for *query*.
 
     See module docstring for the three modes and which lineage tables
@@ -345,8 +331,7 @@ def provenance(
                 f"provided.  Pass a row_id or column for a deeper trace."
             ),
             notes=[
-                "Table-scope mode returns metadata only; pass row_id or column "
-                "for a real walkback."
+                "Table-scope mode returns metadata only; pass row_id or column for a real walkback."
             ],
         )
 
@@ -354,10 +339,7 @@ def provenance(
         transformations = _trace_columns(factory, query)
         sources = _collect_sources_from_columns(transformations)
         if not transformations:
-            notes.append(
-                f"No column lineage recorded for {query.table_fqn}."
-                f"{query.column}."
-            )
+            notes.append(f"No column lineage recorded for {query.table_fqn}.{query.column}.")
         return ProvenanceTrace(
             mode="column",
             summary=_summarize_column(query, transformations),
@@ -376,8 +358,7 @@ def provenance(
             )
         if not row_steps or (len(row_steps) == 1 and row_steps[0].predecessor_count == 0):
             notes.append(
-                f"No upstream row lineage recorded for {query.table_fqn} row "
-                f"{query.row_id}."
+                f"No upstream row lineage recorded for {query.table_fqn} row {query.row_id}."
             )
         return ProvenanceTrace(
             mode="row",
@@ -395,14 +376,9 @@ def provenance(
         row_steps
     )
     if hit_limit:
-        notes.append(
-            f"Row walkback truncated at hop limit ({query.max_hops})."
-        )
+        notes.append(f"Row walkback truncated at hop limit ({query.max_hops}).")
     if truncated:
-        notes.append(
-            f"Value-change list truncated to {MAX_VALUE_CHANGE_ROWS} most "
-            f"recent rows."
-        )
+        notes.append(f"Value-change list truncated to {MAX_VALUE_CHANGE_ROWS} most recent rows.")
     if not value_changes:
         notes.append(
             f"No value changes recorded for {query.table_fqn}.{query.column} "

@@ -42,9 +42,7 @@ def upgrade() -> None:
         ),
         sa.Column("slug", sa.String(length=60), nullable=False),
         sa.Column("display_name", sa.String(length=80), nullable=False),
-        sa.Column(
-            "description_md", sa.Text(), nullable=False, server_default=""
-        ),
+        sa.Column("description_md", sa.Text(), nullable=False, server_default=""),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column(
             "created_by_user_id",
@@ -52,9 +50,7 @@ def upgrade() -> None:
             sa.ForeignKey("users.id"),
             nullable=False,
         ),
-        sa.UniqueConstraint(
-            "workspace_id", "slug", name="uq_topics_slug"
-        ),
+        sa.UniqueConstraint("workspace_id", "slug", name="uq_topics_slug"),
     )
 
     op.create_table(
@@ -78,9 +74,7 @@ def upgrade() -> None:
             nullable=False,
         ),
         sa.Column("added_at", sa.DateTime(timezone=True), nullable=False),
-        sa.PrimaryKeyConstraint(
-            "data_product_id", "topic_id", name="pk_data_product_topics"
-        ),
+        sa.PrimaryKeyConstraint("data_product_id", "topic_id", name="pk_data_product_topics"),
     )
     op.create_index(
         "ix_data_product_topics_topic",
@@ -103,9 +97,7 @@ def upgrade() -> None:
             nullable=False,
         ),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
-        sa.PrimaryKeyConstraint(
-            "user_id", "topic_id", name="pk_user_topic_follows"
-        ),
+        sa.PrimaryKeyConstraint("user_id", "topic_id", name="pk_user_topic_follows"),
     )
     op.create_index(
         "ix_user_topic_follows_topic",
@@ -116,12 +108,8 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     """Drop the three tables in dependency order."""
-    op.drop_index(
-        "ix_user_topic_follows_topic", table_name="user_topic_follows"
-    )
+    op.drop_index("ix_user_topic_follows_topic", table_name="user_topic_follows")
     op.drop_table("user_topic_follows")
-    op.drop_index(
-        "ix_data_product_topics_topic", table_name="data_product_topics"
-    )
+    op.drop_index("ix_data_product_topics_topic", table_name="data_product_topics")
     op.drop_table("data_product_topics")
     op.drop_table("topics")

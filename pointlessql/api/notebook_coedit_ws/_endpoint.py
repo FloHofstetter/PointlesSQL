@@ -92,9 +92,7 @@ async def notebook_coedit_ws(  # noqa: C901 — handshake + dispatch are inheren
         pump_task=None,
         user_id=user_id,
     )
-    sub.pump_task = asyncio.create_task(
-        pump(sub), name=f"coedit-pump-{sub.client_id}"
-    )
+    sub.pump_task = asyncio.create_task(pump(sub), name=f"coedit-pump-{sub.client_id}")
     async with hub.lock:
         hub.subscribers.append(sub)
         initial = hub.doc.get_update()
@@ -113,9 +111,7 @@ async def notebook_coedit_ws(  # noqa: C901 — handshake + dispatch are inheren
                         diff = hub.doc.get_update(payload)
                     except Exception:  # noqa: BLE001 — malformed state vector
                         # bare-broad-ok: client sent garbage; log + skip is the protocol
-                        _LOG.warning(
-                            "coedit: malformed sync_step1 from %s", sub.client_id
-                        )
+                        _LOG.warning("coedit: malformed sync_step1 from %s", sub.client_id)
                         continue
                 await sub.outbound.put(bytes([TAG_SYNC_STEP2]) + diff)
             elif tag in (TAG_SYNC_UPDATE, TAG_SYNC_STEP2):
@@ -125,9 +121,7 @@ async def notebook_coedit_ws(  # noqa: C901 — handshake + dispatch are inheren
                         hub.doc.apply_update(payload)
                     except Exception:  # noqa: BLE001 — malformed update
                         # bare-broad-ok: client sent garbage; log + skip is the protocol
-                        _LOG.warning(
-                            "coedit: malformed update from %s", sub.client_id
-                        )
+                        _LOG.warning("coedit: malformed update from %s", sub.client_id)
                         continue
                     hub.dirty = True
                     await broadcast(hub, relay_frame, exclude=sub)
@@ -137,16 +131,14 @@ async def notebook_coedit_ws(  # noqa: C901 — handshake + dispatch are inheren
                     await broadcast(hub, frame, exclude=sub)
                 await publish_to_bus(notebook_id, frame)
             else:
-                _LOG.debug(
-                    "coedit: unknown tag 0x%02x from %s", tag, sub.client_id
-                )
+                _LOG.debug("coedit: unknown tag 0x%02x from %s", tag, sub.client_id)
     except WebSocketDisconnect:
         pass
     finally:
         sub.pump_task.cancel()
         try:
             await sub.pump_task
-        except (asyncio.CancelledError, Exception):  # noqa: BLE001
+        except asyncio.CancelledError, Exception:  # noqa: BLE001
             pass
         async with hub.lock:
             if sub in hub.subscribers:

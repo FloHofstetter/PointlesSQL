@@ -1,4 +1,4 @@
-"""Tests for the Sprint-55 alerting surface."""
+"""Tests for alerting surface."""
 
 from __future__ import annotations
 

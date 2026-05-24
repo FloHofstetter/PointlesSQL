@@ -58,9 +58,7 @@ def test_run_url_builder_falls_back_on_malformed_ref() -> None:
 
 def test_run_audit_target_uses_generic_prefix() -> None:
     """Runs write the polymorphic ``run:`` prefix from day 1."""
-    target = entity_registry.audit_target(
-        "run", _RUN_UUID, suffix="tab-discussion"
-    )
+    target = entity_registry.audit_target("run", _RUN_UUID, suffix="tab-discussion")
     assert target == f"run:{_RUN_UUID}#tab-discussion"
 
 
@@ -138,9 +136,7 @@ async def test_run_endorsement_roundtrip(
     )
     assert res_apply.status_code == 200, res_apply.text
 
-    res_list = await admin_client.get(
-        f"/api/social/run/{_RUN_UUID}/endorsements"
-    )
+    res_list = await admin_client.get(f"/api/social/run/{_RUN_UUID}/endorsements")
     assert res_list.status_code == 200
     types = {e["endorsement_type"] for e in res_list.json()["endorsements"]}
     assert "verified-by-steward" in types
@@ -151,9 +147,7 @@ async def test_run_readme_rejected_per_registry_flag(
     admin_client: httpx.AsyncClient,
 ) -> None:
     """README is gated off for runs — the polymorphic handler 404s."""
-    res = await admin_client.get(
-        f"/api/social/run/{_RUN_UUID}/readme"
-    )
+    res = await admin_client.get(f"/api/social/run/{_RUN_UUID}/readme")
     assert res.status_code == 404, res.text
 
 
@@ -162,8 +156,6 @@ async def test_run_reviews_rejected_per_registry_flag(
     admin_client: httpx.AsyncClient,
 ) -> None:
     """Reviews stay 501 for runs — they're transient outcomes."""
-    res = await admin_client.get(
-        f"/api/social/run/{_RUN_UUID}/reviews"
-    )
+    res = await admin_client.get(f"/api/social/run/{_RUN_UUID}/reviews")
     assert res.status_code == 501, res.text
     assert "does not support reviews" in res.text

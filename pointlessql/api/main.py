@@ -54,7 +54,6 @@ register_template_filters(_TEMPLATES)
 install_template_wrapper(_TEMPLATES)
 
 
-
 app = FastAPI(
     title="PointlesSQL",
     version="0.1.0",

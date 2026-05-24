@@ -223,9 +223,7 @@ async def list_followers(
     factory = request.app.state.session_factory
     row, _contract, _email, _display = load_one(factory, workspace_id, catalog, schema)
 
-    is_steward = (
-        row.steward_user_id is not None and row.steward_user_id == user["id"]
-    )
+    is_steward = row.steward_user_id is not None and row.steward_user_id == user["id"]
     is_admin = bool(user.get("is_admin"))
     if not (is_steward or is_admin):
         raise AuthorizationError(

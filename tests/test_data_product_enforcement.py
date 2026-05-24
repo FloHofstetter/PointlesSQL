@@ -1,4 +1,4 @@
-"""Tests for the Phase-50.3 contract-enforcement hook.
+"""Tests for the contract-enforcement hook.
 
 Validates the diff helper, the enforcement service, and the
 end-to-end behaviour of ``pql.write_table`` against a yaml-declared

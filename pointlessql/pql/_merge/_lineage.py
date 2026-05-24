@@ -196,15 +196,9 @@ def _prepare_lineage(
         return [], [], arrow_source
 
     column = arrow_source.column(LINEAGE_ROW_ID_COLUMN)
-    source_row_ids: list[str] = [
-        v if isinstance(v, str) else "" for v in column.to_pylist()
-    ]
-    target_row_ids = [
-        synth_target_row_id(src, target) if src else "" for src in source_row_ids
-    ]
-    target_array = cast(
-        ArrowArray, pa.array(target_row_ids, type=pa.string())
-    )
+    source_row_ids: list[str] = [v if isinstance(v, str) else "" for v in column.to_pylist()]
+    target_row_ids = [synth_target_row_id(src, target) if src else "" for src in source_row_ids]
+    target_array = cast(ArrowArray, pa.array(target_row_ids, type=pa.string()))
     rebuilt = arrow_source.set_column(
         arrow_source.schema.get_field_index(LINEAGE_ROW_ID_COLUMN),
         LINEAGE_ROW_ID_COLUMN,

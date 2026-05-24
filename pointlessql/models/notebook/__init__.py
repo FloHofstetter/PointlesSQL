@@ -1,11 +1,11 @@
 """Native-editor notebook persistence: outputs + per-cell run history.
 
-The notebook ORM grew from 5 tables in Phase 77.6 to 18 across Phases
+The notebook ORM grew from 5 tables to 18 across Phases
 77–105 as the editor accumulated cell-identity reconciliation, AI
 proposals, revisions, replays, branches, share + permission lattices,
 and real-time co-edit.  This package keeps every table addressable
 under the historical ``pointlessql.models.notebook`` import path while
-splitting the implementation per phase so future maintenance can read
+splitting the implementation future maintenance can read
 each cluster in isolation.
 """
 

@@ -1,4 +1,4 @@
-"""Tests for the Phase-21.3 forced-autolog wrapper.
+"""Tests for the forced-autolog wrapper.
 
 The wrapper composes :func:`operation_context` with
 ``mlflow.autolog`` + ``mlflow.start_run``: the audit row always

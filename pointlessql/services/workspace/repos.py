@@ -103,8 +103,7 @@ class SyncOutcome:
         operation: ``clone`` for a fresh checkout, ``pull`` for an
             update.  ``None`` on failure before either ran.
         loaded_data_products: Count of data-product yaml files the
-            post-sync loader hook UPSERTed.  Always ``0`` until
-            Sprint 51.2 wires the loader call.
+            post-sync loader hook UPSERTed.  Always ``0`` wires the loader call.
         loaded_conventions: Same shape, conventions yaml.  ``0``
             until 51.2.
         extra: Open-ended dict of additional metadata returned by
@@ -191,13 +190,10 @@ def create_repo(
     """
     if provider_kind not in KNOWN_PROVIDER_KINDS:
         raise WorkspaceRepoUnknownProvider(
-            f"unknown provider_kind {provider_kind!r}; expected one of "
-            f"{KNOWN_PROVIDER_KINDS}"
+            f"unknown provider_kind {provider_kind!r}; expected one of {KNOWN_PROVIDER_KINDS}"
         )
     if (initial_secret_kind is None) != (initial_secret_plaintext is None):
-        raise ValueError(
-            "initial_secret_kind and initial_secret_plaintext must be set together"
-        )
+        raise ValueError("initial_secret_kind and initial_secret_plaintext must be set together")
     if initial_secret_kind is not None and initial_secret_kind not in WORKSPACE_REPO_SECRET_KINDS:
         raise ValueError(
             f"unknown secret kind {initial_secret_kind!r}; expected one of "
@@ -569,9 +565,7 @@ async def sync_repo(
         workspace_id = repo.workspace_id
         secrets_rows = list(
             session.execute(
-                select(WorkspaceRepoSecret).where(
-                    WorkspaceRepoSecret.workspace_repo_id == repo_id
-                )
+                select(WorkspaceRepoSecret).where(WorkspaceRepoSecret.workspace_repo_id == repo_id)
             ).scalars()
         )
         for secret_row in secrets_rows:
@@ -598,9 +592,7 @@ async def sync_repo(
             if target.exists():
                 shutil.rmtree(target, ignore_errors=True)
             operation = "clone"
-            clone_result = await provider.clone(
-                url, target, branch=branch, secret=secret
-            )
+            clone_result = await provider.clone(url, target, branch=branch, secret=secret)
             head_sha = clone_result.head_sha
             changed = True
     except WorkspaceRepoCloneFailed as exc:

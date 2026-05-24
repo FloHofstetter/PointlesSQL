@@ -80,9 +80,7 @@ def _collect_lineage_tables(
         .scalars()
         .all()
     )
-    downstream = sorted(
-        {t for t in down_rows if t and not t.startswith(dp_prefix)}
-    )
+    downstream = sorted({t for t in down_rows if t and not t.startswith(dp_prefix)})
 
     total_edges = int(
         session.execute(
@@ -199,8 +197,7 @@ def render_passport(
     parts.append("## What this product holds")
     parts.append("")
     parts.append(
-        (data_product.description or "").strip()
-        or "_No description in the contract yaml._"
+        (data_product.description or "").strip() or "_No description in the contract yaml._"
     )
     parts.append("")
 
@@ -225,9 +222,7 @@ def render_passport(
     parts.append("## Freshness profile (last 30d)")
     parts.append("")
     if total > 0 and pct is not None:
-        parts.append(
-            f"- Compliant: **{pct:.1f}%** ({compliant} of {total} contract events)"
-        )
+        parts.append(f"- Compliant: **{pct:.1f}%** ({compliant} of {total} contract events)")
     else:
         parts.append("_No contract events in the last 30 days._")
     parts.append("")

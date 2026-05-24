@@ -44,21 +44,13 @@ def upgrade() -> None:
             nullable=False,
         ),
         sa.ForeignKeyConstraint(["granted_by_user_id"], ["users.id"]),
-        sa.ForeignKeyConstraint(
-            ["notebook_id"], ["notebooks.id"], ondelete="CASCADE"
-        ),
-        sa.ForeignKeyConstraint(
-            ["user_id"], ["users.id"], ondelete="CASCADE"
-        ),
+        sa.ForeignKeyConstraint(["notebook_id"], ["notebooks.id"], ondelete="CASCADE"),
+        sa.ForeignKeyConstraint(["user_id"], ["users.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
-        sa.UniqueConstraint(
-            "notebook_id", "user_id", name="uq_notebook_perms_per_user"
-        ),
+        sa.UniqueConstraint("notebook_id", "user_id", name="uq_notebook_perms_per_user"),
     )
     with op.batch_alter_table("notebook_permissions", schema=None) as batch_op:
-        batch_op.create_index(
-            "ix_notebook_perms_user", ["user_id"], unique=False
-        )
+        batch_op.create_index("ix_notebook_perms_user", ["user_id"], unique=False)
 
     op.create_table(
         "notebook_widgets",
@@ -69,9 +61,7 @@ def upgrade() -> None:
         sa.Column("label", sa.String(length=200), nullable=False),
         sa.Column("config_json", sa.Text(), nullable=False),
         sa.Column("default_value", sa.Text(), nullable=True),
-        sa.Column(
-            "position", sa.Integer(), server_default="0", nullable=False
-        ),
+        sa.Column("position", sa.Integer(), server_default="0", nullable=False),
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),
@@ -84,18 +74,12 @@ def upgrade() -> None:
             server_default=sa.text("(CURRENT_TIMESTAMP)"),
             nullable=False,
         ),
-        sa.ForeignKeyConstraint(
-            ["notebook_id"], ["notebooks.id"], ondelete="CASCADE"
-        ),
+        sa.ForeignKeyConstraint(["notebook_id"], ["notebooks.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
-        sa.UniqueConstraint(
-            "notebook_id", "name", name="uq_notebook_widgets_name_per_nb"
-        ),
+        sa.UniqueConstraint("notebook_id", "name", name="uq_notebook_widgets_name_per_nb"),
     )
     with op.batch_alter_table("notebook_widgets", schema=None) as batch_op:
-        batch_op.create_index(
-            "ix_notebook_widgets_notebook", ["notebook_id"], unique=False
-        )
+        batch_op.create_index("ix_notebook_widgets_notebook", ["notebook_id"], unique=False)
 
 
 def downgrade() -> None:

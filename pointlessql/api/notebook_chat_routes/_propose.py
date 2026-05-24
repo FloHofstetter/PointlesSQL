@@ -151,9 +151,7 @@ def _resolve_session(
             # 403 mirrors the Phase-91 SQL chat propose
             # route — agents may only push proposals into the session
             # the caller must drive an agent_run they own.
-            raise PermissionDeniedError(
-                "X-Agent-Run-Id mismatch for this chat session."
-            )
+            raise PermissionDeniedError("X-Agent-Run-Id mismatch for this chat session.")
         # Detach by reading the few fields we need then closing.
         session.expunge(chat_session)
     return chat_session, agent_run_id, workspace_id
@@ -181,9 +179,7 @@ async def api_propose_cell(
             unknown session.  Body validation errors surface as 422
             via FastAPI.
     """  # noqa: DOC502 — HTTPException is what we raise
-    chat_session, agent_run_id, workspace_id = _resolve_session(
-        request, editor_session_id
-    )
+    chat_session, agent_run_id, workspace_id = _resolve_session(request, editor_session_id)
 
     proposal_id = str(uuid.uuid4())
     now = datetime.datetime.now(datetime.UTC)
@@ -250,9 +246,7 @@ async def api_fix_cell(
             unknown session.  Body validation errors surface as 422
             via FastAPI.
     """  # noqa: DOC502 — HTTPException bubbles up from _resolve_session
-    chat_session, agent_run_id, workspace_id = _resolve_session(
-        request, editor_session_id
-    )
+    chat_session, agent_run_id, workspace_id = _resolve_session(request, editor_session_id)
 
     factory = request.app.state.session_factory
     now = datetime.datetime.now(datetime.UTC)
@@ -341,9 +335,7 @@ async def api_explain_cell(
             unknown session.  Body validation errors surface as 422
             via FastAPI.
     """  # noqa: DOC502 — HTTPException bubbles up from _resolve_session
-    chat_session, agent_run_id, workspace_id = _resolve_session(
-        request, editor_session_id
-    )
+    chat_session, agent_run_id, workspace_id = _resolve_session(request, editor_session_id)
 
     factory = request.app.state.session_factory
     now = datetime.datetime.now(datetime.UTC)

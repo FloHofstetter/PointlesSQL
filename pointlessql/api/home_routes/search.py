@@ -263,7 +263,7 @@ async def api_search(request: Request, q: str = "", limit: int = 50) -> list[dic
 
     def _local_phase80(  # noqa: C901 — flat dispatch over 8 entity kinds
     ) -> list[dict[str, Any]]:
-        """Search the Phase 80.6 entity kinds.
+        """Search the entity kinds.
 
         Covers data products, topics, issues, users, agents,
         workspaces, and saved queries.
@@ -294,14 +294,10 @@ async def api_search(request: Request, q: str = "", limit: int = 50) -> list[dic
                 # Data products
                 dp_stmt = _select(DataProduct)
                 if workspace_id:
-                    dp_stmt = dp_stmt.where(
-                        DataProduct.workspace_id == workspace_id
-                    )
+                    dp_stmt = dp_stmt.where(DataProduct.workspace_id == workspace_id)
                 for row in session.scalars(dp_stmt).all():
                     fqn = f"{row.catalog_name}.{row.schema_name}"
-                    score = score_match(needle, fqn) or score_match(
-                        needle, row.description or ""
-                    )
+                    score = score_match(needle, fqn) or score_match(needle, row.description or "")
                     if score is None:
                         continue
                     out.append(
@@ -309,9 +305,7 @@ async def api_search(request: Request, q: str = "", limit: int = 50) -> list[dic
                             "type": "data_product",
                             "label": fqn,
                             "description": (row.description or "")[:120],
-                            "url": (
-                                f"/data-products/{row.catalog_name}/{row.schema_name}"
-                            ),
+                            "url": (f"/data-products/{row.catalog_name}/{row.schema_name}"),
                             "updated_at": epoch_seconds(getattr(row, "updated_at", None)),
                             "score": score,
                         },
@@ -323,9 +317,11 @@ async def api_search(request: Request, q: str = "", limit: int = 50) -> list[dic
                 for row in session.scalars(topic_stmt).all():
                     name = getattr(row, "display_name", None) or row.slug
                     desc = getattr(row, "description_md", "") or ""
-                    score = score_match(needle, name) or score_match(
-                        needle, row.slug
-                    ) or score_match(needle, desc)
+                    score = (
+                        score_match(needle, name)
+                        or score_match(needle, row.slug)
+                        or score_match(needle, desc)
+                    )
                     if score is None:
                         continue
                     out.append(
@@ -334,9 +330,7 @@ async def api_search(request: Request, q: str = "", limit: int = 50) -> list[dic
                             "label": name,
                             "description": desc[:120],
                             "url": f"/topics/{row.slug}",
-                            "updated_at": epoch_seconds(
-                                getattr(row, "created_at", None)
-                            ),
+                            "updated_at": epoch_seconds(getattr(row, "created_at", None)),
                             "score": score,
                         },
                     )
@@ -355,24 +349,17 @@ async def api_search(request: Request, q: str = "", limit: int = 50) -> list[dic
                             "label": f"#{row.id}: {title}",
                             "description": getattr(row, "state", "") or "",
                             "url": f"/issues/{row.id}",
-                            "updated_at": epoch_seconds(
-                                getattr(row, "updated_at", None)
-                            ),
+                            "updated_at": epoch_seconds(getattr(row, "updated_at", None)),
                             "score": score,
                         },
                     )
                 # Users (workspace members)
-                user_stmt = (
-                    _select(User)
-                    .join(
-                        WorkspaceMember,
-                        WorkspaceMember.user_id == User.id,
-                    )
+                user_stmt = _select(User).join(
+                    WorkspaceMember,
+                    WorkspaceMember.user_id == User.id,
                 )
                 if workspace_id:
-                    user_stmt = user_stmt.where(
-                        WorkspaceMember.workspace_id == workspace_id
-                    )
+                    user_stmt = user_stmt.where(WorkspaceMember.workspace_id == workspace_id)
                 for row in session.scalars(user_stmt).all():
                     score = score_match(needle, row.display_name or "") or score_match(
                         needle, row.email
@@ -385,9 +372,7 @@ async def api_search(request: Request, q: str = "", limit: int = 50) -> list[dic
                             "label": row.display_name or row.email,
                             "description": row.email,
                             "url": f"/users/{row.id}",
-                            "updated_at": epoch_seconds(
-                                getattr(row, "created_at", None)
-                            ),
+                            "updated_at": epoch_seconds(getattr(row, "created_at", None)),
                             "score": score,
                         },
                     )
@@ -407,17 +392,19 @@ async def api_search(request: Request, q: str = "", limit: int = 50) -> list[dic
                             "label": name,
                             "description": slug,
                             "url": f"/agents/{slug}",
-                            "updated_at": epoch_seconds(
-                                getattr(row, "updated_at", None)
-                            ),
+                            "updated_at": epoch_seconds(getattr(row, "updated_at", None)),
                             "score": score,
                         },
                     )
                 # Workspaces the caller is a member of
-                ws_stmt = _select(Workspace).join(
-                    WorkspaceMember,
-                    WorkspaceMember.workspace_id == Workspace.id,
-                ).where(WorkspaceMember.user_id == user["id"])
+                ws_stmt = (
+                    _select(Workspace)
+                    .join(
+                        WorkspaceMember,
+                        WorkspaceMember.workspace_id == Workspace.id,
+                    )
+                    .where(WorkspaceMember.user_id == user["id"])
+                )
                 for row in session.scalars(ws_stmt).all():
                     name = getattr(row, "name", row.slug)
                     score = score_match(needle, name) or score_match(needle, row.slug)
@@ -429,9 +416,7 @@ async def api_search(request: Request, q: str = "", limit: int = 50) -> list[dic
                             "label": name,
                             "description": f"slug: {row.slug}",
                             "url": f"/workspaces/{row.slug}",
-                            "updated_at": epoch_seconds(
-                                getattr(row, "updated_at", None)
-                            ),
+                            "updated_at": epoch_seconds(getattr(row, "updated_at", None)),
                             "score": score,
                         },
                     )
@@ -442,9 +427,7 @@ async def api_search(request: Request, q: str = "", limit: int = 50) -> list[dic
                     for row in session.scalars(sq_stmt).all():
                         title = getattr(row, "title", "") or ""
                         body = getattr(row, "sql_body", "") or ""
-                        score = score_match(needle, title) or score_match(
-                            needle, body[:200]
-                        )
+                        score = score_match(needle, title) or score_match(needle, body[:200])
                         if score is None:
                             continue
                         out.append(
@@ -453,9 +436,7 @@ async def api_search(request: Request, q: str = "", limit: int = 50) -> list[dic
                                 "label": title or f"query #{row.id}",
                                 "description": (body or "")[:120],
                                 "url": f"/audit/queries/{row.id}",
-                                "updated_at": epoch_seconds(
-                                    getattr(row, "updated_at", None)
-                                ),
+                                "updated_at": epoch_seconds(getattr(row, "updated_at", None)),
                                 "score": score,
                             },
                         )

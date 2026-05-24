@@ -74,9 +74,7 @@ def _serialise_proposal(row: DataProductSchemaProposal) -> dict[str, Any]:
         "summary_md": row.summary_md or "",
         "status": row.status,
         "created_at": row.created_at.isoformat(),
-        "resolved_at": (
-            row.resolved_at.isoformat() if row.resolved_at else None
-        ),
+        "resolved_at": (row.resolved_at.isoformat() if row.resolved_at else None),
         "resolved_by_user_id": row.resolved_by_user_id,
         "resolution_note_md": row.resolution_note_md,
     }
@@ -92,9 +90,7 @@ def _require_steward_or_admin(user: Any, row: Any) -> None:
     Raises:
         AuthorizationError: When neither steward nor admin.
     """
-    is_steward = (
-        row.steward_user_id is not None and row.steward_user_id == user["id"]
-    )
+    is_steward = row.steward_user_id is not None and row.steward_user_id == user["id"]
     is_admin = bool(user.get("is_admin"))
     if not (is_steward or is_admin):
         raise AuthorizationError(
@@ -192,14 +188,10 @@ def _apply_diff_to_yaml(
             continue
         cols_any: Any = target.get("columns") or []
         cols: list[dict[str, Any]] = (
-            [dict(c) for c in cols_any if isinstance(c, dict)]
-            if isinstance(cols_any, list)
-            else []
+            [dict(c) for c in cols_any if isinstance(c, dict)] if isinstance(cols_any, list) else []
         )
         existing = {c.get("name") for c in cols}
-        new_cols_list: list[Any] = (
-            list(new_cols_any) if isinstance(new_cols_any, list) else []
-        )
+        new_cols_list: list[Any] = list(new_cols_any) if isinstance(new_cols_any, list) else []
         for new_col in new_cols_list:
             if not isinstance(new_col, dict) or new_col.get("name") in existing:
                 continue
@@ -228,8 +220,7 @@ def _apply_diff_to_yaml(
     block["tables"] = [
         by_name[str(t.get("name"))]
         for t in tables
-        if isinstance(t, dict) and isinstance(t.get("name"), str)
-        and str(t.get("name")) in by_name
+        if isinstance(t, dict) and isinstance(t.get("name"), str) and str(t.get("name")) in by_name
     ]
     return yaml.safe_dump({"data_product": block}, sort_keys=False)
 
@@ -264,9 +255,7 @@ def _find_yaml_for_dp(
         # Generic "pointlessql.yaml" in the same directory tree.
         for path in root_path.rglob("*.yaml"):
             try:
-                raw_any: Any = (
-                    yaml.safe_load(path.read_text(encoding="utf-8")) or {}
-                )
+                raw_any: Any = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
             except yaml.YAMLError:
                 continue
             if not isinstance(raw_any, dict):
@@ -358,9 +347,7 @@ async def open_proposal(
     if agent_run_id and not summary_md:
         summary_md = "agent-proposed schema change"
     if not proposer_user_id and not agent_run_id:
-        raise BadRequestError(
-            "proposer_user_id or X-Agent-Run-Id header required"
-        )
+        raise BadRequestError("proposer_user_id or X-Agent-Run-Id header required")
 
     with factory() as session:
         new_row = DataProductSchemaProposal(
@@ -433,9 +420,7 @@ def _load_proposal_for_resolve(
     if proposal is None:
         raise ResourceNotFoundError.not_found(what=f"proposal id={proposal_id}")
     if proposal.status != "open":
-        raise BadRequestError(
-            f"proposal already resolved (status={proposal.status})"
-        )
+        raise BadRequestError(f"proposal already resolved (status={proposal.status})")
     return proposal
 
 
@@ -500,12 +485,9 @@ async def approve_proposal(
         yaml_path = _find_yaml_for_dp(settings, workspace_id, catalog, schema)
         if yaml_path is None:
             raise BadRequestError(
-                "no yaml file resolved for this DP; configure "
-                "yaml_search_paths or use kind='draft'"
+                "no yaml file resolved for this DP; configure yaml_search_paths or use kind='draft'"
             )
-        new_text = _apply_diff_to_yaml(
-            yaml_path.read_text(encoding="utf-8"), diff_dict
-        )
+        new_text = _apply_diff_to_yaml(yaml_path.read_text(encoding="utf-8"), diff_dict)
         yaml_path.write_text(new_text, encoding="utf-8")
         load_contract(yaml_path, factory=factory, workspace_id=workspace_id)
         applied_path = str(yaml_path)

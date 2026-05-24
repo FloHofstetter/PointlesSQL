@@ -69,7 +69,5 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     """Drop ``data_product_cooccurrence``."""
-    op.drop_index(
-        "ix_dp_cooccurrence_ws_dp", table_name="data_product_cooccurrence"
-    )
+    op.drop_index("ix_dp_cooccurrence_ws_dp", table_name="data_product_cooccurrence")
     op.drop_table("data_product_cooccurrence")

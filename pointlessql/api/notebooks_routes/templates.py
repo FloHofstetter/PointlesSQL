@@ -35,9 +35,7 @@ async def api_list_notebook_templates(request: Request) -> JSONResponse:
         ``title`` / ``description`` / ``category`` / ``filename``.
     """
     require_user(request)
-    return JSONResponse(
-        {"templates": notebook_templates_service.list_templates()}
-    )
+    return JSONResponse({"templates": notebook_templates_service.list_templates()})
 
 
 @router.post("/api/notebooks/from-template", status_code=201)
@@ -61,9 +59,7 @@ async def api_create_from_template(
     template_id = body.get("template_id") if isinstance(body, dict) else None
     dest_path = body.get("path") if isinstance(body, dict) else None
     if not isinstance(template_id, str) or not isinstance(dest_path, str):
-        raise ValidationError(
-            "body.template_id and body.path must be strings"
-        )
+        raise ValidationError("body.template_id and body.path must be strings")
     settings: Settings = request.app.state.settings
     notebooks_dir = settings.jupyter.notebooks_dir.resolve()
     resolved = notebook_templates_service.create_from_template(
@@ -72,7 +68,5 @@ async def api_create_from_template(
         dest_path=dest_path,
     )
     relative = str(resolved.relative_to(notebooks_dir))
-    logger.info(
-        "created notebook %s from template %s", relative, template_id
-    )
+    logger.info("created notebook %s from template %s", relative, template_id)
     return JSONResponse({"path": relative}, status_code=201)

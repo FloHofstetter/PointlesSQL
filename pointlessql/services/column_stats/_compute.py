@@ -131,9 +131,7 @@ def _read_and_summarise(
     )
 
     client = (
-        make_principal_client(settings, principal)
-        if principal
-        else make_soyuz_client(settings)
+        make_principal_client(settings, principal) if principal else make_soyuz_client(settings)
     )
     pql = PQL(client=client, settings=settings)
     frame = pql.table(full_name)
@@ -200,10 +198,7 @@ def _top_string_values(series: Any, k: int = 5) -> list[dict[str, Any]]:
     if series.dropna().empty:
         return []
     counts = series.value_counts(dropna=True).head(k)
-    return [
-        {"value": _scalar(value), "count": int(count)}
-        for value, count in counts.items()
-    ]
+    return [{"value": _scalar(value), "count": int(count)} for value, count in counts.items()]
 
 
 def _scalar(value: Any) -> Any:
@@ -211,6 +206,6 @@ def _scalar(value: Any) -> Any:
     if hasattr(value, "item"):
         try:
             return value.item()
-        except (ValueError, TypeError):
+        except ValueError, TypeError:
             return str(value)
     return value

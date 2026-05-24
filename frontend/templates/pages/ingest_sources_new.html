@@ -276,11 +276,11 @@ function ingestSourceCreate() {
             const file = input?.files?.[0];
             if (!file) return;
             // Stash locally for now; the real workspace volume upload
-            // happens in Phase 82.5 when /admin/sources lands.  For
+            // happens when /admin/sources lands.  For
             // v1 we accept a server-side path the user enters; the
             // file picker doubles as a friendly path resolver.
             this.form.config.path = file.name;
-            window.pqlToast?.info?.('Path captured; full upload wiring lands with Phase 82.5.');
+            window.pqlToast?.info?.('Path captured; full upload wiring lands .');
         },
         async probe() {
             this.error = null;

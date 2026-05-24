@@ -56,11 +56,11 @@ class DataProductEndorsement(Base):
         id: Auto-incremented primary key.
         workspace_id: Tenant scope.
         data_product_id: FK on ``data_products.id``,
-            ``ondelete='CASCADE'``.  Nullable since the Phase 77.0
-            polymorphism shift — the kind-agnostic join key is
+            ``ondelete='CASCADE'``.  Nullable since the polymorphism
+            shift — the kind-agnostic join key is
             ``social_target_id``.
-        social_target_id: Phase 77.0.B polymorphic anchor (one row
-            per endorsed entity, joined through ``social_targets``).
+        social_target_id: Polymorphic anchor (one row per endorsed
+            entity, joined through ``social_targets``).
         endorsement_type: One of :data:`ENDORSEMENT_TYPES`.
         applied_by_user_id: Who applied the endorsement.  Always
             a human — caller when direct, agent's principal when
@@ -119,17 +119,13 @@ class DataProductEndorsement(Base):
         nullable=False,
     )
     endorsement_type: Mapped[str] = mapped_column(Text, nullable=False)
-    applied_by_user_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("users.id"), nullable=False
-    )
+    applied_by_user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
     applied_by_agent_id: Mapped[int | None] = mapped_column(
         Integer,
         ForeignKey("agents.id", ondelete="SET NULL"),
         nullable=True,
     )
-    applied_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
+    applied_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     removed_at: Mapped[datetime.datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )

@@ -43,9 +43,7 @@ async def get_or_create_hub(
             return hub
         seed = build_seed(factory, settings, notebook_id=notebook_id)
         with factory() as session:
-            doc = coedit_service.get_or_init_ydoc(
-                session, notebook_id=notebook_id, seed_cells=seed
-            )
+            doc = coedit_service.get_or_init_ydoc(session, notebook_id=notebook_id, seed_cells=seed)
             session.commit()
         hub = NotebookHub(
             notebook_id=notebook_id,
@@ -83,17 +81,13 @@ async def release_hub_if_empty(
             flush_task.cancel()
             try:
                 await flush_task
-            except (asyncio.CancelledError, Exception):  # noqa: BLE001
+            except asyncio.CancelledError, Exception:  # noqa: BLE001
                 pass
         try:
             with factory() as session:
-                coedit_service.flush_doc(
-                    session, notebook_id=notebook_id, doc=hub.doc
-                )
+                coedit_service.flush_doc(session, notebook_id=notebook_id, doc=hub.doc)
                 row = session.execute(
-                    select(NotebookCrdtState).where(
-                        NotebookCrdtState.notebook_id == notebook_id
-                    )
+                    select(NotebookCrdtState).where(NotebookCrdtState.notebook_id == notebook_id)
                 ).scalar_one_or_none()
                 if row is not None and coedit_service.needs_compaction(row):
                     coedit_service.compact(session, notebook_id=notebook_id)
@@ -129,9 +123,7 @@ async def flush_loop(
                     )
                     session.commit()
             except Exception:  # noqa: BLE001 — keep looping on transient DB errors
-                _LOG.exception(
-                    "coedit: periodic flush failed for %s", hub.notebook_id
-                )
+                _LOG.exception("coedit: periodic flush failed for %s", hub.notebook_id)
                 # Re-mark dirty so the next tick retries.
                 hub.dirty = True
     except asyncio.CancelledError:

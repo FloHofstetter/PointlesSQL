@@ -1,4 +1,4 @@
-"""Tests for Phase 97 — revision history + diff."""
+"""Tests — revision history + diff."""
 
 from __future__ import annotations
 
@@ -65,12 +65,8 @@ def test_canonical_payload_is_byte_stable_across_dict_orderings() -> None:
             "metadata": None,
         }
     ]
-    _, _, sha_a = notebook_revisions_service.canonical_payload(
-        cells=a_cells, outputs=a_outputs
-    )
-    _, _, sha_b = notebook_revisions_service.canonical_payload(
-        cells=b_cells, outputs=b_outputs
-    )
+    _, _, sha_a = notebook_revisions_service.canonical_payload(cells=a_cells, outputs=a_outputs)
+    _, _, sha_b = notebook_revisions_service.canonical_payload(cells=b_cells, outputs=b_outputs)
     assert sha_a == sha_b
 
 
@@ -198,9 +194,7 @@ def test_list_revisions_newest_first(factory: sessionmaker) -> None:  # type: ig
         )
         session.commit()
     with factory() as session:
-        rows = notebook_revisions_service.list_revisions(
-            session, notebook_id=nb_id
-        )
+        rows = notebook_revisions_service.list_revisions(session, notebook_id=nb_id)
     assert len(rows) == 2
     # newest first → second-created comes back at index 0
     assert rows[0]["created_at"] >= rows[1]["created_at"]
@@ -221,9 +215,7 @@ def test_get_revision_includes_full_payload(
         )
         rev_uuid = row.revision_uuid
         session.commit()
-        envelope = notebook_revisions_service.get_revision(
-            session, revision_uuid=rev_uuid
-        )
+        envelope = notebook_revisions_service.get_revision(session, revision_uuid=rev_uuid)
         assert envelope is not None
         assert envelope["cells"][0]["content_hash"] == "h1"
         assert envelope["outputs"] == []
@@ -351,9 +343,7 @@ async def test_api_create_and_list_revisions(
     assert again.json()["created"] is False
     assert again.json()["revision_uuid"] == rev_uuid
 
-    listed = await admin_client.get(
-        "/api/notebooks/revisions", params={"path": "report.py"}
-    )
+    listed = await admin_client.get("/api/notebooks/revisions", params={"path": "report.py"})
     assert listed.status_code == 200
     assert len(listed.json()["revisions"]) == 1
 
@@ -363,28 +353,20 @@ async def test_api_get_revision_returns_full_payload(
 ) -> None:
     """GET /api/notebooks/revisions/{uuid} returns parsed cells."""
     (workspace_dir / "x.py").write_text("# %%\nprint(1)\n")
-    create = await admin_client.post(
-        "/api/notebooks/revisions", json={"path": "x.py"}
-    )
+    create = await admin_client.post("/api/notebooks/revisions", json={"path": "x.py"})
     rev_uuid = create.json()["revision_uuid"]
     resp = await admin_client.get(f"/api/notebooks/revisions/{rev_uuid}")
     assert resp.status_code == 200
     assert isinstance(resp.json()["cells"], list)
 
 
-async def test_api_diff_two_revisions(
-    workspace_dir: Path, admin_client: httpx.AsyncClient
-) -> None:
+async def test_api_diff_two_revisions(workspace_dir: Path, admin_client: httpx.AsyncClient) -> None:
     """GET /api/notebooks/revisions/diff returns the envelope."""
     nb_path = workspace_dir / "x.py"
     nb_path.write_text("# %%\nprint(1)\n")
-    first = await admin_client.post(
-        "/api/notebooks/revisions", json={"path": "x.py"}
-    )
+    first = await admin_client.post("/api/notebooks/revisions", json={"path": "x.py"})
     nb_path.write_text("# %%\nprint(1)\n\n# %%\nprint(2)\n")
-    second = await admin_client.post(
-        "/api/notebooks/revisions", json={"path": "x.py"}
-    )
+    second = await admin_client.post("/api/notebooks/revisions", json={"path": "x.py"})
     resp = await admin_client.get(
         "/api/notebooks/revisions/diff",
         params={

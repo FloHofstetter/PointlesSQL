@@ -145,10 +145,7 @@ async def add_comment_reaction(
             workspace_id=workspace_id,
         )
         if comment_author_id != user["id"]:
-            source_url = (
-                f"/data-products/{catalog}/{schema}#tab-discussion-comment-"
-                f"{comment_id}"
-            )
+            source_url = f"/data-products/{catalog}/{schema}#tab-discussion-comment-{comment_id}"
             summary = (
                 f"@{user.get('email') or 'someone'} reacted "
                 f"{emoji} to your comment on {catalog}.{schema}"
@@ -185,9 +182,7 @@ async def add_comment_reaction(
     return {"comment_id": comment_id, "emoji": emoji, "added": added}
 
 
-@router.delete(
-    "/api/data-products/{catalog}/{schema}/comments/{comment_id}/reactions/{emoji}"
-)
+@router.delete("/api/data-products/{catalog}/{schema}/comments/{comment_id}/reactions/{emoji}")
 async def remove_comment_reaction(
     catalog: str,
     schema: str,
@@ -293,15 +288,12 @@ async def list_comment_reactions(
             or comment.data_product_id != row.id
         ):
             raise ResourceNotFoundError.not_found(what=f"comment id={comment_id}")
-        rows = (
-            session.execute(
-                select(
-                    DataProductCommentReaction.emoji,
-                    DataProductCommentReaction.user_id,
-                ).where(DataProductCommentReaction.comment_id == comment_id)
-            )
-            .all()
-        )
+        rows = session.execute(
+            select(
+                DataProductCommentReaction.emoji,
+                DataProductCommentReaction.user_id,
+            ).where(DataProductCommentReaction.comment_id == comment_id)
+        ).all()
 
     counts: dict[str, int] = {emoji: 0 for emoji in ALLOWED_EMOJI}
     mine: set[str] = set()
@@ -388,10 +380,7 @@ async def add_dp_reaction(
             workspace_id=workspace_id,
         )
         source_url = f"/data-products/{catalog}/{schema}#tab-discussion"
-        summary = (
-            f"@{user.get('email') or 'someone'} reacted "
-            f"{emoji} to {catalog}.{schema}"
-        )
+        summary = f"@{user.get('email') or 'someone'} reacted {emoji} to {catalog}.{schema}"
         fanout_event(
             factory,
             event_type=EVENT_TYPE_DATA_PRODUCT_REACTED,
@@ -496,15 +485,12 @@ async def list_dp_reactions(
             catalog_name=catalog,
             schema_name=schema,
         )
-        rows = (
-            session.execute(
-                select(
-                    SocialReaction.emoji,
-                    SocialReaction.user_id,
-                ).where(SocialReaction.social_target_id == int(target.id))
-            )
-            .all()
-        )
+        rows = session.execute(
+            select(
+                SocialReaction.emoji,
+                SocialReaction.user_id,
+            ).where(SocialReaction.social_target_id == int(target.id))
+        ).all()
 
     counts: dict[str, int] = {emoji: 0 for emoji in ALLOWED_EMOJI}
     mine: set[str] = set()

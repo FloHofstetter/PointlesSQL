@@ -1,4 +1,4 @@
-"""Tests for the pagination() FastAPI dependency added in Phase 121.2."""
+"""Tests for the pagination() FastAPI dependency added ."""
 
 from __future__ import annotations
 

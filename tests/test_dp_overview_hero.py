@@ -205,7 +205,7 @@ async def test_heatmap_zero_fills_year(
 
 
 @pytest.mark.asyncio
-async def test_dp_page_renders_phase84_blocks(
+async def test_dp_page_renders_hero_blocks(
     admin_client: httpx.AsyncClient,
 ) -> None:
     """The DP page contains every new section."""

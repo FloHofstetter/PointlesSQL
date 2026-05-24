@@ -39,17 +39,13 @@ def _resolve_notebook_uuid(request: Request, path: str) -> str:
     """
     settings: Settings = request.app.state.settings
     notebooks_dir = settings.jupyter.notebooks_dir.resolve()
-    absolute = notebook_doc_service.resolve_py_notebook_path(
-        notebooks_dir, path, must_exist=True
-    )
+    absolute = notebook_doc_service.resolve_py_notebook_path(notebooks_dir, path, must_exist=True)
     relative = str(absolute.relative_to(notebooks_dir))
     return get_or_create_notebook_uuid(request, relative)
 
 
 @router.get("/api/notebooks/tags")
-async def api_list_notebook_tags(
-    request: Request, path: str
-) -> JSONResponse:
+async def api_list_notebook_tags(request: Request, path: str) -> JSONResponse:
     """List every tag attached to a notebook.
 
     Args:
@@ -95,9 +91,7 @@ async def api_list_notebook_tags_bulk(request: Request) -> JSONResponse:
     workspace_id = current_workspace_id(request)
     factory = request.app.state.session_factory
     with factory() as session:
-        tags = notebook_tags_service.list_tags_bulk(
-            session, workspace_id=workspace_id
-        )
+        tags = notebook_tags_service.list_tags_bulk(session, workspace_id=workspace_id)
     return JSONResponse(
         {
             "tags": tags,

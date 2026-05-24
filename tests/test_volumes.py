@@ -1,4 +1,4 @@
-"""Tests for the Sprint-57 volumes surface."""
+"""Tests for volumes surface."""
 
 from __future__ import annotations
 

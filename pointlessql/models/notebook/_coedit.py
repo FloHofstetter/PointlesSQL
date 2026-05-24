@@ -68,6 +68,4 @@ class NotebookCrdtState(Base):
     compacted_at: Mapped[datetime.datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
-    version: Mapped[int] = mapped_column(
-        Integer, nullable=False, server_default=text("1")
-    )
+    version: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("1"))

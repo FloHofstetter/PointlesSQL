@@ -50,20 +50,17 @@ async def search_users(
     factory = request.app.state.session_factory
     like = f"{query}%"
     with factory() as session:
-        rows = (
-            session.execute(
-                select(User.id, User.email, User.display_name)
-                .where(
-                    or_(
-                        User.email.ilike(like),
-                        User.display_name.ilike(like),
-                    )
+        rows = session.execute(
+            select(User.id, User.email, User.display_name)
+            .where(
+                or_(
+                    User.email.ilike(like),
+                    User.display_name.ilike(like),
                 )
-                .order_by(User.display_name, User.email)
-                .limit(_MAX_RESULTS)
             )
-            .all()
-        )
+            .order_by(User.display_name, User.email)
+            .limit(_MAX_RESULTS)
+        ).all()
 
     return {
         "q": query,

@@ -66,9 +66,7 @@ async def test_publish_delivers_to_registered_listener() -> None:
     """A registered queue receives the published payload."""
     queue = _register_listener(42)
     try:
-        delivered = publish_notification(
-            42, {"event_type": "test.event", "summary_md": "hi"}
-        )
+        delivered = publish_notification(42, {"event_type": "test.event", "summary_md": "hi"})
         assert delivered == 1
         payload = await asyncio.wait_for(queue.get(), timeout=1.0)
         assert payload["event_type"] == "test.event"
@@ -124,9 +122,7 @@ def _admin_id() -> int:
     factory = app.state.session_factory
     with factory() as session:
         return int(
-            session.execute(
-                select(User.id).where(User.email == "test@test.com")
-            ).scalar_one()
+            session.execute(select(User.id).where(User.email == "test@test.com")).scalar_one()
         )
 
 
@@ -212,7 +208,5 @@ def test_resolve_agent_cite() -> None:
 
 def test_resolve_returns_input_when_no_hash() -> None:
     """A body without any ``#`` is returned verbatim."""
-    out = resolve_citations(
-        "plain text", app.state.session_factory, workspace_id=1
-    )
+    out = resolve_citations("plain text", app.state.session_factory, workspace_id=1)
     assert out == "plain text"

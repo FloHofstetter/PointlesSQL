@@ -134,9 +134,5 @@ def downgrade() -> None:
         return
 
     if dialect == "postgresql":
-        bind.execute(
-            text("DROP INDEX IF EXISTS ix_audit_search_entity_kind")
-        )
-        bind.execute(
-            text("ALTER TABLE audit_search_index DROP COLUMN IF EXISTS entity_kind")
-        )
+        bind.execute(text("DROP INDEX IF EXISTS ix_audit_search_entity_kind"))
+        bind.execute(text("ALTER TABLE audit_search_index DROP COLUMN IF EXISTS entity_kind"))

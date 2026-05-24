@@ -1,12 +1,12 @@
 # pyright: reportUnusedFunction=false
-"""``papermill`` job kind — executes ``.ipynb`` / ``.py`` notebooks via Papermill.
+"""``papermill`` job kind — executes ``.ipynb`` / ``.py`` notebooks.
 
 This module is the largest executor by far because it carries every
 helper the kind needs: notebook-path resolution (incl. repo-prefix
-support from Phase 51.3), jupytext-to-ipynb conversion, the blocking
-papermill invocation under a module-level env lock, and the Phase 67.6
-bridge that persists papermill outputs into ``notebook_outputs`` so
-the editor's replay surface and a future "view job outputs" tab share
+support), jupytext-to-ipynb conversion, the blocking papermill
+invocation under a module-level env lock, and the bridge that
+persists papermill outputs into ``notebook_outputs`` so the
+editor's replay surface and a future "view job outputs" tab share
 one renderer.
 """
 
@@ -68,7 +68,7 @@ def _resolve_repo_notebook_path(spec: str) -> Path:
     # for callers that never use the repo-prefix path.
     from pointlessql.config import get_settings
 
-    body = spec[len(_REPO_PREFIX):]
+    body = spec[len(_REPO_PREFIX) :]
     # Split on the first slash to separate the "<workspace_id>:<slug>"
     # head from the relative path tail.
     if "/" not in body:
@@ -89,13 +89,9 @@ def _resolve_repo_notebook_path(spec: str) -> Path:
         raise ValidationError(f"repo notebook spec is missing the relative path: {spec!r}")
     candidate = Path(rel)
     if candidate.is_absolute():
-        raise ValidationError(
-            f"repo notebook spec relative path must not be absolute: {spec!r}"
-        )
+        raise ValidationError(f"repo notebook spec relative path must not be absolute: {spec!r}")
     if candidate.suffix not in _PAPERMILL_INPUT_SUFFIXES:
-        raise ValidationError(
-            f"repo notebook spec must end in .ipynb or .py: {spec!r}"
-        )
+        raise ValidationError(f"repo notebook spec must end in .ipynb or .py: {spec!r}")
 
     settings = get_settings()
     base_dir = settings.workspace_repos.base_dir
@@ -108,9 +104,7 @@ def _resolve_repo_notebook_path(spec: str) -> Path:
     try:
         resolved.relative_to(clone_dir)
     except ValueError as exc:
-        raise ValidationError(
-            f"repo notebook spec {spec!r} escapes its clone directory"
-        ) from exc
+        raise ValidationError(f"repo notebook spec {spec!r} escapes its clone directory") from exc
     if not resolved.is_file():
         raise ValidationError(f"repo notebook not found: {spec!r}")
     return resolved

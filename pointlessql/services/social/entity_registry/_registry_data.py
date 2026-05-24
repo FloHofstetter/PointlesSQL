@@ -35,8 +35,8 @@ REGISTRY: dict[str, EntityKindSpec] = {
         supports_reviews=True,
         supports_endorsements=True,
         supports_readme=True,
-        supports_issues=True,   # Issues against DPs land in 77.7
-        supports_stars=False,   # Stars land in 77.8
+        supports_issues=True,  # Issues against DPs land in 77.7
+        supports_stars=False,  # Stars land in 77.8
         tab_keys=(
             "overview",
             "contract",
@@ -62,8 +62,8 @@ REGISTRY: dict[str, EntityKindSpec] = {
         supports_reviews=False,
         supports_endorsements=True,
         supports_readme=True,
-        supports_issues=True,   # Issues opened against tables (77.7)
-        supports_stars=True,    # Stars wire-up lands in 77.8
+        supports_issues=True,  # Issues opened against tables (77.7)
+        supports_stars=True,  # Stars wire-up lands in 77.8
         tab_keys=(
             "discussion",
             "endorsements",

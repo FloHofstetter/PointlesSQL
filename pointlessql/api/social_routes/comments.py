@@ -35,9 +35,7 @@ router = APIRouter(tags=["social"])
 
 
 @router.get("/api/social/{kind}/{ref:path}/comments")
-async def list_social_comments(
-    kind: str, ref: str, request: Request
-) -> dict[str, Any]:
+async def list_social_comments(kind: str, ref: str, request: Request) -> dict[str, Any]:
     """Dispatch a list-comments request by entity kind."""
     if kind == "dp":
         catalog, schema = parse_dp_ref(kind, ref)
@@ -47,33 +45,25 @@ async def list_social_comments(
 
 
 @router.post("/api/social/{kind}/{ref:path}/comments")
-async def post_social_comment(
-    kind: str, ref: str, request: Request
-) -> dict[str, Any]:
+async def post_social_comment(kind: str, ref: str, request: Request) -> dict[str, Any]:
     """Dispatch a comment POST by entity kind.
 
     Re-extracts ``?as_agent=`` for both the DP path *and* the
     polymorphic path so cell-level review decisions authored by
     ``hermes`` (and any future agent-on-behalf-of flow) carry the
-    Phase 76.5 presentation-layer envelope into the row.  The
-    principal-or-admin gate inside :func:`resolve_agent_for_principal`
-    still applies — un-authorised callers see a 403.
+    presentation-layer envelope into the row.  The principal-or-
+    admin gate inside :func:`resolve_agent_for_principal` still
+    applies — un-authorised callers see a 403.
     """
     as_agent = request.query_params.get("as_agent")
     if kind == "dp":
         catalog, schema = parse_dp_ref(kind, ref)
-        return await post_data_product_comment(
-            catalog, schema, request, as_agent=as_agent
-        )
+        return await post_data_product_comment(catalog, schema, request, as_agent=as_agent)
     polymorphic_ref = parse_ref(kind, ref)
-    return await post_polymorphic_comment(
-        kind, polymorphic_ref, request, as_agent=as_agent
-    )
+    return await post_polymorphic_comment(kind, polymorphic_ref, request, as_agent=as_agent)
 
 
-@router.post(
-    "/api/social/{kind}/{ref:path}/comments/{comment_id}/accept-answer"
-)
+@router.post("/api/social/{kind}/{ref:path}/comments/{comment_id}/accept-answer")
 async def accept_social_answer(
     kind: str, ref: str, comment_id: int, request: Request
 ) -> dict[str, Any]:
@@ -104,10 +94,6 @@ async def delete_social_comment(
     """Dispatch a comment soft-delete by entity kind."""
     if kind == "dp":
         catalog, schema = parse_dp_ref(kind, ref)
-        return await delete_data_product_comment(
-            catalog, schema, comment_id, request
-        )
+        return await delete_data_product_comment(catalog, schema, comment_id, request)
     polymorphic_ref = parse_ref(kind, ref)
-    return await delete_polymorphic_comment(
-        kind, polymorphic_ref, comment_id, request
-    )
+    return await delete_polymorphic_comment(kind, polymorphic_ref, comment_id, request)

@@ -157,9 +157,7 @@ async def test_delete_connection_emits_audit(admin_client: httpx.AsyncClient) ->
 async def test_list_external_locations_admin_succeeds(
     admin_client: httpx.AsyncClient,
 ) -> None:
-    app.state.uc_client = _mock_uc(
-        list_external_locations=[{"name": "loc1", "url": "s3://b/p"}]
-    )
+    app.state.uc_client = _mock_uc(list_external_locations=[{"name": "loc1", "url": "s3://b/p"}])
     resp = await admin_client.get("/api/external-locations")
     assert resp.status_code == 200
     assert resp.json()[0]["name"] == "loc1"
@@ -177,9 +175,7 @@ async def test_create_external_location_emits_audit(
     admin_client: httpx.AsyncClient,
 ) -> None:
     _wipe_audit()
-    app.state.uc_client = _mock_uc(
-        create_external_location={"name": "loc1", "url": "s3://b/p"}
-    )
+    app.state.uc_client = _mock_uc(create_external_location={"name": "loc1", "url": "s3://b/p"})
     resp = await admin_client.post(
         "/api/external-locations",
         json={"name": "loc1", "url": "s3://b/p", "credential_name": "cred1"},
@@ -201,9 +197,7 @@ async def test_update_external_location_emits_audit(
 ) -> None:
     _wipe_audit()
     app.state.uc_client = _mock_uc(update_external_location={"name": "loc1"})
-    resp = await admin_client.patch(
-        "/api/external-locations/loc1", json={"comment": "y"}
-    )
+    resp = await admin_client.patch("/api/external-locations/loc1", json={"comment": "y"})
     assert resp.status_code == 200
     assert "update_ext_location" in _audit_actions()
 
@@ -293,9 +287,7 @@ async def test_connections_index_renders_outage_banner(
 ) -> None:
     """Soyuz outage degrades to an in-page banner, not a 5xx."""
     client = MagicMock(spec=UnityCatalogClient)
-    client.list_connections = AsyncMock(
-        side_effect=CatalogUnavailableError("soyuz down")
-    )
+    client.list_connections = AsyncMock(side_effect=CatalogUnavailableError("soyuz down"))
     app.state.uc_client = client
     resp = await admin_client.get("/connections")
     assert resp.status_code == 200
@@ -308,9 +300,7 @@ async def test_connection_detail_renders(admin_client: httpx.AsyncClient) -> Non
 
 
 async def test_external_locations_index_renders(admin_client: httpx.AsyncClient) -> None:
-    app.state.uc_client = _mock_uc(
-        list_external_locations=[_full_external_location()]
-    )
+    app.state.uc_client = _mock_uc(list_external_locations=[_full_external_location()])
     resp = await admin_client.get("/external-locations")
     assert resp.status_code == 200
 

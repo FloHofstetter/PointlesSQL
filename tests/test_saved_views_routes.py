@@ -98,14 +98,10 @@ async def test_patch_owner_only(
     )
     slug = res.json()["slug"]
     # Non-admin (different user) cannot edit.
-    res2 = await non_admin_client.patch(
-        f"/api/views/{slug}", json={"title": "Hacked"}
-    )
+    res2 = await non_admin_client.patch(f"/api/views/{slug}", json={"title": "Hacked"})
     assert res2.status_code == 404
     # Owner / admin succeeds.
-    res3 = await admin_client.patch(
-        f"/api/views/{slug}", json={"title": "Renamed"}
-    )
+    res3 = await admin_client.patch(f"/api/views/{slug}", json={"title": "Renamed"})
     assert res3.status_code == 200
     assert res3.json()["title"] == "Renamed"
 
@@ -115,9 +111,7 @@ async def test_delete_owner_only(
     admin_client: httpx.AsyncClient, non_admin_client: httpx.AsyncClient
 ) -> None:
     """Only owner / admin may delete; non-admin gets 404."""
-    res = await admin_client.post(
-        "/api/views", json={"title": "Alpha", "sql": "SELECT 1"}
-    )
+    res = await admin_client.post("/api/views", json={"title": "Alpha", "sql": "SELECT 1"})
     slug = res.json()["slug"]
     res_del = await non_admin_client.delete(f"/api/views/{slug}")
     assert res_del.status_code == 404
@@ -128,9 +122,7 @@ async def test_delete_owner_only(
 @pytest.mark.asyncio
 async def test_embed_page_renders(admin_client: httpx.AsyncClient) -> None:
     """The ``/views/{slug}/embed`` page returns 200 minimal-chrome."""
-    res = await admin_client.post(
-        "/api/views", json={"title": "Embed me", "sql": "SELECT 1"}
-    )
+    res = await admin_client.post("/api/views", json={"title": "Embed me", "sql": "SELECT 1"})
     slug = res.json()["slug"]
     page = await admin_client.get(f"/views/{slug}/embed")
     assert page.status_code == 200

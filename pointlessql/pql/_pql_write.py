@@ -124,8 +124,7 @@ class _WriteMixin(_PQLBase):
                 ``strategy="upsert"``, read the Delta Change Data
                 Feed for the merge's commit range and record one
                 ``lineage_value_changes`` row per actually-different
-                cell on a matched-and-updated target row (Sprint
-                15.7.3).  Silently ignored on ``strategy="scd2"``.
+                cell on a matched-and-updated target row.  Silently ignored on ``strategy="scd2"``.
                 Default ``False`` keeps the CDF read off the hot
                 path.
             derivations: Optional declarative mapping of derived

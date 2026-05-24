@@ -125,9 +125,7 @@ def test_update_changes_rows(mock_get: MagicMock, tmp_path: Path) -> None:
 
 
 @patch(f"{_UD}._get_table")
-def test_update_with_no_where_updates_all_rows(
-    mock_get: MagicMock, tmp_path: Path
-) -> None:
+def test_update_with_no_where_updates_all_rows(mock_get: MagicMock, tmp_path: Path) -> None:
     target = tmp_path / "customers"
     _bootstrap_delta(target)
     mock_get.sync.return_value = TableInfo(storage_location=str(target), name="customers")
@@ -162,9 +160,7 @@ def test_delete_with_predicate(mock_get: MagicMock, tmp_path: Path) -> None:
 
 
 @patch(f"{_UD}._get_table")
-def test_delete_without_where_clears_table(
-    mock_get: MagicMock, tmp_path: Path
-) -> None:
+def test_delete_without_where_clears_table(mock_get: MagicMock, tmp_path: Path) -> None:
     target = tmp_path / "customers"
     _bootstrap_delta(target)
     mock_get.sync.return_value = TableInfo(storage_location=str(target), name="customers")

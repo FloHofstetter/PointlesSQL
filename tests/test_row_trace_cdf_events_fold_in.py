@@ -1,6 +1,6 @@
 """CDF events on row-trace walkback steps.
 
-Mirrors the Phase 15.7 ``value_changes`` per-step attach pattern but
+Mirrors the ``value_changes`` per-step attach pattern but
 reads from ``cdf_tail_events``: every walkback step gets a
 ``cdf_events`` list of foreign-Delta CDF captures matching its
 ``(table, row_id)``.  Walkback semantics stay unchanged — CDF

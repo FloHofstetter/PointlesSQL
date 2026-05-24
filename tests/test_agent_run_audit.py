@@ -1,4 +1,4 @@
-"""Tests for the Sprint 13.8 forced-audit-trail surface."""
+"""Tests for the forced-audit-trail surface."""
 
 from __future__ import annotations
 

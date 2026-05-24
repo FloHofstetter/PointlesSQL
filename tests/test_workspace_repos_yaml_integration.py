@@ -55,7 +55,7 @@ _VALID_YAML = """\
 data_product:
   name: Sales Orders
   version: "1.0.0"
-  description: Replay fixture for the Phase 51 yaml-loader bridge.
+  description: Replay fixture for the yaml-loader bridge.
   catalog: main
   schema: sales_gold
   steward_email: alice@example.com
@@ -100,9 +100,7 @@ def _settings_with_repo_base(tmp_path: Path):  # type: ignore[no-untyped-def]
     )
 
 
-def test_load_contracts_for_workspace_picks_up_synced_repo(
-    tmp_path, _test_engine
-):  # type: ignore[no-untyped-def]
+def test_load_contracts_for_workspace_picks_up_synced_repo(tmp_path, _test_engine):  # type: ignore[no-untyped-def]
     factory = _factory(_test_engine)
     bare = _seed_bare_repo_with_yaml(tmp_path)
     out = create_repo(
@@ -127,14 +125,10 @@ def test_load_contracts_for_workspace_picks_up_synced_repo(
 
     with factory() as session:
         rows = list(session.query(DataProduct))
-    assert any(
-        row.catalog_name == "main" and row.schema_name == "sales_gold" for row in rows
-    )
+    assert any(row.catalog_name == "main" and row.schema_name == "sales_gold" for row in rows)
 
 
-def test_post_pull_hook_wires_loader_count_into_sync_outcome(
-    tmp_path, _test_engine
-):  # type: ignore[no-untyped-def]
+def test_post_pull_hook_wires_loader_count_into_sync_outcome(tmp_path, _test_engine):  # type: ignore[no-untyped-def]
     factory = _factory(_test_engine)
     bare = _seed_bare_repo_with_yaml(tmp_path)
     out = create_repo(
@@ -203,14 +197,12 @@ def test_resync_unchanged_yaml_is_idempotent(tmp_path, _test_engine):  # type: i
     hook = build_post_pull_loader_hook(factory, settings=settings)
 
     asyncio.run(
-        sync_repo(factory, repo_id=out.repo.id, base_dir=base, trigger="manual",
-                  on_post_pull=hook)
+        sync_repo(factory, repo_id=out.repo.id, base_dir=base, trigger="manual", on_post_pull=hook)
     )
     with factory() as session:
         before = list(session.query(DataProduct))
     asyncio.run(
-        sync_repo(factory, repo_id=out.repo.id, base_dir=base, trigger="manual",
-                  on_post_pull=hook)
+        sync_repo(factory, repo_id=out.repo.id, base_dir=base, trigger="manual", on_post_pull=hook)
     )
     with factory() as session:
         after = list(session.query(DataProduct))
@@ -218,9 +210,7 @@ def test_resync_unchanged_yaml_is_idempotent(tmp_path, _test_engine):  # type: i
     assert before[0].id == after[0].id
 
 
-def test_repo_deletion_does_not_remove_cached_data_products(
-    tmp_path, _test_engine
-):  # type: ignore[no-untyped-def]
+def test_repo_deletion_does_not_remove_cached_data_products(tmp_path, _test_engine):  # type: ignore[no-untyped-def]
     factory = _factory(_test_engine)
     bare = _seed_bare_repo_with_yaml(tmp_path)
     out = create_repo(
@@ -234,8 +224,7 @@ def test_repo_deletion_does_not_remove_cached_data_products(
     settings = _settings_with_repo_base(tmp_path)
     hook = build_post_pull_loader_hook(factory, settings=settings)
     asyncio.run(
-        sync_repo(factory, repo_id=out.repo.id, base_dir=base, trigger="manual",
-                  on_post_pull=hook)
+        sync_repo(factory, repo_id=out.repo.id, base_dir=base, trigger="manual", on_post_pull=hook)
     )
 
     from pointlessql.services.workspace.repos import delete_repo
@@ -249,9 +238,7 @@ def test_repo_deletion_does_not_remove_cached_data_products(
     )
 
 
-def test_load_conventions_for_workspace_with_no_repos_returns_defaults(
-    tmp_path, _test_engine
-):  # type: ignore[no-untyped-def]
+def test_load_conventions_for_workspace_with_no_repos_returns_defaults(tmp_path, _test_engine):  # type: ignore[no-untyped-def]
     factory = _factory(_test_engine)
     settings = _settings_with_repo_base(tmp_path)
     config = load_conventions_for_workspace(factory, workspace_id=1, settings=settings)

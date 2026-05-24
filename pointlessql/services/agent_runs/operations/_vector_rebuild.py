@@ -38,18 +38,20 @@ logger = logging.getLogger(__name__)
 # Op names that mutate Delta tables — only these trigger a rebuild.
 # ``vector_index`` itself does not (the primitive owns its file
 # already); ``vector_search`` is pure read.
-_REBUILD_TRIGGER_OPS: frozenset[str] = frozenset({
-    "merge",
-    "write_table",
-    "autoload",
-    "update",
-    "delete",
-    "sql",
-    "aggregate",
-    "rollback",
-    "branch_promote",
-    "dbt_model",
-})
+_REBUILD_TRIGGER_OPS: frozenset[str] = frozenset(
+    {
+        "merge",
+        "write_table",
+        "autoload",
+        "update",
+        "delete",
+        "sql",
+        "aggregate",
+        "rollback",
+        "branch_promote",
+        "dbt_model",
+    }
+)
 
 
 def rebuild_vss_indices_after_commit(
@@ -189,8 +191,7 @@ def _rebuild_one(row: VectorIndex) -> dict[str, object]:
                 for i in range(rows_indexed)
             ]
             conn.executemany(
-                "INSERT INTO embeddings (rowid, pk_json, source_text, vector) "
-                "VALUES (?, ?, ?, ?)",
+                "INSERT INTO embeddings (rowid, pk_json, source_text, vector) VALUES (?, ?, ?, ?)",
                 payload,
             )
         conn.execute("DROP INDEX IF EXISTS hnsw_idx")

@@ -39,9 +39,7 @@ def upgrade() -> None:
         sa.Column("first_author_kind", sa.String(length=8), nullable=False),
         sa.Column("first_author_email", sa.String(length=255), nullable=True),
         sa.Column("first_author_agent_id", sa.Integer(), nullable=True),
-        sa.Column(
-            "first_author_agent_run_id", sa.String(length=36), nullable=True
-        ),
+        sa.Column("first_author_agent_run_id", sa.String(length=36), nullable=True),
         sa.Column("last_modifier_kind", sa.String(length=8), nullable=False),
         sa.Column("last_modifier_email", sa.String(length=255), nullable=True),
         sa.Column("last_modifier_agent_id", sa.Integer(), nullable=True),
@@ -57,9 +55,7 @@ def upgrade() -> None:
             server_default=sa.text("(CURRENT_TIMESTAMP)"),
             nullable=False,
         ),
-        sa.ForeignKeyConstraint(
-            ["cell_uuid"], ["notebook_cells.id"], ondelete="CASCADE"
-        ),
+        sa.ForeignKeyConstraint(["cell_uuid"], ["notebook_cells.id"], ondelete="CASCADE"),
         sa.ForeignKeyConstraint(["first_author_agent_id"], ["agents.id"]),
         sa.ForeignKeyConstraint(["last_modifier_agent_id"], ["agents.id"]),
         sa.PrimaryKeyConstraint("cell_uuid"),

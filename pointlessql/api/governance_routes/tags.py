@@ -55,4 +55,3 @@ async def api_update_tags(
         json.dumps(body.get("changes", [])),
     )
     return result
-

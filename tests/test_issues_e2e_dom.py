@@ -42,9 +42,7 @@ def _seed_issue() -> int:
             entity_kind="issue",
             entity_ref=f"_pending_{uuid.uuid4().hex}",
         )
-        parent = SocialTarget(
-            workspace_id=1, entity_kind="table", entity_ref="main.sales.orders"
-        )
+        parent = SocialTarget(workspace_id=1, entity_kind="table", entity_ref="main.sales.orders")
         session.add_all([anchor, parent])
         session.flush()
         issue = Issue(
@@ -123,11 +121,9 @@ def test_issues_pane_partial_is_referenced_from_detail_pages() -> None:
 
 def test_issues_pane_partial_exposes_issues_pane_factory() -> None:
     """The partial registers ``issuesPane`` on ``window``."""
-    body = (
-        _TEMPLATES_ROOT / "partials/social/_issues_pane.html"
-    ).read_text()
+    body = (_TEMPLATES_ROOT / "partials/social/_issues_pane.html").read_text()
     assert "window.issuesPane = issuesPane" in body
-    assert 'x-data=\'issuesPane({kind: kind, ref: ref})\'' in body
+    assert "x-data='issuesPane({kind: kind, ref: ref})'" in body
 
 
 def test_issue_citation_resolves_through_registry() -> None:

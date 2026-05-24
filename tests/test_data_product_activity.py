@@ -1,4 +1,4 @@
-"""Tests for the Phase-72.1 data-product activity feed.
+"""Tests for the data-product activity feed.
 
 Covers:
 
@@ -49,7 +49,6 @@ data_product:
       columns:
         - {name: order_id, type: long, nullable: false}
 """
-
 
 
 def _seed_dp(tmp_path: Path) -> int:
@@ -166,9 +165,7 @@ def _seed_freshness_envelope(dp_ref: str, *, age_seconds: int = 3) -> int:
 
 
 @pytest.mark.asyncio
-async def test_empty_feed_when_no_activity(
-    tmp_path: Path, admin_client: httpx.AsyncClient
-) -> None:
+async def test_empty_feed_when_no_activity(tmp_path: Path, admin_client: httpx.AsyncClient) -> None:
     """Empty feed serializes as ``activity: []``."""
     _seed_dp(tmp_path)
     res = await admin_client.get("/api/data-products/main/sales_gold/activity")
@@ -177,9 +174,7 @@ async def test_empty_feed_when_no_activity(
 
 
 @pytest.mark.asyncio
-async def test_agent_op_stream_contributes(
-    tmp_path: Path, admin_client: httpx.AsyncClient
-) -> None:
+async def test_agent_op_stream_contributes(tmp_path: Path, admin_client: httpx.AsyncClient) -> None:
     """An ``AgentRunOperation`` hitting the DP appears in the feed."""
     _seed_dp(tmp_path)
     _seed_agent_op("main.sales_gold.orders")
@@ -191,9 +186,7 @@ async def test_agent_op_stream_contributes(
 
 
 @pytest.mark.asyncio
-async def test_audit_stream_contributes(
-    tmp_path: Path, admin_client: httpx.AsyncClient
-) -> None:
+async def test_audit_stream_contributes(tmp_path: Path, admin_client: httpx.AsyncClient) -> None:
     """An ``AuditLog`` row mentioning the DP catalog appears."""
     _seed_dp(tmp_path)
     _seed_audit_row("catalog:main")
@@ -203,9 +196,7 @@ async def test_audit_stream_contributes(
 
 
 @pytest.mark.asyncio
-async def test_contract_stream_contributes(
-    tmp_path: Path, admin_client: httpx.AsyncClient
-) -> None:
+async def test_contract_stream_contributes(tmp_path: Path, admin_client: httpx.AsyncClient) -> None:
     """A ``DataProductContractEvent`` for the DP appears."""
     dp_id = _seed_dp(tmp_path)
     _seed_contract_event(dp_id)
@@ -243,9 +234,7 @@ async def test_freshness_envelope_for_other_dp_is_ignored(
 
 
 @pytest.mark.asyncio
-async def test_feed_sorted_newest_first(
-    tmp_path: Path, admin_client: httpx.AsyncClient
-) -> None:
+async def test_feed_sorted_newest_first(tmp_path: Path, admin_client: httpx.AsyncClient) -> None:
     """Merged rows are returned in descending timestamp order."""
     dp_id = _seed_dp(tmp_path)
     _seed_agent_op("main.sales_gold.orders", age_seconds=10)  # oldest
@@ -258,19 +247,13 @@ async def test_feed_sorted_newest_first(
 
 
 @pytest.mark.asyncio
-async def test_feed_pagination(
-    tmp_path: Path, admin_client: httpx.AsyncClient
-) -> None:
+async def test_feed_pagination(tmp_path: Path, admin_client: httpx.AsyncClient) -> None:
     """``limit`` and ``offset`` work end-to-end."""
     dp_id = _seed_dp(tmp_path)
     for i in range(5):
         _seed_contract_event(dp_id, age_seconds=i + 1)
-    page1 = await admin_client.get(
-        "/api/data-products/main/sales_gold/activity?limit=2&offset=0"
-    )
-    page2 = await admin_client.get(
-        "/api/data-products/main/sales_gold/activity?limit=2&offset=2"
-    )
+    page1 = await admin_client.get("/api/data-products/main/sales_gold/activity?limit=2&offset=0")
+    page2 = await admin_client.get("/api/data-products/main/sales_gold/activity?limit=2&offset=2")
     assert len(page1.json()["activity"]) == 2
     assert len(page2.json()["activity"]) == 2
     page1_ids = {r["source_id"] for r in page1.json()["activity"]}
@@ -284,14 +267,10 @@ async def test_feed_pagination(
 
 
 @pytest.mark.asyncio
-async def test_anonymous_blocked(
-    tmp_path: Path, anonymous_client: httpx.AsyncClient
-) -> None:
+async def test_anonymous_blocked(tmp_path: Path, anonymous_client: httpx.AsyncClient) -> None:
     """Anonymous users can't read the feed."""
     _seed_dp(tmp_path)
-    res = await anonymous_client.get(
-        "/api/data-products/main/sales_gold/activity"
-    )
+    res = await anonymous_client.get("/api/data-products/main/sales_gold/activity")
     assert res.status_code in (401, 403, 303)
 
 
@@ -309,8 +288,11 @@ async def test_cross_workspace_isolation(
     with factory() as session:
         session.add(
             Workspace(
-                id=2, slug="second", name="Second",
-                description="iso", created_at=now,
+                id=2,
+                slug="second",
+                name="Second",
+                description="iso",
+                created_at=now,
             )
         )
         nonadmin = session.execute(
@@ -318,7 +300,9 @@ async def test_cross_workspace_isolation(
         ).scalar_one()
         session.add(
             WorkspaceMember(
-                workspace_id=2, user_id=nonadmin.id, role="member",
+                workspace_id=2,
+                user_id=nonadmin.id,
+                role="member",
                 created_at=now,
             )
         )

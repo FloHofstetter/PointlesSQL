@@ -91,9 +91,7 @@ async def fire_digests(
     emitted = 0
     with session_factory() as session:
         rows = session.execute(
-            select(User.id, User.email, User.display_name).where(
-                User.digest_email_optin.is_(True)
-            )
+            select(User.id, User.email, User.display_name).where(User.digest_email_optin.is_(True))
         ).all()
         # Per-user unread count (only counts notifs created in the
         # prior 24h, irrespective of read state — a digest of the
@@ -103,10 +101,12 @@ async def fire_digests(
                 select(
                     UserNotification.recipient_user_id,
                     func.count(UserNotification.id),
-                ).where(
+                )
+                .where(
                     UserNotification.created_at >= since,
                     UserNotification.created_at < now,
-                ).group_by(UserNotification.recipient_user_id)
+                )
+                .group_by(UserNotification.recipient_user_id)
             ).all()
         )
 

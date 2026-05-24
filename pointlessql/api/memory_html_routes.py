@@ -82,7 +82,7 @@ def _parse_tables_touched(raw: str | None) -> list[str]:
         return []
     try:
         loaded = json.loads(raw)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return []
     if not isinstance(loaded, list):
         return []
@@ -123,7 +123,7 @@ def _branch_rows_for_agent(
         if row.payload_json:
             try:
                 payload = json.loads(row.payload_json)
-            except (TypeError, ValueError):
+            except TypeError, ValueError:
                 payload = {}
         result.append(
             {
@@ -141,9 +141,7 @@ def _branch_rows_for_agent(
 
 
 @router.get("/memory/{agent_id}", response_class=HTMLResponse, response_model=None)
-async def memory_page(
-    agent_id: str, request: Request
-) -> HTMLResponse | RedirectResponse:
+async def memory_page(agent_id: str, request: Request) -> HTMLResponse | RedirectResponse:
     """Render the agent-memory "brain browser" page.
 
     Auth-gated like every other HTML route: unauthenticated callers
@@ -162,9 +160,7 @@ async def memory_page(
     """
     user = get_user(request)
     if user["id"] == 0:
-        return RedirectResponse(
-            url=f"/auth/login?next=/memory/{agent_id}", status_code=303
-        )
+        return RedirectResponse(url=f"/auth/login?next=/memory/{agent_id}", status_code=303)
     factory = request.app.state.session_factory
     with factory() as session:
         runs = list(

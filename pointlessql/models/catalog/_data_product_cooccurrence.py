@@ -85,12 +85,6 @@ class DataProductCooccurrence(Base):
         nullable=False,
     )
     cooccurrence_count: Mapped[int] = mapped_column(Integer, nullable=False)
-    window_start: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
-    window_end: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
-    refreshed_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
+    window_start: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    window_end: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    refreshed_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)

@@ -1,6 +1,6 @@
 """Authenticated encryption for at-rest secrets.
 
-Phase 51 introduces git-backed workspaces, which need to persist
+introduces git-backed workspaces, which need to persist
 auth credentials (deploy keys, PATs, OAuth tokens) for each repo.
 Earlier persistence shapes — :class:`SystemKey` for the PII hash,
 the audit-sink credentials envelope — encode the secret with

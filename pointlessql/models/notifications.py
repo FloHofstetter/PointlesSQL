@@ -114,9 +114,7 @@ class UserNotification(Base):
     read_at: Mapped[datetime.datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
-    created_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
 class UserWebhookSubscription(Base):
@@ -173,15 +171,9 @@ class UserWebhookSubscription(Base):
     webhook_url: Mapped[str] = mapped_column(String(1000), nullable=False)
     hmac_secret: Mapped[str] = mapped_column(String(128), nullable=False)
     event_type_filter: Mapped[str] = mapped_column(String(120), nullable=False)
-    dp_ref_filter: Mapped[str | None] = mapped_column(
-        String(255), nullable=True
-    )
-    is_active: Mapped[bool] = mapped_column(
-        Integer, nullable=False, server_default="1"
-    )
-    created_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
+    dp_ref_filter: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    is_active: Mapped[bool] = mapped_column(Integer, nullable=False, server_default="1")
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     last_delivered_at: Mapped[datetime.datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )

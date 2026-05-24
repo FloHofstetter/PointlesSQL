@@ -306,9 +306,7 @@ def _latest_outputs_for(
         ordered by ``output_index`` and only the most-recent
         ``kernel_session_id`` per cell is included.
     """
-    by_cell: dict[str, dict[str, list[dict[str, Any]]]] = defaultdict(
-        lambda: defaultdict(list)
-    )
+    by_cell: dict[str, dict[str, list[dict[str, Any]]]] = defaultdict(lambda: defaultdict(list))
     latest_session: dict[str, tuple[str, str]] = {}
     for row in outputs:
         cell = row["content_hash"]
@@ -418,9 +416,7 @@ def render_notebook_body_html(
             )
         if frames:
             plural = "s" if len(frames) != 1 else ""
-            pieces.append(
-                f'<span class="pql-cell__out-count">{len(frames)} output{plural}</span>'
-            )
+            pieces.append(f'<span class="pql-cell__out-count">{len(frames)} output{plural}</span>')
         pieces.append("</div>")
         pieces.append('<div class="pql-cell__body">')
         if cell_type == "markdown":
@@ -471,9 +467,7 @@ def render_notebook_html(
             cell_count=len(cells),
         )
     ]
-    pieces.append(
-        render_notebook_body_html(cells=cells, outputs=outputs)
-    )
+    pieces.append(render_notebook_body_html(cells=cells, outputs=outputs))
     pieces.append(_HTML_FOOTER)
     return "\n".join(pieces)
 

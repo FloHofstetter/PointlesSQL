@@ -9,7 +9,7 @@ CI.
 S3 / HTTP / Postgres / MySQL probes are not exercised here because
 they need either external network or a live DB; the unit tests in
 ``test_ingest_connectors.py`` cover their SQL shape, and the end-to-
-end coverage in Phase 82.4 wires up fixtures.
+end coverage wires up fixtures.
 """
 
 from __future__ import annotations
@@ -52,9 +52,7 @@ async def test_probe_sqlite_table(
     """Probing a sqlite table returns its declared columns."""
     db_path = tmp_path / "tiny.db"
     with sqlite3.connect(db_path) as conn:
-        conn.execute(
-            "CREATE TABLE users (id INTEGER, email TEXT, joined_at TEXT)"
-        )
+        conn.execute("CREATE TABLE users (id INTEGER, email TEXT, joined_at TEXT)")
         conn.execute("INSERT INTO users VALUES (1, 'a@x', '2026-01-01')")
         conn.commit()
     res = await admin_client.post(

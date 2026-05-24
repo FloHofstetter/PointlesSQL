@@ -90,32 +90,29 @@ async def get_user_profile(
 
         followers_count = int(
             session.execute(
-                select(func.count()).select_from(UserFollow).where(
-                    UserFollow.followed_user_id == user_id
-                )
+                select(func.count())
+                .select_from(UserFollow)
+                .where(UserFollow.followed_user_id == user_id)
             ).scalar_one()
         )
         following_count = int(
             session.execute(
-                select(func.count()).select_from(UserFollow).where(
-                    UserFollow.follower_user_id == user_id
-                )
+                select(func.count())
+                .select_from(UserFollow)
+                .where(UserFollow.follower_user_id == user_id)
             ).scalar_one()
         )
-        stewarded = (
-            session.execute(
-                select(DataProduct.id, DataProduct.catalog_name, DataProduct.schema_name)
-                .where(DataProduct.steward_user_id == user_id)
-                .order_by(DataProduct.catalog_name, DataProduct.schema_name)
-            )
-            .all()
-        )
-        comments_30d_cutoff = datetime.datetime.now(datetime.UTC) - datetime.timedelta(
-            days=30
-        )
+        stewarded = session.execute(
+            select(DataProduct.id, DataProduct.catalog_name, DataProduct.schema_name)
+            .where(DataProduct.steward_user_id == user_id)
+            .order_by(DataProduct.catalog_name, DataProduct.schema_name)
+        ).all()
+        comments_30d_cutoff = datetime.datetime.now(datetime.UTC) - datetime.timedelta(days=30)
         comments_30d = int(
             session.execute(
-                select(func.count()).select_from(DataProductComment).where(
+                select(func.count())
+                .select_from(DataProductComment)
+                .where(
                     DataProductComment.author_user_id == user_id,
                     DataProductComment.created_at >= comments_30d_cutoff,
                     DataProductComment.deleted_at.is_(None),
@@ -124,16 +121,14 @@ async def get_user_profile(
         )
         reviews_count = int(
             session.execute(
-                select(func.count()).select_from(DataProductReview).where(
-                    DataProductReview.author_user_id == user_id
-                )
+                select(func.count())
+                .select_from(DataProductReview)
+                .where(DataProductReview.author_user_id == user_id)
             ).scalar_one()
         )
         badge_rows = (
             session.execute(
-                select(UserBadge)
-                .where(UserBadge.user_id == user_id)
-                .order_by(UserBadge.awarded_at)
+                select(UserBadge).where(UserBadge.user_id == user_id).order_by(UserBadge.awarded_at)
             )
             .scalars()
             .all()
@@ -183,8 +178,7 @@ async def get_user_profile(
             "reviews": reviews_count,
         },
         "stewarded_dps": [
-            {"id": did, "catalog": cat, "schema": sch}
-            for did, cat, sch in stewarded
+            {"id": did, "catalog": cat, "schema": sch} for did, cat, sch in stewarded
         ],
         "badges": [
             {
@@ -259,22 +253,16 @@ async def update_user_profile(
         raise BadRequestError(f"bio_md exceeds {_BIO_MAX} chars")
     if links is not None:
         if not isinstance(links, list):
-            raise BadRequestError(
-                f"links must be a list of at most {_LINKS_MAX} entries"
-            )
+            raise BadRequestError(f"links must be a list of at most {_LINKS_MAX} entries")
         if len(links) > _LINKS_MAX:  # pyright: ignore[reportUnknownArgumentType]
-            raise BadRequestError(
-                f"links must be a list of at most {_LINKS_MAX} entries"
-            )
+            raise BadRequestError(f"links must be a list of at most {_LINKS_MAX} entries")
         for entry in links:  # pyright: ignore[reportUnknownVariableType]
             if (
                 not isinstance(entry, dict)
                 or "url" not in entry
                 or not isinstance(entry.get("url"), str)  # pyright: ignore[reportUnknownMemberType]
             ):
-                raise BadRequestError(
-                    "each link must be an object with a 'url' string"
-                )
+                raise BadRequestError("each link must be an object with a 'url' string")
 
     now = datetime.datetime.now(datetime.UTC)
     factory = request.app.state.session_factory

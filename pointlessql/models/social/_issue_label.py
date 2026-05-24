@@ -55,9 +55,7 @@ class IssueLabel(Base):
         ),
     )
 
-    id: Mapped[int] = mapped_column(
-        Integer, primary_key=True, autoincrement=True
-    )
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     workspace_id: Mapped[int] = mapped_column(
         Integer,
         ForeignKey("workspaces.id"),
@@ -65,9 +63,7 @@ class IssueLabel(Base):
     )
     slug: Mapped[str] = mapped_column(String(40), nullable=False)
     label_text: Mapped[str] = mapped_column(String(80), nullable=False)
-    color_hex: Mapped[str] = mapped_column(
-        String(7), nullable=False, server_default="#cccccc"
-    )
+    color_hex: Mapped[str] = mapped_column(String(7), nullable=False, server_default="#cccccc")
     created_at: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,

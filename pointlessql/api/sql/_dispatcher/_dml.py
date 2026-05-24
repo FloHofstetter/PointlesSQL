@@ -66,9 +66,7 @@ async def execute_insert(
     source_refs = extract_source_refs(ctx.ast, ctx.stype)
 
     approved = await enforce_select_per_table(ctx, source_refs)
-    target_exists = await enforce_modify_target(
-        ctx, target_fqn, must_exist=not create_if_missing
-    )
+    target_exists = await enforce_modify_target(ctx, target_fqn, must_exist=not create_if_missing)
     if target_exists and create_if_missing and mode == "overwrite":
         # CTAS over an existing table: still allowed (overwrite),
         # but require MODIFY (already enforced) instead of just

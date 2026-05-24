@@ -28,7 +28,7 @@ def _merge_rows_affected(stats: dict[str, Any]) -> int | None:
             if isinstance(close_stats, dict):
                 closed = int(close_stats.get("num_target_rows_updated", 0) or 0)
             return appended + closed
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return None
     return None
 

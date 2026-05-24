@@ -37,22 +37,16 @@ def env() -> Environment:
         ("con\\name", "\\"),
     ],
 )
-def test_tojson_escapes_attribute_breakers(
-    env: Environment, value: str, raw_char: str
-) -> None:
+def test_tojson_escapes_attribute_breakers(env: Environment, value: str, raw_char: str) -> None:
     """``|tojson`` HTML-attribute-safe-escapes for x-data context."""
     template = env.from_string("x-data='{{ x|tojson }}'")
     rendered = template.render(x=value)
     # The full unescaped value must NOT survive — it would have broken
     # the attribute boundary if it had.
-    assert value not in rendered, (
-        f"unescaped {value!r} found in {rendered!r}"
-    )
+    assert value not in rendered, f"unescaped {value!r} found in {rendered!r}"
     # The outer single-quotes must remain the only single-quotes
     # (so a `'` in the user-string didn't escape the attribute).
-    assert rendered.count("'") == 2, (
-        f"attribute boundary broken: {rendered!r}"
-    )
+    assert rendered.count("'") == 2, f"attribute boundary broken: {rendered!r}"
     # The user-controlled raw character must not appear unescaped
     # outside of the literal escape itself. For control chars this
     # check is implied by the `value not in rendered` assertion.
@@ -69,9 +63,7 @@ def test_tojson_escapes_attribute_breakers(
         "name\\with\\backslash",
     ],
 )
-def test_alpine_data_dict_url_concatenation_safe(
-    env: Environment, url_segment: str
-) -> None:
+def test_alpine_data_dict_url_concatenation_safe(env: Environment, url_segment: str) -> None:
     """Connection/credential/external-location use this exact pattern.
 
     Pattern in templates:
@@ -80,13 +72,11 @@ def test_alpine_data_dict_url_concatenation_safe(
     template = env.from_string(
         "x-data='deleteConfirm({ deleteUrl: "
         '{{ ("/api/connections/" ~ name)|tojson }}'
-        ", redirectUrl: \"/connections\" })'"
+        ', redirectUrl: "/connections" })\''
     )
     rendered = template.render(name=url_segment)
     # Outer single-quotes must remain unique (start + end of attribute).
-    assert rendered.count("'") == 2, (
-        f"attribute boundary broken: {rendered!r}"
-    )
+    assert rendered.count("'") == 2, f"attribute boundary broken: {rendered!r}"
     # The URL prefix must be intact.
     assert "/api/connections/" in rendered
 
@@ -99,8 +89,7 @@ def test_compound_object_alpine_init_safe(env: Environment) -> None:
                              destinations: {{ alert.destinations|tojson }}})'
     """
     template = env.from_string(
-        "x-data='alertDetail({slug: {{ slug|tojson }}, "
-        "destinations: {{ destinations|tojson }}})'"
+        "x-data='alertDetail({slug: {{ slug|tojson }}, destinations: {{ destinations|tojson }}})'"
     )
     rendered = template.render(
         slug="alert'1",

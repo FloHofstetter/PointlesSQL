@@ -62,9 +62,7 @@ def serialise_product(
         },
         "contract_yaml_hash": row.contract_yaml_hash,
         "last_loaded_at": row.last_loaded_at.isoformat(),
-        "last_alerted_at": (
-            row.last_alerted_at.isoformat() if row.last_alerted_at else None
-        ),
+        "last_alerted_at": (row.last_alerted_at.isoformat() if row.last_alerted_at else None),
     }
 
 
@@ -98,9 +96,7 @@ def load_one(
             )
         ).scalar_one_or_none()
         if row is None:
-            raise ResourceNotFoundError(
-                f"data product {catalog}.{schema!r} not found"
-            )
+            raise ResourceNotFoundError(f"data product {catalog}.{schema!r} not found")
         contract = DataProductContract.model_validate(json.loads(row.contract_json))
         if row.steward_user_id is not None:
             user = session.get(User, row.steward_user_id)
@@ -112,9 +108,7 @@ def load_one(
         return row, contract, steward_email, steward_display
 
 
-def diff_to_payload(
-    table_name: str, diff: ContractDiffResult | str
-) -> dict[str, Any]:
+def diff_to_payload(table_name: str, diff: ContractDiffResult | str) -> dict[str, Any]:
     """Render a diff result (or error string) as a JSON-friendly dict."""
     if isinstance(diff, str):
         return {"name": table_name, "error": diff}
@@ -153,9 +147,7 @@ def resolve_agent_for_principal(
     agent_slug = slug.strip().lower()
     with session_factory() as session:
         agent = session.execute(
-            select(Agent).where(
-                Agent.workspace_id == workspace_id, Agent.slug == agent_slug
-            )
+            select(Agent).where(Agent.workspace_id == workspace_id, Agent.slug == agent_slug)
         ).scalar_one_or_none()
         if agent is None:
             # enrich the 404 with the workspace's

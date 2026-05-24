@@ -1,4 +1,4 @@
-"""Tests for the Phase-71.4 notification fan-out + inbox surface.
+"""Tests for the notification fan-out + inbox surface.
 
 Covers the fan-out helper (followers + mentions, actor suppression),
 the comment + review + follow integration paths (each one
@@ -43,7 +43,6 @@ data_product:
 """
 
 
-
 def _seed_product(tmp_path: Path) -> int:
     """Seed a yaml + load it into the cache; return the data_products row id."""
     yaml_path = tmp_path / "pointlessql.yaml"
@@ -76,11 +75,7 @@ def _admin_user_id() -> int:
     """Return the seeded admin user id."""
     factory = app.state.session_factory
     with factory() as session:
-        return (
-            session.execute(select(User).where(User.email == "test@test.com"))
-            .scalar_one()
-            .id
-        )
+        return session.execute(select(User).where(User.email == "test@test.com")).scalar_one().id
 
 
 def _nonadmin_user_id() -> int:
@@ -88,9 +83,7 @@ def _nonadmin_user_id() -> int:
     factory = app.state.session_factory
     with factory() as session:
         return (
-            session.execute(select(User).where(User.email == "nonadmin@test.com"))
-            .scalar_one()
-            .id
+            session.execute(select(User).where(User.email == "nonadmin@test.com")).scalar_one().id
         )
 
 
@@ -330,9 +323,7 @@ async def test_mark_all_read(
         )
     res = await non_admin_client.post("/api/notifications/read-all")
     assert res.json() == {"flipped": 3}
-    assert (
-        await non_admin_client.get("/api/notifications/unread-count")
-    ).json() == {"unread": 0}
+    assert (await non_admin_client.get("/api/notifications/unread-count")).json() == {"unread": 0}
 
 
 @pytest.mark.asyncio
@@ -352,9 +343,7 @@ async def test_list_filters_by_unread_and_type(
         "/api/data-products/main/sales_gold/reviews",
         json={"stars": 5, "body_md": "r"},
     )
-    all_res = (
-        await non_admin_client.get("/api/notifications")
-    ).json()
+    all_res = (await non_admin_client.get("/api/notifications")).json()
     assert len(all_res["notifications"]) == 2
 
     comments_only = (
@@ -363,10 +352,7 @@ async def test_list_filters_by_unread_and_type(
         )
     ).json()
     assert len(comments_only["notifications"]) == 1
-    assert (
-        comments_only["notifications"][0]["event_type"]
-        == EVENT_TYPE_DATA_PRODUCT_COMMENTED
-    )
+    assert comments_only["notifications"][0]["event_type"] == EVENT_TYPE_DATA_PRODUCT_COMMENTED
 
 
 @pytest.mark.asyncio
@@ -393,9 +379,7 @@ async def test_cross_user_isolation(
     )
     factory = app.state.session_factory
     with factory() as session:
-        notif_id = (
-            session.execute(select(UserNotification.id)).scalars().one()
-        )
+        notif_id = session.execute(select(UserNotification.id)).scalars().one()
     res = await admin_client.post(f"/api/notifications/{notif_id}/read")
     assert res.status_code == 404
 
@@ -412,11 +396,7 @@ async def test_me_settings_put_flips_digest(
     """PUT /api/me/settings toggles the digest_email_optin column."""
     get = (await admin_client.get("/api/me/settings")).json()
     assert get["digest_email_optin"] is False
-    put = (
-        await admin_client.put(
-            "/api/me/settings", json={"digest_email_optin": True}
-        )
-    ).json()
+    put = (await admin_client.put("/api/me/settings", json={"digest_email_optin": True})).json()
     assert put["digest_email_optin"] is True
     get2 = (await admin_client.get("/api/me/settings")).json()
     assert get2["digest_email_optin"] is True

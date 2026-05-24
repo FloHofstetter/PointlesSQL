@@ -59,9 +59,7 @@ def _seed_product(tmp_path: Path) -> tuple[int, int]:
     load_contract(yaml_path, factory=factory)
     with factory() as session:
         dp = session.execute(select(DataProduct)).scalar_one()
-        admin = session.execute(
-            select(User).where(User.email == "test@test.com")
-        ).scalar_one()
+        admin = session.execute(select(User).where(User.email == "test@test.com")).scalar_one()
         return int(dp.id), int(admin.id)
 
 
@@ -115,20 +113,28 @@ async def test_run_reviewer_writes_agent_authorship(
     )
 
     with factory() as session:
-        comment = session.execute(
-            select(DataProductComment)
-            .where(DataProductComment.data_product_id == dp_id)
-            .order_by(DataProductComment.id.desc())
-        ).scalars().first()
+        comment = (
+            session.execute(
+                select(DataProductComment)
+                .where(DataProductComment.data_product_id == dp_id)
+                .order_by(DataProductComment.id.desc())
+            )
+            .scalars()
+            .first()
+        )
         assert comment is not None
         assert comment.author_user_id == admin_id
         assert comment.author_agent_id is not None
-        endorsement = session.execute(
-            select(DataProductEndorsement).where(
-                DataProductEndorsement.data_product_id == dp_id,
-                DataProductEndorsement.removed_at.is_(None),
+        endorsement = (
+            session.execute(
+                select(DataProductEndorsement).where(
+                    DataProductEndorsement.data_product_id == dp_id,
+                    DataProductEndorsement.removed_at.is_(None),
+                )
             )
-        ).scalars().first()
+            .scalars()
+            .first()
+        )
         assert endorsement is not None
         assert endorsement.applied_by_agent_id is not None
         config = session.execute(
@@ -171,11 +177,15 @@ async def test_run_reviewer_no_agent_slug_keeps_steward_proxy(
     )
 
     with factory() as session:
-        comment = session.execute(
-            select(DataProductComment)
-            .where(DataProductComment.data_product_id == dp_id)
-            .order_by(DataProductComment.id.desc())
-        ).scalars().first()
+        comment = (
+            session.execute(
+                select(DataProductComment)
+                .where(DataProductComment.data_product_id == dp_id)
+                .order_by(DataProductComment.id.desc())
+            )
+            .scalars()
+            .first()
+        )
         assert comment is not None
         assert comment.author_user_id == admin_id
         assert comment.author_agent_id is None

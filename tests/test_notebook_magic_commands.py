@@ -1,4 +1,4 @@
-"""Tests for the Phase-98.A magic-command pre-processor."""
+"""Tests for the magic-command pre-processor."""
 
 from __future__ import annotations
 

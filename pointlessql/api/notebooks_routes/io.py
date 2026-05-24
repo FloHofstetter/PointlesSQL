@@ -25,9 +25,7 @@ from pointlessql.services.notebook import outputs as notebook_outputs_service
 from pointlessql.services.notebook import permissions as notebook_permissions_service
 
 
-def _enforce_notebook_role(
-    request: Request, *, notebook_id: str, required: str
-) -> None:
+def _enforce_notebook_role(request: Request, *, notebook_id: str, required: str) -> None:
     """Reject the request when the actor's effective role is below *required*.
 
     wires the existing ``role_satisfies`` lattice
@@ -66,6 +64,7 @@ def _enforce_notebook_role(
             full_name=notebook_id,
         )
 
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["notebooks"])
@@ -100,9 +99,7 @@ async def api_load_notebook(request: Request, path: str) -> JSONResponse:
     require_user(request)
     settings: Settings = request.app.state.settings
     notebooks_dir = settings.jupyter.notebooks_dir.resolve()
-    absolute = notebook_doc_service.resolve_py_notebook_path(
-        notebooks_dir, path, must_exist=True
-    )
+    absolute = notebook_doc_service.resolve_py_notebook_path(notebooks_dir, path, must_exist=True)
     relative = str(absolute.relative_to(notebooks_dir))
     document = notebook_doc_service.load_document(absolute, relative)
     outputs = notebook_outputs_service.load_outputs_for_path(
@@ -111,9 +108,7 @@ async def api_load_notebook(request: Request, path: str) -> JSONResponse:
     cell_uuids = _load_cell_uuid_map(request, relative)
     notebook_uuid = cell_uuids.get("__notebook__")
     if notebook_uuid:
-        _enforce_notebook_role(
-            request, notebook_id=notebook_uuid, required="view"
-        )
+        _enforce_notebook_role(request, notebook_id=notebook_uuid, required="view")
     cells = [
         {
             "id": cell.id,
@@ -142,11 +137,10 @@ def _load_cell_uuid_map(request: Request, file_path: str) -> dict[str, str | Non
     """Return ``content_hash -> cell_uuid`` for the load path.
 
     The result also carries the parent notebook UUID under the
-    sentinel key ``"__notebook__"`` so the caller doesn't have to look
-    it up twice.  Cells in the file that have no matching live row in
-    ``notebook_cells`` (e.g. brand-new notebook never saved since
-    Phase 95 landed) return ``None`` for their UUID; the next save
-    mints them.
+    sentinel key ``"__notebook__"`` so the caller doesn't have to
+    look it up twice.  Cells in the file that have no matching live
+    row in ``notebook_cells`` (e.g. brand-new notebook never saved)
+    return ``None`` for their UUID; the next save mints them.
     """
     notebook_uuid = get_or_create_notebook_uuid(request, file_path)
     factory = request.app.state.session_factory
@@ -233,32 +227,20 @@ async def api_save_notebook(
             )
         cell_type = raw.get("cell_type", "code")
         if cell_type not in {"code", "markdown", "sql"}:
-            raise ValidationError(
-                f"body.cells[{index}].cell_type must be one of code/markdown/sql"
-            )
+            raise ValidationError(f"body.cells[{index}].cell_type must be one of code/markdown/sql")
         source = raw.get("source", "")
         if not isinstance(source, str):
-            raise ValidationError(
-                f"body.cells[{index}].source must be a string"
-            )
+            raise ValidationError(f"body.cells[{index}].source must be a string")
         result_var = raw.get("result_var")
         if result_var is not None and not isinstance(result_var, str):
-            raise ValidationError(
-                f"body.cells[{index}].result_var must be a string or null"
-            )
+            raise ValidationError(f"body.cells[{index}].result_var must be a string or null")
         raw_tags = raw.get("tags") or []
         if not isinstance(raw_tags, list):
-            raise ValidationError(
-                f"body.cells[{index}].tags must be a list of strings"
-            )
-        tags: tuple[str, ...] = tuple(
-            t for t in raw_tags if isinstance(t, str) and t
-        )
+            raise ValidationError(f"body.cells[{index}].tags must be a list of strings")
+        tags: tuple[str, ...] = tuple(t for t in raw_tags if isinstance(t, str) and t)
         raw_cell_uuid = raw.get("cell_uuid")
         if raw_cell_uuid is not None and not isinstance(raw_cell_uuid, str):
-            raise ValidationError(
-                f"body.cells[{index}].cell_uuid must be a string or null"
-            )
+            raise ValidationError(f"body.cells[{index}].cell_uuid must be a string or null")
         client_cell_uuids.append(raw_cell_uuid if raw_cell_uuid else None)
         cells.append(
             notebook_doc_service.NotebookCell(
@@ -277,18 +259,14 @@ async def api_save_notebook(
     # double call is cheap.
     relative_for_check = str(absolute.relative_to(notebooks_dir))
     pre_notebook_uuid = get_or_create_notebook_uuid(request, relative_for_check)
-    _enforce_notebook_role(
-        request, notebook_id=pre_notebook_uuid, required="edit"
-    )
+    _enforce_notebook_role(request, notebook_id=pre_notebook_uuid, required="edit")
     notebook_doc_service.save_document(absolute, cells)
     new_mtime = absolute.stat().st_mtime
     relative = str(absolute.relative_to(notebooks_dir))
     notebook_uuid = get_or_create_notebook_uuid(request, relative)
     workspace_id = current_workspace_id(request)
     reconcile_inputs = [
-        cell_reconciliation.ReconcileInput(
-            content_hash=cell.content_hash, source=cell.source
-        )
+        cell_reconciliation.ReconcileInput(content_hash=cell.content_hash, source=cell.source)
         for cell in cells
     ]
     raw_acceptances = body.get("proposal_acceptances")
@@ -318,9 +296,7 @@ async def api_save_notebook(
         # input cell; pair them with the saver's identity here.
         actor_email = ""
         try:
-            actor_email = str(
-                request.state.user.get("email") or ""
-            ) if request.state.user else ""
+            actor_email = str(request.state.user.get("email") or "") if request.state.user else ""
         except AttributeError:
             actor_email = ""
         if actor_email:
@@ -366,9 +342,7 @@ async def api_save_notebook(
         try:
             await notebook_coedit_ws.apply_save_remap(notebook_uuid, remap)
         except Exception:  # noqa: BLE001 — non-fatal best-effort
-            logger.exception(
-                "phase105.5 cell_uuid remap broadcast failed for %s", notebook_uuid
-            )
+            logger.exception("phase105.5 cell_uuid remap broadcast failed for %s", notebook_uuid)
     logger.info("saved notebook %s (%d cells)", relative, len(cells))
     return JSONResponse(
         {
@@ -390,7 +364,7 @@ async def api_cell_history(
     """Return the last *limit* run-source rows for one cell.
 
     Backs the per-cell run-history popover the notebook editor
-    surfaces in Sprint 66.7.
+    surfaces .
 
     Args:
         request: Incoming FastAPI request; any authenticated user.

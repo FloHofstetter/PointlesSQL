@@ -46,9 +46,7 @@ async def notebook_editor_page(request: Request, path: str) -> HTMLResponse:
     require_user(request)
     settings: Settings = request.app.state.settings
     notebooks_dir = settings.jupyter.notebooks_dir.resolve()
-    absolute = notebook_doc_service.resolve_py_notebook_path(
-        notebooks_dir, path, must_exist=True
-    )
+    absolute = notebook_doc_service.resolve_py_notebook_path(notebooks_dir, path, must_exist=True)
     relative = str(absolute.relative_to(notebooks_dir))
     notebook_uuid = get_or_create_notebook_uuid(request, relative)
     user = get_user(request)
@@ -79,12 +77,8 @@ async def notebook_editor_page(request: Request, path: str) -> HTMLResponse:
     )
 
 
-@router.get(
-    "/notebooks/uuid/{notebook_uuid}", response_class=HTMLResponse
-)
-async def notebook_editor_by_uuid(
-    request: Request, notebook_uuid: str
-) -> HTMLResponse:
+@router.get("/notebooks/uuid/{notebook_uuid}", response_class=HTMLResponse)
+async def notebook_editor_by_uuid(request: Request, notebook_uuid: str) -> HTMLResponse:
     """Render the editor for a notebook addressed by its UUID.
 
     the UUID-routed alias lets the social-layer

@@ -1,4 +1,4 @@
-"""Tests for the Phase 121.7c audit-detail PII redactor.
+"""Tests for the audit-detail PII redactor.
 
 Covers the new ``redact_audit_detail`` helper and its wiring through
 ``log_action`` behind the ``audit.redact_detail_payloads`` setting.
@@ -55,9 +55,7 @@ def test_flat_dict_redacts_pii_keys_default_mode() -> None:
 
 
 def test_nested_dict_redacts_recursively() -> None:
-    out = redact_audit_detail(
-        {"actor": {"email": "x@y.z", "id": 7}, "extra": "value"}
-    )
+    out = redact_audit_detail({"actor": {"email": "x@y.z", "id": 7}, "extra": "value"})
     assert out == {
         "actor": {"email": REDACTED_PLACEHOLDER, "id": 7},
         "extra": "value",
@@ -66,9 +64,7 @@ def test_nested_dict_redacts_recursively() -> None:
 
 def test_nested_list_walked_element_wise() -> None:
     """Lists inside dict values are walked recursively."""
-    out = redact_audit_detail(
-        {"actors": [{"email": "a@b"}, {"phone": "+12345"}, {"safe": "v"}]}
-    )
+    out = redact_audit_detail({"actors": [{"email": "a@b"}, {"phone": "+12345"}, {"safe": "v"}]})
     assert out == {
         "actors": [
             {"email": REDACTED_PLACEHOLDER},

@@ -1,4 +1,4 @@
-"""Tests for Phase 105.1 — coedit Y.Doc sidecar persistence."""
+"""Tests — coedit Y.Doc sidecar persistence."""
 
 from __future__ import annotations
 
@@ -51,11 +51,7 @@ def test_get_or_init_ydoc_mints_empty_doc_on_cold(
         assert isinstance(doc[coedit.CELLS_ORDER_KEY].to_py(), list)
         assert doc[coedit.CELLS_ORDER_KEY].to_py() == []
         # Row persisted
-        row = (
-            session.query(NotebookCrdtState)
-            .filter_by(notebook_id=nb_id)
-            .one()
-        )
+        row = session.query(NotebookCrdtState).filter_by(notebook_id=nb_id).one()
         assert len(row.y_doc_blob) > 0
 
 
@@ -69,9 +65,7 @@ def test_get_or_init_ydoc_with_seed_cells(
         {"cell_uuid": "u2", "source": "y = 2"},
     ]
     with factory() as session:
-        doc = coedit.get_or_init_ydoc(
-            session, notebook_id=nb_id, seed_cells=seed
-        )
+        doc = coedit.get_or_init_ydoc(session, notebook_id=nb_id, seed_cells=seed)
         session.commit()
         order = list(doc[coedit.CELLS_ORDER_KEY].to_py())
         assert order == ["u1", "u2"]
@@ -100,9 +94,7 @@ def test_get_or_init_ydoc_unknown_notebook(
 ) -> None:
     """Unknown notebook UUID surfaces ValidationError."""
     with factory() as session, pytest.raises(ValidationError):
-        coedit.get_or_init_ydoc(
-            session, notebook_id="00000000-0000-0000-0000-000000000000"
-        )
+        coedit.get_or_init_ydoc(session, notebook_id="00000000-0000-0000-0000-000000000000")
 
 
 def test_seed_ignores_cells_without_uuid(
@@ -115,9 +107,7 @@ def test_seed_ignores_cells_without_uuid(
         {"cell_uuid": "u1", "source": "keep"},
     ]
     with factory() as session:
-        doc = coedit.get_or_init_ydoc(
-            session, notebook_id=nb_id, seed_cells=seed
-        )
+        doc = coedit.get_or_init_ydoc(session, notebook_id=nb_id, seed_cells=seed)
         session.commit()
         assert list(doc[coedit.CELLS_ORDER_KEY].to_py()) == ["u1"]
 
@@ -204,11 +194,7 @@ def test_compact_resets_blob_and_stamps_compacted_at(
     with factory() as session:
         coedit.compact(session, notebook_id=nb_id)
         session.commit()
-        row = (
-            session.query(NotebookCrdtState)
-            .filter_by(notebook_id=nb_id)
-            .one()
-        )
+        row = session.query(NotebookCrdtState).filter_by(notebook_id=nb_id).one()
         assert row.compacted_at is not None
         # Still functional after compact
         client = coedit._build_empty_doc()

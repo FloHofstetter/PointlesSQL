@@ -4,7 +4,7 @@ Tests the operator-facing :mod:`pointlessql.cli.migrate_to_postgres`
 helper.  All non-validation cases require a live Postgres so they
 carry the ``@pytest.mark.postgres`` marker — the SQLite CI lane
 selects them out via the ``addopts = "-m 'not integration'"``
-pytest rule and the ``postgres`` marker, while the Sprint 30.0 PG
+pytest rule and the ``postgres`` marker, while the PG
 lane runs them with ``TEST_DATABASE_URL`` pointing at the live PG.
 """
 

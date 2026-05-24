@@ -58,11 +58,7 @@ def refresh_trending(
     inserted = 0
 
     with session_factory() as session:
-        all_dps = (
-            session.execute(select(DataProduct))
-            .scalars()
-            .all()
-        )
+        all_dps = session.execute(select(DataProduct)).scalars().all()
 
         # Group DPs by workspace so the ranking is per-tenant.
         by_workspace: dict[int, list[DataProduct]] = {}
@@ -76,9 +72,7 @@ def refresh_trending(
                 fqn_prefix = f"{dp.catalog_name}.{dp.schema_name}."
                 agent_run_count = int(
                     session.execute(
-                        select(
-                            func.count(distinct(AgentRunOperation.agent_run_id))
-                        ).where(
+                        select(func.count(distinct(AgentRunOperation.agent_run_id))).where(
                             AgentRunOperation.workspace_id == workspace_id,
                             AgentRunOperation.target_table.like(f"{fqn_prefix}%"),
                             AgentRunOperation.started_at >= window_start,
@@ -105,9 +99,7 @@ def refresh_trending(
             scored.sort(key=lambda t: (t[1], t[2]), reverse=True)
             scored = scored[:top_n]
 
-            for rank, (dp, agent_run_count, write_count) in enumerate(
-                scored, start=1
-            ):
+            for rank, (dp, agent_run_count, write_count) in enumerate(scored, start=1):
                 existing = session.execute(
                     select(DataProductTrending).where(
                         DataProductTrending.workspace_id == workspace_id,
@@ -163,11 +155,8 @@ def fetch_trending(
     Returns:
         List of dicts shaped for direct JSON return.
     """
-    stmt = (
-        select(DataProductTrending, DataProduct)
-        .join(
-            DataProduct, DataProduct.id == DataProductTrending.data_product_id
-        )
+    stmt = select(DataProductTrending, DataProduct).join(
+        DataProduct, DataProduct.id == DataProductTrending.data_product_id
     )
     if workspace_scope != "all":
         stmt = stmt.where(DataProductTrending.workspace_id == workspace_id)

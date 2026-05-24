@@ -1,8 +1,7 @@
 """Sqlglot column-lineage extraction unit tests.
 
 Pure-function tests for ``extract_column_lineage`` — no DuckDB,
-no soyuz.  The end-to-end ``pql.sql`` path is exercised by the
-Sprint 15.6.5 live replay.
+no soyuz.  The end-to-end ``pql.sql`` path is exercised by the live replay.
 """
 
 from __future__ import annotations

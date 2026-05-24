@@ -1,7 +1,7 @@
 /**
  * Branch-binding picker.
  *
- * Backend (REST + 11 pytest) shipped in Phase 102 (migration
+ * Backend (REST + 11 pytest) shipped (migration
  * ``311c87f25421``); only the editor wiring was deferred.  This
  * mixin exposes a toolbar dropdown with three states:
  *

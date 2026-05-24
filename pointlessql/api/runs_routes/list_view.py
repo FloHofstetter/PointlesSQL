@@ -64,11 +64,7 @@ async def runs_list_page(
         "active_table": None,
     }
     is_load_more = is_htmx_partial(request)
-    template = (
-        "pages/_partials/runs_list_append.html"
-        if is_load_more
-        else "pages/runs_list.html"
-    )
+    template = "pages/_partials/runs_list_append.html" if is_load_more else "pages/runs_list.html"
     return templates(request).TemplateResponse(request, template, ctx)
 
 

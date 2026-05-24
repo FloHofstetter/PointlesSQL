@@ -1,10 +1,10 @@
 """HTML page routes for the registered-models browse surface.
 
 Three pages: the metastore-wide ``/models`` index, the per-model
-detail page at ``/models/{full_name}``, and the
-version-compare view at ``/models/{full_name}/compare`` (Sprint
-21.5.4).  All three redirect anonymous browsers to ``/auth/login``
-with a ``next=`` hint so the deep-link survives the round trip.
+detail page at ``/models/{full_name}``, and the version-compare
+view at ``/models/{full_name}/compare``.  All three redirect
+anonymous browsers to ``/auth/login`` with a ``next=`` hint so
+the deep-link survives the round trip.
 """
 
 from __future__ import annotations

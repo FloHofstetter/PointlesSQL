@@ -240,7 +240,7 @@ class KernelSession:
             resolves widget values and per-notebook permissions.
         branch_name: Optional branch binding surfaced as
             ``POINTLESSQL_BRANCH`` so Delta reads/writes scope to
-            the chosen branch for Phase 102 branch-aware notebooks.
+            the chosen branch branch-aware notebooks.
     """
 
     def __init__(

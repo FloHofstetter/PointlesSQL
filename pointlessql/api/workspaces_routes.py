@@ -62,9 +62,7 @@ def _resolve_workspace(session: Any, slug: str) -> Workspace:
         ResourceNotFoundError: 404 enriched with the known workspace
             slugs when no workspace exists for *slug*.
     """
-    ws = session.execute(
-        select(Workspace).where(Workspace.slug == slug)
-    ).scalar_one_or_none()
+    ws = session.execute(select(Workspace).where(Workspace.slug == slug)).scalar_one_or_none()
     if ws is None:
         # surface every known workspace slug so
         # callers can self-correct typos without a second round-trip.
@@ -76,17 +74,13 @@ def _resolve_workspace(session: Any, slug: str) -> Workspace:
     return ws
 
 
-def _serialise_pin(
-    pin: WorkspacePinnedEntity, target: SocialTarget
-) -> dict[str, Any]:
+def _serialise_pin(pin: WorkspacePinnedEntity, target: SocialTarget) -> dict[str, Any]:
     """Render one pin row + its target metadata as JSON."""
     return {
         "social_target_id": pin.social_target_id,
         "entity_kind": target.entity_kind,
         "entity_ref": target.entity_ref,
-        "url": entity_registry.url_for(
-            str(target.entity_kind), str(target.entity_ref)
-        ),
+        "url": entity_registry.url_for(str(target.entity_kind), str(target.entity_ref)),
         "pin_order": pin.pin_order,
         "pinned_by_user_id": pin.pinned_by_user_id,
         "pinned_at": pin.pinned_at.isoformat(),
@@ -94,9 +88,7 @@ def _serialise_pin(
 
 
 @router.get("/workspaces/{slug}", response_class=HTMLResponse)
-async def workspace_landing_page(
-    request: Request, slug: str
-) -> HTMLResponse:
+async def workspace_landing_page(request: Request, slug: str) -> HTMLResponse:
     """Render the workspace landing page.
 
     Args:
@@ -207,12 +199,8 @@ async def add_pin(slug: str, request: Request) -> dict[str, Any]:
         return _serialise_pin(pin, target)
 
 
-@router.delete(
-    "/api/workspaces/{slug}/pins/{social_target_id}"
-)
-async def remove_pin(
-    slug: str, social_target_id: int, request: Request
-) -> dict[str, Any]:
+@router.delete("/api/workspaces/{slug}/pins/{social_target_id}")
+async def remove_pin(slug: str, social_target_id: int, request: Request) -> dict[str, Any]:
     """Unpin an entity from the workspace landing (admin only)."""
     require_admin(request)
     factory = request.app.state.session_factory
@@ -232,9 +220,7 @@ async def remove_pin(
 
 
 @router.patch("/api/workspaces/{slug}/pins/reorder")
-async def reorder_pins(
-    slug: str, request: Request
-) -> dict[str, Any]:
+async def reorder_pins(slug: str, request: Request) -> dict[str, Any]:
     """Re-apply ``pin_order`` from an admin-supplied id list.
 
     Body:
@@ -254,11 +240,15 @@ async def reorder_pins(
     factory = request.app.state.session_factory
     with factory() as session:
         ws = _resolve_workspace(session, slug)
-        pins = session.execute(
-            select(WorkspacePinnedEntity).where(
-                WorkspacePinnedEntity.workspace_id == ws.id,
+        pins = (
+            session.execute(
+                select(WorkspacePinnedEntity).where(
+                    WorkspacePinnedEntity.workspace_id == ws.id,
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         index_by_id = {int(pin.social_target_id): pin for pin in pins}
         for new_order, raw_target_id in enumerate(order):
             if not isinstance(raw_target_id, int):
@@ -281,13 +271,17 @@ async def workspace_activity(
     factory = request.app.state.session_factory
     with factory() as session:
         ws = _resolve_workspace(session, slug)
-        notifs = session.execute(
-            select(UserNotification)
-            .where(UserNotification.workspace_id == ws.id)
-            .order_by(UserNotification.created_at.desc())
-            .limit(paging.limit)
-            .offset(paging.offset)
-        ).scalars().all()
+        notifs = (
+            session.execute(
+                select(UserNotification)
+                .where(UserNotification.workspace_id == ws.id)
+                .order_by(UserNotification.created_at.desc())
+                .limit(paging.limit)
+                .offset(paging.offset)
+            )
+            .scalars()
+            .all()
+        )
         return {
             "workspace_slug": slug,
             "activity": [

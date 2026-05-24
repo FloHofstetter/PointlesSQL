@@ -1,4 +1,4 @@
-"""Tests for the Sprint 19 scheduler and job routes."""
+"""Tests for the scheduler and job routes."""
 
 from __future__ import annotations
 

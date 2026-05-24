@@ -41,9 +41,7 @@ def test_normalize_parameters_round_trip() -> None:
 def test_normalize_parameters_rejects_duplicate() -> None:
     """Duplicate parameter names raise."""
     with pytest.raises(ValidationError):
-        svc.normalize_parameters(
-            [{"name": "x", "type": "string"}, {"name": "x", "type": "string"}]
-        )
+        svc.normalize_parameters([{"name": "x", "type": "string"}, {"name": "x", "type": "string"}])
 
 
 def test_normalize_parameters_rejects_bad_type() -> None:
@@ -55,9 +53,7 @@ def test_normalize_parameters_rejects_bad_type() -> None:
 def test_cross_check_placeholders_detects_missing() -> None:
     """A ``${name}`` without a declaration raises."""
     with pytest.raises(ValidationError):
-        svc.cross_check_placeholders(
-            "SELECT * FROM t WHERE c = ${nope}", []
-        )
+        svc.cross_check_placeholders("SELECT * FROM t WHERE c = ${nope}", [])
 
 
 def test_render_sql_with_params_swaps_placeholders() -> None:
@@ -79,32 +75,22 @@ def test_render_sql_with_params_swaps_placeholders() -> None:
 
 def test_render_sql_with_params_uses_default_when_absent() -> None:
     """Missing values fall back to the declared default."""
-    params = svc.normalize_parameters(
-        [{"name": "country", "type": "string", "default": "DE"}]
-    )
-    _, binds = svc.render_sql_with_params(
-        "SELECT * FROM t WHERE c = ${country}", params, {}
-    )
+    params = svc.normalize_parameters([{"name": "country", "type": "string", "default": "DE"}])
+    _, binds = svc.render_sql_with_params("SELECT * FROM t WHERE c = ${country}", params, {})
     assert binds == ["DE"]
 
 
 def test_render_sql_with_params_required_missing_raises() -> None:
     """A required parameter with no value raises."""
-    params = svc.normalize_parameters(
-        [{"name": "country", "type": "string", "required": True}]
-    )
+    params = svc.normalize_parameters([{"name": "country", "type": "string", "required": True}])
     with pytest.raises(ValidationError):
-        svc.render_sql_with_params(
-            "SELECT * FROM t WHERE c = ${country}", params, {}
-        )
+        svc.render_sql_with_params("SELECT * FROM t WHERE c = ${country}", params, {})
 
 
 def test_render_sql_with_params_coerces_integer() -> None:
     """Strings supplied for integer parameters are coerced."""
     params = svc.normalize_parameters([{"name": "n", "type": "integer"}])
-    _, binds = svc.render_sql_with_params(
-        "SELECT * FROM t WHERE n = ${n}", params, {"n": "42"}
-    )
+    _, binds = svc.render_sql_with_params("SELECT * FROM t WHERE n = ${n}", params, {"n": "42"})
     assert binds == [42]
 
 

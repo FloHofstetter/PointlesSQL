@@ -39,7 +39,7 @@ CELLS_TEXT_KEY = "cells_text"
 
 # Compaction thresholds — re-serialise the live Doc once the persisted
 # blob crosses :data:`COMPACTION_SIZE_BYTES` or :data:`COMPACTION_TTL`
-# elapses since the last compaction.  Sprint 105.8 wires a worker that
+# elapses since the last compaction. This wires a worker that
 # walks every row through :func:`compact`.
 COMPACTION_SIZE_BYTES = 256 * 1024
 COMPACTION_TTL = datetime.timedelta(hours=24)
@@ -91,9 +91,7 @@ def get_or_init_ydoc(
     if session.get(Notebook, notebook_id) is None:
         raise ValidationError(f"notebook {notebook_id!r} not found")
     row = session.execute(
-        select(NotebookCrdtState).where(
-            NotebookCrdtState.notebook_id == notebook_id
-        )
+        select(NotebookCrdtState).where(NotebookCrdtState.notebook_id == notebook_id)
     ).scalar_one_or_none()
     if row is not None and row.y_doc_blob:
         doc = _build_empty_doc()
@@ -162,9 +160,7 @@ def apply_update(
     return blob
 
 
-def encode_state_as_update(
-    session: Session, *, notebook_id: str
-) -> bytes:
+def encode_state_as_update(session: Session, *, notebook_id: str) -> bytes:
     """Return the current blob for an initial-sync push to a client.
 
     The WS hub calls this on every new connection so the client's
@@ -182,9 +178,7 @@ def encode_state_as_update(
         empty replica and the first save merges them).
     """
     row = session.execute(
-        select(NotebookCrdtState).where(
-            NotebookCrdtState.notebook_id == notebook_id
-        )
+        select(NotebookCrdtState).where(NotebookCrdtState.notebook_id == notebook_id)
     ).scalar_one_or_none()
     if row is None:
         return b""
@@ -223,7 +217,7 @@ def compact(session: Session, *, notebook_id: str) -> bytes:
 def needs_compaction(row: NotebookCrdtState) -> bool:
     """Heuristic gate — ``True`` once a row crosses size or TTL bounds.
 
-    Used by the Sprint 105.8 compaction worker to throttle the work.
+    Used by the compaction worker to throttle the work.
     Pure function over the row so the worker can batch decisions
     without hitting the live Doc.
     """
@@ -259,9 +253,7 @@ def _upsert_state(
         The persisted row.
     """
     row = session.execute(
-        select(NotebookCrdtState).where(
-            NotebookCrdtState.notebook_id == notebook_id
-        )
+        select(NotebookCrdtState).where(NotebookCrdtState.notebook_id == notebook_id)
     ).scalar_one_or_none()
     now = datetime.datetime.now(datetime.UTC)
     if row is None:
@@ -289,7 +281,7 @@ def flush_doc(
 ) -> bytes:
     """Persist *doc*'s current state without touching the live replica.
 
-    The Sprint 105.2 WS hub holds the authoritative :class:`Doc` in
+    The WS hub holds the authoritative :class:`Doc` in
     memory and edits it directly under the hub's per-notebook lock;
     this helper just snapshots that in-memory replica back to the
     sidecar row.  Distinct from :func:`apply_update` (which builds a

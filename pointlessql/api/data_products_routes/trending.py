@@ -76,9 +76,7 @@ async def data_products_trending_page(
     """Render the trending board HTML."""
     user = get_user(request)
     if user["id"] == 0:
-        return RedirectResponse(
-            url="/auth/login?next=/data-products/trending", status_code=303
-        )
+        return RedirectResponse(url="/auth/login?next=/data-products/trending", status_code=303)
     workspace_id = current_workspace_id(request)
     factory = request.app.state.session_factory
     with factory() as session:

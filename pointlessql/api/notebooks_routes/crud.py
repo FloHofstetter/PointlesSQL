@@ -46,9 +46,7 @@ async def api_create_notebook(
         raise ValidationError("body.path must be a string")
     settings: Settings = request.app.state.settings
     notebooks_dir = settings.jupyter.notebooks_dir.resolve()
-    resolved = notebook_workspace_service.create_empty_notebook(
-        notebooks_dir, raw_path
-    )
+    resolved = notebook_workspace_service.create_empty_notebook(notebooks_dir, raw_path)
     relative = str(resolved.relative_to(notebooks_dir))
     logger.info(
         "created notebook %s (%s)",

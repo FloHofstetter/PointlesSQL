@@ -1,4 +1,4 @@
-"""Tests for the Sprint 33.2 ``GET /admin/audit-sinks`` HTML page.
+"""Tests for the ``GET /admin/audit-sinks`` HTML page.
 
 The JSON CRUD under ``/api/admin/audit-sinks`` already has its own
 test suite (``test_audit_sinks_routes.py``); this file exercises

@@ -48,9 +48,7 @@ async def test_mute_thread_drops_matching_rows(
         "/api/social/table/main.sales.orders/comments",
         json={"body_md": "mute-target fixture"},
     )
-    before = await admin_client.get(
-        "/api/feed?filter=followed_users&kind=table&limit=200"
-    )
+    before = await admin_client.get("/api/feed?filter=followed_users&kind=table&limit=200")
     # Mute regardless of whether the seed row landed in this fixture
     # (followed-users overlay isn't guaranteed without a follow row);
     # the next assertion is the contract we care about.
@@ -64,9 +62,9 @@ async def test_mute_thread_drops_matching_rows(
 
     after = await admin_client.get("/api/feed?filter=all&limit=200")
     matching = [
-        r for r in after.json()["rows"]
-        if r.get("entity_kind") == "table"
-        and r.get("entity_ref") == "main.sales.orders"
+        r
+        for r in after.json()["rows"]
+        if r.get("entity_kind") == "table" and r.get("entity_ref") == "main.sales.orders"
     ]
     assert matching == []
 

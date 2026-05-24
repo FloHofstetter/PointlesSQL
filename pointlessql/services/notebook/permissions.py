@@ -46,9 +46,7 @@ def role_satisfies(have: str | None, need: str) -> bool:
 def _check_role(role: str) -> None:
     """Reject role strings outside :data:`VALID_ROLES`."""
     if role not in VALID_ROLES:
-        raise ValidationError(
-            f"role must be one of {VALID_ROLES}; got {role!r}"
-        )
+        raise ValidationError(f"role must be one of {VALID_ROLES}; got {role!r}")
 
 
 def grant_permission(
@@ -99,9 +97,7 @@ def grant_permission(
     return row
 
 
-def revoke_permission(
-    session: Session, *, notebook_id: str, user_id: int
-) -> bool:
+def revoke_permission(session: Session, *, notebook_id: str, user_id: int) -> bool:
     """Delete one ``(notebook, user)`` grant; idempotent.
 
     Args:
@@ -125,9 +121,7 @@ def revoke_permission(
     return True
 
 
-def list_permissions(
-    session: Session, *, notebook_id: str
-) -> list[dict[str, Any]]:
+def list_permissions(session: Session, *, notebook_id: str) -> list[dict[str, Any]]:
     """Return every explicit grant on a notebook.
 
     Args:
@@ -137,11 +131,15 @@ def list_permissions(
     Returns:
         List of dicts ``{user_id, role, granted_at, granted_by_user_id}``.
     """
-    rows = session.execute(
-        select(NotebookPermission)
-        .where(NotebookPermission.notebook_id == notebook_id)
-        .order_by(NotebookPermission.granted_at.asc(), NotebookPermission.id.asc())
-    ).scalars().all()
+    rows = (
+        session.execute(
+            select(NotebookPermission)
+            .where(NotebookPermission.notebook_id == notebook_id)
+            .order_by(NotebookPermission.granted_at.asc(), NotebookPermission.id.asc())
+        )
+        .scalars()
+        .all()
+    )
     return [
         {
             "user_id": r.user_id,
@@ -153,9 +151,7 @@ def list_permissions(
     ]
 
 
-def get_effective_role(
-    session: Session, *, notebook_id: str, user_id: int
-) -> str | None:
+def get_effective_role(session: Session, *, notebook_id: str, user_id: int) -> str | None:
     """Return the explicit role for one user on one notebook.
 
     Args:
@@ -206,9 +202,7 @@ def actor_has_role(
     """
     if is_admin:
         return True
-    have = get_effective_role(
-        session, notebook_id=notebook_id, user_id=user_id
-    )
+    have = get_effective_role(session, notebook_id=notebook_id, user_id=user_id)
     # workspace-default is the same role lattice as
     # ``run`` so existing "any authenticated user can open + execute"
     # behaviour is preserved when no explicit grant exists.  Explicit

@@ -67,9 +67,7 @@ def _serialise_milestone(m: IssueMilestone) -> dict[str, Any]:
 
 
 @router.get("/api/workspaces/{workspace_id}/labels")
-async def list_labels(
-    workspace_id: int, request: Request
-) -> dict[str, Any]:
+async def list_labels(workspace_id: int, request: Request) -> dict[str, Any]:
     """List every label registered for a workspace."""
     require_user(request)
     if workspace_id != current_workspace_id(request):
@@ -89,9 +87,7 @@ async def list_labels(
 
 
 @router.post("/api/workspaces/{workspace_id}/labels")
-async def create_label(
-    workspace_id: int, request: Request
-) -> dict[str, Any]:
+async def create_label(workspace_id: int, request: Request) -> dict[str, Any]:
     """Register a new label."""
     require_user(request)
     if workspace_id != current_workspace_id(request):
@@ -130,9 +126,7 @@ async def create_label(
 
 
 @router.delete("/api/workspaces/{workspace_id}/labels/{label_id}")
-async def delete_label(
-    workspace_id: int, label_id: int, request: Request
-) -> dict[str, Any]:
+async def delete_label(workspace_id: int, label_id: int, request: Request) -> dict[str, Any]:
     """Drop a label.  Existing issue label-arrays are NOT updated."""
     require_user(request)
     if workspace_id != current_workspace_id(request):
@@ -158,9 +152,7 @@ async def delete_label(
 
 
 @router.get("/api/workspaces/{workspace_id}/milestones")
-async def list_milestones(
-    workspace_id: int, request: Request
-) -> dict[str, Any]:
+async def list_milestones(workspace_id: int, request: Request) -> dict[str, Any]:
     """List every milestone for a workspace."""
     require_user(request)
     if workspace_id != current_workspace_id(request):
@@ -180,9 +172,7 @@ async def list_milestones(
 
 
 @router.post("/api/workspaces/{workspace_id}/milestones")
-async def create_milestone(
-    workspace_id: int, request: Request
-) -> dict[str, Any]:
+async def create_milestone(workspace_id: int, request: Request) -> dict[str, Any]:
     """Create a milestone."""
     require_user(request)
     if workspace_id != current_workspace_id(request):
@@ -196,9 +186,7 @@ async def create_milestone(
         raise BadRequestError("title is required")
     title: str = title_raw
     description_raw = payload.get("description_md")
-    description_md: str | None = (
-        description_raw if isinstance(description_raw, str) else None
-    )
+    description_md: str | None = description_raw if isinstance(description_raw, str) else None
     due_at_raw = payload.get("due_at")
     due_at: datetime.datetime | None = None
     if due_at_raw is not None:
@@ -239,9 +227,7 @@ async def delete_milestone(
             )
         ).scalar_one_or_none()
         if m is None:
-            raise ResourceNotFoundError.not_found(
-                what=f"milestone id={milestone_id}"
-            )
+            raise ResourceNotFoundError.not_found(what=f"milestone id={milestone_id}")
         session.delete(m)
         session.commit()
     return {"deleted": True, "id": milestone_id}

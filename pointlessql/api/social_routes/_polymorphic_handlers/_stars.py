@@ -29,9 +29,7 @@ from pointlessql.services.social.audit_mirror import mirror_social_to_audit
 # ---------------------------------------------------------------------------
 
 
-async def get_polymorphic_star(
-    kind: str, ref: str, request: Request
-) -> dict[str, Any]:
+async def get_polymorphic_star(kind: str, ref: str, request: Request) -> dict[str, Any]:
     """Return the star count for the entity + whether caller starred it.
 
     Args:
@@ -65,9 +63,7 @@ async def get_polymorphic_star(
     return {"starred": mine is not None, "count": int(count)}
 
 
-async def star_polymorphic_entity(
-    kind: str, ref: str, request: Request
-) -> dict[str, Any]:
+async def star_polymorphic_entity(kind: str, ref: str, request: Request) -> dict[str, Any]:
     """Idempotently star a polymorphic entity.
 
     Args:
@@ -125,9 +121,7 @@ async def star_polymorphic_entity(
     return {"starred": True, "count": int(count)}
 
 
-async def unstar_polymorphic_entity(
-    kind: str, ref: str, request: Request
-) -> dict[str, Any]:
+async def unstar_polymorphic_entity(kind: str, ref: str, request: Request) -> dict[str, Any]:
     """Idempotently unstar a polymorphic entity."""
     from sqlalchemy import delete as _delete
 
@@ -224,5 +218,3 @@ async def list_user_stars(
         for star, target in rows
     ]
     return {"user_id": user_id, "count": len(stars), "stars": stars}
-
-

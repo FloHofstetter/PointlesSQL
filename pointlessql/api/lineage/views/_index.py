@@ -12,7 +12,7 @@ router = APIRouter(tags=["lineage"])
 
 @router.get("/lineage", response_class=HTMLResponse)
 async def lineage_index_page(request: Request) -> HTMLResponse:
-    """Render the Lineage explorer index — Phase 80.4.
+    """Render the Lineage explorer index.
 
     Standalone landing page surfacing the three primary lineage
     actions (trace a row, trace a column, browse recent traces).

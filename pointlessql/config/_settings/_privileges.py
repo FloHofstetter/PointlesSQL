@@ -1,6 +1,6 @@
 """Feature-flag scaffolding for the privilege subsystem.
 
-Phase 121.4 introduces ``enforce_global_privilege_gate`` as the
+introduces ``enforce_global_privilege_gate`` as the
 opt-in switch for future per-action privilege gates.  The codebase
 currently uses seven hand-rolled ``require_*`` gates for static role
 checks (``require_admin`` / ``require_supervisor`` /

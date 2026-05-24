@@ -1,4 +1,4 @@
-"""Tests for Phase 97 Rest — pin-to-memory notebook revision facts."""
+"""Tests Rest — pin-to-memory notebook revision facts."""
 
 from __future__ import annotations
 
@@ -262,9 +262,7 @@ def test_list_facts_returns_active_only_by_default(
         facts_service.unpin_fact(session, fact_uuid=old.fact_uuid)
         session.commit()
         only_active = facts_service.list_facts(session, workspace_id=1)
-        all_incl = facts_service.list_facts(
-            session, workspace_id=1, include_unpinned=True
-        )
+        all_incl = facts_service.list_facts(session, workspace_id=1, include_unpinned=True)
         assert {r.fact_uuid for r in only_active} == {active.fact_uuid}
         assert {r.fact_uuid for r in all_incl} == {
             active.fact_uuid,
@@ -325,9 +323,7 @@ def test_get_fact_detail_expands_revision_uuid_and_notebook(
             pinned_by_user_id=1,
         )
         session.commit()
-        envelope = facts_service.get_fact_detail(
-            session, fact_uuid=row.fact_uuid
-        )
+        envelope = facts_service.get_fact_detail(session, fact_uuid=row.fact_uuid)
         assert envelope is not None
         assert envelope["revision_uuid"] == rev_uuid
         assert envelope["notebook_id"] == nb_id
@@ -355,9 +351,7 @@ def test_pql_facade_pin_explicit_kwargs(
     assert row.title == "from facade"
     assert row.pinned_by_user_id == 99
     # Round-trip via list_facts_for_notebook
-    envelopes = facts_facade.list_facts_for_notebook(
-        workspace_id=1, session_factory=factory
-    )
+    envelopes = facts_facade.list_facts_for_notebook(workspace_id=1, session_factory=factory)
     assert any(e["fact_uuid"] == row.fact_uuid for e in envelopes)
 
 
@@ -389,9 +383,7 @@ def workspace_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 
 
 def _write_notebook(workspace_dir: Path, name: str = "facts.py") -> None:
-    (workspace_dir / name).write_text(
-        "# %% [markdown]\n# # Heading\n\n# %%\nx = 1\n"
-    )
+    (workspace_dir / name).write_text("# %% [markdown]\n# # Heading\n\n# %%\nx = 1\n")
 
 
 async def test_api_pin_and_list_roundtrip(
@@ -399,9 +391,7 @@ async def test_api_pin_and_list_roundtrip(
 ) -> None:
     """POST creates a fact, GET surfaces it in the workspace list."""
     _write_notebook(workspace_dir)
-    await admin_client.post(
-        "/api/notebooks/create", json={"path": "facts.py"}
-    )
+    await admin_client.post("/api/notebooks/create", json={"path": "facts.py"})
     create_rev = await admin_client.post(
         "/api/notebooks/revisions",
         json={"path": "facts.py", "message": "pin-source"},
@@ -431,12 +421,8 @@ async def test_api_bulk_lookup_groups_by_cell_hash(
 ) -> None:
     """``GET /api/notebooks/facts/bulk`` returns active per-cell facts."""
     _write_notebook(workspace_dir)
-    await admin_client.post(
-        "/api/notebooks/create", json={"path": "facts.py"}
-    )
-    create_rev = await admin_client.post(
-        "/api/notebooks/revisions", json={"path": "facts.py"}
-    )
+    await admin_client.post("/api/notebooks/create", json={"path": "facts.py"})
+    create_rev = await admin_client.post("/api/notebooks/revisions", json={"path": "facts.py"})
     rev_uuid = create_rev.json()["revision_uuid"]
     # Pin two cell-output facts on two different content hashes.
     await admin_client.post(
@@ -456,8 +442,7 @@ async def test_api_bulk_lookup_groups_by_cell_hash(
         },
     )
     bulk = await admin_client.get(
-        "/api/notebooks/facts/bulk"
-        "?notebook_path=facts.py&cell_content_hashes=hA,hB,hMissing"
+        "/api/notebooks/facts/bulk?notebook_path=facts.py&cell_content_hashes=hA,hB,hMissing"
     )
     assert bulk.status_code == 200
     payload = bulk.json()
@@ -484,12 +469,8 @@ async def test_api_unpin_hides_from_default_list(
 ) -> None:
     """DELETE flips the row inactive; default list excludes it."""
     _write_notebook(workspace_dir)
-    await admin_client.post(
-        "/api/notebooks/create", json={"path": "facts.py"}
-    )
-    create_rev = await admin_client.post(
-        "/api/notebooks/revisions", json={"path": "facts.py"}
-    )
+    await admin_client.post("/api/notebooks/create", json={"path": "facts.py"})
+    create_rev = await admin_client.post("/api/notebooks/revisions", json={"path": "facts.py"})
     rev_uuid = create_rev.json()["revision_uuid"]
     pin = await admin_client.post(
         "/api/notebooks/facts",
@@ -497,9 +478,7 @@ async def test_api_unpin_hides_from_default_list(
     )
     fact_uuid = pin.json()["fact_uuid"]
 
-    unpinned = await admin_client.delete(
-        f"/api/notebooks/facts/{fact_uuid}"
-    )
+    unpinned = await admin_client.delete(f"/api/notebooks/facts/{fact_uuid}")
     assert unpinned.status_code == 200
     body = unpinned.json()
     assert body["unpinned_at"] is not None
@@ -509,9 +488,5 @@ async def test_api_unpin_hides_from_default_list(
     assert all(f["fact_uuid"] != fact_uuid for f in listing.json()["facts"])
 
     # But include_unpinned=true surfaces it again.
-    audit_listing = await admin_client.get(
-        "/api/notebooks/facts?include_unpinned=true"
-    )
-    assert any(
-        f["fact_uuid"] == fact_uuid for f in audit_listing.json()["facts"]
-    )
+    audit_listing = await admin_client.get("/api/notebooks/facts?include_unpinned=true")
+    assert any(f["fact_uuid"] == fact_uuid for f in audit_listing.json()["facts"])

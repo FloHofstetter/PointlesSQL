@@ -1,4 +1,4 @@
-"""Tests for the Phase-18 audit aggregator service + cockpit endpoints.
+"""Tests for the audit aggregator service + cockpit endpoints.
 
 The service layer (:mod:`pointlessql.services.audit_aggregator`) is
 covered with seeded fixtures; the route layer

@@ -1,7 +1,7 @@
 """IngestSource model round-trip + index uniqueness.
 
 Smoke-tests that the ORM model maps cleanly to its alembic-managed
-table.  The route layer in Phase 82.1 is what enforces JSON validity
+table.  The route layer is what enforces JSON validity
 on ``config`` / ``secrets`` / ``table_mappings`` — these tests only
 make sure the column types and unique constraint behave.
 """
@@ -87,15 +87,11 @@ def test_ingest_source_name_unique_per_workspace() -> None:
     """Two sources with the same ``(workspace_id, name)`` violate UNIQUE."""
     factory = app.state.session_factory
     with factory() as session:
-        session.add(
-            _make_source(workspace_id=1, owner_user_id=1, name="duplicate-name")
-        )
+        session.add(_make_source(workspace_id=1, owner_user_id=1, name="duplicate-name"))
         session.commit()
 
     with factory() as session:
-        session.add(
-            _make_source(workspace_id=1, owner_user_id=1, name="duplicate-name")
-        )
+        session.add(_make_source(workspace_id=1, owner_user_id=1, name="duplicate-name"))
         with pytest.raises(IntegrityError):
             session.commit()
         session.rollback()

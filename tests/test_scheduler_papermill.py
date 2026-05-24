@@ -1,4 +1,4 @@
-"""Tests for the Sprint 24 papermill executor and Sprint 26 run routes."""
+"""Tests for the papermill executor and Sprint 26 run routes."""
 
 from __future__ import annotations
 
@@ -222,7 +222,7 @@ async def test_executor_papermill_execution_error_becomes_engine_error(
         )
 
 
-# -- Sprint 26: /jobs/{id}/runs/{rid}/notebook + /download routes --
+# -- /jobs/{id}/runs/{rid}/notebook + /download routes --
 
 
 def _minimal_ipynb_source() -> str:

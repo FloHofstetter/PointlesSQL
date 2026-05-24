@@ -1,4 +1,4 @@
-"""Tests for the Phase 75.2 stdout-JSON audit sink."""
+"""Tests for the stdout-JSON audit sink."""
 
 from __future__ import annotations
 

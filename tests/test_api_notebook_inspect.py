@@ -41,9 +41,7 @@ async def test_no_params_cell_returns_empty(
     assert resp.json() == []
 
 
-async def test_single_param_extracted(
-    workspace_dir: Path, admin_client: httpx.AsyncClient
-) -> None:
+async def test_single_param_extracted(workspace_dir: Path, admin_client: httpx.AsyncClient) -> None:
     """``# %% tags=["parameters"]`` + ``x = 1`` → one entry."""
     body = '# %% tags=["parameters"]\nx = 1\n\n# %%\nprint(x)\n'
     _write(workspace_dir, "single.py", body)
@@ -75,13 +73,9 @@ async def test_typed_param_with_default(
     assert names == {"cutoff_date", "window_days"}
 
 
-async def test_traversal_blocked(
-    workspace_dir: Path, admin_client: httpx.AsyncClient
-) -> None:
+async def test_traversal_blocked(workspace_dir: Path, admin_client: httpx.AsyncClient) -> None:
     """``../`` escape attempts must 422 before touching the filesystem."""
-    resp = await admin_client.get(
-        "/api/notebooks/inspect", params={"path": "../escape.py"}
-    )
+    resp = await admin_client.get("/api/notebooks/inspect", params={"path": "../escape.py"})
     assert resp.status_code == 422
 
 
@@ -90,7 +84,5 @@ async def test_non_admin_accessible(
 ) -> None:
     """any authenticated user can introspect notebooks."""
     _write(workspace_dir, "x.py", "# %%\nx = 1\n")
-    resp = await non_admin_client.get(
-        "/api/notebooks/inspect", params={"path": "x.py"}
-    )
+    resp = await non_admin_client.get("/api/notebooks/inspect", params={"path": "x.py"})
     assert resp.status_code == 200

@@ -1,7 +1,6 @@
 """Governance CloudEvents emitter.
 
-Five governance event types fan out to ``audit_sinks`` (the Phase
-20 forwarder pluggable destination set):
+Five governance event types fan out to ``audit_sinks`` (the forwarder pluggable destination set):
 
 * ``pointlessql.external_write.detected``.3 scanner found
   a Delta commit not attributed to any agent run.
@@ -85,28 +84,18 @@ EVENT_TYPE_DATA_PRODUCT_COMMENTED = "pointlessql.data_product.commented"
 EVENT_TYPE_DATA_PRODUCT_REVIEWED = "pointlessql.data_product.reviewed"
 EVENT_TYPE_DATA_PRODUCT_FOLLOWED = "pointlessql.data_product.followed"
 EVENT_TYPE_DATA_PRODUCT_SCHEMA_CHANGED = "pointlessql.data_product.schema_changed"
-EVENT_TYPE_DATA_PRODUCT_CONTRACT_VIOLATED = (
-    "pointlessql.data_product.contract_violated"
-)
-EVENT_TYPE_DATA_PRODUCT_PROPOSAL_OPENED = (
-    "pointlessql.data_product.proposal_opened"
-)
-EVENT_TYPE_DATA_PRODUCT_PROPOSAL_RESOLVED = (
-    "pointlessql.data_product.proposal_resolved"
-)
+EVENT_TYPE_DATA_PRODUCT_CONTRACT_VIOLATED = "pointlessql.data_product.contract_violated"
+EVENT_TYPE_DATA_PRODUCT_PROPOSAL_OPENED = "pointlessql.data_product.proposal_opened"
+EVENT_TYPE_DATA_PRODUCT_PROPOSAL_RESOLVED = "pointlessql.data_product.proposal_resolved"
 # six-emoji reactions on comments + on the product
 # itself, plus the typed-Q&A "answer accepted" event.  Same
 # governance lane as the rest of the marketplace events; the
 # fanout-side recipient policy differs (comment reactions only
 # notify the comment author; DP reactions notify followers; an
 # accepted answer notifies the answer's author + the asker).
-EVENT_TYPE_DATA_PRODUCT_COMMENT_REACTED = (
-    "pointlessql.data_product.comment_reacted"
-)
+EVENT_TYPE_DATA_PRODUCT_COMMENT_REACTED = "pointlessql.data_product.comment_reacted"
 EVENT_TYPE_DATA_PRODUCT_REACTED = "pointlessql.data_product.reacted"
-EVENT_TYPE_DATA_PRODUCT_ANSWER_ACCEPTED = (
-    "pointlessql.data_product.answer_accepted"
-)
+EVENT_TYPE_DATA_PRODUCT_ANSWER_ACCEPTED = "pointlessql.data_product.answer_accepted"
 # user-to-user follow signal.  Recipient is the
 # followed user (single inbox row), governance envelope carries
 # follower + followed ids for SIEM correlation.

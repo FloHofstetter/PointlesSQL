@@ -1,4 +1,4 @@
-"""Tests for Phase 104 — NL→Notebook cell-sequence proposals."""
+"""Tests — NL→Notebook cell-sequence proposals."""
 
 from __future__ import annotations
 
@@ -129,22 +129,16 @@ def test_accept_then_discard_double_terminal_raises(
             cells=[{"cell_type": "code", "source": "1"}],
         )
         proposal_id = row.proposal_id
-        cell_sequence_proposals_service.accept_sequence(
-            session, proposal_id=proposal_id
-        )
+        cell_sequence_proposals_service.accept_sequence(session, proposal_id=proposal_id)
         with pytest.raises(ValidationError):
-            cell_sequence_proposals_service.discard_sequence(
-                session, proposal_id=proposal_id
-            )
+            cell_sequence_proposals_service.discard_sequence(session, proposal_id=proposal_id)
 
 
 def test_accept_unknown_raises(factory: sessionmaker) -> None:  # type: ignore[type-arg]
     """Unknown proposal_id raises."""
     with factory() as session:
         with pytest.raises(ValidationError):
-            cell_sequence_proposals_service.accept_sequence(
-                session, proposal_id="0" * 36
-            )
+            cell_sequence_proposals_service.accept_sequence(session, proposal_id="0" * 36)
 
 
 def test_propose_sequence_rejects_bad_cell_type(
@@ -174,9 +168,7 @@ def test_list_pending_excludes_terminal(
             prompt="x",
             cells=[{"cell_type": "code", "source": "1"}],
         )
-        cell_sequence_proposals_service.discard_sequence(
-            session, proposal_id=row.proposal_id
-        )
+        cell_sequence_proposals_service.discard_sequence(session, proposal_id=row.proposal_id)
         cell_sequence_proposals_service.propose_sequence(
             session,
             chat_session_id=sid,
@@ -232,7 +224,5 @@ async def test_api_get_unknown_sequence_returns_422(
 ) -> None:
     """Fetching an unknown proposal returns 422."""
     fake = "0" * 36
-    resp = await admin_client.get(
-        f"/api/notebook/chat/sequences/{fake}"
-    )
+    resp = await admin_client.get(f"/api/notebook/chat/sequences/{fake}")
     assert resp.status_code == 422

@@ -14,7 +14,7 @@
  *
  * Filename is left as icon_rail.css to avoid breaking the asset
  * pipeline reference in base.html / style.css; the component renamed
- * its template to primary_rail.html.  See Phase 80 plan.
+ * its template to primary_rail.html.plan.
  * ------------------------------------------------------------- */
 
 .pql-icon-rail {

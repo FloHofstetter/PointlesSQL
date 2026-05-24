@@ -3,8 +3,7 @@
 Marker round-trips, service-level validation, and the FastAPI POST
 endpoint with supervisor-scope enforcement.  HTTP-level soyuz
 patching is mocked at the ``UnityCatalogClient`` boundary; the
-typed-client wire layer is already covered by Sprint 21.1
-conformance tests.
+typed-client wire layer is already covered conformance tests.
 """
 
 from __future__ import annotations

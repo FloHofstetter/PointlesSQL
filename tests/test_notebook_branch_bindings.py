@@ -1,4 +1,4 @@
-"""Tests for Phase 102 — per-notebook Delta-branch bindings."""
+"""Tests — per-notebook Delta-branch bindings."""
 
 from __future__ import annotations
 
@@ -93,9 +93,7 @@ def test_promote_records_lifecycle(factory: sessionmaker) -> None:  # type: igno
     """Promote sets promoted_at + supersedes the row."""
     nb_id = _seed_notebook(factory)
     with factory() as session:
-        notebook_branch_bindings_service.bind_branch(
-            session, notebook_id=nb_id, branch_name="exp"
-        )
+        notebook_branch_bindings_service.bind_branch(session, notebook_id=nb_id, branch_name="exp")
         session.commit()
         promoted = notebook_branch_bindings_service.promote_binding(
             session, notebook_id=nb_id, promoted_by_user_id=None
@@ -110,27 +108,19 @@ def test_promote_without_binding_raises(factory: sessionmaker) -> None:  # type:
     nb_id = _seed_notebook(factory)
     with factory() as session:
         with pytest.raises(ValidationError):
-            notebook_branch_bindings_service.promote_binding(
-                session, notebook_id=nb_id
-            )
+            notebook_branch_bindings_service.promote_binding(session, notebook_id=nb_id)
 
 
 def test_discard_idempotent(factory: sessionmaker) -> None:  # type: ignore[type-arg]
     """Second discard returns None (no row left)."""
     nb_id = _seed_notebook(factory)
     with factory() as session:
-        notebook_branch_bindings_service.bind_branch(
-            session, notebook_id=nb_id, branch_name="exp"
-        )
+        notebook_branch_bindings_service.bind_branch(session, notebook_id=nb_id, branch_name="exp")
         session.commit()
-        first = notebook_branch_bindings_service.discard_binding(
-            session, notebook_id=nb_id
-        )
+        first = notebook_branch_bindings_service.discard_binding(session, notebook_id=nb_id)
         assert first is not None
         session.commit()
-        second = notebook_branch_bindings_service.discard_binding(
-            session, notebook_id=nb_id
-        )
+        second = notebook_branch_bindings_service.discard_binding(session, notebook_id=nb_id)
         assert second is None
 
 
@@ -140,24 +130,15 @@ def test_get_current_binding_returns_active(
     """``get_current_binding`` returns the active row and ``None`` after discard."""
     nb_id = _seed_notebook(factory)
     with factory() as session:
-        notebook_branch_bindings_service.bind_branch(
-            session, notebook_id=nb_id, branch_name="exp"
-        )
+        notebook_branch_bindings_service.bind_branch(session, notebook_id=nb_id, branch_name="exp")
         session.commit()
-        envelope = notebook_branch_bindings_service.get_current_binding(
-            session, notebook_id=nb_id
-        )
+        envelope = notebook_branch_bindings_service.get_current_binding(session, notebook_id=nb_id)
         assert envelope is not None
         assert envelope["branch_name"] == "exp"
-        notebook_branch_bindings_service.discard_binding(
-            session, notebook_id=nb_id
-        )
+        notebook_branch_bindings_service.discard_binding(session, notebook_id=nb_id)
         session.commit()
         assert (
-            notebook_branch_bindings_service.get_current_binding(
-                session, notebook_id=nb_id
-            )
-            is None
+            notebook_branch_bindings_service.get_current_binding(session, notebook_id=nb_id) is None
         )
 
 
@@ -165,17 +146,11 @@ def test_list_bindings_history(factory: sessionmaker) -> None:  # type: ignore[t
     """``list_bindings`` returns historical rows newest first."""
     nb_id = _seed_notebook(factory)
     with factory() as session:
-        notebook_branch_bindings_service.bind_branch(
-            session, notebook_id=nb_id, branch_name="a"
-        )
+        notebook_branch_bindings_service.bind_branch(session, notebook_id=nb_id, branch_name="a")
         session.commit()
-        notebook_branch_bindings_service.bind_branch(
-            session, notebook_id=nb_id, branch_name="b"
-        )
+        notebook_branch_bindings_service.bind_branch(session, notebook_id=nb_id, branch_name="b")
         session.commit()
-        rows = notebook_branch_bindings_service.list_bindings(
-            session, notebook_id=nb_id
-        )
+        rows = notebook_branch_bindings_service.list_bindings(session, notebook_id=nb_id)
         names = [r["branch_name"] for r in rows]
         assert names[0] == "b" and names[1] == "a"
 
@@ -192,14 +167,10 @@ def workspace_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     return root
 
 
-async def test_api_branch_lifecycle(
-    workspace_dir: Path, admin_client: httpx.AsyncClient
-) -> None:
+async def test_api_branch_lifecycle(workspace_dir: Path, admin_client: httpx.AsyncClient) -> None:
     """bind → get → promote round-trip via REST."""
     await admin_client.post("/api/notebooks/create", json={"path": "x.py"})
-    none = await admin_client.get(
-        "/api/notebooks/branch", params={"path": "x.py"}
-    )
+    none = await admin_client.get("/api/notebooks/branch", params={"path": "x.py"})
     assert none.json()["current"] is None
 
     bound = await admin_client.post(
@@ -210,26 +181,18 @@ async def test_api_branch_lifecycle(
     assert bound.json()["branch_name"] == "exp1"
     assert bound.json()["is_current"] is True
 
-    got = await admin_client.get(
-        "/api/notebooks/branch", params={"path": "x.py"}
-    )
+    got = await admin_client.get("/api/notebooks/branch", params={"path": "x.py"})
     assert got.json()["current"]["branch_name"] == "exp1"
 
-    promoted = await admin_client.post(
-        "/api/notebooks/branch/promote", json={"path": "x.py"}
-    )
+    promoted = await admin_client.post("/api/notebooks/branch/promote", json={"path": "x.py"})
     assert promoted.status_code == 200
     assert promoted.json()["promoted_at"] is not None
 
-    after = await admin_client.get(
-        "/api/notebooks/branch", params={"path": "x.py"}
-    )
+    after = await admin_client.get("/api/notebooks/branch", params={"path": "x.py"})
     assert after.json()["current"] is None
 
 
-async def test_api_branch_history(
-    workspace_dir: Path, admin_client: httpx.AsyncClient
-) -> None:
+async def test_api_branch_history(workspace_dir: Path, admin_client: httpx.AsyncClient) -> None:
     """History endpoint surfaces every binding."""
     await admin_client.post("/api/notebooks/create", json={"path": "h.py"})
     for name in ("a", "b", "c"):
@@ -237,9 +200,7 @@ async def test_api_branch_history(
             "/api/notebooks/branch",
             json={"path": "h.py", "branch_name": name},
         )
-    listed = await admin_client.get(
-        "/api/notebooks/branch/history", params={"path": "h.py"}
-    )
+    listed = await admin_client.get("/api/notebooks/branch/history", params={"path": "h.py"})
     assert len(listed.json()["bindings"]) == 3
 
 
@@ -296,19 +257,13 @@ def test_promote_webhook_unset_skips_gate(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """No ``POINTLESSQL_BRANCH_PROMOTE_WEBHOOK_URL`` → no HTTP call."""
-    monkeypatch.delenv(
-        "POINTLESSQL_BRANCH_PROMOTE_WEBHOOK_URL", raising=False
-    )
+    monkeypatch.delenv("POINTLESSQL_BRANCH_PROMOTE_WEBHOOK_URL", raising=False)
     captured = _captured_webhook(monkeypatch)
     nb_id = _seed_notebook(factory)
     with factory() as session:
-        notebook_branch_bindings_service.bind_branch(
-            session, notebook_id=nb_id, branch_name="exp"
-        )
+        notebook_branch_bindings_service.bind_branch(session, notebook_id=nb_id, branch_name="exp")
         session.commit()
-        notebook_branch_bindings_service.promote_binding(
-            session, notebook_id=nb_id
-        )
+        notebook_branch_bindings_service.promote_binding(session, notebook_id=nb_id)
         session.commit()
     assert captured == {}
 
@@ -322,9 +277,7 @@ def test_promote_webhook_happy_path_with_signature(
         "POINTLESSQL_BRANCH_PROMOTE_WEBHOOK_URL",
         "https://shoreguard.test/approvals/ingest",
     )
-    monkeypatch.setenv(
-        "POINTLESSQL_BRANCH_PROMOTE_WEBHOOK_SECRET", "s3cret"
-    )
+    monkeypatch.setenv("POINTLESSQL_BRANCH_PROMOTE_WEBHOOK_SECRET", "s3cret")
     captured = _captured_webhook(monkeypatch, status_code=200)
 
     nb_id = _seed_notebook(factory)
@@ -363,7 +316,9 @@ def test_promote_webhook_happy_path_with_signature(
     import hmac
 
     expected = hmac.new(
-        b"s3cret", captured["content"], hashlib.sha256  # type: ignore[arg-type]
+        b"s3cret",
+        captured["content"],
+        hashlib.sha256,  # type: ignore[arg-type]
     ).hexdigest()
     assert sig == f"sha256={expected}"
 
@@ -377,19 +332,13 @@ def test_promote_webhook_omits_signature_without_secret(
         "POINTLESSQL_BRANCH_PROMOTE_WEBHOOK_URL",
         "https://reviewer.test/intake",
     )
-    monkeypatch.delenv(
-        "POINTLESSQL_BRANCH_PROMOTE_WEBHOOK_SECRET", raising=False
-    )
+    monkeypatch.delenv("POINTLESSQL_BRANCH_PROMOTE_WEBHOOK_SECRET", raising=False)
     captured = _captured_webhook(monkeypatch, status_code=200)
     nb_id = _seed_notebook(factory)
     with factory() as session:
-        notebook_branch_bindings_service.bind_branch(
-            session, notebook_id=nb_id, branch_name="exp"
-        )
+        notebook_branch_bindings_service.bind_branch(session, notebook_id=nb_id, branch_name="exp")
         session.commit()
-        notebook_branch_bindings_service.promote_binding(
-            session, notebook_id=nb_id
-        )
+        notebook_branch_bindings_service.promote_binding(session, notebook_id=nb_id)
         session.commit()
     headers = captured["headers"]  # type: ignore[assignment]
     assert isinstance(headers, dict)
@@ -405,26 +354,18 @@ def test_promote_webhook_denial_blocks_promote(
         "POINTLESSQL_BRANCH_PROMOTE_WEBHOOK_URL",
         "https://reviewer.test/intake",
     )
-    monkeypatch.delenv(
-        "POINTLESSQL_BRANCH_PROMOTE_WEBHOOK_SECRET", raising=False
-    )
+    monkeypatch.delenv("POINTLESSQL_BRANCH_PROMOTE_WEBHOOK_SECRET", raising=False)
     _captured_webhook(monkeypatch, status_code=403, body="policy denied")
     nb_id = _seed_notebook(factory)
     with factory() as session:
-        notebook_branch_bindings_service.bind_branch(
-            session, notebook_id=nb_id, branch_name="exp"
-        )
+        notebook_branch_bindings_service.bind_branch(session, notebook_id=nb_id, branch_name="exp")
         session.commit()
         with pytest.raises(ValidationError) as exc:
-            notebook_branch_bindings_service.promote_binding(
-                session, notebook_id=nb_id
-            )
+            notebook_branch_bindings_service.promote_binding(session, notebook_id=nb_id)
         assert "denied by reviewer" in str(exc.value)
         assert "policy denied" in str(exc.value)
         session.rollback()
-        current = notebook_branch_bindings_service.get_current_binding(
-            session, notebook_id=nb_id
-        )
+        current = notebook_branch_bindings_service.get_current_binding(session, notebook_id=nb_id)
         assert current is not None
         assert current["promoted_at"] is None
 
@@ -438,18 +379,12 @@ def test_promote_webhook_network_failure_denies_by_default(
         "POINTLESSQL_BRANCH_PROMOTE_WEBHOOK_URL",
         "https://reviewer.test/intake",
     )
-    _captured_webhook(
-        monkeypatch, raise_exc=RuntimeError("connection refused")
-    )
+    _captured_webhook(monkeypatch, raise_exc=RuntimeError("connection refused"))
     nb_id = _seed_notebook(factory)
     with factory() as session:
-        notebook_branch_bindings_service.bind_branch(
-            session, notebook_id=nb_id, branch_name="exp"
-        )
+        notebook_branch_bindings_service.bind_branch(session, notebook_id=nb_id, branch_name="exp")
         session.commit()
         with pytest.raises(ValidationError) as exc:
-            notebook_branch_bindings_service.promote_binding(
-                session, notebook_id=nb_id
-            )
+            notebook_branch_bindings_service.promote_binding(session, notebook_id=nb_id)
         assert "webhook unreachable" in str(exc.value)
         session.rollback()

@@ -4,7 +4,7 @@
  * Owns add / delete / move / convert operations on the cell list,
  * including the per-cell ``cellEditor`` lifecycle (mount, destroy,
  * re-mount on type change). Extracted from ``notebook_editor.js``
- * in Phase 70.6.
+ * .
  */
 
 import { cellEditor } from './cell_editor.js';

@@ -76,8 +76,7 @@ async def replay_endpoint(
         policy_enum = ReplayPolicy(body.policy)
     except ValueError as exc:
         raise BadRequestError(
-            f"unknown policy {body.policy!r}; "
-            f"must be one of {[p.value for p in ReplayPolicy]}"
+            f"unknown policy {body.policy!r}; must be one of {[p.value for p in ReplayPolicy]}"
         ) from exc
 
     settings = request.app.state.settings

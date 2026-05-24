@@ -67,9 +67,7 @@ def admin_user_id() -> int:
     factory = app.state.session_factory
     with factory() as session:
         return int(
-            session.execute(
-                select(User.id).where(User.email == "test@test.com")
-            ).scalar_one()
+            session.execute(select(User.id).where(User.email == "test@test.com")).scalar_one()
         )
 
 
@@ -79,9 +77,7 @@ def nonadmin_user_id() -> int:
     factory = app.state.session_factory
     with factory() as session:
         return int(
-            session.execute(
-                select(User.id).where(User.email == "nonadmin@test.com")
-            ).scalar_one()
+            session.execute(select(User.id).where(User.email == "nonadmin@test.com")).scalar_one()
         )
 
 
@@ -118,6 +114,7 @@ def test_fanout_event_dp_stamps_polymorphic_marker(
         from datetime import UTC, datetime
 
         from pointlessql.services.social import get_or_create_target
+
         anchor = get_or_create_target(
             session,
             workspace_id=1,
@@ -273,6 +270,7 @@ def test_fanout_event_honours_per_user_inbox_opt_out(
 
         # follower + opted-out pref
         from pointlessql.services.social import get_or_create_target
+
         anchor = get_or_create_target(
             session,
             workspace_id=1,
@@ -288,12 +286,8 @@ def test_fanout_event_honours_per_user_inbox_opt_out(
                 created_at=datetime.now(UTC),
             )
         )
-        user = session.execute(
-            select(User).where(User.id == nonadmin_user_id)
-        ).scalar_one()
-        user.notification_prefs_json = json.dumps(
-            {"phase77d.test.opt_out": {"inbox": False}}
-        )
+        user = session.execute(select(User).where(User.id == nonadmin_user_id)).scalar_one()
+        user.notification_prefs_json = json.dumps({"phase77d.test.opt_out": {"inbox": False}})
         session.commit()
     fanout_event(
         factory,
@@ -318,8 +312,6 @@ def test_fanout_event_honours_per_user_inbox_opt_out(
         )
         assert rows == []
         # restore prefs so other tests stay clean
-        user = session.execute(
-            select(User).where(User.id == nonadmin_user_id)
-        ).scalar_one()
+        user = session.execute(select(User).where(User.id == nonadmin_user_id)).scalar_one()
         user.notification_prefs_json = "{}"
         session.commit()

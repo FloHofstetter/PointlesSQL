@@ -36,22 +36,16 @@ async def topics_index_page(request: Request) -> HTMLResponse | RedirectResponse
 
 
 @router.get("/topics/{slug}", response_class=HTMLResponse, response_model=None)
-async def topic_detail_page(
-    slug: str, request: Request
-) -> HTMLResponse | RedirectResponse:
+async def topic_detail_page(slug: str, request: Request) -> HTMLResponse | RedirectResponse:
     """Render the topic-detail page."""
     user = get_user(request)
     if user["id"] == 0:
-        return RedirectResponse(
-            url=f"/auth/login?next=/topics/{slug}", status_code=303
-        )
+        return RedirectResponse(url=f"/auth/login?next=/topics/{slug}", status_code=303)
     workspace_id = current_workspace_id(request)
     factory = request.app.state.session_factory
     with factory() as session:
         topic = session.execute(
-            select(Topic).where(
-                Topic.workspace_id == workspace_id, Topic.slug == slug
-            )
+            select(Topic).where(Topic.workspace_id == workspace_id, Topic.slug == slug)
         ).scalar_one_or_none()
     if topic is None:
         raise ResourceNotFoundError(f"topic {slug!r} not found.")

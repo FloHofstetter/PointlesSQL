@@ -1,4 +1,4 @@
-"""Tests for the Phase 120.3 wiring of ACL checks into routes.
+"""Tests for the wiring of ACL checks into routes.
 
 Catalog gate is verified end-to-end via the public
 ``/api/2.0/sql/statements`` route since that's the only surface
@@ -65,9 +65,7 @@ def _make_client(headers: dict[str, str]) -> httpx.AsyncClient:
     )
 
 
-def _add_catalog_grant(
-    *, api_key_id: int, catalog_name: str, schema_name: str | None
-) -> None:
+def _add_catalog_grant(*, api_key_id: int, catalog_name: str, schema_name: str | None) -> None:
     factory = app.state.session_factory
     with factory() as session:
         session.add(
@@ -158,9 +156,7 @@ async def test_catalog_wildcard_schema_allows_any_schema(
     sql_execute_secret: ApiKeyFixture, orders_delta: str
 ) -> None:
     app.state.uc_client = _make_uc_mock(storage_location=orders_delta)
-    _add_catalog_grant(
-        api_key_id=sql_execute_secret.row.id, catalog_name="main", schema_name=None
-    )
+    _add_catalog_grant(api_key_id=sql_execute_secret.row.id, catalog_name="main", schema_name=None)
     async with _make_client(sql_execute_secret.headers) as ac:
         resp = await ac.post(
             "/api/2.0/sql/statements",

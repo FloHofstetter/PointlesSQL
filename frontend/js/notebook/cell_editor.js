@@ -18,7 +18,7 @@
  *    matching language extension, and wires the editor's onChange
  *    callback to ``onSourceChange``.
  * 2. ``setSource(value)`` — programmatic source replacement (used
- *    by the run-history popover preview in Sprint 66.7).
+ *    by the run-history popover preview ).
  * 3. ``getSource()`` — current document text.
  * 4. ``destroy()`` — remove the EditorView and detach listeners.
  *

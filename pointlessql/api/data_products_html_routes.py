@@ -5,7 +5,7 @@ Two pages mirror the Phase-21 ``/models`` shape:
 * ``GET /data-products`` — index with a card per cached product.
 * ``GET /data-products/{catalog}/{schema}`` — detail page with six
   tabs (Overview / Contract / Diff / Lineage / Compliance /
-  Discussion — the latter added in Phase 71.1) backed by the JSON
+  Discussion — the latter added ) backed by the JSON
   routes in :mod:`pointlessql.api.data_products_routes`.
 
 Both redirect anonymous visitors to ``/auth/login?next=...`` so the
@@ -34,9 +34,7 @@ async def data_products_index_page(
     """Render the workspace-wide data-product index page."""
     user = get_user(request)
     if user["id"] == 0:
-        return RedirectResponse(
-            url="/auth/login?next=/data-products", status_code=303
-        )
+        return RedirectResponse(url="/auth/login?next=/data-products", status_code=303)
 
     templates = request.app.state.templates
     return templates.TemplateResponse(
@@ -64,9 +62,7 @@ async def data_products_followed_page(
     """
     user = get_user(request)
     if user["id"] == 0:
-        return RedirectResponse(
-            url="/auth/login?next=/data-products/followed", status_code=303
-        )
+        return RedirectResponse(url="/auth/login?next=/data-products/followed", status_code=303)
 
     workspace_id = current_workspace_id(request)
     factory = request.app.state.session_factory
@@ -145,9 +141,7 @@ async def data_product_detail_page(
         factory, workspace_id, catalog, schema
     )
 
-    is_steward = (
-        row.steward_user_id is not None and row.steward_user_id == user["id"]
-    )
+    is_steward = row.steward_user_id is not None and row.steward_user_id == user["id"]
     templates = request.app.state.templates
     return templates.TemplateResponse(
         request,

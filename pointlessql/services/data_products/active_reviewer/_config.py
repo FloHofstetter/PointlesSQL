@@ -107,24 +107,20 @@ def iter_opted_in_dp_ids(
         schema)`` tuples.  Empty list when nothing is opted in.
     """
     with factory() as session:
-        rows = (
-            session.execute(
-                select(
-                    DataProductActiveReviewerConfig.workspace_id,
-                    DataProductActiveReviewerConfig.data_product_id,
-                    DataProduct.catalog_name,
-                    DataProduct.schema_name,
-                )
-                .join(
-                    DataProduct,
-                    DataProduct.id
-                    == DataProductActiveReviewerConfig.data_product_id,
-                )
-                .where(
-                    DataProductActiveReviewerConfig.enabled.is_(True),
-                    DataProductActiveReviewerConfig.runner == runner,
-                )
+        rows = session.execute(
+            select(
+                DataProductActiveReviewerConfig.workspace_id,
+                DataProductActiveReviewerConfig.data_product_id,
+                DataProduct.catalog_name,
+                DataProduct.schema_name,
             )
-            .all()
-        )
+            .join(
+                DataProduct,
+                DataProduct.id == DataProductActiveReviewerConfig.data_product_id,
+            )
+            .where(
+                DataProductActiveReviewerConfig.enabled.is_(True),
+                DataProductActiveReviewerConfig.runner == runner,
+            )
+        ).all()
     return [(int(ws), int(dp_id), str(cat), str(sch)) for ws, dp_id, cat, sch in rows]

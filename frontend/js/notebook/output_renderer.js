@@ -12,8 +12,7 @@
  *   1. image/png / image/jpeg → <img src="data:...;base64,...">
  *   2. text/html              → sandboxed iframe (srcdoc)
  *   3. text/markdown          → markdown rendered server-side
- *      (Sprint 66.6 wires the actual fetch; this sprint surfaces
- *      raw text with a "[markdown]" badge as a placeholder)
+ *      (Sprint 66.6 wires the actual fetch; this *      raw text with a "[markdown]" badge as a placeholder)
  *   4. application/json       → <pre> formatted JSON
  *   5. text/plain             → <pre>
  *
@@ -98,8 +97,8 @@ function _renderHtml(html) {
 }
 
 function _renderMarkdown(text) {
- // Sprint 66.6 will swap this for a server-side render via
- // POST /api/notebooks/render-markdown.  For Sprint 66.3 we
+ // will swap this for a server-side render via
+ // POST /api/notebooks/render-markdown.  we
  // emit raw text with a hint badge so the round-trip works.
  const wrap = document.createElement('div');
  wrap.className = 'pql-notebook-output__markdown';

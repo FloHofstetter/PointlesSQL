@@ -80,4 +80,3 @@ async def enforce_table_profile_access(
         )
     await check_privilege(client, email, is_admin, "table", full_name, SELECT)
     return table_info
-

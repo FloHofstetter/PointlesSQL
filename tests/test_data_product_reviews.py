@@ -1,4 +1,4 @@
-"""Tests for the Phase-71.2 data-product reviews surface.
+"""Tests for the data-product reviews surface.
 
 Covers PUT upsert idempotency, DELETE round-trip, 1..5 stars
 CHECK, summary aggregation, browse-page enrichment, and cross-
@@ -38,7 +38,6 @@ data_product:
 """
 
 
-
 def _seed_product(tmp_path: Path) -> int:
     """Seed a yaml + load it into the cache; return the data_products row id."""
     yaml_path = tmp_path / "pointlessql.yaml"
@@ -56,9 +55,7 @@ def _seed_product(tmp_path: Path) -> int:
 
 
 @pytest.mark.asyncio
-async def test_put_creates_review(
-    tmp_path: Path, admin_client: httpx.AsyncClient
-) -> None:
+async def test_put_creates_review(tmp_path: Path, admin_client: httpx.AsyncClient) -> None:
     """First PUT creates a row + serialises it back."""
     _seed_product(tmp_path)
     res = await admin_client.put(
@@ -73,9 +70,7 @@ async def test_put_creates_review(
 
 
 @pytest.mark.asyncio
-async def test_second_put_updates_in_place(
-    tmp_path: Path, admin_client: httpx.AsyncClient
-) -> None:
+async def test_second_put_updates_in_place(tmp_path: Path, admin_client: httpx.AsyncClient) -> None:
     """Second PUT by same user moves stars + updated_at, no second row."""
     _seed_product(tmp_path)
     first = await admin_client.put(
@@ -113,9 +108,7 @@ async def test_put_rejects_out_of_range_stars(
 
 
 @pytest.mark.asyncio
-async def test_put_requires_stars(
-    tmp_path: Path, admin_client: httpx.AsyncClient
-) -> None:
+async def test_put_requires_stars(tmp_path: Path, admin_client: httpx.AsyncClient) -> None:
     """Missing ``stars`` returns 400."""
     _seed_product(tmp_path)
     res = await admin_client.put(
@@ -131,9 +124,7 @@ async def test_put_requires_stars(
 
 
 @pytest.mark.asyncio
-async def test_delete_removes_own_review(
-    tmp_path: Path, admin_client: httpx.AsyncClient
-) -> None:
+async def test_delete_removes_own_review(tmp_path: Path, admin_client: httpx.AsyncClient) -> None:
     """DELETE removes the caller's review; subsequent PUT creates a new one."""
     _seed_product(tmp_path)
     await admin_client.put(
@@ -176,23 +167,17 @@ async def test_list_returns_summary_and_my_review(
         "/api/data-products/main/sales_gold/reviews",
         json={"stars": 1, "body_md": "by nonadmin"},
     )
-    body = (
-        await admin_client.get("/api/data-products/main/sales_gold/reviews")
-    ).json()
+    body = (await admin_client.get("/api/data-products/main/sales_gold/reviews")).json()
     assert body["summary"]["count"] == 2
     assert body["summary"]["avg_stars"] == 3.0
     assert body["my_review"]["stars"] == 5
 
 
 @pytest.mark.asyncio
-async def test_list_summary_empty(
-    tmp_path: Path, admin_client: httpx.AsyncClient
-) -> None:
+async def test_list_summary_empty(tmp_path: Path, admin_client: httpx.AsyncClient) -> None:
     """No reviews → ``count=0``, ``avg_stars=null``, ``my_review=null``."""
     _seed_product(tmp_path)
-    body = (
-        await admin_client.get("/api/data-products/main/sales_gold/reviews")
-    ).json()
+    body = (await admin_client.get("/api/data-products/main/sales_gold/reviews")).json()
     assert body["summary"] == {"avg_stars": None, "count": 0}
     assert body["my_review"] is None
     assert body["reviews"] == []

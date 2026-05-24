@@ -28,9 +28,7 @@ router = APIRouter(tags=["data-products", "forks"])
 
 
 @router.get("/api/data-products/{catalog}/{schema}/forks")
-async def api_dp_forks(
-    request: Request, catalog: str, schema: str
-) -> dict[str, Any]:
+async def api_dp_forks(request: Request, catalog: str, schema: str) -> dict[str, Any]:
     """List active Delta-branch forks of the DP's UC schema.
 
     Args:

@@ -23,9 +23,7 @@ from __future__ import annotations
 
 import pathlib
 
-_TEMPLATES_ROOT = pathlib.Path(
-    "/home/flo/git/PointlesSQL/frontend/templates"
-)
+_TEMPLATES_ROOT = pathlib.Path("/home/flo/git/PointlesSQL/frontend/templates")
 
 
 def test_schemas_html_has_five_tab_nav_strip() -> None:
@@ -47,7 +45,7 @@ def test_schemas_html_has_five_tab_nav_strip() -> None:
 def test_schemas_html_carries_social_tabs_x_data() -> None:
     """``schemas.html`` wraps the tab-content in ``socialTabs(kind='catalog')``."""
     body = (_TEMPLATES_ROOT / "pages/schemas.html").read_text()
-    assert 'socialTabs({' in body
+    assert "socialTabs({" in body
     assert 'kind: "catalog"' in body
 
 
@@ -85,7 +83,7 @@ def test_tables_html_has_five_tab_nav_strip() -> None:
 def test_tables_html_carries_social_tabs_x_data() -> None:
     """``tables.html`` wraps the tab-content in ``socialTabs(kind='schema')``."""
     body = (_TEMPLATES_ROOT / "pages/tables.html").read_text()
-    assert 'socialTabs({' in body
+    assert "socialTabs({" in body
     assert 'kind: "schema"' in body
 
 

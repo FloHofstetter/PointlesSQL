@@ -54,10 +54,15 @@ _OP_NAMES_NEW = (
     "vector_index",
     "vector_search",
 )
-_OP_NAMES_OLD = tuple(n for n in _OP_NAMES_NEW if n not in {
-    "vector_index",
-    "vector_search",
-})
+_OP_NAMES_OLD = tuple(
+    n
+    for n in _OP_NAMES_NEW
+    if n
+    not in {
+        "vector_index",
+        "vector_search",
+    }
+)
 
 
 def _ck_clause(names: tuple[str, ...]) -> str:

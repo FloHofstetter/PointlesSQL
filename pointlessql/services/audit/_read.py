@@ -4,8 +4,7 @@
 :func:`pointlessql.services.query_history.record_query`, which kept
 the DSGVO "wer hat meine Daten gelesen?" question answerable for
 SQL-editor traffic.  The agent runtimes' ``pql.table()`` and any
-engine-direct read path bypassed that route entirely until Sprint
-14.2 — the read happened, no audit row landed.
+engine-direct read path bypassed that route entirely — the read happened, no audit row landed.
 
 This module is the single instrumentation point for those bypass
 paths.  Every call writes a synthetic ``SELECT * FROM <fqn>`` row

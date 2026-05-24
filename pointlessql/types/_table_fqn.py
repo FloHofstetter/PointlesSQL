@@ -2,7 +2,7 @@
 
 UC three-part names are exchanged across ~13 producers in
 ``api/`` / ``services/`` / ``pql/`` and consumed by ~38 function
-signatures.  Until Phase 49c they were typed plain ``str``
+signatures.  they were typed plain ``str``
 everywhere, with two duplicated ``_split_three_part`` validators
 in the introspect / write route modules as the only structural
 gate.
@@ -54,9 +54,7 @@ class TableFqn(str):
 
         parts = [p.strip() for p in full_name.split(".")]
         if len(parts) != 3 or not all(parts):
-            raise ValidationError(
-                "table must be a three-part UC name 'catalog.schema.table'"
-            )
+            raise ValidationError("table must be a three-part UC name 'catalog.schema.table'")
         return cls(".".join(parts))
 
     @classmethod

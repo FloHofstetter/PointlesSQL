@@ -1,13 +1,12 @@
 """Generic audit-log mirror for social-layer writes.
 
-Replaces the ad-hoc ``audit_service.log_action(...)`` call
-pattern that every Phase-76 social route hand-rolls today.  The
-key difference vs ``log_action``: the ``target`` column is built
-*via the entity registry* — locked decision #9 of the Phase 77
-plan keeps the legacy ``data_product:{ref}`` prefix for
-``entity_kind='dp'`` rows while every new kind writes the
-generic ``{kind}:{ref}`` form.  Existing SIEM / Grafana queries
-on ``target LIKE 'data_product:%'`` stay functional; the kind
+Replaces the ad-hoc ``audit_service.log_action(...)`` call pattern
+that the per-route social handlers used to hand-roll.  The key
+difference vs ``log_action``: the ``target`` column is built *via
+the entity registry* — the legacy ``data_product:{ref}`` prefix is
+kept for ``entity_kind='dp'`` rows while every new kind writes the
+generic ``{kind}:{ref}`` form.  Existing SIEM / Grafana queries on
+``target LIKE 'data_product:%'`` stay functional; the kind
 migration costs zero ops churn for the DP path.
 
 The detail-JSON auto-injects ``entity_kind`` and ``entity_ref``
@@ -61,9 +60,7 @@ def mirror_social_to_audit(
             ``system``.
         client_ip: Optional IPv4/IPv6 address of the caller.
     """
-    target = entity_registry.audit_target(
-        entity_kind, entity_ref, suffix=suffix
-    )
+    target = entity_registry.audit_target(entity_kind, entity_ref, suffix=suffix)
     merged_detail: dict[str, Any] = dict(detail or {})
     merged_detail.setdefault("entity_kind", entity_kind)
     merged_detail.setdefault("entity_ref", entity_ref)

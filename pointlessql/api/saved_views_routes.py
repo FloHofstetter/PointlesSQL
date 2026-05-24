@@ -74,9 +74,7 @@ async def api_list_views(
 
 
 @router.post("/api/views")
-async def api_create_view(
-    request: Request, body: dict[str, Any] = Body(...)
-) -> dict[str, Any]:
+async def api_create_view(request: Request, body: dict[str, Any] = Body(...)) -> dict[str, Any]:
     """Create a new saved view.
 
     Args:
@@ -180,9 +178,7 @@ async def api_update_view(
         else None,
         sql_text=payload.get("sql_text")
         if isinstance(payload.get("sql_text"), str)
-        else (
-            payload.get("sql") if isinstance(payload.get("sql"), str) else None
-        ),
+        else (payload.get("sql") if isinstance(payload.get("sql"), str) else None),
         parameters=payload.get("parameters")
         if isinstance(payload.get("parameters"), list)
         else None,
@@ -190,9 +186,7 @@ async def api_update_view(
         target_fqn=payload.get("target_fqn")
         if isinstance(payload.get("target_fqn"), str)
         else None,
-        is_active=bool(payload.get("is_active"))
-        if "is_active" in payload
-        else None,
+        is_active=bool(payload.get("is_active")) if "is_active" in payload else None,
     )
     if row is None:
         raise CatalogNotFoundError(f"Saved view {slug!r} not found.")
@@ -273,16 +267,12 @@ async def api_run_view(
     import json as _json
     from typing import cast as _cast
 
-    parameters = _cast(
-        list[dict[str, Any]], _json.loads(row.parameters_json or "[]")
-    )
+    parameters = _cast(list[dict[str, Any]], _json.loads(row.parameters_json or "[]"))
     payload = body or {}
     values = payload.get("parameters") or payload.get("values") or {}
     if not isinstance(values, dict):
         raise ValidationError("parameters must be an object.")
-    rewritten, binds = saved_views_service.render_sql_with_params(
-        row.sql_text, parameters, values
-    )
+    rewritten, binds = saved_views_service.render_sql_with_params(row.sql_text, parameters, values)
     saved_views_service.validate_sql_is_select(rewritten)
     from pointlessql.pql import parse_and_classify
 
@@ -319,9 +309,7 @@ async def api_run_view(
                 register_delta_view(conn, ref, approved[ref])
             start = time.perf_counter()
             try:
-                arrow_raw = conn.execute(
-                    prepared.rewritten_sql, binds
-                ).to_arrow_table()
+                arrow_raw = conn.execute(prepared.rewritten_sql, binds).to_arrow_table()
             except duckdb.Error as exc:
                 raise SQLExecutionError(str(exc)) from exc
             arrow_table = _cast2(Any, arrow_raw)
@@ -340,10 +328,7 @@ async def api_run_view(
                     }
                     for name in column_names
                 ],
-                "rows": [
-                    [r.get(c) for c in column_names]
-                    for r in arrow_table.to_pylist()
-                ],
+                "rows": [[r.get(c) for c in column_names] for r in arrow_table.to_pylist()],
                 "row_count": num_rows,
                 "truncated": truncated,
                 "duration_ms": duration_ms,
@@ -355,9 +340,7 @@ async def api_run_view(
     # JSON-serialise rows where DuckDB returned native datetime / Decimal.
     serialised_rows: list[list[Any]] = []
     for row_values in result["rows"]:
-        serialised_rows.append(
-            [_json_safe(v) for v in row_values]
-        )
+        serialised_rows.append([_json_safe(v) for v in row_values])
     result["rows"] = serialised_rows
     await audit(
         request,

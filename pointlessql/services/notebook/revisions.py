@@ -82,12 +82,8 @@ def canonical_payload(
         }
         for o in outputs
     ]
-    cells_json = json.dumps(
-        cells_canonical, sort_keys=True, separators=(",", ":")
-    )
-    outputs_json = json.dumps(
-        outputs_canonical, sort_keys=True, separators=(",", ":")
-    )
+    cells_json = json.dumps(cells_canonical, sort_keys=True, separators=(",", ":"))
+    outputs_json = json.dumps(outputs_canonical, sort_keys=True, separators=(",", ":"))
     sha = hashlib.sha256()
     sha.update(cells_json.encode("utf-8"))
     sha.update(b"|")
@@ -130,9 +126,7 @@ def create_revision(
     notebook = session.get(Notebook, notebook_id)
     if notebook is None:
         raise ValidationError(f"notebook {notebook_id!r} not found")
-    cells_json, outputs_json, sha = canonical_payload(
-        cells=cells, outputs=outputs
-    )
+    cells_json, outputs_json, sha = canonical_payload(cells=cells, outputs=outputs)
     existing = session.execute(
         select(NotebookRevision).where(
             NotebookRevision.notebook_id == notebook_id,
@@ -186,7 +180,7 @@ def set_revision_signature(
 ) -> NotebookRevision:
     """Persist a signature blob produced by an external signer.
 
-    Phase 97 reserved ``signature`` + ``signature_alg`` for the
+    reserved ``signature`` + ``signature_alg`` for the
     forthcoming shoreguard sign-revision API.  Phase 97 Wave-D ships
     the *receiving* half: any out-of-band signer (shoreguard, an
     enterprise reviewer, a CI step) POSTs the signature back here and
@@ -211,9 +205,7 @@ def set_revision_signature(
     if not signature or not signature_alg:
         raise ValidationError("signature and signature_alg must both be non-empty")
     row = session.execute(
-        select(NotebookRevision).where(
-            NotebookRevision.revision_uuid == revision_uuid
-        )
+        select(NotebookRevision).where(NotebookRevision.revision_uuid == revision_uuid)
     ).scalar_one_or_none()
     if row is None:
         raise ValidationError(f"revision {revision_uuid!r} not found")
@@ -253,19 +245,21 @@ def list_revisions(
     Returns:
         List of revision dicts in ``created_at desc`` order.
     """
-    rows = session.execute(
-        select(NotebookRevision)
-        .where(NotebookRevision.notebook_id == notebook_id)
-        .order_by(NotebookRevision.created_at.desc())
-        .offset(max(0, int(offset)))
-        .limit(limit)
-    ).scalars().all()
+    rows = (
+        session.execute(
+            select(NotebookRevision)
+            .where(NotebookRevision.notebook_id == notebook_id)
+            .order_by(NotebookRevision.created_at.desc())
+            .offset(max(0, int(offset)))
+            .limit(limit)
+        )
+        .scalars()
+        .all()
+    )
     return [row_to_envelope(r) for r in rows]
 
 
-def get_revision(
-    session: Session, *, revision_uuid: str
-) -> dict[str, Any] | None:
+def get_revision(session: Session, *, revision_uuid: str) -> dict[str, Any] | None:
     """Return one revision's full payload (cells + outputs included).
 
     Args:
@@ -277,9 +271,7 @@ def get_revision(
         ``None`` when the UUID is unknown.
     """
     row = session.execute(
-        select(NotebookRevision).where(
-            NotebookRevision.revision_uuid == revision_uuid
-        )
+        select(NotebookRevision).where(NotebookRevision.revision_uuid == revision_uuid)
     ).scalar_one_or_none()
     if row is None:
         return None
@@ -289,9 +281,7 @@ def get_revision(
     return out
 
 
-def compute_diff(
-    session: Session, *, left_uuid: str, right_uuid: str
-) -> dict[str, Any]:
+def compute_diff(session: Session, *, left_uuid: str, right_uuid: str) -> dict[str, Any]:
     """Cell-by-cell diff between two revisions.
 
     Diff uses the stable cell ``content_hash`` so a pure reorder

@@ -1,4 +1,4 @@
-"""Tests for the Sprint 13.11.1 PQL introspection endpoints."""
+"""Tests for the PQL introspection endpoints."""
 
 from __future__ import annotations
 

@@ -1,4 +1,4 @@
-"""Tests for the Sprint 13.11.4a admin api-keys CRUD."""
+"""Tests for the admin api-keys CRUD."""
 
 from __future__ import annotations
 
@@ -119,9 +119,7 @@ async def test_create_rejects_non_positive_workspace_id(
     admin_client: httpx.AsyncClient,
 ) -> None:
     _wipe()
-    response = await admin_client.post(
-        "/api/admin/api-keys", json={"name": "k", "workspace_id": 0}
-    )
+    response = await admin_client.post("/api/admin/api-keys", json={"name": "k", "workspace_id": 0})
     assert response.status_code == 422
     _wipe()
 
@@ -166,9 +164,7 @@ async def test_list_include_revoked_surfaces_inactive(
     visible = {k["name"] for k in default.json()["keys"]}
     assert visible == {"active"}
 
-    with_revoked = await admin_client.get(
-        "/api/admin/api-keys?include_revoked=true"
-    )
+    with_revoked = await admin_client.get("/api/admin/api-keys?include_revoked=true")
     visible_all = {k["name"] for k in with_revoked.json()["keys"]}
     assert visible_all == {"active", "killed"}
     _wipe()
@@ -206,9 +202,7 @@ async def test_create_returns_token_format_and_env_fields(
 ) -> None:
     """create response surfaces token_format + token_env."""
     _wipe()
-    response = await admin_client.post(
-        "/api/admin/api-keys", json={"name": "v1-key"}
-    )
+    response = await admin_client.post("/api/admin/api-keys", json={"name": "v1-key"})
     assert response.status_code == 200
     body = response.json()
     assert body["token_format"] == "v1"
@@ -237,9 +231,7 @@ async def test_create_rejects_unknown_env(
     admin_client: httpx.AsyncClient,
 ) -> None:
     _wipe()
-    response = await admin_client.post(
-        "/api/admin/api-keys", json={"name": "k", "env": "prod"}
-    )
+    response = await admin_client.post("/api/admin/api-keys", json={"name": "k", "env": "prod"})
     assert response.status_code == 422
     _wipe()
 
@@ -249,9 +241,7 @@ async def test_list_includes_token_format_and_env(
     admin_client: httpx.AsyncClient,
 ) -> None:
     _wipe()
-    await admin_client.post(
-        "/api/admin/api-keys", json={"name": "k", "env": "test"}
-    )
+    await admin_client.post("/api/admin/api-keys", json={"name": "k", "env": "test"})
     listing = await admin_client.get("/api/admin/api-keys")
     keys = listing.json()["keys"]
     assert len(keys) == 1
@@ -274,9 +264,7 @@ async def test_rotate_mints_successor_with_same_scopes(
         "/api/admin/api-keys",
         json={"name": "rot", "supervisor": True, "auditor": True, "env": "test"},
     )
-    resp = await admin_client.post(
-        "/api/admin/api-keys/rot/rotate", json={"grace_seconds": 3600}
-    )
+    resp = await admin_client.post("/api/admin/api-keys/rot/rotate", json={"grace_seconds": 3600})
     assert resp.status_code == 200, resp.text
     body = resp.json()
     assert body["predecessor"] == "rot"
@@ -309,9 +297,7 @@ async def test_rotate_rejects_invalid_grace_seconds(
 ) -> None:
     _wipe()
     await admin_client.post("/api/admin/api-keys", json={"name": "k"})
-    resp = await admin_client.post(
-        "/api/admin/api-keys/k/rotate", json={"grace_seconds": -1}
-    )
+    resp = await admin_client.post("/api/admin/api-keys/k/rotate", json={"grace_seconds": -1})
     assert resp.status_code == 422
     _wipe()
 
@@ -324,9 +310,7 @@ async def test_quarantine_and_unquarantine_round_trip(
     create = await admin_client.post("/api/admin/api-keys", json={"name": "q1"})
     secret = create.json()["secret"]
 
-    q_resp = await admin_client.post(
-        "/api/admin/api-keys/q1/quarantine", json={"reason": "drill"}
-    )
+    q_resp = await admin_client.post("/api/admin/api-keys/q1/quarantine", json={"reason": "drill"})
     assert q_resp.status_code == 200 and q_resp.json()["quarantined"] is True
 
     # Bearer auth must fail while quarantined.
@@ -334,19 +318,13 @@ async def test_quarantine_and_unquarantine_round_trip(
     from pointlessql.services import api_keys as api_keys_service
 
     api_keys_service.invalidate_cache()
-    assert (
-        api_keys_service.verify_bearer(f"Bearer {secret}", app.state.session_factory)
-        is None
-    )
+    assert api_keys_service.verify_bearer(f"Bearer {secret}", app.state.session_factory) is None
 
     u_resp = await admin_client.post("/api/admin/api-keys/q1/unquarantine")
     assert u_resp.status_code == 200 and u_resp.json()["quarantined"] is False
 
     # Cache was invalidated; auth works again.
-    assert (
-        api_keys_service.verify_bearer(f"Bearer {secret}", app.state.session_factory)
-        is not None
-    )
+    assert api_keys_service.verify_bearer(f"Bearer {secret}", app.state.session_factory) is not None
     _wipe()
 
 
@@ -356,9 +334,7 @@ async def test_quarantine_rejects_missing_reason(
 ) -> None:
     _wipe()
     await admin_client.post("/api/admin/api-keys", json={"name": "noargs"})
-    resp = await admin_client.post(
-        "/api/admin/api-keys/noargs/quarantine", json={}
-    )
+    resp = await admin_client.post("/api/admin/api-keys/noargs/quarantine", json={})
     assert resp.status_code == 422
     _wipe()
 
@@ -372,17 +348,13 @@ async def test_patch_expires_at_set_then_clear(
     _wipe()
     await admin_client.post("/api/admin/api-keys", json={"name": "ttl"})
     future = (datetime.now(UTC) + timedelta(days=30)).isoformat()
-    set_resp = await admin_client.patch(
-        "/api/admin/api-keys/ttl", json={"expires_at": future}
-    )
+    set_resp = await admin_client.patch("/api/admin/api-keys/ttl", json={"expires_at": future})
     assert set_resp.status_code == 200
     listing = await admin_client.get("/api/admin/api-keys")
     row = next(k for k in listing.json()["keys"] if k["name"] == "ttl")
     assert row["expires_at"] is not None
 
-    clear_resp = await admin_client.patch(
-        "/api/admin/api-keys/ttl", json={"expires_at": None}
-    )
+    clear_resp = await admin_client.patch("/api/admin/api-keys/ttl", json={"expires_at": None})
     assert clear_resp.status_code == 200
     listing2 = await admin_client.get("/api/admin/api-keys")
     row2 = next(k for k in listing2.json()["keys"] if k["name"] == "ttl")

@@ -21,7 +21,7 @@ DISCUSSION_MENTION_AMBIGUOUS = "audit.discussion.mention_ambiguous"
 BODY_PREVIEW_LEN = 140
 
 # comment-category enum + reactions canonical set.
-# Wave-D added ``review`` for cell-level review decisions
+# added ``review`` for cell-level review decisions
 # (notebook_cell entity-kind); kept in lockstep with
 # ``_polymorphic_handlers._shared.ALLOWED_CATEGORIES``.
 ALLOWED_CATEGORIES: tuple[str, ...] = (

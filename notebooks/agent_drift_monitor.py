@@ -12,20 +12,18 @@
 # %% [markdown] pql_cell_id="11111111-1111-4111-8111-111111111111"
 # # Drift-Monitor agent
 #
-# **Sprint 13.5** — second Phase-13 demo (the first being the
-# Hermes-Medallion walkthrough in 13.5.5).  The Drift-Monitor
-# agent reads a published bronze table, computes freshness +
-# null-rate + value-drift against the Sprint-54 column stats,
-# appends one row per check to ``ops.quality_history``, and
-# emits a CloudEvent when a threshold breaks.
+# The Drift-Monitor agent reads a published bronze table,
+# computes freshness + null-rate + value-drift against the
+# stored column stats, appends one row per check to
+# ``ops.quality_history``, and emits a CloudEvent when a
+# threshold breaks.
 #
 # Hermes cron fires this notebook hourly (or whatever cadence
-# the operator picks); PointlesSQL itself does **not** schedule
-# — Phase 13 is registry + supervision only.
+# the operator picks); PointlesSQL itself only registers and
+# supervises the run.
 #
 # **Inputs**: ``MONITOR_TARGET`` (env or set below), the
-# ``column_stats`` rows from Sprint 54, the ``alert_dispatcher``
-# from Sprint 55.
+# ``column_stats`` rows, the ``alert_dispatcher`` service.
 #
 # **Outputs**: one row per check appended to
 # ``ops.quality_history``; one ``pointlessql.agent_run.failed``
@@ -52,11 +50,10 @@ pql = PQL()
 # %% [markdown] pql_cell_id="33333333-3333-4333-8333-333333333333"
 # ## Read the target table
 #
-# Through ``pql.table(...)`` so UC SELECT enforcement (Sprint
-# 13.6's ``X-Principal``-aware path) runs as the agent's
-# principal.  An identity that lacks SELECT raises
+# Through ``pql.table(...)`` so UC SELECT enforcement runs as
+# the agent's principal.  An identity that lacks SELECT raises
 # ``AuthorizationError`` here, the run row terminates as
-# ``failed``, and Sprint 13.3's CloudEvent fires.
+# ``failed``, and the failure CloudEvent fires.
 
 # %% pql_cell_id="44444444-4444-4444-8444-444444444444"
 df = pql.table(MONITOR_TARGET)
@@ -66,7 +63,7 @@ print(f"Read {len(df):,} rows from {MONITOR_TARGET}")
 # ## Compute the three drift signals
 #
 # 1. **Freshness** — wall-clock age of the newest
-#    ``_ingested_at`` audit timestamp (Sprint 13.5.1 bronze
+#    ``_ingested_at`` audit timestamp (the standard bronze
 #    convention).  Above ``MONITOR_FRESHNESS_MAX_H`` triggers a
 #    warning.
 # 2. **Null-rate** — fraction of nulls in every non-audit
@@ -168,11 +165,11 @@ print(f"Appended {len(history_row)} row(s) to {QUALITY_HISTORY_TABLE}")
 # %% [markdown] pql_cell_id="99999999-9999-4999-8999-999999999999"
 # ## Emit a CloudEvent when a threshold breaks
 #
-# Reuses the Sprint 13.3 emitter so any subscriber configured
-# via ``POINTLESSQL_AGENT_RUNS_WEBHOOK_URL`` (or the future
-# per-destination filter from Sprint 13.4) receives the alert.
-# Severity ``error`` or ``warning`` triggers; pure ``info`` runs
-# stay silent so a quiet dashboard is the default state.
+# Reuses the agent-run event emitter so any subscriber configured
+# via ``POINTLESSQL_AGENT_RUNS_WEBHOOK_URL`` (or a per-destination
+# filter) receives the alert.  Severity ``error`` or ``warning``
+# triggers; pure ``info`` runs stay silent so a quiet dashboard
+# is the default state.
 
 # %% pql_cell_id="aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
 breaches = [f for f in findings if f["severity"] in ("error", "warning")]

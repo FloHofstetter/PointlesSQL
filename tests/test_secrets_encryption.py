@@ -67,9 +67,7 @@ def test_master_key_named_in_system_keys(_test_engine):  # type: ignore[no-untyp
 
     with factory() as session:
         rows = list(
-            session.execute(
-                select(SystemKey).where(SystemKey.name == MASTER_KEY_NAME)
-            ).scalars()
+            session.execute(select(SystemKey).where(SystemKey.name == MASTER_KEY_NAME)).scalars()
         )
     assert len(rows) == 1
     # We need *app* imported above to keep the test import-graph honest with the

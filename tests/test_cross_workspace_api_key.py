@@ -11,7 +11,7 @@ pinned to:
 
 Together with the plugin-side test
 (``hermes-plugin-pointlessql/tests/test_workspace_header.py``) this
-forms the round-trip contract for Sprint 28.5.
+forms the round-trip contract .
 """
 
 from __future__ import annotations

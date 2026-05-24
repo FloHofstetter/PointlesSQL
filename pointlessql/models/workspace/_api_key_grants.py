@@ -54,9 +54,7 @@ class ApiKeyCatalogGrant(Base):
     )
     catalog_name: Mapped[str] = mapped_column(String(255), nullable=False)
     schema_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    granted_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
+    granted_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     granted_by_user_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("users.id"), nullable=True
     )
@@ -72,9 +70,7 @@ class ApiKeyIpGrant(Base):
     """
 
     __tablename__ = "api_key_ip_grants"
-    __table_args__ = (
-        UniqueConstraint("api_key_id", "cidr", name="uq_apikey_ip_grant"),
-    )
+    __table_args__ = (UniqueConstraint("api_key_id", "cidr", name="uq_apikey_ip_grant"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     api_key_id: Mapped[int] = mapped_column(
@@ -82,9 +78,7 @@ class ApiKeyIpGrant(Base):
     )
     cidr: Mapped[str] = mapped_column(String(64), nullable=False)
     label: Mapped[str | None] = mapped_column(String(200), nullable=True)
-    granted_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
+    granted_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     granted_by_user_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("users.id"), nullable=True
     )
@@ -105,9 +99,7 @@ class ApiKeyUsageBucket(Base):
 
     __tablename__ = "api_key_usage_buckets"
     __table_args__ = (
-        UniqueConstraint(
-            "api_key_id", "bucket_minute", "source_ip", name="uq_apikey_usage_bucket"
-        ),
+        UniqueConstraint("api_key_id", "bucket_minute", "source_ip", name="uq_apikey_usage_bucket"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -119,6 +111,4 @@ class ApiKeyUsageBucket(Base):
     )
     source_ip: Mapped[str] = mapped_column(String(64), nullable=False)
     count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    last_seen_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
+    last_seen_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)

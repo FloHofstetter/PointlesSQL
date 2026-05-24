@@ -1,4 +1,4 @@
-"""Tests for the Sprint 33.1 admin landing card-grid (``GET /admin``)."""
+"""Tests for the admin landing card-grid (``GET /admin``)."""
 
 from __future__ import annotations
 

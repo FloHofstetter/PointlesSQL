@@ -18,7 +18,7 @@ race-safe enough for one-runtime-per-run; for parallel writers
 within the same run, switch to a server-side
 ``COALESCE(MAX(ordinal), 0) + 1`` UPDATE/INSERT pattern.
 
-This was a single 917-LOC file until Phase 49b; the public surface
+This was a single 917-LOC file the public surface
 is unchanged.  Imports of the original module path keep working
 because every public symbol is re-exported here.
 """

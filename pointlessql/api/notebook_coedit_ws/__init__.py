@@ -1,8 +1,6 @@
-"""real-time co-edit WebSocket hub — split per concern.
+"""Real-time co-edit WebSocket hub — split per concern.
 
-The pre-Phase-111.6 layout collapsed every helper into one ~779 LOC
-``notebook_coedit_ws.py`` module.  Phase 111.6 split it along the
-natural axes:
+Modules under this package split the hub along its natural axes:
 
 * :mod:`._constants`  — wire-protocol tag bytes
   (``TAG_SYNC_STEP1`` / … / ``TAG_AGENT_PRESENCE``), the
@@ -24,8 +22,8 @@ natural axes:
   router + handler.
 
 Wires :mod:`pointlessql.services.notebook.coedit` (the storage
-primitive shipped in Sprint 105.1) to multiple browser tabs editing
-the same notebook.  A per-``notebook_id`` :class:`NotebookHub`
+primitive) to multiple browser tabs editing the same notebook.
+A per-``notebook_id`` :class:`NotebookHub`
 holds the authoritative :class:`pycrdt.Doc` in memory while any
 client is connected; clients exchange binary frames that the hub
 applies + rebroadcasts.
@@ -42,9 +40,9 @@ Wire format — every frame starts with a single tag byte:
 * ``0x03`` — ``awareness_update``: opaque (cursor / presence /
   agent attribution).  Relayed verbatim, never persisted.
 * ``0x04`` — ``cell_uuid_remap``: server → all clients.  JSON
-  payload ``{old_uuid: new_uuid, ...}`` emitted by Phase 105.5's
-  save-barrier when the three-pass reconciler mints a fresh UUID
-  for a cell the clients already track.  The hub atomically
+  payload ``{old_uuid: new_uuid, ...}`` emitted by the save-
+  barrier when the three-pass reconciler mints a fresh UUID for
+  a cell the clients already track.  The hub atomically
   rewrites ``cells_text`` / ``cells_order`` under its lock so the
   next ``sync_update`` round-trip carries the new keys.
 * ``0x05`` — ``agent_presence``: server → all clients.  JSON

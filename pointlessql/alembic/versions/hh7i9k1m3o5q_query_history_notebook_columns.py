@@ -26,14 +26,8 @@ depends_on: str | Sequence[str] | None = None
 def upgrade() -> None:
     """Add the optional notebook_path + notebook_content_hash columns."""
     with op.batch_alter_table("query_history") as batch:
-        batch.add_column(
-            sa.Column("notebook_path", sa.String(length=1024), nullable=True)
-        )
-        batch.add_column(
-            sa.Column(
-                "notebook_content_hash", sa.String(length=64), nullable=True
-            )
-        )
+        batch.add_column(sa.Column("notebook_path", sa.String(length=1024), nullable=True))
+        batch.add_column(sa.Column("notebook_content_hash", sa.String(length=64), nullable=True))
 
 
 def downgrade() -> None:

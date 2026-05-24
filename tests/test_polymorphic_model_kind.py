@@ -34,7 +34,7 @@ def test_model_kind_is_registered() -> None:
     assert spec.audit_target_prefix == "model"
     assert spec.supports_endorsements is True
     assert spec.supports_readme is True
-    # Phase 77.2.1 flipped this True alongside the polymorphic
+    # flipped this True alongside the polymorphic
     # UNIQUE migration on ``data_product_reviews``.
     assert spec.supports_reviews is True
     assert spec.supports_stars is True
@@ -55,9 +55,7 @@ def test_model_url_builder_falls_back_on_malformed_ref() -> None:
 
 def test_model_audit_target_uses_generic_prefix() -> None:
     """Models write the polymorphic ``model:`` prefix from day 1."""
-    target = entity_registry.audit_target(
-        "model", "main.ml_silver.churn", suffix="tab-discussion"
-    )
+    target = entity_registry.audit_target("model", "main.ml_silver.churn", suffix="tab-discussion")
     assert target == "model:main.ml_silver.churn#tab-discussion"
 
 
@@ -67,9 +65,7 @@ def test_model_citation_resolves_through_registry() -> None:
 
     body = "see #model:main.ml_silver.churn for the champion"
     out = resolve_citations(body, app.state.session_factory, workspace_id=1)
-    assert (
-        "[#main.ml_silver.churn](/models/main.ml_silver.churn)" in out
-    )
+    assert "[#main.ml_silver.churn](/models/main.ml_silver.churn)" in out
 
 
 def test_model_citation_ignores_malformed_token() -> None:
@@ -120,9 +116,7 @@ async def test_model_endorsement_roundtrip(
     )
     assert res_apply.status_code == 200, res_apply.text
 
-    res_list = await admin_client.get(
-        "/api/social/model/main.ml_silver.churn/endorsements"
-    )
+    res_list = await admin_client.get("/api/social/model/main.ml_silver.churn/endorsements")
     assert res_list.status_code == 200
     types = {e["endorsement_type"] for e in res_list.json()["endorsements"]}
     assert "verified-by-steward" in types
@@ -139,9 +133,7 @@ async def test_model_readme_roundtrip(
     )
     assert res_put.status_code == 200, res_put.text
 
-    res_get = await admin_client.get(
-        "/api/social/model/main.ml_silver.churn/readme"
-    )
+    res_get = await admin_client.get("/api/social/model/main.ml_silver.churn/readme")
     assert res_get.status_code == 200
     assert "Churn model" in res_get.json()["body_md"]
 
@@ -151,9 +143,7 @@ async def test_model_reviews_now_supported_after_77_2_1(
     admin_client: httpx.AsyncClient,
 ) -> None:
     """Reviews now work on models — 77.2.1 added the polymorphic UNIQUE."""
-    res = await admin_client.get(
-        "/api/social/model/main.ml_silver.churn/reviews"
-    )
+    res = await admin_client.get("/api/social/model/main.ml_silver.churn/reviews")
     assert res.status_code == 200, res.text
     body = res.json()
     assert "summary" in body and "reviews" in body

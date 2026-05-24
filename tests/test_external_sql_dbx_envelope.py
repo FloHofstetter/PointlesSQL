@@ -137,7 +137,7 @@ def test_legacy_import_path_still_resolves() -> None:
     """Phase 121.1.c is move-only; the re-export at the old path must work."""
     # pyright: ignore[reportPrivateUsage] — exercising deliberate
     # underscore-prefixed re-exports added for backwards-compat with
-    # Phase 117's import sites.
+    # import sites.
     from pointlessql.api.external_sql_routes import (
         _dbx_error_response as legacy_resp,  # pyright: ignore[reportPrivateUsage]
     )

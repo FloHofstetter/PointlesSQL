@@ -1,4 +1,4 @@
-"""Tests for the Phase 120 ACL check helpers (pure functions)."""
+"""Tests for the ACL check helpers (pure functions)."""
 
 from __future__ import annotations
 
@@ -50,9 +50,7 @@ def test_catalog_grant_does_not_leak_across_catalogs() -> None:
 
 def test_catalog_default_catalog_qualifies_two_part_ref() -> None:
     grants = [CatalogGrant("main", "sales")]
-    result = check_catalog_allowed(
-        grants, "SELECT * FROM sales.orders", default_catalog="main"
-    )
+    result = check_catalog_allowed(grants, "SELECT * FROM sales.orders", default_catalog="main")
     assert result.allowed is True
 
 

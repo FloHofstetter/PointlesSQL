@@ -1,4 +1,4 @@
-"""Tests for Phase 103 — replay / scenario-mode."""
+"""Tests — replay / scenario-mode."""
 
 from __future__ import annotations
 
@@ -39,9 +39,7 @@ def _seed_notebook_with_revision(
     """Insert notebook + one revision; return (notebook_id, revision_uuid)."""
     nb_id = str(uuid.uuid4())
     rev_uuid = str(uuid.uuid4())
-    cells = cells or [
-        {"content_hash": "h1", "cell_type": "code", "source": "x"}
-    ]
+    cells = cells or [{"content_hash": "h1", "cell_type": "code", "source": "x"}]
     outputs = outputs or []
     with factory() as s:
         s.add(Notebook(id=nb_id, workspace_id=1, file_path="n.py"))
@@ -132,9 +130,7 @@ def test_record_finished_persists_outputs_and_digest(
                 }
             ],
         )
-        envelope = notebook_replay_service.get_replay(
-            session, replay_uuid=replay_uuid
-        )
+        envelope = notebook_replay_service.get_replay(session, replay_uuid=replay_uuid)
         assert envelope is not None
         # h1 has identical outputs across base + replay → ``stable`` would
         # require identical row dicts including kernel_session_id; we use
@@ -149,9 +145,7 @@ def test_record_finished_unknown_replay_raises(
     """Unknown replay UUID raises."""
     with factory() as session:
         with pytest.raises(ValidationError):
-            notebook_replay_service.record_finished(
-                session, replay_uuid="0" * 36, status="ok"
-            )
+            notebook_replay_service.record_finished(session, replay_uuid="0" * 36, status="ok")
 
 
 def test_record_finished_rejects_non_terminal_status(
@@ -206,9 +200,7 @@ def test_compute_replay_diff_classifies_cells(
             "metadata": None,
         },
     ]
-    nb_id, rev = _seed_notebook_with_revision(
-        factory, cells=cells, outputs=base_outputs
-    )
+    nb_id, rev = _seed_notebook_with_revision(factory, cells=cells, outputs=base_outputs)
     # Replay outputs: identical for h_stable; different for h_changed;
     # missing entirely for h_missing.
     replay_outputs = [
@@ -235,9 +227,7 @@ def test_compute_replay_diff_classifies_cells(
             outputs=replay_outputs,
         )
         session.commit()
-        diff = notebook_replay_service.compute_replay_diff(
-            session, replay_uuid=replay_uuid
-        )
+        diff = notebook_replay_service.compute_replay_diff(session, replay_uuid=replay_uuid)
         verdicts = {c["content_hash"]: c["verdict"] for c in diff["cells"]}
     assert verdicts["h_stable"] == "stable"
     assert verdicts["h_changed"] == "changed"
@@ -248,17 +238,11 @@ def test_list_replays_newest_first(factory: sessionmaker) -> None:  # type: igno
     """``list_replays`` returns newest replays first."""
     nb_id, rev = _seed_notebook_with_revision(factory)
     with factory() as session:
-        notebook_replay_service.start_replay(
-            session, notebook_id=nb_id, base_revision_uuid=rev
-        )
+        notebook_replay_service.start_replay(session, notebook_id=nb_id, base_revision_uuid=rev)
         session.commit()
-        notebook_replay_service.start_replay(
-            session, notebook_id=nb_id, base_revision_uuid=rev
-        )
+        notebook_replay_service.start_replay(session, notebook_id=nb_id, base_revision_uuid=rev)
         session.commit()
-        rows = notebook_replay_service.list_replays(
-            session, notebook_id=nb_id
-        )
+        rows = notebook_replay_service.list_replays(session, notebook_id=nb_id)
     assert len(rows) == 2
 
 
@@ -274,16 +258,12 @@ def workspace_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     return root
 
 
-async def test_api_replay_lifecycle(
-    workspace_dir: Path, admin_client: httpx.AsyncClient
-) -> None:
+async def test_api_replay_lifecycle(workspace_dir: Path, admin_client: httpx.AsyncClient) -> None:
     """Create notebook → revision → replay → finish round-trip."""
     nb_path = workspace_dir / "r.py"
     nb_path.write_text("# %%\nprint(1)\n")
     await admin_client.post("/api/notebooks/create", json={"path": "r.py"})
-    rev = await admin_client.post(
-        "/api/notebooks/revisions", json={"path": "r.py"}
-    )
+    rev = await admin_client.post("/api/notebooks/revisions", json={"path": "r.py"})
     rev_uuid = rev.json()["revision_uuid"]
     started = await admin_client.post(
         "/api/notebooks/replay",
@@ -303,9 +283,7 @@ async def test_api_replay_lifecycle(
     fetched = await admin_client.get(f"/api/notebooks/replay/{replay_uuid}")
     assert fetched.json()["status"] == "ok"
 
-    diff = await admin_client.get(
-        f"/api/notebooks/replay/{replay_uuid}/diff"
-    )
+    diff = await admin_client.get(f"/api/notebooks/replay/{replay_uuid}/diff")
     assert diff.status_code == 200
     assert diff.json()["replay_uuid"] == replay_uuid
 
@@ -320,14 +298,13 @@ async def test_run_pending_replays_returns_zero_when_idle(
     """No pending row → tick returns 0 without spinning up a kernel."""
     from pointlessql.services.notebook.replay_worker import run_pending_replays
 
-    processed = await run_pending_replays(
-        session_factory=factory, notebooks_dir=tmp_path
-    )
+    processed = await run_pending_replays(session_factory=factory, notebooks_dir=tmp_path)
     assert processed == 0
 
 
 async def test_replay_worker_class_idempotent_start_stop(
-    factory: sessionmaker, tmp_path: Path  # type: ignore[type-arg]
+    factory: sessionmaker,
+    tmp_path: Path,  # type: ignore[type-arg]
 ) -> None:
     """``start`` is a no-op after first call; ``stop`` without start is safe."""
     from pointlessql.services.notebook.replay_worker import ReplayWorker
@@ -340,7 +317,8 @@ async def test_replay_worker_class_idempotent_start_stop(
 
 
 async def test_replay_worker_executes_cell_and_records_output(
-    factory: sessionmaker, tmp_path: Path  # type: ignore[type-arg]
+    factory: sessionmaker,
+    tmp_path: Path,  # type: ignore[type-arg]
 ) -> None:
     """End-to-end: worker spins a real kernel, runs a cell, persists outputs.
 
@@ -389,30 +367,16 @@ async def test_replay_worker_executes_cell_and_records_output(
     assert processed == 1, "expected one pending replay to be processed"
 
     with factory() as session:
-        finished = (
-            session.query(NotebookReplay)
-            .filter_by(replay_uuid=replay_uuid)
-            .one()
-        )
+        finished = session.query(NotebookReplay).filter_by(replay_uuid=replay_uuid).one()
         assert finished.status == "ok", (
-            f"replay did not succeed: status={finished.status!r} "
-            f"outputs={finished.outputs_json!r}"
+            f"replay did not succeed: status={finished.status!r} outputs={finished.outputs_json!r}"
         )
         assert finished.finished_at is not None
         outputs = json.loads(finished.outputs_json or "[]")
         # The worker collects every kernel reply frame; the ``print``
         # call surfaces as a ``stream`` frame whose ``content.text``
         # is ``"4\n"``.
-        stream_frames = [
-            frame
-            for frame in outputs
-            if frame.get("msg_type") == "stream"
-        ]
-        assert stream_frames, (
-            f"expected at least one stream frame; got {outputs!r}"
-        )
-        joined = "".join(
-            frame.get("content", {}).get("text", "")
-            for frame in stream_frames
-        )
+        stream_frames = [frame for frame in outputs if frame.get("msg_type") == "stream"]
+        assert stream_frames, f"expected at least one stream frame; got {outputs!r}"
+        joined = "".join(frame.get("content", {}).get("text", "") for frame in stream_frames)
         assert "4" in joined, f"stdout did not contain '4': {joined!r}"

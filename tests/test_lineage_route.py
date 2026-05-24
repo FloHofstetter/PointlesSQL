@@ -1,4 +1,4 @@
-"""Tests for the Sprint 13.11.3 ``GET /api/pql/lineage`` route."""
+"""Tests for the ``GET /api/pql/lineage`` route."""
 
 from __future__ import annotations
 

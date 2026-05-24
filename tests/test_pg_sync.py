@@ -1,4 +1,4 @@
-"""Unit tests for the Sprint 18 Postgres sync worker.
+"""Unit tests for the Postgres sync worker.
 
 Covers the pure logic (type mapping, diff) and the apply + run_sync
 flow via mocks. A real-Postgres integration test is documented below

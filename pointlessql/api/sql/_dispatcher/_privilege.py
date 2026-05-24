@@ -18,9 +18,7 @@ from pointlessql.exceptions import (
 from pointlessql.services.authorization import MODIFY, SELECT, USE_SCHEMA, check_privilege
 
 
-async def enforce_select_per_table(
-    ctx: DispatchContext, refs: list[str]
-) -> dict[str, str]:
+async def enforce_select_per_table(ctx: DispatchContext, refs: list[str]) -> dict[str, str]:
     """Run ``SELECT`` enforcement on every ref and return storage map.
 
     Args:
@@ -56,9 +54,7 @@ async def enforce_select_per_table(
     return approved
 
 
-async def enforce_modify_target(
-    ctx: DispatchContext, target: str, *, must_exist: bool
-) -> bool:
+async def enforce_modify_target(ctx: DispatchContext, target: str, *, must_exist: bool) -> bool:
     """Enforce write privilege on *target* and report whether it exists.
 
     Mirrors :func:`pointlessql.api.pql_write_routes._check_write_target`

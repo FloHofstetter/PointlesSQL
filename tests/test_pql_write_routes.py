@@ -1,4 +1,4 @@
-"""Route-level tests for the Sprint 13.11.11 PQL write endpoints.
+"""Route-level tests for the PQL write endpoints.
 
 Covers ``POST /api/pql/autoload``, ``/write_table``, ``/merge``, and
 ``/drop_table``. Each endpoint is exercised with:

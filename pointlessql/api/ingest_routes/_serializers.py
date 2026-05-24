@@ -34,7 +34,7 @@ def redact_secrets(secrets_json: str) -> dict[str, str]:
         return {}
     try:
         data = json.loads(secrets_json)
-    except (ValueError, TypeError):
+    except ValueError, TypeError:
         return {}
     if not isinstance(data, dict):
         return {}
@@ -44,9 +44,7 @@ def redact_secrets(secrets_json: str) -> dict[str, str]:
     return out
 
 
-def merge_patch_secrets(
-    existing_json: str, patch_secrets: dict[str, Any] | None
-) -> dict[str, Any]:
+def merge_patch_secrets(existing_json: str, patch_secrets: dict[str, Any] | None) -> dict[str, Any]:
     """Merge a PATCH's secret values into the existing stored blob.
 
     Values equal to :data:`SECRETS_REDACTED_SENTINEL` are kept from
@@ -62,7 +60,7 @@ def merge_patch_secrets(
     """
     try:
         existing_any: Any = json.loads(existing_json or "{}")
-    except (ValueError, TypeError):
+    except ValueError, TypeError:
         existing_any = {}
     existing: dict[str, Any] = (
         {str(k): v for k, v in existing_any.items()}  # type: ignore[union-attr]
@@ -93,11 +91,11 @@ def serialize_source(row: IngestSource) -> dict[str, Any]:
     """
     try:
         config = json.loads(row.config or "{}")
-    except (ValueError, TypeError):
+    except ValueError, TypeError:
         config = {}
     try:
         mappings = json.loads(row.table_mappings or "[]")
-    except (ValueError, TypeError):
+    except ValueError, TypeError:
         mappings = []
     return {
         "id": int(row.id),

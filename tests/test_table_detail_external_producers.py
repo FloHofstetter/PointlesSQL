@@ -1,6 +1,6 @@
-"""Tests for the Phase-40 table-detail "External producers" surface.
+"""Tests for the table-detail "External producers" surface.
 
-Sprint 40.3 wires inbound lineage edges into the existing
+wires inbound lineage edges into the existing
 ``components/lineage_card.html`` block on the table-detail page.
 The pure-helper test here exercises the
 ``_external_producers_for_table`` aggregator that drives the

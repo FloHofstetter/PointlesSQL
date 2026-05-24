@@ -1,4 +1,4 @@
-"""Tests for the Phase-50.4 data-product freshness scanner.
+"""Tests for the data-product freshness scanner.
 
 Validates:
 
@@ -67,8 +67,7 @@ def _make_uc_mock(table_locations: list[str]) -> AsyncMock:
     mock = AsyncMock()
     mock.list_tables = AsyncMock(
         return_value=[
-            {"name": f"t_{i}", "storage_location": loc}
-            for i, loc in enumerate(table_locations)
+            {"name": f"t_{i}", "storage_location": loc} for i, loc in enumerate(table_locations)
         ]
     )
     return mock
@@ -161,9 +160,7 @@ async def test_re_alert_suppression(monkeypatch: pytest.MonkeyPatch) -> None:
         lambda _loc: stale_ts,
     )
 
-    first = await data_product_freshness_scanner.scan_all(
-        factory, uc, re_alert_suppress_minutes=30
-    )
+    first = await data_product_freshness_scanner.scan_all(factory, uc, re_alert_suppress_minutes=30)
     second = await data_product_freshness_scanner.scan_all(
         factory, uc, re_alert_suppress_minutes=30
     )

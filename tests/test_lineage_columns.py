@@ -4,7 +4,7 @@ Exercises :func:`pointlessql.services.lineage_edges.record_column_edges`,
 :func:`walk_back_columns`, and :func:`count_column_edges_for_op` with
 synthetic ``lineage_column_map`` rows so the column-trace shape lands
 without spinning up soyuz / deltalake.  The matching end-to-end replay
-lives in Sprint 15.6.5.
+lives .
 """
 
 from __future__ import annotations

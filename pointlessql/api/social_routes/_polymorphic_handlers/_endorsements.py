@@ -41,9 +41,7 @@ from pointlessql.services.social.audit_mirror import mirror_social_to_audit
 # ---------------------------------------------------------------------------
 
 
-async def list_polymorphic_endorsements(
-    kind: str, ref: str, request: Request
-) -> dict[str, Any]:
+async def list_polymorphic_endorsements(kind: str, ref: str, request: Request) -> dict[str, Any]:
     """Return every endorsement for the polymorphic entity.
 
     Args:
@@ -75,26 +73,14 @@ async def list_polymorphic_endorsements(
         author_ids = {r.applied_by_user_id for r in rows}
         author_map: dict[int, tuple[str, str]] = {}
         if author_ids:
-            users = (
-                session.execute(
-                    select(User).where(User.id.in_(author_ids))
-                )
-                .scalars()
-                .all()
-            )
+            users = session.execute(select(User).where(User.id.in_(author_ids))).scalars().all()
             author_map = {u.id: (u.email, u.display_name) for u in users}
     payload = [
         serialise_endorsement(
             r,
-            author_email=author_map.get(
-                r.applied_by_user_id, (None, None)
-            )[0],
-            author_display_name=author_map.get(
-                r.applied_by_user_id, (None, None)
-            )[1],
-            note_md_resolved=resolve_citations(
-                r.note_md or "", factory, workspace_id
-            ),
+            author_email=author_map.get(r.applied_by_user_id, (None, None))[0],
+            author_display_name=author_map.get(r.applied_by_user_id, (None, None))[1],
+            note_md_resolved=resolve_citations(r.note_md or "", factory, workspace_id),
         )
         for r in rows
     ]
@@ -106,9 +92,7 @@ async def list_polymorphic_endorsements(
     }
 
 
-async def apply_polymorphic_endorsement(
-    kind: str, ref: str, request: Request
-) -> dict[str, Any]:
+async def apply_polymorphic_endorsement(kind: str, ref: str, request: Request) -> dict[str, Any]:
     """Apply an endorsement of the given type to the polymorphic entity.
 
     Args:
@@ -134,9 +118,7 @@ async def apply_polymorphic_endorsement(
     body = await request.json()
     endorsement_type = body.get("endorsement_type") or ""
     if endorsement_type not in ENDORSEMENT_TYPES:
-        raise BadRequestError(
-            f"endorsement_type must be one of {sorted(ENDORSEMENT_TYPES)!r}"
-        )
+        raise BadRequestError(f"endorsement_type must be one of {sorted(ENDORSEMENT_TYPES)!r}")
     note_md = (body.get("note_md") or "").strip()
     now = datetime.datetime.now(datetime.UTC)
     with factory() as session:
@@ -154,12 +136,8 @@ async def apply_polymorphic_endorsement(
             return serialise_endorsement(
                 existing,
                 author_email=author.email if author else None,
-                author_display_name=(
-                    author.display_name if author else None
-                ),
-                note_md_resolved=resolve_citations(
-                    existing.note_md or "", factory, workspace_id
-                ),
+                author_display_name=(author.display_name if author else None),
+                note_md_resolved=resolve_citations(existing.note_md or "", factory, workspace_id),
             )
         new_row = DataProductEndorsement(
             workspace_id=workspace_id,
@@ -196,9 +174,7 @@ async def apply_polymorphic_endorsement(
         new_row,
         author_email=author_email,
         author_display_name=author_display,
-        note_md_resolved=resolve_citations(
-            new_row.note_md or "", factory, workspace_id
-        ),
+        note_md_resolved=resolve_citations(new_row.note_md or "", factory, workspace_id),
     )
 
 
@@ -235,9 +211,7 @@ async def remove_polymorphic_endorsement(
             or endorsement.workspace_id != workspace_id
             or endorsement.social_target_id != target_id
         ):
-            raise ResourceNotFoundError.not_found(
-                what=f"endorsement id={endorsement_id}"
-            )
+            raise ResourceNotFoundError.not_found(what=f"endorsement id={endorsement_id}")
         is_applier = endorsement.applied_by_user_id == user["id"]
         is_admin = bool(user.get("is_admin"))
         if not (is_applier or is_admin):
@@ -254,11 +228,7 @@ async def remove_polymorphic_endorsement(
             session.refresh(endorsement)
         endorsement_type = endorsement.endorsement_type
         endorsement_id_final = int(endorsement.id)
-        removed_at_iso = (
-            endorsement.removed_at.isoformat()
-            if endorsement.removed_at
-            else None
-        )
+        removed_at_iso = endorsement.removed_at.isoformat() if endorsement.removed_at else None
 
     mirror_social_to_audit(
         factory,
@@ -274,5 +244,3 @@ async def remove_polymorphic_endorsement(
         workspace_id=workspace_id,
     )
     return {"id": endorsement_id_final, "removed_at": removed_at_iso}
-
-

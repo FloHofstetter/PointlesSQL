@@ -1,6 +1,6 @@
 """Git provider abstraction for workspace-backed repositories.
 
-Phase 51 introduces the ability to back a workspace's
+introduces the ability to back a workspace's
 configuration with a git repository: clone on admin demand, pull
 on webhook trigger or cron, surface yaml-bundles + notebooks +
 dashboards + saved queries from the repo's filesystem layout.

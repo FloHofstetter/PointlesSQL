@@ -148,7 +148,7 @@ async def sql_chat_ws(websocket: WebSocket, editor_session_id: str) -> None:
         pump_task.cancel()
         try:
             await pump_task
-        except (asyncio.CancelledError, Exception):  # noqa: BLE001
+        except asyncio.CancelledError, Exception:  # noqa: BLE001
             pass
         unsubscribe(editor_session_id, queue)
 
@@ -193,9 +193,7 @@ async def _handle_frame(
         return
     frame: dict[str, Any] = {str(k): v for k, v in frame_any.items()}  # type: ignore[reportUnknownVariableType]
     request_id_raw = frame.get("id")
-    request_id: int | None = (
-        request_id_raw if isinstance(request_id_raw, int) else None
-    )
+    request_id: int | None = request_id_raw if isinstance(request_id_raw, int) else None
     method_raw = frame.get("method")
     method: str | None = method_raw if isinstance(method_raw, str) else None
     params_raw = frame.get("params")
@@ -242,14 +240,10 @@ async def _handle_frame(
         )
     elif method == "cancel":
         cancel_event.set()
-        await _send_reply(
-            websocket, request_id=request_id, result={"cancelled": True}
-        )
+        await _send_reply(websocket, request_id=request_id, result={"cancelled": True})
     elif method == "reset":
         reset_session(factory, chat_session_id=chat_session_id)
-        await _send_reply(
-            websocket, request_id=request_id, result={"reset": True}
-        )
+        await _send_reply(websocket, request_id=request_id, result={"reset": True})
     else:
         await _send_error(
             websocket,
@@ -345,9 +339,7 @@ async def _handle_prompt(
             if result.cancelled:
                 publish(
                     editor_session_id,
-                    ChatEvent(
-                        kind="cancelled", payload={"turn_id": turn_id}
-                    ),
+                    ChatEvent(kind="cancelled", payload={"turn_id": turn_id}),
                 )
             else:
                 appended = [
@@ -440,9 +432,7 @@ def _format_refine_hint(params: dict[str, Any]) -> str | None:
 
 async def _send_notify(websocket: WebSocket, *, kind: str, params: dict[str, Any]) -> None:
     """Send a ``{"notify": kind, "params": params}`` frame."""
-    await websocket.send_text(
-        json.dumps({"notify": kind, "params": params})
-    )
+    await websocket.send_text(json.dumps({"notify": kind, "params": params}))
 
 
 async def _send_reply(

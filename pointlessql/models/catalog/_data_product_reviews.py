@@ -38,11 +38,11 @@ class DataProductReview(Base):
         id: Auto-incremented primary key.
         workspace_id: Tenant scope.
         data_product_id: FK on ``data_products.id`` with
-            ``ondelete='CASCADE'``.  Nullable since the Phase 77.0
-            polymorphism shift — the kind-agnostic join key is
+            ``ondelete='CASCADE'``.  Nullable since the polymorphism
+            shift — the kind-agnostic join key is
             ``social_target_id``.
-        social_target_id: Phase 77.0.B polymorphic anchor (joined
-            through ``social_targets``).  The Phase 77.2.1 UNIQUE
+        social_target_id: Polymorphic anchor (joined through
+            ``social_targets``).  The UNIQUE
             ``uq_dp_review_polymorphic_one_per_user`` keys on this
             column rather than on ``data_product_id`` directly.
         author_user_id: FK on ``users.id``.  ``(workspace_id,
@@ -103,9 +103,7 @@ class DataProductReview(Base):
         ForeignKey("social_targets.id"),
         nullable=False,
     )
-    author_user_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("users.id"), nullable=False
-    )
+    author_user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
     author_agent_id: Mapped[int | None] = mapped_column(
         Integer,
         ForeignKey("agents.id", ondelete="SET NULL"),
@@ -114,9 +112,5 @@ class DataProductReview(Base):
     stars: Mapped[int] = mapped_column(Integer, nullable=False)
     body_md: Mapped[str] = mapped_column(Text, nullable=False, default="")
     dp_version_at_review: Mapped[str] = mapped_column(String(32), nullable=False)
-    created_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
-    updated_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    updated_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)

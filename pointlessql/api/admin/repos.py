@@ -58,9 +58,7 @@ def _serialize(repo: WorkspaceRepo) -> dict[str, Any]:
         "provider_kind": repo.provider_kind,
         "sync_state": repo.sync_state,
         "last_synced_sha": repo.last_synced_sha,
-        "last_synced_at": (
-            repo.last_synced_at.isoformat() if repo.last_synced_at else None
-        ),
+        "last_synced_at": (repo.last_synced_at.isoformat() if repo.last_synced_at else None),
         "last_sync_error": repo.last_sync_error,
         "created_at": repo.created_at.isoformat(),
     }
@@ -145,9 +143,7 @@ async def create_repo_route(
         raise ValidationError("default_branch must be a non-empty string when provided")
     provider_kind = body.get("provider_kind") or "generic"
     if provider_kind not in WORKSPACE_REPO_PROVIDER_KINDS:
-        raise ValidationError(
-            f"provider_kind must be one of {WORKSPACE_REPO_PROVIDER_KINDS}"
-        )
+        raise ValidationError(f"provider_kind must be one of {WORKSPACE_REPO_PROVIDER_KINDS}")
     initial_secret_kind = body.get("initial_secret_kind")
     initial_secret_plaintext = body.get("initial_secret_plaintext")
     if initial_secret_kind is not None and not isinstance(initial_secret_kind, str):
@@ -201,9 +197,7 @@ async def get_repo(repo_id: int, request: Request) -> dict[str, Any]:
     with factory() as session:
         secrets_rows = list(
             session.execute(
-                select(WorkspaceRepoSecret).where(
-                    WorkspaceRepoSecret.workspace_repo_id == repo.id
-                )
+                select(WorkspaceRepoSecret).where(WorkspaceRepoSecret.workspace_repo_id == repo.id)
             ).scalars()
         )
     return {
@@ -287,9 +281,7 @@ async def add_secret_route(
     kind = body.get("kind")
     plaintext = body.get("plaintext")
     if not isinstance(kind, str) or kind not in WORKSPACE_REPO_SECRET_KINDS:
-        raise ValidationError(
-            f"kind must be one of {WORKSPACE_REPO_SECRET_KINDS}"
-        )
+        raise ValidationError(f"kind must be one of {WORKSPACE_REPO_SECRET_KINDS}")
     if not isinstance(plaintext, str) or not plaintext:
         raise ValidationError("plaintext must be a non-empty string")
     secret = add_secret(factory, repo_id=repo.id, kind=kind, plaintext=plaintext)
@@ -325,9 +317,7 @@ async def delete_secret_route(
     require_admin(request)
     repo = _load_repo(request, repo_id)
     if kind not in WORKSPACE_REPO_SECRET_KINDS:
-        raise ValidationError(
-            f"kind must be one of {WORKSPACE_REPO_SECRET_KINDS}"
-        )
+        raise ValidationError(f"kind must be one of {WORKSPACE_REPO_SECRET_KINDS}")
     factory = request.app.state.session_factory
     with factory() as session:
         row = session.execute(
@@ -398,13 +388,9 @@ async def delete_repo_route(repo_id: int, request: Request) -> dict[str, Any]:
     repo = _load_repo(request, repo_id)
     factory = request.app.state.session_factory
     settings = request.app.state.settings
-    deleted = delete_repo(
-        factory, repo_id=repo.id, base_dir=settings.workspace_repos.base_dir
-    )
+    deleted = delete_repo(factory, repo_id=repo.id, base_dir=settings.workspace_repos.base_dir)
     if not deleted:
-        raise ResourceNotFoundError(
-            f"workspace_repo {repo_id} disappeared mid-request."
-        )
+        raise ResourceNotFoundError(f"workspace_repo {repo_id} disappeared mid-request.")
     await audit(
         request,
         "workspace_repo.deleted",

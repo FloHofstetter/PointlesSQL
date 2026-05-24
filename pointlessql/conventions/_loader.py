@@ -141,9 +141,7 @@ def load_conventions_for_workspace(
         return load_conventions(settings=resolved_settings)
 
     base_dir = getattr(resolved_settings.workspace_repos, "base_dir", None)
-    globs = getattr(
-        resolved_settings.workspace_repos, "yaml_search_globs", ()
-    )
+    globs = getattr(resolved_settings.workspace_repos, "yaml_search_globs", ())
     if base_dir is None:
         return DEFAULT_CONVENTIONS
     matches = discover_repo_yaml_files(
@@ -159,7 +157,7 @@ def load_conventions_for_workspace(
         try:
             with candidate.open("r", encoding="utf-8") as fh:
                 raw: Any = yaml.safe_load(fh)
-        except (yaml.YAMLError, OSError):
+        except yaml.YAMLError, OSError:
             continue
         if isinstance(raw, dict) and "data_product" not in raw:
             return load_conventions(path=candidate, settings=resolved_settings)

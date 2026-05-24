@@ -30,9 +30,7 @@ def _slugify(text: str) -> str:
     return cleaned[:64] or "pin"
 
 
-def _next_unique_slug(
-    factory: sessionmaker[Session], *, workspace_id: int, base: str
-) -> str:
+def _next_unique_slug(factory: sessionmaker[Session], *, workspace_id: int, base: str) -> str:
     """Return a workspace-unique slug, suffixing ``-2`` / ``-3`` on collision."""
     candidate = base
     suffix = 1

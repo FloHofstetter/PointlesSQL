@@ -27,17 +27,13 @@ router = APIRouter(tags=["notebooks"])
 def _resolve_notebook_uuid(request: Request, path: str) -> str:
     settings: Settings = request.app.state.settings
     notebooks_dir = settings.jupyter.notebooks_dir.resolve()
-    absolute = notebook_doc_service.resolve_py_notebook_path(
-        notebooks_dir, path, must_exist=True
-    )
+    absolute = notebook_doc_service.resolve_py_notebook_path(notebooks_dir, path, must_exist=True)
     relative = str(absolute.relative_to(notebooks_dir))
     return get_or_create_notebook_uuid(request, relative)
 
 
 @router.post("/api/notebooks/replay", status_code=201)
-async def api_start_replay(
-    request: Request, body: dict[str, Any] = Body(...)
-) -> JSONResponse:
+async def api_start_replay(request: Request, body: dict[str, Any] = Body(...)) -> JSONResponse:
     """Insert a fresh replay row in ``pending`` state.
 
     Body keys:
@@ -53,17 +49,13 @@ async def api_start_replay(
     base_rev = body.get("base_revision_uuid")
     branch_name = body.get("branch_name")
     if not isinstance(path, str) or not isinstance(base_rev, str):
-        raise ValidationError(
-            "body.path and body.base_revision_uuid must be strings"
-        )
+        raise ValidationError("body.path and body.base_revision_uuid must be strings")
     if branch_name is not None and not isinstance(branch_name, str):
         raise ValidationError("body.branch_name must be a string or null")
     notebook_id = _resolve_notebook_uuid(request, path)
     actor_id: int | None = None
     try:
-        actor_id = (
-            request.state.user.get("id") if request.state.user else None
-        )
+        actor_id = request.state.user.get("id") if request.state.user else None
     except AttributeError:
         actor_id = None
     factory = request.app.state.session_factory
@@ -75,9 +67,7 @@ async def api_start_replay(
             branch_name=branch_name,
             triggered_by_user_id=actor_id,
         )
-        envelope = notebook_replay_service.get_replay(
-            session, replay_uuid=row.replay_uuid
-        )
+        envelope = notebook_replay_service.get_replay(session, replay_uuid=row.replay_uuid)
         session.commit()
     assert envelope is not None
     return JSONResponse(envelope, status_code=201)
@@ -112,9 +102,7 @@ async def api_record_replay_finished(
             status=status,
             outputs=outputs,
         )
-        envelope = notebook_replay_service.get_replay(
-            session, replay_uuid=replay_uuid
-        )
+        envelope = notebook_replay_service.get_replay(session, replay_uuid=replay_uuid)
         session.commit()
     return JSONResponse(envelope or {})
 
@@ -125,25 +113,19 @@ async def api_get_replay(request: Request, replay_uuid: str) -> JSONResponse:
     require_user(request)
     factory = request.app.state.session_factory
     with factory() as session:
-        envelope = notebook_replay_service.get_replay(
-            session, replay_uuid=replay_uuid
-        )
+        envelope = notebook_replay_service.get_replay(session, replay_uuid=replay_uuid)
     if envelope is None:
         raise ValidationError(f"replay {replay_uuid!r} not found")
     return JSONResponse(envelope)
 
 
 @router.get("/api/notebooks/replay/{replay_uuid}/diff")
-async def api_replay_diff(
-    request: Request, replay_uuid: str
-) -> JSONResponse:
+async def api_replay_diff(request: Request, replay_uuid: str) -> JSONResponse:
     """Return the cell-by-cell side-by-side diff envelope."""
     require_user(request)
     factory = request.app.state.session_factory
     with factory() as session:
-        envelope = notebook_replay_service.compute_replay_diff(
-            session, replay_uuid=replay_uuid
-        )
+        envelope = notebook_replay_service.compute_replay_diff(session, replay_uuid=replay_uuid)
     return JSONResponse(envelope)
 
 
@@ -164,6 +146,4 @@ async def api_list_replays(
             limit=paging.limit,
             offset=paging.offset,
         )
-    return JSONResponse(
-        {"path": path, "notebook_id": notebook_id, "replays": rows}
-    )
+    return JSONResponse({"path": path, "notebook_id": notebook_id, "replays": rows})

@@ -1,4 +1,4 @@
-"""ORM-level tests for the Sprint 28.0 workspace primitives.
+"""ORM-level tests for the workspace primitives.
 
 Exercises only the model + service surface — middleware integration
 is covered by ``test_workspace_resolver.py`` and the api-key column

@@ -50,9 +50,7 @@ def upgrade() -> None:
         sa.Column("expires_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("revoked_at", sa.DateTime(timezone=True), nullable=True),
         sa.ForeignKeyConstraint(["created_by_user_id"], ["users.id"]),
-        sa.ForeignKeyConstraint(
-            ["notebook_id"], ["notebooks.id"], ondelete="CASCADE"
-        ),
+        sa.ForeignKeyConstraint(["notebook_id"], ["notebooks.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("share_uuid", name="uq_notebook_shares_uuid"),
     )

@@ -1,4 +1,4 @@
-"""Tests for the Phase 74 active reviewer.
+"""Tests for the active reviewer.
 
 Covers:
 
@@ -110,9 +110,7 @@ def test_build_prompt_contains_expected_sections(tmp_path: Path) -> None:
     dp_id = _seed_dp(tmp_path)
     factory = app.state.session_factory
     with factory() as session:
-        dp = session.execute(
-            select(DataProduct).where(DataProduct.id == dp_id)
-        ).scalar_one()
+        dp = session.execute(select(DataProduct).where(DataProduct.id == dp_id)).scalar_one()
         prompt = build_prompt(session, workspace_id=1, dp=dp, config=None)
     assert "Daily active-reviewer audit" in prompt
     assert "main.sales_gold" in prompt
@@ -156,9 +154,7 @@ async def test_run_reviewer_for_dp_writes_all_artefacts(
 
     now = datetime.datetime.now(datetime.UTC)
     with factory() as session:
-        user = session.execute(
-            select(User).where(User.email == "test@test.com")
-        ).scalar_one()
+        user = session.execute(select(User).where(User.email == "test@test.com")).scalar_one()
         session.add(
             DataProductActiveReviewerConfig(
                 workspace_id=1,
@@ -195,9 +191,7 @@ async def test_run_reviewer_for_dp_writes_all_artefacts(
 
     with factory() as session:
         comment = session.execute(
-            select(DataProductComment).where(
-                DataProductComment.id == result["comment_id"]
-            )
+            select(DataProductComment).where(DataProductComment.id == result["comment_id"])
         ).scalar_one()
         assert "looks great" in comment.body_md
         endorsements = (
@@ -209,13 +203,9 @@ async def test_run_reviewer_for_dp_writes_all_artefacts(
             .scalars()
             .all()
         )
-        assert any(
-            e.endorsement_type == "verified-by-steward" for e in endorsements
-        )
+        assert any(e.endorsement_type == "verified-by-steward" for e in endorsements)
         review = session.execute(
-            select(AgentReview).where(
-                AgentReview.id == result["agent_review_id"]
-            )
+            select(AgentReview).where(AgentReview.id == result["agent_review_id"])
         ).scalar_one()
         assert review.kind == "audit_review"
         assert review.severity == "ok"
@@ -236,9 +226,7 @@ async def test_run_reviewer_red_writes_under_review(tmp_path: Path) -> None:
 
     now = datetime.datetime.now(datetime.UTC)
     with factory() as session:
-        user = session.execute(
-            select(User).where(User.email == "test@test.com")
-        ).scalar_one()
+        user = session.execute(select(User).where(User.email == "test@test.com")).scalar_one()
         session.add(
             DataProductActiveReviewerConfig(
                 workspace_id=1,
@@ -308,9 +296,7 @@ async def test_run_reviewer_no_config_raises(tmp_path: Path) -> None:
 
 
 @pytest.mark.asyncio
-async def test_routes_upsert_and_get(
-    tmp_path: Path, admin_client: httpx.AsyncClient
-) -> None:
+async def test_routes_upsert_and_get(tmp_path: Path, admin_client: httpx.AsyncClient) -> None:
     _seed_dp(tmp_path)
     payload = {
         "enabled": True,
@@ -327,9 +313,7 @@ async def test_routes_upsert_and_get(
     assert body["config"]["enabled"] is True
     assert body["config"]["runner"] == "inproc"
 
-    resp = await admin_client.get(
-        "/api/data-products/main/sales_gold/active-reviewer"
-    )
+    resp = await admin_client.get("/api/data-products/main/sales_gold/active-reviewer")
     assert resp.status_code == 200
     assert resp.json()["config"]["llm_provider"] == "anthropic"
 
@@ -356,9 +340,7 @@ async def test_queue_endpoint_returns_hermes_cron_only(
 
     now = datetime.datetime.now(datetime.UTC)
     with factory() as session:
-        user = session.execute(
-            select(User).where(User.email == "test@test.com")
-        ).scalar_one()
+        user = session.execute(select(User).where(User.email == "test@test.com")).scalar_one()
         session.add(
             DataProductActiveReviewerConfig(
                 workspace_id=1,
@@ -378,9 +360,7 @@ async def test_queue_endpoint_returns_hermes_cron_only(
     resp = await admin_client.get("/api/active-reviewer/queue")
     assert resp.status_code == 200
     queue = resp.json()["queue"]
-    assert any(
-        e["data_product_id"] == dp_id and e["catalog"] == "main" for e in queue
-    )
+    assert any(e["data_product_id"] == dp_id and e["catalog"] == "main" for e in queue)
 
 
 @pytest.mark.asyncio

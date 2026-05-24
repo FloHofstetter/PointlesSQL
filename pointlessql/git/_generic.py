@@ -194,9 +194,7 @@ class GenericGitProvider:
                 behind a partial tree.
         """
         if target.exists():
-            raise WorkspaceRepoCloneFailed(
-                url, -1, f"clone target already exists: {target!s}"
-            )
+            raise WorkspaceRepoCloneFailed(url, -1, f"clone target already exists: {target!s}")
         target.parent.mkdir(parents=True, exist_ok=True)
 
         clone_url = url
@@ -268,9 +266,7 @@ class GenericGitProvider:
                 therefore not a working tree.
         """
         if not (target / ".git").exists():
-            raise WorkspaceRepoCloneFailed(
-                str(target), -1, f"not a git working tree: {target!s}"
-            )
+            raise WorkspaceRepoCloneFailed(str(target), -1, f"not a git working tree: {target!s}")
 
         env_secret_path: Path | None = None
         ssh_ctx: _SshKeyFile | None = None
@@ -372,7 +368,5 @@ class GenericGitProvider:
             timeout_seconds=15.0,
         )
         if result.returncode != 0:
-            raise WorkspaceRepoCloneFailed(
-                str(target), result.returncode, result.stderr
-            )
+            raise WorkspaceRepoCloneFailed(str(target), result.returncode, result.stderr)
         return result.stdout.strip()

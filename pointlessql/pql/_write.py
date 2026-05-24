@@ -80,9 +80,9 @@ def write_table(
             hook short-circuits with no source IDs to correlate on,
             and the URI has nowhere to land.
         derivations: Optional declarative mapping of derived target
-            columns to their *true* source-column names (Sprint
-            15.6.2).  Effective only when ``source_table_fqn`` is
-            also set (a derivation needs a source to point at).
+            columns to their *true* source-column names.  Effective
+            only when ``source_table_fqn`` is also set (a derivation
+            needs a source to point at).
 
     Raises:
         ValidationError: If *full_name* does not have exactly three parts.

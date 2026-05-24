@@ -33,9 +33,7 @@ from pointlessql.models.notebook import Notebook
 from pointlessql.services.social import entity_registry
 from pointlessql.services.social.citations import resolve_citations
 
-_TEMPLATES_ROOT = pathlib.Path(
-    "/home/flo/git/PointlesSQL/frontend/templates"
-)
+_TEMPLATES_ROOT = pathlib.Path("/home/flo/git/PointlesSQL/frontend/templates")
 
 
 def test_notebooks_table_present_after_migration() -> None:
@@ -97,19 +95,13 @@ def test_saved_query_kind_is_registered() -> None:
 def test_notebook_url_builder() -> None:
     """A 36-char UUID builds a ``/notebooks/uuid/{uuid}`` URL."""
     nb_uuid = str(uuid.uuid4())
-    assert (
-        entity_registry.url_for("notebook", nb_uuid)
-        == f"/notebooks/uuid/{nb_uuid}"
-    )
+    assert entity_registry.url_for("notebook", nb_uuid) == f"/notebooks/uuid/{nb_uuid}"
     assert entity_registry.url_for("notebook", "not-a-uuid") == "/notebooks"
 
 
 def test_saved_query_url_builder() -> None:
     """A slug builds a ``/audit/queries/{slug}`` URL."""
-    assert (
-        entity_registry.url_for("saved_query", "slow-tables")
-        == "/audit/queries/slow-tables"
-    )
+    assert entity_registry.url_for("saved_query", "slow-tables") == "/audit/queries/slow-tables"
     assert entity_registry.url_for("saved_query", "") == "/audit/queries"
 
 
@@ -117,15 +109,11 @@ def test_audit_targets_use_generic_kind_prefixes() -> None:
     """Both kinds use the generic ``{kind}:`` audit-log prefix."""
     nb_uuid = str(uuid.uuid4())
     assert (
-        entity_registry.audit_target(
-            "notebook", nb_uuid, suffix="tab-discussion"
-        )
+        entity_registry.audit_target("notebook", nb_uuid, suffix="tab-discussion")
         == f"notebook:{nb_uuid}#tab-discussion"
     )
     assert (
-        entity_registry.audit_target(
-            "saved_query", "slow-tables", suffix="tab-readme"
-        )
+        entity_registry.audit_target("saved_query", "slow-tables", suffix="tab-readme")
         == "saved_query:slow-tables#tab-readme"
     )
 
@@ -223,7 +211,7 @@ def test_notebook_editor_template_carries_drawer_marker() -> None:
     ]
     body = "\n".join(parts)
     assert "pql-right-drawer" in body
-    assert 'socialTabs({' in body
+    assert "socialTabs({" in body
     assert 'kind: "notebook"' in body
     assert "window.notebookDiscussion = notebookDiscussion" in body
     assert "window.notebookReadme = notebookReadme" in body
@@ -231,9 +219,7 @@ def test_notebook_editor_template_carries_drawer_marker() -> None:
 
 def test_saved_query_template_has_five_tab_nav_strip() -> None:
     """``saved_audit_query_detail.html`` carries the 5-tab nav strip."""
-    body = (
-        _TEMPLATES_ROOT / "pages/saved_audit_query_detail.html"
-    ).read_text()
+    body = (_TEMPLATES_ROOT / "pages/saved_audit_query_detail.html").read_text()
     for marker in (
         'data-pql-tab-key="overview"',
         'data-pql-tab-key="discussion"',

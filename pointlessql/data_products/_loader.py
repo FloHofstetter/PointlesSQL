@@ -68,39 +68,28 @@ def parse_yaml(yaml_path: Path) -> DataProductContract:
             mapping, or pydantic validation failed.
     """
     if not yaml_path.exists():
-        raise FileNotFoundError(
-            f"pointlessql.yaml not found at {yaml_path!s}"
-        )
+        raise FileNotFoundError(f"pointlessql.yaml not found at {yaml_path!s}")
 
     with yaml_path.open("r", encoding="utf-8") as fh:
         try:
             raw: Any = yaml.safe_load(fh)
         except yaml.YAMLError as exc:
-            raise DataProductYamlInvalid(
-                f"yaml syntax error in {yaml_path!s}: {exc}"
-            ) from exc
+            raise DataProductYamlInvalid(f"yaml syntax error in {yaml_path!s}: {exc}") from exc
 
     if raw is None:
-        raise DataProductYamlInvalid(
-            f"yaml file {yaml_path!s} is empty"
-        )
+        raise DataProductYamlInvalid(f"yaml file {yaml_path!s} is empty")
 
     if not isinstance(raw, dict):
-        raise DataProductYamlInvalid(
-            f"yaml top level must be a mapping, got {type(raw).__name__}"
-        )
+        raise DataProductYamlInvalid(f"yaml top level must be a mapping, got {type(raw).__name__}")
 
     raw_dict = cast("dict[str, Any]", raw)
     block: Any = raw_dict.get("data_product")
     if block is None:
-        raise DataProductYamlInvalid(
-            f"yaml file {yaml_path!s} has no 'data_product:' block"
-        )
+        raise DataProductYamlInvalid(f"yaml file {yaml_path!s} has no 'data_product:' block")
 
     if not isinstance(block, dict):
         raise DataProductYamlInvalid(
-            "'data_product:' block must be a mapping, "
-            f"got {type(block).__name__}"
+            f"'data_product:' block must be a mapping, got {type(block).__name__}"
         )
 
     block_dict = cast("dict[str, Any]", block)
@@ -207,10 +196,7 @@ def load_contract(
             session.add(row)
             release_signal = contract.steward_email or ""
         else:
-            if (
-                existing.version != contract.version
-                or existing.contract_yaml_hash != contract_hash
-            ):
+            if existing.version != contract.version or existing.contract_yaml_hash != contract_hash:
                 release_signal = contract.steward_email or ""
             existing.steward_user_id = steward_id
             existing.version = contract.version

@@ -77,12 +77,6 @@ class LensProviderCreds(Base):
     provider: Mapped[str] = mapped_column(String(32), primary_key=True)
     api_key_encrypted: Mapped[str] = mapped_column(Text, nullable=False)
     default_model: Mapped[str | None] = mapped_column(String(128), nullable=True)
-    enabled: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, default=True
-    )
-    created_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
-    updated_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    updated_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)

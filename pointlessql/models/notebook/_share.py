@@ -88,9 +88,7 @@ class NotebookShare(Base):
     dashboard_mode: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False, server_default="0"
     )
-    revision_uuid: Mapped[str | None] = mapped_column(
-        String(36), nullable=True
-    )
+    revision_uuid: Mapped[str | None] = mapped_column(String(36), nullable=True)
     created_by_user_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("users.id"), nullable=True
     )
@@ -141,9 +139,7 @@ class NotebookWidget(Base):
     __tablename__ = "notebook_widgets"
 
     __table_args__ = (
-        UniqueConstraint(
-            "notebook_id", "name", name="uq_notebook_widgets_name_per_nb"
-        ),
+        UniqueConstraint("notebook_id", "name", name="uq_notebook_widgets_name_per_nb"),
         Index("ix_notebook_widgets_notebook", "notebook_id"),
     )
 
@@ -158,9 +154,7 @@ class NotebookWidget(Base):
     label: Mapped[str] = mapped_column(String(200), nullable=False)
     config_json: Mapped[str] = mapped_column(Text, nullable=False)
     default_value: Mapped[str | None] = mapped_column(Text, nullable=True)
-    position: Mapped[int] = mapped_column(
-        Integer, nullable=False, default=0, server_default="0"
-    )
+    position: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
     created_at: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
@@ -202,9 +196,7 @@ class NotebookPermission(Base):
     __tablename__ = "notebook_permissions"
 
     __table_args__ = (
-        UniqueConstraint(
-            "notebook_id", "user_id", name="uq_notebook_perms_per_user"
-        ),
+        UniqueConstraint("notebook_id", "user_id", name="uq_notebook_perms_per_user"),
         Index("ix_notebook_perms_user", "user_id"),
     )
 

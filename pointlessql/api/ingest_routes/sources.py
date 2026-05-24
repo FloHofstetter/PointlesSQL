@@ -64,21 +64,15 @@ def _validate_create_body(body: dict[str, Any]) -> tuple[str, str, dict[str, Any
         raise ValidationError("name must be at most 200 characters.")
     kind = str(body.get("kind") or "").strip()
     if kind not in INGEST_SOURCE_KINDS:
-        raise ValidationError(
-            f"kind must be one of {INGEST_SOURCE_KINDS}, got {kind!r}."
-        )
+        raise ValidationError(f"kind must be one of {INGEST_SOURCE_KINDS}, got {kind!r}.")
     config_raw: object = body.get("config") or {}
     if not isinstance(config_raw, dict):
         raise ValidationError("config must be an object.")
     secrets_raw: object = body.get("secrets") or {}
     if not isinstance(secrets_raw, dict):
         raise ValidationError("secrets must be an object.")
-    config: dict[str, Any] = {
-        str(k): v for k, v in cast(dict[Any, Any], config_raw).items()
-    }
-    secrets: dict[str, Any] = {
-        str(k): v for k, v in cast(dict[Any, Any], secrets_raw).items()
-    }
+    config: dict[str, Any] = {str(k): v for k, v in cast(dict[Any, Any], config_raw).items()}
+    secrets: dict[str, Any] = {str(k): v for k, v in cast(dict[Any, Any], secrets_raw).items()}
     return name, kind, config, secrets
 
 
@@ -226,17 +220,14 @@ async def api_patch_source(
             row.config = json.dumps(cfg)
         if "secrets" in body:
             patch_secrets_raw = body["secrets"]
-            if patch_secrets_raw is not None and not isinstance(
-                patch_secrets_raw, dict
-            ):
+            if patch_secrets_raw is not None and not isinstance(patch_secrets_raw, dict):
                 raise ValidationError("secrets must be an object.")
             patch_secrets: dict[str, Any] | None
             if patch_secrets_raw is None:
                 patch_secrets = None
             else:
                 patch_secrets = {
-                    str(k): v
-                    for k, v in cast(dict[Any, Any], patch_secrets_raw).items()
+                    str(k): v for k, v in cast(dict[Any, Any], patch_secrets_raw).items()
                 }
             merged = merge_patch_secrets(row.secrets or "{}", patch_secrets)
             row.secrets = json.dumps(merged)

@@ -73,6 +73,4 @@ class SocialReaction(Base):
         nullable=False,
     )
     emoji: Mapped[str] = mapped_column(String(40), nullable=False)
-    created_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)

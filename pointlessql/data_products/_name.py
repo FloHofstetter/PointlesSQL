@@ -47,9 +47,7 @@ class DataProductRef(str):
         """
         parts = [p.strip() for p in full_name.split(".")]
         if len(parts) != 2 or not all(parts):
-            raise ValidationError(
-                "data product must be a two-part UC name 'catalog.schema'"
-            )
+            raise ValidationError("data product must be a two-part UC name 'catalog.schema'")
         return cls(".".join(parts))
 
     @classmethod

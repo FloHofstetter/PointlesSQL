@@ -440,9 +440,7 @@ async def _active_reviewer_loop(  # pyright: ignore[reportUnusedFunction]
         try:
             wait = seconds_until_next_window(trigger_hour)
             await asyncio.sleep(wait)
-            targets = await asyncio.to_thread(
-                iter_opted_in_dp_ids, factory, runner="inproc"
-            )
+            targets = await asyncio.to_thread(iter_opted_in_dp_ids, factory, runner="inproc")
             if not targets:
                 continue
             sem = asyncio.Semaphore(max_concurrent)
@@ -465,9 +463,7 @@ async def _active_reviewer_loop(  # pyright: ignore[reportUnusedFunction]
                             ws_id,
                         )
 
-            await asyncio.gather(
-                *[_one(ws, dp) for ws, dp, _c, _s in targets]
-            )
+            await asyncio.gather(*[_one(ws, dp) for ws, dp, _c, _s in targets])
         except asyncio.CancelledError:
             return
         except Exception:  # noqa: BLE001 — reviewer loop must survive everything
@@ -556,9 +552,7 @@ async def _user_notification_digest_loop(  # pyright: ignore[reportUnusedFunctio
         try:
             emitted = await fire_digests(factory, settings)
             if emitted:
-                logger.info(
-                    "notification_digest: fired %d envelope(s)", emitted
-                )
+                logger.info("notification_digest: fired %d envelope(s)", emitted)
         except Exception:  # noqa: BLE001 — digest loop must survive everything
             logger.exception("notification_digest: tick raised")
 

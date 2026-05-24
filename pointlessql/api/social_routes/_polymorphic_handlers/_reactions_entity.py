@@ -36,9 +36,7 @@ def validate_emoji_field(emoji: str | None) -> str:
     return emoji
 
 
-async def list_polymorphic_reactions(
-    kind: str, ref: str, request: Request
-) -> dict[str, Any]:
+async def list_polymorphic_reactions(kind: str, ref: str, request: Request) -> dict[str, Any]:
     """Return aggregated entity-level reactions for a polymorphic entity.
 
     Args:
@@ -86,9 +84,7 @@ async def list_polymorphic_reactions(
     }
 
 
-async def apply_polymorphic_reaction(
-    kind: str, ref: str, request: Request
-) -> dict[str, Any]:
+async def apply_polymorphic_reaction(kind: str, ref: str, request: Request) -> dict[str, Any]:
     """Add an emoji reaction on a polymorphic entity.
 
     Idempotency is enforced by the
@@ -203,5 +199,3 @@ async def remove_polymorphic_reaction(
         "emoji": emoji,
         "removed": removed,
     }
-
-

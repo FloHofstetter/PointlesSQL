@@ -56,8 +56,7 @@ class OpenAIEmbedder:
         # so we surface the gap clearly.
         if self.model not in MODEL_DIMS:
             raise ValueError(
-                f"unknown OpenAI embedding model {self.model!r}; "
-                f"known: {sorted(MODEL_DIMS)!r}"
+                f"unknown OpenAI embedding model {self.model!r}; known: {sorted(MODEL_DIMS)!r}"
             )
         self.dim = MODEL_DIMS[self.model]
         self._client = self._make_client()
@@ -72,9 +71,7 @@ class OpenAIEmbedder:
         try:
             from openai import OpenAI
         except ImportError as exc:
-            raise EmbedderUnavailableError(
-                "openai SDK is not installed."
-            ) from exc
+            raise EmbedderUnavailableError("openai SDK is not installed.") from exc
         return OpenAI(api_key=api_key)
 
     def embed(self, texts: Sequence[str]) -> list[list[float]]:

@@ -61,9 +61,7 @@ from pointlessql.services.workspace.governance import (
 # ---------------------------------------------------------------------------
 
 
-async def list_polymorphic_comments(
-    kind: str, ref: str, request: Request
-) -> dict[str, Any]:
+async def list_polymorphic_comments(kind: str, ref: str, request: Request) -> dict[str, Any]:
     """Return every live comment on the polymorphic entity.
 
     Args:
@@ -100,30 +98,14 @@ async def list_polymorphic_comments(
         author_ids = {c.author_user_id for c in rows}
         author_map: dict[int, tuple[str, str]] = {}
         if author_ids:
-            users = (
-                session.execute(
-                    select(User).where(User.id.in_(author_ids))
-                )
-                .scalars()
-                .all()
-            )
+            users = session.execute(select(User).where(User.id.in_(author_ids))).scalars().all()
             author_map = {u.id: (u.email, u.display_name) for u in users}
-        agent_ids = {
-            c.author_agent_id
-            for c in rows
-            if c.author_agent_id is not None
-        }
+        agent_ids = {c.author_agent_id for c in rows if c.author_agent_id is not None}
         agent_map: dict[int, dict[str, Any] | None] = {}
         if agent_ids:
-            agents = (
-                session.execute(select(Agent).where(Agent.id.in_(agent_ids)))
-                .scalars()
-                .all()
-            )
+            agents = session.execute(select(Agent).where(Agent.id.in_(agent_ids))).scalars().all()
             agent_map = {a.id: agent_payload(a) for a in agents}
-        reactions_by_comment = collect_reactions(
-            session, [c.id for c in rows], user["id"]
-        )
+        reactions_by_comment = collect_reactions(session, [c.id for c in rows], user["id"])
 
     live_children_by_parent: dict[int, int] = {}
     for c in rows:
@@ -136,18 +118,12 @@ async def list_polymorphic_comments(
     for c in rows:
         if c.deleted_at is not None and not live_children_by_parent.get(c.id):
             continue
-        author_email, author_display = author_map.get(
-            c.author_user_id, (None, None)
-        )
+        author_email, author_display = author_map.get(c.author_user_id, (None, None))
         comment_agent_payload = (
-            agent_map.get(c.author_agent_id)
-            if c.author_agent_id is not None
-            else None
+            agent_map.get(c.author_agent_id) if c.author_agent_id is not None else None
         )
         body_md_resolved = (
-            ""
-            if c.deleted_at
-            else resolve_citations(c.body_md, factory, workspace_id)
+            "" if c.deleted_at else resolve_citations(c.body_md, factory, workspace_id)
         )
         payload.append(
             serialise_comment(
@@ -221,24 +197,13 @@ async def post_polymorphic_comment(
     if not body_md:
         raise BadRequestError("body_md is required")
     parent_comment_id_raw = body.get("parent_comment_id")
-    parent_comment_id = (
-        int(parent_comment_id_raw)
-        if parent_comment_id_raw is not None
-        else None
-    )
+    parent_comment_id = int(parent_comment_id_raw) if parent_comment_id_raw is not None else None
     requested_category_raw = body.get("category")
     requested_category = (
-        str(requested_category_raw).strip().lower()
-        if requested_category_raw is not None
-        else None
+        str(requested_category_raw).strip().lower() if requested_category_raw is not None else None
     )
-    if (
-        requested_category is not None
-        and requested_category not in ALLOWED_CATEGORIES
-    ):
-        raise BadRequestError(
-            f"category must be one of {ALLOWED_CATEGORIES}"
-        )
+    if requested_category is not None and requested_category not in ALLOWED_CATEGORIES:
+        raise BadRequestError(f"category must be one of {ALLOWED_CATEGORIES}")
 
     with factory() as session:
         if parent_comment_id is not None:
@@ -248,20 +213,14 @@ async def post_polymorphic_comment(
                 or parent.workspace_id != workspace_id
                 or parent.social_target_id != target_id
             ):
-                raise BadRequestError(
-                    "parent_comment_id refers to an unknown comment"
-                )
+                raise BadRequestError("parent_comment_id refers to an unknown comment")
             if chain_depth(session, parent_comment_id) >= MAX_THREAD_DEPTH:
-                raise BadRequestError(
-                    f"thread depth exceeds {MAX_THREAD_DEPTH}"
-                )
+                raise BadRequestError(f"thread depth exceeds {MAX_THREAD_DEPTH}")
             effective_category = parent.category
         else:
             effective_category = requested_category or "general"
 
-        mention_ids = resolve_mention_ids(
-            session, extract_mention_emails(body_md)
-        )
+        mention_ids = resolve_mention_ids(session, extract_mention_emails(body_md))
         now = datetime.datetime.now(datetime.UTC)
         comment = DataProductComment(
             workspace_id=workspace_id,
@@ -308,9 +267,7 @@ async def post_polymorphic_comment(
     )
 
     spec = registry_get(kind)
-    source_url = (
-        f"{spec.url_for(ref)}#tab-discussion-comment-{comment_id}"
-    )
+    source_url = f"{spec.url_for(ref)}#tab-discussion-comment-{comment_id}"
     summary = f"@{author_email or 'someone'} commented on {kind}:{ref}"
     fanout_event(
         factory,
@@ -347,8 +304,7 @@ async def post_polymorphic_comment(
         body_md_resolved=resolve_citations(body_md, factory, workspace_id),
         agent=agent_envelope,
         reactions=[
-            {"emoji": e, "count": 0, "has_current_user_reacted": False}
-            for e in ALLOWED_EMOJI
+            {"emoji": e, "count": 0, "has_current_user_reacted": False} for e in ALLOWED_EMOJI
         ],
     )
 
@@ -387,9 +343,7 @@ async def delete_polymorphic_comment(
             or comment.workspace_id != workspace_id
             or comment.social_target_id != target_id
         ):
-            raise ResourceNotFoundError.not_found(
-                what=f"comment id={comment_id}"
-            )
+            raise ResourceNotFoundError.not_found(what=f"comment id={comment_id}")
 
         is_author = comment.author_user_id == user["id"]
         is_admin = bool(user.get("is_admin"))
@@ -423,9 +377,5 @@ async def delete_polymorphic_comment(
 
     return {
         "id": int(comment.id),
-        "deleted_at": (
-            comment.deleted_at.isoformat() if comment.deleted_at else None
-        ),
+        "deleted_at": (comment.deleted_at.isoformat() if comment.deleted_at else None),
     }
-
-

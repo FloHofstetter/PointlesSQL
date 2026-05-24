@@ -1,4 +1,4 @@
-"""Tests for the Sprint 33.3 ``GET /admin/review-destinations`` HTML page.
+"""Tests for the ``GET /admin/review-destinations`` HTML page.
 
 The JSON CRUD under ``/api/admin/review-destinations`` already has
 its own test suite; this file exercises only the HTML wrapper so
@@ -162,7 +162,7 @@ class TestReviewDestPageContent:
         # Both destinations surface.
         assert "ops-slack" in body
         assert "security-pager" in body
-        # Webhook URLs are visible (they are not secret per Phase 19.2).
+        # Webhook URLs are visible (they are not secret ).
         assert "hooks.slack.com" in body
         # The HMAC secret string must NEVER reach the page.  This is
         # the load-bearing assertion of this test file — a regression

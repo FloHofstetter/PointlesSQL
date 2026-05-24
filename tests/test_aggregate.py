@@ -1,7 +1,7 @@
-"""Unit tests for the Sprint 15.5.1 aggregate primitive helpers.
+"""Unit tests for the aggregate primitive helpers.
 
 The full ``aggregate_table`` end-to-end path needs a live soyuz +
-deltalake stack and is exercised by the Sprint 15.5.5 live replay.
+deltalake stack and is exercised by the live replay.
 These tests cover the pure-Python helpers
 (:func:`pointlessql.services.lineage_edges.synth_aggregate_target_row_id`
 and :func:`pointlessql.pql._aggregate._build_aggregate_frame`) that

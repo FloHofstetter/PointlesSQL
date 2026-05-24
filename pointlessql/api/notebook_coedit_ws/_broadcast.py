@@ -53,7 +53,7 @@ async def broadcast_to_all(hub: NotebookHub, frame: bytes) -> None:
 
     Unlike :func:`broadcast`, this helper carries no ``exclude``
     parameter — the originating party is the hub itself, not a
-    connected client.  Used by Phase 105.5's save-barrier to fan a
+    connected client.  Used by save-barrier to fan a
     ``cell_uuid_remap`` advisory out to every tab editing the
     affected notebook.
 
@@ -113,7 +113,7 @@ async def pump(sub: ClientSubscription) -> None:
         while True:
             frame = await sub.outbound.get()
             await sub.websocket.send_bytes(frame)
-    except (WebSocketDisconnect, asyncio.CancelledError):
+    except WebSocketDisconnect, asyncio.CancelledError:
         pass
     except Exception:  # noqa: BLE001 — log + bail; cleanup handles state
         _LOG.exception("coedit: pump task crashed for %s", sub.client_id)

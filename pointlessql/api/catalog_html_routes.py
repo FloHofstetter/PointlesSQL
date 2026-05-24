@@ -278,9 +278,7 @@ async def table_detail(
     # catalog call errored above.
     _cols = (table or {}).get("columns", []) if isinstance(table, dict) else []
     text_column_names = [
-        col["name"]
-        for col in _cols
-        if _is_text_column_type(col.get("type_text", ""))
+        col["name"] for col in _cols if _is_text_column_type(col.get("type_text", ""))
     ]
     return get_templates(request).TemplateResponse(
         request,

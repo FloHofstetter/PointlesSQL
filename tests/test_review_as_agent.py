@@ -54,9 +54,7 @@ def _admin_user_id() -> int:
     factory = app.state.session_factory
     with factory() as session:
         return int(
-            session.execute(
-                select(User.id).where(User.email == "test@test.com")
-            ).scalar_one()
+            session.execute(select(User.id).where(User.email == "test@test.com")).scalar_one()
         )
 
 
@@ -122,9 +120,7 @@ async def test_review_as_agent_non_principal_rejected(
 
 
 @pytest.mark.asyncio
-async def test_review_as_unknown_agent_404(
-    tmp_path: Path, admin_client: httpx.AsyncClient
-) -> None:
+async def test_review_as_unknown_agent_404(tmp_path: Path, admin_client: httpx.AsyncClient) -> None:
     """Unknown ``?as_agent=`` slug returns 404."""
     _seed_product(tmp_path)
     res = await admin_client.put(

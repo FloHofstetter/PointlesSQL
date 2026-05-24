@@ -1,4 +1,4 @@
-"""Tests for the Sprint 17.5.1 recents service."""
+"""Tests for the recents service."""
 
 from __future__ import annotations
 

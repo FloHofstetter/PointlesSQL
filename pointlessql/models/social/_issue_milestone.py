@@ -43,13 +43,9 @@ class IssueMilestone(Base):
 
     __tablename__ = "issue_milestones"
 
-    __table_args__ = (
-        Index("ix_issue_milestones_workspace", "workspace_id"),
-    )
+    __table_args__ = (Index("ix_issue_milestones_workspace", "workspace_id"),)
 
-    id: Mapped[int] = mapped_column(
-        Integer, primary_key=True, autoincrement=True
-    )
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     workspace_id: Mapped[int] = mapped_column(
         Integer,
         ForeignKey("workspaces.id"),
@@ -57,9 +53,7 @@ class IssueMilestone(Base):
     )
     title: Mapped[str] = mapped_column(String(200), nullable=False)
     description_md: Mapped[str | None] = mapped_column(Text, nullable=True)
-    due_at: Mapped[datetime.datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    due_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     closed_at: Mapped[datetime.datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )

@@ -142,9 +142,7 @@ async def resolve_approved_tables(
                 f"Table {full_name!r} has no storage_location on soyuz-catalog.",
             )
         # check_privilege raises AuthorizationError on miss.
-        await check_privilege(
-            uc_client, actor_email, is_admin, "table", full_name, SELECT
-        )
+        await check_privilege(uc_client, actor_email, is_admin, "table", full_name, SELECT)
         # AuthorizationError is the documented raise from
         # check_privilege; keep this no-op assignment so the
         # surface stays explicit.

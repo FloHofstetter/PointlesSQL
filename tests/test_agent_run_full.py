@@ -1,4 +1,4 @@
-"""Tests for the Sprint 13.11.1 ``GET /api/agent-runs/{id}/full`` route.
+"""Tests for the ``GET /api/agent-runs/{id}/full`` route.
 
 Backs the ``pql_my_run`` Hermes tool — joins the run row with every
 per-run sibling table the supervision view aggregates.
@@ -38,7 +38,7 @@ async def test_full_returns_run_and_collections_for_fresh_run(
     assert payload["source"] is not None
     assert payload["source"]["source_bytes"] == "print('seed')\n"
     # Fresh run has no operations / tool calls / queries yet, but
-    # the lifecycle "started" event was emitted by Sprint 13.3.
+    # the lifecycle "started" event was emitted .
     assert payload["operations"] == []
     assert payload["tool_calls"] == []
     assert payload["queries"] == []

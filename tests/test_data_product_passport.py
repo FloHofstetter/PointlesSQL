@@ -1,4 +1,4 @@
-"""Tests for the Phase-73.4 data passport.
+"""Tests for the data passport.
 
 Covers:
 
@@ -160,9 +160,7 @@ def test_refresh_stale_passports_skips_recent(tmp_path: Path) -> None:
         trigger="manual",
     )
     # Threshold = 1 day — the row we just inserted is fresh.
-    refreshed = refresh_stale_passports(
-        factory, stale_threshold_seconds=86_400
-    )
+    refreshed = refresh_stale_passports(factory, stale_threshold_seconds=86_400)
     assert refreshed == 0
 
 
@@ -179,14 +177,10 @@ def test_refresh_stale_passports_picks_up_old(tmp_path: Path) -> None:
     # Backdate the passport to look stale.
     with factory() as session:
         row = session.execute(select(DataProductPassport)).scalar_one()
-        row.refreshed_at = datetime.datetime.now(datetime.UTC) - datetime.timedelta(
-            days=3
-        )
+        row.refreshed_at = datetime.datetime.now(datetime.UTC) - datetime.timedelta(days=3)
         session.add(row)
         session.commit()
-    refreshed = refresh_stale_passports(
-        factory, stale_threshold_seconds=86_400
-    )
+    refreshed = refresh_stale_passports(factory, stale_threshold_seconds=86_400)
     assert refreshed == 1
 
 
@@ -203,9 +197,7 @@ async def test_api_get_passport_returns_latest(
         data_product_id=dp.id,
         trigger="manual",
     )
-    res = await admin_client.get(
-        "/api/data-products/main/sales_gold/passport"
-    )
+    res = await admin_client.get("/api/data-products/main/sales_gold/passport")
     assert res.status_code == 200
     body = res.json()
     assert body["latest"] is not None
@@ -214,14 +206,10 @@ async def test_api_get_passport_returns_latest(
 
 
 @pytest.mark.asyncio
-async def test_api_post_passport_refresh(
-    tmp_path: Path, admin_client: httpx.AsyncClient
-) -> None:
+async def test_api_post_passport_refresh(tmp_path: Path, admin_client: httpx.AsyncClient) -> None:
     """POST /passport/refresh inserts a new row and returns its version."""
     _seed_dp(tmp_path)
-    res = await admin_client.post(
-        "/api/data-products/main/sales_gold/passport/refresh"
-    )
+    res = await admin_client.post("/api/data-products/main/sales_gold/passport/refresh")
     assert res.status_code == 200, res.text
     assert res.json()["version_int"] == 1
 

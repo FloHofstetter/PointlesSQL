@@ -39,9 +39,7 @@ def upgrade() -> None:
                 server_default="ui",
             )
         )
-        batch_op.add_column(
-            sa.Column("repo_yaml_path", sa.Text(), nullable=True)
-        )
+        batch_op.add_column(sa.Column("repo_yaml_path", sa.Text(), nullable=True))
         batch_op.create_index(
             "ix_dashboards_source",
             ["source"],
@@ -57,9 +55,7 @@ def upgrade() -> None:
                 server_default="ui",
             )
         )
-        batch_op.add_column(
-            sa.Column("repo_yaml_path", sa.Text(), nullable=True)
-        )
+        batch_op.add_column(sa.Column("repo_yaml_path", sa.Text(), nullable=True))
         batch_op.create_index(
             "ix_saved_queries_source",
             ["source"],

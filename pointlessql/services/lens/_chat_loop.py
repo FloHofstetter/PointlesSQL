@@ -168,9 +168,7 @@ async def run_chat_turn(
 
         # Execute each tool, persist tool-rows, and append the
         # provider-specific tool_result blocks for the next turn.
-        provider_messages.append(
-            _assistant_tool_call_message(provider.name, completion)
-        )
+        provider_messages.append(_assistant_tool_call_message(provider.name, completion))
         for call in completion.tool_calls:
             try:
                 result = await execute_tool_with_audit(
@@ -189,9 +187,7 @@ async def run_chat_turn(
             except (LensToolError, PointlessSQLError) as exc:
                 logger.info("Lens tool %s failed: %s", call.name, exc)
                 result = {"error": str(exc)}
-                status = (
-                    exc.status if isinstance(exc, LensToolError) else "error"
-                )
+                status = exc.status if isinstance(exc, LensToolError) else "error"
                 observed_tool_calls.append(
                     {
                         "name": call.name,
@@ -200,9 +196,7 @@ async def run_chat_turn(
                         "status": status,
                     }
                 )
-            provider_messages.append(
-                _tool_result_message(provider.name, call.id, result)
-            )
+            provider_messages.append(_tool_result_message(provider.name, call.id, result))
 
     # If the loop ran out of iterations without a clean assistant
     # message, persist a synthetic stop note so the transcript stays
@@ -229,9 +223,7 @@ async def run_chat_turn(
     }
 
 
-def _to_provider_history(
-    provider_name: str, transcript: list[LensMessage]
-) -> list[dict[str, Any]]:
+def _to_provider_history(provider_name: str, transcript: list[LensMessage]) -> list[dict[str, Any]]:
     """Render the persisted transcript in the provider's wire shape.
 
     Tool-rows are intentionally NOT replayed (we only re-feed
@@ -265,9 +257,7 @@ def _to_provider_history(
     return out
 
 
-def _assistant_tool_call_message(
-    provider_name: str, completion: Any
-) -> dict[str, Any]:
+def _assistant_tool_call_message(provider_name: str, completion: Any) -> dict[str, Any]:
     """Echo the model's tool_use blocks back into the conversation."""
     if provider_name == "openai":
         return {
@@ -330,5 +320,5 @@ def _json_or_empty(payload: Any) -> str:
 
     try:
         return json.dumps(payload, default=str)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return "{}"

@@ -5,7 +5,7 @@ Exercises :func:`pointlessql.services.lineage_edges.record_value_changes`,
 :func:`fetch_value_changes_for_row` with synthetic
 ``lineage_value_changes`` rows so the persistence shape lands without
 spinning up soyuz / deltalake / Change Data Feed.  The matching
-end-to-end replay lives in Sprint 15.7.5.
+end-to-end replay lives .
 """
 
 from __future__ import annotations

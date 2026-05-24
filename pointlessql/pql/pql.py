@@ -34,7 +34,7 @@ from pointlessql.services.soyuz_client import make_principal_client, make_soyuz_
 
 # Re-exported at module scope so the established test patch targets
 # (``pointlessql.pql.pql.make_soyuz_client`` etc.) keep working after
-# Phase 111.7 moved the constructor body to ``_pql_base``.  The base
+# moved the constructor body to ``_pql_base``.  The base
 # resolves these via call-time lookup on this facade module.
 __all__ = [
     "PQL",

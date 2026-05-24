@@ -53,9 +53,7 @@ def upgrade() -> None:
         ),
         sa.Column("diff_json", sa.Text(), nullable=False, server_default="{}"),
         sa.Column("summary_md", sa.Text(), nullable=False, server_default=""),
-        sa.Column(
-            "status", sa.String(length=40), nullable=False, server_default="open"
-        ),
+        sa.Column("status", sa.String(length=40), nullable=False, server_default="open"),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("resolved_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column(
@@ -66,13 +64,11 @@ def upgrade() -> None:
         ),
         sa.Column("resolution_note_md", sa.Text(), nullable=True),
         sa.CheckConstraint(
-            "status IN ('open', 'approved_inplace', 'approved_draft', "
-            "'rejected')",
+            "status IN ('open', 'approved_inplace', 'approved_draft', 'rejected')",
             name="ck_dp_proposal_status",
         ),
         sa.CheckConstraint(
-            "(proposer_user_id IS NOT NULL) OR "
-            "(proposer_agent_run_id IS NOT NULL)",
+            "(proposer_user_id IS NOT NULL) OR (proposer_agent_run_id IS NOT NULL)",
             name="ck_dp_proposal_proposer_present",
         ),
     )

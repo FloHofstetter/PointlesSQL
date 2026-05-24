@@ -1,4 +1,4 @@
-"""Regression test for the Sprint 13.11.11 schema-overwrite bug.
+"""Regression test for the schema-overwrite bug.
 
 The 2026-04-26 walkthrough's gpt-5-mini run hit this:
 

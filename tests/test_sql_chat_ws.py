@@ -94,9 +94,7 @@ def _cleanup(editor_session_id: str) -> None:
         if chat_row is None:
             return
         for prop in (
-            session.query(ChatProposal)
-            .filter(ChatProposal.chat_session_id == chat_row.id)
-            .all()
+            session.query(ChatProposal).filter(ChatProposal.chat_session_id == chat_row.id).all()
         ):
             session.delete(prop)
         run_id = chat_row.agent_run_id
@@ -112,9 +110,7 @@ def test_ws_anonymous_closes_with_4401(fresh_session_id: str) -> None:
     try:
         with TestClient(app) as client:
             with pytest.raises(WebSocketDisconnect) as exc_info:
-                with client.websocket_connect(
-                    f"/ws/sql/chat/{fresh_session_id}"
-                ) as ws:
+                with client.websocket_connect(f"/ws/sql/chat/{fresh_session_id}") as ws:
                     ws.receive_text()
         assert exc_info.value.code == 4401
     finally:
@@ -134,9 +130,7 @@ def test_ws_llm_unconfigured_closes_with_1011(
     try:
         with TestClient(app, cookies=auth_cookies) as client:
             with pytest.raises(WebSocketDisconnect) as exc_info:
-                with client.websocket_connect(
-                    f"/ws/sql/chat/{fresh_session_id}"
-                ) as ws:
+                with client.websocket_connect(f"/ws/sql/chat/{fresh_session_id}") as ws:
                     ws.receive_text()
         assert exc_info.value.code == 1011
     finally:
@@ -151,9 +145,7 @@ def test_ws_ready_frame_includes_agent_run(
     """Server emits ``ready`` with ``agent_run_id`` + empty history."""
     try:
         with TestClient(app, cookies=auth_cookies) as client:
-            with client.websocket_connect(
-                f"/ws/sql/chat/{fresh_session_id}"
-            ) as ws:
+            with client.websocket_connect(f"/ws/sql/chat/{fresh_session_id}") as ws:
                 frame = json.loads(ws.receive_text())
         assert frame["notify"] == "ready"
         assert frame["params"]["history"] == []
@@ -170,9 +162,7 @@ def test_ws_prompt_round_trip(
     """``prompt`` → tokens + ``final`` notify + reply."""
     try:
         with TestClient(app, cookies=auth_cookies) as client:
-            with client.websocket_connect(
-                f"/ws/sql/chat/{fresh_session_id}"
-            ) as ws:
+            with client.websocket_connect(f"/ws/sql/chat/{fresh_session_id}") as ws:
                 ready = json.loads(ws.receive_text())
                 assert ready["notify"] == "ready"
                 ws.send_text(
@@ -214,9 +204,7 @@ def test_ws_reset_clears_history(
     """``reset`` truncates conversation_json; next prompt sees empty history."""
     try:
         with TestClient(app, cookies=auth_cookies) as client:
-            with client.websocket_connect(
-                f"/ws/sql/chat/{fresh_session_id}"
-            ) as ws:
+            with client.websocket_connect(f"/ws/sql/chat/{fresh_session_id}") as ws:
                 _ready = ws.receive_text()
                 ws.send_text(
                     json.dumps(
@@ -238,9 +226,7 @@ def test_ws_reset_clears_history(
         with factory() as session:
             row = (
                 session.query(EditorChatSession)
-                .filter(
-                    EditorChatSession.editor_session_id == fresh_session_id
-                )
+                .filter(EditorChatSession.editor_session_id == fresh_session_id)
                 .one()
             )
             assert row.conversation_json == "[]"
@@ -257,13 +243,9 @@ def test_ws_unknown_method_returns_error(
     """Bad method → ``{"id": ..., "error": {...}}`` envelope."""
     try:
         with TestClient(app, cookies=auth_cookies) as client:
-            with client.websocket_connect(
-                f"/ws/sql/chat/{fresh_session_id}"
-            ) as ws:
+            with client.websocket_connect(f"/ws/sql/chat/{fresh_session_id}") as ws:
                 _ready = ws.receive_text()
-                ws.send_text(
-                    json.dumps({"id": 7, "method": "nope"})
-                )
+                ws.send_text(json.dumps({"id": 7, "method": "nope"}))
                 err = json.loads(ws.receive_text())
         assert err["id"] == 7
         assert err["error"]["code"] == "unknown_method"

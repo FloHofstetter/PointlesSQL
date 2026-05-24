@@ -90,9 +90,7 @@ class Issue(Base):
     __tablename__ = "issues"
 
     __table_args__ = (
-        UniqueConstraint(
-            "social_target_id", name="uq_issues_social_target"
-        ),
+        UniqueConstraint("social_target_id", name="uq_issues_social_target"),
         CheckConstraint(
             "state IN ('open', 'closed', 'closed_not_planned')",
             name="ck_issues_state",
@@ -103,16 +101,12 @@ class Issue(Base):
             ")",
             name="ck_issues_closed_reason",
         ),
-        Index(
-            "ix_issues_workspace_state", "workspace_id", "state"
-        ),
+        Index("ix_issues_workspace_state", "workspace_id", "state"),
         Index("ix_issues_parent", "parent_social_target_id"),
         Index("ix_issues_assignee", "assignee_user_id"),
     )
 
-    id: Mapped[int] = mapped_column(
-        Integer, primary_key=True, autoincrement=True
-    )
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     workspace_id: Mapped[int] = mapped_column(
         Integer,
         ForeignKey("workspaces.id"),
@@ -129,18 +123,12 @@ class Issue(Base):
         nullable=False,
     )
     title: Mapped[str] = mapped_column(String(255), nullable=False)
-    body_md: Mapped[str] = mapped_column(
-        Text, nullable=False, server_default=""
-    )
-    state: Mapped[str] = mapped_column(
-        String(20), nullable=False, server_default="open"
-    )
+    body_md: Mapped[str] = mapped_column(Text, nullable=False, server_default="")
+    state: Mapped[str] = mapped_column(String(20), nullable=False, server_default="open")
     assignee_user_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("users.id"), nullable=True
     )
-    opened_by_user_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("users.id"), nullable=False
-    )
+    opened_by_user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
     opened_at: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
@@ -149,12 +137,8 @@ class Issue(Base):
     closed_at: Mapped[datetime.datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
-    closed_reason: Mapped[str | None] = mapped_column(
-        String(20), nullable=True
-    )
+    closed_reason: Mapped[str | None] = mapped_column(String(20), nullable=True)
     milestone_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("issue_milestones.id"), nullable=True
     )
-    labels_json: Mapped[str] = mapped_column(
-        Text, nullable=False, server_default="[]"
-    )
+    labels_json: Mapped[str] = mapped_column(Text, nullable=False, server_default="[]")

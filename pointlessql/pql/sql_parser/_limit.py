@@ -49,10 +49,7 @@ def inject_limit(sql: str, default_limit: int = 1000) -> str:
     elif isinstance(root, exp.With) and isinstance(root.this, exp.Select):
         select_node = root.this
     if select_node is None:
-        raise SQLParseError(
-            f"inject_limit expects a SELECT statement (got "
-            f"{type(root).__name__})."
-        )
+        raise SQLParseError(f"inject_limit expects a SELECT statement (got {type(root).__name__}).")
     if select_node.args.get("limit") is not None:
         return sql
     select_node.set("limit", exp.Limit(expression=exp.Literal.number(capped)))

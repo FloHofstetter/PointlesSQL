@@ -91,9 +91,7 @@ async def test_admin_source_health_drilldown(
 ) -> None:
     """Per-source drilldown returns source + run lists."""
     source_id = _seed_with_stats("drill", ok=True)
-    res = await admin_client.get(
-        f"/api/admin/ingest-sources/{source_id}/health"
-    )
+    res = await admin_client.get(f"/api/admin/ingest-sources/{source_id}/health")
     assert res.status_code == 200
     body = res.json()
     assert body["source"]["id"] == source_id

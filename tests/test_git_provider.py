@@ -43,8 +43,13 @@ def _git(*args: str, cwd: Path | None = None) -> None:
         cwd=str(cwd) if cwd is not None else None,
         check=True,
         capture_output=True,
-        env={"GIT_TERMINAL_PROMPT": "0", "LC_ALL": "C", "LANG": "C", "HOME": str(Path.home()),
-             "PATH": "/usr/bin:/bin:/usr/local/bin"},
+        env={
+            "GIT_TERMINAL_PROMPT": "0",
+            "LC_ALL": "C",
+            "LANG": "C",
+            "HOME": str(Path.home()),
+            "PATH": "/usr/bin:/bin:/usr/local/bin",
+        },
     )
 
 
@@ -75,9 +80,7 @@ def test_generic_clone_then_pull_against_local_bare(tmp_path):  # type: ignore[n
     provider = GenericGitProvider()
 
     target = tmp_path / "clone"
-    clone_result = asyncio.run(
-        provider.clone(f"file://{bare}", target, branch="main", secret=None)
-    )
+    clone_result = asyncio.run(provider.clone(f"file://{bare}", target, branch="main", secret=None))
     assert clone_result.target == target
     assert (target / "README.md").exists()
     assert len(clone_result.head_sha) == 40
@@ -90,9 +93,7 @@ def test_generic_clone_then_pull_against_local_bare(tmp_path):  # type: ignore[n
     _commit_more(seed_clone)
     _git("push", "origin", "main", cwd=seed_clone)
 
-    pull_result = asyncio.run(
-        provider.pull(target, branch="main", secret=None)
-    )
+    pull_result = asyncio.run(provider.pull(target, branch="main", secret=None))
     assert pull_result.changed is True
     assert pull_result.head_sha != clone_result.head_sha
     assert (target / "second.txt").exists()
@@ -112,9 +113,7 @@ def test_generic_clone_fails_on_missing_upstream(tmp_path):  # type: ignore[no-u
     target = tmp_path / "clone"
     bogus = tmp_path / "does-not-exist"
     with pytest.raises(WorkspaceRepoCloneFailed):
-        asyncio.run(
-            provider.clone(f"file://{bogus}", target, branch="main", secret=None)
-        )
+        asyncio.run(provider.clone(f"file://{bogus}", target, branch="main", secret=None))
     assert not target.exists()
 
 
@@ -124,9 +123,7 @@ def test_generic_clone_refuses_existing_target(tmp_path):  # type: ignore[no-unt
     target = tmp_path / "clone"
     target.mkdir()
     with pytest.raises(WorkspaceRepoCloneFailed):
-        asyncio.run(
-            provider.clone(f"file://{bare}", target, branch="main", secret=None)
-        )
+        asyncio.run(provider.clone(f"file://{bare}", target, branch="main", secret=None))
 
 
 def test_generic_check_auth_returns_diagnostic(tmp_path):  # type: ignore[no-untyped-def]
@@ -177,9 +174,7 @@ def test_github_webhook_signature_rejects_mutated_body():  # type: ignore[no-unt
 
 def test_github_webhook_signature_rejects_missing_header():  # type: ignore[no-untyped-def]
     provider = GitHubProvider()
-    out = provider.verify_webhook_signature(
-        b"{}", headers={}, webhook_secret="shhh"
-    )
+    out = provider.verify_webhook_signature(b"{}", headers={}, webhook_secret="shhh")
     assert out.verified is False
     assert "missing" in out.reason.lower()
 
@@ -196,9 +191,7 @@ def test_github_webhook_signature_rejects_missing_prefix():  # type: ignore[no-u
 
 def test_github_parse_push_event_extracts_ref_and_sha():  # type: ignore[no-untyped-def]
     provider = GitHubProvider()
-    body = json.dumps(
-        {"ref": "refs/heads/main", "after": "abc123def456" + "0" * 28}
-    ).encode()
+    body = json.dumps({"ref": "refs/heads/main", "after": "abc123def456" + "0" * 28}).encode()
     event = provider.parse_webhook(body, headers={"X-GitHub-Event": "push"})
     assert isinstance(event, WebhookEvent)
     assert event.kind == "push"
@@ -224,12 +217,7 @@ def test_github_parse_returns_none_when_event_header_missing():  # type: ignore[
 
 def test_github_parse_returns_none_for_invalid_json():  # type: ignore[no-untyped-def]
     provider = GitHubProvider()
-    assert (
-        provider.parse_webhook(
-            b"<not json>", headers={"X-GitHub-Event": "push"}
-        )
-        is None
-    )
+    assert provider.parse_webhook(b"<not json>", headers={"X-GitHub-Event": "push"}) is None
 
 
 # Hide unused imports flagged by pyright in strict mode without affecting runtime.

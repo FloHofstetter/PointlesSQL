@@ -60,9 +60,7 @@ def _check_gate(
     endorsement_type: str,
 ) -> None:
     """Raise unless the caller can apply / remove *endorsement_type*."""
-    is_steward = (
-        row.steward_user_id is not None and row.steward_user_id == user["id"]
-    )
+    is_steward = row.steward_user_id is not None and row.steward_user_id == user["id"]
     is_admin = bool(user.get("is_admin"))
     is_auditor = bool(user.get("is_auditor"))
     if is_steward or is_admin:
@@ -108,9 +106,7 @@ def _serialise(
         },
         "agent": agent,
         "applied_at": endorsement.applied_at.isoformat(),
-        "removed_at": (
-            endorsement.removed_at.isoformat() if endorsement.removed_at else None
-        ),
+        "removed_at": (endorsement.removed_at.isoformat() if endorsement.removed_at else None),
         "note_md": endorsement.note_md or "",
         "note_md_resolved": note_md_resolved,
     }
@@ -144,22 +140,12 @@ async def list_endorsements(
         author_ids = {r.applied_by_user_id for r in rows}
         author_map: dict[int, tuple[str, str]] = {}
         if author_ids:
-            users = (
-                session.execute(select(User).where(User.id.in_(author_ids)))
-                .scalars()
-                .all()
-            )
+            users = session.execute(select(User).where(User.id.in_(author_ids))).scalars().all()
             author_map = {u.id: (u.email, u.display_name) for u in users}
-        agent_ids = {
-            r.applied_by_agent_id for r in rows if r.applied_by_agent_id is not None
-        }
+        agent_ids = {r.applied_by_agent_id for r in rows if r.applied_by_agent_id is not None}
         agent_map: dict[int, Agent] = {}
         if agent_ids:
-            agents = (
-                session.execute(select(Agent).where(Agent.id.in_(agent_ids)))
-                .scalars()
-                .all()
-            )
+            agents = session.execute(select(Agent).where(Agent.id.in_(agent_ids))).scalars().all()
             agent_map = {a.id: a for a in agents}
     payload = [
         _serialise(
@@ -167,12 +153,12 @@ async def list_endorsements(
             author_email=author_map.get(r.applied_by_user_id, (None, None))[0],
             author_display_name=author_map.get(r.applied_by_user_id, (None, None))[1],
             note_md_resolved=resolve_citations(
-                r.note_md or "", factory, workspace_id,
+                r.note_md or "",
+                factory,
+                workspace_id,
             ),
             agent=_agent_payload(
-                agent_map.get(r.applied_by_agent_id)
-                if r.applied_by_agent_id is not None
-                else None
+                agent_map.get(r.applied_by_agent_id) if r.applied_by_agent_id is not None else None
             ),
         )
         for r in rows
@@ -224,9 +210,7 @@ async def apply_endorsement(
     body = await request.json()
     endorsement_type = body.get("endorsement_type") or ""
     if endorsement_type not in ENDORSEMENT_TYPES:
-        raise BadRequestError(
-            f"endorsement_type must be one of {sorted(ENDORSEMENT_TYPES)!r}"
-        )
+        raise BadRequestError(f"endorsement_type must be one of {sorted(ENDORSEMENT_TYPES)!r}")
     _check_gate(user, row, endorsement_type)
     note_md = (body.get("note_md") or "").strip()
 
@@ -258,7 +242,9 @@ async def apply_endorsement(
                 author_email=author.email if author else None,
                 author_display_name=author.display_name if author else None,
                 note_md_resolved=resolve_citations(
-                    existing.note_md or "", factory, workspace_id,
+                    existing.note_md or "",
+                    factory,
+                    workspace_id,
                 ),
                 agent=_agent_payload(existing_agent),
             )
@@ -314,15 +300,15 @@ async def apply_endorsement(
         author_email=author_email,
         author_display_name=author_display,
         note_md_resolved=resolve_citations(
-            new_row.note_md or "", factory, workspace_id,
+            new_row.note_md or "",
+            factory,
+            workspace_id,
         ),
         agent=new_agent_payload,
     )
 
 
-@router.delete(
-    "/api/data-products/{catalog}/{schema}/endorsements/{endorsement_id}"
-)
+@router.delete("/api/data-products/{catalog}/{schema}/endorsements/{endorsement_id}")
 async def remove_endorsement(
     catalog: str,
     schema: str,
@@ -382,7 +368,5 @@ async def remove_endorsement(
     )
     return {
         "id": endorsement.id,
-        "removed_at": (
-            endorsement.removed_at.isoformat() if endorsement.removed_at else None
-        ),
+        "removed_at": (endorsement.removed_at.isoformat() if endorsement.removed_at else None),
     }

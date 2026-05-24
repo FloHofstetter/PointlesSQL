@@ -3,7 +3,7 @@
 Starlette's HTTP ``BaseHTTPMiddleware`` does not run for WebSocket
 upgrades, so every WebSocket route has to re-run the
 cookie + Bearer-key resolution path that the regular HTTP
-``auth_middleware`` would have handled.  Phase 91 introduces a
+``auth_middleware`` would have handled. This introduces a
 second WebSocket surface (the SQL-chat panel) alongside the
 notebook-kernel WS — both call :func:`resolve_websocket_user`
 rather than copy-pasting the same 25 lines.

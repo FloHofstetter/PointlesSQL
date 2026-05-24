@@ -63,8 +63,8 @@ class PQLBase:
     ) -> None:
         # Lookup the factory functions via the facade module so tests
         # that monkeypatch ``pointlessql.pql.pql.make_soyuz_client``
-        # (the documented patch target since Phase 36 first split the
-        # file) keep working after Phase 111.7 moved the constructor
+        # (the documented patch target first split the
+        # file) keep working moved the constructor
         # body into ``_pql_base``.  Direct ``from pointlessql.services
         # .soyuz_client import …`` would freeze the binding at import
         # time and bypass the patch.
@@ -121,7 +121,7 @@ class PQLBase:
         """Rewrite a 3-part FQN into the bound branch's sibling schema.
 
         Phase 102 records the branch binding metadata; this remap is
-        the Phase 102 Wave-D kernel-side bridge.  When
+        the kernel-side bridge.  When
         :func:`pointlessql.pql.context.current_branch` returns ``None``
         (interactive use outside the editor, or no active binding),
         the FQN passes through unchanged.

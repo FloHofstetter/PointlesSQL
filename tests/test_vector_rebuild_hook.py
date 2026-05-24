@@ -125,7 +125,8 @@ def delta_path_with_index(
 
 
 def test_hook_skips_when_error_message_set(
-    factory: sessionmaker, delta_path_with_index: tuple[str, int]  # type: ignore[type-arg]
+    factory: sessionmaker,
+    delta_path_with_index: tuple[str, int],  # type: ignore[type-arg]
 ) -> None:
     _, index_id = delta_path_with_index
     rebuild_vss_indices_after_commit(
@@ -143,7 +144,8 @@ def test_hook_skips_when_error_message_set(
 
 
 def test_hook_skips_for_non_trigger_op_names(
-    factory: sessionmaker, delta_path_with_index: tuple[str, int]  # type: ignore[type-arg]
+    factory: sessionmaker,
+    delta_path_with_index: tuple[str, int],  # type: ignore[type-arg]
 ) -> None:
     _, index_id = delta_path_with_index
     with factory() as s:

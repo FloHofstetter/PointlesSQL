@@ -1,4 +1,4 @@
-"""Tests for the Phase-71 follow-up B.1 — schema_changed emit on reload.
+"""Tests for the follow-up B.1 — schema_changed emit on reload.
 
 Covers the three legs:
 
@@ -87,8 +87,7 @@ def _count_schema_changed_events() -> int:
         return len(
             session.execute(
                 select(GovernanceEvent).where(
-                    GovernanceEvent.event_type
-                    == EVENT_TYPE_DATA_PRODUCT_SCHEMA_CHANGED
+                    GovernanceEvent.event_type == EVENT_TYPE_DATA_PRODUCT_SCHEMA_CHANGED
                 )
             )
             .scalars()
@@ -145,8 +144,7 @@ async def test_edited_yaml_emits_once(
         envelope = (
             session.execute(
                 select(GovernanceEvent).where(
-                    GovernanceEvent.event_type
-                    == EVENT_TYPE_DATA_PRODUCT_SCHEMA_CHANGED
+                    GovernanceEvent.event_type == EVENT_TYPE_DATA_PRODUCT_SCHEMA_CHANGED
                 )
             )
             .scalars()

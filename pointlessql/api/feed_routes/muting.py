@@ -120,9 +120,7 @@ async def mute_thread(request: Request, body: _MuteBody) -> dict[str, Any]:
 
 
 @router.post("/api/feed/mute-author")
-async def mute_author(
-    request: Request, body: _MuteAuthorBody
-) -> dict[str, Any]:
+async def mute_author(request: Request, body: _MuteAuthorBody) -> dict[str, Any]:
     """Mute every feed item authored by *user_id* for the caller.
 
     Stored as a ``feed_mutes`` row with ``entity_kind='user'`` so the
@@ -151,9 +149,7 @@ async def mute_author(
 
 
 @router.post("/api/feed/snooze")
-async def snooze_thread(
-    request: Request, body: _SnoozeBody
-) -> dict[str, Any]:
+async def snooze_thread(request: Request, body: _SnoozeBody) -> dict[str, Any]:
     """Snooze a thread for one of the canonical durations.
 
     Args:
@@ -172,8 +168,7 @@ async def snooze_thread(
     delta = _SNOOZE_DURATIONS.get(body.duration)
     if delta is None:
         raise ValidationError(
-            f"unknown duration {body.duration!r}; "
-            f"expected one of {sorted(_SNOOZE_DURATIONS)}",
+            f"unknown duration {body.duration!r}; expected one of {sorted(_SNOOZE_DURATIONS)}",
         )
     muted_until = datetime.datetime.now(datetime.UTC) + delta
     factory = request.app.state.session_factory

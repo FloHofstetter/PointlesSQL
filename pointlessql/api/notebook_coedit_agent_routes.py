@@ -10,8 +10,7 @@ robot icon swap-in.
 The endpoint is intentionally REST + JSON: agents are backend
 processes without a long-lived WebSocket, so a full-duplex
 session would be wasteful.  The server-side broadcast helper
-(``apply_save_remap``'s sibling, ``_broadcast_to_all`` from
-Sprint 105.2) handles the fanout to every subscriber.
+(``apply_save_remap``'s sibling, ``_broadcast_to_all`` ) handles the fanout to every subscriber.
 
 Wire format extension: a new tag byte ``0x05 TAG_AGENT_PRESENCE``
 carries a UTF-8 JSON payload with the shape::
@@ -101,9 +100,7 @@ async def api_agent_presence(
         "action": body.action,
     }
     encoded = bytes([TAG_AGENT_PRESENCE]) + json.dumps(payload).encode("utf-8")
-    delivered = await notebook_coedit_ws.broadcast_agent_presence(
-        notebook_id, encoded
-    )
+    delivered = await notebook_coedit_ws.broadcast_agent_presence(notebook_id, encoded)
     if not delivered:
         return {"status": "no-hub"}
     return {"status": "broadcast"}

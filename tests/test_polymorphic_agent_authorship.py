@@ -41,7 +41,6 @@ data_product:
 """
 
 
-
 def _seed_product(tmp_path: Path) -> int:
     """Seed a yaml + cache row; return the data_products row id."""
     yaml_path = tmp_path / "pointlessql.yaml"
@@ -56,9 +55,7 @@ def _admin_user_id() -> int:
     factory = app.state.session_factory
     with factory() as session:
         return int(
-            session.execute(
-                select(User.id).where(User.email == "test@test.com")
-            ).scalar_one()
+            session.execute(select(User.id).where(User.email == "test@test.com")).scalar_one()
         )
 
 
@@ -66,9 +63,7 @@ def _nonadmin_user_id() -> int:
     factory = app.state.session_factory
     with factory() as session:
         return int(
-            session.execute(
-                select(User.id).where(User.email == "nonadmin@test.com")
-            ).scalar_one()
+            session.execute(select(User.id).where(User.email == "nonadmin@test.com")).scalar_one()
         )
 
 
@@ -275,9 +270,7 @@ async def test_listing_includes_agent_payload(
 
 
 @pytest.mark.asyncio
-async def test_agent_profile_endpoint(
-    tmp_path: Path, admin_client: httpx.AsyncClient
-) -> None:
+async def test_agent_profile_endpoint(tmp_path: Path, admin_client: httpx.AsyncClient) -> None:
     """``GET /api/agents/{slug}/profile`` returns the aggregate."""
     _seed_product(tmp_path)
     principal_id = _admin_user_id()
@@ -295,9 +288,7 @@ async def test_agent_profile_endpoint(
     assert res.status_code == 200, res.text
     body = res.json()
     assert body["agent"]["slug"] == slug
-    assert any(
-        "in profile" in c["body_md"] for c in body["recent_comments"]
-    )
+    assert any("in profile" in c["body_md"] for c in body["recent_comments"])
     assert body["run_stats"]["count"] == 0
 
 

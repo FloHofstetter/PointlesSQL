@@ -47,9 +47,7 @@ def _freshness_status(
 
 
 @router.get("/api/data-products")
-async def list_data_products(
-    request: Request, q: str | None = None
-) -> dict[str, Any]:
+async def list_data_products(request: Request, q: str | None = None) -> dict[str, Any]:
     """Return every cached data product in the active workspace.
 
     Each row is enriched with the Phase-71.2 ``avg_stars`` +
@@ -92,11 +90,7 @@ async def list_data_products(
         steward_ids = [r.steward_user_id for r in rows if r.steward_user_id is not None]
         steward_map: dict[int, tuple[str, str]] = {}
         if steward_ids:
-            users = (
-                session.execute(select(User).where(User.id.in_(steward_ids)))
-                .scalars()
-                .all()
-            )
+            users = session.execute(select(User).where(User.id.in_(steward_ids))).scalars().all()
             steward_map = {u.id: (u.email, u.display_name) for u in users}
 
         dp_ids = [r.id for r in rows]

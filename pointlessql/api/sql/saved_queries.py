@@ -333,11 +333,7 @@ async def queries_page(
         "list_page": True,
     }
     is_load_more = is_htmx_partial(request)
-    template = (
-        "pages/_partials/queries_list_append.html"
-        if is_load_more
-        else "pages/queries.html"
-    )
+    template = "pages/_partials/queries_list_append.html" if is_load_more else "pages/queries.html"
     return get_templates(request).TemplateResponse(request, template, ctx)
 
 

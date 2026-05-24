@@ -1,4 +1,4 @@
-"""Tests for Phase 99 — widget-cells + per-notebook permissions."""
+"""Tests — widget-cells + per-notebook permissions."""
 
 from __future__ import annotations
 
@@ -137,9 +137,7 @@ def test_resolve_widget_values_falls_back_to_default(
             default_value="us",
         )
         session.commit()
-        values = notebook_widgets_service.resolve_widget_values(
-            session, notebook_id=nb_id
-        )
+        values = notebook_widgets_service.resolve_widget_values(session, notebook_id=nb_id)
         assert values["region"] == "us"
         values_override = notebook_widgets_service.resolve_widget_values(
             session, notebook_id=nb_id, overrides={"region": "eu"}
@@ -161,15 +159,11 @@ def test_delete_widget_is_idempotent(factory: sessionmaker) -> None:  # type: ig
         )
         session.commit()
         assert (
-            notebook_widgets_service.delete_widget(
-                session, notebook_id=nb_id, name="region"
-            )
+            notebook_widgets_service.delete_widget(session, notebook_id=nb_id, name="region")
             is True
         )
         assert (
-            notebook_widgets_service.delete_widget(
-                session, notebook_id=nb_id, name="region"
-            )
+            notebook_widgets_service.delete_widget(session, notebook_id=nb_id, name="region")
             is False
         )
 
@@ -283,9 +277,7 @@ def test_grant_and_revoke_permission(factory: sessionmaker) -> None:  # type: ig
         )
         session.commit()
         assert (
-            notebook_perms_service.get_effective_role(
-                session, notebook_id=nb_id, user_id=user_id
-            )
+            notebook_perms_service.get_effective_role(session, notebook_id=nb_id, user_id=user_id)
             == "view"
         )
         notebook_perms_service.grant_permission(
@@ -297,22 +289,16 @@ def test_grant_and_revoke_permission(factory: sessionmaker) -> None:  # type: ig
         )
         session.commit()
         assert (
-            notebook_perms_service.get_effective_role(
-                session, notebook_id=nb_id, user_id=user_id
-            )
+            notebook_perms_service.get_effective_role(session, notebook_id=nb_id, user_id=user_id)
             == "edit"
         )
         assert (
-            notebook_perms_service.revoke_permission(
-                session, notebook_id=nb_id, user_id=user_id
-            )
+            notebook_perms_service.revoke_permission(session, notebook_id=nb_id, user_id=user_id)
             is True
         )
         session.commit()
         assert (
-            notebook_perms_service.revoke_permission(
-                session, notebook_id=nb_id, user_id=user_id
-            )
+            notebook_perms_service.revoke_permission(session, notebook_id=nb_id, user_id=user_id)
             is False
         )
 
@@ -364,9 +350,7 @@ async def test_api_widget_crud_roundtrip(
     assert upsert.status_code == 200
     assert upsert.json()["name"] == "region"
 
-    listed = await admin_client.get(
-        "/api/notebooks/widgets", params={"path": "n.py"}
-    )
+    listed = await admin_client.get("/api/notebooks/widgets", params={"path": "n.py"})
     assert len(listed.json()["widgets"]) == 1
 
     resolved = await admin_client.post(
@@ -400,14 +384,10 @@ async def test_api_widget_rejects_bad_kind(
     assert resp.status_code == 422
 
 
-async def test_api_permission_crud(
-    workspace_dir: Path, admin_client: httpx.AsyncClient
-) -> None:
+async def test_api_permission_crud(workspace_dir: Path, admin_client: httpx.AsyncClient) -> None:
     """Permissions list / grant / revoke round-trip."""
     await admin_client.post("/api/notebooks/create", json={"path": "p.py"})
-    listed = await admin_client.get(
-        "/api/notebooks/permissions", params={"path": "p.py"}
-    )
+    listed = await admin_client.get("/api/notebooks/permissions", params={"path": "p.py"})
     assert listed.status_code == 200
     assert listed.json()["permissions"] == []
     assert "view" in listed.json()["roles"]
@@ -418,9 +398,7 @@ async def test_api_permission_crud(
     )
     assert granted.status_code == 200
 
-    after = await admin_client.get(
-        "/api/notebooks/permissions", params={"path": "p.py"}
-    )
+    after = await admin_client.get("/api/notebooks/permissions", params={"path": "p.py"})
     roles = {r["role"] for r in after.json()["permissions"]}
     assert "run" in roles
 

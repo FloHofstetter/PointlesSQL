@@ -1,4 +1,4 @@
-"""Tests for the Phase 119 API-key lifecycle gates in ``verify_bearer``."""
+"""Tests for the API-key lifecycle gates in ``verify_bearer``."""
 
 from __future__ import annotations
 
@@ -44,9 +44,7 @@ def _latest_audit_actions() -> list[str]:
 
 def test_unexpired_key_authorises() -> None:
     _wipe()
-    _, plaintext = api_keys_service.create_api_key(
-        app.state.session_factory, name="future"
-    )
+    _, plaintext = api_keys_service.create_api_key(app.state.session_factory, name="future")
     _set_columns("future", expires_at=datetime.now(UTC) + timedelta(days=7))
     entry = api_keys_service.verify_bearer(f"Bearer {plaintext}", app.state.session_factory)
     assert entry is not None and entry.name == "future"
@@ -55,9 +53,7 @@ def test_unexpired_key_authorises() -> None:
 
 def test_expired_key_is_rejected_and_audits() -> None:
     _wipe()
-    _, plaintext = api_keys_service.create_api_key(
-        app.state.session_factory, name="past"
-    )
+    _, plaintext = api_keys_service.create_api_key(app.state.session_factory, name="past")
     _set_columns("past", expires_at=datetime.now(UTC) - timedelta(seconds=5))
     entry = api_keys_service.verify_bearer(f"Bearer {plaintext}", app.state.session_factory)
     assert entry is None
@@ -67,9 +63,7 @@ def test_expired_key_is_rejected_and_audits() -> None:
 
 def test_key_with_no_expiry_authorises_indefinitely() -> None:
     _wipe()
-    _, plaintext = api_keys_service.create_api_key(
-        app.state.session_factory, name="forever"
-    )
+    _, plaintext = api_keys_service.create_api_key(app.state.session_factory, name="forever")
     # expires_at is None by default — back-compat behaviour preserved.
     entry = api_keys_service.verify_bearer(f"Bearer {plaintext}", app.state.session_factory)
     assert entry is not None
@@ -83,9 +77,7 @@ def test_key_with_no_expiry_authorises_indefinitely() -> None:
 
 def test_quarantined_key_is_rejected_and_audits() -> None:
     _wipe()
-    _, plaintext = api_keys_service.create_api_key(
-        app.state.session_factory, name="naughty"
-    )
+    _, plaintext = api_keys_service.create_api_key(app.state.session_factory, name="naughty")
     _set_columns(
         "naughty",
         quarantined_at=datetime.now(UTC),
@@ -100,9 +92,7 @@ def test_quarantined_key_is_rejected_and_audits() -> None:
 def test_quarantined_at_without_reason_does_not_block() -> None:
     """Belt + suspenders — both columns must be set to count as quarantine."""
     _wipe()
-    _, plaintext = api_keys_service.create_api_key(
-        app.state.session_factory, name="half-set"
-    )
+    _, plaintext = api_keys_service.create_api_key(app.state.session_factory, name="half-set")
     _set_columns("half-set", quarantined_at=datetime.now(UTC))  # reason still NULL
     entry = api_keys_service.verify_bearer(f"Bearer {plaintext}", app.state.session_factory)
     assert entry is not None
@@ -116,9 +106,7 @@ def test_quarantined_at_without_reason_does_not_block() -> None:
 
 def test_predecessor_in_grace_window_still_authorises() -> None:
     _wipe()
-    _, plaintext = api_keys_service.create_api_key(
-        app.state.session_factory, name="pred-in-grace"
-    )
+    _, plaintext = api_keys_service.create_api_key(app.state.session_factory, name="pred-in-grace")
     _set_columns(
         "pred-in-grace",
         rotated_at=datetime.now(UTC) - timedelta(minutes=5),
@@ -131,9 +119,7 @@ def test_predecessor_in_grace_window_still_authorises() -> None:
 
 def test_predecessor_past_grace_is_rejected_and_audits() -> None:
     _wipe()
-    _, plaintext = api_keys_service.create_api_key(
-        app.state.session_factory, name="pred-stale"
-    )
+    _, plaintext = api_keys_service.create_api_key(app.state.session_factory, name="pred-stale")
     _set_columns(
         "pred-stale",
         rotated_at=datetime.now(UTC) - timedelta(days=2),
@@ -148,9 +134,7 @@ def test_predecessor_past_grace_is_rejected_and_audits() -> None:
 def test_predecessor_without_grace_until_is_rejected() -> None:
     """rotated_at set + grace_until NULL → predecessor blocked immediately."""
     _wipe()
-    _, plaintext = api_keys_service.create_api_key(
-        app.state.session_factory, name="pred-no-grace"
-    )
+    _, plaintext = api_keys_service.create_api_key(app.state.session_factory, name="pred-no-grace")
     _set_columns("pred-no-grace", rotated_at=datetime.now(UTC))
     entry = api_keys_service.verify_bearer(f"Bearer {plaintext}", app.state.session_factory)
     assert entry is None
@@ -160,9 +144,7 @@ def test_predecessor_without_grace_until_is_rejected() -> None:
 def test_lifecycle_gates_do_not_break_back_compat_for_legacy_keys() -> None:
     """A pre-119 key (all NULL lifecycle cols) still verifies normally."""
     _wipe()
-    _, plaintext = api_keys_service.create_api_key(
-        app.state.session_factory, name="legacy-style"
-    )
+    _, plaintext = api_keys_service.create_api_key(app.state.session_factory, name="legacy-style")
     # All lifecycle cols are NULL by default — verify the no-op path.
     entry = api_keys_service.verify_bearer(f"Bearer {plaintext}", app.state.session_factory)
     assert entry is not None and entry.name == "legacy-style"
@@ -222,15 +204,11 @@ def test_sweep_warns_keys_in_window_once() -> None:
         name="soon",
         expires_at=datetime.now(UTC) + timedelta(days=7),
     )
-    first = run_lifecycle_sweep(
-        app.state.session_factory, expiry_warning_days=14
-    )
+    first = run_lifecycle_sweep(app.state.session_factory, expiry_warning_days=14)
     assert first["warned"] == 1
     assert _latest_audit_actions().count("api_key.expiry_warning") == 1
     # Dedup: second sweep within the window doesn't re-warn.
-    second = run_lifecycle_sweep(
-        app.state.session_factory, expiry_warning_days=14
-    )
+    second = run_lifecycle_sweep(app.state.session_factory, expiry_warning_days=14)
     assert second["warned"] == 0
     _wipe()
 
@@ -247,9 +225,7 @@ def test_sweep_no_quarantine_when_flag_off() -> None:
         name="audit-only",
         expires_at=datetime.now(UTC) - timedelta(seconds=10),
     )
-    summary = run_lifecycle_sweep(
-        app.state.session_factory, quarantine_on_expiry=False
-    )
+    summary = run_lifecycle_sweep(app.state.session_factory, quarantine_on_expiry=False)
     assert summary["expired"] == 1
     with app.state.session_factory() as session:
         row = session.scalar(_select(ApiKey).where(ApiKey.name == "audit-only"))

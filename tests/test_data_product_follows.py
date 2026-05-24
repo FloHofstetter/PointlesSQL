@@ -1,4 +1,4 @@
-"""Tests for the Phase-71.3 data-product follow / subscribe surface.
+"""Tests for the data-product follow / subscribe surface.
 
 Covers POST/DELETE idempotency, the public count vs steward-only
 full-list privacy gate, the /data-products/followed HTML index,
@@ -38,7 +38,6 @@ data_product:
 """
 
 
-
 def _seed_product(tmp_path: Path) -> int:
     """Seed a yaml + load it into the cache; return the data_products row id."""
     yaml_path = tmp_path / "pointlessql.yaml"
@@ -56,9 +55,7 @@ def _seed_product(tmp_path: Path) -> int:
 
 
 @pytest.mark.asyncio
-async def test_follow_creates_row(
-    tmp_path: Path, admin_client: httpx.AsyncClient
-) -> None:
+async def test_follow_creates_row(tmp_path: Path, admin_client: httpx.AsyncClient) -> None:
     """POST /follow inserts one row + flips ``following=True``."""
     _seed_product(tmp_path)
     res = await admin_client.post("/api/data-products/main/sales_gold/follow")
@@ -67,16 +64,12 @@ async def test_follow_creates_row(
     assert body["followed"] is True
     assert body["already"] is False
 
-    count = (
-        await admin_client.get("/api/data-products/main/sales_gold/followers/count")
-    ).json()
+    count = (await admin_client.get("/api/data-products/main/sales_gold/followers/count")).json()
     assert count == {"count": 1, "following": True}
 
 
 @pytest.mark.asyncio
-async def test_follow_is_idempotent(
-    tmp_path: Path, admin_client: httpx.AsyncClient
-) -> None:
+async def test_follow_is_idempotent(tmp_path: Path, admin_client: httpx.AsyncClient) -> None:
     """Second POST returns ``already=True`` without a duplicate row."""
     _seed_product(tmp_path)
     await admin_client.post("/api/data-products/main/sales_gold/follow")
@@ -88,9 +81,7 @@ async def test_follow_is_idempotent(
 
 
 @pytest.mark.asyncio
-async def test_unfollow_round_trip(
-    tmp_path: Path, admin_client: httpx.AsyncClient
-) -> None:
+async def test_unfollow_round_trip(tmp_path: Path, admin_client: httpx.AsyncClient) -> None:
     """DELETE drops the row + second DELETE returns removed=False."""
     _seed_product(tmp_path)
     await admin_client.post("/api/data-products/main/sales_gold/follow")
@@ -114,11 +105,7 @@ async def test_count_endpoint_is_per_user(
     """The ``count`` endpoint exposes total + caller's own follow state."""
     _seed_product(tmp_path)
     await admin_client.post("/api/data-products/main/sales_gold/follow")
-    res = (
-        await non_admin_client.get(
-            "/api/data-products/main/sales_gold/followers/count"
-        )
-    ).json()
+    res = (await non_admin_client.get("/api/data-products/main/sales_gold/followers/count")).json()
     assert res == {"count": 1, "following": False}
 
 
@@ -131,9 +118,7 @@ async def test_followers_full_list_requires_steward_or_admin(
     """Non-steward non-admin gets 403 on the full followers list."""
     _seed_product(tmp_path)
     await admin_client.post("/api/data-products/main/sales_gold/follow")
-    res = await non_admin_client.get(
-        "/api/data-products/main/sales_gold/followers"
-    )
+    res = await non_admin_client.get("/api/data-products/main/sales_gold/followers")
     assert res.status_code == 403
 
 

@@ -101,9 +101,7 @@ async def test_data_product_html_unchanged_for_post_post_flow(
         json={"body_md": "phase77h smoke"},
     )
     assert res_post.status_code == 200, res_post.text
-    res_list = await admin_client.get(
-        "/api/data-products/main/sales_gold/comments"
-    )
+    res_list = await admin_client.get("/api/data-products/main/sales_gold/comments")
     assert res_list.status_code == 200, res_list.text
     bodies = [c["body_md"] for c in res_list.json()["comments"]]
     assert "phase77h smoke" in bodies

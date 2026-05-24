@@ -14,8 +14,8 @@ this module give the application:
   ``(workspace_repo_id, kind)``.
 
 Yaml is canonical; the on-disk clone + DB row are both caches.
-The convention "git is truth, DB is cache" carries forward from
-Phase 50 (data products) and Phase 13.5 (conventions).
+The convention "git is truth, DB is cache" is shared with data
+products and other repo-backed conventions.
 """
 
 from __future__ import annotations

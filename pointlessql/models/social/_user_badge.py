@@ -60,9 +60,5 @@ class UserBadge(Base):
         nullable=False,
     )
     badge_key: Mapped[str] = mapped_column(String(40), nullable=False)
-    awarded_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
-    awarded_for_count: Mapped[int | None] = mapped_column(
-        Integer, nullable=True
-    )
+    awarded_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    awarded_for_count: Mapped[int | None] = mapped_column(Integer, nullable=True)

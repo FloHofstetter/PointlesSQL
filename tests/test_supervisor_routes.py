@@ -1,4 +1,4 @@
-"""Tests for the Sprint 13.11.4a Family-B supervisor routes.
+"""Tests for the Family-B supervisor routes.
 
 Covers ``GET /api/agent-runs`` filter expansion, the new
 ``GET /api/agent-runs/{id}/summary`` and ``GET /api/agent-runs/diff``

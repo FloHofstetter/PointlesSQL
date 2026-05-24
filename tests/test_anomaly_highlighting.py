@@ -1,4 +1,4 @@
-"""Tests for Sprint 18.5 anomaly surfaces.
+"""Tests anomaly surfaces.
 
 Three surfaces:
 

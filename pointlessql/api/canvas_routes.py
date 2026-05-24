@@ -3,7 +3,7 @@
 * ``GET /canvas`` — HTML editor page.
 * ``POST /api/canvas/compile`` — translate a node list to PQL.
 
-The canvas is intentionally not persisted in Phase 85.1; the page
+The canvas is intentionally not persisted the page
 keeps state in ``localStorage`` so the user can iterate without a
 DB schema commitment ahead of the 85.2 decision gate.
 """
@@ -47,9 +47,7 @@ async def page_canvas(request: Request) -> HTMLResponse:
 
 
 @router.post("/api/canvas/compile")
-async def api_canvas_compile(
-    request: Request, body: dict[str, Any] = Body(...)
-) -> dict[str, Any]:
+async def api_canvas_compile(request: Request, body: dict[str, Any] = Body(...)) -> dict[str, Any]:
     """Translate a list of canvas nodes into a PQL script.
 
     Args:

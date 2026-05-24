@@ -1,4 +1,4 @@
-"""Tests for the Phase-73.3 schema-change proposal flow.
+"""Tests for the schema-change proposal flow.
 
 Covers:
 
@@ -72,9 +72,7 @@ def _seed_dp(
     target = search_path / "main__sales_gold.yaml"
     search_path.mkdir(parents=True, exist_ok=True)
     target.write_text(VALID_YAML, encoding="utf-8")
-    monkeypatch.setattr(
-        app.state.settings.data_products, "yaml_search_paths", [search_path]
-    )
+    monkeypatch.setattr(app.state.settings.data_products, "yaml_search_paths", [search_path])
     factory = app.state.session_factory
     load_contract(target, factory=factory)
     with factory() as session:
@@ -224,9 +222,7 @@ async def test_approve_draft_writes_yaml_draft(
 ) -> None:
     """Approve with kind='draft' writes a DataProductYamlDraft row."""
     _seed_dp(tmp_path, tmp_path / "yaml", monkeypatch)
-    monkeypatch.setattr(
-        app.state.settings.data_products, "draft_dir", tmp_path / "drafts"
-    )
+    monkeypatch.setattr(app.state.settings.data_products, "draft_dir", tmp_path / "drafts")
     open_res = await admin_client.post(
         "/api/data-products/main/sales_gold/proposals",
         json={

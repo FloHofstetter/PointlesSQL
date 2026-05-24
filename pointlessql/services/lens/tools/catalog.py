@@ -47,9 +47,7 @@ class ListCatalogsResult(BaseModel):
     catalogs: list[CatalogSummary] = Field(default_factory=list)
 
 
-async def _execute_list_catalogs(
-    ctx: SessionContext, args: ListCatalogsArgs
-) -> ListCatalogsResult:
+async def _execute_list_catalogs(ctx: SessionContext, args: ListCatalogsArgs) -> ListCatalogsResult:
     """List every catalog visible to the analyst principal."""
     del args  # no parameters
     if ctx.uc_client is None:
@@ -106,9 +104,7 @@ class ListSchemasResult(BaseModel):
     schemas: list[SchemaSummary] = Field(default_factory=list)
 
 
-async def _execute_list_schemas(
-    ctx: SessionContext, args: ListSchemasArgs
-) -> ListSchemasResult:
+async def _execute_list_schemas(ctx: SessionContext, args: ListSchemasArgs) -> ListSchemasResult:
     """List every schema in the requested catalog."""
     if ctx.uc_client is None:
         return ListSchemasResult()
@@ -165,9 +161,7 @@ class ListTablesResult(BaseModel):
     tables: list[TableSummary] = Field(default_factory=list)
 
 
-async def _execute_list_tables(
-    ctx: SessionContext, args: ListTablesArgs
-) -> ListTablesResult:
+async def _execute_list_tables(ctx: SessionContext, args: ListTablesArgs) -> ListTablesResult:
     """List every table in the requested ``catalog.schema``."""
     if ctx.uc_client is None:
         return ListTablesResult()

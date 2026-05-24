@@ -17,7 +17,7 @@ sidestepping the limit entirely.
 Lifecycle is owned by the FastAPI lifespan
 (:func:`pointlessql.api._bootstrap._lifespan.make_lifespan`).  On
 SQLite installs the bus is never started — :func:`CoeditBus.start`
-no-ops, :func:`CoeditBus.publish` short-circuits.  Phase 109's hub
+no-ops, :func:`CoeditBus.publish` short-circuits.  hub
 instrumentation checks ``app.state.coedit_bus is
 not None`` before publishing.
 """
@@ -81,10 +81,7 @@ class CoeditBus:
         cleanup_interval_seconds: int = 30,
     ) -> None:
         if engine.dialect.name != "postgresql":
-            raise ValueError(
-                f"CoeditBus requires PostgreSQL; got dialect "
-                f"{engine.dialect.name!r}"
-            )
+            raise ValueError(f"CoeditBus requires PostgreSQL; got dialect {engine.dialect.name!r}")
         self.engine: Engine = engine
         self.ttl_seconds: int = ttl_seconds
         self.cleanup_interval_seconds: int = cleanup_interval_seconds
@@ -140,12 +137,8 @@ class CoeditBus:
         if self._listener_task is not None:
             return
         self._closing = False
-        self._listener_task = asyncio.create_task(
-            self._listener_loop(), name="coedit-bus-listener"
-        )
-        self._cleanup_task = asyncio.create_task(
-            self._cleanup_loop(), name="coedit-bus-cleanup"
-        )
+        self._listener_task = asyncio.create_task(self._listener_loop(), name="coedit-bus-listener")
+        self._cleanup_task = asyncio.create_task(self._cleanup_loop(), name="coedit-bus-cleanup")
 
     async def stop(self) -> None:
         """Cancel the background tasks and drain them.
@@ -159,7 +152,7 @@ class CoeditBus:
             task.cancel()
             try:
                 await task
-            except (asyncio.CancelledError, Exception):  # noqa: BLE001
+            except asyncio.CancelledError, Exception:  # noqa: BLE001
                 pass
         self._listener_task = None
         self._cleanup_task = None
@@ -247,9 +240,7 @@ class CoeditBus:
                 if self._closing:
                     return
                 self._listener_ready.clear()
-                delay = _RECONNECT_BACKOFF_S[
-                    min(attempt, len(_RECONNECT_BACKOFF_S) - 1)
-                ]
+                delay = _RECONNECT_BACKOFF_S[min(attempt, len(_RECONNECT_BACKOFF_S) - 1)]
                 attempt += 1
                 _LOG.exception(
                     "coedit-bus: listener disconnected; reconnect in %.1fs",
@@ -270,10 +261,8 @@ class CoeditBus:
         try:
             row_id_str, _nb_uuid_hint = channel_payload.split(":", 1)
             row_id = int(row_id_str)
-        except (ValueError, AttributeError):
-            _LOG.warning(
-                "coedit-bus: malformed notify payload %r", channel_payload
-            )
+        except ValueError, AttributeError:
+            _LOG.warning("coedit-bus: malformed notify payload %r", channel_payload)
             return
 
         # Fetch the row payload in a thread so the listener loop's
@@ -327,13 +316,9 @@ class CoeditBus:
         Returns:
             Number of rows removed.
         """
-        cutoff = datetime.datetime.now(datetime.UTC) - datetime.timedelta(
-            seconds=self.ttl_seconds
-        )
+        cutoff = datetime.datetime.now(datetime.UTC) - datetime.timedelta(seconds=self.ttl_seconds)
         with self.engine.begin() as conn:
-            result = conn.execute(
-                delete(CoeditBusMessage).where(CoeditBusMessage.ts < cutoff)
-            )
+            result = conn.execute(delete(CoeditBusMessage).where(CoeditBusMessage.ts < cutoff))
             return int(result.rowcount or 0)
 
     def status_snapshot(self) -> dict[str, Any]:
@@ -345,18 +330,10 @@ class CoeditBus:
         """
         with self.engine.connect() as conn:
             inflight = int(
-                conn.execute(
-                    select(func.count()).select_from(CoeditBusMessage)
-                ).scalar_one()
+                conn.execute(select(func.count()).select_from(CoeditBusMessage)).scalar_one()
             )
-        listener_alive = (
-            self._listener_task is not None
-            and not self._listener_task.done()
-        )
-        cleanup_alive = (
-            self._cleanup_task is not None
-            and not self._cleanup_task.done()
-        )
+        listener_alive = self._listener_task is not None and not self._listener_task.done()
+        cleanup_alive = self._cleanup_task is not None and not self._cleanup_task.done()
         return {
             "own_pid": self.own_pid,
             "ttl_seconds": self.ttl_seconds,

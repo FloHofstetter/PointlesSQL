@@ -28,29 +28,24 @@ class TestNotFoundHelper:
         assert exc.detail == "Catalog 'foo' not found."
 
     def test_what_plus_where(self) -> None:
-        exc = PointlessSQLError.not_found(
-            what="Catalog 'foo'", where="in workspace 'default'"
-        )
+        exc = PointlessSQLError.not_found(what="Catalog 'foo'", where="in workspace 'default'")
         assert str(exc) == "Catalog 'foo' not found in workspace 'default'."
 
     def test_alternatives_under_five(self) -> None:
-        exc = PointlessSQLError.not_found(
-            what="Topic 'x'", alternatives=["b", "a", "c"]
-        )
+        exc = PointlessSQLError.not_found(what="Topic 'x'", alternatives=["b", "a", "c"])
         # Alternatives are sorted for deterministic output.
         assert str(exc) == "Topic 'x' not found. Available: a, b, c."
 
     def test_alternatives_over_five_truncates(self) -> None:
         exc = PointlessSQLError.not_found(
-            what="Topic 'x'", alternatives=list("ghijfedcba")  # 10 items
+            what="Topic 'x'",
+            alternatives=list("ghijfedcba"),  # 10 items
         )
         # First 5 sorted entries + tail counter.
         assert str(exc) == "Topic 'x' not found. Available: a, b, c, d, e (+5 more)."
 
     def test_hint_only(self) -> None:
-        exc = PointlessSQLError.not_found(
-            what="Catalog 'foo'", hint="Run `pql catalog ls`."
-        )
+        exc = PointlessSQLError.not_found(what="Catalog 'foo'", hint="Run `pql catalog ls`.")
         assert str(exc) == "Catalog 'foo' not found. Run `pql catalog ls`."
 
     def test_alternatives_plus_hint(self) -> None:

@@ -280,8 +280,7 @@ def _branch_promote_gate_check(request: Request, branch_fqn: str) -> None:
             select(DataProductEndorsement).where(
                 DataProductEndorsement.workspace_id == workspace_id,
                 DataProductEndorsement.social_target_id == anchor.id,
-                DataProductEndorsement.endorsement_type
-                == "branch-approved-for-promotion",
+                DataProductEndorsement.endorsement_type == "branch-approved-for-promotion",
                 DataProductEndorsement.removed_at.is_(None),
                 DataProductEndorsement.applied_by_user_id != caller_id,
             )
@@ -303,7 +302,7 @@ def _branch_promote_gate_check(request: Request, branch_fqn: str) -> None:
 async def api_promote_branch(request: Request, branch_fqn: str) -> dict[str, Any]:
     """Promote a branch to be the new parent (admin-only).
 
-    Phase 77.3 adds the opt-in promote-gate.  When the workspace's
+    adds the opt-in promote-gate.  When the workspace's
     ``branch_promote_requires_endorsement`` flag is on, the caller
     must already hold an active
     ``branch-approved-for-promotion`` endorsement applied by a
@@ -368,9 +367,7 @@ async def html_branches_list(request: Request) -> HTMLResponse:
     )
 
 
-def _branch_promote_gate_ui_state(
-    request: Request, branch_fqn: str
-) -> dict[str, Any]:
+def _branch_promote_gate_ui_state(request: Request, branch_fqn: str) -> dict[str, Any]:
     """promote-gate state for the branch detail UI.
 
     Mirrors :func:`_branch_promote_gate_check`'s lookup but returns
@@ -399,10 +396,7 @@ def _branch_promote_gate_ui_state(
     caller_id = int(user["id"])
     with factory() as session:
         workspace = session.get(Workspace, workspace_id)
-        gate_on = bool(
-            workspace
-            and workspace.branch_promote_requires_endorsement
-        )
+        gate_on = bool(workspace and workspace.branch_promote_requires_endorsement)
         anchor = session.execute(
             select(SocialTarget).where(
                 SocialTarget.workspace_id == workspace_id,
@@ -418,30 +412,22 @@ def _branch_promote_gate_ui_state(
                     select(func.count())
                     .select_from(DataProductEndorsement)
                     .where(
-                        DataProductEndorsement.workspace_id
-                        == workspace_id,
-                        DataProductEndorsement.social_target_id
-                        == anchor.id,
-                        DataProductEndorsement.endorsement_type
-                        == "branch-approved-for-promotion",
+                        DataProductEndorsement.workspace_id == workspace_id,
+                        DataProductEndorsement.social_target_id == anchor.id,
+                        DataProductEndorsement.endorsement_type == "branch-approved-for-promotion",
                         DataProductEndorsement.removed_at.is_(None),
-                        DataProductEndorsement.applied_by_user_id
-                        != caller_id,
+                        DataProductEndorsement.applied_by_user_id != caller_id,
                     )
                 ).scalar_one()
             )
             caller_endorsed = (
                 session.execute(
                     select(DataProductEndorsement).where(
-                        DataProductEndorsement.workspace_id
-                        == workspace_id,
-                        DataProductEndorsement.social_target_id
-                        == anchor.id,
-                        DataProductEndorsement.endorsement_type
-                        == "branch-approved-for-promotion",
+                        DataProductEndorsement.workspace_id == workspace_id,
+                        DataProductEndorsement.social_target_id == anchor.id,
+                        DataProductEndorsement.endorsement_type == "branch-approved-for-promotion",
                         DataProductEndorsement.removed_at.is_(None),
-                        DataProductEndorsement.applied_by_user_id
-                        == caller_id,
+                        DataProductEndorsement.applied_by_user_id == caller_id,
                     )
                 ).scalar_one_or_none()
                 is not None

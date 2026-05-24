@@ -37,14 +37,8 @@ class UserProfile(Base):
         ForeignKey("users.id", ondelete="CASCADE"),
         primary_key=True,
     )
-    bio_md: Mapped[str] = mapped_column(
-        Text, nullable=False, default="", server_default=""
-    )
+    bio_md: Mapped[str] = mapped_column(Text, nullable=False, default="", server_default="")
     avatar_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     location: Mapped[str | None] = mapped_column(String(120), nullable=True)
-    links_json: Mapped[str] = mapped_column(
-        Text, nullable=False, default="[]", server_default="[]"
-    )
-    updated_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
+    links_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]", server_default="[]")
+    updated_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)

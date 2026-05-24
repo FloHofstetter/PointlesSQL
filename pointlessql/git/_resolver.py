@@ -47,6 +47,5 @@ def resolve_provider(kind: str) -> GitProvider:
         return _REGISTRY[kind]
     except KeyError as exc:
         raise WorkspaceRepoUnknownProvider(
-            f"unknown provider_kind {kind!r}; expected one of "
-            f"{KNOWN_PROVIDER_KINDS}"
+            f"unknown provider_kind {kind!r}; expected one of {KNOWN_PROVIDER_KINDS}"
         ) from exc

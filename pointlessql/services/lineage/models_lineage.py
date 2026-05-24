@@ -235,7 +235,7 @@ def aggregate_table_ml_relations(
     Groups ``lineage_row_edges`` by ``(target_table,
     source_model_uri)`` so the UI can mark every table that has an
     inference edge pointing at it and list the responsible model
-    versions.  Phase 62's reverse index covers only the *scoring*
+    versions.  reverse index covers only the *scoring*
     direction; "trained from this table" attribution would require
     walking soyuz to map ``train_model`` ops back to registered
     model versions, which is deferred.

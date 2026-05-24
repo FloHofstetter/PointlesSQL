@@ -2,7 +2,7 @@
 
 Two endpoints — idempotent POST + DELETE — backing the topic-
 follow toggle on ``/topics/{slug}`` and the eligibility check on
-the per-user feed in Phase 76.4.
+the per-user feed .
 """
 
 from __future__ import annotations
@@ -24,18 +24,14 @@ router = APIRouter(tags=["topics"])
 def _resolve_topic(session: Any, workspace_id: int, slug: str) -> Topic:
     """Return the topic row or raise 404 enriched with workspace-known slugs."""
     topic = session.execute(
-        select(Topic).where(
-            Topic.workspace_id == workspace_id, Topic.slug == slug
-        )
+        select(Topic).where(Topic.workspace_id == workspace_id, Topic.slug == slug)
     ).scalar_one_or_none()
     if topic is None:
         # enrich the 404 with the workspace's known
         # topic slugs so callers see "did you mean…?" alternatives
         # instead of a bare "not found".
         known = list(
-            session.execute(
-                select(Topic.slug).where(Topic.workspace_id == workspace_id)
-            ).scalars()
+            session.execute(select(Topic.slug).where(Topic.workspace_id == workspace_id)).scalars()
         )
         raise ResourceNotFoundError.not_found(
             what=f"topic {slug!r}",

@@ -95,8 +95,6 @@ async def api_pql_primitives() -> dict[str, Any]:
     return {"primitives": _PRIMITIVE_SPECS}
 
 
-
-
 def _serialize_columns(columns_raw: Any) -> list[dict[str, Any]]:
     """Project the soyuz column payload to a tool-friendly subset.
 

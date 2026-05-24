@@ -6,7 +6,7 @@
  * ``runCellAndAdvance``, ``interruptKernel``, ``restartKernel``),
  * the iopub-frame dispatcher (``_onKernelFrame``), and the
  * Variable Inspector helpers. Extracted from ``notebook_editor.js``
- * in Phase 70.5.
+ * .
  *
  * The mixin depends on ``createKernelClient`` and ``renderOutputFrame``
  * being already imported by the coordinator; methods reach them via

@@ -10,7 +10,7 @@ function notebookDiscussion(notebookUuid) {
       // ``silent: true`` — the social drawer auto-opens on page mount;
       // a 404 / empty-thread response is the normal first-visit shape
       // and must not raise a global toast (was firing "no comments" /
-      // "no readme" toasts on every notebook open until Phase 95.5).
+      // "no readme" toasts on every notebook open ).
       const res = await window.pqlApi.fetch(
         '/api/social/notebook/' + notebookUuid + '/comments',
         { silent: true },

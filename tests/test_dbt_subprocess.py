@@ -2,7 +2,7 @@
 
 Covers path resolution, project-readiness gating, and idempotent
 shutdown.  Real spawn-and-poll coverage lives in the manual
-lifespan smoke test outlined in the Phase 36 plan — spawning
+lifespan smoke test outlined in the plan — spawning
 ``dbt docs serve`` here would be slow, port-bound, and would
 require dbt-duckdb to be importable on the CI runner.
 """

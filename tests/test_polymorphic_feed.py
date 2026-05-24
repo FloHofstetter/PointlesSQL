@@ -43,7 +43,6 @@ data_product:
 """
 
 
-
 def _seed_product(tmp_path: Path) -> int:
     """Seed a yaml + load it; return the data_products row id."""
     yaml_path = tmp_path / "pointlessql.yaml"
@@ -78,10 +77,7 @@ async def test_feed_returns_inbox_rows(
     res = await non_admin_client.get("/api/feed", params={"filter": "all"})
     assert res.status_code == 200
     body = res.json()
-    assert any(
-        r["event_type"] == "pointlessql.data_product.commented"
-        for r in body["rows"]
-    )
+    assert any(r["event_type"] == "pointlessql.data_product.commented" for r in body["rows"])
 
 
 @pytest.mark.asyncio
@@ -113,27 +109,21 @@ async def test_feed_filter_mentions(
         "/api/data-products/main/sales_gold/comments",
         json={"body_md": "@nonadmin@test.com pls review"},
     )
-    res = await non_admin_client.get(
-        "/api/feed", params={"filter": "mentions"}
-    )
+    res = await non_admin_client.get("/api/feed", params={"filter": "mentions"})
     assert res.status_code == 200
     rows = res.json()["rows"]
     assert any("pls review" in r["summary_md"] for r in rows)
 
 
 @pytest.mark.asyncio
-async def test_feed_search_substring(
-    tmp_path: Path, admin_client: httpx.AsyncClient
-) -> None:
+async def test_feed_search_substring(tmp_path: Path, admin_client: httpx.AsyncClient) -> None:
     """The ``q`` query param filters on case-insensitive substring."""
     _seed_product(tmp_path)
     await admin_client.post(
         "/api/data-products/main/sales_gold/comments",
         json={"body_md": "matches-this"},
     )
-    res = await admin_client.get(
-        "/api/feed", params={"filter": "my", "q": "MATCHES"}
-    )
+    res = await admin_client.get("/api/feed", params={"filter": "my", "q": "MATCHES"})
     assert res.status_code == 200
     rows = res.json()["rows"]
     assert any("matches-this" in r["summary_md"] for r in rows)
@@ -182,9 +172,7 @@ async def test_fanout_respects_inbox_optout(
     dp_id = _seed_product(tmp_path)
     factory = app.state.session_factory
     with factory() as session:
-        admin = session.execute(
-            select(User).where(User.email == "test@test.com")
-        ).scalar_one()
+        admin = session.execute(select(User).where(User.email == "test@test.com")).scalar_one()
         nonadmin = session.execute(
             select(User).where(User.email == "nonadmin@test.com")
         ).scalar_one()
@@ -216,8 +204,7 @@ async def test_fanout_respects_inbox_optout(
             session.execute(
                 select(UserNotification).where(
                     UserNotification.recipient_user_id == admin_id,
-                    UserNotification.event_type
-                    == "pointlessql.data_product.commented",
+                    UserNotification.event_type == "pointlessql.data_product.commented",
                 )
             )
             .scalars()

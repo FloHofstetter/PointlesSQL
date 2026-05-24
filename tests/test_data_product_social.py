@@ -51,7 +51,6 @@ data_product:
 """
 
 
-
 def _seed_product(tmp_path: Path) -> int:
     """Seed a yaml + cache row; return the data_products row id."""
     yaml_path = tmp_path / "pointlessql.yaml"
@@ -68,9 +67,7 @@ def _seed_product(tmp_path: Path) -> int:
 
 
 @pytest.mark.asyncio
-async def test_post_with_question_category(
-    tmp_path: Path, admin_client: httpx.AsyncClient
-) -> None:
+async def test_post_with_question_category(tmp_path: Path, admin_client: httpx.AsyncClient) -> None:
     """Top-level POST with a recognised category is persisted."""
     _seed_product(tmp_path)
     res = await admin_client.post(
@@ -82,9 +79,7 @@ async def test_post_with_question_category(
 
 
 @pytest.mark.asyncio
-async def test_unknown_category_rejected(
-    tmp_path: Path, admin_client: httpx.AsyncClient
-) -> None:
+async def test_unknown_category_rejected(tmp_path: Path, admin_client: httpx.AsyncClient) -> None:
     """Unknown category returns 400."""
     _seed_product(tmp_path)
     res = await admin_client.post(
@@ -126,9 +121,7 @@ async def test_reply_inherits_parent_category(
 
 
 @pytest.mark.asyncio
-async def test_accept_answer_atomicity(
-    tmp_path: Path, admin_client: httpx.AsyncClient
-) -> None:
+async def test_accept_answer_atomicity(tmp_path: Path, admin_client: httpx.AsyncClient) -> None:
     """Marking C2 as answer un-marks C1 in the same thread."""
     _seed_product(tmp_path)
     q = (
@@ -159,9 +152,9 @@ async def test_accept_answer_atomicity(
     )
     assert r2.status_code == 200, r2.text
 
-    listing = (
-        await admin_client.get("/api/data-products/main/sales_gold/comments")
-    ).json()["comments"]
+    listing = (await admin_client.get("/api/data-products/main/sales_gold/comments")).json()[
+        "comments"
+    ]
     by_id = {c["id"]: c for c in listing}
     assert by_id[a1["id"]]["is_accepted_answer"] is False
     assert by_id[a2["id"]]["is_accepted_answer"] is True
@@ -224,9 +217,7 @@ async def test_accept_answer_authz_rejects_outsider(
 
 
 @pytest.mark.asyncio
-async def test_reaction_idempotent(
-    tmp_path: Path, admin_client: httpx.AsyncClient
-) -> None:
+async def test_reaction_idempotent(tmp_path: Path, admin_client: httpx.AsyncClient) -> None:
     """Re-POSTing the same reaction triple is a no-op."""
     _seed_product(tmp_path)
     cid = (
@@ -304,9 +295,7 @@ async def test_remove_single_emoji_preserves_others(
     assert res.status_code == 200
     assert res.json()["removed"] is True
 
-    listing = await admin_client.get(
-        f"/api/data-products/main/sales_gold/comments/{cid}/reactions"
-    )
+    listing = await admin_client.get(f"/api/data-products/main/sales_gold/comments/{cid}/reactions")
     counts = {r["emoji"]: r["count"] for r in listing.json()["reactions"]}
     assert counts["👍"] == 0
     assert counts["🎉"] == 1
@@ -334,19 +323,14 @@ async def test_comment_reaction_notifies_author_not_actor(
 
     factory = app.state.session_factory
     with factory() as session:
-        author = session.execute(
-            select(User).where(User.email == "nonadmin@test.com")
-        ).scalar_one()
-        actor = session.execute(
-            select(User).where(User.email == "test@test.com")
-        ).scalar_one()
+        author = session.execute(select(User).where(User.email == "nonadmin@test.com")).scalar_one()
+        actor = session.execute(select(User).where(User.email == "test@test.com")).scalar_one()
         # author receives at least one notification typed
         # comment_reacted; actor receives none typed that way.
         recipients = (
             session.execute(
                 select(UserNotification.recipient_user_id).where(
-                    UserNotification.event_type
-                    == "pointlessql.data_product.comment_reacted"
+                    UserNotification.event_type == "pointlessql.data_product.comment_reacted"
                 )
             )
             .scalars()
@@ -404,8 +388,7 @@ async def test_dp_reaction_notifies_followers(
         recipients = (
             session.execute(
                 select(UserNotification.recipient_user_id).where(
-                    UserNotification.event_type
-                    == "pointlessql.data_product.reacted"
+                    UserNotification.event_type == "pointlessql.data_product.reacted"
                 )
             )
             .scalars()
@@ -418,9 +401,7 @@ async def test_dp_reaction_notifies_followers(
 
 
 @pytest.mark.asyncio
-async def test_dp_reaction_idempotent(
-    tmp_path: Path, admin_client: httpx.AsyncClient
-) -> None:
+async def test_dp_reaction_idempotent(tmp_path: Path, admin_client: httpx.AsyncClient) -> None:
     """Repeated DP-reaction inserts collapse to a single row."""
     _seed_product(tmp_path)
     for _ in range(3):
@@ -430,9 +411,7 @@ async def test_dp_reaction_idempotent(
         )
     factory = app.state.session_factory
     with factory() as session:
-        rows = (
-            session.execute(select(SocialReaction)).scalars().all()
-        )
+        rows = session.execute(select(SocialReaction)).scalars().all()
     assert len(rows) == 1
 
 
@@ -517,9 +496,7 @@ async def test_displayname_mention_ambiguous_records_audit(
         assert json.loads(comment.mentioned_user_ids_json) == []
         audit = (
             session.execute(
-                select(AuditLog).where(
-                    AuditLog.action == "audit.discussion.mention_ambiguous"
-                )
+                select(AuditLog).where(AuditLog.action == "audit.discussion.mention_ambiguous")
             )
             .scalars()
             .all()

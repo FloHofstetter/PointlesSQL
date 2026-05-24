@@ -12,7 +12,7 @@
 # %% [markdown] pql_cell_id="aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
 # # Hermes-Medallion walkthrough
 #
-# **Sprint 13.5.5** — the "done" moment for Phase 13 / 13.5: a real
+# **Sprint 13.5.5** — the "done" moment / 13.5: a real
 # Hermes agent (running in a sandbox of its choice) authors a
 # three-layer Medallion lakehouse from a CSV in a UC Volume,
 # without any human writing transformation code.
@@ -111,7 +111,7 @@ silver_source = bronze_df.assign(
 # on the very first run we fall back to ``write_table`` to bootstrap
 # silver, then subsequent runs follow the upsert path.  A future
 # ``pql.merge(..., create=True)`` flag would collapse this into one
-# call but it is not in scope for Sprint 13.10.
+# call but it is not in scope .
 #
 # ``track_rejects=True`` records source rows that won't
 # land (NULL on-key, duplicate within source) into ``lineage_row_rejects``
@@ -149,7 +149,7 @@ except Exception as exc:  # noqa: BLE001 — bootstrap path; see comment above
 # Daily revenue per product, materialised through Sprint-15.5.1's
 # ``pql.aggregate`` primitive so each gold row carries deterministic
 # ``_lineage_row_id`` AND records N→1 fan-in edges back to silver in
-# ``lineage_row_edges``.  Sprint 15.5.2's row-trace UI surfaces those
+# ``lineage_row_edges``.  row-trace UI surfaces those
 # fan-in edges as collapsible "Aggregated from N rows" blocks.
 
 # %% pql_cell_id="22222222-2222-4222-8222-bbbbbbbbbbbb"

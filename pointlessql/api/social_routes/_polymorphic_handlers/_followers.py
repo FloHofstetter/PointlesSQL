@@ -27,9 +27,7 @@ from pointlessql.models.social._social_follow import SocialFollow
 # ---------------------------------------------------------------------------
 
 
-async def get_polymorphic_followers_count(
-    kind: str, ref: str, request: Request
-) -> dict[str, Any]:
+async def get_polymorphic_followers_count(kind: str, ref: str, request: Request) -> dict[str, Any]:
     """Return the follower count + caller-following flag.
 
     Counts rows on the polymorphic ``social_follows`` table for
@@ -67,9 +65,7 @@ async def get_polymorphic_followers_count(
     return {"count": int(count), "following": mine is not None}
 
 
-async def list_polymorphic_followers(
-    kind: str, ref: str, request: Request
-) -> dict[str, Any]:
+async def list_polymorphic_followers(kind: str, ref: str, request: Request) -> dict[str, Any]:
     """Return the follower roster for the polymorphic entity.
 
     The list is gated to the caller themselves + workspace admins —
@@ -124,9 +120,7 @@ async def list_polymorphic_followers(
     }
 
 
-async def follow_polymorphic_entity(
-    kind: str, ref: str, request: Request
-) -> dict[str, Any]:
+async def follow_polymorphic_entity(kind: str, ref: str, request: Request) -> dict[str, Any]:
     """Idempotently follow a polymorphic entity.
 
     Writes one row to ``social_follows``.  Repeat POSTs no-op via
@@ -169,9 +163,7 @@ async def follow_polymorphic_entity(
     return {"followed": True, "already": False}
 
 
-async def unfollow_polymorphic_entity(
-    kind: str, ref: str, request: Request
-) -> dict[str, Any]:
+async def unfollow_polymorphic_entity(kind: str, ref: str, request: Request) -> dict[str, Any]:
     """Idempotently unfollow a polymorphic entity.
 
     Drops the matching ``social_follows`` row if present.
@@ -204,5 +196,3 @@ async def unfollow_polymorphic_entity(
         session.delete(existing)
         session.commit()
     return {"followed": False, "removed": True}
-
-

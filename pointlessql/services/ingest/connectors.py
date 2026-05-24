@@ -87,8 +87,7 @@ def _validate_kind(kind: str) -> None:
     """
     if kind not in INGEST_SOURCE_KINDS:
         raise ValidationError(
-            f"Unknown ingest source kind: {kind!r}. "
-            f"Expected one of {INGEST_SOURCE_KINDS}."
+            f"Unknown ingest source kind: {kind!r}. Expected one of {INGEST_SOURCE_KINDS}."
         )
 
 
@@ -126,9 +125,7 @@ def _file_reader_for_path(path: str) -> tuple[str, str | None]:
     return reader, base or None
 
 
-def _build_file_upload_spec(
-    config: dict[str, Any], source_table: str | None
-) -> ReaderSpec:
+def _build_file_upload_spec(config: dict[str, Any], source_table: str | None) -> ReaderSpec:
     """Build the reader for a server-side local file path."""
     del source_table  # file_upload always reads its single configured path
     path = str(config.get("path") or "").strip()
@@ -141,9 +138,7 @@ def _build_file_upload_spec(
     )
 
 
-def _build_parquet_glob_spec(
-    config: dict[str, Any], source_table: str | None
-) -> ReaderSpec:
+def _build_parquet_glob_spec(config: dict[str, Any], source_table: str | None) -> ReaderSpec:
     """Build the reader for a parquet glob pattern."""
     del source_table
     pattern = str(config.get("pattern") or "").strip()
@@ -155,9 +150,7 @@ def _build_parquet_glob_spec(
     )
 
 
-def _build_http_spec(
-    config: dict[str, Any], source_table: str | None
-) -> ReaderSpec:
+def _build_http_spec(config: dict[str, Any], source_table: str | None) -> ReaderSpec:
     """Build the reader for an HTTP(S) URL.
 
     Uses DuckDB's ``httpfs`` extension.  Bearer / basic auth headers
@@ -204,22 +197,16 @@ def _build_postgres_spec(
     ``postgres`` since DuckDB 0.10).
     """
     if not source_table:
-        raise ValidationError(
-            "postgres source requires 'source_table' (schema.table)."
-        )
+        raise ValidationError("postgres source requires 'source_table' (schema.table).")
     host = str(config.get("host") or "").strip()
     port = int(config.get("port") or 5432)
     db = str(config.get("db") or "").strip()
     user = str(config.get("user") or "").strip()
     password = str(secrets.get("password") or "")
     if not host or not db or not user:
-        raise ValidationError(
-            "postgres source requires 'host', 'db', and 'user' in config."
-        )
+        raise ValidationError("postgres source requires 'host', 'db', and 'user' in config.")
     schema, table = _split_qualified_table(source_table, default_schema="public")
-    conn_str = (
-        f"host={host} port={port} dbname={db} user={user} password={password}"
-    )
+    conn_str = f"host={host} port={port} dbname={db} user={user} password={password}"
     return ReaderSpec(
         sql=(
             f"SELECT * FROM postgres_scan("
@@ -240,24 +227,18 @@ def _build_mysql_spec(
     ``mysql``).
     """
     if not source_table:
-        raise ValidationError(
-            "mysql source requires 'source_table' (schema.table)."
-        )
+        raise ValidationError("mysql source requires 'source_table' (schema.table).")
     host = str(config.get("host") or "").strip()
     port = int(config.get("port") or 3306)
     db = str(config.get("db") or "").strip()
     user = str(config.get("user") or "").strip()
     password = str(secrets.get("password") or "")
     if not host or not db or not user:
-        raise ValidationError(
-            "mysql source requires 'host', 'db', and 'user' in config."
-        )
+        raise ValidationError("mysql source requires 'host', 'db', and 'user' in config.")
     schema, table = _split_qualified_table(source_table, default_schema=db)
     # mysql_scanner uses ATTACH-style connection strings under the
     # hood; the simplest reader path is the inline mysql_scan helper.
-    conn_str = (
-        f"host={host} port={port} database={db} user={user} password={password}"
-    )
+    conn_str = f"host={host} port={port} database={db} user={user} password={password}"
     return ReaderSpec(
         sql=(
             f"SELECT * FROM mysql_scan("
@@ -269,18 +250,14 @@ def _build_mysql_spec(
     )
 
 
-def _build_sqlite_spec(
-    config: dict[str, Any], source_table: str | None
-) -> ReaderSpec:
+def _build_sqlite_spec(config: dict[str, Any], source_table: str | None) -> ReaderSpec:
     """Build the reader for a SQLite source table.
 
     Uses DuckDB's ``sqlite_scanner`` extension (registered as
     ``sqlite``).
     """
     if not source_table:
-        raise ValidationError(
-            "sqlite source requires 'source_table' (table name)."
-        )
+        raise ValidationError("sqlite source requires 'source_table' (table name).")
     path = str(config.get("path") or "").strip()
     if not path:
         raise ValidationError("sqlite source requires 'path' in config.")
@@ -288,11 +265,7 @@ def _build_sqlite_spec(
     # concept beyond the file itself, so we ignore any schema prefix.
     _, table = _split_qualified_table(source_table, default_schema="")
     return ReaderSpec(
-        sql=(
-            f"SELECT * FROM sqlite_scan("
-            f"{quote_sql_string(path)}, "
-            f"{quote_sql_string(table)})"
-        ),
+        sql=(f"SELECT * FROM sqlite_scan({quote_sql_string(path)}, {quote_sql_string(table)})"),
         install=("sqlite",),
     )
 
@@ -304,9 +277,7 @@ def _split_qualified_table(qualified: str, *, default_schema: str) -> tuple[str,
         return default_schema, parts[0]
     if len(parts) == 2:
         return parts[0], parts[1]
-    raise ValidationError(
-        f"source_table must be 'schema.table' or 'table', got {qualified!r}."
-    )
+    raise ValidationError(f"source_table must be 'schema.table' or 'table', got {qualified!r}.")
 
 
 def build_reader_spec(
@@ -400,12 +371,8 @@ def build_table_listing_spec(
         user = str(config.get("user") or "").strip()
         password = str(secrets_dict.get("password") or "")
         if not host or not db or not user:
-            raise ValidationError(
-                "postgres source requires 'host', 'db', and 'user' in config."
-            )
-        conn_str = (
-            f"host={host} port={port} dbname={db} user={user} password={password}"
-        )
+            raise ValidationError("postgres source requires 'host', 'db', and 'user' in config.")
+        conn_str = f"host={host} port={port} dbname={db} user={user} password={password}"
         # ATTACH the database, then query information_schema.
         return ReaderSpec(
             sql=(
@@ -426,12 +393,8 @@ def build_table_listing_spec(
         user = str(config.get("user") or "").strip()
         password = str(secrets_dict.get("password") or "")
         if not host or not db or not user:
-            raise ValidationError(
-                "mysql source requires 'host', 'db', and 'user' in config."
-            )
-        conn_str = (
-            f"host={host} port={port} database={db} user={user} password={password}"
-        )
+            raise ValidationError("mysql source requires 'host', 'db', and 'user' in config.")
+        conn_str = f"host={host} port={port} database={db} user={user} password={password}"
         return ReaderSpec(
             sql=(
                 f"ATTACH {quote_sql_string(conn_str)} AS _pql_src "

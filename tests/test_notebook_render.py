@@ -1,4 +1,4 @@
-"""Tests for the Sprint 26 notebook-render service."""
+"""Tests for the notebook-render service."""
 
 from __future__ import annotations
 

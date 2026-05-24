@@ -31,9 +31,7 @@ def test_inject_limit_preserves_user_limit() -> None:
 
 def test_inject_limit_user_override_above_default() -> None:
     """User-supplied LIMIT 5000 wins over default 1000."""
-    out = inject_limit(
-        "SELECT * FROM main.silver.t LIMIT 5000", default_limit=1000
-    )
+    out = inject_limit("SELECT * FROM main.silver.t LIMIT 5000", default_limit=1000)
     assert "LIMIT 5000" in out
 
 
@@ -46,9 +44,7 @@ def test_inject_limit_idempotent() -> None:
 
 def test_inject_limit_handles_with_cte() -> None:
     """``WITH ... SELECT`` gets the LIMIT on the outer SELECT."""
-    out = inject_limit(
-        "WITH a AS (SELECT 1 x) SELECT * FROM a", default_limit=42
-    )
+    out = inject_limit("WITH a AS (SELECT 1 x) SELECT * FROM a", default_limit=42)
     assert "LIMIT 42" in out
 
 

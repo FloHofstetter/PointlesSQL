@@ -257,9 +257,7 @@ def list_paginated(
         editor card off-screen.
     """
     with factory() as session:
-        total = int(
-            session.scalar(select(func.count()).select_from(SavedAuditQuery)) or 0
-        )
+        total = int(session.scalar(select(func.count()).select_from(SavedAuditQuery)) or 0)
         rows = list(
             session.scalars(
                 select(SavedAuditQuery)

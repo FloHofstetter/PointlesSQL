@@ -485,9 +485,7 @@ async def api_table_preview(
     return JSONResponse(content=payload, headers={"Cache-Control": "no-store"})
 
 
-@router.get(
-    "/api/catalogs/{catalog_name}/schemas/{schema_name}/tables/{table_name}/stats"
-)
+@router.get("/api/catalogs/{catalog_name}/schemas/{schema_name}/tables/{table_name}/stats")
 async def api_table_stats(
     request: Request,
     catalog_name: str,

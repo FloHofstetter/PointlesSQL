@@ -198,9 +198,7 @@ def register(
             return user
         except IntegrityError as exc:
             session.rollback()
-            logger.warning(
-                "Registration failed (email=%s): %s", email, exc.orig
-            )
+            logger.warning("Registration failed (email=%s): %s", email, exc.orig)
             return None
 
 

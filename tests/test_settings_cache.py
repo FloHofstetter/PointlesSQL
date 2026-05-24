@@ -1,4 +1,4 @@
-"""Tests for the get_settings() LRU cache facade introduced in Phase 121.2."""
+"""Tests for the get_settings() LRU cache facade introduced ."""
 
 from __future__ import annotations
 

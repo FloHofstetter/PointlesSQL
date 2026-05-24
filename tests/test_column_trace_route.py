@@ -2,7 +2,7 @@
 
 Sets up synthetic ``lineage_column_map`` rows and exercises the
 JSON walkback handler.  The HTML page is exercised by the live
-replay in Sprint 15.6.5.
+replay .
 """
 
 from __future__ import annotations

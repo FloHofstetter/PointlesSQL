@@ -30,22 +30,16 @@ async def agents_index_page(
 
 
 @router.get("/agents/{slug}", response_class=HTMLResponse, response_model=None)
-async def agent_profile_page(
-    slug: str, request: Request
-) -> HTMLResponse | RedirectResponse:
+async def agent_profile_page(slug: str, request: Request) -> HTMLResponse | RedirectResponse:
     """Render an individual agent's profile page."""
     user = get_user(request)
     if user["id"] == 0:
-        return RedirectResponse(
-            url=f"/auth/login?next=/agents/{slug}", status_code=303
-        )
+        return RedirectResponse(url=f"/auth/login?next=/agents/{slug}", status_code=303)
     workspace_id = current_workspace_id(request)
     factory = request.app.state.session_factory
     with factory() as session:
         agent = session.execute(
-            select(Agent).where(
-                Agent.workspace_id == workspace_id, Agent.slug == slug
-            )
+            select(Agent).where(Agent.workspace_id == workspace_id, Agent.slug == slug)
         ).scalar_one_or_none()
     if agent is None:
         raise ResourceNotFoundError("agent not found.")

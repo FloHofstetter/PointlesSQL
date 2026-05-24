@@ -153,8 +153,7 @@ class LineageRowReject(Base):
 
     Attributes:
         id: Auto-incremented primary key.
-        workspace_id: Workspace this reject belongs to (Phase
-            28.1b).  Denormalised from the parent
+        workspace_id: Workspace this reject belongs to.  Denormalised from the parent
             agent_run_operation.
         run_id: FK to :class:`AgentRun.id`.
         op_id: FK to :class:`AgentRunOperation.id` — the merge / write
@@ -219,8 +218,7 @@ class LineageColumnMap(Base):
 
     Attributes:
         id: Auto-incremented primary key.
-        workspace_id: Workspace this column-edge belongs to (Phase
-            28.1b).  Denormalised from the parent
+        workspace_id: Workspace this column-edge belongs to.  Denormalised from the parent
             agent_run_operation.
         run_id: FK to :class:`AgentRun.id` — the run that produced
             this edge.
@@ -312,8 +310,7 @@ class LineageValueChange(Base):
 
     Attributes:
         id: Auto-incremented primary key.
-        workspace_id: Workspace this value change belongs to (Phase
-            28.1b).  Denormalised from the parent
+        workspace_id: Workspace this value change belongs to.  Denormalised from the parent
             agent_run_operation.
         run_id: FK to :class:`AgentRun.id` — the run that produced
             this change.

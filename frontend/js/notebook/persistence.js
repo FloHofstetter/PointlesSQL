@@ -4,7 +4,7 @@
  * Owns the keymap install (Cmd/Ctrl-S → save), notebook save
  * roundtrip, autosave debouncer, source-change handler, cell-label
  * formatter, params-tag toggle, and cell run-history fetch.
- * Extracted from ``notebook_editor.js`` in Phase 70.7.
+ * Extracted from ``notebook_editor.js`` .
  */
 
 export function installPersistence(state) {

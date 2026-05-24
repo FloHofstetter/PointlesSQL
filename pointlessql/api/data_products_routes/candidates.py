@@ -97,9 +97,7 @@ def _serialise_candidate(candidate: DataProductPromotionCandidate) -> dict[str, 
         "status": candidate.status,
         "dismissed_by_user_id": candidate.dismissed_by_user_id,
         "dismissed_at": (
-            candidate.dismissed_at.isoformat()
-            if candidate.dismissed_at is not None
-            else None
+            candidate.dismissed_at.isoformat() if candidate.dismissed_at is not None else None
         ),
         "promoted_to_data_product_id": candidate.promoted_to_data_product_id,
         "refreshed_at": candidate.refreshed_at.isoformat(),
@@ -340,9 +338,7 @@ async def data_products_candidates_page(
         rows = (
             session.execute(
                 select(DataProductPromotionCandidate)
-                .where(
-                    DataProductPromotionCandidate.workspace_id == workspace_id
-                )
+                .where(DataProductPromotionCandidate.workspace_id == workspace_id)
                 .order_by(
                     DataProductPromotionCandidate.status.asc(),
                     DataProductPromotionCandidate.last_seen_at.desc(),

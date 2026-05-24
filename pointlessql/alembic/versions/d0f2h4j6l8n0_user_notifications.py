@@ -85,10 +85,6 @@ def upgrade() -> None:
 def downgrade() -> None:
     """Drop ``user_notifications`` + remove ``users.digest_email_optin``."""
     op.drop_column("users", "digest_email_optin")
-    op.drop_index(
-        "ix_user_notif_recipient_created", table_name="user_notifications"
-    )
-    op.drop_index(
-        "ix_user_notif_recipient_unread", table_name="user_notifications"
-    )
+    op.drop_index("ix_user_notif_recipient_created", table_name="user_notifications")
+    op.drop_index("ix_user_notif_recipient_unread", table_name="user_notifications")
     op.drop_table("user_notifications")

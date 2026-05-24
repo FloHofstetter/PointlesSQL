@@ -37,21 +37,11 @@ depends_on: str | Sequence[str] | None = None
 
 def upgrade() -> None:
     """Add ``source_entity_kind`` + ``source_entity_ref`` columns."""
-    op.execute(
-        "ALTER TABLE user_notifications "
-        "ADD COLUMN source_entity_kind VARCHAR(32)"
-    )
-    op.execute(
-        "ALTER TABLE user_notifications "
-        "ADD COLUMN source_entity_ref VARCHAR(500)"
-    )
+    op.execute("ALTER TABLE user_notifications ADD COLUMN source_entity_kind VARCHAR(32)")
+    op.execute("ALTER TABLE user_notifications ADD COLUMN source_entity_ref VARCHAR(500)")
 
 
 def downgrade() -> None:
     """Reverse: drop the two columns."""
-    op.execute(
-        "ALTER TABLE user_notifications DROP COLUMN source_entity_ref"
-    )
-    op.execute(
-        "ALTER TABLE user_notifications DROP COLUMN source_entity_kind"
-    )
+    op.execute("ALTER TABLE user_notifications DROP COLUMN source_entity_ref")
+    op.execute("ALTER TABLE user_notifications DROP COLUMN source_entity_kind")

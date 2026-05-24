@@ -1,4 +1,4 @@
-"""Tests for Phase 98.D — notebook → static HTML/PDF export."""
+"""Tests — notebook → static HTML/PDF export."""
 
 from __future__ import annotations
 
@@ -35,7 +35,7 @@ def test_render_html_escapes_source() -> None:
             {
                 "content_hash": "abc",
                 "cell_type": "code",
-                "source": '<script>alert(1)</script>',
+                "source": "<script>alert(1)</script>",
             }
         ],
         outputs=[],
@@ -151,15 +151,11 @@ def workspace_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     return root
 
 
-async def test_api_export_html(
-    workspace_dir: Path, admin_client: httpx.AsyncClient
-) -> None:
+async def test_api_export_html(workspace_dir: Path, admin_client: httpx.AsyncClient) -> None:
     """HTML export endpoint returns the full document + attachment header."""
     nb = workspace_dir / "report.py"
     nb.write_text("# %% [markdown]\n# # Hello\n\n# %%\nprint(1)\n")
-    resp = await admin_client.get(
-        "/api/notebooks/export.html", params={"path": "report.py"}
-    )
+    resp = await admin_client.get("/api/notebooks/export.html", params={"path": "report.py"})
     assert resp.status_code == 200
     assert resp.headers["content-type"].startswith("text/html")
     assert "report.html" in resp.headers.get("content-disposition", "")
@@ -180,18 +176,12 @@ async def test_api_export_pdf_fallback_marks_header(
     def fake_render_pdf(*, title: str, cells: list, outputs: list, **_: object):  # type: ignore[no-untyped-def]
         return None
 
-    monkeypatch.setattr(
-        notebook_export_service, "render_notebook_pdf", fake_render_pdf
-    )
-    resp = await admin_client.get(
-        "/api/notebooks/export.pdf", params={"path": "x.py"}
-    )
+    monkeypatch.setattr(notebook_export_service, "render_notebook_pdf", fake_render_pdf)
+    resp = await admin_client.get("/api/notebooks/export.pdf", params={"path": "x.py"})
     assert resp.status_code == 200
     # Fallback always sets the diagnostic header so a UI can offer
     # "use your browser to Save as PDF" copy when this is set.
-    assert resp.headers.get("X-PointlesSQL-Export-Fallback") == (
-        "weasyprint-unavailable"
-    )
+    assert resp.headers.get("X-PointlesSQL-Export-Fallback") == ("weasyprint-unavailable")
     assert resp.headers["content-type"].startswith("text/html")
 
 
@@ -199,7 +189,5 @@ async def test_api_export_rejects_missing_notebook(
     workspace_dir: Path, admin_client: httpx.AsyncClient
 ) -> None:
     """Unknown path → 422 via the resolver guard."""
-    resp = await admin_client.get(
-        "/api/notebooks/export.html", params={"path": "nope.py"}
-    )
+    resp = await admin_client.get("/api/notebooks/export.html", params={"path": "nope.py"})
     assert resp.status_code == 422

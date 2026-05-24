@@ -1,5 +1,5 @@
 /* ---------------------------------------------------------------
- * Status footer bar — Phase 80.7.
+ * Status footer bar.
  *
  * 28 px sticky bottom strip rendered on every authenticated page.
  * Hidden on mobile (the offcanvas drawer carries the same info).

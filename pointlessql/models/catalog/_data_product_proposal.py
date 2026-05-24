@@ -77,13 +77,11 @@ class DataProductSchemaProposal(Base):
             "status",
         ),
         CheckConstraint(
-            "status IN ('open', 'approved_inplace', "
-            "'approved_draft', 'rejected')",
+            "status IN ('open', 'approved_inplace', 'approved_draft', 'rejected')",
             name="ck_dp_proposal_status",
         ),
         CheckConstraint(
-            "(proposer_user_id IS NOT NULL) OR "
-            "(proposer_agent_run_id IS NOT NULL)",
+            "(proposer_user_id IS NOT NULL) OR (proposer_agent_run_id IS NOT NULL)",
             name="ck_dp_proposal_proposer_present",
         ),
     )
@@ -111,9 +109,7 @@ class DataProductSchemaProposal(Base):
     diff_json: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
     summary_md: Mapped[str] = mapped_column(Text, nullable=False, default="")
     status: Mapped[str] = mapped_column(String(40), nullable=False, server_default="open")
-    created_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     resolved_at: Mapped[datetime.datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )

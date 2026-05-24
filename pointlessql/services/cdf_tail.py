@@ -1,4 +1,4 @@
-"""Worker-side service for the Phase 40.5 CDF tail subscriptions.
+"""Worker-side service for the CDF tail subscriptions.
 
 Counterpart to :mod:`pointlessql.services.external_write_scanner`: where
 the external-writes scanner walks ``DeltaTable.history()`` and flags

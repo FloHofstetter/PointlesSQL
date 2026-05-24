@@ -76,16 +76,12 @@ async def run_pull(
     with factory() as session:
         source = session.get(IngestSource, int(source_id))
         if source is None or not source.is_active:
-            raise ValidationError(
-                f"IngestSource {source_id} not found or inactive."
-            )
+            raise ValidationError(f"IngestSource {source_id} not found or inactive.")
         try:
             config_dict = json.loads(source.config or "{}")
             secrets_dict = json.loads(source.secrets or "{}")
         except (ValueError, TypeError) as exc:
-            raise ValidationError(
-                f"IngestSource {source_id} has malformed JSON: {exc}."
-            ) from exc
+            raise ValidationError(f"IngestSource {source_id} has malformed JSON: {exc}.") from exc
         mappings = load_mappings(source.table_mappings)
         if not 0 <= mapping_index < len(mappings):
             raise ValidationError(
@@ -152,10 +148,7 @@ async def run_pull(
         owner_user_id=owner_user_id,
         source_name=source_name,
         target_fqn=result.target_fqn,
-        summary=(
-            f"Pulled {result.rows_written} rows from {source_name} "
-            f"→ {result.target_fqn}"
-        ),
+        summary=(f"Pulled {result.rows_written} rows from {source_name} → {result.target_fqn}"),
     )
     return result.to_dict()
 
@@ -188,9 +181,7 @@ async def ingest_pull_executor(
     source_id = config.get("source_id")
     mapping_index = config.get("mapping_index")
     if source_id is None or mapping_index is None:
-        raise ValidationError(
-            "ingest_pull job config must carry 'source_id' and 'mapping_index'."
-        )
+        raise ValidationError("ingest_pull job config must carry 'source_id' and 'mapping_index'.")
     if not isinstance(mapping_index, int):
         raise ValidationError("mapping_index must be an integer.")
     await run_pull(
@@ -320,9 +311,7 @@ def _fanout_pull(
     if entity_kind == "dp" and len(parts) == 3:
         source_url = f"/data-products/{parts[0]}/{parts[1]}"
     elif len(parts) == 3:
-        source_url = (
-            f"/catalogs/{parts[0]}/schemas/{parts[1]}/tables/{parts[2]}"
-        )
+        source_url = f"/catalogs/{parts[0]}/schemas/{parts[1]}/tables/{parts[2]}"
     else:
         source_url = "/admin/sources"
     try:
@@ -339,6 +328,4 @@ def _fanout_pull(
             extra_recipients=[int(owner_user_id)],
         )
     except Exception:  # noqa: BLE001 — fanout is best-effort
-        logger.exception(
-            "ingest fanout failed for event=%s target=%s", event_type, target_fqn
-        )
+        logger.exception("ingest fanout failed for event=%s target=%s", event_type, target_fqn)

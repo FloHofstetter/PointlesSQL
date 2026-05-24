@@ -1,4 +1,4 @@
-"""Tests for the Sprint 43 ``/auth/*`` rate-limit middleware.
+"""Tests for the ``/auth/*`` rate-limit middleware.
 
 Covers the per-IP and per-email buckets on ``POST /auth/login``, the
 per-IP buckets on ``POST /auth/register`` and ``GET /auth/sso``,
@@ -38,7 +38,7 @@ def _setup_app():
     # audit writes now run via ``asyncio.to_thread``, so
     # the test engine needs StaticPool + check_same_thread=False to
     # keep the schema visible across worker threads (same fix as
-    # Sprint 47's conftest.py).
+    # conftest.py).
     engine = create_engine(
         "sqlite:///:memory:",
         connect_args={"check_same_thread": False},
@@ -295,7 +295,7 @@ class TestOidcLimit:
 
 
 class TestExemptions:
-    """``/healthz`` and ``/api/*`` are not rate-limited by Sprint 43."""
+    """``/healthz`` and ``/api/*`` are not rate-limited ."""
 
     @pytest.mark.asyncio
     async def test_healthz_never_429(self, _setup_app):

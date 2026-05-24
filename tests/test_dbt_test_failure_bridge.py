@@ -1,6 +1,6 @@
 """Tests for the test-failure → lineage_row_rejects bridge.
 
-Sprint 36.3 wires dbt's per-test outcome into PointlesSQL's
+wires dbt's per-test outcome into PointlesSQL's
 ``lineage_row_rejects`` table so a failing dbt test surfaces in the
 cockpit alongside merge-time rejects.  This test asserts:
 

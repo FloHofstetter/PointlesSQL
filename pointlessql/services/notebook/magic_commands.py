@@ -132,12 +132,8 @@ def preprocess(cell_source: str) -> PreprocessResult:
                 out_lines.append(f"{indent}# %sql (empty)")
             else:
                 idx = len(sql_blocks)
-                sql_blocks.append(
-                    SqlBlock(index=idx, sql=sql_text, result_var=result_var)
-                )
-                placeholder = (
-                    f"{_SQL_PLACEHOLDER_PREFIX}{idx}{_SQL_PLACEHOLDER_SUFFIX}"
-                )
+                sql_blocks.append(SqlBlock(index=idx, sql=sql_text, result_var=result_var))
+                placeholder = f"{_SQL_PLACEHOLDER_PREFIX}{idx}{_SQL_PLACEHOLDER_SUFFIX}"
                 out_lines.append(f"{indent}{placeholder}")
                 used.append("sql")
         else:

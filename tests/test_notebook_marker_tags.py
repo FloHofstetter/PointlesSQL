@@ -1,6 +1,6 @@
-"""Tests for the ``tags=[...]`` marker extension introduced in Phase 67.0.
+"""Tests for the ``tags=[...]`` marker extension introduced .
 
-The Phase 66 marker grammar pinned three cell shapes (``# %%``,
+The marker grammar pinned three cell shapes (``# %%``,
 ``# %% [markdown]``, ``# %% [sql] df``). Phase 67 needs round-trip-
 stable parameter-cell support so papermill jobs can detect the cell
 flagged ``parameters``. We adopt the jupytext canonical

@@ -1,7 +1,7 @@
 """Polymorphic social router package.
 
 Exposes ``/api/social/{kind}/{ref:path}/...`` as the canonical
-namespace for every social affordance.  Phase 77.0 wires only
+namespace for every social affordance. This wires only
 ``kind='dp'`` (delegates to the existing DP-scoped handlers in
 :mod:`pointlessql.api.data_products_routes`).  Other kinds raise
 501 until 77.1+ extends the registry.

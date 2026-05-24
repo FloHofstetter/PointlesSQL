@@ -254,13 +254,9 @@ async def list_drafts(request: Request) -> dict[str, Any]:
                 "created_at": row.created_at.isoformat(),
                 "created_by_user_id": row.created_by_user_id,
                 "created_by_agent_run_id": row.created_by_agent_run_id,
-                "promoted_at": (
-                    row.promoted_at.isoformat() if row.promoted_at else None
-                ),
+                "promoted_at": (row.promoted_at.isoformat() if row.promoted_at else None),
                 "promoted_to_data_product_id": row.promoted_to_data_product_id,
-                "discarded_at": (
-                    row.discarded_at.isoformat() if row.discarded_at else None
-                ),
+                "discarded_at": (row.discarded_at.isoformat() if row.discarded_at else None),
                 "yaml_hash": row.yaml_hash,
             }
             for row in rows

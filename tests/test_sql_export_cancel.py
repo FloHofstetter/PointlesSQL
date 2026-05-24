@@ -1,4 +1,4 @@
-"""Route-level tests for Sprint 52: export, cancel, timeout.
+"""Route-level tests : export, cancel, timeout.
 
 We deliberately mock the DuckDB connection for cancel/timeout so the
 tests never actually block on a real long-running query — a real

@@ -150,9 +150,7 @@ async def register_submit(
     # page so the user sees a positive confirmation instead of being
     # bounced to an empty form (the no-feedback redirect read as
     # silent failure in the replay).
-    return RedirectResponse(
-        url="/auth/login?flash=account_created", status_code=303
-    )
+    return RedirectResponse(url="/auth/login?flash=account_created", status_code=303)
 
 
 @router.post("/logout")

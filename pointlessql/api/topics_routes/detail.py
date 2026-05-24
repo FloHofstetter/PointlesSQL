@@ -64,30 +64,25 @@ async def topic_detail(slug: str, request: Request) -> dict[str, Any]:
     factory = request.app.state.session_factory
     with factory() as session:
         topic = session.execute(
-            select(Topic).where(
-                Topic.workspace_id == workspace_id, Topic.slug == slug
-            )
+            select(Topic).where(Topic.workspace_id == workspace_id, Topic.slug == slug)
         ).scalar_one_or_none()
         if topic is None:
             raise ResourceNotFoundError(f"topic {slug!r} not found.")
 
-        dps = (
-            session.execute(
-                select(
-                    DataProduct.id,
-                    DataProduct.catalog_name,
-                    DataProduct.schema_name,
-                    DataProduct.description,
-                )
-                .join(
-                    DataProductTopic,
-                    DataProductTopic.data_product_id == DataProduct.id,
-                )
-                .where(DataProductTopic.topic_id == topic.id)
-                .order_by(DataProduct.catalog_name, DataProduct.schema_name)
+        dps = session.execute(
+            select(
+                DataProduct.id,
+                DataProduct.catalog_name,
+                DataProduct.schema_name,
+                DataProduct.description,
             )
-            .all()
-        )
+            .join(
+                DataProductTopic,
+                DataProductTopic.data_product_id == DataProduct.id,
+            )
+            .where(DataProductTopic.topic_id == topic.id)
+            .order_by(DataProduct.catalog_name, DataProduct.schema_name)
+        ).all()
         followers = int(
             session.execute(
                 select(func.count())
@@ -168,7 +163,9 @@ async def set_dp_topics(
     if not isinstance(raw_value, list):
         raise BadRequestError("topics must be a list")
     slugs: list[str] = [
-        str(s).strip().lower() for s in raw_value if str(s).strip()  # pyright: ignore[reportUnknownVariableType,reportUnknownArgumentType]
+        str(s).strip().lower()
+        for s in raw_value
+        if str(s).strip()  # pyright: ignore[reportUnknownVariableType,reportUnknownArgumentType]
     ]
     slugs = list(dict.fromkeys(slugs))  # de-dup, preserve order
 
@@ -197,9 +194,7 @@ async def set_dp_topics(
         previously = {
             int(tid)
             for (tid,) in session.execute(
-                select(DataProductTopic.topic_id).where(
-                    DataProductTopic.data_product_id == row.id
-                )
+                select(DataProductTopic.topic_id).where(DataProductTopic.data_product_id == row.id)
             ).all()
         }
         target_ids = {topics_by_slug[s].id for s in slugs}
@@ -232,9 +227,7 @@ async def set_dp_topics(
         for t in added_topics:
             follower_ids = (
                 session.execute(
-                    select(UserTopicFollow.user_id).where(
-                        UserTopicFollow.topic_id == t.id
-                    )
+                    select(UserTopicFollow.user_id).where(UserTopicFollow.topic_id == t.id)
                 )
                 .scalars()
                 .all()
@@ -322,15 +315,12 @@ async def get_dp_topics(
     factory = request.app.state.session_factory
     row, _contract, _email, _display = load_one(factory, workspace_id, catalog, schema)
     with factory() as session:
-        rows = (
-            session.execute(
-                select(Topic.slug, Topic.display_name)
-                .join(DataProductTopic, DataProductTopic.topic_id == Topic.id)
-                .where(DataProductTopic.data_product_id == row.id)
-                .order_by(Topic.display_name)
-            )
-            .all()
-        )
+        rows = session.execute(
+            select(Topic.slug, Topic.display_name)
+            .join(DataProductTopic, DataProductTopic.topic_id == Topic.id)
+            .where(DataProductTopic.data_product_id == row.id)
+            .order_by(Topic.display_name)
+        ).all()
     return {
         "data_product_id": row.id,
         "topics": [{"slug": s, "display_name": d} for s, d in rows],

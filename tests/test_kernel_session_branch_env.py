@@ -1,6 +1,6 @@
 """start-time env injection.
 
-The Phase 102 branch-aware notebook contract has two layers:
+The branch-aware notebook contract has two layers:
 
 1. The :class:`~pointlessql.services.notebook.kernel_session.KernelSession`
    forwards ``POINTLESSQL_BRANCH`` into the subprocess env when a
@@ -63,9 +63,7 @@ def patched_kernel(monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
     )
     # Stub the pump tasks so start() returns without leaving
     # dangling asyncio tasks.
-    monkeypatch.setattr(
-        KernelSession, "_pump", AsyncMock(return_value=None), raising=True
-    )
+    monkeypatch.setattr(KernelSession, "_pump", AsyncMock(return_value=None), raising=True)
     return captured
 
 
@@ -88,9 +86,7 @@ async def test_branch_name_forwarded_as_env_var(
     assert env["POINTLESSQL_PRINCIPAL"] == "user@example.com"
 
 
-async def test_no_branch_omits_env_var(
-    tmp_path: Path, patched_kernel: dict[str, Any]
-) -> None:
+async def test_no_branch_omits_env_var(tmp_path: Path, patched_kernel: dict[str, Any]) -> None:
     """``branch_name=None`` → key is NOT set (so context falls back).
 
     The kernel-side ``current_branch()`` returns ``None`` either
@@ -175,9 +171,7 @@ async def test_registry_propagates_branch_to_new_session(
             return client
 
     fake_manager_cls.side_effect = _FakeManager
-    monkeypatch.setattr(
-        KernelSession, "_pump", AsyncMock(return_value=None), raising=True
-    )
+    monkeypatch.setattr(KernelSession, "_pump", AsyncMock(return_value=None), raising=True)
 
     registry = KernelRegistry(notebooks_dir=tmp_path)
     await registry.get_or_start(

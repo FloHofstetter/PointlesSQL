@@ -76,9 +76,7 @@ def test_build_dbx_envelope_shape() -> None:
 
 def test_error_envelope_clamps_to_known_codes() -> None:
     """Unknown error codes collapse to INTERNAL_ERROR to keep the shape valid."""
-    env = error_envelope(
-        statement_id="x", error_code="MADE_UP", message="something broke"
-    )
+    env = error_envelope(statement_id="x", error_code="MADE_UP", message="something broke")
     assert env["status"]["state"] == "FAILED"
     assert env["status"]["error"]["error_code"] == "INTERNAL_ERROR"
     assert env["status"]["error"]["message"] == "something broke"

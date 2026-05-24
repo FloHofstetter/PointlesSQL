@@ -24,9 +24,7 @@ from pointlessql.models.agent._runs import STATUS_RUNNING, AgentRun
 logger = logging.getLogger(__name__)
 
 
-async def start_editor_agent_run(
-    ctx: DispatchContext, *, target_fqn: str
-) -> str:
+async def start_editor_agent_run(ctx: DispatchContext, *, target_fqn: str) -> str:
     """Create a one-shot ``agent_run`` row for an interactive editor write.
 
     Each editor write statement gets its own run with

@@ -25,7 +25,7 @@ async def execute_drop_table(ctx: DispatchContext) -> ExecutionResult:
 
     Hive-style external-table semantics: the catalog row is
     removed but the Delta files stay on disk.  The editor
-    confirmation modal in Phase 63.7 spells this out so users do
+    confirmation modal spells this out so users do
     not expect a destructive bytes-level wipe.
 
     Args:

@@ -72,7 +72,5 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     """Drop ``data_product_endorsements``."""
-    op.drop_index(
-        "ix_dp_endorsement_dp_type", table_name="data_product_endorsements"
-    )
+    op.drop_index("ix_dp_endorsement_dp_type", table_name="data_product_endorsements")
     op.drop_table("data_product_endorsements")

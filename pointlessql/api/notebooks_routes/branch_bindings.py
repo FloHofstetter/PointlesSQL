@@ -29,9 +29,7 @@ router = APIRouter(tags=["notebooks"])
 def _resolve_notebook_uuid(request: Request, path: str) -> str:
     settings: Settings = request.app.state.settings
     notebooks_dir = settings.jupyter.notebooks_dir.resolve()
-    absolute = notebook_doc_service.resolve_py_notebook_path(
-        notebooks_dir, path, must_exist=True
-    )
+    absolute = notebook_doc_service.resolve_py_notebook_path(notebooks_dir, path, must_exist=True)
     relative = str(absolute.relative_to(notebooks_dir))
     return get_or_create_notebook_uuid(request, relative)
 
@@ -58,9 +56,7 @@ async def api_get_current_branch_binding(
 
 
 @router.post("/api/notebooks/branch", status_code=201)
-async def api_bind_branch(
-    request: Request, body: dict[str, Any] = Body(...)
-) -> JSONResponse:
+async def api_bind_branch(request: Request, body: dict[str, Any] = Body(...)) -> JSONResponse:
     """Set the current branch binding.
 
     Body keys:
@@ -75,17 +71,13 @@ async def api_bind_branch(
     branch_name = body.get("branch_name")
     base_rev = body.get("base_revision_uuid")
     if not isinstance(path, str) or not isinstance(branch_name, str):
-        raise ValidationError(
-            "body.path and body.branch_name must be strings"
-        )
+        raise ValidationError("body.path and body.branch_name must be strings")
     if base_rev is not None and not isinstance(base_rev, str):
         raise ValidationError("body.base_revision_uuid must be a string or null")
     notebook_id = _resolve_notebook_uuid(request, path)
     actor_id: int | None = None
     try:
-        actor_id = (
-            request.state.user.get("id") if request.state.user else None
-        )
+        actor_id = request.state.user.get("id") if request.state.user else None
     except AttributeError:
         actor_id = None
     factory = request.app.state.session_factory
@@ -103,9 +95,7 @@ async def api_bind_branch(
 
 
 @router.post("/api/notebooks/branch/promote")
-async def api_promote_branch(
-    request: Request, body: dict[str, Any] = Body(...)
-) -> JSONResponse:
+async def api_promote_branch(request: Request, body: dict[str, Any] = Body(...)) -> JSONResponse:
     """Mark the current branch binding as promoted (human-reviewed gate).
 
     Body keys:
@@ -149,12 +139,8 @@ async def api_discard_branch(
     notebook_id = _resolve_notebook_uuid(request, path)
     factory = request.app.state.session_factory
     with factory() as session:
-        row = notebook_branch_bindings_service.discard_binding(
-            session, notebook_id=notebook_id
-        )
-        envelope = (
-            notebook_branch_bindings_service.binding_to_envelope(row) if row else None
-        )
+        row = notebook_branch_bindings_service.discard_binding(session, notebook_id=notebook_id)
+        envelope = notebook_branch_bindings_service.binding_to_envelope(row) if row else None
         session.commit()
     return JSONResponse({"discarded": envelope})
 
@@ -176,6 +162,4 @@ async def api_list_branch_history(
             limit=paging.limit,
             offset=paging.offset,
         )
-    return JSONResponse(
-        {"path": path, "notebook_id": notebook_id, "bindings": rows}
-    )
+    return JSONResponse({"path": path, "notebook_id": notebook_id, "bindings": rows})

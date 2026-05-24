@@ -2,8 +2,8 @@
 
 The pin path ([api/notebooks_routes/facts.py]) emits a
 ``notebook_revision_pinned`` event through
-:func:`pointlessql.services.notifications.fanout_event`.  Phase 97.X.3
-adds a dedicated ``render_kind = "fact"`` so the feed Alpine renderer
+:func:`pointlessql.services.notifications.fanout_event` with a
+dedicated ``render_kind = "fact"`` so the feed Alpine renderer
 shows a 📌-icon card instead of falling through to the generic
 notification template.
 
@@ -116,9 +116,7 @@ def admin_user_id() -> int:
         from pointlessql.models.auth import User
 
         return int(
-            session.execute(
-                select(User.id).where(User.email == "test@test.com")
-            ).scalar_one()
+            session.execute(select(User.id).where(User.email == "test@test.com")).scalar_one()
         )
 
 
@@ -130,9 +128,7 @@ def nonadmin_user_id() -> int:
         from pointlessql.models.auth import User
 
         return int(
-            session.execute(
-                select(User.id).where(User.email == "nonadmin@test.com")
-            ).scalar_one()
+            session.execute(select(User.id).where(User.email == "nonadmin@test.com")).scalar_one()
         )
 
 
@@ -267,12 +263,8 @@ def test_emit_pin_summary_uses_notebook_path_not_uuid(
     file_path = f"smoke-pin-summary-{nb_id[:8]}.py"
     factory = app.state.session_factory
     with factory() as session:
-        session.add(
-            Notebook(id=nb_id, workspace_id=1, file_path=file_path)
-        )
-        anchor = get_or_create_target(
-            session, workspace_id=1, kind="notebook", ref=nb_id
-        )
+        session.add(Notebook(id=nb_id, workspace_id=1, file_path=file_path))
+        anchor = get_or_create_target(session, workspace_id=1, kind="notebook", ref=nb_id)
         session.add(
             SocialFollow(
                 workspace_id=1,

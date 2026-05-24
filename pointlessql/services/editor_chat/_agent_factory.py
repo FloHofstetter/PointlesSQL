@@ -10,7 +10,7 @@ This module is the only place inside PointlesSQL that imports
 ``hermes_agent``.  Tests monkeypatch :func:`build_agent` with a
 fake so the import is never triggered at test time.
 
-Phase 96 adds a ``surface`` argument so the same factory serves
+adds a ``surface`` argument so the same factory serves
 both the SQL-editor chat (``surface="sql"``, sets
 ``POINTLESSQL_CHAT_SESSION_ID``) and the notebook-editor AI
 assistant (``surface="notebook"``, sets

@@ -11,7 +11,7 @@ Merges four source streams into one chronologically-sorted feed:
    ``data_product_id = dp.id`` — Phase 50 contract validations.
 4. ``governance_events`` rows of type
    ``pointlessql.data_product.sla_violated`` whose payload's
-   ``data_product_ref`` matches the DP — Phase 50.4 freshness.
+   ``data_product_ref`` matches the DP.4 freshness.
 
 Heuristics:
 
@@ -103,24 +103,25 @@ def fetch_activity_for_dp(
     rows: list[ActivityRow] = []
 
     # Stream 1: agent_run_operations.
-    op_rows = session.execute(
-        select(AgentRunOperation)
-        .where(
-            AgentRunOperation.workspace_id == workspace_id,
-            AgentRunOperation.target_table.like(f"{fqn_prefix}%"),
+    op_rows = (
+        session.execute(
+            select(AgentRunOperation)
+            .where(
+                AgentRunOperation.workspace_id == workspace_id,
+                AgentRunOperation.target_table.like(f"{fqn_prefix}%"),
+            )
+            .order_by(AgentRunOperation.started_at.desc())
+            .limit(per_stream_cap)
         )
-        .order_by(AgentRunOperation.started_at.desc())
-        .limit(per_stream_cap)
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     for op in op_rows:
         rows.append(
             ActivityRow(
                 kind="agent_op",
                 ts=_ts(op.started_at),
-                summary=(
-                    f"`{op.op_name}` on `{op.target_table}` "
-                    f"({op.rows_affected or 0} rows)"
-                ),
+                summary=(f"`{op.op_name}` on `{op.target_table}` ({op.rows_affected or 0} rows)"),
                 source_id=op.id,
                 source_url=f"/runs/{op.agent_run_id}#op-{op.id}",
             )
@@ -129,39 +130,44 @@ def fetch_activity_for_dp(
     # Stream 2: audit_log (free-form ``target`` column).  We match
     # any row whose target contains the DP catalog or schema name;
     # the heuristic is documented at module level.
-    audit_rows = session.execute(
-        select(AuditLog)
-        .where(
-            AuditLog.workspace_id == workspace_id,
-            or_(
-                AuditLog.target.like(f"%{dp.catalog_name}%"),
-                AuditLog.target.like(f"%{dp.schema_name}%"),
-            ),
+    audit_rows = (
+        session.execute(
+            select(AuditLog)
+            .where(
+                AuditLog.workspace_id == workspace_id,
+                or_(
+                    AuditLog.target.like(f"%{dp.catalog_name}%"),
+                    AuditLog.target.like(f"%{dp.schema_name}%"),
+                ),
+            )
+            .order_by(AuditLog.created_at.desc())
+            .limit(per_stream_cap)
         )
-        .order_by(AuditLog.created_at.desc())
-        .limit(per_stream_cap)
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     for a in audit_rows:
         rows.append(
             ActivityRow(
                 kind="audit",
                 ts=_ts(a.created_at),
-                summary=(
-                    f"`{a.action}` on `{a.target}` by "
-                    f"{a.user_email or 'system'}"
-                ),
+                summary=(f"`{a.action}` on `{a.target}` by {a.user_email or 'system'}"),
                 source_id=a.id,
                 source_url=f"/audit/log?id={a.id}",
             )
         )
 
     # Stream 3: data_product_contract_events.
-    contract_rows = session.execute(
-        select(DataProductContractEvent)
-        .where(DataProductContractEvent.data_product_id == dp.id)
-        .order_by(DataProductContractEvent.created_at.desc())
-        .limit(per_stream_cap)
-    ).scalars().all()
+    contract_rows = (
+        session.execute(
+            select(DataProductContractEvent)
+            .where(DataProductContractEvent.data_product_id == dp.id)
+            .order_by(DataProductContractEvent.created_at.desc())
+            .limit(per_stream_cap)
+        )
+        .scalars()
+        .all()
+    )
     for ev in contract_rows:
         rows.append(
             ActivityRow(
@@ -178,15 +184,19 @@ def fetch_activity_for_dp(
         )
 
     # Stream 4: governance_events (sla_violated).
-    gov_rows = session.execute(
-        select(GovernanceEvent)
-        .where(
-            GovernanceEvent.workspace_id == workspace_id,
-            GovernanceEvent.event_type == "pointlessql.data_product.sla_violated",
+    gov_rows = (
+        session.execute(
+            select(GovernanceEvent)
+            .where(
+                GovernanceEvent.workspace_id == workspace_id,
+                GovernanceEvent.event_type == "pointlessql.data_product.sla_violated",
+            )
+            .order_by(GovernanceEvent.fired_at.desc())
+            .limit(per_stream_cap)
         )
-        .order_by(GovernanceEvent.fired_at.desc())
-        .limit(per_stream_cap)
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     for gv in gov_rows:
         payload: dict[str, Any] = {}
         try:
@@ -194,7 +204,7 @@ def fetch_activity_for_dp(
             raw = envelope.get("data", {})
             if isinstance(raw, dict):
                 payload = raw
-        except (ValueError, TypeError):
+        except ValueError, TypeError:
             payload = {}
         ref_value: Any = payload.get("data_product_ref") or payload.get("ref")
         ref: str | None = ref_value if isinstance(ref_value, str) else None
@@ -207,9 +217,7 @@ def fetch_activity_for_dp(
                 ts=_ts(gv.fired_at),
                 summary=f"SLA violated (age `{age_minutes}` min)",
                 source_id=gv.id,
-                source_url=(
-                    f"/data-products/{dp.catalog_name}/{dp.schema_name}#tab-compliance"
-                ),
+                source_url=(f"/data-products/{dp.catalog_name}/{dp.schema_name}#tab-compliance"),
             )
         )
 

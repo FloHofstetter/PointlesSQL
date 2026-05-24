@@ -84,9 +84,7 @@ def resolve_mention_ids(session: Any, emails: list[str]) -> list[int]:
     if not emails:
         return []
     lowered = list({e.lower() for e in emails})
-    rows = session.execute(
-        select(User.id).where(User.email.in_(lowered))
-    ).all()
+    rows = session.execute(select(User.id).where(User.email.in_(lowered))).all()
     return [int(uid) for (uid,) in rows]
 
 
@@ -188,9 +186,7 @@ def serialise_endorsement(
             "display_name": author_display_name,
         },
         "applied_at": row.applied_at.isoformat(),
-        "removed_at": (
-            row.removed_at.isoformat() if row.removed_at else None
-        ),
+        "removed_at": (row.removed_at.isoformat() if row.removed_at else None),
         "note_md": row.note_md or "",
         "note_md_resolved": note_md_resolved,
     }
@@ -217,9 +213,7 @@ def serialise_readme(
     }
 
 
-def resolve_target_id(
-    request: Request, kind: str, ref: str
-) -> tuple[int, int]:
+def resolve_target_id(request: Request, kind: str, ref: str) -> tuple[int, int]:
     """Resolve ``(workspace_id, social_target_id)`` for the kind+ref.
 
     For ``kind='dp'`` routes through :func:`resolve_dp_target` so the
@@ -288,9 +282,7 @@ def endorsements_supported(kind: str) -> None:
     """Raise 404 when *kind* has ``supports_endorsements=False``."""
     spec = registry_get(kind)
     if not spec.supports_endorsements:
-        raise ResourceNotFoundError(
-            f"kind={kind!r} does not support endorsements"
-        )
+        raise ResourceNotFoundError(f"kind={kind!r} does not support endorsements")
 
 
 def reviews_supported(kind: str) -> None:
@@ -340,5 +332,3 @@ def serialise_review(
         "created_at": row.created_at.isoformat(),
         "updated_at": row.updated_at.isoformat(),
     }
-
-

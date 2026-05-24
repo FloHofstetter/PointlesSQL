@@ -117,9 +117,7 @@ def upgrade() -> None:
             nullable=False,
             server_default=sa.text("CURRENT_TIMESTAMP"),
         ),
-        sa.UniqueConstraint(
-            "workspace_id", "slug", name="uq_issue_labels_slug_per_workspace"
-        ),
+        sa.UniqueConstraint("workspace_id", "slug", name="uq_issue_labels_slug_per_workspace"),
     )
 
     # ──────────────────────────────────────────────────────────────
@@ -148,9 +146,7 @@ def upgrade() -> None:
             nullable=False,
         ),
         sa.Column("title", sa.String(255), nullable=False),
-        sa.Column(
-            "body_md", sa.Text(), nullable=False, server_default=""
-        ),
+        sa.Column("body_md", sa.Text(), nullable=False, server_default=""),
         sa.Column(
             "state",
             sa.String(20),
@@ -189,9 +185,7 @@ def upgrade() -> None:
             nullable=False,
             server_default="[]",
         ),
-        sa.UniqueConstraint(
-            "social_target_id", name="uq_issues_social_target"
-        ),
+        sa.UniqueConstraint("social_target_id", name="uq_issues_social_target"),
         sa.CheckConstraint(
             "state IN ('open', 'closed', 'closed_not_planned')",
             name="ck_issues_state",
@@ -227,7 +221,5 @@ def downgrade() -> None:
     op.drop_index("ix_issues_workspace_state", table_name="issues")
     op.drop_table("issues")
     op.drop_table("issue_labels")
-    op.drop_index(
-        "ix_issue_milestones_workspace", table_name="issue_milestones"
-    )
+    op.drop_index("ix_issue_milestones_workspace", table_name="issue_milestones")
     op.drop_table("issue_milestones")

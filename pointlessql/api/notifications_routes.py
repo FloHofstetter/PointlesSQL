@@ -67,9 +67,7 @@ async def notifications_page(
     """Render the HTML shell for the per-user inbox."""
     user = get_user(request)
     if user["id"] == 0:
-        return RedirectResponse(
-            url="/auth/login?next=/notifications", status_code=303
-        )
+        return RedirectResponse(url="/auth/login?next=/notifications", status_code=303)
     templates = request.app.state.templates
     return templates.TemplateResponse(
         request,
@@ -110,11 +108,7 @@ async def list_notifications(
         actor_ids = {r.actor_user_id for r in rows if r.actor_user_id is not None}
         actor_map: dict[int, tuple[str, str]] = {}
         if actor_ids:
-            users = (
-                session.execute(select(User).where(User.id.in_(actor_ids)))
-                .scalars()
-                .all()
-            )
+            users = session.execute(select(User).where(User.id.in_(actor_ids))).scalars().all()
             actor_map = {u.id: (u.email, u.display_name) for u in users}
 
         dp_ids = {r.source_data_product_id for r in rows if r.source_data_product_id is not None}
@@ -130,12 +124,16 @@ async def list_notifications(
     payload = [
         _serialise_notification(
             r,
-            actor_email=(actor_map.get(r.actor_user_id, (None, None))[0]
-                         if r.actor_user_id is not None
-                         else None),
-            actor_display_name=(actor_map.get(r.actor_user_id, (None, None))[1]
-                                if r.actor_user_id is not None
-                                else None),
+            actor_email=(
+                actor_map.get(r.actor_user_id, (None, None))[0]
+                if r.actor_user_id is not None
+                else None
+            ),
+            actor_display_name=(
+                actor_map.get(r.actor_user_id, (None, None))[1]
+                if r.actor_user_id is not None
+                else None
+            ),
             dp_ref=dp_ref_map.get(r.source_data_product_id or -1),
         )
         for r in rows
@@ -173,11 +171,7 @@ async def mark_read(
     factory = request.app.state.session_factory
     with factory() as session:
         row = session.get(UserNotification, notification_id)
-        if (
-            row is None
-            or row.workspace_id != workspace_id
-            or row.recipient_user_id != user["id"]
-        ):
+        if row is None or row.workspace_id != workspace_id or row.recipient_user_id != user["id"]:
             # bare-http-ok: cross-user / cross-workspace ids surface as 404
             # 404 (not 403) so the inbox doesn't leak existence info.
             raise ResourceNotFoundError("notification not found.")

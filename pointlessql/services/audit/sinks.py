@@ -387,9 +387,7 @@ def _dispatch_stdout_json(sink: AuditSink, envelope: dict[str, Any]) -> bool:
         stream.write(line + "\n")
         stream.flush()
     except OSError:
-        logger.exception(
-            "audit_sinks[%s] stdout_json write failed", sink.id
-        )
+        logger.exception("audit_sinks[%s] stdout_json write failed", sink.id)
         return False
     return True
 
@@ -423,9 +421,7 @@ def _dispatch_syslog(sink: AuditSink, envelope: dict[str, Any]) -> bool:
         return False
     address_raw = cfg.get("address")
     if not isinstance(address_raw, str) or ":" not in address_raw:
-        logger.warning(
-            "audit_sinks[%s] syslog address must be 'host:port'", sink.id
-        )
+        logger.warning("audit_sinks[%s] syslog address must be 'host:port'", sink.id)
         return False
     host, port_str = address_raw.rsplit(":", 1)
     try:
@@ -464,9 +460,7 @@ def _dispatch_syslog(sink: AuditSink, envelope: dict[str, Any]) -> bool:
         syslog_logger.info(payload)
         return True
     except OSError:
-        logger.exception(
-            "audit_sinks[%s] syslog emit failed", sink.id
-        )
+        logger.exception("audit_sinks[%s] syslog emit failed", sink.id)
         return False
     finally:
         if handler is not None:

@@ -1,4 +1,4 @@
-"""Tests for the Sprint 13.9 run-scoped query-history surface."""
+"""Tests for the run-scoped query-history surface."""
 
 from __future__ import annotations
 

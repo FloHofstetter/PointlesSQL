@@ -50,13 +50,9 @@ async def api_cell_attribution(
     require_user(request)
     factory = request.app.state.session_factory
     with factory() as session:
-        envelope = cell_authorship_service.get_attribution(
-            session, cell_uuid=cell_uuid
-        )
+        envelope = cell_authorship_service.get_attribution(session, cell_uuid=cell_uuid)
     if envelope is None:
-        raise ValidationError(
-            f"no authorship row for cell {cell_uuid!r}"
-        )
+        raise ValidationError(f"no authorship row for cell {cell_uuid!r}")
     return JSONResponse(envelope)
 
 
@@ -80,16 +76,12 @@ async def api_notebook_attribution_bulk(
     require_user(request)
     settings: Settings = request.app.state.settings
     notebooks_dir = settings.jupyter.notebooks_dir.resolve()
-    absolute = notebook_doc_service.resolve_py_notebook_path(
-        notebooks_dir, path, must_exist=True
-    )
+    absolute = notebook_doc_service.resolve_py_notebook_path(notebooks_dir, path, must_exist=True)
     relative = str(absolute.relative_to(notebooks_dir))
     notebook_id = get_or_create_notebook_uuid(request, relative)
     factory = request.app.state.session_factory
     with factory() as session:
-        attributions = cell_authorship_service.list_for_notebook(
-            session, notebook_id=notebook_id
-        )
+        attributions = cell_authorship_service.list_for_notebook(session, notebook_id=notebook_id)
     return JSONResponse(
         {
             "path": relative,

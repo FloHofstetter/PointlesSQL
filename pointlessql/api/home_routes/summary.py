@@ -322,12 +322,12 @@ async def build_home_summary(request: Request, user: UserInfo) -> dict[str, Any]
                     .limit(5)
                 )
                 if workspace_id:
-                    pending_stmt = pending_stmt.where(
-                        AgentRunModel.workspace_id == workspace_id
-                    )
+                    pending_stmt = pending_stmt.where(AgentRunModel.workspace_id == workspace_id)
                 pending_rows = list(session.scalars(pending_stmt).all())
-                pending_count_stmt = _select(func.count()).select_from(AgentRunModel).where(
-                    AgentRunModel.status == STATUS_NEEDS_APPROVAL
+                pending_count_stmt = (
+                    _select(func.count())
+                    .select_from(AgentRunModel)
+                    .where(AgentRunModel.status == STATUS_NEEDS_APPROVAL)
                 )
                 if workspace_id:
                     pending_count_stmt = pending_count_stmt.where(
@@ -351,13 +351,13 @@ async def build_home_summary(request: Request, user: UserInfo) -> dict[str, Any]
                 )
                 inbox_count = int(session.scalar(inbox_count_stmt) or 0)
 
-                alerts_stmt = _select(func.count()).select_from(AlertModel).where(
-                    AlertModel.is_active.is_(True)
+                alerts_stmt = (
+                    _select(func.count())
+                    .select_from(AlertModel)
+                    .where(AlertModel.is_active.is_(True))
                 )
                 if workspace_id:
-                    alerts_stmt = alerts_stmt.where(
-                        AlertModel.workspace_id == workspace_id
-                    )
+                    alerts_stmt = alerts_stmt.where(AlertModel.workspace_id == workspace_id)
                 alerts_count = int(session.scalar(alerts_stmt) or 0)
 
                 return {
@@ -368,9 +368,7 @@ async def build_home_summary(request: Request, user: UserInfo) -> dict[str, Any]
                                 "id": r.id,
                                 "principal": getattr(r, "principal_user_id", None),
                                 "status": r.status,
-                                "started_at": (
-                                    r.started_at.isoformat() if r.started_at else None
-                                ),
+                                "started_at": (r.started_at.isoformat() if r.started_at else None),
                             }
                             for r in pending_rows
                         ],
@@ -381,9 +379,7 @@ async def build_home_summary(request: Request, user: UserInfo) -> dict[str, Any]
                             {
                                 "id": n.id,
                                 "event_type": getattr(n, "event_type", "notification"),
-                                "created_at": (
-                                    n.created_at.isoformat() if n.created_at else None
-                                ),
+                                "created_at": (n.created_at.isoformat() if n.created_at else None),
                             }
                             for n in inbox_rows
                         ],
@@ -398,14 +394,12 @@ async def build_home_summary(request: Request, user: UserInfo) -> dict[str, Any]
                 "alerts_firing": {"count": 0},
             }
 
-    catalogs_block, db_block, anomalies_block, latest_review, today_block = (
-        await asyncio.gather(
-            _catalogs_block(),
-            asyncio.to_thread(_db_block),
-            asyncio.to_thread(_anomalies_block),
-            asyncio.to_thread(_latest_review_block),
-            asyncio.to_thread(_today_blocks),
-        )
+    catalogs_block, db_block, anomalies_block, latest_review, today_block = await asyncio.gather(
+        _catalogs_block(),
+        asyncio.to_thread(_db_block),
+        asyncio.to_thread(_anomalies_block),
+        asyncio.to_thread(_latest_review_block),
+        asyncio.to_thread(_today_blocks),
     )
 
     have_catalogs = bool(catalogs_block["has_catalogs"])
@@ -442,6 +436,7 @@ async def build_home_summary(request: Request, user: UserInfo) -> dict[str, Any]
             "have_dashboards": have_dashboards,
         },
     }
+
 
 @router.get("/", response_class=HTMLResponse)
 async def catalogs_index(request: Request) -> HTMLResponse:

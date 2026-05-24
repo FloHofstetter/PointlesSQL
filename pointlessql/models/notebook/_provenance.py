@@ -30,7 +30,7 @@ class NotebookCellProvenance(Base):
     pass has minted the final ``cell_uuid``.  The table is *strictly
     append-only* — never updated, never deleted (a tombstone on the
     cell identity row implicitly tombstones the chain too).  This is
-    the shape Phase 97's revision-history sprint reads to render
+    the shape revision-history sprint reads to render
     "proposed by agent A at T1; fixed by agent B at T2".
 
     Why a separate table, not columns on

@@ -48,26 +48,16 @@ def fresh_notebook_on_disk(workspace_dir: Path) -> Iterator[str]:
     factory = app.state.session_factory
     with factory() as session:
         nbs = list(
-            session.execute(
-                sqlalchemy.select(Notebook).where(Notebook.file_path == rel)
-            ).scalars()
+            session.execute(sqlalchemy.select(Notebook).where(Notebook.file_path == rel)).scalars()
         )
         for nb in nbs:
             notebook_coedit_ws._HUBS.pop(nb.id, None)
+            session.execute(delete(NotebookCrdtState).where(NotebookCrdtState.notebook_id == nb.id))
             session.execute(
-                delete(NotebookCrdtState).where(
-                    NotebookCrdtState.notebook_id == nb.id
-                )
+                delete(NotebookPermission).where(NotebookPermission.notebook_id == nb.id)
             )
             session.execute(
-                delete(NotebookPermission).where(
-                    NotebookPermission.notebook_id == nb.id
-                )
-            )
-            session.execute(
-                delete(NotebookCellIdentity).where(
-                    NotebookCellIdentity.notebook_id == nb.id
-                )
+                delete(NotebookCellIdentity).where(NotebookCellIdentity.notebook_id == nb.id)
             )
             session.delete(nb)
         session.commit()
@@ -157,9 +147,7 @@ def test_agent_presence_broadcasts_to_connected_clients(
             },
         )
         notebook_uuid = first.json()["notebook_uuid"]
-        with client.websocket_connect(
-            f"/ws/notebook/coedit/{notebook_uuid}"
-        ) as ws:
+        with client.websocket_connect(f"/ws/notebook/coedit/{notebook_uuid}") as ws:
             ws.receive_bytes()  # initial sync_step2
             resp = client.post(
                 f"/api/notebooks/{notebook_uuid}/coedit/agent-presence",
@@ -202,9 +190,7 @@ def test_agent_presence_clear_action_relays_unchanged(
             },
         )
         notebook_uuid = first.json()["notebook_uuid"]
-        with client.websocket_connect(
-            f"/ws/notebook/coedit/{notebook_uuid}"
-        ) as ws:
+        with client.websocket_connect(f"/ws/notebook/coedit/{notebook_uuid}") as ws:
             ws.receive_bytes()
             client.post(
                 f"/api/notebooks/{notebook_uuid}/coedit/agent-presence",

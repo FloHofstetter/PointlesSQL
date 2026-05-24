@@ -154,9 +154,7 @@ class NotebookCellProposal(Base):
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    proposal_id: Mapped[str] = mapped_column(
-        String(36), nullable=False, unique=True
-    )
+    proposal_id: Mapped[str] = mapped_column(String(36), nullable=False, unique=True)
     chat_session_id: Mapped[int] = mapped_column(
         Integer,
         ForeignKey("editor_chat_sessions.id"),
@@ -170,25 +168,17 @@ class NotebookCellProposal(Base):
     target_cell_uuid: Mapped[str | None] = mapped_column(String(36), nullable=True)
     new_source: Mapped[str | None] = mapped_column(Text, nullable=True)
     explanation: Mapped[str | None] = mapped_column(Text, nullable=True)
-    position_after_cell_uuid: Mapped[str | None] = mapped_column(
-        String(36), nullable=True
-    )
+    position_after_cell_uuid: Mapped[str | None] = mapped_column(String(36), nullable=True)
     position_at_end: Mapped[bool] = mapped_column(
         Boolean, nullable=False, server_default=text("FALSE")
     )
     rationale: Mapped[str | None] = mapped_column(Text, nullable=True)
-    status: Mapped[str] = mapped_column(
-        String(12), nullable=False, server_default="pending"
-    )
-    created_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
+    status: Mapped[str] = mapped_column(String(12), nullable=False, server_default="pending")
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     accepted_at: Mapped[datetime.datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
     accepted_run_id: Mapped[str | None] = mapped_column(
         String(36), ForeignKey("agent_runs.id"), nullable=True
     )
-    inserted_cell_uuid: Mapped[str | None] = mapped_column(
-        String(36), nullable=True
-    )
+    inserted_cell_uuid: Mapped[str | None] = mapped_column(String(36), nullable=True)

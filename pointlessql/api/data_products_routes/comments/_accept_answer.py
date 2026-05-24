@@ -28,9 +28,7 @@ from pointlessql.services.workspace.governance import (
 router = APIRouter(tags=["data-products"])
 
 
-@router.post(
-    "/api/data-products/{catalog}/{schema}/comments/{comment_id}/accept-answer"
-)
+@router.post("/api/data-products/{catalog}/{schema}/comments/{comment_id}/accept-answer")
 async def accept_answer(
     catalog: str,
     schema: str,
@@ -83,20 +81,12 @@ async def accept_answer(
         top_level = session.get(DataProductComment, comment.parent_comment_id)
         # Walk up to the actual top-level question (replies may be
         # depth 3-5 after the threading lift).
-        while (
-            top_level is not None and top_level.parent_comment_id is not None
-        ):
-            top_level = session.get(
-                DataProductComment, top_level.parent_comment_id
-            )
+        while top_level is not None and top_level.parent_comment_id is not None:
+            top_level = session.get(DataProductComment, top_level.parent_comment_id)
         if top_level is None or top_level.category != "question":
-            raise BadRequestError(
-                "accept-answer requires a 'question' top-level thread"
-            )
+            raise BadRequestError("accept-answer requires a 'question' top-level thread")
 
-        is_steward = (
-            row.steward_user_id is not None and row.steward_user_id == user["id"]
-        )
+        is_steward = row.steward_user_id is not None and row.steward_user_id == user["id"]
         is_admin = bool(user.get("is_admin"))
         is_op = top_level.author_user_id == user["id"]
         if not (is_steward or is_admin or is_op):
@@ -152,12 +142,8 @@ async def accept_answer(
     )
 
     # Notify the answer author + the question OP (de-dup actor).
-    source_url = (
-        f"/data-products/{catalog}/{schema}#tab-discussion-comment-{comment_id}"
-    )
-    summary = (
-        f"Answer accepted on {catalog}.{schema}"
-    )
+    source_url = f"/data-products/{catalog}/{schema}#tab-discussion-comment-{comment_id}"
+    summary = f"Answer accepted on {catalog}.{schema}"
     recipients = {answer_author_id, op_user_id}
     recipients.discard(user["id"])
     fanout_event(

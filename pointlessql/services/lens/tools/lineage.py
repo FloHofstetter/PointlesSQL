@@ -1,6 +1,6 @@
 """Lineage tools — ``provenance`` and ``lineage_neighbors``.
 
-``provenance`` wraps the Sprint 65.1 unified trace service so the LLM
+``provenance`` wraps the unified trace service so the LLM
 can answer "where does this number come from" with one tool call.
 
 ``lineage_neighbors`` gives a one-hop neighbor view (upstream + downstream
@@ -38,22 +38,16 @@ logger = logging.getLogger(__name__)
 class ProvenanceToolArgs(BaseModel):
     """Input for ``provenance`` (mirrors :class:`ProvenanceQuery`)."""
 
-    table_fqn: str = Field(
-        min_length=3, description="Three-part UC name catalog.schema.table"
-    )
+    table_fqn: str = Field(min_length=3, description="Three-part UC name catalog.schema.table")
     row_id: str | None = Field(
         default=None,
         description="Optional _lineage_row_id of the row to trace",
     )
-    column: str | None = Field(
-        default=None, description="Optional column name to narrow the trace"
-    )
+    column: str | None = Field(default=None, description="Optional column name to narrow the trace")
     max_hops: int = Field(default=5, ge=1, le=10)
 
 
-async def _execute_provenance(
-    ctx: SessionContext, args: ProvenanceToolArgs
-) -> ProvenanceTrace:
+async def _execute_provenance(ctx: SessionContext, args: ProvenanceToolArgs) -> ProvenanceTrace:
     """Return the unified row+column+value provenance trace."""
     query = ProvenanceQuery(
         table_fqn=args.table_fqn,

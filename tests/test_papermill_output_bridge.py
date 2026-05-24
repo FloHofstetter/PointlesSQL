@@ -1,4 +1,4 @@
-"""Tests for the Phase 67.6 papermill → notebook_outputs bridge.
+"""Tests for the papermill → notebook_outputs bridge.
 
 The bridge runs at the end of :func:`_papermill_executor`, reads the
 executed ``.ipynb`` written under ``runs/``, and persists one row per
@@ -60,7 +60,9 @@ def test_persist_writes_one_row_per_output(tmp_path: Path) -> None:
         rows = list(
             session.scalars(
                 # SQLAlchemy 2.0 select compat
-                __import__("sqlalchemy").select(NotebookOutput).where(
+                __import__("sqlalchemy")
+                .select(NotebookOutput)
+                .where(
                     NotebookOutput.file_path == "demo.py",
                     NotebookOutput.kernel_session_id == "job:42",
                 ),
@@ -119,9 +121,7 @@ def test_persist_skips_markdown_cells(tmp_path: Path) -> None:
     with factory() as session:
         rows = list(
             session.scalars(
-                select(NotebookOutput).where(
-                    NotebookOutput.kernel_session_id == "job:44"
-                ),
+                select(NotebookOutput).where(NotebookOutput.kernel_session_id == "job:44"),
             ),
         )
     assert len(rows) == 1

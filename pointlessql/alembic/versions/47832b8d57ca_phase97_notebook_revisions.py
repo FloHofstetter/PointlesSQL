@@ -54,9 +54,7 @@ def upgrade() -> None:
         sa.Column("content_sha256", sa.String(length=64), nullable=False),
         sa.Column("signature_alg", sa.String(length=32), nullable=True),
         sa.Column("signature", sa.Text(), nullable=True),
-        sa.ForeignKeyConstraint(
-            ["notebook_id"], ["notebooks.id"], ondelete="CASCADE"
-        ),
+        sa.ForeignKeyConstraint(["notebook_id"], ["notebooks.id"], ondelete="CASCADE"),
         sa.ForeignKeyConstraint(
             ["parent_revision_id"],
             ["notebook_revisions.id"],

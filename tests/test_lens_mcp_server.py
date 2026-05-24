@@ -97,9 +97,7 @@ def test_create_lens_mcp_server_registers_every_tool() -> None:
 
     factory = app.state.session_factory
     settings = Settings()
-    mcp = create_lens_mcp_server(
-        factory=factory, settings=settings, api_key_secret=None
-    )
+    mcp = create_lens_mcp_server(factory=factory, settings=settings, api_key_secret=None)
     # FastMCP exposes _tool_manager._tools as the registry; this is
     # an internal but stable attr in the 1.x line.  We walk it
     # rather than hit the network.
@@ -117,9 +115,7 @@ def test_create_lens_mcp_server_with_api_key_resolves_workspace() -> None:
     factory = app.state.session_factory
     settings = Settings()
     # Should not raise.
-    create_lens_mcp_server(
-        factory=factory, settings=settings, api_key_secret=secret
-    )
+    create_lens_mcp_server(factory=factory, settings=settings, api_key_secret=secret)
 
 
 @pytest.mark.asyncio

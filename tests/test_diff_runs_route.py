@@ -1,4 +1,4 @@
-"""Integration tests for the Sprint 13.11.4b ``detail=true`` diff route."""
+"""Integration tests for the ``detail=true`` diff route."""
 
 from __future__ import annotations
 

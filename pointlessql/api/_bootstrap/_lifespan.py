@@ -195,9 +195,7 @@ def make_lifespan(
         api_key_usage_retention_task: asyncio.Task[None] | None = None
         if not fast_test_lifespan:
             api_key_usage_flush_task = asyncio.create_task(
-                _api_key_usage_flush_loop(
-                    app.state.session_factory, app.state, settings
-                ),
+                _api_key_usage_flush_loop(app.state.session_factory, app.state, settings),
                 name="api-key-usage-flush",
             )
             api_key_usage_retention_task = asyncio.create_task(
@@ -292,10 +290,7 @@ def make_lifespan(
         # query stays cheap for < 10⁴ ops/week but adds noise on
         # quiet single-tenant installs.
         data_product_trending_task: asyncio.Task[None] | None = None
-        if (
-            settings.data_products.trending_refresh_interval_seconds > 0
-            and not fast_test_lifespan
-        ):
+        if settings.data_products.trending_refresh_interval_seconds > 0 and not fast_test_lifespan:
             data_product_trending_task = asyncio.create_task(
                 _data_product_trending_loop(app.state.session_factory, settings),
                 name="data-product-trending",
@@ -305,10 +300,7 @@ def make_lifespan(
         # safe to schedule: the loop body short-circuits when
         # ``promote_enabled`` is false (default).
         data_product_promotion_task: asyncio.Task[None] | None = None
-        if (
-            settings.data_products.promote_enabled
-            and not fast_test_lifespan
-        ):
+        if settings.data_products.promote_enabled and not fast_test_lifespan:
             data_product_promotion_task = asyncio.create_task(
                 _data_product_promotion_loop(app.state.session_factory, settings),
                 name="data-product-promotion",
@@ -317,10 +309,7 @@ def make_lifespan(
         # auto-passport stale-refresh loop.  Opt-in
         # via ``passport_loop_enabled`` (default off).
         data_product_passport_task: asyncio.Task[None] | None = None
-        if (
-            settings.data_products.passport_loop_enabled
-            and not fast_test_lifespan
-        ):
+        if settings.data_products.passport_loop_enabled and not fast_test_lifespan:
             data_product_passport_task = asyncio.create_task(
                 _data_product_passport_loop(app.state.session_factory, settings),
                 name="data-product-passport",
@@ -328,10 +317,7 @@ def make_lifespan(
 
         # cross-DP cooccurrence cache refresh.  Opt-in.
         data_product_cooccurrence_task: asyncio.Task[None] | None = None
-        if (
-            settings.data_products.cooccurrence_enabled
-            and not fast_test_lifespan
-        ):
+        if settings.data_products.cooccurrence_enabled and not fast_test_lifespan:
             data_product_cooccurrence_task = asyncio.create_task(
                 _data_product_cooccurrence_loop(app.state.session_factory, settings),
                 name="data-product-cooccurrence",
@@ -342,10 +328,7 @@ def make_lifespan(
         # the loop body short-circuits when disabled, so registering
         # it is cheap.
         active_reviewer_task: asyncio.Task[None] | None = None
-        if (
-            settings.data_products.active_reviewer_enabled
-            and not fast_test_lifespan
-        ):
+        if settings.data_products.active_reviewer_enabled and not fast_test_lifespan:
             active_reviewer_task = asyncio.create_task(
                 _active_reviewer_loop(app.state.session_factory, settings),
                 name="active-reviewer",
@@ -437,25 +420,17 @@ def make_lifespan(
         # before publishing.
         app.state.coedit_bus = None
         coedit_bus: Any = None
-        if (
-            settings.coedit.bus_enabled
-            and not fast_test_lifespan
-        ):
+        if settings.coedit.bus_enabled and not fast_test_lifespan:
             from sqlalchemy.engine import Engine as _Engine
 
             engine_any = app.state.engine
-            if (
-                isinstance(engine_any, _Engine)
-                and engine_any.dialect.name == "postgresql"
-            ):
+            if isinstance(engine_any, _Engine) and engine_any.dialect.name == "postgresql":
                 from pointlessql.services.notebook.coedit_bus import CoeditBus
 
                 coedit_bus = CoeditBus(
                     engine_any,
                     ttl_seconds=settings.coedit.bus_message_ttl_seconds,
-                    cleanup_interval_seconds=(
-                        settings.coedit.bus_cleanup_interval_seconds
-                    ),
+                    cleanup_interval_seconds=(settings.coedit.bus_cleanup_interval_seconds),
                 )
                 # Wire the dispatch callback BEFORE start() so the
                 # first inbound NOTIFY can already fan out into a hub.
@@ -470,8 +445,7 @@ def make_lifespan(
                 app.state.coedit_bus = coedit_bus
             else:
                 logger.info(
-                    "coedit-bus: enabled but engine is not Postgres; "
-                    "single-worker only — skipping",
+                    "coedit-bus: enabled but engine is not Postgres; single-worker only — skipping",
                 )
 
         # notebook replay re-execution worker.
@@ -482,10 +456,7 @@ def make_lifespan(
         # want it running on production (e.g. CI installs that won't
         # ever replay).
         replay_worker: Any = None
-        if (
-            not fast_test_lifespan
-            and os.environ.get("POINTLESSQL_REPLAY_WORKER_DISABLED") != "1"
-        ):
+        if not fast_test_lifespan and os.environ.get("POINTLESSQL_REPLAY_WORKER_DISABLED") != "1":
             from pointlessql.services.notebook.replay_worker import (
                 ReplayWorker as _ReplayWorker,
             )

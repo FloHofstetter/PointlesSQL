@@ -1,4 +1,4 @@
-"""Sanity checks for the Phase 46.1 centralized auth fixtures.
+"""Sanity checks for the centralized auth fixtures.
 
 Pin the contract so future migrations can
 trust each fixture's shape.  These tests exercise the fixture, NOT

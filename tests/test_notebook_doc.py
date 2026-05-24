@@ -1,8 +1,8 @@
-"""round-trip + identity tests for notebook_doc.
+"""Round-trip + identity tests for notebook_doc.
 
-Covers the new UUID-free marker grammar + FNV-1a content-hash helper.
-Legacy-file migration + malformed-input tolerance land in Sprint 97;
-this module pins the happy path so the refactor stays regression-free.
+Covers the UUID-free marker grammar + FNV-1a content-hash helper
+and pins the happy path so the legacy-file migration + malformed-
+input tolerance stay regression-free.
 """
 
 from __future__ import annotations
@@ -171,7 +171,7 @@ def test_compute_content_hash_deterministic(source: str) -> None:
 
 # ─────────────────────── Sprint 97 tolerance tests ───────────────────────
 #
-# The Sprint 96 parser raised when the user saved a manually-edited
+# The parser raised when the user saved a manually-edited
 # ``.py`` with CRLF line endings, a UTF-8 BOM, no markers at all, or
 # a malformed tag. Sprint 97 makes every case graceful: no crash, a
 # best-effort render, and ``dirty=True`` so the next save normalises.

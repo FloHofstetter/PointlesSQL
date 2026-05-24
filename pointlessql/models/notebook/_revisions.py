@@ -97,9 +97,7 @@ class NotebookRevision(Base):
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    revision_uuid: Mapped[str] = mapped_column(
-        String(36), nullable=False, unique=True
-    )
+    revision_uuid: Mapped[str] = mapped_column(String(36), nullable=False, unique=True)
     notebook_id: Mapped[str] = mapped_column(
         String(36),
         ForeignKey("notebooks.id", ondelete="CASCADE"),
@@ -215,12 +213,8 @@ class NotebookRevisionFact(Base):
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    fact_uuid: Mapped[str] = mapped_column(
-        String(36), nullable=False, unique=True
-    )
-    workspace_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("workspaces.id"), nullable=False
-    )
+    fact_uuid: Mapped[str] = mapped_column(String(36), nullable=False, unique=True)
+    workspace_id: Mapped[int] = mapped_column(Integer, ForeignKey("workspaces.id"), nullable=False)
     social_target_id: Mapped[int] = mapped_column(
         Integer,
         ForeignKey("social_targets.id", ondelete="CASCADE"),
@@ -231,18 +225,14 @@ class NotebookRevisionFact(Base):
         ForeignKey("notebook_revisions.id", ondelete="CASCADE"),
         nullable=False,
     )
-    cell_content_hash: Mapped[str | None] = mapped_column(
-        String(64), nullable=True
-    )
+    cell_content_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
     title: Mapped[str] = mapped_column(String(200), nullable=False)
     description_md: Mapped[str | None] = mapped_column(Text, nullable=True)
     result_snapshot_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     pinned_by_user_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("users.id"), nullable=True
     )
-    pinned_by_agent_id: Mapped[str | None] = mapped_column(
-        String(128), nullable=True
-    )
+    pinned_by_agent_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
     pinned_at: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,

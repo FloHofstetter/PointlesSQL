@@ -167,9 +167,7 @@ def _seed_value_change(
 
 def test_table_mode_returns_metadata_only(factory) -> None:  # type: ignore[no-untyped-def]
     """Pure table_fqn → mode='table', no walkback, single note."""
-    trace = provenance(
-        factory, ProvenanceQuery(table_fqn="main.silver.t")
-    )
+    trace = provenance(factory, ProvenanceQuery(table_fqn="main.silver.t"))
     assert trace.mode == "table"
     assert trace.notes  # at least the "metadata only" hint
     assert trace.row_steps == []
@@ -178,12 +176,8 @@ def test_table_mode_returns_metadata_only(factory) -> None:  # type: ignore[no-u
 
 def test_row_mode_walks_back_three_hops(factory) -> None:  # type: ignore[no-untyped-def]
     """Three-hop chain bronze→silver→gold returns 3 walk steps."""
-    run_id, op_id_silver = _seed_run_op(
-        factory, op_name="merge", target_table="main.silver.t"
-    )
-    _, op_id_gold = _seed_run_op(
-        factory, op_name="merge", target_table="main.gold.t"
-    )
+    run_id, op_id_silver = _seed_run_op(factory, op_name="merge", target_table="main.silver.t")
+    _, op_id_gold = _seed_run_op(factory, op_name="merge", target_table="main.gold.t")
     _seed_row_edge(
         factory,
         run_id=run_id,
@@ -218,9 +212,7 @@ def test_row_mode_walks_back_three_hops(factory) -> None:  # type: ignore[no-unt
 
 def test_column_mode_with_cross_column_rename(factory) -> None:  # type: ignore[no-untyped-def]
     """Column-only renames surface as transformations on the trace."""
-    run_id, op_id = _seed_run_op(
-        factory, op_name="merge", target_table="main.silver.t"
-    )
+    run_id, op_id = _seed_run_op(factory, op_name="merge", target_table="main.silver.t")
     _seed_column_edge(
         factory,
         run_id=run_id,
@@ -247,9 +239,7 @@ def test_column_mode_with_cross_column_rename(factory) -> None:  # type: ignore[
 
 def test_row_value_mode_combines_walk_and_changes(factory) -> None:  # type: ignore[no-untyped-def]
     """Row+column scope returns row walkback plus value changes."""
-    run_id, op_id = _seed_run_op(
-        factory, op_name="merge", target_table="main.silver.t"
-    )
+    run_id, op_id = _seed_run_op(factory, op_name="merge", target_table="main.silver.t")
     _seed_row_edge(
         factory,
         run_id=run_id,
@@ -326,9 +316,7 @@ def test_default_max_hops_applies(factory) -> None:  # type: ignore[no-untyped-d
 
 def test_row_mode_truncated_at_hop_limit(factory) -> None:  # type: ignore[no-untyped-def]
     """A hop chain longer than max_hops surfaces a truncation note."""
-    run_id, _ = _seed_run_op(
-        factory, op_name="merge", target_table="main.silver.t1"
-    )
+    run_id, _ = _seed_run_op(factory, op_name="merge", target_table="main.silver.t1")
     # Build a 6-hop chain bronze→t0→t1→t2→t3→target
     chain = ["bronze", "t0", "t1", "t2", "t3", "target"]
     op_ids: list[int] = []
@@ -385,9 +373,7 @@ def test_column_mode_no_lineage_yields_note(factory) -> None:  # type: ignore[no
 
 def test_row_value_no_changes_yields_note(factory) -> None:  # type: ignore[no-untyped-def]
     """row_value mode without value changes (track off) → explanatory note."""
-    run_id, op_id = _seed_run_op(
-        factory, op_name="merge", target_table="main.silver.t"
-    )
+    run_id, op_id = _seed_run_op(factory, op_name="merge", target_table="main.silver.t")
     _seed_row_edge(
         factory,
         run_id=run_id,

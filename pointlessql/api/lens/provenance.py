@@ -1,6 +1,6 @@
 """GET /api/lens/provenance — unified row+column+value lineage trace.
 
-Direct browser invocation surface for the Sprint 65.1 provenance
+Direct browser invocation surface for the provenance
 service.  The same logic backs the Lens MCP / chat ``provenance``
 tool.
 

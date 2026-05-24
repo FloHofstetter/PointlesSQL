@@ -77,9 +77,7 @@ async def _execute_one_replay(
 
     # Load the base revision's cells.
     with session_factory() as session:
-        rev = revisions_service.get_revision(
-            session, revision_uuid=replay_row.base_revision_uuid
-        )
+        rev = revisions_service.get_revision(session, revision_uuid=replay_row.base_revision_uuid)
         if rev is None:
             replay_service.record_finished(
                 session,
@@ -97,9 +95,7 @@ async def _execute_one_replay(
                             "traceback": [],
                         },
                         "metadata": None,
-                        "created_at": datetime.datetime.now(
-                            datetime.UTC
-                        ).isoformat(),
+                        "created_at": datetime.datetime.now(datetime.UTC).isoformat(),
                     }
                 ],
             )
@@ -153,15 +149,12 @@ async def _execute_one_replay(
                         "content": {
                             "ename": "TimeoutError",
                             "evalue": (
-                                f"cell {index + 1} exceeded "
-                                f"{DEFAULT_CELL_TIMEOUT_SECONDS}s"
+                                f"cell {index + 1} exceeded {DEFAULT_CELL_TIMEOUT_SECONDS}s"
                             ),
                             "traceback": [],
                         },
                         "metadata": None,
-                        "created_at": datetime.datetime.now(
-                            datetime.UTC
-                        ).isoformat(),
+                        "created_at": datetime.datetime.now(datetime.UTC).isoformat(),
                     }
                 ]
                 final_status = replay_service.REPLAY_STATUS_ERROR
@@ -251,9 +244,7 @@ async def _execute_one_cell(
         if remaining <= 0:
             raise TimeoutError("cell timed out")
         try:
-            msg = await asyncio.wait_for(
-                kc.get_iopub_msg(), timeout=remaining
-            )
+            msg = await asyncio.wait_for(kc.get_iopub_msg(), timeout=remaining)
         except TimeoutError as e:
             raise TimeoutError("cell timed out") from e
         parent = (msg.get("parent_header") or {}).get("msg_id")
@@ -272,9 +263,7 @@ async def _execute_one_cell(
                     "msg_type": msg_type,
                     "content": _serialise_content(msg_type, content),
                     "metadata": content.get("metadata"),
-                    "created_at": datetime.datetime.now(
-                        datetime.UTC
-                    ).isoformat(),
+                    "created_at": datetime.datetime.now(datetime.UTC).isoformat(),
                 }
             )
             output_index += 1
@@ -334,9 +323,7 @@ async def run_pending_replays(
         # Re-load so we hand the detached row a fresh, fully-attached
         # snapshot — the executor opens its own sessions.
         row = session.execute(
-            select(NotebookReplay).where(
-                NotebookReplay.replay_uuid == row.replay_uuid
-            )
+            select(NotebookReplay).where(NotebookReplay.replay_uuid == row.replay_uuid)
         ).scalar_one()
         session.expunge(row)
     await _execute_one_replay(

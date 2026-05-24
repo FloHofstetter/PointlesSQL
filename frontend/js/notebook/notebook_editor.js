@@ -101,7 +101,7 @@ export function notebookEditor({ initialPath = '', currentUser = null } = {}) {
  jobsPanelOpen: false,
  jobsPanel: { scheduled_jobs: [], recent_runs: [] },
  // Variable Inspector state (visibility now lives on
- // ``rightDrawer.tab`` per Sprint 113.2; the data fields stay here
+ // ``rightDrawer.tab`` the data fields stay here
  // because kernel_execution.js + WS frames write them by name).
  inspectorVars: [],
  inspectorDetail: null,
@@ -117,7 +117,7 @@ export function notebookEditor({ initialPath = '', currentUser = null } = {}) {
  // ``execute_reply`` on the shell channel. Persistent display
  // across reload would require the backend to pass through the
  // existing ``NotebookCellRun.started_at`` / ``finished_at`` fields
- // over the WS frame — out of scope for Phase 94.
+ // over the WS frame — out of scope .
  _runStartedAt: {},
  _runDurationMs: {},
  _autosaveTimer: null,

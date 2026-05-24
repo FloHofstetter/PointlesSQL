@@ -47,7 +47,6 @@ data_product:
 """
 
 
-
 # ---------------------------------------------------------------------------
 # Profile GET + PUT
 # ---------------------------------------------------------------------------
@@ -60,9 +59,7 @@ async def test_profile_get_defaults_for_user_without_row(
     """GET on a user with no UserProfile row returns the default shape."""
     factory = app.state.session_factory
     with factory() as session:
-        admin = session.execute(
-            select(User).where(User.email == "test@test.com")
-        ).scalar_one()
+        admin = session.execute(select(User).where(User.email == "test@test.com")).scalar_one()
         admin_id = admin.id
     res = await admin_client.get(f"/api/users/{admin_id}/profile")
     assert res.status_code == 200, res.text
@@ -79,9 +76,7 @@ async def test_profile_put_updates_bio_owner(
     """Owner-PUT persists bio + location."""
     factory = app.state.session_factory
     with factory() as session:
-        admin = session.execute(
-            select(User).where(User.email == "test@test.com")
-        ).scalar_one()
+        admin = session.execute(select(User).where(User.email == "test@test.com")).scalar_one()
         admin_id = admin.id
     res = await admin_client.put(
         f"/api/users/{admin_id}/profile",
@@ -99,9 +94,7 @@ async def test_profile_put_non_owner_rejected(
     """A non-admin cannot edit someone else's profile."""
     factory = app.state.session_factory
     with factory() as session:
-        admin = session.execute(
-            select(User).where(User.email == "test@test.com")
-        ).scalar_one()
+        admin = session.execute(select(User).where(User.email == "test@test.com")).scalar_one()
         admin_id = admin.id
     res = await non_admin_client.put(
         f"/api/users/{admin_id}/profile",
@@ -139,9 +132,7 @@ async def test_self_follow_rejected(admin_client: httpx.AsyncClient) -> None:
     """Following yourself returns 400."""
     factory = app.state.session_factory
     with factory() as session:
-        admin = session.execute(
-            select(User).where(User.email == "test@test.com")
-        ).scalar_one()
+        admin = session.execute(select(User).where(User.email == "test@test.com")).scalar_one()
         admin_id = admin.id
     res = await admin_client.post(f"/api/users/{admin_id}/follow")
     assert res.status_code == 400
@@ -168,11 +159,7 @@ async def test_follow_idempotent_then_unfollow(
 
     with factory() as session:
         rows = (
-            session.execute(
-                select(UserFollow).where(
-                    UserFollow.followed_user_id == nonadmin_id
-                )
-            )
+            session.execute(select(UserFollow).where(UserFollow.followed_user_id == nonadmin_id))
             .scalars()
             .all()
         )
@@ -195,9 +182,7 @@ async def test_follow_lists(admin_client: httpx.AsyncClient) -> None:
             select(User).where(User.email == "nonadmin@test.com")
         ).scalar_one()
         nonadmin_id = nonadmin.id
-        admin = session.execute(
-            select(User).where(User.email == "test@test.com")
-        ).scalar_one()
+        admin = session.execute(select(User).where(User.email == "test@test.com")).scalar_one()
         admin_id = admin.id
     await admin_client.post(f"/api/users/{nonadmin_id}/follow")
     followers = await admin_client.get(f"/api/users/{nonadmin_id}/followers")
@@ -205,9 +190,7 @@ async def test_follow_lists(admin_client: httpx.AsyncClient) -> None:
     assert any(f["user_id"] == admin_id for f in followers.json()["followers"])
     following = await admin_client.get(f"/api/users/{admin_id}/following")
     assert following.status_code == 200
-    assert any(
-        f["user_id"] == nonadmin_id for f in following.json()["following"]
-    )
+    assert any(f["user_id"] == nonadmin_id for f in following.json()["following"])
 
 
 # ---------------------------------------------------------------------------
@@ -235,9 +218,7 @@ async def test_award_badges_steward_threshold(tmp_path: Path) -> None:
     """Stewarding 3 DPs awards the ``steward_3plus`` badge."""
     factory = app.state.session_factory
     with factory() as session:
-        admin = session.execute(
-            select(User).where(User.email == "test@test.com")
-        ).scalar_one()
+        admin = session.execute(select(User).where(User.email == "test@test.com")).scalar_one()
         admin_id = admin.id
 
     _seed_steward_dps(tmp_path, 3, admin_id)
@@ -246,11 +227,7 @@ async def test_award_badges_steward_threshold(tmp_path: Path) -> None:
 
     with factory() as session:
         badges = (
-            session.execute(
-                select(UserBadge).where(UserBadge.user_id == admin_id)
-            )
-            .scalars()
-            .all()
+            session.execute(select(UserBadge).where(UserBadge.user_id == admin_id)).scalars().all()
         )
     assert any(b.badge_key == "steward_3plus" for b in badges)
 
@@ -260,9 +237,7 @@ async def test_award_badges_idempotent(tmp_path: Path) -> None:
     """A second run does not duplicate a sticky badge."""
     factory = app.state.session_factory
     with factory() as session:
-        admin = session.execute(
-            select(User).where(User.email == "test@test.com")
-        ).scalar_one()
+        admin = session.execute(select(User).where(User.email == "test@test.com")).scalar_one()
         admin_id = admin.id
     _seed_steward_dps(tmp_path, 3, admin_id)
 
@@ -279,9 +254,7 @@ async def test_award_badges_below_threshold_noop(tmp_path: Path) -> None:
     """Stewarding only 2 DPs does not award the ``steward_3plus`` badge."""
     factory = app.state.session_factory
     with factory() as session:
-        admin = session.execute(
-            select(User).where(User.email == "test@test.com")
-        ).scalar_one()
+        admin = session.execute(select(User).where(User.email == "test@test.com")).scalar_one()
         admin_id = admin.id
     _seed_steward_dps(tmp_path, 2, admin_id)
 
@@ -290,11 +263,7 @@ async def test_award_badges_below_threshold_noop(tmp_path: Path) -> None:
     await _aio.to_thread(award_badges, factory)
     with factory() as session:
         badges = (
-            session.execute(
-                select(UserBadge).where(UserBadge.user_id == admin_id)
-            )
-            .scalars()
-            .all()
+            session.execute(select(UserBadge).where(UserBadge.user_id == admin_id)).scalars().all()
         )
     assert not any(b.badge_key == "steward_3plus" for b in badges)
 
@@ -309,9 +278,7 @@ async def test_profile_html_page_renders(admin_client: httpx.AsyncClient) -> Non
     """``GET /users/{id}`` returns 200 + the user's display_name in the body."""
     factory = app.state.session_factory
     with factory() as session:
-        admin = session.execute(
-            select(User).where(User.email == "test@test.com")
-        ).scalar_one()
+        admin = session.execute(select(User).where(User.email == "test@test.com")).scalar_one()
         admin_id = admin.id
     res = await admin_client.get(f"/users/{admin_id}")
     assert res.status_code == 200
@@ -354,9 +321,7 @@ async def test_award_badges_commenter_table_50plus_threshold() -> None:
 
     factory = app.state.session_factory
     with factory() as session:
-        admin = session.execute(
-            select(User).where(User.email == "test@test.com")
-        ).scalar_one()
+        admin = session.execute(select(User).where(User.email == "test@test.com")).scalar_one()
         admin_id = admin.id
         target = SocialTarget(
             workspace_id=1,
@@ -383,9 +348,7 @@ async def test_award_badges_commenter_table_50plus_threshold() -> None:
     with factory() as session:
         badges = {
             b.badge_key
-            for b in session.execute(
-                select(UserBadge).where(UserBadge.user_id == admin_id)
-            )
+            for b in session.execute(select(UserBadge).where(UserBadge.user_id == admin_id))
             .scalars()
             .all()
         }
@@ -406,9 +369,7 @@ async def test_award_badges_endorser_model_20plus_threshold() -> None:
 
     factory = app.state.session_factory
     with factory() as session:
-        admin = session.execute(
-            select(_User).where(_User.email == "test@test.com")
-        ).scalar_one()
+        admin = session.execute(select(_User).where(_User.email == "test@test.com")).scalar_one()
         admin_id = admin.id
         # 20 distinct model targets so the UNIQUE on
         # (social_target_id, applied_by_user_id, endorsement_type)
@@ -436,9 +397,7 @@ async def test_award_badges_endorser_model_20plus_threshold() -> None:
     with factory() as session:
         badges = {
             b.badge_key
-            for b in session.execute(
-                select(UserBadge).where(UserBadge.user_id == admin_id)
-            )
+            for b in session.execute(select(UserBadge).where(UserBadge.user_id == admin_id))
             .scalars()
             .all()
         }
@@ -457,9 +416,7 @@ async def test_award_badges_issue_resolver_10plus_threshold() -> None:
 
     factory = app.state.session_factory
     with factory() as session:
-        admin = session.execute(
-            select(_User).where(_User.email == "test@test.com")
-        ).scalar_one()
+        admin = session.execute(select(_User).where(_User.email == "test@test.com")).scalar_one()
         admin_id = admin.id
         parent = SocialTarget(
             workspace_id=1,
@@ -498,9 +455,7 @@ async def test_award_badges_issue_resolver_10plus_threshold() -> None:
     with factory() as session:
         badges = {
             b.badge_key
-            for b in session.execute(
-                select(UserBadge).where(UserBadge.user_id == admin_id)
-            )
+            for b in session.execute(select(UserBadge).where(UserBadge.user_id == admin_id))
             .scalars()
             .all()
         }

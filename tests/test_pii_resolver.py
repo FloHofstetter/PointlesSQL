@@ -1,4 +1,4 @@
-"""Tests for Sprint 18.2 PII resolver, mask helper, and reveal route."""
+"""Tests PII resolver, mask helper, and reveal route."""
 
 from __future__ import annotations
 

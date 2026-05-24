@@ -178,9 +178,7 @@ def branch_from_run(
     with session_factory() as session:
         run = session.get(AgentRun, str(from_run_id))
     if run is None:
-        raise ValidationError(
-            f"branch-from-run: run {from_run_id!r} is not registered"
-        )
+        raise ValidationError(f"branch-from-run: run {from_run_id!r} is not registered")
     if run.agent_id is not None and run.agent_id != agent_id:
         raise ValidationError(
             f"branch-from-run: run {from_run_id!r} belongs to agent "
@@ -263,7 +261,7 @@ def _stamp_intent_in_audit_payload(
         if row.payload_json:
             try:
                 existing_payload = json.loads(row.payload_json)
-            except (TypeError, ValueError):
+            except TypeError, ValueError:
                 existing_payload = {}
         existing_payload["intent"] = intent
         existing_payload["pinned_delta_version"] = pinned_version

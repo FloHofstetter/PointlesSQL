@@ -67,16 +67,12 @@ def create_share(
         ValidationError: On bad input shape or unknown FK.
     """
     if share_mode not in VALID_SHARE_MODES:
-        raise ValidationError(
-            f"share_mode must be one of {VALID_SHARE_MODES}; got {share_mode!r}"
-        )
+        raise ValidationError(f"share_mode must be one of {VALID_SHARE_MODES}; got {share_mode!r}")
     if session.get(Notebook, notebook_id) is None:
         raise ValidationError(f"notebook {notebook_id!r} not found")
     if share_mode == "snapshot":
         if not revision_uuid:
-            raise ValidationError(
-                "share_mode='snapshot' requires revision_uuid"
-            )
+            raise ValidationError("share_mode='snapshot' requires revision_uuid")
         rev = session.execute(
             select(NotebookRevision).where(
                 NotebookRevision.revision_uuid == revision_uuid,
@@ -84,9 +80,7 @@ def create_share(
             )
         ).scalar_one_or_none()
         if rev is None:
-            raise ValidationError(
-                f"revision {revision_uuid!r} not found under notebook"
-            )
+            raise ValidationError(f"revision {revision_uuid!r} not found under notebook")
     else:
         revision_uuid = None  # ignore stray value for live mode
     row = NotebookShare(
@@ -143,14 +137,10 @@ def update_share(
         raise ValidationError(f"share {share_uuid!r} is revoked")
     target_mode = share_mode or row.share_mode
     if target_mode not in VALID_SHARE_MODES:
-        raise ValidationError(
-            f"share_mode must be one of {VALID_SHARE_MODES}"
-        )
+        raise ValidationError(f"share_mode must be one of {VALID_SHARE_MODES}")
     if target_mode == "snapshot":
         if revision_uuid is None and row.revision_uuid is None:
-            raise ValidationError(
-                "share_mode='snapshot' requires revision_uuid"
-            )
+            raise ValidationError("share_mode='snapshot' requires revision_uuid")
         if revision_uuid is not None:
             rev = session.execute(
                 select(NotebookRevision).where(
@@ -159,9 +149,7 @@ def update_share(
                 )
             ).scalar_one_or_none()
             if rev is None:
-                raise ValidationError(
-                    f"revision {revision_uuid!r} not under share's notebook"
-                )
+                raise ValidationError(f"revision {revision_uuid!r} not under share's notebook")
             row.revision_uuid = revision_uuid
     else:
         row.revision_uuid = None
@@ -195,9 +183,7 @@ def revoke_share(session: Session, *, share_uuid: str) -> bool:
     return True
 
 
-def get_active_share(
-    session: Session, *, share_uuid: str
-) -> NotebookShare | None:
+def get_active_share(session: Session, *, share_uuid: str) -> NotebookShare | None:
     """Return the share row if it is active (not revoked + not expired).
 
     Args:
@@ -214,16 +200,12 @@ def get_active_share(
         return None
     if row.revoked_at is not None:
         return None
-    if row.expires_at is not None and row.expires_at <= datetime.datetime.now(
-        datetime.UTC
-    ):
+    if row.expires_at is not None and row.expires_at <= datetime.datetime.now(datetime.UTC):
         return None
     return row
 
 
-def list_shares_for_notebook(
-    session: Session, *, notebook_id: str
-) -> list[dict[str, Any]]:
+def list_shares_for_notebook(session: Session, *, notebook_id: str) -> list[dict[str, Any]]:
     """Return every share row (active + revoked) for a notebook.
 
     Args:
@@ -234,17 +216,19 @@ def list_shares_for_notebook(
         List of ``{share_uuid, share_mode, dashboard_mode,
         revision_uuid, created_at, expires_at, revoked_at, active}``.
     """
-    rows = session.execute(
-        select(NotebookShare)
-        .where(NotebookShare.notebook_id == notebook_id)
-        .order_by(NotebookShare.created_at.desc())
-    ).scalars().all()
+    rows = (
+        session.execute(
+            select(NotebookShare)
+            .where(NotebookShare.notebook_id == notebook_id)
+            .order_by(NotebookShare.created_at.desc())
+        )
+        .scalars()
+        .all()
+    )
     now = datetime.datetime.now(datetime.UTC)
     out: list[dict[str, Any]] = []
     for r in rows:
-        active = r.revoked_at is None and (
-            r.expires_at is None or r.expires_at > now
-        )
+        active = r.revoked_at is None and (r.expires_at is None or r.expires_at > now)
         out.append(
             {
                 "share_uuid": r.share_uuid,
@@ -286,9 +270,7 @@ def render_dashboard_html(
     # cell with a zero-source placeholder so its outputs still render
     # in the original order without exposing the code.
     relevant_hashes = {c.get("content_hash") for c in cells}
-    filtered_outputs = [
-        o for o in outputs if o.get("content_hash") in relevant_hashes
-    ]
+    filtered_outputs = [o for o in outputs if o.get("content_hash") in relevant_hashes]
     interleaved: list[dict[str, Any]] = []
     for cell in cells:
         cell_type = cell.get("cell_type") or "code"
@@ -310,10 +292,10 @@ def render_dashboard_html(
         "<body>",
         '<body data-mode="dashboard">'
         '<div style="background:var(--pql-accent-bg);'
-        'color:var(--pql-accent);'
-        'padding:0.3rem 0.85rem;font-size:0.8rem;font-weight:600;'
-        'letter-spacing:0.04em;'
-        'border-bottom:1px solid var(--pql-border);'
+        "color:var(--pql-accent);"
+        "padding:0.3rem 0.85rem;font-size:0.8rem;font-weight:600;"
+        "letter-spacing:0.04em;"
+        "border-bottom:1px solid var(--pql-border);"
         'margin:-2rem -3rem 1.5rem -3rem;">'
         "DASHBOARD · code cells hidden"
         "</div>",

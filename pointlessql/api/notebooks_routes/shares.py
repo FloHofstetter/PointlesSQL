@@ -47,34 +47,24 @@ router = APIRouter(tags=["notebooks"])
 def _resolve_notebook_uuid(request: Request, path: str) -> str:
     settings: Settings = request.app.state.settings
     notebooks_dir = settings.jupyter.notebooks_dir.resolve()
-    absolute = notebook_doc_service.resolve_py_notebook_path(
-        notebooks_dir, path, must_exist=True
-    )
+    absolute = notebook_doc_service.resolve_py_notebook_path(notebooks_dir, path, must_exist=True)
     relative = str(absolute.relative_to(notebooks_dir))
     return get_or_create_notebook_uuid(request, relative)
 
 
 @router.get("/api/notebooks/shares")
-async def api_list_shares(
-    request: Request, path: str = Query(..., min_length=1)
-) -> JSONResponse:
+async def api_list_shares(request: Request, path: str = Query(..., min_length=1)) -> JSONResponse:
     """List shares (active + revoked) for one notebook."""
     require_user(request)
     notebook_id = _resolve_notebook_uuid(request, path)
     factory = request.app.state.session_factory
     with factory() as session:
-        rows = notebook_shares_service.list_shares_for_notebook(
-            session, notebook_id=notebook_id
-        )
-    return JSONResponse(
-        {"path": path, "notebook_id": notebook_id, "shares": rows}
-    )
+        rows = notebook_shares_service.list_shares_for_notebook(session, notebook_id=notebook_id)
+    return JSONResponse({"path": path, "notebook_id": notebook_id, "shares": rows})
 
 
 @router.post("/api/notebooks/shares", status_code=201)
-async def api_create_share(
-    request: Request, body: dict[str, Any] = Body(...)
-) -> JSONResponse:
+async def api_create_share(request: Request, body: dict[str, Any] = Body(...)) -> JSONResponse:
     """Publish a notebook.
 
     Body keys:
@@ -99,16 +89,12 @@ async def api_create_share(
 
     settings: Settings = request.app.state.settings
     notebooks_dir = settings.jupyter.notebooks_dir.resolve()
-    absolute = notebook_doc_service.resolve_py_notebook_path(
-        notebooks_dir, path, must_exist=True
-    )
+    absolute = notebook_doc_service.resolve_py_notebook_path(notebooks_dir, path, must_exist=True)
     relative = str(absolute.relative_to(notebooks_dir))
     notebook_id = get_or_create_notebook_uuid(request, relative)
     actor_id: int | None = None
     try:
-        actor_id = (
-            request.state.user.get("id") if request.state.user else None
-        )
+        actor_id = request.state.user.get("id") if request.state.user else None
     except AttributeError:
         actor_id = None
 
@@ -126,9 +112,7 @@ async def api_create_share(
             }
             for cell in document.cells
         ]
-        outputs = notebook_outputs_service.load_outputs_for_path(
-            factory, relative
-        )
+        outputs = notebook_outputs_service.load_outputs_for_path(factory, relative)
         with factory() as session:
             rev = notebook_revisions_service.create_revision(
                 session,
@@ -207,23 +191,17 @@ async def api_update_share(
 
 
 @router.delete("/api/notebooks/shares/{share_uuid}")
-async def api_revoke_share(
-    request: Request, share_uuid: str
-) -> JSONResponse:
+async def api_revoke_share(request: Request, share_uuid: str) -> JSONResponse:
     """Soft-revoke a share; idempotent."""
     require_user(request)
     factory = request.app.state.session_factory
     with factory() as session:
-        removed = notebook_shares_service.revoke_share(
-            session, share_uuid=share_uuid
-        )
+        removed = notebook_shares_service.revoke_share(session, share_uuid=share_uuid)
         session.commit()
     return JSONResponse({"revoked": removed})
 
 
-async def _render_share(
-    request: Request, share_uuid: str, *, compact: bool
-) -> Response:
+async def _render_share(request: Request, share_uuid: str, *, compact: bool) -> Response:
     """Render the shared body used by :func:`public_share_view` + :func:`public_share_embed`.
 
     Resolves the row, picks the revision or live source, scrubs outputs,
@@ -241,9 +219,7 @@ async def _render_share(
     settings: Settings = request.app.state.settings
     notebooks_dir = settings.jupyter.notebooks_dir.resolve()
     with factory() as session:
-        share = notebook_shares_service.get_active_share(
-            session, share_uuid=share_uuid
-        )
+        share = notebook_shares_service.get_active_share(session, share_uuid=share_uuid)
         if share is None:
             return Response(
                 content="share is revoked or expired",
@@ -279,9 +255,7 @@ async def _render_share(
                     status_code=410,
                     media_type="text/plain",
                 )
-            document = notebook_doc_service.load_document(
-                absolute, notebook.file_path
-            )
+            document = notebook_doc_service.load_document(absolute, notebook.file_path)
             cells = [
                 {
                     "content_hash": cell.content_hash,
@@ -290,9 +264,7 @@ async def _render_share(
                 }
                 for cell in document.cells
             ]
-            outputs = notebook_outputs_service.load_outputs_for_path(
-                factory, notebook.file_path
-            )
+            outputs = notebook_outputs_service.load_outputs_for_path(factory, notebook.file_path)
             dashboard = share.dashboard_mode
 
     scrubbed_outputs = notebook_shares_service.scrub_outputs(outputs)
@@ -310,9 +282,7 @@ async def _render_share(
                         "source": "",
                     }
                 )
-        scrubbed_outputs = [
-            o for o in scrubbed_outputs if o.get("content_hash") in relevant_hashes
-        ]
+        scrubbed_outputs = [o for o in scrubbed_outputs if o.get("content_hash") in relevant_hashes]
         cells_for_render = filtered_cells
     else:
         cells_for_render = cells
@@ -339,9 +309,7 @@ async def _render_share(
 
 
 @router.get("/share/notebook/{share_uuid}")
-async def public_share_view(
-    request: Request, share_uuid: str
-) -> Response:
+async def public_share_view(request: Request, share_uuid: str) -> Response:
     """Render the share publicly (no auth).
 
     See :func:`_render_share` for the shared resolution + render logic.
@@ -350,9 +318,7 @@ async def public_share_view(
 
 
 @router.get("/embed/notebook_share/{share_uuid}")
-async def public_share_embed(
-    request: Request, share_uuid: str
-) -> Response:
+async def public_share_embed(request: Request, share_uuid: str) -> Response:
     """Iframe-friendly variant of :func:`public_share_view`.
 
     Same content + same secret-scrub; ``compact=True`` hides the brand

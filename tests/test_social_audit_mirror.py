@@ -57,9 +57,7 @@ def test_mirror_writes_legacy_prefix_for_dp_kind() -> None:
         workspace_id=1,
     )
     row = _latest_audit(action="phase77c.test.legacy_prefix")
-    assert row.target == (
-        "data_product:main.sales_gold#tab-discussion-comment-42"
-    )
+    assert row.target == ("data_product:main.sales_gold#tab-discussion-comment-42")
 
 
 def test_mirror_writes_generic_prefix_for_non_dp_kinds() -> None:
@@ -76,9 +74,7 @@ def test_mirror_writes_generic_prefix_for_non_dp_kinds() -> None:
         workspace_id=1,
     )
     row = _latest_audit(action="phase77c.test.generic_prefix")
-    assert row.target == (
-        "table:main.sales_gold.orders#tab-discussion-comment-7"
-    )
+    assert row.target == ("table:main.sales_gold.orders#tab-discussion-comment-7")
 
 
 def test_mirror_auto_injects_entity_kind_and_ref_into_detail() -> None:

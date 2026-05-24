@@ -1,4 +1,4 @@
-"""Tests for the Phase-72.3 trending board.
+"""Tests for the trending board.
 
 Covers:
 
@@ -56,9 +56,7 @@ def _seed_dp(tmp_path: Path, schema: str = "sales_gold") -> int:
     load_contract(yaml_path, factory=factory)
     with factory() as session:
         return (
-            session.execute(
-                select(DataProduct).where(DataProduct.schema_name == schema)
-            )
+            session.execute(select(DataProduct).where(DataProduct.schema_name == schema))
             .scalar_one()
             .id
         )
@@ -159,9 +157,7 @@ def test_refresh_is_idempotent(tmp_path: Path) -> None:
 
 
 @pytest.mark.asyncio
-async def test_api_trending_returns_rows(
-    tmp_path: Path, admin_client: httpx.AsyncClient
-) -> None:
+async def test_api_trending_returns_rows(tmp_path: Path, admin_client: httpx.AsyncClient) -> None:
     """``GET /api/data-products/trending`` lists the cached rows."""
     _seed_dp(tmp_path, "sales_gold")
     _seed_op("main.sales_gold.orders")
@@ -182,9 +178,7 @@ async def test_api_trending_cross_workspace_admin_passes(
     _seed_dp(tmp_path, "sales_gold")
     _seed_op("main.sales_gold.orders")
     refresh_trending(app.state.session_factory)
-    res = await admin_client.get(
-        "/api/data-products/trending?workspace_scope=all"
-    )
+    res = await admin_client.get("/api/data-products/trending?workspace_scope=all")
     assert res.status_code == 200
 
 
@@ -194,16 +188,12 @@ async def test_api_trending_cross_workspace_non_admin_403(
 ) -> None:
     """Non-admin non-auditor cannot request the cross-workspace scope."""
     _seed_dp(tmp_path, "sales_gold")
-    res = await non_admin_client.get(
-        "/api/data-products/trending?workspace_scope=all"
-    )
+    res = await non_admin_client.get("/api/data-products/trending?workspace_scope=all")
     assert res.status_code == 403
 
 
 @pytest.mark.asyncio
-async def test_html_page_renders(
-    tmp_path: Path, admin_client: httpx.AsyncClient
-) -> None:
+async def test_html_page_renders(tmp_path: Path, admin_client: httpx.AsyncClient) -> None:
     """``GET /data-products/trending`` renders the table fingerprint."""
     _seed_dp(tmp_path, "sales_gold")
     _seed_op("main.sales_gold.orders")

@@ -1,6 +1,6 @@
 """Databricks-compatible JSON error envelope for token-only API routes.
 
-The Phase 117 ``/api/2.0/sql/statements`` surface returns errors in
+The ``/api/2.0/sql/statements`` surface returns errors in
 the documented Databricks Statement Execution API wire shape so the
 official ``databricks-sql-python`` client, ``dbt-databricks``, and
 JDBC drivers parse them identically to the upstream service.  The
@@ -9,11 +9,10 @@ distinct from the in-house ``application/problem+json`` shape so
 external SQL clients don't have to special-case PointlesSQL.
 
 The three symbols below were promoted out of
-``api/external_sql_routes.py`` in Phase 121.1.c so other token-only
+``api/external_sql_routes.py`` so other token-only
 DBX-compatible endpoints (federation, future admin SQL surfaces)
 can reuse them without circular imports.  ``external_sql_routes``
-re-exports them for backwards compatibility with the Phase 117
-test suite that imports via the old path.
+re-exports them for backwards compatibility with the test suite that imports via the old path.
 """
 
 from __future__ import annotations

@@ -4,7 +4,7 @@
  * Owns the Schedule modal (cron-based job creation), the Run-Once
  * modal (single-shot papermill execution), and the Notebook-Jobs
  * panel (recent runs + scheduled-jobs listing for the open path).
- * Extracted from ``notebook_editor.js`` in Phase 70.4 — methods are
+ * Extracted from ``notebook_editor.js`` — methods are
  * installed onto the shared Alpine state object so ``this`` still
  * resolves to the editor's reactive root.
  */

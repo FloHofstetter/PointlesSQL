@@ -1,4 +1,4 @@
-"""Tests for the Sprint 41 admin audit-log viewer route."""
+"""Tests for the admin audit-log viewer route."""
 
 from __future__ import annotations
 

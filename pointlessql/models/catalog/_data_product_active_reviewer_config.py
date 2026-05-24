@@ -1,7 +1,7 @@
 """Per-DP active-reviewer configuration.
 
 Tracks which DPs opt into the daily active-reviewer surface (Phase
-74 promotes the Phase 19 passive ``AgentReview`` writer to an
+74 promotes the passive ``AgentReview`` writer to an
 active LLM-calling steward delegate).
 
 Two runners are supported via the ``runner`` enum:
@@ -140,9 +140,5 @@ class DataProductActiveReviewerConfig(Base):
         nullable=False,
     )
     agent_slug: Mapped[str | None] = mapped_column(String(60), nullable=True)
-    created_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
-    updated_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    updated_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)

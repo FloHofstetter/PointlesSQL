@@ -51,27 +51,21 @@ def _normalised_ref(kind: str, ref: str) -> str:
 
 
 @router.get("/api/social/{kind}/{ref:path}/star")
-async def get_star(
-    kind: str, ref: str, request: Request
-) -> dict[str, Any]:
+async def get_star(kind: str, ref: str, request: Request) -> dict[str, Any]:
     """Return ``{"starred": bool, "count": int}`` for the caller."""
     canonical_ref = _normalised_ref(kind, ref)
     return await get_polymorphic_star(kind, canonical_ref, request)
 
 
 @router.post("/api/social/{kind}/{ref:path}/star")
-async def post_star(
-    kind: str, ref: str, request: Request
-) -> dict[str, Any]:
+async def post_star(kind: str, ref: str, request: Request) -> dict[str, Any]:
     """Idempotently bookmark the polymorphic entity."""
     canonical_ref = _normalised_ref(kind, ref)
     return await star_polymorphic_entity(kind, canonical_ref, request)
 
 
 @router.delete("/api/social/{kind}/{ref:path}/star")
-async def delete_star(
-    kind: str, ref: str, request: Request
-) -> dict[str, Any]:
+async def delete_star(kind: str, ref: str, request: Request) -> dict[str, Any]:
     """Idempotently drop the caller's bookmark on this entity."""
     canonical_ref = _normalised_ref(kind, ref)
     return await unstar_polymorphic_entity(kind, canonical_ref, request)

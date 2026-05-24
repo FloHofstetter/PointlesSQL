@@ -1,7 +1,7 @@
 """Shared ``(kind, ref)`` dispatch helper for polymorphic social routes.
 
 path}/...``
-namespace.  Phase 77.1.5 extends the dispatch so non-DP kinds
+namespace. This extends the dispatch so non-DP kinds
 (currently ``table`` and ``branch``) route through generic
 polymorphic handlers instead of returning 501.  The DP path keeps
 delegating to its existing DP-scoped service-layer functions for
@@ -36,9 +36,7 @@ def parse_dp_ref(kind: str, ref: str) -> tuple[str, str]:
         known = sorted(entity_registry.all_kinds())
         shown = ", ".join(known[:5])
         more = "" if len(known) <= 5 else f" (+{len(known) - 5} more)"
-        raise BadRequestError(
-            f"unknown entity_kind: {kind!r}. Known: {shown}{more}."
-        )
+        raise BadRequestError(f"unknown entity_kind: {kind!r}. Known: {shown}{more}.")
     if kind != "dp":
         # bare-http-ok: 501 has no domain-exception counterpart — kind is
         # registered but this code path is the DP delegator only; callers
@@ -82,13 +80,9 @@ def parse_ref(kind: str, ref: str) -> str:
         known = sorted(entity_registry.all_kinds())
         shown = ", ".join(known[:5])
         more = "" if len(known) <= 5 else f" (+{len(known) - 5} more)"
-        raise BadRequestError(
-            f"unknown entity_kind: {kind!r}. Known: {shown}{more}."
-        )
+        raise BadRequestError(f"unknown entity_kind: {kind!r}. Known: {shown}{more}.")
     if kind == "dp":
-        raise BadRequestError(
-            "kind='dp' is handled by the DP delegator path; use parse_dp_ref."
-        )
+        raise BadRequestError("kind='dp' is handled by the DP delegator path; use parse_dp_ref.")
     spec = find_ref_kind(kind)
     if spec is None:
         # bare-http-ok: 501 has no domain-exception counterpart — kind is

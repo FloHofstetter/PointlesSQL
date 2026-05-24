@@ -238,10 +238,7 @@ def test_provider_creds_fernet_roundtrip() -> None:
     assert any(r.provider == "anthropic" for r in rows)
 
     delete_provider_creds(factory, workspace_id=1, provider="anthropic")
-    assert (
-        decrypt_provider_key(factory, workspace_id=1, provider="anthropic")
-        is None
-    )
+    assert decrypt_provider_key(factory, workspace_id=1, provider="anthropic") is None
 
 
 def test_provider_creds_unknown_provider_raises() -> None:

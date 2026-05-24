@@ -69,7 +69,7 @@ def _seed_product(tmp_path: Path) -> int:
         return int(session.execute(select(DataProduct)).scalar_one().id)
 
 
-def test_entity_kinds_constant_covers_phase77_plan() -> None:
+def test_entity_kinds_constant_covers_full_polymorphic_plan() -> None:
     """The constant lists every kind the Phase-77 plan + later additions."""
     expected = {
         "dp",
@@ -102,19 +102,16 @@ def test_registry_dp_kind_is_registered_with_legacy_prefix() -> None:
     """Locked decision #9 — kind='dp' keeps the legacy prefix."""
     spec = entity_registry.get("dp")
     assert spec.audit_target_prefix == "data_product"
-    assert spec.url_for("main.sales_gold") == (
-        "/data-products/main/sales_gold"
-    )
+    assert spec.url_for("main.sales_gold") == ("/data-products/main/sales_gold")
 
 
 def test_registry_audit_target_format_for_dp() -> None:
     """kind='dp' rows audit-target stays ``data_product:{ref}``."""
-    assert entity_registry.audit_target("dp", "main.sales_gold") == (
-        "data_product:main.sales_gold"
+    assert entity_registry.audit_target("dp", "main.sales_gold") == ("data_product:main.sales_gold")
+    assert (
+        entity_registry.audit_target("dp", "main.sales_gold", suffix="tab-discussion-comment-42")
+        == "data_product:main.sales_gold#tab-discussion-comment-42"
     )
-    assert entity_registry.audit_target(
-        "dp", "main.sales_gold", suffix="tab-discussion-comment-42"
-    ) == "data_product:main.sales_gold#tab-discussion-comment-42"
 
 
 def test_registry_audit_target_falls_back_to_generic_for_unknown() -> None:
@@ -186,9 +183,7 @@ def test_get_or_create_target_rejects_dp_without_back_pointer(
 ) -> None:
     """kind='dp' must carry a data_product_id back-pointer."""
     factory = app.state.session_factory
-    with factory() as session, pytest.raises(
-        ValueError, match="requires a data_product_id"
-    ):
+    with factory() as session, pytest.raises(ValueError, match="requires a data_product_id"):
         get_or_create_target(
             session,
             workspace_id=1,
@@ -202,9 +197,7 @@ def test_get_or_create_target_rejects_dp_back_pointer_on_non_dp(
 ) -> None:
     """Non-dp kinds must not carry a data_product_id."""
     factory = app.state.session_factory
-    with factory() as session, pytest.raises(
-        ValueError, match="must not carry a data_product_id"
-    ):
+    with factory() as session, pytest.raises(ValueError, match="must not carry a data_product_id"):
         get_or_create_target(
             session,
             workspace_id=1,

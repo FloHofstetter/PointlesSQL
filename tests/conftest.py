@@ -133,11 +133,7 @@ def _test_engine() -> Iterator[tuple[Engine, sessionmaker[Any]]]:  # pyright: ig
     # the ``pointlessql_gw{0,1,2,3}`` databases before invoking
     # pytest.
     _worker_id = os.environ.get("PYTEST_XDIST_WORKER")
-    if (
-        _worker_id
-        and _worker_id != "master"
-        and db_url.startswith("postgresql")
-    ):
+    if _worker_id and _worker_id != "master" and db_url.startswith("postgresql"):
         from urllib.parse import urlsplit, urlunsplit
 
         _parts = urlsplit(db_url)
@@ -553,7 +549,7 @@ def api_key_secret() -> Iterator[ApiKeyFixture]:
 async def seed_csrf(client: Any) -> str:
     """Seed the CSRF cookie on an ``httpx.AsyncClient`` and return the token.
 
-    The Sprint 42 CSRF middleware rejects any non-safe request that
+    The CSRF middleware rejects any non-safe request that
     arrives without a matching ``pql_csrf`` cookie. Tests that submit
     form POSTs to ``/auth/*`` (or any future non-API HTML form route)
     should ``await seed_csrf(client)`` before the POST to obtain the

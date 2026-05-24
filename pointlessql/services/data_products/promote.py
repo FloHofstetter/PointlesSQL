@@ -137,12 +137,9 @@ def scan_candidates(
             entry["tables"].add(table_name)
             entry["op_count"] += 1
 
-        existing_candidates = session.execute(
-            select(DataProductPromotionCandidate)
-        ).scalars().all()
+        existing_candidates = session.execute(select(DataProductPromotionCandidate)).scalars().all()
         existing_by_key = {
-            (c.workspace_id, c.catalog_name, c.schema_name): c
-            for c in existing_candidates
+            (c.workspace_id, c.catalog_name, c.schema_name): c for c in existing_candidates
         }
 
         for (workspace_id, catalog_name, schema_name), entry in per_schema.items():
@@ -151,12 +148,8 @@ def scan_candidates(
             if distinct_runs < min_runs or op_count < min_ops:
                 continue
 
-            sig = _signature_hash(
-                {table: [(table, "unknown")] for table in entry["tables"]}
-            )
-            existing = existing_by_key.get(
-                (workspace_id, catalog_name, schema_name)
-            )
+            sig = _signature_hash({table: [(table, "unknown")] for table in entry["tables"]})
+            existing = existing_by_key.get((workspace_id, catalog_name, schema_name))
 
             if existing is None:
                 session.add(

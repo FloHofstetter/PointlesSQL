@@ -159,9 +159,7 @@ def test_mcp_schema_shape() -> None:
 async def test_audit_hook_writes_lens_message_on_success(ctx) -> None:  # type: ignore[no-untyped-def]
     """Successful dispatch persists a tool-row + bumps session activity."""
     # Use list_catalogs against ctx with uc_client=None — returns empty result
-    result = await execute_tool_with_audit(
-        tool_name="list_catalogs", ctx=ctx, raw_args={}
-    )
+    result = await execute_tool_with_audit(tool_name="list_catalogs", ctx=ctx, raw_args={})
     assert "catalogs" in result
 
     # Verify the lens_messages row landed
@@ -175,9 +173,7 @@ async def test_audit_hook_writes_lens_message_on_success(ctx) -> None:  # type: 
 async def test_audit_hook_writes_error_on_unknown_tool(ctx) -> None:  # type: ignore[no-untyped-def]
     """Unknown tool name → audit row + UnknownLensToolError."""
     with pytest.raises(UnknownLensToolError):
-        await execute_tool_with_audit(
-            tool_name="grok_query", ctx=ctx, raw_args={}
-        )
+        await execute_tool_with_audit(tool_name="grok_query", ctx=ctx, raw_args={})
 
     from pointlessql.services.lens import list_session_messages
 
@@ -304,7 +300,5 @@ async def test_lineage_neighbors_tool(ctx) -> None:  # type: ignore[no-untyped-d
 @pytest.mark.asyncio
 async def test_list_catalogs_with_no_uc_client_returns_empty(ctx) -> None:  # type: ignore[no-untyped-def]
     """When uc_client is None the catalog tools fall back gracefully."""
-    result = await execute_tool_with_audit(
-        tool_name="list_catalogs", ctx=ctx, raw_args={}
-    )
+    result = await execute_tool_with_audit(tool_name="list_catalogs", ctx=ctx, raw_args={})
     assert result == {"catalogs": []}

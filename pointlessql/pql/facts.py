@@ -95,9 +95,7 @@ def _agent_context(
     with session_factory() as session:
         run = session.get(AgentRun, agent_run_id)
         if run is None:
-            raise ValidationError(
-                f"pql.facts: agent_run {agent_run_id!r} is not registered"
-            )
+            raise ValidationError(f"pql.facts: agent_run {agent_run_id!r} is not registered")
         return int(run.workspace_id), run.agent_id
 
 
@@ -166,15 +164,12 @@ def pin(
                 raise
             resolved_run_id = None
         if resolved_run_id is not None:
-            resolved_ws, pinned_by_agent_id = _agent_context(
-                factory, resolved_run_id
-            )
+            resolved_ws, pinned_by_agent_id = _agent_context(factory, resolved_run_id)
             if workspace_id is None:
                 workspace_id = resolved_ws
     if workspace_id is None:
         raise ValidationError(
-            "pql.facts.pin requires workspace_id (kwarg) when no agent "
-            "context is available"
+            "pql.facts.pin requires workspace_id (kwarg) when no agent context is available"
         )
 
     with factory() as session:

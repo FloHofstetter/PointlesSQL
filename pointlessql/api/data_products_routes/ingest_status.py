@@ -27,9 +27,7 @@ router = APIRouter(tags=["data-products", "ingest-status"])
 
 
 @router.get("/api/data-products/{catalog}/{schema}/ingest-status")
-async def api_dp_ingest_status(
-    request: Request, catalog: str, schema: str
-) -> dict[str, Any]:
+async def api_dp_ingest_status(request: Request, catalog: str, schema: str) -> dict[str, Any]:
     """List ingest sources feeding the DP's catalog.schema.
 
     Args:
@@ -73,7 +71,7 @@ async def api_dp_ingest_status(
     for row in rows:
         try:
             mappings_raw = json.loads(row.table_mappings or "[]")
-        except (ValueError, TypeError):
+        except ValueError, TypeError:
             continue
         if not isinstance(mappings_raw, list):
             continue
@@ -86,9 +84,7 @@ async def api_dp_ingest_status(
                 continue
             stats_raw: object = m.get("last_pull_stats") or {}
             stats: dict[str, Any] = (
-                cast(dict[str, Any], stats_raw)
-                if isinstance(stats_raw, dict)
-                else {}
+                cast(dict[str, Any], stats_raw) if isinstance(stats_raw, dict) else {}
             )
             out.append(
                 {

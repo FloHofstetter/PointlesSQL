@@ -115,14 +115,10 @@ async def run_reviewer_for_dp(
             ).scalar_one_or_none()
             if agent_row is not None:
                 agent_id = int(agent_row.id)
-        prompt = build_prompt(
-            session, workspace_id=workspace_id, dp=dp, config=config
-        )
+        prompt = build_prompt(session, workspace_id=workspace_id, dp=dp, config=config)
 
     provider_name = (
-        (config.llm_provider if config is not None else None)
-        or provider_default
-        or "anthropic"
+        (config.llm_provider if config is not None else None) or provider_default or "anthropic"
     )
     model = (
         (config.llm_model if config is not None else None)
@@ -131,9 +127,7 @@ async def run_reviewer_for_dp(
     )
 
     if resolver is None:
-        api_key = decrypt_provider_key(
-            factory, workspace_id=workspace_id, provider=provider_name
-        )
+        api_key = decrypt_provider_key(factory, workspace_id=workspace_id, provider=provider_name)
     else:
         api_key = resolver(provider_name, workspace_id)
     if not api_key:

@@ -3,7 +3,7 @@
 Exercises :func:`pointlessql.services.lineage_edges.walk_back` with
 synthetic ``lineage_row_edges`` rows so the fan-in shape lands
 without spinning up soyuz / deltalake.  The matching end-to-end
-replay lives in Sprint 15.5.5.
+replay lives .
 """
 
 from __future__ import annotations

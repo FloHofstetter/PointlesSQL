@@ -47,9 +47,7 @@ def _build_payload(
     """
     settings: Settings = request.app.state.settings
     notebooks_dir = settings.jupyter.notebooks_dir.resolve()
-    absolute = notebook_doc_service.resolve_py_notebook_path(
-        notebooks_dir, path, must_exist=True
-    )
+    absolute = notebook_doc_service.resolve_py_notebook_path(notebooks_dir, path, must_exist=True)
     relative = str(absolute.relative_to(notebooks_dir))
     document = notebook_doc_service.load_document(absolute, relative)
     outputs = notebook_outputs_service.load_outputs_for_path(
@@ -83,9 +81,7 @@ async def api_export_notebook_html(
     """
     require_user(request)
     title, cells, outputs = _build_payload(request, path)
-    body = notebook_export_service.render_notebook_html(
-        title=title, cells=cells, outputs=outputs
-    )
+    body = notebook_export_service.render_notebook_html(title=title, cells=cells, outputs=outputs)
     filename = title.replace("/", "_") + ".html"
     return Response(
         content=body,
@@ -123,21 +119,15 @@ async def api_export_notebook_pdf(
             content=pdf_bytes,
             media_type="application/pdf",
             headers={
-                "Content-Disposition": (
-                    f'attachment; filename="{safe_title}.pdf"'
-                ),
+                "Content-Disposition": (f'attachment; filename="{safe_title}.pdf"'),
             },
         )
-    body = notebook_export_service.render_notebook_html(
-        title=title, cells=cells, outputs=outputs
-    )
+    body = notebook_export_service.render_notebook_html(title=title, cells=cells, outputs=outputs)
     return Response(
         content=body,
         media_type="text/html; charset=utf-8",
         headers={
-            "Content-Disposition": (
-                f'inline; filename="{safe_title}.html"'
-            ),
+            "Content-Disposition": (f'inline; filename="{safe_title}.html"'),
             "X-PointlesSQL-Export-Fallback": "weasyprint-unavailable",
         },
     )

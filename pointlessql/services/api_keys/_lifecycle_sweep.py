@@ -83,9 +83,7 @@ def run_lifecycle_sweep(
                 row,
                 "api_key.expired",
                 {
-                    "expires_at": (
-                        row.expires_at.isoformat() if row.expires_at else None
-                    ),
+                    "expires_at": (row.expires_at.isoformat() if row.expires_at else None),
                     "auto_quarantined": quarantine_on_expiry,
                 },
             )
@@ -108,14 +106,10 @@ def run_lifecycle_sweep(
             # spam the audit log every tick.
             if row.expiry_warned_at is not None:
                 continue
-            session.execute(
-                update(ApiKey).where(ApiKey.id == row.id).values(expiry_warned_at=now)
-            )
+            session.execute(update(ApiKey).where(ApiKey.id == row.id).values(expiry_warned_at=now))
             assert row.expires_at is not None  # query guarantees this
             expires_aware = (
-                row.expires_at
-                if row.expires_at.tzinfo
-                else row.expires_at.replace(tzinfo=UTC)
+                row.expires_at if row.expires_at.tzinfo else row.expires_at.replace(tzinfo=UTC)
             )
             days_remaining = max(0, (expires_aware - now).days)
             _safe_audit(

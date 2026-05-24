@@ -58,9 +58,7 @@ def _normalize(raw: str) -> str:
     if not tag:
         raise ValidationError("tag must not be empty")
     if not _TAG_PATTERN.fullmatch(tag):
-        raise ValidationError(
-            "tag must match [a-z0-9][a-z0-9_-]*[a-z0-9]? and be 1-64 chars"
-        )
+        raise ValidationError("tag must match [a-z0-9][a-z0-9_-]*[a-z0-9]? and be 1-64 chars")
     return tag
 
 
@@ -75,15 +73,16 @@ def list_tags(session: Session, notebook_id: str) -> list[dict[str, Any]]:
         List of ``{"tag": str, "created_at": str}`` dicts in
         insertion order.
     """
-    rows = session.execute(
-        select(NotebookTag)
-        .where(NotebookTag.notebook_id == notebook_id)
-        .order_by(NotebookTag.created_at.asc(), NotebookTag.id.asc())
-    ).scalars().all()
-    return [
-        {"tag": row.tag, "created_at": row.created_at.isoformat()}
-        for row in rows
-    ]
+    rows = (
+        session.execute(
+            select(NotebookTag)
+            .where(NotebookTag.notebook_id == notebook_id)
+            .order_by(NotebookTag.created_at.asc(), NotebookTag.id.asc())
+        )
+        .scalars()
+        .all()
+    )
+    return [{"tag": row.tag, "created_at": row.created_at.isoformat()} for row in rows]
 
 
 def add_tag(session: Session, *, notebook_id: str, raw_tag: str) -> str:
@@ -113,13 +112,13 @@ def add_tag(session: Session, *, notebook_id: str, raw_tag: str) -> str:
     ).scalar_one_or_none()
     if existing is not None:
         return tag
-    count = session.execute(
-        select(NotebookTag).where(NotebookTag.notebook_id == notebook_id)
-    ).scalars().all()
+    count = (
+        session.execute(select(NotebookTag).where(NotebookTag.notebook_id == notebook_id))
+        .scalars()
+        .all()
+    )
     if len(count) >= _MAX_TAGS_PER_NOTEBOOK:
-        raise ValidationError(
-            f"notebook tag cap reached ({_MAX_TAGS_PER_NOTEBOOK})"
-        )
+        raise ValidationError(f"notebook tag cap reached ({_MAX_TAGS_PER_NOTEBOOK})")
     session.add(NotebookTag(notebook_id=notebook_id, tag=tag))
     session.flush()
     return tag
@@ -155,9 +154,7 @@ def remove_tag(session: Session, *, notebook_id: str, raw_tag: str) -> bool:
     return True
 
 
-def list_tags_bulk(
-    session: Session, *, workspace_id: int
-) -> dict[str, list[str]]:
+def list_tags_bulk(session: Session, *, workspace_id: int) -> dict[str, list[str]]:
     """Return every tag attached to every notebook in one workspace.
 
     Args:
@@ -182,9 +179,7 @@ def list_tags_bulk(
     return out
 
 
-def list_notebooks_for_tag(
-    session: Session, *, workspace_id: int, tag: str
-) -> list[str]:
+def list_notebooks_for_tag(session: Session, *, workspace_id: int, tag: str) -> list[str]:
     """Return notebook UUIDs in ``workspace_id`` tagged ``tag``.
 
     Args:

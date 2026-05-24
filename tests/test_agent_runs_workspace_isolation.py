@@ -130,7 +130,7 @@ def two_workspaces() -> tuple[int, int]:
 
 
 def test_agent_run_workspace_id_column_exists() -> None:
-    """The Sprint 28.1a migration adds workspace_id to all 5 audit-trail tables."""
+    """The migration adds workspace_id to all 5 audit-trail tables."""
     from sqlalchemy import inspect
 
     insp = inspect(_factory()().get_bind())

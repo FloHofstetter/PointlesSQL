@@ -139,9 +139,7 @@ async def reload_data_products(request: Request) -> dict[str, Any]:
                         trigger="schema_changed",
                     )
                 except Exception:  # noqa: BLE001 — best-effort
-                    logger.exception(
-                        "dp_passport: schema_changed refresh raised"
-                    )
+                    logger.exception("dp_passport: schema_changed refresh raised")
 
             try:
                 asyncio.create_task(_refresh())  # noqa: RUF006

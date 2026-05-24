@@ -107,8 +107,7 @@ def _extract_schema_target(ast: Expression) -> str:
         if catalog is not None and schema is not None:
             return f"{catalog.name}.{schema.name}"
     raise SQLParseError(
-        "Schema reference is not fully qualified; "
-        "CREATE/DROP SCHEMA requires catalog.schema.",
+        "Schema reference is not fully qualified; CREATE/DROP SCHEMA requires catalog.schema.",
     )
 
 

@@ -48,17 +48,11 @@ def upgrade() -> None:
         sa.Column("accepted_by_user_id", sa.Integer(), nullable=True),
         sa.Column("discarded_at", sa.DateTime(timezone=True), nullable=True),
         sa.ForeignKeyConstraint(["accepted_by_user_id"], ["users.id"]),
-        sa.ForeignKeyConstraint(
-            ["chat_session_id"], ["editor_chat_sessions.id"]
-        ),
+        sa.ForeignKeyConstraint(["chat_session_id"], ["editor_chat_sessions.id"]),
         sa.PrimaryKeyConstraint("id"),
-        sa.UniqueConstraint(
-            "proposal_id", name="uq_nb_cell_sequence_proposal_uuid"
-        ),
+        sa.UniqueConstraint("proposal_id", name="uq_nb_cell_sequence_proposal_uuid"),
     )
-    with op.batch_alter_table(
-        "notebook_cell_sequence_proposals", schema=None
-    ) as batch_op:
+    with op.batch_alter_table("notebook_cell_sequence_proposals", schema=None) as batch_op:
         batch_op.create_index(
             "ix_nb_cell_sequence_session",
             ["chat_session_id", "created_at"],
@@ -68,8 +62,6 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     """Drop ``notebook_cell_sequence_proposals``."""
-    with op.batch_alter_table(
-        "notebook_cell_sequence_proposals", schema=None
-    ) as batch_op:
+    with op.batch_alter_table("notebook_cell_sequence_proposals", schema=None) as batch_op:
         batch_op.drop_index("ix_nb_cell_sequence_session")
     op.drop_table("notebook_cell_sequence_proposals")

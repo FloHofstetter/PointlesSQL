@@ -4,7 +4,7 @@ These tests cover URI derivation + the import-availability check
 without actually spawning ``mlflow server`` (slow, port-bound,
 flaky). End-to-end "subprocess actually starts and answers /health"
 coverage lives in the manual lifespan smoke test in the closure
-section of the Phase 21 plan.
+section of the plan.
 """
 
 from __future__ import annotations

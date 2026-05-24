@@ -44,18 +44,14 @@ async def new_launchpad_page(request: Request) -> HTMLResponse | RedirectRespons
     )
 
 
-@router.get(
-    "/settings/notifications", response_class=HTMLResponse, response_model=None
-)
+@router.get("/settings/notifications", response_class=HTMLResponse, response_model=None)
 async def notification_settings_page(
     request: Request,
 ) -> HTMLResponse | RedirectResponse:
     """Render the per-event-type notification-preferences settings page."""
     user = get_user(request)
     if user["id"] == 0:
-        return RedirectResponse(
-            url="/auth/login?next=/settings/notifications", status_code=303
-        )
+        return RedirectResponse(url="/auth/login?next=/settings/notifications", status_code=303)
     templates = request.app.state.templates
     return templates.TemplateResponse(
         request,

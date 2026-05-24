@@ -1,4 +1,4 @@
-"""Tests for the Phase-41 / Sprint-41.1 Lineage sub-pills on /runs/{id}.
+"""Tests for the / Sprint-41.1 Lineage sub-pills on /runs/{id}.
 
 three new sub-pills (Row trace,
 Column trace, Value changes) sit next to the existing Summary +
@@ -93,7 +93,7 @@ def _seed_run_with_one_edge() -> tuple[str, int, str]:
 def test_lineage_summary_loader_surfaces_sample_target_row_id() -> None:
     """The loader must include ``sample_target_row_id`` per group.
 
-    Sprint 41.1 added the column so the Lineage sub-pills can
+    added the column so the Lineage sub-pills can
     deep-link a Summary-row click into the Row-trace pane.
     """
     run_id, _op_id, target_row_id = _seed_run_with_one_edge()

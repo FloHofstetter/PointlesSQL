@@ -99,9 +99,7 @@ def _coerce(type_name: str, raw_value: Any) -> Any:
         try:
             parsed_ts = datetime.fromisoformat(str(raw_value))
         except ValueError as exc:
-            raise ValueError(
-                f"value {raw_value!r} is not a valid TIMESTAMP (ISO 8601)"
-            ) from exc
+            raise ValueError(f"value {raw_value!r} is not a valid TIMESTAMP (ISO 8601)") from exc
         return exp.Cast(
             this=exp.Literal.string(parsed_ts.isoformat(sep=" ")),
             to=exp.DataType.build("TIMESTAMP"),
@@ -160,9 +158,7 @@ def bind_parameters(
     # variant some dialects use; included so a request that crosses
     # both styles still binds cleanly.
     for node in list(parsed.find_all(exp.Placeholder, exp.Parameter)):
-        ident = node.name or (
-            node.this.name if isinstance(node.this, exp.Identifier) else None
-        )
+        ident = node.name or (node.this.name if isinstance(node.this, exp.Identifier) else None)
         if not ident:
             continue
         if ident not in bindings:

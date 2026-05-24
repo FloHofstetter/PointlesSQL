@@ -11,7 +11,7 @@
  — pager state used by the Load-More CTA below the table.
 
  Filtering is client-side via the existing ``listTable`` component
- (search box + status chips).  Phase 55.3 adds an HTMX-driven
+ (search box + status chips). This adds an HTMX-driven
  "Load N more" button; appended rows fire ``pql:rows-appended`` so
  ``listTable`` can re-snapshot ``_rows`` and keep filters / sort
  honest across pages.

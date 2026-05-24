@@ -43,7 +43,6 @@ data_product:
 """
 
 
-
 def _seed_product(tmp_path: Path) -> int:
     """Seed a yaml + load it; return the data_products row id."""
     yaml_path = tmp_path / "pointlessql.yaml"
@@ -62,9 +61,7 @@ def _seed_product(tmp_path: Path) -> int:
 @pytest.mark.asyncio
 async def test_topic_create_admin(admin_client: httpx.AsyncClient) -> None:
     """Admin can create a topic; slug auto-derived from display name."""
-    res = await admin_client.post(
-        "/api/topics", json={"display_name": "Finance"}
-    )
+    res = await admin_client.post("/api/topics", json={"display_name": "Finance"})
     assert res.status_code == 200, res.text
     assert res.json()["slug"] == "finance"
     assert res.json()["dp_count"] == 0
@@ -75,12 +72,8 @@ async def test_topic_create_collision_appends_suffix(
     admin_client: httpx.AsyncClient,
 ) -> None:
     """Re-creating with the same name yields a -2 suffix on slug."""
-    first = await admin_client.post(
-        "/api/topics", json={"display_name": "Finance"}
-    )
-    second = await admin_client.post(
-        "/api/topics", json={"display_name": "Finance"}
-    )
+    first = await admin_client.post("/api/topics", json={"display_name": "Finance"})
+    second = await admin_client.post("/api/topics", json={"display_name": "Finance"})
     assert first.json()["slug"] == "finance"
     assert second.json()["slug"] == "finance-2"
 
@@ -90,9 +83,7 @@ async def test_topic_create_non_admin_rejected(
     non_admin_client: httpx.AsyncClient,
 ) -> None:
     """A plain member cannot create a topic."""
-    res = await non_admin_client.post(
-        "/api/topics", json={"display_name": "Spam"}
-    )
+    res = await non_admin_client.post("/api/topics", json={"display_name": "Spam"})
     assert res.status_code == 403
 
 
@@ -118,9 +109,7 @@ async def test_set_dp_topics_steward_only(
 ) -> None:
     """Non-admin / non-steward gets 403 on topic assignment."""
     _seed_product(tmp_path)
-    await admin_client.post(
-        "/api/topics", json={"display_name": "Gold"}
-    )
+    await admin_client.post("/api/topics", json={"display_name": "Gold"})
     res = await non_admin_client.put(
         "/api/data-products/main/sales_gold/topics",
         json={"topics": ["gold"]},
@@ -152,11 +141,7 @@ async def test_set_dp_topics_replaces_existing(
 
     factory = app.state.session_factory
     with factory() as session:
-        rows = (
-            session.execute(select(DataProductTopic))
-            .scalars()
-            .all()
-        )
+        rows = session.execute(select(DataProductTopic)).scalars().all()
     assert len(rows) == 1
 
 
@@ -181,9 +166,7 @@ async def test_set_dp_topics_unknown_slug_400(
 @pytest.mark.asyncio
 async def test_follow_topic_idempotent(admin_client: httpx.AsyncClient) -> None:
     """POST is idempotent; DELETE round-trips."""
-    create = await admin_client.post(
-        "/api/topics", json={"display_name": "Lakehouse"}
-    )
+    create = await admin_client.post("/api/topics", json={"display_name": "Lakehouse"})
     slug = create.json()["slug"]
     first = await admin_client.post(f"/api/topics/{slug}/follow")
     second = await admin_client.post(f"/api/topics/{slug}/follow")
@@ -221,9 +204,7 @@ async def test_topic_dp_added_fans_out_to_followers(
 ) -> None:
     """Adding a DP to a topic notifies the topic's followers."""
     _seed_product(tmp_path)
-    create = await admin_client.post(
-        "/api/topics", json={"display_name": "Gold"}
-    )
+    create = await admin_client.post("/api/topics", json={"display_name": "Gold"})
     slug = create.json()["slug"]
     # Non-admin follows the topic.
     await non_admin_client.post(f"/api/topics/{slug}/follow")
@@ -243,8 +224,7 @@ async def test_topic_dp_added_fans_out_to_followers(
         recipients = (
             session.execute(
                 select(UserNotification.recipient_user_id).where(
-                    UserNotification.event_type
-                    == "pointlessql.topic.dp_added"
+                    UserNotification.event_type == "pointlessql.topic.dp_added"
                 )
             )
             .scalars()

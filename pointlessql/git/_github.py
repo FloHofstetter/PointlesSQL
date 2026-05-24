@@ -120,7 +120,7 @@ class GitHubProvider(GenericGitProvider):
             return None
         try:
             payload_raw: Any = json.loads(body.decode("utf-8"))
-        except (json.JSONDecodeError, UnicodeDecodeError):
+        except json.JSONDecodeError, UnicodeDecodeError:
             return None
         if not isinstance(payload_raw, dict):
             return WebhookEvent(kind=event_kind, ref=None, branch=None, head_sha=None)

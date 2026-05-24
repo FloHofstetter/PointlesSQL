@@ -30,7 +30,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from pointlessql.models.base import Base
 
-# The seven first-party connector kinds shipped in Phase 82.  Any
+# The seven first-party connector kinds shipped .  Any
 # kind string that is not in this tuple is rejected at create-time
 # by ``ingest_routes/sources.py``.
 INGEST_SOURCE_KINDS: tuple[str, ...] = (
@@ -99,32 +99,18 @@ class IngestSource(Base):
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    workspace_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("workspaces.id"), nullable=False
-    )
-    owner_user_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("users.id"), nullable=False
-    )
+    workspace_id: Mapped[int] = mapped_column(Integer, ForeignKey("workspaces.id"), nullable=False)
+    owner_user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     kind: Mapped[str] = mapped_column(String(32), nullable=False)
-    config: Mapped[str] = mapped_column(
-        Text, nullable=False, default="{}", server_default="{}"
-    )
-    secrets: Mapped[str] = mapped_column(
-        Text, nullable=False, default="{}", server_default="{}"
-    )
+    config: Mapped[str] = mapped_column(Text, nullable=False, default="{}", server_default="{}")
+    secrets: Mapped[str] = mapped_column(Text, nullable=False, default="{}", server_default="{}")
     table_mappings: Mapped[str] = mapped_column(
         Text, nullable=False, default="[]", server_default="[]"
     )
-    job_id: Mapped[int | None] = mapped_column(
-        Integer, ForeignKey("jobs.id"), nullable=True
-    )
+    job_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("jobs.id"), nullable=True)
     is_active: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=True, server_default="1"
     )
-    created_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
-    updated_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    updated_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)

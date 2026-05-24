@@ -2,7 +2,7 @@
 
 Mocks the ``ModelsMixin`` methods on the test ``UnityCatalogClient``
 so the contract under test is the FastAPI router shape, not the
-soyuz wire layer (already covered by Sprint 21.1 conformance tests).
+soyuz wire layer (already covered conformance tests).
 """
 
 from __future__ import annotations
@@ -220,7 +220,7 @@ async def test_model_detail_renders_all_tabs(
     resp = await admin_client.get("/models/cat1.sch1.smoke_model")
     assert resp.status_code == 200
     body = resp.text
-    # Header + tab nav rendered. Sprint 68.3 dropped the inline
+    # Header + tab nav rendered. This dropped the inline
     # ``tab-mlflow`` iframe in favour of the standalone ``/mlflow/``
     # page; the model-detail header now carries an "Open in MLflow
     # UI" button instead, hosting the ``models.mlflow-vs-pointlessql``

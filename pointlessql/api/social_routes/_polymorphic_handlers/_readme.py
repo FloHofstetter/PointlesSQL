@@ -34,9 +34,7 @@ from pointlessql.models.social._entity_readme import EntityReadme
 # ---------------------------------------------------------------------------
 
 
-async def get_polymorphic_readme(
-    kind: str, ref: str, request: Request
-) -> dict[str, Any]:
+async def get_polymorphic_readme(kind: str, ref: str, request: Request) -> dict[str, Any]:
     """Return the latest README for the polymorphic entity.
 
     Args:
@@ -79,9 +77,7 @@ async def get_polymorphic_readme(
     )
 
 
-async def put_polymorphic_readme(
-    kind: str, ref: str, request: Request
-) -> dict[str, Any]:
+async def put_polymorphic_readme(kind: str, ref: str, request: Request) -> dict[str, Any]:
     """Save a new README version for the polymorphic entity.
 
     Args:
@@ -137,17 +133,11 @@ async def put_polymorphic_readme(
             return serialise_readme(
                 latest,
                 author_email=author.email if author else None,
-                author_display_name=(
-                    author.display_name if author else None
-                ),
+                author_display_name=(author.display_name if author else None),
             )
         next_version = (
             session.execute(
-                select(
-                    func.coalesce(
-                        func.max(EntityReadme.version_int), 0
-                    )
-                ).where(
+                select(func.coalesce(func.max(EntityReadme.version_int), 0)).where(
                     EntityReadme.workspace_id == workspace_id,
                     EntityReadme.social_target_id == target_id,
                 )
@@ -174,5 +164,3 @@ async def put_polymorphic_readme(
         author_email=author_email,
         author_display_name=author_display,
     )
-
-

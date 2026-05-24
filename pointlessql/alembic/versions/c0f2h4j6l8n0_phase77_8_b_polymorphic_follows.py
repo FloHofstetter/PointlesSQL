@@ -82,7 +82,9 @@ def upgrade() -> None:
             server_default=sa.text("CURRENT_TIMESTAMP"),
         ),
         sa.PrimaryKeyConstraint(
-            "workspace_id", "social_target_id", "user_id",
+            "workspace_id",
+            "social_target_id",
+            "user_id",
             name="pk_social_follows",
         ),
     )

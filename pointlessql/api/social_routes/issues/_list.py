@@ -133,9 +133,7 @@ async def list_issues_global(
         # Apply label filter client-side (labels are JSON arrays;
         # SQL-indexed label filtering is a 77.9 FTS deliverable).
         if label is not None:
-            rows = [
-                r for r in rows if label in json.loads(r.labels_json or "[]")
-            ]
+            rows = [r for r in rows if label in json.loads(r.labels_json or "[]")]
         user_ids = list(
             {r.opened_by_user_id for r in rows}
             | {r.assignee_user_id for r in rows if r.assignee_user_id}
@@ -157,12 +155,8 @@ async def list_issues_global(
             "issues": [
                 serialise_issue(
                     r,
-                    parent_kind=parent_lookup.get(
-                        r.parent_social_target_id, (None, None)
-                    )[0],
-                    parent_ref=parent_lookup.get(
-                        r.parent_social_target_id, (None, None)
-                    )[1],
+                    parent_kind=parent_lookup.get(r.parent_social_target_id, (None, None))[0],
+                    parent_ref=parent_lookup.get(r.parent_social_target_id, (None, None))[1],
                     assignee_email=emails.get(r.assignee_user_id or 0),
                     opener_email=emails.get(r.opened_by_user_id),
                 )

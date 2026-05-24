@@ -58,9 +58,7 @@ def test_ws_execute_round_trip_persists_output(
 
     with TestClient(app, cookies=auth_cookies) as client:
         try:
-            with client.websocket_connect(
-                "/ws/notebook/kernel?path=demo.py"
-            ) as ws:
+            with client.websocket_connect("/ws/notebook/kernel?path=demo.py") as ws:
                 # First frame is the "ready" notify.
                 ready = json.loads(ws.receive_text())
                 assert ready.get("notify") == "ready"

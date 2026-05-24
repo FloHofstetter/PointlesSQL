@@ -1,4 +1,4 @@
-"""Tests for the Phase-23 contextual-help registry.
+"""Tests for the contextual-help registry.
 
 Pin the invariants the macro relies on at render time:
 
@@ -8,9 +8,7 @@ Pin the invariants the macro relies on at render time:
 * ``learn_more`` URLs are well-formed mkdocs paths
 * every slug in the registry is referenced from at least one
   template, every ``info('<slug>')`` call resolves in the
-  registry — added in Sprint 23.5
-
-Templates that use the registry pass slugs as plain strings; this
+  registry — added Templates that use the registry pass slugs as plain strings; this
 test sweep is the only thing that catches a typo before it ships.
 """
 
@@ -111,7 +109,7 @@ def test_learn_more_is_well_formed(slug: str, entry: HelpEntry) -> None:
     assert url == url.strip(), f"slug {slug!r}: learn_more has stray whitespace"
 
 
-def test_phase23_hero_anchors_present() -> None:
+def test_hero_anchors_present() -> None:
     """The 5 Sprint-23.0 hero slugs are all registered.
 
     Sprint-23.0 wires these into runs_list, run_view, model,
@@ -130,7 +128,7 @@ def test_phase23_hero_anchors_present() -> None:
     )
 
 
-def test_sprint_23_4_sql_admin_anchors_present() -> None:
+def test_sql_admin_anchors_present() -> None:
     """Sprint 23.4 wires 10 popovers across SQL editor (3
     anchors) and the admin surfaces (external-writes, audit
     sinks, workspace pins, api-key scopes, system keys, rate
@@ -152,7 +150,7 @@ def test_sprint_23_4_sql_admin_anchors_present() -> None:
     assert expected <= set(HELP.keys()), f"missing Sprint-23.4 slugs: {expected - set(HELP.keys())}"
 
 
-def test_sprint_23_3_audit_branches_home_anchors_present() -> None:
+def test_audit_branches_home_anchors_present() -> None:
     """Sprint 23.3 wires 12 popovers across the audit cockpit
     (inbox, search, by-table, queries), the branch-detail page,
     and the home cockpit.  Pin the slugs to catch renames in CI.
@@ -174,7 +172,7 @@ def test_sprint_23_3_audit_branches_home_anchors_present() -> None:
     assert expected <= set(HELP.keys()), f"missing Sprint-23.3 slugs: {expected - set(HELP.keys())}"
 
 
-def test_sprint_23_2_models_anchors_present() -> None:
+def test_models_anchors_present() -> None:
     """Sprint 23.2 wires 6 popovers across the models index, the
     model-detail tabs (Overview, Versions, Lineage, MLflow) and
     the model-compare page.  Pin the slugs to catch renames in CI.
@@ -190,7 +188,7 @@ def test_sprint_23_2_models_anchors_present() -> None:
     assert expected <= set(HELP.keys()), f"missing Sprint-23.2 slugs: {expected - set(HELP.keys())}"
 
 
-def test_sprint_23_1_catalog_and_table_anchors_present() -> None:
+def test_catalog_and_table_anchors_present() -> None:
     """Sprint 23.1 wires 8 popovers across the catalog tree, the
     schema-detail page, and five spots on the table-detail page
     (Type, Properties, Preview, View-at, Columns, Column-stats).

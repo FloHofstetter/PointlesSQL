@@ -94,9 +94,7 @@ async def _pull_and_capture(
         instance.write_table = MagicMock(return_value=None)
         instance.merge = MagicMock(return_value={})
         mock_pql_cls.return_value = instance
-        res = await admin_client.post(
-            f"/api/ingest/sources/{source_id}/pulls"
-        )
+        res = await admin_client.post(f"/api/ingest/sources/{source_id}/pulls")
         return res.json(), instance
 
 
@@ -290,9 +288,7 @@ async def test_e2e_postgres_live(
     body, _pql = await _pull_and_capture(admin_client, source_id)
     assert body["ok"] is True
     if body["failures"]:
-        pytest.fail(
-            f"live-postgres pull failed: {body['failures']}"
-        )
+        pytest.fail(f"live-postgres pull failed: {body['failures']}")
     assert body["results"][0]["rows_written"] >= 1
 
 
@@ -311,9 +307,7 @@ async def test_e2e_s3_moto(
     with moto.mock_aws():
         s3 = boto3.client("s3", region_name="us-east-1")
         s3.create_bucket(Bucket="test-bucket")
-        s3.put_object(
-            Bucket="test-bucket", Key="data.csv", Body=b"a,b\n1,2\n3,4\n"
-        )
+        s3.put_object(Bucket="test-bucket", Key="data.csv", Body=b"a,b\n1,2\n3,4\n")
         source_id = _seed(
             kind="s3",
             config={"url": "s3://test-bucket/data.csv"},

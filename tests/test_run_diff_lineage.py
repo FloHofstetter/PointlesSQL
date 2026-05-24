@@ -1,4 +1,4 @@
-"""Tests for Sprint 18.4 lineage_diff service + diff HTML route.
+"""Tests lineage_diff service + diff HTML route.
 
 Covers:
 

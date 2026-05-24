@@ -1,4 +1,4 @@
-"""Tests for the Phase 40.6 ``GET /api/audit/cdf-events`` endpoint."""
+"""Tests for the ``GET /api/audit/cdf-events`` endpoint."""
 
 from __future__ import annotations
 

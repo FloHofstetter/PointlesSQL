@@ -1,6 +1,6 @@
 """Stub embedder targeting a future hermes-agent ``embed`` tool.
 
-The ROADMAP for Phase 92 anticipated routing the default embedder
+The ROADMAP anticipated routing the default embedder
 through hermes-agent so PointlesSQL would not need to take on a new
 API-key surface.  hermes-agent does not currently expose an ``embed``
 tool, so the default lives in

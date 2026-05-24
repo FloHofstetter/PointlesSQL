@@ -41,9 +41,7 @@ def _load_manifest() -> list[dict[str, Any]]:
     try:
         data: Any = json.loads(_MANIFEST_PATH.read_text())
     except json.JSONDecodeError as exc:
-        raise ValidationError(
-            f"notebook template manifest parse error: {exc}"
-        ) from exc
+        raise ValidationError(f"notebook template manifest parse error: {exc}") from exc
     if not isinstance(data, list):
         raise ValidationError("notebook template manifest must be a JSON array")
     out: list[dict[str, Any]] = []
@@ -122,9 +120,7 @@ def create_from_template(
     """
     template_path = _resolve_template(template_id)
     body = template_path.read_text()
-    resolved = notebook_workspace_service.create_empty_notebook(
-        notebooks_dir, dest_path
-    )
+    resolved = notebook_workspace_service.create_empty_notebook(notebooks_dir, dest_path)
     resolved.write_text(body)
     return resolved
 

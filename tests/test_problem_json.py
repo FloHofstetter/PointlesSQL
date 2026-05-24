@@ -1,8 +1,8 @@
-"""Tests for the Sprint 44 RFC 9457 problem+json envelope + HTMX toast bridge.
+"""Tests for the RFC 9457 problem+json envelope + HTMX toast bridge.
 
 ``test_error_handlers.py`` already covers the happy-path JSON envelope
 and the HTML page renderer; this file adds the three scenarios that are
-specific to Sprint 44: the HTMX fragment toast branch, the boosted-
+specific : the HTMX fragment toast branch, the boosted-
 navigation fallthrough to the HTML page, and RFC 9457 compliance
 details (media type, extension members, validation-error shape).
 

@@ -45,9 +45,7 @@ def upgrade() -> None:
             sa.ForeignKey("notebooks.id", ondelete="CASCADE"),
             nullable=False,
         ),
-        sa.Column(
-            "current_content_hash", sa.String(length=64), nullable=False
-        ),
+        sa.Column("current_content_hash", sa.String(length=64), nullable=False),
         sa.Column("ordinal_hint", sa.Integer(), nullable=False),
         sa.Column("last_source_excerpt", sa.Text(), nullable=True),
         sa.Column(

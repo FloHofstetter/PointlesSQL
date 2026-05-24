@@ -1,4 +1,4 @@
-"""Tests for the Phase-71.1 data-product comment threads surface.
+"""Tests for the data-product comment threads surface.
 
 Covers the three JSON endpoints (list / post / soft-delete), the
 threading depth cap, the soft-delete + placeholder rules, the
@@ -37,7 +37,6 @@ data_product:
       columns:
         - {name: order_id, type: long, nullable: false}
 """
-
 
 
 def _seed_product(tmp_path: Path) -> int:
@@ -144,9 +143,7 @@ async def test_threading_accepts_up_to_depth_five(
 
 
 @pytest.mark.asyncio
-async def test_post_rejects_empty_body(
-    tmp_path: Path, admin_client: httpx.AsyncClient
-) -> None:
+async def test_post_rejects_empty_body(tmp_path: Path, admin_client: httpx.AsyncClient) -> None:
     """Empty / whitespace-only body returns 400."""
     _seed_product(tmp_path)
     res = await admin_client.post(
@@ -157,9 +154,7 @@ async def test_post_rejects_empty_body(
 
 
 @pytest.mark.asyncio
-async def test_post_unknown_parent(
-    tmp_path: Path, admin_client: httpx.AsyncClient
-) -> None:
+async def test_post_unknown_parent(tmp_path: Path, admin_client: httpx.AsyncClient) -> None:
     """A POST with a parent_comment_id that doesn't exist returns 400."""
     _seed_product(tmp_path)
     res = await admin_client.post(
@@ -186,9 +181,7 @@ async def test_author_can_soft_delete_own_comment(
             json={"body_md": "mine"},
         )
     ).json()["id"]
-    res = await non_admin_client.delete(
-        f"/api/data-products/main/sales_gold/comments/{cid}"
-    )
+    res = await non_admin_client.delete(f"/api/data-products/main/sales_gold/comments/{cid}")
     assert res.status_code == 200
     assert res.json()["deleted_at"] is not None
 
@@ -207,9 +200,7 @@ async def test_non_author_non_admin_cannot_delete(
             json={"body_md": "admin's"},
         )
     ).json()["id"]
-    res = await non_admin_client.delete(
-        f"/api/data-products/main/sales_gold/comments/{cid}"
-    )
+    res = await non_admin_client.delete(f"/api/data-products/main/sales_gold/comments/{cid}")
     assert res.status_code == 403
 
 
@@ -242,9 +233,7 @@ async def test_steward_can_soft_delete_any_comment(
             json={"body_md": "to-be-deleted"},
         )
     ).json()["id"]
-    res = await non_admin_client.delete(
-        f"/api/data-products/main/sales_gold/comments/{cid}"
-    )
+    res = await non_admin_client.delete(f"/api/data-products/main/sales_gold/comments/{cid}")
     assert res.status_code == 200
 
 
@@ -262,9 +251,7 @@ async def test_admin_can_soft_delete_any_comment(
             json={"body_md": "by nonadmin"},
         )
     ).json()["id"]
-    res = await admin_client.delete(
-        f"/api/data-products/main/sales_gold/comments/{cid}"
-    )
+    res = await admin_client.delete(f"/api/data-products/main/sales_gold/comments/{cid}")
     assert res.status_code == 200
 
 
@@ -281,9 +268,7 @@ async def test_soft_deleted_leaf_dropped_from_listing(
         )
     ).json()["id"]
     await admin_client.delete(f"/api/data-products/main/sales_gold/comments/{cid}")
-    body = (
-        await admin_client.get("/api/data-products/main/sales_gold/comments")
-    ).json()
+    body = (await admin_client.get("/api/data-products/main/sales_gold/comments")).json()
     assert body["comments"] == []
 
 
@@ -307,12 +292,8 @@ async def test_soft_deleted_parent_with_live_reply_renders_placeholder(
         "/api/data-products/main/sales_gold/comments",
         json={"body_md": "reply", "parent_comment_id": parent_id},
     )
-    await admin_client.delete(
-        f"/api/data-products/main/sales_gold/comments/{parent_id}"
-    )
-    body = (
-        await admin_client.get("/api/data-products/main/sales_gold/comments")
-    ).json()
+    await admin_client.delete(f"/api/data-products/main/sales_gold/comments/{parent_id}")
+    body = (await admin_client.get("/api/data-products/main/sales_gold/comments")).json()
     parent_row = next(c for c in body["comments"] if c["id"] == parent_id)
     assert parent_row["deleted_at"] is not None
     assert parent_row["body_md"] == ""
@@ -394,9 +375,7 @@ async def test_cross_workspace_isolation(
 
 
 @pytest.mark.asyncio
-async def test_known_mention_resolves(
-    tmp_path: Path, admin_client: httpx.AsyncClient
-) -> None:
+async def test_known_mention_resolves(tmp_path: Path, admin_client: httpx.AsyncClient) -> None:
     """``@<email>`` resolves to the matching user id."""
     _seed_product_with_steward(tmp_path, "alice@example.com")
     payload = await admin_client.post(
@@ -412,9 +391,7 @@ async def test_known_mention_resolves(
 
 
 @pytest.mark.asyncio
-async def test_unknown_mention_is_ignored(
-    tmp_path: Path, admin_client: httpx.AsyncClient
-) -> None:
+async def test_unknown_mention_is_ignored(tmp_path: Path, admin_client: httpx.AsyncClient) -> None:
     """An unknown ``@<email>`` does NOT raise — it is silently skipped."""
     _seed_product(tmp_path)
     res = await admin_client.post(

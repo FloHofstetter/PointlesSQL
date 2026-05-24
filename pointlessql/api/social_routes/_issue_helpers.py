@@ -153,18 +153,14 @@ def serialise_issue(
             "email": opener_email,
         },
         "opened_at": issue.opened_at.isoformat(),
-        "closed_at": issue.closed_at.isoformat()
-        if issue.closed_at
-        else None,
+        "closed_at": issue.closed_at.isoformat() if issue.closed_at else None,
         "closed_reason": issue.closed_reason,
         "milestone_id": issue.milestone_id,
         "labels": json.loads(issue.labels_json or "[]"),
     }
 
 
-def hydrate_parent(
-    session: Any, parent_social_target_id: int
-) -> tuple[str | None, str | None]:
+def hydrate_parent(session: Any, parent_social_target_id: int) -> tuple[str | None, str | None]:
     """Look up ``(parent_kind, parent_ref)`` for a parent social_target id."""
     row = session.execute(
         select(SocialTarget.entity_kind, SocialTarget.entity_ref).where(
@@ -176,15 +172,11 @@ def hydrate_parent(
     return str(row[0]), str(row[1])
 
 
-def hydrate_emails(
-    session: Any, user_ids: list[int]
-) -> dict[int, str]:
+def hydrate_emails(session: Any, user_ids: list[int]) -> dict[int, str]:
     """Bulk-resolve user ids to email strings."""
     if not user_ids:
         return {}
-    rows = session.execute(
-        select(User.id, User.email).where(User.id.in_(user_ids))
-    ).all()
+    rows = session.execute(select(User.id, User.email).where(User.id.in_(user_ids))).all()
     return {int(uid): str(email) for uid, email in rows}
 
 

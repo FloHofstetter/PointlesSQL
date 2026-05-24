@@ -66,7 +66,7 @@ async def apply_polymorphic_comment_reaction(
 
     Idempotent: re-applying the same triple is a no-op.  The
     comment author is pinged via :func:`fanout_event` regardless
-    of kind (mirrors the DP-only path landed in Phase 76.1).
+    of kind (mirrors the DP-only path landed ).
 
     Args:
         kind: Entity kind discriminator.
@@ -129,14 +129,8 @@ async def apply_polymorphic_comment_reaction(
             workspace_id=workspace_id,
         )
         if comment_author_id != user["id"]:
-            source_url = (
-                f"{registry_url_for(kind, ref)}"
-                f"#tab-discussion-comment-{comment_id}"
-            )
-            summary = (
-                f"@{user.get('email') or 'someone'} reacted "
-                f"{emoji} to your comment on {ref}"
-            )
+            source_url = f"{registry_url_for(kind, ref)}#tab-discussion-comment-{comment_id}"
+            summary = f"@{user.get('email') or 'someone'} reacted {emoji} to your comment on {ref}"
             fanout_event(
                 factory,
                 event_type="pointlessql.data_product.comment_reacted",
@@ -178,9 +172,7 @@ async def remove_polymorphic_comment_reaction(
 
     removed = False
     with factory() as session:
-        load_comment_on_target(
-            session, comment_id, workspace_id=workspace_id, target_id=target_id
-        )
+        load_comment_on_target(session, comment_id, workspace_id=workspace_id, target_id=target_id)
         result = session.execute(
             _delete(DataProductCommentReaction).where(
                 DataProductCommentReaction.comment_id == comment_id,
@@ -227,9 +219,7 @@ async def list_polymorphic_comment_reactions(
     factory = request.app.state.session_factory
 
     with factory() as session:
-        load_comment_on_target(
-            session, comment_id, workspace_id=workspace_id, target_id=target_id
-        )
+        load_comment_on_target(session, comment_id, workspace_id=workspace_id, target_id=target_id)
         rows = session.execute(
             select(
                 DataProductCommentReaction.emoji,
@@ -256,5 +246,3 @@ async def list_polymorphic_comment_reactions(
             for e in ALLOWED_EMOJI
         ],
     }
-
-

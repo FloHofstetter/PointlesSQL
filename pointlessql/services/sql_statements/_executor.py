@@ -79,9 +79,7 @@ def _task_registry(app_state: Any) -> dict[str, _RegisteredTask]:
     Returns:
         Mutable registry dict.
     """
-    registry: dict[str, _RegisteredTask] | None = getattr(
-        app_state, "sql_statement_tasks", None
-    )
+    registry: dict[str, _RegisteredTask] | None = getattr(app_state, "sql_statement_tasks", None)
     if registry is None:
         registry = {}
         app_state.sql_statement_tasks = registry
@@ -150,18 +148,14 @@ def fetch_statement(
 ) -> SqlStatement | None:
     """Return the persisted row (detached) or ``None`` when missing."""
     with session_factory() as session:
-        row = session.scalar(
-            select(SqlStatement).where(SqlStatement.statement_id == statement_id)
-        )
+        row = session.scalar(select(SqlStatement).where(SqlStatement.statement_id == statement_id))
         if row is None:
             return None
         session.expunge(row)
         return row
 
 
-def _persist_running(
-    session_factory: sessionmaker[Session], statement_id: str
-) -> None:
+def _persist_running(session_factory: sessionmaker[Session], statement_id: str) -> None:
     """Flip the row to ``RUNNING`` + record ``started_at`` (best-effort)."""
     with session_factory() as session:
         session.execute(
@@ -395,9 +389,7 @@ async def run_statement(
             "failed",
             detail={"error_code": error_code, "message": message[:500]},
         )
-        return error_envelope(
-            statement_id=statement_id, error_code=error_code, message=message
-        )
+        return error_envelope(statement_id=statement_id, error_code=error_code, message=message)
     finally:
         unregister_statement_task(app_state, statement_id)
         if conn is not None:

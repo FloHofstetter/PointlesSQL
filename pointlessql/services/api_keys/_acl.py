@@ -6,7 +6,7 @@ checks are zero-row-permissive: a key with no rows in the grants
 table is unrestricted (back-compat for every pre-120 key).
 
 The catalog check walks the parsed SQL AST via ``sqlglot`` (same
-pattern as Phase 117's :func:`pointlessql.services.sql_statements.qualify_sql`),
+pattern as :func:`pointlessql.services.sql_statements.qualify_sql`),
 inspects every ``exp.Table`` reference, and rejects on the first
 match-failure.  Default catalog/schema is applied when the
 statement uses 1-/2-part refs, so a key whose grants are
@@ -88,9 +88,7 @@ def load_catalog_grants_for(
         return [CatalogGrant(r.catalog_name, r.schema_name) for r in rows]
 
 
-def load_ip_grants_for(
-    session_factory: sessionmaker[Session], *, api_key_id: int
-) -> list[IpGrant]:
+def load_ip_grants_for(session_factory: sessionmaker[Session], *, api_key_id: int) -> list[IpGrant]:
     """Fetch CIDR grants for an API key.
 
     Args:

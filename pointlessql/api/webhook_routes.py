@@ -70,9 +70,7 @@ async def receive_repo_webhook(
     with factory() as session:
         repo = session.get(WorkspaceRepo, repo_id)
         if repo is None:
-            raise ResourceNotFoundError.not_found(
-                what=f"workspace_repo id={repo_id}"
-            )
+            raise ResourceNotFoundError.not_found(what=f"workspace_repo id={repo_id}")
         provider_kind = repo.provider_kind
         webhook_secret = repo.webhook_secret
         default_branch = repo.default_branch
@@ -80,9 +78,7 @@ async def receive_repo_webhook(
 
     body = await request.body()
     provider = resolve_provider(provider_kind)
-    verification = provider.verify_webhook_signature(
-        body, dict(request.headers), webhook_secret
-    )
+    verification = provider.verify_webhook_signature(body, dict(request.headers), webhook_secret)
     if not verification.verified:
         # bare-http-ok: signature failures are 401-by-protocol; the
         # WorkspaceRepoWebhookInvalid domain class would be redundant

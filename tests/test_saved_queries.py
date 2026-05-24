@@ -1,4 +1,4 @@
-"""Tests for the Phase-12 saved-queries service + API."""
+"""Tests for the saved-queries service + API."""
 
 from __future__ import annotations
 

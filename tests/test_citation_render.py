@@ -63,9 +63,7 @@ async def test_comment_body_md_resolved_substitutes_dp_token(
     assert post.status_code == 200, post.text
     payload = post.json()
     assert "body_md_resolved" in payload
-    assert "[#main.sales_gold](/data-products/main/sales_gold)" in (
-        payload["body_md_resolved"]
-    )
+    assert "[#main.sales_gold](/data-products/main/sales_gold)" in (payload["body_md_resolved"])
     # Raw body stays intact for client-side fallback rendering.
     assert payload["body_md"] == "see #dp:main.sales_gold for context"
 
@@ -111,9 +109,7 @@ async def test_comment_list_carries_resolved_for_every_row(
 
 
 @pytest.mark.asyncio
-async def test_review_body_md_resolved(
-    tmp_path: Path, admin_client: httpx.AsyncClient
-) -> None:
+async def test_review_body_md_resolved(tmp_path: Path, admin_client: httpx.AsyncClient) -> None:
     """Reviews carry the same ``body_md_resolved`` projection."""
     _seed_product(tmp_path)
     put = await admin_client.put(
@@ -123,9 +119,7 @@ async def test_review_body_md_resolved(
     assert put.status_code == 200, put.text
     payload = put.json()
     assert "body_md_resolved" in payload
-    assert "[#main.sales_gold](/data-products/main/sales_gold)" in (
-        payload["body_md_resolved"]
-    )
+    assert "[#main.sales_gold](/data-products/main/sales_gold)" in (payload["body_md_resolved"])
 
 
 @pytest.mark.asyncio
@@ -144,6 +138,4 @@ async def test_endorsement_note_md_resolved(
     assert post.status_code == 200, post.text
     payload = post.json()
     assert "note_md_resolved" in payload
-    assert "[#main.sales_gold](/data-products/main/sales_gold)" in (
-        payload["note_md_resolved"]
-    )
+    assert "[#main.sales_gold](/data-products/main/sales_gold)" in (payload["note_md_resolved"])

@@ -49,9 +49,7 @@ def test_register_new_kind_makes_resolver_pick_it_up() -> None:
     """
     pattern = re.compile(r"#example77e:([a-z]+)")
 
-    def _resolve(
-        session: Session, workspace_id: int, slugs: set[object]
-    ) -> set[str]:
+    def _resolve(session: Session, workspace_id: int, slugs: set[object]) -> set[str]:
         del session, workspace_id
         # Resolve every literal-string capture so the assertion
         # has a deterministic anchor regardless of DB state.
@@ -85,9 +83,7 @@ def test_register_duplicate_kind_rejected() -> None:
     """Re-registering the same key raises ValueError."""
     pattern = re.compile(r"#dummy:(.+)")
 
-    def _resolve(
-        session: Session, workspace_id: int, slugs: set[object]
-    ) -> set[str]:
+    def _resolve(session: Session, workspace_id: int, slugs: set[object]) -> set[str]:
         del session, workspace_id, slugs
         return set()
 

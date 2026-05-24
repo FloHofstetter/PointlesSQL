@@ -381,9 +381,11 @@ def delete_index(*, workspace_id: int, index_id: str) -> Path | None:
     """
     session_factory = get_session_factory()
     with session_factory() as session:
-        row = session.query(VectorIndex).filter_by(
-            workspace_id=workspace_id, id=index_id
-        ).one_or_none()
+        row = (
+            session.query(VectorIndex)
+            .filter_by(workspace_id=workspace_id, id=index_id)
+            .one_or_none()
+        )
         if row is None:
             return None
         path = Path(row.index_path)
@@ -419,14 +421,10 @@ def _resolve_storage_location(client: Client, full_name: str, unreachable_msg: s
     except httpx.ConnectError as exc:
         raise CatalogUnavailableError(unreachable_msg) from exc
     if not isinstance(response, TableInfo):
-        raise CatalogNotFoundError(
-            f"vector-index target {full_name!r} not found in soyuz-catalog"
-        )
+        raise CatalogNotFoundError(f"vector-index target {full_name!r} not found in soyuz-catalog")
     location = response.storage_location
     if isinstance(location, Unset) or not location:
-        raise CatalogNotFoundError(
-            f"vector-index target {full_name!r} has no storage_location"
-        )
+        raise CatalogNotFoundError(f"vector-index target {full_name!r} has no storage_location")
     return location
 
 
@@ -451,8 +449,7 @@ def _read_column_with_pks(
     arrow_table = delta_table.to_pyarrow_table(columns=None)
     if column not in arrow_table.column_names:
         raise ValidationError(
-            f"column {column!r} not present on Delta table "
-            f"(columns: {arrow_table.column_names!r})"
+            f"column {column!r} not present on Delta table (columns: {arrow_table.column_names!r})"
         )
     pk_columns = _resolve_pk_columns(delta_table, arrow_table.column_names)
     text_values: list[str] = []

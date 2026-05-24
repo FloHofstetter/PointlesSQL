@@ -46,9 +46,7 @@ def _normalise_branch_name(raw: str) -> str:
     return name
 
 
-def _current(
-    session: Session, *, notebook_id: str
-) -> NotebookBranchBinding | None:
+def _current(session: Session, *, notebook_id: str) -> NotebookBranchBinding | None:
     """Return the active (non-superseded) binding row or ``None``."""
     return session.execute(
         select(NotebookBranchBinding)
@@ -107,9 +105,7 @@ def bind_branch(
     return row
 
 
-def get_current_binding(
-    session: Session, *, notebook_id: str
-) -> dict[str, Any] | None:
+def get_current_binding(session: Session, *, notebook_id: str) -> dict[str, Any] | None:
     """Return the active binding envelope for a notebook.
 
     Args:
@@ -187,31 +183,22 @@ def _consult_promote_webhook(
         "promoted_by_user_email": promoted_by_user_email,
         "promote_intent_at": datetime.datetime.now(datetime.UTC).isoformat(),
     }
-    raw = json.dumps(payload, separators=(",", ":"), sort_keys=True).encode(
-        "utf-8"
-    )
+    raw = json.dumps(payload, separators=(",", ":"), sort_keys=True).encode("utf-8")
     headers = {"content-type": "application/json"}
-    secret = os.environ.get(
-        "POINTLESSQL_BRANCH_PROMOTE_WEBHOOK_SECRET", ""
-    ).strip()
+    secret = os.environ.get("POINTLESSQL_BRANCH_PROMOTE_WEBHOOK_SECRET", "").strip()
     if secret:
-        signature = hmac.new(
-            secret.encode("utf-8"), raw, hashlib.sha256
-        ).hexdigest()
+        signature = hmac.new(secret.encode("utf-8"), raw, hashlib.sha256).hexdigest()
         headers["x-pointlessql-signature"] = f"sha256={signature}"
     try:
         import httpx
 
         resp = httpx.post(url, content=raw, headers=headers, timeout=10.0)
     except Exception as exc:  # noqa: BLE001
-        raise ValidationError(
-            f"branch-promote webhook unreachable ({url}): {exc}"
-        ) from exc
+        raise ValidationError(f"branch-promote webhook unreachable ({url}): {exc}") from exc
     if 200 <= resp.status_code < 300:
         return
     raise ValidationError(
-        f"branch-promote denied by reviewer "
-        f"(HTTP {resp.status_code}): {resp.text[:200]}"
+        f"branch-promote denied by reviewer (HTTP {resp.status_code}): {resp.text[:200]}"
     )
 
 
@@ -232,7 +219,7 @@ def promote_binding(
     intent is POSTed to the configured reviewer first
     (:func:`_consult_promote_webhook`) — a non-2xx response blocks
     the promote with a :class:`ValidationError` carrying the
-    reviewer's reason.  This is the Phase 102 Wave-D scaffolding
+    reviewer's reason.  This is the scaffolding
     that lets shoreguard (or any external reviewer system) gate the
     transition without coupling promote_binding to a specific
     backend.
@@ -254,9 +241,7 @@ def promote_binding(
     """
     row = _current(session, notebook_id=notebook_id)
     if row is None:
-        raise ValidationError(
-            f"notebook {notebook_id!r} has no active branch binding to promote"
-        )
+        raise ValidationError(f"notebook {notebook_id!r} has no active branch binding to promote")
     _consult_promote_webhook(
         notebook_id=notebook_id,
         binding_branch=row.branch_name,
@@ -272,9 +257,7 @@ def promote_binding(
     return row
 
 
-def discard_binding(
-    session: Session, *, notebook_id: str
-) -> NotebookBranchBinding | None:
+def discard_binding(session: Session, *, notebook_id: str) -> NotebookBranchBinding | None:
     """Roll back the current binding without promoting.
 
     Args:
@@ -313,13 +296,17 @@ def list_bindings(
     Returns:
         List of binding dicts ordered ``created_at desc``.
     """
-    rows = session.execute(
-        select(NotebookBranchBinding)
-        .where(NotebookBranchBinding.notebook_id == notebook_id)
-        .order_by(NotebookBranchBinding.created_at.desc())
-        .offset(max(0, int(offset)))
-        .limit(limit)
-    ).scalars().all()
+    rows = (
+        session.execute(
+            select(NotebookBranchBinding)
+            .where(NotebookBranchBinding.notebook_id == notebook_id)
+            .order_by(NotebookBranchBinding.created_at.desc())
+            .offset(max(0, int(offset)))
+            .limit(limit)
+        )
+        .scalars()
+        .all()
+    )
     return [binding_to_envelope(r) for r in rows]
 
 
@@ -334,12 +321,8 @@ def binding_to_envelope(row: NotebookBranchBinding) -> dict[str, Any]:
         "created_at": row.created_at.isoformat() if row.created_at else None,
         "promoted_at": row.promoted_at.isoformat() if row.promoted_at else None,
         "promoted_by_user_id": row.promoted_by_user_id,
-        "discarded_at": row.discarded_at.isoformat()
-        if row.discarded_at
-        else None,
-        "superseded_at": row.superseded_at.isoformat()
-        if row.superseded_at
-        else None,
+        "discarded_at": row.discarded_at.isoformat() if row.discarded_at else None,
+        "superseded_at": row.superseded_at.isoformat() if row.superseded_at else None,
         "is_current": row.superseded_at is None,
     }
 

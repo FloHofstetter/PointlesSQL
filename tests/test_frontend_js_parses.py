@@ -28,7 +28,7 @@ _PHASE_76_6_1_MODULES = (
 
 
 @pytest.mark.parametrize("filename", _PHASE_76_6_1_MODULES)
-def test_phase_76_6_1_js_module_parses(filename: str) -> None:
+def test_mention_autocomplete_js_module_parses(filename: str) -> None:
     """``node -c <module>`` exits 0 — syntactically valid JS."""
     node = shutil.which("node")
     if node is None:
@@ -42,6 +42,4 @@ def test_phase_76_6_1_js_module_parses(filename: str) -> None:
         timeout=10,
         check=False,
     )
-    assert result.returncode == 0, (
-        f"{filename} failed to parse:\n{result.stderr}"
-    )
+    assert result.returncode == 0, f"{filename} failed to parse:\n{result.stderr}"

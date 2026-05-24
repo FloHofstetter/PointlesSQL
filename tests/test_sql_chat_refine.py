@@ -90,9 +90,7 @@ def _cleanup(editor_session_id: str) -> None:
         if chat_row is None:
             return
         for prop in (
-            session.query(ChatProposal)
-            .filter(ChatProposal.chat_session_id == chat_row.id)
-            .all()
+            session.query(ChatProposal).filter(ChatProposal.chat_session_id == chat_row.id).all()
         ):
             session.delete(prop)
         run_id = chat_row.agent_run_id
@@ -128,9 +126,7 @@ def test_ws_refine_runs_a_turn(
     editor_session_id = f"ed-refine-{uuid.uuid4().hex[:8]}"
     try:
         with TestClient(app, cookies=auth_cookies) as client:
-            with client.websocket_connect(
-                f"/ws/sql/chat/{editor_session_id}"
-            ) as ws:
+            with client.websocket_connect(f"/ws/sql/chat/{editor_session_id}") as ws:
                 assert json.loads(ws.receive_text())["notify"] == "ready"
                 ws.send_text(
                     json.dumps(
@@ -164,9 +160,7 @@ def test_ws_refine_bad_hint_returns_error(
     editor_session_id = f"ed-refine-bad-{uuid.uuid4().hex[:8]}"
     try:
         with TestClient(app, cookies=auth_cookies) as client:
-            with client.websocket_connect(
-                f"/ws/sql/chat/{editor_session_id}"
-            ) as ws:
+            with client.websocket_connect(f"/ws/sql/chat/{editor_session_id}") as ws:
                 assert json.loads(ws.receive_text())["notify"] == "ready"
                 ws.send_text(json.dumps({"id": 7, "method": "refine", "params": {}}))
                 err = json.loads(ws.receive_text())

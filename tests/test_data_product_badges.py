@@ -1,4 +1,4 @@
-"""Tests for the Phase-72.2 auto-computed endorsement badges.
+"""Tests for the auto-computed endorsement badges.
 
 Covers each of the four badges:
 
@@ -88,8 +88,9 @@ def _seed_lineage_edge(source: str, target: str) -> None:
         session.commit()
 
 
-def _seed_op(target: str, *, op_name: str = "write_table", age_seconds: int = 0,
-             error: str | None = None) -> str:
+def _seed_op(
+    target: str, *, op_name: str = "write_table", age_seconds: int = 0, error: str | None = None
+) -> str:
     """Seed one AgentRun + Op; return the agent_run_id."""
     factory = app.state.session_factory
     when = datetime.datetime.now(datetime.UTC) - datetime.timedelta(seconds=age_seconds)

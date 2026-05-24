@@ -1,4 +1,4 @@
-"""Tests for the Phase-73.5 cross-DP cooccurrence cache.
+"""Tests for the cross-DP cooccurrence cache.
 
 Covers:
 
@@ -51,9 +51,7 @@ data_product:
 def _seed_dp(tmp_path: Path, catalog: str, schema: str) -> int:
     """Seed one data product; return its id."""
     yaml_path = tmp_path / f"{schema}.yaml"
-    yaml_path.write_text(
-        YAML_TEMPLATE.format(catalog=catalog, schema=schema), encoding="utf-8"
-    )
+    yaml_path.write_text(YAML_TEMPLATE.format(catalog=catalog, schema=schema), encoding="utf-8")
     factory = app.state.session_factory
     load_contract(yaml_path, factory=factory)
     with factory() as session:
@@ -145,9 +143,7 @@ def test_refresh_top_n_cap(tmp_path: Path) -> None:
         # Source = A → kept pair is (A, B), not (A, C).
         rows = (
             session.execute(
-                select(DataProductCooccurrence).where(
-                    DataProductCooccurrence.data_product_id == 1
-                )
+                select(DataProductCooccurrence).where(DataProductCooccurrence.data_product_id == 1)
             )
             .scalars()
             .all()
@@ -169,9 +165,7 @@ def test_fetch_related_orders_by_count_desc(tmp_path: Path) -> None:
     refresh_cooccurrence(app.state.session_factory)
     factory = app.state.session_factory
     with factory() as session:
-        related = fetch_related(
-            session, workspace_id=1, data_product_id=dp_a, limit=5
-        )
+        related = fetch_related(session, workspace_id=1, data_product_id=dp_a, limit=5)
     assert [r["data_product_ref"] for r in related] == [
         "cat.schemaB",
         "cat.schemaC",
@@ -210,17 +204,13 @@ def test_fetch_recommendations_filters_followed(tmp_path: Path) -> None:
             )
         session.commit()
     with factory() as session:
-        recs = fetch_recommendations_for_user(
-            session, workspace_id=1, user_id=1, limit=5
-        )
+        recs = fetch_recommendations_for_user(session, workspace_id=1, user_id=1, limit=5)
     # The caller follows A + C, so the only recommendation is B.
     assert [r["data_product_ref"] for r in recs] == ["cat.schemaB"]
 
 
 @pytest.mark.asyncio
-async def test_related_route_returns_top_n(
-    tmp_path: Path, admin_client: httpx.AsyncClient
-) -> None:
+async def test_related_route_returns_top_n(tmp_path: Path, admin_client: httpx.AsyncClient) -> None:
     """GET /api/data-products/{cat}/{sch}/related returns related rows."""
     _seed_dp(tmp_path, "cat", "schemaA")
     _seed_dp(tmp_path, "cat", "schemaB")
@@ -233,9 +223,7 @@ async def test_related_route_returns_top_n(
 
 
 @pytest.mark.asyncio
-async def test_recommendations_route(
-    tmp_path: Path, admin_client: httpx.AsyncClient
-) -> None:
+async def test_recommendations_route(tmp_path: Path, admin_client: httpx.AsyncClient) -> None:
     """GET /api/data-products/recommendations returns the per-user list."""
     dp_a = _seed_dp(tmp_path, "cat", "schemaA")
     _seed_dp(tmp_path, "cat", "schemaB")

@@ -31,7 +31,7 @@ def _format_epoch_ms(value: Any) -> str:
         return "—"
     try:
         return datetime.fromtimestamp(int(value) / 1000, tz=UTC).strftime("%Y-%m-%d %H:%M UTC")
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return str(value)
 
 
@@ -67,9 +67,7 @@ def _format_hash(value: Any, sentinel_label: str = "(no source captured)") -> st
     return s
 
 
-_MARKDOWN_RENDERER = MarkdownIt("commonmark", {"html": False, "linkify": True}).enable(
-    ["table"]
-)
+_MARKDOWN_RENDERER = MarkdownIt("commonmark", {"html": False, "linkify": True}).enable(["table"])
 
 
 def _render_markdown(value: Any) -> str:

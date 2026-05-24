@@ -31,9 +31,7 @@ def workspace_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     return root
 
 
-async def test_save_happy_path(
-    workspace_dir: Path, admin_client: httpx.AsyncClient
-) -> None:
+async def test_save_happy_path(workspace_dir: Path, admin_client: httpx.AsyncClient) -> None:
     """Save writes new content and returns refreshed content_hashes."""
     (workspace_dir / "demo.py").write_bytes(_DEMO_NOTEBOOK)
     payload = {
@@ -56,9 +54,7 @@ async def test_save_happy_path(
     assert "# %% [markdown]" in written
 
 
-async def test_save_mtime_conflict(
-    workspace_dir: Path, admin_client: httpx.AsyncClient
-) -> None:
+async def test_save_mtime_conflict(workspace_dir: Path, admin_client: httpx.AsyncClient) -> None:
     """Stale ``expected_mtime`` → 409 with the conflict envelope."""
     (workspace_dir / "demo.py").write_bytes(_DEMO_NOTEBOOK)
     payload = {
@@ -106,17 +102,11 @@ async def test_save_roundtrip_stability(
     cells_out = reload_resp.json()["cells"]
     # Cell types + sources + result_var preserved verbatim
     assert [c["cell_type"] for c in cells_out] == [c["cell_type"] for c in cells_in]
-    assert [c["source"].rstrip() for c in cells_out] == [
-        c["source"].rstrip() for c in cells_in
-    ]
-    assert [c.get("result_var") for c in cells_out] == [
-        c.get("result_var") for c in cells_in
-    ]
+    assert [c["source"].rstrip() for c in cells_out] == [c["source"].rstrip() for c in cells_in]
+    assert [c.get("result_var") for c in cells_out] == [c.get("result_var") for c in cells_in]
 
 
-async def test_save_bad_cell_type(
-    workspace_dir: Path, admin_client: httpx.AsyncClient
-) -> None:
+async def test_save_bad_cell_type(workspace_dir: Path, admin_client: httpx.AsyncClient) -> None:
     """Unknown cell_type → 422 with the validation envelope."""
     (workspace_dir / "demo.py").write_bytes(_DEMO_NOTEBOOK)
     resp = await admin_client.post(
@@ -129,9 +119,7 @@ async def test_save_bad_cell_type(
     assert resp.status_code == 422
 
 
-async def test_save_traversal_blocked(
-    workspace_dir: Path, admin_client: httpx.AsyncClient
-) -> None:
+async def test_save_traversal_blocked(workspace_dir: Path, admin_client: httpx.AsyncClient) -> None:
     """``../`` escape attempts must 422."""
     resp = await admin_client.post(
         "/api/notebooks/save",
@@ -146,7 +134,7 @@ async def test_save_non_admin_without_edit_role_blocked(
     """non-admin needs explicit edit grant to save.
 
     The Phase-70 contract ("any authenticated user can save") was
-    tightened by Phase 99 Wave-D ``_enforce_notebook_role(required="edit")``.
+    tightened ``_enforce_notebook_role(required="edit")``.
     Without an explicit ``notebook_permissions`` row, a non-admin caller
     can still view and run but not save — the gate returns 403.
     """
@@ -180,9 +168,7 @@ async def test_save_non_admin_with_edit_grant_accessible(
 
     (workspace_dir / "demo.py").write_bytes(_DEMO_NOTEBOOK)
     # Load mints the stable notebook UUID so we can target a grant.
-    load_resp = await non_admin_client.get(
-        "/api/notebooks/load", params={"path": "demo.py"}
-    )
+    load_resp = await non_admin_client.get("/api/notebooks/load", params={"path": "demo.py"})
     assert load_resp.status_code == 200
     factory = app.state.session_factory
     with factory() as session:

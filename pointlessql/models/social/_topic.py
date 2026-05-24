@@ -46,9 +46,7 @@ class Topic(Base):
 
     __tablename__ = "topics"
 
-    __table_args__ = (
-        UniqueConstraint("workspace_id", "slug", name="uq_topics_slug"),
-    )
+    __table_args__ = (UniqueConstraint("workspace_id", "slug", name="uq_topics_slug"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     workspace_id: Mapped[int] = mapped_column(
@@ -59,15 +57,9 @@ class Topic(Base):
     )
     slug: Mapped[str] = mapped_column(String(60), nullable=False)
     display_name: Mapped[str] = mapped_column(String(80), nullable=False)
-    description_md: Mapped[str] = mapped_column(
-        Text, nullable=False, default="", server_default=""
-    )
-    created_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
-    created_by_user_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("users.id"), nullable=False
-    )
+    description_md: Mapped[str] = mapped_column(Text, nullable=False, default="", server_default="")
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_by_user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
 
 
 class DataProductTopic(Base):
@@ -83,9 +75,7 @@ class DataProductTopic(Base):
     __tablename__ = "data_product_topics"
 
     __table_args__ = (
-        PrimaryKeyConstraint(
-            "data_product_id", "topic_id", name="pk_data_product_topics"
-        ),
+        PrimaryKeyConstraint("data_product_id", "topic_id", name="pk_data_product_topics"),
         Index("ix_data_product_topics_topic", "topic_id"),
     )
 
@@ -99,12 +89,8 @@ class DataProductTopic(Base):
         ForeignKey("topics.id", ondelete="CASCADE"),
         nullable=False,
     )
-    added_by_user_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("users.id"), nullable=False
-    )
-    added_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
+    added_by_user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
+    added_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
 class UserTopicFollow(Base):
@@ -133,6 +119,4 @@ class UserTopicFollow(Base):
         ForeignKey("topics.id", ondelete="CASCADE"),
         nullable=False,
     )
-    created_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)

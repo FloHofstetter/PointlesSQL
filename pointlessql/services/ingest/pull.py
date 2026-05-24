@@ -111,19 +111,13 @@ def _coerce_mapping(mapping: dict[str, Any]) -> dict[str, Any]:
     target_fqn = str(mapping.get("target_fqn") or "").strip()
     mode = str(mapping.get("mode") or "full").strip()
     if mode not in INGEST_PULL_MODES:
-        raise ValidationError(
-            f"Mapping mode must be one of {INGEST_PULL_MODES}, got {mode!r}."
-        )
+        raise ValidationError(f"Mapping mode must be one of {INGEST_PULL_MODES}, got {mode!r}.")
     if not target_fqn or target_fqn.count(".") != 2:
-        raise ValidationError(
-            f"target_fqn must be 'catalog.schema.table', got {target_fqn!r}."
-        )
+        raise ValidationError(f"target_fqn must be 'catalog.schema.table', got {target_fqn!r}.")
     if mode == "incremental":
         hw_col = mapping.get("high_water_col")
         if not hw_col:
-            raise ValidationError(
-                "incremental mode requires 'high_water_col' on the mapping."
-            )
+            raise ValidationError("incremental mode requires 'high_water_col' on the mapping.")
     return {
         "source_table": source_table,
         "target_fqn": target_fqn,
@@ -133,9 +127,7 @@ def _coerce_mapping(mapping: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _wrap_with_high_water(
-    spec: ReaderSpec, high_water_col: str, last_value: str | None
-) -> str:
+def _wrap_with_high_water(spec: ReaderSpec, high_water_col: str, last_value: str | None) -> str:
     """Return SQL that selects only rows whose ``high_water_col`` is new.
 
     ``last_value`` is ``None`` on the very first incremental pull —
@@ -163,9 +155,7 @@ def _wrap_with_high_water(
     )
 
 
-def _max_high_water_sql(
-    spec: ReaderSpec, high_water_col: str, last_value: str | None
-) -> str:
+def _max_high_water_sql(spec: ReaderSpec, high_water_col: str, last_value: str | None) -> str:
     """Build the SQL string that returns ``MAX(high_water_col)`` over the same window."""
     base_sql = spec.sql.rstrip(";").strip()
     col_q = quote_sql_identifier(high_water_col)
@@ -215,9 +205,7 @@ def pull_mapping(
     last_value = coerced["last_high_water_value"]
 
     try:
-        spec = build_reader_spec(
-            kind, config, secrets, source_table=source_table or None
-        )
+        spec = build_reader_spec(kind, config, secrets, source_table=source_table or None)
     except ValidationError as exc:
         raise PullError(reason=str(exc)) from exc
 
@@ -283,9 +271,7 @@ def pull_mapping(
             if last_value is None:
                 pql_instance.write_table(df, target_fqn, mode="overwrite")
             else:
-                pql_instance.merge(
-                    df, target_fqn, on=[high_water_col], strategy="upsert"
-                )
+                pql_instance.merge(df, target_fqn, on=[high_water_col], strategy="upsert")
     except Exception as exc:  # noqa: BLE001 — surface as PullError
         logger.exception("ingest pull write failed")
         raise PullError(
@@ -309,7 +295,7 @@ def load_mappings(table_mappings_json: str) -> list[dict[str, Any]]:
         return []
     try:
         data = json.loads(table_mappings_json)
-    except (ValueError, TypeError):
+    except ValueError, TypeError:
         return []
     if not isinstance(data, list):
         return []

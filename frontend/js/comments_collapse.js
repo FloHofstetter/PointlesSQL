@@ -1,5 +1,5 @@
 /*
- * comments_collapse.js — Phase 76.6.1
+ * comments_collapse.js
  *
  * Auto-collapses comment replies at depth ≥ 3 inside the
  * Discussion tab.  Each comment row carries
@@ -9,7 +9,7 @@
  * deepest still-visible ancestor (depth 2).  Click expands all
  * descendants under that subtree.
  *
- * The Phase 76.1 server-side threading-depth lift went 2 → 5;
+ * The server-side threading-depth lift went 2 → 5;
  * the current Alpine template only recurses one level so the
  * script is forward-compatible — it becomes active when the
  * recursive renderer lands and is a no-op until then.

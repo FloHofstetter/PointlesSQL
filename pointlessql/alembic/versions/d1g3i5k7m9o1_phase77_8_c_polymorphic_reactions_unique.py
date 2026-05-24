@@ -57,6 +57,4 @@ def upgrade() -> None:
 def downgrade() -> None:
     """Drop the polymorphic UNIQUE constraint."""
     with op.batch_alter_table("data_product_reactions") as batch_op:
-        batch_op.drop_constraint(
-            "uq_dp_reactions_polymorphic", type_="unique"
-        )
+        batch_op.drop_constraint("uq_dp_reactions_polymorphic", type_="unique")

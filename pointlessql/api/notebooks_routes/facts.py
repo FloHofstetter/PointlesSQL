@@ -50,9 +50,7 @@ def _resolve_notebook_id(request: Request, path: str) -> str:
     """Resolve a ``?notebook_path=`` query string into the notebook UUID."""
     settings: Settings = request.app.state.settings
     notebooks_dir = settings.jupyter.notebooks_dir.resolve()
-    absolute = notebook_doc_service.resolve_py_notebook_path(
-        notebooks_dir, path, must_exist=True
-    )
+    absolute = notebook_doc_service.resolve_py_notebook_path(notebooks_dir, path, must_exist=True)
     relative = str(absolute.relative_to(notebooks_dir))
     return get_or_create_notebook_uuid(request, relative)
 
@@ -88,12 +86,8 @@ async def api_pin_fact(
     revision_uuid = body.get("revision_uuid") if isinstance(body, dict) else None
     title = body.get("title") if isinstance(body, dict) else None
     description_md = body.get("description_md") if isinstance(body, dict) else None
-    cell_content_hash = (
-        body.get("cell_content_hash") if isinstance(body, dict) else None
-    )
-    result_snapshot_json = (
-        body.get("result_snapshot_json") if isinstance(body, dict) else None
-    )
+    cell_content_hash = body.get("cell_content_hash") if isinstance(body, dict) else None
+    result_snapshot_json = body.get("result_snapshot_json") if isinstance(body, dict) else None
     if not isinstance(revision_uuid, str):
         raise ValidationError("body.revision_uuid must be a string")
     if not isinstance(title, str):
@@ -101,15 +95,9 @@ async def api_pin_fact(
     if description_md is not None and not isinstance(description_md, str):
         raise ValidationError("body.description_md must be a string or null")
     if cell_content_hash is not None and not isinstance(cell_content_hash, str):
-        raise ValidationError(
-            "body.cell_content_hash must be a string or null"
-        )
-    if result_snapshot_json is not None and not isinstance(
-        result_snapshot_json, str
-    ):
-        raise ValidationError(
-            "body.result_snapshot_json must be a string or null"
-        )
+        raise ValidationError("body.cell_content_hash must be a string or null")
+    if result_snapshot_json is not None and not isinstance(result_snapshot_json, str):
+        raise ValidationError("body.result_snapshot_json must be a string or null")
 
     factory = request.app.state.session_factory
     with factory() as session:
@@ -123,9 +111,7 @@ async def api_pin_fact(
             result_snapshot_json=result_snapshot_json,
             pinned_by_user_id=pinned_by_user_id,
         )
-        envelope = notebook_facts_service.get_fact_detail(
-            session, fact_uuid=row.fact_uuid
-        )
+        envelope = notebook_facts_service.get_fact_detail(session, fact_uuid=row.fact_uuid)
         session.commit()
     # Best-effort feed fan-out — never blocks the originating write.
     _emit_pin_feed_event(
@@ -181,9 +167,7 @@ async def api_list_facts(
             offset=paging.offset,
         )
         envelopes = [notebook_facts_service.row_to_envelope(r) for r in rows]
-    return JSONResponse(
-        {"workspace_id": workspace_id, "facts": envelopes}
-    )
+    return JSONResponse({"workspace_id": workspace_id, "facts": envelopes})
 
 
 @router.get("/api/notebooks/facts/bulk")
@@ -236,9 +220,7 @@ async def api_get_fact(
     workspace_id = current_workspace_id(request)
     factory = request.app.state.session_factory
     with factory() as session:
-        envelope = notebook_facts_service.get_fact_detail(
-            session, fact_uuid=fact_uuid
-        )
+        envelope = notebook_facts_service.get_fact_detail(session, fact_uuid=fact_uuid)
     if envelope is None:
         raise ValidationError(f"fact {fact_uuid!r} not found")
     if int(envelope.get("workspace_id") or 0) != int(workspace_id):
@@ -261,9 +243,7 @@ async def api_unpin_fact(
         row = notebook_facts_service.get_fact(session, fact_uuid=fact_uuid)
         if row is None or int(row.workspace_id) != int(workspace_id):
             raise ValidationError(f"fact {fact_uuid!r} not found")
-        updated = notebook_facts_service.unpin_fact(
-            session, fact_uuid=fact_uuid
-        )
+        updated = notebook_facts_service.unpin_fact(session, fact_uuid=fact_uuid)
         envelope = notebook_facts_service.row_to_envelope(updated)
         session.commit()
     logger.info("notebook fact unpinned: %s", fact_uuid)
@@ -372,9 +352,7 @@ def _emit_pin_feed_event(
             extra_recipients=extra_recipients or None,
         )
     except Exception:  # noqa: BLE001 — fanout is best-effort
-        logger.exception(
-            "feed fan-out for notebook_revision_pinned failed"
-        )
+        logger.exception("feed fan-out for notebook_revision_pinned failed")
 
 
 @router.get("/library/facts", response_class=HTMLResponse)

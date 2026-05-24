@@ -129,9 +129,7 @@ def gate_query(
     try:
         prepared = prepare_sql(sql)
     except SQLParseError as exc:
-        raise LensNonSelectBlockedError(
-            f"Lens accepts SELECT only ({exc})"
-        ) from exc
+        raise LensNonSelectBlockedError(f"Lens accepts SELECT only ({exc})") from exc
 
     limited = inject_limit(prepared.rewritten_sql, default_limit=default_limit)
     cost = _explain_cost_or_zero(limited, approved_tables)
@@ -152,9 +150,7 @@ def gate_query(
     return GatedSql(prepared=prepared, sql=limited, cost=cost)
 
 
-def _explain_cost_or_zero(
-    sql: str, approved_tables: dict[str, str]
-) -> CostEstimate:
+def _explain_cost_or_zero(sql: str, approved_tables: dict[str, str]) -> CostEstimate:
     """Run EXPLAIN with a fail-soft fallback when no tables are approved.
 
     Tests often pass ``approved_tables={}`` to exercise the gate
@@ -187,7 +183,6 @@ def _log_explain_drift(exc: Any) -> None:
     import logging
 
     logging.getLogger(__name__).warning(
-        "Lens cost-gate: EXPLAIN parse failed (%s); proceeding without "
-        "cost estimate.",
+        "Lens cost-gate: EXPLAIN parse failed (%s); proceeding without cost estimate.",
         exc,
     )

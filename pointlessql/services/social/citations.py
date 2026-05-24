@@ -5,7 +5,7 @@ Renders ``#dp:cat.schema`` / ``#topic:slug`` / ``#user:email`` /
 Validation runs at *render* time, not at POST time — a citation
 to a deleted entity gracefully degrades to literal text.
 
-The Phase 77.0.E refactor lifts the four hand-rolled regex /
+The refactor lifts the four hand-rolled regex /
 resolve / render branches into a single
 ``_CITATION_KINDS: list[CitationKind]`` registry.  Each entry is
 a frozen dataclass with three callables:
@@ -76,9 +76,7 @@ class CitationKind:
 _DP_CITE_RE = re.compile(r"#dp:([A-Za-z0-9_]+)\.([A-Za-z0-9_]+)")
 
 
-def _resolve_dp(
-    session: Session, workspace_id: int, pairs: set[Any]
-) -> set[tuple[str, str]]:
+def _resolve_dp(session: Session, workspace_id: int, pairs: set[Any]) -> set[tuple[str, str]]:
     """Return the subset of ``(catalog, schema)`` pairs that exist."""
     if not pairs:
         return set()
@@ -91,9 +89,7 @@ def _resolve_dp(
     return present & pairs
 
 
-def _render_dp(
-    match: re.Match[str], hits: set[tuple[str, str]]
-) -> str:
+def _render_dp(match: re.Match[str], hits: set[tuple[str, str]]) -> str:
     """Build the anchor for ``#dp:cat.sch`` or pass through."""
     catalog, schema = match.group(1), match.group(2)
     if (catalog, schema) not in hits:
@@ -104,9 +100,7 @@ def _render_dp(
 _TOPIC_CITE_RE = re.compile(r"#topic:([a-z0-9][a-z0-9-]{1,60})")
 
 
-def _resolve_topic(
-    session: Session, workspace_id: int, slugs: set[Any]
-) -> set[str]:
+def _resolve_topic(session: Session, workspace_id: int, slugs: set[Any]) -> set[str]:
     """Return the subset of topic slugs that exist."""
     if not slugs:
         return set()
@@ -138,19 +132,12 @@ def _resolve_user(
     if not emails:
         return {}
     rows = session.execute(
-        select(User.id, User.email, User.display_name).where(
-            User.email.in_(emails)
-        )
+        select(User.id, User.email, User.display_name).where(User.email.in_(emails))
     ).all()
-    return {
-        str(email): (int(uid), display_name)
-        for uid, email, display_name in rows
-    }
+    return {str(email): (int(uid), display_name) for uid, email, display_name in rows}
 
 
-def _render_user(
-    match: re.Match[str], hits: dict[str, tuple[int, str | None]]
-) -> str:
+def _render_user(match: re.Match[str], hits: dict[str, tuple[int, str | None]]) -> str:
     """Build the anchor for ``#user:email`` or pass through."""
     email = match.group(1)
     hit = hits.get(email)
@@ -164,9 +151,7 @@ def _render_user(
 _AGENT_CITE_RE = re.compile(r"#agent:([a-z0-9][a-z0-9-]{1,60})")
 
 
-def _resolve_agent(
-    session: Session, workspace_id: int, slugs: set[Any]
-) -> set[str]:
+def _resolve_agent(session: Session, workspace_id: int, slugs: set[Any]) -> set[str]:
     """Return the subset of agent slugs that exist."""
     if not slugs:
         return set()
@@ -192,9 +177,7 @@ def _render_agent(match: re.Match[str], hits: set[str]) -> str:
 # resolver accepts every well-formed triple and emits a link via
 # the entity registry.  A later sub-phase may add a backend probe
 # once soyuz exposes a low-cost ``table exists?`` endpoint.
-_TABLE_CITE_RE = re.compile(
-    r"#table:([A-Za-z0-9_]+)\.([A-Za-z0-9_]+)\.([A-Za-z0-9_]+)"
-)
+_TABLE_CITE_RE = re.compile(r"#table:([A-Za-z0-9_]+)\.([A-Za-z0-9_]+)\.([A-Za-z0-9_]+)")
 
 
 def _resolve_table(
@@ -226,17 +209,12 @@ def _resolve_table(
     return hits
 
 
-def _render_table(
-    match: re.Match[str], hits: set[tuple[str, str, str]]
-) -> str:
+def _render_table(match: re.Match[str], hits: set[tuple[str, str, str]]) -> str:
     """Build the anchor for ``#table:cat.sch.tbl`` or pass through."""
     catalog, schema, table = match.group(1), match.group(2), match.group(3)
     if (catalog, schema, table) not in hits:
         return match.group(0)
-    return (
-        f"[#{catalog}.{schema}.{table}]"
-        f"(/catalogs/{catalog}/schemas/{schema}/tables/{table})"
-    )
+    return f"[#{catalog}.{schema}.{table}](/catalogs/{catalog}/schemas/{schema}/tables/{table})"
 
 
 # registered-model citations (``#model:cat.sch.name``).
@@ -244,9 +222,7 @@ def _render_table(
 # anchor; existence-against-MLflow is deferred (the model registry
 # does not have a low-cost "exists?" probe that's worth the request
 # count for a comment-render path).
-_MODEL_CITE_RE = re.compile(
-    r"#model:([A-Za-z0-9_]+)\.([A-Za-z0-9_]+)\.([A-Za-z0-9_]+)"
-)
+_MODEL_CITE_RE = re.compile(r"#model:([A-Za-z0-9_]+)\.([A-Za-z0-9_]+)\.([A-Za-z0-9_]+)")
 
 
 def _resolve_model(
@@ -280,9 +256,7 @@ def _resolve_model(
     return hits
 
 
-def _render_model(
-    match: re.Match[str], hits: set[tuple[str, str, str]]
-) -> str:
+def _render_model(match: re.Match[str], hits: set[tuple[str, str, str]]) -> str:
     """Build the anchor for ``#model:cat.sch.name`` or pass through."""
     catalog, schema, name = match.group(1), match.group(2), match.group(3)
     if (catalog, schema, name) not in hits:
@@ -302,9 +276,7 @@ _RUN_CITE_RE = re.compile(
 )
 
 
-def _resolve_run(
-    session: Session, workspace_id: int, uuids: set[Any]
-) -> set[str]:
+def _resolve_run(session: Session, workspace_id: int, uuids: set[Any]) -> set[str]:
     """Pass every well-formed run UUID through (no existence probe).
 
     Args:
@@ -338,9 +310,7 @@ def _render_run(match: re.Match[str], hits: set[str]) -> str:
 _ISSUE_CITE_RE = re.compile(r"#issue:(\d{1,9})")
 
 
-def _resolve_issue(
-    session: Session, workspace_id: int, ids: set[Any]
-) -> set[str]:
+def _resolve_issue(session: Session, workspace_id: int, ids: set[Any]) -> set[str]:
     """Pass every well-formed issue-id string through (no existence probe).
 
     Args:
@@ -368,14 +338,10 @@ def _render_issue(match: re.Match[str], hits: set[str]) -> str:
 # resolver — UC backend existence checks are skipped because soyuz
 # may be offline during comment renders (catalog-browser pages must
 # stay responsive even when the backend is slow).
-_SCHEMA_CITE_RE = re.compile(
-    r"#schema:([A-Za-z0-9_]+)\.([A-Za-z0-9_]+)"
-)
+_SCHEMA_CITE_RE = re.compile(r"#schema:([A-Za-z0-9_]+)\.([A-Za-z0-9_]+)")
 
 
-def _resolve_schema(
-    session: Session, workspace_id: int, pairs: set[Any]
-) -> set[tuple[str, str]]:
+def _resolve_schema(session: Session, workspace_id: int, pairs: set[Any]) -> set[tuple[str, str]]:
     """Pass every well-formed ``(catalog, schema)`` pair through.
 
     Args:
@@ -403,17 +369,12 @@ def _resolve_schema(
     return hits
 
 
-def _render_schema(
-    match: re.Match[str], hits: set[tuple[str, str]]
-) -> str:
+def _render_schema(match: re.Match[str], hits: set[tuple[str, str]]) -> str:
     """Build the anchor for ``#schema:cat.sch`` or pass through."""
     catalog, schema = match.group(1), match.group(2)
     if (catalog, schema) not in hits:
         return match.group(0)
-    return (
-        f"[#{catalog}.{schema}]"
-        f"(/catalogs/{catalog}/schemas/{schema})"
-    )
+    return f"[#{catalog}.{schema}](/catalogs/{catalog}/schemas/{schema})"
 
 
 # catalog citations (``#catalog:name``).  Same pass-
@@ -422,9 +383,7 @@ def _render_schema(
 _CATALOG_CITE_RE = re.compile(r"#catalog:([A-Za-z0-9_]+)")
 
 
-def _resolve_catalog(
-    session: Session, workspace_id: int, names: set[Any]
-) -> set[str]:
+def _resolve_catalog(session: Session, workspace_id: int, names: set[Any]) -> set[str]:
     """Pass every well-formed catalog name through."""
     del session, workspace_id
     return {n for n in names if isinstance(n, str)}
@@ -446,9 +405,7 @@ _NOTEBOOK_CITE_RE = re.compile(
 )
 
 
-def _resolve_notebook(
-    session: Session, workspace_id: int, uuids: set[Any]
-) -> set[str]:
+def _resolve_notebook(session: Session, workspace_id: int, uuids: set[Any]) -> set[str]:
     """Pass every well-formed notebook UUID through."""
     del session, workspace_id
     return {u for u in uuids if isinstance(u, str)}
@@ -468,9 +425,7 @@ def _render_notebook(match: re.Match[str], hits: set[str]) -> str:
 _QUERY_CITE_RE = re.compile(r"#query:([a-z0-9][a-z0-9-]{1,60})")
 
 
-def _resolve_query(
-    session: Session, workspace_id: int, slugs: set[Any]
-) -> set[str]:
+def _resolve_query(session: Session, workspace_id: int, slugs: set[Any]) -> set[str]:
     """Pass every well-formed query slug through (no existence probe)."""
     del session, workspace_id
     return {s for s in slugs if isinstance(s, str)}
@@ -618,21 +573,14 @@ def resolve_citations(
     with session_factory() as session:
         hits_per_kind: dict[str, Any] = {}
         for kind in _CITATION_KINDS:
-            captured = {
-                m if isinstance(m, str) else tuple(m)
-                for m in kind.regex.findall(body_md)
-            }
-            hits_per_kind[kind.key] = kind.resolve(
-                session, workspace_id, captured
-            )
+            captured = {m if isinstance(m, str) else tuple(m) for m in kind.regex.findall(body_md)}
+            hits_per_kind[kind.key] = kind.resolve(session, workspace_id, captured)
 
     rendered = body_md
     for kind in _CITATION_KINDS:
         hits = hits_per_kind[kind.key]
         rendered = kind.regex.sub(
-            lambda match, _hits=hits, _render=kind.render: _render(
-                match, _hits
-            ),
+            lambda match, _hits=hits, _render=kind.render: _render(match, _hits),
             rendered,
         )
     return rendered

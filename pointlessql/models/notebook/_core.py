@@ -415,9 +415,7 @@ class NotebookJobLink(Base):
     job_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("jobs.id", ondelete="CASCADE"), nullable=False
     )
-    created_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
     __table_args__ = (
         Index("ix_notebook_job_link_path", "notebook_path"),

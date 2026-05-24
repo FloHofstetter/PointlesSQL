@@ -85,12 +85,8 @@ class Settings(BaseSettings):
     audit: AuditSettings = Field(default_factory=AuditSettings)
     delta: DeltaSettings = Field(default_factory=DeltaSettings)
     sql: SQLSettings = Field(default_factory=SQLSettings)
-    sql_execution_api: SqlExecutionApiSettings = Field(
-        default_factory=SqlExecutionApiSettings
-    )
-    api_key_lifecycle: ApiKeyLifecycleSettings = Field(
-        default_factory=ApiKeyLifecycleSettings
-    )
+    sql_execution_api: SqlExecutionApiSettings = Field(default_factory=SqlExecutionApiSettings)
+    api_key_lifecycle: ApiKeyLifecycleSettings = Field(default_factory=ApiKeyLifecycleSettings)
     api_key_acl: ApiKeyAclSettings = Field(default_factory=ApiKeyAclSettings)
     editor_chat: EditorChatSettings = Field(default_factory=EditorChatSettings)
     agent_runs: AgentRunsSettings = Field(default_factory=AgentRunsSettings)

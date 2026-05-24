@@ -65,9 +65,7 @@ def proposal_row() -> tuple[str, str, str]:
     yield editor_session_id, run_id, proposal_id
     with factory() as session:
         for prop in (
-            session.query(ChatProposal)
-            .filter(ChatProposal.proposal_id == proposal_id)
-            .all()
+            session.query(ChatProposal).filter(ChatProposal.proposal_id == proposal_id).all()
         ):
             session.delete(prop)
         chat_row = (
@@ -89,9 +87,7 @@ async def test_accept_returns_sql_and_agent_run(
 ) -> None:
     """Happy-path: returns the SQL + the chat session's agent_run_id."""
     _, run_id, proposal_id = proposal_row
-    response = await admin_client.post(
-        f"/api/sql/chat/proposals/{proposal_id}/accept"
-    )
+    response = await admin_client.post(f"/api/sql/chat/proposals/{proposal_id}/accept")
     assert response.status_code == 200, response.text
     body = response.json()
     assert body["sql"].startswith("DELETE")
@@ -100,11 +96,7 @@ async def test_accept_returns_sql_and_agent_run(
 
     factory = app.state.session_factory
     with factory() as session:
-        row = (
-            session.query(ChatProposal)
-            .filter(ChatProposal.proposal_id == proposal_id)
-            .one()
-        )
+        row = session.query(ChatProposal).filter(ChatProposal.proposal_id == proposal_id).one()
         assert row.status == "accepted"
         assert row.accepted_run_id == run_id
 
@@ -113,9 +105,7 @@ async def test_accept_unknown_proposal_returns_404(
     admin_client: httpx.AsyncClient,
 ) -> None:
     """Unknown proposal_id → 404."""
-    response = await admin_client.post(
-        "/api/sql/chat/proposals/does-not-exist/accept"
-    )
+    response = await admin_client.post("/api/sql/chat/proposals/does-not-exist/accept")
     assert response.status_code == 404
 
 
@@ -125,13 +115,9 @@ async def test_accept_double_accept_returns_409(
 ) -> None:
     """Accepting twice returns 409 with `already accepted` detail."""
     _, _, proposal_id = proposal_row
-    first = await admin_client.post(
-        f"/api/sql/chat/proposals/{proposal_id}/accept"
-    )
+    first = await admin_client.post(f"/api/sql/chat/proposals/{proposal_id}/accept")
     assert first.status_code == 200
-    second = await admin_client.post(
-        f"/api/sql/chat/proposals/{proposal_id}/accept"
-    )
+    second = await admin_client.post(f"/api/sql/chat/proposals/{proposal_id}/accept")
     assert second.status_code == 409
     assert "accepted" in second.json()["detail"]
 
@@ -144,28 +130,16 @@ async def test_accept_expired_proposal_returns_409(
     _, _, proposal_id = proposal_row
     factory = app.state.session_factory
     with factory() as session:
-        row = (
-            session.query(ChatProposal)
-            .filter(ChatProposal.proposal_id == proposal_id)
-            .one()
-        )
-        row.created_at = datetime.datetime.now(
-            datetime.UTC
-        ) - datetime.timedelta(days=2)
+        row = session.query(ChatProposal).filter(ChatProposal.proposal_id == proposal_id).one()
+        row.created_at = datetime.datetime.now(datetime.UTC) - datetime.timedelta(days=2)
         session.commit()
 
-    response = await admin_client.post(
-        f"/api/sql/chat/proposals/{proposal_id}/accept"
-    )
+    response = await admin_client.post(f"/api/sql/chat/proposals/{proposal_id}/accept")
     assert response.status_code == 409
     assert "24 hours" in response.json()["detail"]
 
     with factory() as session:
-        row = (
-            session.query(ChatProposal)
-            .filter(ChatProposal.proposal_id == proposal_id)
-            .one()
-        )
+        row = session.query(ChatProposal).filter(ChatProposal.proposal_id == proposal_id).one()
         assert row.status == "expired"
 
 
@@ -179,9 +153,7 @@ async def test_discard_flips_status_and_fanouts(
     editor_session_id, _, proposal_id = proposal_row
     queue = subscribe(editor_session_id)
     try:
-        response = await admin_client.post(
-            f"/api/sql/chat/proposals/{proposal_id}/discard"
-        )
+        response = await admin_client.post(f"/api/sql/chat/proposals/{proposal_id}/discard")
         assert response.status_code == 200
         assert response.json()["status"] == "discarded"
         event = queue.get_nowait()
@@ -192,11 +164,7 @@ async def test_discard_flips_status_and_fanouts(
 
     factory = app.state.session_factory
     with factory() as session:
-        row = (
-            session.query(ChatProposal)
-            .filter(ChatProposal.proposal_id == proposal_id)
-            .one()
-        )
+        row = session.query(ChatProposal).filter(ChatProposal.proposal_id == proposal_id).one()
         assert row.status == "discarded"
 
 
@@ -207,7 +175,5 @@ async def test_discard_already_accepted_returns_409(
     """Discarding an already-accepted proposal returns 409."""
     _, _, proposal_id = proposal_row
     await admin_client.post(f"/api/sql/chat/proposals/{proposal_id}/accept")
-    response = await admin_client.post(
-        f"/api/sql/chat/proposals/{proposal_id}/discard"
-    )
+    response = await admin_client.post(f"/api/sql/chat/proposals/{proposal_id}/discard")
     assert response.status_code == 409

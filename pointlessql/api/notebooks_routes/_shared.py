@@ -26,9 +26,7 @@ def templates(request: Request) -> Jinja2Templates:
     return request.app.state.templates
 
 
-def get_or_create_notebook_uuid(
-    request: Request, file_path: str
-) -> str:
+def get_or_create_notebook_uuid(request: Request, file_path: str) -> str:
     """Look up or create the :class:`Notebook` UUID for *file_path*.
 
     the social layer addresses notebooks by their

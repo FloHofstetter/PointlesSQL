@@ -61,9 +61,7 @@ async def mark_all_read(request: Request) -> dict[str, Any]:
 
 
 @router.post("/api/notifications/{notification_id}/read")
-async def toggle_notification_read(
-    request: Request, notification_id: int
-) -> dict[str, Any]:
+async def toggle_notification_read(request: Request, notification_id: int) -> dict[str, Any]:
     """Toggle the ``read_at`` flag on a single notification.
 
     the item-action menu's "Mark as read / unread"

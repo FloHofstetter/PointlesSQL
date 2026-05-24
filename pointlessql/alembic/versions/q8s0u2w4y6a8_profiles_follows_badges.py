@@ -40,9 +40,7 @@ def upgrade() -> None:
         sa.Column("bio_md", sa.Text(), nullable=False, server_default=""),
         sa.Column("avatar_url", sa.String(length=500), nullable=True),
         sa.Column("location", sa.String(length=120), nullable=True),
-        sa.Column(
-            "links_json", sa.Text(), nullable=False, server_default="[]"
-        ),
+        sa.Column("links_json", sa.Text(), nullable=False, server_default="[]"),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
     )
 
@@ -89,9 +87,7 @@ def upgrade() -> None:
         sa.Column("badge_key", sa.String(length=40), nullable=False),
         sa.Column("awarded_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("awarded_for_count", sa.Integer(), nullable=True),
-        sa.UniqueConstraint(
-            "user_id", "badge_key", name="uq_user_badge"
-        ),
+        sa.UniqueConstraint("user_id", "badge_key", name="uq_user_badge"),
     )
     op.create_index("ix_user_badges_user", "user_badges", ["user_id"])
 

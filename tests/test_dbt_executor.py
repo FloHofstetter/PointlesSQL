@@ -8,7 +8,7 @@ be on PATH and an actual project to compile.  Instead we exercise:
 * timeout + missing-binary error paths via monkeypatched
   ``asyncio.create_subprocess_exec`` stubs.
 
-Real spawn coverage is the job of the e2e walkthrough in Sprint 36.7.
+Real spawn coverage is the job of the e2e walkthrough .
 """
 
 from __future__ import annotations

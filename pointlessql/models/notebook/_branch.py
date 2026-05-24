@@ -82,9 +82,7 @@ class NotebookBranchBinding(Base):
         nullable=False,
     )
     branch_name: Mapped[str] = mapped_column(String(128), nullable=False)
-    base_revision_uuid: Mapped[str | None] = mapped_column(
-        String(36), nullable=True
-    )
+    base_revision_uuid: Mapped[str | None] = mapped_column(String(36), nullable=True)
     created_by_user_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("users.id"), nullable=True
     )

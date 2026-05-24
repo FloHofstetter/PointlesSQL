@@ -114,9 +114,7 @@ async def record_query_async(
     # id without depending on request headers.
     resolved_run_id = agent_run_id or effective_agent_run_id(request)
     workspace_id = int(getattr(request.state, "workspace_id", 1))
-    resolved_read_kind = (
-        read_kind if isinstance(read_kind, ReadKind) else ReadKind(read_kind)
-    )
+    resolved_read_kind = read_kind if isinstance(read_kind, ReadKind) else ReadKind(read_kind)
     try:
         return await asyncio.to_thread(
             query_history_service.record_query,

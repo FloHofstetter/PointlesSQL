@@ -56,14 +56,19 @@ _OP_NAMES_NEW = (
     "drop_schema",
     "alter_table",
 )
-_OP_NAMES_OLD = tuple(n for n in _OP_NAMES_NEW if n not in {
-    "update",
-    "delete",
-    "drop_table",
-    "create_schema",
-    "drop_schema",
-    "alter_table",
-})
+_OP_NAMES_OLD = tuple(
+    n
+    for n in _OP_NAMES_NEW
+    if n
+    not in {
+        "update",
+        "delete",
+        "drop_table",
+        "create_schema",
+        "drop_schema",
+        "alter_table",
+    }
+)
 
 
 def _ck_clause(names: tuple[str, ...]) -> str:

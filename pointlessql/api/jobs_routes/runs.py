@@ -64,7 +64,7 @@ async def api_list_job_runs(
     Newest-first ordering rides the
     ``(job_id, started_at DESC)`` index declared on
     :class:`~pointlessql.models.JobRun`. The default cap of 50 keeps
-    the response payload small for the Phase 67 notebook-jobs panel
+    the response payload small for the notebook-jobs panel
     while still surfacing enough history for a quick scan; deeper
     paging would land in a Sprint 67.4 follow-up if needed.
 
@@ -161,4 +161,3 @@ async def api_list_job_logs(
         }
         for r in rows
     ]
-

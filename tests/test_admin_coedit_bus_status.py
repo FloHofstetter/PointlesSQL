@@ -20,9 +20,7 @@ class TestCoeditBusStatusEndpoint:
         assert body == {"enabled": False}
 
     @pytest.mark.asyncio
-    async def test_non_admin_is_forbidden(
-        self, non_admin_client: httpx.AsyncClient
-    ) -> None:
+    async def test_non_admin_is_forbidden(self, non_admin_client: httpx.AsyncClient) -> None:
         """Non-admin members hit ``require_admin``."""
         resp = await non_admin_client.get("/api/admin/coedit-bus/status")
         assert resp.status_code == 403

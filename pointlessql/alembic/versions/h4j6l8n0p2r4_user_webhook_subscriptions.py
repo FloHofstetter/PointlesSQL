@@ -45,13 +45,9 @@ def upgrade() -> None:
         sa.Column("hmac_secret", sa.String(length=128), nullable=False),
         sa.Column("event_type_filter", sa.String(length=120), nullable=False),
         sa.Column("dp_ref_filter", sa.String(length=255), nullable=True),
-        sa.Column(
-            "is_active", sa.Integer(), nullable=False, server_default="1"
-        ),
+        sa.Column("is_active", sa.Integer(), nullable=False, server_default="1"),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
-        sa.Column(
-            "last_delivered_at", sa.DateTime(timezone=True), nullable=True
-        ),
+        sa.Column("last_delivered_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("last_error", sa.Text(), nullable=True),
     )
     op.create_index(

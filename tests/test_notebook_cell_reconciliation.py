@@ -39,18 +39,12 @@ def workspace_notebook() -> Iterator[tuple[int, str]]:
     yield workspace_id, notebook_id
     with factory() as session:
         for row in session.execute(
-            select(NotebookCellIdentity).where(
-                NotebookCellIdentity.notebook_id == notebook_id
-            )
+            select(NotebookCellIdentity).where(NotebookCellIdentity.notebook_id == notebook_id)
         ).scalars():
             session.delete(row)
-        session.execute(
-            select(Notebook).where(Notebook.id == notebook_id)
-        ).scalar_one()
+        session.execute(select(Notebook).where(Notebook.id == notebook_id)).scalar_one()
         session.delete(
-            session.execute(
-                select(Notebook).where(Notebook.id == notebook_id)
-            ).scalar_one()
+            session.execute(select(Notebook).where(Notebook.id == notebook_id)).scalar_one()
         )
         session.commit()
 
@@ -84,9 +78,7 @@ def _all(notebook_id: str) -> list[NotebookCellIdentity]:
     with factory() as session:
         return list(
             session.execute(
-                select(NotebookCellIdentity).where(
-                    NotebookCellIdentity.notebook_id == notebook_id
-                )
+                select(NotebookCellIdentity).where(NotebookCellIdentity.notebook_id == notebook_id)
             ).scalars()
         )
 

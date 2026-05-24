@@ -1,4 +1,4 @@
-"""Tests for the Phase-66.1 ``GET /api/notebooks/load`` route + editor page."""
+"""Tests for the ``GET /api/notebooks/load`` route + editor page."""
 
 from __future__ import annotations
 
@@ -33,9 +33,7 @@ def workspace_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 # -- GET /api/notebooks/load --
 
 
-async def test_load_happy_path(
-    workspace_dir: Path, admin_client: httpx.AsyncClient
-) -> None:
+async def test_load_happy_path(workspace_dir: Path, admin_client: httpx.AsyncClient) -> None:
     """Load returns parsed cells with content_hash + cell_type set."""
     (workspace_dir / "demo.py").write_bytes(_DEMO_NOTEBOOK)
     resp = await admin_client.get("/api/notebooks/load?path=demo.py")
@@ -52,17 +50,13 @@ async def test_load_happy_path(
     assert body["outputs"] == []
 
 
-async def test_load_traversal_blocked(
-    workspace_dir: Path, admin_client: httpx.AsyncClient
-) -> None:
+async def test_load_traversal_blocked(workspace_dir: Path, admin_client: httpx.AsyncClient) -> None:
     """``../`` escape attempts must 422."""
     resp = await admin_client.get("/api/notebooks/load?path=../escape.py")
     assert resp.status_code == 422
 
 
-async def test_load_unknown_path(
-    workspace_dir: Path, admin_client: httpx.AsyncClient
-) -> None:
+async def test_load_unknown_path(workspace_dir: Path, admin_client: httpx.AsyncClient) -> None:
     """Missing notebook → 422 with the validation envelope."""
     resp = await admin_client.get("/api/notebooks/load?path=ghost.py")
     assert resp.status_code == 422
@@ -81,9 +75,7 @@ async def test_load_non_admin_accessible(
 # -- GET /notebooks/edit/{path:path} HTML page --
 
 
-async def test_editor_page_renders(
-    workspace_dir: Path, admin_client: httpx.AsyncClient
-) -> None:
+async def test_editor_page_renders(workspace_dir: Path, admin_client: httpx.AsyncClient) -> None:
     """Admin gets the editor HTML with the Alpine root + path injected."""
     (workspace_dir / "demo.py").write_bytes(_DEMO_NOTEBOOK)
     resp = await admin_client.get("/notebooks/edit/demo.py")

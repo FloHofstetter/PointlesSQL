@@ -79,9 +79,7 @@ async def admin_audit_index(
 
     count_stmt = _select(_func.count()).select_from(base.subquery())
     page_stmt = (
-        base.order_by(AuditLogModel.created_at.desc())
-        .offset(offset)
-        .limit(ADMIN_AUDIT_LIMIT)
+        base.order_by(AuditLogModel.created_at.desc()).offset(offset).limit(ADMIN_AUDIT_LIMIT)
     )
 
     with factory() as session:
@@ -320,9 +318,7 @@ async def admin_audit_export_tarball(
     factory = request.app.state.session_factory
 
     since_delta = ADMIN_AUDIT_SINCE_WINDOWS[since]
-    since_cutoff = (
-        datetime.now(UTC) - since_delta if since_delta is not None else None
-    )
+    since_cutoff = datetime.now(UTC) - since_delta if since_delta is not None else None
     filters = ExportFilters(
         since=since_cutoff,
         until=None,
@@ -366,8 +362,6 @@ async def admin_audit_export_tarball(
         content=buf.getvalue(),
         media_type="application/gzip",
         headers={
-            "Content-Disposition": (
-                f'attachment; filename="pql-audit-{timestamp}.tar.gz"'
-            ),
+            "Content-Disposition": (f'attachment; filename="pql-audit-{timestamp}.tar.gz"'),
         },
     )

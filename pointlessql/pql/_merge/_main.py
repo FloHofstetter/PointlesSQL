@@ -108,8 +108,7 @@ def merge_table(
             ``False`` (default) skips the CDF read — production
             callers that want the audit trail flip it on explicitly.
         derivations: Optional declarative mapping of derived target
-            columns to their *true* source-column names (Sprint
-            15.6.2).  Populates ``derived`` rows in
+            columns to their *true* source-column names.  Populates ``derived`` rows in
             ``lineage_column_map`` so the column-trace UI can
             answer "where did this column come from?" even when the
             primitive only saw the already-derived column.

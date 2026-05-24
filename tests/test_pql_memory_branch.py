@@ -144,9 +144,7 @@ def _patch_create_branch_schema(
                         parent_schema_fqn=source_schema_fqn,
                         action="create",
                         run_id=agent_run_id,
-                        payload_json=json.dumps(
-                            {"strategy": "symlink", "table_count": 1}
-                        ),
+                        payload_json=json.dumps({"strategy": "symlink", "table_count": 1}),
                         created_at=datetime.datetime.now(datetime.UTC),
                     )
                 )

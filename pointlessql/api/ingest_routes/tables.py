@@ -26,9 +26,7 @@ router = APIRouter(tags=["ingest", "tables"])
 
 
 @router.get("/api/ingest/sources/{source_id}/tables")
-async def api_list_source_tables(
-    request: Request, source_id: int
-) -> dict[str, Any]:
+async def api_list_source_tables(request: Request, source_id: int) -> dict[str, Any]:
     """List the tables available on the configured source.
 
     Args:

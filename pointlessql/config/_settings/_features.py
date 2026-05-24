@@ -127,8 +127,8 @@ class ApiKeyLifecycleSettings(BaseSettings):
 class EditorChatSettings(BaseSettings):
     """Editor-chat configuration — shared by SQL + notebook surfaces.
 
-    Phase 91 introduced this as ``SqlChatSettings`` for the NL→SQL
-    drawer.  Phase 96 added the notebook-editor AI assistant, which
+    introduced this as ``SqlChatSettings`` for the NL→SQL
+    drawer. This added the notebook-editor AI assistant, which
     consumes the exact same provider / model / executor config —
     there is no axis on which an operator would want different
     model defaults per surface, so the setting is shared and the

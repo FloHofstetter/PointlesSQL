@@ -1,4 +1,4 @@
-"""Tests for the Sprint 19.1 audit-read surface.
+"""Tests for the audit-read surface.
 
 Covers:
 

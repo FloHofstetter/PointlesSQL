@@ -1,4 +1,4 @@
-"""Tests for the Phase 121.4 require_role factory + PrivilegeSettings.
+"""Tests for the require_role factory + PrivilegeSettings.
 
 The factory is FastAPI-Depends-compatible and generalises the seven
 existing single-role gates into one parametrised form.  These tests

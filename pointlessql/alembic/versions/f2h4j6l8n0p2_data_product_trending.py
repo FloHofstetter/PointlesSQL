@@ -61,7 +61,5 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     """Drop ``data_product_trending`` and its index."""
-    op.drop_index(
-        "ix_dp_trending_workspace_window", table_name="data_product_trending"
-    )
+    op.drop_index("ix_dp_trending_workspace_window", table_name="data_product_trending")
     op.drop_table("data_product_trending")

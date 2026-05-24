@@ -1,4 +1,4 @@
-"""Tests for the Phase 75.2 syslog audit sink."""
+"""Tests for the syslog audit sink."""
 
 from __future__ import annotations
 

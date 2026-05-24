@@ -43,7 +43,7 @@ def _valid_cron(expr: str) -> bool:
     try:
         croniter(expr)
         return True
-    except (ValueError, KeyError):
+    except ValueError, KeyError:
         return False
 
 
@@ -89,9 +89,7 @@ async def api_put_schedule(
         if source is None or source.workspace_id != workspace_id:
             raise ResourceNotFoundError("source not found")
 
-        existing_job = (
-            session.get(Job, source.job_id) if source.job_id is not None else None
-        )
+        existing_job = session.get(Job, source.job_id) if source.job_id is not None else None
 
         if cron_expr is None:
             # Unschedule: delete the existing Job; keep the source.
@@ -102,9 +100,7 @@ async def api_put_schedule(
             session.commit()
             return {"ok": True, "job_id": None, "cron_expr": None}
 
-        job_config = json.dumps(
-            {"source_id": int(source_id), "mapping_index": 0}
-        )
+        job_config = json.dumps({"source_id": int(source_id), "mapping_index": 0})
         if existing_job is not None:
             existing_job.cron_expr = cron_expr
             existing_job.kind = "ingest_pull"

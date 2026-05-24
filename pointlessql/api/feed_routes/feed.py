@@ -160,22 +160,12 @@ async def get_feed(
         # actor + author user-ids surfaced above.
         actor_names = build_actor_names(
             session,
-            list(inbox)
-            + [c for c, _ in comments_rows]
-            + [r for r, _ in reviews_rows],
+            list(inbox) + [c for c, _ in comments_rows] + [r for r, _ in reviews_rows],
         )
 
-        rows.extend(
-            row_from_notification(n, fqn_map, actor_names) for n in inbox
-        )
-        rows.extend(
-            row_from_comment(c, fqn_map, actor_names, t)
-            for c, t in comments_rows
-        )
-        rows.extend(
-            row_from_review(r, fqn_map, actor_names, t)
-            for r, t in reviews_rows
-        )
+        rows.extend(row_from_notification(n, fqn_map, actor_names) for n in inbox)
+        rows.extend(row_from_comment(c, fqn_map, actor_names, t) for c, t in comments_rows)
+        rows.extend(row_from_review(r, fqn_map, actor_names, t) for r, t in reviews_rows)
 
         # Mentions filter — resolve to the user's id and check
         # ``mentioned_user_ids_json``.  Authored ``my`` filter
@@ -198,12 +188,10 @@ async def get_feed(
             for c in mentions:
                 try:
                     mentioned = json.loads(c.mentioned_user_ids_json or "[]")
-                except (ValueError, TypeError):
+                except ValueError, TypeError:
                     mentioned = []
                 if caller["id"] in mentioned:
-                    mention_rows.append(
-                        row_from_comment(c, fqn_map, mention_actor_names, None)
-                    )
+                    mention_rows.append(row_from_comment(c, fqn_map, mention_actor_names, None))
             rows = mention_rows
         elif filter == "my":
             mine_comments = (
@@ -229,15 +217,9 @@ async def get_feed(
                 .scalars()
                 .all()
             )
-            my_actor_names = build_actor_names(
-                session, list(mine_comments) + list(mine_reviews)
-            )
-            rows = [
-                row_from_comment(c, fqn_map, my_actor_names, None)
-                for c in mine_comments
-            ] + [
-                row_from_review(r, fqn_map, my_actor_names, None)
-                for r in mine_reviews
+            my_actor_names = build_actor_names(session, list(mine_comments) + list(mine_reviews))
+            rows = [row_from_comment(c, fqn_map, my_actor_names, None) for c in mine_comments] + [
+                row_from_review(r, fqn_map, my_actor_names, None) for r in mine_reviews
             ]
         elif filter == "followed_users":
             rows = [r for r in rows if r["kind"] in ("comment", "review")]
@@ -251,7 +233,7 @@ async def get_feed(
 
     # kind-filter accepts a comma-separated list of
     # entity-kind values; rows pass when any selected kind matches.
-    # A single value keeps the Phase 77.9 single-kind behaviour.
+    # A single value keeps the single-kind behaviour.
     if kind:
         wanted_kinds = {k.strip() for k in kind.split(",") if k.strip()}
         if wanted_kinds:
@@ -265,9 +247,9 @@ async def get_feed(
         mute_keys = active_mute_keys(session, caller["id"])
     if mute_keys:
         rows = [
-            r for r in rows
-            if (str(r.get("entity_kind")), str(r.get("entity_ref")))
-            not in mute_keys
+            r
+            for r in rows
+            if (str(r.get("entity_kind")), str(r.get("entity_ref"))) not in mute_keys
             and ("user", str(r.get("actor_user_id"))) not in mute_keys
         ]
 
@@ -304,9 +286,7 @@ async def get_feed(
 
 
 @router.get("/api/feed/trending")
-async def get_trending(
-    request: Request, limit: int = 5
-) -> dict[str, Any]:
+async def get_trending(request: Request, limit: int = 5) -> dict[str, Any]:
     """Top-N entities by activity-count in the caller's workspace.
 
     drives the "Trending today" card on the feed's
@@ -365,9 +345,7 @@ async def get_trending(
 
 
 @router.get("/api/feed/people")
-async def get_people_to_follow(
-    request: Request, limit: int = 5
-) -> dict[str, Any]:
+async def get_people_to_follow(request: Request, limit: int = 5) -> dict[str, Any]:
     """Top contributors the caller doesn't follow yet.
 
     drives the "People to follow" card.  Looks at
@@ -432,7 +410,8 @@ async def get_people_to_follow(
         # Drop caller + already-followed.
         candidates = sorted(
             (
-                (uid, total) for uid, total in totals.items()
+                (uid, total)
+                for uid, total in totals.items()
                 if uid != caller["id"] and uid not in followed
             ),
             key=lambda x: x[1],
@@ -442,9 +421,7 @@ async def get_people_to_follow(
             return {"rows": []}
         ids = [uid for uid, _ in candidates]
         names = dict(
-            session.execute(
-                select(User.id, User.display_name).where(User.id.in_(ids))
-            ).all()
+            session.execute(select(User.id, User.display_name).where(User.id.in_(ids))).all()
         )
     return {
         "rows": [

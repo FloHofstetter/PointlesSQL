@@ -30,10 +30,7 @@ def test_workspace_pinned_entities_table_exists() -> None:
     with factory() as session:
         insp = inspect(session.get_bind())
         assert "workspace_pinned_entities" in insp.get_table_names()
-        indexes = {
-            ix["name"]
-            for ix in insp.get_indexes("workspace_pinned_entities")
-        }
+        indexes = {ix["name"] for ix in insp.get_indexes("workspace_pinned_entities")}
         assert "ix_workspace_pinned_entities_order" in indexes
 
 
@@ -83,9 +80,7 @@ async def test_pin_crud_round_trip(
     # Create a social_target so we have something to pin.
     factory = app.state.session_factory
     with factory() as session:
-        target = SocialTarget(
-            workspace_id=1, entity_kind="table", entity_ref="m.s.pin_target"
-        )
+        target = SocialTarget(workspace_id=1, entity_kind="table", entity_ref="m.s.pin_target")
         session.add(target)
         session.commit()
         target_id = int(target.id)
@@ -102,9 +97,7 @@ async def test_pin_crud_round_trip(
     target_ids = {p["social_target_id"] for p in listing.json()["pins"]}
     assert target_id in target_ids
 
-    remove = await admin_client.delete(
-        f"/api/workspaces/default/pins/{target_id}"
-    )
+    remove = await admin_client.delete(f"/api/workspaces/default/pins/{target_id}")
     assert remove.status_code == 200, remove.text
 
 
@@ -115,9 +108,7 @@ async def test_pin_add_rejects_duplicate(
     """Pinning an already-pinned target returns 409."""
     factory = app.state.session_factory
     with factory() as session:
-        target = SocialTarget(
-            workspace_id=1, entity_kind="table", entity_ref="m.s.dup_target"
-        )
+        target = SocialTarget(workspace_id=1, entity_kind="table", entity_ref="m.s.dup_target")
         session.add(target)
         session.commit()
         target_id = int(target.id)

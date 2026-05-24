@@ -1,4 +1,4 @@
-"""Tests for Sprint 18.3 saved-audit-query CRUD + run + export.
+"""Tests saved-audit-query CRUD + run + export.
 
 Covers:
 

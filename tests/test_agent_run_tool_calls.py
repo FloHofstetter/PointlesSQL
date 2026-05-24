@@ -1,4 +1,4 @@
-"""Tests for the Sprint 13.7.4 ``POST /api/agent-runs/{id}/tool-call`` route.
+"""Tests for the ``POST /api/agent-runs/{id}/tool-call`` route.
 
 Persists one ``agent_run_tool_calls`` row + emits a
 ``pointlessql.agent_run.tool_call`` CloudEvent. Covers the strict

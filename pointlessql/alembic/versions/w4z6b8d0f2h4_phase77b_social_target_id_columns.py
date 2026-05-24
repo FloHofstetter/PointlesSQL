@@ -67,9 +67,7 @@ def upgrade() -> None:
     """
     for table in _TABLES_WITH_DP_FK:
         op.execute(
-            f"ALTER TABLE {table} "
-            "ADD COLUMN social_target_id INTEGER "
-            "REFERENCES social_targets(id)"
+            f"ALTER TABLE {table} ADD COLUMN social_target_id INTEGER REFERENCES social_targets(id)"
         )
         op.create_index(
             f"ix_{table}_social_target",

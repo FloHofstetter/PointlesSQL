@@ -84,9 +84,7 @@ def _assert_no_null_anchors(connection: sa.Connection) -> None:
     tables = (*_TABLES_WITH_DP_FK, _TABLE_WITHOUT_DP_FK, _TABLE_WITH_DP_FK_PK)
     for table in tables:
         count = connection.execute(
-            sa.text(
-                f"SELECT COUNT(*) FROM {table} WHERE social_target_id IS NULL"
-            )
+            sa.text(f"SELECT COUNT(*) FROM {table} WHERE social_target_id IS NULL")
         ).scalar_one()
         if int(count) > 0:
             msg = (

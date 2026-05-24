@@ -1,4 +1,4 @@
-"""Tests for the Phase-71.5 data-product README surface.
+"""Tests for the data-product README surface.
 
 Covers PUT version-bump + idempotency on unchanged body, the
 404 paths (no README + missing version), the steward-or-admin
@@ -39,7 +39,6 @@ data_product:
 """
 
 
-
 def _seed_product(tmp_path: Path) -> int:
     """Seed a yaml + load it; return the data_products row id."""
     yaml_path = tmp_path / "pointlessql.yaml"
@@ -56,9 +55,7 @@ def _seed_product(tmp_path: Path) -> int:
 
 
 @pytest.mark.asyncio
-async def test_put_creates_v1(
-    tmp_path: Path, admin_client: httpx.AsyncClient
-) -> None:
+async def test_put_creates_v1(tmp_path: Path, admin_client: httpx.AsyncClient) -> None:
     """First PUT creates ``version_int=1``."""
     _seed_product(tmp_path)
     res = await admin_client.put(
@@ -72,9 +69,7 @@ async def test_put_creates_v1(
 
 
 @pytest.mark.asyncio
-async def test_second_put_bumps_version(
-    tmp_path: Path, admin_client: httpx.AsyncClient
-) -> None:
+async def test_second_put_bumps_version(tmp_path: Path, admin_client: httpx.AsyncClient) -> None:
     """A second PUT with new body creates v2 + keeps v1."""
     _seed_product(tmp_path)
     await admin_client.put(
@@ -116,9 +111,7 @@ async def test_put_is_no_op_on_unchanged_body(
 
 
 @pytest.mark.asyncio
-async def test_get_404_when_no_readme(
-    tmp_path: Path, admin_client: httpx.AsyncClient
-) -> None:
+async def test_get_404_when_no_readme(tmp_path: Path, admin_client: httpx.AsyncClient) -> None:
     """No README → 404 on the latest endpoint."""
     _seed_product(tmp_path)
     res = await admin_client.get("/api/data-products/main/sales_gold/readme")
@@ -139,27 +132,21 @@ async def test_get_specific_version_round_trip(
         "/api/data-products/main/sales_gold/readme",
         json={"body_md": "v2 body"},
     )
-    res = await admin_client.get(
-        "/api/data-products/main/sales_gold/readme/v/1"
-    )
+    res = await admin_client.get("/api/data-products/main/sales_gold/readme/v/1")
     assert res.status_code == 200
     assert res.json()["body_md"] == "v1 body"
 
 
 @pytest.mark.asyncio
-async def test_history_lists_versions_desc(
-    tmp_path: Path, admin_client: httpx.AsyncClient
-) -> None:
+async def test_history_lists_versions_desc(tmp_path: Path, admin_client: httpx.AsyncClient) -> None:
     """History endpoint lists every version, newest first."""
     _seed_product(tmp_path)
     for n in range(3):
         await admin_client.put(
             "/api/data-products/main/sales_gold/readme",
-            json={"body_md": f"v{n+1}"},
+            json={"body_md": f"v{n + 1}"},
         )
-    res = await admin_client.get(
-        "/api/data-products/main/sales_gold/readme/history"
-    )
+    res = await admin_client.get("/api/data-products/main/sales_gold/readme/history")
     versions = res.json()["versions"]
     assert [v["version_int"] for v in versions] == [3, 2, 1]
 
@@ -183,9 +170,7 @@ async def test_non_steward_non_admin_cannot_edit(
 
 
 @pytest.mark.asyncio
-async def test_steward_can_edit(
-    tmp_path: Path, non_admin_client: httpx.AsyncClient
-) -> None:
+async def test_steward_can_edit(tmp_path: Path, non_admin_client: httpx.AsyncClient) -> None:
     """When the caller IS the steward, PUT passes."""
     _seed_product(tmp_path)
     factory = app.state.session_factory
@@ -210,9 +195,7 @@ async def test_steward_can_edit(
 
 
 @pytest.mark.asyncio
-async def test_diff_between_versions(
-    tmp_path: Path, admin_client: httpx.AsyncClient
-) -> None:
+async def test_diff_between_versions(tmp_path: Path, admin_client: httpx.AsyncClient) -> None:
     """Unified diff includes the expected +/- markers."""
     _seed_product(tmp_path)
     await admin_client.put(
@@ -223,9 +206,7 @@ async def test_diff_between_versions(
         "/api/data-products/main/sales_gold/readme",
         json={"body_md": "alpha\nDELTA\ngamma"},
     )
-    res = await admin_client.get(
-        "/api/data-products/main/sales_gold/readme/diff?from=1&to=2"
-    )
+    res = await admin_client.get("/api/data-products/main/sales_gold/readme/diff?from=1&to=2")
     assert res.status_code == 200
     diff = res.json()["diff"]
     assert "-beta" in diff
@@ -233,18 +214,14 @@ async def test_diff_between_versions(
 
 
 @pytest.mark.asyncio
-async def test_diff_missing_version_404(
-    tmp_path: Path, admin_client: httpx.AsyncClient
-) -> None:
+async def test_diff_missing_version_404(tmp_path: Path, admin_client: httpx.AsyncClient) -> None:
     """Diff endpoint 404s when one of the requested versions doesn't exist."""
     _seed_product(tmp_path)
     await admin_client.put(
         "/api/data-products/main/sales_gold/readme",
         json={"body_md": "only"},
     )
-    res = await admin_client.get(
-        "/api/data-products/main/sales_gold/readme/diff?from=1&to=99"
-    )
+    res = await admin_client.get("/api/data-products/main/sales_gold/readme/diff?from=1&to=99")
     assert res.status_code == 404
 
 
@@ -270,8 +247,11 @@ async def test_readme_cross_workspace_isolated(
     with factory() as session:
         session.add(
             Workspace(
-                id=2, slug="second", name="Second",
-                description="iso test", created_at=now,
+                id=2,
+                slug="second",
+                name="Second",
+                description="iso test",
+                created_at=now,
             )
         )
         nonadmin = session.execute(
@@ -279,8 +259,10 @@ async def test_readme_cross_workspace_isolated(
         ).scalar_one()
         session.add(
             WorkspaceMember(
-                workspace_id=2, user_id=nonadmin.id,
-                role="member", created_at=now,
+                workspace_id=2,
+                user_id=nonadmin.id,
+                role="member",
+                created_at=now,
             )
         )
         nonadmin.default_workspace_id = 2

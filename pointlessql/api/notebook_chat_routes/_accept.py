@@ -39,9 +39,7 @@ _PROPOSAL_TTL_HOURS: int = 24
 
 
 @router.post("/api/notebook/chat/proposals/{proposal_id}/accept")
-async def api_accept_proposal(
-    request: Request, proposal_id: str
-) -> dict[str, Any]:
+async def api_accept_proposal(request: Request, proposal_id: str) -> dict[str, Any]:
     """Mark *proposal_id* accepted; return the payload to apply.
 
     Args:
@@ -75,8 +73,7 @@ async def api_accept_proposal(
             raise ResourceNotFoundError.not_found(what=f"proposal {proposal_id!r}")
         if proposal.action == "explain":
             raise ConflictError(
-                "explain proposals are auto-accepted at create-time; "
-                "no accept endpoint applies"
+                "explain proposals are auto-accepted at create-time; no accept endpoint applies"
             )
         if proposal.status != "pending":
             raise ConflictError(f"proposal already {proposal.status}")
@@ -88,8 +85,7 @@ async def api_accept_proposal(
             proposal.accepted_at = now
             session.commit()
             raise ConflictError(
-                "proposal is older than 24 hours and cannot be "
-                "accepted; ask the chat to redraft."
+                "proposal is older than 24 hours and cannot be accepted; ask the chat to redraft."
             )
         chat_session = session.get(EditorChatSession, proposal.chat_session_id)
         if chat_session is None:
@@ -133,9 +129,7 @@ async def api_accept_proposal(
 
 
 @router.post("/api/notebook/chat/proposals/{proposal_id}/discard")
-async def api_discard_proposal(
-    request: Request, proposal_id: str
-) -> dict[str, Any]:
+async def api_discard_proposal(request: Request, proposal_id: str) -> dict[str, Any]:
     """Mark *proposal_id* discarded; fan-out a WS notification.
 
     Args:
@@ -172,9 +166,7 @@ async def api_discard_proposal(
         if proposal.action == "explain" and proposal.status == "discarded":
             raise ConflictError("proposal already discarded")
         chat_session = session.get(EditorChatSession, proposal.chat_session_id)
-        editor_session_id = (
-            chat_session.editor_session_id if chat_session else None
-        )
+        editor_session_id = chat_session.editor_session_id if chat_session else None
         proposal.status = "discarded"
         proposal.accepted_at = now
         session.commit()
@@ -192,9 +184,7 @@ async def api_discard_proposal(
 
 
 @router.get("/api/notebook/chat/cell/{cell_uuid}/explanations")
-async def api_cell_explanations(
-    request: Request, cell_uuid: str
-) -> dict[str, Any]:
+async def api_cell_explanations(request: Request, cell_uuid: str) -> dict[str, Any]:
     """Return the accepted explain proposals attached to *cell_uuid*.
 
     Surfaced by the per-cell social drawer's Explanations tab.
@@ -229,9 +219,7 @@ async def api_cell_explanations(
                 "explanation": row.explanation,
                 "rationale": row.rationale,
                 "agent_run_id": row.accepted_run_id,
-                "created_at": row.created_at.isoformat()
-                if row.created_at
-                else None,
+                "created_at": row.created_at.isoformat() if row.created_at else None,
             }
             for row in rows
         ]

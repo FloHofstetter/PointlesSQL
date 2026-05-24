@@ -46,8 +46,13 @@ def _git(*args: str, cwd: Path | None = None) -> None:
         cwd=str(cwd) if cwd is not None else None,
         check=True,
         capture_output=True,
-        env={"GIT_TERMINAL_PROMPT": "0", "LC_ALL": "C", "LANG": "C", "HOME": str(Path.home()),
-             "PATH": "/usr/bin:/bin:/usr/local/bin"},
+        env={
+            "GIT_TERMINAL_PROMPT": "0",
+            "LC_ALL": "C",
+            "LANG": "C",
+            "HOME": str(Path.home()),
+            "PATH": "/usr/bin:/bin:/usr/local/bin",
+        },
     )
 
 
@@ -141,9 +146,7 @@ def test_add_secret_upserts_existing_kind(_test_engine):  # type: ignore[no-unty
     add_secret(factory, repo_id=out.repo.id, kind="https_token", plaintext="v1")
     add_secret(factory, repo_id=out.repo.id, kind="https_token", plaintext="v2")
     with factory() as session:
-        rows = list(
-            session.query(WorkspaceRepoSecret).filter_by(workspace_repo_id=out.repo.id)
-        )
+        rows = list(session.query(WorkspaceRepoSecret).filter_by(workspace_repo_id=out.repo.id))
     assert len(rows) == 1
     assert rows[0].rotated_at is not None
     assert decrypt_value(rows[0].encrypted_value, session_factory=factory) == "v2"
@@ -223,9 +226,7 @@ def test_sync_repo_clones_then_pulls_against_local_bare(tmp_path, _test_engine):
     )
     base = tmp_path / "repos"
 
-    first = asyncio.run(
-        sync_repo(factory, repo_id=out.repo.id, base_dir=base, trigger="manual")
-    )
+    first = asyncio.run(sync_repo(factory, repo_id=out.repo.id, base_dir=base, trigger="manual"))
     assert first.ok is True
     assert first.operation == "clone"
     assert first.head_sha is not None
@@ -236,9 +237,7 @@ def test_sync_repo_clones_then_pulls_against_local_bare(tmp_path, _test_engine):
         assert row.sync_state == "ok"
         assert row.last_synced_sha == first.head_sha
 
-    second = asyncio.run(
-        sync_repo(factory, repo_id=out.repo.id, base_dir=base, trigger="manual")
-    )
+    second = asyncio.run(sync_repo(factory, repo_id=out.repo.id, base_dir=base, trigger="manual"))
     assert second.ok is True
     assert second.operation == "pull"
     assert second.changed is False
@@ -256,9 +255,7 @@ def test_sync_repo_records_error_on_unreachable_url(tmp_path, _test_engine):  # 
         provider_kind="generic",
     )
     base = tmp_path / "repos"
-    outcome = asyncio.run(
-        sync_repo(factory, repo_id=out.repo.id, base_dir=base, trigger="manual")
-    )
+    outcome = asyncio.run(sync_repo(factory, repo_id=out.repo.id, base_dir=base, trigger="manual"))
     assert outcome.ok is False
     assert outcome.error is not None
     with factory() as session:

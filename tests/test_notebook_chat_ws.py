@@ -68,9 +68,7 @@ def fake_agent_factory(monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
         surface = kwargs.get("surface", "sql")
         editor_session_id = kwargs.get("editor_session_id", "")
         if surface == "notebook":
-            os.environ["POINTLESSQL_NOTEBOOK_CHAT_SESSION_ID"] = (
-                editor_session_id
-            )
+            os.environ["POINTLESSQL_NOTEBOOK_CHAT_SESSION_ID"] = editor_session_id
             os.environ.pop("POINTLESSQL_CHAT_SESSION_ID", None)
         else:
             os.environ["POINTLESSQL_CHAT_SESSION_ID"] = editor_session_id
@@ -130,9 +128,7 @@ def test_ws_anonymous_closes_with_4401(fresh_session_id: str) -> None:
     try:
         with TestClient(app) as client:
             with pytest.raises(WebSocketDisconnect) as exc_info:
-                with client.websocket_connect(
-                    f"/ws/notebook/chat/{fresh_session_id}"
-                ) as ws:
+                with client.websocket_connect(f"/ws/notebook/chat/{fresh_session_id}") as ws:
                     ws.receive_text()
         assert exc_info.value.code == 4401
     finally:
@@ -147,9 +143,7 @@ def test_ws_ready_frame_includes_agent_run(
     """Server emits ``ready`` with ``agent_run_id`` + empty history."""
     try:
         with TestClient(app, cookies=auth_cookies) as client:
-            with client.websocket_connect(
-                f"/ws/notebook/chat/{fresh_session_id}"
-            ) as ws:
+            with client.websocket_connect(f"/ws/notebook/chat/{fresh_session_id}") as ws:
                 frame = json.loads(ws.receive_text())
         assert frame["notify"] == "ready"
         assert frame["params"]["history"] == []
@@ -166,9 +160,7 @@ def test_ws_prompt_uses_notebook_surface(
     """The WS forwards ``surface='notebook'`` to ``build_agent``."""
     try:
         with TestClient(app, cookies=auth_cookies) as client:
-            with client.websocket_connect(
-                f"/ws/notebook/chat/{fresh_session_id}"
-            ) as ws:
+            with client.websocket_connect(f"/ws/notebook/chat/{fresh_session_id}") as ws:
                 ready = json.loads(ws.receive_text())
                 assert ready["notify"] == "ready"
                 ws.send_text(
@@ -199,9 +191,7 @@ def test_ws_unknown_method_returns_error(
     """Unknown method → ``error`` envelope with ``unknown_method`` code."""
     try:
         with TestClient(app, cookies=auth_cookies) as client:
-            with client.websocket_connect(
-                f"/ws/notebook/chat/{fresh_session_id}"
-            ) as ws:
+            with client.websocket_connect(f"/ws/notebook/chat/{fresh_session_id}") as ws:
                 json.loads(ws.receive_text())  # consume ready
                 ws.send_text(json.dumps({"id": 9, "method": "refine"}))
                 reply = json.loads(ws.receive_text())

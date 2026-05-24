@@ -86,9 +86,7 @@ class ProbeError(Exception):
         return {"reason": self.reason, "hint": self.hint}
 
 
-def install_extensions(
-    cursor: duckdb.DuckDBPyConnection, extensions: tuple[str, ...]
-) -> int:
+def install_extensions(cursor: duckdb.DuckDBPyConnection, extensions: tuple[str, ...]) -> int:
     """Install + load each extension on the throw-away connection.
 
     Args:
@@ -122,9 +120,7 @@ def install_extensions(
     return int((time.perf_counter() - started) * 1000)
 
 
-def apply_s3_credentials(
-    cursor: duckdb.DuckDBPyConnection, secrets: dict[str, Any]
-) -> None:
+def apply_s3_credentials(cursor: duckdb.DuckDBPyConnection, secrets: dict[str, Any]) -> None:
     """Apply S3 credentials (if any) via DuckDB ``SET`` statements.
 
     Only fires when ``access_key`` is present in *secrets* — the
@@ -271,9 +267,7 @@ def probe_source(
     finally:
         conn.close()
 
-    return ProbeResult(
-        columns=columns, extension_ms=extension_ms, query_ms=query_ms
-    )
+    return ProbeResult(columns=columns, extension_ms=extension_ms, query_ms=query_ms)
 
 
 def list_tables(
@@ -324,9 +318,7 @@ def list_tables(
                     rows = cursor.fetchall()
             return [str(r[0]) for r in rows]
         except duckdb.Error as exc:
-            logger.warning(
-                "ingest table-listing failed for kind=%s: %s", kind, exc
-            )
+            logger.warning("ingest table-listing failed for kind=%s: %s", kind, exc)
             raise ProbeError(
                 reason=f"DuckDB could not list tables on {kind!r} source.",
                 hint="Double-check connection parameters and reachability.",

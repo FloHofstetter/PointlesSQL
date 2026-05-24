@@ -20,7 +20,7 @@ so the audit trail is never headless.  We finish the run only when
 we created it ourselves; caller-managed runs get to decide their
 own terminal state.
 
-Phase 88.3 lifted the 1061-LOC helper body into sibling modules
+lifted the 1061-LOC helper body into sibling modules
 under ``pointlessql/api/dbt/`` — this file now holds only the
 route handlers themselves.
 """
@@ -290,7 +290,7 @@ async def api_dbt_test_failures(
                     import json as _json
 
                     params = as_dict(_json.loads(op.params_json))
-                except (ValueError, TypeError):
+                except ValueError, TypeError:
                     params = {}
             severity = params.get("severity") or "error"
             rows.append(

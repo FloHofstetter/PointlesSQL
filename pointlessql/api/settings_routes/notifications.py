@@ -62,7 +62,7 @@ async def get_notification_prefs(request: Request) -> dict[str, Any]:
         prefs_text = user.notification_prefs_json if user else "{}"
     try:
         raw_value: Any = json.loads(prefs_text or "{}")
-    except (ValueError, TypeError):
+    except ValueError, TypeError:
         raw_value = {}
     if not isinstance(raw_value, dict):
         raw_value = {}
@@ -106,7 +106,7 @@ async def update_notification_prefs(request: Request) -> dict[str, Any]:
             raise ResourceNotFoundError("user not found.")
         try:
             current_any: Any = json.loads(user.notification_prefs_json or "{}")
-        except (ValueError, TypeError):
+        except ValueError, TypeError:
             current_any = {}
         current: dict[str, Any] = (
             cast(dict[str, Any], current_any) if isinstance(current_any, dict) else {}
@@ -119,9 +119,7 @@ async def update_notification_prefs(request: Request) -> dict[str, Any]:
             incoming_typed = cast(dict[str, Any], incoming)
             existing_any: Any = current.get(event_key, {})
             existing: dict[str, Any] = (
-                cast(dict[str, Any], existing_any)
-                if isinstance(existing_any, dict)
-                else {}
+                cast(dict[str, Any], existing_any) if isinstance(existing_any, dict) else {}
             )
             for channel in ("inbox", "email", "webhook"):
                 if channel in incoming_typed:

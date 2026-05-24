@@ -96,9 +96,7 @@ def _resolve_workspace_id(session: Session, agent_run_id: str) -> int:
     Defaults to the seeded workspace (id=1) when the parent row is
     missing; the audit lifecycle catches that mismatch separately.
     """
-    ws = session.scalar(
-        select(AgentRun.workspace_id).where(AgentRun.id == agent_run_id)
-    )
+    ws = session.scalar(select(AgentRun.workspace_id).where(AgentRun.id == agent_run_id))
     return int(ws or 1)
 
 
@@ -183,9 +181,7 @@ def _classify_diff(
     columns and PK drops escalate.  Overwrite mode is stricter:
     type-mismatches also escalate.
     """
-    if not diff.is_breaking and not (
-        diff.extra_columns or diff.nullability_mismatches
-    ):
+    if not diff.is_breaking and not (diff.extra_columns or diff.nullability_mismatches):
         return EnforcementResult(
             outcome="compliant",
             details={},
@@ -199,8 +195,7 @@ def _classify_diff(
             breaking_diff={
                 "missing_columns": list(diff.missing_columns),
                 "type_mismatches": [
-                    {"name": n, "contract": c, "actual": a}
-                    for (n, c, a) in diff.type_mismatches
+                    {"name": n, "contract": c, "actual": a} for (n, c, a) in diff.type_mismatches
                 ],
                 "dropped_pk_columns": list(diff.dropped_pk_columns),
                 "mode": mode,

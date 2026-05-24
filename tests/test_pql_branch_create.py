@@ -1,4 +1,4 @@
-"""Unit tests for the Phase 16.5.2 branch-creation primitive."""
+"""Unit tests for the branch-creation primitive."""
 
 from __future__ import annotations
 

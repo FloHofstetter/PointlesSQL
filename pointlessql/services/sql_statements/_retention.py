@@ -67,9 +67,9 @@ def register_retention_executor(app_state: Any) -> None:
 
     The scheduler registry is initialised at startup; this helper
     drops the retention executor into the discovered map so the
-    Phase 117 task can be added without editing the registry
-    bootstrap code.  When called twice (e.g. in tests that re-run
-    lifespan) the second call is idempotent.
+    task can be added without editing the registry bootstrap code.
+    When called twice (e.g. in tests that re-run lifespan) the
+    second call is idempotent.
 
     Args:
         app_state: ``app.state`` of the running FastAPI app.

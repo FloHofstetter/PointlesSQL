@@ -1,4 +1,4 @@
-"""Tests for the Sprint 13.11.2 target-state + recent-failures routes."""
+"""Tests for the target-state + recent-failures routes."""
 
 from __future__ import annotations
 

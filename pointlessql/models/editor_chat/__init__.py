@@ -1,4 +1,4 @@
-"""Editor-chat ORM (Phase 91, renamed from ``sql_chat`` in Phase 96).
+"""Editor-chat ORM (Phase 91, renamed from ``sql_chat`` ).
 
 Re-exports the chat-substrate tables.  The module path is
 ``editor_chat`` (not ``sql_chat``) because the session table is

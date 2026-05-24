@@ -84,9 +84,7 @@ async def deliver_to_user_subscriptions(
             ),
         )
         if workspace_id is not None:
-            stmt = stmt.where(
-                UserWebhookSubscription.workspace_id == workspace_id
-            )
+            stmt = stmt.where(UserWebhookSubscription.workspace_id == workspace_id)
         subs = list(session.execute(stmt).scalars())
 
     if not subs:

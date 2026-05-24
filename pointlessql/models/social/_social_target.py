@@ -118,9 +118,7 @@ class SocialTarget(Base):
         ),
     )
 
-    id: Mapped[int] = mapped_column(
-        Integer, primary_key=True, autoincrement=True
-    )
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     workspace_id: Mapped[int] = mapped_column(
         Integer,
         ForeignKey("workspaces.id"),

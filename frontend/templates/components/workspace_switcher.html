@@ -1,5 +1,5 @@
 {#
-    Workspace switcher dropdown — Sprint 28.4.
+    Workspace switcher dropdown.
 
     Mounted in the topbar between the search trigger and user_menu.
     Hidden entirely on installs that have only one workspace
@@ -49,14 +49,14 @@
         {% if current_user is defined and current_user and current_user.is_admin %}
         <li><hr class="dropdown-divider"></li>
         <li>
-            {# /admin/workspaces ships in Sprint 28.6.  Until then
+            {# /admin/workspaces ships .  Until then
                the link is rendered as disabled so the affordance is
                visible but inert. #}
             <a class="dropdown-item disabled"
                href="#"
                aria-disabled="true"
                tabindex="-1"
-               title="Admin page ships in Sprint 28.6">
+               title="Admin page ships ">
                 <i class="bi bi-plus-square"></i> Manage workspaces
             </a>
         </li>

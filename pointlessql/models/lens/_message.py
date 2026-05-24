@@ -93,9 +93,7 @@ class LensMessage(Base):
     """
 
     __tablename__ = "lens_messages"
-    __table_args__ = (
-        Index("ix_lens_messages_session_created", "session_id", "created_at"),
-    )
+    __table_args__ = (Index("ix_lens_messages_session_created", "session_id", "created_at"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     session_id: Mapped[int] = mapped_column(
@@ -113,6 +111,4 @@ class LensMessage(Base):
     tokens_out: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     cost_estimate: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
     duration_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    created_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)

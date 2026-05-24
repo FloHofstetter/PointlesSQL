@@ -28,9 +28,7 @@ from pointlessql.models.notifications import UserWebhookSubscription
 router = APIRouter(tags=["me"])
 
 
-def _serialise(
-    sub: UserWebhookSubscription, *, include_secret: bool = False
-) -> dict[str, Any]:
+def _serialise(sub: UserWebhookSubscription, *, include_secret: bool = False) -> dict[str, Any]:
     """Render one subscription as JSON.
 
     The HMAC secret is only echoed when ``include_secret=True``;
@@ -44,11 +42,7 @@ def _serialise(
         "dp_ref_filter": sub.dp_ref_filter,
         "is_active": bool(sub.is_active),
         "created_at": sub.created_at.isoformat(),
-        "last_delivered_at": (
-            sub.last_delivered_at.isoformat()
-            if sub.last_delivered_at
-            else None
-        ),
+        "last_delivered_at": (sub.last_delivered_at.isoformat() if sub.last_delivered_at else None),
         "last_error": sub.last_error,
     }
     if include_secret:
@@ -56,18 +50,14 @@ def _serialise(
     return payload
 
 
-@router.get(
-    "/me/subscriptions", response_class=HTMLResponse, response_model=None
-)
+@router.get("/me/subscriptions", response_class=HTMLResponse, response_model=None)
 async def me_subscriptions_page(
     request: Request,
 ) -> HTMLResponse | RedirectResponse:
     """Render the self-service subscriptions page."""
     user = get_user(request)
     if user["id"] == 0:
-        return RedirectResponse(
-            url="/auth/login?next=/me/subscriptions", status_code=303
-        )
+        return RedirectResponse(url="/auth/login?next=/me/subscriptions", status_code=303)
     templates = request.app.state.templates
     return templates.TemplateResponse(
         request,
@@ -136,9 +126,7 @@ async def create_subscription(request: Request) -> dict[str, Any]:
 
 
 @router.put("/api/me/subscriptions/{sub_id}")
-async def update_subscription(
-    sub_id: int, request: Request
-) -> dict[str, Any]:
+async def update_subscription(sub_id: int, request: Request) -> dict[str, Any]:
     """Toggle ``is_active`` or update filter/URL."""
     require_user(request)
     user = get_user(request)
@@ -165,9 +153,7 @@ async def update_subscription(
 
 
 @router.delete("/api/me/subscriptions/{sub_id}")
-async def delete_subscription(
-    sub_id: int, request: Request
-) -> dict[str, Any]:
+async def delete_subscription(sub_id: int, request: Request) -> dict[str, Any]:
     """Hard-delete a subscription."""
     require_user(request)
     user = get_user(request)

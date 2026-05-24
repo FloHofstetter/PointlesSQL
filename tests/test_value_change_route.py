@@ -2,8 +2,7 @@
 
 Sets up synthetic ``lineage_value_changes`` rows and exercises the
 JSON handler.  The HTML row-trace surface that joins these rows into
-the existing per-step display is exercised by the live replay in
-Sprint 15.7.5.
+the existing per-step display is exercised by the live replay .
 """
 
 from __future__ import annotations

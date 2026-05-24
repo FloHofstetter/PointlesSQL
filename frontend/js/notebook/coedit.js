@@ -68,7 +68,7 @@ export function installCoeditLifecycle(state, { userInfo = null } = {}) {
     const user = this._coeditUser;
     // No identifiable user (anonymous render path / SSR test) → still
     // open the WS so the toolbar pill paints, but skip the awareness
-    // wiring entirely.  The Phase 105.2 hub will reject anon callers
+    // wiring entirely.  The hub will reject anon callers
     // upstream, so this branch only fires in degenerate flows.
     const haveUser = !!(user && Number(user.id) > 0);
     this._coedit = createCoeditClient({

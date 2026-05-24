@@ -70,8 +70,7 @@ def test_catalog_kind_is_registered() -> None:
 def test_schema_url_builder_routes_to_catalog_browser() -> None:
     """``cat.sch`` builds a ``/catalogs/{cat}/schemas/{sch}`` URL."""
     assert (
-        entity_registry.url_for("schema", "main.sales_gold")
-        == "/catalogs/main/schemas/sales_gold"
+        entity_registry.url_for("schema", "main.sales_gold") == "/catalogs/main/schemas/sales_gold"
     )
 
 
@@ -94,15 +93,11 @@ def test_catalog_url_fallback_on_empty_ref() -> None:
 def test_audit_targets_use_generic_kind_prefixes() -> None:
     """Both kinds use the generic ``{kind}:`` audit-log prefix."""
     assert (
-        entity_registry.audit_target(
-            "schema", "main.sales", suffix="tab-discussion"
-        )
+        entity_registry.audit_target("schema", "main.sales", suffix="tab-discussion")
         == "schema:main.sales#tab-discussion"
     )
     assert (
-        entity_registry.audit_target(
-            "catalog", "main", suffix="tab-readme"
-        )
+        entity_registry.audit_target("catalog", "main", suffix="tab-readme")
         == "catalog:main#tab-readme"
     )
 
@@ -180,9 +175,7 @@ async def test_catalog_endorsement_round_trip(
         json={"endorsement_type": "verified-by-steward"},
     )
     assert res_apply.status_code == 200, res_apply.text
-    res_list = await admin_client.get(
-        "/api/social/catalog/main/endorsements"
-    )
+    res_list = await admin_client.get("/api/social/catalog/main/endorsements")
     assert res_list.status_code == 200
     types = {e["endorsement_type"] for e in res_list.json()["endorsements"]}
     assert "verified-by-steward" in types
@@ -193,9 +186,7 @@ async def test_schema_reviews_return_501(
     admin_client: httpx.AsyncClient,
 ) -> None:
     """``supports_reviews=False`` so reviews stay 501."""
-    res = await admin_client.get(
-        "/api/social/schema/main.sales/reviews"
-    )
+    res = await admin_client.get("/api/social/schema/main.sales/reviews")
     assert res.status_code == 501, res.text
 
 

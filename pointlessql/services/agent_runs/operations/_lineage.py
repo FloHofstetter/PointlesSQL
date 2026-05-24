@@ -135,9 +135,7 @@ def emit_lineage_after_commit(
     if failure is None:
         return
 
-    stamp_audit_marker(
-        session_factory, op_id=op_id, marker=f"{LINEAGE_FAILED_MARKER} {failure!r}"
-    )
+    stamp_audit_marker(session_factory, op_id=op_id, marker=f"{LINEAGE_FAILED_MARKER} {failure!r}")
 
 
 def record_row_edges_after_commit(
@@ -224,6 +222,4 @@ def record_column_edges_after_commit(
     )
     if failure is None:
         return
-    stamp_audit_marker(
-        session_factory, op_id=op_id, marker=f"[lineage_column_partial] {failure!r}"
-    )
+    stamp_audit_marker(session_factory, op_id=op_id, marker=f"[lineage_column_partial] {failure!r}")

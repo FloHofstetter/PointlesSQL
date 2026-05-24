@@ -75,8 +75,7 @@ def create_session_endpoint(
         from pointlessql.exceptions import ValidationError
 
         raise ValidationError(
-            f"llm_provider must be one of {sorted(LENS_PROVIDERS)}; "
-            f"got {body.llm_provider!r}"
+            f"llm_provider must be one of {sorted(LENS_PROVIDERS)}; got {body.llm_provider!r}"
         )
     factory = request.app.state.session_factory
     settings = request.app.state.settings
@@ -179,7 +178,5 @@ def _serialise_session(row: object) -> SessionRow:
         llm_model=str(getattr(row, "llm_model", "")),
         total_cost_estimate=float(getattr(row, "total_cost_estimate", 0.0) or 0.0),
         created_at=created_at_val.isoformat() if created_at_val else "",
-        last_message_at=(
-            last_message_at_val.isoformat() if last_message_at_val else None
-        ),
+        last_message_at=(last_message_at_val.isoformat() if last_message_at_val else None),
     )

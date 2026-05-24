@@ -1,6 +1,6 @@
 """context-panel partial dispatch smoke tests.
 
-For each new ``active_section`` introduced in Phase 80, asserts the
+For each new ``active_section`` introduced asserts the
 right partial renders when its landing page is requested.  Partials
 identify themselves via the ``aria-label`` attribute on the wrapping
 ``<div>``.
@@ -97,11 +97,8 @@ class TestContextPanelDispatch:
         ) as client:
             resp = await client.get(url)
         if resp.status_code != 200:
-            pytest.skip(
-                f"{url} returned {resp.status_code}; out of nav-panel scope"
-            )
+            pytest.skip(f"{url} returned {resp.status_code}; out of nav-panel scope")
         body = resp.text
         assert f'aria-label="{aria_label}"' in body, (
-            f"{url} did not render its context-panel partial "
-            f"(missing aria-label={aria_label!r})"
+            f"{url} did not render its context-panel partial (missing aria-label={aria_label!r})"
         )

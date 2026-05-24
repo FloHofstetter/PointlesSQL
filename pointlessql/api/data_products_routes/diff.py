@@ -33,9 +33,7 @@ async def diff_data_product(
     """
     workspace_id = current_workspace_id(request)
     factory = request.app.state.session_factory
-    _row, contract, _email, _display = load_one(
-        factory, workspace_id, catalog, schema
-    )
+    _row, contract, _email, _display = load_one(factory, workspace_id, catalog, schema)
     uc = get_uc_client(request)
 
     table_diffs: list[dict[str, Any]] = []
@@ -51,9 +49,7 @@ async def diff_data_product(
             continue
         storage = uc_table.get("storage_location")
         if not isinstance(storage, str) or not storage:
-            table_diffs.append(
-                diff_to_payload(table_contract.name, "no storage_location")
-            )
+            table_diffs.append(diff_to_payload(table_contract.name, "no storage_location"))
             continue
         try:
             diff_result = diff_contract_against_delta_table(table_contract, storage)
@@ -61,9 +57,7 @@ async def diff_data_product(
             # bare-broad-ok: same reasoning as the UC branch above —
             # a single Delta unreadable surfaces per-table without
             # blocking the rest.
-            table_diffs.append(
-                diff_to_payload(table_contract.name, f"delta read failed: {exc!r}")
-            )
+            table_diffs.append(diff_to_payload(table_contract.name, f"delta read failed: {exc!r}"))
             continue
         table_diffs.append(diff_to_payload(table_contract.name, diff_result))
 

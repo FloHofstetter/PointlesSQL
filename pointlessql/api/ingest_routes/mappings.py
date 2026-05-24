@@ -3,8 +3,7 @@
 ``POST /api/ingest/sources/{id}/mappings`` replaces the source's
 ``table_mappings`` JSON column with a validated list of per-table
 pull configurations.  Each mapping carries ``(source_table,
-target_fqn, mode, high_water_col?)`` and is the unit the Phase 82.3
-executor reads.
+target_fqn, mode, high_water_col?)`` and is the unit the executor reads.
 
 Validation rules:
 
@@ -46,9 +45,7 @@ def _validate_target_fqn(fqn: str) -> None:
     """
     parts = fqn.split(".")
     if len(parts) != 3 or any(not p.strip() for p in parts):
-        raise ValidationError(
-            f"target_fqn must be 'catalog.schema.table', got {fqn!r}."
-        )
+        raise ValidationError(f"target_fqn must be 'catalog.schema.table', got {fqn!r}.")
 
 
 def _validate_mapping(raw: dict[str, Any]) -> dict[str, Any]:
@@ -67,19 +64,13 @@ def _validate_mapping(raw: dict[str, Any]) -> dict[str, Any]:
     target_fqn = str(raw.get("target_fqn") or "").strip()
     mode = str(raw.get("mode") or "full").strip()
     high_water_col_raw = raw.get("high_water_col")
-    high_water_col = (
-        str(high_water_col_raw).strip() if high_water_col_raw else None
-    )
+    high_water_col = str(high_water_col_raw).strip() if high_water_col_raw else None
 
     if mode not in INGEST_PULL_MODES:
-        raise ValidationError(
-            f"mode must be one of {INGEST_PULL_MODES}, got {mode!r}."
-        )
+        raise ValidationError(f"mode must be one of {INGEST_PULL_MODES}, got {mode!r}.")
     _validate_target_fqn(target_fqn)
     if mode == "incremental" and not high_water_col:
-        raise ValidationError(
-            "incremental mode requires a non-empty high_water_col."
-        )
+        raise ValidationError("incremental mode requires a non-empty high_water_col.")
 
     out: dict[str, Any] = {
         "source_table": source_table,

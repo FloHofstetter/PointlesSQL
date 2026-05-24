@@ -1,9 +1,9 @@
 """inference-lineage column + bidirectional model DAG tests.
 
-Sprint 21.7 added a ``source_model_uri`` column to
+added a ``source_model_uri`` column to
 ``lineage_row_edges`` so the model-detail Lineage tab can paint
 prediction-tables downstream of the model node, alongside the
-training source-tables upstream from Sprint 21.5.5.
+training source-tables upstream .
 """
 
 from __future__ import annotations

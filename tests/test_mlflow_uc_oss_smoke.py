@@ -1,8 +1,9 @@
 """Smoke test: MLflow UC-OSS client roundtrips against a live soyuz server.
 
-This test pins down the wire-compat established in PointlesSQL Phase 21.1
-(soyuz Sprint 21.1): MLflow's ``mlflow/store/_unity_catalog/registry/uc_oss_rest_store.py``
-must talk to a live soyuz instance over HTTP without raising.
+Pins the wire-compat between MLflow's
+``mlflow/store/_unity_catalog/registry/uc_oss_rest_store.py`` client
+and a live soyuz instance over HTTP: the client must talk to soyuz
+without raising.
 
 Prerequisites:
 
@@ -19,8 +20,7 @@ than through ``client.create_model_version`` because the MLflow client's
 local-artifact staging assumes a real ``MLmodel``-format directory; we
 keep the smoke test infrastructure-light by hitting the proto endpoints
 directly. The end-to-end MLflow-client write path is covered by the
-Phase 21.2 cross-link e2e test once the MLflow subprocess
-is wired in.
+cross-link e2e test once the MLflow subprocess is wired in.
 """
 
 from __future__ import annotations
@@ -49,13 +49,13 @@ def _soyuz_running() -> bool:
         return False
 
 
-def _soyuz_has_phase_21_1_endpoints() -> bool:
-    """Return True if the running soyuz exposes the new 21.1 endpoints.
+def _soyuz_has_model_credentials_endpoint() -> bool:
+    """Return True if the running soyuz exposes the model-credentials endpoint.
 
-    A running soyuz that pre-dates Sprint 21.1 will 404 on
-    ``temporary-model-version-credentials``; in that case the smoke
-    test is skipped because the soyuz process hasn't picked up the
-    new code yet (restart required).
+    A soyuz binary that pre-dates the temporary-model-version-
+    credentials route will 404 on it; in that case the smoke test
+    is skipped because the soyuz process hasn't picked up the new
+    code yet (restart required).
     """
     if not _soyuz_running():
         return False
@@ -82,9 +82,9 @@ def _soyuz_has_phase_21_1_endpoints() -> bool:
 
 
 pytestmark = pytest.mark.skipif(
-    not _soyuz_has_phase_21_1_endpoints(),
+    not _soyuz_has_model_credentials_endpoint(),
     reason=(
-        "soyuz must be running on 127.0.0.1:8080 with Sprint 21.1 endpoints. "
+        "soyuz must be running on 127.0.0.1:8080 endpoints. "
         "If soyuz is running an older build, restart it from ~/git/soyuz-catalog "
         "to pick up the finalize + temporary-model-version-credentials routes."
     ),

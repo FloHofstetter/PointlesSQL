@@ -4,7 +4,7 @@ The dispatcher's behaviour is bucketed into three outcome
 classes (replayable, data_unavailable, unsafe) plus the
 ``policy=STRICT`` raise.  These tests cover each path with the
 in-memory SQLite fixture; the real-execution path is
-intentionally out-of-scope for Phase 90 (see ``_replay.py``
+intentionally out-of-scope (see ``_replay.py``
 module docstring).
 """
 
@@ -116,17 +116,13 @@ class TestUtilities:
 
     def test_rewrite_schema_refs_in_query_happy(self) -> None:
         original = "SELECT * FROM main.bronze.orders WHERE id > 0"
-        rewritten = _rewrite_schema_refs_in_query(
-            original, "main.bronze", "main.mem_x"
-        )
+        rewritten = _rewrite_schema_refs_in_query(original, "main.bronze", "main.mem_x")
         assert rewritten == "SELECT * FROM main.mem_x.orders WHERE id > 0"
 
     def test_rewrite_schema_refs_only_word_boundary(self) -> None:
         # Should not match inside 'main.bronze_old.orders'
         original = "SELECT * FROM main.bronze_old.orders"
-        rewritten = _rewrite_schema_refs_in_query(
-            original, "main.bronze", "main.mem_x"
-        )
+        rewritten = _rewrite_schema_refs_in_query(original, "main.bronze", "main.mem_x")
         assert rewritten == original
 
 
@@ -365,9 +361,7 @@ class TestReplayHappyPath:
                 )
             ).first()
             source_op = s.scalars(
-                select(AgentRunOperation).where(
-                    AgentRunOperation.agent_run_id == str(run_id)
-                )
+                select(AgentRunOperation).where(AgentRunOperation.agent_run_id == str(run_id))
             ).first()
         assert replay_op is not None
         assert source_op is not None

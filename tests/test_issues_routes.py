@@ -145,9 +145,7 @@ async def test_open_issue_rejects_missing_title(
     admin_client: httpx.AsyncClient,
 ) -> None:
     """A missing or empty title triggers 400."""
-    res = await admin_client.post(
-        f"/api/social/table/{_TABLE_REF}/issues", json={"title": ""}
-    )
+    res = await admin_client.post(f"/api/social/table/{_TABLE_REF}/issues", json={"title": ""})
     assert res.status_code == 400, res.text
 
 
@@ -164,9 +162,7 @@ async def test_list_issues_for_parent_returns_only_that_parent(
         f"/api/social/model/{_MODEL_REF}/issues",
         json={"title": "model-only-issue"},
     )
-    res = await admin_client.get(
-        f"/api/social/table/{_TABLE_REF}/issues"
-    )
+    res = await admin_client.get(f"/api/social/table/{_TABLE_REF}/issues")
     assert res.status_code == 200, res.text
     titles = {it["title"] for it in res.json()["issues"]}
     assert "table-only-issue" in titles
@@ -237,9 +233,7 @@ async def test_patch_issue_403_for_non_opener(
         json={"title": "owner-only"},
     )
     issue_id = opened.json()["id"]
-    res = await non_admin_client.patch(
-        f"/api/issues/{issue_id}", json={"title": "hijack attempt"}
-    )
+    res = await non_admin_client.patch(f"/api/issues/{issue_id}", json={"title": "hijack attempt"})
     assert res.status_code == 403, res.text
 
 
@@ -270,9 +264,7 @@ async def test_close_not_planned_then_reopen(
         json={"title": "transition-test"},
     )
     issue_id = opened.json()["id"]
-    closed = await admin_client.post(
-        f"/api/issues/{issue_id}/close", json={"not_planned": True}
-    )
+    closed = await admin_client.post(f"/api/issues/{issue_id}/close", json={"not_planned": True})
     assert closed.status_code == 200, closed.text
     assert closed.json()["state"] == "closed_not_planned"
 
@@ -320,9 +312,7 @@ async def test_labels_crud_roundtrip(
     assert listing.status_code == 200
     slugs = {row["slug"] for row in listing.json()["labels"]}
     assert "good-first-issue" in slugs
-    delete = await admin_client.delete(
-        f"/api/workspaces/1/labels/{label_id}"
-    )
+    delete = await admin_client.delete(f"/api/workspaces/1/labels/{label_id}")
     assert delete.status_code == 200
 
 
@@ -340,7 +330,5 @@ async def test_milestones_crud_roundtrip(
     listing = await admin_client.get("/api/workspaces/1/milestones")
     titles = {m["title"] for m in listing.json()["milestones"]}
     assert "Q4 GA" in titles
-    delete = await admin_client.delete(
-        f"/api/workspaces/1/milestones/{milestone_id}"
-    )
+    delete = await admin_client.delete(f"/api/workspaces/1/milestones/{milestone_id}")
     assert delete.status_code == 200

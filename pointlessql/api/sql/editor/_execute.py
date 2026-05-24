@@ -285,9 +285,8 @@ async def api_sql_execute(request: Request, body: dict[str, Any] = Body(...)) ->
         status=QueryStatus.SUCCEEDED,
         row_count=exec_result.rows_affected,
         duration_ms=None,
-        referenced_tables=exec_result.referenced_tables or (
-            [exec_result.target] if exec_result.target else []
-        ),
+        referenced_tables=exec_result.referenced_tables
+        or ([exec_result.target] if exec_result.target else []),
         agent_run_id=exec_result.agent_run_id,
         read_kind="sql_dml" if exec_result.kind == "dml" else "sql_ddl",
     )

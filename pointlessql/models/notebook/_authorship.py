@@ -50,7 +50,7 @@ class NotebookCellAuthorship(Base):
             minted by an agent.  ``None`` for human-authored.
         first_author_agent_run_id: ``agent_runs.id`` snapshot — the
             run context the agent was in when it minted the cell.
-            Surfaces in the Phase 103 replay surface.
+            Surfaces in the replay surface.
         last_modifier_kind: Same shape as ``first_author_kind`` —
             tracks the most recent edit author.
         last_modifier_email: As ``first_author_email``.
@@ -72,19 +72,13 @@ class NotebookCellAuthorship(Base):
         primary_key=True,
     )
     first_author_kind: Mapped[str] = mapped_column(String(8), nullable=False)
-    first_author_email: Mapped[str | None] = mapped_column(
-        String(255), nullable=True
-    )
+    first_author_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
     first_author_agent_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("agents.id"), nullable=True
     )
-    first_author_agent_run_id: Mapped[str | None] = mapped_column(
-        String(36), nullable=True
-    )
+    first_author_agent_run_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     last_modifier_kind: Mapped[str] = mapped_column(String(8), nullable=False)
-    last_modifier_email: Mapped[str | None] = mapped_column(
-        String(255), nullable=True
-    )
+    last_modifier_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
     last_modifier_agent_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("agents.id"), nullable=True
     )

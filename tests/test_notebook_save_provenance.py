@@ -119,9 +119,7 @@ async def test_save_flushes_propose_provenance(
     proposal_id = propose_resp.json()["proposal_id"]
 
     # 2) User clicks Insert → accept route.
-    accept_resp = await admin_client.post(
-        f"/api/notebook/chat/proposals/{proposal_id}/accept"
-    )
+    accept_resp = await admin_client.post(f"/api/notebook/chat/proposals/{proposal_id}/accept")
     assert accept_resp.status_code == 200
     accept_body = accept_resp.json()
 
@@ -204,9 +202,7 @@ async def test_save_flushes_fix_provenance(
         headers={"X-Agent-Run-Id": run_id},
     )
     proposal_id = fix_resp.json()["proposal_id"]
-    accept = await admin_client.post(
-        f"/api/notebook/chat/proposals/{proposal_id}/accept"
-    )
+    accept = await admin_client.post(f"/api/notebook/chat/proposals/{proposal_id}/accept")
     assert accept.status_code == 200
 
     # Save with the patched source + a fix acceptance.

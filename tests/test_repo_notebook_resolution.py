@@ -64,9 +64,9 @@ def test_resolve_notebook_path_repo_invalid_spec(tmp_path):  # type: ignore[no-u
     notebooks_dir.mkdir()
     bad_specs = [
         f"{_REPO_PREFIX}data-team/foo.py",  # no workspace_id
-        f"{_REPO_PREFIX}1:data-team",       # no relative path
+        f"{_REPO_PREFIX}1:data-team",  # no relative path
         f"{_REPO_PREFIX}abc:data-team/foo.py",  # non-numeric workspace_id
-        f"{_REPO_PREFIX}1:data-team/foo.txt",   # bad suffix
+        f"{_REPO_PREFIX}1:data-team/foo.txt",  # bad suffix
     ]
     for spec in bad_specs:
         with pytest.raises(ValidationError):

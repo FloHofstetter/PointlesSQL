@@ -69,8 +69,7 @@ def refresh_cooccurrence(
         dps = session.execute(select(DataProduct)).scalars().all()
         # (workspace_id, catalog, schema) → dp_id
         key_to_dp_id: dict[tuple[int, str, str], int] = {
-            (dp.workspace_id, dp.catalog_name, dp.schema_name): dp.id
-            for dp in dps
+            (dp.workspace_id, dp.catalog_name, dp.schema_name): dp.id for dp in dps
         }
         if not key_to_dp_id:
             return 0
@@ -123,11 +122,15 @@ def refresh_cooccurrence(
             for co_id, count in pairs[:top_n]:
                 kept_pairs[(workspace_id, dp_id, co_id)] = count
 
-        existing_rows = session.execute(
-            select(DataProductCooccurrence).where(
-                DataProductCooccurrence.window_end == window_end
+        existing_rows = (
+            session.execute(
+                select(DataProductCooccurrence).where(
+                    DataProductCooccurrence.window_end == window_end
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         existing_keys = {
             (
                 row.workspace_id,

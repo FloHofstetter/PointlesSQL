@@ -2,7 +2,7 @@
 
 These exercise the synchronous pull path against a tiny CSV fixture
 so we don't need a live external DB.  The full per-connector matrix
-is covered in Phase 82.4.
+is covered .
 
 We patch out the soyuz UC client at the PQL boundary so the write
 path doesn't need a running soyuz-catalog server.
@@ -105,15 +105,11 @@ async def test_pull_now_writes_stats_to_mapping(
         ],
     )
 
-    with patch(
-        "pointlessql.pql.pql.PQL"
-    ) as mock_pql_cls:
+    with patch("pointlessql.pql.pql.PQL") as mock_pql_cls:
         instance = MagicMock()
         instance.write_table = MagicMock(return_value=None)
         mock_pql_cls.return_value = instance
-        res = await admin_client.post(
-            f"/api/ingest/sources/{source_id}/pulls", json={}
-        )
+        res = await admin_client.post(f"/api/ingest/sources/{source_id}/pulls", json={})
 
     assert res.status_code == 200, res.text
     body = res.json()

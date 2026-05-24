@@ -1,4 +1,4 @@
-"""Tests for the Phase-12 query_history service and /api/queries route."""
+"""Tests for the query_history service and /api/queries route."""
 
 from __future__ import annotations
 

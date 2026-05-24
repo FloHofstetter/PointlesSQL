@@ -1,6 +1,6 @@
 """Multi-cell AI-assistant proposals.
 
-Extends Phase 96's single-cell propose / fix / explain flow to a
+Extends single-cell propose / fix / explain flow to a
 full cell-sequence proposal.  One row carries the entire suggested
 sequence (``imports → DataFrame → plot → markdown``) so insertion
 is atomic — the user picks "Insert all" or "Discard" without ever
@@ -32,9 +32,7 @@ STATUS_PENDING = "pending"
 STATUS_ACCEPTED = "accepted"
 STATUS_DISCARDED = "discarded"
 STATUS_EXPIRED = "expired"
-TERMINAL_STATUSES: frozenset[str] = frozenset(
-    {STATUS_ACCEPTED, STATUS_DISCARDED, STATUS_EXPIRED}
-)
+TERMINAL_STATUSES: frozenset[str] = frozenset({STATUS_ACCEPTED, STATUS_DISCARDED, STATUS_EXPIRED})
 
 
 def propose_sequence(
@@ -66,18 +64,14 @@ def propose_sequence(
     if not cells:
         raise ValidationError("cells must be a non-empty list")
     if session.get(EditorChatSession, chat_session_id) is None:
-        raise ValidationError(
-            f"chat session {chat_session_id!r} not found"
-        )
+        raise ValidationError(f"chat session {chat_session_id!r} not found")
     normalised: list[dict[str, Any]] = []
     for idx, cell in enumerate(cells):
         if not isinstance(cell, dict):
             raise ValidationError(f"cells[{idx}] must be an object")
         cell_type = cell.get("cell_type") or "code"
         if cell_type not in ("code", "markdown", "sql"):
-            raise ValidationError(
-                f"cells[{idx}].cell_type must be code|markdown|sql"
-            )
+            raise ValidationError(f"cells[{idx}].cell_type must be code|markdown|sql")
         source = cell.get("source")
         if not isinstance(source, str):
             raise ValidationError(f"cells[{idx}].source must be a string")
@@ -104,9 +98,7 @@ def propose_sequence(
     return row
 
 
-def get_sequence(
-    session: Session, *, proposal_id: str
-) -> dict[str, Any] | None:
+def get_sequence(session: Session, *, proposal_id: str) -> dict[str, Any] | None:
     """Return one sequence proposal envelope (or ``None``)."""
     row = session.execute(
         select(NotebookCellSequenceProposal).where(
@@ -139,9 +131,7 @@ def accept_sequence(
     """
     row = _get_or_raise(session, proposal_id=proposal_id)
     if row.status in TERMINAL_STATUSES:
-        raise ValidationError(
-            f"sequence proposal {proposal_id!r} is already {row.status}"
-        )
+        raise ValidationError(f"sequence proposal {proposal_id!r} is already {row.status}")
     row.status = STATUS_ACCEPTED
     row.accepted_at = datetime.datetime.now(datetime.UTC)
     row.accepted_by_user_id = accepted_by_user_id
@@ -149,9 +139,7 @@ def accept_sequence(
     return row
 
 
-def discard_sequence(
-    session: Session, *, proposal_id: str
-) -> NotebookCellSequenceProposal:
+def discard_sequence(session: Session, *, proposal_id: str) -> NotebookCellSequenceProposal:
     """Flip the row to ``discarded``.
 
     Args:
@@ -166,9 +154,7 @@ def discard_sequence(
     """
     row = _get_or_raise(session, proposal_id=proposal_id)
     if row.status in TERMINAL_STATUSES:
-        raise ValidationError(
-            f"sequence proposal {proposal_id!r} is already {row.status}"
-        )
+        raise ValidationError(f"sequence proposal {proposal_id!r} is already {row.status}")
     row.status = STATUS_DISCARDED
     row.discarded_at = datetime.datetime.now(datetime.UTC)
     session.flush()
@@ -179,30 +165,30 @@ def list_pending_for_session(
     session: Session, *, chat_session_id: int, limit: int = 20
 ) -> list[dict[str, Any]]:
     """Return pending sequence proposals for one chat session."""
-    rows = session.execute(
-        select(NotebookCellSequenceProposal)
-        .where(
-            NotebookCellSequenceProposal.chat_session_id == chat_session_id,
-            NotebookCellSequenceProposal.status == STATUS_PENDING,
+    rows = (
+        session.execute(
+            select(NotebookCellSequenceProposal)
+            .where(
+                NotebookCellSequenceProposal.chat_session_id == chat_session_id,
+                NotebookCellSequenceProposal.status == STATUS_PENDING,
+            )
+            .order_by(NotebookCellSequenceProposal.created_at.desc())
+            .limit(limit)
         )
-        .order_by(NotebookCellSequenceProposal.created_at.desc())
-        .limit(limit)
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     return [_row_to_envelope(r) for r in rows]
 
 
-def _get_or_raise(
-    session: Session, *, proposal_id: str
-) -> NotebookCellSequenceProposal:
+def _get_or_raise(session: Session, *, proposal_id: str) -> NotebookCellSequenceProposal:
     row = session.execute(
         select(NotebookCellSequenceProposal).where(
             NotebookCellSequenceProposal.proposal_id == proposal_id
         )
     ).scalar_one_or_none()
     if row is None:
-        raise ValidationError(
-            f"sequence proposal {proposal_id!r} not found"
-        )
+        raise ValidationError(f"sequence proposal {proposal_id!r} not found")
     return row
 
 
@@ -219,9 +205,7 @@ def _row_to_envelope(
         "created_at": row.created_at.isoformat() if row.created_at else None,
         "accepted_at": row.accepted_at.isoformat() if row.accepted_at else None,
         "accepted_by_user_id": row.accepted_by_user_id,
-        "discarded_at": row.discarded_at.isoformat()
-        if row.discarded_at
-        else None,
+        "discarded_at": row.discarded_at.isoformat() if row.discarded_at else None,
         "cells": json.loads(row.cells_json),
     }
 
