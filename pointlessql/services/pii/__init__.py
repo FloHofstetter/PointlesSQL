@@ -19,6 +19,7 @@ Layout:
 
 from __future__ import annotations
 
+from pointlessql.services.pii._audit_redactor import redact_audit_detail
 from pointlessql.services.pii._mask import mask_value
 from pointlessql.services.pii._redactor import (
     get_or_create_pii_hash_secret,
@@ -39,6 +40,7 @@ __all__ = [
     "invalidate_all",
     "is_pii_by_name",
     "mask_value",
+    "redact_audit_detail",
     "redact_value",
     "resolve_many",
 ]

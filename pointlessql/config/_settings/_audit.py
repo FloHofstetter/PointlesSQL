@@ -82,6 +82,17 @@ class AuditSettings(BaseSettings):
     pii_cache_ttl_seconds: int = 600
     pii_mode: Literal["store_clear", "hash_only", "redact_with_audit_log"] = "hash_only"
     pii_hash_secret: str | None = None
+    redact_detail_payloads: bool = Field(
+        default=False,
+        description=(
+            "Phase 121.7c — when True, log_action() pipes detail "
+            "dicts through services/pii/_audit_redactor before "
+            "persistence, using audit.pii_mode for the redaction "
+            "shape (clear / hash / placeholder).  Default False "
+            "preserves cleartext at rest for backward-compat; flip "
+            "to True after auditing existing detail payload shapes."
+        ),
+    )
     lineage_retention: LineageRetentionSettings = Field(default_factory=LineageRetentionSettings)
 
 

@@ -176,6 +176,10 @@ def log_action(
             ``catalog:my_catalog``).
         detail: Optional extra context. Dicts are JSON-encoded;
             strings are stored verbatim for backwards compatibility.
+            When ``settings.audit.redact_detail_payloads`` is True
+            the dict is piped through
+            :func:`pointlessql.services.pii.redact_audit_detail`
+            first so PII-keyed values land redacted at rest.
         actor_role: Role of the acting user at time of action —
             ``admin``, ``user``, or ``system`` (the last reserved
             for middleware-generated rows).
@@ -187,6 +191,17 @@ def log_action(
             explicit threading; HTTP routes pass
             ``request.state.workspace_id`` for proper isolation.
     """
+    from pointlessql.config import get_settings
+
+    settings = get_settings()
+    if settings.audit.redact_detail_payloads:
+        from pointlessql.services.pii import redact_audit_detail
+
+        detail = redact_audit_detail(
+            detail,
+            mode=settings.audit.pii_mode,
+            session_factory=factory,
+        )
     encoded = _encode_detail(detail)
     with factory() as session:
         entry = AuditLog(
