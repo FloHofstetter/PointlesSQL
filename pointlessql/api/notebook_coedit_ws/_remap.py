@@ -48,6 +48,7 @@ def apply_remap_locked(hub: NotebookHub, remap: dict[str, str]) -> None:
                         prior.to_py() if hasattr(prior, "to_py") else str(prior)
                     )
                 except Exception:  # noqa: BLE001
+                    # bare-broad-ok: drop unreadable y-text contents during remap
                     prior_value = ""
                 del texts[old_uuid]
                 texts[new_uuid] = Text(prior_value)

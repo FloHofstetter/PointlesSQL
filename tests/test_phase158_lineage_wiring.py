@@ -308,7 +308,7 @@ def test_remerge_with_track_value_changes_emits_value_changes(
     original = int(tweaked.at[first_idx, "size_sqft"])
     tweaked.at[first_idx, "size_sqft"] = original + 999
 
-    with patch("pointlessql.pql._merge._get_table") as mget:
+    with patch("pointlessql.pql._merge._resolve._get_table") as mget:
         mget.sync.return_value = TableInfo(
             storage_location=target_storage,
             name="houses_with_changes",
@@ -479,7 +479,7 @@ def test_merge_against_non_cdf_target_captures_value_changes(
     original = int(tweaked.at[first_idx, "size_sqft"])
     tweaked.at[first_idx, "size_sqft"] = original + 555
 
-    with patch("pointlessql.pql._merge._get_table") as mget:
+    with patch("pointlessql.pql._merge._resolve._get_table") as mget:
         mget.sync.return_value = TableInfo(
             storage_location=str(target_loc),
             name="no_cdf_target",

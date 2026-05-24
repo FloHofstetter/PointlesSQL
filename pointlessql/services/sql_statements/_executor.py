@@ -379,6 +379,7 @@ async def run_statement(
         return envelope
 
     except Exception as exc:  # noqa: BLE001 — terminal catch maps every failure to DBX envelope
+        # bare-broad-ok: DBX-shape error envelope absorbs the exception class
         error_code, message = _map_exception_to_dbx(exc)
         _persist_failure(
             factory,

@@ -99,8 +99,8 @@ async def close_overflowed(sub: ClientSubscription) -> None:
         sub.pump_task.cancel()
     try:
         await sub.websocket.close(code=1011)
-    except Exception:  # noqa: BLE001 — already-closed sockets raise
-        pass
+    except Exception:  # noqa: BLE001 — already-closed sockets raise; nothing to do
+        pass  # bare-broad-ok: closing an already-closed WebSocket is benign
 
 
 async def pump(sub: ClientSubscription) -> None:

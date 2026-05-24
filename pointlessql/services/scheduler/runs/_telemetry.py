@@ -100,9 +100,15 @@ async def _post_failure_webhook(
             strings by the caller so this function is oblivious to
             the run's internal datetime representation.
     """
+    # Look up the factory and timeout via the parent package so the test
+    # ``monkeypatch.setattr(scheduler_service.runs, ...)`` reaches this call
+    # site (same call-time-lookup pattern as ``_sleep`` / ``_build_pql``
+    # elsewhere — see Phase 110.2 / 110.9 / 111.7).
+    from pointlessql.services.scheduler import runs as _runs
+
     try:
-        async with _webhook_client_factory() as client:
-            await client.post(url, json=payload, timeout=_WEBHOOK_TIMEOUT_SECONDS)
+        async with _runs._webhook_client_factory() as client:
+            await client.post(url, json=payload, timeout=_runs._WEBHOOK_TIMEOUT_SECONDS)
     except httpx.HTTPError as exc:
         logger.warning("scheduler: on_failure_url webhook to %s failed: %s", url, exc)
     except Exception:  # noqa: BLE001 — webhook boundary

@@ -90,6 +90,10 @@ def test_entity_kinds_constant_covers_phase77_plan() -> None:
         "notebook_cell",
         # Phase 96 — inline AI-assistant ``agent_memory`` entity-kind.
         "agent_memory",
+        # Phase 97 — revision-level social (per-revision pinned facts +
+        # cell-output discussion threads on the same target).
+        "notebook_revision",
+        "notebook_cell_output",
     }
     assert set(ENTITY_KINDS) == expected
 

@@ -94,11 +94,10 @@ def build_seed(
         notebooks_dir = settings.jupyter.notebooks_dir.resolve()
         absolute = resolve_py_notebook_path(notebooks_dir, file_path, must_exist=True)
         document = load_document(absolute, file_path)
-    except Exception as exc:  # noqa: BLE001 — best-effort cold seed
-        _LOG.warning(
-            "coedit: cold-seed load failed for %s (%s); starting with empty doc",
+    except Exception:  # noqa: BLE001 — best-effort cold seed
+        _LOG.exception(
+            "coedit: cold-seed load failed for %s; starting with empty doc",
             notebook_id,
-            exc,
         )
         return []
     return extract_seed_cells(document, cell_uuid_map)

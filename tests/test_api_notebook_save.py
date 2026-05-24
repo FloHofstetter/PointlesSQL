@@ -6,6 +6,7 @@ from pathlib import Path
 
 import httpx
 import pytest
+from sqlalchemy import select
 
 from pointlessql.api.main import app
 
@@ -139,10 +140,16 @@ async def test_save_traversal_blocked(
     assert resp.status_code == 422
 
 
-async def test_save_non_admin_accessible(
+async def test_save_non_admin_without_edit_role_blocked(
     workspace_dir: Path, non_admin_client: httpx.AsyncClient
 ) -> None:
-    """Phase 70: any authenticated user can save a notebook."""
+    """Phase 99 Wave-D: non-admin needs explicit edit grant to save.
+
+    The Phase-70 contract ("any authenticated user can save") was
+    tightened by Phase 99 Wave-D ``_enforce_notebook_role(required="edit")``.
+    Without an explicit ``notebook_permissions`` row, a non-admin caller
+    can still view and run but not save — the gate returns 403.
+    """
     (workspace_dir / "demo.py").write_bytes(_DEMO_NOTEBOOK)
     resp = await non_admin_client.post(
         "/api/notebooks/save",
@@ -157,4 +164,53 @@ async def test_save_non_admin_accessible(
             ],
         },
     )
-    assert resp.status_code == 200
+    assert resp.status_code == 403
+
+
+async def test_save_non_admin_with_edit_grant_accessible(
+    workspace_dir: Path, non_admin_client: httpx.AsyncClient
+) -> None:
+    """Phase 99 Wave-D: explicit ``edit`` grant restores save access.
+
+    Pairs with the blocked-without-grant case above to pin both sides
+    of the lattice.  We seed the file, mint its UUID via load, then
+    grant the non-admin user explicit edit on that notebook.
+    """
+    from pointlessql.services.notebook import permissions as notebook_permissions
+
+    (workspace_dir / "demo.py").write_bytes(_DEMO_NOTEBOOK)
+    # Load mints the stable notebook UUID so we can target a grant.
+    load_resp = await non_admin_client.get(
+        "/api/notebooks/load", params={"path": "demo.py"}
+    )
+    assert load_resp.status_code == 200
+    factory = app.state.session_factory
+    with factory() as session:
+        from pointlessql.models.notebook import Notebook
+
+        notebook_id = session.execute(
+            select(Notebook.id).where(Notebook.file_path == "demo.py")
+        ).scalar_one()
+        notebook_permissions.grant_permission(
+            session,
+            notebook_id=notebook_id,
+            user_id=2,  # non-admin (admin is id=1 per _seed_test_users)
+            role="edit",
+            granted_by_user_id=1,
+        )
+        session.commit()
+
+    resp = await non_admin_client.post(
+        "/api/notebooks/save",
+        json={
+            "path": "demo.py",
+            "cells": [
+                {
+                    "cell_id": "0000000000000001",
+                    "cell_type": "code",
+                    "source": "print('member edit')\n",
+                }
+            ],
+        },
+    )
+    assert resp.status_code == 200, resp.text

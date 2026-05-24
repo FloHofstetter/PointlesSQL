@@ -112,6 +112,7 @@ async def notebook_coedit_ws(  # noqa: C901 — handshake + dispatch are inheren
                     try:
                         diff = hub.doc.get_update(payload)
                     except Exception:  # noqa: BLE001 — malformed state vector
+                        # bare-broad-ok: client sent garbage; log + skip is the protocol
                         _LOG.warning(
                             "coedit: malformed sync_step1 from %s", sub.client_id
                         )
@@ -123,6 +124,7 @@ async def notebook_coedit_ws(  # noqa: C901 — handshake + dispatch are inheren
                     try:
                         hub.doc.apply_update(payload)
                     except Exception:  # noqa: BLE001 — malformed update
+                        # bare-broad-ok: client sent garbage; log + skip is the protocol
                         _LOG.warning(
                             "coedit: malformed update from %s", sub.client_id
                         )

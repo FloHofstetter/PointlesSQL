@@ -241,7 +241,10 @@ class TestBodyReplay:
                 },
             )
         assert resp.status_code == 303
-        assert resp.headers["location"] == "/auth/login"
+        # Redirect carries a ``?flash=account_created`` query param now;
+        # the body-replay contract only cares that the handler completed
+        # the registration round-trip, not the exact query string.
+        assert resp.headers["location"].startswith("/auth/login")
 
 
 class TestTokenHelpers:
