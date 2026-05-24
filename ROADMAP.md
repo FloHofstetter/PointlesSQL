@@ -2786,6 +2786,79 @@ PointlesSQL
 │   │         facade callers (``list_facts_for_notebook`` /
 │   │         ``recall``).  Commit ``85a4a42``, asset rc135 → rc136.
 │   │
+│   ├── Phase 122 — Source-Code Sanitization for Publication        ✅ done 2026-05-24
+│   │     **Closed LOCAL 2026-05-24.**  Four-sprint wave that strips
+│   │     project-management references (Phase / Sprint / Wave-X /
+│   │     BUG-NN-NN) from source comments + docstrings + e2e
+│   │     walkthroughs + README in preparation for the in-aspect public
+│   │     release of the stack.  ROADMAP, CHANGELOG, alembic migrations,
+│   │     and git history are explicitly kept as historical record —
+│   │     they ARE the phase artefact.
+│   │
+│   │     Goal: source comments + docstrings stop reading as
+│   │     "cryptic insider language" for outside contributors.  A
+│   │     "Phase 99 Wave-D tightened the save gate" comment carries
+│   │     zero value for someone with no ROADMAP mapping in their
+│   │     head and signals "private hobby repo".
+│   │
+│   │     - **122.1 — Mechanical regex sweep.**  ✅ done 2026-05-24.
+│   │       Per-pattern strip across ``pointlessql/`` + ``tests/`` +
+│   │       ``frontend/`` + ``e2e/`` + ``notebooks/``:
+│   │       parenthetical ``(Phase X)``, line-start comment prefixes
+│   │       (``# Phase X — `` / ``// Phase X — `` / ``<!-- Phase X — `` /
+│   │       ``/* Phase X — `` / ``{# Phase X — ``), docstring openers,
+│   │       JSDoc body lines, multi-line block-comment openers,
+│   │       inline ``BUG-NN-NN`` markers, ``Sprint X`` / ``Wave-X``
+│   │       standalone tokens.  Source-tree Phase hits: 1622 → 855
+│   │       (−47%); Sprint: 362 → 194; Wave: 52 → 11; BUG: 21 → 7.
+│   │       Commit ``69c33fe``, asset rc138 → rc139.
+│   │     - **122.2 — Manual woven cleanup + test renames.**  ✅ done
+│   │       2026-05-24.  Strips the woven-into-prose references that
+│   │       122.1's regex couldn't touch (temporal prefixes ``in/since/
+│   │       from/to/for/per Phase X``, possessive ``Phase X's noun``,
+│   │       cross-ref ``see Phase X``, modifier ``the Phase X feature``,
+│   │       sentence-start subject drops).  Plus ``git mv`` renames
+│   │       for 11 phase-keyed test + notebook filenames (e.g.
+│   │       ``test_phase158_lineage_wiring.py`` →
+│   │       ``test_lineage_wiring_contract.py``) and 11 test/helper
+│   │       function-name renames.  20 manual long-line rewrites for
+│   │       sentences the strip broke grammatically.  Phase hits:
+│   │       855 → 260 (−70%; 88% overall vs pre-wave).  Commit
+│   │       ``5ca77eb0``, asset rc139 → rc140.
+│   │     - **122.3 — e2e-walkthroughs feature-rename + content-clean.**
+│   │       ✅ done 2026-05-24.  Renamed
+│   │       ``sprint_13_11_reflexive_tools.md`` → ``reflexive_tools.md``;
+│   │       cross-references in ``mkdocs.yml`` / ``docs/guides/`` /
+│   │       walkthrough README updated.  Dropped the ``| Phase |``
+│   │       column from the 4 walkthrough-mode tables in the README.
+│   │       Bulk-strip patterns applied to all 65 walkthrough markdowns:
+│   │       parenthetical phase suffixes, sentence-internal temporals,
+│   │       ``BUGs — Phase 69 replay`` headers, modifier drops.
+│   │       ~190 substitutions; remaining ~50 unique sentence-internal
+│   │       references are the long tail.  Commit ``ee4f0777``, asset
+│   │       rc140 → rc141.
+│   │     - **122.4 — README outside-reader polish + CLAUDE.md forward
+│   │       guard.**  ✅ done 2026-05-24.  Rewrote ``## Status`` section
+│   │       of ``README.md`` from "Phase 21 closed" to a feature-
+│   │       focused capability list; stripped 3 phase refs in the
+│   │       "Why" block; collapsed "Sprint 63 retired JupyterLab"
+│   │       footnote.  New ``CLAUDE.md`` convention block under
+│   │       ``## Conventions``: *Source comments + docstrings MUST NOT
+│   │       reference Phase / Sprint / Wave numbers or BUG-NN-NN
+│   │       markers.*  Exception explicitly documented for
+│   │       ``pointlessql/alembic/versions/*.py`` (the migration IS
+│   │       the schema-change identity).  Commit ``b3566ea7``, asset
+│   │       rc141 → rc142.
+│   │
+│   │     Final counts: Phase 1622 → 260 (84% reduction; 173 non-alembic);
+│   │     Sprint 362 → 72 (80%); Wave 52 → 6 (88%); BUG 21 → 7 (67%).
+│   │     Long-tail of ~250 non-alembic hits is unique sentence-
+│   │     internal prose that survives as feature context; further
+│   │     reduction would need bespoke per-site rewrite.
+│   │
+│   │     Verification: full pytest 3529 passed / 0 failed; ruff
+│   │     check 0 errors; pyright + pydoclint unchanged.
+│   │
 │   ├── Phase 120 — API-key ACLs + usage dashboard               ✅ done 2026-05-23
 │   │     **Closed 2026-05-23.**  Seven sub-phases bundled in one
 │   │     session, asset 0.1.0rc124 → rc125.  Final wave of the

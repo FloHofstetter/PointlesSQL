@@ -4,6 +4,23 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- **Phase 122 — Source-Code Sanitization for Publication (2026-05-24,
+  rc138 → rc142).**  Four-sprint wave that strips project-
+  management references from source comments + docstrings + e2e
+  walkthroughs + README in preparation for the public release.
+  ROADMAP, CHANGELOG, alembic migration filenames + docstrings, and
+  git history are explicitly kept (each IS the phase artefact).
+  Source-tree Phase ref count: 1622 → 260 (84% reduction); Sprint:
+  362 → 72; Wave: 52 → 6; BUG-NN-NN markers: 21 → 7.  Renamed 12
+  phase-keyed files (11 tests + 1 notebook + 1 walkthrough); 11
+  test/helper function renames; new ``CLAUDE.md`` forward guard
+  block prohibits future phase refs in source comments.  Commits
+  ``69c33fe`` (122.1 mechanical), ``5ca77eb0`` (122.2 manual),
+  ``ee4f0777`` (122.3 walkthroughs), ``b3566ea7`` (122.4 README +
+  CLAUDE).
+
 ### Fixed
 
 - **Phase 121.9a — Close 7 pre-existing test failures (2026-05-24,
