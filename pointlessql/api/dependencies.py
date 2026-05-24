@@ -9,12 +9,15 @@ IP for audit rows (``client_ip``).
 
 from __future__ import annotations
 
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
+from typing import Any
 
 from fastapi import Query, Request
+from fastapi.responses import Response
 from fastapi.templating import Jinja2Templates
 
-from pointlessql.exceptions import AuthorizationError
+from pointlessql.exceptions import AuthorizationError, CatalogUnavailableError
 from pointlessql.models import Workspace
 from pointlessql.services.unitycatalog import UnityCatalogClient
 from pointlessql.services.workspace import _crud as workspaces_service
@@ -147,6 +150,27 @@ def require_admin(request: Request) -> None:
             securable_type="system",
             full_name="admin",
         )
+
+
+def admin_uc(request: Request) -> UnityCatalogClient:
+    """Combine :func:`require_admin` + :func:`get_uc_client` for admin UC routes.
+
+    Phase 121.6 Item B helper — collapses the ``require_admin(request);
+    client = get_uc_client(request)`` couplet repeated at the top of every
+    admin-only UC route into a single :func:`Depends` injection.
+
+    Args:
+        request: Incoming FastAPI request.
+
+    Returns:
+        The per-request :class:`UnityCatalogClient` facade.
+
+    Raises:
+        AuthorizationError: When the caller is not an admin (via
+            :func:`require_admin`).
+    """
+    require_admin(request)
+    return get_uc_client(request)
 
 
 def require_user(request: Request) -> None:
@@ -618,3 +642,55 @@ def client_ip(request: Request) -> str | None:
         IPv4/IPv6 address or ``None`` if unavailable.
     """
     return request.client.host if request.client else None
+
+
+async def render_page_with_fallback(
+    request: Request,
+    template_name: str,
+    fetch_fn: Callable[[], Awaitable[Any]],
+    *,
+    context_key: str,
+    extra_context: dict[str, Any] | None = None,
+) -> Response:
+    """Render *template_name* with fetched data; surface UC outages as a banner.
+
+    Phase 121.6 Item D — extracts the
+    ``try/except CatalogUnavailableError`` + ``render template with
+    error banner`` pattern repeated across federation_routes,
+    catalog_html_routes, home_routes, and memory_routes.  Routes
+    delegate the fetch + error handling to one place; their bodies
+    shrink to ``return await render_page_with_fallback(...)``.
+
+    Args:
+        request: Incoming FastAPI request — needed for
+            :func:`get_templates` and the template response builder.
+        template_name: Jinja template path (e.g.
+            ``"pages/connections.html"``).
+        fetch_fn: Async no-arg callable that returns the data to
+            inject under *context_key*.  Typical pattern is a bound
+            method reference: ``client.list_connections``.
+        context_key: Template variable name for the fetched data.
+            Pages that do not expect a "found object" key (e.g. the
+            error-banner-only page) still get an empty list under
+            this key on UC outage.
+        extra_context: Additional template variables merged into
+            the rendered context.  ``error`` is reserved — the
+            helper always injects it (``None`` on success,
+            ``exc.detail`` on UC failure).
+
+    Returns:
+        :class:`Response` carrying the rendered template — populated
+        data on success, empty + ``error`` banner on UC outage.
+    """
+    items: Any = []
+    error: str | None = None
+    try:
+        items = await fetch_fn()
+    except CatalogUnavailableError as exc:
+        error = exc.detail
+    context: dict[str, Any] = {context_key: items, "error": error}
+    if extra_context:
+        context.update(extra_context)
+    return get_templates(request).TemplateResponse(
+        request, template_name, context
+    )

@@ -12,27 +12,9 @@ from __future__ import annotations
 
 from fastapi import HTTPException
 
+from pointlessql.api.social_routes._ref_kinds import find_ref_kind
 from pointlessql.exceptions import BadRequestError
 from pointlessql.services.social import entity_registry
-
-# Per-kind ref-shape contract.  Keys map to a one-line validator
-# that accepts the post-split parts and raises 400 with a clean
-# message when the shape doesn't match.
-_POLYMORPHIC_KINDS: frozenset[str] = frozenset(
-    {
-        "table",
-        "branch",
-        "model",
-        "run",
-        "issue",
-        "schema",
-        "catalog",
-        "notebook",
-        "saved_query",
-        "workspace",
-        "notebook_cell",
-    }
-)
 
 
 def parse_dp_ref(kind: str, ref: str) -> tuple[str, str]:
@@ -77,6 +59,11 @@ def parse_dp_ref(kind: str, ref: str) -> tuple[str, str]:
 def parse_ref(kind: str, ref: str) -> str:
     """Validate the ``(kind, ref)`` shape for the polymorphic path.
 
+    Phase 121.6 Item A refactor: per-kind validators now live in
+    :mod:`._ref_kinds` as a :class:`RefKind` registry.  Adding a new
+    kind is a single :func:`register_ref_kind` call — no edit to
+    this dispatcher.
+
     Args:
         kind: Entity kind discriminator from the URL.
         ref: Entity reference from the URL.
@@ -87,8 +74,9 @@ def parse_ref(kind: str, ref: str) -> str:
 
     Raises:
         HTTPException: 400 when *kind* is unknown or *ref* is
-            malformed; 501 when *kind* is registered but not yet
-            wired through the polymorphic handlers.
+            malformed; 501 when *kind* is registered with soyuz
+            entity_registry but no :class:`RefKind` is wired
+            through yet.
     """
     if kind not in entity_registry.all_kinds():
         known = sorted(entity_registry.all_kinds())
@@ -101,96 +89,12 @@ def parse_ref(kind: str, ref: str) -> str:
         raise BadRequestError(
             "kind='dp' is handled by the DP delegator path; use parse_dp_ref."
         )
-    if kind == "table":
-        parts = ref.split(".", 2)
-        if len(parts) != 3 or not all(parts):
-            raise BadRequestError(
-                "kind='table' ref must be 'catalog.schema.table'."
-            )
-        return ref
-    if kind == "branch":
-        if "__branch_" not in ref or "." not in ref:
-            raise BadRequestError(
-                "kind='branch' ref must be a branch FQN "
-                "('catalog.schema__branch_xxx')."
-            )
-        return ref
-    if kind == "model":
-        parts = ref.split(".", 2)
-        if len(parts) != 3 or not all(parts):
-            raise BadRequestError(
-                "kind='model' ref must be 'catalog.schema.name'."
-            )
-        return ref
-    if kind == "run":
-        # Phase 77.4 — run refs are canonical 36-char UUIDs as text.
-        if len(ref) != 36 or ref.count("-") != 4:
-            raise BadRequestError("kind='run' ref must be a 36-char UUID.")
-        return ref
-    if kind == "issue":
-        # Phase 77.7 — issue refs are the integer issues.id serialised
-        # as a base-10 string.  Validate digits-only + non-empty
-        # upfront so a malformed ref doesn't fall through to a
-        # downstream lookup with a fuzzy error.
-        if not ref or not ref.isdigit():
-            raise BadRequestError("kind='issue' ref must be a numeric issue id.")
-        return ref
-    if kind == "schema":
-        # Phase 77.5 — schema refs are ``catalog.schema`` two-part
-        # identifiers (UC's address shape).  Two ASCII identifiers
-        # joined by exactly one dot.
-        parts = ref.split(".", 1)
-        if len(parts) != 2 or not all(parts):
-            raise BadRequestError("kind='schema' ref must be 'catalog.schema'.")
-        return ref
-    if kind == "catalog":
-        # Phase 77.5 — catalog refs are bare UC catalog names —
-        # one ASCII identifier, no dots.
-        if not ref or "." in ref or "/" in ref:
-            raise BadRequestError(
-                "kind='catalog' ref must be a bare identifier."
-            )
-        return ref
-    if kind == "notebook":
-        # Phase 77.6 — notebook refs are the 36-char UUID stored
-        # on ``notebooks.id``.
-        if len(ref) != 36 or ref.count("-") != 4:
-            raise BadRequestError("kind='notebook' ref must be a 36-char UUID.")
-        return ref
-    if kind == "saved_query":
-        # Phase 77.6 — saved-query refs are the slug stored on the
-        # saved_audit_queries row.  Accept the same shape as
-        # citations (lowercase alphanumerics + hyphens).
-        if not ref or "/" in ref:
-            raise BadRequestError("kind='saved_query' ref must be a slug.")
-        return ref
-    if kind == "workspace":
-        # Phase 77.10 — workspace refs are the workspace slug.
-        if not ref or "/" in ref or "." in ref:
-            raise BadRequestError("kind='workspace' ref must be a slug.")
-        return ref
-    if kind == "notebook_cell":
-        # Phase 95 — composite ref ``{notebook_uuid}:{cell_uuid}``.
-        # Both halves are 36-char UUIDs.  The cell-uuid identity is
-        # minted by the save-path reconciler; URL clients pass it
-        # back verbatim.
-        notebook_uuid, sep, cell_uuid = ref.partition(":")
-        if (
-            not sep
-            or len(notebook_uuid) != 36
-            or notebook_uuid.count("-") != 4
-            or len(cell_uuid) != 36
-            or cell_uuid.count("-") != 4
-        ):
-            raise BadRequestError(
-                "kind='notebook_cell' ref must be "
-                "'{notebook_uuid}:{cell_uuid}' (two 36-char UUIDs)."
-            )
-        return ref
-    if kind not in _POLYMORPHIC_KINDS:
+    spec = find_ref_kind(kind)
+    if spec is None:
         # bare-http-ok: 501 has no domain-exception counterpart — kind is
-        # registered but no polymorphic handler is wired through yet.
-        # Later Phase-77 sub-phases add the missing ones.
+        # registered with entity_registry but no polymorphic handler is
+        # wired through yet.  Later Phase-77 sub-phases add the missing
+        # ones by registering a new RefKind in _ref_kinds.py.
         raise HTTPException(
             status_code=501,
             detail=(
@@ -198,6 +102,8 @@ def parse_ref(kind: str, ref: str) -> str:
                 "/api/social/; later Phase-77 sub-phases add it"
             ),
         )
+    if not spec.validate(ref):
+        raise BadRequestError(spec.message)
     return ref
 
 
