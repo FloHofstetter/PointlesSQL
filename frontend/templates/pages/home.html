@@ -70,7 +70,7 @@
         </p>
     </header>
 
-    {# Phase 80.3 — Today digest cards.  Three stat tiles surface
+    {# Today digest cards.  Three stat tiles surface
        the three primary supervisor concerns (approvals, unread,
        firing) right under the header so first-glance triage doesn't
        require scrolling.  Each card click jumps to its full surface. #}
@@ -431,7 +431,7 @@
 {% block extra_js %}
 <script>
 (function () {
-    // Bars are server-rendered in pages/home.html (see BUG-32-01).
+    // Bars are server-rendered in pages/home.html (see).
     // The factory survives for the meta <dl> counters only.
     window.homeSparkline = function (ctx) {
         const days = Array.isArray(ctx && ctx.days) ? ctx.days : [];

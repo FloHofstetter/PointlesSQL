@@ -52,7 +52,7 @@ EVENT_TYPE_LINEAGE_PRUNED = "pointlessql.lineage.pruned"
 EVENT_TYPE_BRANCH_CREATED = "pointlessql.branch.created.v1"
 EVENT_TYPE_BRANCH_PROMOTED = "pointlessql.branch.promoted.v1"
 EVENT_TYPE_BRANCH_DISCARDED = "pointlessql.branch.discarded.v1"
-# dbt-bridge events (Phase 36 Sprint 36.5).  ``run.completed`` fires
+# dbt-bridge events.  ``run.completed`` fires
 # at the end of every ``/api/dbt/run`` and ``/api/dbt/test`` so a
 # subscriber can render run-level summaries; ``test.failed`` fires
 # once per failing error-severity test (these block the run);
@@ -61,14 +61,14 @@ EVENT_TYPE_BRANCH_DISCARDED = "pointlessql.branch.discarded.v1"
 EVENT_TYPE_DBT_RUN_COMPLETED = "pointlessql.dbt.run.completed"
 EVENT_TYPE_DBT_TEST_FAILED = "pointlessql.dbt.test.failed"
 EVENT_TYPE_DBT_TEST_WARNED = "pointlessql.dbt.test.warned"
-# Phase 36 Restabschluss — fired when /api/dbt/test resolves at least
+# fired when /api/dbt/test resolves at least
 # one error-severity failure under the ``auto_rollback`` flag and
 # walks the run's ``dbt_model`` ops calling ``pql.rollback`` for each.
 # Payload carries every target attempted plus the per-target outcome
 # (succeeded vs. refused) so the cockpit can render the auto-undo
 # decision next to the failing tests that triggered it.
 EVENT_TYPE_DBT_AUTO_ROLLBACK_EXECUTED = "pointlessql.dbt.auto_rollback.executed"
-# Phase 50.4 — fired by the data-product freshness scanner when a
+# fired by the data-product freshness scanner when a
 # product whose contract declares ``sla_minutes`` has not received
 # a write across any of its tables for longer than the SLA permits.
 # Payload carries (workspace_id, catalog, schema, name, sla_minutes,
@@ -76,7 +76,7 @@ EVENT_TYPE_DBT_AUTO_ROLLBACK_EXECUTED = "pointlessql.dbt.auto_rollback.executed"
 # the steward and render age in their preferred timezone.
 EVENT_TYPE_DATA_PRODUCT_SLA_VIOLATED = "pointlessql.data_product.sla_violated"
 
-# Phase 71.4 — data-product marketplace social events.  Comment +
+# data-product marketplace social events.  Comment +
 # review + follow events go through the same forwarder as the rest
 # of the governance lane so existing webhook/S3/CloudTrail sinks
 # pick them up without new pub-sub plumbing; the per-user inbox
@@ -94,7 +94,7 @@ EVENT_TYPE_DATA_PRODUCT_PROPOSAL_OPENED = (
 EVENT_TYPE_DATA_PRODUCT_PROPOSAL_RESOLVED = (
     "pointlessql.data_product.proposal_resolved"
 )
-# Phase 76.1 — six-emoji reactions on comments + on the product
+# six-emoji reactions on comments + on the product
 # itself, plus the typed-Q&A "answer accepted" event.  Same
 # governance lane as the rest of the marketplace events; the
 # fanout-side recipient policy differs (comment reactions only
@@ -107,18 +107,18 @@ EVENT_TYPE_DATA_PRODUCT_REACTED = "pointlessql.data_product.reacted"
 EVENT_TYPE_DATA_PRODUCT_ANSWER_ACCEPTED = (
     "pointlessql.data_product.answer_accepted"
 )
-# Phase 76.2 — user-to-user follow signal.  Recipient is the
+# user-to-user follow signal.  Recipient is the
 # followed user (single inbox row), governance envelope carries
 # follower + followed ids for SIEM correlation.
 EVENT_TYPE_USER_FOLLOWED = "pointlessql.user.followed"
-# Phase 76.2 — sticky positive-only reputation badge.  The badges
+# sticky positive-only reputation badge.  The badges
 # loop awards rows once per (user, badge_key) threshold crossing.
 EVENT_TYPE_USER_BADGE_AWARDED = "pointlessql.user.badge_awarded"
-# Phase 76.3 — topic-membership signal.  Fans out to topic
+# topic-membership signal.  Fans out to topic
 # followers when a new DP joins a topic they follow.
 EVENT_TYPE_TOPIC_DP_ADDED = "pointlessql.topic.dp_added"
 EVENT_TYPE_NOTIFICATION_DIGEST = "pointlessql.notification.digest"
-# Phase 77.7 — GitHub-Issues entity events.  Two events split the
+# GitHub-Issues entity events.  Two events split the
 # lifecycle: ``opened`` fires once at issue creation; ``state_changed``
 # fires on every close / reopen / mark-not-planned.  Both events
 # carry the parent entity (kind + ref) so SIEM / Grafana can route

@@ -383,7 +383,7 @@ async def submit_statement(
     workspace_id = int(getattr(request.state, "workspace_id", 1) or 1)
     actor_email = effective_principal(request) or f"api_key:{api_key_name}"
 
-    # Phase 120 — per-key catalog ACL.  Runs after parse + qualify so
+    # per-key catalog ACL.  Runs after parse + qualify so
     # the AST walker sees the same fully-qualified table refs the
     # downstream UC enforcement sees.  Zero grants = unrestricted
     # (back-compat for every pre-120 key).

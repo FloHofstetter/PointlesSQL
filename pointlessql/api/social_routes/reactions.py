@@ -1,4 +1,4 @@
-"""Polymorphic reactions router (Phase 77.0.F.2 + 77.1.5 + 77.8.D dispatch).
+"""Polymorphic reactions router.
 
 For ``kind='dp'`` the call delegates to the existing DP reaction
 handlers so that the legacy fan-out + audit prefix semantics
@@ -96,7 +96,7 @@ async def list_social_comment_reactions(
 async def add_social_entity_reaction(
     kind: str, ref: str, request: Request
 ) -> dict[str, Any]:
-    """Dispatch an entity-level reaction POST by kind (Phase 77.8.D)."""
+    """Dispatch an entity-level reaction POST by kind."""
     if kind == "dp":
         catalog, schema = parse_dp_ref(kind, ref)
         return await add_dp_reaction(catalog, schema, request)
@@ -108,7 +108,7 @@ async def add_social_entity_reaction(
 async def remove_social_entity_reaction(
     kind: str, ref: str, emoji: str, request: Request
 ) -> dict[str, Any]:
-    """Dispatch an entity-level reaction DELETE by kind (Phase 77.8.D)."""
+    """Dispatch an entity-level reaction DELETE by kind."""
     if kind == "dp":
         catalog, schema = parse_dp_ref(kind, ref)
         return await remove_dp_reaction(catalog, schema, emoji, request)
@@ -122,7 +122,7 @@ async def remove_social_entity_reaction(
 async def list_social_entity_reactions(
     kind: str, ref: str, request: Request
 ) -> dict[str, Any]:
-    """Dispatch an entity-level reaction list by kind (Phase 77.8.D)."""
+    """Dispatch an entity-level reaction list by kind."""
     if kind == "dp":
         catalog, schema = parse_dp_ref(kind, ref)
         return await list_dp_reactions(catalog, schema, request)

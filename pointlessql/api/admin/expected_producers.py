@@ -1,6 +1,6 @@
 """Admin CRUD + freshness-status endpoints for expected upstream producers.
 
-Phase 40 Sprint 40.4: registers ``(target_table, producer,
+registers ``(target_table, producer,
 max_silence_minutes)`` triples in ``expected_lineage_inbound`` and
 exposes a freshness-status JSON endpoint that drives the table-detail
 "Expected upstream" widget.

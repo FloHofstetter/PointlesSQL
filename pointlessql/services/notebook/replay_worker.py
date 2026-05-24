@@ -1,4 +1,4 @@
-"""Notebook replay re-execution worker (Phase 103 Wave-D).
+"""Notebook replay re-execution worker.
 
 Picks ``pending`` :class:`~pointlessql.models.notebook.NotebookReplay`
 rows, marks them ``running``, spins up an isolated Python kernel via
@@ -15,7 +15,7 @@ The worker is deliberately self-contained:
   replay can't leak state into the next;
 * the optional ``branch_name`` column flows into the kernel via
   ``POINTLESSQL_BRANCH`` so writes route through the bound branch
-  (Phase 102 Wave-D contract);
+ ;
 * errors mark the row ``error`` and store ``[{ "msg_type": "error",
   ... }]`` as outputs so the diff surface still has something to
   show ("first error in cell N").

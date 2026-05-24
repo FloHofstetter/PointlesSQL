@@ -2,7 +2,7 @@
 // bootstrap.js re-attaches the factory to ``window.editable`` for
 // Alpine x-data lookup.
 //
-// Phase 81.G.C — added the ``multiline`` flag so the same factory
+// added the ``multiline`` flag so the same factory
 // powers both single-line title edits and multi-line description
 // edits.  The partial chooses <input> vs <textarea> off the same
 // flag; no behavioural difference here other than skipping

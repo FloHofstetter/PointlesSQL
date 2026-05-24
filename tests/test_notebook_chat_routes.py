@@ -1,4 +1,4 @@
-"""Phase 96 — notebook AI-assistant route + model tests.
+"""notebook AI-assistant route + model tests.
 
 Covers:
 
@@ -154,8 +154,7 @@ async def test_propose_cell_validates_cell_type(
 ) -> None:
     """Unknown cell_type → 422 (Pydantic body validation), no row written.
 
-    Phase 106.5 moved the proposal body off ``dict[str, Any]`` onto
-    :class:`ProposeCellBody`; FastAPI surfaces invalid bodies as 422
+    class:`ProposeCellBody`; FastAPI surfaces invalid bodies as 422
     (Unprocessable Entity) per its standard contract, no longer as
     the old hand-rolled 400.
     """
@@ -432,7 +431,7 @@ def test_editor_chat_namespace_canonical() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Phase 106.5 — typed-body validation contract
+# typed-body validation contract
 # ---------------------------------------------------------------------------
 
 

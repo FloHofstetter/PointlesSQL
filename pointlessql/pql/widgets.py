@@ -1,7 +1,7 @@
-"""Notebook-widget kernel shim (Phase 99 Wave-D).
+"""Notebook-widget kernel shim.
 
 Cells that declare a widget (dropdown / slider / text) at the
-notebook level (Phase 99 backend; ``GET /api/notebooks/widgets``)
+notebook level
 can read its resolved value with ::
 
     from pointlessql.pql import widgets

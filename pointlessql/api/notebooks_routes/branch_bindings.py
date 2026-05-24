@@ -1,4 +1,4 @@
-"""Notebook branch-binding routes (Phase 102)."""
+"""Notebook branch-binding routes."""
 
 from __future__ import annotations
 

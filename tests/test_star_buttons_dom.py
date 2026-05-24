@@ -1,4 +1,4 @@
-"""Phase 77.8.E — server-backed star buttons on detail pages.
+"""server-backed star buttons on detail pages.
 
 Coverage:
 

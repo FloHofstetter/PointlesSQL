@@ -1,6 +1,6 @@
 """Sanity checks for the Phase 46.1 centralized auth fixtures.
 
-Pin the contract so future migrations (Phase 46.2 and beyond) can
+Pin the contract so future migrations can
 trust each fixture's shape.  These tests exercise the fixture, NOT
 the production auth dependencies — those have their own coverage
 in ``test_auth_routes.py`` etc.

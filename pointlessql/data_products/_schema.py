@@ -94,7 +94,7 @@ class DataProductContract(BaseModel):
 
     The yaml file lives in the data team's repo at the root or
     under a documented path; the loader resolves it via
-    ``Settings.data_products.yaml_search_paths`` (Sprint 50.4) or
+    ``Settings.data_products.yaml_search_paths`` or
     via an explicit path argument.  Git-blame on the file is the
     audit log — the loader does not version contracts in DB.
 

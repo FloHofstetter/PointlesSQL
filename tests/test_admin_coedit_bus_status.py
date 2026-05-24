@@ -1,4 +1,4 @@
-"""Phase 109.3 — operator diagnostics for the cross-worker co-edit bus."""
+"""operator diagnostics for the cross-worker co-edit bus."""
 
 from __future__ import annotations
 

@@ -1,4 +1,4 @@
-// Phase 76.7 — Render cite-token markdown anchors safely.
+// Render cite-token markdown anchors safely.
 //
 // The server resolves ``#dp:cat.sch`` / ``#topic:slug`` /
 // ``#user:email`` / ``#agent:slug`` tokens at serialise time and

@@ -1,4 +1,4 @@
-"""Phase 92 — ``pql.vector_index`` / ``pql.vector_search`` unit tests.
+"""``pql.vector_index`` / ``pql.vector_search`` unit tests.
 
 Uses a deterministic in-process ``_FakeEmbedder`` so the suite does
 not require ``sentence-transformers`` or PyTorch.  ``soyuz_catalog``

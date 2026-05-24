@@ -1,7 +1,7 @@
 /**
  * Workspace context-panel Alpine factory.
  *
- * Phase 114.1 — rebuilt around the nested ``/api/notebooks/tree``
+ * rebuilt around the nested ``/api/notebooks/tree``
  * shape (was a flat 30-item list).  The sidebar now mirrors the
  * full-page workspace UX in a denser column:
  *

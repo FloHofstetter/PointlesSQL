@@ -1,4 +1,4 @@
-"""``POST /api/notebook/chat/proposals/{id}/{accept,discard}`` (Phase 96).
+"""``POST /api/notebook/chat/proposals/{id}/{accept,discard}``.
 
 Lifecycle endpoints for :class:`NotebookCellProposal` rows of
 ``action='propose'`` and ``action='fix'``.  ``explain`` proposals

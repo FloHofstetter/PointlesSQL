@@ -1,4 +1,4 @@
-"""Polymorphic comments router (Phase 77.0.F.2 + 77.1.5 dispatch).
+"""Polymorphic comments router.
 
 Wraps the polymorphic ``/api/social/{kind}/{ref:path}/comments``
 namespace.  For ``kind='dp'`` the call is delegated in-process to

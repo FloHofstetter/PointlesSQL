@@ -1,4 +1,4 @@
-"""Sprint 15.5.3 — pre-merge reject detection unit tests.
+"""pre-merge reject detection unit tests.
 
 The end-to-end ``pql.merge(track_rejects=True)`` flow needs deltalake
 + soyuz and is exercised by the Sprint 15.5.5 live replay.  These

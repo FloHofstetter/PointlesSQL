@@ -1,5 +1,5 @@
 {#
-    Per-entity ``⋯``-action dropdown (Phase 81.M / Track A).
+    Per-entity ``⋯``-action dropdown.
 
     A single Bootstrap dropdown that every entity-detail page (DP,
     Model, Run, …) can render at the end of its header action group
@@ -17,7 +17,7 @@
                       ("Run #1234", "Data product orders") so the
                       ``Muted X.`` message reads naturally.
 
-    Backend dependency: ``POST /api/feed/mute`` (Phase 81.K.4); the
+    Backend dependency: ``POST /api/feed/mute``; the
     button passes ``{entity_kind, entity_ref}`` exactly as the feed
     item ``⋯``-menu does, so the same ``feed_mutes`` row scopes both.
 #}

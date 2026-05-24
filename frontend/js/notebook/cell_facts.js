@@ -1,5 +1,5 @@
 /**
- * Per-cell pinned-fact chip strip (Phase 97 Rest UI).
+ * Per-cell pinned-fact chip strip.
  *
  * Backend ``GET /api/notebooks/facts/bulk`` returns the active facts
  * for a list of cell ``content_hash`` values in one request, so a

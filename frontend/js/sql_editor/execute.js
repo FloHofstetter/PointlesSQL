@@ -48,7 +48,7 @@ export const executeMethods = {
 
  /**
  * Heuristic destructive-statement detector for the editor's
- * confirmation modal (Phase 63.7). Server-side AST classification
+ * confirmation modal. Server-side AST classification
  * is the source of truth for execution; this is purely a UX
  * speed-bump that warns before submitting "DROP TABLE …", "DROP
  * SCHEMA …", or "DELETE FROM … " without a WHERE clause. False
@@ -111,7 +111,7 @@ export const executeMethods = {
  body: { sql: query, query_id: this.currentQueryId, explain },
  silent: true,
  };
- // Phase 91 — when the user has accepted a chat proposal,
+ // when the user has accepted a chat proposal,
  // stamp the chat session's agent_run_id on the request so the
  // operation row hangs off the same run as the rest of the
  // conversation. Cleared after one request so a follow-up
@@ -135,7 +135,7 @@ export const executeMethods = {
  summary: `Explained in ${res.data.duration_ms} ms`,
  };
  } else if (res.data.kind === 'dml' || res.data.kind === 'ddl') {
- // Phase 63: write statement landed via the dispatcher.
+ // write statement landed via the dispatcher.
  // The result envelope carries target / rows_affected /
  // agent_run_id rather than a row table; render via the
  // dml/ddl card branch.

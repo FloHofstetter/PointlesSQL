@@ -1,6 +1,6 @@
 """Shared ``(kind, ref)`` dispatch helper for polymorphic social routes.
 
-Phase 77.0.F.2 introduces the ``/api/social/{kind}/{ref:path}/...``
+path}/...``
 namespace.  Phase 77.1.5 extends the dispatch so non-DP kinds
 (currently ``table`` and ``branch``) route through generic
 polymorphic handlers instead of returning 501.  The DP path keeps
@@ -59,7 +59,7 @@ def parse_dp_ref(kind: str, ref: str) -> tuple[str, str]:
 def parse_ref(kind: str, ref: str) -> str:
     """Validate the ``(kind, ref)`` shape for the polymorphic path.
 
-    Phase 121.6 Item A refactor: per-kind validators now live in
+    per-kind validators now live in
     :mod:`._ref_kinds` as a :class:`RefKind` registry.  Adding a new
     kind is a single :func:`register_ref_kind` call — no edit to
     this dispatcher.

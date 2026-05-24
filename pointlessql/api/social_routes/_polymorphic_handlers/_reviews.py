@@ -1,7 +1,6 @@
 """Polymorphic review list / upsert / delete.
 
-Extracted from the 2231-LOC ``_polymorphic_handlers.py`` monolith
-in Phase 89.1 — each axis lives in its own sub-module now while the
+Each axis lives in its own sub-module now while the
 public handler names re-export from the package facade.
 """
 
@@ -38,7 +37,7 @@ from pointlessql.services.workspace.governance import (
 )
 
 # ---------------------------------------------------------------------------
-# Reviews (Phase 77.2.1 — polymorphic enable for kind='model')
+# Reviews
 # ---------------------------------------------------------------------------
 
 

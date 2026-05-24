@@ -76,13 +76,13 @@ export function notebookEditor({ initialPath = '', currentUser = null } = {}) {
  mtimeConflict: false,
  kernelStatus: 'disconnected',
  kernelSessionId: null,
- // Phase 67.1: Papermill parameters declared by the notebook's
+ // Papermill parameters declared by the notebook's
  // ``tags=["parameters"]`` cell, populated by ``loadParameters()``
  // after the initial load. The Schedule + Run-Once modals read
  // this array to render typed override forms.
  parameters: [],
  _parametersLoaded: false,
- // Sprint 113.3 — unified Run-notebook modal state.
+ // unified Run-notebook modal state.
  // Collapses the former Phase 67.2 Schedule modal + Phase 67.3 Run-Once
  // modal into one tabbed surface.  Submitting + error + parameters are
  // shared between the two tabs (run-now / schedule); name + cronExpr
@@ -97,10 +97,10 @@ export function notebookEditor({ initialPath = '', currentUser = null } = {}) {
   cronExpr: '0 5 * * *',
   status: '',
  },
- // Phase 67.4 Notebook-Jobs panel state.
+ // Notebook-Jobs panel state.
  jobsPanelOpen: false,
  jobsPanel: { scheduled_jobs: [], recent_runs: [] },
- // Phase 67.5 Variable Inspector state (visibility now lives on
+ // Variable Inspector state (visibility now lives on
  // ``rightDrawer.tab`` per Sprint 113.2; the data fields stay here
  // because kernel_execution.js + WS frames write them by name).
  inspectorVars: [],
@@ -111,7 +111,7 @@ export function notebookEditor({ initialPath = '', currentUser = null } = {}) {
  _kernel: null,
  _liveOutputs: {},
  _runStatus: {},
- // Phase 94: per-cell run-duration tracking, keyed by content_hash.
+ // per-cell run-duration tracking, keyed by content_hash.
  // Wall-clock delta captured client-side from performance.now()
  // between the ``execute_input`` iopub frame and the matching
  // ``execute_reply`` on the shell channel. Persistent display
@@ -123,7 +123,7 @@ export function notebookEditor({ initialPath = '', currentUser = null } = {}) {
  _autosaveTimer: null,
  _historyByCell: {},
  historyOpenFor: null,
- // Phase 95.2 — per-cell social: notebook UUID + bulk-count snapshot.
+ // per-cell social: notebook UUID + bulk-count snapshot.
  // ``notebookUuid`` lands from /api/notebooks/load; ``cellCounts`` is
  // a ``{ cell_uuid -> { comments, reactions, followers } }`` map
  // populated by ``refreshCellCounts()`` once on init and after each
@@ -131,19 +131,19 @@ export function notebookEditor({ initialPath = '', currentUser = null } = {}) {
  // count badge.
  notebookUuid: null,
  cellCounts: {},
- // Phase 96 — AI-assistant provenance buffer.  ``_pendingProvenance``
+ // AI-assistant provenance buffer.  ``_pendingProvenance``
  // collects accepted-proposal records between Insert/Apply click and
  // the next /api/notebooks/save call, which flushes them as
  // notebook_cell_provenance rows.  Visibility of the chat panel
- // itself now lives on ``rightDrawer.tab`` (Sprint 113.2).
+ // itself now lives on ``rightDrawer.tab``.
  _pendingProvenance: [],
- // Sprint 113.2 — unified right-edge drawer.  Collapses the former
- // Chat (Phase 96) + Variables (Phase 67.5) + Social (Phase 77.6)
+ // unified right-edge drawer.  Collapses the former
+ // Chat + Variables + Social
  // overlays into one fixed-position drawer with a tab strip.  All
  // six tab bodies stay in the DOM (x-show, not x-if) so the chat
  // WebSocket subscription survives tab switches.
  rightDrawer: { open: false, tab: 'chat' },
- // Sprint 112.5 — bounded ring buffer of recent notebook-wide cell
+ // bounded ring buffer of recent notebook-wide cell
  // runs, populated by the kernel ``execute_reply`` handler in
  // ``kernel_execution.js``.  Surfaced in the meta panel's Activity
  // section via ``recentNotebookRuns()``.  Size 5 keeps the surface
@@ -151,7 +151,7 @@ export function notebookEditor({ initialPath = '', currentUser = null } = {}) {
  _recentRunsRing: [],
 
  /**
-  * Phase 95.2 — fetch per-cell social counts for this notebook.
+  * fetch per-cell social counts for this notebook.
   *
   * Called on initial load + after every successful save.  Failures
   * are non-fatal (chips stay at their last-known counts) so a
@@ -197,7 +197,7 @@ export function notebookEditor({ initialPath = '', currentUser = null } = {}) {
  },
 
  /**
-  * Sprint 112.5 — colour class for the toolbar save dot.
+  * colour class for the toolbar save dot.
   *
   * Maps the editor's load/save/dirty axis onto a single Bootstrap
   * background utility so the toolbar shows one at-a-glance state
@@ -223,7 +223,7 @@ export function notebookEditor({ initialPath = '', currentUser = null } = {}) {
  },
 
  /**
-  * Sprint 112.5 — colour class for the toolbar kernel dot.
+  * colour class for the toolbar kernel dot.
   */
  kernelDotClass() {
   switch (this.kernelStatus) {
@@ -248,7 +248,7 @@ export function notebookEditor({ initialPath = '', currentUser = null } = {}) {
  },
 
  /**
-  * Phase 116 — vital-pill class for the toolbar status cluster.
+  * vital-pill class for the toolbar status cluster.
   *
   * Replaces the three 0.55 rem solid circles with rounded pills
   * carrying an icon + state-driven Bootstrap colour utility.
@@ -284,7 +284,7 @@ export function notebookEditor({ initialPath = '', currentUser = null } = {}) {
  },
 
  /**
-  * Phase 116 — vital-pill icon (Bootstrap-Icons class) per kind.
+  * vital-pill icon (Bootstrap-Icons class) per kind.
   *
   * Save pill switches between floppy (idle / dirty) and a spinning
   * arrow (saving) and a check (clean / just saved).  Kernel pill
@@ -318,7 +318,7 @@ export function notebookEditor({ initialPath = '', currentUser = null } = {}) {
  },
 
  /**
-  * Phase 116 — tooltip text per pill kind.  Reuses the same
+  * tooltip text per pill kind.  Reuses the same
   * strings the old ``*Tooltip()`` getters used so the textual
   * status the user reads on hover stays identical.
   */
@@ -332,7 +332,7 @@ export function notebookEditor({ initialPath = '', currentUser = null } = {}) {
  },
 
  /**
-  * Phase 116 — Save button class composition.
+  * Save button class composition.
   *
   * Desktop-app pattern: outlined when there are unsaved changes
   * (call-to-action), filled when the notebook is clean (state
@@ -363,7 +363,7 @@ export function notebookEditor({ initialPath = '', currentUser = null } = {}) {
  },
 
  /**
-  * Phase 116 — Run-all button class.  Outlined-success at rest;
+  * Run-all button class.  Outlined-success at rest;
   * fills to ``btn-danger`` mid-run so the "click to stop"
   * affordance reads as the dangerous action it is.
   */
@@ -373,7 +373,7 @@ export function notebookEditor({ initialPath = '', currentUser = null } = {}) {
  },
 
  /**
-  * Sprint 112.5 — Activity section recent-runs feed.
+  * Activity section recent-runs feed.
   *
   * Bounded snapshot of the last five cell runs across the whole
   * notebook.  Each row carries cell index, label, status,
@@ -387,7 +387,7 @@ export function notebookEditor({ initialPath = '', currentUser = null } = {}) {
  },
 
  /**
-  * Sprint 112.5 — derived "currently running" cell, if any.
+  * derived "currently running" cell, if any.
   *
   * Reads the kernel-execution mixin's ``_runStartedAt`` map
   * (populated on ``execute_input`` iopub frame, cleared on
@@ -405,7 +405,7 @@ export function notebookEditor({ initialPath = '', currentUser = null } = {}) {
  },
 
  /**
-  * Phase 107.2 — count of currently-open editor panels.
+  * count of currently-open editor panels.
   *
   * Drives the toolbar's "Close all (N)" affordance, which surfaces
   * once ≥2 panels stack on top of each other.  Includes the
@@ -413,14 +413,14 @@ export function notebookEditor({ initialPath = '', currentUser = null } = {}) {
   * inline-stacked, so "Close all" maps to the user's "clear my
   * workspace" intent regardless of the underlying layout.
   *
-  * Phase 112 — Tags / Branch / Access surfaces moved into the
+  * Tags / Branch / Access surfaces moved into the
   * right meta panel and no longer drive separate toggle panels,
   * so they drop from the count.  Revisions stays here because its
   * cell-diff drawer is still a wide overlay opened from the meta
   * panel's "See all & diff" button.
   */
  /**
-  * Sprint 113.2 — toggle the unified right drawer to a specific
+  * toggle the unified right drawer to a specific
   * tab.  Re-clicking the toolbar button for the currently-open tab
   * closes the drawer (toggle semantics); clicking a different
   * toolbar button switches the tab without re-opening if the
@@ -482,7 +482,7 @@ export function notebookEditor({ initialPath = '', currentUser = null } = {}) {
  this.outputs = res.data.outputs || [];
  this.refreshCellCounts();
  this.loadCellAttributions();
- // Phase 98.C Wave-D — lineage badges read the same audit trail
+ // lineage badges read the same audit trail
  // and are cheap; loaded alongside attribution so the chip strip
  // paints on first render.
  this.loadCellLineageBulk();
@@ -495,15 +495,15 @@ export function notebookEditor({ initialPath = '', currentUser = null } = {}) {
  this._renderAllOutputs();
  this._installKeymap();
  this._connectKernel();
- // Phase 105.3 — open the co-edit WebSocket once the notebook
+ // open the co-edit WebSocket once the notebook
  // UUID is known.  Passive scaffold: keeps a server-mirrored
  // Y.Doc warm + drives the toolbar live pill.  No editor
  // binding yet (lands in 105.3b after the 105.5 save-barrier).
  this._initCoedit();
- // Phase 96 — listen for chat-panel accept events so the
+ // listen for chat-panel accept events so the
  // editor can apply proposed cell inserts / fixes.
  this._installChatProposalListener();
- // Phase 104 — listen for multi-cell sequence proposals so the
+ // listen for multi-cell sequence proposals so the
  // inbox surfaces them whether the drawer is open or not.
  this._installSequenceListener();
  // Fire-and-forget — populates ``this.parameters`` once papermill
@@ -511,7 +511,7 @@ export function notebookEditor({ initialPath = '', currentUser = null } = {}) {
  // poll-on-open so a slow inspect call never blocks page load.
  this.loadParameters();
  this.loadNotebookJobs();
- // Phase 113.7 — dynamic scroll-past-end.  Sized so the last cell's
+ // dynamic scroll-past-end.  Sized so the last cell's
  // top edge can scroll up until it sits flush with the topbar
  // (rather than a fixed ``50vh`` which is wrong for both tiny and
  // tall cells).  Resize observers refire when cells are added,

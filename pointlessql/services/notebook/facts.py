@@ -1,4 +1,4 @@
-"""Pinned-fact promotion of notebook revisions (Phase 97 Rest).
+"""Pinned-fact promotion of notebook revisions.
 
 A *fact* is a long-lived bookmark on a :class:`NotebookRevision` that
 adds a human-readable shape (``title`` + ``description_md``) on top of

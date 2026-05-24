@@ -101,7 +101,7 @@ export function installCellOperations(state, deps) {
     this.cells.splice(fromIdx, 1);
     this.cells.splice(toIdx, 0, cell);
     this.dirty = true;
-    // Phase 115 — mirror the reorder onto the shared Y.Array so
+    // mirror the reorder onto the shared Y.Array so
     // peer tabs converge without waiting for the save round-trip.
     // ``broadcast=false`` is used by the live-drag preview in
     // ``cell_dnd.js`` so peers see ONLY the final position once
@@ -126,7 +126,7 @@ export function installCellOperations(state, deps) {
   };
 
   /**
-   * Phase 96 — insert a cell drafted by the AI assistant.
+   * insert a cell drafted by the AI assistant.
    *
    * Called by the chat-integration mixin after an accept on a
    * ``propose`` proposal.  Inserts the cell either after the
@@ -178,7 +178,7 @@ export function installCellOperations(state, deps) {
   };
 
   /**
-   * Phase 96 — apply an accepted ``fix`` proposal to an existing cell.
+   * apply an accepted ``fix`` proposal to an existing cell.
    *
    * Finds the cell by stable ``cell_uuid``, replaces its source,
    * re-renders the CodeMirror editor, marks the cell dirty, and

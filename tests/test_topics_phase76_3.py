@@ -1,4 +1,4 @@
-"""Phase 76.3 — topics taxonomy, DP assignment, topic-follows.
+"""topics taxonomy, DP assignment, topic-follows.
 
 Coverage:
 

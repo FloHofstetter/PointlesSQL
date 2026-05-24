@@ -1,4 +1,4 @@
-"""Phase 91 — route smoke test for ``GET .../tables/{t}/stats``.
+"""route smoke test for ``GET .../tables/{t}/stats``.
 
 The pandas reduction is exercised in
 ``test_column_stats_service.py``; this file only verifies the

@@ -1,4 +1,4 @@
-"""Phase 77.7 — issues + issue_labels + issue_milestones schema gates.
+"""issues + issue_labels + issue_milestones schema gates.
 
 Coverage:
 

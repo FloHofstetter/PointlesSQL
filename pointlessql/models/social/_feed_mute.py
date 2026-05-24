@@ -1,6 +1,6 @@
 """``feed_mutes`` — per-user mute / snooze for feed items.
 
-Phase 81.K.4 — the feed page lets users hide noisy threads.  One
+the feed page lets users hide noisy threads.  One
 row per ``(user_id, entity_kind, entity_ref)`` mute.  Mute Thread
 and Mute Author share the schema: author-muting uses
 ``entity_kind='user'`` with the user-id (stringified) in

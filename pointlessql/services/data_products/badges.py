@@ -1,4 +1,4 @@
-"""Auto-computed endorsement badges per data product (Phase 72.2).
+"""Auto-computed endorsement badges per data product.
 
 Four computed badges, all recomputed on read (no cache table):
 

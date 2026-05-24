@@ -183,7 +183,7 @@ def test_upsert_agent_kind_accepts_run_id_only(
 ) -> None:
     """``kind='agent'`` with only ``agent_run_id`` is allowed.
 
-    Wave-B follow-up (2026-05-20): inline editor chat has no
+    inline editor chat has no
     registered ``Agent`` DB row, so the AI-acceptance authorship
     hook can only supply ``agent_run_id``.  Service accepts the
     weaker attribution and the chip falls back to a generic
@@ -322,7 +322,7 @@ async def test_api_agent_authored_cells_empty(
     assert body["cells"] == []
 
 
-# -- service + REST: bulk attribution (Phase 101 UI hook) ---------------------
+# -- service + REST: bulk attribution ---------------------
 
 
 def test_list_for_notebook_returns_mapping(

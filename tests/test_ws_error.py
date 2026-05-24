@@ -1,4 +1,4 @@
-"""Phase 121.1.d — pin the WebSocket error-frame wire shape.
+"""pin the WebSocket error-frame wire shape.
 
 The frontend chat panels (``frontend/js/sql_editor/chat.js`` and
 ``frontend/js/notebook/chat.js``) parse ``frame.error.message``

@@ -1,4 +1,4 @@
-"""Polymorphic social router package (Phase 77.0.F.2).
+"""Polymorphic social router package.
 
 Exposes ``/api/social/{kind}/{ref:path}/...`` as the canonical
 namespace for every social affordance.  Phase 77.0 wires only

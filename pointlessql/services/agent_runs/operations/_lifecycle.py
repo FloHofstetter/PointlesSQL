@@ -96,7 +96,7 @@ def record_operation(
         env_snapshot: advisory hardware/library
             fingerprint blob.  When ``None``, the cached
             process-wide snapshot is stamped automatically.
-        warnings_json: BUG-grand-08 — JSON blob with a ``markers``
+        warnings_json: — JSON blob with a ``markers``
             sub-key listing non-fatal side-effect failures
             stamped before commit.  Defaults to ``None``;
             post-commit hooks append further markers via
@@ -280,7 +280,7 @@ def operation_context(
                 agent_run_id,
                 op_name,
             )
-        # Phase 50.3 — even on the failure path we want the contract
+        # even on the failure path we want the contract
         # event row when the recorder stamped one (e.g. pql.write
         # raised DataProductContractViolation before any IO).  Other
         # post-commit hooks stay success-path only because their

@@ -1,4 +1,4 @@
-"""Phase 77.1.5 — table.html social tab strip.
+"""table.html social tab strip.
 
 Coverage:
 

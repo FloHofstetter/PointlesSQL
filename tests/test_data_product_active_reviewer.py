@@ -1,4 +1,4 @@
-"""Tests for the Phase 74 active reviewer (Sprint 74.0 + 74.1 + 74.2).
+"""Tests for the Phase 74 active reviewer.
 
 Covers:
 

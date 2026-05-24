@@ -1,4 +1,4 @@
-"""Phase 117 — public DBX-compatible SQL Statement Execution API routes."""
+"""public DBX-compatible SQL Statement Execution API routes."""
 
 from __future__ import annotations
 

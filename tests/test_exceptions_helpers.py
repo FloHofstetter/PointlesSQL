@@ -1,4 +1,4 @@
-"""Tests for ``PointlessSQLError.not_found`` + ``BadRequestError`` (Phase 121.1.a).
+"""Tests for ``PointlessSQLError.not_found`` + ``BadRequestError``.
 
 The classmethod composes a uniformly-formatted message from optional
 ``where``/``alternatives``/``hint`` pieces; the subclass is the

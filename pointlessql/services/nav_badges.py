@@ -1,4 +1,4 @@
-"""Primary-rail badge aggregator (Phase 80.3).
+"""Primary-rail badge aggregator.
 
 Computes the three counts shown as red unread pills next to the
 WATCH-section entries in the primary rail:

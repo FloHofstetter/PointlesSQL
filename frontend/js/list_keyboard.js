@@ -1,4 +1,4 @@
-// Phase 81.G.D — keyboard navigation for multi-select list pages.
+// keyboard navigation for multi-select list pages.
 //
 // Gmail-style row shortcuts:
 //   j / ArrowDown   — next row (highlights, scrolls into view)

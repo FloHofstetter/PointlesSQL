@@ -1,4 +1,4 @@
-"""Phase 91 — EditorChatSession + ChatProposal model round-trips.
+"""EditorChatSession + ChatProposal model round-trips.
 
 Smoke-tests that the two ORM models map cleanly to the
 ``q5s7u9w1y3a5`` migration: column types, unique constraints, the

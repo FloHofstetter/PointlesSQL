@@ -1,4 +1,4 @@
-"""Phase 82 — ingest API package facade.
+"""ingest API package facade.
 
 Bundles the source CRUD, probe, table-listing, mapping, schedule, and
 pull endpoints under one ``ingest_routes.router`` so

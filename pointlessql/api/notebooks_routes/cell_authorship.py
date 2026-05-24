@@ -1,4 +1,4 @@
-"""Per-cell authorship routes (Phase 101).
+"""Per-cell authorship routes.
 
 Exposes the read surface the editor's cell-header chip + the agent-
 profile page consume.  Writes happen via the save-path reconciler +

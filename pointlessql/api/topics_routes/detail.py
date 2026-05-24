@@ -1,4 +1,4 @@
-"""``/api/topics/{slug}`` + topic-assignment on DPs (Phase 76.3).
+"""``/api/topics/{slug}`` + topic-assignment on DPs.
 
 Two endpoints:
 

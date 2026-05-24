@@ -1,4 +1,4 @@
-"""Sprint 21.5.4 — version compare-view diff helpers + render tests."""
+"""version compare-view diff helpers + render tests."""
 
 from __future__ import annotations
 
@@ -187,7 +187,7 @@ async def test_compare_rejects_same_version(
     uc_with_versions: AsyncMock, admin_client: httpx.AsyncClient
 ) -> None:
     resp = await admin_client.get("/models/cat1.sch1.smoke_model/compare?v1=1&v2=1")
-    # Phase 43.3: ``v1 and v2 must differ`` is a ValidationError (422).
+    # ``v1 and v2 must differ`` is a ValidationError (422).
     assert resp.status_code == 422
 
 

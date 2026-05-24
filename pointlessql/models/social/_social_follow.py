@@ -1,4 +1,4 @@
-"""Polymorphic follow rows for every entity kind (Phase 77.8 + 78).
+"""Polymorphic follow rows for every entity kind.
 
 Phase 77.8 introduced this kind-agnostic sibling alongside the
 legacy ``data_product_follows`` (which had a composite PK on

@@ -1,4 +1,4 @@
-"""Phase 82.3 — manual pull + run-history endpoints.
+"""manual pull + run-history endpoints.
 
 * ``POST /api/ingest/sources/{id}/pulls`` — runs the configured
   reader synchronously for one (or every) mapping and returns the

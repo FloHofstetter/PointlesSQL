@@ -1,4 +1,4 @@
-"""Polymorphic README router (Phase 77.0.F.2 + 77.1.5 dispatch).
+"""Polymorphic README router.
 
 DP delegates to the Phase-71.5 versioned wiki handlers.  Non-DP
 kinds use the kind-agnostic polymorphic handlers — admin-only

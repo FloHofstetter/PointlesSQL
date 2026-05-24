@@ -1,4 +1,4 @@
-"""Star ratings + text reviews per data product (Phase 71.2).
+"""Star ratings + text reviews per data product.
 
 One table:
 
@@ -49,7 +49,7 @@ class DataProductReview(Base):
             data_product_id, author_user_id)`` is unique — one
             review per user per product.  Always a human — caller
             when direct, agent's principal when
-            ``author_agent_id`` is set (Phase 76.5.1).
+            ``author_agent_id`` is set.
         author_agent_id: Optional agent identity that authored the
             review on behalf of the principal.  When set, the UI
             renders the review as authored *by the agent on behalf
@@ -67,7 +67,7 @@ class DataProductReview(Base):
     __tablename__ = "data_product_reviews"
 
     __table_args__ = (
-        # Phase 77.2.1 — kind-agnostic upsert idempotency.  Phase
+        # kind-agnostic upsert idempotency.  Phase
         # 78 polish dropped the legacy DP-only UNIQUE because this
         # one already covers DP rows via the 1:1
         # ``social_targets.data_product_id`` back-pointer.
@@ -97,7 +97,7 @@ class DataProductReview(Base):
         ForeignKey("data_products.id", ondelete="CASCADE"),
         nullable=True,
     )
-    # Phase 77.0.B — polymorphic anchor (see _data_product_comments.py).
+    # polymorphic anchor (see _data_product_comments.py).
     social_target_id: Mapped[int] = mapped_column(
         Integer,
         ForeignKey("social_targets.id"),

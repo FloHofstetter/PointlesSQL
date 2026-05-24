@@ -1,4 +1,4 @@
-"""Per-user profile row (Phase 76.2).
+"""Per-user profile row.
 
 One row per ``users.id`` carrying the editable profile fields the
 ``/users/{id}`` page surfaces.  Lazily created on first PUT — a

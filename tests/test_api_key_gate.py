@@ -139,7 +139,7 @@ def test_create_and_verify_roundtrip() -> None:
         app.state.session_factory, name="hermes", supervisor=False
     )
     assert row.name == "hermes"
-    # Phase 118 — default env is "live", token_format defaults to "v1".
+    # default env is "live", token_format defaults to "v1".
     assert row.token_format == "v1"
     assert row.token_env == "live"
     assert plaintext.startswith("pql_live_v1_")
@@ -377,7 +377,7 @@ async def test_gate_disabled_ignores_bearer_header(auth_cookies) -> None:
 
 
 def test_phase119_lifecycle_columns_present_with_null_defaults() -> None:
-    """Phase 119 — every new key starts with NULL lifecycle columns."""
+    """every new key starts with NULL lifecycle columns."""
     _wipe_api_keys()
     row, _ = api_keys_service.create_api_key(
         app.state.session_factory, name="lifecycle-default"

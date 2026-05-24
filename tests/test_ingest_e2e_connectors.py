@@ -1,4 +1,4 @@
-"""Phase 82.4 — end-to-end connector coverage.
+"""end-to-end connector coverage.
 
 For each connector kind that works in a sandboxed CI environment we
 exercise the full create → mapping → pull cycle.  Live-network kinds

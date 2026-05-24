@@ -1,11 +1,11 @@
-/* Card-grid surfaces (Sprint 56.9).
+/* Card-grid surfaces.
  *
  * Replaces narrative-rich tables (agent_reviews_list, alerts) with
  * card grids.  Each card carries a severity / status accent on its
  * left edge so the eye can scan a grid faster than a table.
  */
 
-/* Phase 80.10.2 — generic hover-lift utility.
+/* generic hover-lift utility.
  *
  * Applies to any clickable card / row so the affordance is uniform
  * across topics, models, dashboards, data products, agents, users,
@@ -22,7 +22,7 @@
     box-shadow: var(--bs-box-shadow-sm);
 }
 
-/* Phase 81.F — Social drawer width.  Bootstrap 5.3 sizes
+/* Social drawer width.  Bootstrap 5.3 sizes
  * ``.offcanvas-end`` via the ``--bs-offcanvas-width`` custom
  * property (default 400 px); we bump it to 520 px on
  * ``.pql-social-drawer`` so comment threads + issues forms get a
@@ -72,7 +72,7 @@
 
 /* Query-history card — status stripe + bounded SQL pre-block.
  *
- * Renders one card per ``query_history`` row (Sprint 57.3).  Cards
+ * Renders one card per ``query_history`` row.  Cards
  * stack at sm, two-up at md, three-up at xxl.  The SQL pre-block is
  * height-capped so a wall-of-text query does not blow the grid out
  * of alignment — the card scrolls internally.

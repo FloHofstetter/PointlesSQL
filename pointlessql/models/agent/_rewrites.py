@@ -1,4 +1,4 @@
-"""Agent SQL rewrite-attempt audit table (Phase 39 Sprint 39.2).
+"""Agent SQL rewrite-attempt audit table.
 
 When the Hermes plugin's ``pql_query`` tool fires explain-first and
 the cost-gate verdict says ``needs_approval=True``, the LLM is

@@ -40,7 +40,7 @@ three families:
   routes through the soyuz client.
 
 Multi-statement input is rejected by ``_parse_root`` ("exactly one
-statement").  Use :func:`parse_batch` (Phase 63.6) for the batch path.
+statement").  Use :func:`parse_batch` for the batch path.
 """
 
 from __future__ import annotations

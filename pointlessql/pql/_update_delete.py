@@ -160,7 +160,7 @@ def delete_table_rows(
 
     A ``where`` of ``None`` deletes every row in the table.  The
     SQL-editor surface forces a confirmation modal for that case
-    (Phase 63.7); the primitive itself does not refuse the call —
+    ; the primitive itself does not refuse the call —
     Hermes-driven agents may legitimately need a full-table wipe.
 
     Args:

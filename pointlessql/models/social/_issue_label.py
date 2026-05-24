@@ -1,4 +1,4 @@
-"""Workspace-scoped label catalogue for tracked issues (Phase 77.7).
+"""Workspace-scoped label catalogue for tracked issues.
 
 Labels are user-defined slugs (e.g. ``bug``, ``good-first-issue``,
 ``compliance``) attached to issues via the ``issues.labels_json``

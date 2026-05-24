@@ -1,4 +1,4 @@
-"""Sprint 28.6 — admin workspace CRUD + member management routes."""
+"""admin workspace CRUD + member management routes."""
 
 from __future__ import annotations
 

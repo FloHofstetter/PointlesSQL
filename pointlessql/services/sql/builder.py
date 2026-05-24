@@ -1,4 +1,4 @@
-"""Phase 83.2 — Visual Query Builder.
+"""Visual Query Builder.
 
 Two pure-functional pieces:
 

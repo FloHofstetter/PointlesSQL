@@ -81,7 +81,7 @@ async def delete_data_product_comment(
             session.commit()
             session.refresh(comment)
 
-    # Phase 72.5: audit-log mirror — only fire on the *transition*
+    # audit-log mirror — only fire on the *transition*
     # (was-live → soft-deleted), not on idempotent re-DELETEs that
     # find the row already gone.  This keeps the audit trail
     # accurate at one row per actual moderation action.

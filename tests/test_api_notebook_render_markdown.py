@@ -1,4 +1,4 @@
-"""Tests for ``POST /api/notebooks/render-markdown`` (Sprint 66.6)."""
+"""Tests for ``POST /api/notebooks/render-markdown``."""
 
 from __future__ import annotations
 
@@ -58,7 +58,7 @@ async def test_render_markdown_bad_input(
 async def test_render_markdown_non_admin_accessible(
     non_admin_client: httpx.AsyncClient,
 ) -> None:
-    """Phase 70: any authenticated user can render markdown."""
+    """any authenticated user can render markdown."""
     resp = await non_admin_client.post(
         "/api/notebooks/render-markdown",
         json={"source": "x"},

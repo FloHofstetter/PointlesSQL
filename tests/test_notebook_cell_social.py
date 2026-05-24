@@ -1,4 +1,4 @@
-"""Phase 95.0 + 95.2 — notebook_cell polymorphic plumbing + bulk-counts.
+"""notebook_cell polymorphic plumbing + bulk-counts.
 
 Coverage:
 
@@ -88,7 +88,7 @@ def test_parse_ref_accepts_well_formed_composite() -> None:
 )
 def test_parse_ref_rejects_malformed(bad_ref: str) -> None:
     """Malformed composite refs raise 400 with the contract message."""
-    # Phase 121.1.e — converted from HTTPException to BadRequestError.
+    # converted from HTTPException to BadRequestError.
     with pytest.raises(BadRequestError) as exc:
         parse_ref("notebook_cell", bad_ref)
     assert exc.value.status_code == 400
@@ -125,7 +125,7 @@ async def test_notebook_cell_comment_round_trip(
 async def test_notebook_cell_review_category_round_trip(
     admin_client: httpx.AsyncClient,
 ) -> None:
-    """Phase 101 Wave-D — ``category='review'`` is accepted on cell comments."""
+    """``category='review'`` is accepted on cell comments."""
     ref = _nb_cell_ref()
     res = await admin_client.post(
         f"/api/social/notebook_cell/{ref}/comments",
@@ -151,7 +151,7 @@ async def test_notebook_cell_review_category_round_trip(
 async def test_notebook_cell_comment_as_agent_principal_ok(
     admin_client: httpx.AsyncClient,
 ) -> None:
-    """Phase 101 closure — ``?as_agent=`` on the polymorphic POST.
+    """``?as_agent=`` on the polymorphic POST.
 
     The polymorphic comment POST previously dropped ``as_agent`` for
     non-DP kinds (silent ignore).  Closure widens the Phase 76.5
@@ -343,7 +343,7 @@ async def test_bulk_counts_rejects_short_notebook_id(
 
 
 def test_curated_cell_tags_vocabulary() -> None:
-    """Phase 95.3 — curated vocabulary stays focused (six tags)."""
+    """curated vocabulary stays focused (six tags)."""
     from pointlessql.services.notebook.cell_tags import CURATED_CELL_TAGS
 
     assert "etl" in CURATED_CELL_TAGS

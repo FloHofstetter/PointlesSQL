@@ -344,7 +344,7 @@ async def test_replay_worker_executes_cell_and_records_output(
 ) -> None:
     """End-to-end: worker spins a real kernel, runs a cell, persists outputs.
 
-    Phase 108.3 — the existing :func:`test_run_pending_replays_returns_zero_when_idle`
+    the existing :func:`test_run_pending_replays_returns_zero_when_idle`
     and :func:`test_replay_worker_class_idempotent_start_stop` cover
     the empty-queue and lifecycle paths.  This test exercises the
     happy path that connects them: insert a pending replay row, run

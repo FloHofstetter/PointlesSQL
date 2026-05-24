@@ -71,7 +71,7 @@ async def test_load_unknown_path(
 async def test_load_non_admin_accessible(
     workspace_dir: Path, non_admin_client: httpx.AsyncClient
 ) -> None:
-    """Phase 70: any authenticated user can load a notebook."""
+    """any authenticated user can load a notebook."""
     (workspace_dir / "demo.py").write_bytes(_DEMO_NOTEBOOK)
     resp = await non_admin_client.get("/api/notebooks/load?path=demo.py")
     assert resp.status_code == 200
@@ -104,7 +104,7 @@ async def test_editor_page_unknown_path_blocks(
 async def test_editor_page_non_admin_accessible(
     workspace_dir: Path, non_admin_client: httpx.AsyncClient
 ) -> None:
-    """Phase 70: any authenticated user reaches the editor page."""
+    """any authenticated user reaches the editor page."""
     (workspace_dir / "demo.py").write_bytes(_DEMO_NOTEBOOK)
     resp = await non_admin_client.get("/notebooks/edit/demo.py")
     assert resp.status_code == 200
@@ -114,7 +114,7 @@ async def test_editor_page_non_admin_accessible(
 async def test_editor_page_ships_coedit_scaffold(
     workspace_dir: Path, admin_client: httpx.AsyncClient
 ) -> None:
-    """Phase 105.3: editor HTML carries the y-* importmap + live pill.
+    """editor HTML carries the y-* importmap + live pill.
 
     Smoke-level check that the three scaffold pieces shipped with
     105.3 actually reach the rendered page:
@@ -138,7 +138,7 @@ async def test_editor_page_ships_coedit_scaffold(
 async def test_editor_page_ships_user_context(
     workspace_dir: Path, admin_client: httpx.AsyncClient
 ) -> None:
-    """Phase 105.4: editor page injects the viewer's id + name.
+    """editor page injects the viewer's id + name.
 
     The Alpine root reads ``currentUser`` so the awareness layer can
     tag local cursors and paint the peer-rail with a stable colour /
@@ -162,10 +162,10 @@ async def test_editor_page_ships_user_context(
 async def test_editor_page_ships_coedit_peer_rail(
     workspace_dir: Path, admin_client: httpx.AsyncClient
 ) -> None:
-    """Phase 105.4: editor HTML includes the peer-avatar rail partial.
+    """editor HTML includes the peer-avatar rail partial.
 
     Smoke-level assertion on ``data-testid="notebook-coedit-peers"``
-    so the playwright multi-tab gate (Phase 105.7) has a stable
+    so the playwright multi-tab gate has a stable
     selector to target.
     """
     (workspace_dir / "demo.py").write_bytes(_DEMO_NOTEBOOK)
@@ -177,7 +177,7 @@ async def test_editor_page_ships_coedit_peer_rail(
 async def test_editor_page_ships_y_codemirror_importmap(
     workspace_dir: Path, admin_client: httpx.AsyncClient
 ) -> None:
-    """Phase 105.3b: editor page exposes y-codemirror.next via importmap.
+    """editor page exposes y-codemirror.next via importmap.
 
     The per-cell ``yCollab`` extension lives in ``y-codemirror.next``
     and is pulled in lazily by ``cellEditor()``.  An importmap entry

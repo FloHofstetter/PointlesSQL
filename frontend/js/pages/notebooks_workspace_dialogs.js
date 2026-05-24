@@ -40,7 +40,7 @@ export function notebookDialogs() {
    path: '',
    submitting: false,
   },
-  // Phase 98.B — starter-template gallery.  Fetched lazily on first
+  // starter-template gallery.  Fetched lazily on first
   // open of the create dialog so the workspace page doesn't pay for
   // it until the user clicks New.
   templates: [],
@@ -76,7 +76,7 @@ export function notebookDialogs() {
    this.pathDialog.open = true;
    void this._loadTemplatesOnce();
    this.$nextTick(() => {
-    // Phase 114.1 — scope-local $refs, so the same modal partial
+    // scope-local $refs, so the same modal partial
     // can mount in both the workspace-page factory and the
     // workspace-sidebar factory without an ID collision.
     const el = this.$refs ? this.$refs.pathInput : null;

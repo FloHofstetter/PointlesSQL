@@ -1,4 +1,4 @@
-"""CRDT sidecar for real-time co-edit (Phase 105).
+"""CRDT sidecar for real-time co-edit.
 
 Holds the serialised ``pycrdt.Doc`` state per notebook so a fresh WS
 subscriber can warm-start from the latest committed state instead of
@@ -35,8 +35,8 @@ class NotebookCrdtState(Base):
     ``y_doc_blob`` is the output of :meth:`pycrdt.Doc.get_update`
     with no state-vector argument (full state encoding).  Server-side
     load is ``doc = Doc(); doc.apply_update(blob)``; the WS hub
-    (Sprint 105.2) proxies sync + awareness frames between connected
-    clients.  Compaction (Sprint 105.8) re-serialises the live Doc
+    proxies sync + awareness frames between connected
+    clients.  Compaction re-serialises the live Doc
     over the existing blob once it crosses 256 KiB or 24 h.
 
     Attributes:

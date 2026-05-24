@@ -146,7 +146,7 @@ async def register_submit(
     if user is None:
         return _reg_error("An account with that email already exists.", 409)
 
-    # Phase 105 UX — surface a one-shot success flash on the login
+    # surface a one-shot success flash on the login
     # page so the user sees a positive confirmation instead of being
     # bounced to an empty form (the no-feedback redirect read as
     # silent failure in the replay).

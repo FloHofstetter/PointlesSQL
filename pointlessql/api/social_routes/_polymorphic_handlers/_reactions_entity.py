@@ -1,7 +1,6 @@
 """Entity-level reaction handlers.
 
-Extracted from the 2231-LOC ``_polymorphic_handlers.py`` monolith
-in Phase 89.1 — each axis lives in its own sub-module now while the
+Each axis lives in its own sub-module now while the
 public handler names re-export from the package facade.
 """
 
@@ -26,7 +25,7 @@ from pointlessql.models.social._social_reaction import SocialReaction
 from pointlessql.services.social.audit_mirror import mirror_social_to_audit
 
 # ---------------------------------------------------------------------------
-# Entity-level reactions (Phase 77.8.C UNIQUE + 77.8.D handlers)
+# Entity-level reactions
 # ---------------------------------------------------------------------------
 
 
@@ -90,7 +89,7 @@ async def list_polymorphic_reactions(
 async def apply_polymorphic_reaction(
     kind: str, ref: str, request: Request
 ) -> dict[str, Any]:
-    """Add an emoji reaction on a polymorphic entity (Phase 77.8.D).
+    """Add an emoji reaction on a polymorphic entity.
 
     Idempotency is enforced by the
     ``uq_dp_reactions_polymorphic`` UNIQUE constraint that 77.8.C

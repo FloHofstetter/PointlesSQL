@@ -1,4 +1,4 @@
-"""Sprint 28.4 — workspace switcher cookie + topbar rendering.
+"""workspace switcher cookie + topbar rendering.
 
 Covers the four user-visible surfaces of 28.4:
 

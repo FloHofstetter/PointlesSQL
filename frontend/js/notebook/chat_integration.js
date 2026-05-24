@@ -1,5 +1,5 @@
 /**
- * Phase 96 — notebook AI-assistant chat integration mixin.
+ * notebook AI-assistant chat integration mixin.
  *
  * Installed onto the ``notebookEditor`` Alpine state after the
  * other mixins so it can call ``insertCellFromProposal`` /
@@ -13,7 +13,7 @@
  */
 
 export function installChatIntegration(state) {
-  // Sprint 113.2 — chat-tab visibility now rides on the unified
+  // chat-tab visibility now rides on the unified
   // right-drawer scope.  Kept as a thin alias so external callers
   // (proposal-accept listeners, plugin code) that flipped this
   // boolean directly keep working.

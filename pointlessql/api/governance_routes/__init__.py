@@ -1,6 +1,6 @@
 """Governance routes — package facade.
 
-Phase 86 B6 split the 521-LOC ``governance_routes.py`` into six
+B6 split the 521-LOC ``governance_routes.py`` into six
 per-concern sub-modules.  External imports of ``router`` keep
 working through the facade.
 

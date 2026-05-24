@@ -1,4 +1,4 @@
-"""First-class agent identity row (Phase 76.5).
+"""First-class agent identity row.
 
 The ``agents`` table is the canonical registry of LLM reviewers
 and bots that can post comments / endorsements / reviews under

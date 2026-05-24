@@ -1,4 +1,4 @@
-"""HTML page for the agent-memory surface (Phase 90.1).
+"""HTML page for the agent-memory surface.
 
 Single route: ``GET /memory/{agent_id}`` renders the "brain
 browser" view of an agent's run timeline.  All interactive bits

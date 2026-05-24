@@ -1,4 +1,4 @@
-"""Phase 80.4 — /lineage explorer index tests."""
+"""/lineage explorer index tests."""
 
 from __future__ import annotations
 

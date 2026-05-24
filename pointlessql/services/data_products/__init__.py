@@ -1,4 +1,4 @@
-"""Data-product feature services (Phase 72 + Phase 73 + Phase 74)."""
+"""Data-product feature services."""
 
 from __future__ import annotations
 

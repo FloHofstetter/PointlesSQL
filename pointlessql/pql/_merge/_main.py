@@ -183,7 +183,7 @@ def merge_table(
             except TypeError:
                 recorder.input_sha = None
 
-        # Phase 50.3 — data-product contract enforcement.  Same shape
+        # data-product contract enforcement.  Same shape
         # as in ``pql/_write.py``: resolve the cached contract for the
         # target's schema, diff the arrow source's schema against the
         # table contract, and either stamp the recorder for the post-

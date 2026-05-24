@@ -1,4 +1,4 @@
-// Per-entity ⋯-action menu handler (Phase 81.M / Track A).
+// Per-entity ⋯-action menu handler.
 //
 // Single document-level click listener that handles every
 // ``.pql-entity-mute-btn`` rendered by ``_macros/entity_actions.html``.

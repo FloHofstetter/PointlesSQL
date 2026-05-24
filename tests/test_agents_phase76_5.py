@@ -1,4 +1,4 @@
-"""Phase 76.5 — first-class agent identities.
+"""first-class agent identities.
 
 Coverage:
 

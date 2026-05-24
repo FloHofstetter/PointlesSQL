@@ -1,4 +1,4 @@
-"""Lineage explorer landing page — ``GET /lineage`` (Phase 80.4)."""
+"""Lineage explorer landing page — ``GET /lineage``."""
 
 from __future__ import annotations
 

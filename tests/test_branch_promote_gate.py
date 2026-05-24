@@ -1,4 +1,4 @@
-"""Phase 77.3 — branch promote-gate.
+"""branch promote-gate.
 
 Coverage matrix for ``POST /api/branches/{fqn}/promote``:
 

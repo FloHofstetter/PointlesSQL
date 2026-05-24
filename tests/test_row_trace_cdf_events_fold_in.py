@@ -1,4 +1,4 @@
-"""Phase 40.7 fold-in: CDF events on row-trace walkback steps.
+"""CDF events on row-trace walkback steps.
 
 Mirrors the Phase 15.7 ``value_changes`` per-step attach pattern but
 reads from ``cdf_tail_events``: every walkback step gets a

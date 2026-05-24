@@ -1,4 +1,4 @@
-"""Cached trending rank per data product (Phase 72.3).
+"""Cached trending rank per data product.
 
 One row per ``(workspace_id, data_product_id, window_end)``.
 A periodic loop (``_data_product_trending_loop``) UPSERTs the

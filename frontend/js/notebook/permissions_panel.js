@@ -1,5 +1,5 @@
 /**
- * Per-notebook permission grants panel (Phase 99 UI).
+ * Per-notebook permission grants panel.
  *
  * Wires ``GET/PUT/DELETE /api/notebooks/permissions`` to a CRUD
  * panel.  Roles form a ``view < run < edit`` lattice — the server

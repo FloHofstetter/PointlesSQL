@@ -1,4 +1,4 @@
-"""Public workspace landing page + pin CRUD (Phase 77.10).
+"""Public workspace landing page + pin CRUD.
 
 Public sibling of ``pointlessql/api/admin/workspaces.py``.  The
 admin module owns the workspace-lifecycle CRUD; this module owns:
@@ -66,7 +66,7 @@ def _resolve_workspace(session: Any, slug: str) -> Workspace:
         select(Workspace).where(Workspace.slug == slug)
     ).scalar_one_or_none()
     if ws is None:
-        # Phase 121.1.i — surface every known workspace slug so
+        # surface every known workspace slug so
         # callers can self-correct typos without a second round-trip.
         known = list(session.execute(select(Workspace.slug)).scalars())
         raise ResourceNotFoundError.not_found(

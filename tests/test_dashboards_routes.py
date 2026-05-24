@@ -1,4 +1,4 @@
-"""Sprint 57.5 — FastAPI route smoke-tests for dashboards_routes.py.
+"""FastAPI route smoke-tests for dashboards_routes.py.
 
 Covers all 9 endpoints (5 JSON CRUD + sub-resource refresh +
 3 HTML pages).  Tests focus on the route layer: auth gates,

@@ -1,4 +1,4 @@
-"""Save-time revision snapshots + pinned facts (Phase 97 + Rest).
+"""Save-time revision snapshots + pinned facts.
 
 Two related tables: every save event freezes a ``NotebookRevision``
 that the diff viewer + replay surface read; a long-lived bookmark on
@@ -26,13 +26,13 @@ from pointlessql.models.base import Base
 
 
 class NotebookRevision(Base):
-    """Save-time snapshot of a notebook's cells + outputs (Phase 97).
+    """Save-time snapshot of a notebook's cells + outputs.
 
     Each row freezes the notebook state at a discrete save event so
     the editor's revision-history panel can render a Monaco diff
     between any two points in time, replay an old execution against
-    today's data (Phase 103), or surface the agent timeline alongside
-    the human edit timeline (Phase 101).
+    today's data, or surface the agent timeline alongside
+    the human edit timeline.
 
     The snapshot lives in this metadata DB rather than on the
     on-disk ``.py`` so:
@@ -125,7 +125,7 @@ class NotebookRevision(Base):
 
 
 class NotebookRevisionFact(Base):
-    """Pinned snapshot promoted into a referenceable fact (Phase 97 Rest).
+    """Pinned snapshot promoted into a referenceable fact.
 
     A *fact* is a long-lived bookmark on a :class:`NotebookRevision` —
     either the whole revision (``cell_content_hash IS NULL``) or one

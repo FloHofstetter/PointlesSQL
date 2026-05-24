@@ -1,5 +1,5 @@
 /**
- * Notebook-level tags (Phase 98.B UI).
+ * Notebook-level tags.
  *
  * Wires the existing ``GET/POST/DELETE /api/notebooks/tags`` REST
  * surface to a toolbar button + inline picker panel.  Backend

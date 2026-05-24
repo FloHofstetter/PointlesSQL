@@ -61,7 +61,7 @@ async def list_data_products(
         request: Incoming FastAPI request.
         q: Optional case-insensitive prefix filter on
             ``catalog_name``, ``schema_name``, or the
-            ``catalog.schema`` reference (Phase 76.6.1) used by
+            ``catalog.schema`` reference used by
             the ``#dp:`` mention-autocomplete picker.
 
     Returns:
@@ -170,7 +170,7 @@ async def list_data_products(
             ).all()
             has_readme_set = {int(r[0]) for r in readme_rows if r[0] is not None}
 
-            # Phase 72.2 — auto-computed badges (bulk).
+            # auto-computed badges (bulk).
             badges_by_id = compute_badges_bulk(
                 session,
                 workspace_id=workspace_id,

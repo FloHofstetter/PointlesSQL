@@ -1,6 +1,6 @@
 """Validation registry for social ``(kind, ref)`` URL pairs.
 
-Phase 121.6 Item A — extracted from
+extracted from
 ``_kind_dispatch.parse_ref()``'s 13-way if/elif chain.  Each
 :class:`RefKind` carries a short error message and a validator
 that returns True iff *ref* is well-formed for the kind.  The

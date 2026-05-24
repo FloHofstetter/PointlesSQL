@@ -1,4 +1,4 @@
-"""WebSocket route ``/ws/sql/chat/{editor_session_id}`` (Phase 91).
+"""WebSocket route ``/ws/sql/chat/{editor_session_id}``.
 
 Mirrors the JSON-RPC envelope from :mod:`notebook_kernel_ws`:
 

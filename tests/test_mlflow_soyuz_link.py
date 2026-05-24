@@ -1,4 +1,4 @@
-"""Tests for the soyuz model-version link helpers (Phase 21.2).
+"""Tests for the soyuz model-version link helpers.
 
 Pure-function tests: ``_serialize_link`` round-trips through
 ``parse_link_marker``; ``build_mlflow_linked_event`` produces a

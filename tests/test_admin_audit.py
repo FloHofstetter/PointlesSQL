@@ -230,7 +230,7 @@ class TestAdminAuditContent:
 
 
 class TestAdminAuditExport:
-    """Sprint 48: JSON + CSV export endpoint."""
+    """JSON + CSV export endpoint."""
 
     @pytest.mark.asyncio
     async def test_non_admin_export_denied(self):

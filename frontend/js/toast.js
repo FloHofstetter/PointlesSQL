@@ -11,7 +11,7 @@
 // the node on hidden.bs.toast so the DOM doesn't accumulate.
 const ROOT_ID = 'pql-toast-root';
 const DEFAULT_TIMEOUT = 4000;
-// Phase 81.G.D — cap concurrent visible toasts so a bulk op that
+// cap concurrent visible toasts so a bulk op that
 // fires N requests doesn't flood the screen with N stacked cards.
 // Oldest toast is dismissed in-place so the new one can show.
 const MAX_VISIBLE = 3;

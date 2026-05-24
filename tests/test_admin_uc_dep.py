@@ -1,4 +1,4 @@
-"""Phase 121.6 Item B — ``admin_uc`` combined dependency."""
+"""``admin_uc`` combined dependency."""
 
 from __future__ import annotations
 

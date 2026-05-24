@@ -1,4 +1,4 @@
-"""Curated cell-tag vocabulary (Phase 95.3).
+"""Curated cell-tag vocabulary.
 
 The notebook ``.py`` marker grammar already round-trips arbitrary
 ``tags=["..."]`` lists losslessly through

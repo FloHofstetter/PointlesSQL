@@ -1,5 +1,5 @@
 /*
- * Phase 81.A — per-user primary-rail customisation (localStorage MVP).
+ * per-user primary-rail customisation (localStorage MVP).
  *
  * The Phase 80.1 primary rail surfaces 23 entries across five IA
  * groups.  Some users (e.g. an auditor who never builds notebooks)

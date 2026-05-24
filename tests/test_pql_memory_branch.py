@@ -1,4 +1,4 @@
-"""Phase 90.0b — unit tests for ``pql.memory.branch`` / ``fork``.
+"""unit tests for ``pql.memory.branch`` / ``fork``.
 
 The real ``create_branch_schema`` needs a running soyuz-catalog +
 deltalake on disk, so we monkeypatch it.  The contract we assert

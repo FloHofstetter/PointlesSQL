@@ -1,4 +1,4 @@
-"""Phase 82.3 — cron schedule control for an ingest source.
+"""cron schedule control for an ingest source.
 
 ``PUT /api/ingest/sources/{id}/schedule`` accepts
 ``{"cron_expr": str}`` to create / update or

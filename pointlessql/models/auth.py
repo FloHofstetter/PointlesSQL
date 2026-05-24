@@ -119,7 +119,7 @@ class User(Base):
     default_workspace_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("workspaces.id"), nullable=False, server_default="1"
     )
-    # Phase 71.4: opt-in for the daily marketplace digest email.
+    # opt-in for the daily marketplace digest email.
     # When ``True`` the ``_user_notification_digest_loop`` picks
     # this user up at the daily wake-window if they have unread
     # notifications.  The actual mail delivery is handled by the
@@ -128,7 +128,7 @@ class User(Base):
     digest_email_optin: Mapped[bool] = mapped_column(
         Boolean, nullable=False, server_default=text("false")
     )
-    # Phase 76.4: per-event-type opt-in toggles, JSON-encoded.
+    # per-event-type opt-in toggles, JSON-encoded.
     # Shape: ``{event_type: {inbox, email, webhook}}``; missing
     # keys default to all-true so newly-shipped event types reach
     # users until they explicitly opt out.

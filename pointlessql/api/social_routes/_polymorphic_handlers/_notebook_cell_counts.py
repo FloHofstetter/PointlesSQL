@@ -1,4 +1,4 @@
-"""Bulk-count endpoint for notebook-cell social rows (Phase 95).
+"""Bulk-count endpoint for notebook-cell social rows.
 
 A notebook with 50 cells would otherwise need 50 separate
 ``GET /api/social/notebook_cell/{ref}/comments`` round-trips to know

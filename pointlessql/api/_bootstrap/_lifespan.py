@@ -1,4 +1,4 @@
-"""FastAPI lifespan extracted from ``api/main.py`` (Phase 89.2).
+"""FastAPI lifespan extracted from ``api/main.py``.
 
 The 358-LOC lifespan body that used to inflate ``main.py`` past 1000
 LOC moves here verbatim, behind a :func:`make_lifespan` factory that
@@ -176,7 +176,7 @@ def make_lifespan(
                 name="audit-retention",
             )
 
-        # Phase 119 — periodic API-key lifecycle sweep.  Marks
+        # periodic API-key lifecycle sweep.  Marks
         # expired keys (auto-quarantine if enabled) + emits one
         # expiry-warning audit row per key approaching its TTL.
         # Same opt-out as audit retention: not started under
@@ -188,7 +188,7 @@ def make_lifespan(
                 name="api-key-lifecycle",
             )
 
-        # Phase 120 — periodic API-key usage flush + retention sweep.
+        # periodic API-key usage flush + retention sweep.
         # Flush drains the in-process Counter every 30s by default;
         # retention prunes buckets older than 30d once per day.
         api_key_usage_flush_task: asyncio.Task[None] | None = None
@@ -216,7 +216,7 @@ def make_lifespan(
                 name="external-writes-scan",
             )
 
-        # Phase 50.4 — data-product freshness scanner.  Same opt-in
+        # data-product freshness scanner.  Same opt-in
         # discipline as the external-write scanner: zero-config installs
         # see no extra Delta IO.  Activated by setting
         # ``POINTLESSQL_DATA_PRODUCTS_SCAN_INTERVAL_SECONDS`` non-zero.
@@ -240,7 +240,7 @@ def make_lifespan(
                 name="cdf-tail",
             )
 
-        # Phase 51.4 — workspace-repos sync cron.  Opt-in
+        # workspace-repos sync cron.  Opt-in
         # default-disabled (``sync_interval_seconds == 0``).  When
         # active, the loop pulls every stale repo every interval; the
         # webhook receiver still triggers immediate syncs regardless.
@@ -286,7 +286,7 @@ def make_lifespan(
                 name="branch-cleanup",
             )
 
-        # Phase 72.3 — cached "trending in agent workloads" refresh.
+        # cached "trending in agent workloads" refresh.
         # Opt-in default-disabled
         # (``trending_refresh_interval_seconds == 0``); the join
         # query stays cheap for < 10⁴ ops/week but adds noise on
@@ -301,7 +301,7 @@ def make_lifespan(
                 name="data-product-trending",
             )
 
-        # Phase 73.1 — promote-to-DP candidate scanner.  Always
+        # promote-to-DP candidate scanner.  Always
         # safe to schedule: the loop body short-circuits when
         # ``promote_enabled`` is false (default).
         data_product_promotion_task: asyncio.Task[None] | None = None
@@ -314,7 +314,7 @@ def make_lifespan(
                 name="data-product-promotion",
             )
 
-        # Phase 73.4 — auto-passport stale-refresh loop.  Opt-in
+        # auto-passport stale-refresh loop.  Opt-in
         # via ``passport_loop_enabled`` (default off).
         data_product_passport_task: asyncio.Task[None] | None = None
         if (
@@ -326,7 +326,7 @@ def make_lifespan(
                 name="data-product-passport",
             )
 
-        # Phase 73.5 — cross-DP cooccurrence cache refresh.  Opt-in.
+        # cross-DP cooccurrence cache refresh.  Opt-in.
         data_product_cooccurrence_task: asyncio.Task[None] | None = None
         if (
             settings.data_products.cooccurrence_enabled
@@ -337,7 +337,7 @@ def make_lifespan(
                 name="data-product-cooccurrence",
             )
 
-        # Phase 74.1 — active-reviewer daily tick.  Opt-in
+        # active-reviewer daily tick.  Opt-in
         # default-disabled (``data_products.active_reviewer_enabled``);
         # the loop body short-circuits when disabled, so registering
         # it is cheap.
@@ -351,7 +351,7 @@ def make_lifespan(
                 name="active-reviewer",
             )
 
-        # Phase 71.4 follow-up B.3 — daily marketplace digest.
+        # daily marketplace digest.
         # Opt-in default-disabled
         # (``notifications.digest_enabled=False``); the loop body
         # itself short-circuits when disabled, so we always start
@@ -364,7 +364,7 @@ def make_lifespan(
                 name="user-notification-digest",
             )
 
-        # Phase 76.2 — sticky reputation badges recomputed every 24h.
+        # sticky reputation badges recomputed every 24h.
         user_badges_task: asyncio.Task[None] | None = None
         if not fast_test_lifespan:
             user_badges_task = asyncio.create_task(
@@ -427,7 +427,7 @@ def make_lifespan(
         notebooks_dir.mkdir(parents=True, exist_ok=True)
         app.state.kernel_registry = KernelRegistry(notebooks_dir=notebooks_dir)
 
-        # Phase 109 — cross-worker co-edit fanout bus.  Opt-in
+        # cross-worker co-edit fanout bus.  Opt-in
         # (``coedit.bus_enabled``) and PG-only — SQLite installs stay
         # single-worker and skip the bus entirely.  The bus owns its own
         # async PG connection for ``LISTEN coedit_bus`` plus a cleanup
@@ -474,7 +474,7 @@ def make_lifespan(
                     "single-worker only — skipping",
                 )
 
-        # Phase 103 Wave-D — notebook replay re-execution worker.
+        # notebook replay re-execution worker.
         # Tiny serial loop next to the scheduler that drains pending
         # NotebookReplay rows.  Disabled in fast-test lifespan so
         # pytest stays deterministic; opt-out via

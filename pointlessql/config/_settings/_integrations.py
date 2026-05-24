@@ -81,7 +81,7 @@ class JupyterSettings(BaseSettings):
 
 
 class WorkspaceReposSettings(BaseSettings):
-    """Workspace-repo clone + sync configuration (Phase 51).
+    """Workspace-repo clone + sync configuration.
 
     Reads ``POINTLESSQL_REPOS_*`` environment variables.  The
     foundation sub-sprint pinned every value at a safe default:
@@ -129,7 +129,7 @@ class DBTSettings(BaseSettings):
     ``/dbt`` page renders a friendly hint rather than a noisy error.
 
     The subprocess is independent of the on-demand
-    ``/api/dbt/run|test|compile`` endpoints (Sprint 36.2): those
+    ``/api/dbt/run|test|compile`` endpoints: those
     spawn ``dbt`` as one-shot CLI invocations and write
     ``target/manifest.json`` themselves.  Once the first compile has
     landed, the docs subprocess becomes startable on the next

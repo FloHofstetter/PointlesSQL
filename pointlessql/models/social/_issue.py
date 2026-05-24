@@ -1,4 +1,4 @@
-"""GitHub-Issues entity (Phase 77.7).
+"""GitHub-Issues entity.
 
 Issues are the long-form tracked-work primitive, distinct from
 the polymorphic Discussion thread.  The split mirrors GitHub:

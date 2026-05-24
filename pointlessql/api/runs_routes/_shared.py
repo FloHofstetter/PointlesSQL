@@ -6,8 +6,7 @@ here keeps the import graph one-way: every sub-module depends on
 ``_shared``, and ``_shared`` depends on nothing else inside the
 package.
 
-Phase 86 retired the local ``templates()`` helper and re-exports
-:func:`pointlessql.api.dependencies.get_templates` under its old name
+func:`pointlessql.api.dependencies.get_templates` under its old name
 so existing sub-modules keep working without churn.
 """
 

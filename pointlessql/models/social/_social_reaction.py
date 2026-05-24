@@ -1,4 +1,4 @@
-"""Polymorphic emoji reactions on any entity (Phase 78 polish).
+"""Polymorphic emoji reactions on any entity.
 
 Replaces the 71.2-vintage ``data_product_reactions`` table that
 77.0.G / 77.8.C grew a polymorphic ``social_target_id`` UNIQUE

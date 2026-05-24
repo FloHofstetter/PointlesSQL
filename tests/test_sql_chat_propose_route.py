@@ -1,4 +1,4 @@
-"""Phase 91 — ``POST /api/sql/chat/{session_id}/propose`` route tests.
+"""``POST /api/sql/chat/{session_id}/propose`` route tests.
 
 The propose route is the LLM's only path to issue non-SELECT SQL:
 it writes a :class:`ChatProposal` row and fan-outs a
@@ -231,7 +231,7 @@ async def test_propose_broker_fan_out(
 
 
 # ---------------------------------------------------------------------------
-# Phase 106.5 — typed body validation
+# typed body validation
 # ---------------------------------------------------------------------------
 
 

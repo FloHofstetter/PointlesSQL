@@ -1,4 +1,4 @@
-// Phase 81.G.1 — prefetch links on hover.
+// prefetch links on hover.
 //
 // After ~80 ms of mouseover on a same-origin <a href>, inject
 // <link rel="prefetch" href="..."> into <head> so the browser

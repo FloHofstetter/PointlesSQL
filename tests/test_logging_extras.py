@@ -1,4 +1,4 @@
-"""Sprint 44.1 — ``extra={...}`` propagation in :class:`JSONFormatter`.
+"""``extra={...}`` propagation in :class:`JSONFormatter`.
 
 Locks the contract that caller-supplied ``logger.info("...",
 extra={"run_id": "abc"})`` lands the run_id as a top-level key in

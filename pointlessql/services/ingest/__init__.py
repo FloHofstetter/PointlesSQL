@@ -1,4 +1,4 @@
-"""Phase 82 — ingest service package.
+"""ingest service package.
 
 Wraps DuckDB readers (``read_csv``, ``read_parquet``, ``read_json``,
 ``postgres_scan``, ``mysql_scan``, ``sqlite_scan``, plus ``httpfs``

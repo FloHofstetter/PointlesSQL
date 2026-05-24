@@ -1,4 +1,4 @@
-"""Promote-to-DP candidate scanner + draft yaml builder (Phase 73.1).
+"""Promote-to-DP candidate scanner + draft yaml builder.
 
 Two callables:
 

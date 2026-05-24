@@ -1,4 +1,4 @@
-"""Lens read-only Q&A service layer (Phase 65).
+"""Lens read-only Q&A service layer.
 
 Lens is the analyst-facing chat-style surface that exposes read-only
 data Q&A over two transports: the browser chat UI at ``/lens`` and an
@@ -13,19 +13,19 @@ Layout:
 * ``_provider_creds`` — Fernet-encrypted BYO LLM key storage
                          (one credential per ``(workspace, provider)``).
 * ``provenance``     — unified row/column/value lineage trace
-                        (Sprint 65.1 signature feature).
+                       .
 * ``tools``          — Pydantic-typed tool registry shared between
                         the browser chat-loop and the MCP server
-                        (Sprint 65.2).
+                       .
 * ``cost_gate``      — auto-LIMIT + EXPLAIN-cost cap + per-session
-                        budget (Sprint 65.3).
+                        budget.
 * ``llm_provider``   — OpenAI / Anthropic SDK adapters for the
-                        browser chat-loop (Sprint 65.5).
+                        browser chat-loop.
 * ``mcp_server``     — FastMCP-based stdio + SSE transport
-                        (Sprint 65.4).
+                       .
 * ``_chat_loop``     — orchestrates user-message → tool-dispatch →
                         assistant-message for the browser surface
-                        (Sprint 65.5).
+                       .
 """
 
 from __future__ import annotations

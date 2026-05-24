@@ -75,23 +75,23 @@ PUBLIC_PREFIXES: tuple[str, ...] = (
     "/healthz",
     "/alerts/feed.atom",
     "/alerts/feed.json",
-    # Phase 51.4: inbound webhook receiver.  Authentication is the
+    # inbound webhook receiver.  Authentication is the
     # HMAC-SHA-256 signature on the body verified inside the route
     # handler; the path itself is unauthenticated so external git
     # hosts can call it without an API key.
     "/webhook/git/",
-    # Phase 65.4: Lens MCP transport.  Authentication is a Bearer
+    # Lens MCP transport.  Authentication is a Bearer
     # API key with the analyst (or auditor) scope, validated inside
     # the routes themselves.  Letting the auth middleware redirect
     # /mcp/* to /auth/login would break IDE consumers (Claude
     # Desktop, Cursor) that never see an HTTP redirect.
     "/mcp/",
-    # Phase 100: notebook share viewer.  Public-by-design surface;
+    # notebook share viewer.  Public-by-design surface;
     # the share_uuid IS the credential.  Revoked / expired shares
     # return 410 from the route itself — letting the auth middleware
     # redirect to /auth/login would break the whole publish flow.
     "/share/",
-    # Phase 100 Wave-D: iframe-embed mirror of the share viewer.
+    # iframe-embed mirror of the share viewer.
     # Same auth-by-uuid contract as /share/; lives under /embed/
     # so external doc embeds can frame it like Phase-92.2's
     # /embed/semantic_search/{fqn}.
@@ -150,7 +150,7 @@ async def auth_middleware(request: Request, call_next: Any) -> Response:
             factory,
         )
         if entry is not None:
-            # Phase 120 — IP allowlist gate.  Runs before any state is
+            # IP allowlist gate.  Runs before any state is
             # attached so a denied request looks indistinguishable from
             # an unauthenticated one + emits a distinct audit row.
             settings_for_acl = getattr(request.app.state, "settings", None)
@@ -203,7 +203,7 @@ async def auth_middleware(request: Request, call_next: Any) -> Response:
                 is_supervisor=entry.supervisor,
                 is_auditor=entry.auditor,
             )
-            # Phase 120 — record this successful auth into the
+            # record this successful auth into the
             # in-process usage buffer.  Flush is the background
             # ``_api_key_usage_flush_loop``.
             try:

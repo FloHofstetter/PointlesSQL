@@ -1,6 +1,6 @@
 """OpenLineage 1.x inbound-event parser for the federation track.
 
-Phase 40 Sprint 40.1: external producers POST OpenLineage RunEvents
+external producers POST OpenLineage RunEvents
 to ``POST /api/lineage/openlineage`` and the route normalises them
 into rows on the existing ``lineage_row_edges`` and
 ``lineage_column_map`` tables.  This module owns the mapping between

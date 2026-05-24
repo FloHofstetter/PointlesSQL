@@ -31,7 +31,7 @@ def get_or_create_notebook_uuid(
 ) -> str:
     """Look up or create the :class:`Notebook` UUID for *file_path*.
 
-    Phase 77.6 — the social layer addresses notebooks by their
+    the social layer addresses notebooks by their
     stable ``notebooks.id`` UUID (locked decision #8).  This helper
     is the single chokepoint that maps a ``file_path`` to that
     UUID, creating the row on demand the first time a path is

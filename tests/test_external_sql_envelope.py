@@ -1,4 +1,4 @@
-"""Phase 117 — DBX envelope serializer + type mapping."""
+"""DBX envelope serializer + type mapping."""
 
 from __future__ import annotations
 

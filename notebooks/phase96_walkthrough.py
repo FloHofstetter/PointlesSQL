@@ -10,7 +10,7 @@
 # ---
 
 # %% [markdown]
-# # Phase 96 — Inline AI-Assistant walkthrough
+# # Inline AI-Assistant walkthrough
 #
 # Open this notebook in the editor and click the toolbar **AI**
 # button to load the chat drawer.  Use the seed cells below as

@@ -73,7 +73,7 @@
 }
 
 /* ---------------------------------------------------------------
- * Phase 114.1 — workspace sidebar tree.
+ * workspace sidebar tree.
  *
  * Compact variant of the full-page ``.pql-tree-item`` rows so 20+
  * rows fit in the sidebar's vertical budget.  Search input sits
@@ -96,7 +96,7 @@
 }
 
 .pql-tree-item--compact {
-    /* Phase 115.3 — row geometry aligned with the audit / lens
+    /* row geometry aligned with the audit / lens
        context-panel link rows (``.pql-context-panel__link``: 0.45rem
        1rem, 0.875rem font, 0.5rem gap).  Tree-indent is folded into
        ``padding-left`` inline, so the base padding stays symmetric
@@ -151,7 +151,7 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    /* Phase 115.3 — keep filenames in the body font (not monospace).
+    /* keep filenames in the body font (not monospace).
        Monospace earns its keep in code; in a navigation panel it
        just lengthens characters and makes truncation kick in
        sooner. */
@@ -163,7 +163,7 @@
     padding: 0.1em 0.35em;
 }
 
-/* Phase 115.3 — small dot replaces the wide "PARAMS" badge.
+/* small dot replaces the wide "PARAMS" badge.
    Keeps the parameters-declared signal but does not steal
    row-width from the filename. */
 .pql-tree-row-params-dot {

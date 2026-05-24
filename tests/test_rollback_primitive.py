@@ -1,4 +1,4 @@
-"""End-to-end tests for ``pql.rollback`` (Sprint 16.1).
+"""End-to-end tests for ``pql.rollback``.
 
 Exercises the primitive directly — no FastAPI / soyuz live server.
 A throwaway in-memory SQLite gets the audit schema, a real Delta

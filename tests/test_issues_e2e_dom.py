@@ -1,4 +1,4 @@
-"""Phase 77.7 — issues UI smoke (DOM + template source assertions).
+"""issues UI smoke (DOM + template source assertions).
 
 Coverage:
 
@@ -144,7 +144,7 @@ def test_parse_ref_accepts_numeric_issue_id() -> None:
 
 def test_parse_ref_rejects_non_numeric_issue_id() -> None:
     """A non-numeric ref raises 400 with the contract message."""
-    # Phase 121.1.e — converted from HTTPException to BadRequestError.
+    # converted from HTTPException to BadRequestError.
     from pointlessql.exceptions import BadRequestError
 
     with pytest.raises(BadRequestError) as exc:

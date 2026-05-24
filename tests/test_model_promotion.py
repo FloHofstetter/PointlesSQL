@@ -1,4 +1,4 @@
-"""Tests for the champion/challenger promotion service (Phase 21.6).
+"""Tests for the champion/challenger promotion service.
 
 Marker round-trips, service-level validation, and the FastAPI POST
 endpoint with supervisor-scope enforcement.  HTTP-level soyuz
@@ -368,7 +368,7 @@ async def test_promote_endpoint_422_on_validation_error(
         "/api/models/cat.sch.model/promote",
         json={"target_version": 2, "reason": "no-op"},
     )
-    # Phase 43.3: PromotionError is now a PointlessSQLError(422); the
+    # PromotionError is now a PointlessSQLError(422); the
     # centralised handler renders it as ``promotion_error``.
     assert resp.status_code == 422
     body = resp.json()

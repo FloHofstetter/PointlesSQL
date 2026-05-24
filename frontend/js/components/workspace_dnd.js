@@ -1,7 +1,7 @@
 /**
  * Workspace drag-drop move + inline rename mixin.
  *
- * Phase 114.3 — installed on both the workspace-sidebar and the
+ * installed on both the workspace-sidebar and the
  * workspace-page factories.  Reuses the existing
  * ``_renameNotebookApi`` (move = rename with a different parent
  * prefix); zero backend changes.

@@ -1,5 +1,5 @@
 /*
- * PointlesSQL polymorphic social-tabs Alpine factory (Phase 77.1.5).
+ * PointlesSQL polymorphic social-tabs Alpine factory.
  *
  * Backs the kind-agnostic ``_endorsements_pane.html`` +
  * ``_followers_pane.html`` partials when they are included from a

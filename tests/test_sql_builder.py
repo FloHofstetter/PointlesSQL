@@ -1,4 +1,4 @@
-"""Phase 83.2 — Visual Query Builder unit + route smoke tests.
+"""Visual Query Builder unit + route smoke tests.
 
 The unit half exercises ``build_sql_from_state`` /
 ``parse_sql_to_state`` for the round-trip and the supported-subset

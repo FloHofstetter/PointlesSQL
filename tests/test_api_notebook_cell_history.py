@@ -1,4 +1,4 @@
-"""Tests for ``GET /api/notebooks/cell-history`` (Sprint 66.7)."""
+"""Tests for ``GET /api/notebooks/cell-history``."""
 
 from __future__ import annotations
 
@@ -56,7 +56,7 @@ async def test_cell_history_empty(admin_client: httpx.AsyncClient) -> None:
 async def test_cell_history_non_admin_accessible(
     non_admin_client: httpx.AsyncClient,
 ) -> None:
-    """Phase 70: any authenticated user can read cell history."""
+    """any authenticated user can read cell history."""
     resp = await non_admin_client.get(
         "/api/notebooks/cell-history?path=demo.py&content_hash=ff"
     )

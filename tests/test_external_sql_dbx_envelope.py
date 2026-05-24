@@ -1,6 +1,6 @@
-"""Phase 121.1.c — pin the DBX error envelope wire shape.
+"""pin the DBX error envelope wire shape.
 
-The external SQL Statement Execution API (Phase 117) returns errors
+The external SQL Statement Execution API returns errors
 in the Databricks-compatible envelope so the ``databricks-sql-python``
 client, ``dbt-databricks``, and JDBC drivers parse responses
 identically to the upstream service.  This test pins:

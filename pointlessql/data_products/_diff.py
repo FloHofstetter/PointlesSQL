@@ -4,11 +4,11 @@ Two entry points share the same pure ``_diff_columns`` core:
 
 * :func:`diff_contract_against_engine_columns` — pre-write hook
   fed the tuples from ``Engine.columns_info(df)``.  Used by the
-  enforcement service (Sprint 50.3) to refuse a write whose frame
+  enforcement service to refuse a write whose frame
   drops a required contract column or swaps a type incompatibly.
 * :func:`diff_contract_against_delta_table` — live diff fed the
   on-disk schema via ``deltalake.DeltaTable(...).schema()``.  Used
-  by ``GET /api/data-products/{ref}/diff`` (Sprint 50.2) to surface
+  by ``GET /api/data-products/{ref}/diff`` to surface
   drift between the deployed table and the latest yaml.
 
 Both adapters normalise the actual side into a list of

@@ -1,4 +1,4 @@
-"""Sprint 29.1 — per-workspace audit-sink routing.
+"""per-workspace audit-sink routing.
 
 Pins the four invariants that protect tenants from cross-workspace
 webhook leaks:

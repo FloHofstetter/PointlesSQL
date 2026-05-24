@@ -366,7 +366,7 @@ async def test_queries_page_emits_rows_with_hljs_marker(
 ) -> None:
     """The /queries page paints a row per history entry with hljs hooks.
 
-    The page went table → card-grid (Sprint 57.3) → table (Phase 61/62
+    The page went table → card-grid → table (Phase 61/62
     drift roll-up); current shape is a Bootstrap table whose
     ``<tbody>`` carries id ``queries-tbody`` and each drawer body
     contains a ``<code class="language-sql">`` hook for highlight.js.

@@ -1,4 +1,4 @@
-"""Phase 105.6 — agent presence on the co-edit channel.
+"""agent presence on the co-edit channel.
 
 Lets an agent (hermes-plugin-pointlessql, future first-party
 copilots, etc.) advertise that it is currently operating on a
@@ -26,7 +26,7 @@ carries a UTF-8 JSON payload with the shape::
 Clients decode this in ``coedit_client.js`` and merge the result
 into the peer rail; no y-protocols encoding involved on either
 side, which keeps the agent path independent of the awareness
-schema (Phase 105.4) for future reshaping.
+schema for future reshaping.
 """
 
 from __future__ import annotations

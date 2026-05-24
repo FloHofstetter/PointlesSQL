@@ -1,4 +1,4 @@
-"""Sprint 28.2 — workspace_id on user-owned + scheduler tables.
+"""workspace_id on user-owned + scheduler tables.
 
 Asserts:
 

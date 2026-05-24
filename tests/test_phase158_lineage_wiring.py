@@ -1,4 +1,4 @@
-"""Phase 15.8 — End-to-end lineage wiring contract tests.
+"""End-to-end lineage wiring contract tests.
 
 These tests pin the contract that the seed-full-stack-demo
 acceptance gate depends on: when an agent writes a frame that
@@ -17,7 +17,7 @@ exercises (Sprint 15 row-edges, Sprint 15.7 value-changes,
 Sprint 21.7 source_model_uri) plus the Sprint 15.8 INFO-log
 diagnostic that flags drops at SELECT time.  All five pass
 against the current production code; the actual demo fix lives
-in ``scripts/seed-full-stack-demo.py`` (Sprint 15.8.2).
+in ``scripts/seed-full-stack-demo.py``.
 """
 
 from __future__ import annotations

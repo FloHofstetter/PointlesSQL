@@ -358,7 +358,7 @@ class TestPQLConnectionError:
 
 
 # ------------------------------------------------------------------
-# Phase 102 — branch env-bridge: _branch_remap
+# branch env-bridge: _branch_remap
 # ------------------------------------------------------------------
 
 

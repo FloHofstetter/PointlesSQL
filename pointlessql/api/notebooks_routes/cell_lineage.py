@@ -1,4 +1,4 @@
-"""Cell-level lineage badge route (Phase 98.C).
+"""Cell-level lineage badge route.
 
 Returns the list of Delta-write events the audit trail has captured
 for a single notebook cell so the editor's cell header can paint

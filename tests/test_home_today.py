@@ -1,4 +1,4 @@
-"""Phase 80.3 — Today landing page digest tests.
+"""Today landing page digest tests.
 
 Asserts the home page renders the three Today cards (approvals,
 inbox, alerts) and that the nav-rail badges are populated by the

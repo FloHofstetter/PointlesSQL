@@ -184,7 +184,7 @@ class QueryHistory(Base):
             ``/queries`` page can deep-link back to the originating
             notebook cell.
         notebook_content_hash: FNV-1a-64 content hash of the cell
-            (Phase 66.5).  ``None`` outside the notebook path.
+           .  ``None`` outside the notebook path.
             Lets a future replay-from-history feature distinguish a
             re-run of "the same cell" from a re-run of "an edited
             cell".
@@ -232,7 +232,7 @@ class QueryHistory(Base):
     lens_session_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("lens_sessions.id"), nullable=True
     )
-    # Phase 66.5 — when a SQL execution originates from a notebook
+    # when a SQL execution originates from a notebook
     # SQL cell (``# %% [sql] df``), these two columns carry the
     # source file + the FNV-1a-64 cell-identity so the audit
     # cockpit can deep-link back to the cell that produced the row.

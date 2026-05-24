@@ -1,4 +1,4 @@
-"""Tests for ``POST /api/notebooks/run-once`` (Phase 67.3).
+"""Tests for ``POST /api/notebooks/run-once``.
 
 The endpoint creates an ephemeral paused :class:`Job` row + fires a
 manual papermill run, returning ``{job_id, job_run_id}`` so the
@@ -130,7 +130,7 @@ async def test_run_once_rejects_non_dict_parameters(
 async def test_run_once_non_admin_accessible(
     workspace_dir: Path, non_admin_client: httpx.AsyncClient
 ) -> None:
-    """Phase 70: any authenticated user can trigger a run-once."""
+    """any authenticated user can trigger a run-once."""
     (workspace_dir / "demo.py").write_text(_PARAM_NOTEBOOK)
     resp = await non_admin_client.post(
         "/api/notebooks/run-once",

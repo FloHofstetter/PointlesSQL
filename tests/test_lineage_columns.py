@@ -1,4 +1,4 @@
-"""Column-lineage service unit tests (Sprint 15.6.1).
+"""Column-lineage service unit tests.
 
 Exercises :func:`pointlessql.services.lineage_edges.record_column_edges`,
 :func:`walk_back_columns`, and :func:`count_column_edges_for_op` with

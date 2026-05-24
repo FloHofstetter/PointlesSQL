@@ -1,4 +1,4 @@
-"""Phase 92 — route-level tests for ``POST /api/sql/vector_search``.
+"""route-level tests for ``POST /api/sql/vector_search``.
 
 Covers the privilege gate (404 on unknown table, 403 on missing
 SELECT) and the happy-path against a Delta + fake-embedded index.

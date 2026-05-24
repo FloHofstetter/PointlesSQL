@@ -1,4 +1,4 @@
-"""HTML pages for the GitHub-Issues entity (Phase 77.7).
+"""HTML pages for the GitHub-Issues entity.
 
 Two pages mirror the data-products surface:
 

@@ -1,6 +1,6 @@
 """Discover yaml files inside synced workspace repositories.
 
-Phase 51.2 — bridges the workspace-repos cache to the existing
+bridges the workspace-repos cache to the existing
 yaml loaders without forcing each loader to know how to walk a
 repo clone.  Loaders call :func:`discover_repo_yaml_files` with
 their workspace and a glob pattern; the helper returns a stable-

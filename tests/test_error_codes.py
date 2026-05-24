@@ -1,4 +1,4 @@
-"""Sprint 43.1 — Central :class:`ErrorCode` StrEnum.
+"""Central :class:`ErrorCode` StrEnum.
 
 Locks the contract that every domain exception in the project carries
 an :class:`ErrorCode` member and that the enum stays compatible with

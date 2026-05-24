@@ -1,4 +1,4 @@
-"""Sprint 65.5 — browser chat UI route + chat-loop tests.
+"""browser chat UI route + chat-loop tests.
 
 Mocks the LLM provider so the test never touches the OpenAI / Anthropic
 network paths.  Validates session CRUD, message append + persistence,
@@ -329,7 +329,7 @@ def test_now_helper_callable() -> None:
 
 
 def test_decrypt_provider_key_after_upsert() -> None:
-    """decrypt_provider_key returns the cleartext after upsert (Phase 65.5)."""
+    """decrypt_provider_key returns the cleartext after upsert."""
     _wipe_lens_tables()
     factory = app.state.session_factory
     upsert_provider_creds(

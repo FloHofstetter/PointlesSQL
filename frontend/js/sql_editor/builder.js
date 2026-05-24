@@ -1,5 +1,5 @@
 /**
- * Phase 83.2 — Visual Query Builder mixin for the SQL editor.
+ * Visual Query Builder mixin for the SQL editor.
  *
  * State + methods that back the "Builder" panel: a Grafana-style
  * toggle that turns a single-table SELECT into a form (filters +

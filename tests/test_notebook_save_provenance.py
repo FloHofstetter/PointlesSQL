@@ -1,4 +1,4 @@
-"""Phase 96 — save-path provenance flush integration test.
+"""save-path provenance flush integration test.
 
 When ``POST /api/notebooks/save`` carries ``proposal_acceptances``,
 the route should write one ``NotebookCellProvenance`` row per

@@ -1,4 +1,4 @@
-"""Phase 77.2 — Registered-model entity-kind registration.
+"""Registered-model entity-kind registration.
 
 Coverage:
 

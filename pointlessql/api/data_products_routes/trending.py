@@ -1,4 +1,4 @@
-"""``/api/data-products/trending`` + ``/data-products/trending`` (Phase 72.3).
+"""``/api/data-products/trending`` + ``/data-products/trending``.
 
 Two endpoints:
 

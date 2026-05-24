@@ -127,7 +127,7 @@ async def handle_kernel_message(
         # Skip bootstrap echoes — the helper definition is internal.
         return
 
-    # Phase 67.5 — Variable Inspector custom-MIME interception.
+    # Variable Inspector custom-MIME interception.
     # ``__pql_inspect__`` / ``__pql_inspect_detail__`` emit
     # ``display_data`` frames carrying our private MIMEs. Route them as
     # a dedicated ``variable_snapshot`` / ``variable_detail`` notify

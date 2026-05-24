@@ -1,6 +1,6 @@
 """Materialise rows from a configured source into a Delta target.
 
-Phase 82.3 — the scheduled-pull executor calls :func:`pull_mapping`
+the scheduled-pull executor calls :func:`pull_mapping`
 once per ``(source, mapping_index)`` pair.  This module is the bridge
 between the DuckDB reader plane and PQL's write plane.
 

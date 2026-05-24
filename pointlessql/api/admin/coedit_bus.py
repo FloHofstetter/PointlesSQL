@@ -1,4 +1,4 @@
-"""Phase 109.3 — operator diagnostics for the cross-worker co-edit bus.
+"""operator diagnostics for the cross-worker co-edit bus.
 
 Exposes ``GET /api/admin/coedit-bus/status`` returning a JSON snapshot
 of the bound :class:`CoeditBus` (listener health, cleanup task health,

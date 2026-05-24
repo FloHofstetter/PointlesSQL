@@ -1,5 +1,5 @@
 /**
- * Per-cell authorship attribution (Phase 101 UI).
+ * Per-cell authorship attribution.
  *
  * Loads ``{cell_uuid -> envelope}`` for the whole notebook once on
  * mount + after every save, then exposes ``attributionFor(cell)`` as

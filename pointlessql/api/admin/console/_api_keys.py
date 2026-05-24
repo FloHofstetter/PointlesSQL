@@ -102,7 +102,7 @@ async def admin_api_keys_index(request: Request, include_revoked: bool = False) 
                 "created_at": k.created_at.isoformat() if k.created_at else "",
                 "last_used_at": k.last_used_at.isoformat() if k.last_used_at else None,
                 "revoked_at": k.revoked_at.isoformat() if k.revoked_at else None,
-                # Phase 119 — lifecycle columns so the row template can
+                # lifecycle columns so the row template can
                 # surface "expiring" / "rotated" / "quarantined" pills.
                 "expires_at": (
                     k.expires_at.isoformat() if getattr(k, "expires_at", None) else None

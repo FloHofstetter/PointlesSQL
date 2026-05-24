@@ -1,4 +1,4 @@
-"""Phase 82.5 — Health-band feed for a DP's ingest sources.
+"""Health-band feed for a DP's ingest sources.
 
 ``GET /api/data-products/{catalog}/{schema}/ingest-status`` returns
 every IngestSource whose ``table_mappings[*].target_fqn`` lands a

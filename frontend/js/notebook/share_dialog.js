@@ -1,5 +1,5 @@
 /**
- * Publish / Share dialog (Phase 100 UI).
+ * Publish / Share dialog.
  *
  * Backend (REST + public viewer + 8 tests) shipped earlier; this
  * module wires the toolbar "Share" button to a Bootstrap modal with

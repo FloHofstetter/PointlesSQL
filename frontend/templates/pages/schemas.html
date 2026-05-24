@@ -26,7 +26,7 @@
         <i class="bi" :class="starred ? 'bi-star-fill' : 'bi-star'"></i>
         <span class="ms-1" x-show="count > 0" x-text="count"></span>
     </button>
-    {# Phase 81.F.5 — Social drawer trigger.  Pre-81.F a five-tab
+    {# Social drawer trigger.  Pre-81.F a five-tab
        strip wrapped this page (Overview + 4 social); the strip is
        gone now since Overview is the only tab left.  Social moves
        to the offcanvas drawer below. #}
@@ -46,7 +46,7 @@
     <i class="bi bi-exclamation-triangle me-1"></i>{{ error }}
 </div>
 {% elif catalog %}
-{# Phase 81.F.5 — Tab strip dropped.  Pre-81.F there were 5 tabs
+{# Tab strip dropped.  Pre-81.F there were 5 tabs
    (Overview + 4 social); after the social cluster moved to the
    offcanvas drawer below, Overview became the only inline content.
    A single-tab strip would be pure noise, so we render the page
@@ -183,7 +183,7 @@
 {% endwith %}
 </div>{# /catalog overview wrapper #}
 
-{# Phase 81.F.5 — Social drawer for catalog detail (schemas.html).
+{# Social drawer for catalog detail (schemas.html).
    Carries Discussion + Endorsements + Followers + README scoped by
    ``socialTabs(kind='catalog')`` so the polymorphic Endorsements /
    Followers partials inherit kind+ref unchanged.  Discussion +

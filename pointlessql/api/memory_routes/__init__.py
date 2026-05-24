@@ -1,4 +1,4 @@
-"""Memory JSON API package (Phase 90.1).
+"""Memory JSON API package.
 
 Three sub-modules: recall (filterable read), branch (create), and
 replay (re-invoke).  Each one mounts its endpoints under

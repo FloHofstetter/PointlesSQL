@@ -1,4 +1,4 @@
-"""Phase 51.2 — repo-discovered yaml feeds the data-product + conventions loaders.
+"""repo-discovered yaml feeds the data-product + conventions loaders.
 
 Each test seeds a real bare repo with a ``pointlessql.yaml``,
 syncs the workspace_repo through the service layer (no network),

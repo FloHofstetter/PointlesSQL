@@ -1,4 +1,4 @@
-"""Phase 76.5.1 — ``?as_agent=`` on reviews PUT.
+"""``?as_agent=`` on reviews PUT.
 
 Coverage:
 

@@ -1,4 +1,4 @@
-"""Per-user CloudEvent webhook delivery (Phase 72.6).
+"""Per-user CloudEvent webhook delivery.
 
 Hooks into :func:`pointlessql.services.audit.sinks.dispatch_to_sinks`
 *after* install-global sinks have fanned out.  Scans

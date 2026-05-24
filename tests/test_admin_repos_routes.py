@@ -1,4 +1,4 @@
-"""Phase 51.5 — admin JSON API for workspace-repos.
+"""admin JSON API for workspace-repos.
 
 Covers admin-gating, reveal-once webhook secret on creation,
 secret roundtrip metadata-only on subsequent reads, sync

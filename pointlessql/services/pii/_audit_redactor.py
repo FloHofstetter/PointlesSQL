@@ -19,7 +19,7 @@ existing hash-secret accessor is reused.  Lists are walked
 element-wise; strings inside non-PII keys pass through.  ``None``
 values short-circuit.
 
-Phase 121.7c — opt-in by ``settings.audit.redact_detail_payloads``,
+opt-in by ``settings.audit.redact_detail_payloads``,
 default OFF for backward-compat.  Operators flip ON after auditing
 existing detail payload shapes.
 """

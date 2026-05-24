@@ -1,4 +1,4 @@
-"""Per-DP active-reviewer configuration (Phase 74.0).
+"""Per-DP active-reviewer configuration.
 
 Tracks which DPs opt into the daily active-reviewer surface (Phase
 74 promotes the Phase 19 passive ``AgentReview`` writer to an
@@ -77,7 +77,7 @@ class DataProductActiveReviewerConfig(Base):
             runner posts the comment + endorsement *as* this user
             so the audit row carries a real author and the existing
             comment / endorsement schemas stay non-nullable.
-        agent_slug: Optional agent slug (Phase 76.5.1) — when set,
+        agent_slug: Optional agent slug — when set,
             the in-proc runner additionally stamps
             ``author_agent_id`` on the posted comment + endorsement
             so the row renders as authored *by the agent on behalf

@@ -125,7 +125,7 @@ async def test_post_threaded_reply_depth_one_ok(
 async def test_threading_accepts_up_to_depth_five(
     tmp_path: Path, admin_client: httpx.AsyncClient
 ) -> None:
-    """Phase 76.1 lifted the cap to 5 — five-deep is fine, six is rejected."""
+    """five-deep is fine, six is rejected."""
     _seed_product(tmp_path)
     parent_id: int | None = None
     for level in range(5):

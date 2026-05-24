@@ -1,4 +1,4 @@
-"""Smoke tests for the ⋯-action menu macro (Phase 81.M / Track A).
+"""Smoke tests for the ⋯-action menu macro.
 
 Verifies the macro renders into the DP and Run detail pages so the
 Copy-link / Copy-citation / Mute-notifications items reach the DOM

@@ -1,4 +1,4 @@
-"""Phase 18.6 — run-finish writes ``anomaly_severity`` + ``anomaly_metric``.
+"""run-finish writes ``anomaly_severity`` + ``anomaly_metric``.
 
 Round-trip verification that the finish-handler hook persists the
 verdict onto the ``agent_runs`` row, that ``backfill_run_anomalies``

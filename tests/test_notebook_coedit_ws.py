@@ -1,4 +1,4 @@
-"""Phase 105.2 — co-edit WebSocket hub tests.
+"""co-edit WebSocket hub tests.
 
 Covers handshake (auth, role, notebook-existence), the binary wire
 protocol (sync_step2 on connect, sync_update fanout, awareness

@@ -1,4 +1,4 @@
-"""POST /api/agent-runs/{run_id}/rewrite-attempt route tests (Phase 39 Sprint 39.2).
+"""POST /api/agent-runs/{run_id}/rewrite-attempt route tests.
 
 The plugin POSTs one row per rewrite-loop resolution; this exercises
 the validation, idempotency (409 on duplicate ``(run, attempt_no)``),

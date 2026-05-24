@@ -1,4 +1,4 @@
-"""Phase 83.1 — SavedView service layer.
+"""SavedView service layer.
 
 Pure CRUD + parameter substitution + SELECT-only validation.
 Run-time execution itself is implemented in the route layer (so it

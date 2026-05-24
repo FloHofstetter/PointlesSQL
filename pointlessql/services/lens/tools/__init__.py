@@ -1,6 +1,6 @@
 """Lens tool registry — single source of truth for both transports.
 
-Browser chat-loop (Sprint 65.5) and MCP server (Sprint 65.4) both
+Browser chat-loop and MCP server both
 consume :data:`ALL_TOOLS` and serialise it through provider-specific
 schema converters.  Adding a new tool: write the executor + Pydantic
 input/output models in a sub-module, append the :class:`ToolDef` to

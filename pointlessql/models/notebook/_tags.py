@@ -1,4 +1,4 @@
-"""Notebook-level lifecycle tags (Phase 98.B).
+"""Notebook-level lifecycle tags.
 
 Tags categorise a notebook in the workspace tree (``draft`` / ``etl``
 / ``prod`` / etc.).  Distinct from cell-tags which sit inside the
@@ -24,7 +24,7 @@ from pointlessql.models.base import Base
 
 
 class NotebookTag(Base):
-    """Notebook-level lifecycle tags (Phase 98.B).
+    """Notebook-level lifecycle tags.
 
     Tags categorise a notebook in the workspace tree (``draft`` /
     ``etl`` / ``prod`` / etc.).  Different from

@@ -67,9 +67,9 @@
  html[data-pql-panel-collapsed][data-pql-meta-collapsed] .pql-shell--has-meta {
   grid-template-columns: var(--pql-icon-rail-width) minmax(0, 1fr);
  }
- /* Phase 113.2 follow-up — while the unified right drawer is open it
+ /* while the unified right drawer is open it
     overlays the right edge at ``z=1040`` and would otherwise eclipse
-    the meta panel column (Phase 112).  Auto-collapse the meta panel
+    the meta panel column.  Auto-collapse the meta panel
     for the duration of the drawer's open state without touching the
     user's persistent ``data-pql-meta-collapsed`` preference, then
     restore on close. */
@@ -96,7 +96,7 @@
    slides the drawer in.  At md+ Bootstrap restores normal
    block flow, so the static rail re-paints in the grid column. */
 
-/* Phase 81.K.12 — layout toggles live in the topbar.  The legacy
+/* layout toggles live in the topbar.  The legacy
    ``.pql-panel-toggle`` selector is kept as a no-op so any stale
    bootstrap-cached copy doesn't flash a residual button on first
    paint; remove this rule once the cache window expires. */
@@ -104,7 +104,7 @@
 .pql-content { position: relative; }
 
 /* ----------------------------------------------------------------
- * Phase 113.5 — Shell-locked layout.
+ * Shell-locked layout.
  *
  * For pages that opt in via ``<body data-pql-shell-locked>``, the
  * BODY does not scroll.  Instead the grid shell fills the viewport
@@ -190,7 +190,7 @@ body:has(.pql-shell--has-meta) .pql-layout-toggle--meta { display: inline-flex; 
  max-height: calc(100vh - var(--pql-topbar-height) - var(--pql-footer-bar-height));
  overflow-y: auto;
  background: transparent;
- /* Phase 113.4 — wheel events that exhaust the secondary panel's
+ /* wheel events that exhaust the secondary panel's
     own scroll must not bleed into the window scroll.  Same rationale
     as ``.pql-icon-rail`` in icon_rail.css. */
  overscroll-behavior-y: contain;
@@ -279,7 +279,7 @@ body:has(.pql-shell--has-meta) .pql-layout-toggle--meta { display: inline-flex; 
 .pql-tree-lvl-2 { padding-left: 1.25rem; }
 .pql-tree-lvl-3 { padding-left: 2.5rem; }
 
-/* Phase 107.3 — fixed-width slot for the Edit button in the
+/* fixed-width slot for the Edit button in the
    notebook workspace list.  .ipynb rows have no in-browser editor
    so the slot is rendered empty; the min-width keeps Schedule…/⋯
    buttons aligned vertically across all rows. */

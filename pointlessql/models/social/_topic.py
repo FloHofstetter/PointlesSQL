@@ -1,4 +1,4 @@
-"""Topic + DP↔topic + user↔topic-follow rows (Phase 76.3).
+"""Topic + DP↔topic + user↔topic-follow rows.
 
 Three models in one module — they share the same conceptual
 slice (the topic taxonomy) and are always imported together.

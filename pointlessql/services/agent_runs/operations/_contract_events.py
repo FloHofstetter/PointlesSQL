@@ -86,7 +86,7 @@ def record_contract_event_after_commit(
         )
         return
 
-    # Phase 71 follow-up B.2 — fire-and-forget governance event on
+    # fire-and-forget governance event on
     # contract violations.  The DataProductContractEvent row above is
     # the authoritative audit record; this emit only adds the
     # streaming-delivery leg (webhook / S3 / CloudTrail sinks).  We

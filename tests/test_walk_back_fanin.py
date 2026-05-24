@@ -1,4 +1,4 @@
-"""Walkback fan-in unit tests (Sprint 15.5.2).
+"""Walkback fan-in unit tests.
 
 Exercises :func:`pointlessql.services.lineage_edges.walk_back` with
 synthetic ``lineage_row_edges`` rows so the fan-in shape lands

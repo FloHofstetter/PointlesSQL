@@ -1,4 +1,4 @@
-"""Threaded comments on data products (Phase 71.1).
+"""Threaded comments on data products.
 
 One table:
 
@@ -51,8 +51,8 @@ class DataProductComment(Base):
             render at depth ≥ 3).
         author_user_id: FK on ``users.id``.  Who posted.  Always
             a human — caller when direct, agent's principal when
-            ``author_agent_id`` is set (Phase 76.5).
-        author_agent_id: Optional FK on ``agents.id`` (Phase 76.5)
+            ``author_agent_id`` is set.
+        author_agent_id: Optional FK on ``agents.id``
             — when set, the row renders as authored *by the agent
             on behalf of* ``author_user_id``.  Nullable; falls
             back to the existing user-only path when ``None``.
@@ -69,8 +69,7 @@ class DataProductComment(Base):
             this reply as the answer to a ``question`` thread.
             Atomicity is enforced in the accept-answer route —
             at most one reply per thread carries the flag.
-            Phase 76.1.
-        created_at: Wall-clock at POST time.
+            Wall-clock at POST time.
         deleted_at: Wall-clock when soft-deleted; NULL while live.
             Filters in list queries.
     """
@@ -102,7 +101,7 @@ class DataProductComment(Base):
         ForeignKey("data_products.id", ondelete="CASCADE"),
         nullable=True,
     )
-    # Phase 77.0.B — polymorphic anchor.  Nullable in this
+    # polymorphic anchor.  Nullable in this
     # revision so the legacy DP write path keeps working while
     # the dual-write phase rolls out; flipped to NOT NULL +
     # ``data_product_id`` dropped in Phase 77.0.G.
@@ -119,7 +118,7 @@ class DataProductComment(Base):
     author_user_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("users.id"), nullable=False
     )
-    # Phase 76.5 — presentation-layer override.  When set, the
+    # presentation-layer override.  When set, the
     # comment is rendered as authored *by the agent on behalf of*
     # ``author_user_id`` (the principal).  The audit chain stays
     # intact because the human accountable stays in the

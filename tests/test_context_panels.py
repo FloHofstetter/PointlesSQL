@@ -1,4 +1,4 @@
-"""Phase 80.2 — context-panel partial dispatch smoke tests.
+"""context-panel partial dispatch smoke tests.
 
 For each new ``active_section`` introduced in Phase 80, asserts the
 right partial renders when its landing page is requested.  Partials

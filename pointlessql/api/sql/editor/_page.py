@@ -26,7 +26,7 @@ async def sql_editor_page(request: Request) -> HTMLResponse:
         "pages/sql_editor.html",
         {
             "sql_enabled": settings.sql.enabled,
-            # Phase 91 — surface the chat-drawer feature flag + a
+            # surface the chat-drawer feature flag + a
             # fresh editor session id per render so the WS route has
             # a stable handle across reload of the same tab via
             # sessionStorage.

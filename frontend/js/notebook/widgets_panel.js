@@ -1,5 +1,5 @@
 /**
- * Notebook widgets panel (Phase 99 UI).
+ * Notebook widgets panel.
  *
  * Backend (``NotebookWidget`` + REST + 12 pytest) shipped in Phase
  * 99.  This mixin manages a CRUD panel for the parameter widgets:

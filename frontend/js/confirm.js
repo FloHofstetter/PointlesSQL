@@ -1,4 +1,4 @@
-// Phase 80.10.6 — promise-based confirm helper.
+// promise-based confirm helper.
 //
 // Replaces `window.confirm()` (bare browser dialog, no branding) with
 // a Bootstrap modal whose markup lives in

@@ -1,4 +1,4 @@
-"""Notebook export routes (Phase 98.D).
+"""Notebook export routes.
 
 Two endpoints surface the same notebook → static-document pipeline:
 

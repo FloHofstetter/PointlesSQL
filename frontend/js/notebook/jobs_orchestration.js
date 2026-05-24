@@ -188,7 +188,7 @@ export function installJobsOrchestration(state) {
     const cap = 5000;
     for (let i = 0; i < 240; i++) {
       await new Promise((r) => setTimeout(r, delay));
-      // Sprint 113.3 — short-circuit if the user closed the modal
+      // short-circuit if the user closed the modal
       // mid-poll.  Without this the in-flight loop would keep
       // re-setting runModal.status after teardown.
       if (!this.runModal || !this.runModal.open) return;

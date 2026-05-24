@@ -73,7 +73,7 @@ class RateLimitSettings(BaseSettings):
     register_ip_window_s: int = 3600
     oidc_ip_count: int = 20
     oidc_ip_window_s: int = 600
-    # Phase 117 — public SQL Statement Execution API.  Bucketed per
+    # public SQL Statement Execution API.  Bucketed per
     # API key id so one noisy integration cannot starve others.
     # Generous default (60/min) fits a typical dbt run; restrictive
     # enough to bound runaway scripts.

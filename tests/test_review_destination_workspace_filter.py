@@ -1,4 +1,4 @@
-"""Sprint 29.2 — per-workspace review-destination routing.
+"""per-workspace review-destination routing.
 
 Mirrors :mod:`tests.test_audit_sink_workspace_filter` for the agent-
 review fan-out path.  Pins three invariants:

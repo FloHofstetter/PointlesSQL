@@ -3,7 +3,7 @@
 The two endpoints here bridge the notebook editor to the scheduler:
 
 * ``GET  /api/notebooks/jobs`` — list scheduled jobs / recent runs
-  for one notebook path (Phase 67.4 side-panel).
+  for one notebook path.
 * ``POST /api/notebooks/run-once`` — fire a single papermill run
   via a paused-job audit anchor (manual / fire-and-forget).
 """
@@ -200,7 +200,7 @@ async def api_run_once(
         session.commit()
         session.refresh(job)
         job_id = int(job.id)
-        # Phase 67.4 link-table write — keeps run-once jobs visible in
+        # keeps run-once jobs visible in
         # the editor's notebook-jobs panel just like scheduled jobs.
         from pointlessql.models import NotebookJobLink as _NJL
 

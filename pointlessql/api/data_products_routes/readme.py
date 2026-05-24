@@ -1,4 +1,4 @@
-"""``/api/data-products/{catalog}/{schema}/readme`` — versioned wiki (Phase 71.5).
+"""``/api/data-products/{catalog}/{schema}/readme`` — versioned wiki.
 
 Five endpoints:
 

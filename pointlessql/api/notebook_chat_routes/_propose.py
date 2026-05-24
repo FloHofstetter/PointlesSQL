@@ -1,4 +1,4 @@
-"""``POST /api/notebook/chat/{id}/{propose,fix,explain}-cell`` (Phase 96).
+"""``POST /api/notebook/chat/{id}/{propose,fix,explain}-cell``.
 
 Three sibling routes that the in-process AI assistant calls via
 the new ``pql_propose_cell`` / ``pql_fix_cell`` / ``pql_explain_cell``
@@ -48,7 +48,7 @@ _FIX_IDEMPOTENCY_WINDOW_SECONDS: int = 60
 
 
 # ---------------------------------------------------------------------
-# Phase 106.5 — typed proposal bodies.
+# typed proposal bodies.
 #
 # Pydantic models tighten the field-name surface so a typo on the
 # agent side (``rationael`` for ``rationale``) lands as a 422 instead

@@ -1,4 +1,4 @@
-"""Tests for the MLflow reverse-proxy (Phase 21.0).
+"""Tests for the MLflow reverse-proxy.
 
 Mocks the upstream MLflow subprocess via ``httpx.MockTransport`` so we
 can assert auth-gating and header injection without spawning a real

@@ -319,7 +319,7 @@ async def api_finish_agent_run(
     terminal_event = event_type_for_status(status_raw)
     if terminal_event is not None:
         await emit_agent_run_event(terminal_event, payload, session_factory=factory)
-        # Phase 81.K.6 — surface agent-run lifecycle in the feed.
+        # surface agent-run lifecycle in the feed.
         # The fanout dispatcher's existing follower-resolution walks
         # the polymorphic ``SocialFollow`` set; an empty follower
         # list is a no-op so this wiring is safe regardless of

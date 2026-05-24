@@ -1,4 +1,4 @@
-"""Phase 105.6 — agent-presence REST endpoint tests.
+"""agent-presence REST endpoint tests.
 
 Covers the ``POST /api/notebooks/{notebook_id}/coedit/agent-presence``
 endpoint that lets a backend agent advertise its in-flight cell

@@ -1,4 +1,4 @@
-"""Sprint 21.5.5 — model-lineage DAG endpoint + aggregator tests."""
+"""model-lineage DAG endpoint + aggregator tests."""
 
 from __future__ import annotations
 

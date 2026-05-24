@@ -1,4 +1,4 @@
-"""ORM model for SQL-editor chat sessions (Phase 91).
+"""ORM model for SQL-editor chat sessions.
 
 One row per (editor-tab, user) pair that opens the chat drawer.
 A chat-session is a thin wrapper around a single agent_run: the

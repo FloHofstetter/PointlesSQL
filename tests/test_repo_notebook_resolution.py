@@ -1,4 +1,4 @@
-"""Phase 51.3 — repo-backed notebook path resolution.
+"""repo-backed notebook path resolution.
 
 The scheduler's :func:`resolve_notebook_path` accepts a
 ``repo:<workspace_id>:<slug>/<rel>.py`` spec that resolves

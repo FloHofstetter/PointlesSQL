@@ -28,7 +28,7 @@ router = APIRouter(tags=["feed"])
 async def mark_all_read(request: Request) -> dict[str, Any]:
     """Mark every unread notification for the caller as read.
 
-    Phase 81.K.4 — the feed's top-level "Mark all read" button posts
+    the feed's top-level "Mark all read" button posts
     here; the per-item endpoint covers the granular case.  Returns
     the count touched so the UI can confirm.
 
@@ -66,7 +66,7 @@ async def toggle_notification_read(
 ) -> dict[str, Any]:
     """Toggle the ``read_at`` flag on a single notification.
 
-    Phase 81.K.4 — the item-action menu's "Mark as read / unread"
+    the item-action menu's "Mark as read / unread"
     entry posts here.  We only allow the caller to flip rows
     addressed to themselves.
 

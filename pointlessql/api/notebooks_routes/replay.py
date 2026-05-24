@@ -1,4 +1,4 @@
-"""Notebook replay / scenario-mode routes (Phase 103)."""
+"""Notebook replay / scenario-mode routes."""
 
 from __future__ import annotations
 

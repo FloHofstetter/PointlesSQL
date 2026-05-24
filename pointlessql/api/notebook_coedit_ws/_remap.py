@@ -175,7 +175,7 @@ async def apply_save_remap(notebook_id: str, remap: dict[str, str]) -> None:
 async def broadcast_agent_presence(notebook_id: str, frame: bytes) -> bool:
     """Fan an agent-presence frame out to every subscriber.
 
-    Phase 105.6 — counterpart to :func:`apply_save_remap`, dedicated
+    counterpart to :func:`apply_save_remap`, dedicated
     to the ``TAG_AGENT_PRESENCE`` byte the REST endpoint at
     ``/api/notebooks/{notebook_id}/coedit/agent-presence`` emits.
     No Y.Doc mutation: agent presence is purely informational, the

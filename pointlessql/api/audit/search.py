@@ -85,8 +85,7 @@ async def api_audit_search(
         until: ISO-8601 upper bound (exclusive).
         paging: Shared offset/limit pagination dep (defaults
             offset=0, limit=100, max 1000).
-        kind: Restrict to a polymorphic entity kind (Phase 78
-            polish).  Only the ``audit_log`` axis carries a
+        kind: Restrict to a polymorphic entity kind.  Only the ``audit_log`` axis carries a
             kind discriminator; filtering on other axes narrows
             to zero rows.  ``None`` keeps the filter off.
 

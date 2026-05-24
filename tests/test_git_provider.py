@@ -1,4 +1,4 @@
-"""Phase 51.1 — GitProvider implementations.
+"""GitProvider implementations.
 
 Generic provider clone+pull is exercised against a real ``git``
 binary using a tmp bare repository (no network calls); GitHub

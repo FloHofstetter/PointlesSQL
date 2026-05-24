@@ -1,4 +1,4 @@
-"""Sqlglot column-lineage extraction unit tests (Sprint 15.6.3).
+"""Sqlglot column-lineage extraction unit tests.
 
 Pure-function tests for ``extract_column_lineage`` — no DuckDB,
 no soyuz.  The end-to-end ``pql.sql`` path is exercised by the

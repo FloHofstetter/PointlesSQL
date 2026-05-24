@@ -1,4 +1,4 @@
-"""Polymorphic reviews router (Phase 77.0.F.2 + 77.1.5 + 77.2.1).
+"""Polymorphic reviews router.
 
 The dispatcher delegates ``kind='dp'`` to the existing DP-scoped
 service handlers (unchanged for behaviour parity) and any other

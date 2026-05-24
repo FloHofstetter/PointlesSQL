@@ -1,4 +1,4 @@
-"""Per-run notebook context (Phase 102 Wave-D).
+"""Per-run notebook context.
 
 Notebook execution carries side-channel context the kernel needs
 but cell source code shouldn't reach for directly:

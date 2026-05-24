@@ -6,7 +6,7 @@ pre-compute the source schema fqn, this helper derives it from the
 source run's recorded operations and auto-generates a branch name
 keyed by the agent + run id.
 
-Version-pinning semantics (Phase 90 scope): the source run's
+Version-pinning semantics: the source run's
 first-write ``delta_version_before`` is captured into the
 :class:`BranchAuditLog` payload (``pinned_delta_version``) and into
 the branch's ``pointlessql.branch.parent_version_at_create`` tag set

@@ -1,4 +1,4 @@
-"""Phase 40 Sprint 40.4 — lineage-freshness compute + emit.
+"""lineage-freshness compute + emit.
 
 The pure helpers in this module turn ``expected_lineage_inbound``
 rows into a per-row freshness verdict.  A registered expectation is

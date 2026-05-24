@@ -1,4 +1,4 @@
-"""Cascade detection + rollback-preview API (Sprint 16.2).
+"""Cascade detection + rollback-preview API.
 
 Two layers under test:
 

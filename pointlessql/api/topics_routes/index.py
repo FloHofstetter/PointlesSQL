@@ -1,4 +1,4 @@
-"""``/api/topics`` — list + create topics (Phase 76.3).
+"""``/api/topics`` — list + create topics.
 
 Two endpoints:
 
@@ -67,7 +67,7 @@ async def list_topics(
         limit: Result-set cap; clamped to ``[1, 200]``.
         offset: Skip count for pagination.
         q: Optional case-insensitive prefix filter on slug or
-            display_name (Phase 76.6.1) used by the mention-
+            display_name used by the mention-
             autocomplete picker.
 
     Returns:
@@ -150,7 +150,7 @@ async def create_topic(request: Request) -> dict[str, Any]:
     require_user(request)
     caller = get_user(request)
     if not (caller.get("is_admin") or caller.get("is_supervisor")):
-        # Phase 76.3 scope pick: steward+ may create topics.  We
+        # steward+ may create topics.  We
         # treat "supervisor" + "admin" as the steward+ tier here;
         # plain members read but cannot create new taxonomy.
         raise PermissionDeniedError("topic creation requires steward+ role")

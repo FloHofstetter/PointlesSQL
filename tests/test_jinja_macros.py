@@ -2,7 +2,7 @@
 
 Covers:
 
-* ``_macros/truncate.html`` ``truncate_cell()`` (Sprint 56.6).
+* ``_macros/truncate.html`` ``truncate_cell()``.
 """
 
 from __future__ import annotations

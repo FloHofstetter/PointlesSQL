@@ -182,7 +182,7 @@ def write_table(
                     if edges:
                         recorder.pending_column_edges = edges
 
-        # Phase 50.3 — data-product contract enforcement.  Resolves
+        # data-product contract enforcement.  Resolves
         # the cached contract for ``catalog.schema``, diffs the to-
         # be-written frame against the table contract, and either
         # stamps the recorder for the post-commit event or raises a

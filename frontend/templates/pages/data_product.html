@@ -58,7 +58,7 @@
             <span class="small text-muted pql-dp-follower-count"
                   x-show="followersCount > 0"
                   x-text="'· ' + followersCount + ' follower' + (followersCount === 1 ? '' : 's')"></span>
-            {# Phase 81.F.3 — Social drawer trigger.  Discussion +
+            {# Social drawer trigger.  Discussion +
                Reviews + README + Issues moved out of the inline tab
                strip; Activity stays inline because it's a
                build-history surface, not a social surface. #}
@@ -79,7 +79,7 @@
         </div>
     </div>
 
-    {# Phase 82.5 — Ingest sources feeding this DP.  Lazy-fetched
+    {# Ingest sources feeding this DP.  Lazy-fetched
        on page boot; row hidden entirely when no source matches. #}
     <div x-data='ingestStatusBand({{ product.catalog|tojson }}, {{ product.schema|tojson }})'
          x-init="load()"
@@ -114,7 +114,7 @@
         };
     }
 
-    // Phase 84.2 — releases card factory.  Kept outside the main
+    // releases card factory.  Kept outside the main
     // dataProductDetail() data so the card stays self-contained.
     function dpReleasesCard() {
         return {
@@ -172,7 +172,7 @@
                       x-text="activityTotal"></span>
             </button>
         </li>
-        {# Phase 81.F.3 — Discussion / Reviews / README / Issues
+        {# Discussion / Reviews / README / Issues
            moved into the offcanvas drawer at the bottom of this
            template.  Count badges still update via dataProductDetail
            state (commentsTotal / reviewSummary) but live alongside

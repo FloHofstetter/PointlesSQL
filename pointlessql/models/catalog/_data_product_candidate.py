@@ -1,4 +1,4 @@
-"""Promotion-candidate cache rows (Phase 73.1).
+"""Promotion-candidate cache rows.
 
 One row per ``(workspace, catalog, schema)`` triple that the
 promotion scanner has spotted as a stable agent-driven write

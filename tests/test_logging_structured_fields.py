@@ -1,4 +1,4 @@
-"""Sprint 44.3 — high-value sites attach structured fields via ``extra={...}``.
+"""high-value sites attach structured fields via ``extra={...}``.
 
 Confirms that the converted call-sites (alert dispatcher, audit
 self-track, read-audit, training-context, scheduler) attach

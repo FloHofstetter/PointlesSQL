@@ -1,4 +1,4 @@
-"""HTML pages for the agents surface (Phase 76.5)."""
+"""HTML pages for the agents surface."""
 
 from __future__ import annotations
 

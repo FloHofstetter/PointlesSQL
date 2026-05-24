@@ -1,4 +1,4 @@
-"""Per-user notification inbox + fan-out helpers (Phase 71.4)."""
+"""Per-user notification inbox + fan-out helpers."""
 
 from __future__ import annotations
 

@@ -1,4 +1,4 @@
-"""Per-user notification inbox (Phase 71.4).
+"""Per-user notification inbox.
 
 One table:
 
@@ -91,7 +91,7 @@ class UserNotification(Base):
         ForeignKey("data_products.id", ondelete="SET NULL"),
         nullable=True,
     )
-    # Phase 77.0.D — polymorphic source markers.  Populated when
+    # polymorphic source markers.  Populated when
     # the row is fanned out via ``fanout_event(entity_kind=…,
     # entity_ref=…)``.  ``source_data_product_id`` stays as the
     # legacy back-compat path for kind='dp' rows so existing
@@ -120,7 +120,7 @@ class UserNotification(Base):
 
 
 class UserWebhookSubscription(Base):
-    """Per-user CloudEvent webhook subscription (Phase 72.6).
+    """Per-user CloudEvent webhook subscription.
 
     Attributes:
         id: Auto-incremented primary key.

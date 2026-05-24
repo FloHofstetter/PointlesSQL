@@ -1,4 +1,4 @@
-"""Polymorphic endorsements router (Phase 77.0.F.2 + 77.1.5 dispatch)."""
+"""Polymorphic endorsements router."""
 
 from __future__ import annotations
 

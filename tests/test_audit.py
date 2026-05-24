@@ -1,7 +1,5 @@
 """Tests for the audit log service.
 
-Sprint 48 extended the surface:
-
 * Append-only ORM guards (UPDATE always blocked, DELETE only
   inside :func:`_allow_audit_mutation`).
 * JSON-encodable ``detail`` (dict → JSON-string round trip).
@@ -81,7 +79,7 @@ class TestLogAction:
         assert rows[0].detail == '{"privilege": "USE CATALOG"}'
 
     def test_dict_detail_is_json_encoded(self) -> None:
-        """Sprint 48: dict detail is JSON-encoded before insert."""
+        """dict detail is JSON-encoded before insert."""
         factory = _make_factory()
         log_action(
             factory,
@@ -132,7 +130,7 @@ class TestLogAction:
 
 
 class TestAppendOnlyGuards:
-    """Sprint 48: AuditLog rows cannot be mutated after insert."""
+    """AuditLog rows cannot be mutated after insert."""
 
     def test_update_is_blocked(self) -> None:
         factory = _make_factory()
@@ -167,7 +165,7 @@ class TestAppendOnlyGuards:
 
 
 class TestCleanup:
-    """Sprint 48: retention sweep deletes rows older than the cutoff."""
+    """retention sweep deletes rows older than the cutoff."""
 
     def _insert_with_timestamp(
         self,

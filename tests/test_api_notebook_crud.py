@@ -72,7 +72,7 @@ async def test_create_traversal_blocked(
 async def test_create_non_admin_accessible(
     workspace_dir: Path, non_admin_client: httpx.AsyncClient
 ) -> None:
-    """Phase 70: any authenticated user can create a notebook."""
+    """any authenticated user can create a notebook."""
     resp = await non_admin_client.post(
         "/api/notebooks/create",
         json={"path": "denied.py"},

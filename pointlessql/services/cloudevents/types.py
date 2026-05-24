@@ -41,16 +41,16 @@ DBT_TEST_FAILED: Final = "pointlessql.dbt.test.failed"
 DBT_TEST_WARNED: Final = "pointlessql.dbt.test.warned"
 DBT_AUTO_ROLLBACK_EXECUTED: Final = "pointlessql.dbt.auto_rollback.executed"
 
-# Data-product marketplace (Phase 71.4).
+# Data-product marketplace.
 DATA_PRODUCT_COMMENTED: Final = "pointlessql.data_product.commented"
 DATA_PRODUCT_REVIEWED: Final = "pointlessql.data_product.reviewed"
 DATA_PRODUCT_FOLLOWED: Final = "pointlessql.data_product.followed"
 DATA_PRODUCT_SCHEMA_CHANGED: Final = "pointlessql.data_product.schema_changed"
 DATA_PRODUCT_CONTRACT_VIOLATED: Final = "pointlessql.data_product.contract_violated"
 
-# Data-product schema-change proposals (Phase 73.3).
+# Data-product schema-change proposals.
 DATA_PRODUCT_PROPOSAL_OPENED: Final = "pointlessql.data_product.proposal_opened"
 DATA_PRODUCT_PROPOSAL_RESOLVED: Final = "pointlessql.data_product.proposal_resolved"
 
-# Per-user marketplace digest (Phase 71.4 B.3).
+# Per-user marketplace digest.
 NOTIFICATION_DIGEST: Final = "pointlessql.notification.digest"

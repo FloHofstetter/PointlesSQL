@@ -1,4 +1,4 @@
-"""Activity-feed aggregator per data product (Phase 72.1).
+"""Activity-feed aggregator per data product.
 
 Merges four source streams into one chronologically-sorted feed:
 

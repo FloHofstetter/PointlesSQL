@@ -1,4 +1,4 @@
-"""Phase 84.7 — Delta-Branch ↔ DP cross-link.
+"""Delta-Branch ↔ DP cross-link.
 
 A "fork" of a DP is a live Delta branch whose ``parent_schema_fqn``
 is ``<catalog>.<schema>`` (the DP's UC schema).  We read directly

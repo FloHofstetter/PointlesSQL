@@ -1,4 +1,4 @@
-"""Phase 77.2 — model.html social tab strip.
+"""model.html social tab strip.
 
 Coverage:
 
@@ -133,7 +133,7 @@ async def test_model_html_inline_factories_present(
 async def test_model_html_renders_extracted_partials(
     _stub_model_client: AsyncMock, admin_client: httpx.AsyncClient
 ) -> None:
-    """Phase 78 polish — discussion / reviews / readme are per-page partials.
+    """discussion / reviews / readme are per-page partials.
 
     The three social-flavoured tabs live in
     ``pages/_partials/model/{discussion,reviews,readme}.html`` after
@@ -157,7 +157,7 @@ async def test_model_html_renders_extracted_partials(
 async def test_data_product_html_renders_shared_partials(
     admin_client: httpx.AsyncClient,
 ) -> None:
-    """Phase 78 polish — data_product.html keeps using the shared partials.
+    """data_product.html keeps using the shared partials.
 
     Regression guard: the discussion / reviews / readme partials are
     rendered into the DP detail page even though the surrounding

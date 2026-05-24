@@ -118,7 +118,7 @@ async def _transition_state(
         session_factory=factory,
         workspace_id=workspace_id,
     )
-    # Phase 81.K.6 — feed surfacing for state transitions.  ``verb`` is
+    # feed surfacing for state transitions.  ``verb`` is
     # bound outside the try block so the exception handler's log line
     # has a stable name even if the fanout-module import explodes.
     verb = (

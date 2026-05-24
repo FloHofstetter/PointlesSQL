@@ -30,7 +30,7 @@ Falls back to the bare name when ``which`` returns nothing — that
 keeps tests runnable in stripped containers where the binary is
 ``git`` on ``PATH`` but the resolution is unreliable.  Production
 deploys should rely on the Dockerfile installing git explicitly
-(Phase 51 plan note: confirm + bind-mount ``repos/`` volume).
+.
 """
 
 STDOUT_TAIL_BYTES = 4 * 1024

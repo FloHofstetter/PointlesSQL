@@ -1,4 +1,4 @@
-"""Phase 77.8 — polymorphic Stars + polymorphic Follow + Reactions.
+"""polymorphic Stars + polymorphic Follow + Reactions.
 
 Coverage:
 
@@ -89,7 +89,7 @@ def test_social_follows_table_exists() -> None:
 
 
 def test_polymorphic_reaction_unique_present() -> None:
-    """Phase 78 polish — SocialReaction is keyed on the polymorphic UNIQUE."""
+    """SocialReaction is keyed on the polymorphic UNIQUE."""
     constraints = [
         c.name
         for c in SocialReaction.__table__.constraints

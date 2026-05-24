@@ -1,4 +1,4 @@
-"""Phase 95.1 — save-path cell-identity reconciliation.
+"""save-path cell-identity reconciliation.
 
 Stress-tests the three-pass reconciler against the eight scenarios
 called out in the Phase-95 plan plus a reformat-all-cells corner.

@@ -251,7 +251,7 @@ async def queries_page(
     ``HX-Request: true`` short-circuit to a partial template
     (rows + OOB-swap pager) so the Load-More button can stream
     further pages without re-rendering the shell — same plumbing
-    as ``/runs`` (Phase 55.1).
+    as ``/runs``.
 
     When an ``agent_run_id`` query param is present the pre-loaded
     slice scopes to that run only and the page surfaces a

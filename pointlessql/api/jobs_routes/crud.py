@@ -209,7 +209,7 @@ async def api_create_job(request: Request, body: dict[str, Any] = Body(...)) -> 
         session.commit()
         session.refresh(job)
         session.expunge(job)
-    # Phase 67.4: opportunistic notebook-job-link write. Lets the
+    # opportunistic notebook-job-link write. Lets the
     # editor's "Jobs of this notebook" panel look up the schedule
     # without scanning ``jobs.config`` JSON. Per-link rows are a
     # derived index — if writing fails or skips, the canonical truth

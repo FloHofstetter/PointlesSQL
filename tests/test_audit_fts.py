@@ -1,4 +1,4 @@
-"""Phase 18.7 — SQLite FTS5 audit-lake search.
+"""SQLite FTS5 audit-lake search.
 
 Test fixtures call :func:`audit_fts.install_index` to create the
 ``audit_search`` virtual table because conftest's
@@ -425,7 +425,7 @@ async def test_api_audit_search_offset_route(
 
 
 # ---------------------------------------------------------------------------
-# Phase 78 polish — full body + entity_kind filtering
+# full body + entity_kind filtering
 # ---------------------------------------------------------------------------
 
 

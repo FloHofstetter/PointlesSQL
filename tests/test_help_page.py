@@ -1,4 +1,4 @@
-"""Smoke tests for the ``/help`` page (Phase 81.L)."""
+"""Smoke tests for the ``/help`` page."""
 
 from __future__ import annotations
 

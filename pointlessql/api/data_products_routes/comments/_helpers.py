@@ -112,12 +112,12 @@ def serialise_comment(
             "email": author_email,
             "display_name": author_display_name,
         },
-        # Phase 76.5 — when the comment is authored by an agent
+        # when the comment is authored by an agent
         # the ``agent`` payload carries the slug + display name;
         # ``author.user_id`` is None in that case.
         "agent": agent,
         "body_md": "" if row.deleted_at else row.body_md,
-        # Phase 76.7 — cite-token render projection.  Carries the
+        # cite-token render projection.  Carries the
         # same string as ``body_md`` with ``#dp:`` / ``#topic:`` /
         # ``#user:`` / ``#agent:`` tokens replaced by markdown
         # anchors.  The frontend reads this field via the

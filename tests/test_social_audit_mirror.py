@@ -1,4 +1,4 @@
-"""Phase 77.0.C — generic audit_mirror helper.
+"""generic audit_mirror helper.
 
 Coverage:
 

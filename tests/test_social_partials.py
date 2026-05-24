@@ -1,4 +1,4 @@
-"""Phase 77.0.H — social-pane Jinja partial extraction.
+"""social-pane Jinja partial extraction.
 
 Coverage:
 
@@ -91,7 +91,7 @@ async def test_data_product_html_unchanged_for_post_post_flow(
 ) -> None:
     """A POSTed comment surfaces in the re-rendered DP page.
 
-    Phase 77.0.H is a structural extraction only — every social write
+    every social write
     flow keeps working without any URL change.  This test exercises
     the round-trip to guard against a partial mis-include.
     """

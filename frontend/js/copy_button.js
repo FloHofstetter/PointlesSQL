@@ -1,4 +1,4 @@
-// PointlesSQL copy-to-clipboard button (Sprint 56.7).
+// PointlesSQL copy-to-clipboard button.
 //
 // Single delegated listener for every `.pql-copy-btn` on the page.
 // Reads the value from the button's ``data-pql-copy`` attribute,

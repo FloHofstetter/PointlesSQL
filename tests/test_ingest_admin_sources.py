@@ -1,4 +1,4 @@
-"""Phase 82.5 — admin health monitor smoke tests."""
+"""admin health monitor smoke tests."""
 
 from __future__ import annotations
 

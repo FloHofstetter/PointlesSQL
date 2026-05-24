@@ -1,4 +1,4 @@
-"""Phase 82.1 — CRUD round-trip + secret redaction.
+"""CRUD round-trip + secret redaction.
 
 Verifies that ``/api/ingest/sources`` POST → GET → PATCH → DELETE
 honours workspace scoping and never leaks secrets on the GET path.

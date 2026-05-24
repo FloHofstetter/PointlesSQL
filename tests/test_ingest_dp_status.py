@@ -1,4 +1,4 @@
-"""Phase 82.5 — DP ``ingest-status`` endpoint smoke tests."""
+"""DP ``ingest-status`` endpoint smoke tests."""
 
 from __future__ import annotations
 

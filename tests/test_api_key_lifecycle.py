@@ -170,7 +170,7 @@ def test_lifecycle_gates_do_not_break_back_compat_for_legacy_keys() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Phase 119.4 — lifecycle sweep
+# lifecycle sweep
 # ---------------------------------------------------------------------------
 
 

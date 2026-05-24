@@ -1,4 +1,4 @@
-"""Sprint 28.7 — cross-workspace super-admin lens.
+"""cross-workspace super-admin lens.
 
 The audit aggregator (and the three /api/audit/* routes that wrap
 it) gained a ``workspace_id`` filter.  By default every call scopes

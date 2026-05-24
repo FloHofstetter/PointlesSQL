@@ -1,4 +1,4 @@
-"""``/api/data-products/{catalog}/{schema}/passport`` (Phase 73.4).
+"""``/api/data-products/{catalog}/{schema}/passport``.
 
 Two endpoints:
 

@@ -1,4 +1,4 @@
-"""POST ``/api/runs/{id}/rollback`` route + CloudEvent (Sprint 16.3).
+"""POST ``/api/runs/{id}/rollback`` route + CloudEvent.
 
 End-to-end through the FastAPI app.  A real Delta table on
 ``tmp_path`` carries the data; a stub on ``_resolve_target_location``

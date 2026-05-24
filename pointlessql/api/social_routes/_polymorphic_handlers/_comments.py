@@ -1,7 +1,6 @@
 """Comment list / post / soft-delete handlers.
 
-Extracted from the 2231-LOC ``_polymorphic_handlers.py`` monolith
-in Phase 89.1 — each axis lives in its own sub-module now while the
+Each axis lives in its own sub-module now while the
 public handler names re-export from the package facade.
 """
 
@@ -188,7 +187,7 @@ async def post_polymorphic_comment(
         as_agent: Optional agent slug — when set, the caller posts
             *on behalf of* that agent and ``author_agent_id`` lands
             on the row.  Phase 101 review-loop closure: ungated the
-            Phase 76.5 DP-only flow so cell-level review decisions
+            DP-only flow so cell-level review decisions
             authored by ``hermes`` plugin (and other notebook
             entities) carry the same presentation-layer envelope.
             The principal-or-admin gate in

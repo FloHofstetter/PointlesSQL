@@ -1,4 +1,4 @@
-"""Phase 91 — smoke tests for ``/ws/sql/chat/{editor_session_id}``.
+"""smoke tests for ``/ws/sql/chat/{editor_session_id}``.
 
 We never start a real ``hermes_agent`` process; a ``FakeAIAgent``
 factory is injected via :func:`build_agent`-monkeypatch so the

@@ -1,4 +1,4 @@
-"""Phase 77.6 — notebook + saved_query entity-kind registration.
+"""notebook + saved_query entity-kind registration.
 
 Coverage:
 
@@ -154,7 +154,7 @@ def test_parse_ref_accepts_notebook_uuid() -> None:
 
 def test_parse_ref_rejects_short_notebook_ref() -> None:
     """Non-UUID refs raise 400 with the contract message."""
-    # Phase 121.1.e — converted from HTTPException to BadRequestError.
+    # converted from HTTPException to BadRequestError.
     from pointlessql.exceptions import BadRequestError
 
     with pytest.raises(BadRequestError) as exc:
@@ -170,7 +170,7 @@ def test_parse_ref_accepts_saved_query_slug() -> None:
 
 def test_parse_ref_rejects_saved_query_with_slash() -> None:
     """Refs with a forward-slash raise 400."""
-    # Phase 121.1.e — converted from HTTPException to BadRequestError.
+    # converted from HTTPException to BadRequestError.
     from pointlessql.exceptions import BadRequestError
 
     with pytest.raises(BadRequestError) as exc:

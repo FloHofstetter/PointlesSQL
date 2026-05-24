@@ -1,6 +1,6 @@
 """``/api/feed`` + notification + mute endpoints — package facade.
 
-Phase 86 B1 split the original 1021-LOC ``feed_routes.py`` into
+B1 split the original 1021-LOC ``feed_routes.py`` into
 per-axis sub-modules.  External imports
 (``from pointlessql.api.feed_routes import router``) keep working
 because the facade re-aggregates the sub-routers and re-exports

@@ -42,7 +42,7 @@ REJECT_REASONS = (
     "duplicate_in_source",
     "merge_predicate_excluded",
     "other",
-    # dbt-bridge expectation failure (Phase 36).  Emitted by
+    # dbt-bridge expectation failure.  Emitted by
     # ``services/dbt_bridge.py`` when a dbt test reports
     # ``status=fail`` — one reject row per failing test (per-row
     # extraction would require ``--store-failures`` and a follow-up

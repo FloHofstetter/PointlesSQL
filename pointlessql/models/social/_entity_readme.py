@@ -1,4 +1,4 @@
-"""Versioned per-entity READMEs (Phase 71.5 + Phase 78 polish rename).
+"""Versioned per-entity READMEs.
 
 Phase 71.5 shipped this table as ``data_product_readmes``.  77.0.B
 added the polymorphic ``social_target_id`` anchor so non-DP kinds

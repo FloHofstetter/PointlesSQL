@@ -1,5 +1,5 @@
 /**
- * Notebook editor — Cell drag-drop reorder mixin (Phase 115).
+ * Notebook editor — Cell drag-drop reorder mixin.
  *
  * The entire ``.pql-notebook-cell__header`` element acts as a
  * desktop-window-style drag handle.  During a drag, the cell
@@ -141,7 +141,7 @@ export function installCellDnd(state) {
   };
 
   state._cellElId = function (el) {
-    // Phase 115.2 — the cell wrapper carries ``data-cell-id="cell.id"``
+    // the cell wrapper carries ``data-cell-id="cell.id"``
     // explicitly so the FLIP helper can resolve every cell (incl.
     // markdown view-mode cells that don't mount a CodeMirror host).
     return el.getAttribute('data-cell-id');

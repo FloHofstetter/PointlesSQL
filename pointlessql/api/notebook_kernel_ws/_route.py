@@ -77,7 +77,7 @@ async def notebook_kernel_ws(websocket: WebSocket) -> None:
     user_id = int(user.get("id") or 0)
     user_email = str(user.get("email") or "")
     is_admin = bool(user.get("is_admin"))
-    # Phase 99 / 102 Wave-D — resolve notebook UUID + active branch
+    # resolve notebook UUID + active branch
     # binding so the kernel session sees them as env vars at startup.
     # Falls back gracefully (None) on cold notebooks that haven't
     # been minted a UUID yet — the kernel just runs against main.
@@ -106,7 +106,7 @@ async def notebook_kernel_ws(websocket: WebSocket) -> None:
                 )
                 if binding:
                     branch_name = binding.get("branch_name")
-                # Phase 99 Wave-D — gate the WS at open time on the
+                # gate the WS at open time on the
                 # ``run`` role.  Explicit ``view``-only grants block
                 # the kernel from starting for this user; admins +
                 # un-granted (workspace-default) callers pass.

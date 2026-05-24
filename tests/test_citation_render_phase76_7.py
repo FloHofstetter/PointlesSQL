@@ -1,4 +1,4 @@
-"""Phase 76.7 — server-side cite-token render projection.
+"""server-side cite-token render projection.
 
 Coverage:
 

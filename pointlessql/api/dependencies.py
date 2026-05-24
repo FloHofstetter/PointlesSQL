@@ -155,7 +155,7 @@ def require_admin(request: Request) -> None:
 def admin_uc(request: Request) -> UnityCatalogClient:
     """Combine :func:`require_admin` + :func:`get_uc_client` for admin UC routes.
 
-    Phase 121.6 Item B helper — collapses the ``require_admin(request);
+    collapses the ``require_admin(request);
     client = get_uc_client(request)`` couplet repeated at the top of every
     admin-only UC route into a single :func:`Depends` injection.
 
@@ -404,7 +404,7 @@ def require_auditor(request: Request) -> None:
 def require_analyst(request: Request) -> None:
     """Raise :class:`AuthorizationError` if the caller lacks analyst scope.
 
-    Phase 65 Lens read-only Q&A surface: ``/api/lens/*`` routes,
+    ``/api/lens/*`` routes,
     the ``/lens`` browser chat UI, and the MCP server (stdio + SSE)
     are gated by this scope.  The analyst sees catalog + lineage +
     bounded-cost SELECT execution; write paths stay closed.
@@ -450,7 +450,7 @@ def require_analyst(request: Request) -> None:
 def require_sql_execute(request: Request) -> None:
     """Raise :class:`AuthorizationError` if the caller lacks sql_execute scope.
 
-    Phase 117: ``/api/2.0/sql/statements`` is the public DBX-compatible
+    ``/api/2.0/sql/statements`` is the public DBX-compatible
     SQL Statement Execution API.  This surface is **token-only** —
     cookie sessions (browser) are deliberately rejected with 401 by
     the middleware before we reach this gate.  Even an admin cookie
@@ -487,7 +487,7 @@ def require_sql_execute(request: Request) -> None:
 def require_lineage_inbound(request: Request) -> None:
     """Raise :class:`AuthorizationError` if the caller lacks lineage_inbound scope.
 
-    Phase 40: ``POST /api/lineage/openlineage`` is the inbound
+    ``POST /api/lineage/openlineage`` is the inbound
     lineage ingestion route.  Federation producers (Kafka-Connect,
     Airflow, dbt-cloud, peer PointlesSQL installs) carry a
     Bearer key minted with ``lineage_inbound=True``.  Supervisor /
@@ -767,7 +767,7 @@ async def render_page_with_fallback(
 ) -> Response:
     """Render *template_name* with fetched data; surface UC outages as a banner.
 
-    Phase 121.6 Item D — extracts the
+    extracts the
     ``try/except CatalogUnavailableError`` + ``render template with
     error banner`` pattern repeated across federation_routes,
     catalog_html_routes, home_routes, and memory_routes.  Routes

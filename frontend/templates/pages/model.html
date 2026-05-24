@@ -20,7 +20,7 @@
     {% if model.owner %}
     <span class="badge bg-secondary ms-2">{{ model.owner }}</span>
     {% endif %}
-    {# Phase 77.8.E — server-backed Star button.  Inert until the
+    {# server-backed Star button.  Inert until the
        Alpine factory's init() fetch resolves; localStorage fallback
        is only relevant for catalog/schema kinds (those land in 77.5). #}
     <button class="btn btn-sm ms-auto"
@@ -36,7 +36,7 @@
         <i class="bi bi-box-arrow-up-right me-1"></i>Open in MLflow UI{{ info('models.mlflow-vs-pointlessql') }}
     </a>
     {% endif %}
-    {# Phase 81.F.2 — Social drawer trigger.  Discussion + Reviews +
+    {# Social drawer trigger.  Discussion + Reviews +
        Endorsements + Followers + README + Issues live in the
        offcanvas at the bottom of this template. #}
     <button type="button"
@@ -80,11 +80,11 @@
                 data-bs-target="#tab-promotion" type="button" role="tab"
                 data-pql-tab-key="promotion">Promotion</button>
     </li>
-    {# Phase 81.F.2 — Social tabs moved into the offcanvas drawer
+    {# Social tabs moved into the offcanvas drawer
        below.  See the "Social" button in the page header. #}
 </ul>
 
-{# Phase 81.F.2 — Core tabs only.  Social cluster lives in the
+{# Core tabs only.  Social cluster lives in the
    offcanvas drawer below this block, scoped by its own
    ``socialTabs()`` factory. #}
 <div class="tab-content" id="modelTabsContent">
@@ -94,7 +94,7 @@
     {% include "pages/_partials/model/promotion.html" %}
 </div>
 
-{# Phase 81.F.2 — Social drawer for registered models.  Carries
+{# Social drawer for registered models.  Carries
    Discussion + Reviews + Endorsements + Followers + README + Issues.
    The ``socialTabs()`` scope here matches the pre-81.F inline scope
    so the polymorphic Endorsements / Followers / Issues partials
@@ -183,7 +183,7 @@
             {% include 'partials/social/_endorsements_pane.html' %}
             {% include 'partials/social/_followers_pane.html' %}
             {% include 'pages/_partials/model/readme.html' %}
-            {# Phase 77.7 — Issues pane.  Reads kind/ref from socialTabs scope. #}
+            {# Issues pane.  Reads kind/ref from socialTabs scope. #}
             {% include 'partials/social/_issues_pane.html' %}
         </div>
     </div>
@@ -272,7 +272,7 @@ window.modelPromotion = function (fullName, initialChampion) {
     };
 };
 
-// Phase 77.2 — per-tab Alpine factories for the inline Discussion
+// per-tab Alpine factories for the inline Discussion
 // and README panes on model.html.  Endorsements + Followers panes
 // reuse the kind-agnostic socialTabs factory + the polymorphic
 // partials; these two stay inline because the existing partials are

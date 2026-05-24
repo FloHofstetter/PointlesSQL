@@ -1,4 +1,4 @@
-"""Phase 51.4 — inbound git webhook receiver.
+"""inbound git webhook receiver.
 
 Exercises the full path: signature verification (valid /
 mutated / missing), provider-mismatch (generic refuses every

@@ -1,4 +1,4 @@
-"""Phase 97.X.3 — pin-to-memory feed-card classification.
+"""pin-to-memory feed-card classification.
 
 The pin path ([api/notebooks_routes/facts.py]) emits a
 ``notebook_revision_pinned`` event through

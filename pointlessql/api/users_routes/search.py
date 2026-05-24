@@ -1,4 +1,4 @@
-"""``GET /api/users/search`` — typeahead picker (Phase 76.1).
+"""``GET /api/users/search`` — typeahead picker.
 
 Drives the comment @-autocomplete dropdown.  Returns up to eight
 users matching the caller's query against either ``email`` or

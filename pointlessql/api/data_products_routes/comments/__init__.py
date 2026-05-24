@@ -1,4 +1,4 @@
-"""Threaded discussion routes for data-products (Phase 71.1 + 76.1) — split per surface.
+"""Threaded discussion routes for data-products — split per surface.
 
 The pre-Phase-110 layout collapsed every route + helper into one
 ~883 LOC ``comments.py`` module.  Phase 110.5 split it along the

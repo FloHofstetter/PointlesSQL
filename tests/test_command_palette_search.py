@@ -1,4 +1,4 @@
-"""Phase 80.6 — /api/search expanded entity coverage tests.
+"""/api/search expanded entity coverage tests.
 
 Seeds one entity of each new kind and asserts ``/api/search?q=``
 returns at least one hit of that kind.  Also asserts the @user /

@@ -1,4 +1,4 @@
-"""Phase 82.2 — table-listing endpoint.
+"""table-listing endpoint.
 
 ``GET /api/ingest/sources/{id}/tables`` probes the source for its
 catalog of available tables.  File-based connectors short-circuit to

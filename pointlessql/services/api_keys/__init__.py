@@ -115,7 +115,7 @@ def _emit_auth_denied_audit(
 ) -> None:
     """Best-effort audit row for a rejected Bearer attempt.
 
-    Phase 119 — quarantine / expiry / post-grace-rotation rejections
+    quarantine / expiry / post-grace-rotation rejections
     each emit a distinct ``api_key.auth_denied.*`` action so admins
     can debug "why is my key suddenly failing".  Audit failures are
     swallowed: a broken audit table must never break auth itself.
@@ -466,7 +466,7 @@ def list_api_keys(
 
 
 # ---------------------------------------------------------------------------
-# Phase 119 — lifecycle admin helpers
+# lifecycle admin helpers
 # ---------------------------------------------------------------------------
 
 
@@ -647,7 +647,7 @@ def verify_bearer(
     presented = header[7:].strip()
     if not presented:
         return None
-    # Phase 118 — short-circuit v1-shaped tokens with bad CRC before
+    # short-circuit v1-shaped tokens with bad CRC before
     # the DB lookup.  A v1 prefix means the issuer is unambiguous; a
     # mismatched CRC is a typo / truncation / tampered token, never a
     # legacy key.  Legacy tokens (no ``pql_*_v1_`` prefix) are
@@ -678,7 +678,7 @@ def verify_bearer(
         # equality — keeps the surface uniform with the env-var path.
         if not hmac.compare_digest(row.secret_hash, digest):
             return None
-        # Phase 119 — lifecycle gates.  Each returns ``None`` (i.e. 401
+        # lifecycle gates.  Each returns ``None`` (i.e. 401
         # at the middleware) and emits an audit row so admins can
         # debug rejected requests.  Audit failures are swallowed so a
         # broken audit table can never break auth.

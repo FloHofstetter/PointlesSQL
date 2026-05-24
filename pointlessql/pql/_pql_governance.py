@@ -44,7 +44,7 @@ class _GovernanceMixin(_PQLBase):
         ``training_params_json`` column. Best-effort: works without
         MLflow installed (audit row still lands, snapshot is empty).
 
-        BUG-grand-05 / pass both ``source_table_fqn``
+        / pass both ``source_table_fqn``
         and ``model_fqn`` to anchor a single training-source edge in
         ``lineage_row_edges`` so the model-detail Lineage DAG paints
         the upstream training source.  Either alone or both unset →

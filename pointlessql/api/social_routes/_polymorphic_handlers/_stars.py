@@ -1,7 +1,6 @@
 """Star get / star / unstar / list-user-stars.
 
-Extracted from the 2231-LOC ``_polymorphic_handlers.py`` monolith
-in Phase 89.1 — each axis lives in its own sub-module now while the
+Each axis lives in its own sub-module now while the
 public handler names re-export from the package facade.
 """
 
@@ -26,7 +25,7 @@ from pointlessql.models.social._social_star import SocialStar
 from pointlessql.services.social.audit_mirror import mirror_social_to_audit
 
 # ---------------------------------------------------------------------------
-# Stars (Phase 77.8)
+# Stars
 # ---------------------------------------------------------------------------
 
 
@@ -69,7 +68,7 @@ async def get_polymorphic_star(
 async def star_polymorphic_entity(
     kind: str, ref: str, request: Request
 ) -> dict[str, Any]:
-    """Idempotently star a polymorphic entity (Phase 77.8).
+    """Idempotently star a polymorphic entity.
 
     Args:
         kind: Entity kind discriminator.
@@ -129,7 +128,7 @@ async def star_polymorphic_entity(
 async def unstar_polymorphic_entity(
     kind: str, ref: str, request: Request
 ) -> dict[str, Any]:
-    """Idempotently unstar a polymorphic entity (Phase 77.8)."""
+    """Idempotently unstar a polymorphic entity."""
     from sqlalchemy import delete as _delete
 
     require_user(request)

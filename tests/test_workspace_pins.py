@@ -1,4 +1,4 @@
-"""Sprint 28.3 — workspace_catalog_pins admin CRUD + tree filter.
+"""workspace_catalog_pins admin CRUD + tree filter.
 
 The pins table itself was created in 28.0; 28.3 wires the admin
 routes and the ``GET /api/tree?primary_only=true`` filter.

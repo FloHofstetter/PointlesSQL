@@ -1,4 +1,4 @@
-r"""Verifiable audit-log export (Phase 75.1).
+r"""Verifiable audit-log export.
 
 Ports the shoreguard-fresh ``cli_audit.py`` tamper-evidence pattern
 (sha256 sidecar + manifest) to PointlesSQL.  Two surfaces:

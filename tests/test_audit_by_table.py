@@ -1,4 +1,4 @@
-"""Phase 18.8 — runs-by-table reverse-index.
+"""runs-by-table reverse-index.
 
 Verifies the three relationship axes (touched / written / read)
 return the expected runs without overlap, and that the HTML page

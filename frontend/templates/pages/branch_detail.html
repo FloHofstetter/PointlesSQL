@@ -35,7 +35,7 @@
         </span>
         {% endif %}
     </div>
-    {# Phase 77.8.E — server-backed Star button. #}
+    {# server-backed Star button. #}
     <button class="btn btn-sm"
             :class="starred ? 'btn-warning' : 'btn-outline-warning'"
             @click="toggle()"
@@ -43,7 +43,7 @@
         <i class="bi" :class="starred ? 'bi-star-fill' : 'bi-star'"></i>
         <span class="ms-1" x-show="count > 0" x-text="count"></span>
     </button>
-    {# Phase 81.F.4 — Social drawer trigger. #}
+    {# Social drawer trigger. #}
     <button type="button"
             class="btn btn-sm btn-outline-secondary"
             data-bs-toggle="offcanvas"
@@ -53,7 +53,7 @@
     </button>
 </div>
 
-{# Phase 77.3.B — branch detail tab strip.  5 tabs: Overview
+{# branch detail tab strip.  5 tabs: Overview
    (metadata cards + audit log), Discussion (polymorphic comments),
    Endorsements (peer-review including branch-approved-for-promotion),
    Followers (count + 501 placeholder until 77.8), Promote
@@ -69,7 +69,7 @@
             <i class="bi bi-info-circle me-1"></i>Overview
         </button>
     </li>
-    {# Phase 81.F.4 — Discussion / Endorsements / Followers /
+    {# Discussion / Endorsements / Followers /
        Issues moved into the offcanvas drawer at the bottom of this
        template.  The endorsement count badge stays alive there via
        branch_endorsement_count. #}
@@ -331,7 +331,7 @@
     {% endif %}
 </div>
 
-{# Phase 81.F.4 — Social drawer for branches.  Carries Discussion +
+{# Social drawer for branches.  Carries Discussion +
    Endorsements + Followers + Issues, scoped by a ``socialTabs()``
    factory so the polymorphic Endorsements / Followers / Issues
    partials inherit the kind="branch" + ref + endorsementTypes the
@@ -446,7 +446,7 @@
             {# Endorsements + Followers panes — reuse polymorphic partials. #}
             {% include 'partials/social/_endorsements_pane.html' %}
             {% include 'partials/social/_followers_pane.html' %}
-            {# Phase 77.7 — Issues pane.  Reads kind/ref from socialTabs scope. #}
+            {# Issues pane.  Reads kind/ref from socialTabs scope. #}
             {% include 'partials/social/_issues_pane.html' %}
         </div>
     </div>
@@ -455,7 +455,7 @@
 
 {% block extra_js %}
 <script>
-// Phase 77.3.B — branchDiscussion Alpine factory (mirrors
+// branchDiscussion Alpine factory (mirrors
 // tableDiscussion on the table page; separate name so the two
 // don't share state when a single Alpine app is mounted across
 // both pages by the same user navigating quickly).

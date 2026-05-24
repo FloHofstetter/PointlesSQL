@@ -1,4 +1,4 @@
-"""Sprint 44.4 — third-party log-level quieting.
+"""third-party log-level quieting.
 
 Validates that :func:`configure_logging` applies per-library
 suppression by default (httpx/urllib3/sqlalchemy.engine →

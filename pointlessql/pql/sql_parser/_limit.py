@@ -1,7 +1,7 @@
 # pyright: reportPrivateUsage=false
 """``inject_limit`` — append a default LIMIT to a SELECT when missing.
 
-Used by the Lens read-only Q&A surface (Sprint 65.3) to cap any
+Used by the Lens read-only Q&A surface to cap any
 SELECT the agent issues.  Idempotent on already-limited SQL.
 """
 
@@ -16,7 +16,7 @@ from pointlessql.pql.sql_parser._types import SQLParseError
 def inject_limit(sql: str, default_limit: int = 1000) -> str:
     """Inject a top-level ``LIMIT`` clause if *sql* doesn't carry one.
 
-    Used by the Lens read-only Q&A surface (Sprint 65.3) to cap any
+    Used by the Lens read-only Q&A surface to cap any
     SELECT the agent issues.  Idempotent: a SELECT that already has a
     ``LIMIT`` clause (user / agent override) is returned unchanged.
     Nested SELECTs inside ``WITH`` / subquery / CTE definitions are

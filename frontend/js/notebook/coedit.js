@@ -79,7 +79,7 @@ export function installCoeditLifecycle(state, { userInfo = null } = {}) {
       onSynced: () => {
         this._rebindCellEditorsAfterSync();
         this._installCellsOrderObserver();
-        // Phase 108 fix — the initial ``setLocalState`` below fires
+        // the initial ``setLocalState`` below fires
         // its ``update`` event before the WS finishes connecting, so
         // ``sendAwarenessUpdate`` short-circuits on the readyState
         // gate and the broadcast frame is dropped.  Once the server
@@ -98,7 +98,7 @@ export function installCoeditLifecycle(state, { userInfo = null } = {}) {
       // doc-update, which 105.3b's ``y-codemirror.next`` will rely on.
       this._awareness = new Awareness(this._coedit.ydoc);
       this._coedit.setAwareness(this._awareness);
-      // Phase 108 fix — wire the WS uplink + peer-rail refresh
+      // wire the WS uplink + peer-rail refresh
       // BEFORE the first ``setLocalState`` so any late callers that
       // mutate awareness (e.g. yCollab cursor tracking) fire through
       // an attached listener.  The initial broadcast itself rides
@@ -162,7 +162,7 @@ export function installCoeditLifecycle(state, { userInfo = null } = {}) {
           self._renderPeerRail();
         }, PEER_RAIL_RENDER_THROTTLE_MS);
       }
-      // Phase 108 fix — when a NEW peer's state arrives in the
+      // when a NEW peer's state arrives in the
       // ``added`` set, re-emit our own state so the new joiner
       // sees us.  y-protocols awareness is diff-only: our own
       // ``onSynced`` rebroadcast may have happened before the new
@@ -206,7 +206,7 @@ export function installCoeditLifecycle(state, { userInfo = null } = {}) {
         });
       }
     }
-    // Phase 105.6 — agent presence: stitch in pseudo-peers driven by
+    // agent presence: stitch in pseudo-peers driven by
     // the REST agent-presence endpoint.  Agents carry a synthetic
     // ``clientId`` (negative so they sort after every real awareness
     // client) and the ``agent`` flag flips the partial onto the
@@ -261,7 +261,7 @@ export function installCoeditLifecycle(state, { userInfo = null } = {}) {
   };
 
   state.cellYBinding = function (cell) {
-    // Phase 105.3b — resolve the ``{ ytext, awareness, undoManager }``
+    // resolve the ``{ ytext, awareness, undoManager }``
     // triple ``cellEditor()`` needs to swap its local history for
     // ``y-codemirror.next``'s ``yCollab`` extension.  Returns null
     // when the prerequisites are not met (cell missing uuid,
@@ -298,7 +298,7 @@ export function installCoeditLifecycle(state, { userInfo = null } = {}) {
   };
 
   state._syncCellsOrderToYDoc = function (cell) {
-    // Phase 115 — local reorder write-through.  Translates the
+    // local reorder write-through.  Translates the
     // current ``this.cells`` Alpine order into a ``cells_order``
     // Y.Array delete+insert under the local origin so peers receive
     // the move without waiting for the save round-trip.  Skipped when
@@ -345,7 +345,7 @@ export function installCoeditLifecycle(state, { userInfo = null } = {}) {
   };
 
   state._reconcileCellsFromOrder = function () {
-    // Phase 115 — peer reorder reconcile.  Reads the canonical
+    // peer reorder reconcile.  Reads the canonical
     // ``cells_order`` uuid list from the Y.Doc and rebuilds the
     // Alpine ``cells`` array so the DOM order matches.  Cells
     // without a ``cell_uuid`` (freshly added locally, not yet
@@ -402,7 +402,7 @@ export function installCoeditLifecycle(state, { userInfo = null } = {}) {
       // flag depending on the y-protocols path; both branches are
       // safe to ignore when the origin matches our local tag.
       if (event.transaction && event.transaction.local) return;
-      // Phase 115.2 — while the user is actively dragging a cell,
+      // while the user is actively dragging a cell,
       // ``this.cells`` is in an intermediate state that does NOT
       // match ``cells_order`` (we only write to Y.Doc on drop).
       // Skipping reconcile here keeps the live-preview reorder
@@ -415,7 +415,7 @@ export function installCoeditLifecycle(state, { userInfo = null } = {}) {
   };
 
   state._rebindCellEditorsAfterSync = function () {
-    // Phase 105 follow-up — sync-timing rebind.  Cells that mounted
+    // sync-timing rebind.  Cells that mounted
     // before ``createCoeditClient`` finished the sync_step2 handshake
     // got ``cellYBinding(cell)`` returning ``null`` (synced=false) and
     // mounted as standalone CodeMirror.  Once ``onSynced`` fires we
@@ -461,7 +461,7 @@ export function installCoeditLifecycle(state, { userInfo = null } = {}) {
   };
 
   state._applyCellUuidRemap = function (remap) {
-    // Phase 105.5 — server told us the canonical cell_uuid changed
+    // server told us the canonical cell_uuid changed
     // for one or more cells (Pass-3 mint in the reconciler).  Patch
     // every Alpine surface that keys by cell_uuid so the next render
     // tick reflects the new id.  The Y.Doc was already updated under
@@ -536,7 +536,7 @@ export function installCoeditLifecycle(state, { userInfo = null } = {}) {
     }
   };
 
-  // Phase 116 — vital-pill class for the toolbar status cluster.
+  // vital-pill class for the toolbar status cluster.
   // Mirrors ``coeditDotClass`` but emits the pill design's class
   // pair so the toolbar's status reads as semantic state instead
   // of decoration.  ``vitalPillClass('coedit')`` on the editor

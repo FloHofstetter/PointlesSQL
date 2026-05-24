@@ -61,7 +61,7 @@ async def notebook_editor_page(request: Request, path: str) -> HTMLResponse:
             "curated_cell_tags": list(CURATED_CELL_TAGS),
             "notebook_chat_enabled": settings.editor_chat.enabled,
             "notebook_chat_session_id": str(uuid.uuid4()),
-            # Phase 105.4 — current viewer info threaded into the
+            # current viewer info threaded into the
             # editor's Alpine root so the awareness layer can paint
             # peer avatars + tag local cursors with a stable id/name.
             "current_user_id": int(user.get("id") or 0),
@@ -87,7 +87,7 @@ async def notebook_editor_by_uuid(
 ) -> HTMLResponse:
     """Render the editor for a notebook addressed by its UUID.
 
-    Phase 77.6 — the UUID-routed alias lets the social-layer
+    the UUID-routed alias lets the social-layer
     citations + audit-log links survive a path rename.  The
     backing data is identical to ``/notebooks/edit/{path}``; we
     just look up the file_path from the ``notebooks`` row and

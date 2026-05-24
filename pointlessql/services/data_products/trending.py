@@ -1,4 +1,4 @@
-"""Trending-rank refresh + read helpers (Phase 72.3).
+"""Trending-rank refresh + read helpers.
 
 Two callables:
 

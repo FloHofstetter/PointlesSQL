@@ -158,7 +158,7 @@ def resolve_agent_for_principal(
             )
         ).scalar_one_or_none()
         if agent is None:
-            # Phase 121.1.i — enrich the 404 with the workspace's
+            # enrich the 404 with the workspace's
             # known agent slugs so callers can self-correct typos.
             known = list(
                 session.execute(

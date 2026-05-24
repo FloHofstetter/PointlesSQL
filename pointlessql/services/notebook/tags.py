@@ -1,4 +1,4 @@
-"""Notebook-level tag CRUD (Phase 98.B).
+"""Notebook-level tag CRUD.
 
 Notebook tags categorise a whole notebook in the workspace tree
 (``etl`` / ``draft`` / ``prod`` / etc.).  This module is the thin

@@ -1,4 +1,4 @@
-"""Phase 77.0.D — polymorphic ``fanout_event`` dispatcher.
+"""polymorphic ``fanout_event`` dispatcher.
 
 Coverage:
 

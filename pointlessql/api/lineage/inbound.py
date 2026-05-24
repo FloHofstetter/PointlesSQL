@@ -1,6 +1,6 @@
 """Inbound OpenLineage event ingestion route.
 
-Phase 40 Sprint 40.1: external producers (Kafka-Connect, Airflow,
+external producers (Kafka-Connect, Airflow,
 dbt-cloud, peer PointlesSQL installs) POST OpenLineage 1.x
 ``RunEvent`` envelopes here, and the route normalises them into
 ``lineage_row_edges`` and ``lineage_column_map`` rows tagged with

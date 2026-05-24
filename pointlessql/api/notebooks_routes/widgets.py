@@ -1,4 +1,4 @@
-"""Notebook widget CRUD routes (Phase 99)."""
+"""Notebook widget CRUD routes."""
 
 from __future__ import annotations
 

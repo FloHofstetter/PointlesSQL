@@ -1,4 +1,4 @@
-// Workspace library — pinned-facts browse page (Phase 97 Rest UI).
+// Workspace library — pinned-facts browse page.
 //
 // Mounts on the ``/library/facts`` template via ``x-data="factsLibrary()"``.
 // Loads ``GET /api/notebooks/facts`` with optional ``include_unpinned``

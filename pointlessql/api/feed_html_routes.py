@@ -1,4 +1,4 @@
-"""HTML pages for the per-user feed + settings (Phase 76.4)."""
+"""HTML pages for the per-user feed + settings."""
 
 from __future__ import annotations
 

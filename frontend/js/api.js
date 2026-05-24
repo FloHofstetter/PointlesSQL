@@ -70,7 +70,7 @@ function csrfToken() {
  return meta ? meta.content : '';
 }
 
-// Sprint 28.4: read the active workspace slug off the same meta-tag
+// read the active workspace slug off the same meta-tag
 // shape used for the CSRF token.  Auto-attached as ``X-Workspace`` on
 // every pqlApi.fetch() call so workspace-scoped server filters apply
 // uniformly without per-call wiring.  Returns '' (not falsy) when the
@@ -115,7 +115,7 @@ async function apiFetch(url, init) {
  }
  }
 
- // Sprint 28.4: auto-attach X-Workspace on every call (safe + unsafe
+ // auto-attach X-Workspace on every call (safe + unsafe
  // verbs alike — GETs need the workspace filter just as much as
  // mutations). Caller-supplied header wins.
  const slug = workspaceSlug();

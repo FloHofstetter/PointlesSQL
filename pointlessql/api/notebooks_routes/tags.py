@@ -1,4 +1,4 @@
-"""Notebook tag CRUD routes (Phase 98.B).
+"""Notebook tag CRUD routes.
 
 Tags categorise a whole notebook (``etl`` / ``draft`` / ``prod`` /
 etc.).  All routes are workspace-scoped via the standard cookie-user

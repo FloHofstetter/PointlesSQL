@@ -1,4 +1,4 @@
-"""Tests for ``GET /api/runs/{id}/ml-context`` (Phase 21.2).
+"""Tests for ``GET /api/runs/{id}/ml-context``.
 
 The endpoint joins three sources (agent_runs row + MLflow run +
 soyuz model-versions) into one supervisor-only response. These

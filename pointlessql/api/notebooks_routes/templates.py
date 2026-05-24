@@ -1,4 +1,4 @@
-"""Notebook template-gallery routes (Phase 98.B).
+"""Notebook template-gallery routes.
 
 The gallery lists the starter templates shipped under
 ``pointlessql/data/notebook_templates/``; the create route copies

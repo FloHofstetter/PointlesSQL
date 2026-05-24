@@ -1,7 +1,7 @@
 """``DataProductRef`` validation type for ``catalog.schema`` identifiers.
 
 A data product is identified by the two-part UC name of its schema.
-This module mirrors :mod:`pointlessql.table_fqn` (Phase 49c) —
+This module mirrors :mod:`pointlessql.table_fqn` —
 ``DataProductRef`` is a ``str`` subclass so JSON / repr / logging
 produce the underlying string verbatim, ``Mapped[str]`` columns
 absorb it transparently, and pyright treats it as nominally

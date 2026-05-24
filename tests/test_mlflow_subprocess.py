@@ -1,4 +1,4 @@
-"""Tests for the MLflow subprocess lifecycle manager (Phase 21.0).
+"""Tests for the MLflow subprocess lifecycle manager.
 
 These tests cover URI derivation + the import-availability check
 without actually spawning ``mlflow server`` (slow, port-bound,

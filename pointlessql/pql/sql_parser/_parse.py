@@ -50,7 +50,7 @@ def _parse_root(sql: str) -> Expression:
 def parse_batch(sql: str) -> list[Expression]:
     """Parse *sql* as one or more statements and return their ASTs.
 
-    Used by the multi-statement editor path (Phase 63.6).  Empty
+    Used by the multi-statement editor path.  Empty
     input still raises; otherwise returns one AST per
     semicolon-separated statement, in source order.
 

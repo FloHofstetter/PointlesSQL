@@ -1,4 +1,4 @@
-"""Phase 82.2 — mappings POST validation + persistence."""
+"""mappings POST validation + persistence."""
 
 from __future__ import annotations
 

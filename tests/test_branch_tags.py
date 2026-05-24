@@ -1,4 +1,4 @@
-"""Tests for the branch tag wrapper (Sprint 16.5.1)."""
+"""Tests for the branch tag wrapper."""
 
 from __future__ import annotations
 

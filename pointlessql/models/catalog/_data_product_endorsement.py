@@ -1,4 +1,4 @@
-"""Typed manual endorsements per data product (Phase 72.4).
+"""Typed manual endorsements per data product.
 
 Four allowed types, CHECK-constrained at the DB layer:
 
@@ -41,7 +41,7 @@ ENDORSEMENT_TYPES: tuple[str, ...] = (
     "production-ready",
     "deprecated",
     "under-review",
-    # Phase 77.3 — opt-in branch promote-gate (locked decision #3).
+    # opt-in branch promote-gate (locked decision #3).
     # Only meaningful on kind='branch' anchors; the workspace
     # toggle ``branch_promote_requires_endorsement`` decides
     # whether ``POST /api/branches/.../promote`` checks for it.
@@ -64,7 +64,7 @@ class DataProductEndorsement(Base):
         endorsement_type: One of :data:`ENDORSEMENT_TYPES`.
         applied_by_user_id: Who applied the endorsement.  Always
             a human — caller when direct, agent's principal when
-            ``applied_by_agent_id`` is set (Phase 76.5.1).
+            ``applied_by_agent_id`` is set.
         applied_by_agent_id: Optional agent identity that posted
             the endorsement on behalf of the principal.  When set,
             the UI renders the endorsement as authored *by the
@@ -112,7 +112,7 @@ class DataProductEndorsement(Base):
         ForeignKey("data_products.id", ondelete="CASCADE"),
         nullable=True,
     )
-    # Phase 77.0.B — polymorphic anchor (see _data_product_comments.py).
+    # polymorphic anchor (see _data_product_comments.py).
     social_target_id: Mapped[int] = mapped_column(
         Integer,
         ForeignKey("social_targets.id"),

@@ -1,4 +1,4 @@
-"""Schema-change proposal rows for DPs (Phase 73.3).
+"""Schema-change proposal rows for DPs.
 
 Both agents and humans can propose schema changes to an
 existing :class:`DataProduct`.  Steward + install-admin
@@ -6,7 +6,7 @@ approve or reject.  Approval routes either rewrite the yaml
 in-place (for safe deltas) or drop a draft yaml under
 ``draft_dir`` (for everything else).
 
-Distinct from :class:`AgentReview` (Phase 19) — that model is
+Distinct from :class:`AgentReview` — that model is
 audit-review-oriented (severity / period bounds / kind enum)
 not write-proposal oriented.
 """

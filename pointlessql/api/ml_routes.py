@@ -80,7 +80,7 @@ async def _fetch_linked_model_versions(
     catalog/schema, which is fine at PointlesSQL's scale; future
     optimisation = a real soyuz tag index once tags-on-models lands.
 
-    Phase 121.3: rewired through :class:`UnityCatalogClient` instead of
+    rewired through :class:`UnityCatalogClient` instead of
     the generated client directly, so principal forwarding + error
     wrapping behave identically with the rest of the API surface.
 

@@ -1,4 +1,4 @@
-"""Sprint 65.3 — auto-LIMIT injection + Lens cost-gate tests."""
+"""auto-LIMIT injection + Lens cost-gate tests."""
 
 from __future__ import annotations
 

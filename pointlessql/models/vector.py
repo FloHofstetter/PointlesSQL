@@ -1,4 +1,4 @@
-"""Phase 92 — ``VectorIndex`` ORM for the vector-search primitive.
+"""``VectorIndex`` ORM for the vector-search primitive.
 
 One row per ``(workspace, catalog, schema, table, column)`` index
 backed by a duckdb-vss ``.duckdb`` file on disk.  The row carries

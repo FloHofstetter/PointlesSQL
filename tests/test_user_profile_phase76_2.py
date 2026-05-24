@@ -1,4 +1,4 @@
-"""Phase 76.2 — user profiles, follows, badges.
+"""user profiles, follows, badges.
 
 Coverage:
 
@@ -328,7 +328,7 @@ async def test_profile_html_anonymous_redirects(
 
 
 # ---------------------------------------------------------------------------
-# Phase 78 polish — per-kind badges
+# per-kind badges
 # ---------------------------------------------------------------------------
 
 

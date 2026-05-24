@@ -1,7 +1,7 @@
 # pyright: reportUnusedClass=false
 """Composite data-ops mixin for the :class:`PQL` façade.
 
-Phase 121.6 Item C split the 678-LOC monolith into per-concern
+Item C split the 678-LOC monolith into per-concern
 mixin files (one per public method cluster).  This module keeps
 the :class:`_DataOpsMixin` name + import path stable by composing
 the new mixins back into a single class — :mod:`pointlessql.pql.pql`

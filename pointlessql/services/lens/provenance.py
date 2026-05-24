@@ -1,6 +1,6 @@
 """Lens unified provenance trace — row + column + value lineage in one shape.
 
-The signature feature of the Lens read-only Q&A surface (Phase 65.1).
+The signature feature of the Lens read-only Q&A surface.
 Wraps the three Phase-15.x lineage backbones into a single
 analyst-friendly response so an LLM can answer "where does this number
 come from" without orchestrating three separate tool calls.

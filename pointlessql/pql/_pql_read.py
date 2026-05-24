@@ -18,7 +18,7 @@ class _ReadMixin(_PQLBase):
         Args:
             full_name: Three-part name ``"catalog.schema.table"``.
                 When the kernel's :mod:`pointlessql.pql.context` carries
-                an active branch binding (Phase 102 Wave-D), the
+                an active branch binding, the
                 schema segment is rewritten on the fly so the read
                 follows the binding without the caller spelling it
                 out.  Reads falling through to a table the branch

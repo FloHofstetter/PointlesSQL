@@ -1,4 +1,4 @@
-"""Smoke tests for the Lens persistence layer (Sprint 65.0).
+"""Smoke tests for the Lens persistence layer.
 
 Pin the table shapes, scope-isolation rules, and Fernet roundtrip
 that every later sprint depends on.  These run cheap (in-memory

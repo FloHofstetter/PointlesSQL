@@ -1,4 +1,4 @@
-"""Phase 77.0.E — citations.py registry refactor.
+"""citations.py registry refactor.
 
 Coverage:
 

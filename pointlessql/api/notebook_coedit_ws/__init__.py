@@ -1,4 +1,4 @@
-"""Phase 105.2 / 105.5 — real-time co-edit WebSocket hub — split per concern.
+"""real-time co-edit WebSocket hub — split per concern.
 
 The pre-Phase-111.6 layout collapsed every helper into one ~779 LOC
 ``notebook_coedit_ws.py`` module.  Phase 111.6 split it along the

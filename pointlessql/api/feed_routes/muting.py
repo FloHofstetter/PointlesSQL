@@ -22,7 +22,7 @@ from pointlessql.models.social._feed_mute import FeedMute
 
 router = APIRouter(tags=["feed"])
 
-# Phase 81.K.4 — snooze durations expressed as relative seconds.
+# snooze durations expressed as relative seconds.
 # Keys are the labels the UI surfaces; values are the wall-clock
 # offset added to ``now()`` when the user picks one.
 _SNOOZE_DURATIONS: dict[str, datetime.timedelta] = {

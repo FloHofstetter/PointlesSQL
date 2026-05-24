@@ -1,4 +1,4 @@
-"""Per-notebook Delta-branch binding (Phase 102).
+"""Per-notebook Delta-branch binding.
 
 Lets a notebook declare that its writes target a named Delta branch
 instead of the canonical (``main``) table state.  History rows stay
@@ -23,7 +23,7 @@ from pointlessql.models.base import Base
 
 
 class NotebookBranchBinding(Base):
-    """Per-notebook Delta-branch binding (Phase 102).
+    """Per-notebook Delta-branch binding.
 
     Lets a notebook declare that its writes target a named Delta
     branch instead of the canonical (``main``) table state.  The

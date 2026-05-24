@@ -30,7 +30,7 @@ def _enforce_notebook_role(
 ) -> None:
     """Reject the request when the actor's effective role is below *required*.
 
-    Phase 99 Wave-D — wires the existing ``role_satisfies`` lattice
+    wires the existing ``role_satisfies`` lattice
     into the load / save paths so explicit grants narrow workspace-
     default access.  Notebooks with no explicit grants behave like
     they always did (any authenticated user can view + run + save —
@@ -221,7 +221,7 @@ async def api_save_notebook(
                 status_code=409,
             )
     cells: list[notebook_doc_service.NotebookCell] = []
-    # Phase 105.5 — collect optional client-provided cell_uuids in the
+    # collect optional client-provided cell_uuids in the
     # same order as the input cells.  The save-barrier compares them
     # against the reconciler's output to emit a CRDT remap advisory
     # for any cell whose canonical UUID changed (e.g. Pass-3 mint).
@@ -270,7 +270,7 @@ async def api_save_notebook(
                 tags=tags,
             )
         )
-    # Phase 99 Wave-D — enforce edit-role before persisting.  We
+    # enforce edit-role before persisting.  We
     # resolve the notebook UUID *before* the file write so an
     # unauthorised caller can't mutate disk and then bounce on the
     # gate.  ``get_or_create_notebook_uuid`` is idempotent so the
@@ -312,7 +312,7 @@ async def api_save_notebook(
                 proposal_acceptances=proposal_acceptances,
                 reconcile_results=results,
             )
-        # Phase 101 — upsert per-cell authorship for every reconciled
+        # upsert per-cell authorship for every reconciled
         # cell so the editor's cell-header chip can render "minted by
         # X • last edited by Y".  The reconciler returned a UUID per
         # input cell; pair them with the saver's identity here.
@@ -350,7 +350,7 @@ async def api_save_notebook(
         }
         for index, cell in enumerate(cells)
     ]
-    # Phase 105.5 — if the reconciler minted a different UUID than the
+    # if the reconciler minted a different UUID than the
     # client tracked, broadcast a remap so every open browser tab
     # patches its Y.Doc + Alpine state in lock-step.  No-op when no
     # client uuids were sent (older clients, pre-105.3 callers) or
@@ -521,7 +521,7 @@ def _write_proposal_provenance(
         )
         if proposal is not None:
             proposal.inserted_cell_uuid = cell_uuid
-        # Phase 101 AI-acceptance authorship (Wave-B follow-up
+        # AI-acceptance authorship (Wave-B follow-up
         # 2026-05-20).  Fires BEFORE the save-handler's user-authorship
         # loop so the row's ``first_author_*`` gets the agent and the
         # user-loop only bumps ``last_modifier_*`` to the saver.  Net

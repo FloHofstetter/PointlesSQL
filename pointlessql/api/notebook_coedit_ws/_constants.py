@@ -13,7 +13,7 @@ TAG_SYNC_STEP2: Final[int] = 0x01
 TAG_SYNC_UPDATE: Final[int] = 0x02
 TAG_AWARENESS_UPDATE: Final[int] = 0x03
 TAG_CELL_UUID_REMAP: Final[int] = 0x04
-# Phase 105.6 — agent-presence ride-along; defined alongside its
+# agent-presence ride-along; defined alongside its
 # REST emitter in ``notebook_coedit_agent_routes.py`` but Phase 109
 # needs the constant for the cross-worker dispatch switch.
 TAG_AGENT_PRESENCE: Final[int] = 0x05

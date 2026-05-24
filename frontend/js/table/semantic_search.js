@@ -1,5 +1,5 @@
 /**
- * Phase 92 — Alpine factory for the table-detail "Semantic search" tab.
+ * Alpine factory for the table-detail "Semantic search" tab.
  *
  * Renders the column picker, query input, and result table; talks to
  * ``POST /api/sql/vector_search`` for top-K hits.  Also renders an

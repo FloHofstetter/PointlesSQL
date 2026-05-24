@@ -1,4 +1,4 @@
-"""Cross-worker co-edit bus outbox (Phase 109).
+"""Cross-worker co-edit bus outbox.
 
 Outbox table that lets the otherwise single-process Phase-105.2
 co-edit hub fan frames out to other uvicorn workers without a

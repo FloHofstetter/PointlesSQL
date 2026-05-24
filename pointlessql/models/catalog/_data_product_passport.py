@@ -1,4 +1,4 @@
-"""Auto-generated data-product passport rows (Phase 73.4).
+"""Auto-generated data-product passport rows.
 
 Markdown briefing built from the lineage graph + freshness
 profile.  Distinct from :class:`EntityReadme`: the

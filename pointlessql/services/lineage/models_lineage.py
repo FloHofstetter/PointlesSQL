@@ -39,7 +39,7 @@ The function is sync (consumed by an async route via
 ``asyncio.to_thread``-friendly call sites) — keeps the SQLAlchemy
 session usage straightforward.
 
-Phase 62 added :func:`aggregate_table_ml_relations`, the reverse
+func:`aggregate_table_ml_relations`, the reverse
 index that powers the catalog-tree ML pill, schema-detail badge,
 and table-detail "ML model" card.  It groups
 ``lineage_row_edges`` by ``(target_table, source_model_uri)`` so

@@ -10,7 +10,7 @@
  --pointless-accent: #76b900;
  --pql-sidebar-width: 280px;
  --pql-topbar-height: 56px;
- /* Phase 80.1: primary rail switches between collapsed (64 px,
+ /* primary rail switches between collapsed (64 px,
     icon-only) and expanded (220 px, icon + label + group headers).
     The default is expanded so new users see the IA structure on
     first paint; the value is overridden via
@@ -153,7 +153,7 @@ body {
 }
 
 /* ---------------------------------------------------------------
- * Phase 80.10.1 — Branded interactive feedback.
+ * Branded interactive feedback.
  *
  * Wire PointlesSQL's accent into Bootstrap 5.3's focus-ring tokens
  * so every form control, button, and link picks up the same green
@@ -187,7 +187,7 @@ a:not(.btn):not(.nav-link):not(.dropdown-item):not(.page-link) {
  color: var(--pql-color-accent-fg);
 }
 
-/* Phase 80.10.6 — unread-badge attention pulse.
+/* unread-badge attention pulse.
  *
  * Slow scale loop on any element carrying
  * ``data-pql-badge-pulse="1"``.  Used on the notification bell badge
@@ -208,7 +208,7 @@ a:not(.btn):not(.nav-link):not(.dropdown-item):not(.page-link) {
  }
 }
 
-/* Phase 80.10.6 — active check-mark in single-select dropdowns
+/* active check-mark in single-select dropdowns
  * (theme toggle).  The button always renders the check icon; CSS
  * hides it unless the parent button carries the
  * ``pql-theme-option--active`` class (toggled by the theme JS so the
@@ -222,7 +222,7 @@ a:not(.btn):not(.nav-link):not(.dropdown-item):not(.page-link) {
  visibility: visible;
 }
 
-/* Phase 81.D — HTMX boost-nav cross-fade via the View-Transitions
+/* HTMX boost-nav cross-fade via the View-Transitions
  * API.  ``htmx.config.globalViewTransitions = true`` wraps every
  * swap in ``document.startViewTransition`` on browsers that support
  * it.  Each transition produces two pseudo-elements at the page
@@ -253,7 +253,7 @@ a:not(.btn):not(.nav-link):not(.dropdown-item):not(.page-link) {
  }
 }
 
-/* Phase 81.G.B — checkbox column on multi-select list/table views.
+/* checkbox column on multi-select list/table views.
  * Holds the per-row selector tight against the left edge so titles
  * and metadata still get the visual weight. */
 .pql-checkbox-col {
@@ -262,7 +262,7 @@ a:not(.btn):not(.nav-link):not(.dropdown-item):not(.page-link) {
  vertical-align: middle;
 }
 
-/* Phase 81.G.D — keyboard-nav focus indicator on list-table rows.
+/* keyboard-nav focus indicator on list-table rows.
  * Set by list_keyboard.js on the row most recently reached via
  * j/k.  Subtle left-edge accent + tinted background so the cursor
  * position reads without yanking attention. */

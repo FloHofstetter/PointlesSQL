@@ -214,7 +214,7 @@ class TestApiKeysPageContent:
 
 @pytest.mark.asyncio
 async def test_detail_page_renders_for_existing_key() -> None:
-    """Phase 120.6 — per-key detail page renders + carries the key name."""
+    """per-key detail page renders + carries the key name."""
     factory = app.state.session_factory
     admin_token, _ = _seed_users(factory)
     _seed_workspaces(factory)

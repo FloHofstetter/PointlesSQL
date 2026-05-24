@@ -2,7 +2,7 @@
 
 Direct browser invocation surface for the Sprint 65.1 provenance
 service.  The same logic backs the Lens MCP / chat ``provenance``
-tool (Sprint 65.2 wraps this into a tool-registry entry).
+tool.
 
 Workspace isolation: the table_fqn is not workspace-checked here
 because UC tables are not workspace-namespaced; lineage rows always

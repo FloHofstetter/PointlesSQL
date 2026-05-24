@@ -1,4 +1,4 @@
-"""Per-user sticky badge row (Phase 76.2).
+"""Per-user sticky badge row.
 
 Badges are positive-only awards rolled forward by the
 ``_user_badges_loop`` background task.  ``UNIQUE(user_id,
@@ -26,7 +26,7 @@ BADGE_KEYS: tuple[str, ...] = (
     "mention_magnet_20plus",
     "accepted_answer_5plus",
     "endorser_50plus",
-    # Phase 78 polish — per-kind badges.
+    # per-kind badges.
     "commenter_table_50plus",
     "endorser_model_20plus",
     "issue_resolver_10plus",

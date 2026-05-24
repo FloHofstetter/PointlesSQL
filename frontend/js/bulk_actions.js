@@ -1,4 +1,4 @@
-// Phase 81.G.B — multi-select state for list/table pages.
+// multi-select state for list/table pages.
 //
 // Tiny Alpine mixin that any page can spread into its x-data
 // factory to gain a checkbox column + bulk-action toolbar:

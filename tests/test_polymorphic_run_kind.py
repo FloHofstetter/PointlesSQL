@@ -1,4 +1,4 @@
-"""Phase 77.4 — agent-run entity-kind registration.
+"""agent-run entity-kind registration.
 
 Coverage:
 
@@ -90,7 +90,7 @@ def test_parse_ref_accepts_valid_uuid() -> None:
 
 def test_parse_ref_rejects_malformed_uuid() -> None:
     """Non-UUID refs raise 400 with the contract message."""
-    # Phase 121.1.e — converted from HTTPException to BadRequestError.
+    # converted from HTTPException to BadRequestError.
     from pointlessql.exceptions import BadRequestError
 
     with pytest.raises(BadRequestError) as exc:

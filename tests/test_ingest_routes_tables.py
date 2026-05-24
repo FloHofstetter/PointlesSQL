@@ -1,4 +1,4 @@
-"""Phase 82.2 — table-listing endpoint smoke tests."""
+"""table-listing endpoint smoke tests."""
 
 from __future__ import annotations
 

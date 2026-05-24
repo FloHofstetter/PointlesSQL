@@ -71,7 +71,7 @@ class NotebookHub:
 HUBS: dict[str, NotebookHub] = {}
 HUBS_LOCK = asyncio.Lock()
 
-# Phase 109 — module-level handle on the bus.  Wrapped in a single-
+# module-level handle on the bus.  Wrapped in a single-
 # slot list so the assignment site does not trip pyright's
 # ``reportConstantRedefinition`` (uppercase names are read-only).
 # Set by the FastAPI lifespan via :func:`bind_coedit_bus` after the

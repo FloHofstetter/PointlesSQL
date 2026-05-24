@@ -575,13 +575,13 @@
 
 {% block extra_js %}
 {{ super() }}
-{# Phase 91 — ``chatPanel`` factory registered globally via
+{# ``chatPanel`` factory registered globally via
    ``frontend/js/bootstrap.js`` (Alpine-race-safe).  No per-page
    script needed.  See feedback memory ``feedback_alpine_factories_via_bootstrap.md``. #}
 {% endblock %}
 
 {#-
- BUG-grand-03 follow-up: the @codemirror/* importmap previously lived
+ follow-up: the @codemirror/* importmap previously lived
  in this template's extra_js block, which renders at the END of <body>
  — too late for bootstrap.js (loaded in <head>) to resolve the bare
  specifiers when sqlEditor().init() fires its dynamic imports. Moved

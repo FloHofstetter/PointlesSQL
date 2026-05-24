@@ -40,7 +40,7 @@ def upsert_config(
         acting_user_id: Steward / admin who enabled or updated the
             reviewer.  Future comments + endorsements written by the
             in-proc runner carry this as the author.
-        agent_slug: Optional agent slug (Phase 76.5.1) — when set,
+        agent_slug: Optional agent slug — when set,
             the reviewer's comment + endorsement are additionally
             stamped with the agent identity so the row renders as
             authored *by the agent on behalf of* ``acting_user_id``.

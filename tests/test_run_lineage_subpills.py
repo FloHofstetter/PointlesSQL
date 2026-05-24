@@ -1,6 +1,6 @@
 """Tests for the Phase-41 / Sprint-41.1 Lineage sub-pills on /runs/{id}.
 
-Sprint 41.1 promotes Sprint 17.6 — three new sub-pills (Row trace,
+three new sub-pills (Row trace,
 Column trace, Value changes) sit next to the existing Summary +
 Graph pills inside the Lineage top-tab.  The new sub-pills wrap
 existing JSON endpoints; backend changes are limited to surfacing

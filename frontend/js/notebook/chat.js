@@ -1,5 +1,5 @@
 /**
- * Phase 96 — chat-drawer Alpine factory for the notebook editor.
+ * chat-drawer Alpine factory for the notebook editor.
  *
  * Forked from ``frontend/js/sql_editor/chat.js``.  Three deltas:
  *

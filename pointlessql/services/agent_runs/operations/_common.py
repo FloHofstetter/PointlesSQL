@@ -125,12 +125,12 @@ class OperationRecorder:
     # autolog snapshot {"params": {...}, "metrics": {...}}
     # populated by ``training_context`` at MLflow run-exit time.
     training_params_json: str | None = None
-    # BUG-grand-08 — non-fatal side-effect markers stamped by
+    # — non-fatal side-effect markers stamped by
     # post-commit hooks (lineage emit / edge insert / reject /
     # column / value-change failures).  Persisted into the row's
     # ``warnings_json`` column so ``error_message`` stays clean.
     warnings: list[str] = field(default_factory=list)
-    # Phase 50 — populated by the data-product enforcement service.
+    # populated by the data-product enforcement service.
     # Tuple of (outcome, details, data_product_id) where outcome is
     # one of CONTRACT_EVENT_OUTCOMES.  None means "enforcement not
     # checked" (interactive PQL or feature disabled).

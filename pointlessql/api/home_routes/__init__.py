@@ -1,7 +1,5 @@
 """Home dashboard + global search — package facade.
 
-Phase 86 B2 split the 998-LOC ``home_routes.py`` into:
-
 * :mod:`.summary` — :func:`build_home_summary` aggregator plus the
   two endpoints that surface it (``GET /`` HTML, ``GET /api/home/summary``
   JSON).

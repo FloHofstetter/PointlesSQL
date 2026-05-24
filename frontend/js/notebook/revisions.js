@@ -1,5 +1,5 @@
 /**
- * Revision history + cell-diff panel (Phase 97 UI, Wave-D).
+ * Revision history + cell-diff panel.
  *
  * Backend (Phase 97, 14 pytest) shipped the revision-history surface
  * months ago; the editor's "History" panel render was deferred behind
@@ -34,7 +34,7 @@ export function installRevisions(state) {
   diff: null,
   diffLoading: false,
   diffError: '',
-  // Phase 97 Rest — inline "Pin as fact" dialog per revision row.
+  // inline "Pin as fact" dialog per revision row.
   // ``revisionUuid`` keys the active row; empty when the dialog is
   // closed.  ``factsByRevision`` is a lazy cache keyed by revision
   // UUID so the "📌 pinned" badge knows which rows already carry a

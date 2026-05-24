@@ -1,4 +1,4 @@
-"""HTML pages for the topics surface (Phase 76.3).
+"""HTML pages for the topics surface.
 
 Two routes:
 

@@ -1,4 +1,4 @@
-"""Sprint 21.7 — inference-lineage column + bidirectional model DAG tests.
+"""inference-lineage column + bidirectional model DAG tests.
 
 Sprint 21.7 added a ``source_model_uri`` column to
 ``lineage_row_edges`` so the model-detail Lineage tab can paint
@@ -196,7 +196,7 @@ def test_build_model_lineage_graph_includes_predictions(auth_cookies) -> None:
     run_id = str(uuid.uuid4())
     op_id = _seed_run_and_op(factory, run_id)
 
-    # Training edge: source → model (Sprint 21.5.5 path).
+    # Training edge: source → model.
     record_edges(
         factory,
         run_id=run_id,

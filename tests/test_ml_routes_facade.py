@@ -1,4 +1,4 @@
-"""Phase 121.3 — ml_routes uses the UnityCatalogClient facade.
+"""ml_routes uses the UnityCatalogClient facade.
 
 Before 121.3, ``_fetch_linked_model_versions`` synchronously called
 ``make_soyuz_client()`` + ``_list_rm.sync()`` / ``_list_mv.sync()``

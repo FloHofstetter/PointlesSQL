@@ -1,4 +1,4 @@
-"""Pure-function unit tests for ``extract_value_changes`` (Sprint 15.7.3).
+"""Pure-function unit tests for ``extract_value_changes``.
 
 Synthesises CDF-shaped PyArrow Tables (with ``_change_type``,
 ``_lineage_row_id``, and arbitrary data columns) and asserts that the

@@ -1,4 +1,4 @@
-"""Phase 82.0 — per-kind connector reader-spec shape.
+"""per-kind connector reader-spec shape.
 
 Pure unit tests against the builder functions in
 :mod:`pointlessql.services.ingest.connectors`.  They never open a

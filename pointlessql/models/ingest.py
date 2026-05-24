@@ -1,4 +1,4 @@
-"""Phase 82 — IngestSource model for the Ingest UI.
+"""IngestSource model for the Ingest UI.
 
 A configured connection to an external system (file upload, S3, HTTP,
 Postgres, MySQL, SQLite, Parquet glob) that PointlesSQL can pull rows
@@ -75,8 +75,7 @@ class IngestSource(Base):
     Attributes:
         id: Auto-incremented primary key.
         workspace_id: FK to ``workspaces.id``.  Workspace-scoped per
-            Phase 29.
-        owner_user_id: FK to ``users.id``.  The creator; pulls run
+            FK to ``users.id``.  The creator; pulls run
             under their principal so soyuz authorization applies.
         name: Human-readable name, unique within the workspace.
         kind: One of :data:`INGEST_SOURCE_KINDS`.

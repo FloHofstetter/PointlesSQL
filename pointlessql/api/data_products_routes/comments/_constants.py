@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import re
 
-# Phase 72.5 — audit-bound discussions sidecar.  Each comment
+# audit-bound discussions sidecar.  Each comment
 # POST / DELETE drops an ``audit_log`` row alongside the
 # DataProductComment write so the Phase-18.7 audit-search FTS
 # index picks comments up.  The comments stay system-of-record;
@@ -20,8 +20,8 @@ DISCUSSION_ANSWER_ACCEPTED = "audit.discussion.answer_accepted"
 DISCUSSION_MENTION_AMBIGUOUS = "audit.discussion.mention_ambiguous"
 BODY_PREVIEW_LEN = 140
 
-# Phase 76.1 — comment-category enum + reactions canonical set.
-# Phase 101 Wave-D added ``review`` for cell-level review decisions
+# comment-category enum + reactions canonical set.
+# Wave-D added ``review`` for cell-level review decisions
 # (notebook_cell entity-kind); kept in lockstep with
 # ``_polymorphic_handlers._shared.ALLOWED_CATEGORIES``.
 ALLOWED_CATEGORIES: tuple[str, ...] = (

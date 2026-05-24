@@ -1,4 +1,4 @@
-"""Phase 117 — typed parameter binding for the public SQL API."""
+"""typed parameter binding for the public SQL API."""
 
 from __future__ import annotations
 

@@ -1,4 +1,4 @@
-"""Phase 77.10 — workspace landing page + pin CRUD.
+"""workspace landing page + pin CRUD.
 
 Coverage:
 

@@ -94,7 +94,7 @@ export function commandPalette() {
 
         init() {
             this.recent = loadRecent();
-            // Phase 81.E — wire the footer-bar "Show keyboard shortcuts"
+            // wire the footer-bar "Show keyboard shortcuts"
             // button to the existing help overlay.  The button has
             // dispatched ``pql:show-shortcuts`` since the footer landed
             // in Phase 80.7, but no listener was attached — clicking it

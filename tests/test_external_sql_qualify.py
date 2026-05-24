@@ -1,4 +1,4 @@
-"""Phase 117 — default catalog/schema qualification."""
+"""default catalog/schema qualification."""
 
 from __future__ import annotations
 

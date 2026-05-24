@@ -1,4 +1,4 @@
-"""Sprint 28.1a — workspace isolation for the audit-trail core.
+"""workspace isolation for the audit-trail core.
 
 Asserts that a workspace-A user CANNOT see workspace-B's:
 

@@ -22,7 +22,7 @@ def _setup_app(tmp_path):
     """Set up app state with an in-memory auth DB for every test."""
     # StaticPool + check_same_thread=False keep the in-memory schema
     # alive when ``asyncio.to_thread``-backed code paths (the home-
-    # summary ``_db_block``) run on a worker thread (Sprint 47).
+    # summary ``_db_block``) run on a worker thread.
     engine = create_engine(
         "sqlite:///:memory:",
         connect_args={"check_same_thread": False},
@@ -115,7 +115,7 @@ class TestRegisterFlow:
                 },
             )
             assert resp.status_code == 303
-            # Phase 105 UX — register now redirects with a success
+            # register now redirects with a success
             # flash query-param so the login page can render an
             # "account created" confirmation (the silent redirect read
             # as a failure in the replay).

@@ -1,4 +1,4 @@
-"""Sprint 21.8 — HTTP wrapper around ``pql.training_context()``.
+"""HTTP wrapper around ``pql.training_context()``.
 
 The route is the agent-side bridge for the post-hoc training-log
 flow.  These tests verify that POST persists an

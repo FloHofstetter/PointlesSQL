@@ -1,4 +1,4 @@
-"""Sprint 65.4 — MCP server bindings tests.
+"""MCP server bindings tests.
 
 Cover the in-process FastMCP construction + auth resolution + the
 SSE wrapper.  The actual stdio handshake is exercised by the

@@ -1,7 +1,7 @@
 """Notebook workspace HTTP routes — package facade.
 
 Splits the previous 904-LOC ``notebooks_routes.py`` module into
-per-axis sub-modules (Phase 79.0).  The public surface stays
+per-axis sub-modules.  The public surface stays
 identical: callers continue to import ``router`` from
 ``pointlessql.api.notebooks_routes`` and the FastAPI app sees one
 combined router with every endpoint registered.
@@ -14,18 +14,18 @@ Sub-modules:
 * :mod:`.io` — load / save / cell-history / render-markdown
 * :mod:`.jobs` — notebook-job listing + run-once trigger
 * :mod:`.pages` — HTML page renders (editor + workspace browser)
-* :mod:`.tags` — notebook-level tag CRUD (Phase 98.B)
-* :mod:`.templates` — starter-template gallery + create (Phase 98.B)
-* :mod:`.cell_lineage` — cell-level write-op badges (Phase 98.C)
-* :mod:`.export` — HTML / PDF export pipeline (Phase 98.D)
-* :mod:`.revisions` — save-snapshot history + diff (Phase 97)
-* :mod:`.facts` — pinned-fact promotion of revisions (Phase 97 Rest)
-* :mod:`.cell_authorship` — per-cell attribution (Phase 101)
-* :mod:`.widgets` — parameter-widget CRUD (Phase 99)
-* :mod:`.permissions` — per-notebook share permissions (Phase 99)
-* :mod:`.shares` — public-share + dashboard render (Phase 100)
-* :mod:`.branch_bindings` — per-notebook Delta-branch binding (Phase 102)
-* :mod:`.replay` — replay / scenario-mode (Phase 103)
+* :mod:`.tags` — notebook-level tag CRUD
+* :mod:`.templates` — starter-template gallery + create
+* :mod:`.cell_lineage` — cell-level write-op badges
+* :mod:`.export` — HTML / PDF export pipeline
+* :mod:`.revisions` — save-snapshot history + diff
+* :mod:`.facts` — pinned-fact promotion of revisions
+* :mod:`.cell_authorship` — per-cell attribution
+* :mod:`.widgets` — parameter-widget CRUD
+* :mod:`.permissions` — per-notebook share permissions
+* :mod:`.shares` — public-share + dashboard render
+* :mod:`.branch_bindings` — per-notebook Delta-branch binding
+* :mod:`.replay` — replay / scenario-mode
 """
 
 from __future__ import annotations

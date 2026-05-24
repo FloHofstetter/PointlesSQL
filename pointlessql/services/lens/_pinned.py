@@ -1,4 +1,4 @@
-"""Lens pinned-answer service helpers (Sprint 65.6).
+"""Lens pinned-answer service helpers.
 
 Persists assistant-message snapshots so an analyst can re-find the
 answer later via a stable URL.  Visibility mirrors :class:`SavedQuery`:

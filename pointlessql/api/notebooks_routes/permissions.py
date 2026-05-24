@@ -1,4 +1,4 @@
-"""Notebook permission CRUD routes (Phase 99).
+"""Notebook permission CRUD routes.
 
 Per-notebook share grants layered on top of workspace membership.
 A row here grants access ``view`` / ``run`` / ``edit`` independent

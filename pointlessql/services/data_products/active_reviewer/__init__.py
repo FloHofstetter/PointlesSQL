@@ -1,4 +1,4 @@
-"""Phase 74 active-reviewer service — split per concern.
+"""split per concern.
 
 The pre-Phase-110 layout collapsed every concern into one ~760 LOC
 ``active_reviewer.py`` module.  Phase 110.8 split it along the natural

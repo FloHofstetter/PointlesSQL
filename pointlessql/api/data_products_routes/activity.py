@@ -1,4 +1,4 @@
-"""``/api/data-products/{catalog}/{schema}/activity`` — merged feed (Phase 72.1)."""
+"""``/api/data-products/{catalog}/{schema}/activity`` — merged feed."""
 
 from __future__ import annotations
 

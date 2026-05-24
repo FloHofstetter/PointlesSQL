@@ -1,5 +1,5 @@
 /* ---------------------------------------------------------------
- * Primary sidebar — "Haupt-Seitenleiste" (Phase 80.1).
+ * Primary sidebar — "Haupt-Seitenleiste".
  *
  * Two states driven by ``html[data-pql-rail-state]``:
  *   * ``"expanded"`` (default):  220 px column.  Icon + label
@@ -28,7 +28,7 @@
     top: var(--pql-topbar-height);
     max-height: calc(100vh - var(--pql-topbar-height));
     overflow-y: auto;
-    /* Phase 113.4 — wheel events that exhaust the rail's internal
+    /* wheel events that exhaust the rail's internal
        scroll must NOT leak into the document scroll.  Without
        overscroll-behavior the rail's 287px of overflow at 900px
        viewports felt like "the rail scrolls with the page" because
@@ -102,7 +102,7 @@
     margin: 0;
 }
 
-/* Phase 81.H — primary "New" rail entry.  Sits pinned to the top of
+/* primary "New" rail entry.  Sits pinned to the top of
    the rail above all nav groups; visually treated as a primary
    call-to-action pill so it reads as the dominant authoring entry
    point (Databricks parity).  Treatment is solid-fill in both
@@ -141,7 +141,7 @@ html[data-pql-rail-state="collapsed"] .pql-icon-rail__link--cta .pql-icon-rail__
     display: none;
 }
 
-/* Phase 81.H — /new launchpad cards.  Wraps Bootstrap .card with a
+/* /new launchpad cards.  Wraps Bootstrap .card with a
    prominent icon tile + persistent accent strip at the top.  The
    resting strip carries the accent without competing for attention;
    hovering thickens it and brightens the icon tile so the
@@ -188,7 +188,7 @@ html[data-pql-rail-state="collapsed"] .pql-icon-rail__link--cta .pql-icon-rail__
     color: #ffffff;
 }
 
-/* Phase 81.A — per-user customisation.  rail_customise.js sets
+/* per-user customisation.  rail_customise.js sets
    ``data-rail-hidden="1"`` on the parent <li> of any rail entry the
    user has hidden via the customise drawer.  Only entries with a
    ``data-section`` ever receive this attribute (the customise button
@@ -336,7 +336,7 @@ html[data-pql-rail-state="collapsed"] .pql-icon-rail__toggle .bi {
 }
 
 /* ---------------------------------------------------------------
- * Mobile offcanvas nav group headers (Phase 80.1) — mirrors the
+ * Mobile offcanvas nav group headers — mirrors the
  * desktop rail's group separators so the offcanvas drawer reads as
  * the same IA.
  * ------------------------------------------------------------- */

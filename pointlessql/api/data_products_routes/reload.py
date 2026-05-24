@@ -50,7 +50,7 @@ async def reload_data_products(request: Request) -> dict[str, Any]:
     factory = request.app.state.session_factory
     settings: Settings = request.app.state.settings
 
-    # Phase 71 follow-up B.1: snapshot the pre-reload
+    # snapshot the pre-reload
     # ``contract_yaml_hash`` for every existing product in the
     # workspace.  After the reload, compare per-product against
     # the post-reload hash; emit
@@ -84,7 +84,7 @@ async def reload_data_products(request: Request) -> dict[str, Any]:
             "workspace_repo whose tree contains pointlessql.yaml."
         )
 
-    # Phase 71 follow-up B.1: per-product schema-change detection.
+    # per-product schema-change detection.
     if contracts:
         keys = [(c.catalog, c.schema_name) for c in contracts]
         with factory() as session:
@@ -121,7 +121,7 @@ async def reload_data_products(request: Request) -> dict[str, Any]:
                 workspace_id=workspace_id,
             )
             emitted += 1
-            # Phase 73.4: fire-and-forget passport refresh so
+            # fire-and-forget passport refresh so
             # the new schema gets surfaced in the briefing.
             row_id = row.id
 

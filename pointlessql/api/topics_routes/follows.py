@@ -1,4 +1,4 @@
-"""``/api/topics/{slug}/follow`` (Phase 76.3).
+"""``/api/topics/{slug}/follow``.
 
 Two endpoints — idempotent POST + DELETE — backing the topic-
 follow toggle on ``/topics/{slug}`` and the eligibility check on
@@ -29,7 +29,7 @@ def _resolve_topic(session: Any, workspace_id: int, slug: str) -> Topic:
         )
     ).scalar_one_or_none()
     if topic is None:
-        # Phase 121.1.i — enrich the 404 with the workspace's known
+        # enrich the 404 with the workspace's known
         # topic slugs so callers see "did you mean…?" alternatives
         # instead of a bare "not found".
         known = list(

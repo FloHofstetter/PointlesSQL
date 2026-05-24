@@ -40,7 +40,7 @@ _PAPERMILL_INPUT_SUFFIXES = frozenset({".ipynb", ".py"})
 
 
 _REPO_PREFIX = "repo:"
-"""Prefix marking a repo-backed notebook path (Phase 51.3).
+"""Prefix marking a repo-backed notebook path.
 
 Format: ``repo:<workspace_id>:<slug>/<rel-path>.py``.  The
 resolver maps this to
@@ -124,7 +124,7 @@ def resolve_notebook_path(notebooks_dir: Path, notebook_path: str) -> Path:
     temporary ``.ipynb`` before papermill runs it, so callers
     upstream can pass either format transparently.
 
-    Phase 51.3 — when *notebook_path* starts with the
+    when *notebook_path* starts with the
     :data:`_REPO_PREFIX` it is resolved against the workspace-repo
     clone dir instead of *notebooks_dir*.  Repo-backed notebooks
     are read-only; the resolver returns the absolute path but the
@@ -135,7 +135,7 @@ def resolve_notebook_path(notebooks_dir: Path, notebook_path: str) -> Path:
         notebooks_dir: Absolute root directory the notebook must live under.
         notebook_path: Relative path supplied in the job config, or a
             ``repo:<workspace_id>:<slug>/<rel>.py`` spec for repo-backed
-            notebooks (Phase 51.3).
+            notebooks.
 
     Returns:
         The resolved absolute path to the input notebook.
@@ -342,7 +342,7 @@ async def _papermill_executor(
                 logger.warning("failed to delete jupytext-convert temp %s", converted_temp)
     logger.info("papermill: finished %s", output_path)
 
-    # Phase 67.6 — bridge papermill outputs into ``notebook_outputs``
+    # bridge papermill outputs into ``notebook_outputs``
     # so the editor's persisted-output replay AND a future "view job
     # outputs" tab share one renderer. ``kernel_session_id`` carries a
     # synthetic ``job:<run_id>`` prefix so the row never collides with

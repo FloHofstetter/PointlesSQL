@@ -1,4 +1,4 @@
-"""Phase 85.1 — Dataflow canvas routes.
+"""Dataflow canvas routes.
 
 * ``GET /canvas`` — HTML editor page.
 * ``POST /api/canvas/compile`` — translate a node list to PQL.

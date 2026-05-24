@@ -1,4 +1,4 @@
-"""Phase 90.0c — unit tests for ``pql.memory.replay`` dispatcher.
+"""unit tests for ``pql.memory.replay`` dispatcher.
 
 The dispatcher's behaviour is bucketed into three outcome
 classes (replayable, data_unavailable, unsafe) plus the

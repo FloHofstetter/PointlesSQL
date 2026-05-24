@@ -1,4 +1,4 @@
-"""HTML page for the ``/help`` reference (Phase 81.L)."""
+"""HTML page for the ``/help`` reference."""
 
 from __future__ import annotations
 

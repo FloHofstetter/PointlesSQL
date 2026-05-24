@@ -1,4 +1,4 @@
-"""Sprint 28.5 — server-side enforcement of api_key.workspace_id pin.
+"""server-side enforcement of api_key.workspace_id pin.
 
 A Bearer-authed call cannot escape the workspace its api_key is
 pinned to:
@@ -86,7 +86,7 @@ async def test_mismatched_header_returns_403(pinned_api_key: tuple[str, int]) ->
         )
     assert response.status_code == 403
     body = response.json()
-    # Phase 121.1.b — middleware emits RFC 9457 problem+json now.
+    # middleware emits RFC 9457 problem+json now.
     assert body["status"] == 403
     assert body["code"] == "workspace_context_mismatch"
 

@@ -1,4 +1,4 @@
-"""Phase 18.6 — anomaly inbox endpoints + ack lifecycle.
+"""anomaly inbox endpoints + ack lifecycle.
 
 The fixtures here all use the shared ``conftest._auth_db`` setup so
 each test starts with an empty SQLite plus the admin cookie at

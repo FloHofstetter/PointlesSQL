@@ -1,7 +1,7 @@
 """Shared JSON serialisers across the social route surface.
 
 Phase 79.4 extraction.  Three pieces of duplication concentrated
-on the agent-on-behalf-of payload shape (Phase 76.5):
+on the agent-on-behalf-of payload shape:
 
 * ``_agent_payload(agent: Agent | None)`` lived once in
   ``data_products_routes/reviews.py`` and once in

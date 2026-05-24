@@ -12,7 +12,7 @@ The package is built in three layers:
   sync streaming callback and the WS-send-queue.
 
 All three layers are surface-agnostic; both the SQL-editor chat
-(Phase 91) and the notebook-editor AI assistant (Phase 96) import
+ and the notebook-editor AI assistant import
 from this package.  Only the propose-route fan-out helper
 ``publish_proposal_created`` is SQL-specific — notebook chat uses
 its own ``publish_cell_proposal_created`` helper inside the new

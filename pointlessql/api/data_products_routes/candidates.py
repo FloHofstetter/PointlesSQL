@@ -1,4 +1,4 @@
-"""``/data-products/candidates`` + JSON endpoints (Phase 73.1).
+"""``/data-products/candidates`` + JSON endpoints.
 
 Three routes:
 

@@ -24,7 +24,7 @@
 @import url("./layout.css?v=ASSET_VERSION");                    /* topbar, shell, sidebar, tree, content */
 @import url("./components/icon_rail.css?v=ASSET_VERSION");      /* 60 px nav-rail */
 @import url("./components/context_panel.css?v=ASSET_VERSION");  /* 240 px contextual panel */
-@import url("./components/meta_panel.css?v=ASSET_VERSION");     /* 280 px right rail (Phase 112) */
+@import url("./components/meta_panel.css?v=ASSET_VERSION");     /* 280 px right rail */
 @import url("./components/context_sidebars.css?v=ASSET_VERSION"); /* per-section sidebars */
 @import url("./components/workspace_context_menu.css?v=ASSET_VERSION"); /* Phase 114.2 right-click + keyboard */
 @import url("./components/footer_bar.css?v=ASSET_VERSION");      /* Phase 80.7 status footer */

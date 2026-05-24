@@ -1,4 +1,4 @@
-"""HTML pages for the Ingest UI (Phase 82).
+"""HTML pages for the Ingest UI.
 
 Three pages: the listing, the "new source" form, and the per-source
 detail page.  All three gate on session login; the templates handle

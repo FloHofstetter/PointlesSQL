@@ -1,4 +1,4 @@
-"""ORM model for SQL-chat proposals (Phase 91 DML/DDL gate).
+"""ORM model for SQL-chat proposals.
 
 When the LLM decides to issue a non-SELECT statement it must call
 the ``pql_propose_sql`` plugin tool rather than ``pql_query`` — the

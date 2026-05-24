@@ -1,4 +1,4 @@
-// Bootstrap-tab URL-state sync (Sprint 59.2).
+// Bootstrap-tab URL-state sync.
 //
 // On DOMContentLoaded:
 //   1. Read ``?tab=<key>`` and ``?subtab=<key>`` from the URL.

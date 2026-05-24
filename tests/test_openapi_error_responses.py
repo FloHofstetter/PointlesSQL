@@ -1,4 +1,4 @@
-"""Sprint 43.4 — OpenAPI exposes the error envelope for plugin-facing routes.
+"""OpenAPI exposes the error envelope for plugin-facing routes.
 
 Confirms the ``responses=STANDARD_ERROR_RESPONSES`` decoration on
 the 13 plugin-facing routes (audit ×6, lineage ×3, pql-write ×4)

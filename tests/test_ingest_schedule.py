@@ -1,4 +1,4 @@
-"""Phase 82.3 — cron schedule control round-trip."""
+"""cron schedule control round-trip."""
 
 from __future__ import annotations
 

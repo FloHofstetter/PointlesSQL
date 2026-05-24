@@ -1,4 +1,4 @@
-"""Public share + dashboard render (Phase 100).
+"""Public share + dashboard render.
 
 Mints an unguessable v4 UUID per share so a notebook can be reached
 read-only under ``/share/notebook/{share_uuid}`` without auth.  Two
@@ -322,7 +322,7 @@ def render_dashboard_html(
 
 
 # --------------------------------------------------------------------------- #
-# Phase 100 Wave-D — secret-scrub for public share viewers + iframe embeds.
+# secret-scrub for public share viewers + iframe embeds.
 # --------------------------------------------------------------------------- #
 
 # Pattern list designed to redact common credential shapes that leak via

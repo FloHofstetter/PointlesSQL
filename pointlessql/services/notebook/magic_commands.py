@@ -1,4 +1,4 @@
-"""Phase 98.A — thin pre-processor for notebook magic commands.
+"""thin pre-processor for notebook magic commands.
 
 Recognised magics (line-magic style, one per line):
 

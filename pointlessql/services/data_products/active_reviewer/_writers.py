@@ -53,7 +53,7 @@ def post_comment(
             :attr:`DataProductActiveReviewerConfig.acting_user_id`).
         body_md: Comment body.
         now: Wall-clock anchor.
-        author_agent_id: Optional agent identity (Phase 76.5.1) —
+        author_agent_id: Optional agent identity —
             when set, the comment renders as authored *by the
             agent on behalf of* ``author_user_id``.
 

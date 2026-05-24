@@ -1,7 +1,6 @@
 """Follower count / list / follow / unfollow.
 
-Extracted from the 2231-LOC ``_polymorphic_handlers.py`` monolith
-in Phase 89.1 — each axis lives in its own sub-module now while the
+Each axis lives in its own sub-module now while the
 public handler names re-export from the package facade.
 """
 
@@ -31,7 +30,7 @@ from pointlessql.models.social._social_follow import SocialFollow
 async def get_polymorphic_followers_count(
     kind: str, ref: str, request: Request
 ) -> dict[str, Any]:
-    """Return the follower count + caller-following flag (Phase 77.8).
+    """Return the follower count + caller-following flag.
 
     Counts rows on the polymorphic ``social_follows`` table for
     ``social_target_id == target_id``.  The ``following`` flag
@@ -71,7 +70,7 @@ async def get_polymorphic_followers_count(
 async def list_polymorphic_followers(
     kind: str, ref: str, request: Request
 ) -> dict[str, Any]:
-    """Return the follower roster for the polymorphic entity (Phase 77.8).
+    """Return the follower roster for the polymorphic entity.
 
     The list is gated to the caller themselves + workspace admins —
     privacy mirrors the DP follower list.  Non-admin callers see an
@@ -128,7 +127,7 @@ async def list_polymorphic_followers(
 async def follow_polymorphic_entity(
     kind: str, ref: str, request: Request
 ) -> dict[str, Any]:
-    """Idempotently follow a polymorphic entity (Phase 77.8).
+    """Idempotently follow a polymorphic entity.
 
     Writes one row to ``social_follows``.  Repeat POSTs no-op via
     the composite-PK ``(workspace_id, social_target_id, user_id)``.
@@ -173,7 +172,7 @@ async def follow_polymorphic_entity(
 async def unfollow_polymorphic_entity(
     kind: str, ref: str, request: Request
 ) -> dict[str, Any]:
-    """Idempotently unfollow a polymorphic entity (Phase 77.8).
+    """Idempotently unfollow a polymorphic entity.
 
     Drops the matching ``social_follows`` row if present.
 

@@ -111,7 +111,7 @@ async def test_detail_returns_operations_diff_when_flag_set(
 async def test_detail_includes_value_changes_and_column_lineage_diff(
     supervisor_secret: ApiKeyFixture, admin_client: httpx.AsyncClient
 ) -> None:
-    """Phase 18.9 — detail=true now also carries cell + column-lineage diff."""
+    """detail=true now also carries cell + column-lineage diff."""
     transport = httpx.ASGITransport(app=app)
     run_a = "1111aaab-1111-1111-1111-aaaaaaab1111"
     run_b = "2222bbbc-2222-2222-2222-bbbbbbbc2222"

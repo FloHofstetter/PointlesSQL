@@ -26,7 +26,7 @@
         <i class="bi" :class="starred ? 'bi-star-fill' : 'bi-star'"></i>
         <span class="ms-1" x-show="count > 0" x-text="count"></span>
     </button>
-    {# Phase 81.F.5 — Social drawer trigger.  Tab strip pre-81.F was
+    {# Social drawer trigger.  Tab strip pre-81.F was
        Overview + 4 social; now Overview is the only inline content
        and the strip is gone. #}
     {% if schema %}
@@ -45,7 +45,7 @@
     <i class="bi bi-exclamation-triangle me-1"></i>{{ error }}
 </div>
 {% elif schema %}
-{# Phase 81.F.5 — Tab strip dropped.  Pre-81.F there were 5 tabs
+{# Tab strip dropped.  Pre-81.F there were 5 tabs
    (Overview + 4 social); after the social cluster moved to the
    offcanvas drawer below, Overview became the only inline content.
    Render directly. #}
@@ -277,7 +277,7 @@
 {% endwith %}
 </div>{# /schema overview wrapper #}
 
-{# Phase 81.F.5 — Social drawer for schema detail (tables.html).
+{# Social drawer for schema detail (tables.html).
    Carries Discussion + Endorsements + Followers + README scoped by
    ``socialTabs(kind='schema')`` so the polymorphic Endorsements /
    Followers partials inherit kind+ref unchanged.  Discussion +

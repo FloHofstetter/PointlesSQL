@@ -1,7 +1,7 @@
 {#
    Workspace context-panel.
 
-   Phase 114.1 — nested folder tree (was a flat 30-item list).
+   nested folder tree (was a flat 30-item list).
    Headers carry a "+ New" button + a refresh affordance; below the
    header is a filename filter input; the body renders the tree
    with click-to-expand chevrons.  Active highlight follows both
@@ -141,7 +141,7 @@
                                        @keydown.escape.prevent="cancelInlineRename()"
                                        @blur="commitInlineRename(row)">
                             </template>
-                            {# Phase 115.3 — drop the redundant py/ipynb badge
+                            {# drop the redundant py/ipynb badge
                                (the icon colour already encodes type) and
                                collapse the PARAMS badge to a small dot so
                                long filenames aren't truncated by the
@@ -159,7 +159,7 @@
         </template>
     </div>
 
-    {# Phase 114.2 — floating right-click context menu.  One per
+    {# floating right-click context menu.  One per
        factory scope; positioned via ``contextMenu.x/y``. #}
     <ul class="pql-context-menu"
         x-show="contextMenu.open"

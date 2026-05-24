@@ -1,6 +1,6 @@
 """Tests for the Sprint 13.11.5 _json_safe coercion helper.
 
-Sprint 13.11.5 hotfix: the validation-error handler used to crash
+the validation-error handler used to crash
 when a request validator surfaced raw ``bytes`` in the ``input``
 slot (happens when a client posts a JSON body without
 ``Content-Type: application/json`` — FastAPI then returns the

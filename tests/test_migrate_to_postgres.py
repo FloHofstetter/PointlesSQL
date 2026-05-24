@@ -1,4 +1,4 @@
-"""Sprint 30.3 — end-to-end SQLite → Postgres migration tool.
+"""end-to-end SQLite → Postgres migration tool.
 
 Tests the operator-facing :mod:`pointlessql.cli.migrate_to_postgres`
 helper.  All non-validation cases require a live Postgres so they

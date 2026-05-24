@@ -36,7 +36,7 @@ class SQLSettings(BaseSettings):
 
 
 class SqlExecutionApiSettings(BaseSettings):
-    """Phase 117 — public DBX-compatible SQL Statement Execution API.
+    """public DBX-compatible SQL Statement Execution API.
 
     Reads ``POINTLESSQL_SQL_EXECUTION_API_*`` environment variables.
     The surface is independent of the in-app SQL editor
@@ -70,7 +70,7 @@ class SqlExecutionApiSettings(BaseSettings):
 
 
 class ApiKeyAclSettings(BaseSettings):
-    """Phase 120 — per-API-key ACL + usage-aggregation settings.
+    """per-API-key ACL + usage-aggregation settings.
 
     Reads ``POINTLESSQL_API_KEY_ACL_*`` environment variables.
 
@@ -97,7 +97,7 @@ class ApiKeyAclSettings(BaseSettings):
 
 
 class ApiKeyLifecycleSettings(BaseSettings):
-    """Phase 119 — API-key TTL / rotation / quarantine periodic maintenance.
+    """API-key TTL / rotation / quarantine periodic maintenance.
 
     Reads ``POINTLESSQL_API_KEY_LIFECYCLE_*`` environment variables.
 
@@ -219,7 +219,7 @@ class DataProductsSettings(BaseSettings):
     Reads ``POINTLESSQL_DATA_PRODUCTS_*`` environment variables.  The
     loader walks ``yaml_search_paths`` for ``pointlessql.yaml`` files
     whose top-level ``data_product:`` block declares a UC schema as
-    a product (Sprint 50.1).  The freshness scanner (Sprint 50.4)
+    a product.  The freshness scanner
     iterates every cached product whose ``sla_minutes`` is non-NULL.
 
     ``scan_interval_seconds`` defaults to ``0`` (dormant) — same
@@ -234,30 +234,30 @@ class DataProductsSettings(BaseSettings):
     scan_interval_seconds: int = 0
     yaml_search_paths: list[Path] = Field(default_factory=list[Path])
     re_alert_suppress_minutes: int = 60
-    # Phase 72.3 — cached "trending" rank refresh.  Default 0
+    # cached "trending" rank refresh.  Default 0
     # keeps the loop dormant so single-tenant installs don't run
     # the join continuously; flipping to 900 (15 min) starts the
     # standard cadence.
     trending_refresh_interval_seconds: int = 0
     trending_window_days: int = 7
     trending_top_n: int = 10
-    # Phase 73.1 — promote-to-DP candidate scanner.
+    # promote-to-DP candidate scanner.
     promote_enabled: bool = False
     promote_scan_interval_seconds: int = 1800
     promote_window_days: int = 14
     promote_min_runs: int = 3
     promote_min_ops: int = 10
     draft_dir: Path = Field(default_factory=lambda: PROJECT_ROOT / "dp_drafts")
-    # Phase 73.4 — auto-passport background refresh loop.
+    # auto-passport background refresh loop.
     passport_loop_enabled: bool = False
     passport_loop_interval_seconds: int = 86_400
     passport_loop_stale_threshold_seconds: int = 86_400
-    # Phase 73.5 — cross-DP co-occurrence cache.
+    # cross-DP co-occurrence cache.
     cooccurrence_enabled: bool = False
     cooccurrence_refresh_interval_seconds: int = 21_600
     cooccurrence_window_days: int = 7
     cooccurrence_top_n: int = 10
-    # Phase 74.1 — active reviewer (in-proc daily steward delegate).
+    # active reviewer (in-proc daily steward delegate).
     active_reviewer_enabled: bool = False
     active_reviewer_trigger_hour: int = 3  # UTC
     active_reviewer_llm_provider: str = "anthropic"
@@ -266,7 +266,7 @@ class DataProductsSettings(BaseSettings):
 
 
 class NotificationsSettings(BaseSettings):
-    """Per-user notification + daily-digest configuration (Phase 71.4).
+    """Per-user notification + daily-digest configuration.
 
     The ``digest_email_optin`` column on the User model is the
     per-user opt-in.  ``digest_enabled`` is the install-level
@@ -287,7 +287,7 @@ class NotificationsSettings(BaseSettings):
 
 
 class CoeditSettings(BaseSettings):
-    """Phase 109 — cross-worker co-edit hub fanout.
+    """cross-worker co-edit hub fanout.
 
     Reads ``POINTLESSQL_COEDIT_*`` environment variables.  The
     Phase-105.2 hub holds the live :class:`pycrdt.Doc` in the
@@ -317,7 +317,7 @@ class CoeditSettings(BaseSettings):
 
 
 class LensSettings(BaseSettings):
-    """Lens read-only Q&A surface configuration (Phase 65).
+    """Lens read-only Q&A surface configuration.
 
     Reads ``POINTLESSQL_LENS_*`` environment variables.  Lens hosts a
     chat-style analyst UI at ``/lens`` and an MCP (Model Context

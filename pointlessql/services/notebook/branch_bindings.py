@@ -1,4 +1,4 @@
-"""Per-notebook Delta-branch binding (Phase 102).
+"""Per-notebook Delta-branch binding.
 
 A notebook can declare that its ``pql.write_table`` / ``pql.merge``
 calls target a named Delta-branch instead of the canonical ``main``
@@ -134,7 +134,7 @@ def _consult_promote_webhook(
 ) -> None:
     """POST the promote-intent to an external reviewer webhook.
 
-    Phase 102 Wave-D / Track-H closure — when the
+    when the
     ``POINTLESSQL_BRANCH_PROMOTE_WEBHOOK_URL`` env var is set, every
     :func:`promote_binding` call first POSTs the binding payload to
     that URL.  HTTP 200 = approved (promote proceeds); 4xx = denied

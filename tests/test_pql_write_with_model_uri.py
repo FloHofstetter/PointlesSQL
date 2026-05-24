@@ -1,4 +1,4 @@
-"""Sprint 21.8 — HTTP-side ``source_model_uri`` propagation tests.
+"""HTTP-side ``source_model_uri`` propagation tests.
 
 The existing :mod:`tests.test_pql_write_routes` covers the happy
 path; these tests pin the new optional field, the auto-derive of

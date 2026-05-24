@@ -38,7 +38,7 @@ def _opted_in_inbox(prefs_json: str | None, event_type: str) -> bool:
     """Return True when the user's prefs do NOT disable inbox delivery.
 
     Missing column / missing event_type key / missing inbox key all
-    default to True (Phase 76.4 backwards-compat).
+    default to True.
     """
     if not prefs_json:
         return True
@@ -108,7 +108,7 @@ def fanout_event(
         with session_factory() as session:
             follower_ids: set[int] = set()
             if entity_kind == "dp" and data_product_id is not None:
-                # Phase 78 polish: follows live in social_follows
+                # follows live in social_follows
                 # keyed by social_target_id; join through
                 # social_targets to find the DP's anchor row.
                 follower_ids = {
@@ -132,7 +132,7 @@ def fanout_event(
             if not recipients:
                 return 0
 
-            # Phase 76.4: filter recipients by per-user inbox opt-out.
+            # filter recipients by per-user inbox opt-out.
             pref_rows = session.execute(
                 select(User.id, User.notification_prefs_json).where(
                     User.id.in_(recipients)
@@ -165,7 +165,7 @@ def fanout_event(
                 ]
             )
             session.commit()
-            # Phase 76.6: push to live SSE listeners.  Best-effort —
+            # push to live SSE listeners.  Best-effort —
             # we import inside the try/except so a circular import
             # is impossible and a missing module never breaks the
             # originating write.

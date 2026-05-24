@@ -1,4 +1,4 @@
-"""Static notebook → HTML (and PDF-via-print) export (Phase 98.D).
+"""Static notebook → HTML (and PDF-via-print) export.
 
 The DBX-parity "Download as HTML / PDF" surface produces a single
 self-contained HTML document from a ``.py`` notebook plus its

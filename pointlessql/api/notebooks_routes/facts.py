@@ -1,4 +1,4 @@
-"""Pinned-fact REST routes (Phase 97 Rest).
+"""Pinned-fact REST routes.
 
 Backs the editor's Diff-Drawer + Cell-Header "📌 Pin as fact" actions
 and the workspace's ``/library/facts`` browse page.
@@ -282,7 +282,7 @@ def _resolve_notebook_followers(
     ``notebook_cell_output``) carries an ephemeral fact UUID nobody
     would follow directly, so :func:`fanout_event` would resolve zero
     recipients on the polymorphic path.  Recipients should instead
-    come from the notebook-level anchor (Phase 77.6 ``kind='notebook'``)
+    come from the notebook-level anchor
     — anyone who follows the notebook hears about its pins.  Returned
     as ``extra_recipients`` to :func:`fanout_event` so the actor-self
     filter still applies.

@@ -90,7 +90,7 @@ async def test_tree_excludes_runs_dir(workspace_dir: Path, admin_client: httpx.A
 async def test_tree_non_admin_accessible(
     workspace_dir: Path, non_admin_client: httpx.AsyncClient
 ) -> None:
-    """Phase 70: any authenticated user can read the notebook tree."""
+    """any authenticated user can read the notebook tree."""
     resp = await non_admin_client.get("/api/notebooks/tree")
     assert resp.status_code == 200
     assert isinstance(resp.json(), list)
@@ -112,7 +112,7 @@ async def test_workspace_page_admin_renders(
 async def test_workspace_page_non_admin_accessible(
     workspace_dir: Path, non_admin_client: httpx.AsyncClient
 ) -> None:
-    """Phase 70: any authenticated user reaches the workspace page."""
+    """any authenticated user reaches the workspace page."""
     resp = await non_admin_client.get("/notebooks/workspace")
     assert resp.status_code == 200
     assert "Notebook workspace" in resp.text

@@ -1,4 +1,4 @@
-"""LLM provider adapters for the Lens browser chat-loop (Phase 65.5).
+"""LLM provider adapters for the Lens browser chat-loop.
 
 Two adapters share a thin :class:`LensProvider` Protocol so the
 chat-loop is provider-agnostic:

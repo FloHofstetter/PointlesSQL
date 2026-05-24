@@ -1,4 +1,4 @@
-"""Phase 80.7 — status footer bar tests."""
+"""status footer bar tests."""
 
 from __future__ import annotations
 

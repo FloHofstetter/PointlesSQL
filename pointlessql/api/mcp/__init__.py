@@ -1,4 +1,4 @@
-"""SSE/HTTP MCP transport for the Lens read-only Q&A surface (Phase 65.4).
+"""SSE/HTTP MCP transport for the Lens read-only Q&A surface.
 
 Exposes ``/mcp`` (SSE event-stream + POST /mcp/messages) for IDE
 consumers that prefer network transport over stdio (Cursor, web-based

@@ -1,4 +1,4 @@
-"""Sprint 57.4 — FastAPI route smoke-tests for federation_routes.py.
+"""FastAPI route smoke-tests for federation_routes.py.
 
 Covers the 21 connection / external-location / credential endpoints
 + HTML page render paths.  Each endpoint gets at least one

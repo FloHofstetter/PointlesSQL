@@ -229,7 +229,7 @@ async def api_preview_promote(request: Request, branch_fqn: str) -> dict[str, An
 
 
 def _branch_promote_gate_check(request: Request, branch_fqn: str) -> None:
-    """Phase 77.3 — opt-in promote-gate enforcement.
+    """opt-in promote-gate enforcement.
 
     When ``workspaces.branch_promote_requires_endorsement`` is on
     for the active workspace, the caller must have at least one
@@ -371,7 +371,7 @@ async def html_branches_list(request: Request) -> HTMLResponse:
 def _branch_promote_gate_ui_state(
     request: Request, branch_fqn: str
 ) -> dict[str, Any]:
-    """Phase 77.3.B — promote-gate state for the branch detail UI.
+    """promote-gate state for the branch detail UI.
 
     Mirrors :func:`_branch_promote_gate_check`'s lookup but returns
     a (gate_on, peer_count, caller_endorsed) tuple rather than

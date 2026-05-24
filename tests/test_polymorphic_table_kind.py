@@ -1,4 +1,4 @@
-"""Phase 77.1 — UC table entity-kind registration.
+"""UC table entity-kind registration.
 
 Coverage:
 

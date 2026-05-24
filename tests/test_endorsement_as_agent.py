@@ -1,4 +1,4 @@
-"""Phase 76.5.1 — ``?as_agent=`` on endorsements POST.
+"""``?as_agent=`` on endorsements POST.
 
 Coverage:
 

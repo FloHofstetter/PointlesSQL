@@ -1,4 +1,4 @@
-"""SQL-editor chat REST + WS routes (Phase 91).
+"""SQL-editor chat REST + WS routes.
 
 This package owns every non-static surface the chat drawer talks
 to:

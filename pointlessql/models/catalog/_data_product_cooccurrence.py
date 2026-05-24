@@ -1,4 +1,4 @@
-"""Cross-DP co-occurrence cache rows (Phase 73.5).
+"""Cross-DP co-occurrence cache rows.
 
 One row per ``(workspace, dp, co_dp, window_end)``.  A
 periodic loop walks ``agent_run_operations`` per

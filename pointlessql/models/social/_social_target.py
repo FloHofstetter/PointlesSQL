@@ -1,4 +1,4 @@
-"""Polymorphic social-target anchor (Phase 77.0).
+"""Polymorphic social-target anchor.
 
 Every social row (comment / review / endorsement / follow /
 reaction / readme / star / pin) keys on

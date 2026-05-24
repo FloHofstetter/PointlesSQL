@@ -1,4 +1,4 @@
-"""Polymorphic follows router (Phase 77.0.F.2 + 77.1.5 dispatch).
+"""Polymorphic follows router.
 
 For ``kind='dp'`` the call delegates to the existing DP follow
 handlers.  For non-DP kinds the follow / unfollow endpoints return

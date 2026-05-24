@@ -1,4 +1,4 @@
-"""Phase 82.0 — IngestSource model round-trip + index uniqueness.
+"""IngestSource model round-trip + index uniqueness.
 
 Smoke-tests that the ORM model maps cleanly to its alembic-managed
 table.  The route layer in Phase 82.1 is what enforces JSON validity

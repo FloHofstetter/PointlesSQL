@@ -1,4 +1,4 @@
-"""Polymorphic star bookmark router (Phase 77.8.D).
+"""Polymorphic star bookmark router.
 
 Stars are the lightweight "I bookmarked this" primitive — separate
 from Follow (which signals "I want notifications").  Three

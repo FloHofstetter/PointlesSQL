@@ -1,4 +1,4 @@
-"""Per-notebook share permissions (Phase 99).
+"""Per-notebook share permissions.
 
 Layered on top of the workspace membership model: a workspace
 member who has no explicit row in ``notebook_permissions`` still
@@ -209,7 +209,7 @@ def actor_has_role(
     have = get_effective_role(
         session, notebook_id=notebook_id, user_id=user_id
     )
-    # Phase 99 Wave-D — workspace-default is the same role lattice as
+    # workspace-default is the same role lattice as
     # ``run`` so existing "any authenticated user can open + execute"
     # behaviour is preserved when no explicit grant exists.  Explicit
     # grants narrow this; an admin who pins a user to ``view`` then

@@ -9,7 +9,7 @@
  * relying on inline scripts being re-evaluated mid-swap.
  */
 
-// Sprint 28.4: keys are namespaced by workspace slug so a user that
+// keys are namespaced by workspace slug so a user that
 // switches between workspace-A and workspace-B in the same browser
 // tab gets independent tree caches and recent-tables lists.  The slug
 // is read fresh on every key access — there is no caching at module
@@ -319,7 +319,7 @@ export function catalogTree() {
  this.activePath.schema
  ] = true;
  }
- // Sprint 28.4: pre-expand the workspace's primary-pinned
+ // pre-expand the workspace's primary-pinned
  // catalog on first load so the sidebar opens at the most
  // relevant tree node without forcing the user to drill down.
  const primary = primaryCatalog();

@@ -1,4 +1,4 @@
-"""ORM model for notebook cell proposals (Phase 96).
+"""ORM model for notebook cell proposals.
 
 When the notebook-editor AI assistant proposes a change to a
 notebook cell, the plugin tool POSTs to ``/api/notebook/chat/{id}/...``

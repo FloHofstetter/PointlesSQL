@@ -1,4 +1,4 @@
-"""Smoke tests for ``GET /api/lineage/column-trace`` (Sprint 15.6.4).
+"""Smoke tests for ``GET /api/lineage/column-trace``.
 
 Sets up synthetic ``lineage_column_map`` rows and exercises the
 JSON walkback handler.  The HTML page is exercised by the live
@@ -155,7 +155,7 @@ async def test_column_trace_rejects_empty_column(
         "/api/lineage/column-trace",
         params={"table": "main.gold.t", "column": ""},
     )
-    # Phase 43.3: ``column is required`` is a ValidationError (422),
+    # ``column is required`` is a ValidationError (422),
     # not the legacy bare-string HTTPException(400).
     assert response.status_code == 422
     assert response.json()["code"] == "validation_error"

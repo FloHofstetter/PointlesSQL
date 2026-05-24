@@ -27,7 +27,7 @@ export function createKernelClient({
  onReady = () => {},
  onClose = () => {},
  onError = () => {},
- // Phase 67.5 — Variable Inspector frames arrive as separate notify
+ // Variable Inspector frames arrive as separate notify
  // types (``variable_snapshot`` / ``variable_detail``) so they bypass
  // the per-cell output rendering pipe.
  onVariableSnapshot = () => {},

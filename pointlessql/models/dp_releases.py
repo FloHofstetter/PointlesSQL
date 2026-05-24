@@ -1,4 +1,4 @@
-"""Phase 84.2 — DataProductRelease: version-bump history per DP.
+"""DataProductRelease: version-bump history per DP.
 
 One row per detected change of ``DataProduct.version`` /
 ``DataProduct.contract_yaml_hash``.  The YAML loader emits one

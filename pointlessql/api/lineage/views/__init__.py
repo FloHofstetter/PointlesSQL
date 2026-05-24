@@ -16,7 +16,7 @@ each surface owns its own file with the helpers it needs:
 ``pointlessql.api.lineage.__init__`` imports the assembled router
 from this package — call-sites need no edits.
 
-Phase 110.4 also fixed a latent Python-2-style ``except A, B:`` in
+`` in
 ``_helpers._enrich_with_source_file`` that caught only one of the two
 exception types and bound the other to the local name; the new code
 uses the explicit tuple form.

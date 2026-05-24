@@ -73,7 +73,7 @@ DATA_UNAVAILABLE_OPS: frozenset[str] = frozenset(
         OpName.MERGE.value,
         OpName.WRITE_TABLE.value,
         OpName.AGGREGATE.value,
-        # Phase 97 pin-to-memory — a fact points at a *specific*
+        # a fact points at a *specific*
         # revision UUID + workspace; replaying onto a branch would
         # either duplicate the pin (same revision, two workspaces)
         # or silently re-point at a different revision.  Neither is
@@ -325,7 +325,6 @@ def _replay_one_op(
 ) -> None:
     """Re-record one source op against the replay run with rewritten targets.
 
-    Phase 90 records intent rather than executing the primitive —
     the audit trail captures the would-have-been call so the UI's
     operation-tape on the replay run shows the trace.  See the
     module docstring for the broader scope note.

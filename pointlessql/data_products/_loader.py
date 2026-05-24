@@ -181,7 +181,7 @@ def load_contract(
             )
         ).scalar_one_or_none()
 
-        # Phase 84.2 — release-stream bookkeeping.  Detect a new
+        # release-stream bookkeeping.  Detect a new
         # release row up front so we can persist it after the DP
         # row is committed (we need DataProduct.id either way).
         # ``release_signal`` is ``None`` when no release should be
@@ -294,7 +294,7 @@ def load_contracts_for_workspace(
 ) -> list[DataProductContract]:
     """Load every ``pointlessql.yaml`` discovered for *workspace_id*.
 
-    Phase 51.2 — combines two yaml sources:
+    combines two yaml sources:
 
     1. Env-configured ``settings.data_products.yaml_search_paths``
        (the legacy Phase-50 path).  Treated as workspace-agnostic;

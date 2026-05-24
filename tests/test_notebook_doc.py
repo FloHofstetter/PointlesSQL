@@ -1,4 +1,4 @@
-"""Sprint 96 — round-trip + identity tests for notebook_doc.
+"""round-trip + identity tests for notebook_doc.
 
 Covers the new UUID-free marker grammar + FNV-1a content-hash helper.
 Legacy-file migration + malformed-input tolerance land in Sprint 97;

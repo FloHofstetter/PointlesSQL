@@ -1,10 +1,10 @@
-"""Per-user routes (Phase 71.4 + 80.5).
+"""Per-user routes.
 
 Surfaces:
 
-* ``/me`` (Phase 80.5) — consolidated hub landing page that links
+* ``/me`` — consolidated hub landing page that links
   to profile / inbox / subscriptions / settings / API keys.
-* ``/me/settings`` (Phase 71.4) — self-service preferences form.
+* ``/me/settings`` — self-service preferences form.
 * ``GET / PUT /api/me/settings`` — JSON twin of the settings form.
 
 Today the settings surface only carries the marketplace-digest
@@ -31,7 +31,7 @@ router = APIRouter(tags=["me"])
 async def me_index_page(
     request: Request,
 ) -> HTMLResponse | RedirectResponse:
-    """Render the consolidated Me hub landing (Phase 80.5).
+    """Render the consolidated Me hub landing.
 
     Surfaces six tile-cards (Profile · My work · Inbox ·
     Subscriptions · Settings · API keys) so the previously-

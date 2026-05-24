@@ -1,4 +1,4 @@
-"""End-to-end value-change capture against a real Delta table (Sprint 15.7.3).
+"""End-to-end value-change capture against a real Delta table.
 
 Skips the FastAPI / soyuz / agent-run plumbing and exercises just the
 ``_capture_value_changes`` helper that

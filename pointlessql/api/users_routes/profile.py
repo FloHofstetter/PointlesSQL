@@ -1,4 +1,4 @@
-"""``/api/users/{user_id}/profile`` — user profile (Phase 76.2).
+"""``/api/users/{user_id}/profile`` — user profile.
 
 Two endpoints:
 

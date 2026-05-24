@@ -1,4 +1,4 @@
-"""Sprint 21.5.1 — Tree extension surfaces RegisteredModels per schema.
+"""Tree extension surfaces RegisteredModels per schema.
 
 Mocks the ``ModelsMixin`` ``list_registered_models`` call so tests run
 without a live soyuz instance.  The contract under test is the

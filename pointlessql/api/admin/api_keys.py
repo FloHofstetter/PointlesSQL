@@ -191,7 +191,7 @@ async def api_admin_revoke_api_key(request: Request, name: str) -> dict[str, Any
 
 
 # ---------------------------------------------------------------------------
-# Phase 119 — lifecycle endpoints
+# lifecycle endpoints
 # ---------------------------------------------------------------------------
 
 
@@ -389,7 +389,7 @@ async def api_admin_update_api_key(
 
 
 # ---------------------------------------------------------------------------
-# Phase 120 — per-key grants CRUD
+# per-key grants CRUD
 # ---------------------------------------------------------------------------
 
 

@@ -54,7 +54,7 @@ class KernelRegistry:
             notebook_id: Phase-77.6 notebook UUID surfaced to the
                 kernel via ``POINTLESSQL_NOTEBOOK_ID`` so binding
                 lookups + future widget-resolve queries can address
-                the notebook by its stable id (Phase 99 / 102 Wave-D).
+                the notebook by its stable id.
             branch_name: Active Phase-102 branch binding surfaced via
                 ``POINTLESSQL_BRANCH``; ``PQL._branch_remap`` reads
                 it on every read / write to route the FQN to the

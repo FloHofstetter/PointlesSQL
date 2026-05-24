@@ -1,4 +1,4 @@
-"""Public share, widgets, and per-user permissions (Phase 99 / 100).
+"""Public share, widgets, and per-user permissions.
 
 Three tables that govern how a notebook is exposed beyond its owning
 workspace: public share links, parameter widgets, and the per-user
@@ -26,7 +26,7 @@ from pointlessql.models.base import Base
 
 
 class NotebookShare(Base):
-    """Public-share grant for a notebook (Phase 100).
+    """Public-share grant for a notebook.
 
     One row mints an unguessable v4 UUID under
     ``/share/notebook/{share_uuid}`` so a notebook can be shared
@@ -108,7 +108,7 @@ class NotebookShare(Base):
 
 
 class NotebookWidget(Base):
-    """Parameter-widget definition attached to a notebook (Phase 99).
+    """Parameter-widget definition attached to a notebook.
 
     Widgets are interactive controls rendered as a form above the
     notebook — dropdowns / sliders / text inputs.  Each row defines
@@ -174,7 +174,7 @@ class NotebookWidget(Base):
 
 
 class NotebookPermission(Base):
-    """Per-notebook share permission (Phase 99).
+    """Per-notebook share permission.
 
     Layered on top of workspace membership: a workspace member who
     is not explicitly granted a notebook role still falls back to

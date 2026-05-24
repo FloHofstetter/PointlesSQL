@@ -1,4 +1,4 @@
-"""Cell-level lineage read-side (Phase 98.C).
+"""Cell-level lineage read-side.
 
 A "lineage badge" is the small `<table-name>` chip the editor will
 render in the cell header when a cell has previously written to one

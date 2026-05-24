@@ -77,7 +77,7 @@ export function installKernelExecution(state, deps) {
       if (msgType === 'execute_input') {
         // First iopub frame for a fresh execute — clear stale outputs.
         this._liveOutputs[hash] = [];
-        // Phase 94: stamp run-start for wall-clock duration display.
+        // stamp run-start for wall-clock duration display.
         this._runStartedAt[hash] = performance.now();
         this._runDurationMs[hash] = null;
         if (cell) this._renderCellOutput(cell);
@@ -104,7 +104,7 @@ export function installKernelExecution(state, deps) {
         cell.exec_count = execCount;
         cell.status = status;
       }
-      // Phase 94: finalise wall-clock duration. Use the iopub-time
+      // finalise wall-clock duration. Use the iopub-time
       // start stamped earlier; if missing (race or pre-mixin frame)
       // skip silently rather than report a bogus value.
       const startedAt = this._runStartedAt[hash];
@@ -114,7 +114,7 @@ export function installKernelExecution(state, deps) {
         this._runDurationMs[hash] = durationMs;
         delete this._runStartedAt[hash];
       }
-      // Sprint 112.5 — push the run onto the bounded ring buffer
+      // push the run onto the bounded ring buffer
       // that drives the meta panel's Activity section.  Skip the
       // ``__pql_*`` synthetic probes (variable inspector etc.)
       // since they are not user-visible cells.
@@ -179,7 +179,7 @@ export function installKernelExecution(state, deps) {
     }
   };
 
-  // Sprint 113.2 — inspector visibility moved onto the unified
+  // inspector visibility moved onto the unified
   // right drawer.  Kept as a thin alias for legacy callers.
   state.toggleInspector = function () {
     if (typeof this.openRightDrawer === 'function') {
@@ -239,7 +239,7 @@ export function installKernelExecution(state, deps) {
     }
   };
 
-  // Phase 113.6 — bulk-run helpers (Run all / Run above / Run below).
+  // bulk-run helpers (Run all / Run above / Run below).
   // Cells are awaited sequentially so a downstream cell sees the
   // kernel state left by upstream cells (the Jupyter default).
   // Markdown cells are skipped silently.  Errors halt the run so the

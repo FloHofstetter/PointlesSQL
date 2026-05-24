@@ -1,4 +1,4 @@
-"""Phase 77.1.5 — polymorphic ``/api/social/{kind}/{ref}/...`` handlers.
+"""polymorphic ``/api/social/{kind}/{ref}/...`` handlers.
 
 Coverage:
 
@@ -307,7 +307,7 @@ async def test_table_readme_put_noop_on_unchanged_body(
 
 
 # ---------------------------------------------------------------------------
-# kind='table' — polymorphic follow (Phase 77.8) + count
+# kind='table' — polymorphic follow + count
 # ---------------------------------------------------------------------------
 
 

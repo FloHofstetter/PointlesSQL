@@ -1,4 +1,4 @@
-// Phase 90.1 — Memory page client-side glue.
+// Memory page client-side glue.
 //
 // Two Alpine factories + one click handler:
 //

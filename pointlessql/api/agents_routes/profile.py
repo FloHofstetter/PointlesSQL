@@ -1,4 +1,4 @@
-"""``/api/agents/{slug}/profile`` — agent detail (Phase 76.5)."""
+"""``/api/agents/{slug}/profile`` — agent detail."""
 
 from __future__ import annotations
 

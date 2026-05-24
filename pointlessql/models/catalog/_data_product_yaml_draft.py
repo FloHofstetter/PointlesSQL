@@ -1,4 +1,4 @@
-"""Draft ``pointlessql.yaml`` file tracking rows (Phase 73.1).
+"""Draft ``pointlessql.yaml`` file tracking rows.
 
 Tracks every yaml draft authored by Phase 73 surfaces:
 

@@ -3,7 +3,7 @@
  * pages that thread content into the ``{% block meta_panel %}``
  * slot of ``base.html``. Mirrors ``.pql-context-panel`` (left rail)
  * in skin and sticky behaviour so the layout reads as a symmetric
- * "frame around content". Notebook editor (Phase 112) is the first
+ * "frame around content". Notebook editor is the first
  * consumer; other detail pages roll in via per-page block overrides
  * in follow-up sprints.
  * ------------------------------------------------------------- */
@@ -33,7 +33,7 @@ body:has(.pql-shell--has-meta) .pql-meta-mobile-trigger {
   top: var(--pql-topbar-height);
   max-height: calc(100vh - var(--pql-topbar-height) - var(--pql-footer-bar-height));
   overflow-y: auto;
-  /* Phase 113.4 — see icon_rail.css. */
+  /* see icon_rail.css. */
   overscroll-behavior-y: contain;
   scrollbar-width: thin;
   scrollbar-color: var(--bs-border-color) transparent;
@@ -211,7 +211,7 @@ body:has(.pql-shell--has-meta) .pql-meta-mobile-trigger {
  border-bottom: 0;
 }
 
-/* Sprint 112.5 — Activity / Live section rows.  Each row carries
+/* Activity / Live section rows.  Each row carries
    its own label-on-top / body-below pattern so kernel, running,
    peers, and recent-runs all sit on the same visual rhythm. */
 .pql-meta-panel .pql-meta-panel-activity__row {

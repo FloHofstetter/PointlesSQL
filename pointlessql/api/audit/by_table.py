@@ -113,7 +113,7 @@ async def html_audit_by_table_picker(request: Request) -> HTMLResponse:
     """Render the table-picker variant when no FQN is in the URL.
 
     Without an FQN there is nothing to query — firing the loaders
-    against an empty path was the source of BUG-37-05 (three
+    against an empty path was the source of (three
     user-visible "Error 422" messages on page load).  This entry
     renders an FQN input form instead so the user can pick a
     target without seeing the chrome's broken loaders.

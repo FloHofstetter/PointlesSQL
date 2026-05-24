@@ -1,4 +1,4 @@
-"""Phase 92 — merge-hook auto-rebuild tests.
+"""merge-hook auto-rebuild tests.
 
 Drives ``rebuild_vss_indices_after_commit`` directly against a small
 seeded ``vector_indices`` row.  The hook is invariant-checked via:

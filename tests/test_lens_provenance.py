@@ -1,4 +1,4 @@
-"""Sprint 65.1 — unified Lens provenance trace tests.
+"""unified Lens provenance trace tests.
 
 Exercises the four trace modes (table / column / row / row+value) and
 the empty-trace + hop-cap edge cases.  Uses synthetic

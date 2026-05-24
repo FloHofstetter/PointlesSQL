@@ -1,4 +1,4 @@
-"""User-to-user follow link (Phase 76.2).
+"""User-to-user follow link.
 
 Composite-PK ``(follower_user_id, followed_user_id)``.  Soft-
 delete is intentionally NOT modelled — the row either exists

@@ -1,5 +1,5 @@
 {#
-  Primary sidebar — "Haupt-Seitenleiste" (Phase 80.1).
+  Primary sidebar — "Haupt-Seitenleiste".
 
   Renamed from ``icon_rail.html``.  Expandable rail with two states:
 
@@ -36,7 +36,7 @@
 {% from "_macros/permission_link.html" import permission_link %}
 {% set _badges = nav_badges if nav_badges is defined and nav_badges else {} %}
 <nav class="pql-icon-rail" aria-label="Primary navigation">
-    {# Phase 81.K.12 — rail-toggle button moved into the topbar so
+    {# rail-toggle button moved into the topbar so
        the rail header is no longer needed.  Kept the empty header
        block out (was just ``__header`` with one button); the rail's
        first list item now sits flush against the top. #}
@@ -204,7 +204,7 @@
             <a href="/canvas"
                data-section="canvas"
                class="pql-icon-rail__link{% if active_page is defined and active_page == 'canvas' %} active{% endif %}"
-               title="Dataflow canvas — visual pipeline prototype (Phase 85.1)">
+               title="Dataflow canvas — visual pipeline prototype">
                 <i class="bi bi-diagram-3"></i>
                 <span class="pql-icon-rail__label">Canvas</span>
             </a>
@@ -317,7 +317,7 @@
                  label_class="pql-icon-rail__label"
             ) }}
         </li>
-        {# Phase 81.A — per-user rail customisation (localStorage MVP).
+        {# per-user rail customisation (localStorage MVP).
            Sibling of the Admin entry so the customise affordance lives
            at the bottom of the rail in both collapsed and expanded
            modes.  The button is intentionally NOT a permission-link

@@ -1,4 +1,4 @@
-"""CDF bootstrap helpers (Sprint 15.7.2).
+"""CDF bootstrap helpers.
 
 Verifies that the ``delta.enableChangeDataFeed`` table property is
 turned on for new Delta tables — both via the ``configuration={...}``

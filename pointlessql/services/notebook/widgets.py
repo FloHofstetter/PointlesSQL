@@ -1,4 +1,4 @@
-"""Notebook parameter widgets (Phase 99).
+"""Notebook parameter widgets.
 
 Widgets are interactive controls rendered as a form above the
 notebook — dropdowns / sliders / text inputs.  The kernel-side

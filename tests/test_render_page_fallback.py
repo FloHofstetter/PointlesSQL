@@ -1,4 +1,4 @@
-"""Phase 121.6 Item D — ``render_page_with_fallback`` helper."""
+"""``render_page_with_fallback`` helper."""
 
 from __future__ import annotations
 

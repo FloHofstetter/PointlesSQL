@@ -1,4 +1,4 @@
-"""Unit tests for the column-edge builder on ``pql.aggregate`` (Sprint 15.6.2).
+"""Unit tests for the column-edge builder on ``pql.aggregate``.
 
 The end-to-end aggregate path needs soyuz + deltalake; this file
 covers only the pure-Python ``_build_aggregate_column_edges`` helper

@@ -1,4 +1,4 @@
-"""Badge-awarding service (Phase 76.2 + Phase 78 polish generalisation).
+"""Badge-awarding service.
 
 Sync function the ``_user_badges_loop`` invokes via
 ``asyncio.to_thread``.  Eight thresholds, all positive-only:
@@ -130,7 +130,7 @@ def award_badges(session_factory: Any) -> int:
                 .group_by(DataProductEndorsement.applied_by_user_id)
             ).all()
         )
-        # Phase 78 polish — per-kind aggregates.
+        # per-kind aggregates.
         commenter_table_counts = dict(
             session.execute(
                 select(

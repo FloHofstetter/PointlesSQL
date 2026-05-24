@@ -1,6 +1,6 @@
 /**
- * Phase 105.3 — co-edit Y.Doc client (passive scaffold) +
- * Phase 105.4 — awareness-frame wiring.
+ * co-edit Y.Doc client (passive scaffold) +
+ * awareness-frame wiring.
  *
  * Owns the WebSocket lifecycle against
  * ``/ws/notebook/coedit/{notebook_uuid}`` (the Sprint 105.2 hub) and
@@ -129,7 +129,7 @@ export function createCoeditClient({
         // updates we had before connecting.  For 105.3's empty-Doc
         // bootstrap this is a no-op; harmless either way.
         _sendFrame(TAG_SYNC_STEP1, Y.encodeStateVector(ydoc));
-        // Phase 105 follow-up — cells that mounted before the
+        // cells that mounted before the
         // handshake landed got no ``cellYBinding`` (synced was
         // false) and silently fell back to standalone CodeMirror.
         // Fire ``onSynced`` so the mixin can rebind their editors
@@ -137,7 +137,7 @@ export function createCoeditClient({
         try { onSynced(); } catch (_e) { /* swallow */ }
       }
     } else if (tag === TAG_CELL_UUID_REMAP) {
-      // Phase 105.5 — server-originated advisory.  Payload is a
+      // server-originated advisory.  Payload is a
       // JSON ``{old_uuid: new_uuid}`` mapping that the
       // ``/api/notebooks/save`` handler emitted after the cell-
       // reconciler minted fresh UUIDs.  Patch the local Y.Doc so
@@ -186,7 +186,7 @@ export function createCoeditClient({
         try { onCellRemap(remap); } catch (_e) { /* swallow */ }
       }
     } else if (tag === TAG_AGENT_PRESENCE) {
-      // Phase 105.6 — agent broadcast.  Server-emitted JSON payload
+      // agent broadcast.  Server-emitted JSON payload
       // describing a pseudo-peer (agent_run_id, name, cell_uuid,
       // action).  The mixin layers it into ``coeditPeers`` so the
       // toolbar avatar rail renders agents alongside humans.

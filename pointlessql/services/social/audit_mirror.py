@@ -1,4 +1,4 @@
-"""Generic audit-log mirror for social-layer writes (Phase 77.0.C).
+"""Generic audit-log mirror for social-layer writes.
 
 Replaces the ad-hoc ``audit_service.log_action(...)`` call
 pattern that every Phase-76 social route hand-rolls today.  The

@@ -3,7 +3,7 @@
 Each notebook gets one persistent :class:`pycrdt.Doc` mirrored into
 the ``notebook_crdt_state`` table.  This module owns the load / patch
 / flush cycle plus initial seeding from the on-disk ``.py``.  The WS
-hub (Sprint 105.2) layers a per-notebook broadcast on top of these
+hub layers a per-notebook broadcast on top of these
 primitives; this file stays storage-focused so unit tests can exercise
 the CRDT state machine without an asyncio loop.
 

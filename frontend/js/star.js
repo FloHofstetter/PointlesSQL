@@ -6,7 +6,7 @@
 // ``pql:starred-changed`` so the open sidebar picks up changes
 // without a hard reload.
 //
-// Phase 86 D lifted this out of base.html so the layout file
+// D lifted this out of base.html so the layout file
 // shrinks below 750 lines and the factory gets a single grep-able
 // home shared by every page that mounts a star toggle.
 //
@@ -35,14 +35,14 @@ window.pqlStarKey = function (item) {
     if (item.kind === 'table') {
         return 'tbl:' + (item.ref || (item.catalog + '.' + item.schema + '.' + item.table));
     }
-    // Phase 77.8.E — generic shape: any kind that the social registry
+    // generic shape: any kind that the social registry
     // recognises (model / branch / run / dp / table / …) uses
     // ``{kind, ref}``; keep a stable key so the localStorage fallback
     // path (for catalog + schema kinds until 77.5) doesn't double-key.
     if (item.ref) return item.kind + ':' + item.ref;
     return '';
 };
-// Phase 77.8.E — pqlStarToggle is now server-backed for every
+// pqlStarToggle is now server-backed for every
 // entity kind registered in the social entity_registry; for
 // kinds that aren't yet registered (catalog + schema land in
 // Phase 77.5) the component gracefully degrades to localStorage

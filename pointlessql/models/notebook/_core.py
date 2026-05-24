@@ -27,7 +27,7 @@ from pointlessql.models.base import Base
 
 
 class Notebook(Base):
-    """Stable UUID identity for a notebook (Phase 77.6).
+    """Stable UUID identity for a notebook.
 
     Pre-77.6 notebooks lived as bare files on disk referenced by
     ``file_path`` directly.  Path-keyed addressing breaks every
@@ -72,7 +72,7 @@ class Notebook(Base):
 
 
 class NotebookCellIdentity(Base):
-    """Stable UUID identity for a single notebook cell (Phase 95).
+    """Stable UUID identity for a single notebook cell.
 
     Named ``NotebookCellIdentity`` rather than ``NotebookCell`` to avoid
     a name collision with the transient doc-level
@@ -378,7 +378,7 @@ class NotebookCellRunSource(Base):
 class NotebookJobLink(Base):
     """Map a notebook path to the papermill jobs that target it.
 
-    Phase 67.4 surface: the notebook editor's "Jobs of this notebook"
+    the notebook editor's "Jobs of this notebook"
     panel needs to look up scheduled + recent jobs for the open
     notebook path. The :class:`~pointlessql.models.Job` table stores
     its ``notebook_path`` inside a JSON config blob (``Text`` column),

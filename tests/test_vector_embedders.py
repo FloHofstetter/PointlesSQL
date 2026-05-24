@@ -1,4 +1,4 @@
-"""Phase 92 — Embedder protocol + registry unit tests.
+"""Embedder protocol + registry unit tests.
 
 Pure-Python; never imports ``sentence_transformers`` so the suite
 runs without the ``[vector]`` extra installed.

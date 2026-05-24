@@ -114,7 +114,7 @@ CREATE TABLE IF NOT EXISTS audit_search_index (
 """
 
 
-# Phase 78 polish — kind derivation expression for the audit_log
+# kind derivation expression for the audit_log
 # axis.  ``data_product:`` legacy prefix maps to ``dp`` (locked
 # decision #3); every other ``{kind}:{ref}`` carries its own kind.
 _PG_AUDIT_LOG_KIND_EXPR = (

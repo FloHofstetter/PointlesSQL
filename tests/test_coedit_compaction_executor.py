@@ -1,4 +1,4 @@
-"""Phase 105.8 — coedit-compaction scheduler executor tests."""
+"""coedit-compaction scheduler executor tests."""
 
 from __future__ import annotations
 

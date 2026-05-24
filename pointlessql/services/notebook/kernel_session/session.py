@@ -58,7 +58,7 @@ def __pql_sql_run(query, *, approved_tables, result_var, max_rows):
     return None
 
 
-# Phase 67.5 — Variable Inspector helpers.
+# Variable Inspector helpers.
 #
 # `__pql_inspect__` emits a list of {name, type, repr, size?} dicts for
 # every user-visible global as a custom-MIME ``display_data`` frame.
@@ -124,7 +124,7 @@ def __pql_inspect_detail__(varname):
     return None
 
 
-# Phase 98.A — magic-command helpers.  The WS pre-processor
+# magic-command helpers.  The WS pre-processor
 # (``pointlessql.services.notebook.magic_commands``) rewrites every
 # recognised ``%magic`` line into a call to one of these.  The helpers
 # all use ``IPython.display.display`` so the iopub stream carries the
@@ -255,7 +255,7 @@ class KernelSession:
         self._user_email = user_email
         self._notebook_path = notebook_path
         self._cwd = cwd
-        # Phase 99 / 102 Wave-D — context the kernel needs but cell
+        # context the kernel needs but cell
         # source code shouldn't touch directly.  Surfaced as env vars
         # so PQL + pointlessql.pql.context pick them up on
         # ``import pointlessql.pql`` at kernel-start time.  Mid-session
@@ -284,7 +284,7 @@ class KernelSession:
         """
         env = os.environ.copy()
         env["POINTLESSQL_PRINCIPAL"] = self._user_email
-        # Phase 99 / 102 Wave-D — surface notebook context + active
+        # surface notebook context + active
         # branch binding so ``pointlessql.pql.context`` and
         # ``PQL._branch_remap`` see them on first import.
         if self._notebook_id:
@@ -440,7 +440,7 @@ class KernelSession:
                 the kernel request — the Variable Inspector polls
                 use this so they don't push every probe onto
                 IPython's ``_ih`` / ``_oh`` history lists (caught
-                Phase 105 replay: the inspector inflated
+                the inspector inflated
                 ``In list[…]`` indefinitely).  Note: the Jupyter
                 ``silent`` flag itself stays ``False`` because the
                 inspector still needs its custom-MIME iopub frame

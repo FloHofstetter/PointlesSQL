@@ -1,5 +1,5 @@
 /**
- * Replays / scenario-mode panel (Phase 103 UI).
+ * Replays / scenario-mode panel.
  *
  * Backend ships ``GET /api/notebooks/replays`` + per-replay envelope
  * + diff endpoint.  This mixin exposes a panel that lists recent

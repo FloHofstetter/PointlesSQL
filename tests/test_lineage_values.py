@@ -1,4 +1,4 @@
-"""Value-lineage service unit tests (Sprint 15.7.1).
+"""Value-lineage service unit tests.
 
 Exercises :func:`pointlessql.services.lineage_edges.record_value_changes`,
 :func:`count_value_changes_for_op`, and

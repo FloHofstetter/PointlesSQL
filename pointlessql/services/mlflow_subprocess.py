@@ -135,7 +135,7 @@ class MLflowSubprocess:
     ) -> None:
         self.settings = settings
         self.soyuz_url = soyuz_url
-        # BUG-grand-09 — anchor relative-path defaults to the repo
+        # — anchor relative-path defaults to the repo
         # root rather than ``Path.cwd()`` so the MLflow tracking DB
         # and artifact root land in the same place no matter which
         # directory the server was started from.  Caller-supplied

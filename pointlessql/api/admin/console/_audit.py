@@ -281,7 +281,7 @@ async def admin_audit_export_tarball(
 ) -> Response:
     """Stream a ``.tar.gz`` bundle of the export + tamper-evidence sidecars.
 
-    Phase 75.1.  Same filter surface as :func:`admin_audit_export`;
+    func:`admin_audit_export`;
     the response body is a gzipped tarball containing three files:
 
     * ``pql-audit-<ts>.<fmt>`` — data.

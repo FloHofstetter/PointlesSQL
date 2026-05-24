@@ -1,4 +1,4 @@
-"""Pure-function unit tests for ``infer_column_edges`` (Sprint 15.6.2).
+"""Pure-function unit tests for ``infer_column_edges``.
 
 No DB, no soyuz — the helper takes column lists in and returns
 :class:`ColumnEdgeSpec` lists out.  These tests pin down the

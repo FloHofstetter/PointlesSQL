@@ -123,7 +123,7 @@ async def handle_execute(
         }
         kernel_source = wrapped_source
     elif cell_type == "code" and notebook_magic_commands.has_magics(source):
-        # Phase 98.A — rewrite %sql / %md / %fs ls / %timeit lines.
+        # rewrite %sql / %md / %fs ls / %timeit lines.
         # SQL fragments need server-side approval resolution before
         # the wrapper call is spliced back into the placeholder.
         pre = notebook_magic_commands.preprocess(source)

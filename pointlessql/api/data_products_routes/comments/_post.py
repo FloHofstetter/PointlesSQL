@@ -60,7 +60,7 @@ async def post_data_product_comment(
     Body: ``{"body_md": str, "parent_comment_id": int | None,
     "category": str | None}``.
 
-    Threading capped at depth 5 (Phase 76.1 lifted from 2).  The
+    Threading capped at depth 5.  The
     handler walks the parent's ``parent_comment_id`` chain and
     rejects a POST that would push depth past 5.  Replies inherit
     their parent's category — the caller's ``category`` is only
@@ -74,7 +74,7 @@ async def post_data_product_comment(
             posted *by* the agent on behalf of the caller (who
             must be the agent's ``principal_user_id``, or admin).
             The ``author_user_id`` column still records the
-            principal so the audit chain stays intact (Phase 76.5).
+            principal so the audit chain stays intact.
 
     Returns:
         Serialised comment row.  When ``?as_agent=`` is supplied
@@ -111,7 +111,7 @@ async def post_data_product_comment(
     if requested_category is not None and requested_category not in ALLOWED_CATEGORIES:
         raise BadRequestError(f"category must be one of {ALLOWED_CATEGORIES}")
 
-    # Phase 76.5 — resolve the optional ``as_agent`` slug *before*
+    # resolve the optional ``as_agent`` slug *before*
     # writing the comment so the authorship-discriminator is set
     # atomically.  Helper enforces the principal-or-admin gate;
     # see ``_shared.resolve_agent_for_principal``.
@@ -155,7 +155,7 @@ async def post_data_product_comment(
             catalog_name=catalog,
             schema_name=schema,
         )
-        # Phase 76.5 — ``author_user_id`` always carries the
+        # ``author_user_id`` always carries the
         # human accountable (caller if direct, principal_user
         # when speaking-as-agent).  ``author_agent_id`` is the
         # optional presentation-layer override.
@@ -199,7 +199,7 @@ async def post_data_product_comment(
             workspace_id=workspace_id,
         )
 
-    # Phase 72.5: audit-log mirror so the Phase-18.7 FTS picks
+    # audit-log mirror so the Phase-18.7 FTS picks
     # comments up in `/audit/search`.  The DataProductComment
     # table stays system-of-record; this row is discoverability
     # only.  body_preview keeps the 140-char display affordance;
@@ -223,7 +223,7 @@ async def post_data_product_comment(
         workspace_id=workspace_id,
     )
 
-    # Phase 71.4: per-user inbox fan-out + governance CloudEvent.
+    # per-user inbox fan-out + governance CloudEvent.
     source_url = (
         f"/data-products/{catalog}/{schema}#tab-discussion-comment-{comment_id}"
     )

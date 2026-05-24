@@ -1,4 +1,4 @@
-"""Sprint 28.1b — workspace isolation for lineage / audit_log / governance / queries.
+"""workspace isolation for lineage / audit_log / governance / queries.
 
 Asserts that every audit-side table that grew workspace_id in 28.1b
 isolates correctly:

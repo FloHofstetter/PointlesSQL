@@ -1,4 +1,4 @@
-"""Notebook revision routes (Phase 97).
+"""Notebook revision routes.
 
 Exposes the revision-history surface the editor's "History" panel
 calls:
@@ -202,7 +202,7 @@ async def api_set_revision_signature(
     revision_uuid: str,
     body: dict[str, Any] = Body(...),
 ) -> JSONResponse:
-    """Persist an external signature on a revision (Phase 97 Wave-D).
+    """Persist an external signature on a revision.
 
     Admin-only receive surface for the deferred shoreguard sign-revision
     API or any other out-of-band signer (enterprise reviewer, CI job).

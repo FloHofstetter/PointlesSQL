@@ -1,4 +1,4 @@
-"""Sprint 29.3 — OIDC group → workspace + scope mapping.
+"""OIDC group → workspace + scope mapping.
 
 Pins the surface area users care about:
 

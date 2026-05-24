@@ -1,4 +1,4 @@
-"""Multi-cell AI-assistant proposals (Phase 104).
+"""Multi-cell AI-assistant proposals.
 
 Extends Phase 96's single-cell propose / fix / explain flow to a
 full cell-sequence proposal.  One row carries the entire suggested

@@ -1,4 +1,4 @@
-{# Phase 97 Wave-D — Revision history + cell-diff drawer.
+{# Revision history + cell-diff drawer.
 
    Lives outside the per-cell ``x-for`` so it stays single-instance.
    Toggled by the toolbar "History" button via ``toggleRevisionsPanel()``.
@@ -40,7 +40,7 @@
   <div class="alert alert-danger py-1 small mb-2" x-text="revisions.error"></div>
  </template>
 
- {# Phase 97 Rest — Cell-output pin dialog.  Opens when the user
+ {# Cell-output pin dialog.  Opens when the user
     clicks a cell-header 📌 chip on an unpinned cell; the chip in
     ``installCellFacts`` auto-opens the revisions drawer so the
     dialog renders here.  Auto-snapshots the notebook so the fact
@@ -140,7 +140,7 @@
          <code x-text="r.revision_uuid.slice(0, 8)"></code>
         </div>
        </div>
-       {# Phase 97 Rest — per-row 📌 Pin-as-fact button.  Lit yellow
+       {# per-row 📌 Pin-as-fact button.  Lit yellow
           when the revision already carries an active whole-revision
           fact; click then unpins.  Unlit click opens the inline pin
           form rendered below the list. #}

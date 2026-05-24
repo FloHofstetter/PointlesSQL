@@ -1,4 +1,4 @@
-"""Daily marketplace-digest service (Phase 71.4 follow-up B.3).
+"""Daily marketplace-digest service.
 
 Two callables:
 

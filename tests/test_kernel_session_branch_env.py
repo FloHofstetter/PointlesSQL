@@ -1,4 +1,4 @@
-"""Phase 102 kernel env-bridge — start-time env injection.
+"""start-time env injection.
 
 The Phase 102 branch-aware notebook contract has two layers:
 

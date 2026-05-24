@@ -180,7 +180,7 @@ async def open_issue(
         session_factory=factory,
         workspace_id=workspace_id,
     )
-    # Phase 81.K.6 — surface issue lifecycle in the feed.  The
+    # surface issue lifecycle in the feed.  The
     # fanout dispatcher's follower-resolver walks the polymorphic
     # social_follows on this issue and its parent entity; an empty
     # follower set is a no-op so this is safe regardless of state.

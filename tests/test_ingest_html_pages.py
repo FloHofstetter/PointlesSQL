@@ -1,4 +1,4 @@
-"""Phase 82.1 — HTML pages render and contain the expected affordances."""
+"""HTML pages render and contain the expected affordances."""
 
 from __future__ import annotations
 

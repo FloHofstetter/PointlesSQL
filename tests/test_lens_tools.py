@@ -1,4 +1,4 @@
-"""Sprint 65.2 — Lens tool registry tests.
+"""Lens tool registry tests.
 
 Exercise the registry shape, audit-hook dispatch, schema converters,
 and one happy-path tool execution per category.  Uses synthetic

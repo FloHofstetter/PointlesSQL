@@ -1,4 +1,4 @@
-"""Phase 80.5 — /me consolidated hub tests."""
+"""/me consolidated hub tests."""
 
 from __future__ import annotations
 

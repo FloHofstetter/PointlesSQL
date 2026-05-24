@@ -1,5 +1,5 @@
 /**
- * Phase 95.2 — Cell-level social: inline thread below each cell.
+ * Cell-level social: inline thread below each cell.
  *
  * Mounted per cell as ``x-data="cellThread({ notebookUuid, cellUuid,
  * initialCounts })"`` inside the cell wrapper.  Lazy-loads the thread
@@ -21,7 +21,7 @@
 
 const ALLOWED_EMOJI = ["👍", "❤️", "🎉", "😄", "😕", "👀"];
 
-// Phase 101 Wave-D — review decisions encoded as a leading body_md
+// review decisions encoded as a leading body_md
 // line.  The polymorphic comments table carries ``category`` but no
 // dedicated decision column; adding one would be a migration for what
 // is effectively a UI affordance.  Keeping the decision in the body
@@ -100,12 +100,12 @@ export function cellThread({ notebookUuid, cell, initialCounts, curatedTags = []
         draftBody: "",
         submitting: false,
         allowedEmoji: ALLOWED_EMOJI,
-        // Phase 96 — accepted ``pql_explain_cell`` payloads attached
+        // accepted ``pql_explain_cell`` payloads attached
         // to this cell.  Lazily fetched on first open via the
         // /api/notebook/chat/cell/{uuid}/explanations route.
         explanations: [],
         explanationsLoaded: false,
-        // Phase 101 Wave-D — review-compose UI state.
+        // review-compose UI state.
         reviewComposerOpen: false,
         reviewDecision: "approved",
         reviewBody: "",
@@ -232,7 +232,7 @@ export function cellThread({ notebookUuid, cell, initialCounts, curatedTags = []
                 this.followerCount = followersResp.count || 0;
                 this.following = !!followersResp.following;
                 this.loaded = true;
-                // Phase 96 — explanations live on a separate route
+                // explanations live on a separate route
                 // because they're keyed on cell_uuid alone (no
                 // notebook prefix).  Fetch alongside the social
                 // bundle so the section renders immediately.
@@ -293,7 +293,7 @@ export function cellThread({ notebookUuid, cell, initialCounts, curatedTags = []
             }
         },
 
-        // Phase 101 Wave-D — submit a per-cell review decision.  Posts
+        // submit a per-cell review decision.  Posts
         // a comment with ``category='review'`` and a decision-prefix
         // line that the renderer extracts back into the badge + label.
         async submitReview() {

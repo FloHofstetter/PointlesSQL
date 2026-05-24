@@ -1,4 +1,4 @@
-"""Tests for ``GET /api/notebooks/jobs`` (Phase 67.4 panel endpoint).
+"""Tests for ``GET /api/notebooks/jobs``.
 
 The editor surfaces scheduled jobs + recent runs for the open
 notebook via a single side-panel. This endpoint joins
@@ -145,7 +145,7 @@ async def test_limit_honored(
 async def test_non_admin_accessible(
     workspace_dir: Path, non_admin_client: httpx.AsyncClient
 ) -> None:
-    """Phase 70: any authenticated user can read the jobs panel."""
+    """any authenticated user can read the jobs panel."""
     resp = await non_admin_client.get(
         "/api/notebooks/jobs", params={"path": "x.py"}
     )

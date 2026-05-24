@@ -1,4 +1,4 @@
-"""Roundtrip tests for params-tag persistence (Phase 67.7).
+"""Roundtrip tests for params-tag persistence.
 
 The editor toggles ``parameters`` tags on individual cells via
 ``toggleParamsTag()`` and POSTs them through ``/api/notebooks/save``.

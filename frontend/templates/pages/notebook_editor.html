@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{# Phase 112 — Notebook editor opts in to the right meta panel.
+{# Notebook editor opts in to the right meta panel.
    ``meta_panel_target`` tells base.html to render the empty
    ``<aside id="pql-meta-panel">`` as a target; the content lives
    inside the ``notebookEditor()`` x-data wrapper below and is
@@ -20,7 +20,7 @@
 <link rel="stylesheet" href="/static/css/notebook.css?v={{ asset_version }}">
 {% endblock %}
 
-{# Phase 113.5 — lock the body scroll for the notebook editor.
+{# lock the body scroll for the notebook editor.
    Without this the rail/ctx/meta sticky elements get released from
    their containing block when scrolling near the document bottom
    (sticky's spec behaviour), and the rail visually lifts above the
@@ -46,7 +46,7 @@
 
  {% include "pages/_partials/notebook_editor/toolbar.html" %}
 
- {# Phase 112 — Meta panel (right rail).  Teleports into the
+ {# Meta panel (right rail).  Teleports into the
     empty ``#pql-meta-panel .pql-meta-panel__inner`` rendered by
     base.html so the sections read the surrounding x-data scope. #}
  <template x-teleport="#pql-meta-panel .pql-meta-panel__inner">
@@ -99,7 +99,7 @@
        :data-cell-id="cell.id"
        @dragover.prevent="onCellDragOver($event, cell)"
        @drop.prevent="onCellDrop($event, cell)">
-   {# Phase 115 — entire cell header acts as a desktop-window-style
+   {# entire cell header acts as a desktop-window-style
       drag handle.  Buttons / dropdowns / inputs inside the header
       stay interactive (click and drag are distinct gestures; HTML5
       DnD does not block button clicks).  The result-var ``<input>``
@@ -111,11 +111,11 @@
         @dragstart="onCellDragStart($event, cell)"
         @dragend="onCellDragEnd($event)">
     <div class="d-flex align-items-center gap-2">
-     {# Phase 95.x layout — Run button moved to the very left of the
+     {# Run button moved to the very left of the
         cell header, before the type-pill, so the kernel-action sits
         where the eye lands first when scanning a notebook.
 
-        Phase 113.6 — converted to a Bootstrap split-button: main
+        converted to a Bootstrap split-button: main
         action runs the cell as before; the caret opens a dropdown
         with above/below variants relative to THIS cell (no need to
         track focus separately).  Markdown cells get the plain Run
@@ -200,7 +200,7 @@
               placeholder="df"
               title="Name to bind the resulting DataFrame to in the kernel namespace"
               size="6"
-              {# Phase 115 — let text-selection drag inside the input
+              {# let text-selection drag inside the input
                  win over the header-as-drag-handle behaviour. #}
               draggable="false">
       </div>
@@ -210,7 +210,7 @@
      <span class="text-muted"
            x-show="cell._dirty"
            title="Cell modified since last save">●</span>
-     {# Phase 101 — per-cell author chip.  Hidden when no
+     {# per-cell author chip.  Hidden when no
         authorship row is known for this cell yet (un-saved cells
         + cells from before Phase 101 shipped).  Methods live on
         the outer notebookEditor scope so we don't pay for a
@@ -222,7 +222,7 @@
       <i class="bi" :class="authorChipIcon(cell)" aria-hidden="true"></i>
       <span x-text="authorChipLabel(cell)"></span>
      </span>
-     {# Phase 98.C Wave-D / Sprint 113.1 — lineage chips capped at 1.
+     {# lineage chips capped at 1.
         Tail badges roll into a ``+N more`` overflow chip whose
         tooltip lists every additional target table; the full list
         also re-appears as a read-only section inside the per-cell
@@ -246,7 +246,7 @@
        </template>
       </span>
      </template>
-     {# Phase 97 Rest — per-cell pinned-fact 📌 chip.  Lit when at
+     {# per-cell pinned-fact 📌 chip.  Lit when at
         least one active cell-output fact references this cell's
         content_hash; click on a lit chip unpins the newest fact;
         click on an unlit chip opens the inline pin dialog in the
@@ -269,11 +269,11 @@
       <span x-show="factsFor(cell).length > 0" x-cloak
             class="ms-1" x-text="factsFor(cell).length"></span>
      </button>
-     {# Phase 95.3 — Tag-picker toggle.  Lives in the right cluster
+     {# Tag-picker toggle.  Lives in the right cluster
         flush with the social chip + run cluster so all per-cell
         action buttons sit together on the right edge. #}
      {% include "pages/_partials/notebook_editor/cell_tag_picker.html" %}
-     {# Phase 95.2 — 💬 chip toggles the inline cell-thread below.
+     {# 💬 chip toggles the inline cell-thread below.
         Cells minted before Phase 95 carry no ``cell_uuid``; the
         save-path reconciler assigns one.  The chip stays visible
         either way — first click on an un-saved cell fires a save
@@ -288,7 +288,7 @@
       <span x-show="commentCount > 0" x-cloak
             class="ms-1" x-text="commentCount"></span>
      </button>
-     {# Phase 101 Wave-D — per-cell Review affordance.  Opens the
+     {# per-cell Review affordance.  Opens the
         review composer inside the cell-thread drawer (gated on a
         minted cell_uuid, same as the 💬 chip).  The green ✓ count
         surfaces approved reviews; the orange ⚠ count surfaces
@@ -306,7 +306,7 @@
       <span x-show="changesRequestedCount > 0" x-cloak
             class="ms-1 text-warning" x-text="`⚠${changesRequestedCount}`"></span>
      </button>
-     {# Sprint 113.1 — single ⋯ overflow menu replaces the former
+     {# single ⋯ overflow menu replaces the former
         type-dropdown + history-toggle + 5-button move/insert/delete
         cluster (15 → 1 visible affordance per cell).  All click
         handlers live on the outer notebookEditor() scope so this

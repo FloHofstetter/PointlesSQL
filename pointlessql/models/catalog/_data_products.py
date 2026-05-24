@@ -1,4 +1,4 @@
-"""Data-product cache + contract-event log (Phase 50).
+"""Data-product cache + contract-event log.
 
 Two tables:
 
@@ -78,7 +78,7 @@ class DataProduct(Base):
         description: One-paragraph description from the yaml.
         sla_minutes: Optional freshness SLA in minutes; NULL
             means "no SLA expectation" — the freshness scanner
-            (Sprint 50.4) skips these rows.
+            skips these rows.
         contract_yaml_hash: SHA-256 of the yaml file as it was
             last loaded.  Drift detection compares this against
             a fresh hash on re-load and triggers a re-cache.

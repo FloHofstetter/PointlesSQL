@@ -1,4 +1,4 @@
-"""Phase 85.1 — Dataflow canvas service layer.
+"""Dataflow canvas service layer.
 
 The canvas is a deliberately-bounded prototype: a single linear
 pipeline of typed nodes that translates to a short PQL script.

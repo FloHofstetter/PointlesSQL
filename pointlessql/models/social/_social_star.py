@@ -1,4 +1,4 @@
-"""Lightweight per-user star bookmarks (Phase 77.8).
+"""Lightweight per-user star bookmarks.
 
 Stars are the "I bookmarked this, no notifications" primitive.
 They sit alongside the Phase-71 follow table — follows generate

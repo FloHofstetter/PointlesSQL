@@ -1,4 +1,4 @@
-"""Sprint 65.6 — pinned-answer routes + service tests."""
+"""pinned-answer routes + service tests."""
 
 from __future__ import annotations
 

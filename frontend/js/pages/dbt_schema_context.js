@@ -3,12 +3,12 @@
  *
  * Powers four pieces on /catalogs/<c>/schemas/<s>:
  *  - a "dbt" badge inline next to each table-name row when that
- *    table is materialised by a dbt model (Phase 61)
- *  - a "Recent dbt runs" mini-card under the Tables card (Phase 61)
+ *    table is materialised by a dbt model
+ *  - a "Recent dbt runs" mini-card under the Tables card
  *  - a "ml" badge inline next to each table-name row when that
- *    table is a model-prediction destination (Phase 62)
+ *    table is a model-prediction destination
  *  - a "Recent ML registrations" mini-card under the Tables card
- *    (Phase 62)
+ *   
  *
  * All four are silently absent when the install has no dbt manifest
  * or no MLflow registry — see the dbt+MLflow hand-off plan for why

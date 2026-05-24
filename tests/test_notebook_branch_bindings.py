@@ -256,7 +256,7 @@ async def test_api_branch_rejects_bad_name(
 
 
 # ---------------------------------------------------------------------------
-# Phase 102 Track-H — promote-reviewer webhook gate
+# promote-reviewer webhook gate
 # ---------------------------------------------------------------------------
 
 

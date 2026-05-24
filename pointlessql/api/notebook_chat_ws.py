@@ -1,6 +1,6 @@
-"""WebSocket route ``/ws/notebook/chat/{editor_session_id}`` (Phase 96).
+"""WebSocket route ``/ws/notebook/chat/{editor_session_id}``.
 
-Notebook-editor twin of :mod:`sql_chat_ws` (Phase 91).  Same
+Notebook-editor twin of :mod:`sql_chat_ws`.  Same
 JSON-RPC envelope; the differences are:
 
 * ``surface="notebook"`` is forwarded to the agent factory so the

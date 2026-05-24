@@ -1,4 +1,4 @@
-"""Sprint 43.2 — Reparented orphan exception families.
+"""Reparented orphan exception families.
 
 Locks the contract that every domain exception in the project
 inherits from :class:`PointlessSQLError`, carries a

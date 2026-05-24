@@ -1,4 +1,4 @@
-"""Polymorphic Issues router (Phase 77.7) — split per CRUD verb.
+"""Polymorphic Issues router — split per CRUD verb.
 
 The pre-Phase-110 layout collapsed every route + helper into one
 ~749 LOC ``issues.py`` module.  Phase 110.7 split it per verb-group:

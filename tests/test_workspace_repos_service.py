@@ -1,4 +1,4 @@
-"""Phase 51.1 — workspace-repo service surface.
+"""workspace-repo service surface.
 
 Covers create / add_secret / rotate_webhook_secret / delete /
 list / sync against a real local bare repository (no network).

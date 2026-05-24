@@ -1,8 +1,8 @@
-"""HTML pages for the user-directory surface (Phase 76.2 + 80.4).
+"""HTML pages for the user-directory surface.
 
 Three routes:
 
-* ``GET /users`` — workspace-scoped People index (Phase 80.4).
+* ``GET /users`` — workspace-scoped People index.
 * ``GET /users/me`` — 302 to the caller's own profile page.
 * ``GET /users/{user_id}`` — renders ``pages/user_profile.html``
   which Alpine-fetches the full payload from

@@ -1,4 +1,4 @@
-"""Sprint 57.6 — coverage extension for jobs_routes.py.
+"""coverage extension for jobs_routes.py.
 
 The existing ``tests/test_scheduler.py::TestJobRoutes`` already
 covers list / create / run / pause / unpause and the two HTML
@@ -269,7 +269,7 @@ async def test_compare_404_for_unknown_run(admin_client: httpx.AsyncClient) -> N
     assert resp.status_code == 404
 
 
-# -- /api/jobs/{job_id}/runs (Phase 67.3 listing) ----------------------
+# -- /api/jobs/{job_id}/runs ----------------------
 
 
 async def test_list_job_runs_returns_newest_first(

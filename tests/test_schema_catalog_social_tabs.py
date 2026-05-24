@@ -1,4 +1,4 @@
-"""Phase 77.5 — catalog + schema detail pages render the social tabs.
+"""catalog + schema detail pages render the social tabs.
 
 The catalog browser uses ``schemas.html`` for ``/catalogs/{cat}``
 and ``tables.html`` for ``/catalogs/{cat}/schemas/{sch}``.  77.5

@@ -71,7 +71,7 @@ class PredecessorRef:
         row_id: ``_lineage_row_id`` value on the source row.
         op_id: ``agent_run_operations.id`` that produced this edge,
             or ``None`` for edges ingested from external producers via
-            ``POST /api/lineage/openlineage`` (Phase 40).
+            ``POST /api/lineage/openlineage``.
         run_id: PointlesSQL run UUID associated with the edge, or
             ``None`` when the join row is missing OR when the edge was
             ingested from an external producer.
@@ -145,7 +145,7 @@ class ColumnPredecessorRef:
             ``unknown_origin`` edges.
         op_id: ``agent_run_operations.id`` that produced this edge,
             or ``None`` for edges ingested from external producers via
-            ``POST /api/lineage/openlineage`` (Phase 40).
+            ``POST /api/lineage/openlineage``.
         run_id: PointlesSQL run UUID, or ``None`` when the join row
             is missing OR when the edge was ingested externally.
         transform_kind: How the source feeds the target.

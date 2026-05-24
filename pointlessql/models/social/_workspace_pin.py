@@ -1,4 +1,4 @@
-"""Workspace pinned-entity rows (Phase 77.10).
+"""Workspace pinned-entity rows.
 
 A workspace landing page (``/workspaces/{slug}``) displays a
 small admin-curated gallery of pinned entities — analogous to a

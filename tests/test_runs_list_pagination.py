@@ -1,4 +1,4 @@
-"""Sprint 55.3 — ``/runs`` infinite-scroll pagination.
+"""``/runs`` infinite-scroll pagination.
 
 Cover the offset+total contract on the JSON sibling, the HTMX
 fragment behaviour of the HTML route, and the Load-More CTA shape.

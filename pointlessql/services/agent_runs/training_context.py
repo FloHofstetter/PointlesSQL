@@ -154,7 +154,7 @@ def training_context(
     :func:`operation_context` — the audit row lands without
     training-params content.
 
-    BUG-grand-05 / when both ``source_table_fqn`` and
+    / when both ``source_table_fqn`` and
     ``model_fqn`` are set, the wrapper emits **one** training-source
     edge into ``lineage_row_edges`` so the model-detail Lineage DAG
     can paint the upstream node (the gold/training source).  The
@@ -219,7 +219,7 @@ def training_context(
                 "source_table_fqn": source_table_fqn,
                 "model_fqn": model_fqn,
             }
-            # BUG-grand-05 / single synthetic edge
+            # / single synthetic edge
             # because training reads the whole table; row-level
             # provenance is meaningless at the model-artefact grain.
             op_recorder.pending_lineage_edges = {

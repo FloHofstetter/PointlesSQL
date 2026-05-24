@@ -1,4 +1,4 @@
-"""Admin JSON API for workspace-repo management (Phase 51.5).
+"""Admin JSON API for workspace-repo management.
 
 Endpoints (all gated by :func:`require_admin`):
 

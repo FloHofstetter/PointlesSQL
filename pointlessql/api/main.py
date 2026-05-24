@@ -299,7 +299,7 @@ def _admin_issue_auditor_key(  # pyright: ignore[reportUnusedFunction]
 
 @cli.command("lens-mcp")
 def _lens_mcp_cmd() -> None:  # pyright: ignore[reportUnusedFunction]
-    """Run the Lens read-only Q&A MCP server on stdio (Phase 65.4).
+    """Run the Lens read-only Q&A MCP server on stdio.
 
     Reads ``LENS_API_KEY`` (an analyst-scoped api_keys secret) from
     the env, resolves it to a workspace, and exposes every Lens tool
@@ -361,7 +361,7 @@ def _audit_export_cmd(  # pyright: ignore[reportUnusedFunction]
         help="SQLAlchemy URL override; defaults to POINTLESSQL_DB_URL.",
     ),
 ) -> None:
-    """Export the audit log + tamper-evidence sidecars (Phase 75.1).
+    """Export the audit log + tamper-evidence sidecars.
 
     Writes three mode-0600 files at ``--out``:
 

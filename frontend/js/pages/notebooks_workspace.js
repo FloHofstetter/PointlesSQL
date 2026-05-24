@@ -66,7 +66,7 @@ export function notebookWorkspace() {
   ...notebookDialogs(),
   ...notebookModalApis(),
 
-  // Phase 98.B — starter-template gallery state.  Kept on the outer
+  // starter-template gallery state.  Kept on the outer
   // factory rather than the dialogs mixin so the field is visible
   // even if the browser's ES-module cache is still serving an older
   // dialogs.js (which has no asset_version-derived URL on the
@@ -79,7 +79,7 @@ export function notebookWorkspace() {
   error: null,
   open: {},
 
-  // Phase 98.B Wave-D — workspace-tree tag display.  ``tagsByPath``
+  // workspace-tree tag display.  ``tagsByPath``
   // maps each notebook's relative path to its tag list; loaded from
   // the bulk endpoint after ``fetchTree`` to keep tree + tags in
   // sync.  ``tagFilter`` is a single-tag filter (null = no filter)

@@ -57,7 +57,7 @@ async def api_search(request: Request, q: str = "", limit: int = 50) -> list[dic
         return []
     limit = max(1, min(int(limit), 100))
 
-    # Phase 80.6 operator parsing — Slack convention.  ``@<term>``
+    # Slack convention.  ``@<term>``
     # narrows to ``user`` results; ``#<term>`` narrows to ``topic``
     # results.  The leading sigil is stripped before scoring; a bare
     # ``@`` or ``#`` (no term) lists every member of the selected kind

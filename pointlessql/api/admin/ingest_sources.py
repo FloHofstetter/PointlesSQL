@@ -1,4 +1,4 @@
-"""Phase 82.5 — system-wide ingest health monitor (admin-only).
+"""system-wide ingest health monitor (admin-only).
 
 * ``GET /api/admin/ingest-sources`` — list every IngestSource across
   workspaces with a rollup health summary (last pull status, last

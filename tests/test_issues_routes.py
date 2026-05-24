@@ -1,4 +1,4 @@
-"""Phase 77.7 — issues routes round-trip + state transitions.
+"""issues routes round-trip + state transitions.
 
 Coverage:
 

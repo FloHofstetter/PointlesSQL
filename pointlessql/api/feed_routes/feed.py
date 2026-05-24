@@ -58,7 +58,7 @@ async def get_feed(
 ) -> dict[str, Any]:
     """Return the caller's merged feed.
 
-    Phase 77.9 — the feed now lists comments + reviews across every
+    the feed now lists comments + reviews across every
     polymorphic entity kind (table / model / branch / run / etc.),
     not just data products.  The new optional ``kind`` query
     parameter narrows the result set to one ``entity_kind`` value;
@@ -92,7 +92,7 @@ async def get_feed(
     factory = request.app.state.session_factory
     rows: list[dict[str, Any]] = []
     with factory() as session:
-        # Phase 77.0.I — per-request DP-FQN cache feeds the
+        # per-request DP-FQN cache feeds the
         # registry-driven URL builder so every feed row carries
         # the same shape ``social_target.entity_ref`` rows use.
         fqn_map = build_fqn_map(session, workspace_id)
@@ -124,7 +124,7 @@ async def get_feed(
         comments_rows: list[Any] = []
         reviews_rows: list[Any] = []
         if followed_user_ids:
-            # Phase 77.9 — JOIN the polymorphic anchor so cross-kind
+            # JOIN the polymorphic anchor so cross-kind
             # comments + reviews flow into the feed with the right
             # entity_kind/entity_ref + source_url.
             comments_rows = session.execute(
@@ -155,7 +155,7 @@ async def get_feed(
                 .limit(limit)
             ).all()
 
-        # Phase 81.K.2 — bulk-resolve actor display names so every
+        # bulk-resolve actor display names so every
         # feed row carries an attribution line.  One SELECT for all
         # actor + author user-ids surfaced above.
         actor_names = build_actor_names(
@@ -249,7 +249,7 @@ async def get_feed(
     if needle:
         rows = [r for r in rows if needle in (r.get("summary_md") or "").lower()]
 
-    # Phase 81.K.2 — kind-filter accepts a comma-separated list of
+    # kind-filter accepts a comma-separated list of
     # entity-kind values; rows pass when any selected kind matches.
     # A single value keeps the Phase 77.9 single-kind behaviour.
     if kind:
@@ -257,7 +257,7 @@ async def get_feed(
         if wanted_kinds:
             rows = [r for r in rows if r.get("entity_kind") in wanted_kinds]
 
-    # Phase 81.K.4 — drop rows muted by the caller.  Muted threads
+    # drop rows muted by the caller.  Muted threads
     # are identified by ``(entity_kind, entity_ref)``; muted authors
     # are stored as ``(entity_kind='user', entity_ref=<user_id>)``
     # so the same set covers both axes in one membership test.
@@ -294,7 +294,7 @@ async def get_feed(
 
 
 # ---------------------------------------------------------------
-# Phase 81.K.5 — right-column endpoints.
+# right-column endpoints.
 #
 # Two read-only feeds drive the discovery panel:
 # ``GET /api/feed/trending`` and ``GET /api/feed/people``.  Both
@@ -309,7 +309,7 @@ async def get_trending(
 ) -> dict[str, Any]:
     """Top-N entities by activity-count in the caller's workspace.
 
-    Phase 81.K.5 — drives the "Trending today" card on the feed's
+    drives the "Trending today" card on the feed's
     right column.  Aggregates ``user_notifications`` group-by
     ``(source_entity_kind, source_entity_ref)`` over the last 24 h,
     count desc.
@@ -370,7 +370,7 @@ async def get_people_to_follow(
 ) -> dict[str, Any]:
     """Top contributors the caller doesn't follow yet.
 
-    Phase 81.K.5 — drives the "People to follow" card.  Looks at
+    drives the "People to follow" card.  Looks at
     the last 7 days of comments + reviews, picks the most active
     authors that aren't already in the caller's ``user_follows``
     set, and returns ``{id, display_name, recent_event_count}``.

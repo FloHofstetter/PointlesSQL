@@ -28,7 +28,7 @@ async def _coedit_compaction_executor(
 ) -> None:
     """Compact stale ``notebook_crdt_state`` blobs.
 
-    Phase 105.8 — walk every ``notebook_crdt_state`` row, skip the
+    walk every ``notebook_crdt_state`` row, skip the
     notebooks that currently have a live Sprint-105.2 hub (the hub's
     own teardown flush handles those), and compact any inactive blob
     that has crossed the size or TTL gate exposed by

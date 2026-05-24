@@ -1,4 +1,4 @@
-"""Phase 51.1 — authenticated-encryption helper for at-rest secrets."""
+"""authenticated-encryption helper for at-rest secrets."""
 
 from __future__ import annotations
 

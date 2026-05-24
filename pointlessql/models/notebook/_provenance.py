@@ -1,4 +1,4 @@
-"""AI-assistant cell provenance audit log (Phase 96).
+"""AI-assistant cell provenance audit log.
 
 Append-only chain that records every accepted cell proposal once the
 user saves the notebook and the cell-reconciliation pass mints the
@@ -23,7 +23,7 @@ from pointlessql.models.base import Base
 
 
 class NotebookCellProvenance(Base):
-    """Append-only audit row for AI-assistant cell changes (Phase 96).
+    """Append-only audit row for AI-assistant cell changes.
 
     Every accepted :class:`NotebookCellProposal` writes one row here
     once the user saves the notebook and the cell-reconciliation

@@ -1,4 +1,4 @@
-"""Per-run audit row tests for GET /api/sql/explain (Phase 39 Sprint 39.1).
+"""Per-run audit row tests for GET /api/sql/explain.
 
 When the explain endpoint is called from inside an agent run (the
 ``X-Agent-Run-Id`` header is present), an ``agent_run_operations`` row

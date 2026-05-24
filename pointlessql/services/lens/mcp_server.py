@@ -1,4 +1,4 @@
-"""MCP server bindings for the Lens tool registry (Phase 65.4).
+"""MCP server bindings for the Lens tool registry.
 
 Exposes :data:`pointlessql.services.lens.tools.ALL_TOOLS` over the
 Model Context Protocol so IDE consumers (Claude Desktop, Cursor,

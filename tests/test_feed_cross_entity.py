@@ -1,4 +1,4 @@
-"""Phase 77.9 — cross-entity feed.
+"""cross-entity feed.
 
 Coverage:
 
@@ -136,7 +136,7 @@ async def test_feed_kind_filter_narrows_to_table(
 async def test_feed_kind_filter_accepts_comma_separated(
     admin_client: httpx.AsyncClient,
 ) -> None:
-    """Phase 81.K.2 — ``?kind=table,model`` keeps either kind."""
+    """``?kind=table,model`` keeps either kind."""
     await admin_client.post(
         "/api/social/table/main.sales.orders/comments",
         json={"body_md": "kind-comma-table fixture"},
@@ -167,7 +167,7 @@ async def test_feed_kind_filter_dp_keeps_legacy_view(
 
 
 def test_feed_html_carries_kind_filter_dropdown() -> None:
-    """``feed.html`` renders the multi-select kind dropdown (Phase 81.K.1).
+    """``feed.html`` renders the multi-select kind dropdown.
 
     Phase 81.K replaced the flat pill row with a checkbox-list
     dropdown driven by ``kindFilter`` (array) and ``kindOptions``.

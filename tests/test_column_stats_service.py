@@ -1,4 +1,4 @@
-"""Phase 91 — column-stats reduction + LRU cache.
+"""column-stats reduction + LRU cache.
 
 Pure unit tests against the pandas reduction in
 ``services.column_stats``.  The Delta-read path is monkeypatched

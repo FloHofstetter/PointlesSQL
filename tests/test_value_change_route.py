@@ -1,4 +1,4 @@
-"""Smoke tests for ``GET /api/lineage/value-changes`` (Sprint 15.7.4).
+"""Smoke tests for ``GET /api/lineage/value-changes``.
 
 Sets up synthetic ``lineage_value_changes`` rows and exercises the
 JSON handler.  The HTML row-trace surface that joins these rows into
@@ -35,7 +35,7 @@ def uc_mock(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
         classmethod(lambda cls, s, p: mock),  # type: ignore[arg-type]
     )
     # Same module-level get_session_factory shim as the column-trace
-    # smoke tests (Sprint 15.6.4).
+    # smoke tests.
     import pointlessql.db as _db
 
     monkeypatch.setattr(_db, "get_session_factory", lambda: app.state.session_factory)
@@ -161,6 +161,6 @@ async def test_value_changes_rejects_empty_row_id(
         "/api/lineage/value-changes",
         params={"table": "main.silver.orders", "row_id": ""},
     )
-    # Phase 43.3: ``row_id is required`` is a ValidationError (422).
+    # ``row_id is required`` is a ValidationError (422).
     assert response.status_code == 422
     assert response.json()["code"] == "validation_error"

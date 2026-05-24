@@ -1,4 +1,4 @@
-"""Phase 120 — per-API-key ACL check helpers.
+"""per-API-key ACL check helpers.
 
 Pure functions with no I/O.  Callers fetch the grants list once via
 :func:`load_grants_for` and pass it into the check functions.  Both

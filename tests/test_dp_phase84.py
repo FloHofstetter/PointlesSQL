@@ -1,4 +1,4 @@
-"""Phase 84 — DP overview hero + releases + forks + heatmap.
+"""DP overview hero + releases + forks + heatmap.
 
 Smoke tests that the new endpoints return the expected envelope.
 The HTML hero card lives in ``data_product.html`` and is rendered

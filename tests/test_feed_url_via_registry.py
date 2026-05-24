@@ -1,4 +1,4 @@
-"""Phase 77.0.I — feed URL builder via entity registry.
+"""feed URL builder via entity registry.
 
 Coverage:
 

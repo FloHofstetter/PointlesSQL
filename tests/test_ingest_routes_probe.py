@@ -1,4 +1,4 @@
-"""Phase 82.1 — probe endpoint smoke tests.
+"""probe endpoint smoke tests.
 
 We exercise the probe path for the three connector kinds that work
 purely on-host without network egress: ``file_upload`` (CSV file in

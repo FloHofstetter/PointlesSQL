@@ -1,6 +1,6 @@
 """Sanity tests for :class:`pointlessql.data_products.DataProductRef`.
 
-Same shape as ``tests/test_table_fqn.py`` (Phase 49c) — pin the
+Same shape as ``tests/test_table_fqn.py`` — pin the
 ``str``-subclass identity, the JSON wire format, and the
 parse/from_parts contracts so any regression at the boundary is
 caught at unit-test time.

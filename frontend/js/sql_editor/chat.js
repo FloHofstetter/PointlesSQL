@@ -1,5 +1,5 @@
 /**
- * Phase 91 — chat-drawer Alpine factory for the SQL editor.
+ * chat-drawer Alpine factory for the SQL editor.
  *
  * Owns the WebSocket lifecycle, message buffer, and the
  * proposal-banner queue.  The outer ``sqlEditor()`` scope exposes

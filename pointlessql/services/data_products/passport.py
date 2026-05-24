@@ -1,4 +1,4 @@
-"""Auto-generated data-product passport renderer (Phase 73.4).
+"""Auto-generated data-product passport renderer.
 
 Two callables:
 

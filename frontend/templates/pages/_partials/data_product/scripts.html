@@ -19,9 +19,9 @@ window.dataProductDetail = function (product, ctx) {
         commentsLoaded: false,
         commentsTotal: null,
         newCommentDraft: '',
-        // Phase 76.1 — category for the next top-level comment.
+        // category for the next top-level comment.
         newCommentCategory: 'general',
-        // Phase 76.1 — DP-level reactions, keyed by emoji.
+        // DP-level reactions, keyed by emoji.
         dpReactions: {},
         replyingTo: null,
         replyDraft: '',
@@ -43,13 +43,13 @@ window.dataProductDetail = function (product, ctx) {
         diffFrom: null,
         diffTo: null,
         diffText: '',
-        // Phase 73.4 — auto-generated system passport.
+        // auto-generated system passport.
         passport: null,
         passportLoaded: false,
-        // Phase 73.5 — related products from cooccurrence cache.
+        // related products from cooccurrence cache.
         related: [],
         relatedLoaded: false,
-        // Phase 73.3 — open schema-change proposals.
+        // open schema-change proposals.
         proposals: [],
         proposalsLoaded: false,
 
@@ -63,17 +63,17 @@ window.dataProductDetail = function (product, ctx) {
             await this.loadFollowState();
             this.loadRelated();
             this.loadProposals();
-            // Phase 84.1 — README on the Overview hero, eager-loaded.
+            // README on the Overview hero, eager-loaded.
             this.loadReadme();
-            // Phase 84.7 — Forks (active Delta branches off this DP).
+            // Forks (active Delta branches off this DP).
             this.loadForks();
-            // Phase 84.6 — Contributor heatmap data.
+            // Contributor heatmap data.
             this.loadHeatmap();
             this.wireLazyTabs();
             this.maybeTriggerInitialTabLoad();
         },
 
-        // Phase 84 — derived computed surfaces -----------------------
+        // derived computed surfaces -----------------------
 
         get healthBand() {
             const b = (this.detail && this.detail.badges) || {};
@@ -136,7 +136,7 @@ window.dataProductDetail = function (product, ctx) {
             if (snip) navigator.clipboard.writeText(snip);
         },
 
-        // Phase 84.7 — forks (active branches off this DP's schema).
+        // forks (active branches off this DP's schema).
 
         forks: [],
         forksLoaded: false,
@@ -158,7 +158,7 @@ window.dataProductDetail = function (product, ctx) {
             }
         },
 
-        // Phase 84.6 — Contributor heatmap.
+        // Contributor heatmap.
 
         heatmap: { cells: [], total: 0 },
         heatmapLoaded: false,
@@ -513,7 +513,7 @@ window.dataProductDetail = function (product, ctx) {
             }
         },
 
-        // Phase 76.1 — accept-answer authz mirrors the server: steward,
+        // accept-answer authz mirrors the server: steward,
         // install-admin, or the OP (top-level question author).
         canAcceptAnswer(topLevel, reply) {
             if (!topLevel || !reply) return false;

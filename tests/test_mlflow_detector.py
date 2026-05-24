@@ -1,4 +1,4 @@
-"""Tests for the MLflow detector hook (Phase 21.2).
+"""Tests for the MLflow detector hook.
 
 The detector is called from inside the operation-recorder hot path,
 so it must be cheap, side-effect-free, and never raise. These tests

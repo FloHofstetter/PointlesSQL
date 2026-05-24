@@ -1,4 +1,4 @@
-"""``/api/data-products/{catalog}/{schema}/(comments/{id}/)?reactions`` (Phase 76.1).
+"""``/api/data-products/{catalog}/{schema}/(comments/{id}/)?reactions``.
 
 GitHub-style six-emoji reactions on comments + on the product
 itself.  Idempotent UPSERT on the composite PK ``(target, user,

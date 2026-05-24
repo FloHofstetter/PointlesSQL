@@ -34,7 +34,7 @@
                 <i class="bi bi-plus-lg me-1"></i> New notebook…
             </button>
 
-            {# Phase 98.B Wave-D — per-tag filter dropdown.  Only visible
+            {# per-tag filter dropdown.  Only visible
                once at least one notebook in the workspace carries a
                tag; the empty case keeps the header uncluttered. #}
             <div class="ms-2" x-show="availableTags().length > 0" x-cloak>
@@ -153,7 +153,7 @@
                                     </span>
                                 </template>
 
-                                {# Phase 98.B Wave-D — per-notebook tag pills,
+                                {# per-notebook tag pills,
                                    indexed by path from the bulk endpoint. #}
                                 <template x-if="row.kind === 'notebook' && tagsFor(row.path).length > 0">
                                     <span class="d-inline-flex flex-wrap gap-1 ms-1">
@@ -169,7 +169,7 @@
 
                             <template x-if="row.kind === 'notebook'">
                                 <span class="ms-auto d-flex gap-2 align-items-center flex-shrink-0">
-                                    {# Phase 107.3 — fixed-width slot keeps the
+                                    {# fixed-width slot keeps the
                                        Schedule…/⋯ buttons vertically aligned
                                        across rows even when no in-browser
                                        editor is offered (i.e. .ipynb rows).
@@ -226,7 +226,7 @@
 
     {% include "pages/_partials/notebooks_workspace/notebook_modals.html" %}
 
-    {# Phase 114.2 — floating right-click context menu. #}
+    {# floating right-click context menu. #}
     <ul class="pql-context-menu"
         x-show="contextMenu.open"
         x-cloak

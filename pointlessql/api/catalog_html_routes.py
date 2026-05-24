@@ -268,7 +268,7 @@ async def table_detail(
         workspace_id=workspace_id,
         session_factory=request.app.state.session_factory,
     )
-    # Phase 92 — text columns the user can pick from the
+    # text columns the user can pick from the
     # "Semantic search" tab's empty-state create-index form.
     # Filter to STRING / VARCHAR-shaped types so the dropdown does
     # not offer numeric columns that the embedder cannot handle.

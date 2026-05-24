@@ -1,4 +1,4 @@
-"""Rewrite-attempt audit endpoint (Phase 39 Sprint 39.2).
+"""Rewrite-attempt audit endpoint.
 
 The Hermes plugin's explain-first ``pql_query`` flow POSTs one row
 here per rewrite-loop resolution: auto-success, auto-failure,

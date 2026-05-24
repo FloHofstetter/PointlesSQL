@@ -47,7 +47,7 @@ _SQLITE_EXPRESSION_INDEX_ALLOWLIST = frozenset(
 # ``alembic check`` green on both backends.
 _FTS_TABLE_PREFIXES: tuple[str, ...] = ("audit_search",)
 
-# Phase 76.5 + 76.5.1 + 77.0.B — columns whose FK is added via raw
+# columns whose FK is added via raw
 # ``ALTER TABLE ADD COLUMN ... REFERENCES`` because batch_alter_table
 # fails on these tables (unnamed legacy CHECKs).  The ORM models
 # declare the FK for relationship loading, but the constraint is

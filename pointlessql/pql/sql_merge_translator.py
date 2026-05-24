@@ -1,4 +1,4 @@
-"""Translate a SQL ``MERGE`` AST into :meth:`PQL.merge` arguments (Phase 63.5).
+"""Translate a SQL ``MERGE`` AST into :meth:`PQL.merge` arguments.
 
 ``pql.merge`` supports two strategies — ``upsert`` (key match →
 update non-key columns; otherwise insert) and ``scd2``.  SQL

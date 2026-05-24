@@ -1,4 +1,4 @@
-"""Phase 77.3.B — branch_detail.html social tabs + promote-gate UI.
+"""branch_detail.html social tabs + promote-gate UI.
 
 Coverage:
 

@@ -27,12 +27,12 @@ import { pqlApi } from './api.js';
 window.pqlToast = pqlToast;
 window.pqlApi = pqlApi;
 
-// Copy-button delegated listener (Sprint 56.7).  Registers a single
+// Copy-button delegated listener.  Registers a single
 // document-level click listener that handles every ``.pql-copy-btn``
 // rendered by ``_macros/copy_button.html``.
 import './copy_button.js';
 
-// Per-entity ⋯-action menu mute handler (Phase 81.M).  Document-level
+// Per-entity ⋯-action menu mute handler.  Document-level
 // click listener for every ``.pql-entity-mute-btn`` rendered by
 // ``_macros/entity_actions.html``.
 import './entity_actions.js';
@@ -43,7 +43,7 @@ import './entity_actions.js';
 // missing role instead of letting the dead ``href="#"`` swallow it.
 import './permission_link.js';
 
-// Bootstrap-tab URL-state sync (Sprint 59.2).  Self-bootstrapping;
+// Bootstrap-tab URL-state sync.  Self-bootstrapping;
 // reads ``?tab=…&subtab=…`` on DOMContentLoaded and mirrors active
 // tabs back via history.replaceState.  Idempotent on pages without
 // tabs.
@@ -64,7 +64,7 @@ window.pqlRelativeTime = pqlRelativeTime;
 window.pqlAbsTime = pqlAbsTime;
 window.pqlHumanizeCron = pqlHumanizeCron;
 
-// Multi-select state mixin (Phase 81.G.B).  Re-attached to window
+// Multi-select state mixin.  Re-attached to window
 // so inline-script Alpine factories on alerts / audit_inbox /
 // issues_index can spread the mixin into their own x-data return.
 import { bulkSelect } from './bulk_actions.js';
@@ -111,7 +111,7 @@ window.listTable = listTable;
 window.jobRowActions = jobRowActions;
 window.sqlEditor = sqlEditor;
 
-// Phase 77.1.5 — polymorphic social-tabs Alpine factory.  Used by
+// polymorphic social-tabs Alpine factory.  Used by
 // table.html + branch_detail.html via the kind-agnostic
 // ``_endorsements_pane.html`` + ``_followers_pane.html`` partials.
 // ``data_product.html`` keeps its inline x-data + DP-flavoured
@@ -120,7 +120,7 @@ import { socialTabs } from './social_tabs.js';
 
 window.socialTabs = socialTabs;
 
-// Phase 66 — browser notebook editor.  cellEditor is the per-cell
+// browser notebook editor.  cellEditor is the per-cell
 // CodeMirror factory; notebookEditor is the top-level Alpine factory
 // mounted on /notebooks/edit/{path}.
 import { cellEditor } from './notebook/cell_editor.js';
@@ -129,7 +129,7 @@ import { notebookEditor } from './notebook/notebook_editor.js';
 window.cellEditor = cellEditor;
 window.notebookEditor = notebookEditor;
 
-// Phase 95.2 — per-cell social thread.  cellThread powers the inline
+// per-cell social thread.  cellThread powers the inline
 // 💬 chip + collapsible thread below each cell on /notebooks/edit/{path}.
 // Comments + reactions + follows ride the polymorphic
 // /api/social/notebook_cell/{ref}/... routes.
@@ -137,7 +137,7 @@ import { cellThread } from './notebook/cell_thread.js';
 
 window.cellThread = cellThread;
 
-// Phase 97 Rest — workspace library browse page for pinned facts.
+// workspace library browse page for pinned facts.
 // Backs the ``factsLibrary()`` factory mounted on
 // ``/library/facts``.  Lives outside the notebook editor so the
 // page can render without the heavy editor coordinator.
@@ -145,7 +145,7 @@ import { factsLibrary } from './facts_library.js';
 
 window.factsLibrary = factsLibrary;
 
-// Phase 95.3 — the cell-tag picker lives inside the per-cell
+// the cell-tag picker lives inside the per-cell
 // ``cellThread`` factory now (was a separate nested ``cellTagPicker``
 // x-data, but Alpine snapshotted the ``cell`` POJO so picker mutations
 // never reached ``cells[i].tags``).  No separate registration needed.
@@ -167,7 +167,7 @@ import { lineageDag } from './components/lineage_dag/index.js';
 
 window.lineageDag = lineageDag;
 
-// Lineage drill-down sub-pane factories (Phase 41 / Sprint 41.1).
+// Lineage drill-down sub-pane factories.
 // Three panes — Row trace / Column trace / Value changes — sit
 // next to the existing Summary + Graph sub-pills inside the
 // Lineage top-tab on /runs/{id}.  Each pane wraps one of the

@@ -1,6 +1,6 @@
 """Jobs + scheduler routes — package facade.
 
-Phase 86 B3 split the 927-LOC ``jobs_routes.py`` monolith.  Public
+B3 split the 927-LOC ``jobs_routes.py`` monolith.  Public
 imports continue to resolve through this facade:
 
 * ``router`` — aggregates the five sub-routers (crud, runs,

@@ -1,4 +1,4 @@
-"""Notebook replay attempts (Phase 103).
+"""Notebook replay attempts.
 
 The replay surface re-executes a Phase-97 :class:`NotebookRevision`
 against today's data and stores the fresh outputs alongside the frozen
@@ -26,7 +26,7 @@ from pointlessql.models.base import Base
 
 
 class NotebookReplay(Base):
-    """One replay attempt of an old notebook revision (Phase 103).
+    """One replay attempt of an old notebook revision.
 
     The replay surface re-executes a Phase-97 :class:`NotebookRevision`
     against today's data and stores the fresh outputs alongside the

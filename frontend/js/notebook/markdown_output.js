@@ -47,7 +47,7 @@ export function installMarkdownOutput(state, deps) {
   };
 
   /**
-   * Phase 94 — clear the rendered output frames + run duration for
+   * clear the rendered output frames + run duration for
    * a single cell without re-running it.
    *
    * Drops the live-output buffer keyed by ``content_hash`` and clears
@@ -79,7 +79,7 @@ export function installMarkdownOutput(state, deps) {
         initialSource: cell.source,
         language: cell.cell_type === 'sql' ? 'sql' : 'python',
         onSourceChange: (value) => this._onCellSourceChange(cell.id, value),
-        // Phase 105.3b — resolve the y-codemirror.next binding when
+        // resolve the y-codemirror.next binding when
         // the coedit client is synced and the cell carries a stable
         // uuid; ``cellYBinding`` returns null otherwise and the
         // editor falls back to standalone CodeMirror.
@@ -125,7 +125,7 @@ export function installMarkdownOutput(state, deps) {
       initialSource: cell.source,
       language: 'markdown',
       onSourceChange: (value) => this._onCellSourceChange(cell.id, value),
-      // Phase 105.3b — markdown cells join co-edit through the same
+      // markdown cells join co-edit through the same
       // shared Y.Doc map as code/sql cells; the language extension
       // differs but the binding is identical.
       yBinding: typeof this.cellYBinding === 'function'

@@ -1,4 +1,4 @@
-"""Phase 85.1 — Canvas → PQL compiler unit + route smoke tests."""
+"""Canvas → PQL compiler unit + route smoke tests."""
 
 from __future__ import annotations
 

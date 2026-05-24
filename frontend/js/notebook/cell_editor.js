@@ -28,8 +28,8 @@
  * * ``language`` — ``'python'`` | ``'sql'`` | ``'markdown'``.
  * * ``onSourceChange(value)`` — fired on every transaction that
  *   updates the doc.  Parent uses this to flip the per-cell
- *   ``_dirty`` flag (Sprint 66.2).
- * * ``yBinding`` (Phase 105.3b) — optional
+ *   ``_dirty`` flag.
+ * * ``yBinding`` — optional
  *   ``{ ytext, awareness, undoManager }`` triple.  When supplied,
  *   the editor swaps its local CodeMirror ``history()`` extension
  *   for ``y-codemirror.next``'s ``yCollab`` extension, which mirrors
@@ -126,7 +126,7 @@ export function cellEditor({
  this._yBinding && this._yBinding.ytext
  );
 
- // Phase 105.3b — when a Y.Text is supplied, drive ``onSourceChange``
+ // when a Y.Text is supplied, drive ``onSourceChange``
  // from the doc itself so both local + remote edits flow through the
  // same callback.  The CodeMirror update listener stays installed
  // for non-bound cells (single-tab / unauthenticated renders).
@@ -141,7 +141,7 @@ export function cellEditor({
  highlightActiveLine(),
  // ``history()`` is replaced by yCollab's undo-manager when the
  // editor is Y-bound — running both produces double-undo on every
- // Cmd-Z (Sprint 105.3b lessons).
+ // Cmd-Z.
  ...(yBindingActive ? [] : [history()]),
  bracketMatching(),
  ...(isDark
@@ -178,7 +178,7 @@ export function cellEditor({
  catch (_e) { this._ytextObserver = null; }
  }
 
- // Phase 107 hotfix — seed the CodeMirror doc from the current
+ // seed the CodeMirror doc from the current
  // ytext when Y-bound.  ``y-codemirror.next``'s ``yCollab`` only
  // applies *future* remote ytext mutations; it does not back-fill
  // the editor from an already-populated ytext at mount time.

@@ -88,21 +88,21 @@ class ErrorCode(StrEnum):
     DBT_EXECUTION_ERROR = "dbt_execution_error"
     MLFLOW_STARTUP_ERROR = "mlflow_startup_error"
 
-    # Data products (Phase 50).
+    # Data products.
     DATA_PRODUCT_ERROR = "data_product_error"
     DATA_PRODUCT_CONTRACT_VIOLATION = "data_product_contract_violation"
     DATA_PRODUCT_SCHEMA_DRIFT = "data_product_schema_drift"
     DATA_PRODUCT_FRESHNESS_VIOLATION = "data_product_freshness_violation"
     DATA_PRODUCT_YAML_INVALID = "data_product_yaml_invalid"
 
-    # Workspace repos (Phase 51 git-backed workspaces).
+    # Workspace repos.
     WORKSPACE_REPO_ERROR = "workspace_repo_error"
     WORKSPACE_REPO_CLONE_FAILED = "workspace_repo_clone_failed"
     WORKSPACE_REPO_AUTH_FAILED = "workspace_repo_auth_failed"
     WORKSPACE_REPO_UNKNOWN_PROVIDER = "workspace_repo_unknown_provider"
     WORKSPACE_REPO_WEBHOOK_INVALID = "workspace_repo_webhook_invalid"
 
-    # Lens read-only Q&A surface (Phase 65).
+    # Lens read-only Q&A surface.
     LENS_QUERY_TOO_COSTLY = "lens_query_too_costly"
     LENS_SESSION_BUDGET_EXCEEDED = "lens_session_budget_exceeded"
     LENS_NON_SELECT_BLOCKED = "lens_non_select_blocked"

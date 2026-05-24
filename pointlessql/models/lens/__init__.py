@@ -1,6 +1,6 @@
 """ORM models for the Lens read-only Q&A surface.
 
-Lens is the analyst-facing chat-style surface (Phase 65) that exposes
+Lens is the analyst-facing chat-style surface that exposes
 read-only data Q&A over two transports: a browser chat UI at ``/lens``
 and an MCP (Model Context Protocol) server for IDE consumers.  Both
 transports share the same tool registry; this package holds the

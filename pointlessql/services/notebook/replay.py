@@ -1,4 +1,4 @@
-"""Notebook replay / scenario-mode (Phase 103).
+"""Notebook replay / scenario-mode.
 
 Each replay row re-executes a Phase-97 :class:`NotebookRevision` and
 parks the fresh outputs alongside the original.  The actual

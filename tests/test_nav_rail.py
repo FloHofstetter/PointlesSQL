@@ -1,4 +1,4 @@
-"""Phase 80.1 — primary navigation rail acceptance tests.
+"""primary navigation rail acceptance tests.
 
 Asserts the IA contract from ``docs/internal/navigation_ia.md`` is
 honoured by the rendered HTML:
@@ -73,7 +73,7 @@ def _seed_user(factory) -> str:
     return token
 
 
-# Phase 80.1 IA contract.  Each entry: (href, label-or-title-substring).
+# (href, label-or-title-substring).
 # Matches the rail tree in primary_rail.html.
 RAIL_ENTRIES: list[tuple[str, str]] = [
     # HOME

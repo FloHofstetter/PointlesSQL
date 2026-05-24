@@ -8,7 +8,7 @@
 * ``DELETE /api/ingest/sources/{id}`` — soft-delete by flipping
   ``is_active`` to ``False`` (preserves run history); hard delete is
   the admin-only path in :mod:`pointlessql.api.admin.ingest_sources`
-  (Phase 82.5).
+ .
 
 Workspace scoping comes from the resolved request workspace, not
 the body — a user in workspace A cannot reach into workspace B by
@@ -258,7 +258,7 @@ async def api_patch_source(
 async def api_delete_source(request: Request, source_id: int) -> dict[str, Any]:
     """Soft-delete by flipping ``is_active`` to false.
 
-    Hard delete is reserved for the admin route (Phase 82.5).
+    Hard delete is reserved for the admin route.
 
     Args:
         request: Incoming FastAPI request.

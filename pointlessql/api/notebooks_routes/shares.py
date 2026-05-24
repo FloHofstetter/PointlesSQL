@@ -1,4 +1,4 @@
-"""Notebook share routes (Phase 100).
+"""Notebook share routes.
 
 Two surfaces:
 

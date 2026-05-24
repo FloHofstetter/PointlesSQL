@@ -1,4 +1,4 @@
-"""Starter notebook template gallery (Phase 98.B).
+"""Starter notebook template gallery.
 
 Templates ship as plain ``.py`` files inside
 ``pointlessql/data/notebook_templates/`` plus a ``_manifest.json``

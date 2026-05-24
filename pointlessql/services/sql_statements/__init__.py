@@ -1,4 +1,4 @@
-"""Phase 117 — external SQL Statement Execution API services.
+"""external SQL Statement Execution API services.
 
 Per-axis split mirroring the route module:
 

@@ -1,4 +1,4 @@
-"""Phase 76.6.1 — smoke-parse the new Alpine helper JS modules.
+"""smoke-parse the new Alpine helper JS modules.
 
 The Discussion tab loads two JS modules via plain ``<script>``
 tags.  Without a Playwright walkthrough, the cheapest verification

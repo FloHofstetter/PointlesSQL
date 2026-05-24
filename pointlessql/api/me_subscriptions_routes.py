@@ -1,10 +1,10 @@
-"""Per-user CloudEvent webhook subscriptions (Phase 72.6).
+"""Per-user CloudEvent webhook subscriptions.
 
 Surfaces ``/me/subscriptions`` HTML + four JSON endpoints
 (``GET / POST / PUT / DELETE``).  HMAC secret is generated
 server-side at create time and returned to the caller exactly
 once.  Subscriptions deliver via the existing audit-sink HMAC
-signer (Phase 20).
+signer.
 """
 
 from __future__ import annotations

@@ -57,7 +57,7 @@ async def data_products_index_page(
 async def data_products_followed_page(
     request: Request,
 ) -> HTMLResponse | RedirectResponse:
-    """Render the per-user "Followed products" index (Phase 71.3).
+    """Render the per-user "Followed products" index.
 
     Lists every data product the logged-in user has followed in
     their current workspace, sorted by ``last_loaded_at`` desc.

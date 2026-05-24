@@ -1,4 +1,4 @@
-"""Phase 77.0.A — polymorphic social_target foundation.
+"""polymorphic social_target foundation.
 
 Coverage:
 
@@ -84,13 +84,13 @@ def test_entity_kinds_constant_covers_phase77_plan() -> None:
         "saved_query",
         "issue",
         "workspace",
-        # Phase 95 — per-cell social (cell-level comments / reactions /
+        # per-cell social (cell-level comments / reactions /
         # follows / tags) registered a polymorphic ``notebook_cell``
         # entity-kind on the same social target.
         "notebook_cell",
-        # Phase 96 — inline AI-assistant ``agent_memory`` entity-kind.
+        # inline AI-assistant ``agent_memory`` entity-kind.
         "agent_memory",
-        # Phase 97 — revision-level social (per-revision pinned facts +
+        # revision-level social (per-revision pinned facts +
         # cell-output discussion threads on the same target).
         "notebook_revision",
         "notebook_cell_output",
@@ -290,7 +290,7 @@ def test_get_or_create_target_workspace_scopes_separately(
 ) -> None:
     """Same kind+ref under two workspaces = two anchor rows.
 
-    Phase 77.0 plan's "workspace scoping" contract: a federated
+    a federated
     table pinned in two workspaces gets two ``social_targets``
     rows so each workspace has its own Discussion thread.
     """

@@ -1,4 +1,4 @@
-"""Phase 77.1.5 — socialTabs Alpine factory + 2 new partials on disk.
+"""socialTabs Alpine factory + 2 new partials on disk.
 
 Coverage:
 

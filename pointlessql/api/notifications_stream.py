@@ -1,4 +1,4 @@
-"""``GET /api/notifications/stream`` — SSE inbox stream (Phase 76.6).
+"""``GET /api/notifications/stream`` — SSE inbox stream.
 
 Long-lived Server-Sent Events endpoint that pushes new
 ``user_notifications`` rows to the caller in near-real-time —

@@ -50,7 +50,7 @@ REGISTRY: dict[str, EntityKindSpec] = {
             "issues",
         ),
     ),
-    # Phase 77.1 — UC tables get Discussion + Endorsements +
+    # UC tables get Discussion + Endorsements +
     # Followers + README + (later) Stars tabs.  Reviews stay off
     # for now (locked: star ratings only make sense on curated
     # DPs).  Issues opened against tables land in 77.7.
@@ -72,7 +72,7 @@ REGISTRY: dict[str, EntityKindSpec] = {
             "issues",
         ),
     ),
-    # Phase 77.3 — branches get Discussion + Endorsements +
+    # branches get Discussion + Endorsements +
     # Followers tabs.  The single endorsement type that matters
     # here is ``branch-approved-for-promotion`` — used by the
     # opt-in promote-gate.  77.7 flips ``supports_issues`` to
@@ -95,7 +95,7 @@ REGISTRY: dict[str, EntityKindSpec] = {
             "issues",
         ),
     ),
-    # Phase 77.4 — agent runs get Discussion + Endorsements +
+    # agent runs get Discussion + Endorsements +
     # Followers tabs.  Reviews / README hidden: runs are transient
     # execution outcomes, not curated artefacts.  Endorsements
     # reuse the DP set ("verified-by-steward", "production-ready",
@@ -119,7 +119,7 @@ REGISTRY: dict[str, EntityKindSpec] = {
             "followers",
         ),
     ),
-    # Phase 77.2 (+ 77.2.1) — registered models get Discussion +
+    # registered models get Discussion +
     # Reviews + Endorsements + Followers + README tabs.  Reviews
     # was off in the initial 77.2 landing because the polymorphic
     # upsert idempotency required a kind-agnostic UNIQUE on
@@ -147,7 +147,7 @@ REGISTRY: dict[str, EntityKindSpec] = {
             "issues",
         ),
     ),
-    # Phase 77.7 — issues are themselves polymorphic anchors so the
+    # issues are themselves polymorphic anchors so the
     # issue gets a Discussion thread + endorsements + followers.
     # ``supports_issues`` stays ``False`` (no recursion into nested
     # issues); README stays off too (the issue body itself is the
@@ -169,7 +169,7 @@ REGISTRY: dict[str, EntityKindSpec] = {
             "followers",
         ),
     ),
-    # Phase 77.5 — UC schemas get Discussion + Endorsements +
+    # UC schemas get Discussion + Endorsements +
     # Followers + README tabs.  Reviews stay off (star-ratings only
     # make sense on curated DPs).  Issues stay off initially; the
     # registry flips if dogfooding asks for schema-scoped issues.
@@ -192,7 +192,7 @@ REGISTRY: dict[str, EntityKindSpec] = {
             "readme",
         ),
     ),
-    # Phase 77.5 — UC catalogs get the same four social tabs as
+    # UC catalogs get the same four social tabs as
     # schemas.  Treated as a curated container of schemas: stewards
     # can endorse them, users can subscribe to their event stream,
     # admins can pin a README.  Stars on, issues off, reviews off
@@ -214,7 +214,7 @@ REGISTRY: dict[str, EntityKindSpec] = {
             "readme",
         ),
     ),
-    # Phase 77.6 — notebooks get a Discussion + Endorsements +
+    # notebooks get a Discussion + Endorsements +
     # Followers + README side-drawer surface (notebook_editor.html
     # is full-screen by design, so we keep the navigation out of
     # the main view).  Reviews off (notebooks aren't curated
@@ -237,7 +237,7 @@ REGISTRY: dict[str, EntityKindSpec] = {
             "readme",
         ),
     ),
-    # Phase 77.6 — saved queries get the same four social tabs.
+    # saved queries get the same four social tabs.
     # ``saved_audit_query_detail.html`` is small enough for an
     # inline tab strip (not a side-drawer).  Reviews off; issues
     # off initially; stars on.
@@ -258,7 +258,7 @@ REGISTRY: dict[str, EntityKindSpec] = {
             "readme",
         ),
     ),
-    # Phase 90 — agent_memory anchors hang the polymorphic social
+    # agent_memory anchors hang the polymorphic social
     # surface off an agent identifier (one row per agent, the
     # entity_ref is the AgentRun.agent_id string).  Same tab strip
     # as "run" because a memory page is the agent-wide aggregation
@@ -282,7 +282,7 @@ REGISTRY: dict[str, EntityKindSpec] = {
             "followers",
         ),
     ),
-    # Phase 95 — notebook-cell anchors host the inline cell-thread
+    # notebook-cell anchors host the inline cell-thread
     # surface (comments + reactions + followers) for a single cell.
     # entity_ref is the composite ``{notebook_uuid}:{cell_uuid}``; the
     # ``cell_uuid`` half is the stable identity minted by the
@@ -307,7 +307,7 @@ REGISTRY: dict[str, EntityKindSpec] = {
             "followers",
         ),
     ),
-    # Phase 97 Rest — pinned-fact anchors point at a whole notebook
+    # pinned-fact anchors point at a whole notebook
     # revision (``cell_content_hash IS NULL`` on the fact row).  The
     # entity_ref is the fact's 36-char ``fact_uuid``.  Cells aren't
     # curated artefacts at this scope (we treat the *fact* itself as
@@ -331,7 +331,7 @@ REGISTRY: dict[str, EntityKindSpec] = {
             "followers",
         ),
     ),
-    # Phase 97 Rest — cell-output facts use the same library detail
+    # cell-output facts use the same library detail
     # page as whole-revision facts; the differentiating field is
     # ``cell_content_hash`` on the fact row.  Same capability shape.
     "notebook_cell_output": EntityKindSpec(
@@ -349,7 +349,7 @@ REGISTRY: dict[str, EntityKindSpec] = {
             "followers",
         ),
     ),
-    # Phase 77.10 — workspaces themselves get a Discussion +
+    # workspaces themselves get a Discussion +
     # README surface plus the landing-page tabs (members /
     # activity).  Endorsements off (workspaces aren't curated
     # artefacts the way tables/models are); issues off; stars

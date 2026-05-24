@@ -1,7 +1,5 @@
 """Per-request context injection for the shared TemplateResponse wrapper.
 
-Phase 86 B4 split this out of ``main.py``.  The wrapper attaches:
-
 * ``current_user`` from ``request.state.user``.
 * ``current_workspace`` / ``available_workspaces`` /
   ``current_workspace_primary_catalog`` from a single per-request DB

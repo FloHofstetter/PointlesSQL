@@ -1,6 +1,6 @@
 """DuckDB-driven probe for an ingest source.
 
-Phase 82.1 — the UI "Probe" button posts the in-form config + secrets
+the UI "Probe" button posts the in-form config + secrets
 to ``POST /api/ingest/probe``; the route calls :func:`probe_source`
 to dry-run the configured reader against a throw-away DuckDB
 connection and reports the resolved column list.

@@ -19,7 +19,7 @@ than through ``client.create_model_version`` because the MLflow client's
 local-artifact staging assumes a real ``MLmodel``-format directory; we
 keep the smoke test infrastructure-light by hitting the proto endpoints
 directly. The end-to-end MLflow-client write path is covered by the
-Phase 21.2 cross-link e2e test once the MLflow subprocess (Sprint 21.0)
+Phase 21.2 cross-link e2e test once the MLflow subprocess
 is wired in.
 """
 
@@ -146,7 +146,7 @@ def test_mlflow_oss_client_registered_model_roundtrip(smoke_env: None) -> None:
 def test_create_model_version_returns_pending_with_storage_location(
     smoke_env: None,
 ) -> None:
-    """Phase 21.1: create_model_version must return PENDING + storage_location.
+    """create_model_version must return PENDING + storage_location.
 
     Hits the proto endpoint directly so no artifact upload is required.
     """
@@ -176,7 +176,7 @@ def test_create_model_version_returns_pending_with_storage_location(
 
 
 def test_finalize_model_version_transitions_to_ready(smoke_env: None) -> None:
-    """Phase 21.1: PATCH .../finalize moves PENDING_REGISTRATION → READY."""
+    """PATCH .../finalize moves PENDING_REGISTRATION → READY."""
     httpx.post(
         f"{UC_BASE}/models",
         json={
@@ -206,7 +206,7 @@ def test_finalize_model_version_transitions_to_ready(smoke_env: None) -> None:
 
 
 def test_temporary_model_version_credentials_local(smoke_env: None) -> None:
-    """Phase 21.1: temp-model-version-creds returns expiration-only for file:// storage."""
+    """temp-model-version-creds returns expiration-only for file:// storage."""
     httpx.post(
         f"{UC_BASE}/models",
         json={

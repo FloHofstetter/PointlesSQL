@@ -1,4 +1,4 @@
-"""Phase 76.1 — comment categories, reactions, accept-answer, @-autocomplete.
+"""comment categories, reactions, accept-answer, @-autocomplete.
 
 Covers:
 

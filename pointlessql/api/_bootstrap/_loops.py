@@ -231,7 +231,7 @@ async def _data_product_trending_loop(  # pyright: ignore[reportUnusedFunction]
     factory: Any,
     settings: Settings,
 ) -> None:
-    """Refresh the cached "trending in agent workloads" view (Phase 72.3).
+    """Refresh the cached "trending in agent workloads" view.
 
     Active only when ``data_products.trending_refresh_interval_seconds``
     is non-zero — same opt-in discipline as the freshness scanner.
@@ -273,7 +273,7 @@ async def _data_product_cooccurrence_loop(  # pyright: ignore[reportUnusedFuncti
     factory: Any,
     settings: Settings,
 ) -> None:
-    """Cross-DP co-occurrence cache refresh (Phase 73.5).
+    """Cross-DP co-occurrence cache refresh.
 
     Active only when ``data_products.cooccurrence_enabled`` is
     true.  Per tick, recomputes the per-workspace pair counts
@@ -318,7 +318,7 @@ async def _data_product_passport_loop(  # pyright: ignore[reportUnusedFunction]
     factory: Any,
     settings: Settings,
 ) -> None:
-    """Auto-passport stale-refresh loop (Phase 73.4).
+    """Auto-passport stale-refresh loop.
 
     Active only when ``data_products.passport_loop_enabled`` is
     true.  Per tick, refreshes every DP whose latest passport
@@ -360,7 +360,7 @@ async def _data_product_promotion_loop(  # pyright: ignore[reportUnusedFunction]
     factory: Any,
     settings: Settings,
 ) -> None:
-    """Promote-to-DP candidate scanner (Phase 73.1).
+    """Promote-to-DP candidate scanner.
 
     Active only when ``data_products.promote_enabled`` is true.
     Per tick, calls :func:`scan_candidates` to UPSERT the
@@ -482,7 +482,7 @@ async def _user_badges_loop(  # pyright: ignore[reportUnusedFunction]
     factory: Any,
     settings: Settings,
 ) -> None:
-    """Sticky reputation-badge recompute (Phase 76.2).
+    """Sticky reputation-badge recompute.
 
     Wakes once every 24 h, calls :func:`award_badges` to INSERT
     any newly-met badge thresholds, and sleeps again.  Badges are
@@ -517,7 +517,7 @@ async def _user_notification_digest_loop(  # pyright: ignore[reportUnusedFunctio
     factory: Any,
     settings: Settings,
 ) -> None:
-    """Daily marketplace-digest delivery (Phase 71.4 follow-up B.3).
+    """Daily marketplace-digest delivery.
 
     Active only when ``notifications.digest_enabled`` is true (off
     by default).  Sleeps until the next ``digest_trigger_hour``
@@ -693,7 +693,7 @@ async def _workspace_repos_sync_loop(  # pyright: ignore[reportUnusedFunction]
     factory: Any,
     settings: Settings,
 ) -> None:
-    """Periodic workspace-repo sync (Phase 51.4).
+    """Periodic workspace-repo sync.
 
     Active only when
     ``POINTLESSQL_REPOS_SYNC_INTERVAL_SECONDS`` is non-zero — same

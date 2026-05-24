@@ -1,4 +1,4 @@
-"""``/api/data-products/.../related`` + ``/recommendations`` (Phase 73.5).
+"""``/api/data-products/.../related`` + ``/recommendations``.
 
 Two endpoints:
 

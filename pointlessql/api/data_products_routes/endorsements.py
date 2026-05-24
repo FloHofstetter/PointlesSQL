@@ -1,11 +1,11 @@
-"""``/api/data-products/{catalog}/{schema}/endorsements`` — typed badges (Phase 72.4 + 76.5.1).
+"""``/api/data-products/{catalog}/{schema}/endorsements`` — typed badges.
 
 Three endpoints:
 
 * ``GET`` — list every endorsement (active + historical),
   newest first.
 * ``POST`` — apply one type.  Body: ``{endorsement_type,
-  note_md?}``.  Accepts ``?as_agent=<slug>`` (Phase 76.5.1) so an
+  note_md?}``.  Accepts ``?as_agent=<slug>`` so an
   endorsement can be applied *by an agent on behalf of* its
   principal.  Gate: steward + install-admin (auditor also
   passes for ``verified-by-steward`` only).  Re-applying the
@@ -88,11 +88,11 @@ def _serialise(
     """Render one endorsement row as JSON.
 
     The ``agent`` payload mirrors the comment-serialiser shape
-    (Phase 76.5): present when ``applied_by_agent_id`` is set,
+    : present when ``applied_by_agent_id`` is set,
     ``None`` otherwise.
 
     ``note_md_resolved`` carries the cite-token render projection
-    (Phase 76.7) — same string as ``note_md`` with ``#dp:`` /
+    — same string as ``note_md`` with ``#dp:`` /
     ``#topic:`` / ``#user:`` / ``#agent:`` tokens replaced by
     markdown anchors.  Frontend reads this via
     ``pqlRenderCitations``.
@@ -195,7 +195,7 @@ async def apply_endorsement(
         catalog: UC catalog segment.
         schema: UC schema segment.
         request: Incoming FastAPI request.
-        as_agent: Optional agent slug (Phase 76.5.1) — when set,
+        as_agent: Optional agent slug — when set,
             the endorsement is applied *by the agent on behalf of*
             the caller (who must be the agent's
             ``principal_user_id``, or admin).  ``applied_by_user_id``

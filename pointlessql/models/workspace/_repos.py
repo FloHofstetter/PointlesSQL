@@ -1,6 +1,6 @@
 """Workspace-repo cache rows + per-repo encrypted secrets.
 
-Phase 51 introduces git-backed workspaces: each workspace can pin
+each workspace can pin
 1..n git repositories whose contents (yaml bundles, notebooks,
 dashboards, saved queries) feed PointlesSQL's loaders.  The git
 clone lives on disk under

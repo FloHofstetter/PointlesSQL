@@ -1,4 +1,4 @@
-"""Cross-entity citations (Phase 76.6 + 77.0.E registry refactor).
+"""Cross-entity citations.
 
 Renders ``#dp:cat.schema`` / ``#topic:slug`` / ``#user:email`` /
 ``#agent:slug`` tokens inside a markdown body into HTML anchors.
@@ -187,7 +187,7 @@ def _render_agent(match: re.Match[str], hits: set[str]) -> str:
     return f"[@{slug}](/agents/{slug})"
 
 
-# Phase 77.1 — UC table citations (``#table:cat.sch.tbl``).  No
+# UC table citations (``#table:cat.sch.tbl``).  No
 # existence check against the UC backend in this iteration — the
 # resolver accepts every well-formed triple and emits a link via
 # the entity registry.  A later sub-phase may add a backend probe
@@ -239,7 +239,7 @@ def _render_table(
     )
 
 
-# Phase 77.2 — registered-model citations (``#model:cat.sch.name``).
+# registered-model citations (``#model:cat.sch.name``).
 # Mirrors the table resolver — every well-formed triple becomes an
 # anchor; existence-against-MLflow is deferred (the model registry
 # does not have a low-cost "exists?" probe that's worth the request
@@ -290,7 +290,7 @@ def _render_model(
     return f"[#{catalog}.{schema}.{name}](/models/{catalog}.{schema}.{name})"
 
 
-# Phase 77.4 — agent-run citations (``#run:<uuid>``).  Matches the
+# agent-run citations (``#run:<uuid>``).  Matches the
 # canonical 36-char UUID shape used by ``agent_runs.id``.  Pass-
 # through resolver: every well-formed UUID is treated as a hit and
 # rendered as an anchor, falling back to literal text only when the
@@ -331,7 +331,7 @@ def _render_run(match: re.Match[str], hits: set[str]) -> str:
     return f"[#run:{short}](/runs/{run_id})"
 
 
-# Phase 77.7 — issue citations (``#issue:42``).  Resolver passes every
+# issue citations (``#issue:42``).  Resolver passes every
 # well-formed integer-id through (no DB existence probe in this
 # iteration — the typical comment body rarely cites issue ids that
 # don't exist, and the literal-fallback render path is harmless).
@@ -364,7 +364,7 @@ def _render_issue(match: re.Match[str], hits: set[str]) -> str:
     return f"[#issue:{issue_id}](/issues/{issue_id})"
 
 
-# Phase 77.5 — schema citations (``#schema:cat.sch``).  Pass-through
+# schema citations (``#schema:cat.sch``).  Pass-through
 # resolver — UC backend existence checks are skipped because soyuz
 # may be offline during comment renders (catalog-browser pages must
 # stay responsive even when the backend is slow).
@@ -416,7 +416,7 @@ def _render_schema(
     )
 
 
-# Phase 77.5 — catalog citations (``#catalog:name``).  Same pass-
+# catalog citations (``#catalog:name``).  Same pass-
 # through pattern as schemas; the resolver mirrors them so a single
 # render pass picks up both kinds.
 _CATALOG_CITE_RE = re.compile(r"#catalog:([A-Za-z0-9_]+)")
@@ -438,7 +438,7 @@ def _render_catalog(match: re.Match[str], hits: set[str]) -> str:
     return f"[#{name}](/catalogs/{name})"
 
 
-# Phase 77.6 — notebook citations (``#notebook:<uuid>``).  Matches
+# notebook citations (``#notebook:<uuid>``).  Matches
 # the canonical 36-char UUID shape used by ``notebooks.id``.
 _NOTEBOOK_CITE_RE = re.compile(
     r"#notebook:([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-"
@@ -463,7 +463,7 @@ def _render_notebook(match: re.Match[str], hits: set[str]) -> str:
     return f"[#notebook:{short}](/notebooks/uuid/{nb_id})"
 
 
-# Phase 77.6 — saved-query citations (``#query:slug``).  The slug
+# saved-query citations (``#query:slug``).  The slug
 # regex mirrors ``#topic:`` — lowercase alphanumerics + hyphens.
 _QUERY_CITE_RE = re.compile(r"#query:([a-z0-9][a-z0-9-]{1,60})")
 

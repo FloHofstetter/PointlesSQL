@@ -1,4 +1,4 @@
-"""``/api/agents/...`` — first-class agent identity (Phase 76.5)."""
+"""``/api/agents/...`` — first-class agent identity."""
 
 from __future__ import annotations
 

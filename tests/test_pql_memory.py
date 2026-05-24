@@ -1,4 +1,4 @@
-"""Phase 90.0a — unit tests for ``pql.memory.record`` / ``recall``.
+"""unit tests for ``pql.memory.record`` / ``recall``.
 
 Two facades (record, recall) plus the underlying
 ``recall_operations`` helper.  The fixtures mirror

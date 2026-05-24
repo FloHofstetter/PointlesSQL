@@ -1,9 +1,9 @@
-{# Phase 105.4 — Co-edit peer avatar rail.
+{# Co-edit peer avatar rail.
 
    Renders up to 6 remote peers as colour-coded initials discs.  Self
    is filtered out by ``installCoeditLifecycle``; the y-protocols
    awareness layer keeps the list deduplicated by clientID.  Agents
-   (Phase 105.6) reuse the same rail with a robot icon swap-in. #}
+   reuse the same rail with a robot icon swap-in. #}
 <span class="d-inline-flex align-items-center gap-1"
       data-testid="notebook-coedit-peers"
       x-show="coeditPeers && coeditPeers.length > 0"

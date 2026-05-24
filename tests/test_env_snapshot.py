@@ -1,4 +1,4 @@
-"""Phase 21.4 — env-snapshot capture + audit-row stamp tests.
+"""env-snapshot capture + audit-row stamp tests.
 
 The snapshot is built once at import time + cached.  Tests use
 :func:`reset_cache_for_tests` to push a deterministic value before

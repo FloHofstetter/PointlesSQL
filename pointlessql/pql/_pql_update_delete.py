@@ -69,7 +69,7 @@ class _UpdateDeleteMixin(_PQLBase):
 
         Wraps :meth:`deltalake.DeltaTable.delete`.  ``where=None``
         deletes every row — the SQL editor surface forces a
-        confirmation modal in that case (Phase 63.7) but the
+        confirmation modal in that case but the
         primitive itself does not refuse the call.
 
         Args:

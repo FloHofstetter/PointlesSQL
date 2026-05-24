@@ -1,4 +1,4 @@
-"""Phase 120 — per-key ACLs + usage aggregation.
+"""per-key ACLs + usage aggregation.
 
 Three new tables, all FK to ``api_keys.id`` with ``ondelete="CASCADE"``:
 

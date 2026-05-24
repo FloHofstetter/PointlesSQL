@@ -1,7 +1,7 @@
 /**
  * Workspace right-click context menu + keyboard navigation mixin.
  *
- * Phase 114.2 — installed on both the workspace-sidebar factory and
+ * installed on both the workspace-sidebar factory and
  * the workspace-page factory so right-click + arrow keys + F2 +
  * Delete all behave identically on every tree row.  Surfaces a
  * single floating menu (the meta-panel + drawer stack at z=1040,

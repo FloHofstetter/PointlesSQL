@@ -1,4 +1,4 @@
-"""Phase 77.5 — schema + catalog entity-kind registration.
+"""schema + catalog entity-kind registration.
 
 Coverage:
 
@@ -132,7 +132,7 @@ def test_parse_ref_accepts_schema_two_part_id() -> None:
 
 def test_parse_ref_rejects_schema_single_part() -> None:
     """Schema refs need exactly two parts."""
-    # Phase 121.1.e — converted from HTTPException to BadRequestError.
+    # converted from HTTPException to BadRequestError.
     from pointlessql.exceptions import BadRequestError
 
     with pytest.raises(BadRequestError) as exc:
@@ -148,7 +148,7 @@ def test_parse_ref_accepts_catalog_bare_id() -> None:
 
 def test_parse_ref_rejects_catalog_with_dot() -> None:
     """Catalog refs must be bare identifiers."""
-    # Phase 121.1.e — converted from HTTPException to BadRequestError.
+    # converted from HTTPException to BadRequestError.
     from pointlessql.exceptions import BadRequestError
 
     with pytest.raises(BadRequestError) as exc:

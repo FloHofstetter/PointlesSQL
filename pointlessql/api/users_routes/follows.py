@@ -1,4 +1,4 @@
-"""``/api/users/{user_id}/follow`` — user-to-user follows (Phase 76.2).
+"""``/api/users/{user_id}/follow`` — user-to-user follows.
 
 Three endpoints:
 

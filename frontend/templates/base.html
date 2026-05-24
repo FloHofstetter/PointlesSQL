@@ -43,7 +43,7 @@
             } catch (e) {}
         })();
         (function () {
-            // Phase 112 — meta panel (right rail) collapse state.
+            // meta panel (right rail) collapse state.
             // Same shape as the context-panel toggle above; persists
             // per-user so the right rail reads in its remembered
             // state on first paint of every page.
@@ -54,7 +54,7 @@
             } catch (e) {}
         })();
         (function () {
-            // Phase 80.1 — primary-rail state init.  Default is
+            // primary-rail state init.  Default is
             // ``expanded`` (220px, with labels + group headers).  The
             // attribute is read by both ``base.css`` (rail width
             // variable) and ``icon_rail.css`` (per-state layout).
@@ -83,7 +83,7 @@
 
    Volumes still render inline in the catalog tree, so their pages
    map to ``federation``.  Models get their own rail entry now
-   (Phase 80) but stay in the ``federation`` section so the catalog
+   but stay in the ``federation`` section so the catalog
    tree remains visible in the context-panel; the rail Catalog
    entry suppresses its active state when ``active_page == 'models'``
    so the highlight does not double up. #}
@@ -144,7 +144,7 @@
             <i class="bi bi-list fs-4"></i>
         </button>
 
-        {# Phase 81.K.12 — layout toggles (rail width + context panel)
+        {# layout toggles (rail width + context panel)
            moved from their old positions (primary-rail header + the
            tiny chevron at the top-left of <main>) into the topbar.
            Frees ~50 px of vertical space at the top of the content
@@ -171,7 +171,7 @@
                     aria-label="Toggle side panel">
                 <i class="bi bi-layout-sidebar"></i>
             </button>
-            {# Phase 112 — Meta-panel (right rail) toggle.  Only paints
+            {# Meta-panel (right rail) toggle.  Only paints
                on pages that render a meta panel; the body-class
                ``data-pql-has-meta-panel`` is set by base.html below
                when ``{% block meta_panel %}`` resolves non-empty (or
@@ -226,7 +226,7 @@
                 onclick="window.dispatchEvent(new CustomEvent('pql:open-palette'))">
             <i class="bi bi-search fs-5"></i>
         </button>
-        {# Phase 112 — Mobile-only meta-panel offcanvas trigger.  The
+        {# Mobile-only meta-panel offcanvas trigger.  The
            same ``#pql-meta-panel`` aside switches between static
            4th-column rail (md+) and offcanvas drawer (<md) through
            Bootstrap's ``.offcanvas-md`` variant.  ``:has()`` lookup
@@ -295,7 +295,7 @@
         </div>
     </nav>
 
-    {# Phase 112 — meta panel detection.  A page opts in either by
+    {# meta panel detection.  A page opts in either by
        overriding ``{% block meta_panel %}`` with non-empty content
        (works for any non-Alpine page) or by setting
        ``meta_panel_target = True`` in its template scope (used by
@@ -347,14 +347,14 @@
               id="main-content"
               data-active-section="{{ active_section }}"
               data-active-page="{{ active_page if active_page is defined else '' }}">
-            {# Phase 81.K.12 — the panel-toggle (data-pql-panel-toggle)
+            {# the panel-toggle (data-pql-panel-toggle)
                and rail-toggle (data-pql-rail-toggle) chevron buttons
                moved into the topbar; the document-level click handler
                picks them up there. #}
             {% block content %}{% endblock %}
         </main>
         {% if _has_meta_panel %}
-        {# Phase 112 — Meta panel (right rail).  At md+ this is the
+        {# Meta panel (right rail).  At md+ this is the
            4th grid column; below md the same DOM serves as an
            ``offcanvas-end`` drawer thanks to Bootstrap's
            responsive ``.offcanvas-md`` variant.  Pages that need
@@ -404,7 +404,7 @@
          exactly this category of bug. -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"></script>
     {#-
-      BUG-grand-03 follow-up: the importmap MUST be parsed before any
+      follow-up: the importmap MUST be parsed before any
       ES module that imports the bare specifiers below. bootstrap.js
       (next script tag) imports the sql_editor bundle, whose dynamic
       import('@codemirror/...') calls in sqlEditor().init() resolve
@@ -449,7 +449,7 @@
     <script type="module" src="/static/js/bootstrap.js?v={{ asset_version }}"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
     <script>
-        // Phase 81.D — opt every HTMX boost-swap into the
+        // opt every HTMX boost-swap into the
         // View-Transitions API.  Modern browsers (Chrome 111+, Safari
         // 18+, Firefox 144 behind-flag) intercept the swap, snapshot
         // old + new state, and cross-fade between them; the visible
@@ -469,7 +469,7 @@
         // field; HTMX-driven flows use the header path so we never have
         // to edit individual templates.
         //
-        // Sprint 28.4: also auto-attach X-Workspace on every HTMX
+        // also auto-attach X-Workspace on every HTMX
         // request so workspace-scoped server filters apply uniformly
         // whether the call goes through pqlApi.fetch (handled in api.js)
         // or HTMX-boosted navigation.  The slug is read fresh on every
@@ -563,25 +563,25 @@
          help-icons emitted by ``_macros/help_icon.html``.
          Must load AFTER the Bootstrap bundle above. -->
     <script src="/static/js/help_popovers.js"></script>
-    <!-- Phase 80.10.6 — Bootstrap-modal-backed confirm helper.
+    <!-- Bootstrap-modal-backed confirm helper.
          Exposes window.pqlConfirm() so destructive actions can
          replace the bare window.confirm() dialog. -->
     <script src="/static/js/confirm.js"></script>
-    <!-- Phase 81.A — per-user primary-rail customisation
+    <!-- per-user primary-rail customisation
          (localStorage MVP).  Reads pql:rail-hidden, toggles
          data-rail-hidden on each <li> so the icon_rail.css rule
          applies display:none. -->
     <script src="/static/js/rail_customise.js"></script>
-    <!-- Phase 81.G.1 — prefetch links on hover so rail / breadcrumb /
+    <!-- prefetch links on hover so rail / breadcrumb /
          sidebar navigations resolve from cache.  Skips slow networks
          and Data-Saver. -->
     <script src="/static/js/prefetch.js"></script>
-    <!-- Phase 81.G.D — gmail-style row keyboard nav on opt-in list
+    <!-- gmail-style row keyboard nav on opt-in list
          pages (j/k/x/Shift+x/Esc/Enter).  Activates when <main> carries
          data-pql-keynav="1" and contains a table tagged
          data-pql-keynav-table="1". -->
     <script src="/static/js/list_keyboard.js"></script>
-    <!-- Phase 81.H — boost-navigation loading skeleton.  Replaces
+    <!-- boost-navigation loading skeleton.  Replaces
          #main-content with a placeholder-glow shell after 250 ms of
          a pending HTMX-boost request; htmx:beforeSwap replaces it
          with the real content.  Generalises the notebook-workspace
@@ -666,7 +666,7 @@
             });
         })();
         (function () {
-            // Phase 112 — meta panel (right rail) expand/collapse.
+            // meta panel (right rail) expand/collapse.
             // Same shape as the context-panel toggle above; flips
             // ``data-pql-meta-collapsed`` on <html> so the
             // ``html[data-pql-meta-collapsed] .pql-shell--has-meta``
@@ -695,7 +695,7 @@
             });
         })();
         (function () {
-            // Phase 80.1 — primary-rail expand/collapse toggle.
+            // primary-rail expand/collapse toggle.
             // Same shape as the context-panel toggle above; persists
             // per-user in localStorage and flips
             // ``data-pql-rail-state`` on <html> so both base.css (rail
@@ -726,7 +726,7 @@
         })();
     </script>
     <script>
-        // Phase 80.10.3 — auto-initialise Bootstrap tooltips.
+        // auto-initialise Bootstrap tooltips.
         //
         // Any element carrying ``data-bs-toggle="tooltip"`` gets a
         // ``new bootstrap.Tooltip(el)`` on first paint, plus an
@@ -767,7 +767,7 @@
     // in the same shape the Alpine component expects. Pattern mirrors
     // the command palette's pql.recentSearches writer.
     //
-    // Sprint 28.4: keys are namespaced by the active workspace slug
+    // keys are namespaced by the active workspace slug
     // so workspace-A and workspace-B users on the same browser see
     // independent recent-catalogs lists.
     (function () {
@@ -802,7 +802,7 @@
     // a ``pql:recent-tables-changed`` event so the open Alpine
     // catalog tree picks the new entry up without a hard reload.
     //
-    // Sprint 28.4: namespaced by workspace slug so cross-workspace
+    // namespaced by workspace slug so cross-workspace
     // recents do not bleed.
     (function () {
         try {

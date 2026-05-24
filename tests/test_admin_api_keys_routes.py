@@ -204,7 +204,7 @@ async def test_non_admin_cannot_revoke(non_admin_client: httpx.AsyncClient) -> N
 async def test_create_returns_token_format_and_env_fields(
     admin_client: httpx.AsyncClient,
 ) -> None:
-    """Phase 118 — create response surfaces token_format + token_env."""
+    """create response surfaces token_format + token_env."""
     _wipe()
     response = await admin_client.post(
         "/api/admin/api-keys", json={"name": "v1-key"}
@@ -261,7 +261,7 @@ async def test_list_includes_token_format_and_env(
 
 
 # ---------------------------------------------------------------------------
-# Phase 119 — lifecycle admin endpoints
+# lifecycle admin endpoints
 # ---------------------------------------------------------------------------
 
 

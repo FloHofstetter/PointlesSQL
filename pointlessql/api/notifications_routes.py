@@ -1,4 +1,4 @@
-"""Per-user notification inbox routes (Phase 71.4).
+"""Per-user notification inbox routes.
 
 Surfaces five endpoints + one HTML page:
 

@@ -11,7 +11,7 @@
  display: flex;
  flex-direction: column;
  gap: 0.75rem;
- /* Phase 113.7 — "scroll past end" affordance.  ``--pql-scroll-past-end``
+ /* "scroll past end" affordance.  ``--pql-scroll-past-end``
     is set from notebook_editor.js by a ResizeObserver pass that
     computes ``content_visible_height - last_cell_height - 8``, so
     the last cell can scroll up until its TOP edge sits ~8 px below
@@ -33,7 +33,7 @@
  border-radius: 0.25rem;
 }
 
-/* Phase 116 — vital-signs cluster v2.  Three rounded pills
+/* vital-signs cluster v2.  Three rounded pills
    carrying icons + state-driven colour utility; replaces the
    Sprint 112.5 0.55 rem solid circles which read as decorative
    macOS window controls on a fresh load.  Same three signals
@@ -95,7 +95,7 @@
  white-space: nowrap;
 }
 
-/* Phase 107.1 — Panel-toggle buttons collapse to icon-only when
+/* Panel-toggle buttons collapse to icon-only when
    inactive so 10 panels (Jobs/Variables/Tags/Branch/Replays/
    Proposals/Widgets/Access/History/AI) fit a single toolbar row
    even at 1080 px viewport width.  The label stays in the DOM for
@@ -110,7 +110,7 @@
 .pql-toolbar-panel-btn.active .pql-toolbar-panel-btn__label {
  display: inline;
 }
-/* Phase 116 — strengthen the "open" state.  Bootstrap's
+/* strengthen the "open" state.  Bootstrap's
    ``.btn-outline-secondary.active`` swaps the muted outline for
    a filled body-bg + body-color which actually READS as inverted
    (less obvious as a status flag).  We override with a subtle
@@ -127,7 +127,7 @@
 .pql-notebook-cell {
  border: 1px solid var(--bs-border-color);
  border-radius: 0.25rem;
- /* overflow: visible — the cell-tag picker dropdown (Phase 95.3) is
+ /* overflow: visible — the cell-tag picker dropdown is
     positioned absolutely and gets clipped when the wrapper hides
     overflow.  Round-corner clipping for children is negligible vs.
     a dropdown that vanishes behind the next cell.
@@ -141,7 +141,7 @@
  background: var(--bs-body-bg);
 }
 
-/* Phase 95.3 — inline tag-picker panel below the cell. */
+/* inline tag-picker panel below the cell. */
 .pql-notebook-cell__tag-panel {
  border-top: 1px solid var(--bs-border-color-translucent, rgba(0, 0, 0, 0.1));
  padding: 0.65rem 0.85rem 0.8rem;
@@ -166,7 +166,7 @@
  width: 14rem;
 }
 
-/* Phase 98.B — Notebook-level tag picker (sibling to toolbar, single
+/* Notebook-level tag picker (sibling to toolbar, single
    instance per notebook).  Visually distinct from the per-cell panel
    so the user immediately sees that they're tagging the document,
    not the focused cell. */
@@ -196,7 +196,7 @@
  color: var(--bs-primary-text-emphasis, #052c65);
 }
 
-/* Phase 101 — per-cell author chip in the cell header right cluster.
+/* per-cell author chip in the cell header right cluster.
    Sits flush with the dirty-dot + tag-picker; minimal visual weight so
    it doesn't compete with the action cluster. */
 .pql-cell-author-chip {
@@ -210,7 +210,7 @@
  font-size: 0.85em;
 }
 
-/* Phase 100 — share-list rows inside the publish modal.  Forces
+/* share-list rows inside the publish modal.  Forces
    long share UUIDs to wrap on narrow screens instead of pushing the
    action buttons off-canvas. */
 .pql-share-row .min-width-0 {
@@ -260,7 +260,7 @@
  margin-bottom: 0;
 }
 
-/* Phase 97 Wave-D follow-up — revision-diff card + per-row gutter.
+/* revision-diff card + per-row gutter.
    Uses the project's --pql-color-{success,danger,warning,info,neutral}
    tokens from base.css so dark/light mode switching is automatic and
    the diff palette stays consistent with the rest of PointlesSQL's
@@ -388,7 +388,7 @@
  color: var(--bs-success-text-emphasis, var(--bs-success));
 }
 
-/* Sprint 113.1 — capped lineage strip + ⋯ overflow menu. */
+/* capped lineage strip + ⋯ overflow menu. */
 .pql-notebook-cell__header .pql-cell-lineage-overflow {
  font-size: 0.65rem;
  cursor: default;
@@ -601,7 +601,7 @@
  padding: 0.25rem 0;
 }
 
-/* Sprint 113.2 — unified right-edge drawer.
+/* unified right-edge drawer.
    Replaces the three competing fixed-position overlays (Chat at
    z=1040, Variables Inspector at z=1040, Social offcanvas).  One
    geometry, one z-index, one close mechanism.  Internal layout is
@@ -732,7 +732,7 @@
  border-radius: 0.25rem;
 }
 
-/* Phase 95.2 — per-cell inline discussion thread.  No custom sizing
+/* per-cell inline discussion thread.  No custom sizing
    on the chip — inherits ``btn btn-sm`` exactly so it aligns flush
    with the Run / cell-type / history / move / delete cluster. */
 
@@ -760,7 +760,7 @@
  font-size: 0.9rem;
 }
 
-/* Phase 95.3 — cell-tag picker (curated + custom escape). */
+/* cell-tag picker (curated + custom escape). */
 .pql-cell-tag-picker {
  display: inline-flex;
  align-items: center;
@@ -780,7 +780,7 @@
  min-width: 12rem;
 }
 
-/* Phase 115 — cell header acts as the desktop-window-style drag
+/* cell header acts as the desktop-window-style drag
    handle.  ``user-select: none`` is load-bearing: without it the
    browser starts a text-selection on mousedown over the header
    text (type-pill, exec-count) and the HTML5 ``dragstart`` event
@@ -800,7 +800,7 @@
 .pql-notebook-cell--dragging {
  opacity: 0.4;
 }
-/* Phase 115.2 — FLIP-driven live reorder transition.  When the
+/* FLIP-driven live reorder transition.  When the
    user drags one cell over another, ``onCellDragOver`` re-splices
    ``this.cells`` immediately so the dragged-over cell physically
    slides out of the way; the FLIP helper sets ``transform`` to

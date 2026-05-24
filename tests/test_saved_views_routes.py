@@ -1,4 +1,4 @@
-"""Phase 83.1 — saved-views route CRUD + run smoke tests.
+"""saved-views route CRUD + run smoke tests.
 
 Verifies that the HTTP surface honours workspace scoping, SELECT-
 only enforcement at create time, and the embed page renders.  Run

@@ -1,11 +1,11 @@
-"""``/api/data-products/{catalog}/{schema}/reviews`` — stars + body (Phase 71.2 + 76.5.1).
+"""``/api/data-products/{catalog}/{schema}/reviews`` — stars + body.
 
 Three endpoints:
 
 * ``GET`` — list every review for the product + summary
   ``{avg_stars, count, my_review?}``.
 * ``PUT`` — idempotent upsert of the caller's review (one per
-  ``(user, DP)``).  Accepts ``?as_agent=<slug>`` (Phase 76.5.1)
+  ``(user, DP)``).  Accepts ``?as_agent=<slug>``
   so a review can be authored *by an agent on behalf of* its
   principal.
 * ``DELETE`` — remove the caller's review (self only).
@@ -53,11 +53,11 @@ def _serialise_review(
     """Render one review row as a JSON-friendly dict.
 
     The ``agent`` payload mirrors the comment-serialiser shape
-    (Phase 76.5): present when ``author_agent_id`` is set,
+    : present when ``author_agent_id`` is set,
     ``None`` otherwise.
 
     ``body_md_resolved`` carries the cite-token render projection
-    (Phase 76.7) — same string as ``body_md`` with ``#dp:`` /
+    — same string as ``body_md`` with ``#dp:`` /
     ``#topic:`` / ``#user:`` / ``#agent:`` tokens replaced by
     markdown anchors.  Frontend reads this via
     ``pqlRenderCitations``.
@@ -203,7 +203,7 @@ async def upsert_data_product_review(
         catalog: UC catalog segment.
         schema: UC schema segment.
         request: Incoming FastAPI request.
-        as_agent: Optional agent slug (Phase 76.5.1) — when set,
+        as_agent: Optional agent slug — when set,
             the review is authored *by the agent on behalf of* the
             caller (who must be the agent's ``principal_user_id``,
             or admin).  ``author_user_id`` still records the
@@ -302,7 +302,7 @@ async def upsert_data_product_review(
         )
         review_agent_payload = _agent_payload(review_agent)
 
-    # Phase 71.4: fan-out + governance event.  We always emit on
+    # fan-out + governance event.  We always emit on
     # PUT — including the upsert case — because a star change is
     # something followers want to know about.
     source_url = f"/data-products/{catalog}/{schema}#tab-reviews"

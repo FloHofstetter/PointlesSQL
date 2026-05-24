@@ -1,4 +1,4 @@
-"""Phase 105.5 — save-path barrier tests.
+"""save-path barrier tests.
 
 Covers the ``apply_save_remap`` server-originated broadcast that
 fires when ``/api/notebooks/save`` reconciles a client-tracked

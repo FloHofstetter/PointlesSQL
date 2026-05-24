@@ -1,6 +1,6 @@
 """Inbound webhook receiver for git-host push events.
 
-Phase 51.4 — accepts ``POST /webhook/git/{repo_id}`` from
+accepts ``POST /webhook/git/{repo_id}`` from
 GitHub (today) / GitLab / Gitea (later) when the repo's
 ``provider_kind`` registers a verifiable signature scheme.  The
 endpoint is unauthenticated at the middleware layer (the HMAC

@@ -1,4 +1,4 @@
-"""Phase 76.5.1 — Active Reviewer posts under agent identity.
+"""Active Reviewer posts under agent identity.
 
 Coverage:
 

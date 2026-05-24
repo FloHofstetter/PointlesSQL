@@ -1,5 +1,5 @@
 /* ---------------------------------------------------------------
- * Phase 114.2 — workspace right-click context menu.
+ * workspace right-click context menu.
  *
  * One floating menu (z=1050) shared between the sidebar and the
  * full workspace page.  Positions itself at the cursor on right-
@@ -81,7 +81,7 @@
     outline-offset: -2px;
 }
 
-/* Phase 114.3 — drag-drop highlight + inline rename input. */
+/* drag-drop highlight + inline rename input. */
 .pql-tree-item--drop-target {
     outline: 2px dashed var(--pql-color-accent, #76b900);
     outline-offset: -2px;

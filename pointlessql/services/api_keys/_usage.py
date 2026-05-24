@@ -1,4 +1,4 @@
-"""Phase 120 — per-API-key usage aggregation.
+"""per-API-key usage aggregation.
 
 Aggregated per ``(api_key_id, bucket_minute, source_ip)`` triple to
 avoid one row per request.  Hot path: middleware enqueues into an

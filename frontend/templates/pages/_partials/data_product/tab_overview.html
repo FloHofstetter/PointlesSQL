@@ -1,6 +1,6 @@
         <div class="tab-pane fade show active" id="tab-overview" role="tabpanel">
 
-            <!-- Phase 84.4 — Health hero band. -->
+            <!-- Health hero band. -->
             <div class="card mb-3 pql-dp-health-hero"
                  :class="{
                     'border-success': healthBand.status === 'green',
@@ -39,7 +39,7 @@
                 </div>
             </div>
 
-            <!-- Phase 84.1 — README as canonical landing card. -->
+            <!-- README as canonical landing card. -->
             <div class="card mb-3 pql-dp-readme-hero" x-show="readmeLoaded">
                 <div class="card-header d-flex align-items-center gap-2">
                     <i class="bi bi-book"></i>
@@ -65,7 +65,7 @@
                 </div>
             </div>
 
-            <!-- Phase 84.3 — Consume hero (PQL / SQL / Python). -->
+            <!-- Consume hero (PQL / SQL / Python). -->
             <div class="card mb-3 pql-dp-consume-hero" x-data="{ consumeTab: 'pql' }">
                 <div class="card-header d-flex align-items-center gap-2">
                     <i class="bi bi-terminal"></i>
@@ -103,7 +103,7 @@
                 </div>
             </div>
 
-            <!-- Phase 84.5 — Schema-at-a-glance. -->
+            <!-- Schema-at-a-glance. -->
             <template x-if="firstSchemaTable">
                 <div class="card mb-3 pql-dp-schema-glance">
                     <div class="card-header d-flex align-items-center gap-2">
@@ -146,7 +146,7 @@
                 </div>
             </template>
 
-            <!-- Phase 84.2 — Release stream. -->
+            <!-- Release stream. -->
             <div class="card mb-3 pql-dp-releases"
                  x-data="dpReleasesCard()"
                  x-init="load(product.catalog, product.schema)"
@@ -178,7 +178,7 @@
                 </ul>
             </div>
 
-            <!-- Phase 84.6 — Contributor heatmap. -->
+            <!-- Contributor heatmap. -->
             <div class="card mb-3 pql-dp-heatmap" x-show="heatmapLoaded && heatmap.total > 0">
                 <div class="card-header d-flex align-items-center gap-2">
                     <i class="bi bi-calendar3"></i>
@@ -205,7 +205,7 @@
                 </div>
             </div>
 
-            <!-- Phase 84.7 — Forks (active Delta branches). -->
+            <!-- Forks (active Delta branches). -->
             <div class="card mb-3 pql-dp-forks" x-show="forksLoaded && forks.length > 0">
                 <div class="card-header d-flex align-items-center gap-2">
                     <i class="bi bi-diagram-3"></i>
@@ -274,7 +274,7 @@
                 </div>
             </div>
 
-            <!-- Phase 73.3: Open schema-change proposals. -->
+            <!-- Open schema-change proposals. -->
             <template x-if="proposalsLoaded && openProposals.length > 0">
                 <div class="card mt-3 pql-dp-proposals-card">
                     <div class="card-header d-flex align-items-center gap-2">
@@ -319,7 +319,7 @@
                 </div>
             </template>
 
-            <!-- Phase 73.5: Related data products. -->
+            <!-- Related data products. -->
             <template x-if="relatedLoaded && related.length > 0">
                 <div class="card mt-3 pql-dp-related-card">
                     <div class="card-header d-flex align-items-center gap-2">

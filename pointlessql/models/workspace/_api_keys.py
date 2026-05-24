@@ -92,14 +92,14 @@ class ApiKey(Base):
     # ``pql_{env}_v1_xxxxxxxxxx`` prefix (~24 chars) fits.  Legacy
     # keys keep their original 8-char prefix unchanged.
     secret_prefix: Mapped[str] = mapped_column(String(32), nullable=False)
-    # Phase 118 — token format discriminator.  ``'legacy'`` for pre-118
+    # token format discriminator.  ``'legacy'`` for pre-118
     # ``secrets.token_urlsafe(32)`` tokens; ``'v1'`` for the
     # ``pql_{env}_v1_{body40}_{crc8}`` format.  Drives badge rendering
     # and lets future code drop legacy support cleanly.
     token_format: Mapped[str] = mapped_column(
         String(8), nullable=False, default="legacy", server_default=text("'legacy'")
     )
-    # Phase 118 — env discriminator.  ``'live'`` / ``'test'`` for v1
+    # env discriminator.  ``'live'`` / ``'test'`` for v1
     # tokens, ``'legacy'`` for pre-118 keys.  Test keys are visually
     # distinct in audit logs; refusal in production is wired by config.
     token_env: Mapped[str] = mapped_column(
@@ -118,7 +118,7 @@ class ApiKey(Base):
     analyst: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False, server_default=text("false")
     )
-    # Phase 117 — gates the public DBX-compatible SQL Statement
+    # gates the public DBX-compatible SQL Statement
     # Execution API.  Independent of every other scope.
     sql_execute: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False, server_default=text("false")
@@ -141,7 +141,7 @@ class ApiKey(Base):
     workspace_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("workspaces.id"), nullable=False, server_default="1"
     )
-    # Phase 119 — lifecycle columns.  All NULL-able with NULL = no
+    # lifecycle columns.  All NULL-able with NULL = no
     # constraint, so every pre-119 key keeps unchanged behaviour
     # until an admin opts in by setting a TTL or rotating.
     expires_at: Mapped[datetime.datetime | None] = mapped_column(

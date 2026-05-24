@@ -1,4 +1,4 @@
-"""Phase 84.2 — release stream per DataProduct version.
+"""release stream per DataProduct version.
 
 * ``GET /api/data-products/{c}/{s}/releases`` — JSON list of every
   detected version bump, newest first.

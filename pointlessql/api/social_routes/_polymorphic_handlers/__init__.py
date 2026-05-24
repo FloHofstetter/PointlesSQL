@@ -1,4 +1,4 @@
-"""Kind-agnostic social-write handlers — split-package facade (Phase 89.1).
+"""Kind-agnostic social-write handlers — split-package facade.
 
 The original ``_polymorphic_handlers.py`` was 2231 LOC across nine
 behavioural axes (comments, endorsements, follows, reactions, stars,

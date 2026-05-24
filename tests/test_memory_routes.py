@@ -1,4 +1,4 @@
-"""Phase 90.1b — integration tests for the memory HTML + JSON routes.
+"""integration tests for the memory HTML + JSON routes.
 
 Hits the FastAPI app via the shared ``admin_client`` /
 ``anonymous_client`` fixtures.  The branch + replay routes

@@ -1,4 +1,4 @@
-"""Phase 51.4 — workspace-repos cron-loop driver.
+"""workspace-repos cron-loop driver.
 
 Two narrow tests covering the helper that picks repos due for
 sync.  The full lifespan loop is opt-in (interval > 0); we

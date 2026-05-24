@@ -1,4 +1,4 @@
-"""Tests for ``POST /api/notebooks/save`` (Sprint 66.2)."""
+"""Tests for ``POST /api/notebooks/save``."""
 
 from __future__ import annotations
 
@@ -143,7 +143,7 @@ async def test_save_traversal_blocked(
 async def test_save_non_admin_without_edit_role_blocked(
     workspace_dir: Path, non_admin_client: httpx.AsyncClient
 ) -> None:
-    """Phase 99 Wave-D: non-admin needs explicit edit grant to save.
+    """non-admin needs explicit edit grant to save.
 
     The Phase-70 contract ("any authenticated user can save") was
     tightened by Phase 99 Wave-D ``_enforce_notebook_role(required="edit")``.
@@ -170,7 +170,7 @@ async def test_save_non_admin_without_edit_role_blocked(
 async def test_save_non_admin_with_edit_grant_accessible(
     workspace_dir: Path, non_admin_client: httpx.AsyncClient
 ) -> None:
-    """Phase 99 Wave-D: explicit ``edit`` grant restores save access.
+    """explicit ``edit`` grant restores save access.
 
     Pairs with the blocked-without-grant case above to pin both sides
     of the lattice.  We seed the file, mint its UUID via load, then

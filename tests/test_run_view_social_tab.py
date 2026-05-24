@@ -1,4 +1,4 @@
-"""Phase 77.4 — run_view.html Social top-tab + sub-tabs.
+"""run_view.html Social top-tab + sub-tabs.
 
 Coverage:
 

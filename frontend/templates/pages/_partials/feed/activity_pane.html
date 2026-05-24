@@ -124,11 +124,11 @@
 
                Gated on ``filter === 'all'`` because the Mentions /
                My activity / Following filters carry their own
-               purpose-specific empty-state messages (Phase 81.K.8);
+               purpose-specific empty-state messages;
                stacking the welcome card on top of them is redundant
                and visually noisy.
 
-               Phase 97.X.3.2 — hoisted above the skeleton + empty-
+               hoisted above the skeleton + empty-
                states so first-run guidance is the *first* thing a
                new user sees, not buried beneath the "No activity
                yet" copy.  #}
@@ -168,7 +168,7 @@
                 </div>
             </template>
 
-            {# Per-filter empty states (Phase 81.K.8).  Each filter
+            {# Per-filter empty states.  Each filter
                gets distinct copy so an empty feed reads as an
                invitation rather than a dead end.  The fallback is
                the All-filter message that already shipped in C1. #}

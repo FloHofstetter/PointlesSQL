@@ -1,4 +1,4 @@
-"""``/api/data-products/{catalog}/{schema}/follow`` — follow / subscribe (Phase 71.3).
+"""``/api/data-products/{catalog}/{schema}/follow`` — follow / subscribe.
 
 Four endpoints:
 
@@ -82,7 +82,7 @@ async def follow_data_product(
         )
         session.commit()
 
-    # Phase 71.4: governance event only — no inbox fan-out for a
+    # governance event only — no inbox fan-out for a
     # follow (the actor is the only person who cares; their own
     # rows would self-suppress anyway).
     await emit_governance_event(

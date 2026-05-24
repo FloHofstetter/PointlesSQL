@@ -10,7 +10,7 @@
                             No comments yet — start the discussion below.
                         </div>
                     </template>
-                    <!-- Phase 76.1: DP-level reaction row -->
+                    <!-- DP-level reaction row -->
                     <div class="mb-3 d-flex gap-1 flex-wrap align-items-center pql-dp-reactions">
                         <span class="small text-muted me-1">React:</span>
                         <template x-for="emoji in ['👍','❤️','🎉','😄','😕','👀']" :key="emoji">
@@ -43,7 +43,7 @@
                                         ·
                                         <span x-text="pqlRelativeTime(c.created_at)"
                                               :title="pqlAbsTime(c.created_at)"></span>
-                                        <!-- Phase 76.1: category badge -->
+                                        <!-- category badge -->
                                         <span class="badge bg-secondary ms-1 pql-comment-category"
                                               x-show="c.category && c.category !== 'general'"
                                               x-text="c.category"></span>
@@ -64,7 +64,7 @@
                                     <div class="pql-comment-body"
                                          x-html="window.pqlRenderCitations(c.body_md_resolved || c.body_md)"></div>
                                 </template>
-                                <!-- Phase 76.1: reaction row on the comment -->
+                                <!-- reaction row on the comment -->
                                 <div class="mt-1 d-flex gap-1 flex-wrap pql-comment-reactions"
                                      x-show="!c.deleted_at">
                                     <template x-for="r in (c.reactions || [])" :key="r.emoji">
@@ -148,7 +148,7 @@
                     <div class="card mt-3">
                         <div class="card-body">
                             <label class="form-label small">Add a comment</label>
-                            <!-- Phase 76.1: category selector -->
+                            <!-- category selector -->
                             <div class="mb-2 d-flex align-items-center gap-2">
                                 <label class="small text-muted mb-0">Category:</label>
                                 <select class="form-select form-select-sm w-auto pql-comment-category-select"

@@ -17,7 +17,7 @@ from unittest.mock import MagicMock
 os.environ.setdefault("POINTLESSQL_JUPYTER_ENABLED", "0")
 os.environ.setdefault("POINTLESSQL_MLFLOW_ENABLED", "0")
 
-# Phase 31.3 — short-circuit the FastAPI lifespan when run under
+# short-circuit the FastAPI lifespan when run under
 # ``TestClient(app)`` / ``ASGITransport``.  The conftest pre-wires
 # ``app.state.session_factory`` + ``uc_client`` + cookies for every
 # test; running the full production lifespan re-overwrites all of
@@ -28,7 +28,7 @@ os.environ.setdefault("POINTLESSQL_MLFLOW_ENABLED", "0")
 # unset the env var (none today; future ones can monkeypatch).
 os.environ.setdefault("POINTLESSQL_TEST_LIFESPAN_FAST", "1")
 
-# Phase 31.1 — lower the bcrypt work factor in tests.  Production keeps
+# lower the bcrypt work factor in tests.  Production keeps
 # pwdlib's default rounds=12 (~250 ms per hash); tests here drop to
 # rounds=4 (~16 ms).  The algorithm, salt, and cookie format are
 # unchanged — only the cost factor.  Done as a module-attribute rebind
@@ -85,7 +85,7 @@ _TEST_SECRET = "test-secret-key-for-unit-tests!!"
 def _reset_settings_cache() -> Iterator[None]:  # pyright: ignore[reportUnusedFunction]
     """Clear the get_settings() LRU cache between tests.
 
-    Phase 121.2 introduced :func:`pointlessql.config.get_settings`
+    func:`pointlessql.config.get_settings`
     caching.  Tests that monkeypatch env vars (POINTLESSQL_*) need
     the cache invalidated so the next get_settings() call re-reads
     the patched environment.
@@ -111,7 +111,7 @@ _FTS_SOURCE_TABLES_SQLITE: dict[str, str] = {
 def _test_engine() -> Iterator[tuple[Engine, sessionmaker[Any]]]:  # pyright: ignore[reportUnusedFunction]
     """Build the schema once per test-session, drop it on session exit.
 
-    Phase 31.2 — replaces the previous per-test ``create_all`` /
+    replaces the previous per-test ``create_all`` /
     ``drop_all`` round-trip (90 DDL statements × 1461 tests).  The
     schema and the engine live for the whole session; per-test
     cleanup ([:func:`_auth_db`]) wipes rows but leaves the schema
@@ -154,7 +154,7 @@ def _test_engine() -> Iterator[tuple[Engine, sessionmaker[Any]]]:  # pyright: ig
         # table: jobs". Pinning every test to a single shared
         # connection (``StaticPool`` + ``check_same_thread=False``)
         # keeps the schema alive across threads without forcing
-        # callers onto a temp file (Sprint 47).
+        # callers onto a temp file.
         engine_kwargs["connect_args"] = {"check_same_thread": False}
         engine_kwargs["poolclass"] = StaticPool
     engine = create_engine(db_url, **engine_kwargs)
@@ -267,7 +267,7 @@ def _seed_test_users(factory: sessionmaker[Any]) -> tuple[int, int]:
                 id=1,
                 slug="default",
                 name="Default workspace",
-                description="Test-fixture seed (Phase 31.2).",
+                description="Test-fixture seed.",
                 created_at=now,
             )
         )
@@ -330,7 +330,7 @@ def _auth_db(  # pyright: ignore[reportUnusedFunction]
 ) -> Iterator[None]:
     """Per-test wipe + reseed; binds ``app.state`` to the worker engine.
 
-    Phase 31.2 split: schema + engine live in the session-scope
+    schema + engine live in the session-scope
     :func:`_test_engine` fixture; this autouse fixture only handles
     the per-test row wipe and the seeded workspace/users that 84+
     test files implicitly depend on.
@@ -406,7 +406,7 @@ def non_admin_cookies() -> dict[str, str]:
 
 
 # ---------------------------------------------------------------------------
-# Phase 46.1 — Centralized auth fixtures
+# Centralized auth fixtures
 #
 # Replaces the ~48 local ``_admin_client()`` / ``_non_admin_client()``
 # helpers that proliferated across the test suite.  Existing local

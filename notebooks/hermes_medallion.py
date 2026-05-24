@@ -22,7 +22,7 @@
 # an ``agent_run_operations`` row because
 # ``POINTLESSQL_AGENT_RUN_ID`` was set by the
 # ``hermes-plugin-pointlessql`` ``on_session_start`` hook
-# (Sprint 13.7.1).
+#.
 #
 # **Inputs**:
 #
@@ -49,7 +49,7 @@ from pathlib import Path
 
 from pointlessql.pql import PQL
 
-# Sprint 13.10: PQL lazy-inits the metadata DB when a run id is
+# PQL lazy-inits the metadata DB when a run id is
 # resolved (env or kwarg), so subprocess-spawned notebooks like
 # this one no longer need an explicit ``init_db`` boilerplate —
 # the FastAPI-lifespan-or-bust constraint is gone for the
@@ -107,16 +107,16 @@ silver_source = bronze_df.assign(
     unit_price=lambda d: pd.to_numeric(d["unit_price"], errors="coerce").fillna(0.0),
     placed_at=lambda d: pd.to_datetime(d["placed_at"], utc=True),
 )
-# ``pql.merge`` requires the target to exist (Sprint 13.5.2 contract);
+# ``pql.merge`` requires the target to exist;
 # on the very first run we fall back to ``write_table`` to bootstrap
 # silver, then subsequent runs follow the upsert path.  A future
 # ``pql.merge(..., create=True)`` flag would collapse this into one
 # call but it is not in scope for Sprint 13.10.
 #
-# Sprint 15.5.3: ``track_rejects=True`` records source rows that won't
+# ``track_rejects=True`` records source rows that won't
 # land (NULL on-key, duplicate within source) into ``lineage_row_rejects``
 # so the run-detail Reject tab can explain dropped rows.
-# Sprint 15.7.3: ``track_value_changes=True`` reads the Delta Change Data
+# ``track_value_changes=True`` reads the Delta Change Data
 # Feed for the merge's commit range and records one
 # ``lineage_value_changes`` row per actually-different cell on a
 # matched-and-updated target row.  Ignored on the very first run
@@ -154,7 +154,7 @@ except Exception as exc:  # noqa: BLE001 — bootstrap path; see comment above
 
 # %% pql_cell_id="22222222-2222-4222-8222-bbbbbbbbbbbb"
 silver_df = pql.table(SILVER_TABLE)
-# Sprint 15.6.2: ``derivations={...}`` declares pre-aggregate
+# ``derivations={...}`` declares pre-aggregate
 # ``.assign(...)`` mappings so the column-trace UI can walk
 # ``revenue → line_revenue → (qty, unit_price)`` and
 # ``placed_day → placed_at`` even though ``pql.aggregate`` itself
@@ -182,7 +182,7 @@ print(
 )
 
 # %% [markdown] pql_cell_id="44444444-4444-4444-8444-dddddddddddd"
-# ## Value-change demo (Sprint 15.7.5)
+# ## Value-change demo
 #
 # The merge above is the *first* upsert into silver — every row is
 # brand-new, so the Change Data Feed only carries ``insert`` events
@@ -230,7 +230,7 @@ print(
 # - **Tool calls** tab lists the LLM's exploration calls
 #   (``pql_conventions``, ``pql_list_tables``, …) if the
 #   ``hermes-plugin-pointlessql`` ``post_tool_call`` hook is
-#   wired (Sprint 13.7.4).
+#   wired.
 # - **Queries** tab shows the gold ``CREATE OR REPLACE TABLE``
 #   statement plus any ad-hoc ``pql_query`` exploration the
 #   LLM ran.

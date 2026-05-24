@@ -1,4 +1,4 @@
-"""``/api/settings/notifications`` — per-event-type prefs (Phase 76.4).
+"""``/api/settings/notifications`` — per-event-type prefs.
 
 Two endpoints:
 

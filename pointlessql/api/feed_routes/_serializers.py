@@ -41,7 +41,7 @@ MAX_LIMIT = 200
 def dp_url_from_id(fqn_map: dict[int, str], dp_id: int | None) -> str:
     """Build the DP detail URL from an id via the entity registry.
 
-    Phase 77.0.I — the URL is built through
+    the URL is built through
     :func:`entity_registry.url_for` so the same lookup table
     powers every future kind (table / model / branch / …).
     ``fqn_map`` is the per-request ``{dp_id: 'cat.sch'}`` cache
@@ -67,7 +67,7 @@ def dp_url_from_id(fqn_map: dict[int, str], dp_id: int | None) -> str:
 def classify_notification(event_type: str) -> str:
     """Map a ``user_notifications.event_type`` to a feed render kind.
 
-    Phase 81.K.2 — the renderer wants a coarser bucket than the dotted
+    the renderer wants a coarser bucket than the dotted
     event-type string so per-kind Alpine branches stay readable.
     ``mentioned`` substrings light up the mention treatment, the rest
     map by prefix.  Unknown event types fall through to the generic
@@ -250,7 +250,7 @@ def active_mute_keys(
 ) -> set[tuple[str, str]]:
     """Return ``{(entity_kind, entity_ref)}`` the caller has muted.
 
-    Phase 81.K.4 — the feed handler calls this once per request and
+    the feed handler calls this once per request and
     drops rows whose ``(entity_kind, entity_ref)`` is in the set
     before serialising.  Rows with ``muted_until`` in the past are
     ignored (the rows persist so the user's history of mute picks
@@ -281,7 +281,7 @@ def build_actor_names(
 ) -> dict[int, str]:
     """Resolve ``{user_id: display_name}`` for actors in a row batch.
 
-    Phase 81.K.2 — the renderer needs actor display names to attribute
+    the renderer needs actor display names to attribute
     feed items.  Building the map once per request avoids one query
     per row.  Pass any iterable of ``actor_user_id``-bearing objects
     (UserNotification, DataProductComment, DataProductReview); the

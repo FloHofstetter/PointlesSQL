@@ -1,4 +1,4 @@
-"""Phase 83.1 — SavedView model for non-tech read-only DP consumption.
+"""SavedView model for non-tech read-only DP consumption.
 
 A saved view is parameterised, SELECT-only SQL that a consumer can
 run without touching the SQL editor.  Title + description + a

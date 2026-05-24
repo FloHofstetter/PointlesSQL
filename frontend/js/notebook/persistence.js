@@ -22,7 +22,7 @@ export function installPersistence(state) {
     if (this.saving || this.mtimeConflict) return;
     this.saving = true;
     try {
-      // Phase 96 — translate ``placeholder_cell_id`` (transient
+      // translate ``placeholder_cell_id`` (transient
       // ordinal id the chat-integration mixin records when it
       // inserts a proposed cell) into the ``placeholder_index``
       // (position in the saved cells array) that the server's
@@ -58,7 +58,7 @@ export function installPersistence(state) {
           source: cell.source,
           result_var: cell.result_var || null,
           tags: Array.isArray(cell.tags) ? cell.tags : [],
-          // Phase 105.5 — surface the client-tracked cell_uuid so
+          // surface the client-tracked cell_uuid so
           // the save-handler can detect Pass-3 reconciler mints and
           // broadcast a CRDT remap to every connected tab.  Cells
           // added in-session without a uuid send ``null``; the
@@ -101,7 +101,7 @@ export function installPersistence(state) {
       this.dirty = false;
       this.lastSavedAt = new Date();
       this.errorMessage = '';
-      // Phase 96 — clear the proposal-acceptance buffer on
+      // clear the proposal-acceptance buffer on
       // successful save; provenance rows are now written.  Also
       // clear the per-cell ``_proposalPending`` markers so the
       // "from chat" chips fade.
@@ -109,16 +109,16 @@ export function installPersistence(state) {
       for (const c of this.cells) {
         if (c._proposalPending) delete c._proposalPending;
       }
-      // Phase 95.2 — refresh per-cell social counts post-save so the
+      // refresh per-cell social counts post-save so the
       // chips reflect any cells that got minted UUIDs this round.
       this.refreshCellCounts();
-      // Phase 101 UI — refresh authorship envelopes too; the save just
+      // refresh authorship envelopes too; the save just
       // upserted user-authorship for every cell.
       this.loadCellAttributions();
-      // Phase 98.C Wave-D — refresh per-cell lineage badges so a cell
+      // refresh per-cell lineage badges so a cell
       // that just ran a write-op surfaces it without a page reload.
       this.loadCellLineageBulk();
-      // Phase 97 Rest — refresh per-cell pinned-fact chips for the
+      // refresh per-cell pinned-fact chips for the
       // same reason (a cell whose content_hash changes loses its
       // pin badge and re-aligns to the new hash).
       this.loadCellFactsBulk();

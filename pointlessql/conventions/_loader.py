@@ -108,7 +108,7 @@ def load_conventions_for_workspace(
 ) -> ConventionsConfig:
     """Load Medallion conventions for *workspace_id*, repo-aware.
 
-    Phase 51.2 — same shallow-merge contract as
+    same shallow-merge contract as
     :func:`load_conventions`, but the candidate yaml path is
     resolved as:
 

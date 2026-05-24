@@ -1,4 +1,4 @@
-"""Tests for the BUG-grand-09 path-anchor fix.
+"""Tests for the path-anchor fix.
 
 Pre-fix: ``DatabaseSettings.url`` defaulted to
 ``"sqlite:///./pointlessql.db"`` and MLflow's backend / artifact

@@ -1,8 +1,8 @@
 /**
- * Cell-sequence proposals inbox (Phase 104 UI).
+ * Cell-sequence proposals inbox.
  *
  * Backend (``NotebookCellSequenceProposal`` + 10 pytest) shipped in
- * Phase 104.  The LLM tool that *creates* sequence proposals lives
+ * The LLM tool that *creates* sequence proposals lives
  * in the hermes plugin and is deferred — until it lands, the inbox
  * stays empty.  Once it ships, the plugin will fire a
  * ``pql:cell-sequence-proposed`` window event whose ``detail`` is

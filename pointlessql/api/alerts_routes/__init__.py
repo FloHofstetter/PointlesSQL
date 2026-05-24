@@ -1,6 +1,6 @@
 """Alerts + per-user feed-token + pull-feed routes — package facade.
 
-Phase 86 B5 split the 626-LOC ``alerts_routes.py`` into per-axis
+B5 split the 626-LOC ``alerts_routes.py`` into per-axis
 sub-modules:
 
 * :mod:`.crud` — ``/api/alerts`` list / create / get / patch / delete.

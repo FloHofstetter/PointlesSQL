@@ -17,7 +17,7 @@
 # agent reads a published bronze table, computes freshness +
 # null-rate + value-drift against the Sprint-54 column stats,
 # appends one row per check to ``ops.quality_history``, and
-# emits a CloudEvent (Sprint 13.3) when a threshold breaks.
+# emits a CloudEvent when a threshold breaks.
 #
 # Hermes cron fires this notebook hourly (or whatever cadence
 # the operator picks); PointlesSQL itself does **not** schedule
@@ -74,7 +74,7 @@ print(f"Read {len(df):,} rows from {MONITOR_TARGET}")
 #    triggers a warning.
 # 3. **Value-drift** — compare the current sample's distinct
 #    count to the most recent ``column_stats`` snapshot
-#    (Sprint 54).  A drop of more than 50 % triggers a warning.
+#   .  A drop of more than 50 % triggers a warning.
 
 # %% pql_cell_id="66666666-6666-4666-8666-666666666666"
 now = datetime.now(UTC)
@@ -134,7 +134,7 @@ for f in findings:
 # trail is more useful than just the trips).  ``pql.write_table``
 # in append mode if the table already exists, otherwise it
 # bootstraps via the same ``derive_storage_location`` path the
-# autoload primitive (Sprint 13.5.3) uses.
+# autoload primitive uses.
 
 # %% pql_cell_id="88888888-8888-4888-8888-888888888888"
 history_row = pd.DataFrame(

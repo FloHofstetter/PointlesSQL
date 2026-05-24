@@ -1,4 +1,4 @@
-"""Phase 109.1 — PG LISTEN/NOTIFY-backed co-edit bus.
+"""PG LISTEN/NOTIFY-backed co-edit bus.
 
 Two-engine integration test: two ``CoeditBus`` instances against the
 same Postgres exchange a frame end-to-end.  Skipped automatically

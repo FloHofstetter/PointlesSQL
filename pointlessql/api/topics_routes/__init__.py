@@ -1,4 +1,4 @@
-"""``/api/topics/...`` and ``/api/data-products/.../topics`` (Phase 76.3).
+"""``/api/topics/...`` and ``/api/data-products/.../topics``.
 
 Sub-modules:
 

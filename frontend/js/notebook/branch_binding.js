@@ -1,5 +1,5 @@
 /**
- * Branch-binding picker (Phase 102 UI).
+ * Branch-binding picker.
  *
  * Backend (REST + 11 pytest) shipped in Phase 102 (migration
  * ``311c87f25421``); only the editor wiring was deferred.  This

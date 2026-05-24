@@ -1,4 +1,4 @@
-"""Pinned-answer routes for the Lens read-only Q&A surface (Sprint 65.6)."""
+"""Pinned-answer routes for the Lens read-only Q&A surface."""
 
 from __future__ import annotations
 

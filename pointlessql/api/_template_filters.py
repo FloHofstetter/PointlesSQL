@@ -1,6 +1,6 @@
 """Jinja2 filters + globals registered onto the shared templates instance.
 
-Phase 86 B4 lifted these out of ``main.py`` so the entrypoint shrinks
+B4 lifted these out of ``main.py`` so the entrypoint shrinks
 to its proper concern (app build + router wiring) and so the filter
 behaviour gets its own unit-test target without paying the cost of
 importing the whole FastAPI app.

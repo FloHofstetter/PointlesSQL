@@ -1,4 +1,4 @@
-"""Phase 83.2 — Visual Query Builder routes.
+"""Visual Query Builder routes.
 
 Three thin endpoints that wrap :mod:`pointlessql.services.sql.builder`:
 

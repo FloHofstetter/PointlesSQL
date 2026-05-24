@@ -7,7 +7,7 @@
  * factory that also spreads ``notebookDialogs()`` so the modal
  * submit path resolves both halves on the same ``$data`` proxy.
  *
- * Phase 114.1 — extracted from ``notebooks_workspace.js`` so the
+ * extracted from ``notebooks_workspace.js`` so the
  * workspace sidebar factory can mount its own copy of
  * ``notebook_modals.html`` without duplicating these methods.
  */

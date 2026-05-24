@@ -158,7 +158,7 @@ async def api_pql_delete(request: Request, body: dict[str, Any] = Body(...)) -> 
 
     Mirrors :meth:`pointlessql.pql.pql.PQL.delete` over HTTP.  ``where``
     omitted or ``None`` triggers a full-table delete; the SQL editor
-    surface forces a confirmation modal in that case (Phase 63.7) but
+    surface forces a confirmation modal in that case but
     the route itself does not refuse the call — Hermes-driven agents
     may legitimately need a full-table wipe.
 

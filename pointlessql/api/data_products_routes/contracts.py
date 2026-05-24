@@ -1,4 +1,4 @@
-"""``/api/contracts`` — yaml-draft authoring (Phase 73.2).
+"""``/api/contracts`` — yaml-draft authoring.
 
 Five endpoints backing the agent + admin flow for the inline
 :func:`pql.contract` DSL:

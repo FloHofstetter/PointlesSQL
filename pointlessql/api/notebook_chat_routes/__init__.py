@@ -1,4 +1,4 @@
-"""Notebook-editor AI-assistant REST surface (Phase 96).
+"""Notebook-editor AI-assistant REST surface.
 
 Two child route modules:
 

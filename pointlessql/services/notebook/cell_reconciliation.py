@@ -1,4 +1,4 @@
-"""Save-path cell-identity reconciliation (Phase 95).
+"""Save-path cell-identity reconciliation.
 
 The ``notebook_cells`` table maps each cell in a notebook to a stable
 UUID so per-cell social rows (comments / reactions / follows / tags)

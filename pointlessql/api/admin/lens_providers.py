@@ -1,4 +1,4 @@
-"""Admin CRUD for Lens BYO LLM provider credentials (Phase 65.5).
+"""Admin CRUD for Lens BYO LLM provider credentials.
 
 Admin-only routes that store / replace / drop the workspace's
 Fernet-encrypted credential per ``(workspace, provider)``.  The

@@ -1,4 +1,4 @@
-// Phase 62 ML overlay for the table-detail page.
+// ML overlay for the table-detail page.
 // Reads /api/ml/table-relations (scoped to the table's catalog +
 // schema) and exposes the matching entry's scoring_models list so
 // the template can render an "ML model" card analog to the dbt one.

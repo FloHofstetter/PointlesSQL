@@ -1,9 +1,9 @@
-"""Notebook revision snapshots + diff (Phase 97).
+"""Notebook revision snapshots + diff.
 
 Each save event optionally freezes the notebook's (cells + outputs)
 state into a :class:`NotebookRevision` row so the editor can render
 a Monaco-driven diff between two points in time and a future replay
-surface (Phase 103) can re-execute an old revision against today's
+surface can re-execute an old revision against today's
 data.
 
 This module owns:
@@ -115,7 +115,7 @@ def create_revision(
     Args:
         session: A SQLAlchemy session.
         notebook_id: ``Notebook.id`` UUID.
-        cells: Cell list (Phase 96 shape).
+        cells: Cell list.
         outputs: ``notebook_outputs`` rows in load-time shape.
         created_by: Author email; ``None`` for agent / scheduler
             writers.

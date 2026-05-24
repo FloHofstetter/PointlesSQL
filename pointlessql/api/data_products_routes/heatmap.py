@@ -1,4 +1,4 @@
-"""Phase 84.6 — Contributor heatmap.
+"""Contributor heatmap.
 
 12-month-window GitHub-style calendar of social activity on a DP.
 Reads from the existing AuditLog rows whose ``target`` matches

@@ -1,4 +1,4 @@
-"""Get-or-create resolver for :class:`SocialTarget` (Phase 77.0).
+"""Get-or-create resolver for :class:`SocialTarget`.
 
 The resolver is the single chokepoint that every social write
 route uses to translate an ``(workspace_id, entity_kind,
@@ -215,7 +215,7 @@ def _workspace_for_notebook_cell(
 ) -> int | None:
     """Probe the workspace owning a ``"{notebook_uuid}:{cell_uuid}"`` ref.
 
-    Phase 95 — notebook-cell social anchors join through the parent
+    notebook-cell social anchors join through the parent
     notebook's ``workspace_id``.  The cell-uuid half is unique on its
     own but the cheap probe is via ``notebooks.id`` (already indexed).
 

@@ -1,4 +1,4 @@
-"""``/api/agents`` — CRUD + verify (Phase 76.5).
+"""``/api/agents`` — CRUD + verify.
 
 Admin-only mutations.  Listing is workspace-scoped and visible
 to any authenticated caller.
@@ -64,7 +64,7 @@ async def list_agents(
 
     Args:
         request: Incoming FastAPI request.
-        q: Optional name / slug filter (Phase 76.6.1) — case-
+        q: Optional name / slug filter — case-
             insensitive prefix match against ``display_name`` or
             ``slug`` used by the mention-autocomplete picker.
 

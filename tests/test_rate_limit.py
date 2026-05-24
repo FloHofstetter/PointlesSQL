@@ -35,7 +35,7 @@ def _setup_app():
     ``MagicMock``) keeps the tests honest: if a setting is renamed the
     middleware and its tests fail together rather than drifting apart.
     """
-    # Sprint 48: audit writes now run via ``asyncio.to_thread``, so
+    # audit writes now run via ``asyncio.to_thread``, so
     # the test engine needs StaticPool + check_same_thread=False to
     # keep the schema visible across worker threads (same fix as
     # Sprint 47's conftest.py).

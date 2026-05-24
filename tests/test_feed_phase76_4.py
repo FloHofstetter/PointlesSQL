@@ -1,4 +1,4 @@
-"""Phase 76.4 — per-user feed + notification preferences.
+"""per-user feed + notification preferences.
 
 Coverage:
 

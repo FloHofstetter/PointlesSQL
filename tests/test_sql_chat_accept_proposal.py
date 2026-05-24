@@ -1,4 +1,4 @@
-"""Phase 91 — proposal accept/discard lifecycle tests.
+"""proposal accept/discard lifecycle tests.
 
 The accept endpoint marks the row + returns the chat session's
 ``agent_run_id`` so the editor's regular Run path can stamp the

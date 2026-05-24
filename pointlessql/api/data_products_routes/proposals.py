@@ -1,4 +1,4 @@
-"""``/api/data-products/{cat}/{sch}/proposals`` — schema-change proposals (Phase 73.3).
+"""``/api/data-products/{cat}/{sch}/proposals`` — schema-change proposals.
 
 Four endpoints:
 

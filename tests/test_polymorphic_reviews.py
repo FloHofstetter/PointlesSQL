@@ -1,4 +1,4 @@
-"""Phase 77.2.1 — polymorphic reviews on kind='model'.
+"""polymorphic reviews on kind='model'.
 
 Coverage:
 

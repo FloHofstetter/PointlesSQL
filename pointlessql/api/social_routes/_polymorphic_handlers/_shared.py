@@ -1,7 +1,6 @@
 """Cross-module constants, helpers, and serialisers.
 
-Extracted from the 2231-LOC ``_polymorphic_handlers.py`` monolith
-in Phase 89.1 — each axis lives in its own sub-module now while the
+Each axis lives in its own sub-module now while the
 public handler names re-export from the package facade.
 """
 
@@ -52,7 +51,7 @@ ALLOWED_CATEGORIES: tuple[str, ...] = (
     "question",
     "announcement",
     "idea",
-    # Phase 101 Wave-D — review-decision category.  Surfaces a
+    # review-decision category.  Surfaces a
     # ``notebook_cell`` comment as an explicit review pass; the
     # cell-thread UI renders the badge and the per-cell social
     # bulk-counts roll up review counts separately.

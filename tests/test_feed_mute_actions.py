@@ -1,4 +1,4 @@
-"""Phase 81.K.4 — feed action endpoints (mute / snooze / read).
+"""feed action endpoints (mute / snooze / read).
 
 Coverage:
 

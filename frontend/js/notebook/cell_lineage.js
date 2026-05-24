@@ -1,5 +1,5 @@
 /**
- * Per-cell lineage badges (Phase 98.C UI, Wave-D).
+ * Per-cell lineage badges.
  *
  * The backend ships ``GET /api/notebooks/cell/lineage`` (per-cell)
  * and ``/api/notebooks/cell/lineage/bulk`` (whole notebook in one

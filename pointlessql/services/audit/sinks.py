@@ -359,7 +359,7 @@ async def dispatch_one(
 def _dispatch_stdout_json(sink: AuditSink, envelope: dict[str, Any]) -> bool:
     """Write the envelope as a single line of JSON to stdout.
 
-    Phase 75.2.  Aimed at container-log harvesters (Loki, Fluent Bit,
+    Aimed at container-log harvesters (Loki, Fluent Bit,
     Vector) that index stdout/stderr.  Delivery is sync — there is no
     network round-trip — so we never see retries; OSError on write is
     swallowed (the audit_log row stays authoritative).
@@ -397,7 +397,7 @@ def _dispatch_stdout_json(sink: AuditSink, envelope: dict[str, Any]) -> bool:
 def _dispatch_syslog(sink: AuditSink, envelope: dict[str, Any]) -> bool:
     """Send the envelope to a syslog endpoint via :mod:`logging.handlers`.
 
-    Phase 75.2.  ``config_json`` carries ``{address: "host:port",
+    "host:port",
     protocol: "udp" | "tcp", facility: int (default 1), severity: int
     (default 6)}``.  The envelope is JSON-encoded and shipped as the
     message body — receivers parse it with their existing JSON
@@ -564,7 +564,7 @@ async def dispatch_to_sinks(
             }
         )
 
-    # Phase 72.6 — also fan out to per-user webhook subscriptions
+    # also fan out to per-user webhook subscriptions
     # for the data-product event family.  Best-effort; failures are
     # stamped per-subscription, not surfaced to the emitter.
     if event_type.startswith("pointlessql.data_product."):

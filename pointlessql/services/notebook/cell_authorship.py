@@ -1,4 +1,4 @@
-"""Per-cell authorship attribution (Phase 101).
+"""Per-cell authorship attribution.
 
 This module is the upsert-on-save service that maintains the
 ``notebook_cell_authorship`` row 1:1 with
@@ -79,7 +79,7 @@ def upsert_cell_authorship(
                 "upsert_cell_authorship: kind='user' requires email"
             )
     elif kind == "agent":
-        # Phase 101 follow-up (Wave-B closure 2026-05-20): inline editor
+        # inline editor
         # chat has no registered ``Agent`` DB row, so ``agent_id`` is
         # often unavailable.  The ``agent_run_id`` alone is enough
         # provenance — the cell-header chip falls back to a generic

@@ -75,7 +75,7 @@ async def agent_run_diff_page(
     value_changes_b = sum(lineage_diff["value_change_volume_per_table"]["b"].values())
     rejects_a = sum(lineage_diff["reject_pattern_shift"]["a"].values())
     rejects_b = sum(lineage_diff["reject_pattern_shift"]["b"].values())
-    # Phase 54.5a: per-tab counts for the nav-tabs badges so the
+    # per-tab counts for the nav-tabs badges so the
     # ``Lineage`` / ``Rejects`` / ``Cells`` / ``Column lineage`` tabs
     # surface the same affordance the ``Operations`` tab already
     # carries.  Each is a single integer the template renders as a

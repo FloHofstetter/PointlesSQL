@@ -1,4 +1,4 @@
-"""Phase 119 — periodic API-key lifecycle maintenance.
+"""periodic API-key lifecycle maintenance.
 
 Single sync function exposed for the lifespan async loop.  Per-tick
 work:

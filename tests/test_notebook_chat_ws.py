@@ -1,4 +1,4 @@
-"""Phase 96 — smoke tests for ``/ws/notebook/chat/{editor_session_id}``.
+"""smoke tests for ``/ws/notebook/chat/{editor_session_id}``.
 
 Forks the Phase-91 SQL chat WS smoke suite.  Verifies the
 JSON-RPC envelope, the ``ready`` notify, the prompt → tokens →

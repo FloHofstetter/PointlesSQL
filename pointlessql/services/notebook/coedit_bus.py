@@ -1,4 +1,4 @@
-"""Phase 109 — cross-worker co-edit bus via PG LISTEN/NOTIFY.
+"""cross-worker co-edit bus via PG LISTEN/NOTIFY.
 
 Bridges the in-memory Phase-105.2 hub across multiple uvicorn
 workers without adding Redis / RabbitMQ / NATS.  Each worker keeps a
@@ -18,7 +18,7 @@ Lifecycle is owned by the FastAPI lifespan
 (:func:`pointlessql.api._bootstrap._lifespan.make_lifespan`).  On
 SQLite installs the bus is never started — :func:`CoeditBus.start`
 no-ops, :func:`CoeditBus.publish` short-circuits.  Phase 109's hub
-instrumentation (Sprint 109.2) checks ``app.state.coedit_bus is
+instrumentation checks ``app.state.coedit_bus is
 not None`` before publishing.
 """
 
@@ -118,7 +118,7 @@ class CoeditBus:
     def set_dispatch_callback(self, callback: DispatchCallback) -> None:
         """Register the per-frame dispatch callback.
 
-        The hub side (Sprint 109.2) calls this once at lifespan
+        The hub side calls this once at lifespan
         startup with a coroutine that routes incoming frames into
         the local ``_HUBS`` dispatch path.  Idempotent — overwriting
         is supported but not expected.

@@ -427,7 +427,7 @@ window.feedPage = function () {
         iconForKind(kind) { return KIND_ICONS[kind] || 'bi-circle'; },
         kindLabel(kind) { return KIND_LABELS[kind] || kind; },
 
-        // Item-level helpers (Phase 81.K.2).
+        // Item-level helpers.
         itemClasses(r) {
             const rk = r.render_kind || r.kind;
             return {
@@ -593,7 +593,7 @@ window.feedPage = function () {
             this._persistSavedSearches();
         },
 
-        // First-run welcome card (Phase 81.K.8) — dismiss persists in
+        // First-run welcome card — dismiss persists in
         // localStorage.  Server-side gating on user.created_at <7d +
         // social_follow count == 0 would require an extra round-trip;
         // local-only is simpler and the dismiss is sticky-per-browser.
@@ -614,7 +614,7 @@ window.feedPage = function () {
             } catch (e) { /* ignore */ }
         },
 
-        // Keyboard navigation (Phase 81.K.7) — j/k/o/e/m/r/?.
+        // Keyboard navigation — j/k/o/e/m/r/?.
         _focusedIndex: -1,
         _hotkeysAttached: false,
 

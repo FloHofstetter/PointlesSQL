@@ -1,4 +1,4 @@
-"""Phase 76.6 — SSE notifications + cross-DP citations.
+"""SSE notifications + cross-DP citations.
 
 Coverage:
 

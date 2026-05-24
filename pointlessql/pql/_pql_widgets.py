@@ -1,5 +1,5 @@
 # pyright: reportUnusedClass=false
-"""Notebook widget resolution for the PQL façade (Phase 99)."""
+"""Notebook widget resolution for the PQL façade."""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ class _WidgetsMixin(_PQLBase):
     def widgets(self) -> dict[str, Any]:
         """Return the resolved widget values for the active notebook.
 
-        Phase 99 — kernel-side shim over the
+        kernel-side shim over the
         :mod:`pointlessql.services.notebook.widgets` resolver.  Reads
         the active notebook UUID from
         :func:`pointlessql.pql.context.current_notebook_id`; outside

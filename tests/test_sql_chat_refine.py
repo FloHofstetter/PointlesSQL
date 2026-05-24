@@ -1,4 +1,4 @@
-"""Phase 91.3 — refine-loop tests.
+"""refine-loop tests.
 
 The ``refine`` WS method templates the human's "this didn't work,
 try again" affordance into a structured user prompt and runs it

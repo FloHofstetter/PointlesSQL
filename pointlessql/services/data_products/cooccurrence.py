@@ -1,4 +1,4 @@
-"""Cross-DP co-occurrence cache refresher + reader (Phase 73.5).
+"""Cross-DP co-occurrence cache refresher + reader.
 
 Two callables:
 

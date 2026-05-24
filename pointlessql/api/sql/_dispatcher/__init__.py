@@ -1,4 +1,4 @@
-"""Dispatch a single SQL statement to its typed primitive (Phase 63.4).
+"""Dispatch a single SQL statement to its typed primitive.
 
 The SQL editor's ``POST /api/sql/execute`` route used to be a
 SELECT-only runner that parsed → enforced ``SELECT`` per table →
@@ -39,8 +39,6 @@ Privilege model mirrors the existing ``/api/pql/*`` write routes:
 * DROP TABLE: ``MODIFY`` on target.
 * CREATE/DROP SCHEMA: caller must be admin (matches the soyuz
   facade gates).
-
-Phase 88.1 split this module into a package:
 
 * :mod:`_types`         — ``DispatchContext`` + ``ExecutionResult``.
 * :mod:`_privilege`     — per-table SELECT, per-target MODIFY.

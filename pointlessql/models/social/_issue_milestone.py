@@ -1,4 +1,4 @@
-"""Workspace-scoped milestone for tracked issues (Phase 77.7).
+"""Workspace-scoped milestone for tracked issues.
 
 A milestone groups issues by a due date / planning bucket — same
 shape as GitHub milestones.  Each issue references at most one

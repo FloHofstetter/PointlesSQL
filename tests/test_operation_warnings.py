@@ -1,4 +1,4 @@
-"""Tests for the BUG-grand-08 ``warnings_json`` separation.
+"""Tests for the ``warnings_json`` separation.
 
 Pre-fix: ``stamp_audit_marker`` appended ``[lineage_emit_failed]``
 into ``error_message`` whenever a soyuz post-commit hook failed,

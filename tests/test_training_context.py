@@ -264,7 +264,7 @@ def test_training_context_pql_method_round_trip(monkeypatch) -> None:
     assert parsed["params"] == {"depth": "5"}
 
 
-# ---------- BUG-grand-05 — training-source lineage edge ----------
+# ---------- — training-source lineage edge ----------
 
 
 def test_training_context_emits_lineage_edge_when_source_and_model_set(

@@ -1,5 +1,5 @@
 /**
- * SQL syntax-highlighting via highlight.js (Sprint 57.3).
+ * SQL syntax-highlighting via highlight.js.
  *
  * Loaded only on `/queries` (page-local include in
  * ``queries.html``).  Scans for ``<pre><code class="language-sql">``

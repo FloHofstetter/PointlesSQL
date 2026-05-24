@@ -1,4 +1,4 @@
-"""HTTP smoke for GET /api/lens/provenance (Sprint 65.1)."""
+"""HTTP smoke for GET /api/lens/provenance."""
 
 from __future__ import annotations
 

@@ -1,4 +1,4 @@
-"""Phase 82.0 — ingest_pull is bound to the default scheduler registry."""
+"""ingest_pull is bound to the default scheduler registry."""
 
 from __future__ import annotations
 

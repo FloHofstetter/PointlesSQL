@@ -40,7 +40,7 @@ _AUDIT_LOG_TEXT = (
 )
 
 
-# Phase 78 polish — derive entity_kind for the audit_log axis from
+# derive entity_kind for the audit_log axis from
 # the target column.  The locked back-compat rule keeps the legacy
 # ``data_product:`` prefix mapped to ``dp``; every other target
 # encodes ``{kind}:{ref}`` directly.  Non-audit_log axes carry no

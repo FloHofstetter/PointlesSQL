@@ -1,4 +1,4 @@
-"""Phase 82.2 — table-mapping persistence.
+"""table-mapping persistence.
 
 ``POST /api/ingest/sources/{id}/mappings`` replaces the source's
 ``table_mappings`` JSON column with a validated list of per-table

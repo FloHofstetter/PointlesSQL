@@ -24,7 +24,7 @@ async def api_inspect_notebook(request: Request, path: str) -> list[dict[str, An
     Introspects the ``parameters``-tagged cell via
     :func:`papermill.inspect_notebook` and returns one entry per
     declared parameter. The create-job modal and the in-editor
-    Schedule + Run-Once modals (Phase 67) use this to render a typed
+    Schedule + Run-Once modals use this to render a typed
     form instead of the raw JSON textarea.
 
     Papermill's introspector only accepts ``.ipynb`` JSON; ``.py``

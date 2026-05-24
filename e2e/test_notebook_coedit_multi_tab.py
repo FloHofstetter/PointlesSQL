@@ -1,4 +1,4 @@
-"""Phase 108.2 — headless multi-tab co-edit CI gate.
+"""headless multi-tab co-edit CI gate.
 
 Translates the Phase 105.7 ``docs/e2e-walkthroughs/notebook-coedit-
 multi-tab.md`` playbook into an automated Playwright test focused on
@@ -131,7 +131,7 @@ def _open_editor_tab(
     page.goto(
         f"{live_server_url}/notebooks/edit/{path}", wait_until="domcontentloaded"
     )
-    # Sprint 112.5 — the verbose ``notebook-coedit-pill`` (dot + label)
+    # the verbose ``notebook-coedit-pill`` (dot + label)
     # collapsed into one of three vital-sign dots in the toolbar.  The
     # dot has no visible text; its class binds via ``coeditDotClass()``,
     # which returns ``bg-success`` once the y-protocols sync completes

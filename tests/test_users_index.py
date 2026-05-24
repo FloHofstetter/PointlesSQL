@@ -1,4 +1,4 @@
-"""Phase 80.4 — /users People index page tests."""
+"""/users People index page tests."""
 
 from __future__ import annotations
 

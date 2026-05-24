@@ -1,4 +1,4 @@
-"""Inline ``pql.contract()`` DSL for agent-authored DPs (Phase 73.2).
+"""Inline ``pql.contract()`` DSL for agent-authored DPs.
 
 Agents call :func:`contract` from inside a notebook to *declare*
 a data-product contract for the work they just wrote.

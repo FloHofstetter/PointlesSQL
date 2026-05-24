@@ -1,4 +1,4 @@
-"""Sequence-proposal REST routes (Phase 104).
+"""Sequence-proposal REST routes.
 
 * ``POST /api/notebook/chat/{chat_session_id}/propose-sequence`` —
   insert a multi-cell proposal.
@@ -31,7 +31,7 @@ from pointlessql.services.notebook import (
 def _resolve_chat_session_int_id(request: Request, raw: str) -> int:
     """Resolve ``raw`` (integer string or editor_session_id UUID) to int id.
 
-    Phase 104 originally took ``chat_session_id: int`` directly; Phase 104
+    int`` directly; Phase 104
     Wave-D accepts the matching editor_session_id (UUID7) too so the
     hermes-plugin tool can address the session by the same id it uses
     for ``propose-cell``.  Plain integer strings keep working for backward

@@ -1,4 +1,4 @@
-"""Phase 92 — post-commit hook that auto-rebuilds vector indices.
+"""post-commit hook that auto-rebuilds vector indices.
 
 Wired into :func:`pointlessql.services.agent_runs.operations._lifecycle.operation_context`
 as the sixth post-commit hook, fired after the contract-event hook

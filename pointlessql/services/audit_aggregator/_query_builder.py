@@ -172,7 +172,7 @@ def metric_spec(metric: Metric) -> MetricSpec:
             requires_run_join=False,
         )
     if metric == "expectation_failures":
-        # Sprint 36.3 — rejects with reason ``expectation_failed`` are
+        # rejects with reason ``expectation_failed`` are
         # the dbt-bridge's per-test-failure markers.  Same table as
         # ``rejects`` with a row-level filter so the cockpit can show
         # dbt-side data-quality failures separately from merge-time

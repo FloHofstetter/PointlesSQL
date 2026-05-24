@@ -1,4 +1,4 @@
-"""Phase 80.8 — topbar quick-create menu tests."""
+"""topbar quick-create menu tests."""
 
 from __future__ import annotations
 
@@ -76,7 +76,7 @@ class TestQuickCreateMenu:
 
     @pytest.mark.asyncio
     async def test_menu_lists_six_base_options(self):
-        # Phase 81.H.2 — the dropdown collapsed into a `/new` card-grid
+        # the dropdown collapsed into a `/new` card-grid
         # landing page.  Assert the rail still points at /new and the
         # landing page hosts the six base "Build/Community" cards.
         factory = app.state.session_factory

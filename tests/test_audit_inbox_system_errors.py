@@ -1,4 +1,4 @@
-"""Phase 42 — System-errors band on ``/audit/inbox``.
+"""System-errors band on ``/audit/inbox``.
 
 Surfaces ``cdf_tail_subscriptions`` rows with ``last_error IS NOT NULL``
 on the audit inbox above the sigma anomaly cards.  Server-side

@@ -1,4 +1,4 @@
-"""Unit tests for :func:`pointlessql.pql._update_delete` (Phase 63.2).
+"""Unit tests for :func:`pointlessql.pql._update_delete`.
 
 Two layers:
 

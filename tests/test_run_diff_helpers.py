@@ -1,4 +1,4 @@
-"""Phase 18.9 — cell-level + column-lineage edge diff helpers.
+"""cell-level + column-lineage edge diff helpers.
 
 Direct unit tests against
 :func:`pointlessql.services.run_diff.build_value_changes_diff` and

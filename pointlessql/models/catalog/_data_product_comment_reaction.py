@@ -1,4 +1,4 @@
-"""Reactions on data-product comments (Phase 76.1).
+"""Reactions on data-product comments.
 
 One row per ``(comment, user, emoji)`` triple — GitHub-style.
 A user may add multiple emoji to the same comment but only one
@@ -65,7 +65,7 @@ class DataProductCommentReaction(Base):
     created_at: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True), nullable=False
     )
-    # Phase 77.0.B — polymorphic anchor (see _data_product_comments.py).
+    # polymorphic anchor (see _data_product_comments.py).
     # On a comment-reaction the anchor matches the *comment's* target,
     # not a separate one — see services/social/_target_resolver.py.
     social_target_id: Mapped[int] = mapped_column(

@@ -1,4 +1,4 @@
-"""``GET /admin/sources`` — system-wide ingest health monitor (Phase 82.5)."""
+"""``GET /admin/sources`` — system-wide ingest health monitor."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ router = APIRouter(tags=["admin"])
 
 @router.get("/admin/sources", response_class=HTMLResponse)
 async def admin_ingest_sources_index(request: Request) -> HTMLResponse:
-    """Render the system-wide ingest health monitor (Phase 82.5).
+    """Render the system-wide ingest health monitor.
 
     Pure HTML shell — the page fetches ``/api/admin/ingest-sources``
     on load to populate the table.
