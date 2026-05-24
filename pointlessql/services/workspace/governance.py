@@ -33,7 +33,7 @@ from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import select
 
-from pointlessql.config import Settings
+from pointlessql.config import Settings, get_settings
 from pointlessql.models.audit._sinks import GovernanceEvent
 from pointlessql.services.audit.sinks import dispatch_to_sinks
 from pointlessql.types import EventOutcome
@@ -328,7 +328,7 @@ async def emit_governance_event(
         )
         return
 
-    resolved_settings = settings or Settings()
+    resolved_settings = settings or get_settings()
     fired_at = fired_at or datetime.datetime.now(datetime.UTC)
     event_id = uuid.uuid4().hex
     envelope = build_governance_envelope(

@@ -655,7 +655,7 @@ class _DataOpsMixin(_PQLBase):
             are not yet wired through the kernel context).  When no
             notebook context is active the mapping is empty.
         """
-        from pointlessql.config import Settings
+        from pointlessql.config import get_settings
         from pointlessql.db import get_session_factory, init_db
         from pointlessql.pql.context import current_notebook_id
         from pointlessql.services.notebook.widgets import (
@@ -672,7 +672,7 @@ class _DataOpsMixin(_PQLBase):
             # session factory is unbound on first widget read.
             # ``init_db`` is idempotent — re-running against the same
             # URL is a no-op after the first call.
-            init_db(Settings().db.url)
+            init_db(get_settings().db.url)
             factory = get_session_factory()
         with factory() as session:
             return resolve_widget_values(session, notebook_id=notebook_id)

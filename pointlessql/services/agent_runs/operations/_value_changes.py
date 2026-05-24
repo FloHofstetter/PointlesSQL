@@ -39,10 +39,10 @@ def record_value_changes_after_commit(
     if not pending:
         return
 
-    from pointlessql.config import Settings
+    from pointlessql.config import get_settings
     from pointlessql.services.lineage_edges import record_value_changes
 
-    settings = Settings()
+    settings = get_settings()
     failure = record_value_changes(
         session_factory,
         run_id=agent_run_id,

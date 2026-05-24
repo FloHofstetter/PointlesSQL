@@ -7,7 +7,7 @@ import asyncio
 import logging
 from typing import Any
 
-from pointlessql.config import Settings
+from pointlessql.config import get_settings
 from pointlessql.services.unitycatalog import UnityCatalogClient
 from pointlessql.types import UserInfo
 
@@ -46,7 +46,7 @@ async def _branch_cleanup_executor(
 
     from pointlessql.services.branch_cleanup import cleanup_old_branches
 
-    settings = Settings()
+    settings = get_settings()
     summary = await asyncio.to_thread(
         cleanup_old_branches,
         client=uc_client._client,  # noqa: SLF001 — sync soyuz client  # pyright: ignore[reportPrivateUsage]

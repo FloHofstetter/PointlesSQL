@@ -14,7 +14,7 @@ import os
 
 from soyuz_catalog_client import Client
 
-from pointlessql.config import Settings
+from pointlessql.config import Settings, get_settings
 from pointlessql.pql.engine import Engine
 
 
@@ -70,7 +70,7 @@ class PQLBase:
         # time and bypass the patch.
         from pointlessql.pql import pql as _facade
 
-        resolved = settings or Settings()
+        resolved = settings or get_settings()
         # Agent-run-id resolution mirrors `principal`.  Explicit
         # kwarg wins; otherwise the runtime sets the env var before
         # exec'ing the agent's `.py`.  ``None`` keeps the interactive

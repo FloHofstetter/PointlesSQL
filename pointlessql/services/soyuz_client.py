@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from soyuz_catalog_client import Client
 
-from pointlessql.config import Settings
+from pointlessql.config import Settings, get_settings
 
 
 def make_soyuz_client(
@@ -26,7 +26,7 @@ def make_soyuz_client(
         A ready-to-use ``Client`` pointing at the configured
         soyuz-catalog server.
     """
-    settings = settings or Settings()
+    settings = settings or get_settings()
     headers: dict[str, str] = {}
     if agent_run_id:
         headers["X-Agent-Run-Id"] = agent_run_id

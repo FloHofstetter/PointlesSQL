@@ -330,10 +330,10 @@ def load_contracts_for_workspace(
     """
     # Local import to avoid a top-level dependency on settings/git
     # for callers that only use load_contract / load_contracts_from_paths.
-    from pointlessql.config import Settings
+    from pointlessql.config import get_settings
     from pointlessql.git import discover_repo_yaml_files
 
-    resolved_settings = settings if settings is not None else Settings()
+    resolved_settings = settings if settings is not None else get_settings()
     # Cast helps pyright understand the attribute access.
     dp_paths = list(getattr(resolved_settings.data_products, "yaml_search_paths", []))  # type: ignore[union-attr]
     repos_settings = getattr(resolved_settings, "workspace_repos", None)

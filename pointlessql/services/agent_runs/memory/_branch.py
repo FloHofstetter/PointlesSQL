@@ -28,7 +28,7 @@ from typing import TYPE_CHECKING, Any, Literal
 
 from sqlalchemy import select
 
-from pointlessql.config import Settings
+from pointlessql.config import get_settings
 from pointlessql.exceptions import ValidationError
 from pointlessql.models import AgentRun, AgentRunOperation
 from pointlessql.pql.branch import create_branch_schema
@@ -194,7 +194,7 @@ def branch_from_run(
 
     name = branch_name or _derive_branch_name(agent_id, from_run_id)
 
-    settings = Settings()
+    settings = get_settings()
     branch_fqn = create_branch_schema(
         client=client,
         source_schema_fqn=source_schema_fqn,

@@ -79,6 +79,24 @@ from pointlessql.services import auth, csrf
 from pointlessql.services.soyuz_client import make_soyuz_client
 
 _TEST_SECRET = "test-secret-key-for-unit-tests!!"
+
+
+@pytest.fixture(autouse=True)
+def _reset_settings_cache() -> Iterator[None]:  # pyright: ignore[reportUnusedFunction]
+    """Clear the get_settings() LRU cache between tests.
+
+    Phase 121.2 introduced :func:`pointlessql.config.get_settings`
+    caching.  Tests that monkeypatch env vars (POINTLESSQL_*) need
+    the cache invalidated so the next get_settings() call re-reads
+    the patched environment.
+    """
+    from pointlessql.config import reset_settings_cache
+
+    reset_settings_cache()
+    yield
+    reset_settings_cache()
+
+
 _FTS_AXES: tuple[str, ...] = ("runs", "ops", "queries", "tool_calls", "audit_log")
 _FTS_SOURCE_TABLES_SQLITE: dict[str, str] = {
     "runs": "agent_runs",

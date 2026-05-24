@@ -48,7 +48,7 @@ from pointlessql.api._bootstrap._loops import (
     _user_notification_digest_loop,  # pyright: ignore[reportPrivateUsage]
     _workspace_repos_sync_loop,  # pyright: ignore[reportPrivateUsage]
 )
-from pointlessql.config import Settings
+from pointlessql.config import get_settings
 from pointlessql.db import get_session_factory, init_db
 from pointlessql.services import api_keys as api_keys_service
 from pointlessql.services import scheduler as scheduler_service
@@ -105,7 +105,7 @@ def make_lifespan(
     @asynccontextmanager
     async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
         """Build shared app state and run the scheduler + audit retention loop."""
-        settings = Settings()
+        settings = get_settings()
         logger.info(
             "PointlesSQL starting on %s:%d (engine=%s, log_format=%s)",
             settings.server.host,

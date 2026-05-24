@@ -30,7 +30,7 @@ import httpx
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
-from pointlessql.config import GroupMapping, Settings
+from pointlessql.config import GroupMapping, get_settings
 from pointlessql.exceptions import PointlessSQLError
 from pointlessql.models import User, Workspace
 from pointlessql.services.auth import is_first_user
@@ -47,7 +47,7 @@ def _http_timeout() -> float:
     re-importing the module — matches the per-request settings
     pattern used elsewhere in the codebase.
     """
-    return Settings().oidc.http_timeout_seconds
+    return get_settings().oidc.http_timeout_seconds
 
 
 # ---------------------------------------------------------------------------

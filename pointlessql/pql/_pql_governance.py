@@ -6,7 +6,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any, Literal
 
-from pointlessql.config import Settings
+from pointlessql.config import get_settings
 from pointlessql.pql._branch import (
     create_branch_schema,
     discard_branch_schema,
@@ -176,7 +176,7 @@ class _GovernanceMixin(_PQLBase):
             client=self._client,
             source_schema_fqn=source_schema,
             branch_name=branch_name,
-            settings=Settings(),
+            settings=get_settings(),
             strategy=strategy,
             agent_run_id=self._current_run_id,
         )
@@ -204,7 +204,7 @@ class _GovernanceMixin(_PQLBase):
         return promote_branch_schema(
             client=self._client,
             branch_schema_fqn=branch_schema,
-            settings=Settings(),
+            settings=get_settings(),
             agent_run_id=self._current_run_id,
         )
 
@@ -242,6 +242,6 @@ class _GovernanceMixin(_PQLBase):
         discard_branch_schema(
             client=self._client,
             branch_schema_fqn=branch_schema,
-            settings=Settings(),
+            settings=get_settings(),
             agent_run_id=self._current_run_id,
         )

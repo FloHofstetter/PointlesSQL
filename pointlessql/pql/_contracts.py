@@ -109,9 +109,9 @@ class DraftContract:
 
         target_dir = draft_dir
         if target_dir is None:
-            from pointlessql.config import Settings
+            from pointlessql.config import get_settings
 
-            target_dir = Settings().data_products.draft_dir
+            target_dir = get_settings().data_products.draft_dir
         target_dir = Path(target_dir) / str(workspace_id)
         target_dir.mkdir(parents=True, exist_ok=True)
         path = target_dir / f"{self.contract.catalog}__{self.contract.schema_name}.yaml"

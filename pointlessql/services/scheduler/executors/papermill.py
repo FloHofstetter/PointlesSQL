@@ -19,7 +19,7 @@ import threading
 from pathlib import Path
 from typing import Any
 
-from pointlessql.config import Settings
+from pointlessql.config import get_settings
 from pointlessql.exceptions import EngineError, ValidationError
 from pointlessql.services.unitycatalog import UnityCatalogClient
 from pointlessql.types import UserInfo
@@ -66,7 +66,7 @@ def _resolve_repo_notebook_path(spec: str) -> Path:
     """
     # Local import to avoid a top-level dependency on settings/git
     # for callers that never use the repo-prefix path.
-    from pointlessql.config import Settings
+    from pointlessql.config import get_settings
 
     body = spec[len(_REPO_PREFIX):]
     # Split on the first slash to separate the "<workspace_id>:<slug>"
@@ -97,7 +97,7 @@ def _resolve_repo_notebook_path(spec: str) -> Path:
             f"repo notebook spec must end in .ipynb or .py: {spec!r}"
         )
 
-    settings = Settings()
+    settings = get_settings()
     base_dir = settings.workspace_repos.base_dir
     clone_dir = (base_dir / workspace_id_str / slug).resolve()
     if not clone_dir.exists():
@@ -279,7 +279,7 @@ async def _papermill_executor(
     if not isinstance(parameters, dict):
         raise ValidationError("papermill job config 'parameters' must be an object")
 
-    settings = Settings()
+    settings = get_settings()
     timeout_cfg = config.get("timeout_seconds")
     if timeout_cfg is None:
         timeout_seconds = settings.jupyter.execute_timeout_seconds

@@ -27,7 +27,7 @@ from typing import TYPE_CHECKING, Any
 
 from mcp.server.fastmcp import FastMCP
 
-from pointlessql.config import Settings
+from pointlessql.config import Settings, get_settings
 from pointlessql.services.api_keys import KeyEntry, verify_bearer
 from pointlessql.services.lens.tools import (
     ALL_TOOLS,
@@ -249,7 +249,7 @@ def run_lens_mcp_stdio(
 
     from pointlessql.db import get_session_factory, init_db
 
-    resolved_settings = settings or Settings()
+    resolved_settings = settings or get_settings()
     if factory is None:
         try:
             resolved_factory = get_session_factory()

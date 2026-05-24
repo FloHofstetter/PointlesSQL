@@ -22,7 +22,7 @@ from typing import TYPE_CHECKING, Any
 
 import yaml
 
-from pointlessql.config import Settings
+from pointlessql.config import Settings, get_settings
 from pointlessql.conventions._defaults import DEFAULT_CONVENTIONS
 from pointlessql.conventions._schema import ConventionsConfig
 
@@ -69,7 +69,7 @@ def load_conventions(
             :mod:`yaml` and validation errors from :mod:`pydantic`
             propagate as their native exception types.
     """
-    resolved_settings = settings or Settings()
+    resolved_settings = settings or get_settings()
     resolved_path = path or resolved_settings.conventions.path
 
     if resolved_path is None:
@@ -135,7 +135,7 @@ def load_conventions_for_workspace(
     # of git/secrets/workspace_repos for the legacy-only path.
     from pointlessql.git import discover_repo_yaml_files
 
-    resolved_settings = settings or Settings()
+    resolved_settings = settings or get_settings()
 
     if resolved_settings.conventions.path is not None:
         return load_conventions(settings=resolved_settings)

@@ -22,6 +22,8 @@ Layout (private modules, do not import directly):
 
 from __future__ import annotations
 
+from functools import lru_cache
+
 from pointlessql.config._logging import (
     JSONFormatter,
     RequestIdFilter,
@@ -95,7 +97,33 @@ __all__ = [
     "SqlExecutionApiSettings",
     "WorkspaceReposSettings",
     "configure_logging",
+    "get_settings",
     "job_run_id_var",
     "request_id_var",
+    "reset_settings_cache",
     "task_id_var",
 ]
+
+
+@lru_cache(maxsize=1)
+def get_settings() -> Settings:
+    """Return the cached process-wide :class:`Settings` instance.
+
+    pydantic-settings re-reads env vars on each construction; caching
+    eliminates that cost for the 90+ import sites.  Tests reset the
+    cache via :func:`reset_settings_cache` in an autouse fixture so
+    env-var monkeypatching keeps working between tests.
+
+    Returns:
+        The single process-wide :class:`Settings` instance.
+    """
+    return Settings()
+
+
+def reset_settings_cache() -> None:
+    """Clear the :func:`get_settings` LRU cache.
+
+    Test-only — production code should never need to reset the
+    cache because env vars are stable within a process lifetime.
+    """
+    get_settings.cache_clear()

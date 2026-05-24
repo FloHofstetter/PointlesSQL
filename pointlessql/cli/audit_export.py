@@ -293,10 +293,10 @@ def cli_entrypoint(
     Returns:
         Process exit code (``0`` on success, ``2`` on error).
     """
-    from pointlessql.config import Settings  # noqa: PLC0415
+    from pointlessql.config import get_settings  # noqa: PLC0415
     from pointlessql.db import init_db  # noqa: PLC0415
 
-    settings = Settings()
+    settings = get_settings()
     url = db_url or settings.db.url
     init_db(url)
     from pointlessql.db import get_session_factory  # noqa: PLC0415

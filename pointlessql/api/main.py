@@ -27,7 +27,7 @@ from pointlessql.api.volumes_routes import (
 from pointlessql.api.volumes_routes import (
     delta_field_to_uc as _delta_field_to_uc,  # noqa: F401  # pyright: ignore[reportUnusedImport]
 )
-from pointlessql.config import Settings, configure_logging
+from pointlessql.config import configure_logging, get_settings
 from pointlessql.db import get_session_factory, init_db
 from pointlessql.services import api_keys as api_keys_service
 from pointlessql.services import metrics as metrics_service
@@ -36,7 +36,7 @@ from pointlessql.services import metrics as metrics_service
 # process that serves traffic — the uvicorn --reload worker imports
 # this module but does not go through cli(). Idempotent; subsequent
 # calls replace our own handlers without disturbing pytest's caplog.
-_startup_settings = Settings()
+_startup_settings = get_settings()
 configure_logging(
     _startup_settings.logging.level,
     _startup_settings.logging.format,
@@ -212,7 +212,7 @@ def _run_dev_server() -> None:
     """Start the uvicorn dev server with the project-scoped reload watcher."""
     import uvicorn
 
-    settings = Settings()
+    settings = get_settings()
     # Why: uvicorn's reload watcher defaults to the whole working directory.
     # That includes ``notebooks/``, so the editor's autosave triggers a server
     # reload — kernel + Pyright WebSockets get torn down mid-typing.  Pinning
@@ -274,7 +274,7 @@ def _admin_issue_auditor_key(  # pyright: ignore[reportUnusedFunction]
     recovered afterwards — copy it into the Hermes cron job's
     ``POINTLESSQL_API_KEY`` env overlay immediately.
     """
-    settings = Settings()
+    settings = get_settings()
     init_db(settings.db.url)
     factory = get_session_factory()
     try:

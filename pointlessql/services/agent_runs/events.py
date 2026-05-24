@@ -28,7 +28,7 @@ from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import select
 
-from pointlessql.config import Settings
+from pointlessql.config import Settings, get_settings
 from pointlessql.models import AgentRunEvent
 from pointlessql.services.alert_dispatcher import dispatch_webhook
 from pointlessql.services.audit.sinks import dispatch_to_sinks
@@ -256,7 +256,7 @@ async def emit_agent_run_event(
         logger.warning("emit_agent_run_event: ignoring unknown event_type %r", event_type)
         return
 
-    resolved_settings = settings or Settings()
+    resolved_settings = settings or get_settings()
     url = resolved_settings.agent_runs.webhook_url
     fired_at = fired_at or datetime.datetime.now(datetime.UTC)
     event_id = uuid.uuid4().hex
