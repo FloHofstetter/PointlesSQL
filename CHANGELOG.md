@@ -4,6 +4,42 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Phase 121.9a — Close 7 pre-existing test failures (2026-05-24,
+  rc136 → rc137).**  Drains the residual failures carried as "out
+  of scope" since Phase 117/121 waves.  Root causes split between
+  prod (3) and test maintenance (4):
+
+  - **Model:**  ``ck_agent_run_operations_op_name`` CHECK extended
+    with ``'pin_fact'`` — Phase 97 alembic migration added it but
+    the SQLAlchemy model lagged, breaking the in-memory
+    ``Base.metadata.create_all()`` test path.
+  - **Prod:** ``services/scheduler/runs/_telemetry.py`` switches
+    ``_webhook_client_factory()`` to a call-time package lookup
+    so ``monkeypatch.setattr(scheduler_service.runs, ...)``
+    reaches the call site (same pattern as ``_sleep`` /
+    ``_build_pql`` after Phase 110/111 module splits).
+  - **Prod:** 6 broad-except sites get either
+    ``# bare-broad-ok:`` markers (5: ``notebook_coedit_ws/`` x4
+    + ``sql_statements/_executor``) or upgrade to
+    ``logger.exception`` (1: ``notebook_coedit_ws/_seed`` was
+    bucket-C lossy).
+  - **Test:**  ``test_api_notebook_save`` renamed +
+    counterpart-added to reflect Phase 99 Wave-D's
+    ``_enforce_notebook_role(required="edit")`` gate; the old
+    "any authenticated user can save" contract was tightened.
+  - **Test:**  ``ENTITY_KINDS`` expected set extended with
+    Phase-97 ``notebook_revision`` + ``notebook_cell_output``.
+  - **Test:**  CSRF redirect assertion relaxed to ``startswith``
+    (the redirect now carries ``?flash=account_created``).
+  - **Test:**  ``test_phase158`` patches
+    ``pointlessql.pql._merge._resolve._get_table`` instead of
+    the ``_merge`` package re-export so the local binding the
+    resolver actually uses gets stubbed.
+
+  Full pytest after the wave: 3529 passed, 9 skipped, 0 failed.
+
 ### Added
 
 - **Phase 121.8b — Pagination service-layer rollout (2026-05-24,
@@ -58,6 +94,23 @@ All notable changes to this project will be documented in this file.
   ``audit.redact_detail_payloads=True`` setting is flipped
   (default False for backward-compat; reuses ``audit.pii_mode``
   for the redaction shape).  13 new pytest.
+
+### Removed
+
+- **Phase 121.9b — Working-tree hygiene (2026-05-24, rc137 →
+  rc138).**  Two weeks of ephemeral debug artefacts purged:
+  ``phase113-replay/`` (43 PNGs + REPLAY_REPORT.md) and
+  ``phase120-replay/`` (6 PNGs) deleted — the canonical playbooks
+  live in ``docs/e2e-walkthroughs/``, not in per-session
+  screenshot dumps.  Scratch notebooks ``mcp_demo.py`` +
+  ``phase95_walkthrough.py`` removed; jupytext-save drift on
+  ``agent_drift_monitor.py`` (stripped ``pql_cell_id`` metadata)
+  + ``phase96_walkthrough.py`` (stray marker comment) reverted.
+  ``.gitignore`` extended with ``phase*-replay/`` so future
+  replay sessions don't slip past the existing ``/*.png`` rule
+  (which only catches repo-root PNGs).  Three Phase-113 deferred
+  UX nits archived to project memory before the report was
+  deleted.
 
 ### Changed
 

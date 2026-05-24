@@ -2727,6 +2727,38 @@ PointlesSQL
 │   │         new ``audit.redact_detail_payloads=True`` setting
 │   │         flipped (default False for backward-compat).  13 new
 │   │         pytest.  Commit ``67f4e64``, asset rc132 → rc133.
+│   │     - **121.9 — Pre-existing failure drain + working-tree hygiene.**
+│   │       ✅ done 2026-05-24.  Final residual sweep after 121.8:
+│   │       - **121.9a — Close 7 pre-existing test failures.**  These
+│   │         had been carried as "out of scope" since Phase 117/121
+│   │         waves; rooted them all.  Model: extend
+│   │         ``ck_agent_run_operations_op_name`` with ``'pin_fact'``
+│   │         (Phase 97 alembic added it; SQLAlchemy model lagged).
+│   │         Prod: switch ``_telemetry._webhook_client_factory`` call
+│   │         site to call-time package lookup so the documented
+│   │         monkeypatch target reaches the binding (same pattern as
+│   │         ``_sleep`` / ``_build_pql``).  Six broad-except sites
+│   │         in ``notebook_coedit_ws/`` + ``sql_statements/_executor``
+│   │         get ``# bare-broad-ok:`` markers (5) or upgrade to
+│   │         ``logger.exception`` (1).  Test-side: rename
+│   │         ``test_save_non_admin_accessible`` to reflect Phase 99
+│   │         Wave-D edit-role gate (+ paired with-grant test);
+│   │         extend ``ENTITY_KINDS`` expected set with Phase 97
+│   │         ``notebook_revision`` + ``notebook_cell_output``;
+│   │         relax CSRF redirect to ``startswith``; patch
+│   │         ``_merge._resolve._get_table`` instead of the package
+│   │         re-export.  Full pytest 3529 passed / 0 failed.  Commit
+│   │         ``a285165``, asset rc136 → rc137.
+│   │       - **121.9b — Working-tree hygiene.**  Removed
+│   │         ``phase{113,120}-replay/`` ephemeral PNG dumps + scratch
+│   │         notebooks (``mcp_demo.py``, ``phase95_walkthrough.py``);
+│   │         reverted jupytext-save drift on
+│   │         ``agent_drift_monitor.py`` + ``phase96_walkthrough.py``.
+│   │         Extended ``.gitignore`` with ``phase*-replay/`` so
+│   │         future replay sessions auto-ignore (the existing
+│   │         ``/*.png`` rule only catches root-level PNGs).  Commit
+│   │         ``b92442a``, asset rc137 → rc138.
+│   │
 │   │     - **121.8 — Wave close-out.**  ✅ done 2026-05-24.  Drains
 │   │       the two carry-overs that survived 121.7:
 │   │       - **121.8a — Tests lint baseline.**  ``tests/**``
