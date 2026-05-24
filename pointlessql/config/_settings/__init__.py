@@ -58,6 +58,7 @@ from pointlessql.config._settings._integrations import (
     SoyuzSettings,
     WorkspaceReposSettings,
 )
+from pointlessql.config._settings._privileges import PrivilegeSettings
 from pointlessql.config._settings._storage import DatabaseSettings, DeltaSettings
 
 
@@ -105,6 +106,7 @@ class Settings(BaseSettings):
     dbt: DBTSettings = Field(default_factory=DBTSettings)
     lens: LensSettings = Field(default_factory=LensSettings)
     coedit: CoeditSettings = Field(default_factory=CoeditSettings)
+    privilege: PrivilegeSettings = Field(default_factory=PrivilegeSettings)
 
 
 __all__ = [
@@ -132,6 +134,7 @@ __all__ = [
     "MLflowSettings",
     "NotificationsSettings",
     "OIDCSettings",
+    "PrivilegeSettings",
     "RateLimitSettings",
     "SQLSettings",
     "SchedulerSettings",

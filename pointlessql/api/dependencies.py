@@ -173,6 +173,119 @@ def admin_uc(request: Request) -> UnityCatalogClient:
     return get_uc_client(request)
 
 
+_VALID_ROLES = frozenset({"admin", "supervisor", "auditor", "analyst", "user"})
+
+
+def require_role(*roles: str) -> Callable[[Request], None]:
+    """Return a Depends-compatible callable enforcing role-set membership.
+
+    Phase 121.4 generalises the existing single-role
+    ``require_admin`` / ``require_supervisor`` / ``require_auditor``
+    gates into one parametrised form.  Routes that need
+    "admin OR auditor" (read-paths shared between tenant ops + audit
+    reviewers) can declare
+    ``_: None = Depends(require_role("admin", "auditor"))`` instead of
+    hand-rolling an OR gate.
+
+    Recognised roles (mirrors :class:`UserInfo` flags + api_key scopes
+    attached by :func:`auth_middleware`):
+
+    * ``admin`` — ``user.is_admin``.
+    * ``supervisor`` — ``user.is_supervisor`` OR
+      ``request.state.api_key_supervisor``.
+    * ``auditor`` — ``user.is_auditor`` OR
+      ``request.state.api_key_auditor``.
+    * ``analyst`` — ``user.is_auditor`` (auditor scope covers analyst)
+      OR ``request.state.api_key_analyst`` OR
+      ``request.state.api_key_auditor``.
+    * ``user`` — any authenticated principal (``user.id > 0``).
+
+    Admin is strictly stronger than every other role: an admin caller
+    passes regardless of whether ``"admin"`` was included in *roles*.
+    This matches the existing :func:`require_supervisor` and
+    :func:`require_auditor` semantics where admins always succeed.
+
+    The two token-only gates (:func:`require_sql_execute` and
+    :func:`require_lineage_inbound`) deliberately do not promote via
+    this factory — those surfaces target external integrations that
+    need narrow grants, so they keep their dedicated dep.
+
+    Args:
+        *roles: One or more role identifiers the caller must satisfy
+            (logical OR).  At least one role required.
+
+    Returns:
+        A FastAPI dep callable that raises
+        :class:`AuthorizationError` when none of *roles* match.
+
+    Raises:
+        ValueError: When *roles* is empty or contains an unrecognised
+            role identifier.  Raised at registration time (factory
+            invocation), not at request time.
+    """
+    if not roles:
+        raise ValueError("require_role needs at least one role")
+    role_set = frozenset(roles)
+    unknown = role_set - _VALID_ROLES
+    if unknown:
+        raise ValueError(
+            f"Unknown role(s): {sorted(unknown)} — must be one of {sorted(_VALID_ROLES)}"
+        )
+
+    def _dep(request: Request) -> None:
+        """Raise :class:`AuthorizationError` unless the caller matches *roles*."""
+        user = get_user(request)
+        if user.get("is_admin"):
+            return
+        for role in role_set:
+            if _check_role(role, user, request):
+                return
+        raise AuthorizationError(
+            principal=user.get("email", ""),
+            privilege=" OR ".join(sorted(role_set)),
+            securable_type="system",
+            full_name="role",
+        )
+
+    return _dep
+
+
+def _check_role(role: str, user: UserInfo, request: Request) -> bool:
+    """Map a role identifier to its boolean check.
+
+    Internal helper for :func:`require_role`.  The ``admin`` branch is
+    handled by the outer factory (early-return), so this function
+    never needs to evaluate it.
+
+    Args:
+        role: One of the recognised role identifiers.
+        user: The caller's :class:`UserInfo` from :func:`get_user`.
+        request: Incoming FastAPI request (for api_key_* state).
+
+    Returns:
+        ``True`` when the caller satisfies *role*, ``False`` otherwise.
+    """
+    if role == "admin":
+        return bool(user.get("is_admin"))
+    if role == "supervisor":
+        return bool(user.get("is_supervisor")) or getattr(
+            request.state, "api_key_supervisor", False
+        )
+    if role == "auditor":
+        return bool(user.get("is_auditor")) or getattr(
+            request.state, "api_key_auditor", False
+        )
+    if role == "analyst":
+        return (
+            bool(user.get("is_auditor"))
+            or getattr(request.state, "api_key_analyst", False)
+            or getattr(request.state, "api_key_auditor", False)
+        )
+    if role == "user":
+        return bool(user.get("id"))
+    return False
+
+
 def require_user(request: Request) -> None:
     """Raise :class:`AuthorizationError` if no authenticated user is bound.
 
