@@ -64,7 +64,9 @@ export function installCoeditAwareness(state) {
     try {
       const payload = encodeAwarenessUpdate(aw, [aw.clientID]);
       client.sendAwarenessUpdate(payload);
-    } catch (_err) { /* swallow */ }
+    } catch (_err) {
+      /* swallow */
+    }
   };
 
   state._wireAwarenessUplink = function () {
@@ -104,9 +106,9 @@ export function installCoeditAwareness(state) {
       // recipient's own re-broadcast surfaces as ``updated`` here,
       // not ``added``, so we don't re-fire.
       if (
-        changes
-        && Array.isArray(changes.added)
-        && changes.added.some((id) => id !== aw.clientID)
+        changes &&
+        Array.isArray(changes.added) &&
+        changes.added.some((id) => id !== aw.clientID)
       ) {
         self._broadcastLocalAwareness();
       }
@@ -150,7 +152,7 @@ export function installCoeditAwareness(state) {
         clientId: agentSlot,
         id: 0,
         name: String(entry.name || 'agent'),
-        color: '#5a6cf0',  // pinned co-edit-agent indigo for visual contrast
+        color: '#5a6cf0', // pinned co-edit-agent indigo for visual contrast
         initials: 'A',
         agent: {
           run_id: String(entry.agent_run_id || ''),
@@ -187,7 +189,11 @@ export function installCoeditAwareness(state) {
     const aw = this._awareness;
     const self = this;
     this._coeditBeforeUnload = () => {
-      try { aw.setLocalState(null); } catch (_e) { /* swallow */ }
+      try {
+        aw.setLocalState(null);
+      } catch (_e) {
+        /* swallow */
+      }
       self._coeditBeforeUnload = null;
     };
     window.addEventListener('beforeunload', this._coeditBeforeUnload);

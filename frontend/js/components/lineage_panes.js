@@ -28,186 +28,181 @@
  * unchanged — these sub-panes are additive.
  */
 
-
 function _activateTab(tabBtnId) {
-    const btn = document.getElementById(tabBtnId);
-    if (!btn) return;
-    if (window.bootstrap && window.bootstrap.Tab) {
-        window.bootstrap.Tab.getOrCreateInstance(btn).show();
-        return;
-    }
-    btn.click();
+  const btn = document.getElementById(tabBtnId);
+  if (!btn) return;
+  if (window.bootstrap && window.bootstrap.Tab) {
+    window.bootstrap.Tab.getOrCreateInstance(btn).show();
+    return;
+  }
+  btn.click();
 }
-
 
 export function rowTracePane() {
-    return {
-        table: '',
-        rowId: '',
-        loading: false,
-        loaded: false,
-        error: null,
-        steps: [],
+  return {
+    table: '',
+    rowId: '',
+    loading: false,
+    loaded: false,
+    error: null,
+    steps: [],
 
-        init() {
-            window.addEventListener('pql:trace-row', (evt) => {
-                const detail = evt.detail || {};
-                if (detail.table) this.table = String(detail.table);
-                if (detail.rowId) this.rowId = String(detail.rowId);
-                _activateTab('tab-lineage-row-trace-btn');
-                if (this.table && this.rowId) {
-                    this.fetch();
-                }
-            });
-        },
+    init() {
+      window.addEventListener('pql:trace-row', (evt) => {
+        const detail = evt.detail || {};
+        if (detail.table) this.table = String(detail.table);
+        if (detail.rowId) this.rowId = String(detail.rowId);
+        _activateTab('tab-lineage-row-trace-btn');
+        if (this.table && this.rowId) {
+          this.fetch();
+        }
+      });
+    },
 
-        async fetch() {
-            if (!this.table || !this.rowId) return;
-            this.loading = true;
-            this.error = null;
-            try {
-                const url =
-                    '/api/lineage/row-trace?table=' +
-                    encodeURIComponent(this.table) +
-                    '&row_id=' +
-                    encodeURIComponent(this.rowId);
-                const resp = await fetch(url, {
-                    headers: { Accept: 'application/json' },
-                });
-                if (!resp.ok) {
-                    const body = await resp.json().catch(() => ({}));
-                    this.error = body.detail || ('HTTP ' + resp.status);
-                    this.steps = [];
-                } else {
-                    const body = await resp.json();
-                    this.steps = body.steps || [];
-                    this.loaded = true;
-                }
-            } catch (err) {
-                this.error = err.message || String(err);
-                this.steps = [];
-            } finally {
-                this.loading = false;
-            }
-        },
-    };
+    async fetch() {
+      if (!this.table || !this.rowId) return;
+      this.loading = true;
+      this.error = null;
+      try {
+        const url =
+          '/api/lineage/row-trace?table=' +
+          encodeURIComponent(this.table) +
+          '&row_id=' +
+          encodeURIComponent(this.rowId);
+        const resp = await fetch(url, {
+          headers: { Accept: 'application/json' },
+        });
+        if (!resp.ok) {
+          const body = await resp.json().catch(() => ({}));
+          this.error = body.detail || 'HTTP ' + resp.status;
+          this.steps = [];
+        } else {
+          const body = await resp.json();
+          this.steps = body.steps || [];
+          this.loaded = true;
+        }
+      } catch (err) {
+        this.error = err.message || String(err);
+        this.steps = [];
+      } finally {
+        this.loading = false;
+      }
+    },
+  };
 }
-
 
 export function columnTracePane() {
-    return {
-        table: '',
-        column: '',
-        loading: false,
-        loaded: false,
-        error: null,
-        steps: [],
+  return {
+    table: '',
+    column: '',
+    loading: false,
+    loaded: false,
+    error: null,
+    steps: [],
 
-        init() {
-            window.addEventListener('pql:trace-column', (evt) => {
-                const detail = evt.detail || {};
-                if (detail.table) this.table = String(detail.table);
-                if (detail.column) this.column = String(detail.column);
-                _activateTab('tab-lineage-column-trace-btn');
-                if (this.table && this.column) {
-                    this.fetch();
-                }
-            });
-        },
+    init() {
+      window.addEventListener('pql:trace-column', (evt) => {
+        const detail = evt.detail || {};
+        if (detail.table) this.table = String(detail.table);
+        if (detail.column) this.column = String(detail.column);
+        _activateTab('tab-lineage-column-trace-btn');
+        if (this.table && this.column) {
+          this.fetch();
+        }
+      });
+    },
 
-        async fetch() {
-            if (!this.table || !this.column) return;
-            this.loading = true;
-            this.error = null;
-            try {
-                const url =
-                    '/api/lineage/column-trace?table=' +
-                    encodeURIComponent(this.table) +
-                    '&column=' +
-                    encodeURIComponent(this.column);
-                const resp = await fetch(url, {
-                    headers: { Accept: 'application/json' },
-                });
-                if (!resp.ok) {
-                    const body = await resp.json().catch(() => ({}));
-                    this.error = body.detail || ('HTTP ' + resp.status);
-                    this.steps = [];
-                } else {
-                    const body = await resp.json();
-                    this.steps = body.steps || [];
-                    this.loaded = true;
-                }
-            } catch (err) {
-                this.error = err.message || String(err);
-                this.steps = [];
-            } finally {
-                this.loading = false;
-            }
-        },
-    };
+    async fetch() {
+      if (!this.table || !this.column) return;
+      this.loading = true;
+      this.error = null;
+      try {
+        const url =
+          '/api/lineage/column-trace?table=' +
+          encodeURIComponent(this.table) +
+          '&column=' +
+          encodeURIComponent(this.column);
+        const resp = await fetch(url, {
+          headers: { Accept: 'application/json' },
+        });
+        if (!resp.ok) {
+          const body = await resp.json().catch(() => ({}));
+          this.error = body.detail || 'HTTP ' + resp.status;
+          this.steps = [];
+        } else {
+          const body = await resp.json();
+          this.steps = body.steps || [];
+          this.loaded = true;
+        }
+      } catch (err) {
+        this.error = err.message || String(err);
+        this.steps = [];
+      } finally {
+        this.loading = false;
+      }
+    },
+  };
 }
-
 
 export function valueChangesPane() {
-    return {
-        table: '',
-        rowId: '',
-        column: '',
-        loading: false,
-        loaded: false,
-        error: null,
-        changes: [],
+  return {
+    table: '',
+    rowId: '',
+    column: '',
+    loading: false,
+    loaded: false,
+    error: null,
+    changes: [],
 
-        init() {
-            window.addEventListener('pql:trace-value', (evt) => {
-                const detail = evt.detail || {};
-                if (detail.table) this.table = String(detail.table);
-                if (detail.rowId) this.rowId = String(detail.rowId);
-                if (detail.column !== undefined && detail.column !== null) {
-                    this.column = String(detail.column);
-                }
-                _activateTab('tab-lineage-value-changes-btn');
-                if (this.table && this.rowId) {
-                    this.fetch();
-                }
-            });
-        },
+    init() {
+      window.addEventListener('pql:trace-value', (evt) => {
+        const detail = evt.detail || {};
+        if (detail.table) this.table = String(detail.table);
+        if (detail.rowId) this.rowId = String(detail.rowId);
+        if (detail.column !== undefined && detail.column !== null) {
+          this.column = String(detail.column);
+        }
+        _activateTab('tab-lineage-value-changes-btn');
+        if (this.table && this.rowId) {
+          this.fetch();
+        }
+      });
+    },
 
-        async fetch() {
-            if (!this.table || !this.rowId) return;
-            this.loading = true;
-            this.error = null;
-            try {
-                let url =
-                    '/api/lineage/value-changes?table=' +
-                    encodeURIComponent(this.table) +
-                    '&row_id=' +
-                    encodeURIComponent(this.rowId);
-                if (this.column) {
-                    url += '&column=' + encodeURIComponent(this.column);
-                }
-                const resp = await fetch(url, {
-                    headers: { Accept: 'application/json' },
-                });
-                if (!resp.ok) {
-                    const body = await resp.json().catch(() => ({}));
-                    this.error = body.detail || ('HTTP ' + resp.status);
-                    this.changes = [];
-                } else {
-                    const body = await resp.json();
-                    this.changes = body.changes || [];
-                    this.loaded = true;
-                }
-            } catch (err) {
-                this.error = err.message || String(err);
-                this.changes = [];
-            } finally {
-                this.loading = false;
-            }
-        },
-    };
+    async fetch() {
+      if (!this.table || !this.rowId) return;
+      this.loading = true;
+      this.error = null;
+      try {
+        let url =
+          '/api/lineage/value-changes?table=' +
+          encodeURIComponent(this.table) +
+          '&row_id=' +
+          encodeURIComponent(this.rowId);
+        if (this.column) {
+          url += '&column=' + encodeURIComponent(this.column);
+        }
+        const resp = await fetch(url, {
+          headers: { Accept: 'application/json' },
+        });
+        if (!resp.ok) {
+          const body = await resp.json().catch(() => ({}));
+          this.error = body.detail || 'HTTP ' + resp.status;
+          this.changes = [];
+        } else {
+          const body = await resp.json();
+          this.changes = body.changes || [];
+          this.loaded = true;
+        }
+      } catch (err) {
+        this.error = err.message || String(err);
+        this.changes = [];
+      } finally {
+        this.loading = false;
+      }
+    },
+  };
 }
-
 
 /**
  * Wire up the deep-link plumbing once on document load.
@@ -224,37 +219,33 @@ export function valueChangesPane() {
  * pick up wiring via event delegation on ``document.body``.
  */
 export function bindLineageTraceButtons() {
-    if (window.__pqlLineageTraceBound) return;
-    window.__pqlLineageTraceBound = true;
+  if (window.__pqlLineageTraceBound) return;
+  window.__pqlLineageTraceBound = true;
 
-    window.pqlLineageTraceRow = (table, rowId) => {
-        window.dispatchEvent(
-            new CustomEvent('pql:trace-row', { detail: { table, rowId } }),
-        );
-    };
-    window.pqlLineageTraceColumn = (table, column) => {
-        window.dispatchEvent(
-            new CustomEvent('pql:trace-column', { detail: { table, column } }),
-        );
-    };
-    window.pqlLineageTraceValue = (table, rowId, column) => {
-        window.dispatchEvent(
-            new CustomEvent('pql:trace-value', {
-                detail: { table, rowId, column: column || null },
-            }),
-        );
-    };
+  window.pqlLineageTraceRow = (table, rowId) => {
+    window.dispatchEvent(new CustomEvent('pql:trace-row', { detail: { table, rowId } }));
+  };
+  window.pqlLineageTraceColumn = (table, column) => {
+    window.dispatchEvent(new CustomEvent('pql:trace-column', { detail: { table, column } }));
+  };
+  window.pqlLineageTraceValue = (table, rowId, column) => {
+    window.dispatchEvent(
+      new CustomEvent('pql:trace-value', {
+        detail: { table, rowId, column: column || null },
+      })
+    );
+  };
 
-    document.body.addEventListener('click', (evt) => {
-        const target = evt.target instanceof Element ? evt.target : null;
-        if (!target) return;
-        const btn = target.closest('button[data-pql-trace-row="1"]');
-        if (!btn) return;
-        evt.preventDefault();
-        const table = btn.getAttribute('data-table') || '';
-        const rowId = btn.getAttribute('data-row-id') || '';
-        if (table && rowId) {
-            window.pqlLineageTraceRow(table, rowId);
-        }
-    });
+  document.body.addEventListener('click', (evt) => {
+    const target = evt.target instanceof Element ? evt.target : null;
+    if (!target) return;
+    const btn = target.closest('button[data-pql-trace-row="1"]');
+    if (!btn) return;
+    evt.preventDefault();
+    const table = btn.getAttribute('data-table') || '';
+    const rowId = btn.getAttribute('data-row-id') || '';
+    if (table && rowId) {
+      window.pqlLineageTraceRow(table, rowId);
+    }
+  });
 }

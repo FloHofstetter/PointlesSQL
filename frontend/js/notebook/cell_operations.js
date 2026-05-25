@@ -48,11 +48,7 @@ export function installCellOperations(state, deps) {
       const editor = cellEditor({
         initialSource: cell.source,
         language:
-          cell.cell_type === 'sql'
-            ? 'sql'
-            : cell.cell_type === 'markdown'
-            ? 'markdown'
-            : 'python',
+          cell.cell_type === 'sql' ? 'sql' : cell.cell_type === 'markdown' ? 'markdown' : 'python',
         onSourceChange: (value) => this._onCellSourceChange(cell.id, value),
       });
       this._editors[cell.id] = editor;
@@ -184,11 +180,7 @@ export function installCellOperations(state, deps) {
    * re-renders the CodeMirror editor, marks the cell dirty, and
    * records a pending provenance acceptance for the next save.
    */
-  state.updateCellSourceByUuid = async function (
-    cellUuid,
-    newSource,
-    { proposalId, agentRunId },
-  ) {
+  state.updateCellSourceByUuid = async function (cellUuid, newSource, { proposalId, agentRunId }) {
     const cell = this.cells.find((c) => c.cell_uuid === cellUuid);
     if (!cell) return null;
     cell.source = newSource;
@@ -232,8 +224,7 @@ export function installCellOperations(state, deps) {
     if (host) {
       const fresh = cellEditor({
         initialSource: source,
-        language:
-          newType === 'sql' ? 'sql' : newType === 'markdown' ? 'markdown' : 'python',
+        language: newType === 'sql' ? 'sql' : newType === 'markdown' ? 'markdown' : 'python',
         onSourceChange: (value) => this._onCellSourceChange(cell.id, value),
       });
       this._editors[cell.id] = fresh;

@@ -15,26 +15,22 @@
  * read-only CodeMirror instance.  ``data-sql`` is JSON-encoded so
  * embedded quotes / newlines round-trip cleanly.
  */
-import { EditorState } from "@codemirror/state";
-import { EditorView, lineNumbers } from "@codemirror/view";
-import {
-  syntaxHighlighting,
-  defaultHighlightStyle,
-  bracketMatching,
-} from "@codemirror/language";
-import { sql } from "@codemirror/lang-sql";
-import { oneDark } from "@codemirror/theme-one-dark";
+import { EditorState } from '@codemirror/state';
+import { EditorView, lineNumbers } from '@codemirror/view';
+import { syntaxHighlighting, defaultHighlightStyle, bracketMatching } from '@codemirror/language';
+import { sql } from '@codemirror/lang-sql';
+import { oneDark } from '@codemirror/theme-one-dark';
 
 function mount(host) {
-  if (host.dataset.pqlMounted === "1") return;
-  host.dataset.pqlMounted = "1";
-  let doc = "";
+  if (host.dataset.pqlMounted === '1') return;
+  host.dataset.pqlMounted = '1';
+  let doc = '';
   try {
     doc = JSON.parse(host.dataset.sql || '""');
   } catch {
-    doc = host.dataset.sql || "";
+    doc = host.dataset.sql || '';
   }
-  const isDark = document.documentElement.dataset.bsTheme === "dark";
+  const isDark = document.documentElement.dataset.bsTheme === 'dark';
   new EditorView({
     state: EditorState.create({
       doc,
@@ -47,9 +43,7 @@ function mount(host) {
         // ``oneDark`` ships its own highlight style.  Apply only one
         // so dark-mode keywords don't render in light-theme dark
         // colors against the dark editor background (invisible).
-        ...(isDark
-          ? [oneDark]
-          : [syntaxHighlighting(defaultHighlightStyle)]),
+        ...(isDark ? [oneDark] : [syntaxHighlighting(defaultHighlightStyle)]),
         sql(),
       ],
     }),
@@ -59,8 +53,8 @@ function mount(host) {
 
 function mountAll(root) {
   if (!root || !root.querySelectorAll) return;
-  root.querySelectorAll(".pql-sql-viewer").forEach(mount);
+  root.querySelectorAll('.pql-sql-viewer').forEach(mount);
 }
 
-document.addEventListener("DOMContentLoaded", () => mountAll(document));
-document.addEventListener("htmx:afterSwap", (ev) => mountAll(ev.target));
+document.addEventListener('DOMContentLoaded', () => mountAll(document));
+document.addEventListener('htmx:afterSwap', (ev) => mountAll(ev.target));

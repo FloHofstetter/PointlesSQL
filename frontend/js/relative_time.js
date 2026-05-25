@@ -21,28 +21,28 @@
 // ago"). Append 'Z' when the string lacks any tz marker so the
 // browser parses it as UTC and the relative-time math is right.
 export function pqlParseServerIso(iso) {
- if (!iso) return null;
- const s = String(iso);
- // Already has a zone: trailing Z, or ±HH:MM / ±HHMM after the T.
- if (/(Z|[+-]\d{2}:?\d{2})$/.test(s)) return s;
- // No zone — treat as UTC.
- return s + 'Z';
+  if (!iso) return null;
+  const s = String(iso);
+  // Already has a zone: trailing Z, or ±HH:MM / ±HHMM after the T.
+  if (/(Z|[+-]\d{2}:?\d{2})$/.test(s)) return s;
+  // No zone — treat as UTC.
+  return s + 'Z';
 }
 
 export function pqlRelativeTime(iso) {
- if (!iso) return '';
- const t = Date.parse(pqlParseServerIso(iso));
- if (Number.isNaN(t)) return iso;
- const delta = Math.max(0, (Date.now() - t) / 1000);
- if (delta < 45) return 'just now';
- if (delta < 90) return '1 min ago';
- if (delta < 3600) return Math.round(delta / 60) + ' min ago';
- if (delta < 5400) return '1 hour ago';
- if (delta < 86400) return Math.round(delta / 3600) + ' hours ago';
- if (delta < 129600) return '1 day ago';
- if (delta < 2592000) return Math.round(delta / 86400) + ' days ago';
- const d = new Date(t);
- return d.toISOString().slice(0, 10);
+  if (!iso) return '';
+  const t = Date.parse(pqlParseServerIso(iso));
+  if (Number.isNaN(t)) return iso;
+  const delta = Math.max(0, (Date.now() - t) / 1000);
+  if (delta < 45) return 'just now';
+  if (delta < 90) return '1 min ago';
+  if (delta < 3600) return Math.round(delta / 60) + ' min ago';
+  if (delta < 5400) return '1 hour ago';
+  if (delta < 86400) return Math.round(delta / 3600) + ' hours ago';
+  if (delta < 129600) return '1 day ago';
+  if (delta < 2592000) return Math.round(delta / 86400) + ' days ago';
+  const d = new Date(t);
+  return d.toISOString().slice(0, 10);
 }
 
 /**
@@ -53,16 +53,21 @@ export function pqlRelativeTime(iso) {
  * moment matters more than the elapsed delta.
  */
 export function pqlAbsTime(iso) {
- if (!iso) return '';
- const t = Date.parse(pqlParseServerIso(iso));
- if (Number.isNaN(t)) return iso;
- const d = new Date(t);
- const pad = (n) => String(n).padStart(2, '0');
- return (
-   d.getUTCFullYear() + '-' +
-   pad(d.getUTCMonth() + 1) + '-' +
-   pad(d.getUTCDate()) + ' ' +
-   pad(d.getUTCHours()) + ':' +
-   pad(d.getUTCMinutes()) + ' UTC'
- );
+  if (!iso) return '';
+  const t = Date.parse(pqlParseServerIso(iso));
+  if (Number.isNaN(t)) return iso;
+  const d = new Date(t);
+  const pad = (n) => String(n).padStart(2, '0');
+  return (
+    d.getUTCFullYear() +
+    '-' +
+    pad(d.getUTCMonth() + 1) +
+    '-' +
+    pad(d.getUTCDate()) +
+    ' ' +
+    pad(d.getUTCHours()) +
+    ':' +
+    pad(d.getUTCMinutes()) +
+    ' UTC'
+  );
 }

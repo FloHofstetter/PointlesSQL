@@ -13,8 +13,8 @@ import { lineageDag } from './factory.js';
 import { loadCytoscapeOnce, renderModelGraph } from './cytoscape_init.js';
 
 if (typeof window !== 'undefined') {
-    window.loadCytoscapeOnce = loadCytoscapeOnce;
-    window.renderModelGraph = renderModelGraph;
+  window.loadCytoscapeOnce = loadCytoscapeOnce;
+  window.renderModelGraph = renderModelGraph;
 }
 
 export { lineageDag, loadCytoscapeOnce, renderModelGraph };

@@ -13,27 +13,27 @@
 // re-init on ``htmx:afterSwap`` to cover icons rendered into the
 // boosted content area.
 (function () {
-    'use strict';
+  'use strict';
 
-    function initHelpPopovers(root) {
-        if (!window.bootstrap || !window.bootstrap.Popover) return;
-        const scope = root || document;
-        scope.querySelectorAll('[data-bs-toggle="popover"]').forEach(function (el) {
-            // Skip elements already wired by an earlier init call.
-            if (window.bootstrap.Popover.getInstance(el)) return;
-            new window.bootstrap.Popover(el);
-        });
-    }
-
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', function () {
-            initHelpPopovers(document);
-        });
-    } else {
-        initHelpPopovers(document);
-    }
-
-    document.body.addEventListener('htmx:afterSwap', function (evt) {
-        initHelpPopovers(evt.target || document);
+  function initHelpPopovers(root) {
+    if (!window.bootstrap || !window.bootstrap.Popover) return;
+    const scope = root || document;
+    scope.querySelectorAll('[data-bs-toggle="popover"]').forEach(function (el) {
+      // Skip elements already wired by an earlier init call.
+      if (window.bootstrap.Popover.getInstance(el)) return;
+      new window.bootstrap.Popover(el);
     });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function () {
+      initHelpPopovers(document);
+    });
+  } else {
+    initHelpPopovers(document);
+  }
+
+  document.body.addEventListener('htmx:afterSwap', function (evt) {
+    initHelpPopovers(evt.target || document);
+  });
 })();

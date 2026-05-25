@@ -12,14 +12,14 @@
  */
 function highlightAll(root) {
   if (!root || !root.querySelectorAll) return;
-  if (typeof window.hljs === "undefined") return;
-  root.querySelectorAll("pre code.language-sql").forEach((el) => {
-    if (el.dataset.hljs !== "1") {
+  if (typeof window.hljs === 'undefined') return;
+  root.querySelectorAll('pre code.language-sql').forEach((el) => {
+    if (el.dataset.hljs !== '1') {
       window.hljs.highlightElement(el);
-      el.dataset.hljs = "1";
+      el.dataset.hljs = '1';
     }
   });
 }
 
-document.addEventListener("DOMContentLoaded", () => highlightAll(document));
-document.addEventListener("htmx:afterSwap", (ev) => highlightAll(ev.target));
+document.addEventListener('DOMContentLoaded', () => highlightAll(document));
+document.addEventListener('htmx:afterSwap', (ev) => highlightAll(ev.target));

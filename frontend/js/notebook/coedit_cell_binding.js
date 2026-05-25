@@ -52,7 +52,10 @@ export function installCoeditCellBinding(state) {
         const order = ydoc.getArray(CELLS_ORDER_KEY);
         let present = false;
         for (let i = 0; i < order.length; i += 1) {
-          if (order.get(i) === cell.cell_uuid) { present = true; break; }
+          if (order.get(i) === cell.cell_uuid) {
+            present = true;
+            break;
+          }
         }
         if (!present) order.push([cell.cell_uuid]);
       });
@@ -80,7 +83,10 @@ export function installCoeditCellBinding(state) {
     const order = ydoc.getArray(CELLS_ORDER_KEY);
     let fromIdx = -1;
     for (let i = 0; i < order.length; i += 1) {
-      if (order.get(i) === cell.cell_uuid) { fromIdx = i; break; }
+      if (order.get(i) === cell.cell_uuid) {
+        fromIdx = i;
+        break;
+      }
     }
     if (fromIdx < 0) return;
     // Find the uuid currently AFTER ``cell`` in the local Alpine
@@ -105,7 +111,10 @@ export function installCoeditCellBinding(state) {
       }
       let insertIdx = -1;
       for (let i = 0; i < order.length; i += 1) {
-        if (order.get(i) === anchorUuid) { insertIdx = i; break; }
+        if (order.get(i) === anchorUuid) {
+          insertIdx = i;
+          break;
+        }
       }
       if (insertIdx < 0) order.push([cell.cell_uuid]);
       else order.insert(insertIdx, [cell.cell_uuid]);
@@ -128,13 +137,16 @@ export function installCoeditCellBinding(state) {
     const remoteUuids = order.toArray();
     const remoteSet = new Set(remoteUuids);
     const byUuid = new Map();
-    const orphans = [];                       // cell has uuid but is NOT in cells_order
-    const localOnly = [];                     // cell has no uuid yet (un-saved)
+    const orphans = []; // cell has uuid but is NOT in cells_order
+    const localOnly = []; // cell has no uuid yet (un-saved)
     for (const c of this.cells) {
       if (!c) continue;
-      if (!c.cell_uuid) { localOnly.push(c); continue; }
+      if (!c.cell_uuid) {
+        localOnly.push(c);
+        continue;
+      }
       if (remoteSet.has(c.cell_uuid)) byUuid.set(c.cell_uuid, c);
-      else orphans.push(c);                   // preserve — server seed may be stale
+      else orphans.push(c); // preserve — server seed may be stale
     }
     const reordered = [];
     for (const uuid of remoteUuids) {
@@ -151,7 +163,10 @@ export function installCoeditCellBinding(state) {
     if (reordered.length === this.cells.length) {
       let identical = true;
       for (let i = 0; i < reordered.length; i += 1) {
-        if (reordered[i].id !== this.cells[i].id) { identical = false; break; }
+        if (reordered[i].id !== this.cells[i].id) {
+          identical = false;
+          break;
+        }
       }
       if (identical) return;
     }
@@ -204,18 +219,17 @@ export function installCoeditCellBinding(state) {
       if (!host) continue;
       const binding = this.cellYBinding(cell);
       if (!binding) continue;
-      const source = typeof existing.getSource === 'function'
-        ? existing.getSource()
-        : String(cell.source || '');
-      try { existing.destroy(); } catch (_e) { /* swallow */ }
+      const source =
+        typeof existing.getSource === 'function' ? existing.getSource() : String(cell.source || '');
+      try {
+        existing.destroy();
+      } catch (_e) {
+        /* swallow */
+      }
       const fresh = cellEditor({
         initialSource: source,
         language:
-          cell.cell_type === 'sql'
-            ? 'sql'
-            : cell.cell_type === 'markdown'
-              ? 'markdown'
-              : 'python',
+          cell.cell_type === 'sql' ? 'sql' : cell.cell_type === 'markdown' ? 'markdown' : 'python',
         onSourceChange: (value) => this._onCellSourceChange(cell.id, value),
         yBinding: binding,
       });
@@ -224,7 +238,9 @@ export function installCoeditCellBinding(state) {
       host.innerHTML = '';
       // Mount is async; let it run in the background so onSynced
       // doesn't block the WS message loop.
-      fresh.mount(host).catch(() => { /* swallow */ });
+      fresh.mount(host).catch(() => {
+        /* swallow */
+      });
     }
   };
 }

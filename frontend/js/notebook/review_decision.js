@@ -15,9 +15,27 @@
  */
 
 export const REVIEW_DECISIONS = [
-  { id: 'approved', label: 'Approved', icon: 'bi-check-circle-fill', className: 'text-success', prefix: '✅ **Approved**' },
-  { id: 'changes_requested', label: 'Changes requested', icon: 'bi-exclamation-triangle-fill', className: 'text-warning', prefix: '⚠️ **Changes requested**' },
-  { id: 'comment', label: 'Comment only', icon: 'bi-chat-left-text', className: 'text-muted', prefix: '💬 **Reviewed**' },
+  {
+    id: 'approved',
+    label: 'Approved',
+    icon: 'bi-check-circle-fill',
+    className: 'text-success',
+    prefix: '✅ **Approved**',
+  },
+  {
+    id: 'changes_requested',
+    label: 'Changes requested',
+    icon: 'bi-exclamation-triangle-fill',
+    className: 'text-warning',
+    prefix: '⚠️ **Changes requested**',
+  },
+  {
+    id: 'comment',
+    label: 'Comment only',
+    icon: 'bi-chat-left-text',
+    className: 'text-muted',
+    prefix: '💬 **Reviewed**',
+  },
 ];
 
 export function extractReviewDecision(body_md) {

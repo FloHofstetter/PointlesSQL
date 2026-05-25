@@ -21,24 +21,24 @@
  */
 
 if (typeof htmx !== 'undefined') {
- htmx.config.globalViewTransitions = true;
+  htmx.config.globalViewTransitions = true;
 }
 
 (function () {
- const csrfMeta = document.querySelector('meta[name="csrf-token"]');
- const token = csrfMeta ? csrfMeta.content : '';
- const SAFE = new Set(['GET', 'HEAD', 'OPTIONS']);
- document.body.addEventListener('htmx:configRequest', (e) => {
-  const verb = (e.detail.verb || '').toUpperCase();
-  if (token && !SAFE.has(verb)) {
-   e.detail.headers['X-CSRF-Token'] = token;
-  }
-  const wsMeta = document.querySelector('meta[name="workspace-slug"]');
-  const slug = wsMeta ? wsMeta.content : '';
-  if (slug) {
-   e.detail.headers['X-Workspace'] = slug;
-  }
- });
+  const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+  const token = csrfMeta ? csrfMeta.content : '';
+  const SAFE = new Set(['GET', 'HEAD', 'OPTIONS']);
+  document.body.addEventListener('htmx:configRequest', (e) => {
+    const verb = (e.detail.verb || '').toUpperCase();
+    if (token && !SAFE.has(verb)) {
+      e.detail.headers['X-CSRF-Token'] = token;
+    }
+    const wsMeta = document.querySelector('meta[name="workspace-slug"]');
+    const slug = wsMeta ? wsMeta.content : '';
+    if (slug) {
+      e.detail.headers['X-Workspace'] = slug;
+    }
+  });
 })();
 
 // Alpine 3 has its own MutationObserver that picks up DOM additions
@@ -57,30 +57,27 @@ if (typeof htmx !== 'undefined') {
 // link with the same ``data-section``. Same for the offcanvas
 // ``nav_links`` rail on mobile if it ever grows the attribute.
 function syncActiveSection() {
- const main = document.getElementById('main-content');
- if (!main) return;
- const section = main.dataset.activeSection || '';
- const page = main.dataset.activePage || '';
- document
-  .querySelectorAll('.pql-icon-rail__link[data-section]')
-  .forEach((link) => {
-   // Page-specific entries (ML Models, Agents) opt out of section
-   // matching with ``data-active-page``; they highlight only when
-   // the page matches.
-   const matchPage = link.dataset.activePage || '';
-   let active;
-   if (matchPage) {
-    active = page === matchPage;
-   } else {
-    // Section-matching entries (Catalog, People) can ALSO exclude
-    // specific pages via ``data-exclude-active-page`` so they do
-    // not double-light when a page-specific sibling is the real
-    // target.
-    const exclude = link.dataset.excludeActivePage || '';
-    active = link.dataset.section === section
-     && (!exclude || page !== exclude);
-   }
-   link.classList.toggle('active', active);
+  const main = document.getElementById('main-content');
+  if (!main) return;
+  const section = main.dataset.activeSection || '';
+  const page = main.dataset.activePage || '';
+  document.querySelectorAll('.pql-icon-rail__link[data-section]').forEach((link) => {
+    // Page-specific entries (ML Models, Agents) opt out of section
+    // matching with ``data-active-page``; they highlight only when
+    // the page matches.
+    const matchPage = link.dataset.activePage || '';
+    let active;
+    if (matchPage) {
+      active = page === matchPage;
+    } else {
+      // Section-matching entries (Catalog, People) can ALSO exclude
+      // specific pages via ``data-exclude-active-page`` so they do
+      // not double-light when a page-specific sibling is the real
+      // target.
+      const exclude = link.dataset.excludeActivePage || '';
+      active = link.dataset.section === section && (!exclude || page !== exclude);
+    }
+    link.classList.toggle('active', active);
   });
 }
 document.body.addEventListener('htmx:afterSwap', syncActiveSection);
@@ -93,15 +90,15 @@ document.body.addEventListener('htmx:afterSwap', syncActiveSection);
 // htmx.min.js) so the listener is safe to register at any point in
 // the script ordering.
 document.body.addEventListener('pqlToast', (e) => {
- if (!window.pqlToast) return;
- const data = (e.detail && typeof e.detail === 'object') ? e.detail : {};
- const level = data.level || 'info';
- const fn = window.pqlToast[level] || window.pqlToast.info;
- let message = data.message || '';
- if (data.request_id) {
-  message = message
-   ? message + ' [req ' + data.request_id + ']'
-   : '[req ' + data.request_id + ']';
- }
- fn(message, { timeout: 6000 });
+  if (!window.pqlToast) return;
+  const data = e.detail && typeof e.detail === 'object' ? e.detail : {};
+  const level = data.level || 'info';
+  const fn = window.pqlToast[level] || window.pqlToast.info;
+  let message = data.message || '';
+  if (data.request_id) {
+    message = message
+      ? message + ' [req ' + data.request_id + ']'
+      : '[req ' + data.request_id + ']';
+  }
+  fn(message, { timeout: 6000 });
 });

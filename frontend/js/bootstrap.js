@@ -99,13 +99,10 @@ window.optionsEditor = optionsEditor;
 // layer.
 import { createConnectionForm } from './pages/federation/connections.js';
 import {
-    createCredentialForm,
-    createExternalLocationForm,
+  createCredentialForm,
+  createExternalLocationForm,
 } from './pages/federation/credentials.js';
-import {
-    createForeignCatalogForm,
-    deleteConfirm,
-} from './pages/federation/catalogs.js';
+import { createForeignCatalogForm, deleteConfirm } from './pages/federation/catalogs.js';
 
 window.createConnectionForm = createConnectionForm;
 window.createExternalLocationForm = createExternalLocationForm;
@@ -187,10 +184,10 @@ window.lineageDag = lineageDag;
 // custom events fired from Summary "Trace" buttons + the Graph
 // side-panel column-pair "Trace this column" button.
 import {
-    rowTracePane,
-    columnTracePane,
-    valueChangesPane,
-    bindLineageTraceButtons,
+  rowTracePane,
+  columnTracePane,
+  valueChangesPane,
+  bindLineageTraceButtons,
 } from './components/lineage_panes.js';
 
 window.rowTracePane = rowTracePane;
@@ -200,9 +197,9 @@ window.valueChangesPane = valueChangesPane;
 // One-shot wiring for the Summary "Trace target row" buttons +
 // the three window.pqlLineageTrace* helper functions.  Idempotent.
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', bindLineageTraceButtons, { once: true });
+  document.addEventListener('DOMContentLoaded', bindLineageTraceButtons, { once: true });
 } else {
-    bindLineageTraceButtons();
+  bindLineageTraceButtons();
 }
 
 // Page-template factories.  Each was previously an inline
@@ -214,12 +211,12 @@ import { alertsPage } from './pages/alerts.js';
 import { feedPage } from './pages/feed.js';
 import { dataProductDetail } from './pages/data_product.js';
 import {
- modelVersions,
- modelPromotion,
- modelDiscussion,
- modelReadme,
- modelReviews,
- modelLineageDag,
+  modelVersions,
+  modelPromotion,
+  modelDiscussion,
+  modelReadme,
+  modelReviews,
+  modelLineageDag,
 } from './pages/model.js';
 import { alertDetail } from './pages/alert_detail.js';
 import { volumeDetail } from './pages/volume_detail.js';

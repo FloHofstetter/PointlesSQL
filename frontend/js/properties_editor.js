@@ -6,9 +6,9 @@
 import { createDictEditor } from './editor_base.js';
 
 export function optionsEditor({ patchUrl, initial }) {
-    return createDictEditor('options', patchUrl, initial);
+  return createDictEditor('options', patchUrl, initial);
 }
 
 export function propertiesEditor({ patchUrl, initial }) {
-    return createDictEditor('properties', patchUrl, initial);
+  return createDictEditor('properties', patchUrl, initial);
 }

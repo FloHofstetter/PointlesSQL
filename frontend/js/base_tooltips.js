@@ -12,18 +12,20 @@
  */
 
 (function () {
- function initTooltips(root) {
-  (root || document)
-   .querySelectorAll('[data-bs-toggle="tooltip"]:not([data-bs-tooltip-init])')
-   .forEach((el) => {
-    try {
-     new bootstrap.Tooltip(el);
-     el.setAttribute('data-bs-tooltip-init', '1');
-    } catch (_) { /* Bootstrap missing on auth pages */ }
-   });
- }
- document.addEventListener('DOMContentLoaded', () => initTooltips());
- document.body.addEventListener('htmx:afterSwap', (e) => {
-  initTooltips(e.target);
- });
+  function initTooltips(root) {
+    (root || document)
+      .querySelectorAll('[data-bs-toggle="tooltip"]:not([data-bs-tooltip-init])')
+      .forEach((el) => {
+        try {
+          new bootstrap.Tooltip(el);
+          el.setAttribute('data-bs-tooltip-init', '1');
+        } catch (_) {
+          /* Bootstrap missing on auth pages */
+        }
+      });
+  }
+  document.addEventListener('DOMContentLoaded', () => initTooltips());
+  document.body.addEventListener('htmx:afterSwap', (e) => {
+    initTooltips(e.target);
+  });
 })();

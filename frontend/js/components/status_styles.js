@@ -13,34 +13,34 @@
  */
 
 const STATUS_BADGE_CLASS = {
-    // Terminal success
-    ok: 'success',
-    succeeded: 'success',
-    completed: 'success',
-    approved: 'success',
-    promoted: 'success',
-    ready: 'success',
-    READY: 'success',
-    // In-flight
-    running: 'info',
-    queued: 'info',
-    active: 'info',
-    // Failure
-    error: 'danger',
-    errored: 'danger',
-    failed: 'danger',
-    rolled_back: 'danger',
-    FAILED_REGISTRATION: 'danger',
-    // Awaiting human
-    needs_approval: 'warning',
-    pending_approval: 'warning',
-    PENDING_REGISTRATION: 'warning',
-    // Cold
-    denied: 'secondary',
-    discarded: 'secondary',
-    cancelled: 'secondary',
-    paused: 'secondary',
-    disabled: 'secondary',
+  // Terminal success
+  ok: 'success',
+  succeeded: 'success',
+  completed: 'success',
+  approved: 'success',
+  promoted: 'success',
+  ready: 'success',
+  READY: 'success',
+  // In-flight
+  running: 'info',
+  queued: 'info',
+  active: 'info',
+  // Failure
+  error: 'danger',
+  errored: 'danger',
+  failed: 'danger',
+  rolled_back: 'danger',
+  FAILED_REGISTRATION: 'danger',
+  // Awaiting human
+  needs_approval: 'warning',
+  pending_approval: 'warning',
+  PENDING_REGISTRATION: 'warning',
+  // Cold
+  denied: 'secondary',
+  discarded: 'secondary',
+  cancelled: 'secondary',
+  paused: 'secondary',
+  disabled: 'secondary',
 };
 
 const DARK_TEXT_VARIANTS = new Set(['warning', 'info']);
@@ -52,8 +52,8 @@ const DARK_TEXT_VARIANTS = new Set(['warning', 'info']);
  * @returns {string}
  */
 export function statusClass(status) {
-    const variant = STATUS_BADGE_CLASS[status || ''] || 'secondary';
-    const base = `bg-${variant}`;
-    if (DARK_TEXT_VARIANTS.has(variant)) return `${base} text-dark`;
-    return base;
+  const variant = STATUS_BADGE_CLASS[status || ''] || 'secondary';
+  const base = `bg-${variant}`;
+  if (DARK_TEXT_VARIANTS.has(variant)) return `${base} text-dark`;
+  return base;
 }

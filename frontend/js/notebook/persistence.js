@@ -29,27 +29,23 @@ export function installPersistence(state) {
       // reconciler can map to the final ``cell_uuid``.  For fix
       // proposals the target_cell_uuid is already stable and is
       // passed through as-is.
-      const proposalAcceptances = (this._pendingProvenance || []).map(
-        (acc) => {
-          if (acc.action === 'propose' && acc.placeholder_cell_id) {
-            const idx = this.cells.findIndex(
-              (c) => c.id === acc.placeholder_cell_id,
-            );
-            return {
-              proposal_id: acc.proposal_id,
-              agent_run_id: acc.agent_run_id,
-              action: acc.action,
-              placeholder_index: idx,
-            };
-          }
+      const proposalAcceptances = (this._pendingProvenance || []).map((acc) => {
+        if (acc.action === 'propose' && acc.placeholder_cell_id) {
+          const idx = this.cells.findIndex((c) => c.id === acc.placeholder_cell_id);
           return {
             proposal_id: acc.proposal_id,
             agent_run_id: acc.agent_run_id,
             action: acc.action,
-            target_cell_uuid: acc.target_cell_uuid || null,
+            placeholder_index: idx,
           };
-        },
-      );
+        }
+        return {
+          proposal_id: acc.proposal_id,
+          agent_run_id: acc.agent_run_id,
+          action: acc.action,
+          target_cell_uuid: acc.target_cell_uuid || null,
+        };
+      });
       const payload = {
         path: this.path,
         expected_mtime: this.mtime,
@@ -79,8 +75,7 @@ export function installPersistence(state) {
         return;
       }
       if (!res.ok) {
-        this.errorMessage =
-          (res.data && res.data.detail) || `Save failed (HTTP ${res.status}).`;
+        this.errorMessage = (res.data && res.data.detail) || `Save failed (HTTP ${res.status}).`;
         return;
       }
       const data = res.data || {};

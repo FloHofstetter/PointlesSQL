@@ -39,28 +39,28 @@ const SKELETON_HTML = `
 let pendingTimer = null;
 
 function clearPending() {
-    if (pendingTimer !== null) {
-        clearTimeout(pendingTimer);
-        pendingTimer = null;
-    }
+  if (pendingTimer !== null) {
+    clearTimeout(pendingTimer);
+    pendingTimer = null;
+  }
 }
 
 function paintSkeleton() {
-    pendingTimer = null;
-    const main = document.getElementById('main-content');
-    if (!main) return;
-    main.innerHTML = SKELETON_HTML;
+  pendingTimer = null;
+  const main = document.getElementById('main-content');
+  if (!main) return;
+  main.innerHTML = SKELETON_HTML;
 }
 
 document.body.addEventListener('htmx:beforeRequest', (ev) => {
-    const detail = ev.detail || {};
-    const target = detail.target;
-    // Only show skeleton when the request actually targets the main
-    // content swap zone — never on inline page-level XHR (e.g. the
-    // notebook-tree fetch from notebooks_workspace.js).
-    if (!target || target.id !== 'main-content') return;
-    clearPending();
-    pendingTimer = window.setTimeout(paintSkeleton, MIN_DELAY_MS);
+  const detail = ev.detail || {};
+  const target = detail.target;
+  // Only show skeleton when the request actually targets the main
+  // content swap zone — never on inline page-level XHR (e.g. the
+  // notebook-tree fetch from notebooks_workspace.js).
+  if (!target || target.id !== 'main-content') return;
+  clearPending();
+  pendingTimer = window.setTimeout(paintSkeleton, MIN_DELAY_MS);
 });
 
 // Cancel the pending paint as soon as the response is in flight to

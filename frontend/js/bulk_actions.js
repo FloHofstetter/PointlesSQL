@@ -34,53 +34,53 @@
 // composite keys all live happily together.
 
 export function bulkSelect() {
-    return {
-        _selected: new Set(),
-        selectedCount: 0,
-        selectedKeys: [],
+  return {
+    _selected: new Set(),
+    selectedCount: 0,
+    selectedKeys: [],
 
-        _sync() {
-            this.selectedCount = this._selected.size;
-            this.selectedKeys = Array.from(this._selected);
-        },
+    _sync() {
+      this.selectedCount = this._selected.size;
+      this.selectedKeys = Array.from(this._selected);
+    },
 
-        toggleOne(key) {
-            const k = String(key);
-            if (this._selected.has(k)) this._selected.delete(k);
-            else this._selected.add(k);
-            this._sync();
-        },
+    toggleOne(key) {
+      const k = String(key);
+      if (this._selected.has(k)) this._selected.delete(k);
+      else this._selected.add(k);
+      this._sync();
+    },
 
-        selectAll(keys) {
-            keys.forEach((k) => this._selected.add(String(k)));
-            this._sync();
-        },
+    selectAll(keys) {
+      keys.forEach((k) => this._selected.add(String(k)));
+      this._sync();
+    },
 
-        clearSelection() {
-            this._selected.clear();
-            this._sync();
-        },
+    clearSelection() {
+      this._selected.clear();
+      this._sync();
+    },
 
-        isSelected(key) {
-            // Read selectedCount so Alpine tracks the dependency
-            // (Set membership isn't reactive on its own).
-            return this.selectedCount >= 0 && this._selected.has(String(key));
-        },
+    isSelected(key) {
+      // Read selectedCount so Alpine tracks the dependency
+      // (Set membership isn't reactive on its own).
+      return this.selectedCount >= 0 && this._selected.has(String(key));
+    },
 
-        allSelected(keys) {
-            if (!keys || !keys.length) return false;
-            return keys.every((k) => this._selected.has(String(k)));
-        },
+    allSelected(keys) {
+      if (!keys || !keys.length) return false;
+      return keys.every((k) => this._selected.has(String(k)));
+    },
 
-        toggleAllVisible(keys) {
-            if (this.allSelected(keys)) this.clearSelection();
-            else this.selectAll(keys);
-        },
+    toggleAllVisible(keys) {
+      if (this.allSelected(keys)) this.clearSelection();
+      else this.selectAll(keys);
+    },
 
-        noneSelected() {
-            return this.selectedCount === 0;
-        },
-    };
+    noneSelected() {
+      return this.selectedCount === 0;
+    },
+  };
 }
 
 // Default-export for ESM imports.  bootstrap.js re-attaches the

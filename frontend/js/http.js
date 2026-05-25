@@ -18,10 +18,7 @@ function csrfTokenFromCookie() {
 }
 
 export async function jsonFetch(url, options = {}) {
-  const headers = Object.assign(
-    { 'Content-Type': 'application/json' },
-    options.headers || {},
-  );
+  const headers = Object.assign({ 'Content-Type': 'application/json' }, options.headers || {});
   const method = (options.method || 'GET').toUpperCase();
   if (method !== 'GET' && method !== 'HEAD') {
     const token = csrfTokenFromCookie();

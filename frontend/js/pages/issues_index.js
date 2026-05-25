@@ -7,8 +7,14 @@ export function issuesIndex() {
     rows: [],
     filter: '',
     chip: 'all',
-    init() { this.refresh(); },
-    setChip(c) { this.chip = c; this.clearSelection(); this.refresh(); },
+    init() {
+      this.refresh();
+    },
+    setChip(c) {
+      this.chip = c;
+      this.clearSelection();
+      this.refresh();
+    },
     async refresh() {
       const params = new URLSearchParams();
       if (this.chip === 'open') params.set('state', 'open');
@@ -24,9 +30,9 @@ export function issuesIndex() {
     get filteredRows() {
       const q = this.filter.trim().toLowerCase();
       if (!q) return this.rows;
-      return this.rows.filter(r => {
+      return this.rows.filter((r) => {
         if ((r.title || '').toLowerCase().includes(q)) return true;
-        if ((r.labels || []).some(l => l.toLowerCase().includes(q))) return true;
+        if ((r.labels || []).some((l) => l.toLowerCase().includes(q))) return true;
         return false;
       });
     },
@@ -40,13 +46,15 @@ export function issuesIndex() {
       const ids = this.selectedKeys;
       if (!ids.length) return;
       let failed = 0;
-      await Promise.all(ids.map(async (id) => {
-        const res = await window.pqlApi.fetch(
-          '/api/issues/' + encodeURIComponent(id) + '/' + verb,
-          { method: 'POST', silent: true },
-        );
-        if (!res.ok) failed++;
-      }));
+      await Promise.all(
+        ids.map(async (id) => {
+          const res = await window.pqlApi.fetch(
+            '/api/issues/' + encodeURIComponent(id) + '/' + verb,
+            { method: 'POST', silent: true }
+          );
+          if (!res.ok) failed++;
+        })
+      );
       this.clearSelection();
       await this.refresh();
       if (window.pqlToast) {

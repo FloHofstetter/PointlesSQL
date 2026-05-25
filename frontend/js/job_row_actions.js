@@ -14,32 +14,32 @@
  * ``window.jobRowActions``.
  */
 export function jobRowActions(params) {
-    const jobId = params.jobId;
-    return {
-        paused: !!params.paused,
-        busy: false,
+  const jobId = params.jobId;
+  return {
+    paused: !!params.paused,
+    busy: false,
 
-        async _post(path, successMsg) {
-            if (this.busy) return;
-            this.busy = true;
-            const res = await window.pqlApi.fetch(path, { method: 'POST' });
-            if (!res.ok) {
-                this.busy = false;
-                return;
-            }
-            window.pqlApi.reloadWithToast(successMsg);
-        },
+    async _post(path, successMsg) {
+      if (this.busy) return;
+      this.busy = true;
+      const res = await window.pqlApi.fetch(path, { method: 'POST' });
+      if (!res.ok) {
+        this.busy = false;
+        return;
+      }
+      window.pqlApi.reloadWithToast(successMsg);
+    },
 
-        runNow() {
-            this._post('/api/jobs/' + jobId + '/run', 'Run started.');
-        },
+    runNow() {
+      this._post('/api/jobs/' + jobId + '/run', 'Run started.');
+    },
 
-        togglePause() {
-            const path = this.paused
-                ? '/api/jobs/' + jobId + '/unpause'
-                : '/api/jobs/' + jobId + '/pause';
-            const msg = this.paused ? 'Job resumed.' : 'Job paused.';
-            this._post(path, msg);
-        },
-    };
+    togglePause() {
+      const path = this.paused
+        ? '/api/jobs/' + jobId + '/unpause'
+        : '/api/jobs/' + jobId + '/pause';
+      const msg = this.paused ? 'Job resumed.' : 'Job paused.';
+      this._post(path, msg);
+    },
+  };
 }

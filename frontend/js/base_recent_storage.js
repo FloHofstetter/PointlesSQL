@@ -17,61 +17,65 @@
  */
 
 (function () {
- try {
-  const slugMeta = document.querySelector('meta[name="workspace-slug"]');
-  const slug = slugMeta && slugMeta.content ? slugMeta.content : 'default';
+  try {
+    const slugMeta = document.querySelector('meta[name="workspace-slug"]');
+    const slug = slugMeta && slugMeta.content ? slugMeta.content : 'default';
 
-  const catMeta = document.querySelector('meta[name="active-catalog"]');
-  const name = catMeta && catMeta.content ? catMeta.content : '';
-  if (!name) return;
+    const catMeta = document.querySelector('meta[name="active-catalog"]');
+    const name = catMeta && catMeta.content ? catMeta.content : '';
+    if (!name) return;
 
-  const KEY = 'pql.recentCatalogs.' + slug;
-  const MAX = 5;
-  let items = [];
-  const raw = localStorage.getItem(KEY);
-  if (raw) {
-   const parsed = JSON.parse(raw);
-   if (Array.isArray(parsed)) items = parsed;
+    const KEY = 'pql.recentCatalogs.' + slug;
+    const MAX = 5;
+    let items = [];
+    const raw = localStorage.getItem(KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) items = parsed;
+    }
+    items = items.filter((i) => i && i.name !== name);
+    items.unshift({ name: name, ts: Date.now() });
+    if (items.length > MAX) items.length = MAX;
+    localStorage.setItem(KEY, JSON.stringify(items));
+  } catch (e) {
+    /* quota / disabled storage — ignore */
   }
-  items = items.filter((i) => i && i.name !== name);
-  items.unshift({ name: name, ts: Date.now() });
-  if (items.length > MAX) items.length = MAX;
-  localStorage.setItem(KEY, JSON.stringify(items));
- } catch (e) { /* quota / disabled storage — ignore */ }
 })();
 
 (function () {
- try {
-  const slugMeta = document.querySelector('meta[name="workspace-slug"]');
-  const slug = slugMeta && slugMeta.content ? slugMeta.content : 'default';
+  try {
+    const slugMeta = document.querySelector('meta[name="workspace-slug"]');
+    const slug = slugMeta && slugMeta.content ? slugMeta.content : 'default';
 
-  const catMeta = document.querySelector('meta[name="active-catalog"]');
-  const schMeta = document.querySelector('meta[name="active-schema"]');
-  const tabMeta = document.querySelector('meta[name="active-table"]');
-  const catalog = catMeta && catMeta.content ? catMeta.content : '';
-  const schema = schMeta && schMeta.content ? schMeta.content : '';
-  const table = tabMeta && tabMeta.content ? tabMeta.content : '';
-  if (!catalog || !schema || !table) return;
+    const catMeta = document.querySelector('meta[name="active-catalog"]');
+    const schMeta = document.querySelector('meta[name="active-schema"]');
+    const tabMeta = document.querySelector('meta[name="active-table"]');
+    const catalog = catMeta && catMeta.content ? catMeta.content : '';
+    const schema = schMeta && schMeta.content ? schMeta.content : '';
+    const table = tabMeta && tabMeta.content ? tabMeta.content : '';
+    if (!catalog || !schema || !table) return;
 
-  const KEY = 'pql.recentTables.' + slug;
-  const MAX = 5;
-  const fqn = catalog + '.' + schema + '.' + table;
-  let items = [];
-  const raw = localStorage.getItem(KEY);
-  if (raw) {
-   const parsed = JSON.parse(raw);
-   if (Array.isArray(parsed)) items = parsed;
+    const KEY = 'pql.recentTables.' + slug;
+    const MAX = 5;
+    const fqn = catalog + '.' + schema + '.' + table;
+    let items = [];
+    const raw = localStorage.getItem(KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) items = parsed;
+    }
+    items = items.filter((i) => i && i.fqn !== fqn);
+    items.unshift({
+      fqn: fqn,
+      catalog: catalog,
+      schema: schema,
+      table: table,
+      ts: Date.now(),
+    });
+    if (items.length > MAX) items.length = MAX;
+    localStorage.setItem(KEY, JSON.stringify(items));
+    window.dispatchEvent(new CustomEvent('pql:recent-tables-changed', { detail: { items } }));
+  } catch (e) {
+    /* quota / disabled storage — ignore */
   }
-  items = items.filter((i) => i && i.fqn !== fqn);
-  items.unshift({
-   fqn: fqn,
-   catalog: catalog,
-   schema: schema,
-   table: table,
-   ts: Date.now(),
-  });
-  if (items.length > MAX) items.length = MAX;
-  localStorage.setItem(KEY, JSON.stringify(items));
-  window.dispatchEvent(new CustomEvent('pql:recent-tables-changed', { detail: { items } }));
- } catch (e) { /* quota / disabled storage — ignore */ }
 })();

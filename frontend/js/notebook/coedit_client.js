@@ -83,7 +83,11 @@ export function createCoeditClient({
   function _setStatus(next) {
     if (next === status) return;
     status = next;
-    try { onStatusChange(next); } catch (_e) { /* swallow */ }
+    try {
+      onStatusChange(next);
+    } catch (_e) {
+      /* swallow */
+    }
   }
 
   function _sendFrame(tag, payload) {
@@ -133,7 +137,11 @@ export function createCoeditClient({
         // false) and silently fell back to standalone CodeMirror.
         // Fire ``onSynced`` so the mixin can rebind their editors
         // exactly once, the first time the server confirms sync.
-        try { onSynced(); } catch (_e) { /* swallow */ }
+        try {
+          onSynced();
+        } catch (_e) {
+          /* swallow */
+        }
       }
     } else if (tag === TAG_CELL_UUID_REMAP) {
       // server-originated advisory.  Payload is a
@@ -163,10 +171,15 @@ export function createCoeditClient({
                 const prior = texts.get(oldU);
                 let priorText = '';
                 try {
-                  priorText = typeof prior === 'string'
-                    ? prior
-                    : (prior && typeof prior.toString === 'function' ? prior.toString() : '');
-                } catch (_e) { /* swallow */ }
+                  priorText =
+                    typeof prior === 'string'
+                      ? prior
+                      : prior && typeof prior.toString === 'function'
+                        ? prior.toString()
+                        : '';
+                } catch (_e) {
+                  /* swallow */
+                }
                 texts.delete(oldU);
                 texts.set(newU, new Y.Text(priorText));
               }
@@ -182,7 +195,11 @@ export function createCoeditClient({
           // eslint-disable-next-line no-console
           console.warn('[coedit] failed to apply local cell_uuid remap', err);
         }
-        try { onCellRemap(remap); } catch (_e) { /* swallow */ }
+        try {
+          onCellRemap(remap);
+        } catch (_e) {
+          /* swallow */
+        }
       }
     } else if (tag === TAG_AGENT_PRESENCE) {
       // agent broadcast.  Server-emitted JSON payload
@@ -198,7 +215,11 @@ export function createCoeditClient({
         return;
       }
       if (parsed && typeof parsed === 'object') {
-        try { onAgentPresence(parsed); } catch (_e) { /* swallow */ }
+        try {
+          onAgentPresence(parsed);
+        } catch (_e) {
+          /* swallow */
+        }
       }
     } else if (tag === TAG_AWARENESS_UPDATE) {
       // y-protocols awareness state lands here as opaque bytes.  When
@@ -215,7 +236,11 @@ export function createCoeditClient({
           console.warn('[coedit] malformed awareness frame', err);
         }
       }
-      try { onAwarenessUpdate(payload); } catch (_e) { /* swallow */ }
+      try {
+        onAwarenessUpdate(payload);
+      } catch (_e) {
+        /* swallow */
+      }
     }
     // Unknown tags are silently dropped to stay forward-compatible
     // with a future server that adds frame types.
@@ -223,10 +248,7 @@ export function createCoeditClient({
 
   function _scheduleReconnect() {
     if (closedByUser || reconnectTimer) return;
-    const delay = Math.min(
-      _RECONNECT_MAX_MS,
-      _RECONNECT_BASE_MS * Math.pow(2, reconnectAttempts),
-    );
+    const delay = Math.min(_RECONNECT_MAX_MS, _RECONNECT_BASE_MS * Math.pow(2, reconnectAttempts));
     reconnectAttempts += 1;
     reconnectTimer = setTimeout(() => {
       reconnectTimer = null;
@@ -276,8 +298,12 @@ export function createCoeditClient({
 
   return {
     ydoc,
-    get status() { return status; },
-    get synced() { return synced; },
+    get status() {
+      return status;
+    },
+    get synced() {
+      return synced;
+    },
     connect() {
       closedByUser = false;
       reconnectAttempts = 0;
@@ -289,16 +315,26 @@ export function createCoeditClient({
     setAwareness(next) {
       awareness = next || null;
     },
-    get awareness() { return awareness; },
+    get awareness() {
+      return awareness;
+    },
     close() {
       closedByUser = true;
       if (reconnectTimer) {
         clearTimeout(reconnectTimer);
         reconnectTimer = null;
       }
-      try { ydoc.off('update', _onLocalUpdate); } catch (_e) { /* swallow */ }
+      try {
+        ydoc.off('update', _onLocalUpdate);
+      } catch (_e) {
+        /* swallow */
+      }
       if (ws) {
-        try { ws.close(); } catch (_e) { /* swallow */ }
+        try {
+          ws.close();
+        } catch (_e) {
+          /* swallow */
+        }
         ws = null;
       }
       _setStatus('idle');

@@ -10,9 +10,9 @@
  */
 
 const CYTOSCAPE_SRCS = [
-    'https://cdn.jsdelivr.net/npm/cytoscape@3.30.4/dist/cytoscape.min.js',
-    'https://cdn.jsdelivr.net/npm/dagre@0.8.5/dist/dagre.min.js',
-    'https://cdn.jsdelivr.net/npm/cytoscape-dagre@2.5.0/cytoscape-dagre.js',
+  'https://cdn.jsdelivr.net/npm/cytoscape@3.30.4/dist/cytoscape.min.js',
+  'https://cdn.jsdelivr.net/npm/dagre@0.8.5/dist/dagre.min.js',
+  'https://cdn.jsdelivr.net/npm/cytoscape-dagre@2.5.0/cytoscape-dagre.js',
 ];
 
 let _cytoscapeLoadPromise = null;
@@ -30,20 +30,20 @@ let _cytoscapeLoadPromise = null;
  * @returns {Promise<void>}
  */
 export function loadCytoscapeOnce() {
-    if (_cytoscapeLoadPromise) return _cytoscapeLoadPromise;
-    _cytoscapeLoadPromise = (async () => {
-        for (const src of CYTOSCAPE_SRCS) {
-            await new Promise((resolve, reject) => {
-                const s = document.createElement('script');
-                s.src = src;
-                s.async = false;
-                s.onload = () => resolve();
-                s.onerror = () => reject(new Error('failed to load ' + src));
-                document.head.appendChild(s);
-            });
-        }
-    })();
-    return _cytoscapeLoadPromise;
+  if (_cytoscapeLoadPromise) return _cytoscapeLoadPromise;
+  _cytoscapeLoadPromise = (async () => {
+    for (const src of CYTOSCAPE_SRCS) {
+      await new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = src;
+        s.async = false;
+        s.onload = () => resolve();
+        s.onerror = () => reject(new Error('failed to load ' + src));
+        document.head.appendChild(s);
+      });
+    }
+  })();
+  return _cytoscapeLoadPromise;
 }
 
 /**
@@ -55,12 +55,12 @@ export function loadCytoscapeOnce() {
  * @returns {boolean} true if dagre is now available, false if not.
  */
 export function ensureDagreRegistered() {
-    if (typeof window.cytoscape !== 'function') return false;
-    if (typeof window.cytoscapeDagre === 'function' && !window.__cytoscapeDagreRegistered) {
-        window.cytoscape.use(window.cytoscapeDagre);
-        window.__cytoscapeDagreRegistered = true;
-    }
-    return Boolean(window.__cytoscapeDagreRegistered);
+  if (typeof window.cytoscape !== 'function') return false;
+  if (typeof window.cytoscapeDagre === 'function' && !window.__cytoscapeDagreRegistered) {
+    window.cytoscape.use(window.cytoscapeDagre);
+    window.__cytoscapeDagreRegistered = true;
+  }
+  return Boolean(window.__cytoscapeDagreRegistered);
 }
 
 /**
@@ -74,10 +74,10 @@ export function ensureDagreRegistered() {
  * @returns {object}
  */
 export function dagLayout(overrides = {}) {
-    if (window.__cytoscapeDagreRegistered) {
-        return { name: 'dagre', rankDir: 'TB', nodeSep: 60, rankSep: 80, ...overrides };
-    }
-    return { name: 'breadthfirst', directed: true, padding: 20, ...overrides };
+  if (window.__cytoscapeDagreRegistered) {
+    return { name: 'dagre', rankDir: 'TB', nodeSep: 60, rankSep: 80, ...overrides };
+  }
+  return { name: 'breadthfirst', directed: true, padding: 20, ...overrides };
 }
 
 /**
@@ -90,67 +90,67 @@ export function dagLayout(overrides = {}) {
  * pill background; highlighted edges turn green.
  */
 export const RUN_GRAPH_STYLE = [
-    {
-        selector: 'node',
-        style: {
-            'background-color': '#1e293b',
-            'border-color': '#76b900',
-            'border-width': 1,
-            'label': 'data(table)',
-            'color': '#e6e6e6',
-            'font-family': 'Inter, system-ui, sans-serif',
-            'font-size': 11,
-            'text-wrap': 'wrap',
-            'text-max-width': 180,
-            'text-valign': 'center',
-            'text-halign': 'center',
-            'shape': 'round-rectangle',
-            'width': 'label',
-            'height': 'label',
-            'padding': '12px',
-        },
+  {
+    selector: 'node',
+    style: {
+      'background-color': '#1e293b',
+      'border-color': '#76b900',
+      'border-width': 1,
+      label: 'data(table)',
+      color: '#e6e6e6',
+      'font-family': 'Inter, system-ui, sans-serif',
+      'font-size': 11,
+      'text-wrap': 'wrap',
+      'text-max-width': 180,
+      'text-valign': 'center',
+      'text-halign': 'center',
+      shape: 'round-rectangle',
+      width: 'label',
+      height: 'label',
+      padding: '12px',
     },
-    {
-        selector: 'node.highlighted',
-        style: {
-            'background-color': '#3a4a2a',
-            'border-color': '#9fd554',
-            'border-width': 2,
-        },
+  },
+  {
+    selector: 'node.highlighted',
+    style: {
+      'background-color': '#3a4a2a',
+      'border-color': '#9fd554',
+      'border-width': 2,
     },
-    {
-        selector: 'node.dimmed',
-        style: { 'opacity': 0.25 },
+  },
+  {
+    selector: 'node.dimmed',
+    style: { opacity: 0.25 },
+  },
+  {
+    selector: 'edge',
+    style: {
+      'curve-style': 'bezier',
+      'target-arrow-shape': 'triangle',
+      'line-color': '#475569',
+      'target-arrow-color': '#475569',
+      width: 2,
+      label: 'data(label)',
+      'font-size': 9,
+      color: '#94a3b8',
+      'text-background-color': '#0f172a',
+      'text-background-opacity': 0.7,
+      'text-background-padding': 2,
     },
-    {
-        selector: 'edge',
-        style: {
-            'curve-style': 'bezier',
-            'target-arrow-shape': 'triangle',
-            'line-color': '#475569',
-            'target-arrow-color': '#475569',
-            'width': 2,
-            'label': 'data(label)',
-            'font-size': 9,
-            'color': '#94a3b8',
-            'text-background-color': '#0f172a',
-            'text-background-opacity': 0.7,
-            'text-background-padding': 2,
-        },
+  },
+  {
+    selector: 'edge.highlighted',
+    style: {
+      'line-color': '#76b900',
+      'target-arrow-color': '#76b900',
+      width: 3,
+      color: '#9fd554',
     },
-    {
-        selector: 'edge.highlighted',
-        style: {
-            'line-color': '#76b900',
-            'target-arrow-color': '#76b900',
-            'width': 3,
-            'color': '#9fd554',
-        },
-    },
-    {
-        selector: 'edge.dimmed',
-        style: { 'opacity': 0.2 },
-    },
+  },
+  {
+    selector: 'edge.dimmed',
+    style: { opacity: 0.2 },
+  },
 ];
 
 /**
@@ -162,86 +162,86 @@ export const RUN_GRAPH_STYLE = [
  * inference boundary.
  */
 export const MODEL_GRAPH_STYLE = [
-    {
-        selector: 'node[kind = "table"]',
-        style: {
-            'background-color': '#1e293b',
-            'border-color': '#76b900',
-            'border-width': 1,
-            'shape': 'round-rectangle',
-            'label': 'data(label)',
-            'color': '#e6e6e6',
-            'font-family': 'Inter, system-ui, sans-serif',
-            'font-size': 11,
-            'text-valign': 'center',
-            'text-halign': 'center',
-            'width': 'label',
-            'height': 'label',
-            'padding': '12px',
-        },
+  {
+    selector: 'node[kind = "table"]',
+    style: {
+      'background-color': '#1e293b',
+      'border-color': '#76b900',
+      'border-width': 1,
+      shape: 'round-rectangle',
+      label: 'data(label)',
+      color: '#e6e6e6',
+      'font-family': 'Inter, system-ui, sans-serif',
+      'font-size': 11,
+      'text-valign': 'center',
+      'text-halign': 'center',
+      width: 'label',
+      height: 'label',
+      padding: '12px',
     },
-    {
-        selector: 'node[kind = "prediction"]',
-        style: {
-            'background-color': '#1e293b',
-            'border-color': '#3b82f6',
-            'border-width': 1,
-            'shape': 'round-rectangle',
-            'label': 'data(label)',
-            'color': '#bfdbfe',
-            'font-family': 'Inter, system-ui, sans-serif',
-            'font-size': 11,
-            'text-valign': 'center',
-            'text-halign': 'center',
-            'width': 'label',
-            'height': 'label',
-            'padding': '12px',
-        },
+  },
+  {
+    selector: 'node[kind = "prediction"]',
+    style: {
+      'background-color': '#1e293b',
+      'border-color': '#3b82f6',
+      'border-width': 1,
+      shape: 'round-rectangle',
+      label: 'data(label)',
+      color: '#bfdbfe',
+      'font-family': 'Inter, system-ui, sans-serif',
+      'font-size': 11,
+      'text-valign': 'center',
+      'text-halign': 'center',
+      width: 'label',
+      height: 'label',
+      padding: '12px',
     },
-    {
-        selector: 'node[kind = "model"]',
-        style: {
-            'background-color': '#3a2a1e',
-            'border-color': '#fb923c',
-            'border-width': 2,
-            'shape': 'hexagon',
-            'label': 'data(label)',
-            'color': '#fde68a',
-            'font-family': 'Inter, system-ui, sans-serif',
-            'font-size': 13,
-            'font-weight': 'bold',
-            'text-valign': 'center',
-            'text-halign': 'center',
-            'width': 'label',
-            'height': 'label',
-            'padding': '18px',
-        },
+  },
+  {
+    selector: 'node[kind = "model"]',
+    style: {
+      'background-color': '#3a2a1e',
+      'border-color': '#fb923c',
+      'border-width': 2,
+      shape: 'hexagon',
+      label: 'data(label)',
+      color: '#fde68a',
+      'font-family': 'Inter, system-ui, sans-serif',
+      'font-size': 13,
+      'font-weight': 'bold',
+      'text-valign': 'center',
+      'text-halign': 'center',
+      width: 'label',
+      height: 'label',
+      padding: '18px',
     },
-    {
-        selector: 'edge',
-        style: {
-            'curve-style': 'bezier',
-            'target-arrow-shape': 'triangle',
-            'line-color': '#475569',
-            'target-arrow-color': '#475569',
-            'width': 2,
-            'label': 'data(label)',
-            'font-size': 9,
-            'color': '#94a3b8',
-            'text-background-color': '#0f172a',
-            'text-background-opacity': 0.7,
-            'text-background-padding': 2,
-        },
+  },
+  {
+    selector: 'edge',
+    style: {
+      'curve-style': 'bezier',
+      'target-arrow-shape': 'triangle',
+      'line-color': '#475569',
+      'target-arrow-color': '#475569',
+      width: 2,
+      label: 'data(label)',
+      'font-size': 9,
+      color: '#94a3b8',
+      'text-background-color': '#0f172a',
+      'text-background-opacity': 0.7,
+      'text-background-padding': 2,
     },
-    {
-        selector: 'edge[label = "inferred_to"]',
-        style: {
-            'line-style': 'dashed',
-            'line-color': '#3b82f6',
-            'target-arrow-color': '#3b82f6',
-            'color': '#bfdbfe',
-        },
+  },
+  {
+    selector: 'edge[label = "inferred_to"]',
+    style: {
+      'line-style': 'dashed',
+      'line-color': '#3b82f6',
+      'target-arrow-color': '#3b82f6',
+      color: '#bfdbfe',
     },
+  },
 ];
 
 /**
@@ -259,31 +259,31 @@ export const MODEL_GRAPH_STYLE = [
  *   library is unavailable.
  */
 export function renderModelGraph(containerId, graphData) {
-    if (typeof window.cytoscape !== 'function') return null;
-    ensureDagreRegistered();
-    const elements = [
-        ...(graphData.nodes || []).map((n) => ({
-            data: {
-                id: n.id,
-                label: n.label || n.id,
-                kind: n.kind || n.type || 'table',
-            },
-        })),
-        ...(graphData.edges || []).map((e) => ({
-            data: {
-                id: e.id,
-                source: e.source,
-                target: e.target,
-                label: e.label || '',
-            },
-        })),
-    ];
-    return window.cytoscape({
-        container: document.getElementById(containerId),
-        elements,
-        style: MODEL_GRAPH_STYLE,
-        layout: window.__cytoscapeDagreRegistered
-            ? { name: 'dagre', rankDir: 'LR', nodeSep: 60, rankSep: 80 }
-            : { name: 'breadthfirst', directed: true },
-    });
+  if (typeof window.cytoscape !== 'function') return null;
+  ensureDagreRegistered();
+  const elements = [
+    ...(graphData.nodes || []).map((n) => ({
+      data: {
+        id: n.id,
+        label: n.label || n.id,
+        kind: n.kind || n.type || 'table',
+      },
+    })),
+    ...(graphData.edges || []).map((e) => ({
+      data: {
+        id: e.id,
+        source: e.source,
+        target: e.target,
+        label: e.label || '',
+      },
+    })),
+  ];
+  return window.cytoscape({
+    container: document.getElementById(containerId),
+    elements,
+    style: MODEL_GRAPH_STYLE,
+    layout: window.__cytoscapeDagreRegistered
+      ? { name: 'dagre', rankDir: 'LR', nodeSep: 60, rankSep: 80 }
+      : { name: 'breadthfirst', directed: true },
+  });
 }

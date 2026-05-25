@@ -64,7 +64,7 @@ export function semanticSearch(indices, tableFqn, textColumns, canManage) {
     shareCopied: false,
 
     // Empty-state create-index form
-    createColumn: (textColumns && textColumns.length > 0) ? textColumns[0] : '',
+    createColumn: textColumns && textColumns.length > 0 ? textColumns[0] : '',
     createEmbedder: 'sentence_transformers',
     creating: false,
     createError: '',
@@ -157,7 +157,9 @@ export function semanticSearch(indices, tableFqn, textColumns, canManage) {
       try {
         await navigator.clipboard.writeText(url);
         this.shareCopied = true;
-        setTimeout(() => { this.shareCopied = false; }, 1500);
+        setTimeout(() => {
+          this.shareCopied = false;
+        }, 1500);
       } catch (_) {
         // Older browsers: fall back to a visible text input the user
         // can copy from manually.  Surface the URL in the error slot.

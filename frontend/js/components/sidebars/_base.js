@@ -16,8 +16,7 @@
  * ``methods`` extension point.
  */
 
-const RELATIVE_TIME_FALLBACK = (iso) =>
-    iso ? iso.slice(0, 16).replace('T', ' ') : '';
+const RELATIVE_TIME_FALLBACK = (iso) => (iso ? iso.slice(0, 16).replace('T', ' ') : '');
 
 /**
  * Build an Alpine factory object for a context-panel sidebar.
@@ -45,75 +44,83 @@ const RELATIVE_TIME_FALLBACK = (iso) =>
  * @returns {object} - Alpine x-data object.
  */
 export function makeSidebar(cfg) {
-    const {
-        endpoint,
-        storageKey,
-        itemsPath = (d) => d?.items ?? [],
-        transform = null,
-        cap = 15,
-        group = null,
-        activeFromUrl = () => null,
-        activeKey = 'activeId',
-        methods = {},
-    } = cfg;
+  const {
+    endpoint,
+    storageKey,
+    itemsPath = (d) => d?.items ?? [],
+    transform = null,
+    cap = 15,
+    group = null,
+    activeFromUrl = () => null,
+    activeKey = 'activeId',
+    methods = {},
+  } = cfg;
 
-    const factory = {
-        items: [],
-        loading: false,
-        error: null,
-        [activeKey]: activeFromUrl(),
+  const factory = {
+    items: [],
+    loading: false,
+    error: null,
+    [activeKey]: activeFromUrl(),
 
-        async load() {
-            try {
-                const cached = sessionStorage.getItem(storageKey);
-                if (cached) this.items = JSON.parse(cached);
-            } catch (e) { /* quota / disabled storage */ }
-            await this.fetch();
-        },
+    async load() {
+      try {
+        const cached = sessionStorage.getItem(storageKey);
+        if (cached) this.items = JSON.parse(cached);
+      } catch (e) {
+        /* quota / disabled storage */
+      }
+      await this.fetch();
+    },
 
-        async fetch() {
-            this.loading = true;
-            this.error = null;
-            try {
-                const res = await fetch(endpoint);
-                if (!res.ok) throw new Error('HTTP ' + res.status);
-                const data = await res.json();
-                let list = itemsPath(data) || [];
-                if (transform) list = transform(list);
-                if (cap != null) list = list.slice(0, cap);
-                this.items = list;
-                try {
-                    sessionStorage.setItem(storageKey, JSON.stringify(this.items));
-                } catch (e) { /* quota */ }
-            } catch (e) {
-                if (!this.items.length) this.error = e.message;
-            } finally {
-                this.loading = false;
-            }
-        },
+    async fetch() {
+      this.loading = true;
+      this.error = null;
+      try {
+        const res = await fetch(endpoint);
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const data = await res.json();
+        let list = itemsPath(data) || [];
+        if (transform) list = transform(list);
+        if (cap != null) list = list.slice(0, cap);
+        this.items = list;
+        try {
+          sessionStorage.setItem(storageKey, JSON.stringify(this.items));
+        } catch (e) {
+          /* quota */
+        }
+      } catch (e) {
+        if (!this.items.length) this.error = e.message;
+      } finally {
+        this.loading = false;
+      }
+    },
 
-        async reload() {
-            try { sessionStorage.removeItem(storageKey); } catch (e) {}
-            this.items = [];
-            await this.fetch();
-        },
+    async reload() {
+      try {
+        sessionStorage.removeItem(storageKey);
+      } catch (e) {}
+      this.items = [];
+      await this.fetch();
+    },
 
-        grouped() {
-            return group ? group(this.items) : { all: this.items };
-        },
+    grouped() {
+      return group ? group(this.items) : { all: this.items };
+    },
 
-        relativeTime(iso) {
-            if (!iso) return '';
-            if (typeof window.pqlRelativeTime === 'function') {
-                try { return window.pqlRelativeTime(iso); } catch (e) {}
-            }
-            return RELATIVE_TIME_FALLBACK(iso);
-        },
+    relativeTime(iso) {
+      if (!iso) return '';
+      if (typeof window.pqlRelativeTime === 'function') {
+        try {
+          return window.pqlRelativeTime(iso);
+        } catch (e) {}
+      }
+      return RELATIVE_TIME_FALLBACK(iso);
+    },
 
-        isActive(id) {
-            return id === this[activeKey];
-        },
-    };
+    isActive(id) {
+      return id === this[activeKey];
+    },
+  };
 
-    return Object.assign(factory, methods);
+  return Object.assign(factory, methods);
 }

@@ -35,14 +35,20 @@ export function installCellDnd(state) {
     try {
       ev.dataTransfer.effectAllowed = 'move';
       ev.dataTransfer.setData('application/x-pql-cell-id', cell.id);
-    } catch (_e) { /* swallow — some browsers reject custom MIME on file: */ }
+    } catch (_e) {
+      /* swallow — some browsers reject custom MIME on file: */
+    }
   };
 
   state.onCellDragOver = function (ev, target) {
     if (!this.dragState.draggingCellId) return;
     if (!target || !target.id) return;
     if (target.id === this.dragState.draggingCellId) return;
-    try { ev.dataTransfer.dropEffect = 'move'; } catch (_e) { /* swallow */ }
+    try {
+      ev.dataTransfer.dropEffect = 'move';
+    } catch (_e) {
+      /* swallow */
+    }
     const draggedIdx = this.cells.findIndex((c) => c.id === this.dragState.draggingCellId);
     const targetIdx = this.cells.findIndex((c) => c.id === target.id);
     if (draggedIdx < 0 || targetIdx < 0) return;
@@ -54,8 +60,7 @@ export function installCellDnd(state) {
     // for the common case of swapping two adjacent cells.  The
     // header is the only zone that visually reads as a drop target
     // anyway (cursor stays ``grab`` over it).
-    const header = ev.currentTarget.querySelector('.pql-notebook-cell__header')
-                || ev.currentTarget;
+    const header = ev.currentTarget.querySelector('.pql-notebook-cell__header') || ev.currentTarget;
     const rect = header.getBoundingClientRect();
     const aboveHalf = ev.clientY - rect.top < rect.height / 2;
     let insertAt = aboveHalf ? targetIdx : targetIdx + 1;
@@ -67,7 +72,9 @@ export function installCellDnd(state) {
     this._flipReorderCells(() => this._moveCellTo(draggedIdx, insertAt, { broadcast: false }));
   };
 
-  state.onCellDragLeave = function () { /* no-op — live-splice replaces the indicator pattern */ };
+  state.onCellDragLeave = function () {
+    /* no-op — live-splice replaces the indicator pattern */
+  };
 
   state.onCellDrop = function () {
     const draggingId = this.dragState.draggingCellId;

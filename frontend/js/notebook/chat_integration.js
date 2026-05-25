@@ -36,14 +36,10 @@ export function installChatIntegration(state) {
         agentRunId: payload.agent_run_id,
       });
     } else if (action === 'fix') {
-      await this.updateCellSourceByUuid(
-        payload.target_cell_uuid,
-        payload.new_source,
-        {
-          proposalId: payload.proposal_id,
-          agentRunId: payload.agent_run_id,
-        },
-      );
+      await this.updateCellSourceByUuid(payload.target_cell_uuid, payload.new_source, {
+        proposalId: payload.proposal_id,
+        agentRunId: payload.agent_run_id,
+      });
     }
     // ``explain`` proposals auto-accept on the server and don't
     // mutate cells — the social-drawer Explanations tab picks them
@@ -57,18 +53,12 @@ export function installChatIntegration(state) {
       if (!detail) return;
       this._applyAcceptedProposal(detail);
     };
-    window.addEventListener(
-      'pql:cell-proposal-accepted',
-      this._onCellProposalAccepted,
-    );
+    window.addEventListener('pql:cell-proposal-accepted', this._onCellProposalAccepted);
   };
 
   state._removeChatProposalListener = function () {
     if (!this._onCellProposalAccepted) return;
-    window.removeEventListener(
-      'pql:cell-proposal-accepted',
-      this._onCellProposalAccepted,
-    );
+    window.removeEventListener('pql:cell-proposal-accepted', this._onCellProposalAccepted);
     this._onCellProposalAccepted = null;
   };
 }

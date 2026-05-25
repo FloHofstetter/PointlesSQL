@@ -83,9 +83,7 @@ export function installMarkdownOutput(state, deps) {
         // the coedit client is synced and the cell carries a stable
         // uuid; ``cellYBinding`` returns null otherwise and the
         // editor falls back to standalone CodeMirror.
-        yBinding: typeof this.cellYBinding === 'function'
-          ? this.cellYBinding(cell)
-          : null,
+        yBinding: typeof this.cellYBinding === 'function' ? this.cellYBinding(cell) : null,
       });
       this._editors[cell.id] = editor;
       await editor.mount(host);
@@ -128,9 +126,7 @@ export function installMarkdownOutput(state, deps) {
       // markdown cells join co-edit through the same
       // shared Y.Doc map as code/sql cells; the language extension
       // differs but the binding is identical.
-      yBinding: typeof this.cellYBinding === 'function'
-        ? this.cellYBinding(cell)
-        : null,
+      yBinding: typeof this.cellYBinding === 'function' ? this.cellYBinding(cell) : null,
     });
     this._editors[cell.id] = editor;
     host.dataset.pqlCellInit = '';

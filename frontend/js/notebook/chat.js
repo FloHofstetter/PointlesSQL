@@ -59,9 +59,7 @@ export function notebookChatPanel(editorSessionId, notebookUuid) {
     currentTurnId: /** @type {string | null} */ (null),
 
     get proposalCount() {
-      return (this.proposals || []).filter(
-        (p) => p.action !== 'explain' || !p._dismissed,
-      ).length;
+      return (this.proposals || []).filter((p) => p.action !== 'explain' || !p._dismissed).length;
     },
 
     /** Open the WebSocket. */
@@ -69,9 +67,7 @@ export function notebookChatPanel(editorSessionId, notebookUuid) {
       if (this._ws && this._ws.readyState === WebSocket.OPEN) return;
       this.status = 'connecting';
       this.statusLabel = 'connecting…';
-      const ws = new WebSocket(
-        buildNotebookChatUrl(this.editorSessionId, this.notebookUuid),
-      );
+      const ws = new WebSocket(buildNotebookChatUrl(this.editorSessionId, this.notebookUuid));
       this._ws = ws;
       ws.onopen = () => {
         this.status = 'connected';
@@ -114,9 +110,7 @@ export function notebookChatPanel(editorSessionId, notebookUuid) {
       this.statusLabel = 'thinking…';
       this.lastError = '';
       const id = this._nextRequestId++;
-      this._ws.send(
-        JSON.stringify({ id, method: 'prompt', params: { text } }),
-      );
+      this._ws.send(JSON.stringify({ id, method: 'prompt', params: { text } }));
       this.messages.push({ role: 'user', content: text });
       this.prompt = '';
       this._scrollToBottom();
@@ -144,10 +138,10 @@ export function notebookChatPanel(editorSessionId, notebookUuid) {
     async discardProposal(proposal) {
       const id = proposal.proposal_id;
       try {
-        await window.pqlApi.fetch(
-          `/api/notebook/chat/proposals/${id}/discard`,
-          { method: 'POST', silent: true },
-        );
+        await window.pqlApi.fetch(`/api/notebook/chat/proposals/${id}/discard`, {
+          method: 'POST',
+          silent: true,
+        });
       } catch (_e) {
         /* swallow — proposal may already be in a terminal state */
       }
@@ -161,19 +155,18 @@ export function notebookChatPanel(editorSessionId, notebookUuid) {
      */
     async acceptProposal(proposal) {
       const id = proposal.proposal_id;
-      const result = await window.pqlApi.fetch(
-        `/api/notebook/chat/proposals/${id}/accept`,
-        { method: 'POST', silent: true },
-      );
+      const result = await window.pqlApi.fetch(`/api/notebook/chat/proposals/${id}/accept`, {
+        method: 'POST',
+        silent: true,
+      });
       if (!result.ok) {
-        this.lastError =
-          (result.data && result.data.detail) || 'failed to accept proposal';
+        this.lastError = (result.data && result.data.detail) || 'failed to accept proposal';
         return;
       }
       window.dispatchEvent(
         new CustomEvent('pql:cell-proposal-accepted', {
           detail: result.data,
-        }),
+        })
       );
       this._removeProposalLocal(id);
     },
@@ -208,9 +201,7 @@ export function notebookChatPanel(editorSessionId, notebookUuid) {
           this.statusLabel = 'connected';
           if (Array.isArray(params.history)) {
             this.messages = params.history
-              .filter(
-                (m) => m && (m.role === 'user' || m.role === 'assistant'),
-              )
+              .filter((m) => m && (m.role === 'user' || m.role === 'assistant'))
               .map((m) => ({
                 role: m.role,
                 content: String(m.content || ''),
@@ -232,8 +223,7 @@ export function notebookChatPanel(editorSessionId, notebookUuid) {
             target_cell_uuid: params.target_cell_uuid || null,
             new_source: params.new_source || null,
             explanation: params.explanation || null,
-            position_after_cell_uuid:
-              params.position_after_cell_uuid || null,
+            position_after_cell_uuid: params.position_after_cell_uuid || null,
             position_at_end: !!params.position_at_end,
             rationale: params.rationale || null,
             auto_accepted: !!params.auto_accepted,
@@ -291,17 +281,13 @@ export function notebookChatPanel(editorSessionId, notebookUuid) {
         return;
       }
       this.statusLabel = 'reconnecting…';
-      this._reconnectHandle = window.setTimeout(
-        () => this.connect(),
-        CHAT_RECONNECT_DELAY_MS,
-      );
+      this._reconnectHandle = window.setTimeout(() => this.connect(), CHAT_RECONNECT_DELAY_MS);
     },
 
     _scrollToBottom() {
       this.$nextTick(() => {
         if (!this.$refs.messageList) return;
-        this.$refs.messageList.scrollTop =
-          this.$refs.messageList.scrollHeight;
+        this.$refs.messageList.scrollTop = this.$refs.messageList.scrollHeight;
       });
     },
   };

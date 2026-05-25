@@ -30,7 +30,7 @@ export function workspaceLanding(slug) {
       if (!targetId) return;
       const res = await window.pqlApi.fetch('/api/workspaces/' + slug + '/pins', {
         method: 'POST',
-        body: JSON.stringify({social_target_id: targetId}),
+        body: JSON.stringify({ social_target_id: targetId }),
       });
       if (res && res.ok) {
         this.showAddPin = false;

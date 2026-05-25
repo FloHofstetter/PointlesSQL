@@ -17,10 +17,13 @@ export function schemaDiscussion(ref) {
       if (this.postBusy || !this.draftBody.trim()) return;
       this.postBusy = true;
       try {
-        const res = await window.pqlApi.fetch('/api/social/schema/' + encodeURI(ref) + '/comments', {
-          method: 'POST',
-          body: JSON.stringify({body_md: this.draftBody}),
-        });
+        const res = await window.pqlApi.fetch(
+          '/api/social/schema/' + encodeURI(ref) + '/comments',
+          {
+            method: 'POST',
+            body: JSON.stringify({ body_md: this.draftBody }),
+          }
+        );
         if (res && res.ok) {
           this.draftBody = '';
           await this.init();
@@ -40,16 +43,22 @@ export function schemaReadme(ref) {
     readmeLoaded: false,
     async init() {
       const res = await window.pqlApi.fetch('/api/social/schema/' + encodeURI(ref) + '/readme');
-      this.bodyRendered = (res && res.ok && res.data && (res.data.body_md_resolved || res.data.body_md)) || '';
+      this.bodyRendered =
+        (res && res.ok && res.data && (res.data.body_md_resolved || res.data.body_md)) || '';
       this.draftBody = (res && res.ok && res.data && res.data.body_md) || '';
       this.readmeLoaded = true;
     },
-    startEdit() { this.editing = true; },
+    startEdit() {
+      this.editing = true;
+    },
     async save() {
-      const res = await window.pqlApi.fetch('/api/social/schema/' + encodeURI(this.ref) + '/readme', {
-        method: 'PUT',
-        body: JSON.stringify({body_md: this.draftBody}),
-      });
+      const res = await window.pqlApi.fetch(
+        '/api/social/schema/' + encodeURI(this.ref) + '/readme',
+        {
+          method: 'PUT',
+          body: JSON.stringify({ body_md: this.draftBody }),
+        }
+      );
       if (res && res.ok) {
         this.editing = false;
         await this.init();

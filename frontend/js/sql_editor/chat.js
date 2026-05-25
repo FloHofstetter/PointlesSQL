@@ -36,7 +36,8 @@ export function chatPanel(editorSessionId) {
     status: 'disconnected',
     statusLabel: 'idle',
     messages: /** @type {Array<{role: string, content: string}>} */ ([]),
-    proposals: /** @type {Array<{proposal_id: string, sql: string, kind: string, rationale: string | null}>} */ ([]),
+    proposals:
+      /** @type {Array<{proposal_id: string, sql: string, kind: string, rationale: string | null}>} */ ([]),
     prompt: '',
     streaming: false,
     streamingText: '',
@@ -91,9 +92,7 @@ export function chatPanel(editorSessionId) {
       this.statusLabel = 'thinking…';
       this.lastError = '';
       const id = this._nextRequestId++;
-      this._ws.send(
-        JSON.stringify({ id, method: 'prompt', params: { text } }),
-      );
+      this._ws.send(JSON.stringify({ id, method: 'prompt', params: { text } }));
       this.messages.push({ role: 'user', content: text });
       this.prompt = '';
       this._scrollToBottom();
@@ -116,7 +115,7 @@ export function chatPanel(editorSessionId) {
             last_sql: lastSql || '',
             last_error: lastError || '',
           },
-        }),
+        })
       );
       // The server templates a user-message and runs a normal turn;
       // mark the synthetic message in the local history so the user
@@ -150,10 +149,10 @@ export function chatPanel(editorSessionId) {
     async discardProposal(proposal) {
       const id = proposal.proposal_id;
       try {
-        await window.pqlApi.fetch(
-          `/api/sql/chat/proposals/${id}/discard`,
-          { method: 'POST', silent: true },
-        );
+        await window.pqlApi.fetch(`/api/sql/chat/proposals/${id}/discard`, {
+          method: 'POST',
+          silent: true,
+        });
       } catch (_e) {
         /* swallow — the row may already be in a terminal state */
       }
@@ -173,13 +172,12 @@ export function chatPanel(editorSessionId) {
      */
     async loadProposalIntoEditor(proposal) {
       const id = proposal.proposal_id;
-      const result = await window.pqlApi.fetch(
-        `/api/sql/chat/proposals/${id}/accept`,
-        { method: 'POST', silent: true },
-      );
+      const result = await window.pqlApi.fetch(`/api/sql/chat/proposals/${id}/accept`, {
+        method: 'POST',
+        silent: true,
+      });
       if (!result.ok) {
-        this.lastError =
-          (result.data && result.data.detail) || 'failed to accept proposal';
+        this.lastError = (result.data && result.data.detail) || 'failed to accept proposal';
         return;
       }
       const editor =
@@ -290,19 +288,14 @@ export function chatPanel(editorSessionId) {
         return;
       }
       this.statusLabel = 'reconnecting…';
-      this._reconnectHandle = window.setTimeout(
-        () => this.connect(),
-        CHAT_RECONNECT_DELAY_MS,
-      );
+      this._reconnectHandle = window.setTimeout(() => this.connect(), CHAT_RECONNECT_DELAY_MS);
     },
 
     _scrollToBottom() {
       this.$nextTick(() => {
         if (!this.$refs.messageList) return;
-        this.$refs.messageList.scrollTop =
-          this.$refs.messageList.scrollHeight;
+        this.$refs.messageList.scrollTop = this.$refs.messageList.scrollHeight;
       });
     },
   };
 }
-

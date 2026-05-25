@@ -15,15 +15,16 @@
 // The function is exposed on ``window.pqlRenderCitations`` for
 // the Alpine ``x-html`` bindings on the data-product detail page.
 window.pqlRenderCitations = function (md) {
-    if (!md) return '';
-    const escape = (s) => s
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
-    return escape(md).replace(
-        /\[([^\]]+)\]\((\/[^)]+)\)/g,
-        '<a href="$2" class="pql-citation">$1</a>',
-    );
+  if (!md) return '';
+  const escape = (s) =>
+    s
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  return escape(md).replace(
+    /\[([^\]]+)\]\((\/[^)]+)\)/g,
+    '<a href="$2" class="pql-citation">$1</a>'
+  );
 };

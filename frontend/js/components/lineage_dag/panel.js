@@ -19,8 +19,8 @@ import { highlightColumn, clearHighlight } from './highlights.js';
  * @returns {object|null}
  */
 export function findSelectedEdge(edges, selectedEdgeId) {
-    if (!selectedEdgeId) return null;
-    return edges.find((e) => e.id === selectedEdgeId) || null;
+  if (!selectedEdgeId) return null;
+  return edges.find((e) => e.id === selectedEdgeId) || null;
 }
 
 /**
@@ -33,8 +33,8 @@ export function findSelectedEdge(edges, selectedEdgeId) {
  * @returns {{column: string, direction: 'both'}}
  */
 export function selectColumn(cy, edges, column) {
-    highlightColumn(cy, edges, column);
-    return { column, direction: 'both' };
+  highlightColumn(cy, edges, column);
+  return { column, direction: 'both' };
 }
 
 /**
@@ -44,6 +44,6 @@ export function selectColumn(cy, edges, column) {
  * @returns {{selectedEdgeId: null, selectedColumn: null}}
  */
 export function clearSelection(cy) {
-    clearHighlight(cy);
-    return { selectedEdgeId: null, selectedColumn: null };
+  clearHighlight(cy);
+  return { selectedEdgeId: null, selectedColumn: null };
 }

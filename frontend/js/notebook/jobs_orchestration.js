@@ -163,7 +163,7 @@ export function installJobsOrchestration(state) {
     try {
       const res = await window.pqlApi.fetch(
         `/api/notebooks/jobs?path=${encodeURIComponent(this.path)}`,
-        { silent: true },
+        { silent: true }
       );
       if (res.ok && res.data) {
         this.jobsPanel = {
@@ -193,21 +193,16 @@ export function installJobsOrchestration(state) {
       if (!this.runModal || !this.runModal.open) return;
       delay = Math.min(delay * 1.4, cap);
       try {
-        const res = await window.pqlApi.fetch(
-          `/api/jobs/${jobId}/runs/${runId}/tasks`,
-          { silent: true },
-        );
+        const res = await window.pqlApi.fetch(`/api/jobs/${jobId}/runs/${runId}/tasks`, {
+          silent: true,
+        });
         if (!res.ok) continue;
-        const listing = await window.pqlApi.fetch(
-          `/api/jobs/${jobId}/runs`,
-          { silent: true },
-        );
+        const listing = await window.pqlApi.fetch(`/api/jobs/${jobId}/runs`, { silent: true });
         if (listing.ok && Array.isArray(listing.data)) {
           const run = listing.data.find((r) => r.id === runId);
           if (run && run.status !== 'running') {
             this.runModal.status =
-              `Run #${runId} ${run.status}` +
-              (run.error ? ` — ${run.error}` : '.');
+              `Run #${runId} ${run.status}` + (run.error ? ` — ${run.error}` : '.');
             return;
           }
         }

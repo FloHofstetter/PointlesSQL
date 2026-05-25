@@ -49,11 +49,10 @@ export function installVariableInspector(state) {
     const safe = String(name).replace(/[^A-Za-z0-9_]/g, '');
     if (!safe) return;
     try {
-      await this._kernel.execute(
-        '__pql_vardetail__',
-        `__pql_inspect_detail__('${safe}')`,
-        { cellType: 'code', silent: true },
-      );
+      await this._kernel.execute('__pql_vardetail__', `__pql_inspect_detail__('${safe}')`, {
+        cellType: 'code',
+        silent: true,
+      });
     } catch {
       /* fail-quiet */
     }

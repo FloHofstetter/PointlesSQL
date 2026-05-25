@@ -15,9 +15,11 @@ export function issueDetail(issueId) {
       const res = await window.pqlApi.fetch('/api/issues/' + issueId);
       if (res && res.ok && res.data) {
         this.issue = res.data;
-        this.canEdit = !!(window.pqlCurrentUserId && (
-          window.pqlIsAdmin || window.pqlCurrentUserId === (this.issue.opened_by && this.issue.opened_by.user_id)
-        ));
+        this.canEdit = !!(
+          window.pqlCurrentUserId &&
+          (window.pqlIsAdmin ||
+            window.pqlCurrentUserId === (this.issue.opened_by && this.issue.opened_by.user_id))
+        );
       }
     },
     startEditBody() {

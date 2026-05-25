@@ -16,12 +16,12 @@
  * @param {string} edgeId
  */
 export function highlightEdge(cy, edgeId) {
-    if (!cy) return;
-    cy.elements().removeClass('highlighted dimmed');
-    const edge = cy.getElementById(edgeId);
-    edge.addClass('highlighted');
-    edge.connectedNodes().addClass('highlighted');
-    cy.elements().not(edge).not(edge.connectedNodes()).addClass('dimmed');
+  if (!cy) return;
+  cy.elements().removeClass('highlighted dimmed');
+  const edge = cy.getElementById(edgeId);
+  edge.addClass('highlighted');
+  edge.connectedNodes().addClass('highlighted');
+  cy.elements().not(edge).not(edge.connectedNodes()).addClass('dimmed');
 }
 
 /**
@@ -32,17 +32,17 @@ export function highlightEdge(cy, edgeId) {
  * @param {string} nodeId
  */
 export function highlightNode(cy, nodeId) {
-    if (!cy) return;
-    cy.elements().removeClass('highlighted dimmed');
-    const node = cy.getElementById(nodeId);
-    node.addClass('highlighted');
-    node.connectedEdges().addClass('highlighted');
-    node.connectedEdges().connectedNodes().addClass('highlighted');
-    cy.elements()
-        .not(node)
-        .not(node.connectedEdges())
-        .not(node.connectedEdges().connectedNodes())
-        .addClass('dimmed');
+  if (!cy) return;
+  cy.elements().removeClass('highlighted dimmed');
+  const node = cy.getElementById(nodeId);
+  node.addClass('highlighted');
+  node.connectedEdges().addClass('highlighted');
+  node.connectedEdges().connectedNodes().addClass('highlighted');
+  cy.elements()
+    .not(node)
+    .not(node.connectedEdges())
+    .not(node.connectedEdges().connectedNodes())
+    .addClass('dimmed');
 }
 
 /**
@@ -57,23 +57,21 @@ export function highlightNode(cy, nodeId) {
  * @param {string} column
  */
 export function highlightColumn(cy, edges, column) {
-    if (!cy) return;
-    cy.elements().removeClass('highlighted dimmed');
-    const matching = edges.filter((e) =>
-        (e.column_pairs || []).some(
-            (p) => p.source_column === column || p.target_column === column,
-        ),
-    );
-    const matchingIds = new Set(matching.map((e) => e.id));
-    const matchingNodeIds = new Set(matching.flatMap((e) => [e.source, e.target]));
-    cy.edges().forEach((e) => {
-        if (matchingIds.has(e.data('id'))) e.addClass('highlighted');
-        else e.addClass('dimmed');
-    });
-    cy.nodes().forEach((n) => {
-        if (matchingNodeIds.has(n.data('id'))) n.addClass('highlighted');
-        else n.addClass('dimmed');
-    });
+  if (!cy) return;
+  cy.elements().removeClass('highlighted dimmed');
+  const matching = edges.filter((e) =>
+    (e.column_pairs || []).some((p) => p.source_column === column || p.target_column === column)
+  );
+  const matchingIds = new Set(matching.map((e) => e.id));
+  const matchingNodeIds = new Set(matching.flatMap((e) => [e.source, e.target]));
+  cy.edges().forEach((e) => {
+    if (matchingIds.has(e.data('id'))) e.addClass('highlighted');
+    else e.addClass('dimmed');
+  });
+  cy.nodes().forEach((n) => {
+    if (matchingNodeIds.has(n.data('id'))) n.addClass('highlighted');
+    else n.addClass('dimmed');
+  });
 }
 
 /**
@@ -83,6 +81,6 @@ export function highlightColumn(cy, edges, column) {
  * @param {object} cy
  */
 export function clearHighlight(cy) {
-    if (!cy) return;
-    cy.elements().removeClass('highlighted dimmed');
+  if (!cy) return;
+  cy.elements().removeClass('highlighted dimmed');
 }
