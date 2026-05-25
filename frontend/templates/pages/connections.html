@@ -1,5 +1,8 @@
 {% extends "base.html" %}
 {% from "_macros/timestamps.html" import relative_time_epoch %}
+{% from "_macros/labeled_input.html" import labeled_input %}
+{% from "_macros/labeled_select.html" import labeled_select %}
+{% from "_macros/labeled_textarea.html" import labeled_textarea %}
 {% block title %}Connections · PointlesSQL{% endblock %}
 
 {% set breadcrumbs = [{"label": "Home", "href": "/"}, {"label": "Connections"}] %}
@@ -98,25 +101,30 @@
             </div>
             <div class="modal-body">
                 <div x-show="error" x-cloak class="alert alert-danger small" x-text="error"></div>
-                <div class="mb-3">
-                    <label class="form-label">Name</label>
-                    <input type="text" class="form-control" x-model="name" placeholder="my_postgres">
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Connection Type</label>
-                    <select class="form-select" x-model="connectionType">
-                        <option value="POSTGRESQL">PostgreSQL</option>
-                        <option value="MYSQL">MySQL</option>
-                        <option value="REDSHIFT">Redshift</option>
-                        <option value="SNOWFLAKE">Snowflake</option>
-                        <option value="BIGQUERY">BigQuery</option>
-                        <option value="DATABRICKS">Databricks</option>
-                    </select>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Comment</label>
-                    <textarea class="form-control" x-model="comment" rows="2" placeholder="Optional description"></textarea>
-                </div>
+                {{ labeled_input(
+                    'conn-name', 'Name',
+                    id='conn-name', size=None,
+                    x_model='name', placeholder='my_postgres',
+                ) }}
+                {{ labeled_select(
+                    'conn-type', 'Connection Type',
+                    id='conn-type', size=None,
+                    x_model='connectionType',
+                    options=[
+                        ('POSTGRESQL', 'PostgreSQL'),
+                        ('MYSQL', 'MySQL'),
+                        ('REDSHIFT', 'Redshift'),
+                        ('SNOWFLAKE', 'Snowflake'),
+                        ('BIGQUERY', 'BigQuery'),
+                        ('DATABRICKS', 'Databricks'),
+                    ],
+                ) }}
+                {{ labeled_textarea(
+                    'conn-comment', 'Comment',
+                    id='conn-comment', size=None,
+                    x_model='comment', rows=2,
+                    placeholder='Optional description',
+                ) }}
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>

@@ -1,4 +1,7 @@
 {% extends "base.html" %}
+{% from "_macros/labeled_input.html" import labeled_input %}
+{% from "_macros/labeled_select.html" import labeled_select %}
+{% from "_macros/labeled_textarea.html" import labeled_textarea %}
 {% block title %}Jobs · PointlesSQL{% endblock %}
 
 {% set breadcrumbs = [{"label": "Home", "href": "/"}, {"label": "Jobs"}] %}
@@ -269,38 +272,40 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <div class="mb-3">
-                    <label class="form-label">Kind</label>
-                    <select class="form-select" x-model="kind">
-                        <option value="dag">DAG (multi-task)</option>
-                        <option value="papermill">Papermill (single notebook)</option>
-                    </select>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Name</label>
-                    <input type="text" class="form-control" x-model="name" placeholder="my-job">
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Cron expression</label>
-                    <input type="text" class="form-control font-monospace" x-model="cron">
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Max parallel runs</label>
-                    <input type="number" class="form-control" min="1" x-model.number="maxParallel">
-                </div>
-                <div class="mb-3" x-show="kind === 'dag'">
-                    <label class="form-label">Tasks (JSON array)</label>
-                    <textarea class="form-control font-monospace small" rows="12" x-model="tasks"></textarea>
-                    <div class="form-text">
-                        Each task: <code>{name, kind, config, depends_on (list of task names), max_retries, retry_backoff_seconds}</code>.
-                        Papermill example:
-                        <code>{"name":"run-etl","kind":"papermill","config":{"notebook_path":"pipelines/etl.ipynb","parameters":{}},"depends_on":[]}</code>
-                    </div>
+                {{ labeled_select(
+                    'job-kind', 'Kind',
+                    id='job-kind', size=None,
+                    x_model='kind',
+                    options=[('dag', 'DAG (multi-task)'), ('papermill', 'Papermill (single notebook)')],
+                ) }}
+                {{ labeled_input(
+                    'job-name', 'Name',
+                    id='job-name', size=None,
+                    x_model='name', placeholder='my-job',
+                ) }}
+                {{ labeled_input(
+                    'job-cron', 'Cron expression',
+                    id='job-cron', size=None, classes='font-monospace',
+                    x_model='cron',
+                ) }}
+                {{ labeled_input(
+                    'job-max-parallel', 'Max parallel runs',
+                    id='job-max-parallel', size=None, type='number',
+                    attrs='min="1" x-model.number="maxParallel"',
+                ) }}
+                <div x-show="kind === 'dag'">
+                    {{ labeled_textarea(
+                        'job-tasks', 'Tasks (JSON array)',
+                        id='job-tasks', size=None,
+                        classes='font-monospace small', rows=12,
+                        x_model='tasks',
+                        hint='Each task: <code>{name, kind, config, depends_on (list of task names), max_retries, retry_backoff_seconds}</code>. Papermill example: <code>{"name":"run-etl","kind":"papermill","config":{"notebook_path":"pipelines/etl.ipynb","parameters":{}},"depends_on":[]}</code>'|safe,
+                    ) }}
                 </div>
                 <div class="mb-3" x-show="kind === 'papermill'" x-cloak>
-                    <label class="form-label">Notebook path</label>
+                    <label class="form-label small fw-bold" for="job-notebook-path">Notebook path</label>
                     <div class="input-group">
-                        <input type="text" class="form-control font-monospace" x-model="notebookPath" placeholder="pipelines/etl.ipynb">
+                        <input id="job-notebook-path" type="text" class="form-control font-monospace" x-model="notebookPath" placeholder="pipelines/etl.ipynb">
                         <button type="button" class="btn btn-outline-secondary"
                                 x-on:click="inspect()"
                                 x-bind:disabled="inspecting || !notebookPath">
@@ -316,29 +321,41 @@
                     <div class="alert alert-warning mt-2 mb-0 py-1 px-2 small" x-show="paramsError" x-text="paramsError" x-cloak></div>
                 </div>
                 <div class="mb-3" x-show="kind === 'papermill' && params.length > 0" x-cloak>
-                    <label class="form-label">Parameters</label>
+                    <label class="form-label small fw-bold">Parameters</label>
                     <div class="border rounded p-2">
                         <template x-for="p in params" x-bind:key="p.name">
                             <div class="row align-items-center mb-2 g-2">
                                 <label class="col-sm-4 col-form-label col-form-label-sm font-monospace mb-0"
+                                       x-bind:for="'job-param-' + p.name"
                                        x-bind:title="p.help || p.inferred_type"
                                        x-text="p.name + ' (' + p.inferred_type + ')'"></label>
                                 <div class="col-sm-8">
                                     <template x-if="p.inferred_type === 'bool'">
                                         <div class="form-check">
-                                            <input type="checkbox" class="form-check-input" x-model="p.value">
+                                            <input type="checkbox" class="form-check-input"
+                                                   x-bind:id="'job-param-' + p.name"
+                                                   x-bind:aria-label="p.name + ' (bool)'"
+                                                   x-model="p.value">
                                         </div>
                                     </template>
                                     <template x-if="p.inferred_type === 'int' || p.inferred_type === 'float'">
                                         <input type="number" class="form-control form-control-sm font-monospace"
+                                               x-bind:id="'job-param-' + p.name"
+                                               x-bind:aria-label="p.name + ' (' + p.inferred_type + ')'"
                                                x-bind:step="p.inferred_type === 'int' ? '1' : 'any'"
                                                x-model="p.value">
                                     </template>
                                     <template x-if="p.inferred_type === 'list' || p.inferred_type === 'dict'">
-                                        <textarea class="form-control form-control-sm font-monospace small" rows="2" x-model="p.value"></textarea>
+                                        <textarea class="form-control form-control-sm font-monospace small" rows="2"
+                                                  x-bind:id="'job-param-' + p.name"
+                                                  x-bind:aria-label="p.name + ' (' + p.inferred_type + ')'"
+                                                  x-model="p.value"></textarea>
                                     </template>
                                     <template x-if="!['bool','int','float','list','dict'].includes(p.inferred_type)">
-                                        <input type="text" class="form-control form-control-sm font-monospace" x-model="p.value">
+                                        <input type="text" class="form-control form-control-sm font-monospace"
+                                               x-bind:id="'job-param-' + p.name"
+                                               x-bind:aria-label="p.name"
+                                               x-model="p.value">
                                     </template>
                                     <div class="form-text small" x-show="p.help" x-text="p.help" x-cloak></div>
                                 </div>
@@ -355,7 +372,8 @@
                                 Use raw JSON below instead of the typed form
                             </label>
                         </div>
-                        <textarea class="form-control font-monospace small mt-2" rows="6" x-model="parametersJson"
+                        <label for="job-params-json" class="visually-hidden">Raw JSON parameters</label>
+                        <textarea id="job-params-json" class="form-control font-monospace small mt-2" rows="6" x-model="parametersJson"
                                   x-bind:disabled="!useAdvanced"></textarea>
                         <div class="form-text">
                             Passed to papermill as <code>-p</code> parameters. Use <code>{}</code> for none.

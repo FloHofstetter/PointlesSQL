@@ -1,4 +1,7 @@
 {% extends "base.html" %}
+{% from "_macros/labeled_input.html" import labeled_input %}
+{% from "_macros/labeled_select.html" import labeled_select %}
+{% from "_macros/labeled_textarea.html" import labeled_textarea %}
 {% block title %}Dashboards · PointlesSQL{% endblock %}
 
 {% set breadcrumbs = [{"label": "Home", "href": "/"}, {"label": "Dashboards"}] %}
@@ -137,40 +140,43 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <div class="mb-3">
-                    <label class="form-label">Slug</label>
-                    <input type="text" class="form-control font-monospace" x-model="slug"
-                           placeholder="sales-overview" pattern="[a-z0-9][a-z0-9-]*">
-                    <div class="form-text">URL-visible identifier. Lowercase letters, digits and hyphens.</div>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Title</label>
-                    <input type="text" class="form-control" x-model="title" placeholder="Sales overview">
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Description (optional)</label>
-                    <textarea class="form-control" rows="2" x-model="description"
-                              placeholder="What this dashboard shows and who it's for."></textarea>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Notebook path</label>
-                    <input type="text" class="form-control font-monospace" x-model="notebookPath"
-                           placeholder="pipelines/sales.ipynb">
-                    <div class="form-text">Path relative to the notebooks directory.</div>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Bound job (optional)</label>
-                    <select class="form-select" x-model="jobId">
-                        <option value="">— none —</option>
-                        {% for job in job_options %}
-                        <option value="{{ job.id }}">#{{ job.id }} — {{ job.name }} ({{ job.kind }})</option>
-                        {% endfor %}
-                    </select>
-                    <div class="form-text">
-                        Pick a papermill job whose latest succeeded run should render on this dashboard.
-                        Leave unset and bind later via the detail page.
-                    </div>
-                </div>
+                {{ labeled_input(
+                    'dash-slug', 'Slug',
+                    id='dash-slug', size=None, classes='font-monospace',
+                    x_model='slug',
+                    placeholder='sales-overview',
+                    hint='URL-visible identifier. Lowercase letters, digits and hyphens.',
+                    attrs='pattern="[a-z0-9][a-z0-9-]*"',
+                ) }}
+                {{ labeled_input(
+                    'dash-title', 'Title',
+                    id='dash-title', size=None,
+                    x_model='title', placeholder='Sales overview',
+                ) }}
+                {{ labeled_textarea(
+                    'dash-description', 'Description (optional)',
+                    id='dash-description', size=None,
+                    x_model='description', rows=2,
+                    placeholder="What this dashboard shows and who it's for.",
+                ) }}
+                {{ labeled_input(
+                    'dash-notebook', 'Notebook path',
+                    id='dash-notebook', size=None, classes='font-monospace',
+                    x_model='notebookPath',
+                    placeholder='pipelines/sales.ipynb',
+                    hint='Path relative to the notebooks directory.',
+                ) }}
+                {% call labeled_select(
+                    'dash-job', 'Bound job (optional)',
+                    id='dash-job', size=None,
+                    x_model='jobId',
+                    hint='Pick a papermill job whose latest succeeded run should render on this dashboard. Leave unset and bind later via the detail page.',
+                ) %}
+                <option value="">— none —</option>
+                {% for job in job_options %}
+                <option value="{{ job.id }}">#{{ job.id }} — {{ job.name }} ({{ job.kind }})</option>
+                {% endfor %}
+                {% endcall %}
                 <div class="alert alert-danger" x-show="error" x-text="error" x-cloak></div>
             </div>
             <div class="modal-footer">

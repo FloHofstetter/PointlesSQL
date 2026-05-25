@@ -1,4 +1,6 @@
 {% extends "base.html" %}
+{% from "_macros/labeled_input.html" import labeled_input %}
+{% from "_macros/labeled_textarea.html" import labeled_textarea %}
 {% block title %}New saved view · PointlesSQL{% endblock %}
 
 {% set breadcrumbs = [
@@ -16,36 +18,46 @@
 
 <div class="card" x-data="savedViewForm()">
     <div class="card-body">
-        <div class="mb-3">
-            <label class="form-label">Title</label>
-            <input type="text" class="form-control" x-model="form.title"
-                   placeholder="Daily orders by country">
-        </div>
-        <div class="mb-3">
-            <label class="form-label">Description <span class="text-muted small">(optional)</span></label>
-            <textarea class="form-control" rows="2" x-model="form.description"
-                      placeholder="Briefly describe what consumers should expect."></textarea>
-        </div>
+        {{ labeled_input(
+            'view-title', 'Title',
+            id='view-title', size=None,
+            x_model='form.title',
+            placeholder='Daily orders by country',
+        ) }}
+        {{ labeled_textarea(
+            'view-description', 'Description (optional)',
+            id='view-description', size=None,
+            x_model='form.description', rows=2,
+            placeholder='Briefly describe what consumers should expect.',
+        ) }}
         <div class="row">
-            <div class="col-md-6 mb-3">
-                <label class="form-label">DP scope <span class="text-muted small">(optional)</span></label>
-                <input type="number" class="form-control" x-model.number="form.dp_id"
-                       placeholder="data_products.id">
+            <div class="col-md-6">
+                {{ labeled_input(
+                    'view-dp-id', 'DP scope (optional)',
+                    id='view-dp-id', size=None, type='number',
+                    placeholder='data_products.id',
+                    attrs='x-model.number="form.dp_id"',
+                ) }}
             </div>
-            <div class="col-md-6 mb-3">
-                <label class="form-label">Table FQN scope <span class="text-muted small">(optional)</span></label>
-                <input type="text" class="form-control" x-model="form.target_fqn"
-                       placeholder="catalog.schema.table">
+            <div class="col-md-6">
+                {{ labeled_input(
+                    'view-target-fqn', 'Table FQN scope (optional)',
+                    id='view-target-fqn', size=None,
+                    x_model='form.target_fqn',
+                    placeholder='catalog.schema.table',
+                ) }}
             </div>
         </div>
-        <div class="mb-3">
-            <label class="form-label">SQL <small class="text-muted ms-2">Use <code>${name}</code> placeholders for parameters.</small></label>
-            <textarea class="form-control font-monospace" rows="6" x-model="form.sql"
-                      placeholder="SELECT * FROM main.sales.orders WHERE country = ${country}"></textarea>
-        </div>
+        {{ labeled_textarea(
+            'view-sql', 'SQL',
+            id='view-sql', size=None, classes='font-monospace', rows=6,
+            x_model='form.sql',
+            placeholder='SELECT * FROM main.sales.orders WHERE country = ${country}',
+            hint='Use <code>${name}</code> placeholders for parameters.'|safe,
+        ) }}
         <div class="mb-3">
             <div class="d-flex justify-content-between align-items-center mb-2">
-                <label class="form-label mb-0">Parameters</label>
+                <label class="form-label small fw-bold mb-0">Parameters</label>
                 <button class="btn btn-outline-secondary btn-sm" @click="addParam()">
                     <i class="bi bi-plus-lg me-1"></i>Add parameter
                 </button>
@@ -64,10 +76,13 @@
                 <tbody>
                     <template x-for="(p, idx) in form.parameters" :key="idx">
                         <tr>
-                            <td><input type="text" class="form-control form-control-sm font-monospace" x-model="p.name"></td>
-                            <td><input type="text" class="form-control form-control-sm" x-model="p.label"></td>
+                            <td><input type="text" class="form-control form-control-sm font-monospace"
+                                       aria-label="Parameter name" x-model="p.name"></td>
+                            <td><input type="text" class="form-control form-control-sm"
+                                       aria-label="Parameter label" x-model="p.label"></td>
                             <td>
-                                <select class="form-select form-select-sm" x-model="p.type">
+                                <select class="form-select form-select-sm"
+                                        aria-label="Parameter type" x-model="p.type">
                                     <option value="string">string</option>
                                     <option value="integer">integer</option>
                                     <option value="number">number</option>
@@ -75,12 +90,15 @@
                                     <option value="boolean">boolean</option>
                                 </select>
                             </td>
-                            <td><input type="text" class="form-control form-control-sm" x-model="p.default"></td>
+                            <td><input type="text" class="form-control form-control-sm"
+                                       aria-label="Parameter default value" x-model="p.default"></td>
                             <td class="text-center">
-                                <input type="checkbox" class="form-check-input" x-model="p.required">
+                                <input type="checkbox" class="form-check-input"
+                                       aria-label="Parameter required" x-model="p.required">
                             </td>
                             <td>
                                 <button class="btn btn-link btn-sm text-danger p-0"
+                                        aria-label="Remove parameter"
                                         @click="form.parameters.splice(idx, 1)">
                                     <i class="bi bi-x-lg"></i>
                                 </button>

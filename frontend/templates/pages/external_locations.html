@@ -1,4 +1,6 @@
 {% extends "base.html" %}
+{% from "_macros/labeled_input.html" import labeled_input %}
+{% from "_macros/labeled_textarea.html" import labeled_textarea %}
 {% block title %}External Locations · PointlesSQL{% endblock %}
 
 {% set breadcrumbs = [{"label": "Home", "href": "/"}, {"label": "External Locations"}] %}
@@ -85,22 +87,27 @@
             </div>
             <div class="modal-body">
                 <div x-show="error" x-cloak class="alert alert-danger small" x-text="error"></div>
-                <div class="mb-3">
-                    <label class="form-label">Name</label>
-                    <input type="text" class="form-control" x-model="name" placeholder="my_s3_bucket">
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">URL</label>
-                    <input type="text" class="form-control font-monospace" x-model="url" placeholder="s3://bucket/path">
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Credential Name</label>
-                    <input type="text" class="form-control" x-model="credentialName" placeholder="Optional credential">
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Comment</label>
-                    <textarea class="form-control" x-model="comment" rows="2" placeholder="Optional description"></textarea>
-                </div>
+                {{ labeled_input(
+                    'extloc-name', 'Name',
+                    id='extloc-name', size=None,
+                    x_model='name', placeholder='my_s3_bucket',
+                ) }}
+                {{ labeled_input(
+                    'extloc-url', 'URL',
+                    id='extloc-url', size=None, classes='font-monospace',
+                    x_model='url', placeholder='s3://bucket/path',
+                ) }}
+                {{ labeled_input(
+                    'extloc-cred', 'Credential Name',
+                    id='extloc-cred', size=None,
+                    x_model='credentialName', placeholder='Optional credential',
+                ) }}
+                {{ labeled_textarea(
+                    'extloc-comment', 'Comment',
+                    id='extloc-comment', size=None,
+                    x_model='comment', rows=2,
+                    placeholder='Optional description',
+                ) }}
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
