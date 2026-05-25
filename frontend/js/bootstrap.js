@@ -234,6 +234,17 @@ import { semanticSearch } from './table/semantic_search.js';
 import { tableStats, tableDiscussion, tableReadme } from './pages/table.js';
 import { rollbackPanel } from './run_view/uc_mutations.js';
 import { notebookDiscussion, notebookReadme } from './notebook/discussion.js';
+import { apiKeyRow, apiKeyCreate, apiKeyCreatedModal } from './pages/admin_api_keys.js';
+import { ingestSourceDetail } from './pages/ingest_source_detail.js';
+import { auditSinkRow, auditSinkCreate } from './pages/admin_audit_sinks.js';
+
+// Side-effect IIFE modules for admin/dashboard pages.  Each guards on a
+// page-local element id so the cost on unrelated pages is one
+// ``getElementById`` lookup.
+import './pages/audit_inbox.js';
+import './pages/dbt.js';
+import './pages/audit_search.js';
+
 import { chatPanel } from './sql_editor/chat.js';
 import { notebookChatPanel } from './notebook/chat.js';
 
@@ -273,6 +284,12 @@ window.tableReadme = tableReadme;
 window.rollbackPanel = rollbackPanel;
 window.notebookDiscussion = notebookDiscussion;
 window.notebookReadme = notebookReadme;
+window.apiKeyRow = apiKeyRow;
+window.apiKeyCreate = apiKeyCreate;
+window.apiKeyCreatedModal = apiKeyCreatedModal;
+window.ingestSourceDetail = ingestSourceDetail;
+window.auditSinkRow = auditSinkRow;
+window.auditSinkCreate = auditSinkCreate;
 window.chatPanel = chatPanel;
 window.notebookChatPanel = notebookChatPanel;
 window.runsSidebar = runsSidebar;
