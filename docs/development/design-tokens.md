@@ -1,14 +1,29 @@
 # Design tokens
 
-The single source of truth for PointlesSQL's design system, landed
-in as the foundation every later sprint consumes.
-Tokens live in [`frontend/css/style.css`](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/css/style.css)
+The single source of truth for PointlesSQL's design system.
+Tokens live in [`frontend/css/base.css`](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/css/base.css)
 under the `:root` block; this file is the human-facing reference.
 
 Philosophy: one token scale per concern, no magic values in
 templates. Prefer a primitive (`.pql-card`, `.pql-stack`, …) over
 a Bootstrap utility stack (`card mb-4`, `d-flex flex-column gap-3`)
 whenever the intent maps.
+
+## Layout constants
+
+Sizing tokens for the page chrome.  `@media` rules cannot consume
+`var(…)`, so any media query that gates on these widths duplicates
+the px literal — treat the table below as the contract; a literal
+that drifts from these values is a bug.
+
+| Token                         | Value              | Used for                                      |
+| ----------------------------- | ------------------ | --------------------------------------------- |
+| `--pql-sidebar-width`         | 280px              | left navigation drawer width                  |
+| `--pql-topbar-height`         | 56px               | sticky topbar height                          |
+| `--pql-icon-rail-width`       | 220px (64px collapsed) | sidebar icon rail; collapsed state via `data-pql-rail-state="collapsed"` |
+| `--pql-context-panel-width`   | 240px              | right-side contextual panel                   |
+| `--pql-meta-panel-width`      | 280px              | notebook meta drawer width                    |
+| `--pql-footer-bar-height`     | 28px               | sticky status footer height                   |
 
 ## Spacing
 
@@ -78,9 +93,30 @@ them automatically.
 | `--pql-duration-slow` | 320ms | modal, off-canvas slide-in |
 | `--pql-ease` | `cubic-bezier(0.2, 0, 0, 1)` | default |
 
- will wire `@media (prefers-reduced-motion)` to collapse
-these to zero. Until then, respect the preference manually in any
-rule that animates.
+`responsive.css` wires `@media (prefers-reduced-motion: reduce)` to
+collapse these tokens to `0ms` and applies a blanket
+`animation-duration: 0ms !important` to every element, so any rule
+that respects the duration tokens (or a third-party rule with a
+literal duration) gets neutralised automatically.
+
+## Bootstrap variable bridges
+
+A handful of Bootstrap 5.3 CSS custom properties are overridden so
+PointlesSQL surfaces inherit the brand accent instead of Bootstrap
+defaults.  Components consume these directly rather than redeclaring
+brand colour on every surface.
+
+| Token                    | Value                              | Effect                                 |
+| ------------------------ | ---------------------------------- | -------------------------------------- |
+| `--bs-focus-ring-color`  | `rgba(118, 185, 0, 0.40)` (dark: 0.55) | every form control / button / link picks up the green focus ring instead of Bootstrap's default blue |
+| `--bs-focus-ring-width`  | `0.2rem`                           | slightly tighter than Bootstrap's default `0.25rem` |
+| `--bs-tertiary-bg`       | inherited per color-mode           | consumed by `.pql-card` for the panel surface |
+| `--bs-border-color`      | inherited per color-mode           | consumed by `.pql-card` for the panel border |
+
+`.dropdown-item.active` and `.dropdown-item:active` are also rebound
+to the accent (`background-color: var(--pql-color-accent)`,
+`color: var(--pql-color-accent-fg)`) so single-select menus render
+with the brand colour automatically.
 
 ## Semantic colour
 
@@ -153,8 +189,7 @@ Horizontal, wrapping, centre-aligned cluster. Replaces
 
 Panel surface with border, radius, padding, and resting elevation.
 Replaces `card mb-4 p-4`. Adjacent `.pql-card` siblings get a
-top margin automatically; use `.pql-card--flush` when a card
-wraps a full-bleed list or iframe.
+top margin automatically.
 
 ```html
 <div class="pql-card">
@@ -165,15 +200,21 @@ wraps a full-bleed list or iframe.
 
 ### `.pql-badge`
 
-Pill-shaped status chip. Default renders in neutral; modifier
-classes map to the semantic palette.
+Pill-shaped status chip. Default renders in neutral; the
+`--warning` modifier maps to the warning palette.
 
 ```html
-<span class="pql-badge pql-badge--success"><i class="bi bi-check-lg"></i> OK</span>
+<span class="pql-badge"><i class="bi bi-check-lg"></i> OK</span>
 <span class="pql-badge pql-badge--warning">Deprecated</span>
-<span class="pql-badge pql-badge--danger">Failed</span>
-<span class="pql-badge pql-badge--info">Beta</span>
 ```
+
+Semantic variants (`--success`, `--danger`, `--info`) were dropped
+during a dead-selector sweep because nothing in the project
+consumed them; the call-sites used Bootstrap utility classes
+(`badge bg-success`) or scoped per-component styling instead.
+If a real consumer appears, re-add the modifier in
+[`primitives.css`](../../frontend/css/primitives.css) and document
+it here in the same commit.
 
 ### Breakpoints
 
@@ -199,9 +240,18 @@ Touch targets switch to ≥ 44 px minimum under `@media (hover: none)`.
 - **Components** — any new component under
  `frontend/templates/components/` should consume tokens via
  `var(--pql-*)` rather than hardcoded rems/pixels.
-- **New tokens** — extend the scale in `style.css` and document
+- **New tokens** — extend the scale in `base.css` and document
  them here in the same commit. A token that is not in this table
  does not exist.
 - **Font loading** — add new weights as extra `@font-face` blocks
  and keep the combined woff2 budget under 50 kB per page. Preload
  only the weight that is definitely on the critical path.
+
+## See also
+
+- [Frontend architecture](frontend-architecture.md) — stack overview,
+  cascade tiers, lazy-load pattern
+- [Frontend conventions](frontend-conventions.md) — template/JS/CSS
+  layout disciplines
+- [`frontend/templates/_macros/README.md`](../../frontend/templates/_macros/README.md) —
+  Jinja macro catalog that consumes these tokens
