@@ -184,7 +184,10 @@ async def test_polymorphic_review_writes_null_dp_id(
 async def test_model_html_renders_reviews_tab(
     monkeypatch: pytest.MonkeyPatch, admin_client: httpx.AsyncClient
 ) -> None:
-    """model.html now ships a Reviews tab + inline modelReviews factory."""
+    """model.html ships a Reviews tab; the modelReviews factory lives
+    in the ESM bundle and bootstrap.js attaches it to window.
+    """
+    import pathlib
     from unittest.mock import AsyncMock
 
     monkeypatch.setattr(
@@ -208,5 +211,6 @@ async def test_model_html_renders_reviews_tab(
     body = res.text
     assert 'id="tab-reviews-btn"' in body
     assert 'id="tab-reviews"' in body
-    assert "modelReviews(" in body
-    assert "window.modelReviews = modelReviews" in body
+    assert "modelReviews(" in body  # partial carries the x-data invocation
+    bootstrap = pathlib.Path("frontend/js/bootstrap.js").read_text()
+    assert "window.modelReviews = modelReviews" in bootstrap

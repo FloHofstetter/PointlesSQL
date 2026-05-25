@@ -32,6 +32,17 @@ window.pqlApi = pqlApi;
 // rendered by ``_macros/copy_button.html``.
 import './copy_button.js';
 
+// base.html inline-script exodus — five side-effect modules that
+// install per-page wiring (htmx bridge, theme toggle, panel toggles,
+// tooltips, recent-storage). All five used to live as inline
+// ``<script>`` blocks in base.html; lifting them here keeps base.html
+// markup-only and the JS in a place where tooling can see it.
+import './base_htmx_bridge.js';
+import './base_theme_toggle.js';
+import './base_panel_toggles.js';
+import './base_tooltips.js';
+import './base_recent_storage.js';
+
 // Per-entity ⋯-action menu mute handler.  Document-level
 // click listener for every ``.pql-entity-mute-btn`` rendered by
 // ``_macros/entity_actions.html``.
