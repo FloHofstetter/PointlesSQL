@@ -46,14 +46,14 @@
  <div class="card-body">
  <form @submit.prevent="submitUpload()" class="d-flex gap-2 flex-wrap align-items-end">
  <div class="flex-grow-1" style="min-width: 240px;">
- <label class="form-label small">File</label>
- <input type="file" class="form-control form-control-sm"
+ <label class="form-label small" for="volume-upload-file">File</label>
+ <input id="volume-upload-file" type="file" class="form-control form-control-sm"
  x-ref="fileInput"
  @change="onFileChange($event)">
  </div>
  <div>
- <label class="form-label small">Destination path</label>
- <input type="text" class="form-control form-control-sm"
+ <label class="form-label small" for="volume-upload-dest">Destination path</label>
+ <input id="volume-upload-dest" type="text" class="form-control form-control-sm"
  x-model="uploadPath"
  placeholder="hello.csv">
  </div>

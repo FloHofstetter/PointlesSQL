@@ -27,6 +27,7 @@
         {% if _multiline %}
         <textarea class="form-control form-control-sm w-100"
                   rows="4"
+                  aria-label="Edit {{ field }}"
                   x-model="draft"
                   @keydown.escape.prevent="cancel()"
                   x-ref="input"></textarea>
@@ -41,6 +42,7 @@
         {% else %}
         <input type="text"
                class="form-control form-control-sm"
+               aria-label="Edit {{ field }}"
                x-model="draft"
                @keydown.enter.prevent="save()"
                @keydown.escape.prevent="cancel()"

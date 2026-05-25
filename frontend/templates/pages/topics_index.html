@@ -22,12 +22,12 @@
     <template x-if="creating">
         <div class="card mb-3">
             <div class="card-body">
-                <label class="form-label small">Display name</label>
-                <input class="form-control mb-2 pql-topics-new-name"
+                <label class="form-label small" for="topic-new-name">Display name</label>
+                <input id="topic-new-name" class="form-control mb-2 pql-topics-new-name"
                        x-model="newName"
                        placeholder="e.g. finance, gold-tier, ml-feature-store">
-                <label class="form-label small">Description (markdown)</label>
-                <textarea class="form-control mb-2 pql-topics-new-desc"
+                <label class="form-label small" for="topic-new-desc">Description (markdown)</label>
+                <textarea id="topic-new-desc" class="form-control mb-2 pql-topics-new-desc"
                           rows="2" x-model="newDesc"></textarea>
                 <button class="btn btn-sm btn-primary pql-topics-new-save"
                         :disabled="!newName.trim() || submitting"

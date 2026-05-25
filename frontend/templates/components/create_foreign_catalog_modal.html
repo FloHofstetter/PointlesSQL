@@ -30,13 +30,13 @@
                 </template>
 
                 <div class="mb-3">
-                    <label class="form-label">Name</label>
-                    <input type="text" class="form-control font-monospace"
+                    <label class="form-label" for="fc-name">Name</label>
+                    <input id="fc-name" type="text" class="form-control font-monospace"
                            x-model="name" placeholder="my_pg_catalog">
                 </div>
                 <div class="mb-3">
-                    <label class="form-label">Connection</label>
-                    <select class="form-select" x-model="connectionName">
+                    <label class="form-label" for="fc-connection">Connection</label>
+                    <select id="fc-connection" class="form-select" x-model="connectionName">
                         <option value="">(select a connection)</option>
                         <template x-for="c in connections" :key="c.name">
                             <option :value="c.name"
@@ -45,8 +45,8 @@
                     </select>
                 </div>
                 <div class="mb-3">
-                    <label class="form-label">Comment</label>
-                    <textarea class="form-control" x-model="comment" rows="2"
+                    <label class="form-label" for="fc-comment">Comment</label>
+                    <textarea id="fc-comment" class="form-control" x-model="comment" rows="2"
                               placeholder="Optional description"></textarea>
                 </div>
 
@@ -63,8 +63,10 @@
                 <template x-for="(opt, i) in options" :key="i">
                     <div class="d-flex gap-2 mb-2">
                         <input type="text" class="form-control form-control-sm font-monospace"
+                               aria-label="Option key"
                                x-model="opt.key" placeholder="key" style="flex: 1;">
                         <input type="text" class="form-control form-control-sm font-monospace"
+                               aria-label="Option value"
                                x-model="opt.value" placeholder="value" style="flex: 2;">
                         <button class="btn btn-sm btn-link text-danger p-0"
                                 @click="removeOption(i)" title="Remove">

@@ -37,21 +37,35 @@
                     </template>
                     <template x-for="p in (view.parameters || [])" :key="p.name">
                         <div class="mb-3">
-                            <label class="form-label" x-text="p.label || p.name"></label>
+                            <label class="form-label"
+                                   x-bind:for="'view-param-' + p.name"
+                                   x-text="p.label || p.name"></label>
                             <template x-if="p.type === 'boolean'">
-                                <select class="form-select form-select-sm" x-model="values[p.name]">
+                                <select class="form-select form-select-sm"
+                                        x-bind:id="'view-param-' + p.name"
+                                        x-bind:aria-label="p.label || p.name"
+                                        x-model="values[p.name]">
                                     <option value="false">false</option>
                                     <option value="true">true</option>
                                 </select>
                             </template>
                             <template x-if="p.type === 'date'">
-                                <input type="date" class="form-control form-control-sm" x-model="values[p.name]">
+                                <input type="date" class="form-control form-control-sm"
+                                       x-bind:id="'view-param-' + p.name"
+                                       x-bind:aria-label="p.label || p.name"
+                                       x-model="values[p.name]">
                             </template>
                             <template x-if="p.type === 'integer' || p.type === 'number'">
-                                <input type="number" class="form-control form-control-sm" x-model="values[p.name]">
+                                <input type="number" class="form-control form-control-sm"
+                                       x-bind:id="'view-param-' + p.name"
+                                       x-bind:aria-label="p.label || p.name"
+                                       x-model="values[p.name]">
                             </template>
                             <template x-if="p.type === 'string'">
-                                <input type="text" class="form-control form-control-sm" x-model="values[p.name]">
+                                <input type="text" class="form-control form-control-sm"
+                                       x-bind:id="'view-param-' + p.name"
+                                       x-bind:aria-label="p.label || p.name"
+                                       x-model="values[p.name]">
                             </template>
                             <template x-if="p.required">
                                 <small class="text-muted">required</small>

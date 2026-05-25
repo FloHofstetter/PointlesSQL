@@ -18,15 +18,15 @@
 
  <div class="row mb-3">
  <div class="col-md-6">
- <label class="form-label small">Table FQN</label>
- <input type="text" class="form-control form-control-sm font-monospace"
+ <label class="form-label small" for="builder-table-fqn">Table FQN</label>
+ <input id="builder-table-fqn" type="text" class="form-control form-control-sm font-monospace"
  placeholder="catalog.schema.table"
  x-model="builderState.table_fqn"
  @change="loadBuilderColumns()">
  </div>
  <div class="col-md-2">
- <label class="form-label small">Limit</label>
- <input type="number" class="form-control form-control-sm"
+ <label class="form-label small" for="builder-limit">Limit</label>
+ <input id="builder-limit" type="number" class="form-control form-control-sm"
  x-model.number="builderState.limit">
  </div>
  </div>
@@ -42,7 +42,7 @@
  <template x-for="(f, idx) in builderState.filters" :key="idx">
  <div class="row mb-2 g-2 align-items-center">
  <div class="col-md-3">
- <select class="form-select form-select-sm" x-model="f.column">
+ <select class="form-select form-select-sm" aria-label="Filter column" x-model="f.column">
  <option value="">— column —</option>
  <template x-for="c in builderColumns" :key="c.name">
  <option :value="c.name" x-text="c.name + ' (' + c.type + ')'"></option>
@@ -50,7 +50,7 @@
  </select>
  </div>
  <div class="col-md-2">
- <select class="form-select form-select-sm" x-model="f.op">
+ <select class="form-select form-select-sm" aria-label="Filter operator" x-model="f.op">
  <template x-for="op in builderOperators" :key="op">
  <option :value="op" x-text="op"></option>
  </template>
@@ -58,6 +58,7 @@
  </div>
  <div class="col-md-5">
  <input type="text" class="form-control form-control-sm"
+ aria-label="Filter value"
  :placeholder="f.op === 'IN' ? 'a,b,c' : 'value'"
  x-model="f.value"
  :disabled="f.op === 'IS NULL' || f.op === 'IS NOT NULL'">
@@ -74,8 +75,8 @@
 
  <!-- Group by -->
  <div class="mb-3">
- <label class="form-label small">Group by</label>
- <select class="form-select form-select-sm" multiple
+ <label class="form-label small" for="builder-group-by">Group by</label>
+ <select id="builder-group-by" class="form-select form-select-sm" multiple
  x-model="builderState.group_by"
  size="3">
  <template x-for="c in builderColumns" :key="c.name">
@@ -95,14 +96,14 @@
  <template x-for="(a, idx) in builderState.aggregates" :key="idx">
  <div class="row mb-2 g-2 align-items-center">
  <div class="col-md-3">
- <select class="form-select form-select-sm" x-model="a.fn">
+ <select class="form-select form-select-sm" aria-label="Aggregate function" x-model="a.fn">
  <template x-for="fn in builderAggregates" :key="fn">
  <option :value="fn" x-text="fn"></option>
  </template>
  </select>
  </div>
  <div class="col-md-3">
- <select class="form-select form-select-sm" x-model="a.column">
+ <select class="form-select form-select-sm" aria-label="Aggregate column" x-model="a.column">
  <option value="*">*</option>
  <template x-for="c in builderColumns" :key="c.name">
  <option :value="c.name" x-text="c.name"></option>
@@ -111,6 +112,7 @@
  </div>
  <div class="col-md-4">
  <input type="text" class="form-control form-control-sm"
+ aria-label="Aggregate alias"
  placeholder="alias" x-model="a.alias">
  </div>
  <div class="col-md-2">
@@ -135,10 +137,11 @@
  <div class="row mb-2 g-2 align-items-center">
  <div class="col-md-4">
  <input type="text" class="form-control form-control-sm"
+ aria-label="Order by column"
  placeholder="column or alias" x-model="o.column">
  </div>
  <div class="col-md-3">
- <select class="form-select form-select-sm" x-model="o.dir">
+ <select class="form-select form-select-sm" aria-label="Order direction" x-model="o.dir">
  <option value="asc">asc</option>
  <option value="desc">desc</option>
  </select>

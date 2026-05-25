@@ -181,22 +181,22 @@
  </div>
  <div class="modal-body">
  <div class="mb-3">
- <label class="form-label small">Kind</label>
- <select class="form-select form-select-sm"
+ <label class="form-label small" for="dest-kind">Kind</label>
+ <select id="dest-kind" class="form-select form-select-sm"
  x-model="destForm.kind">
  <option value="webhook">Webhook (CloudEvents POST)</option>
  <option value="feed">Pull feed</option>
  </select>
  </div>
  <div class="mb-3" x-show="destForm.kind === 'webhook'">
- <label class="form-label small">Webhook URL</label>
- <input type="url" class="form-control form-control-sm"
+ <label class="form-label small" for="dest-webhook-url">Webhook URL</label>
+ <input id="dest-webhook-url" type="url" class="form-control form-control-sm"
  x-model="destForm.webhook_url"
  placeholder="https://example.com/hook">
  </div>
  <div class="mb-3" x-show="destForm.kind === 'webhook'">
- <label class="form-label small">HMAC secret (optional)</label>
- <input type="text" class="form-control form-control-sm"
+ <label class="form-label small" for="dest-hmac">HMAC secret (optional)</label>
+ <input id="dest-hmac" type="text" class="form-control form-control-sm"
  x-model="destForm.hmac_secret"
  placeholder="Pre-shared secret for X-PointlesSQL-Signature">
  <small class="text-muted">

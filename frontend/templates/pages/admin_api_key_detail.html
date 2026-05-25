@@ -114,10 +114,12 @@
                 <div class="row g-2">
                     <div class="col-md-5">
                         <input type="text" class="form-control form-control-sm"
+                               aria-label="Catalog name to grant"
                                placeholder="catalog_name" x-model="newCatalog.catalog_name">
                     </div>
                     <div class="col-md-5">
                         <input type="text" class="form-control form-control-sm"
+                               aria-label="Schema name to grant (optional)"
                                placeholder="schema (optional)" x-model="newCatalog.schema_name">
                     </div>
                     <div class="col-md-2">
@@ -160,10 +162,12 @@
                 <div class="row g-2">
                     <div class="col-md-5">
                         <input type="text" class="form-control form-control-sm"
+                               aria-label="CIDR to allowlist"
                                placeholder="CIDR e.g. 10.0.0.0/8" x-model="newIp.cidr">
                     </div>
                     <div class="col-md-5">
                         <input type="text" class="form-control form-control-sm"
+                               aria-label="Allowlist row label (optional)"
                                placeholder="label (optional)" x-model="newIp.label">
                     </div>
                     <div class="col-md-2">

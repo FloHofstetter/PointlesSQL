@@ -57,7 +57,7 @@
             </button>
           </div>
           <div x-show="editingBody">
-            <textarea class="form-control mb-2" rows="6" x-model="editingBodyText"></textarea>
+            <textarea class="form-control mb-2" rows="6" aria-label="Edit issue body" x-model="editingBodyText"></textarea>
             <button class="btn btn-sm btn-primary" @click="saveBody()">Save</button>
             <button class="btn btn-sm btn-outline-secondary" @click="editingBody = false">Cancel</button>
           </div>
@@ -123,7 +123,7 @@
               <i class="bi bi-arrow-repeat me-1"></i>Reopen
             </button>
             <div x-show="issue.state === 'open' && canEdit">
-              <select class="form-select form-select-sm mb-2" x-model="closeReason">
+              <select class="form-select form-select-sm mb-2" aria-label="Close reason" x-model="closeReason">
                 <option value="">— close reason —</option>
                 <option value="fixed">fixed</option>
                 <option value="wont_fix">wont_fix</option>

@@ -34,6 +34,7 @@
        <code class="text-body font-monospace small flex-grow-1"
              x-text="`user#${row.user_id}`"></code>
        <select class="form-select form-select-sm w-auto"
+               x-bind:aria-label="`Role for user#${row.user_id}`"
                :value="row.role"
                @change="updatePermissionRole(row, $event.target.value)"
                :disabled="permissionsPanel.submitting">
@@ -56,10 +57,12 @@
      <input type="number"
             class="form-control form-control-sm mb-1"
             min="1"
+            aria-label="User ID to grant"
             placeholder="User ID"
             x-model="permissionsPanel.draftUserId"
             :disabled="permissionsPanel.submitting">
      <select class="form-select form-select-sm mb-1"
+             aria-label="Role to grant"
              x-model="permissionsPanel.draftRole"
              :disabled="permissionsPanel.submitting">
       <template x-for="r in permissionsPanel.roles" :key="r">

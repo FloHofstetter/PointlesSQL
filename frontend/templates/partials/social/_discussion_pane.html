@@ -130,6 +130,7 @@
                                     <div class="mt-2 ms-4">
                                         <textarea class="form-control form-control-sm pql-comment-reply"
                                                   rows="2"
+                                                  aria-label="Reply to comment"
                                                   data-mention-autocomplete
                                                   x-model="replyDraft"></textarea>
                                         <div class="mt-1 d-flex gap-2">
@@ -147,11 +148,12 @@
 
                     <div class="card mt-3">
                         <div class="card-body">
-                            <label class="form-label small">Add a comment</label>
+                            <label class="form-label small" for="new-comment-body">Add a comment</label>
                             <!-- category selector -->
                             <div class="mb-2 d-flex align-items-center gap-2">
-                                <label class="small text-muted mb-0">Category:</label>
-                                <select class="form-select form-select-sm w-auto pql-comment-category-select"
+                                <label class="small text-muted mb-0" for="new-comment-category">Category:</label>
+                                <select id="new-comment-category"
+                                        class="form-select form-select-sm w-auto pql-comment-category-select"
                                         x-model="newCommentCategory">
                                     <option value="general">General</option>
                                     <option value="question">Question</option>
@@ -159,7 +161,8 @@
                                     <option value="idea">Idea</option>
                                 </select>
                             </div>
-                            <textarea class="form-control pql-comment-new"
+                            <textarea id="new-comment-body"
+                                      class="form-control pql-comment-new"
                                       rows="3"
                                       data-mention-autocomplete
                                       x-model="newCommentDraft"

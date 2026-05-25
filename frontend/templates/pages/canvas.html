@@ -106,6 +106,7 @@
                                 <div>
                                     <label class="form-label small mb-0">Table FQN</label>
                                     <input class="form-control form-control-sm font-monospace"
+                                           aria-label="Read source — table FQN"
                                            x-model="node.config.table_fqn"
                                            placeholder="catalog.schema.table">
                                 </div>
@@ -114,6 +115,7 @@
                                 <div>
                                     <label class="form-label small mb-0">Predicate (pandas .query)</label>
                                     <input class="form-control form-control-sm font-monospace"
+                                           aria-label="Filter predicate"
                                            x-model="node.config.predicate"
                                            placeholder="country == 'DE' and amount > 100">
                                 </div>
@@ -123,16 +125,20 @@
                                     <div class="col-md-6">
                                         <label class="form-label small mb-0">Right table FQN</label>
                                         <input class="form-control form-control-sm font-monospace"
+                                               aria-label="Join right table FQN"
                                                x-model="node.config.right_table_fqn">
                                     </div>
                                     <div class="col-md-3">
                                         <label class="form-label small mb-0">On</label>
                                         <input class="form-control form-control-sm"
+                                               aria-label="Join on column"
                                                x-model="node.config.on">
                                     </div>
                                     <div class="col-md-3">
                                         <label class="form-label small mb-0">How</label>
-                                        <select class="form-select form-select-sm" x-model="node.config.how">
+                                        <select class="form-select form-select-sm"
+                                                aria-label="Join type"
+                                                x-model="node.config.how">
                                             <option value="inner">inner</option>
                                             <option value="left">left</option>
                                             <option value="right">right</option>
@@ -146,12 +152,14 @@
                                     <div class="col-md-6">
                                         <label class="form-label small mb-0">Group columns (csv)</label>
                                         <input class="form-control form-control-sm"
+                                               aria-label="Group-by columns (comma-separated)"
                                                :value="(node.config.columns || []).join(',')"
                                                @change="node.config.columns = $event.target.value.split(',').map(s => s.trim()).filter(Boolean)">
                                     </div>
                                     <div class="col-md-6">
                                         <label class="form-label small mb-0">Aggregates (col:fn,col:fn)</label>
                                         <input class="form-control form-control-sm"
+                                               aria-label="Group-by aggregates"
                                                :value="Object.entries(node.config.aggregates || {}).map(([k,v]) => k + ':' + v).join(',')"
                                                @change="updateAggregates(node, $event.target.value)">
                                     </div>
@@ -161,6 +169,7 @@
                                 <div>
                                     <label class="form-label small mb-0">Model URI</label>
                                     <input class="form-control form-control-sm font-monospace"
+                                           aria-label="Run-model URI"
                                            x-model="node.config.model_uri"
                                            placeholder="models:/sales.fraud_v3/Production">
                                 </div>
@@ -170,11 +179,14 @@
                                     <div class="col-md-6">
                                         <label class="form-label small mb-0">Target FQN</label>
                                         <input class="form-control form-control-sm font-monospace"
+                                               aria-label="Write target FQN"
                                                x-model="node.config.target_fqn">
                                     </div>
                                     <div class="col-md-3">
                                         <label class="form-label small mb-0">Mode</label>
-                                        <select class="form-select form-select-sm" x-model="node.config.mode">
+                                        <select class="form-select form-select-sm"
+                                                aria-label="Write mode"
+                                                x-model="node.config.mode">
                                             <option value="overwrite">overwrite</option>
                                             <option value="append">append</option>
                                             <option value="merge">merge</option>
@@ -183,6 +195,7 @@
                                     <div class="col-md-3" x-show="node.config.mode === 'merge'">
                                         <label class="form-label small mb-0">On (merge key)</label>
                                         <input class="form-control form-control-sm"
+                                               aria-label="Write merge key"
                                                x-model="node.config.on">
                                     </div>
                                 </div>

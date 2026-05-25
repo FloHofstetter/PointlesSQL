@@ -19,16 +19,16 @@
          </p>
          <div class="row g-2 align-items-end">
            <div class="col-md-5">
-             <label class="form-label small mb-1">Text column</label>
-             <select class="form-select form-select-sm" x-model="createColumn">
+             <label class="form-label small mb-1" for="semsearch-create-col">Text column</label>
+             <select id="semsearch-create-col" class="form-select form-select-sm" x-model="createColumn">
                <template x-for="c in textColumns" :key="c">
                  <option :value="c" x-text="c"></option>
                </template>
              </select>
            </div>
            <div class="col-md-3">
-             <label class="form-label small mb-1">Embedder</label>
-             <select class="form-select form-select-sm" x-model="createEmbedder">
+             <label class="form-label small mb-1" for="semsearch-embedder">Embedder</label>
+             <select id="semsearch-embedder" class="form-select form-select-sm" x-model="createEmbedder">
                <option value="sentence_transformers">sentence-transformers (local)</option>
                <option value="openai">openai (hosted)</option>
              </select>
@@ -52,22 +52,22 @@
        <div class="card-body">
          <div class="row g-2 align-items-end">
            <div class="col-md-3">
-             <label class="form-label small mb-1">Column</label>
-             <select class="form-select form-select-sm" x-model="selectedColumn">
+             <label class="form-label small mb-1" for="semsearch-column">Column</label>
+             <select id="semsearch-column" class="form-select form-select-sm" x-model="selectedColumn">
                <template x-for="ix in indices" :key="ix.id">
                  <option :value="ix.column" x-text="ix.column"></option>
                </template>
              </select>
            </div>
            <div class="col-md-7">
-             <label class="form-label small mb-1">Query</label>
-             <input type="text" class="form-control form-control-sm"
+             <label class="form-label small mb-1" for="semsearch-query">Query</label>
+             <input id="semsearch-query" type="text" class="form-control form-control-sm"
                     x-model="query" @keydown.enter.prevent="run()"
                     placeholder="e.g. customers about to churn">
            </div>
            <div class="col-md-1">
-             <label class="form-label small mb-1">Top K</label>
-             <input type="number" class="form-control form-control-sm"
+             <label class="form-label small mb-1" for="semsearch-topk">Top K</label>
+             <input id="semsearch-topk" type="number" class="form-control form-control-sm"
                     x-model.number="topK" min="1" max="200">
            </div>
            <div class="col-md-1 text-end">

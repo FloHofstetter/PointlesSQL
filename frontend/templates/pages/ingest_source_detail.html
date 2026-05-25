@@ -113,9 +113,10 @@
                                         @click="cronExpr = '0 2 1 * *'">Monthly 1st 02:00</button>
                             </div>
                             <div class="input-group input-group-sm mb-2">
-                                <span class="input-group-text">Cron</span>
+                                <span class="input-group-text" id="ingest-cron-label">Cron</span>
                                 <input type="text"
                                        class="form-control font-monospace"
+                                       aria-labelledby="ingest-cron-label"
                                        x-model="cronExpr"
                                        placeholder="0 2 * * *">
                                 <button class="btn btn-primary"
@@ -182,6 +183,7 @@
                                         <tr>
                                             <th style="width:32px">
                                                 <input type="checkbox"
+                                                       aria-label="Select all tables"
                                                        @change="toggleAll($event.target.checked)">
                                             </th>
                                             <th>Source table</th>
@@ -196,6 +198,7 @@
                                             <tr>
                                                 <td>
                                                     <input type="checkbox"
+                                                           x-bind:aria-label="'Select ' + t.name"
                                                            x-model="t.checked">
                                                 </td>
                                                 <td class="font-monospace small"
@@ -203,12 +206,14 @@
                                                 <td>
                                                     <input type="text"
                                                            class="form-control form-control-sm font-monospace"
+                                                           x-bind:aria-label="'Target FQN for ' + t.name"
                                                            x-model="t.target_fqn"
                                                            :disabled="!t.checked"
                                                            placeholder="catalog.schema.table">
                                                 </td>
                                                 <td>
                                                     <select class="form-select form-select-sm"
+                                                            x-bind:aria-label="'Sync mode for ' + t.name"
                                                             x-model="t.mode"
                                                             :disabled="!t.checked">
                                                         <option value="full">Full refresh</option>
@@ -218,6 +223,7 @@
                                                 <td>
                                                     <input type="text"
                                                            class="form-control form-control-sm font-monospace"
+                                                           x-bind:aria-label="'High-water column for ' + t.name"
                                                            x-model="t.high_water_col"
                                                            :disabled="!t.checked || t.mode !== 'incremental'"
                                                            placeholder="updated_at">

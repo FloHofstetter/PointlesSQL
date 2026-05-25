@@ -35,15 +35,15 @@
             <div class="card-body">
                 <h6 class="mb-2">New subscription</h6>
                 <div class="mb-2">
-                    <label class="form-label small">Webhook URL</label>
-                    <input type="url"
+                    <label class="form-label small" for="me-sub-url">Webhook URL</label>
+                    <input id="me-sub-url" type="url"
                            class="form-control form-control-sm pql-me-sub-url"
                            x-model="form.webhook_url"
                            placeholder="https://hooks.example.com/pql">
                 </div>
                 <div class="mb-2">
-                    <label class="form-label small">Event type</label>
-                    <select class="form-select form-select-sm pql-me-sub-event-type"
+                    <label class="form-label small" for="me-sub-event-type">Event type</label>
+                    <select id="me-sub-event-type" class="form-select form-select-sm pql-me-sub-event-type"
                             x-model="form.event_type_filter">
                         <option value="*">All data-product events</option>
                         <option value="pointlessql.data_product.commented">Comments</option>
@@ -54,8 +54,8 @@
                     </select>
                 </div>
                 <div class="mb-2">
-                    <label class="form-label small">Data-product ref filter (optional, ``catalog.schema``)</label>
-                    <input type="text"
+                    <label class="form-label small" for="me-sub-dp-ref">Data-product ref filter (optional, ``catalog.schema``)</label>
+                    <input id="me-sub-dp-ref" type="text"
                            class="form-control form-control-sm pql-me-sub-dp-ref"
                            x-model="form.dp_ref_filter"
                            placeholder="main.sales_gold">
@@ -102,6 +102,7 @@
                                 <td>
                                     <input type="checkbox"
                                            class="form-check-input pql-me-sub-toggle"
+                                           x-bind:aria-label="'Toggle subscription ' + s.webhook_url"
                                            :checked="s.is_active"
                                            @change="toggle(s.id, $event.target.checked)">
                                 </td>

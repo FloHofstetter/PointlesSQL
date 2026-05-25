@@ -78,16 +78,16 @@
   </div>
   <div class="row g-2 mb-2">
    <div class="col-sm-4">
-    <label class="form-label small text-muted">Name</label>
-    <input type="text"
+    <label class="form-label small text-muted" for="widget-name">Name</label>
+    <input id="widget-name" type="text"
            class="form-control form-control-sm font-monospace"
            placeholder="param_x"
            x-model="widgetsPanel.draft.name"
            :disabled="widgetsPanel.submitting || widgetsPanel.editingName">
    </div>
    <div class="col-sm-3">
-    <label class="form-label small text-muted">Kind</label>
-    <select class="form-select form-select-sm"
+    <label class="form-label small text-muted" for="widget-kind">Kind</label>
+    <select id="widget-kind" class="form-select form-select-sm"
             x-model="widgetsPanel.draft.widget_kind"
             :disabled="widgetsPanel.submitting">
      <template x-for="k in widgetsPanel.kinds" :key="k">
@@ -96,16 +96,16 @@
     </select>
    </div>
    <div class="col-sm-3">
-    <label class="form-label small text-muted">Label</label>
-    <input type="text"
+    <label class="form-label small text-muted" for="widget-label">Label</label>
+    <input id="widget-label" type="text"
            class="form-control form-control-sm"
            placeholder="Pick a value"
            x-model="widgetsPanel.draft.label"
            :disabled="widgetsPanel.submitting">
    </div>
    <div class="col-sm-2">
-    <label class="form-label small text-muted">Position</label>
-    <input type="number"
+    <label class="form-label small text-muted" for="widget-position">Position</label>
+    <input id="widget-position" type="number"
            class="form-control form-control-sm"
            min="0"
            x-model.number="widgetsPanel.draft.position"
@@ -114,7 +114,7 @@
   </div>
   <div class="row g-2 mb-2">
    <div class="col-sm-7">
-    <label class="form-label small text-muted">
+    <label class="form-label small text-muted" for="widget-config">
      Config (JSON)
      <span class="text-muted ms-1"
            x-text="widgetsPanel.draft.widget_kind === 'dropdown'
@@ -123,16 +123,16 @@
                        ? '{ min, max, step }'
                        : '{ placeholder? }'"></span>
     </label>
-    <textarea class="form-control form-control-sm font-monospace"
+    <textarea id="widget-config" class="form-control form-control-sm font-monospace"
               rows="3"
               x-model="widgetsPanel.draft.config_raw"
               :disabled="widgetsPanel.submitting"></textarea>
    </div>
    <div class="col-sm-5">
-    <label class="form-label small text-muted">
+    <label class="form-label small text-muted" for="widget-default">
      Default value (JSON literal, optional)
     </label>
-    <textarea class="form-control form-control-sm font-monospace"
+    <textarea id="widget-default" class="form-control form-control-sm font-monospace"
               rows="3"
               placeholder='"default" / 42 / null'
               x-model="widgetsPanel.draft.default_value_raw"

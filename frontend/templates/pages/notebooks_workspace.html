@@ -40,6 +40,7 @@
             <div class="ms-2" x-show="availableTags().length > 0" x-cloak>
                 <select class="form-select form-select-sm"
                         style="min-width: 9rem;"
+                        aria-label="Filter notebooks by tag"
                         @change="setTagFilter($event.target.value)"
                         :value="tagFilter || ''"
                         title="Filter notebooks by tag">
@@ -139,6 +140,7 @@
                                     <input type="text"
                                            class="pql-inline-rename flex-grow-1"
                                            :data-pql-inline-rename="row.path"
+                                           x-bind:aria-label="'Rename ' + row.name"
                                            x-model="inlineRenameValue"
                                            @click.stop.prevent
                                            @keydown.enter.prevent="commitInlineRename(row)"

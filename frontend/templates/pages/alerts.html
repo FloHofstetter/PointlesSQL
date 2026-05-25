@@ -154,13 +154,13 @@
  </div>
  <div class="modal-body">
  <div class="mb-3">
- <label class="form-label small">Title</label>
- <input type="text" class="form-control form-control-sm"
+ <label class="form-label small" for="alert-title">Title</label>
+ <input id="alert-title" type="text" class="form-control form-control-sm"
  x-model="form.title" required>
  </div>
  <div class="mb-3">
- <label class="form-label small">Saved query</label>
- <select class="form-select form-select-sm"
+ <label class="form-label small" for="alert-saved-query">Saved query</label>
+ <select id="alert-saved-query" class="form-select form-select-sm"
  x-model.number="form.saved_query_id" required>
  <option value="">Choose…</option>
  <template x-for="q in savedQueries" :key="q.id">
@@ -169,15 +169,15 @@
  </select>
  </div>
  <div class="mb-3">
- <label class="form-label small">Cron expression (5-field)</label>
- <input type="text" class="form-control form-control-sm"
+ <label class="form-label small" for="alert-cron">Cron expression (5-field)</label>
+ <input id="alert-cron" type="text" class="form-control form-control-sm"
  x-model="form.cron_expr"
  placeholder="*/15 * * * *" required>
  </div>
  <div class="row g-2">
  <div class="col">
- <label class="form-label small">Condition</label>
- <select class="form-select form-select-sm"
+ <label class="form-label small" for="alert-condition">Condition</label>
+ <select id="alert-condition" class="form-select form-select-sm"
  x-model="form.condition_op">
  <option value="gt">row_count &gt; threshold</option>
  <option value="lt">row_count &lt; threshold</option>
@@ -186,8 +186,8 @@
  </select>
  </div>
  <div class="col">
- <label class="form-label small">Threshold</label>
- <input type="number" class="form-control form-control-sm"
+ <label class="form-label small" for="alert-threshold">Threshold</label>
+ <input id="alert-threshold" type="number" class="form-control form-control-sm"
  x-model.number="form.threshold" required>
  </div>
  </div>
