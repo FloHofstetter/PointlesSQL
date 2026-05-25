@@ -60,6 +60,12 @@ repos:
 
   - repo: local
     hooks:
+      - id: no-phase-refs
+        name: no phase/sprint/wave/BUG refs in frontend source
+        entry: bash scripts/check-no-phase-refs.sh
+        language: system
+        pass_filenames: false
+        files: ^frontend/
       - id: pyright
         name: pyright (strict)
         entry: uv run pyright pointlessql

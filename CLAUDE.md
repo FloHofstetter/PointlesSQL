@@ -279,6 +279,27 @@ not sufficient for the in-session tool surface.
   phase context to be understood has the wrong shape; rewrite
   it as a feature description.
 
-  Exception: `pointlessql/alembic/versions/*.py` migration files
-  (the phase tag in the filename + docstring is the schema-change
-  identity, not project-management noise).
+  Scope (this rule applies uniformly to every commented source
+  format the project carries):
+  - Python comments + docstrings (`#`, `"""..."""`)
+  - Jinja template comments (`{# ... #}`)
+  - HTML comments (`<!-- ... -->`)
+  - JavaScript comments (`//`, `/* ... */`)
+  - CSS comments (`/* ... */`)
+  - **User-facing strings rendered to the UI**: badge text,
+    tooltip `title=`, alert / toast bodies, modal labels. These
+    are even worse than comments — end users see them and "Phase
+    85.1 prototype" reads as untranslated developer chatter.
+
+  Exception (single, narrow): `pointlessql/alembic/versions/*.py`
+  migration files. The phase tag in the migration filename +
+  docstring is the schema-change identity, not project-management
+  noise; downgrading to a feature description would lose the
+  cross-reference to ROADMAP.md / CHANGELOG.md sprint anchors.
+
+  Enforcement: `scripts/check-no-phase-refs.sh` runs as a local
+  pre-commit hook scoped to `frontend/` today (clean baseline,
+  drift protection). `pointlessql/` still carries ~100 residual
+  refs in module docstrings inherited from before the rule
+  landed; a future cleanup wave will scrub them and the hook
+  scope will widen.
