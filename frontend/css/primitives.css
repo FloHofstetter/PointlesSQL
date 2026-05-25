@@ -24,7 +24,6 @@
     padding: var(--pql-space-5);
     box-shadow: var(--pql-elev-1);
 }
-.pql-card--flush { padding: 0; }
 .pql-card + .pql-card { margin-top: var(--pql-space-5); }
 
 .pql-badge {
@@ -39,10 +38,7 @@
     background: var(--pql-color-neutral-bg);
     color: var(--pql-color-neutral-fg);
 }
-.pql-badge--success { background: var(--pql-color-success-bg); color: var(--pql-color-success-fg); }
 .pql-badge--warning { background: var(--pql-color-warning-bg); color: var(--pql-color-warning-fg); }
-.pql-badge--danger  { background: var(--pql-color-danger-bg);  color: var(--pql-color-danger-fg); }
-.pql-badge--info    { background: var(--pql-color-info-bg);    color: var(--pql-color-info-fg); }
 
 [x-cloak] { display: none !important; }
 

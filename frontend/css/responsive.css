@@ -4,35 +4,13 @@
  * (see the top of this file). @media() cannot consume var(), so the
  * values are duplicated here; the token block is canonical.
  *
- * cleanup: ``.pql-list-table`` mobile collapse + the
- * ``.pql-list-sort-mobile`` dropdown moved to
- * ``components/list_table.css``; ``.pql-sidebar-nav-footer``
- * sidebar chrome moved to ``layout.css``. What stays here is the
- * Jupyter-iframe mobile notice + the touch-target + reduced-motion
- * media queries — the cross-cutting accessibility rules that
+ * ``.pql-list-table`` mobile collapse + the ``.pql-list-sort-mobile``
+ * dropdown live in ``components/list_table.css``; the
+ * ``.pql-sidebar-nav-footer`` sidebar chrome lives in
+ * ``layout.css``.  What stays here are the cross-cutting
+ * accessibility rules (touch-target sizing + reduced-motion) that
  * don't slot under a single component.
  * ------------------------------------------------------------- */
-
-/* Jupyter iframe — desktop-recommended notice slotted above the
- * iframe on <768 px. The iframe itself stays mounted so workflow
- * still functions, just with a heads-up. */
-.pql-notebook-mobile-notice {
- padding: 0.75rem 1rem;
- background: var(--pql-color-info-bg);
- color: var(--pql-color-info-fg);
- border-bottom: 1px solid var(--bs-border-color-translucent);
- font-size: var(--pql-text-sm);
- display: flex;
- align-items: flex-start;
- gap: 0.5rem;
-}
-.pql-notebook-mobile-notice i {
- font-size: var(--pql-text-lg);
- flex-shrink: 0;
-}
-.pql-notebook-mobile-notice p {
- margin: 0;
-}
 
 /* Touch targets >= 44 px on touch-only devices. Scoped to
  * `@media (hover: none)` so a mouse-driven laptop touchscreen that

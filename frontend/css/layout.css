@@ -317,18 +317,6 @@ body:has(.pql-shell--has-meta) .pql-layout-toggle--meta { display: inline-flex; 
  padding: 0.6rem 0.75rem;
 }
 
-.pql-content--notebook {
- padding: 0;
- overflow: hidden;
-}
-
-.pql-notebook-iframe {
- width: 100%;
- height: calc(100vh - var(--pql-topbar-height) - var(--pql-footer-bar-height));
- border: none;
- display: block;
-}
-
 /* sidebar drawer footer (moved here from responsive.css —
  * it is layout chrome, not a media-query, so it belongs next to the
  * other sidebar styling). Navigation links collapse into here at

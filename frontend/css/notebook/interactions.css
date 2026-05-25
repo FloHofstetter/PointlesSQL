@@ -53,9 +53,6 @@
 }
 /* No custom sizing — inherit ``btn btn-sm`` so the tag-toggle is
    flush with the right-cluster action buttons. */
-.pql-cell-tag-picker__menu {
- min-width: 12rem;
-}
 
 /* cell header acts as the desktop-window-style drag
    handle.  ``user-select: none`` is load-bearing: without it the

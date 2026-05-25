@@ -1,12 +1,11 @@
 /*
- * Cell-author chip + share-list rows + shared inline panel skin.
+ * Cell-author chip + shared inline panel skin.
  *
- * The shared panel skin is the visual envelope used by branch
- * binding, replays, sequence-proposal drawer, widgets, permissions
- * and revisions panels — same padding / border / background so all
- * six surfaces read as one coherent panel family.  Per-panel
- * content lives in its own template; only the outer envelope is
- * shared here.
+ * The shared panel skin is the visual envelope used by replays,
+ * sequence-proposal drawer, widgets and revisions panels — same
+ * padding / border / background so all surfaces read as one
+ * coherent panel family.  Per-panel content lives in its own
+ * template; only the outer envelope is shared here.
  */
 
 /* per-cell author chip in the cell header right cluster.
@@ -23,25 +22,12 @@
  font-size: 0.85em;
 }
 
-/* share-list rows inside the publish modal.  Forces
-   long share UUIDs to wrap on narrow screens instead of pushing the
-   action buttons off-canvas. */
-.pql-share-row .min-width-0 {
- min-width: 0;
-}
-.pql-share-row code {
- word-break: break-all;
-}
-
-/* Shared inline panel skin.  Used by branch binding, replays,
-   sequence-proposal drawer, widget CRUD and the permissions panel.
-   Same look-and-feel as the notebook-tags panel so users see a
-   coherent surface. */
-.pql-notebook-branch-panel,
+/* Shared inline panel skin.  Used by replays, sequence-proposal
+   drawer, widget CRUD and revisions.  Same look-and-feel so users
+   see a coherent surface. */
 .pql-notebook-replays-panel,
 .pql-notebook-sequence-drawer,
 .pql-notebook-widgets-panel,
-.pql-notebook-permissions-panel,
 .pql-notebook-revisions-panel {
  padding: 0.75rem 0.85rem 0.9rem;
  background: var(--bs-tertiary-bg, var(--bs-secondary-bg, #f8f9fa));
@@ -49,26 +35,20 @@
  border-radius: 0.25rem;
  margin-top: 0.5rem;
 }
-.pql-notebook-branch-panel__header,
 .pql-notebook-replays-panel__header,
 .pql-notebook-sequence-drawer__header,
 .pql-notebook-widgets-panel__header,
-.pql-notebook-permissions-panel__header,
 .pql-notebook-revisions-panel__header {
  display: flex;
  align-items: center;
  gap: 0.5rem;
  margin-bottom: 0.5rem;
 }
-.pql-notebook-branch-panel__section,
 .pql-notebook-replays-panel__section,
-.pql-notebook-widgets-panel__section,
-.pql-notebook-permissions-panel__section {
+.pql-notebook-widgets-panel__section {
  margin-bottom: 0.5rem;
 }
-.pql-notebook-branch-panel__section:last-of-type,
 .pql-notebook-replays-panel__section:last-of-type,
-.pql-notebook-widgets-panel__section:last-of-type,
-.pql-notebook-permissions-panel__section:last-of-type {
+.pql-notebook-widgets-panel__section:last-of-type {
  margin-bottom: 0;
 }
