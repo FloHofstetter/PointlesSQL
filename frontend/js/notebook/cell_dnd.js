@@ -72,7 +72,7 @@ export function installCellDnd(state) {
     this._flipReorderCells(() => this._moveCellTo(draggedIdx, insertAt, { broadcast: false }));
   };
 
-  state.onCellDragLeave = function () {
+  state.onCellDragLeave = () => {
     /* no-op — live-splice replaces the indicator pattern */
   };
 
@@ -147,7 +147,7 @@ export function installCellDnd(state) {
     });
   };
 
-  state._cellElId = function (el) {
+  state._cellElId = (el) => {
     // the cell wrapper carries ``data-cell-id="cell.id"``
     // explicitly so the FLIP helper can resolve every cell (incl.
     // markdown view-mode cells that don't mount a CodeMirror host).

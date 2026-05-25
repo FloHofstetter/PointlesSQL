@@ -24,7 +24,7 @@ if (typeof htmx !== 'undefined') {
   htmx.config.globalViewTransitions = true;
 }
 
-(function () {
+(() => {
   const csrfMeta = document.querySelector('meta[name="csrf-token"]');
   const token = csrfMeta ? csrfMeta.content : '';
   const SAFE = new Set(['GET', 'HEAD', 'OPTIONS']);

@@ -15,9 +15,7 @@
  * you want enriched and load this script anywhere on the page.
  */
 
-(function () {
-  'use strict';
-
+(() => {
   const DEBOUNCE_MS = 200;
   const MIN_QUERY = 1;
 

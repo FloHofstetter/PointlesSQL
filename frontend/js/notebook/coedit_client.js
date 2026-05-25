@@ -24,8 +24,8 @@
  * filter remote-driven state changes from local cursor moves.
  */
 
-import * as Y from 'yjs';
 import { applyAwarenessUpdate } from 'y-protocols/awareness';
+import * as Y from 'yjs';
 
 const TAG_SYNC_STEP1 = 0x00;
 const TAG_SYNC_STEP2 = 0x01;
@@ -248,7 +248,7 @@ export function createCoeditClient({
 
   function _scheduleReconnect() {
     if (closedByUser || reconnectTimer) return;
-    const delay = Math.min(_RECONNECT_MAX_MS, _RECONNECT_BASE_MS * Math.pow(2, reconnectAttempts));
+    const delay = Math.min(_RECONNECT_MAX_MS, _RECONNECT_BASE_MS * 2 ** reconnectAttempts);
     reconnectAttempts += 1;
     reconnectTimer = setTimeout(() => {
       reconnectTimer = null;

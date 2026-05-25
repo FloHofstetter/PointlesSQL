@@ -26,9 +26,7 @@
  *     populated on the fly from the live rail DOM, so we never
  *     duplicate the entry list in two places.
  */
-(function () {
-  'use strict';
-
+(() => {
   const STORAGE_KEY = 'pql:rail-hidden';
 
   function getHidden() {

@@ -85,7 +85,7 @@ export function dataProductsBrowse() {
 
     get filtered() {
       const f = (this.filter || '').toLowerCase();
-      let arr = this.products.filter((p) => {
+      const arr = this.products.filter((p) => {
         if (f) {
           const hay = (p.ref + ' ' + (p.description || '')).toLowerCase();
           if (!hay.includes(f)) return false;

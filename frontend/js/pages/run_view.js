@@ -13,7 +13,7 @@ function _init() {
   // e.g. an op-row's "column edges" badge would land on a hidden
   // pane. The sub-pane id stays the same as in the pre-17.2 layout
   // so existing badge links keep working.
-  (function () {
+  (() => {
     function activateForHash() {
       const hash = window.location.hash;
       if (!hash) return;

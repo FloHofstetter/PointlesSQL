@@ -15,7 +15,7 @@
  * Imported once from ``bootstrap.js``.
  */
 
-(function () {
+(() => {
   const root = document.documentElement;
   const KEY = 'pql.context-panel.collapsed';
   function setCollapsed(flag) {
@@ -31,7 +31,7 @@
       /* quota / disabled */
     }
   }
-  document.addEventListener('click', function (ev) {
+  document.addEventListener('click', (ev) => {
     const btn = ev.target.closest('[data-pql-panel-toggle]');
     if (!btn) return;
     ev.preventDefault();
@@ -42,7 +42,7 @@
   });
 })();
 
-(function () {
+(() => {
   // meta panel (right rail) expand/collapse. Same shape as the
   // context-panel toggle above; flips ``data-pql-meta-collapsed`` on
   // <html> so the
@@ -63,7 +63,7 @@
       /* quota / disabled */
     }
   }
-  document.addEventListener('click', function (ev) {
+  document.addEventListener('click', (ev) => {
     const btn = ev.target.closest('[data-pql-meta-toggle]');
     if (!btn) return;
     ev.preventDefault();
@@ -74,7 +74,7 @@
   });
 })();
 
-(function () {
+(() => {
   // primary-rail expand/collapse toggle. Same shape as the
   // context-panel toggle above; persists per-user in localStorage and
   // flips ``data-pql-rail-state`` on <html> so both base.css (rail
@@ -91,7 +91,7 @@
       /* quota / disabled */
     }
   }
-  document.addEventListener('click', function (ev) {
+  document.addEventListener('click', (ev) => {
     const btn = ev.target.closest('[data-pql-rail-toggle]');
     if (!btn) return;
     ev.preventDefault();

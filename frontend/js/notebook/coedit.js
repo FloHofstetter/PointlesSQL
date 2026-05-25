@@ -21,9 +21,9 @@
  * sequence here guarantees that.
  */
 
-import { installCoeditCore } from './coedit_core.js';
 import { installCoeditAwareness } from './coedit_awareness.js';
 import { installCoeditCellBinding } from './coedit_cell_binding.js';
+import { installCoeditCore } from './coedit_core.js';
 
 export function installCoeditLifecycle(state, { userInfo = null } = {}) {
   installCoeditCore(state, { userInfo });

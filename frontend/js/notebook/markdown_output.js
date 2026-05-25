@@ -26,9 +26,7 @@ export function installMarkdownOutput(state, deps) {
     }
   };
 
-  state._outputContainerFor = function (cell) {
-    return document.getElementById(`pql-cell-output-${cell.id}`);
-  };
+  state._outputContainerFor = (cell) => document.getElementById(`pql-cell-output-${cell.id}`);
 
   state._renderCellOutput = function (cell) {
     const host = this._outputContainerFor(cell);
@@ -91,7 +89,7 @@ export function installMarkdownOutput(state, deps) {
     await Promise.all(promises);
   };
 
-  state._renderMarkdown = async function (cell) {
+  state._renderMarkdown = async (cell) => {
     try {
       const res = await window.pqlApi.fetch('/api/notebooks/render-markdown', {
         method: 'POST',

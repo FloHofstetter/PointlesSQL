@@ -12,7 +12,7 @@
 // Optional `opts`:
 //   - confirmLabel: button label override (default "Delete")
 //   - confirmClass: button class override (default "btn-danger")
-(function () {
+(() => {
   function pqlConfirm(title, body, opts) {
     opts = opts || {};
     const modalEl = document.getElementById('pql-confirm-modal');

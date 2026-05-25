@@ -28,7 +28,7 @@
 //   { kind: 'catalog', name }
 //   { kind: 'schema',  catalog, schema }
 //   { kind: 'table',   catalog, schema, table }
-window.pqlStarKey = function (item) {
+window.pqlStarKey = (item) => {
   if (!item || !item.kind) return '';
   if (item.kind === 'catalog') return 'cat:' + item.name;
   if (item.kind === 'schema') return 'sch:' + item.catalog + '.' + item.schema;
@@ -59,7 +59,7 @@ window.pqlStarKey = function (item) {
 // The component reads its initial state on init() so star
 // counts + the caller's starred flag survive page reloads
 // across devices.
-window.pqlStarToggle = function (payload) {
+window.pqlStarToggle = (payload) => {
   const slugMeta = document.querySelector('meta[name="workspace-slug"]');
   const slug = slugMeta && slugMeta.content ? slugMeta.content : 'default';
   const KEY = 'pql.starred.' + slug;

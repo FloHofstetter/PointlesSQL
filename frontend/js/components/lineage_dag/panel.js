@@ -9,7 +9,7 @@
  * the next state delta that the factory applies to ``this``.
  */
 
-import { highlightColumn, clearHighlight } from './highlights.js';
+import { clearHighlight, highlightColumn } from './highlights.js';
 
 /**
  * Look up the edge object backing the currently-selected id.

@@ -20,12 +20,12 @@
  */
 
 import { jsonFetch } from '../http.js';
-import {
-  REVIEW_DECISIONS,
-  extractReviewDecision,
-  bodyWithoutPrefix as _bodyWithoutPrefix,
-} from './review_decision.js';
 import { cellTagPickerSlice } from './cell_tag_picker.js';
+import {
+  bodyWithoutPrefix as _bodyWithoutPrefix,
+  extractReviewDecision,
+  REVIEW_DECISIONS,
+} from './review_decision.js';
 
 const ALLOWED_EMOJI = ['👍', '❤️', '🎉', '😄', '😕', '👀'];
 

@@ -10,7 +10,7 @@
  */
 
 export function installJobsOrchestration(state) {
-  state.describeCron = function (expr) {
+  state.describeCron = (expr) => {
     if (!expr) return '';
     if (typeof window.pqlHumanizeCron === 'function') {
       try {

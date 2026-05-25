@@ -24,10 +24,10 @@
  * ``x-data="notebookWorkspace()"`` resolves unchanged.
  */
 
-import { notebookDialogs } from './notebooks_workspace_dialogs.js';
 import { notebookModalApis } from '../components/notebook_modal_apis.js';
 import { installWorkspaceContextMenu } from '../components/workspace_context_menu.js';
 import { installWorkspaceDnd } from '../components/workspace_dnd.js';
+import { notebookDialogs } from './notebooks_workspace_dialogs.js';
 
 const STORAGE_KEY = 'pql.notebooks';
 const OPEN_KEY = 'pql.notebooks.open';

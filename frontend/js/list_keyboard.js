@@ -19,7 +19,7 @@
 // (input/textarea/contenteditable) so typing in filters / forms
 // never accidentally selects rows.
 
-(function () {
+(() => {
   function shouldIgnore(ev) {
     const t = ev.target;
     if (!t) return false;
@@ -103,7 +103,7 @@
             anchorIdx = focusIdx;
           }
           break;
-        case 'Escape':
+        case 'Escape': {
           if (focusIdx < 0) return;
           ev.preventDefault();
           // Clear via the page's own clearSelection() if exposed;
@@ -120,6 +120,7 @@
           }
           anchorIdx = -1;
           break;
+        }
         case 'Enter':
           if (focusIdx < 0) return;
           ev.preventDefault();

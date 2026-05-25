@@ -14,7 +14,7 @@
 //
 // The function is exposed on ``window.pqlRenderCitations`` for
 // the Alpine ``x-html`` bindings on the data-product detail page.
-window.pqlRenderCitations = function (md) {
+window.pqlRenderCitations = (md) => {
   if (!md) return '';
   const escape = (s) =>
     s

@@ -177,7 +177,7 @@ export function installCoeditCellBinding(state) {
     if (!this._coedit || !this._coedit.ydoc) return;
     if (this._cellsOrderObserverInstalled) return;
     const order = this._coedit.ydoc.getArray(CELLS_ORDER_KEY);
-    const self = this;
+
     order.observe((event) => {
       // Skip echoes of our own ``_syncCellsOrderToYDoc`` transaction —
       // ``this.cells`` already reflects the move locally.  Remote
@@ -191,8 +191,8 @@ export function installCoeditCellBinding(state) {
       // Skipping reconcile here keeps the live-preview reorder
       // from being clobbered by a peer's unrelated edit; the
       // post-drop sync will reconverge on the user's release.
-      if (self._dragInProgress) return;
-      self._reconcileCellsFromOrder();
+      if (this._dragInProgress) return;
+      this._reconcileCellsFromOrder();
     });
     this._cellsOrderObserverInstalled = true;
   };

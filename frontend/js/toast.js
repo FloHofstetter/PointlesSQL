@@ -76,20 +76,20 @@ function show(variant, message, opts) {
   host.appendChild(node);
 
   const toast = new window.bootstrap.Toast(node, { delay: timeout });
-  node.addEventListener('hidden.bs.toast', function () {
+  node.addEventListener('hidden.bs.toast', () => {
     node.remove();
   });
   toast.show();
 }
 
 export const pqlToast = {
-  success: function (msg, opts) {
+  success: (msg, opts) => {
     show('success', msg, opts);
   },
-  error: function (msg, opts) {
+  error: (msg, opts) => {
     show('error', msg, opts);
   },
-  info: function (msg, opts) {
+  info: (msg, opts) => {
     show('info', msg, opts);
   },
 };

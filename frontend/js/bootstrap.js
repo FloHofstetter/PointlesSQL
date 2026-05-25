@@ -18,11 +18,11 @@
 // the script-tag order in frontend/templates/base.html before blaming
 // the consumer.
 
+import { pqlApi } from './api.js';
 // Singletons consumed by the editor factories below.  Imported first
 // so the import graph resolves toast → api before the editors that
 // depend on ``window.pqlApi`` evaluate.
 import { pqlToast } from './toast.js';
-import { pqlApi } from './api.js';
 
 window.pqlToast = pqlToast;
 window.pqlApi = pqlApi;
@@ -65,10 +65,10 @@ import './tab_sync.js';
 // pick up the same syntax highlighting as the editor.
 import './sql_viewer.js';
 
+import { pqlHumanizeCron } from './humanize_cron.js';
 // Pure utility helpers — no Alpine factories, but used directly from
 // templates as ``x-text="pqlRelativeTime(iso)"`` etc.
-import { pqlParseServerIso, pqlRelativeTime, pqlAbsTime } from './relative_time.js';
-import { pqlHumanizeCron } from './humanize_cron.js';
+import { pqlAbsTime, pqlParseServerIso, pqlRelativeTime } from './relative_time.js';
 
 window.pqlParseServerIso = pqlParseServerIso;
 window.pqlRelativeTime = pqlRelativeTime;
@@ -79,13 +79,14 @@ window.pqlHumanizeCron = pqlHumanizeCron;
 // so inline-script Alpine factories on alerts / audit_inbox /
 // issues_index can spread the mixin into their own x-data return.
 import { bulkSelect } from './bulk_actions.js';
+
 window.bulkSelect = bulkSelect;
 
 // Inline-editor factories.
 import { editable } from './editable.js';
 import { permissionsEditor } from './permissions_editor.js';
+import { optionsEditor, propertiesEditor } from './properties_editor.js';
 import { tagsEditor } from './tags_editor.js';
-import { propertiesEditor, optionsEditor } from './properties_editor.js';
 
 window.editable = editable;
 window.permissionsEditor = permissionsEditor;
@@ -93,6 +94,7 @@ window.tagsEditor = tagsEditor;
 window.propertiesEditor = propertiesEditor;
 window.optionsEditor = optionsEditor;
 
+import { createForeignCatalogForm, deleteConfirm } from './pages/federation/catalogs.js';
 // Federation create-forms + delete-confirm.  federation.js is split
 // into three sibling modules; bootstrap.js imports from each directly
 // so the window-name surface stays identical without an extra façade
@@ -102,7 +104,6 @@ import {
   createCredentialForm,
   createExternalLocationForm,
 } from './pages/federation/credentials.js';
-import { createForeignCatalogForm, deleteConfirm } from './pages/federation/catalogs.js';
 
 window.createConnectionForm = createConnectionForm;
 window.createExternalLocationForm = createExternalLocationForm;
@@ -110,9 +111,9 @@ window.createCredentialForm = createCredentialForm;
 window.createForeignCatalogForm = createForeignCatalogForm;
 window.deleteConfirm = deleteConfirm;
 
+import { jobRowActions } from './job_row_actions.js';
 // List table + job-row hover actions + SQL editor.
 import { listTable } from './list_table.js';
-import { jobRowActions } from './job_row_actions.js';
 import { sqlEditor } from './sql_editor/index.js';
 
 window.listTable = listTable;
@@ -184,10 +185,10 @@ window.lineageDag = lineageDag;
 // custom events fired from Summary "Trace" buttons + the Graph
 // side-panel column-pair "Trace this column" button.
 import {
-  rowTracePane,
-  columnTracePane,
-  valueChangesPane,
   bindLineageTraceButtons,
+  columnTracePane,
+  rowTracePane,
+  valueChangesPane,
 } from './components/lineage_panes.js';
 
 window.rowTracePane = rowTracePane;
@@ -202,78 +203,77 @@ if (document.readyState === 'loading') {
   bindLineageTraceButtons();
 }
 
+import { dashboardTree } from './components/dashboards_sidebar.js';
+import { footerBar } from './components/footer_bar.js';
+import { notificationBell } from './components/notification_bell.js';
+import { notebookDiscussion, notebookReadme } from './notebook/discussion.js';
+import { apiKeyGrants, apiKeyUsageChart } from './pages/admin_api_key_detail.js';
+import { apiKeyCreate, apiKeyCreatedModal, apiKeyRow } from './pages/admin_api_keys.js';
+import { auditSinkCreate, auditSinkRow } from './pages/admin_audit_sinks.js';
+import { reviewDestCreate, reviewDestRow } from './pages/admin_review_destinations.js';
+import { adminSourcesList } from './pages/admin_sources.js';
+import { adminWorkspaces, archiveButton } from './pages/admin_workspaces.js';
+import { agentProfile } from './pages/agent_profile.js';
+import { alertDetail } from './pages/alert_detail.js';
 // Page-template factories.  Each was previously an inline
 // ``<script>`` IIFE inside its pages/*.html file; lifting them here
 // means a single shared import graph and the synchronous-window-
 // attach-before-Alpine-DOM-walk invariant stays defused without
 // per-page boilerplate.
 import { alertsPage } from './pages/alerts.js';
-import { feedPage } from './pages/feed.js';
-import { dataProductDetail } from './pages/data_product.js';
-import {
-  modelVersions,
-  modelPromotion,
-  modelDiscussion,
-  modelReadme,
-  modelReviews,
-  modelLineageDag,
-} from './pages/model.js';
-import { alertDetail } from './pages/alert_detail.js';
-import { volumeDetail } from './pages/volume_detail.js';
-import { notebookWorkspace } from './pages/notebooks_workspace.js';
-import { tablePreview } from './pages/table_preview.js';
+import { branchDiscussion } from './pages/branch_detail.js';
+import { canvasEditor } from './pages/canvas.js';
 import { catalogTree, pathFromUrl } from './pages/catalog_tree.js';
+import { dataProductDetail } from './pages/data_product.js';
+import { dpReleasesCard, ingestStatusBand } from './pages/data_product_extras.js';
+import { dataProductsBrowse } from './pages/data_products.js';
+import { dataProductsCandidates } from './pages/data_products_candidates.js';
+import { dataProductsFollowed } from './pages/data_products_followed.js';
+import { dataProductsTrending } from './pages/data_products_trending.js';
 import { dbtSchemaContext } from './pages/dbt_schema_context.js';
 import { dbtTableContext } from './pages/dbt_table_context.js';
-import { mlflowCockpit } from './pages/mlflow_cockpit.js';
-import { mlTableContext } from './pages/ml_table_context.js';
-import { semanticSearch } from './table/semantic_search.js';
-import { tableStats, tableDiscussion, tableReadme } from './pages/table.js';
-import { rollbackPanel } from './run_view/uc_mutations.js';
-import { notebookDiscussion, notebookReadme } from './notebook/discussion.js';
-import { apiKeyRow, apiKeyCreate, apiKeyCreatedModal } from './pages/admin_api_keys.js';
-import { apiKeyGrants, apiKeyUsageChart } from './pages/admin_api_key_detail.js';
+import { feedPage } from './pages/feed.js';
+import { homeRecentCatalogs, homeSparkline } from './pages/home.js';
 import { ingestSourceDetail } from './pages/ingest_source_detail.js';
 import { ingestSourceCreate } from './pages/ingest_sources_new.js';
-import { auditSinkRow, auditSinkCreate } from './pages/admin_audit_sinks.js';
-import { reviewDestRow, reviewDestCreate } from './pages/admin_review_destinations.js';
-import { canvasEditor } from './pages/canvas.js';
-import { dataProductsBrowse } from './pages/data_products.js';
-import { userProfile } from './pages/user_profile.js';
+import { issueDetail } from './pages/issue_detail.js';
+import { issuesIndex } from './pages/issues_index.js';
+import { lensChat } from './pages/lens_index.js';
+import { lineageExplorerForm } from './pages/lineage_index.js';
+import { meSettingsForm } from './pages/me_settings.js';
 import { meSubscriptions } from './pages/me_subscriptions.js';
+import { mlTableContext } from './pages/ml_table_context.js';
+import { mlflowCockpit } from './pages/mlflow_cockpit.js';
+import {
+  modelDiscussion,
+  modelLineageDag,
+  modelPromotion,
+  modelReadme,
+  modelReviews,
+  modelVersions,
+} from './pages/model.js';
+import { modelsBrowse } from './pages/models.js';
+import { notebookWorkspace } from './pages/notebooks_workspace.js';
 import { notificationsInbox } from './pages/notifications.js';
 import { rowAtVersion } from './pages/row_trace.js';
 import { savedQueryDiscussion, savedQueryReadme } from './pages/saved_audit_query_detail.js';
-
+import { savedViewDetail } from './pages/saved_view_detail.js';
+import { savedViewForm } from './pages/saved_view_new.js';
+import { catalogDiscussion, catalogReadme } from './pages/schemas.js';
+import { notificationSettings } from './pages/settings_notifications.js';
+import { tableDiscussion, tableReadme, tableStats } from './pages/table.js';
+import { tablePreview } from './pages/table_preview.js';
+import { schemaDiscussion, schemaReadme } from './pages/tables.js';
+import { topicDetail } from './pages/topic_detail.js';
+import { topicsIndex } from './pages/topics_index.js';
+import { userProfile } from './pages/user_profile.js';
+import { volumeDetail } from './pages/volume_detail.js';
+import { workspaceLanding } from './pages/workspace_landing.js';
+import { issuesPane } from './partials/issues_pane.js';
 // W2.8 Tier-3 named-export imports.
 import { runDiscussion } from './run_view/tab_social.js';
-import { branchDiscussion } from './pages/branch_detail.js';
-import { lensChat } from './pages/lens_index.js';
-import { schemaDiscussion, schemaReadme } from './pages/tables.js';
-import { catalogDiscussion, catalogReadme } from './pages/schemas.js';
-import { topicsIndex } from './pages/topics_index.js';
-import { issuesIndex } from './pages/issues_index.js';
-import { lineageExplorerForm } from './pages/lineage_index.js';
-import { issueDetail } from './pages/issue_detail.js';
-import { workspaceLanding } from './pages/workspace_landing.js';
-import { footerBar } from './components/footer_bar.js';
-import { adminWorkspaces, archiveButton } from './pages/admin_workspaces.js';
-import { savedViewDetail } from './pages/saved_view_detail.js';
-import { issuesPane } from './partials/issues_pane.js';
-import { savedViewForm } from './pages/saved_view_new.js';
-import { modelsBrowse } from './pages/models.js';
-import { topicDetail } from './pages/topic_detail.js';
-import { dataProductsCandidates } from './pages/data_products_candidates.js';
-import { ingestStatusBand, dpReleasesCard } from './pages/data_product_extras.js';
-import { notificationBell } from './components/notification_bell.js';
-import { notificationSettings } from './pages/settings_notifications.js';
-import { adminSourcesList } from './pages/admin_sources.js';
-import { meSettingsForm } from './pages/me_settings.js';
-import { dataProductsFollowed } from './pages/data_products_followed.js';
-import { dataProductsTrending } from './pages/data_products_trending.js';
-import { agentProfile } from './pages/agent_profile.js';
-import { dashboardTree } from './components/dashboards_sidebar.js';
-import { homeSparkline, homeRecentCatalogs } from './pages/home.js';
+import { rollbackPanel } from './run_view/uc_mutations.js';
+import { semanticSearch } from './table/semantic_search.js';
 
 // Side-effect IIFE modules.  Each guards on a page-local element id so
 // the cost on unrelated pages is one ``getElementById`` lookup.
@@ -283,22 +283,22 @@ import './pages/audit_search.js';
 import './pages/audit_by_table.js';
 import './pages/agent_run_compare.js';
 import './pages/run_view.js';
+
 // row_trace.js + saved_audit_query_detail.js carry both an exported
 // factory AND a page-local side-effect binder; the export imports
 // above already evaluate them, so no extra side-effect import here.
 
-import { chatPanel } from './sql_editor/chat.js';
-import { notebookChatPanel } from './notebook/chat.js';
-
+import { alertsSidebar } from './components/sidebars/alerts_sidebar.js';
+import { branchesSidebar } from './components/sidebars/branches_sidebar.js';
+import { jobsSidebar } from './components/sidebars/jobs_sidebar.js';
+import { mlflowSidebar } from './components/sidebars/mlflow_sidebar.js';
 // Per-section context-panel factories.  Each replaces a static link
 // list in components/context_panel.html with a navigable,
 // refresh-aware Alpine factory analogous to catalogTree() above.
 import { runsSidebar } from './components/sidebars/runs_sidebar.js';
-import { branchesSidebar } from './components/sidebars/branches_sidebar.js';
 import { workspaceSidebar } from './components/sidebars/workspace_sidebar.js';
-import { jobsSidebar } from './components/sidebars/jobs_sidebar.js';
-import { alertsSidebar } from './components/sidebars/alerts_sidebar.js';
-import { mlflowSidebar } from './components/sidebars/mlflow_sidebar.js';
+import { notebookChatPanel } from './notebook/chat.js';
+import { chatPanel } from './sql_editor/chat.js';
 
 window.alertsPage = alertsPage;
 window.feedPage = feedPage;

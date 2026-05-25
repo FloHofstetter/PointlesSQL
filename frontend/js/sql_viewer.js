@@ -15,11 +15,12 @@
  * read-only CodeMirror instance.  ``data-sql`` is JSON-encoded so
  * embedded quotes / newlines round-trip cleanly.
  */
-import { EditorState } from '@codemirror/state';
-import { EditorView, lineNumbers } from '@codemirror/view';
-import { syntaxHighlighting, defaultHighlightStyle, bracketMatching } from '@codemirror/language';
+
 import { sql } from '@codemirror/lang-sql';
+import { bracketMatching, defaultHighlightStyle, syntaxHighlighting } from '@codemirror/language';
+import { EditorState } from '@codemirror/state';
 import { oneDark } from '@codemirror/theme-one-dark';
+import { EditorView, lineNumbers } from '@codemirror/view';
 
 function mount(host) {
   if (host.dataset.pqlMounted === '1') return;

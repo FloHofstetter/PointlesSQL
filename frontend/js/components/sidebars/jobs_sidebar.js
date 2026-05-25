@@ -5,8 +5,8 @@
  * buckets.
  */
 
-import { makeSidebar } from './_base.js';
 import { statusClass } from '../status_styles.js';
+import { makeSidebar } from './_base.js';
 
 function activeJobIdFromUrl() {
   const m = window.location.pathname.match(/^\/jobs\/(\d+)/);

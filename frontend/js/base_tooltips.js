@@ -11,7 +11,7 @@
  * Side-effect module imported once from ``bootstrap.js``.
  */
 
-(function () {
+(() => {
   function initTooltips(root) {
     (root || document)
       .querySelectorAll('[data-bs-toggle="tooltip"]:not([data-bs-tooltip-init])')

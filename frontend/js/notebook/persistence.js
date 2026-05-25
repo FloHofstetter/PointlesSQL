@@ -141,7 +141,7 @@ export function installPersistence(state) {
     }, 5000);
   };
 
-  state.cellLabel = function (cell) {
+  state.cellLabel = (cell) => {
     const tags = Array.isArray(cell.tags) ? cell.tags : [];
     if (tags.includes('parameters')) {
       if (cell.cell_type === 'sql') return 'SQL · PARAMS';
@@ -155,9 +155,7 @@ export function installPersistence(state) {
     return 'Code';
   };
 
-  state.cellHasParamsTag = function (cell) {
-    return Array.isArray(cell.tags) && cell.tags.includes('parameters');
-  };
+  state.cellHasParamsTag = (cell) => Array.isArray(cell.tags) && cell.tags.includes('parameters');
 
   state.toggleParamsTag = function (cell) {
     if (!cell) return;

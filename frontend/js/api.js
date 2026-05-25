@@ -146,7 +146,7 @@ function reloadWithToast(message, opts) {
   const delay = opts && typeof opts.delay === 'number' ? opts.delay : 400;
   const variant = (opts && opts.variant) || 'success';
   toast(variant, message);
-  window.setTimeout(function () {
+  window.setTimeout(() => {
     window.location.reload();
   }, delay);
 }
@@ -158,4 +158,4 @@ export const pqlApi = {
 
 // exported so call-sites outside pqlApi can stop hand-rolling
 // ``if (window.pqlToast) window.pqlToast.X(msg)`` guards (14× earlier).
-export { toast, csrfToken, workspaceSlug };
+export { csrfToken, toast, workspaceSlug };

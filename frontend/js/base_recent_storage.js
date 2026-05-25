@@ -16,7 +16,7 @@
  * Imported once from ``bootstrap.js``.
  */
 
-(function () {
+(() => {
   try {
     const slugMeta = document.querySelector('meta[name="workspace-slug"]');
     const slug = slugMeta && slugMeta.content ? slugMeta.content : 'default';
@@ -42,7 +42,7 @@
   }
 })();
 
-(function () {
+(() => {
   try {
     const slugMeta = document.querySelector('meta[name="workspace-slug"]');
     const slug = slugMeta && slugMeta.content ? slugMeta.content : 'default';

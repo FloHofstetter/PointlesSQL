@@ -4,8 +4,8 @@
  * Lists active + promoted Delta-branches grouped by status.
  */
 
-import { makeSidebar } from './_base.js';
 import { statusClass } from '../status_styles.js';
+import { makeSidebar } from './_base.js';
 
 function activeFqnFromHash() {
   if (window.location.pathname !== '/branches') return '';

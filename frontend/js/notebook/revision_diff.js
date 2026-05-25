@@ -146,7 +146,7 @@ export function installRevisionDiff(state) {
    * as Monaco's tokenisation but good enough for cell-source deltas
    * which are usually small.
    */
-  state.renderUnifiedDiff = function (oldText, newText) {
+  state.renderUnifiedDiff = (oldText, newText) => {
     const a = (oldText || '').split('\n');
     const b = (newText || '').split('\n');
     let start = 0;

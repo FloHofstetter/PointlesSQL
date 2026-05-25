@@ -9,8 +9,8 @@
  * (lazy script loader) and ``renderModelGraph`` (one-shot render).
  */
 
-import { lineageDag } from './factory.js';
 import { loadCytoscapeOnce, renderModelGraph } from './cytoscape_init.js';
+import { lineageDag } from './factory.js';
 
 if (typeof window !== 'undefined') {
   window.loadCytoscapeOnce = loadCytoscapeOnce;

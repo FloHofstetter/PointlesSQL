@@ -12,9 +12,7 @@
 //   Branches tab; POSTs /api/memory/<agent>/replay and follows
 //   the HX-Redirect header on success.
 
-(function () {
-  'use strict';
-
+(() => {
   function memoryRecall(agentId) {
     return {
       filter: {

@@ -5,7 +5,7 @@
 // Wrapped in DOMContentLoaded so DOM lookups inside resolve.
 
 function _init() {
-  (function () {
+  (() => {
     const payloadEl = document.getElementById('lineage-diff-payload');
     if (!payloadEl) return;
     const payload = JSON.parse(payloadEl.textContent);

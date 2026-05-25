@@ -17,7 +17,7 @@
 // inserted via hx-swap because the listener is attached to
 // document, not to specific anchors.
 
-(function () {
+(() => {
   const prefetched = new Set();
   let hoverTimer = null;
 

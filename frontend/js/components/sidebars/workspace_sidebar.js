@@ -18,11 +18,11 @@
  * Source: ``/api/notebooks/tree`` (admin-only).
  */
 
-import { makeSidebar } from './_base.js';
 import { notebookDialogs } from '../../pages/notebooks_workspace_dialogs.js';
 import { notebookModalApis } from '../notebook_modal_apis.js';
 import { installWorkspaceContextMenu } from '../workspace_context_menu.js';
 import { installWorkspaceDnd } from '../workspace_dnd.js';
+import { makeSidebar } from './_base.js';
 
 const OPEN_KEY = 'pql.workspace.sidebar.open';
 

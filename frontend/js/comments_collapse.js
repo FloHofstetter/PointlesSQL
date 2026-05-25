@@ -18,9 +18,7 @@
  * MutationObserver so it re-applies after Alpine re-renders.
  */
 
-(function () {
-  'use strict';
-
+(() => {
   const COLLAPSE_THRESHOLD = 3;
   const PROCESSED_FLAG = 'pqlCollapseProcessed';
 

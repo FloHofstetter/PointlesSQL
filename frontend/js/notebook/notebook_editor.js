@@ -21,9 +21,9 @@
 
 import { installBranchBinding } from './branch_binding.js';
 import { installCellAuthorship } from './cell_authorship.js';
+import { installCellDnd } from './cell_dnd.js';
 import { installCellFacts } from './cell_facts.js';
 import { installCellLineage } from './cell_lineage.js';
-import { installCellDnd } from './cell_dnd.js';
 import { installCellOperations } from './cell_operations.js';
 import { installChatIntegration } from './chat_integration.js';
 import { installCoeditLifecycle } from './coedit.js';
@@ -31,13 +31,13 @@ import { installJobsOrchestration } from './jobs_orchestration.js';
 import { installKernelExecution } from './kernel_execution.js';
 import { installMarkdownOutput } from './markdown_output.js';
 import { installNotebookTags } from './notebook_tags.js';
+import { installPermissionsPanel } from './permissions_panel.js';
 import { installPersistence } from './persistence.js';
 import { installReplays } from './replays.js';
 import { installRevisions } from './revisions.js';
 import { installSequenceProposals } from './sequence_proposals.js';
 import { installShareDialog } from './share_dialog.js';
 import { installWidgetsPanel } from './widgets_panel.js';
-import { installPermissionsPanel } from './permissions_panel.js';
 
 // Mirrors `pointlessql.services.notebook._doc.compute_content_hash`
 // — FNV-1a 64-bit over the line-right-stripped + LF-normalised source.

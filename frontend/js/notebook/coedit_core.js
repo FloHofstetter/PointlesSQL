@@ -131,7 +131,7 @@ export function installCoeditCore(state, { userInfo = null } = {}) {
     if (this.cellCounts && typeof this.cellCounts === 'object') {
       const next = { ...this.cellCounts };
       for (const [oldU, newU] of Object.entries(remap)) {
-        if (Object.prototype.hasOwnProperty.call(next, oldU)) {
+        if (Object.hasOwn(next, oldU)) {
           next[newU] = next[oldU];
           delete next[oldU];
         }

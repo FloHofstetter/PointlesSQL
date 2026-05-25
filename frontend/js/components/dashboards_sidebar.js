@@ -6,7 +6,7 @@
 const STORAGE_KEY = 'pql.dashboards';
 
 function slugFromUrl() {
-  const m = window.location.pathname.match(/^\/dashboards\/([^\/]+)/);
+  const m = window.location.pathname.match(/^\/dashboards\/([^/]+)/);
   return m ? m[1] : '';
 }
 

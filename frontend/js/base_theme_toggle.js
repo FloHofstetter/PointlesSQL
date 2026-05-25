@@ -10,7 +10,7 @@
  * Imported once from ``bootstrap.js``.
  */
 
-(function () {
+(() => {
   const root = document.documentElement;
   function resolved(choice) {
     return choice === 'auto'

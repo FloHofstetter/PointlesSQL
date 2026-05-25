@@ -89,12 +89,12 @@ export function installCoeditAwareness(state) {
 
   state._wirePeerRailRefresh = function () {
     const aw = this._awareness;
-    const self = this;
+
     const refresh = (changes) => {
-      if (!self._coeditPeerRefresh) {
-        self._coeditPeerRefresh = setTimeout(() => {
-          self._coeditPeerRefresh = null;
-          self._renderPeerRail();
+      if (!this._coeditPeerRefresh) {
+        this._coeditPeerRefresh = setTimeout(() => {
+          this._coeditPeerRefresh = null;
+          this._renderPeerRail();
         }, PEER_RAIL_RENDER_THROTTLE_MS);
       }
       // when a NEW peer's state arrives in the
@@ -110,7 +110,7 @@ export function installCoeditAwareness(state) {
         Array.isArray(changes.added) &&
         changes.added.some((id) => id !== aw.clientID)
       ) {
-        self._broadcastLocalAwareness();
+        this._broadcastLocalAwareness();
       }
     };
     aw.on('change', refresh);
@@ -187,14 +187,14 @@ export function installCoeditAwareness(state) {
 
   state._installBeforeUnloadCleanup = function () {
     const aw = this._awareness;
-    const self = this;
+
     this._coeditBeforeUnload = () => {
       try {
         aw.setLocalState(null);
       } catch (_e) {
         /* swallow */
       }
-      self._coeditBeforeUnload = null;
+      this._coeditBeforeUnload = null;
     };
     window.addEventListener('beforeunload', this._coeditBeforeUnload);
   };

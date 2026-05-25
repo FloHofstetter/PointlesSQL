@@ -15,13 +15,13 @@
  */
 
 import {
-  loadCytoscapeOnce,
-  ensureDagreRegistered,
   dagLayout,
+  ensureDagreRegistered,
+  loadCytoscapeOnce,
   RUN_GRAPH_STYLE,
 } from './cytoscape_init.js';
-import { highlightEdge, highlightNode, clearHighlight } from './highlights.js';
-import { findSelectedEdge, selectColumn, clearSelection } from './panel.js';
+import { clearHighlight, highlightEdge, highlightNode } from './highlights.js';
+import { clearSelection, findSelectedEdge, selectColumn } from './panel.js';
 
 export function lineageDag(initial) {
   return {

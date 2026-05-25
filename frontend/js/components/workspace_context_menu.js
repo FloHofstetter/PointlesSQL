@@ -187,7 +187,7 @@ export function installWorkspaceContextMenu(state, opts) {
     }
     const rows = _rowsOf(this);
     if (!rows.length) return;
-    let idx = rows.findIndex((r) => r.path === this.focusedPath);
+    const idx = rows.findIndex((r) => r.path === this.focusedPath);
     const moveTo = (newIdx) => {
       if (newIdx < 0 || newIdx >= rows.length) return;
       this.focusedPath = rows[newIdx].path;

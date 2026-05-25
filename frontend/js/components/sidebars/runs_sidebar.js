@@ -5,8 +5,8 @@
  * agent runs grouped by status.
  */
 
-import { makeSidebar } from './_base.js';
 import { statusClass } from '../status_styles.js';
+import { makeSidebar } from './_base.js';
 
 const ACTIVE_STATUSES = new Set(['running', 'queued']);
 const NEEDS_APPROVAL_STATUSES = new Set(['needs_approval', 'pending_approval']);

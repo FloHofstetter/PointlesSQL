@@ -6,8 +6,8 @@
  * detail page without a round-trip to /models.
  */
 
-import { makeSidebar } from './_base.js';
 import { statusClass } from '../status_styles.js';
+import { makeSidebar } from './_base.js';
 
 function activeFqnFromUrl() {
   const m = window.location.pathname.match(/^\/models\/([^/?#]+)/);
