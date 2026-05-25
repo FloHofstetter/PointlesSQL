@@ -30,6 +30,61 @@ import { executeMethods } from './execute.js';
 import { monacoMethods } from './monaco.js';
 import { savedMethods } from './saved.js';
 
+/**
+ * @typedef {Object} SqlEditorState
+ * Alpine x-data shape returned by ``sqlEditor()``.  The methods are
+ * spread in from five mixin modules (monaco.js, execute.js, saved.js,
+ * chart.js, builder.js); the typedef lists only the state slots they
+ * mutate plus the few helpers defined inline.
+ *
+ * @property {boolean} running
+ * @property {Object|null} result - Query response (rows + columns) or null
+ * @property {string|null} error
+ * @property {string} errorTitle
+ * @property {Array<Object>} referencedTables
+ * @property {Object|null} lastRun
+ * @property {boolean} chatOpen
+ * @property {Array<Object>} saved - Saved-query list
+ * @property {boolean} savedLoading
+ * @property {boolean} saving
+ * @property {{title: string, description: string, is_shared: boolean}} saveForm
+ * @property {string|null} currentQueryId
+ * @property {number} elapsedSeconds
+ * @property {number|null} _tickHandle - setInterval handle for elapsed counter
+ * @property {string|null} explainText - Raw EXPLAIN text (pre-JSON variant)
+ * @property {Object|null} explainPlan - Parsed structured plan JSON
+ * @property {boolean} explainShowJson
+ * @property {'table'|'chart'} viewMode
+ * @property {{type: string, x: string|null, y: string|null}} chartConfig
+ * @property {Object|null} _chartInstance - Chart.js instance
+ * @property {string|null} currentHistoryId
+ * @property {number|null} _chartSaveTimer
+ * @property {Object|null} _cmView - CodeMirror EditorView (promoted from closure
+ *   so monaco/execute/saved/chart mixins can reach it through ``this``)
+ * @property {Array<Object>} _catalogCompletions
+ * @property {((e: KeyboardEvent) => void)|null} _onKeydown
+ *
+ * Inline helpers (defined in this file):
+ * @property {(node: Object, depth: number, path?: string) => Array<Object>} flattenPlan
+ * @property {(plan: Object) => Object} rootSubLatencies
+ * @property {(plan: Object) => Object} rootByteMetrics
+ * @property {(name: string) => string} _classifyOperator
+ * @property {(seconds: number) => string} formatTiming
+ * @property {(n: number) => string} formatBytes
+ *
+ * Mixin methods (spread at end of return):
+ * - {@link monacoMethods} from ``./monaco.js``: CodeMirror mount, completions
+ * - {@link executeMethods} from ``./execute.js``: run, cancel, seed-from-history
+ * - {@link savedMethods} from ``./saved.js``: list, load, save, share
+ * - {@link chartMethods} from ``./chart.js``: chart render + persistence
+ * - ``builderMethods`` from ``./builder.js``: query-builder UI
+ */
+
+/**
+ * Alpine x-data factory for the SQL editor page.
+ *
+ * @returns {SqlEditorState}
+ */
 export function sqlEditor() {
   return {
     // -- base state ---------------------------------------

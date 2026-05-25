@@ -25,6 +25,33 @@ import { Awareness } from 'y-protocols/awareness';
 
 import { createCoeditClient } from './coedit_client.js';
 
+/**
+ * @typedef {'idle'|'connecting'|'open'|'connecting'|'reconnecting'|'closed'|'disconnected'|'error'} CoeditStatus
+ */
+
+/**
+ * @typedef {Object} CoeditCoreSlots
+ * State + methods that ``installCoeditCore(state, opts)`` attaches to
+ * the parent Alpine x-data scope.  Awareness/peer-rail and per-cell
+ * binding methods live in sibling installers (coedit_awareness.js,
+ * coedit_cell_binding.js); the facade in coedit.js guarantees install
+ * order.
+ *
+ * @property {CoeditStatus} coeditStatus - Toolbar pill bound state
+ * @property {Object|null} _coedit - The createCoeditClient instance
+ * @property {Object|null} _awareness - Y.Awareness instance (created here,
+ *   wired by installCoeditAwareness)
+ * @property {Object|null} _coeditUser - Authenticated user info; null when
+ *   the render path is anonymous (peer rail wiring skipped in that case)
+ * @property {() => void} _initCoedit - Opens the WS + spawns Y.Doc; idempotent
+ * @property {(remap: Record<string,string>) => void} _applyCellUuidRemap
+ * @property {() => void} _teardownCoedit - WS close + Y.Doc destroy
+ * @property {() => string} coeditLabel
+ * @property {() => string} coeditDotClass
+ * @property {() => string} coeditPillClass
+ * @property {() => string} coeditTooltip
+ */
+
 // FNV-1a-32 over the user-id string → HSL hue (0..359).  Deterministic
 // across reloads + tabs so the same user always gets the same colour.
 // Duplicated in coedit_awareness.js for the peer-rail render path —
@@ -41,6 +68,15 @@ function _userColor(userId) {
   return `hsl(${hue}, 65%, 45%)`;
 }
 
+/**
+ * Install the co-edit lifecycle slots + methods onto an Alpine x-data
+ * scope.  Must be followed by installCoeditAwareness + installCoeditCellBinding
+ * via the installCoeditLifecycle facade.
+ *
+ * @param {Object & CoeditCoreSlots} state - The Alpine x-data scope to extend
+ * @param {{userInfo?: Object|null}} [opts]
+ * @returns {void}
+ */
 export function installCoeditCore(state, { userInfo = null } = {}) {
   state.coeditStatus = 'idle';
   state._coedit = null;

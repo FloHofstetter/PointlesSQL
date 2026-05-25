@@ -29,6 +29,72 @@ import {
 
 const ALLOWED_EMOJI = ['👍', '❤️', '🎉', '😄', '😕', '👀'];
 
+/**
+ * @typedef {Object} ReactionRow
+ * @property {string} emoji
+ * @property {number} count
+ * @property {boolean} mine
+ */
+
+/**
+ * @typedef {Object} CellThreadState
+ * Composed Alpine x-data shape returned by ``cellThread()``.  Includes
+ * the three picker slots spread in from ``cellTagPickerSlice()`` so
+ * the picker mutates the same reactive scope as the parent cell.
+ *
+ * @property {string|null} notebookUuid
+ * @property {Object|null} cellRef - Live parent cell reference (NOT the
+ *   UUID snapshot — the UUID is null until the first save mints it, so
+ *   ``baseUrl`` reads ``cell.cell_uuid`` lazily.)
+ * @property {string[]} curatedTags
+ * @property {boolean} open
+ * @property {boolean} loaded
+ * @property {boolean} loading
+ * @property {string|null} error
+ * @property {Array<Object>} comments
+ * @property {ReactionRow[]} reactions
+ * @property {boolean} following
+ * @property {number} followerCount
+ * @property {number} commentCount
+ * @property {string} draftBody
+ * @property {boolean} submitting
+ * @property {string[]} allowedEmoji
+ * @property {Array<Object>} explanations - Accepted ``pql_explain_cell`` payloads
+ * @property {boolean} explanationsLoaded
+ * @property {boolean} reviewComposerOpen
+ * @property {'approved'|'changes_requested'|'commented'} reviewDecision
+ * @property {string} reviewBody
+ * @property {boolean} reviewSubmitting
+ *
+ * Picker slots spread from {@link cellTagPickerSlice}:
+ * @property {boolean} pickerOpen
+ * @property {boolean} pickerCustomMode
+ * @property {string} pickerCustomDraft
+ *
+ * Methods:
+ * @property {() => void} init
+ * @property {(comment: Object) => string|null} decisionFor
+ * @property {(comment: Object) => string} bodyWithoutPrefix
+ * @property {(counts: Object) => void} applyCounts
+ * @property {() => Promise<void>} toggle
+ * @property {() => Promise<void>} loadAll
+ * @property {() => Promise<void>} loadExplanations
+ * @property {() => Promise<void>} submitComment
+ * @property {() => Promise<void>} submitReview
+ * @property {() => void} toggleReviewComposer
+ * @property {(commentId: string) => Promise<void>} deleteComment
+ * @property {(emoji: string) => Promise<void>} toggleReaction
+ * @property {() => Promise<void>} toggleFollow
+ * @property {() => void} togglePickerOpen
+ */
+
+/**
+ * Alpine x-data factory for the per-cell social thread (comments,
+ * reactions, follow, reviews, explanations, tag-picker).
+ *
+ * @param {{notebookUuid: string, cell: Object, initialCounts?: Object, curatedTags?: string[]}} args
+ * @returns {CellThreadState}
+ */
 export function cellThread({ notebookUuid, cell, initialCounts, curatedTags = [] } = {}) {
   return {
     ...cellTagPickerSlice(),
