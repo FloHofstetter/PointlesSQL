@@ -154,12 +154,19 @@ async def test_run_view_mounts_socialtabs_factory_with_run_kind(
 async def test_run_view_inline_factory_exposed_on_window(
     admin_client: httpx.AsyncClient,
 ) -> None:
-    """``runDiscussion`` is registered on ``window`` so Alpine resolves it."""
+    """``runDiscussion`` is registered on ``window`` so Alpine resolves it.
+
+    Factory lives in frontend/js/run_view/tab_social.js; bootstrap.js
+    attaches it on window.
+    """
+    import pathlib
+
     run_id = _seed_run()
     res = await admin_client.get(f"/runs/{run_id}")
     body = res.text
-    assert "window.runDiscussion = runDiscussion" in body
     assert "runDiscussion(" in body
+    bootstrap = pathlib.Path("frontend/js/bootstrap.js").read_text()
+    assert "window.runDiscussion = runDiscussion" in bootstrap
 
 
 @pytest.mark.asyncio

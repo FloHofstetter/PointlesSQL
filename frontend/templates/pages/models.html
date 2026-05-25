@@ -11,7 +11,7 @@
     <h1 class="h3 mb-0">Registered Models{{ info('models.what-is-the-registry') }}</h1>
 </div>
 
-<div x-data="modelsBrowse()" x-init="init()">
+<div x-data='modelsBrowse({{ catalogs|tojson }})' x-init="init()">
     <div class="card mb-3">
         <div class="card-body py-2">
             <div class="row gx-2 align-items-center">
@@ -140,44 +140,7 @@
     </template>
 </div>
 
-<script>
-window.modelsBrowse = function () {
-    return {
-        catalogs: {{ catalogs | tojson }},
-        catalogName: '',
-        schemaName: '',
-        models: [],
-        loading: false,
-        error: null,
+{# Page-local inline script lifted to frontend/js/pages/models.js, wired via
+   frontend/js/bootstrap.js. #}
 
-        async init() {
-            await this.reload();
-        },
-
-        async onCatalogChange() {
-            if (!this.catalogName) this.schemaName = '';
-            await this.reload();
-        },
-
-        async reload() {
-            this.loading = true;
-            this.error = null;
-            try {
-                const params = new URLSearchParams({ enrich_latest: '1' });
-                if (this.catalogName) params.set('catalog_name', this.catalogName);
-                if (this.schemaName) params.set('schema_name', this.schemaName);
-                const res = await fetch('/api/models?' + params.toString());
-                if (!res.ok) throw new Error('HTTP ' + res.status);
-                const data = await res.json();
-                this.models = Array.isArray(data.models) ? data.models : [];
-            } catch (e) {
-                this.error = 'Failed to load models: ' + e.message;
-            } finally {
-                this.loading = false;
-            }
-        },
-
-    };
-};
-</script>
 {% endblock %}

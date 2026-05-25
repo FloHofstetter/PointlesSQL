@@ -83,31 +83,7 @@
 {% endif %}
 </div>
 
-<script>
-window.dataProductsFollowed = function () {
-    return {
-        recommendations: [],
-        recommendationsLoaded: false,
+{# Page-local inline script lifted to frontend/js/pages/data_products_followed.js, wired via
+   frontend/js/bootstrap.js. #}
 
-        init() {
-            this.loadRecommendations();
-        },
-
-        async loadRecommendations() {
-            this.recommendationsLoaded = false;
-            try {
-                const res = await fetch('/api/data-products/recommendations?limit=5');
-                if (!res.ok) throw new Error('HTTP ' + res.status);
-                const data = await res.json();
-                this.recommendations = data.recommendations || [];
-            } catch (e) {
-                console.error('recommendations load failed', e);
-                this.recommendations = [];
-            } finally {
-                this.recommendationsLoaded = true;
-            }
-        },
-    };
-};
-</script>
 {% endblock %}

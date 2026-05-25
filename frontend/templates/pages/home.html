@@ -429,40 +429,7 @@
 {% endblock %}
 
 {% block extra_js %}
-<script>
-(function () {
-    // Bars are server-rendered in pages/home.html (see).
-    // The factory survives for the meta <dl> counters only.
-    window.homeSparkline = function (ctx) {
-        const days = Array.isArray(ctx && ctx.days) ? ctx.days : [];
-        let total = 0;
-        let succeeded = 0;
-        for (const d of days) {
-            total += d.total || 0;
-            succeeded += d.succeeded || 0;
-        }
-        const overall = total > 0 ? Math.round((succeeded / total) * 100) + '%' : '—';
-        return { totals: { total, succeeded, pct: overall } };
-    };
+{# Page-local inline script lifted to frontend/js/pages/home.js, wired via
+   frontend/js/bootstrap.js. #}
 
-    window.homeRecentCatalogs = function () {
-        return {
-            items: [],
-            init() {
-                try {
-                    const raw = localStorage.getItem('pql.recentCatalogs');
-                    const parsed = raw ? JSON.parse(raw) : [];
-                    this.items = Array.isArray(parsed) ? parsed.slice(0, 5) : [];
-                } catch (e) {
-                    this.items = [];
-                }
-            },
-        };
-    };
-
-    // window.pqlRelativeTime now lives in frontend/js/relative_time.js
-    // so /jobs rows can reuse the same helper.
-
-})();
-</script>
 {% endblock %}

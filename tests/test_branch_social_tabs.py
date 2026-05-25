@@ -171,12 +171,19 @@ async def test_branch_html_mounts_social_tabs_factory(
 async def test_branch_html_branchdiscussion_factory_present(
     admin_client: httpx.AsyncClient, reset_gate: None
 ) -> None:
-    """branchDiscussion factory exposed on window + invoked on the pane."""
+    """branchDiscussion factory exposed on window + invoked on the pane.
+
+    Factory lives in frontend/js/pages/branch_detail.js; bootstrap.js
+    attaches it on window.
+    """
+    import pathlib
+
     del reset_gate
     res = await admin_client.get(f"/branches/{_BRANCH_FQN}")
     body = res.text
-    assert "window.branchDiscussion = branchDiscussion" in body
     assert "branchDiscussion(" in body
+    bootstrap = pathlib.Path("frontend/js/bootstrap.js").read_text()
+    assert "window.branchDiscussion = branchDiscussion" in bootstrap
 
 
 @pytest.mark.asyncio

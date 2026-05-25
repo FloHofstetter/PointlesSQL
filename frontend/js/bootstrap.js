@@ -248,12 +248,44 @@ import { notificationsInbox } from './pages/notifications.js';
 import { rowAtVersion } from './pages/row_trace.js';
 import { savedQueryDiscussion, savedQueryReadme } from './pages/saved_audit_query_detail.js';
 
-// Side-effect IIFE modules for admin/dashboard pages.  Each guards on a
-// page-local element id so the cost on unrelated pages is one
-// ``getElementById`` lookup.
+// W2.8 Tier-3 named-export imports.
+import { runDiscussion } from './run_view/tab_social.js';
+import { branchDiscussion } from './pages/branch_detail.js';
+import { lensChat } from './pages/lens_index.js';
+import { schemaDiscussion, schemaReadme } from './pages/tables.js';
+import { catalogDiscussion, catalogReadme } from './pages/schemas.js';
+import { topicsIndex } from './pages/topics_index.js';
+import { issuesIndex } from './pages/issues_index.js';
+import { lineageExplorerForm } from './pages/lineage_index.js';
+import { issueDetail } from './pages/issue_detail.js';
+import { workspaceLanding } from './pages/workspace_landing.js';
+import { footerBar } from './components/footer_bar.js';
+import { adminWorkspaces, archiveButton } from './pages/admin_workspaces.js';
+import { savedViewDetail } from './pages/saved_view_detail.js';
+import { issuesPane } from './partials/issues_pane.js';
+import { savedViewForm } from './pages/saved_view_new.js';
+import { modelsBrowse } from './pages/models.js';
+import { topicDetail } from './pages/topic_detail.js';
+import { dataProductsCandidates } from './pages/data_products_candidates.js';
+import { ingestStatusBand, dpReleasesCard } from './pages/data_product_extras.js';
+import { notificationBell } from './components/notification_bell.js';
+import { notificationSettings } from './pages/settings_notifications.js';
+import { adminSourcesList } from './pages/admin_sources.js';
+import { meSettingsForm } from './pages/me_settings.js';
+import { dataProductsFollowed } from './pages/data_products_followed.js';
+import { dataProductsTrending } from './pages/data_products_trending.js';
+import { agentProfile } from './pages/agent_profile.js';
+import { dashboardTree } from './components/dashboards_sidebar.js';
+import { homeSparkline, homeRecentCatalogs } from './pages/home.js';
+
+// Side-effect IIFE modules.  Each guards on a page-local element id so
+// the cost on unrelated pages is one ``getElementById`` lookup.
 import './pages/audit_inbox.js';
 import './pages/dbt.js';
 import './pages/audit_search.js';
+import './pages/audit_by_table.js';
+import './pages/agent_run_compare.js';
+import './pages/run_view.js';
 // row_trace.js + saved_audit_query_detail.js carry both an exported
 // factory AND a page-local side-effect binder; the export imports
 // above already evaluate them, so no extra side-effect import here.
@@ -316,6 +348,39 @@ window.notificationsInbox = notificationsInbox;
 window.rowAtVersion = rowAtVersion;
 window.savedQueryDiscussion = savedQueryDiscussion;
 window.savedQueryReadme = savedQueryReadme;
+window.runDiscussion = runDiscussion;
+window.branchDiscussion = branchDiscussion;
+window.lensChat = lensChat;
+window.schemaDiscussion = schemaDiscussion;
+window.schemaReadme = schemaReadme;
+window.catalogDiscussion = catalogDiscussion;
+window.catalogReadme = catalogReadme;
+window.topicsIndex = topicsIndex;
+window.issuesIndex = issuesIndex;
+window.lineageExplorerForm = lineageExplorerForm;
+window.issueDetail = issueDetail;
+window.workspaceLanding = workspaceLanding;
+window.footerBar = footerBar;
+window.adminWorkspaces = adminWorkspaces;
+window.archiveButton = archiveButton;
+window.savedViewDetail = savedViewDetail;
+window.issuesPane = issuesPane;
+window.savedViewForm = savedViewForm;
+window.modelsBrowse = modelsBrowse;
+window.topicDetail = topicDetail;
+window.dataProductsCandidates = dataProductsCandidates;
+window.ingestStatusBand = ingestStatusBand;
+window.dpReleasesCard = dpReleasesCard;
+window.notificationBell = notificationBell;
+window.notificationSettings = notificationSettings;
+window.adminSourcesList = adminSourcesList;
+window.meSettingsForm = meSettingsForm;
+window.dataProductsFollowed = dataProductsFollowed;
+window.dataProductsTrending = dataProductsTrending;
+window.agentProfile = agentProfile;
+window.dashboardTree = dashboardTree;
+window.homeSparkline = homeSparkline;
+window.homeRecentCatalogs = homeRecentCatalogs;
 window.chatPanel = chatPanel;
 window.notebookChatPanel = notebookChatPanel;
 window.runsSidebar = runsSidebar;

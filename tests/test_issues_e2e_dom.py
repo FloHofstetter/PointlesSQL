@@ -67,13 +67,16 @@ async def test_issues_index_page_renders_chip_filters(
     admin_client: httpx.AsyncClient,
 ) -> None:
     """``/issues`` renders the index template with the chip row."""
+    import pathlib
+
     res = await admin_client.get("/issues")
     assert res.status_code == 200, res.text
     body = res.text
     assert "Issues" in body
     assert "Open" in body and "Closed" in body
     assert "issuesIndex()" in body
-    assert "/api/issues" in body
+    issues_js = pathlib.Path("frontend/js/pages/issues_index.js").read_text()
+    assert "/api/issues" in issues_js
 
 
 @pytest.mark.asyncio
@@ -120,10 +123,18 @@ def test_issues_pane_partial_is_referenced_from_detail_pages() -> None:
 
 
 def test_issues_pane_partial_exposes_issues_pane_factory() -> None:
-    """The partial registers ``issuesPane`` on ``window``."""
+    """The partial registers ``issuesPane`` on ``window``.
+
+    Factory lives in frontend/js/partials/issues_pane.js; bootstrap.js
+    attaches it on window.  The partial only carries the x-data
+    invocation.
+    """
+    import pathlib
+
     body = (_TEMPLATES_ROOT / "partials/social/_issues_pane.html").read_text()
-    assert "window.issuesPane = issuesPane" in body
     assert "x-data='issuesPane({kind: kind, ref: ref})'" in body
+    bootstrap = pathlib.Path("frontend/js/bootstrap.js").read_text()
+    assert "window.issuesPane = issuesPane" in bootstrap
 
 
 def test_issue_citation_resolves_through_registry() -> None:

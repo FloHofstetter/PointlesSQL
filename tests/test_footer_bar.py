@@ -75,6 +75,8 @@ class TestFooterBarRender:
 
     @pytest.mark.asyncio
     async def test_footer_carries_four_backend_pills(self):
+        import pathlib
+
         factory = app.state.session_factory
         token = _seed(factory)
         async with httpx.AsyncClient(
@@ -83,10 +85,12 @@ class TestFooterBarRender:
             cookies={auth.COOKIE_NAME: token},
         ) as client:
             resp = await client.get("/")
-        body = resp.text
-        # The four backend names are in the JS array.
+        del resp
+        # The four backend names live in the extracted footer-bar JS
+        # module now, not the rendered HTML body.
+        footer_js = pathlib.Path("frontend/js/components/footer_bar.js").read_text()
         for backend in ["'soyuz'", "'mlflow'", "'dbt'", "'hermes'"]:
-            assert backend in body, backend
+            assert backend in footer_js, backend
 
     @pytest.mark.asyncio
     async def test_footer_shows_admin_chip(self):

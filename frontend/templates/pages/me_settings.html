@@ -53,32 +53,7 @@
     </div>
 </div>
 
-<script>
-window.meSettingsForm = function (initial) {
-    return {
-        settings: initial,
-        status: '',
-        statusOk: true,
-        init() { /* no async load — server already injected ``settings`` */ },
+{# Page-local inline script lifted to frontend/js/pages/me_settings.js, wired via
+   frontend/js/bootstrap.js. #}
 
-        async toggle(checked) {
-            this.status = '';
-            try {
-                const res = await fetch('/api/me/settings', {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ digest_email_optin: checked }),
-                });
-                if (!res.ok) throw new Error('HTTP ' + res.status);
-                this.settings = await res.json();
-                this.status = 'Saved.';
-                this.statusOk = true;
-            } catch (e) {
-                this.status = 'Save failed.';
-                this.statusOk = false;
-            }
-        },
-    };
-};
-</script>
 {% endblock %}

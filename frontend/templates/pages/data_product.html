@@ -99,42 +99,9 @@
             </a>
         </template>
     </div>
-    <script>
-    function ingestStatusBand(catalog, schema) {
-        return {
-            sources: [],
-            async load() {
-                const res = await window.pqlApi.fetch(
-                    `/api/data-products/${catalog}/${schema}/ingest-status`
-                );
-                if (res.ok && res.data) {
-                    this.sources = res.data.sources || [];
-                }
-            }
-        };
-    }
+    {# Page-local inline script lifted to frontend/js/pages/data_product_extras.js, wired via
+   frontend/js/bootstrap.js. #}
 
-    // releases card factory.  Kept outside the main
-    // dataProductDetail() data so the card stays self-contained.
-    function dpReleasesCard() {
-        return {
-            releases: [],
-            loaded: false,
-            async load(catalog, schema) {
-                try {
-                    const res = await fetch('/api/data-products/' + catalog + '/' + schema + '/releases');
-                    if (res.ok) {
-                        const data = await res.json();
-                        this.releases = (data.releases || []).slice(0, 5);
-                    }
-                } catch (e) {
-                    this.releases = [];
-                }
-                this.loaded = true;
-            }
-        };
-    }
-    </script>
 
     <ul class="nav nav-tabs mb-3" id="dpTabs" role="tablist">
         <li class="nav-item" role="presentation">

@@ -53,54 +53,6 @@
     </div>
 </aside>
 
-<script>
-(function () {
-    const STORAGE_KEY = 'pql.dashboards';
+{# Page-local inline script lifted to frontend/js/components/dashboards_sidebar.js, wired via
+   frontend/js/bootstrap.js. #}
 
-    function slugFromUrl() {
-        const m = window.location.pathname.match(/^\/dashboards\/([^\/]+)/);
-        return m ? m[1] : '';
-    }
-
-    window.dashboardTree = function () {
-        return {
-            items: null,
-            loading: false,
-            error: null,
-            activeSlug: slugFromUrl(),
-
-            async load() {
-                try {
-                    const cached = sessionStorage.getItem(STORAGE_KEY);
-                    if (cached) this.items = JSON.parse(cached);
-                } catch (e) {}
-
-                if (!this.items) await this.fetchItems();
-                else this.fetchItems();
-            },
-
-            async reload() {
-                try { sessionStorage.removeItem(STORAGE_KEY); } catch (e) {}
-                this.items = null;
-                await this.fetchItems();
-            },
-
-            async fetchItems() {
-                this.loading = true;
-                this.error = null;
-                try {
-                    const res = await fetch('/api/dashboards/tree');
-                    if (!res.ok) throw new Error('HTTP ' + res.status);
-                    const data = await res.json();
-                    this.items = data;
-                    try { sessionStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch (e) {}
-                } catch (e) {
-                    if (!this.items) this.error = 'Failed to load dashboards: ' + e.message;
-                } finally {
-                    this.loading = false;
-                }
-            },
-        };
-    };
-})();
-</script>

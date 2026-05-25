@@ -97,40 +97,7 @@
     </template>
 </div>
 
-<script>
-window.dataProductsCandidates = function (initial, isAdmin) {
-    return {
-        rows: initial || [],
-        isAdmin: !!isAdmin,
-        lastDraftPath: '',
+{# Page-local inline script lifted to frontend/js/pages/data_products_candidates.js, wired via
+   frontend/js/bootstrap.js. #}
 
-        init() {},
-
-        async dismiss(row) {
-            try {
-                const res = await fetch('/api/data-products/candidates/' + row.id + '/dismiss', {
-                    method: 'POST',
-                });
-                if (!res.ok) throw new Error('HTTP ' + res.status);
-                row.status = 'dismissed';
-            } catch (e) {
-                console.error('dismiss failed', e);
-            }
-        },
-
-        async generate(row) {
-            try {
-                const res = await fetch('/api/data-products/candidates/' + row.id + '/generate-draft', {
-                    method: 'POST',
-                });
-                if (!res.ok) throw new Error('HTTP ' + res.status);
-                const data = await res.json();
-                this.lastDraftPath = data.draft_path || '';
-            } catch (e) {
-                console.error('generate draft failed', e);
-            }
-        },
-    };
-};
-</script>
 {% endblock %}
