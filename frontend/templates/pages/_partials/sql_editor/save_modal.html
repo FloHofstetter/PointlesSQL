@@ -1,0 +1,50 @@
+ <!-- Save-query modal -->
+ <div class="modal fade" id="pqlSaveQueryModal" tabindex="-1" aria-hidden="true"
+ x-data="{}">
+ <div class="modal-dialog">
+ <div class="modal-content">
+ <div class="modal-header">
+ <h5 class="modal-title">Save query</h5>
+ <button type="button" class="btn-close"
+ data-bs-dismiss="modal" aria-label="Close"></button>
+ </div>
+ <div class="modal-body">
+ <div class="mb-3">
+ <label class="form-label small" for="save-title">Title</label>
+ <input id="save-title" type="text"
+ class="form-control form-control-sm"
+ x-model="saveForm.title"
+ placeholder="Daily orders">
+ </div>
+ <div class="mb-3">
+ <label class="form-label small" for="save-description">Description (optional)</label>
+ <textarea id="save-description"
+ class="form-control form-control-sm"
+ rows="2"
+ x-model="saveForm.description"></textarea>
+ </div>
+ <div class="form-check">
+ <input id="save-is-shared"
+ class="form-check-input"
+ type="checkbox"
+ x-model="saveForm.is_shared">
+ <label class="form-check-label" for="save-is-shared">
+ Share with other users
+ </label>
+ </div>
+ </div>
+ <div class="modal-footer">
+ <button type="button" class="btn btn-outline-secondary"
+ data-bs-dismiss="modal">Cancel</button>
+ <button type="button" class="btn btn-primary"
+ @click="saveCurrent()"
+ :disabled="saving">
+ <span x-show="!saving">Save</span>
+ <span x-show="saving" x-cloak>
+ <span class="spinner-border spinner-border-sm me-1"></span>Saving…
+ </span>
+ </button>
+ </div>
+ </div>
+ </div>
+ </div>

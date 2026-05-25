@@ -1,0 +1,258 @@
+ {# Results card. Four mutually-exclusive branches gated by
+    ``<template x-if>``: error, explain plan (with structured-tree
+    fallback), DML/DDL summary, SELECT result (table or chart view).
+    Branches share ``result`` / ``error`` / ``explainText`` slots
+    on the sqlEditor() x-data scope, which is why they colocate in
+    one file rather than splitting per branch. #}
+ <div class="card pql-sql-results-card" x-show="result || error || explainText" x-cloak>
+ <div class="card-body">
+ <template x-if="error">
+ <div class="alert alert-danger mb-0 mb-0">
+ <div class="fw-semibold mb-1">
+ <i class="bi bi-x-octagon me-1"></i> <span x-text="errorTitle"></span>
+ </div>
+ <pre class="mb-0" x-text="error"></pre>
+ </div>
+ </template>
+
+ <template x-if="explainText">
+ <div>
+ <div class="d-flex justify-content-between align-items-center mb-2">
+ <div class="fw-semibold small">
+ <i class="bi bi-diagram-3"></i> Query plan
+ </div>
+ <template x-if="explainPlan">
+ <button type="button"
+ class="btn btn-link btn-sm p-0 small text-muted"
+ @click="explainShowJson = !explainShowJson"
+ x-text="explainShowJson ? 'Show tree' : 'Show raw JSON'"></button>
+ </template>
+ </div>
+
+ {# structured plan tree. Renders the
+ parsed JSON returned from DuckDB's
+ ``PRAGMA enable_profiling='json'`` mode as a
+ collapsible indented list. Falls back to the
+ legacy ``<pre>`` JSON dump if ``explainPlan``
+ is missing (older clients, parse failures). #}
+ <template x-if="explainPlan && !explainShowJson">
+ <div class="pql-sql-explain-tree">
+ <div class="small mb-2 d-flex flex-wrap gap-3">
+ <span x-show="explainPlan.latency != null">
+ <i class="bi bi-stopwatch me-1"></i>Latency
+ <strong class="ms-1" x-text="formatTiming(explainPlan.latency)"></strong>
+ </span>
+ <template x-for="m in rootByteMetrics(explainPlan)" :key="m[0]">
+ <span class="text-muted">
+ <span x-text="m[0]"></span>
+ <strong class="ms-1 text-body" x-text="m[1]"></strong>
+ </span>
+ </template>
+ </div>
+ <template x-if="rootSubLatencies(explainPlan).length > 0">
+ <div class="small text-muted mb-3 d-flex flex-wrap gap-3">
+ <span class="text-uppercase small" style="letter-spacing: 0.05em;">Sub-latencies:</span>
+ <template x-for="s in rootSubLatencies(explainPlan)" :key="s[0]">
+ <span>
+ <span x-text="s[0]"></span>:
+ <span class="font-monospace" x-text="s[1]"></span>
+ </span>
+ </template>
+ </div>
+ </template>
+ <ul class="list-unstyled mb-0 pql-sql-explain-list">
+ <template x-for="node in flattenPlan(explainPlan, 0)"
+ :key="node.path">
+ <li :style="{ marginLeft: (node.depth * 1.5) + 'rem' }"
+ :data-depth="node.depth"
+ class="pql-sql-explain-node">
+ <div class="d-flex align-items-baseline gap-2 flex-wrap">
+ <span class="pql-sql-explain-badge"
+ :class="'pql-sql-explain-badge--' + node.kind"
+ x-text="node.name"></span>
+ <span class="text-muted small font-monospace"
+ x-show="node.timing != null"
+ x-text="formatTiming(node.timing)"></span>
+ <span class="text-muted small"
+ x-show="node.cardinality != null && node.cardinality > 0">
+ <i class="bi bi-arrow-right-short"></i>
+ <span x-text="node.cardinality.toLocaleString() + ' rows out'"></span>
+ </span>
+ <span class="text-muted small"
+ x-show="node.rowsScanned != null && node.rowsScanned > 0">
+ <i class="bi bi-arrow-down-short"></i>
+ <span x-text="node.rowsScanned.toLocaleString() + ' rows in'"></span>
+ </span>
+ </div>
+ <template x-if="node.details && node.details.length > 0">
+ <dl class="pql-sql-explain-kv mb-0 mt-1">
+ <template x-for="d in node.details" :key="d[0]">
+ <div class="pql-sql-explain-kv-row">
+ <dt class="text-muted small text-uppercase" x-text="d[0]"></dt>
+ <dd class="small font-monospace mb-0" x-text="d[1]"></dd>
+ </div>
+ </template>
+ </dl>
+ </template>
+ </li>
+ </template>
+ </ul>
+ </div>
+ </template>
+
+ <template x-if="!explainPlan || explainShowJson">
+ <div class="pql-sql-explain-panel" x-text="explainText"></div>
+ </template>
+ </div>
+ </template>
+
+ <template x-if="result && (result.kind === 'dml' || result.kind === 'ddl') && !explainText">
+ <div>
+ <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+ <span class="badge"
+ :class="{
+ 'text-bg-primary': result.kind === 'dml' && result.stmt_type !== 'delete',
+ 'text-bg-warning text-dark': result.stmt_type === 'delete',
+ 'text-bg-danger': result.kind === 'ddl' && result.op_name && result.op_name.startsWith('drop_'),
+ 'text-bg-success': result.kind === 'ddl' && result.op_name && result.op_name.startsWith('create_')
+ }"
+ x-text="(result.stmt_type || result.kind).replace(/_/g, ' ').toUpperCase()"></span>
+ <span class="text-muted small" x-show="result.target" x-cloak>
+ on <code x-text="result.target"></code>
+ </span>
+ <span class="text-muted small ms-auto" x-show="result.rows_affected != null" x-cloak>
+ <span x-text="result.rows_affected"></span>
+ row<span x-text="result.rows_affected === 1 ? '' : 's'"></span> affected
+ </span>
+ </div>
+ <div class="d-flex flex-wrap gap-2 small">
+ <template x-if="result.agent_run_id">
+ <a :href="'/runs/' + result.agent_run_id"
+ class="btn btn-outline-secondary btn-sm">
+ <i class="bi bi-clock-history me-1"></i>View op trace
+ </a>
+ </template>
+ </div>
+ <template x-if="result.executed_sql">
+ <pre class="mt-3 p-2 small bg-body-tertiary rounded mb-0"
+ style="max-height: 200px; overflow: auto;"
+ x-text="result.executed_sql"></pre>
+ </template>
+ </div>
+ </template>
+
+ <template x-if="result && result.kind !== 'dml' && result.kind !== 'ddl' && !explainText">
+ <div>
+ <div class="d-flex justify-content-between align-items-center mb-2 small text-muted flex-wrap gap-2">
+ <span>
+ <span class="badge text-bg-secondary me-2">SELECT</span>
+ <span x-text="result.row_count"></span>
+ row<span x-text="result.row_count === 1 ? '' : 's'"></span>
+ <span x-show="result.truncated" class="badge text-bg-warning ms-2">truncated</span>
+ </span>
+ <div class="btn-group btn-group-sm" role="group" aria-label="View">
+ <button type="button"
+ class="btn btn-outline-secondary"
+ :class="{ active: viewMode === 'table' }"
+ @click="viewMode = 'table'; destroyChart()">
+ <i class="bi bi-table"></i> Table
+ </button>
+ <button type="button"
+ class="btn btn-outline-secondary"
+ :class="{ active: viewMode === 'chart' }"
+ @click="viewMode = 'chart'; _autoPickAxes(); $nextTick(() => renderChart())">
+ <i class="bi bi-bar-chart"></i> Chart
+ </button>
+ </div>
+ <span><span x-text="result.duration_ms"></span> ms</span>
+ </div>
+
+ <template x-if="viewMode === 'table'">
+ <div class="pql-sql-results-wrap">
+ <table class="table table-sm table-striped mb-0">
+ <thead>
+ <tr>
+ <template x-for="c in result.columns" :key="c.name">
+ <th class="text-nowrap">
+ <span x-text="c.name"></span>
+ <small class="text-muted ms-1" x-text="c.type"></small>
+ </th>
+ </template>
+ </tr>
+ </thead>
+ <tbody>
+ <template x-for="(row, i) in result.rows" :key="i">
+ <tr>
+ <template x-for="(cell, j) in row" :key="j">
+ <td class="text-nowrap" x-text="formatCell(cell)"></td>
+ </template>
+ </tr>
+ </template>
+ </tbody>
+ </table>
+ </div>
+ </template>
+
+ <template x-if="viewMode === 'chart'">
+ <div>
+ <div class="d-flex flex-wrap gap-2 align-items-center mb-2 small">
+ <label class="d-flex align-items-center gap-1">
+ <span class="text-muted">Type</span>
+ <select class="form-select form-select-sm"
+ x-model="chartConfig.type"
+ @change="onChartConfigChange()">
+ <option value="bar">Bar</option>
+ <option value="line">Line</option>
+ <option value="scatter">Scatter</option>
+ <option value="pie">Pie</option>
+ </select>
+ </label>
+ <label class="d-flex align-items-center gap-1">
+ <span class="text-muted">X</span>
+ <!-- Deliberately no ``x-model`` on the axis selects:
+ Alpine syncs the native ``<select>.value`` before
+ the ``x-for`` options are in the DOM, which pins
+ the dropdown to the first rendered option and
+ ignores later programmatic changes
+ (``_autoPickAxes``). Use ``:selected`` on each
+ option + explicit ``@change`` assignment to keep
+ the two directions wired. -->
+ <select class="form-select form-select-sm"
+ @change="chartConfig.x = $event.target.value; onChartConfigChange()">
+ <template x-for="c in (result ? result.columns : [])" :key="'x-' + c.name">
+ <option :value="c.name"
+ :selected="c.name === chartConfig.x"
+ x-text="c.name"></option>
+ </template>
+ </select>
+ </label>
+ <label class="d-flex align-items-center gap-1">
+ <span class="text-muted">Y</span>
+ <select class="form-select form-select-sm"
+ @change="chartConfig.y = $event.target.value; onChartConfigChange()">
+ <template x-for="c in (result ? result.columns : [])" :key="'y-' + c.name">
+ <option :value="c.name"
+ :selected="c.name === chartConfig.y"
+ x-text="c.name"></option>
+ </template>
+ </select>
+ </label>
+ <button type="button"
+ class="btn btn-outline-secondary btn-sm ms-auto"
+ @click="downloadChartPng()"
+ :disabled="!chartConfig.x || !chartConfig.y">
+ <i class="bi bi-download"></i> PNG
+ </button>
+ <span class="text-muted small">
+ <kbd>c</kbd> toggles view
+ </span>
+ </div>
+ <div class="pql-sql-chart-host">
+ <canvas id="pql-sql-chart-canvas"></canvas>
+ </div>
+ </div>
+ </template>
+ </div>
+ </template>
+ </div>
+ </div>
