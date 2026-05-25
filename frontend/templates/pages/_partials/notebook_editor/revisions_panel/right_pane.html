@@ -1,0 +1,171 @@
+  <div class="col-md-7">
+   <template x-if="revisions.diffLoading">
+    <div class="text-muted small">Computing diff…</div>
+   </template>
+   <template x-if="revisions.diffError">
+    <div class="alert alert-danger py-1 small mb-2" x-text="revisions.diffError"></div>
+   </template>
+
+   <template x-if="!revisions.diff && !revisions.diffLoading">
+    <div class="text-muted small fst-italic">
+     Pin two revisions on the left to see a cell-by-cell diff here.
+    </div>
+   </template>
+
+   <template x-if="revisions.diff">
+    <div class="pql-notebook-revisions-diff" data-testid="notebook-revisions-diff">
+     <div class="pql-revision-diff__pair-header small mb-2 d-flex align-items-center gap-2">
+      <span class="pql-revision-diff__pin pql-revision-diff__pin--left">
+       L
+       <code class="ms-1"
+             x-text="revisions.diff.left_uuid.slice(0, 8)"></code>
+      </span>
+      <button type="button"
+              class="btn btn-link btn-sm p-0"
+              title="Swap L ↔ R and recompute"
+              @click="swapRevisionPins()">
+       <i class="bi bi-arrow-left-right"></i>
+      </button>
+      <span class="pql-revision-diff__pin pql-revision-diff__pin--right">
+       R
+       <code class="ms-1"
+             x-text="revisions.diff.right_uuid.slice(0, 8)"></code>
+      </span>
+      <button class="btn btn-link btn-sm p-0 ms-auto"
+              @click="clearRevisionDiff()">Reset</button>
+     </div>
+
+     <template x-if="revisions.diff.changed.length > 0">
+      <div class="mb-3">
+       <div class="small text-muted mb-1">
+        <i class="bi bi-pencil-square me-1"></i>
+        <strong>Changed</strong>
+        <span class="badge bg-warning text-dark ms-1"
+              x-text="revisions.diff.changed.length"></span>
+       </div>
+       <template x-for="entry in revisions.diff.changed" :key="`${entry.position}-${entry.new.content_hash}`">
+        <div class="pql-revision-diff-card pql-revision-diff-card--changed mb-2">
+         <div class="pql-revision-diff-card__head">
+          <span class="fw-semibold">
+           Cell <span x-text="entry.position + 1"></span>
+          </span>
+          <span class="text-muted mx-2">·</span>
+          <span class="badge bg-body-tertiary text-body-secondary border"
+                x-text="entry.new.cell_type"></span>
+          <span class="ms-auto small d-inline-flex align-items-center gap-1">
+           <span class="text-success"
+                 x-show="diffStatsFor(entry).adds > 0" x-cloak
+                 x-text="`+${diffStatsFor(entry).adds}`"></span>
+           <span class="text-danger"
+                 x-show="diffStatsFor(entry).removes > 0" x-cloak
+                 x-text="`-${diffStatsFor(entry).removes}`"></span>
+          </span>
+         </div>
+         <div class="pql-revision-diff-card__body">
+          <template x-for="(row, rowIdx) in renderUnifiedDiff(entry.old.source, entry.new.source)" :key="rowIdx">
+           <div class="pql-revision-diff-row"
+                :class="'pql-revision-diff-row--' + row.kind">
+            <span class="pql-revision-diff-row__lno pql-revision-diff-row__lno--old"
+                  x-text="row.lnoOld ?? ''"></span>
+            <span class="pql-revision-diff-row__lno pql-revision-diff-row__lno--new"
+                  x-text="row.lnoNew ?? ''"></span>
+            <span class="pql-revision-diff-row__marker"
+                  x-text="row.kind === 'add' ? '+' : row.kind === 'remove' ? '-' : ' '"></span>
+            <span class="pql-revision-diff-row__text" x-text="row.text"></span>
+           </div>
+          </template>
+         </div>
+        </div>
+       </template>
+      </div>
+     </template>
+
+     <template x-if="revisions.diff.added.length > 0">
+      <div class="mb-3">
+       <div class="small text-muted mb-1">
+        <i class="bi bi-plus-circle me-1"></i>
+        <strong>Added</strong>
+        <span class="badge bg-success ms-1"
+              x-text="revisions.diff.added.length"></span>
+       </div>
+       <template x-for="entry in revisions.diff.added" :key="entry.cell.content_hash">
+        <div class="pql-revision-diff-card pql-revision-diff-card--added mb-2">
+         <div class="pql-revision-diff-card__head">
+          <span class="fw-semibold">
+           Cell <span x-text="entry.position + 1"></span>
+          </span>
+          <span class="text-muted mx-2">·</span>
+          <span class="badge bg-body-tertiary text-body-secondary border"
+                x-text="entry.cell.cell_type"></span>
+          <span class="ms-auto small text-success">
+           <i class="bi bi-plus-circle"></i> new cell
+          </span>
+         </div>
+         <pre class="pql-revision-diff-card__source"
+              x-text="entry.cell.source"></pre>
+        </div>
+       </template>
+      </div>
+     </template>
+
+     <template x-if="revisions.diff.removed.length > 0">
+      <div class="mb-3">
+       <div class="small text-muted mb-1">
+        <i class="bi bi-dash-circle me-1"></i>
+        <strong>Removed</strong>
+        <span class="badge bg-danger ms-1"
+              x-text="revisions.diff.removed.length"></span>
+       </div>
+       <template x-for="entry in revisions.diff.removed" :key="entry.cell.content_hash">
+        <div class="pql-revision-diff-card pql-revision-diff-card--removed mb-2">
+         <div class="pql-revision-diff-card__head">
+          <span class="fw-semibold">
+           Cell <span x-text="entry.position + 1"></span>
+          </span>
+          <span class="text-muted mx-2">·</span>
+          <span class="badge bg-body-tertiary text-body-secondary border"
+                x-text="entry.cell.cell_type"></span>
+          <span class="ms-auto small text-danger">
+           <i class="bi bi-dash-circle"></i> deleted
+          </span>
+         </div>
+         <pre class="pql-revision-diff-card__source pql-revision-diff-card__source--strike"
+              x-text="entry.cell.source"></pre>
+        </div>
+       </template>
+      </div>
+     </template>
+
+     <template x-if="revisions.diff.moved.length > 0">
+      <div class="mb-3">
+       <div class="small text-muted mb-1">
+        <i class="bi bi-arrow-left-right me-1"></i>
+        <strong>Moved</strong>
+        <span class="badge bg-info text-dark ms-1"
+              x-text="revisions.diff.moved.length"></span>
+       </div>
+       <template x-for="entry in revisions.diff.moved" :key="entry.cell.content_hash">
+        <div class="pql-revision-diff-card pql-revision-diff-card--moved mb-2">
+         <div class="pql-revision-diff-card__head">
+          <span class="badge bg-body-tertiary text-body-secondary border"
+                x-text="entry.cell.cell_type"></span>
+          <span class="text-muted ms-auto small"
+                x-text="`Cell ${entry.left_position + 1} → Cell ${entry.right_position + 1}`"></span>
+         </div>
+        </div>
+       </template>
+      </div>
+     </template>
+
+     <template x-if="revisions.diff.changed.length === 0
+                     && revisions.diff.added.length === 0
+                     && revisions.diff.removed.length === 0
+                     && revisions.diff.moved.length === 0">
+      <div class="alert alert-success py-2 small mb-0">
+       <i class="bi bi-check-circle me-1"></i>
+       Revisions are identical (only unchanged cells).
+      </div>
+     </template>
+    </div>
+   </template>
+  </div>

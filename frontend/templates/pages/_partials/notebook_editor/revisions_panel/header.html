@@ -1,0 +1,26 @@
+ <div class="pql-notebook-revisions-panel__header">
+  <strong>Revision history</strong>
+  <button type="button"
+          class="btn-close btn-close-sm ms-auto"
+          @click="revisions.open = false"
+          aria-label="Close revision history"></button>
+ </div>
+
+ <div class="d-flex align-items-center gap-2 mb-2">
+  <input type="text"
+         class="form-control form-control-sm"
+         x-model="revisions.snapshotMessage"
+         placeholder="Snapshot message (optional)">
+  <button type="button"
+          class="btn btn-sm btn-primary"
+          @click="snapshotRevision()"
+          :disabled="revisions.snapshotting">
+   <i class="bi bi-camera me-1"></i>
+   <span x-show="!revisions.snapshotting" x-cloak>Snapshot</span>
+   <span x-show="revisions.snapshotting" x-cloak>Snapshotting…</span>
+  </button>
+ </div>
+
+ <template x-if="revisions.error">
+  <div class="alert alert-danger py-1 small mb-2" x-text="revisions.error"></div>
+ </template>

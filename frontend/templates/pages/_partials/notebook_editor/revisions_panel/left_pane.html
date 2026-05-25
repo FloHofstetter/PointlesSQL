@@ -1,0 +1,107 @@
+  <div class="col-md-5">
+   <template x-if="revisions.loading">
+    <div class="text-muted small">Loading…</div>
+   </template>
+   <template x-if="revisions.loaded && revisions.rows.length === 0">
+    <div class="text-muted small">
+     No revisions yet — click <strong>Snapshot</strong> to record one.
+    </div>
+   </template>
+   <ul class="list-group list-group-flush"
+       x-show="revisions.rows.length > 0"
+       x-cloak>
+    <template x-for="r in revisions.rows" :key="r.revision_uuid">
+     <li class="list-group-item py-2 px-2"
+         :class="{
+           'border-primary': r.revision_uuid === revisions.selectedLeftUuid,
+           'border-success': r.revision_uuid === revisions.selectedRightUuid
+         }">
+      <div class="d-flex align-items-center gap-2">
+       <button type="button"
+               class="btn btn-sm"
+               :class="r.revision_uuid === revisions.selectedLeftUuid
+                       ? 'btn-primary'
+                       : (r.revision_uuid === revisions.selectedRightUuid
+                          ? 'btn-success'
+                          : 'btn-outline-secondary')"
+               @click="selectRevisionForDiff(r.revision_uuid)"
+               :title="r.revision_uuid">
+        <span x-show="r.revision_uuid === revisions.selectedLeftUuid"
+              x-cloak>L</span>
+        <span x-show="r.revision_uuid === revisions.selectedRightUuid"
+              x-cloak>R</span>
+        <span x-show="r.revision_uuid !== revisions.selectedLeftUuid
+                      && r.revision_uuid !== revisions.selectedRightUuid"
+              x-cloak>Pin</span>
+       </button>
+       <div class="flex-grow-1 small" style="min-width: 0;">
+        <div class="text-truncate" :title="r.message || ''">
+         <span x-text="r.message || '(no message)'"></span>
+        </div>
+        <div class="text-muted">
+         <span x-text="pqlRelativeTime(r.created_at)"
+               :title="pqlAbsTime(r.created_at)"></span>
+         <span class="mx-1">·</span>
+         <span x-text="(r.created_by || '—').split('@')[0]"></span>
+         <span class="mx-1">·</span>
+         <code x-text="r.revision_uuid.slice(0, 8)"></code>
+        </div>
+       </div>
+       {# per-row 📌 Pin-as-fact button.  Lit yellow
+          when the revision already carries an active whole-revision
+          fact; click then unpins.  Unlit click opens the inline pin
+          form rendered below the list. #}
+       <button type="button"
+               class="btn btn-sm ms-auto"
+               :class="factForRevision(r)
+                       ? 'btn-warning'
+                       : 'btn-outline-warning'"
+               style="--bs-btn-padding-y: .1rem; --bs-btn-padding-x: .35rem;"
+               @click="factForRevision(r)
+                       ? unpinRevisionFact(r)
+                       : openRevisionPinDialog(r.revision_uuid)"
+               data-testid="revision-pin-button"
+               :title="factForRevision(r)
+                       ? `Pinned as: ${factForRevision(r).title}`
+                       : 'Pin this revision as a fact'">
+        <i class="bi bi-pin-angle-fill" aria-hidden="true"></i>
+       </button>
+      </div>
+      {# Inline pin-form unfolds in place when this row is the
+         active dialog target.  Lives inside the same list-item so
+         the form stays anchored visually to the source revision. #}
+      <template x-if="revisions.pinDialog.revisionUuid === r.revision_uuid">
+       <div class="mt-2 p-2 rounded bg-body-tertiary border"
+            data-testid="revision-pin-form">
+        <input type="text"
+               class="form-control form-control-sm mb-1"
+               x-model="revisions.pinDialog.title"
+               placeholder="Fact title (required)"
+               maxlength="200">
+        <textarea class="form-control form-control-sm mb-1"
+                  x-model="revisions.pinDialog.description"
+                  rows="2"
+                  placeholder="Description (Markdown, optional)"></textarea>
+        <template x-if="revisions.pinDialog.error">
+         <div class="alert alert-danger py-1 small mb-1"
+              x-text="revisions.pinDialog.error"></div>
+        </template>
+        <div class="d-flex gap-1">
+         <button type="button"
+                 class="btn btn-sm btn-warning"
+                 :disabled="!revisions.pinDialog.title || revisions.pinDialog.busy"
+                 @click="confirmRevisionPin()">
+          <i class="bi bi-pin-angle-fill me-1"></i>
+          <span x-show="!revisions.pinDialog.busy">Pin as fact</span>
+          <span x-show="revisions.pinDialog.busy" x-cloak>Pinning…</span>
+         </button>
+         <button type="button"
+                 class="btn btn-sm btn-link"
+                 @click="cancelRevisionPinDialog()">Cancel</button>
+        </div>
+       </div>
+      </template>
+     </li>
+    </template>
+   </ul>
+  </div>
