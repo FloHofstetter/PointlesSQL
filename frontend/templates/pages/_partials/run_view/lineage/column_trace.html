@@ -1,0 +1,81 @@
+ {# Column trace sub-pane.  Hits GET /api/lineage/column-trace.
+ Deep-linked via pql:trace-column from Graph side-panel
+ column-pair "Trace this column" buttons. #}
+ <div class="tab-pane fade" id="tab-lineage-column-trace" role="tabpanel" aria-labelledby="tab-lineage-column-trace-btn">
+ <div x-data="columnTracePane()" x-init="init()">
+ <form class="row g-2 align-items-end mb-3" @submit.prevent="fetch()">
+ <div class="col-md-5">
+ <label class="form-label small" for="column-trace-table">Table (3-part FQN)</label>
+ <input id="column-trace-table" type="text" class="form-control form-control-sm font-monospace"
+ placeholder="catalog.schema.table" x-model="table">
+ </div>
+ <div class="col-md-5">
+ <label class="form-label small" for="column-trace-column">Column</label>
+ <input id="column-trace-column" type="text" class="form-control form-control-sm font-monospace"
+ placeholder="column name" x-model="column">
+ </div>
+ <div class="col-md-2">
+ <button type="submit" class="btn btn-sm btn-primary w-100"
+ :disabled="loading || !table || !column">
+ <span x-show="!loading"><i class="bi bi-search me-1"></i>Trace</span>
+ <span x-show="loading"><span class="spinner-border spinner-border-sm me-1"></span>Loading…</span>
+ </button>
+ </div>
+ </form>
+ <template x-if="error">
+ <div class="alert alert-danger small" x-text="error"></div>
+ </template>
+ <template x-if="!loaded && !error && !loading">
+ <div class="alert alert-info small mb-0">
+ <i class="bi bi-info-circle me-1"></i>
+ Pick a column from the <strong>Graph</strong> side-panel
+ (the <i class="bi bi-bezier2"></i> button on each column
+ pair) or paste a <code>(table, column)</code> pair above
+ and click <em>Trace</em>.  The standalone
+ <code>/catalogs/.../columns/{column}/trace</code> page
+ stays bookmarkable for direct links.
+ </div>
+ </template>
+ <template x-if="loaded && !error && steps.length === 0">
+ <div class="alert alert-warning small mb-0">
+ <i class="bi bi-exclamation-triangle me-1"></i>
+ No <code>lineage_column_map</code> rows reference this column.
+ </div>
+ </template>
+ <template x-if="loaded && !error && steps.length > 0">
+ <ol class="list-group list-group-flush list-group-numbered border rounded">
+ <template x-for="step in steps" :key="step.depth + '__' + step.table + '__' + step.column">
+ <li class="list-group-item">
+ <div class="d-flex flex-column gap-1 small">
+ <div class="d-flex align-items-center gap-2">
+ <span class="badge bg-secondary" x-text="'depth ' + step.depth"></span>
+ <span class="font-monospace text-break" x-text="step.table"></span>
+ <span class="badge bg-light text-dark border font-monospace" x-text="step.column"></span>
+ <span x-show="step.op_name" class="badge bg-info text-dark"
+ :title="'op_id=' + step.op_id"
+ x-text="step.op_name"></span>
+ </div>
+ <details x-show="step.predecessors && step.predecessors.length > 0" open>
+ <summary class="text-muted">
+ <span x-text="'Derived from ' + step.predecessors.length + ' source column(s)'"></span>
+ </summary>
+ <ul class="list-unstyled ms-3 mb-0 mt-1">
+ <template x-for="pred in step.predecessors" :key="(pred.table || '') + '__' + (pred.column || '')">
+ <li class="font-monospace text-break">
+ <i class="bi bi-arrow-90deg-left me-1"></i>
+ <span x-text="(pred.table || 'unknown') + '.' + (pred.column || '?')"></span>
+ <span class="badge bg-light text-dark border ms-1" x-text="pred.transform_kind || '—'"></span>
+ <span x-show="pred.transform_detail"
+ class="text-muted small ms-1"
+ x-text="pred.transform_detail"></span>
+ </li>
+ </template>
+ </ul>
+ </details>
+ </div>
+ </li>
+ </template>
+ </ol>
+ </template>
+ </div>
+ </div>

@@ -1,0 +1,100 @@
+ {# Graph sub-pane. Lazy-renders cytoscape
+ only after the user toggles the Graph sub-tab AND
+ (via x-init guard inside the factory) the cytoscape
+ library is loaded. Mount point + side-panel layout
+ share the same flex container so the graph fills the
+ available width while the side-panel stays a fixed
+ 320 px column. #}
+ <div class="tab-pane fade" id="tab-lineage-graph" role="tabpanel" aria-labelledby="tab-lineage-graph-btn">
+ <div x-data="lineageDag({ runId: '{{ run.id }}', opId: {% if filter_op_id %}{{ filter_op_id }}{% else %}null{% endif %} })"
+ x-init="init()">
+ <template x-if="loading">
+ <div class="text-muted small p-3" role="status" aria-live="polite">
+ <span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>Loading lineage graph<span class="text-muted ms-1">— this can take a few seconds for large runs.</span>
+ </div>
+ </template>
+ <template x-if="!loading && error">
+ <div class="alert alert-danger small" x-text="error"></div>
+ </template>
+ <template x-if="!loading && !error && nodes.length === 0">
+ <div class="alert alert-info mb-0">
+ <i class="bi bi-info-circle me-1"></i>
+ No lineage edges recorded for this run. Edges land
+ in the graph when <code>pql.merge</code> /
+ <code>pql.write_table</code> / <code>pql.aggregate</code>
+ run with a source table that carries
+ <code>_lineage_row_id</code>.
+ </div>
+ </template>
+ <div class="d-flex flex-column flex-lg-row gap-3"
+ x-show="!loading && !error && nodes.length > 0" x-cloak>
+ <div class="flex-grow-1 border rounded"
+ style="min-height: 480px; background: #0b1020;">
+ <div x-ref="canvas" style="width: 100%; height: 480px;"></div>
+ </div>
+ <aside class="flex-shrink-0 border rounded p-3 small"
+ style="width: 320px; max-width: 100%; background: var(--bs-body-bg);">
+ <div class="d-flex justify-content-between align-items-center mb-2">
+ <span class="fw-semibold text-uppercase text-muted small">Selection</span>
+ <button type="button" class="btn btn-sm btn-link p-0"
+ @click="clearSelection()"
+ x-show="selectedEdgeId || selectedColumn" x-cloak>
+ Clear
+ </button>
+ </div>
+ <template x-if="!selectedEdgeId && !selectedColumn">
+ <div class="text-muted small">
+ Click a node to highlight its incident
+ edges, an edge to inspect its column
+ pairs, or a column name in the side panel
+ to highlight every edge that touches it.
+ </div>
+ </template>
+ <template x-if="selectedEdgeId && currentEdge()">
+ <div>
+ <div class="font-monospace small text-muted mb-2"
+ x-text="currentEdge().source + ' → ' + currentEdge().target"></div>
+ <div class="mb-2">
+ op #<span x-text="currentEdge().op_ordinal"></span>
+ <span class="badge bg-info text-dark ms-1" x-text="currentEdge().op_name"></span>
+ </div>
+ <div class="mb-2 text-muted">
+ <span x-text="currentEdge().row_edge_count"></span>
+ row edge<span x-show="currentEdge().row_edge_count !== 1">s</span>
+ </div>
+ <div class="text-uppercase text-muted small mt-3 mb-1">Column pairs</div>
+ <ul class="list-unstyled mb-0" style="max-height: 280px; overflow-y: auto;">
+ <template x-for="pair in currentEdge().column_pairs" :key="(pair.source_column || '*') + '__' + pair.target_column + '__' + pair.transform_kind">
+ <li class="py-1 border-bottom">
+ <div class="d-flex align-items-center gap-1">
+ <button type="button" class="btn btn-link btn-sm p-0 font-monospace"
+ :title="'Highlight every edge that touches ' + (pair.source_column || pair.target_column)"
+ @click="selectColumn(pair.source_column || pair.target_column)"
+ x-text="(pair.source_column || '∅') + ' → ' + pair.target_column"></button>
+ <button type="button" class="btn btn-sm btn-outline-primary py-0 px-1 ms-auto"
+ :title="'Trace ' + currentEdge().target + '.' + pair.target_column + ' in the Column trace sub-pill'"
+ @click="window.pqlLineageTraceColumn(currentEdge().target, pair.target_column)">
+ <i class="bi bi-bezier2"></i>
+ </button>
+ </div>
+ <div class="small text-muted" x-text="pair.transform_kind"></div>
+ </li>
+ </template>
+ </ul>
+ </div>
+ </template>
+ <template x-if="selectedColumn">
+ <div>
+ <div class="text-uppercase text-muted small mb-1">Highlighted column</div>
+ <code x-text="selectedColumn.column"></code>
+ <div class="small text-muted mt-2">
+ Every edge whose column pairs touch
+ this column is highlighted simultaneously
+ (upstream + downstream).
+ </div>
+ </div>
+ </template>
+ </aside>
+ </div>
+ </div>
+ </div>

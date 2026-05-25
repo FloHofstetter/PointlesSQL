@@ -1,0 +1,92 @@
+ {# Value changes sub-pane.  Hits GET /api/lineage/value-changes.
+ Deep-linked via pql:trace-value (currently no caller fires
+ this directly; users paste table+row_id+column or arrive
+ from a Row-trace step's value-changes details). #}
+ <div class="tab-pane fade" id="tab-lineage-value-changes" role="tabpanel" aria-labelledby="tab-lineage-value-changes-btn">
+ <div x-data="valueChangesPane()" x-init="init()">
+ <form class="row g-2 align-items-end mb-3" @submit.prevent="fetch()">
+ <div class="col-md-4">
+ <label class="form-label small" for="value-changes-table">Table (3-part FQN)</label>
+ <input id="value-changes-table" type="text" class="form-control form-control-sm font-monospace"
+ placeholder="catalog.schema.table" x-model="table">
+ </div>
+ <div class="col-md-3">
+ <label class="form-label small" for="value-changes-row-id"><code>_lineage_row_id</code></label>
+ <input id="value-changes-row-id" type="text" class="form-control form-control-sm font-monospace"
+ placeholder="row id" x-model="rowId">
+ </div>
+ <div class="col-md-3">
+ <label class="form-label small" for="value-changes-column">Column (optional)</label>
+ <input id="value-changes-column" type="text" class="form-control form-control-sm font-monospace"
+ placeholder="filter to one column" x-model="column">
+ </div>
+ <div class="col-md-2">
+ <button type="submit" class="btn btn-sm btn-primary w-100"
+ :disabled="loading || !table || !rowId">
+ <span x-show="!loading"><i class="bi bi-search me-1"></i>Trace</span>
+ <span x-show="loading"><span class="spinner-border spinner-border-sm me-1"></span>Loading…</span>
+ </button>
+ </div>
+ </form>
+ <template x-if="error">
+ <div class="alert alert-danger small" x-text="error"></div>
+ </template>
+ <template x-if="!loaded && !error && !loading">
+ <div class="alert alert-info small mb-0">
+ <i class="bi bi-info-circle me-1"></i>
+ Enter <code>(table, _lineage_row_id)</code> and (optionally)
+ a column to see the chronological pre-image / post-image
+ history.  Values are PII-masked at the API boundary for
+ non-admin readers; the standalone
+ <code>/catalogs/.../rows/{row_id}/trace</code> page exposes
+ the same data with admin-only reveal buttons.
+ </div>
+ </template>
+ <template x-if="loaded && !error && changes.length === 0">
+ <div class="alert alert-warning small mb-0">
+ <i class="bi bi-exclamation-triangle me-1"></i>
+ No <code>lineage_value_changes</code> rows match this
+ <code>(table, _lineage_row_id)</code> pair.  Value-changes
+ are recorded only when <code>pql.merge(strategy='upsert',
+ track_value_changes=True)</code> is set.
+ </div>
+ </template>
+ <template x-if="loaded && !error && changes.length > 0">
+ <div class="card">
+ <div class="card-body p-0">
+ <table class="table table-sm mb-0 small align-middle">
+ <thead>
+ <tr>
+ <th>Run</th>
+ <th>Op</th>
+ <th>Column</th>
+ <th>Old</th>
+ <th></th>
+ <th>New</th>
+ <th>At</th>
+ </tr>
+ </thead>
+ <tbody>
+ <template x-for="change in changes" :key="change.run_id + '__' + change.op_id + '__' + change.target_column + '__' + change.created_at">
+ <tr>
+ <td class="font-monospace small text-break"
+ x-text="(change.run_id || '').slice(0, 8) + '…'"></td>
+ <td x-text="change.op_id"></td>
+ <td><span class="badge bg-light text-dark border font-monospace" x-text="change.target_column"></span></td>
+ <td class="font-monospace text-break"
+ x-text="change.old_value === null ? 'NULL' : change.old_value"></td>
+ <td class="text-muted"><i class="bi bi-arrow-right"></i></td>
+ <td class="font-monospace text-break"
+ x-text="change.new_value === null ? 'NULL' : change.new_value"></td>
+ <td class="small text-muted text-nowrap"
+ x-text="pqlRelativeTime(change.created_at)"
+ :title="pqlAbsTime(change.created_at)"></td>
+ </tr>
+ </template>
+ </tbody>
+ </table>
+ </div>
+ </div>
+ </template>
+ </div>
+ </div>

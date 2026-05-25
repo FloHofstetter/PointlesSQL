@@ -1,0 +1,69 @@
+ <div class="tab-pane fade show active" id="tab-lineage" role="tabpanel" aria-labelledby="tab-lineage-btn">
+ {% if lineage_summary and lineage_summary.rows %}
+ <div class="card">
+ <div class="card-header small text-muted">
+ {{ lineage_summary.total_edges }} per-row lineage edge{% if lineage_summary.total_edges != 1 %}s{% endif %}
+ across {{ lineage_summary.rows | length }} operation{% if lineage_summary.rows | length != 1 %}s{% endif %}
+ </div>
+ <div class="card-body p-0">
+ <table class="table table-sm mb-0 small align-middle">
+ <thead>
+ <tr>
+ <th>#</th>
+ <th>Op</th>
+ <th>Source</th>
+ <th>Target</th>
+ <th class="text-end">Edges</th>
+ <th></th>
+ </tr>
+ </thead>
+ <tbody>
+ {% for row in lineage_summary.rows %}
+ <tr>
+ <td>{{ row.ordinal }}</td>
+ <td><span class="badge bg-info text-dark">{{ row.op_name }}</span></td>
+ <td class="font-monospace">
+ {% if row.source_table %}{{ row.source_table }}{% else %}<span class="text-muted">—</span>{% endif %}
+ </td>
+ <td class="font-monospace">{{ row.target_table or "—" }}</td>
+ <td class="text-end">{{ row.edge_count }}</td>
+ <td class="text-end">
+ {% if row.target_table and row.sample_target_row_id %}
+ <button type="button"
+ class="btn btn-sm btn-outline-primary me-1"
+ title="Trace this op's target row inside the Row trace sub-pill"
+ data-pql-trace-row="1"
+ data-table="{{ row.target_table }}"
+ data-row-id="{{ row.sample_target_row_id }}">
+ <i class="bi bi-record-circle"></i>
+ </button>
+ {% endif %}
+ {% if row.target_table and "." in row.target_table %}
+ {% set parts = row.target_table.split(".") %}
+ {% if parts|length == 3 %}
+ <a href="/catalogs/{{ parts[0] }}/schemas/{{ parts[1] }}/tables/{{ parts[2] }}#lineage"
+ class="btn btn-sm btn-outline-secondary"
+ title="Open the lineage card for {{ row.target_table }}">
+ <i class="bi bi-diagram-3"></i>
+ </a>
+ {% endif %}
+ {% endif %}
+ </td>
+ </tr>
+ {% endfor %}
+ </tbody>
+ </table>
+ </div>
+ </div>
+ {% else %}
+ <div class="alert alert-info mb-0">
+ <i class="bi bi-info-circle me-1"></i>
+ No per-row lineage edges recorded for this run. Edges are
+ written by <code>pql.merge</code> (and <code>pql.write_table</code>)
+ when the source frame carries a <code>_lineage_row_id</code>
+ column AND the call declares <code>source_table_fqn</code>.
+ Bronze autoloads inject the column for free; downstream
+ merges propagate it through chain.
+ </div>
+ {% endif %}
+ </div>
