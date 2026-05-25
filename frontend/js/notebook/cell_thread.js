@@ -42,29 +42,7 @@ function extractReviewDecision(body_md) {
     return REVIEW_DECISIONS[2];
 }
 
-function csrfTokenFromCookie() {
-    const m = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/);
-    return m ? decodeURIComponent(m[1]) : "";
-}
-
-async function jsonFetch(url, options = {}) {
-    const headers = Object.assign(
-        { "Content-Type": "application/json" },
-        options.headers || {},
-    );
-    const method = (options.method || "GET").toUpperCase();
-    if (method !== "GET" && method !== "HEAD") {
-        const token = csrfTokenFromCookie();
-        if (token) headers["X-CSRFToken"] = token;
-    }
-    const res = await fetch(url, { ...options, headers, credentials: "same-origin" });
-    if (!res.ok) {
-        const text = await res.text().catch(() => "");
-        throw new Error(`${method} ${url} failed: ${res.status} ${text}`);
-    }
-    if (res.status === 204) return null;
-    return res.json();
-}
+import { jsonFetch } from '../http.js';
 
 export function cellThread({ notebookUuid, cell, initialCounts, curatedTags = [] } = {}) {
     return {
