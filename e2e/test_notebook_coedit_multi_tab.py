@@ -134,7 +134,7 @@ def _open_editor_tab(
     # the verbose ``notebook-coedit-pill`` (dot + label)
     # collapsed into one of three vital-sign dots in the toolbar.  The
     # dot has no visible text; its class binds via ``coeditDotClass()``,
-    # which returns ``bg-success`` once the y-protocols sync completes
+    # which returns ``pql-vital-pill--success`` once the y-protocols sync completes
     # and ``coeditStatus === 'live'``.  We poll the class instead of
     # the inner text.
     dot = page.locator('[data-testid="notebook-coedit-dot"]')
@@ -146,11 +146,11 @@ def _open_editor_tab(
             class_attr = dot.get_attribute("class", timeout=1_000) or ""
         except Exception:  # noqa: BLE001 — Playwright surfaces many TimeoutError variants
             class_attr = ""
-        if "bg-success" in class_attr:
+        if "pql-vital-pill--success" in class_attr:
             return page
         time.sleep(0.1)
     raise AssertionError(
-        f"co-edit dot never reached the live (bg-success) class on {path!r}; "
+        f"co-edit pill never reached the live (pql-vital-pill--success) class on {path!r}; "
         f"last class={class_attr!r}, console_errors={console_errors!r}"
     )
 
