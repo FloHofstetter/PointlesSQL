@@ -4,9 +4,13 @@
  * Owns the WebSocket connection to the per-notebook ipykernel
  * subprocess, the cell-run lifecycle (``runCell``,
  * ``runCellAndAdvance``, ``interruptKernel``, ``restartKernel``),
- * the iopub-frame dispatcher (``_onKernelFrame``), and the
- * Variable Inspector helpers. Extracted from ``notebook_editor.js``
- * .
+ * and the iopub-frame dispatcher (``_onKernelFrame``).
+ *
+ * Variable-inspector probes + frame handlers live in the sibling
+ * `variable_inspector.js` module; this installer composes them in so
+ * the dispatcher can call `this.requestVariableSnapshot()` and the
+ * kernel-client can route variable frames to `this._onVariableSnapshot`
+ * / `_onVariableDetail` on the same state object.
  *
  * The mixin depends on ``createKernelClient`` and ``renderOutputFrame``
  * being already imported by the coordinator; methods reach them via
@@ -16,9 +20,14 @@
 
 import { createKernelClient } from './kernel_ws.js';
 import { renderOutputFrame } from './output_renderer.js';
+import { installVariableInspector } from './variable_inspector.js';
 
 export function installKernelExecution(state, deps) {
   const computeContentHash = deps.computeContentHash;
+
+  // Install variable-inspector surface first so the kernel-client
+  // wiring below can reference its frame handlers via `this`.
+  installVariableInspector(state);
 
   state._connectKernel = function () {
     if (this._kernel) return;
@@ -40,19 +49,6 @@ export function installKernelExecution(state, deps) {
       onVariableDetail: (params) => this._onVariableDetail(params),
     });
     this._kernel.connect();
-  };
-
-  state._onVariableSnapshot = function (params) {
-    const payload = params && params.payload;
-    if (Array.isArray(payload)) this.inspectorVars = payload;
-  };
-
-  state._onVariableDetail = function (params) {
-    const payload = params && params.payload;
-    if (payload && typeof payload === 'object') {
-      this.inspectorDetail = payload;
-      this.inspectorDetailFor = payload.name || null;
-    }
   };
 
   state._onKernelFrame = function (frame) {
@@ -144,46 +140,6 @@ export function installKernelExecution(state, deps) {
       if (this.inspectorOpen && !String(hash).startsWith('__pql_')) {
         this.requestVariableSnapshot();
       }
-    }
-  };
-
-  state.requestVariableSnapshot = function () {
-    if (!this._kernel || this.kernelStatus !== 'ready') return;
-    try {
-      this._kernel
-        .execute('__pql_vars__', '__pql_inspect__()', {
-          cellType: 'code',
-          silent: true,
-        })
-        .catch(() => {
-          /* swallow — fail-quiet for inspector refresh */
-        });
-    } catch {
-      /* WS not ready — ignore */
-    }
-  };
-
-  state.requestVariableDetail = async function (name) {
-    if (!this._kernel || this.kernelStatus !== 'ready') return;
-    if (!name) return;
-    const safe = String(name).replace(/[^A-Za-z0-9_]/g, '');
-    if (!safe) return;
-    try {
-      await this._kernel.execute(
-        '__pql_vardetail__',
-        `__pql_inspect_detail__('${safe}')`,
-        { cellType: 'code', silent: true },
-      );
-    } catch {
-      /* fail-quiet */
-    }
-  };
-
-  // inspector visibility moved onto the unified
-  // right drawer.  Kept as a thin alias for legacy callers.
-  state.toggleInspector = function () {
-    if (typeof this.openRightDrawer === 'function') {
-      this.openRightDrawer('variables');
     }
   };
 
