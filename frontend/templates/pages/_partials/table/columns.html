@@ -10,7 +10,8 @@
  <div class="pql-list-controls p-2 border-bottom">
  <input type="search" class="form-control form-control-sm"
  x-ref="search" x-model="query" x-on:input="onInput()"
- :placeholder="searchPlaceholder">
+ :placeholder="searchPlaceholder"
+ aria-label="Filter columns">
  </div>
  {% endif %}
  <div class="card-body p-0">

@@ -61,7 +61,8 @@
                    class="form-control form-control-sm pql-workspace-tree__search-input"
                    placeholder="Filter notebooks…"
                    x-model.debounce.80ms="searchQuery"
-                   @keydown.escape.prevent="clearSearch()">
+                   @keydown.escape.prevent="clearSearch()"
+                   aria-label="Filter notebooks">
         </div>
     </div>
 
