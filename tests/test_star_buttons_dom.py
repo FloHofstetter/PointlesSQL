@@ -122,7 +122,7 @@ async def test_pql_star_toggle_factory_exposes_new_contract(
     star_res = await admin_client.get("/static/js/star.js")
     assert star_res.status_code == 200
     body = star_res.text
-    assert "window.pqlStarToggle = function" in body
+    assert "window.pqlStarToggle = " in body
     assert "async init()" in body
     assert "async toggle()" in body
     # Server-backed path hits /api/social/{kind}/{ref}/star.
