@@ -201,6 +201,7 @@ if (document.readyState === 'loading') {
 // per-page boilerplate.
 import { alertsPage } from './pages/alerts.js';
 import { feedPage } from './pages/feed.js';
+import { dataProductDetail } from './pages/data_product.js';
 import { alertDetail } from './pages/alert_detail.js';
 import { volumeDetail } from './pages/volume_detail.js';
 import { notebookWorkspace } from './pages/notebooks_workspace.js';
@@ -226,6 +227,7 @@ import { mlflowSidebar } from './components/sidebars/mlflow_sidebar.js';
 
 window.alertsPage = alertsPage;
 window.feedPage = feedPage;
+window.dataProductDetail = dataProductDetail;
 window.alertDetail = alertDetail;
 window.volumeDetail = volumeDetail;
 window.notebookWorkspace = notebookWorkspace;
