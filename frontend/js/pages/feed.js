@@ -1,0 +1,751 @@
+/**
+ * Feed page Alpine factory.
+ *
+ * Activity stream + Discover panes for the home feed. Owns the SSE
+ * connection lifecycle, the day-binning getter that groups rows into
+ * Today / Yesterday / dated headers, keyboard navigation (j/k/o/e/m/r/?),
+ * saved-search bookmarks, and the first-run welcome card.
+ *
+ * Lifted from the inline ``<script>`` block in
+ * ``pages/_partials/feed/scripts.html`` into this ESM module.
+ * ``bootstrap.js`` re-attaches the factory to ``window.feedPage`` so
+ * the template's ``x-data="feedPage()"`` keeps resolving.
+ */
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+function _todayStart() {
+ const d = new Date();
+ d.setHours(0, 0, 0, 0);
+ return d;
+}
+
+function _dayLabel(rowDate, todayStart) {
+ const dayStart = new Date(rowDate);
+ dayStart.setHours(0, 0, 0, 0);
+ const diffDays = Math.round((todayStart.getTime() - dayStart.getTime()) / DAY_MS);
+ if (diffDays <= 0) return 'Today';
+ if (diffDays === 1) return 'Yesterday';
+ if (diffDays > 14) return 'Earlier';
+ return dayStart.toLocaleDateString(undefined, {
+  weekday: 'short', month: 'short', day: 'numeric',
+ });
+}
+
+function _dayIso(rowDate, todayStart) {
+ const dayStart = new Date(rowDate);
+ dayStart.setHours(0, 0, 0, 0);
+ const diffDays = Math.round((todayStart.getTime() - dayStart.getTime()) / DAY_MS);
+ if (diffDays > 14) return 'earlier';
+ return dayStart.toISOString().slice(0, 10);
+}
+
+// Icon + label maps share the entity-kind keys with the server-side
+// registry. Kept inline because the registry's Python config doesn't
+// yet emit a JSON consumable.
+const KIND_ICONS = {
+ dp: 'bi-collection', table: 'bi-table', model: 'bi-cpu',
+ branch: 'bi-bezier2', run: 'bi-robot', schema: 'bi-diagram-3',
+ catalog: 'bi-archive', notebook: 'bi-journal-code',
+ saved_query: 'bi-code-square', issue: 'bi-bug',
+ workspace: 'bi-building',
+ notification: 'bi-bell', comment: 'bi-chat-left-text',
+ review: 'bi-star',
+ notebook_revision: 'bi-pin-angle-fill',
+ notebook_cell_output: 'bi-pin-angle-fill',
+};
+const KIND_LABELS = {
+ dp: 'Data Product', table: 'Table', model: 'Model',
+ branch: 'Branch', run: 'Run', schema: 'Schema',
+ catalog: 'Catalog', notebook: 'Notebook',
+ saved_query: 'Saved query', issue: 'Issue',
+ workspace: 'Workspace',
+ notification: 'Update', comment: 'Comment', review: 'Review',
+ notebook_revision: 'Pinned revision',
+ notebook_cell_output: 'Pinned cell',
+};
+// Entity kinds whose ``entity_ref`` is an opaque UUID with no
+// standalone display value — the summary already names the parent
+// surface, so the header line skips the link label and lets the
+// kind badge carry the affordance.
+const HIDE_ENTITY_REF_KINDS = new Set([
+ 'notebook_revision',
+ 'notebook_cell_output',
+]);
+
+export function feedPage() {
+ return {
+  loaded: false,
+  filter: 'all',
+  kindFilter: [],
+  searchDraft: '',
+  rows: [],
+  bufferedRows: [],
+  newCount: 0,
+  density: 'comfortable',
+  connState: 'disconnected',
+  activeTab: 'activity',
+  discoverTab: 'trending',
+  trending: [],
+  people: [],
+  savedSearches: [],
+  welcomeVisible: false,
+
+  filters: [
+   { key: 'all', label: 'For you', icon: 'bi-stars' },
+   { key: 'mentions', label: 'Mentions', icon: 'bi-at' },
+   { key: 'my', label: 'My activity', icon: 'bi-person' },
+   { key: 'followed_users', label: 'Following', icon: 'bi-people' },
+  ],
+  kindOptions: [
+   { key: 'dp', label: 'Data Products', icon: 'bi-collection' },
+   { key: 'table', label: 'Tables', icon: 'bi-table' },
+   { key: 'model', label: 'Models', icon: 'bi-cpu' },
+   { key: 'branch', label: 'Branches', icon: 'bi-bezier2' },
+   { key: 'run', label: 'Runs', icon: 'bi-robot' },
+   { key: 'schema', label: 'Schemas', icon: 'bi-diagram-3' },
+   { key: 'catalog', label: 'Catalogs', icon: 'bi-archive' },
+   { key: 'notebook', label: 'Notebooks', icon: 'bi-journal-code' },
+   { key: 'saved_query', label: 'Queries', icon: 'bi-code-square' },
+   { key: 'issue', label: 'Issues', icon: 'bi-bug' },
+  ],
+  densityOptions: [
+   { key: 'comfortable', label: 'Comfortable', icon: 'bi-list-ul' },
+   { key: 'compact', label: 'Compact', icon: 'bi-list' },
+   { key: 'headlines', label: 'Headlines', icon: 'bi-text-left' },
+  ],
+
+  // Internal SSE state (not reactive — Alpine doesn't need to
+  // observe these).
+  _sse: null,
+  _sseBackoffMs: 1000,
+  _sseReconnectTimer: null,
+  _sseFirstFailedAt: 0,
+
+  async init() {
+   // Restore density + active-tab from localStorage so the user
+   // lands on whichever surface they last used.
+   try {
+    const v = window.localStorage?.getItem('pql.feed.density');
+    if (v && ['comfortable', 'compact', 'headlines'].includes(v)) {
+     this.density = v;
+    }
+    const t = window.localStorage?.getItem('pql.feed.activeTab');
+    if (t && ['activity', 'discover'].includes(t)) {
+     this.activeTab = t;
+    }
+    const d = window.localStorage?.getItem('pql.feed.discoverTab');
+    if (d && ['trending', 'people', 'saved'].includes(d)) {
+     this.discoverTab = d;
+    }
+   } catch (e) { /* ignore storage errors */ }
+   this._restoreSavedSearches();
+   this._evaluateWelcome();
+   await this.reload();
+   this.loadTrending();
+   this.loadPeople();
+   this.connectSse();
+   this._installHotkeys();
+   // Tear down on page leave so the server-side queue gets released
+   // promptly (htmx:beforeRequest fires on boost navs even though the
+   // feed root unmounts).
+   document.body.addEventListener(
+    'htmx:beforeRequest',
+    () => this.disconnectSse(),
+    { once: true },
+   );
+  },
+
+  connectSse() {
+   if (this._sse) return;
+   try {
+    const es = new EventSource('/api/notifications/stream');
+    this._sse = es;
+    es.addEventListener('open', () => {
+     this.connState = 'connected';
+     this._sseBackoffMs = 1000;
+     this._sseFirstFailedAt = 0;
+    });
+    es.addEventListener('notification', (ev) => this._onSseMessage(ev));
+    es.addEventListener('error', () => {
+     if (this._sseFirstFailedAt === 0) {
+      this._sseFirstFailedAt = Date.now();
+     }
+     this.connState = Date.now() - this._sseFirstFailedAt > 60_000
+      ? 'disconnected' : 'reconnecting';
+     this.disconnectSse();
+     this._scheduleReconnect();
+    });
+   } catch (e) {
+    // EventSource unsupported — leave connState as 'disconnected'.
+    console.warn('SSE unsupported:', e);
+   }
+  },
+
+  disconnectSse() {
+   if (this._sse) {
+    try { this._sse.close(); } catch (e) { /* ignore */ }
+    this._sse = null;
+   }
+  },
+
+  _scheduleReconnect() {
+   if (this._sseReconnectTimer) return;
+   const wait = Math.min(this._sseBackoffMs, 30_000);
+   this._sseBackoffMs = Math.min(this._sseBackoffMs * 2, 30_000);
+   this._sseReconnectTimer = window.setTimeout(() => {
+    this._sseReconnectTimer = null;
+    this.connectSse();
+   }, wait);
+  },
+
+  _onSseMessage(ev) {
+   let payload;
+   try {
+    payload = JSON.parse(ev.data);
+   } catch (e) {
+    console.warn('SSE payload parse failed', e);
+    return;
+   }
+   // Build a feed-row-shaped object so the renderer treats the new
+   // arrival like any /api/feed row. Server-side _row_from_notification
+   // owns the canonical shape but the SSE payload already carries most
+   // fields; we hydrate the remaining ``render_kind`` discriminator
+   // client-side.
+   const row = {
+    kind: 'notification',
+    render_kind: this._classifyEvent(payload.event_type || ''),
+    event_type: payload.event_type,
+    summary_md: payload.summary_md,
+    body_md: payload.summary_md,
+    source_url: payload.source_url,
+    data_product_id: payload.source_data_product_id,
+    entity_kind: payload.source_entity_kind,
+    entity_ref: payload.source_entity_ref,
+    actor_user_id: payload.actor_user_id,
+    actor_display_name: payload.actor_display_name || null,
+    created_at: payload.created_at || new Date().toISOString(),
+    read_at: null,
+    _fresh: true,
+   };
+   this.bufferedRows.unshift(row);
+   this.newCount += 1;
+  },
+
+  _classifyEvent(eventType) {
+   if (!eventType) return 'notification';
+   if (eventType.indexOf('mentioned') !== -1 || eventType.indexOf('.mention') !== -1) {
+    return 'mention';
+   }
+   if (eventType.startsWith('pointlessql.agent_run.')) return 'agent_run';
+   if (eventType.startsWith('pointlessql.user.badge_')) return 'badge_award';
+   if (eventType.startsWith('pointlessql.issue.')) return 'issue';
+   if (eventType.startsWith('pointlessql.branch.')) return 'branch';
+   if (eventType === 'notebook_revision_pinned') return 'fact';
+   return 'notification';
+  },
+
+  setActiveTab(tab) {
+   this.activeTab = tab;
+   try { window.localStorage?.setItem('pql.feed.activeTab', tab); }
+   catch (e) { /* ignore */ }
+  },
+
+  setDiscoverTab(key) {
+   this.discoverTab = key;
+   try { window.localStorage?.setItem('pql.feed.discoverTab', key); }
+   catch (e) { /* ignore */ }
+  },
+
+  setDensity(key) {
+   this.density = key;
+   try {
+    window.localStorage?.setItem('pql.feed.density', key);
+   } catch (e) { /* ignore */ }
+  },
+
+  async setFilter(key) {
+   this.filter = key;
+   await this.reload();
+  },
+
+  async reload() {
+   this.loaded = false;
+   try {
+    const params = new URLSearchParams({ filter: this.filter });
+    if (this.searchDraft.trim()) params.set('q', this.searchDraft.trim());
+    // Multi-kind support: server still accepts a single ``kind`` param;
+    // if multiple are selected we send a comma-joined list and let the
+    // backend ignore the suffix until the route is widened.
+    if (this.kindFilter.length > 0) {
+     params.set('kind', this.kindFilter.join(','));
+    }
+    const res = await fetch('/api/feed?' + params.toString());
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    this.rows = (await res.json()).rows || [];
+   } catch (e) {
+    console.error('feed load failed', e);
+    window.pqlToast?.error?.('Failed to load feed: ' + (e.message || 'unknown'));
+   } finally {
+    this.loaded = true;
+   }
+  },
+
+  async toggleRead(r) {
+   if (!r.id) {
+    // Notifications carried via SSE haven't been round-tripped through
+    // /api/feed yet; the id arrives on next reload.
+    window.pqlToast?.error?.('Reload feed first to mark this read.');
+    return;
+   }
+   try {
+    const res = await fetch('/api/notifications/' + r.id + '/read', {
+     method: 'POST',
+     headers: { 'Content-Type': 'application/json' },
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    r.read_at = data.read ? new Date().toISOString() : null;
+    window.pqlToast?.success?.(data.read ? 'Marked as read.' : 'Marked as unread.');
+   } catch (e) {
+    console.error('toggleRead failed', e);
+    window.pqlToast?.error?.('Could not toggle read state.');
+   }
+  },
+
+  async muteThread(r) {
+   if (!r.entity_kind || !r.entity_ref) {
+    window.pqlToast?.error?.('No thread to mute on this item.');
+    return;
+   }
+   try {
+    const res = await fetch('/api/feed/mute', {
+     method: 'POST',
+     headers: { 'Content-Type': 'application/json' },
+     body: JSON.stringify({
+      entity_kind: r.entity_kind,
+      entity_ref: r.entity_ref,
+     }),
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    this.rows = this.rows.filter(
+     (x) => !(x.entity_kind === r.entity_kind && x.entity_ref === r.entity_ref),
+    );
+    window.pqlToast?.success?.(`Muted ${r.entity_ref}.`);
+   } catch (e) {
+    console.error('muteThread failed', e);
+    window.pqlToast?.error?.('Could not mute thread.');
+   }
+  },
+
+  async muteAuthor(r) {
+   if (!r.actor_user_id) {
+    window.pqlToast?.error?.('This item has no author.');
+    return;
+   }
+   try {
+    const res = await fetch('/api/feed/mute-author', {
+     method: 'POST',
+     headers: { 'Content-Type': 'application/json' },
+     body: JSON.stringify({ user_id: r.actor_user_id }),
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    this.rows = this.rows.filter((x) => x.actor_user_id !== r.actor_user_id);
+    window.pqlToast?.success?.(`Muted ${r.actor_display_name || 'author'}.`);
+   } catch (e) {
+    console.error('muteAuthor failed', e);
+    window.pqlToast?.error?.('Could not mute author.');
+   }
+  },
+
+  async snooze(r, duration) {
+   if (!r.entity_kind || !r.entity_ref) {
+    window.pqlToast?.error?.('Nothing to snooze.');
+    return;
+   }
+   try {
+    const res = await fetch('/api/feed/snooze', {
+     method: 'POST',
+     headers: { 'Content-Type': 'application/json' },
+     body: JSON.stringify({
+      entity_kind: r.entity_kind,
+      entity_ref: r.entity_ref,
+      duration,
+     }),
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    this.rows = this.rows.filter(
+     (x) => !(x.entity_kind === r.entity_kind && x.entity_ref === r.entity_ref),
+    );
+    const label = { '1h': '1 hour', '8h': '8 hours', '1d': '1 day' }[duration] || duration;
+    window.pqlToast?.success?.(`Snoozed for ${label}.`);
+   } catch (e) {
+    console.error('snooze failed', e);
+    window.pqlToast?.error?.('Could not snooze thread.');
+   }
+  },
+
+  async copyItemLink(r) {
+   try {
+    const url = new URL(r.source_url || '#', window.location.origin).toString();
+    await navigator.clipboard.writeText(url);
+    window.pqlToast?.success?.('Link copied to clipboard.');
+   } catch (e) {
+    console.error('copy failed', e);
+    window.pqlToast?.error?.('Could not copy link.');
+   }
+  },
+
+  async markAllRead() {
+   try {
+    const res = await fetch('/api/notifications/mark-all-read', {
+     method: 'POST',
+     headers: { 'Content-Type': 'application/json' },
+    });
+    if (!res.ok && res.status !== 404) throw new Error('HTTP ' + res.status);
+    // Clear local unread stripes optimistically.
+    this.rows = this.rows.map((r) => ({ ...r, read_at: r.read_at || new Date().toISOString() }));
+    window.pqlToast?.success?.('All notifications marked read.');
+   } catch (e) {
+    console.error('mark-all-read failed', e);
+    window.pqlToast?.error?.('Could not mark all read.');
+   }
+  },
+
+  drainBuffered() {
+   if (this.bufferedRows.length === 0) {
+    this.newCount = 0;
+    return;
+   }
+   this.rows = this.bufferedRows.concat(this.rows);
+   this.bufferedRows = [];
+   this.newCount = 0;
+   window.scrollTo({ top: 0, behavior: 'smooth' });
+   // Drop the fresh-flag after the CSS animation completes (matches
+   // the 1.4s ``pql-feed-item-fresh`` keyframe).
+   window.setTimeout(() => {
+    this.rows = this.rows.map((r) => {
+     if (r._fresh) {
+      const { _fresh, ...rest } = r;
+      return rest;
+     }
+     return r;
+    });
+   }, 1500);
+  },
+
+  iconForKind(kind) { return KIND_ICONS[kind] || 'bi-circle'; },
+  kindLabel(kind) { return KIND_LABELS[kind] || kind; },
+
+  // Item-level helpers.
+  itemClasses(r) {
+   const rk = r.render_kind || r.kind;
+   return {
+    'pql-feed-item--unread': r.kind === 'notification' && !r.read_at,
+    'pql-feed-item--mention': rk === 'mention',
+    'pql-feed-item--comment': rk === 'comment',
+    'pql-feed-item--review': rk === 'review',
+    'pql-feed-item--agent-run': rk === 'agent_run',
+    'pql-feed-item--badge': rk === 'badge_award',
+    'pql-feed-item--issue': rk === 'issue',
+    'pql-feed-item--branch': rk === 'branch',
+    'pql-feed-item--fresh': !!r._fresh,
+   };
+  },
+
+  avatarIcon(r) {
+   const rk = r.render_kind || r.kind;
+   if (rk === 'agent_run') return 'bi-robot';
+   if (rk === 'badge_award') return 'bi-award-fill';
+   if (rk === 'issue') return 'bi-bug';
+   if (rk === 'branch') return 'bi-bezier2';
+   if (r.actor_user_id) return 'bi-person-circle';
+   return this.iconForKind(r.entity_kind || r.kind);
+  },
+
+  actorLabel(r) {
+   if (r.actor_display_name) return r.actor_display_name;
+   const rk = r.render_kind || r.kind;
+   if (rk === 'agent_run') return 'Agent run';
+   if (rk === 'badge_award') return 'System';
+   if (rk === 'issue') return 'Issue';
+   if (rk === 'branch') return 'Branch';
+   return 'Activity';
+  },
+
+  verbLabel(r) {
+   const rk = r.render_kind || r.kind;
+   if (rk === 'comment') return 'commented on';
+   if (rk === 'review') return 'reviewed';
+   if (rk === 'mention') return 'mentioned you in';
+   if (rk === 'agent_run') {
+    return r.event_type && r.event_type.endsWith('.failed')
+     ? 'failed on' : 'completed on';
+   }
+   if (rk === 'badge_award') return 'earned a badge for';
+   if (rk === 'issue') return 'on';
+   if (rk === 'branch') return 'on';
+   if (rk === 'fact') return 'pinned';
+   return '';
+  },
+
+  entityLinkLabel(r) {
+   if (r.entity_kind && HIDE_ENTITY_REF_KINDS.has(r.entity_kind)) {
+    // UUID-only refs (e.g. pin fact_uuid) — skip the link label; the
+    // kind badge + summary carry the affordance.
+    return '';
+   }
+   if (r.entity_ref) return r.entity_ref;
+   if (r.entity_kind) return this.kindLabel(r.entity_kind);
+   return 'open';
+  },
+
+  issueBadgeClass(eventType) {
+   if (!eventType) return 'text-bg-secondary';
+   if (eventType.endsWith('.opened')) return 'text-bg-success';
+   if (eventType.endsWith('.closed')) return 'text-bg-secondary';
+   if (eventType.endsWith('.resolved')) return 'text-bg-primary';
+   return 'text-bg-secondary';
+  },
+
+  issueBadgeLabel(eventType) {
+   if (!eventType) return 'Issue';
+   if (eventType.endsWith('.opened')) return 'Opened';
+   if (eventType.endsWith('.closed')) return 'Closed';
+   if (eventType.endsWith('.resolved')) return 'Resolved';
+   return 'Updated';
+  },
+
+  branchVerb(eventType) {
+   if (!eventType) return 'Branch';
+   if (eventType.endsWith('.created')) return 'Created';
+   if (eventType.endsWith('.promoted')) return 'Promoted';
+   if (eventType.endsWith('.discarded')) return 'Discarded';
+   return 'Updated';
+  },
+
+  async loadTrending() {
+   try {
+    const res = await fetch('/api/feed/trending');
+    if (!res.ok) return;
+    const data = await res.json();
+    this.trending = data.rows || [];
+   } catch (e) { /* silent — the empty-state copy covers it */ }
+  },
+
+  async loadPeople() {
+   try {
+    const res = await fetch('/api/feed/people');
+    if (!res.ok) return;
+    const data = await res.json();
+    this.people = (data.rows || []).map((p) => ({ ...p, _following: false }));
+   } catch (e) { /* silent */ }
+  },
+
+  async followUser(p) {
+   if (p._following) return;
+   try {
+    const res = await fetch('/api/users/' + p.id + '/follow', {
+     method: 'POST',
+     headers: { 'Content-Type': 'application/json' },
+    });
+    if (!res.ok && res.status !== 409) throw new Error('HTTP ' + res.status);
+    p._following = true;
+    window.pqlToast?.success?.('Following ' + p.display_name + '.');
+   } catch (e) {
+    console.error('followUser failed', e);
+    window.pqlToast?.error?.('Could not follow user.');
+   }
+  },
+
+  // Saved-searches: localStorage-backed bookmarked filter combos.
+  _restoreSavedSearches() {
+   try {
+    const raw = window.localStorage?.getItem('pql.feed.savedSearches');
+    if (raw) this.savedSearches = JSON.parse(raw) || [];
+   } catch (e) { /* ignore */ }
+  },
+
+  _persistSavedSearches() {
+   try {
+    window.localStorage?.setItem(
+     'pql.feed.savedSearches', JSON.stringify(this.savedSearches),
+    );
+   } catch (e) { /* ignore */ }
+  },
+
+  saveCurrentSearch() {
+   const parts = [];
+   if (this.filter && this.filter !== 'all') parts.push(this.filter);
+   if (this.kindFilter.length > 0) parts.push(this.kindFilter.join('+'));
+   if (this.searchDraft.trim()) parts.push('"' + this.searchDraft.trim() + '"');
+   const label = parts.length === 0 ? 'All activity' : parts.join(' · ');
+   const entry = {
+    id: Date.now().toString(36),
+    label,
+    filter: this.filter,
+    kindFilter: this.kindFilter.slice(),
+    q: this.searchDraft.trim(),
+   };
+   this.savedSearches.push(entry);
+   this._persistSavedSearches();
+   window.pqlToast?.success?.('Saved search "' + label + '".');
+  },
+
+  applySavedSearch(s) {
+   this.filter = s.filter || 'all';
+   this.kindFilter = (s.kindFilter || []).slice();
+   this.searchDraft = s.q || '';
+   this.reload();
+  },
+
+  deleteSavedSearch(idx) {
+   this.savedSearches.splice(idx, 1);
+   this._persistSavedSearches();
+  },
+
+  // First-run welcome card — dismiss persists in localStorage.
+  // Server-side gating on user.created_at <7d + social_follow count == 0
+  // would require an extra round-trip; local-only is simpler and the
+  // dismiss is sticky-per-browser.
+  _evaluateWelcome() {
+   try {
+    if (window.localStorage?.getItem('pql.feed.welcomeDismissed') === '1') {
+     this.welcomeVisible = false;
+     return;
+    }
+   } catch (e) { /* ignore */ }
+   this.welcomeVisible = true;
+  },
+
+  dismissWelcome() {
+   this.welcomeVisible = false;
+   try {
+    window.localStorage?.setItem('pql.feed.welcomeDismissed', '1');
+   } catch (e) { /* ignore */ }
+  },
+
+  // Keyboard navigation — j/k/o/e/m/r/?.
+  _focusedIndex: -1,
+  _hotkeysAttached: false,
+
+  _installHotkeys() {
+   if (this._hotkeysAttached) return;
+   this._hotkeysAttached = true;
+   window.addEventListener('keydown', (ev) => this._onHotkey(ev));
+  },
+
+  _onHotkey(ev) {
+   // Don't hijack when the user is typing in a form field.
+   const t = ev.target;
+   const tag = t && t.tagName;
+   if (tag === 'INPUT' || tag === 'TEXTAREA' || (t && t.isContentEditable)) {
+    return;
+   }
+   // Don't hijack when a modifier is held — Cmd+R must reload.
+   if (ev.ctrlKey || ev.metaKey || ev.altKey) return;
+
+   const flat = this._flatRows();
+   switch (ev.key) {
+    case 'j':
+     ev.preventDefault();
+     this._focusedIndex = Math.min(flat.length - 1, this._focusedIndex + 1);
+     this._highlightFocused();
+     break;
+    case 'k':
+     ev.preventDefault();
+     this._focusedIndex = Math.max(0, this._focusedIndex - 1);
+     this._highlightFocused();
+     break;
+    case 'o':
+    case 'Enter': {
+     const row = flat[this._focusedIndex];
+     if (row && row.source_url) {
+      ev.preventDefault();
+      window.location.href = row.source_url;
+     }
+     break;
+    }
+    case 'e': {
+     const row = flat[this._focusedIndex];
+     if (row && row.kind === 'notification') {
+      ev.preventDefault();
+      this.toggleRead(row);
+     }
+     break;
+    }
+    case 'm': {
+     const row = flat[this._focusedIndex];
+     if (row) {
+      ev.preventDefault();
+      this.muteThread(row);
+     }
+     break;
+    }
+    case 'r':
+     ev.preventDefault();
+     {
+      const input = document.querySelector('.pql-feed-search');
+      if (input) input.focus();
+     }
+     break;
+    case '?':
+     ev.preventDefault();
+     if (window.bootstrap?.Modal) {
+      const el = document.getElementById('pql-feed-help-modal');
+      if (el) window.bootstrap.Modal.getOrCreateInstance(el).show();
+     }
+     break;
+    default:
+     break;
+   }
+  },
+
+  _flatRows() {
+   const out = [];
+   for (const day of this.groupedDays) {
+    for (const r of day.rows) out.push(r);
+   }
+   return out;
+  },
+
+  _highlightFocused() {
+   // Drop the focus class from every item, then apply to the n-th
+   // rendered card. Card DOM order matches ``_flatRows`` because Alpine
+   // renders ``groupedDays`` in the same order.
+   const cards = document.querySelectorAll('.pql-feed-item');
+   cards.forEach((el) => el.classList.remove('pql-feed-item--focused'));
+   const target = cards[this._focusedIndex];
+   if (target) {
+    target.classList.add('pql-feed-item--focused');
+    target.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+   }
+  },
+
+  get groupedDays() {
+   const todayStart = _todayStart();
+   const groups = new Map();
+   for (const r of this.rows) {
+    const rowDate = new Date(r.created_at);
+    if (Number.isNaN(rowDate.getTime())) continue;
+    const iso = _dayIso(rowDate, todayStart);
+    if (!groups.has(iso)) {
+     groups.set(iso, {
+      iso,
+      label: _dayLabel(rowDate, todayStart),
+      rows: [],
+     });
+    }
+    groups.get(iso).rows.push(r);
+   }
+   // Sort groups: "today" first, then iso desc, then "earlier" last.
+   const ordered = Array.from(groups.values());
+   ordered.sort((a, b) => {
+    if (a.iso === 'earlier') return 1;
+    if (b.iso === 'earlier') return -1;
+    return a.iso < b.iso ? 1 : -1;
+   });
+   return ordered;
+  },
+ };
+}

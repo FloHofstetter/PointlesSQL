@@ -200,6 +200,7 @@ if (document.readyState === 'loading') {
 // attach-before-Alpine-DOM-walk invariant stays defused without
 // per-page boilerplate.
 import { alertsPage } from './pages/alerts.js';
+import { feedPage } from './pages/feed.js';
 import { alertDetail } from './pages/alert_detail.js';
 import { volumeDetail } from './pages/volume_detail.js';
 import { notebookWorkspace } from './pages/notebooks_workspace.js';
@@ -224,6 +225,7 @@ import { alertsSidebar } from './components/sidebars/alerts_sidebar.js';
 import { mlflowSidebar } from './components/sidebars/mlflow_sidebar.js';
 
 window.alertsPage = alertsPage;
+window.feedPage = feedPage;
 window.alertDetail = alertDetail;
 window.volumeDetail = volumeDetail;
 window.notebookWorkspace = notebookWorkspace;

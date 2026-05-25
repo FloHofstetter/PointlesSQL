@@ -34,6 +34,7 @@ from pointlessql.models.catalog._data_product_reviews import DataProductReview
 from pointlessql.models.social._social_target import SocialTarget
 
 _TEMPLATES_ROOT = pathlib.Path("/home/flo/git/PointlesSQL/frontend/templates")
+_FRONTEND_ROOT = pathlib.Path("/home/flo/git/PointlesSQL/frontend")
 
 
 def test_row_from_comment_uses_target_when_supplied() -> None:
@@ -162,7 +163,7 @@ def test_feed_html_carries_kind_filter_dropdown() -> None:
     newly-registered kinds light up without code change.
     """
     activity = (_TEMPLATES_ROOT / "pages/_partials/feed/activity_pane.html").read_text()
-    scripts = (_TEMPLATES_ROOT / "pages/_partials/feed/scripts.html").read_text()
+    scripts = (_FRONTEND_ROOT / "js/pages/feed.js").read_text()
     assert "pql-feed-kind-menu" in activity
     assert "kindFilter" in activity
     for kind in ("'dp'", "'table'", "'model'", "'notebook'", "'saved_query'"):
