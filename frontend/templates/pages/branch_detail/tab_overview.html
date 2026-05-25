@@ -1,0 +1,96 @@
+    {# Overview tab — metadata cards + audit log (the pre-77.3.B page). #}
+    <div class="tab-pane fade show active" id="tab-overview" role="tabpanel">
+        <div class="row g-3 mb-4">
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <div class="card-header">Metadata</div>
+                    <div class="card-body">
+                        <dl class="row mb-0 small">
+                            <dt class="col-sm-5">Parent schema</dt>
+                            <dd class="col-sm-7 font-monospace">{{ tags.parent_schema }}</dd>
+                            <dt class="col-sm-5">Strategy{{ info('branches.cleanup-loop') }}</dt>
+                            <dd class="col-sm-7"><code>{{ tags.strategy }}</code></dd>
+                            <dt class="col-sm-5">Created at</dt>
+                            <dd class="col-sm-7">{{ relative_time(tags.created_at, klass="") }}</dd>
+                            <dt class="col-sm-5">Created by run</dt>
+                            <dd class="col-sm-7 font-monospace">
+                                {% if tags.created_by_run_id %}
+                                <a href="/runs/{{ tags.created_by_run_id }}">{{ tags.created_by_run_id }}</a>
+                                {% else %}
+                                <span class="text-muted">— (admin / interactive)</span>
+                                {% endif %}
+                            </dd>
+                            {% if tags.promoted_at %}
+                            <dt class="col-sm-5">Promoted at</dt>
+                            <dd class="col-sm-7">{{ tags.promoted_at }}</dd>
+                            {% endif %}
+                            {% if tags.discarded_at %}
+                            <dt class="col-sm-5">Discarded at</dt>
+                            <dd class="col-sm-7">{{ tags.discarded_at }}</dd>
+                            {% endif %}
+                        </dl>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <div class="card-header">Parent versions at branch creation</div>
+                    <div class="card-body">
+                        {% if tags.parent_version_at_create %}
+                        <table class="table table-sm small mb-0">
+                            <thead><tr><th>Table</th><th class="text-end">Version</th></tr></thead>
+                            <tbody>
+                                {% for table_name, version in tags.parent_version_at_create.items() %}
+                                <tr>
+                                    <td class="font-monospace">{{ table_name }}</td>
+                                    <td class="text-end font-monospace">{{ version }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                        {% else %}
+                        <p class="text-muted mb-0 small">No tables tracked.</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">Audit log</div>
+            <div class="card-body p-0">
+                {% if audit_log %}
+                <div class="table-responsive">
+                    <table class="table table-sm mb-0 align-middle pql-list-table">
+                        <thead>
+                            <tr>
+                                <th class="ps-3">When</th>
+                                <th>Action</th>
+                                <th>Run</th>
+                                <th>Payload</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for entry in audit_log %}
+                            <tr>
+                                <td data-label="When" class="ps-3 small">{{ relative_time(entry.created_at) }}</td>
+                                <td data-label="Action"><code>{{ entry.action }}</code></td>
+                                <td data-label="Run" class="font-monospace small">
+                                    {% if entry.run_id %}
+                                    <a href="/runs/{{ entry.run_id }}">{{ entry.run_id[:8] }}</a>
+                                    {% else %}
+                                    <span class="text-muted">—</span>
+                                    {% endif %}
+                                </td>
+                                <td data-label="Payload"><pre class="small mb-0">{{ entry.payload | tojson(indent=2) if entry.payload else "" }}</pre></td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-muted small p-3 mb-0">No audit-log entries yet.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>

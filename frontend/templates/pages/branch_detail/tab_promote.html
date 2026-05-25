@@ -1,0 +1,140 @@
+    {# Promote tab — Danger Zone with gate-state visualisation.
+       Renders only for admin on an active non-backup branch (same
+       guard as before, just moved into a tab pane). #}
+    {% if is_admin and tags.status == "active" and not tags.is_pre_promote_backup %}
+    {% set gate_locked = branch_promote_requires_endorsement and branch_endorsement_count < 1 %}
+    <div class="tab-pane fade" id="tab-promote" role="tabpanel">
+        <div class="card border-danger mb-4"
+             x-data='{
+                previewing: false,
+                promoting: false,
+                discarding: false,
+                previewResult: null,
+                previewError: null,
+
+                previewPromote() {
+                    this.previewing = true;
+                    this.previewResult = null;
+                    this.previewError = null;
+                    window.pqlApi.fetch("/api/branches/{{ branch_schema_fqn }}/preview-promote", { method: "GET", silent: true })
+                        .then(r => {
+                            if (!r.ok) {
+                                this.previewError = r.error || ("HTTP " + r.status);
+                                this.previewing = false;
+                                return;
+                            }
+                            this.previewResult = r.data;
+                            this.previewing = false;
+                        });
+                },
+
+                promote() {
+                    if (!confirm("Promote {{ branch_schema_fqn }} to {{ tags.parent_schema }}?\n\nThe current parent will be renamed to {{ tags.parent_schema }}_pre_promote_<ts> as a backup.")) return;
+                    this.promoting = true;
+                    window.pqlApi.fetch("/api/branches/{{ branch_schema_fqn }}/promote", { method: "POST", silent: true })
+                        .then(r => {
+                            this.promoting = false;
+                            if (!r.ok) {
+                                if (window.pqlToast) window.pqlToast.error("Promote failed: " + (r.error || ("HTTP " + r.status)));
+                                return;
+                            }
+                            const j = r.data || {};
+                            if (window.pqlToast) window.pqlToast.success("Promoted to " + j.new_parent);
+                            setTimeout(() => window.location.href = "/branches", 800);
+                        });
+                },
+
+                discard() {
+                    if (!confirm("Permanently discard {{ branch_schema_fqn }}?\n\nThe branch storage and UC schema will be removed. The source parent stays untouched.")) return;
+                    this.discarding = true;
+                    window.pqlApi.fetch("/api/branches/{{ branch_schema_fqn }}/discard", { method: "POST", silent: true })
+                        .then(r => {
+                            this.discarding = false;
+                            if (!r.ok) {
+                                if (window.pqlToast) window.pqlToast.error("Discard failed: " + (r.error || ("HTTP " + r.status)));
+                                return;
+                            }
+                            if (window.pqlToast) window.pqlToast.success("Branch discarded");
+                            setTimeout(() => window.location.href = "/branches", 800);
+                        });
+                },
+             }'>
+            <div class="card-header bg-danger-subtle text-danger-emphasis">
+                <i class="bi bi-exclamation-triangle me-1"></i>Danger zone{{ info('branches.promote-vs-discard') }}
+            </div>
+            <div class="card-body">
+                {% if branch_promote_requires_endorsement %}
+                <div class="alert {% if gate_locked %}alert-warning{% else %}alert-info{% endif %} small mb-3">
+                    <i class="bi bi-shield-check me-1"></i>
+                    <strong>Promote-gate is enabled.</strong>
+                    {% if gate_locked %}
+                    Promote stays locked until at least one peer applies
+                    the <code>branch-approved-for-promotion</code>
+                    endorsement on this branch.  Self-endorsement
+                    doesn&rsquo;t count — switch to the Endorsements
+                    tab to see the current state.
+                    {% else %}
+                    Gate satisfied: <strong>{{ branch_endorsement_count }}</strong>
+                    peer endorsement<span x-show="false">s</span> on file.
+                    Promote is unlocked.
+                    {% endif %}
+                </div>
+                {% endif %}
+
+                <div class="d-flex gap-2 flex-wrap mb-3">
+                    <button class="btn btn-outline-secondary btn-sm"
+                            x-on:click="previewPromote()"
+                            x-bind:disabled="previewing">
+                        <span x-show="previewing" x-cloak><i class="bi bi-hourglass-split me-1"></i></span>
+                        Preview promote{{ info('branches.preview-tab') }}
+                    </button>
+                    <button class="btn btn-primary btn-sm pql-promote-btn"
+                            x-on:click="promote()"
+                            x-bind:disabled="promoting"
+                            {% if gate_locked %}disabled
+                            title="Needs ≥1 peer endorsement — switch to the Endorsements tab"
+                            {% endif %}>
+                        <span x-show="promoting" x-cloak><i class="bi bi-hourglass-split me-1"></i></span>
+                        Promote
+                        {% if gate_locked %}
+                        <i class="bi bi-lock ms-1"></i>
+                        {% endif %}
+                    </button>
+                    <button class="btn btn-danger btn-sm ms-auto"
+                            x-on:click="discard()"
+                            x-bind:disabled="discarding">
+                        <span x-show="discarding" x-cloak><i class="bi bi-hourglass-split me-1"></i></span>
+                        Discard
+                    </button>
+                </div>
+                <div class="alert alert-danger small" x-show="previewError" x-text="previewError" x-cloak></div>
+                <template x-if="previewResult && previewResult.ok">
+                    <div class="alert alert-success small mb-0">
+                        <i class="bi bi-check-circle me-1"></i>No conflicts detected — promote is safe.
+                    </div>
+                </template>
+                <template x-if="previewResult && !previewResult.ok">
+                    <div class="alert alert-warning small mb-0">
+                        <strong><i class="bi bi-exclamation-circle me-1"></i>Promotion conflicts detected</strong>
+                        <table class="table table-sm small mt-2 mb-0">
+                            <thead><tr><th>Table</th><th>Expected</th><th>Actual</th><th>Reason</th></tr></thead>
+                            <tbody>
+                                <template x-for="c in previewResult.conflicts" :key="c.table">
+                                    <tr>
+                                        <td class="font-monospace" x-text="c.table"></td>
+                                        <td class="font-monospace" x-text="c.expected_version"></td>
+                                        <td class="font-monospace" x-text="c.actual_version"></td>
+                                        <td x-text="c.reason"></td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                        <div class="mt-2 mb-0">
+                            Discard and re-branch from the current parent state to resolve.
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </div>
+    {% endif %}

@@ -169,7 +169,7 @@ async def test_branch_detail_renders_star_button(
     import pathlib
 
     template = pathlib.Path(
-        "/home/flo/git/PointlesSQL/frontend/templates/pages/branch_detail.html"
+        "/home/flo/git/PointlesSQL/frontend/templates/pages/branch_detail/header.html"
     ).read_text()
     assert 'pqlStarToggle({kind: "branch"' in template
     assert "branch_schema_fqn" in template

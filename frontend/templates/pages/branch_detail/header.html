@@ -1,0 +1,78 @@
+<div class="d-flex align-items-center justify-content-between mb-4"
+     x-data='pqlStarToggle({kind: "branch", ref: {{ branch_schema_fqn|tojson }}})'
+     x-init="init()">
+    <div class="d-flex align-items-center gap-2">
+        <i class="bi bi-diagram-3 fs-3"></i>
+        <h1 class="h3 mb-0 font-monospace">{{ branch_schema_fqn }}</h1>
+        {% if tags.status == "active" %}
+        <span class="badge bg-success-subtle text-success-emphasis">active</span>
+        {% elif tags.status == "promoted" %}
+        <span class="badge bg-primary-subtle text-primary-emphasis">promoted</span>
+        {% else %}
+        <span class="badge bg-secondary-subtle text-secondary-emphasis">discarded</span>
+        {% endif %}
+        {% if tags.is_pre_promote_backup %}
+        <span class="badge bg-warning-subtle text-warning-emphasis"
+              title="Pre-promote backup of a previous parent">pre-promote backup</span>
+        {% endif %}
+        {% if branch_promote_requires_endorsement %}
+        <span class="badge bg-info-subtle text-info-emphasis"
+              title="Promote-gate is enabled — peer endorsement required before promote">
+            <i class="bi bi-shield-check me-1"></i>gate on
+        </span>
+        {% endif %}
+    </div>
+    {# server-backed Star button. #}
+    <button class="btn btn-sm"
+            :class="starred ? 'btn-warning' : 'btn-outline-warning'"
+            @click="toggle()"
+            title="Bookmark this branch">
+        <i class="bi" :class="starred ? 'bi-star-fill' : 'bi-star'"></i>
+        <span class="ms-1" x-show="count > 0" x-text="count"></span>
+    </button>
+    {# Social drawer trigger. #}
+    <button type="button"
+            class="btn btn-sm btn-outline-secondary"
+            data-bs-toggle="offcanvas"
+            data-bs-target="#pql-branch-social-drawer"
+            title="Open social drawer (Discussion / Endorsements / Followers / Issues)">
+        <i class="bi bi-people me-1"></i>Social
+    </button>
+</div>
+
+{# branch detail tab strip.  5 tabs: Overview
+   (metadata cards + audit log), Discussion (polymorphic comments),
+   Endorsements (peer-review including branch-approved-for-promotion),
+   Followers (count + 501 placeholder until 77.8), Promote
+   (Danger Zone moved in here with gate-state visualisation).
+   The .tab-content carries the kind-agnostic socialTabs x-data so
+   the partials' Alpine bindings resolve. #}
+<ul class="nav nav-tabs mb-3" id="branchDetailTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="tab-overview-btn" data-bs-toggle="tab"
+                data-bs-target="#tab-overview" type="button" role="tab"
+                aria-controls="tab-overview" aria-selected="true"
+                data-pql-tab-key="overview">
+            <i class="bi bi-info-circle me-1"></i>Overview
+        </button>
+    </li>
+    {# Discussion / Endorsements / Followers /
+       Issues moved into the offcanvas drawer at the bottom of this
+       template.  The endorsement count badge stays alive there via
+       branch_endorsement_count. #}
+    {% if is_admin and tags.status == "active" and not tags.is_pre_promote_backup %}
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="tab-promote-btn" data-bs-toggle="tab"
+                data-bs-target="#tab-promote" type="button" role="tab"
+                aria-controls="tab-promote" aria-selected="false"
+                data-pql-tab-key="promote">
+            <i class="bi bi-exclamation-triangle me-1"></i>Promote
+            {% if branch_promote_requires_endorsement and branch_endorsement_count < 1 %}
+            <span class="badge bg-warning text-dark ms-1" title="Peer endorsement required">
+                <i class="bi bi-lock"></i>
+            </span>
+            {% endif %}
+        </button>
+    </li>
+    {% endif %}
+</ul>
