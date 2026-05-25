@@ -78,6 +78,12 @@ repos:
         language: system
         pass_filenames: false
         files: ^frontend/
+      - id: form-labels
+        name: form-label A11y drift guard
+        entry: bash scripts/check-form-labels.sh
+        language: system
+        pass_filenames: false
+        files: ^frontend/templates/.*\.html$
       - id: pyright
         name: pyright (strict)
         entry: uv run pyright pointlessql
