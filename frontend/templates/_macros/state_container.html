@@ -1,0 +1,40 @@
+{#
+ Async-state container macro — collapses the loading/error/empty
+ boilerplate that wraps reactive lists.
+
+ Usage:
+
+ {% from "_macros/state_container.html" import state_container %}
+ {% call state_container(loading_label='Loading lineage…',
+                         empty_label='No lineage edges recorded yet.') %}
+   <ul class="list-unstyled" x-show="rows.length">
+     <template x-for="row in rows" :key="row.id">
+       <li x-text="row.label"></li>
+     </template>
+   </ul>
+ {% endcall %}
+
+ By default the macro assumes Alpine state slots named ``loading``,
+ ``error`` and ``empty``; override via the named args when a page
+ uses different identifiers (``loading_state``, ``error_state``,
+ ``empty_state``).  The error block reads its text from the same
+ slot via ``x-text``, so ``error`` can be either a boolean flag
+ paired with a sibling message field or a string holding the message
+ directly — the macro renders ``<div x-text="<error_state>"></div>``
+ either way.
+
+ The body inside ``{% call %}`` is the populated/normal render and
+ is the caller's responsibility to gate with ``x-show``.
+#}
+{% macro state_container(loading_label='Loading…',
+                         empty_label='No results.',
+                         loading_state='loading',
+                         error_state='error',
+                         empty_state='empty') -%}
+<div x-show="{{ loading_state }}" class="text-muted small p-3">
+  <span class="spinner-border spinner-border-sm me-1"></span>{{ loading_label }}
+</div>
+<div x-show="{{ error_state }}" class="alert alert-danger small" x-text="{{ error_state }}"></div>
+<div x-show="{{ empty_state }}" class="text-muted small p-3">{{ empty_label }}</div>
+{{ caller() }}
+{%- endmacro %}

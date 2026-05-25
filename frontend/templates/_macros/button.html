@@ -1,0 +1,38 @@
+{#
+ Bootstrap-button macro.
+
+ Usage:
+
+ {% from "_macros/button.html" import button %}
+ {{ button('Save', 'primary', icon='floppy', x_on_click='save()') }}
+ {{ button('Cancel', 'outline-secondary', size='sm', onclick='closeDialog()') }}
+ {{ button('Open audit', 'outline-secondary', href=url_for('audit_search'), icon='journal-text') }}
+ {{ button('Delete', 'danger', disabled=True) }}
+
+ Renders an ``<a class="btn ...">`` when ``href`` is set, otherwise a
+ ``<button type="...">``.  Variant names map to Bootstrap ``btn-<variant>``
+ utility classes (``primary``, ``secondary``, ``success``, ``warning``,
+ ``danger``, ``info``, ``light``, ``dark``, ``link`` plus their
+ ``outline-*`` siblings).  ``size`` accepts ``sm`` or ``lg``.
+
+ Both ``onclick=`` (vanilla JS handler) and ``x_on_click=`` (Alpine
+ ``@click=``) attribute forms are supported; pass whichever your
+ caller uses.  HTMX-attribute buttons stay inline — wrapping them
+ would hide the ``hx-*`` configuration.
+#}
+{% macro button(label, variant='primary', icon=None, size=None, type='button',
+                onclick=None, x_on_click=None, disabled=False,
+                classes='', href=None, title=None) -%}
+{%- set tag = 'a' if href else 'button' -%}
+<{{ tag }}
+  class="btn btn-{{ variant }}{% if size %} btn-{{ size }}{% endif %}{% if classes %} {{ classes }}{% endif %}"
+  {%- if tag == 'button' %} type="{{ type }}"{% endif -%}
+  {%- if href %} href="{{ href }}"{% endif -%}
+  {%- if onclick %} onclick="{{ onclick }}"{% endif -%}
+  {%- if x_on_click %} @click="{{ x_on_click }}"{% endif -%}
+  {%- if disabled %} disabled{% endif -%}
+  {%- if title %} title="{{ title }}"{% endif -%}>
+  {%- if icon %}<i class="bi bi-{{ icon }} me-1"></i>{% endif -%}
+  {{ label }}
+</{{ tag }}>
+{%- endmacro %}

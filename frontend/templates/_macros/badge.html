@@ -1,0 +1,26 @@
+{#
+ Bootstrap-badge macro.
+
+ Usage:
+
+ {% from "_macros/badge.html" import badge %}
+ {{ badge('Live', 'success') }}
+ {{ badge('12', 'warning', icon='exclamation-triangle', tooltip='12 issues open') }}
+ {{ badge(tag, 'success-subtle', classes='text-success-emphasis border border-success-subtle') }}
+
+ Variant names map to Bootstrap ``bg-<variant>`` utility classes
+ (``primary``, ``secondary``, ``success``, ``warning``, ``danger``,
+ ``info``, ``light``, ``dark`` plus the ``-subtle`` siblings).  No
+ validation here — callers pass through.
+
+ The optional ``classes`` slot is for extra utility classes the
+ variant table cannot cover (e.g. ``text-dark border font-monospace``
+ for the UUID badges in revision panels).
+#}
+{% macro badge(label, variant='secondary', icon=None, tooltip=None, classes='') -%}
+<span class="badge bg-{{ variant }}{% if classes %} {{ classes }}{% endif %}"
+      {%- if tooltip %} title="{{ tooltip }}" data-bs-toggle="tooltip"{% endif %}>
+  {%- if icon %}<i class="bi bi-{{ icon }} me-1"></i>{% endif -%}
+  {{ label }}
+</span>
+{%- endmacro %}
