@@ -1,0 +1,89 @@
+/*
+ * Per-cell discussion thread + reactions + cell-tag picker + drag-drop
+ * affordance + FLIP-driven live reorder transition.
+ *
+ * The cell-header rules at the bottom of this file deliberately
+ * override the base cell-header rules in cells.css (same selector,
+ * later cascade wins).  ``user-select: none`` on the header is
+ * load-bearing for drag-drop — without it, mousedown over header
+ * text starts a text-selection and ``dragstart`` never fires.
+ */
+
+/* per-cell inline discussion thread.  No custom sizing
+   on the chip — inherits ``btn btn-sm`` exactly so it aligns flush
+   with the Run / cell-type / history / move / delete cluster. */
+
+.pql-notebook-cell__thread {
+ border-top: 1px solid var(--bs-border-color-translucent, rgba(0, 0, 0, 0.1));
+ padding: 0.75rem 0.85rem 0.85rem;
+ background: var(--bs-tertiary-bg, var(--bs-secondary-bg, #f8f9fa));
+ border-bottom-left-radius: 0.5rem;
+ border-bottom-right-radius: 0.5rem;
+}
+.pql-notebook-cell__thread-header {
+ display: flex;
+ align-items: center;
+ gap: 0.5rem;
+ margin-bottom: 0.5rem;
+}
+.pql-notebook-cell__thread-reactions {
+ display: flex;
+ flex-wrap: wrap;
+ gap: 0.25rem;
+ margin-bottom: 0.75rem;
+}
+.pql-cell-reaction {
+ padding: 0.15rem 0.4rem;
+ font-size: 0.9rem;
+}
+
+/* cell-tag picker (curated + custom escape). */
+.pql-cell-tag-picker {
+ display: inline-flex;
+ align-items: center;
+ gap: 0.25rem;
+ flex-wrap: wrap;
+}
+.pql-cell-tag {
+ background: var(--bs-info-bg-subtle, var(--bs-secondary-bg));
+ color: var(--bs-info-text-emphasis, var(--bs-body-color));
+ font-weight: 500;
+ cursor: pointer;
+ padding: 0.15rem 0.5rem;
+}
+/* No custom sizing — inherit ``btn btn-sm`` so the tag-toggle is
+   flush with the right-cluster action buttons. */
+.pql-cell-tag-picker__menu {
+ min-width: 12rem;
+}
+
+/* cell header acts as the desktop-window-style drag
+   handle.  ``user-select: none`` is load-bearing: without it the
+   browser starts a text-selection on mousedown over the header
+   text (type-pill, exec-count) and the HTML5 ``dragstart`` event
+   never fires — manual mouse-drag silently fails.  Interactive
+   children that need selection (the SQL result-var ``<input>``)
+   re-enable it via the natural ``input { user-select: text }``
+   browser default.  ``cursor: grab`` hints the affordance;
+   ``:active`` flips to ``grabbing`` for OS-chrome symmetry. */
+.pql-notebook-cell__header {
+ cursor: grab;
+ user-select: none;
+ -webkit-user-select: none;
+}
+.pql-notebook-cell__header:active {
+ cursor: grabbing;
+}
+.pql-notebook-cell--dragging {
+ opacity: 0.4;
+}
+/* FLIP-driven live reorder transition.  When the
+   user drags one cell over another, ``onCellDragOver`` re-splices
+   ``this.cells`` immediately so the dragged-over cell physically
+   slides out of the way; the FLIP helper sets ``transform`` to
+   the inverse-delta, then transitions to identity over 180 ms.
+   The ``will-change`` hint nudges the compositor; ``transition``
+   is set inline by the helper so non-drag layouts pay nothing. */
+.pql-notebook-cell {
+ will-change: transform;
+}

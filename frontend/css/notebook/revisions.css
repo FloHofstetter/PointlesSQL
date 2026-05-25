@@ -1,0 +1,102 @@
+/*
+ * Revision-diff card + per-row gutter.
+ *
+ * Uses the project's --pql-color-{success,danger,warning,info,neutral}
+ * tokens from base.css so dark/light mode switching is automatic
+ * and the diff palette stays consistent with the rest of
+ * PointlesSQL's chip / badge / status surfaces.
+ */
+
+.pql-revision-diff__pin {
+ display: inline-flex;
+ align-items: center;
+ padding: 0.05rem 0.4rem;
+ border-radius: 0.2rem;
+ font-weight: 600;
+ font-size: 0.78rem;
+ line-height: 1.3;
+}
+.pql-revision-diff__pin--left {
+ background: var(--pql-color-info-bg);
+ color: var(--pql-color-info-fg);
+}
+.pql-revision-diff__pin--right {
+ background: var(--pql-color-success-bg);
+ color: var(--pql-color-success-fg);
+}
+.pql-revision-diff-card {
+ border: 1px solid var(--bs-border-color);
+ border-left-width: 4px;
+ border-radius: 0.25rem;
+ overflow: hidden;
+ background: var(--bs-body-bg);
+}
+.pql-revision-diff-card--changed { border-left-color: var(--pql-color-warning-fg); }
+.pql-revision-diff-card--added   { border-left-color: var(--pql-color-success-fg); }
+.pql-revision-diff-card--removed { border-left-color: var(--pql-color-danger-fg); }
+.pql-revision-diff-card--moved   { border-left-color: var(--pql-color-info-fg); }
+.pql-revision-diff-card__head {
+ display: flex;
+ align-items: center;
+ gap: 0.25rem;
+ padding: 0.35rem 0.6rem;
+ background: var(--bs-tertiary-bg);
+ border-bottom: 1px solid var(--bs-border-color);
+ font-size: 0.85rem;
+ color: var(--bs-body-color);
+}
+.pql-revision-diff-card__head .text-success { color: var(--pql-color-success-fg) !important; }
+.pql-revision-diff-card__head .text-danger  { color: var(--pql-color-danger-fg) !important; }
+.pql-revision-diff-card__body {
+ font-family: var(--bs-font-monospace);
+ font-size: 0.78rem;
+ line-height: 1.45;
+ max-height: 24rem;
+ overflow: auto;
+ background: var(--bs-body-bg);
+}
+.pql-revision-diff-card__source {
+ font-family: var(--bs-font-monospace);
+ font-size: 0.78rem;
+ line-height: 1.45;
+ white-space: pre-wrap;
+ margin: 0;
+ padding: 0.4rem 0.6rem;
+ max-height: 24rem;
+ overflow: auto;
+ background: var(--bs-body-bg);
+ color: var(--bs-body-color);
+}
+.pql-revision-diff-card__source--strike {
+ text-decoration: line-through;
+ opacity: 0.75;
+}
+.pql-revision-diff-row {
+ display: grid;
+ grid-template-columns: 2.4rem 2.4rem 1rem minmax(0, 1fr);
+ align-items: start;
+ column-gap: 0.4rem;
+ padding: 0 0.3rem;
+ white-space: pre;
+ color: var(--bs-body-color);
+}
+.pql-revision-diff-row--add    { background: var(--pql-color-success-bg); }
+.pql-revision-diff-row--remove { background: var(--pql-color-danger-bg); }
+.pql-revision-diff-row__lno {
+ color: var(--bs-secondary-color);
+ text-align: right;
+ user-select: none;
+ font-variant-numeric: tabular-nums;
+ opacity: 0.7;
+}
+.pql-revision-diff-row__marker {
+ text-align: center;
+ color: var(--bs-secondary-color);
+}
+.pql-revision-diff-row--add .pql-revision-diff-row__marker { color: var(--pql-color-success-fg); }
+.pql-revision-diff-row--remove .pql-revision-diff-row__marker { color: var(--pql-color-danger-fg); }
+.pql-revision-diff-row__text {
+ white-space: pre-wrap;
+ word-break: break-word;
+ min-width: 0;
+}

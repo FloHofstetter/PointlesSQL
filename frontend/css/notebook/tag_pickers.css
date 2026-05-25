@@ -1,0 +1,63 @@
+/*
+ * Tag-picker panels — per-cell inline panel and notebook-level panel.
+ *
+ * The per-cell panel sits below an individual cell; the notebook-
+ * level panel is a sibling to the toolbar and tags the document
+ * itself.  Visually similar but kept distinct so the user
+ * immediately sees which scope they are tagging.
+ */
+
+/* inline tag-picker panel below the cell. */
+.pql-notebook-cell__tag-panel {
+ border-top: 1px solid var(--bs-border-color-translucent, rgba(0, 0, 0, 0.1));
+ padding: 0.65rem 0.85rem 0.8rem;
+ background: var(--bs-tertiary-bg, var(--bs-secondary-bg, #f8f9fa));
+}
+.pql-notebook-cell__tag-panel-header {
+ display: flex;
+ align-items: center;
+ gap: 0.5rem;
+ margin-bottom: 0.5rem;
+}
+.pql-notebook-cell__tag-panel-curated {
+ min-height: 1.75rem;
+}
+.pql-notebook-cell__tag-panel-section {
+ margin-bottom: 0.5rem;
+}
+.pql-notebook-cell__tag-panel-section:last-of-type {
+ margin-bottom: 0;
+}
+.pql-notebook-cell__tag-panel-input {
+ width: 14rem;
+}
+
+/* Notebook-level tag picker (sibling to toolbar, single
+   instance per notebook).  Visually distinct from the per-cell panel
+   so the user immediately sees that they're tagging the document,
+   not the focused cell. */
+.pql-notebook-tags-panel {
+ padding: 0.75rem 0.85rem 0.9rem;
+ background: var(--bs-tertiary-bg, var(--bs-secondary-bg, #f8f9fa));
+ border: 1px solid var(--bs-border-color);
+ border-radius: 0.25rem;
+}
+.pql-notebook-tags-panel__header {
+ display: flex;
+ align-items: center;
+ gap: 0.5rem;
+ margin-bottom: 0.5rem;
+}
+.pql-notebook-tags-panel__section {
+ margin-bottom: 0.5rem;
+}
+.pql-notebook-tags-panel__section:last-of-type {
+ margin-bottom: 0;
+}
+.pql-notebook-tags-panel__input {
+ width: 14rem;
+}
+.pql-notebook-tag {
+ background: var(--bs-primary-bg-subtle, #cfe2ff);
+ color: var(--bs-primary-text-emphasis, #052c65);
+}

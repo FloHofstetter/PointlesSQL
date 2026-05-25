@@ -1,0 +1,142 @@
+/*
+ * Notebook shell + toolbar + vital-signs cluster + cell-card outer.
+ *
+ * The shell is the flex column that holds the toolbar and the cell
+ * stream; ``--pql-scroll-past-end`` lets the last cell scroll up
+ * until its top sits flush with the topbar.  Vitals are three
+ * rounded pills (save / kernel / co-edit) replacing the earlier
+ * solid-dot cluster that looked like macOS window controls.
+ */
+
+.pql-notebook-shell {
+ display: flex;
+ flex-direction: column;
+ gap: 0.75rem;
+ /* "scroll past end" affordance.  ``--pql-scroll-past-end``
+    is set from notebook_editor.js by a ResizeObserver pass that
+    computes ``content_visible_height - last_cell_height - 8``, so
+    the last cell can scroll up until its TOP edge sits ~8 px below
+    the topbar — flush ("anrennen") regardless of how tall or short
+    the last cell is.  Static ``50vh`` fallback covers the first
+    paint and the case where JS hasn't initialised. */
+ padding-bottom: var(--pql-scroll-past-end, 50vh);
+}
+
+.pql-notebook-toolbar {
+ display: flex;
+ align-items: center;
+ flex-wrap: wrap;
+ column-gap: 0.75rem;
+ row-gap: 0.5rem;
+ padding: 0.5rem 0.75rem;
+ background: var(--bs-body-tertiary-bg, var(--bs-secondary-bg));
+ border: 1px solid var(--bs-border-color);
+ border-radius: 0.25rem;
+}
+
+/* vital-signs cluster v2.  Three rounded pills
+   carrying icons + state-driven colour utility; replaces the 0.55 rem solid circles which read as decorative
+   macOS window controls on a fresh load.  Same three signals
+   (save / kernel / co-edit), now legible. */
+.pql-notebook-toolbar .pql-notebook-vitals {
+ flex: 0 0 auto;
+}
+.pql-vital-pill {
+ display: inline-flex;
+ align-items: center;
+ justify-content: center;
+ gap: 0.25rem;
+ width: 1.6rem;
+ height: 1.25rem;
+ padding: 0 0.35rem;
+ border-radius: 0.625rem;
+ font-size: 0.7rem;
+ line-height: 1;
+ background: var(--bs-secondary-bg, #e9ecef);
+ color: var(--bs-secondary-color, #6c757d);
+ transition: background 120ms ease, color 120ms ease;
+}
+.pql-vital-pill .bi {
+ font-size: 0.75rem;
+}
+.pql-vital-pill__count {
+ font-weight: 600;
+ font-size: 0.65rem;
+ letter-spacing: -0.02em;
+}
+.pql-vital-pill--idle {
+ background: var(--bs-secondary-bg, #e9ecef);
+ color: var(--bs-secondary-color, #6c757d);
+}
+.pql-vital-pill--success {
+ background: var(--bs-success-bg-subtle, rgba(25, 135, 84, 0.18));
+ color: var(--bs-success-text-emphasis, #198754);
+}
+.pql-vital-pill--warning {
+ background: var(--bs-warning-bg-subtle, rgba(255, 193, 7, 0.20));
+ color: var(--bs-warning-text-emphasis, #997404);
+}
+.pql-vital-pill--danger {
+ background: var(--bs-danger-bg-subtle, rgba(220, 53, 69, 0.18));
+ color: var(--bs-danger-text-emphasis, #b02a37);
+}
+/* ``.pql-spin`` rotation animation is defined globally in
+   layout.css (used by the workspace-sidebar refresh button and
+   other spinning indicators); reused here for the saving / kernel-
+   connecting pill icons. */
+
+.pql-notebook-toolbar .pql-toolbar-group {
+ display: inline-flex;
+ align-items: center;
+ gap: 0.25rem;
+}
+
+.pql-notebook-toolbar .pql-toolbar-group .btn {
+ white-space: nowrap;
+}
+
+/* Panel-toggle buttons collapse to icon-only when
+   inactive so 10 panels (Jobs/Variables/Tags/Branch/Replays/
+   Proposals/Widgets/Access/History/AI) fit a single toolbar row
+   even at 1080 px viewport width.  The label stays in the DOM for
+   screen readers; ``.active`` (toggled by Alpine ``:class``)
+   reveals it visually so the user can spot the open panel at a
+   glance.  ``title=""`` on each button keeps a mouseover tooltip
+   for discovery. */
+.pql-toolbar-panel-btn .pql-toolbar-panel-btn__label {
+ display: none;
+ margin-left: 0.3rem;
+}
+.pql-toolbar-panel-btn.active .pql-toolbar-panel-btn__label {
+ display: inline;
+}
+/* strengthen the "open" state.  Bootstrap's
+   ``.btn-outline-secondary.active`` swaps the muted outline for
+   a filled body-bg + body-color which actually READS as inverted
+   (less obvious as a status flag).  We override with a subtle
+   accent-tinted fill so "this panel is currently open" reads at
+   a glance, matching the audit / lens active-link styling. */
+.pql-toolbar-panel-btn.active,
+.pql-toolbar-panel-btn.active:hover,
+.pql-toolbar-panel-btn.active:focus {
+ background: var(--pql-color-accent-bg, rgba(118, 185, 0, 0.12));
+ border-color: var(--pql-color-accent, #76b900);
+ color: var(--pql-color-accent, #76b900);
+}
+
+.pql-notebook-cell {
+ border: 1px solid var(--bs-border-color);
+ border-radius: 0.25rem;
+ /* overflow: visible — the cell-tag picker dropdown is
+    positioned absolutely and gets clipped when the wrapper hides
+    overflow.  Round-corner clipping for children is negligible vs.
+    a dropdown that vanishes behind the next cell.
+    Intentionally NO ``position: relative`` here — that would create
+    a stacking context per cell, and a dropdown opened on cell N
+    would stack BELOW cell N+1's own tag chips (sibling stacking
+    contexts ignore each other's z-index).  The inner
+    ``.dropdown`` wrapper handles anchoring; the menu's high z-index
+    works document-globally as long as no ancestor is positioned. */
+ overflow: visible;
+ background: var(--bs-body-bg);
+}
