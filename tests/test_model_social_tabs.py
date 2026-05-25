@@ -20,6 +20,7 @@ Coverage:
 
 from __future__ import annotations
 
+import pathlib
 from unittest.mock import AsyncMock
 
 import httpx
@@ -120,13 +121,26 @@ async def test_model_html_mounts_social_tabs_factory(
 async def test_model_html_inline_factories_present(
     _stub_model_client: AsyncMock, admin_client: httpx.AsyncClient
 ) -> None:
-    """``modelDiscussion`` + ``modelReadme`` are exposed on window."""
+    """``modelDiscussion`` + ``modelReadme`` factories are wired.
+
+    The factories were lifted out of model.html into
+    ``frontend/js/pages/model.js`` and re-attached to ``window.*`` by
+    ``bootstrap.js``; the rendered page no longer carries the inline
+    IIFE but the consumer partials must still invoke them.
+    """
     res = await admin_client.get("/models/main.ml_silver.churn")
     body = res.text
-    assert "window.modelDiscussion = modelDiscussion" in body
-    assert "window.modelReadme = modelReadme" in body
+    # Partials carry the x-data invocations.
     assert "modelDiscussion(" in body
     assert "modelReadme(" in body
+    # ESM module + bootstrap.js are the new home for the factory defs.
+    js_path = pathlib.Path("frontend/js/pages/model.js")
+    js_body = js_path.read_text()
+    assert "export function modelDiscussion" in js_body
+    assert "export function modelReadme" in js_body
+    bootstrap = pathlib.Path("frontend/js/bootstrap.js").read_text()
+    assert "window.modelDiscussion = modelDiscussion" in bootstrap
+    assert "window.modelReadme = modelReadme" in bootstrap
 
 
 @pytest.mark.asyncio
