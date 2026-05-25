@@ -204,17 +204,19 @@ def test_notebook_editor_template_carries_drawer_marker() -> None:
     Endorsements, Followers and README are now 4 of the 6 tabs there.
     This test asserts the social scope still wires up.
     """
+    import pathlib
+
     parts = [
         (_TEMPLATES_ROOT / "pages/notebook_editor.html").read_text(),
         (_TEMPLATES_ROOT / "pages/_partials/notebook_editor/right_drawer.html").read_text(),
-        (_TEMPLATES_ROOT / "pages/_partials/notebook_editor/scripts.html").read_text(),
     ]
     body = "\n".join(parts)
     assert "pql-right-drawer" in body
     assert "socialTabs({" in body
     assert 'kind: "notebook"' in body
-    assert "window.notebookDiscussion = notebookDiscussion" in body
-    assert "window.notebookReadme = notebookReadme" in body
+    bootstrap = pathlib.Path("frontend/js/bootstrap.js").read_text()
+    assert "window.notebookDiscussion = notebookDiscussion" in bootstrap
+    assert "window.notebookReadme = notebookReadme" in bootstrap
 
 
 def test_saved_query_template_has_five_tab_nav_strip() -> None:

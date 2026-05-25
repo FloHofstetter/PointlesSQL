@@ -131,15 +131,26 @@ async def test_table_html_mounts_social_tabs_factory(
 async def test_table_html_inline_factories_present(
     monkeypatch: pytest.MonkeyPatch, admin_client: httpx.AsyncClient
 ) -> None:
-    """``tableDiscussion`` + ``tableReadme`` are exposed on window."""
+    """``tableDiscussion`` + ``tableReadme`` are exposed on window.
+
+    Factories live in frontend/js/pages/table.js and are attached to
+    window via bootstrap.js; the template only carries the x-data
+    invocation.
+    """
+    import pathlib
+
     _stub_uc_client(monkeypatch, "main.sales_gold.orders")
     res = await admin_client.get("/catalogs/main/schemas/sales_gold/tables/orders")
     body = res.text
-    assert "window.tableDiscussion = tableDiscussion" in body
-    assert "window.tableReadme = tableReadme" in body
     # Inline x-data on each pane invokes the factory by name.
     assert "tableDiscussion(" in body
     assert "tableReadme(" in body
+    bootstrap = pathlib.Path("frontend/js/bootstrap.js").read_text()
+    assert "window.tableDiscussion = tableDiscussion" in bootstrap
+    assert "window.tableReadme = tableReadme" in bootstrap
+    table_js = pathlib.Path("frontend/js/pages/table.js").read_text()
+    assert "export function tableDiscussion(" in table_js
+    assert "export function tableReadme(" in table_js
 
 
 @pytest.mark.asyncio

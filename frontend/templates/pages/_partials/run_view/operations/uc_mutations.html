@@ -48,9 +48,9 @@
 
  </div>
  {# rollback card lifted from the run-header into
- the Operations top-tab. Same Alpine factory + modal markup
- as before; the factory definition lives in the <script>
- block at the bottom of this top-pane. #}
+ the Operations top-tab.  ``rollbackPanel`` factory lives in
+ frontend/js/run_view/uc_mutations.js, registered on window via
+ bootstrap.js before Alpine's x-data walk. #}
  {% if rollback_targets and current_user and current_user.is_admin %}
  {# Single-quoted x-data so the JSON ``"`` characters from
  ``rollback_targets | tojson`` do not terminate the HTML
@@ -174,85 +174,5 @@
  </div>
  </div>
  </div>
-
- <script>
- function rollbackPanel(initial) {
- return {
- runId: initial.runId,
- targets: initial.targets,
- selectedTarget: initial.targets.length > 0 ? initial.targets[0] : null,
- modalOpen: false,
- loading: false,
- busy: false,
- error: null,
- submitError: null,
- preview: null,
- opOrdinal: null,
- allowForce: false,
- get canSubmit() {
- if (!this.preview) return false;
- if (this.preview.op_id === null) {
- if (!this.opOrdinal) return false;
- }
- if (this.preview.is_stale && !this.allowForce) return false;
- return true;
- },
- async openModal() {
- this.modalOpen = true;
- this.loading = true;
- this.error = null;
- this.submitError = null;
- this.preview = null;
- this.opOrdinal = null;
- this.allowForce = false;
- try {
- const url = `/api/runs/${encodeURIComponent(this.runId)}/rollback-preview?target=${encodeURIComponent(this.selectedTarget)}`;
- const r = await fetch(url, {headers: {'Accept': 'application/json'}});
- if (!r.ok) {
- const text = await r.text();
- throw new Error(`HTTP ${r.status}: ${text}`);
- }
- this.preview = await r.json();
- if (this.preview.op_id === null && this.preview.op_candidates.length > 0) {
- this.opOrdinal = this.preview.op_candidates[0].ordinal;
- }
- } catch (e) {
- this.error = String(e);
- this.modalOpen = false;
- } finally {
- this.loading = false;
- }
- },
- closeModal() {
- this.modalOpen = false;
- },
- async submit() {
- this.busy = true;
- this.submitError = null;
- try {
- const body = {
- target: this.selectedTarget,
- op_ordinal: this.preview.op_id === null ? this.opOrdinal : null,
- allow_force: this.allowForce,
- };
- const r = await fetch(`/api/runs/${encodeURIComponent(this.runId)}/rollback`, {
- method: 'POST',
- headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
- body: JSON.stringify(body),
- });
- if (!r.ok) {
- const text = await r.text();
- throw new Error(`HTTP ${r.status}: ${text}`);
- }
- const result = await r.json();
- window.location = `/runs/${encodeURIComponent(result.new_run_id)}`;
- } catch (e) {
- this.submitError = String(e);
- this.busy = false;
- }
- },
- };
- }
- </script>
  {% endif %}
  </div>
