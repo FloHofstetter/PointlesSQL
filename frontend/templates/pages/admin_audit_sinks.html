@@ -1,5 +1,7 @@
 {% extends "base.html" %}
 {% from "_macros/help_icon.html" import info %}
+{% from "_macros/labeled_input.html" import labeled_input %}
+{% from "_macros/labeled_select.html" import labeled_select %}
 {% block title %}Audit sinks · PointlesSQL{% endblock %}
 
 {% set breadcrumbs = [
@@ -102,9 +104,11 @@
                     <td data-label="Active" class="text-center">
                         <div class="form-check form-switch d-inline-block">
                             <input type="checkbox" class="form-check-input"
+                                   :id="'sink-active-' + {{ s.id }}"
                                    :checked="isActive"
                                    :disabled="busy"
-                                   @change="toggleActive($event.target.checked)">
+                                   @change="toggleActive($event.target.checked)"
+                                   :aria-label="'Toggle sink ' + {{ s.name|tojson }} + ' active'">
                         </div>
                     </td>
                     <td data-label="Actions">
@@ -140,96 +144,135 @@
     <div class="card-body">
         <div class="row g-2">
             <div class="col-md-4">
-                <label class="form-label small mb-1" for="sink-name">Name</label>
-                <input id="sink-name" type="text" class="form-control form-control-sm"
-                       x-model="form.name" maxlength="64" placeholder="prod-webhook">
-                <div class="form-text">Unique across the install.</div>
+                {{ labeled_input(
+                    'sink-name', 'Name',
+                    id='sink-name',
+                    x_model='form.name',
+                    placeholder='prod-webhook',
+                    hint='Unique across the install.',
+                    attrs='maxlength="64"',
+                ) }}
             </div>
             <div class="col-md-3">
-                <label class="form-label small mb-1" for="sink-type">Type</label>
-                <select id="sink-type" class="form-select form-select-sm"
-                        x-model="form.type">
-                    <option value="webhook">webhook</option>
-                    <option value="s3">s3</option>
-                    <option value="aws_cloudtrail">aws_cloudtrail</option>
-                </select>
+                {{ labeled_select(
+                    'sink-type', 'Type',
+                    id='sink-type',
+                    x_model='form.type',
+                    options=[('webhook', 'webhook'), ('s3', 's3'), ('aws_cloudtrail', 'aws_cloudtrail')],
+                ) }}
             </div>
             <div class="col-md-5">
-                <label class="form-label small mb-1" for="sink-event-types">Event types (comma-separated, optional)</label>
-                <input id="sink-event-types" type="text" class="form-control form-control-sm"
-                       x-model="form.eventTypesRaw"
-                       placeholder="pointlessql.run.completed, pointlessql.audit_export.issued">
-                <div class="form-text">Empty = every event.</div>
+                {{ labeled_input(
+                    'sink-event-types', 'Event types (comma-separated, optional)',
+                    id='sink-event-types',
+                    x_model='form.eventTypesRaw',
+                    placeholder='pointlessql.run.completed, pointlessql.audit_export.issued',
+                    hint='Empty = every event.',
+                ) }}
             </div>
         </div>
 
         <div class="row g-2 mt-3" x-show="form.type === 'webhook'">
             <div class="col-md-8">
-                <label class="form-label small mb-1" for="sink-webhook-url">URL</label>
-                <input id="sink-webhook-url" type="url" class="form-control form-control-sm"
-                       x-model="form.webhook.url" placeholder="https://hooks.example.com/abc">
+                {{ labeled_input(
+                    'sink-webhook-url', 'URL',
+                    id='sink-webhook-url', type='url',
+                    x_model='form.webhook.url',
+                    placeholder='https://hooks.example.com/abc',
+                ) }}
             </div>
             <div class="col-md-4">
-                <label class="form-label small mb-1" for="sink-webhook-secret">HMAC secret (optional)</label>
-                <input id="sink-webhook-secret" type="password" class="form-control form-control-sm"
-                       x-model="form.webhook.hmac_secret" autocomplete="new-password">
+                {{ labeled_input(
+                    'sink-webhook-secret', 'HMAC secret (optional)',
+                    id='sink-webhook-secret', type='password',
+                    x_model='form.webhook.hmac_secret',
+                    autocomplete='new-password',
+                ) }}
             </div>
         </div>
 
         <div class="row g-2 mt-3" x-show="form.type === 's3'">
             <div class="col-md-3">
-                <label class="form-label small mb-1" for="sink-s3-bucket">Bucket</label>
-                <input id="sink-s3-bucket" type="text" class="form-control form-control-sm"
-                       x-model="form.s3.bucket">
+                {{ labeled_input(
+                    'sink-s3-bucket', 'Bucket',
+                    id='sink-s3-bucket',
+                    x_model='form.s3.bucket',
+                ) }}
             </div>
             <div class="col-md-2">
-                <label class="form-label small mb-1" for="sink-s3-region">Region</label>
-                <input id="sink-s3-region" type="text" class="form-control form-control-sm"
-                       x-model="form.s3.region" placeholder="eu-central-1">
+                {{ labeled_input(
+                    'sink-s3-region', 'Region',
+                    id='sink-s3-region',
+                    x_model='form.s3.region',
+                    placeholder='eu-central-1',
+                ) }}
             </div>
             <div class="col-md-3">
-                <label class="form-label small mb-1" for="sink-s3-prefix">Prefix (optional)</label>
-                <input id="sink-s3-prefix" type="text" class="form-control form-control-sm"
-                       x-model="form.s3.prefix" placeholder="audit/2026/">
+                {{ labeled_input(
+                    'sink-s3-prefix', 'Prefix (optional)',
+                    id='sink-s3-prefix',
+                    x_model='form.s3.prefix',
+                    placeholder='audit/2026/',
+                ) }}
             </div>
             <div class="col-md-4">
-                <label class="form-label small mb-1" for="sink-s3-endpoint">Endpoint URL (optional, MinIO/R2)</label>
-                <input id="sink-s3-endpoint" type="url" class="form-control form-control-sm"
-                       x-model="form.s3.endpoint_url" autocomplete="off">
+                {{ labeled_input(
+                    'sink-s3-endpoint', 'Endpoint URL (optional, MinIO/R2)',
+                    id='sink-s3-endpoint', type='url',
+                    x_model='form.s3.endpoint_url',
+                    autocomplete='off',
+                ) }}
             </div>
             <div class="col-md-6">
-                <label class="form-label small mb-1" for="sink-s3-key">Access key ID</label>
-                <input id="sink-s3-key" type="text" class="form-control form-control-sm"
-                       x-model="form.s3.access_key_id" autocomplete="off">
+                {{ labeled_input(
+                    'sink-s3-key', 'Access key ID',
+                    id='sink-s3-key',
+                    x_model='form.s3.access_key_id',
+                    autocomplete='off',
+                ) }}
             </div>
             <div class="col-md-6">
-                <label class="form-label small mb-1" for="sink-s3-secret">Secret access key</label>
-                <input id="sink-s3-secret" type="password" class="form-control form-control-sm"
-                       x-model="form.s3.secret_access_key" autocomplete="new-password">
+                {{ labeled_input(
+                    'sink-s3-secret', 'Secret access key',
+                    id='sink-s3-secret', type='password',
+                    x_model='form.s3.secret_access_key',
+                    autocomplete='new-password',
+                ) }}
             </div>
         </div>
 
         <div class="row g-2 mt-3" x-show="form.type === 'aws_cloudtrail'">
             <div class="col-md-3">
-                <label class="form-label small mb-1" for="sink-ct-region">Region</label>
-                <input id="sink-ct-region" type="text" class="form-control form-control-sm"
-                       x-model="form.cloudtrail.region" placeholder="us-east-1">
+                {{ labeled_input(
+                    'sink-ct-region', 'Region',
+                    id='sink-ct-region',
+                    x_model='form.cloudtrail.region',
+                    placeholder='us-east-1',
+                ) }}
             </div>
             <div class="col-md-9">
-                <label class="form-label small mb-1" for="sink-ct-channel">Channel ARN</label>
-                <input id="sink-ct-channel" type="text" class="form-control form-control-sm"
-                       x-model="form.cloudtrail.channel_arn"
-                       placeholder="arn:aws:cloudtrail:us-east-1:123456789012:channel/abc">
+                {{ labeled_input(
+                    'sink-ct-channel', 'Channel ARN',
+                    id='sink-ct-channel',
+                    x_model='form.cloudtrail.channel_arn',
+                    placeholder='arn:aws:cloudtrail:us-east-1:123456789012:channel/abc',
+                ) }}
             </div>
             <div class="col-md-6">
-                <label class="form-label small mb-1" for="sink-ct-key">Access key ID</label>
-                <input id="sink-ct-key" type="text" class="form-control form-control-sm"
-                       x-model="form.cloudtrail.access_key_id" autocomplete="off">
+                {{ labeled_input(
+                    'sink-ct-key', 'Access key ID',
+                    id='sink-ct-key',
+                    x_model='form.cloudtrail.access_key_id',
+                    autocomplete='off',
+                ) }}
             </div>
             <div class="col-md-6">
-                <label class="form-label small mb-1" for="sink-ct-secret">Secret access key</label>
-                <input id="sink-ct-secret" type="password" class="form-control form-control-sm"
-                       x-model="form.cloudtrail.secret_access_key" autocomplete="new-password">
+                {{ labeled_input(
+                    'sink-ct-secret', 'Secret access key',
+                    id='sink-ct-secret', type='password',
+                    x_model='form.cloudtrail.secret_access_key',
+                    autocomplete='new-password',
+                ) }}
             </div>
         </div>
 
