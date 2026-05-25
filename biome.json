@@ -19,7 +19,19 @@
   "linter": {
     "enabled": true,
     "rules": {
-      "recommended": true
+      "recommended": true,
+      "style": {
+        "useTemplate": "info",
+        "useConst": "warn"
+      },
+      "complexity": {
+        "useOptionalChain": "info",
+        "noUselessSwitchCase": "warn"
+      },
+      "correctness": {
+        "noUnusedVariables": "warn",
+        "noUnusedFunctionParameters": "warn"
+      }
     }
   }
 }

@@ -104,6 +104,17 @@ jobs:
         # Alpine CDN script, so any factory migrated out of a legacy
         # IIFE file lands on ``window`` before Alpine's x-data walk.
         run: bash scripts/check-frontend-bootstrap-order.sh
+      - name: Frontend — Biome (format + lint) gate
+        # Reads repo-root biome.json (2-space, single-quote, semicolons,
+        # trailingCommas=es5, lineWidth=100) plus the recommended
+        # ruleset.  Hook auto-fetches the binary; no npm install on the
+        # runner.  Read-only check — CI fails on drift, fix with
+        # ``biome check --write frontend/js/`` locally.
+        uses: biomejs/setup-biome@v2
+        with:
+          version: 2.4.15
+      - name: Run biome check
+        run: biome check --diagnostic-level=error frontend/js/
       - name: Pytest with coverage
         # Runs the unit-test suite (integration + postgres markers
         # excluded by pyproject's addopts).  The --cov-fail-under

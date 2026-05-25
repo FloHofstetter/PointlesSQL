@@ -270,7 +270,7 @@ export function sqlEditor() {
     // header line (peak memory, etc.). Mirrors the simple-units
     // pattern used in the catalog tree's volume sidebar.
     formatBytes(n) {
-      if (n == null || isNaN(n)) return '';
+      if (n == null || Number.isNaN(Number(n))) return '';
       if (n < 1024) return `${n} B`;
       if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KiB`;
       if (n < 1024 * 1024 * 1024) return `${(n / 1024 / 1024).toFixed(1)} MiB`;

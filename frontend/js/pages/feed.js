@@ -756,7 +756,9 @@ export function feedPage() {
       // rendered card. Card DOM order matches ``_flatRows`` because Alpine
       // renders ``groupedDays`` in the same order.
       const cards = document.querySelectorAll('.pql-feed-item');
-      cards.forEach((el) => el.classList.remove('pql-feed-item--focused'));
+      cards.forEach((el) => {
+        el.classList.remove('pql-feed-item--focused');
+      });
       const target = cards[this._focusedIndex];
       if (target) {
         target.classList.add('pql-feed-item--focused');

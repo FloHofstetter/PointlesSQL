@@ -20,7 +20,8 @@
  * error messages : red-bordered <pre> with the joined traceback.
  */
 
-const _ANSI_ESCAPE = /\[[0-9;]*[a-zA-Z]/g;
+// biome-ignore lint/suspicious/noControlCharactersInRegex: ANSI escape sequences are control characters by definition; this regex strips them from Jupyter terminal output.
+const _ANSI_ESCAPE = /\x1b\[[0-9;]*[a-zA-Z]/g;
 
 function _stripAnsi(text) {
   return String(text || '').replace(_ANSI_ESCAPE, '');

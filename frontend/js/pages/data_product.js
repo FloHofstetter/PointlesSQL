@@ -408,32 +408,6 @@ export function dataProductDetail(product, ctx) {
       this.diffText = '';
     },
 
-    // README diff between two history versions. Note: this method is
-    // silently overridden below by the schema-diff ``loadDiff`` (same
-    // property name, last-writer-wins). Preserved verbatim to mirror
-    // the inline version's behaviour; a future cleanup can rename or
-    // remove if the README-diff UI is ever wired up.
-    async loadDiff() {
-      if (!this.diffFrom || !this.diffTo || this.diffFrom === this.diffTo) return;
-      try {
-        const res = await fetch(
-          '/api/data-products/' +
-            this.product.catalog +
-            '/' +
-            this.product.schema +
-            '/readme/diff?from=' +
-            this.diffFrom +
-            '&to=' +
-            this.diffTo
-        );
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        const data = await res.json();
-        this.diffText = data.diff || '(no diff)';
-      } catch (e) {
-        console.error('diff failed', e);
-      }
-    },
-
     async loadFollowState() {
       try {
         const res = await fetch(

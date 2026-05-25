@@ -58,6 +58,18 @@ repos:
             pointlessql/alembic/versions/
           )
 
+  - repo: https://github.com/biomejs/pre-commit
+    rev: v0.6.1
+    hooks:
+      - id: biome-check
+        # Lint + format gate for frontend/js/.  The hook auto-fetches
+        # its own biome binary (no npm install required); config lives
+        # in repo-root biome.json.  ``--diagnostic-level=error`` skips
+        # warn/info noise from rules we kept on for visibility but do
+        # not block on (useTemplate, useOptionalChain, noUnusedVariables).
+        files: ^frontend/js/.*\.(js|mjs)$
+        args: ["--diagnostic-level=error"]
+
   - repo: local
     hooks:
       - id: no-phase-refs

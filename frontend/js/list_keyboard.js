@@ -38,7 +38,9 @@
   }
 
   function focusRow(rows, idx) {
-    rows.forEach((r) => r.removeAttribute('data-pql-keynav-focus'));
+    rows.forEach((r) => {
+      r.removeAttribute('data-pql-keynav-focus');
+    });
     if (idx < 0 || idx >= rows.length) return -1;
     const r = rows[idx];
     r.setAttribute('data-pql-keynav-focus', '1');

@@ -146,13 +146,13 @@ function _init() {
   selectAllEl.addEventListener('change', () => {
     const ackable = ackableAnomalies();
     if (selectAllEl.checked) {
-      ackable.forEach((a) =>
+      ackable.forEach((a) => {
         selected.set(rowKey(a), {
           metric: a.metric,
           bin_iso: a.bin_iso,
           bin_kind: a.bin_kind,
-        })
-      );
+        });
+      });
     } else {
       selected.clear();
     }

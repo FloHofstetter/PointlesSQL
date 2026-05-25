@@ -52,7 +52,9 @@ export function bulkSelect() {
     },
 
     selectAll(keys) {
-      keys.forEach((k) => this._selected.add(String(k)));
+      keys.forEach((k) => {
+        this._selected.add(String(k));
+      });
       this._sync();
     },
 
