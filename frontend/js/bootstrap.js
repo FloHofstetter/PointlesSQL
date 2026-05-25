@@ -235,8 +235,18 @@ import { tableStats, tableDiscussion, tableReadme } from './pages/table.js';
 import { rollbackPanel } from './run_view/uc_mutations.js';
 import { notebookDiscussion, notebookReadme } from './notebook/discussion.js';
 import { apiKeyRow, apiKeyCreate, apiKeyCreatedModal } from './pages/admin_api_keys.js';
+import { apiKeyGrants, apiKeyUsageChart } from './pages/admin_api_key_detail.js';
 import { ingestSourceDetail } from './pages/ingest_source_detail.js';
+import { ingestSourceCreate } from './pages/ingest_sources_new.js';
 import { auditSinkRow, auditSinkCreate } from './pages/admin_audit_sinks.js';
+import { reviewDestRow, reviewDestCreate } from './pages/admin_review_destinations.js';
+import { canvasEditor } from './pages/canvas.js';
+import { dataProductsBrowse } from './pages/data_products.js';
+import { userProfile } from './pages/user_profile.js';
+import { meSubscriptions } from './pages/me_subscriptions.js';
+import { notificationsInbox } from './pages/notifications.js';
+import { rowAtVersion } from './pages/row_trace.js';
+import { savedQueryDiscussion, savedQueryReadme } from './pages/saved_audit_query_detail.js';
 
 // Side-effect IIFE modules for admin/dashboard pages.  Each guards on a
 // page-local element id so the cost on unrelated pages is one
@@ -244,6 +254,9 @@ import { auditSinkRow, auditSinkCreate } from './pages/admin_audit_sinks.js';
 import './pages/audit_inbox.js';
 import './pages/dbt.js';
 import './pages/audit_search.js';
+// row_trace.js + saved_audit_query_detail.js carry both an exported
+// factory AND a page-local side-effect binder; the export imports
+// above already evaluate them, so no extra side-effect import here.
 
 import { chatPanel } from './sql_editor/chat.js';
 import { notebookChatPanel } from './notebook/chat.js';
@@ -287,9 +300,22 @@ window.notebookReadme = notebookReadme;
 window.apiKeyRow = apiKeyRow;
 window.apiKeyCreate = apiKeyCreate;
 window.apiKeyCreatedModal = apiKeyCreatedModal;
+window.apiKeyGrants = apiKeyGrants;
+window.apiKeyUsageChart = apiKeyUsageChart;
 window.ingestSourceDetail = ingestSourceDetail;
+window.ingestSourceCreate = ingestSourceCreate;
 window.auditSinkRow = auditSinkRow;
 window.auditSinkCreate = auditSinkCreate;
+window.reviewDestRow = reviewDestRow;
+window.reviewDestCreate = reviewDestCreate;
+window.canvasEditor = canvasEditor;
+window.dataProductsBrowse = dataProductsBrowse;
+window.userProfile = userProfile;
+window.meSubscriptions = meSubscriptions;
+window.notificationsInbox = notificationsInbox;
+window.rowAtVersion = rowAtVersion;
+window.savedQueryDiscussion = savedQueryDiscussion;
+window.savedQueryReadme = savedQueryReadme;
 window.chatPanel = chatPanel;
 window.notebookChatPanel = notebookChatPanel;
 window.runsSidebar = runsSidebar;

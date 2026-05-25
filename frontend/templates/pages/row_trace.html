@@ -44,7 +44,7 @@
 </div>
 
 {% if current_user and current_user.is_admin %}
-<div class="card mb-4" x-data="rowAtVersion()">
+<div class="card mb-4" x-data='rowAtVersion({{ full_name|tojson }}, {{ row_id|tojson }})'>
  <div class="card-header d-flex align-items-center gap-2">
  <i class="bi bi-clock-history"></i>
  <span>View this row at a specific Delta version</span>
@@ -93,36 +93,9 @@
  </div>
 </div>
 
-<script>
-function rowAtVersion() {
- return {
- version: null,
- loading: false,
- error: null,
- result: null,
- async lookup() {
- if (this.version === null || this.version === '') return;
- this.loading = true;
- this.error = null;
- this.result = null;
- try {
- const url = `/api/lineage/row-at-version?table={{ full_name | urlencode }}&row_id={{ row_id | urlencode }}&version=${this.version}`;
- const resp = await fetch(url, { headers: { 'Accept': 'application/json' } });
- const data = await resp.json();
- if (!resp.ok) {
- this.error = data.detail || 'Lookup failed';
- } else {
- this.result = data;
- }
- } catch (err) {
- this.error = err.message || 'Network error';
- } finally {
- this.loading = false;
- }
- },
- };
-}
-</script>
+{# Page-local factory rowAtVersion + PII-reveal binder live in
+   frontend/js/pages/row_trace.js, registered on window via
+   frontend/js/bootstrap.js. #}
 {% endif %}
 
 {% set has_predecessors = steps|selectattr("predecessors")|list %}
@@ -286,55 +259,4 @@ function rowAtVersion() {
 {# PII reveal handler. Each masked cell carries
  data-pii-cell="1" + the metadata the reveal endpoint needs.
  Admin-only button (template gates by current_user.is_admin) #}
-<script>
-(function () {
- function csrfToken() {
- const m = document.cookie.match(/(?:^|;\s*)pql_csrf=([^;]+)/);
- return m ? decodeURIComponent(m[1]) : '';
- }
- document.querySelectorAll('button[data-pii-reveal="1"]').forEach(function (btn) {
- btn.addEventListener('click', async function () {
- const cell = btn.closest('li[data-pii-cell="1"]');
- if (!cell) return;
- btn.disabled = true;
- btn.innerHTML = '<i class="bi bi-hourglass-split"></i> revealing…';
- try {
- const resp = await fetch('/api/audit/pii/reveal', {
- method: 'POST',
- headers: {
- 'Content-Type': 'application/json',
- 'X-CSRF-Token': csrfToken(),
- },
- body: JSON.stringify({
- run_id: cell.dataset.runId,
- op_id: parseInt(cell.dataset.opId, 10),
- table: cell.dataset.table,
- row_id: cell.dataset.rowId,
- column: cell.dataset.column,
- }),
- });
- if (!resp.ok) {
- btn.innerHTML = '<i class="bi bi-x-circle"></i> ' + resp.status;
- return;
- }
- const body = await resp.json();
- const oldEl = cell.querySelector('.pii-old');
- const newEl = cell.querySelector('.pii-new');
- if (oldEl && body.old_value !== null && body.old_value !== undefined) {
- oldEl.textContent = body.old_value;
- oldEl.classList.add('text-warning-emphasis');
- }
- if (newEl && body.new_value !== null && body.new_value !== undefined) {
- newEl.textContent = body.new_value;
- newEl.classList.add('text-warning-emphasis');
- }
- btn.remove();
- } catch (err) {
- btn.disabled = false;
- btn.innerHTML = '<i class="bi bi-x-circle"></i> error';
- }
- });
- });
-})();
-</script>
 {% endblock %}
