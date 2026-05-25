@@ -12,6 +12,10 @@ htmlcov/
 .mypy_cache/
 .pyright/
 node_modules/
+
+# Biome local cache (in case future versions write one alongside biome.json)
+.biome/
+
 *.db
 *.db-shm
 *.db-wal
