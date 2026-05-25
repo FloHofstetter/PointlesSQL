@@ -1,0 +1,45 @@
+{#
+ Labeled <textarea> macro — pairs a Bootstrap form-control textarea
+ with a <label for> association so screen-readers announce the field
+ name.
+
+ Usage:
+
+ {% from "_macros/labeled_textarea.html" import labeled_textarea %}
+ {{ labeled_textarea('comment', 'Comment',
+                     x_model='form.comment',
+                     placeholder='Optional notes…',
+                     rows=4) }}
+ {{ labeled_textarea('description_md', 'Description (markdown)',
+                     x_model='form.description', rows=6,
+                     hint='Supports GitHub-flavored markdown.') }}
+
+ ``value`` sets initial body content; for Alpine-driven forms prefer
+ ``x_model``.  The body of the textarea cannot also be set inline —
+ use one or the other.
+#}
+{% macro labeled_textarea(name, label,
+                          id=None, x_model=None, value=None,
+                          rows=3, placeholder=None,
+                          required=False, readonly=False, disabled=False,
+                          size='sm', classes='', hint=None,
+                          attrs='', wrapper_classes='mb-3') -%}
+{%- set _id = id or ('field-' ~ name) -%}
+<div class="{{ wrapper_classes }}">
+  <label class="form-label small fw-bold" for="{{ _id }}">
+    {{- label -}}
+    {%- if required %} <span class="text-danger" aria-label="required">*</span>{% endif -%}
+  </label>
+  <textarea id="{{ _id }}"
+            name="{{ name }}"
+            rows="{{ rows }}"
+            class="form-control{% if size %} form-control-{{ size }}{% endif %}{% if classes %} {{ classes }}{% endif %}"
+            {%- if x_model %} x-model="{{ x_model }}"{% endif %}
+            {%- if placeholder %} placeholder="{{ placeholder }}"{% endif %}
+            {%- if required %} required{% endif %}
+            {%- if readonly %} readonly{% endif %}
+            {%- if disabled %} disabled{% endif %}
+            {%- if attrs %} {{ attrs|safe }}{% endif %}>{% if value is not none %}{{ value }}{% endif %}</textarea>
+  {%- if hint %}<div class="form-text">{{ hint }}</div>{% endif %}
+</div>
+{%- endmacro %}

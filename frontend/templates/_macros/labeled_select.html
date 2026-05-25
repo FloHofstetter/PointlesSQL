@@ -1,0 +1,54 @@
+{#
+ Labeled <select> macro — pairs a Bootstrap form-select with a
+ <label for> association so screen-readers announce the field name.
+
+ Usage (Jinja-rendered options list):
+
+ {% from "_macros/labeled_select.html" import labeled_select %}
+ {{ labeled_select('region', 'Region',
+                   x_model='form.region',
+                   options=[('us-east-1', 'us-east-1'),
+                            ('eu-central-1', 'eu-central-1')]) }}
+
+ Usage (body-rendered options via {% call %} for dynamic option lists):
+
+ {% call labeled_select('catalog', 'Catalog', x_model='form.catalog') %}
+   <option value="">— pick one —</option>
+   {% for c in catalogs %}
+     <option value="{{ c.name }}">{{ c.name }}</option>
+   {% endfor %}
+ {% endcall %}
+
+ ``options`` accepts a list of (value, label) tuples; if both ``options``
+ and a body block are supplied the body wins.
+#}
+{% macro labeled_select(name, label,
+                        id=None, x_model=None,
+                        options=None, value=None,
+                        required=False, disabled=False,
+                        size='sm', classes='', hint=None,
+                        attrs='', wrapper_classes='mb-3') -%}
+{%- set _id = id or ('field-' ~ name) -%}
+<div class="{{ wrapper_classes }}">
+  <label class="form-label small fw-bold" for="{{ _id }}">
+    {{- label -}}
+    {%- if required %} <span class="text-danger" aria-label="required">*</span>{% endif -%}
+  </label>
+  <select id="{{ _id }}"
+          name="{{ name }}"
+          class="form-select{% if size %} form-select-{{ size }}{% endif %}{% if classes %} {{ classes }}{% endif %}"
+          {%- if x_model %} x-model="{{ x_model }}"{% endif %}
+          {%- if required %} required{% endif %}
+          {%- if disabled %} disabled{% endif %}
+          {%- if attrs %} {{ attrs|safe }}{% endif %}>
+    {%- if caller %}
+      {{ caller() }}
+    {%- elif options %}
+      {%- for opt_value, opt_label in options %}
+        <option value="{{ opt_value }}"{% if value is not none and opt_value == value %} selected{% endif %}>{{ opt_label }}</option>
+      {%- endfor %}
+    {%- endif %}
+  </select>
+  {%- if hint %}<div class="form-text">{{ hint }}</div>{% endif %}
+</div>
+{%- endmacro %}

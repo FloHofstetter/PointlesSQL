@@ -1,0 +1,53 @@
+{#
+ Labeled form-input macro — pairs a Bootstrap form-control with a
+ <label for> association so screen-readers announce the field name.
+
+ Usage:
+
+ {% from "_macros/labeled_input.html" import labeled_input %}
+ {{ labeled_input('name', 'Name', x_model='form.name',
+                  placeholder='prod-postgres-replica',
+                  hint='Unique within this workspace.') }}
+ {{ labeled_input('password', 'Password', type='password',
+                  x_model='form.secret', required=True) }}
+ {{ labeled_input('aws_role_arn', 'AWS role ARN',
+                  x_model='form.aws_role_arn',
+                  classes='font-monospace') }}
+
+ The generated id defaults to ``field-{{ name }}`` so two forms on the
+ same page must pass an explicit ``id=`` to avoid collisions.
+
+ ``attrs`` is the escape valve for Alpine-bind/HTML attributes that do
+ not fit a keyword slot (e.g. ``attrs='maxlength="200" min="0"'`` or
+ ``attrs='x-bind:required="form.kind === \'s3\'"'``).  Passed through
+ ``|safe`` — callers must not feed user-controlled content there.
+#}
+{% macro labeled_input(name, label,
+                       type='text', id=None,
+                       x_model=None, value=None,
+                       placeholder=None, required=False,
+                       readonly=False, disabled=False,
+                       size='sm', classes='', hint=None,
+                       autocomplete=None, attrs='',
+                       wrapper_classes='mb-3') -%}
+{%- set _id = id or ('field-' ~ name) -%}
+<div class="{{ wrapper_classes }}">
+  <label class="form-label small fw-bold" for="{{ _id }}">
+    {{- label -}}
+    {%- if required %} <span class="text-danger" aria-label="required">*</span>{% endif -%}
+  </label>
+  <input type="{{ type }}"
+         id="{{ _id }}"
+         name="{{ name }}"
+         class="form-control{% if size %} form-control-{{ size }}{% endif %}{% if classes %} {{ classes }}{% endif %}"
+         {%- if x_model %} x-model="{{ x_model }}"{% endif %}
+         {%- if value is not none %} value="{{ value }}"{% endif %}
+         {%- if placeholder %} placeholder="{{ placeholder }}"{% endif %}
+         {%- if required %} required{% endif %}
+         {%- if readonly %} readonly{% endif %}
+         {%- if disabled %} disabled{% endif %}
+         {%- if autocomplete %} autocomplete="{{ autocomplete }}"{% endif %}
+         {%- if attrs %} {{ attrs|safe }}{% endif %}>
+  {%- if hint %}<div class="form-text">{{ hint }}</div>{% endif %}
+</div>
+{%- endmacro %}
