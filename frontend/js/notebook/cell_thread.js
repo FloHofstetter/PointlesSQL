@@ -19,33 +19,19 @@
  *   DELETE /api/social/notebook_cell/{nb}:{cell}/follow
  */
 
-const ALLOWED_EMOJI = ["👍", "❤️", "🎉", "😄", "😕", "👀"];
-
-// review decisions encoded as a leading body_md
-// line.  The polymorphic comments table carries ``category`` but no
-// dedicated decision column; adding one would be a migration for what
-// is effectively a UI affordance.  Keeping the decision in the body
-// keeps the round-trip stable (the JS extracts it back on render) and
-// degrades gracefully on older clients that just see a regular review
-// comment.
-const REVIEW_DECISIONS = [
-    { id: "approved", label: "Approved", icon: "bi-check-circle-fill", className: "text-success", prefix: "✅ **Approved**" },
-    { id: "changes_requested", label: "Changes requested", icon: "bi-exclamation-triangle-fill", className: "text-warning", prefix: "⚠️ **Changes requested**" },
-    { id: "comment", label: "Comment only", icon: "bi-chat-left-text", className: "text-muted", prefix: "💬 **Reviewed**" },
-];
-
-function extractReviewDecision(body_md) {
-    const head = (body_md || "").split("\n")[0].trim();
-    for (const d of REVIEW_DECISIONS) {
-        if (head === d.prefix) return d;
-    }
-    return REVIEW_DECISIONS[2];
-}
-
 import { jsonFetch } from '../http.js';
+import {
+    REVIEW_DECISIONS,
+    extractReviewDecision,
+    bodyWithoutPrefix as _bodyWithoutPrefix,
+} from './review_decision.js';
+import { cellTagPickerSlice } from './cell_tag_picker.js';
+
+const ALLOWED_EMOJI = ["👍", "❤️", "🎉", "😄", "😕", "👀"];
 
 export function cellThread({ notebookUuid, cell, initialCounts, curatedTags = [] } = {}) {
     return {
+        ...cellTagPickerSlice(),
         notebookUuid: notebookUuid || null,
         // Hold the parent cell reference, not just the UUID snapshot —
         // the UUID is null until the first save mints it, and the
@@ -53,19 +39,15 @@ export function cellThread({ notebookUuid, cell, initialCounts, curatedTags = []
         // ``cell.cell_uuid`` lazily inside the ``baseUrl`` getter makes
         // the thread come alive as soon as the save reconciler returns.
         //
-        // The cell-tag picker state lives here so it shares the live
-        // reactive ``cell`` proxy.  A separately-nested ``cellTagPicker``
-        // x-data received a snapshotted ``cell`` POJO instead — the
-        // picker's mutations never reached the parent's
-        // ``cells[i].tags``.  Sharing one scope per cell wrapper avoids
-        // the Alpine factory-arg snapshot trap entirely.
+        // The cell-tag picker state is spread in from cellTagPickerSlice()
+        // above so the picker shares the live reactive scope — a
+        // separately-nested ``cellTagPicker`` x-data received a snapshotted
+        // ``cell`` POJO instead — the picker's mutations never reached the
+        // parent's ``cells[i].tags``.
         cellRef: cell || null,
         curatedTags: Array.isArray(curatedTags)
             ? curatedTags.filter((t) => t && t !== 'parameters')
             : [],
-        pickerOpen: false,
-        pickerCustomMode: false,
-        pickerCustomDraft: '',
         open: false,
         loaded: false,
         loading: false,
@@ -116,12 +98,7 @@ export function cellThread({ notebookUuid, cell, initialCounts, curatedTags = []
         },
 
         bodyWithoutPrefix(comment) {
-            const d = extractReviewDecision(comment.body_md);
-            const body = comment.body_md || "";
-            if (body.startsWith(d.prefix)) {
-                return body.slice(d.prefix.length).replace(/^\n+/, "");
-            }
-            return body;
+            return _bodyWithoutPrefix(comment.body_md);
         },
 
         get approvedReviewCount() {
@@ -361,20 +338,5 @@ export function cellThread({ notebookUuid, cell, initialCounts, curatedTags = []
             }
         },
 
-        // ---- Cell-tag picker — UI state only ----
-        //
-        // Tag mutations live as inline expressions in
-        // ``cell_tag_picker.html`` so they reference the live x-for
-        // ``cell`` variable directly (Alpine snapshotted ``cell`` when
-        // it crossed the cellThread factory boundary).  Only the
-        // picker's local UI state (open / customMode / customDraft) +
-        // the dropdown-toggle helper live here.
-        togglePickerOpen() {
-            this.pickerOpen = !this.pickerOpen;
-            if (!this.pickerOpen) {
-                this.pickerCustomMode = false;
-                this.pickerCustomDraft = '';
-            }
-        },
     };
 }
