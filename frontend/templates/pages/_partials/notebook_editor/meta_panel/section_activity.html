@@ -1,0 +1,153 @@
+ {# ===== Activity / Live =====
+     New aggregator section.  All content is derived from already-
+     loaded reactive state — no extra fetch:
+       * Kernel: ``kernelStatus`` + ``restartKernel()`` shortcut.
+       * Live collaborators: ``coeditPeers`` (same array the toolbar
+         peer-rail renders, just listed with names).
+       * Recent runs: ``recentNotebookRuns()`` (bounded ring buffer
+         pushed to by ``kernel_execution.js`` execute_reply handler).
+       * Currently running: ``currentlyRunningCell()`` getter +
+         ``interruptKernel()`` shortcut.
+  #}
+ <div class="accordion-item">
+  <h2 class="accordion-header">
+   <button class="accordion-button collapsed"
+           type="button"
+           data-bs-toggle="collapse"
+           data-bs-target="#pql-meta-section-activity"
+           aria-expanded="false"
+           aria-controls="pql-meta-section-activity">
+    <i class="bi bi-activity me-2" aria-hidden="true"></i>
+    Activity
+    <span class="badge"
+          :class="coeditPeers && coeditPeers.length > 0 ? 'bg-success' : 'bg-secondary'"
+          x-show="coeditPeers && coeditPeers.length > 0"
+          x-text="coeditPeers.length"
+          x-cloak></span>
+   </button>
+  </h2>
+  <div id="pql-meta-section-activity" class="accordion-collapse collapse">
+   <div class="accordion-body" data-testid="meta-panel-activity-section">
+
+    {# Kernel row. #}
+    <div class="pql-meta-panel-activity__row">
+     <div class="text-muted small">Kernel</div>
+     <div class="d-flex align-items-center gap-2">
+      <span class="d-inline-block rounded-circle"
+            style="width: 0.55rem; height: 0.55rem;"
+            :class="kernelDotClass()"
+            aria-hidden="true"></span>
+      <span x-text="kernelStatus"></span>
+      <button type="button"
+              class="btn btn-link btn-sm p-0 ms-auto"
+              @click="restartKernel()"
+              :disabled="kernelStatus !== 'ready'"
+              title="Restart kernel (clears variables + outputs)">
+       <i class="bi bi-arrow-clockwise" aria-hidden="true"></i>
+       Restart
+      </button>
+     </div>
+    </div>
+
+    {# Currently running cell, if any. #}
+    <template x-if="currentlyRunningCell()">
+     <div class="pql-meta-panel-activity__row pql-meta-panel-activity__row--running">
+      <div class="text-muted small">Running</div>
+      <div class="d-flex align-items-center gap-2">
+       <div class="spinner-border spinner-border-sm text-warning"
+            role="status" aria-hidden="true"></div>
+       <span class="small"
+             x-text="`Cell ${(cells.findIndex(c => c.id === currentlyRunningCell().cell.id) + 1)}`"></span>
+       <button type="button"
+               class="btn btn-link btn-sm p-0 ms-auto text-danger"
+               @click="interruptKernel()"
+               title="Send KeyboardInterrupt">
+        <i class="bi bi-x-octagon" aria-hidden="true"></i>
+        Interrupt
+       </button>
+      </div>
+     </div>
+    </template>
+
+    {# Live collaborators. #}
+    <div class="pql-meta-panel-activity__row">
+     <div class="text-muted small">
+      Live collaborators
+      <span class="badge bg-secondary"
+            x-show="coeditPeers && coeditPeers.length > 0"
+            x-text="coeditPeers.length"
+            x-cloak></span>
+     </div>
+     <template x-if="!coeditPeers || coeditPeers.length === 0">
+      <div class="text-muted small fst-italic">
+       Just you on this notebook.
+      </div>
+     </template>
+     <ul class="list-unstyled mb-0"
+         x-show="coeditPeers && coeditPeers.length > 0"
+         x-cloak>
+      <template x-for="peer in coeditPeers" :key="peer.clientId">
+       <li class="d-flex align-items-center gap-2 py-1">
+        <span class="d-inline-flex align-items-center justify-content-center rounded-circle text-white"
+              style="width: 1.25rem; height: 1.25rem; font-size: 0.6rem;"
+              :style="`background-color: ${peer.color};`">
+         <template x-if="peer.agent">
+          <i class="bi bi-robot" aria-hidden="true"></i>
+         </template>
+         <template x-if="!peer.agent">
+          <span x-text="peer.initials"></span>
+         </template>
+        </span>
+        <span class="small text-truncate"
+              :title="peer.agent ? `${peer.name} (agent)` : peer.name"
+              x-text="peer.name"></span>
+       </li>
+      </template>
+     </ul>
+    </div>
+
+    {# Recent runs (last 5 notebook-wide). #}
+    <div class="pql-meta-panel-activity__row">
+     <div class="text-muted small">Recent runs</div>
+     <template x-if="recentNotebookRuns().length === 0">
+      <div class="text-muted small fst-italic">
+       No runs in this session yet.
+      </div>
+     </template>
+     <ul class="list-unstyled mb-0"
+         x-show="recentNotebookRuns().length > 0"
+         x-cloak>
+      <template x-for="run in recentNotebookRuns()" :key="`${run.cellId}-${run.finishedAt}`">
+       <li class="pql-meta-panel-activity__run-row">
+        <span class="badge"
+              :class="{
+                'bg-success': run.status === 'ok',
+                'bg-danger': run.status === 'error',
+                'bg-warning text-dark': run.status === 'aborted',
+                'bg-secondary': run.status === 'running'
+              }"
+              x-text="run.execCount != null ? `[${run.execCount}]` : run.status"></span>
+        <span class="small text-truncate flex-grow-1"
+              :title="run.label">
+         <span class="text-muted me-1"
+               x-show="run.cellIndex != null"
+               x-text="`#${run.cellIndex}`"></span>
+         <span x-text="run.label"></span>
+        </span>
+        <span class="text-muted small font-monospace"
+              x-show="run.durationMs != null"
+              x-text="run.durationMs < 1000
+                ? `${Math.round(run.durationMs)}ms`
+                : (run.durationMs < 60000
+                    ? `${(run.durationMs / 1000).toFixed(1)}s`
+                    : `${Math.floor(run.durationMs / 60000)}m`)"></span>
+        <span class="text-muted small"
+              x-text="pqlRelativeTime(new Date(run.finishedAt).toISOString())"
+              :title="pqlAbsTime(new Date(run.finishedAt).toISOString())"></span>
+       </li>
+      </template>
+     </ul>
+    </div>
+   </div>
+  </div>
+ </div>

@@ -1,0 +1,79 @@
+ {# ===== Permissions ===== #}
+ <div class="accordion-item">
+  <h2 class="accordion-header">
+   <button class="accordion-button collapsed"
+           type="button"
+           data-bs-toggle="collapse"
+           data-bs-target="#pql-meta-section-permissions"
+           aria-expanded="false"
+           aria-controls="pql-meta-section-permissions">
+    <i class="bi bi-shield-lock me-2" aria-hidden="true"></i>
+    Access
+    <span class="badge bg-secondary"
+          x-show="permissionsPanel.loaded && permissionsPanel.rows.length > 0"
+          x-text="permissionsPanel.rows.length"
+          x-cloak></span>
+   </button>
+  </h2>
+  <div id="pql-meta-section-permissions" class="accordion-collapse collapse">
+   <div class="accordion-body">
+    <div class="text-muted small mb-1"
+         x-show="permissionsPanel.loading" x-cloak>Loading…</div>
+    <div class="text-danger small mb-1"
+         x-show="permissionsPanel.error" x-cloak
+         x-text="permissionsPanel.error"></div>
+    <template x-if="permissionsPanel.loaded && permissionsPanel.rows.length === 0">
+     <p class="text-muted small fst-italic mb-2">
+      No explicit grants — workspace membership decides access.
+     </p>
+    </template>
+    <ul class="list-unstyled mb-2"
+        x-show="permissionsPanel.rows.length > 0" x-cloak>
+     <template x-for="row in permissionsPanel.rows" :key="row.user_id">
+      <li class="d-flex align-items-center gap-1 py-1 border-bottom">
+       <code class="text-body font-monospace small flex-grow-1"
+             x-text="`user#${row.user_id}`"></code>
+       <select class="form-select form-select-sm w-auto"
+               :value="row.role"
+               @change="updatePermissionRole(row, $event.target.value)"
+               :disabled="permissionsPanel.submitting">
+        <template x-for="r in permissionsPanel.roles" :key="r">
+         <option :value="r" x-text="r"></option>
+        </template>
+       </select>
+       <button type="button" class="btn btn-sm btn-outline-danger"
+               @click="revokePermission(row)"
+               :disabled="permissionsPanel.submitting"
+               title="Revoke">
+        <i class="bi bi-trash" aria-hidden="true"></i>
+       </button>
+      </li>
+     </template>
+    </ul>
+
+    <form @submit.prevent="submitPermission()">
+     <div class="text-muted small mb-1">Grant access</div>
+     <input type="number"
+            class="form-control form-control-sm mb-1"
+            min="1"
+            placeholder="User ID"
+            x-model="permissionsPanel.draftUserId"
+            :disabled="permissionsPanel.submitting">
+     <select class="form-select form-select-sm mb-1"
+             x-model="permissionsPanel.draftRole"
+             :disabled="permissionsPanel.submitting">
+      <template x-for="r in permissionsPanel.roles" :key="r">
+       <option :value="r" x-text="r"></option>
+      </template>
+     </select>
+     <button type="submit" class="btn btn-sm btn-primary w-100"
+             :disabled="permissionsPanel.submitting || !permissionsPanel.draftUserId">
+      <span x-show="permissionsPanel.submitting" x-cloak>
+       <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+      </span>
+      Grant
+     </button>
+    </form>
+   </div>
+  </div>
+ </div>

@@ -1,0 +1,79 @@
+ {# ===== Revisions ===== #}
+ <div class="accordion-item">
+  <h2 class="accordion-header">
+   <button class="accordion-button collapsed"
+           type="button"
+           data-bs-toggle="collapse"
+           data-bs-target="#pql-meta-section-revisions"
+           aria-expanded="false"
+           aria-controls="pql-meta-section-revisions">
+    <i class="bi bi-clock-history me-2" aria-hidden="true"></i>
+    Revisions
+    <span class="badge bg-secondary"
+          x-show="revisions.loaded && revisions.rows.length > 0"
+          x-text="revisions.rows.length"
+          x-cloak></span>
+   </button>
+  </h2>
+  <div id="pql-meta-section-revisions" class="accordion-collapse collapse">
+   <div class="accordion-body">
+    {# Snapshot quick-action.  Same call as the inline drawer's
+       Snapshot button — both write to the same revisions backend. #}
+    <div class="d-flex gap-1 mb-2">
+     <input type="text"
+            class="form-control form-control-sm"
+            x-model="revisions.snapshotMessage"
+            placeholder="Snapshot note">
+     <button type="button"
+             class="btn btn-sm btn-primary"
+             @click="snapshotRevision()"
+             :disabled="revisions.snapshotting"
+             title="Record a revision snapshot">
+      <i class="bi bi-camera" aria-hidden="true"></i>
+     </button>
+    </div>
+    <div class="text-danger small mb-1"
+         x-show="revisions.error" x-cloak
+         x-text="revisions.error"></div>
+
+    <template x-if="!revisions.loaded && !revisions.loading">
+     <button type="button" class="btn btn-sm btn-link p-0"
+             @click="loadRevisions ? loadRevisions() : toggleRevisionsPanel()">
+      <i class="bi bi-arrow-clockwise me-1" aria-hidden="true"></i>
+      Load revisions
+     </button>
+    </template>
+    <template x-if="revisions.loaded && revisions.rows.length === 0">
+     <div class="text-muted small fst-italic">No revisions yet.</div>
+    </template>
+    <template x-if="revisions.loaded && revisions.rows.length > 0">
+     <div>
+      {# Latest 5 only — full list + diff lives in the wider drawer. #}
+      <template x-for="r in revisions.rows.slice(0, 5)" :key="r.revision_uuid">
+       <div class="pql-meta-panel-revision-row">
+        <div class="text-truncate" :title="r.message || ''">
+         <span x-text="r.message || '(no message)'"></span>
+        </div>
+        <div class="text-muted small">
+         <span x-text="pqlRelativeTime(r.created_at)"
+               :title="pqlAbsTime(r.created_at)"></span>
+         <span class="mx-1">·</span>
+         <span x-text="(r.created_by || '—').split('@')[0]"></span>
+         <span class="mx-1">·</span>
+         <code x-text="r.revision_uuid.slice(0, 8)"></code>
+        </div>
+       </div>
+      </template>
+      <button type="button"
+              class="btn btn-sm btn-outline-secondary w-100 mt-2"
+              @click="if (!revisions.open) toggleRevisionsPanel()"
+              data-testid="meta-panel-revisions-open"
+              title="Open the wider revisions drawer with cell-by-cell diff">
+       <i class="bi bi-arrow-up-right-square me-1" aria-hidden="true"></i>
+       See all &amp; diff
+      </button>
+     </div>
+    </template>
+   </div>
+  </div>
+ </div>

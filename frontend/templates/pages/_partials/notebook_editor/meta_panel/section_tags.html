@@ -1,0 +1,78 @@
+ {# ===== Tags (default expanded — most-used) ===== #}
+ <div class="accordion-item">
+  <h2 class="accordion-header">
+   <button class="accordion-button"
+           type="button"
+           data-bs-toggle="collapse"
+           data-bs-target="#pql-meta-section-tags"
+           aria-expanded="true"
+           aria-controls="pql-meta-section-tags">
+    <i class="bi bi-tags me-2" aria-hidden="true"></i>
+    Tags
+    <span class="badge bg-secondary"
+          x-show="notebookTagsLoaded && notebookTags.length > 0"
+          x-text="notebookTags.length"
+          x-cloak></span>
+   </button>
+  </h2>
+  <div id="pql-meta-section-tags" class="accordion-collapse collapse show">
+   <div class="accordion-body">
+    <div class="text-muted small mb-1"
+         x-show="notebookTagsLoading" x-cloak>Loading…</div>
+    <div class="text-danger small mb-1"
+         x-show="notebookTagsError" x-cloak
+         x-text="notebookTagsError"></div>
+    <div class="d-flex flex-wrap gap-1 mb-2">
+     <template x-if="notebookTagsLoaded && notebookTags.length === 0">
+      <span class="text-muted small fst-italic">No tags yet — pick one below.</span>
+     </template>
+     <template x-for="row in notebookTags" :key="row.tag">
+      <span class="badge rounded-pill pql-notebook-tag" role="button"
+            @click="removeNotebookTag(row.tag)"
+            title="Click to remove">
+       <span x-text="`#${row.tag}`"></span>
+       <i class="bi bi-x ms-1" aria-hidden="true"></i>
+      </span>
+     </template>
+    </div>
+    <div class="text-muted small mb-1">Add curated</div>
+    <div class="d-flex flex-wrap gap-1 mb-2">
+     <template x-if="notebookTagsCurated.filter(t => !notebookTags.some(r => r.tag === t)).length === 0">
+      <span class="text-muted small fst-italic">
+       All curated tags are already applied.
+      </span>
+     </template>
+     <template x-for="tag in notebookTagsCurated.filter(t => !notebookTags.some(r => r.tag === t))" :key="tag">
+      <button type="button" class="btn btn-sm btn-outline-secondary"
+              @click="addNotebookTag(tag)">
+       <span x-text="`#${tag}`"></span>
+      </button>
+     </template>
+    </div>
+    <template x-if="!notebookTagsCustomMode">
+     <button type="button" class="btn btn-sm btn-link p-0"
+             @click="notebookTagsCustomMode = true">
+      <i class="bi bi-plus-circle me-1" aria-hidden="true"></i>
+      Custom tag…
+     </button>
+    </template>
+    <template x-if="notebookTagsCustomMode">
+     <form class="d-flex gap-1 align-items-center"
+           @submit.prevent="submitCustomNotebookTag()">
+      <input type="text"
+             class="form-control form-control-sm"
+             placeholder="custom-tag"
+             x-model="notebookTagsCustomDraft"
+             @keydown.escape="notebookTagsCustomMode = false; notebookTagsCustomDraft = ''"
+             x-init="$nextTick(() => $el.focus())">
+      <button type="submit" class="btn btn-sm btn-primary"
+              :disabled="!notebookTagsCustomDraft.trim()">Add</button>
+      <button type="button" class="btn btn-sm btn-link p-0"
+              @click="notebookTagsCustomMode = false; notebookTagsCustomDraft = ''">
+       Cancel
+      </button>
+     </form>
+    </template>
+   </div>
+  </div>
+ </div>

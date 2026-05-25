@@ -1,0 +1,89 @@
+{# ---- Header (always visible) ----
+   identity card.  Filename + parent-dir on two
+   lines (split on the last ``/``), one consolidated save-state
+   row with a leading colour dot that mirrors the toolbar vital
+   sign, plus a Modified + Format meta-list and a badges row.
+   Kernel state is no longer here — it lives on the toolbar dot
+   and in the new Activity accordion section.  Params badge
+   moves here (toolbar dropped it).
+#}
+<div class="pql-meta-panel__summary">
+ <button type="button"
+         class="btn btn-link btn-sm p-0 pql-meta-panel__collapse-btn d-none d-md-inline-flex"
+         data-pql-meta-toggle="collapse"
+         title="Hide meta panel"
+         aria-label="Hide meta panel">
+  <i class="bi bi-chevron-double-right"></i>
+ </button>
+
+ <div class="pql-meta-panel__summary__title-row">
+  <i class="bi bi-journal-code pql-meta-panel__summary__icon"
+     aria-hidden="true"></i>
+  <div class="flex-grow-1 min-w-0">
+   <div class="pql-meta-panel__summary__title"
+        :title="path"
+        x-text="(path || '').split('/').pop() || path"></div>
+   <div class="pql-meta-panel__summary__parent"
+        x-show="(path || '').lastIndexOf('/') > 0"
+        x-cloak
+        x-text="(path || '').slice(0, (path || '').lastIndexOf('/') + 1)"></div>
+  </div>
+ </div>
+
+ <div class="pql-meta-panel__summary__status">
+  <span class="d-inline-block rounded-circle me-1"
+        style="width: 0.55rem; height: 0.55rem;"
+        :class="saveDotClass()"
+        aria-hidden="true"></span>
+  <span x-show="loading" x-cloak>Loading…</span>
+  <span x-show="!loading && saving" x-cloak>Saving…</span>
+  <span x-show="!loading && !saving && dirty" x-cloak>Unsaved changes</span>
+  <span x-show="!loading && !saving && !dirty && lastSavedAt" x-cloak
+        x-text="`Saved ${pqlRelativeTime(lastSavedAt)}`"
+        :title="pqlAbsTime(lastSavedAt)"></span>
+  <span x-show="!loading && !saving && !dirty && !lastSavedAt" x-cloak
+        class="text-muted">Idle</span>
+ </div>
+
+ <dl class="pql-meta-panel__summary__list">
+  <dt>Modified</dt>
+  <dd>
+   {# mtime is float seconds since epoch (Python st_mtime); convert
+      to an ISO string so ``pqlRelativeTime`` can parse it. #}
+   <span x-show="mtime" x-cloak
+         x-text="pqlRelativeTime(new Date(mtime * 1000).toISOString())"
+         :title="pqlAbsTime(new Date(mtime * 1000).toISOString())"></span>
+   <span x-show="!mtime" x-cloak class="text-muted">—</span>
+  </dd>
+  <dt>Format</dt>
+  <dd>
+   <template x-if="(path || '').endsWith('.ipynb')">
+    <span>.ipynb</span>
+   </template>
+   <template x-if="(path || '').endsWith('.py')">
+    <span>.py <span class="text-muted">(jupytext percent)</span></span>
+   </template>
+   <template x-if="!(path || '').match(/\.(py|ipynb)$/)">
+    <span class="text-muted">—</span>
+   </template>
+  </dd>
+ </dl>
+
+ <div class="pql-meta-panel__summary__badges">
+  <span class="badge"
+        :class="branchBinding.current && branchBinding.current.promoted_at ? 'bg-success' : 'bg-warning text-dark'"
+        x-show="branchBinding.loaded && branchBinding.current"
+        x-cloak
+        :title="branchBinding.current && branchBinding.current.promoted_at ? 'Promoted branch' : 'Pending branch binding'">
+   <i class="bi bi-diagram-3 me-1" aria-hidden="true"></i>
+   <span x-text="branchBinding.current ? branchBinding.current.branch_name : ''"></span>
+  </span>
+  <span class="badge bg-info text-dark"
+        x-show="parameters && parameters.length > 0"
+        x-cloak
+        :title="`${parameters.length} papermill parameter(s)`">
+   <i class="bi bi-sliders me-1" aria-hidden="true"></i>
+   <span x-text="`${parameters.length} param${parameters.length === 1 ? '' : 's'}`"></span>
+  </span>
+ </div>
+</div>
