@@ -7,6 +7,25 @@
  * Extracted from ``notebook_editor.js`` .
  */
 
+/**
+ * @typedef {Object} PersistenceSlots
+ * Methods attached by ``installPersistence``.  No new state slots —
+ * mutates the existing ``dirty`` / ``saving`` / ``lastSavedAt`` /
+ * ``mtime`` / ``_onKeydown`` / ``_autosaveTimer`` / ``_historyByCell`` /
+ * ``historyOpenFor`` slots declared in NotebookEditorBase.
+ *
+ * @property {() => void} _installKeymap
+ * @property {() => Promise<void>} save
+ * @property {(cellId: string, value: string) => void} _onCellSourceChange
+ * @property {() => void} _scheduleAutosave
+ * @property {(cell: Object) => string} cellLabel
+ * @property {(cell: Object) => boolean} cellHasParamsTag
+ * @property {(cell: Object) => void} toggleParamsTag
+ * @property {(cell: Object) => Promise<void>} toggleHistoryFor
+ * @property {(cell: Object) => Promise<void>} _fetchHistory
+ * @property {(cell: Object) => Array<Object>|null} historyForCell
+ */
+
 export function installPersistence(state) {
   state._installKeymap = function () {
     this._onKeydown = (ev) => {

@@ -18,6 +18,24 @@
 
 import { installRevisionDiff } from './revision_diff.js';
 
+/**
+ * @typedef {Object} RevisionsSlots
+ * Slots attached by ``installRevisions`` + extended by
+ * ``installRevisionDiff`` (which mutates the same ``state.revisions``
+ * object — see revision_diff.js for the diff-pair pick + render API).
+ *
+ * @property {Object} revisions - List + snapshot + diff state container
+ * @property {() => Promise<void>} toggleRevisionsPanel
+ * @property {() => Promise<void>} loadRevisions
+ * @property {() => Promise<void>} loadFactsByRevision
+ * @property {(revisionRow: Object) => Object|null} factForRevision
+ * @property {(revisionUuid: string) => void} openRevisionPinDialog
+ * @property {() => void} cancelRevisionPinDialog
+ * @property {() => Promise<void>} confirmRevisionPin
+ * @property {(revisionRow: Object) => Promise<void>} unpinRevisionFact
+ * @property {() => Promise<void>} snapshotRevision
+ */
+
 export function installRevisions(state) {
   state.revisions = {
     open: false,

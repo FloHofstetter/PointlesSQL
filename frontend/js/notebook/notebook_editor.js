@@ -47,6 +47,112 @@ const _FNV_OFFSET_64 = 0xcbf29ce484222325n;
 const _FNV_PRIME_64 = 0x100000001b3n;
 const _FNV_MASK_64 = 0xffffffffffffffffn;
 
+/**
+ * @typedef {Object} RunModalState
+ * @property {boolean} open
+ * @property {'run-now'|'schedule'} tab
+ * @property {boolean} submitting
+ * @property {string} error
+ * @property {Record<string, unknown>} parameters
+ * @property {string} name - Only used on the schedule tab
+ * @property {string} cronExpr - Only used on the schedule tab
+ * @property {string} status - Only used on the run-now tab
+ */
+
+/**
+ * @typedef {Object} JobsPanelData
+ * @property {Array<Object>} scheduled_jobs
+ * @property {Array<Object>} recent_runs
+ */
+
+/**
+ * @typedef {Object} NotebookEditorBase
+ * Base Alpine x-data shape declared directly in ``notebookEditor()``.
+ * The full state seen at runtime ({@link NotebookEditorState}) is the
+ * intersection of this base with the slots added by ~18 installer
+ * mixins (kernel, persistence, revisions, jobs, coedit, etc.).
+ *
+ * Core paths:
+ * @property {string} path
+ * @property {Object} currentUser
+ * @property {Array<Object>} cells
+ * @property {Array<Object>} outputs
+ * @property {boolean} dirty
+ * @property {boolean} loading
+ * @property {boolean} saving
+ * @property {Date|null} lastSavedAt
+ * @property {string|null} mtime
+ * @property {string} errorMessage
+ * @property {boolean} mtimeConflict
+ *
+ * Kernel + execution surface (mutated by installKernelExecution):
+ * @property {'ready'|'connecting'|'disconnected'|'closed'} kernelStatus
+ * @property {string|null} kernelSessionId
+ *
+ * Papermill parameters (loaded by loadParameters()):
+ * @property {Array<Object>} parameters
+ * @property {boolean} _parametersLoaded
+ *
+ * Run-notebook modal (managed by installJobsOrchestration):
+ * @property {RunModalState} runModal
+ * @property {boolean} jobsPanelOpen
+ * @property {JobsPanelData} jobsPanel
+ *
+ * Variable Inspector (mutated by installKernelExecution, visibility via rightDrawer.tab):
+ * @property {Array<Object>} inspectorVars
+ * @property {Object|null} inspectorDetail
+ * @property {string|null} inspectorDetailFor
+ *
+ * Per-cell editor + run plumbing:
+ * @property {Record<string, Object>} _editors - cellId → CodeMirror EditorView
+ * @property {((e: KeyboardEvent) => void)|null} _onKeydown
+ * @property {Object|null} _kernel - kernel_ws.js client instance
+ * @property {Record<string, unknown>} _liveOutputs
+ * @property {Record<string, unknown>} _runStatus
+ * @property {Record<string, number>} _runStartedAt - keyed by content_hash
+ * @property {Record<string, number>} _runDurationMs - keyed by content_hash
+ * @property {number|null} _autosaveTimer
+ * @property {Record<string, Array<Object>>} _historyByCell
+ * @property {string|null} historyOpenFor
+ *
+ * Per-cell social:
+ * @property {string|null} notebookUuid
+ * @property {Record<string, Object>} cellCounts
+ *
+ * AI-assistant provenance + right-edge drawer:
+ * @property {Array<Object>} _pendingProvenance
+ * @property {{open: boolean, tab: string}} rightDrawer
+ * @property {Array<Object>} _recentRunsRing - bounded ring (size 5)
+ *
+ * Inline methods:
+ * @property {() => Promise<void>} refreshCellCounts
+ * @property {(cell: Object) => Object|null} cellCountsFor
+ * @property {(cell: Object) => string} runDurationFor
+ * @property {() => string} saveDotClass
+ * @property {() => string} saveDotTooltip
+ * @property {() => string} kernelDotClass
+ * @property {() => string} kernelDotTooltip
+ * @property {() => Promise<void>} init - Initial load + kernel connect
+ * @property {() => Promise<void>} loadParameters
+ * @property {() => void} destroy - Editor teardown + WS close
+ */
+
+/**
+ * @typedef {NotebookEditorBase & import('./kernel_execution.js').KernelExecutionSlots & import('./jobs_orchestration.js').JobsOrchestrationSlots & import('./revisions.js').RevisionsSlots & import('./persistence.js').PersistenceSlots & import('./coedit_core.js').CoeditCoreSlots} NotebookEditorState
+ *
+ * Full composed Alpine x-data shape mounted on
+ * ``pages/notebook_editor.html``.  The intersection includes the
+ * five biggest installers' slice typedefs; the remaining ~13
+ * smaller installers (cell_operations, cell_dnd, markdown_output,
+ * chat_integration, notebook_tags, cell_authorship, cell_lineage,
+ * cell_facts, share_dialog, branch_binding, replays,
+ * sequence_proposals, widgets_panel, permissions_panel,
+ * coedit_awareness, coedit_cell_binding) contribute additional
+ * slots not yet captured in slice typedefs.  Each can host its
+ * own typedef in a future polish without touching this composed
+ * declaration.
+ */
+
 async function _computeContentHash(source) {
   const normalised = String(source || '')
     .replace(/\r\n/g, '\n')
@@ -61,7 +167,15 @@ async function _computeContentHash(source) {
   return h.toString(16).padStart(16, '0');
 }
 
+/**
+ * Top-level Alpine x-data factory.  Builds the base state object then
+ * mutates it through ~18 installer mixins before returning.
+ *
+ * @param {{initialPath?: string, currentUser?: Object|null}} [args]
+ * @returns {NotebookEditorState}
+ */
 export function notebookEditor({ initialPath = '', currentUser = null } = {}) {
+  /** @type {NotebookEditorBase} */
   const state = {
     path: initialPath,
     currentUser: currentUser || {},

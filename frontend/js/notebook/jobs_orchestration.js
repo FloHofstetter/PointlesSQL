@@ -9,6 +9,25 @@
  * resolves to the editor's reactive root.
  */
 
+/**
+ * @typedef {Object} JobsOrchestrationSlots
+ * Methods attached by ``installJobsOrchestration``.  No new state
+ * slots — the installer mutates the existing ``runModal`` /
+ * ``jobsPanel`` / ``jobsPanelOpen`` slots declared in NotebookEditorBase.
+ *
+ * @property {(expr: string) => string} describeCron
+ * @property {(suffix: string) => string} _buildDefaultJobName
+ * @property {(tab: 'run-now'|'schedule') => void} openRunModal
+ * @property {() => void} closeRunModal
+ * @property {() => Promise<void>} submitRunModal
+ * @property {() => Promise<void>} _submitRunModalSchedule
+ * @property {() => Promise<void>} _submitRunModalRunNow
+ * @property {() => Record<string, unknown>} _collectRunModalParams
+ * @property {() => Promise<void>} loadNotebookJobs
+ * @property {() => void} toggleJobsPanel
+ * @property {(jobId: string, runId: string) => Promise<void>} _pollJobRun
+ */
+
 export function installJobsOrchestration(state) {
   state.describeCron = (expr) => {
     if (!expr) return '';

@@ -22,6 +22,28 @@ import { createKernelClient } from './kernel_ws.js';
 import { renderOutputFrame } from './output_renderer.js';
 import { installVariableInspector } from './variable_inspector.js';
 
+/**
+ * @typedef {Object} KernelExecutionSlots
+ * State + methods attached by ``installKernelExecution``.  Composes
+ * with {@link import('./variable_inspector.js').VariableInspectorSlots}
+ * because the installer calls ``installVariableInspector(state)`` first
+ * so the iopub-frame dispatcher can reach the variable handlers.
+ *
+ * @property {boolean} runAllInProgress
+ * @property {() => void} _connectKernel
+ * @property {(frame: Object) => void} _onKernelFrame
+ * @property {(cell: Object) => Promise<void>} runCell
+ * @property {(cell: Object) => Promise<string>} _refreshCellHash
+ * @property {() => Promise<void>} interruptKernel
+ * @property {(cell: Object) => Promise<void>} runCellAndAdvance
+ * @property {(from: number, to: number) => Promise<void>} runRange
+ * @property {() => Promise<void>} runAllCells
+ * @property {(cell: Object) => Promise<void>} runAllAbove
+ * @property {(cell: Object) => Promise<void>} runAllBelow
+ * @property {() => void} cancelRunAll
+ * @property {() => Promise<void>} restartKernel
+ */
+
 export function installKernelExecution(state, deps) {
   const computeContentHash = deps.computeContentHash;
 
