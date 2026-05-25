@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_macros/labeled_input.html" import labeled_input %}
 {% block title %}Connect a source · PointlesSQL{% endblock %}
 
 {% set breadcrumbs = [
@@ -27,17 +28,13 @@
 
 <div x-data="ingestSourceCreate()" class="card mb-4">
     <div class="card-body">
-        <div class="mb-3">
-            <label class="form-label small fw-bold">Name</label>
-            <input type="text"
-                   class="form-control form-control-sm"
-                   x-model="form.name"
-                   placeholder="prod-postgres-replica"
-                   maxlength="200">
-            <div class="form-text">
-                Unique within this workspace.
-            </div>
-        </div>
+        {{ labeled_input(
+            'name', 'Name',
+            x_model='form.name',
+            placeholder='prod-postgres-replica',
+            hint='Unique within this workspace.',
+            attrs='maxlength="200"',
+        ) }}
 
         <div class="mb-3">
             <label class="form-label small fw-bold">Connector kind</label>
@@ -60,56 +57,64 @@
         <!-- file_upload -->
         <div x-show="form.kind === 'file_upload'" class="row g-2 mb-3">
             <div class="col-12">
-                <label class="form-label small">File</label>
-                <input type="file" class="form-control form-control-sm"
-                       x-ref="fileInput"
-                       @change="uploadFile()">
-                <div class="form-text">
-                    Uploaded to the workspace's
-                    <code>_ingest</code> volume; the resolved path
-                    appears below.
-                </div>
+                {{ labeled_input(
+                    'file_upload', 'File',
+                    type='file',
+                    hint='Uploaded to the workspace\'s <code>_ingest</code> volume; the resolved path appears below.'|safe,
+                    attrs='x-ref="fileInput" @change="uploadFile()"',
+                ) }}
             </div>
             <div class="col-12" x-show="form.config.path">
-                <label class="form-label small">Resolved path</label>
-                <input type="text" class="form-control form-control-sm font-monospace"
-                       x-model="form.config.path" readonly>
+                {{ labeled_input(
+                    'file_upload_resolved_path', 'Resolved path',
+                    x_model='form.config.path',
+                    classes='font-monospace',
+                    readonly=True,
+                ) }}
             </div>
         </div>
 
         <!-- s3 -->
         <div x-show="form.kind === 's3'" class="row g-2 mb-3">
             <div class="col-12">
-                <label class="form-label small">S3 URL</label>
-                <input type="text" class="form-control form-control-sm"
-                       x-model="form.config.url"
-                       placeholder="s3://my-bucket/path/to/file.parquet">
+                {{ labeled_input(
+                    's3_url', 'S3 URL',
+                    x_model='form.config.url',
+                    placeholder='s3://my-bucket/path/to/file.parquet',
+                ) }}
             </div>
             <div class="col-md-6">
-                <label class="form-label small">Access key</label>
-                <input type="text" class="form-control form-control-sm"
-                       x-model="form.secrets.access_key">
+                {{ labeled_input(
+                    's3_access_key', 'Access key',
+                    x_model='form.secrets.access_key',
+                    autocomplete='off',
+                ) }}
             </div>
             <div class="col-md-6">
-                <label class="form-label small">Secret key</label>
-                <input type="password" class="form-control form-control-sm"
-                       x-model="form.secrets.secret_key">
+                {{ labeled_input(
+                    's3_secret_key', 'Secret key',
+                    type='password',
+                    x_model='form.secrets.secret_key',
+                    autocomplete='off',
+                ) }}
             </div>
             <div class="col-md-6">
-                <label class="form-label small">Region</label>
-                <input type="text" class="form-control form-control-sm"
-                       x-model="form.secrets.region"
-                       placeholder="us-east-1">
+                {{ labeled_input(
+                    's3_region', 'Region',
+                    x_model='form.secrets.region',
+                    placeholder='us-east-1',
+                ) }}
             </div>
         </div>
 
         <!-- http -->
         <div x-show="form.kind === 'http'" class="row g-2 mb-3">
             <div class="col-12">
-                <label class="form-label small">HTTP URL</label>
-                <input type="text" class="form-control form-control-sm"
-                       x-model="form.config.url"
-                       placeholder="https://example.com/dataset.csv">
+                {{ labeled_input(
+                    'http_url', 'HTTP URL',
+                    x_model='form.config.url',
+                    placeholder='https://example.com/dataset.csv',
+                ) }}
             </div>
         </div>
 
@@ -117,43 +122,47 @@
         <template x-if="form.kind === 'postgres' || form.kind === 'mysql'">
             <div class="row g-2 mb-3">
                 <div class="col-md-7">
-                    <label class="form-label small">Host</label>
-                    <input type="text" class="form-control form-control-sm"
-                           x-model="form.config.host"
-                           placeholder="db.internal">
+                    {{ labeled_input(
+                        'db_host', 'Host',
+                        x_model='form.config.host',
+                        placeholder='db.internal',
+                    ) }}
                 </div>
                 <div class="col-md-2">
-                    <label class="form-label small">Port</label>
-                    <input type="number" class="form-control form-control-sm"
-                           x-model.number="form.config.port"
-                           :placeholder="form.kind === 'postgres' ? '5432' : '3306'">
+                    {{ labeled_input(
+                        'db_port', 'Port',
+                        type='number',
+                        attrs='x-model.number="form.config.port" :placeholder="form.kind === \'postgres\' ? \'5432\' : \'3306\'"',
+                    ) }}
                 </div>
                 <div class="col-md-3">
-                    <label class="form-label small">Database</label>
-                    <input type="text" class="form-control form-control-sm"
-                           x-model="form.config.db">
+                    {{ labeled_input(
+                        'db_database', 'Database',
+                        x_model='form.config.db',
+                    ) }}
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label small">User</label>
-                    <input type="text" class="form-control form-control-sm"
-                           x-model="form.config.user">
+                    {{ labeled_input(
+                        'db_user', 'User',
+                        x_model='form.config.user',
+                        autocomplete='off',
+                    ) }}
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label small">Password</label>
-                    <input type="password" class="form-control form-control-sm"
-                           x-model="form.secrets.password">
+                    {{ labeled_input(
+                        'db_password', 'Password',
+                        type='password',
+                        x_model='form.secrets.password',
+                        autocomplete='off',
+                    ) }}
                 </div>
                 <div class="col-12">
-                    <label class="form-label small">Probe-only table
-                        <span class="text-muted">(schema.table)</span>
-                    </label>
-                    <input type="text" class="form-control form-control-sm"
-                           x-model="probeTable"
-                           placeholder="public.orders">
-                    <div class="form-text">
-                        Just for the schema preview below.  You'll pick
-                        all tables to pull after saving.
-                    </div>
+                    {{ labeled_input(
+                        'db_probe_table', 'Probe-only table (schema.table)',
+                        x_model='probeTable',
+                        placeholder='public.orders',
+                        hint='Just for the schema preview below.  You\'ll pick all tables to pull after saving.',
+                    ) }}
                 </div>
             </div>
         </template>
@@ -161,26 +170,31 @@
         <!-- sqlite -->
         <div x-show="form.kind === 'sqlite'" class="row g-2 mb-3">
             <div class="col-12">
-                <label class="form-label small">File path</label>
-                <input type="text" class="form-control form-control-sm font-monospace"
-                       x-model="form.config.path"
-                       placeholder="/data/local.db">
+                {{ labeled_input(
+                    'sqlite_path', 'File path',
+                    x_model='form.config.path',
+                    classes='font-monospace',
+                    placeholder='/data/local.db',
+                ) }}
             </div>
             <div class="col-12">
-                <label class="form-label small">Probe-only table</label>
-                <input type="text" class="form-control form-control-sm"
-                       x-model="probeTable"
-                       placeholder="users">
+                {{ labeled_input(
+                    'sqlite_probe_table', 'Probe-only table',
+                    x_model='probeTable',
+                    placeholder='users',
+                ) }}
             </div>
         </div>
 
         <!-- parquet_glob -->
         <div x-show="form.kind === 'parquet_glob'" class="row g-2 mb-3">
             <div class="col-12">
-                <label class="form-label small">Glob pattern</label>
-                <input type="text" class="form-control form-control-sm font-monospace"
-                       x-model="form.config.pattern"
-                       placeholder="/data/silver/*.parquet">
+                {{ labeled_input(
+                    'parquet_glob_pattern', 'Glob pattern',
+                    x_model='form.config.pattern',
+                    classes='font-monospace',
+                    placeholder='/data/silver/*.parquet',
+                ) }}
             </div>
         </div>
 
