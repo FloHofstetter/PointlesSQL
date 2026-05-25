@@ -1,11 +1,11 @@
 /**
  * Revision history + cell-diff panel.
  *
- * Backend (Phase 97, 14 pytest) shipped the revision-history surface
- * months ago; the editor's "History" panel render was deferred behind
- * the nested-x-data trap.  This install*-mixin wires the existing
- * REST surface (``/api/notebooks/revisions{,/diff,/{uuid}}``) to a
- * toolbar drawer.
+ * Backend shipped the revision-history surface; the editor's
+ * "History" panel render was deferred behind the nested-x-data
+ * trap.  This install*-mixin wires the existing REST surface
+ * (``/api/notebooks/revisions{,/diff,/{uuid}}``) to a toolbar
+ * drawer.
  *
  * The diff renderer is intentionally simple: it groups the diff
  * envelope into Added / Removed / Changed / Moved / Unchanged cards

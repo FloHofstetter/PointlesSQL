@@ -44,10 +44,10 @@ window.pqlStarKey = function (item) {
 };
 // pqlStarToggle is now server-backed for every
 // entity kind registered in the social entity_registry; for
-// kinds that aren't yet registered (catalog + schema land in
-// Phase 77.5) the component gracefully degrades to localStorage
-// so the existing schemas.html / tables.html buttons keep
-// working unchanged.
+// kinds that aren't yet registered (catalog + schema) the
+// component gracefully degrades to localStorage so the
+// existing schemas.html / tables.html buttons keep working
+// unchanged.
 //
 // Payload shapes accepted:
 //   { kind: 'table',  ref: 'cat.sch.tbl' }            (new canonical)

@@ -1,8 +1,7 @@
-// Phase 62 cockpit factory for the slim /mlflow page.
+// Cockpit factory for the slim /mlflow page.
 // Consumes existing routes only — no new server endpoint added
 // for this view; the runs payload is filtered client-side because
-// /api/runs has no has_mlflow filter today and adding one was out
-// of scope for this phase.
+// /api/runs has no has_mlflow filter today.
 
 export const mlflowCockpit = () => ({
     models: [],

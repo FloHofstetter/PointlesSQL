@@ -66,10 +66,10 @@ body:has(.pql-shell--has-meta) .pql-meta-mobile-trigger {
  padding: 0 0.25rem 1rem;
 }
 
-/* Always-visible "summary" block above the accordion.  Sprint 112.5
-   redesign: identity card with filename + parent-dir on separate
-   lines, single consolidated status row with leading colour dot,
-   Modified / Format meta-list, and a badges row. */
+/* Always-visible "summary" block above the accordion.  Identity
+   card with filename + parent-dir on separate lines, single
+   consolidated status row with leading colour dot, Modified /
+   Format meta-list, and a badges row. */
 .pql-meta-panel__summary {
  position: relative;
  padding: 0.7rem 0.85rem 0.6rem;

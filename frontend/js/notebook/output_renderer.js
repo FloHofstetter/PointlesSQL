@@ -12,7 +12,7 @@
  *   1. image/png / image/jpeg → <img src="data:...;base64,...">
  *   2. text/html              → sandboxed iframe (srcdoc)
  *   3. text/markdown          → markdown rendered server-side
- *      (Sprint 66.6 wires the actual fetch; this *      raw text with a "[markdown]" badge as a placeholder)
+ *      (placeholder shows raw text with a "[markdown]" badge until the actual fetch is wired)
  *   4. application/json       → <pre> formatted JSON
  *   5. text/plain             → <pre>
  *

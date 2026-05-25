@@ -140,7 +140,7 @@ export function installKernelExecution(state, deps) {
       // The inspector's own probe carries ``__pql_vars__`` /
       // ``__pql_vardetail__`` as content_hash, and refreshing on its
       // own reply spins an unbounded loop that grew IPython's
-      // ``_ih`` / ``_oh`` indefinitely (caught Phase 105 replay).
+      // ``_ih`` / ``_oh`` indefinitely (caught during replay testing).
       if (this.inspectorOpen && !String(hash).startsWith('__pql_')) {
         this.requestVariableSnapshot();
       }

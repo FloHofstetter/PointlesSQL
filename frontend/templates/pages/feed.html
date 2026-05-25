@@ -11,12 +11,12 @@
 <div x-data="feedPage()" x-init="init()" :class="density === 'comfortable' ? '' : ('pql-feed--' + density)">
 
     {# Top-level tabs: Activity (the feed stream) vs Discover
-       (trending + people-to-follow + saved searches).  Phase 81.K.10
-       — the page heading + breadcrumb were redundant once the tabs
-       arrived, so we drop the heading and host the page actions
-       (Mark-all-read, Notification settings) on the tab strip's
-       right side.  The "X new" pulse-pill rides on the Activity tab
-       label so live counts stay visible without a hero row. #}
+       (trending + people-to-follow + saved searches).  The page
+       heading + breadcrumb are redundant once the tabs are present,
+       so the heading is dropped and the page actions (Mark-all-read,
+       Notification settings) live on the tab strip's right side.
+       The "X new" pulse-pill rides on the Activity tab label so
+       live counts stay visible without a hero row. #}
     <ul class="nav nav-tabs mb-3 align-items-center" role="tablist">
         <li class="nav-item" role="presentation">
             <button type="button"

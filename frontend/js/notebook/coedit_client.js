@@ -206,7 +206,7 @@ export function createCoeditClient({
       // the same remote-origin marker the Y.Doc uses so the mixin's
       // ``update`` listener can early-return for echoes.  The raw
       // callback still fires for callers that prefer to deserialise
-      // the payload themselves (e.g. Phase 105.6 agent presence).
+      // the payload themselves (e.g. agent presence).
       if (awareness !== null) {
         try {
           applyAwarenessUpdate(awareness, payload, ORIGIN_REMOTE);

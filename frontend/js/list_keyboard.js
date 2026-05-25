@@ -11,9 +11,9 @@
 // Activates on any page that contains a table tagged with
 // ``data-pql-keynav-table="1"``.  The table's
 // ``tr`` rows must contain at least one checkbox in any
-// ``input[type=checkbox]`` cell (the bulk-select pattern from
-// Phase 81.G.B); the script clicks that checkbox so the Alpine
-// scope picks up the change.
+// ``input[type=checkbox]`` cell (the bulk-select pattern);
+// the script clicks that checkbox so the Alpine scope picks
+// up the change.
 //
 // Ignores key events when the focus is inside an editable field
 // (input/textarea/contenteditable) so typing in filters / forms

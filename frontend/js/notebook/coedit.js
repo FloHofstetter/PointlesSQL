@@ -1,7 +1,6 @@
 /**
- * Notebook editor — co-edit lifecycle mixin
- * (Phase 105.3 scaffold + Phase 105.4 awareness +
- * Phase 105.5 save-path remap + Phase 105.3b per-cell binding).
+ * Notebook editor — co-edit lifecycle mixin: Y.Doc scaffold,
+ * awareness, save-path remap, and per-cell binding.
  *
  * Spins up :func:`createCoeditClient` after the notebook's
  * ``notebook_uuid`` lands, keeps a single status field
@@ -10,8 +9,8 @@
  * current viewer's id/name/colour, and surfaces a deduped peer list
  * (``coeditPeers``) for the toolbar's avatar rail.
  *
- * 105.3b layers per-cell ``y-codemirror.next`` binding on top.  The
- * mixin now also exposes ``cellYBinding(cell)`` which returns the
+ * Per-cell ``y-codemirror.next`` binding sits on top.  The mixin
+ * also exposes ``cellYBinding(cell)`` which returns the
  * ``{ ytext, awareness, undoManager }`` triple that ``cellEditor()``
  * needs to swap its local history for collaborative editing.  The
  * triple is only handed back when the client has completed the

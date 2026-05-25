@@ -32,11 +32,10 @@ export function installJobsOrchestration(state) {
     return suffix ? `${slug}:${suffix}:${stamp}` : slug;
   };
 
-  // ---- Sprint 113.3: unified Run-notebook modal -----------------------
-  // Collapses the former Phase 67.2 Schedule modal + Phase 67.3 Run-Once
-  // modal into one tabbed surface.  The Schedule + Run-now flows share
-  // their parameter form, their error/submit state, and their close
-  // mechanism; only the tab-specific REST call diverges.
+  // ---- Unified Run-notebook modal — combines Schedule + Run-Once ----
+  // The Schedule + Run-now flows share their parameter form, their
+  // error/submit state, and their close mechanism; only the
+  // tab-specific REST call diverges.
 
   state.openRunModal = function (tab) {
     const nextTab = tab === 'schedule' ? 'schedule' : 'run-now';
@@ -157,7 +156,7 @@ export function installJobsOrchestration(state) {
     return overrides;
   };
 
-  // ---- Phase 67.4: Notebook-Jobs panel ---------------------------------
+  // ---- Notebook-Jobs panel ----------------------------------------------
 
   state.loadNotebookJobs = async function () {
     if (!this.path) return;

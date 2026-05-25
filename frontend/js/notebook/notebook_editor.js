@@ -82,9 +82,8 @@ export function notebookEditor({ initialPath = '', currentUser = null } = {}) {
  // this array to render typed override forms.
  parameters: [],
  _parametersLoaded: false,
- // unified Run-notebook modal state.
- // Collapses the former Phase 67.2 Schedule modal + Phase 67.3 Run-Once
- // modal into one tabbed surface.  Submitting + error + parameters are
+ // Unified Run-notebook modal state — combines Schedule + Run-Once
+ // into one tabbed surface.  Submitting + error + parameters are
  // shared between the two tabs (run-now / schedule); name + cronExpr
  // only apply on the schedule tab, status only on the run-now tab.
  runModal: {

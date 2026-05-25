@@ -9,7 +9,7 @@
  When ``_lineage_row_id`` is present, the card shows a
  hint linking to the row-trace UI.
  external_producers — optional list of dicts of shape
- {producer, source_tables[], last_seen_at}.  Phase 40 inbound
+ {producer, source_tables[], last_seen_at}.  External
  OpenLineage events emit these.  Rendered as an amber-badged block
  below the internal up/down-stream sections.
 #}
@@ -108,7 +108,7 @@
  <div class="p-3">
  <h6 class="text-muted small text-uppercase mb-3">
  <i class="bi bi-broadcast-pin me-1"></i>External producers
- <span class="badge bg-warning text-dark ms-1" title="Phase 40 inbound OpenLineage edges">{{ external_producers|length }}</span>
+ <span class="badge bg-warning text-dark ms-1" title="External OpenLineage events">{{ external_producers|length }}</span>
  </h6>
  <ul class="list-unstyled mb-0 ps-2 border-start border-warning">
  {% for prod in external_producers %}

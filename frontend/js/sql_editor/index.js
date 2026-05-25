@@ -40,7 +40,7 @@ export function sqlEditor() {
  referencedTables: [],
  lastRun: null,
 
- // -- Phase 91 chat drawer toggle (consumed by the
+ // -- Chat drawer toggle (consumed by the
  // sql_editor/chat_drawer.html partial and chat.js
  // factory; opening the drawer triggers the WS connect
  // inside chatPanel()).

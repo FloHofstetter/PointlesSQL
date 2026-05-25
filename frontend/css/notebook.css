@@ -1,10 +1,10 @@
 /*
- * Notebook editor — Phase 66 styling.
+ * Notebook editor styling.
  *
  * Per-cell card layout: editor host on top, output zone underneath
  * in a separate DOM subtree (deliberately NOT inline with the
- * editor — Phase-12 had inline output zones in the same Codemirror
- * host and the cursor-sync bugs were unsolvable).
+ * editor — an earlier attempt at inline output zones in the same
+ * Codemirror host produced unsolvable cursor-sync bugs).
  */
 
 .pql-notebook-shell {
@@ -219,10 +219,10 @@
  word-break: break-all;
 }
 
-/* Wave C / Phase 99 — shared inline panel skin.  Used by branch
-   binding, replays, sequence-proposal drawer, widget CRUD and the
-   permissions panel.  Same look-and-feel as the notebook-tags panel
-   so users see a coherent surface. */
+/* Shared inline panel skin.  Used by branch binding, replays,
+   sequence-proposal drawer, widget CRUD and the permissions panel.
+   Same look-and-feel as the notebook-tags panel so users see a
+   coherent surface. */
 .pql-notebook-branch-panel,
 .pql-notebook-replays-panel,
 .pql-notebook-sequence-drawer,

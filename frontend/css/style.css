@@ -26,8 +26,8 @@
 @import url("./components/context_panel.css?v=ASSET_VERSION");  /* 240 px contextual panel */
 @import url("./components/meta_panel.css?v=ASSET_VERSION");     /* 280 px right rail */
 @import url("./components/context_sidebars.css?v=ASSET_VERSION"); /* per-section sidebars */
-@import url("./components/workspace_context_menu.css?v=ASSET_VERSION"); /* Phase 114.2 right-click + keyboard */
-@import url("./components/footer_bar.css?v=ASSET_VERSION");      /* Phase 80.7 status footer */
+@import url("./components/workspace_context_menu.css?v=ASSET_VERSION"); /* right-click + keyboard */
+@import url("./components/footer_bar.css?v=ASSET_VERSION");      /* status footer */
 @import url("./components/breadcrumbs.css?v=ASSET_VERSION");
 @import url("./components/empty_state.css?v=ASSET_VERSION");    /* + error-shell variant */
 @import url("./components/toast.css?v=ASSET_VERSION");
@@ -37,7 +37,7 @@
 @import url("./components/cards.css?v=ASSET_VERSION");          /* card-grid surfaces */
 @import url("./components/detail_drawer.css?v=ASSET_VERSION");  /* offcanvas detail drawers */
 @import url("./components/sql_editor.css?v=ASSET_VERSION");     /* SQL editor surfaces, explain-tree badges */
-@import url("./components/feed.css?v=ASSET_VERSION");           /* Phase 81.K — feed page chrome */
+@import url("./components/feed.css?v=ASSET_VERSION");           /* feed page chrome */
 /* notebook.css is loaded lazily by pages/notebook_editor.html via
  * {% block extra_css %} — keeping ~300 LOC of editor-only rules
  * out of every non-notebook page-load. */

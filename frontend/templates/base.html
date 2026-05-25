@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ request.state.csrf_token }}">
-    {# Sprint 28.4 workspace plumbing.  Three tags consumed by
+    {# Workspace plumbing.  Three tags consumed by
        frontend/js/api.js (X-Workspace header injection),
        frontend/js/pages/catalog_tree.js (primary-catalog
        pre-expansion), and the inline localStorage namespace
@@ -194,8 +194,8 @@
             <span class="fw-semibold d-none d-lg-inline">PointlesSQL</span>
         </a>
 
-        {# Phase 81.K.11 \u2014 breadcrumbs moved into the topbar so the
-           page content area starts ~50 px higher.  Hidden on mobile
+        {# Breadcrumbs live in the topbar so the page content area
+           starts ~50 px higher.  Hidden on mobile
            (<md) where the topbar already carries the brand + search
            + offcanvas-trigger and would otherwise overflow.
 

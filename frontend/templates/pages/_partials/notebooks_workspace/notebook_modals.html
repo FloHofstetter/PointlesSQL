@@ -39,9 +39,9 @@
         unset).  Categories taken straight from the gallery
         endpoint; templates clicked while open swap the active
         selection without closing the modal. #}
-     {#- Phase 98.B template-gallery picker (defensive ``templates``
-         lookup — ``($data.templates || [])`` lets the modal still render
-         on a stale browser cache where the outer ``templates`` field
+     {#- Template-gallery picker (defensive ``templates`` lookup —
+         ``($data.templates || [])`` lets the modal still render on a
+         stale browser cache where the outer ``templates`` field
          hasn't been hydrated yet). -#}
      <template x-if="pathDialog.mode === 'create' && ($data.templates || []).length > 0">
       <div class="mb-3">

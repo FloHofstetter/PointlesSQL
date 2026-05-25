@@ -25,8 +25,8 @@
  *   (an array of ``{key, label}`` records the parent page picks based
  *   on entity-kind).  The factory has no opinion about which types
  *   apply to which kind — the registry / parent template decides.
- * * No DP-page migration in this phase: ``data_product.html`` keeps
- *   its inline x-data + existing partials.  Phase 77.11 unifies.
+ * * ``data_product.html`` keeps its inline x-data + existing partials
+ *   for now; a future iteration unifies them under this factory.
  */
 export function socialTabs(params) {
     const kind = params.kind;

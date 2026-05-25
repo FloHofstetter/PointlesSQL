@@ -1,9 +1,9 @@
 {# kind-agnostic followers tab pane.
    Consumed via socialTabs(kind, ref) Alpine factory.  Follower writes
    on non-DP kinds return 501 today (composite-PK constraint blocks
-   polymorphic writes; Phase 77.8 lifts this).  The factory exposes
-   the locked state as ``followLocked``; this pane disables the button
-   and renders a one-line hint when set. #}
+   polymorphic writes; a future iteration lifts this).  The factory
+   exposes the locked state as ``followLocked``; this pane disables
+   the button and renders a one-line hint when set. #}
 <div class="tab-pane fade" id="tab-followers" role="tabpanel">
     <template x-if="!followersLoaded">
         <div class="text-muted small p-3">Loading followers…</div>

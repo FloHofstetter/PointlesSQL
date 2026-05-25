@@ -75,12 +75,12 @@ export function cellThread({ notebookUuid, cell, initialCounts, curatedTags = []
         // ``cell.cell_uuid`` lazily inside the ``baseUrl`` getter makes
         // the thread come alive as soon as the save reconciler returns.
         //
-        // Phase 95.3 consolidated the cell-tag picker state into this
-        // factory because a separately-nested ``cellTagPicker`` x-data
-        // received a snapshotted ``cell`` POJO instead of the live
-        // reactive proxy — the picker's mutations never reached the
-        // parent's ``cells[i].tags``.  Sharing one scope per cell wrapper
-        // avoids the Alpine factory-arg snapshot trap entirely.
+        // The cell-tag picker state lives here so it shares the live
+        // reactive ``cell`` proxy.  A separately-nested ``cellTagPicker``
+        // x-data received a snapshotted ``cell`` POJO instead — the
+        // picker's mutations never reached the parent's
+        // ``cells[i].tags``.  Sharing one scope per cell wrapper avoids
+        // the Alpine factory-arg snapshot trap entirely.
         cellRef: cell || null,
         curatedTags: Array.isArray(curatedTags)
             ? curatedTags.filter((t) => t && t !== 'parameters')
@@ -163,7 +163,7 @@ export function cellThread({ notebookUuid, cell, initialCounts, curatedTags = []
         // practice ended up snapshotting ``cell_uuid`` at factory-init
         // time — the save-path mints UUIDs into the parent's
         // ``cells[i]`` proxy without the snapshot ever catching up
-        // (caught Phase 105 replay).  Walking the DOM up to the
+        // (caught during replay testing).  Walking the DOM up to the
         // editor scope and looking up by stable ``cell.id`` keeps the
         // thread accurate after a save reconciliation.
         _liveCell() {
@@ -256,7 +256,7 @@ export function cellThread({ notebookUuid, cell, initialCounts, curatedTags = []
                 this.explanationsLoaded = true;
             } catch (_e) {
                 // Non-fatal: tab simply renders empty if the new
-                // route is missing (server older than Phase 96).
+                // route is missing on older servers.
                 this.explanations = [];
                 this.explanationsLoaded = true;
             }
@@ -383,7 +383,7 @@ export function cellThread({ notebookUuid, cell, initialCounts, curatedTags = []
             }
         },
 
-        // ---- Phase 95.3 cell-tag picker — UI state only ----
+        // ---- Cell-tag picker — UI state only ----
         //
         // Tag mutations live as inline expressions in
         // ``cell_tag_picker.html`` so they reference the live x-for

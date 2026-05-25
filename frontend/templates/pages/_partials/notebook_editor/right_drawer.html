@@ -1,20 +1,15 @@
 {#-
-  unified notebook editor right-edge drawer.
-
-  Replaces three competing right-edge surfaces:
-
-    * Phase 96 ``chat_drawer.html``       (fixed-position, x-show)
-    * Phase 67.5 ``variable_inspector.html`` (fixed-position, x-show)
-    * Phase 77.6 ``social_drawer.html``   (Bootstrap offcanvas-end)
+  Unified notebook editor right-edge drawer — single offcanvas
+  holding all six side-tabs (Chat · Variables · Discussion ·
+  Endorsements · Followers · README).
 
   All six tab bodies stay in the DOM and toggle via ``x-show`` so
   the chat WebSocket subscription survives a Chat → Variables →
   Chat round-trip without reconnecting.
 
-  Tab order: Chat · Variables · Discussion · Endorsements ·
-  Followers · README.  Social tabs render only when the parent
-  page knows the notebook UUID.  Chat tab renders only when
-  ``notebook_chat_enabled`` is true.
+  Social tabs render only when the parent page knows the notebook
+  UUID.  Chat tab renders only when ``notebook_chat_enabled`` is
+  true.
 -#}
 <div class="pql-right-drawer"
      x-show="rightDrawer.open"

@@ -1,11 +1,9 @@
- {# unified Run-notebook modal.
-
-    Collapses the former Phase 67.2 Schedule modal + Phase 67.3
-    Run-Once modal into one tabbed surface.  The Parameter-override
-    form is shared between both tabs (it is identical between the
-    two surfaces today); the tab-specific blocks carry name + cron
-    on the Schedule tab and the in-flight run status on the Run-now
-    tab.  Bootstrap-modal toggle uses :class instead of x-show per
+ {# Unified Run-notebook modal — combines Schedule + Run-Once into
+    one tabbed surface.  The Parameter-override form is shared
+    between both tabs (it is identical between the two surfaces
+    today); the tab-specific blocks carry name + cron on the
+    Schedule tab and the in-flight run status on the Run-now tab.
+    Bootstrap-modal toggle uses :class instead of x-show per
     `feedback_bootstrap_modal_x_show.md`. #}
  <div class="modal fade pql-notebook-modal"
       :class="{ 'show d-block': runModal.open }"
