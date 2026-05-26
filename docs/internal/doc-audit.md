@@ -40,21 +40,24 @@ The decisions cited below are locked in
 | `outsider`       | 27    | ~3,840   |
 | `contributor`    | 12    | ~1,920   |
 | `operator`       | 16    | ~2,250   |
-| `outsider-tutorial` (guides + e2e) | 74 | ~16,860  |
+| `outsider-tutorial` (guides + e2e) | 76 | ~16,860  |
 | `internal`       | 32    | ~22,000  |
-| **Total**        | 173   | ~48,150  |
+| **Total**        | 175   | ~48,150  |
 
 W4 expanded `contributor` reference surface (§5) from 5 → 16 pages
 (+11 net: 6 `pql/` axis pages, 5 `services/` pages, 1 REST OAD
 page; 2 deletions when `pql.md` + `services.md` moved into
-subdirs).  See `## Counts after W4 closes` below for the full
-breakdown.
+subdirs).  W5 split the 2,021-LOC `notebook-editor.md` into three
+files (core + UI surfaces + advanced cells) and renamed 10
+underscore-cased e2e playbooks to dash-form for naming consistency.
+See `## Counts after W5 closes` below for the full W5 breakdown.
 
-Distribution skews heavily toward tutorial content (74 files,
+Distribution skews heavily toward tutorial content (76 files,
 ~50 % of LOC).  The largest single file is
 `docs/internal/roadmap_archive.md` at 12,877 LOC (W2 bulk-archive
-of Phases 48–99 grew it from 8,633); the second-largest is
-`docs/e2e-walkthroughs/notebook-editor.md` at 2,021 LOC.
+of Phases 48–99 grew it from 8,633); the largest e2e walkthrough
+is now `docs/e2e-walkthroughs/notebook-editor-ui.md` at 850 LOC
+(down from `notebook-editor.md` at 2,021 LOC pre-W5).
 
 ---
 
@@ -524,3 +527,47 @@ path pattern.
 
 W5 will pick up the e2e-walkthrough surface (theme-grouping,
 naming-drift fixes, notebook-editor.md split).
+
+## Counts after W5 closes (2026-05-26)
+
+| Metric                                            | Before W5 | After W5 | Owner |
+|---------------------------------------------------|----------:|---------:|-------|
+| E2E walkthrough files                             | 68        | 70 (+2)  | W5.2 |
+| `notebook-editor.md` LOC                          | 2,021     | 394 (core); 850 (UI); 836 (advanced) | W5.2 |
+| Largest e2e walkthrough                           | 2,021 LOC | 850 LOC  | W5.2 |
+| Files with underscore naming in `e2e-walkthroughs/` | 10      | 0        | W5.3 |
+| Inbound cross-refs to underscore filenames        | ~46       | 0 (live; historical dev-log retained) | W5.3 |
+| README inventory drift artifacts                  | 5+        | 0        | W5.0 |
+| README walkthrough count                          | 61 (stated) | 69 (actual) | W5.0 |
+| Missing playbooks in README inventory             | 9 (incl. dup) | 0    | W5.0 |
+| `mkdocs.yml` nav theme-groups                     | 5         | 5 (unchanged) | — |
+| Stale "alphabetical" comment in `mkdocs.yml`      | 1         | 0        | W5.1 |
+| Section headers in `notebook-editor*` files       | 17        | 5 + 5 + 5 (split) | W5.2 |
+| mkdocs strict warnings                            | 61        | 61 (unchanged) | — |
+| doc-inventory TSV rows                            | 176       | 178      | W5.4 |
+
+W5 closes the e2e-walkthroughs surface: the 2,021-LOC
+`notebook-editor.md` is split into a self-contained core + a UI
+surfaces companion + an advanced-cells companion, each with a
+"Related playbooks" cross-link footer.  Ten historically
+underscore-cased playbooks are renamed to dash-form to match the
+project-wide convention; the 46 inbound cross-refs in live docs
+(concepts, e2e, guides, mkdocs.yml, ROADMAP.md) are updated in
+the same commit.  The README inventory is refreshed: count fix
+(61 stated → 69 actual), 9 missing playbooks added to the Mode
+tables, broken-grammar artifacts from earlier phase-strip waves
+rewritten as feature-descriptions, "Wave 0a" + "BUG-22-NN"
+references replaced with non-phase-numbered language.  A stale
+"# Alphabetical inside e2e-walkthroughs for now; theme-grouping
+is a follow-up." comment in `mkdocs.yml` is dropped (the nav is
+already theme-grouped into 5 sections).
+
+**Verified post-W5**: `mkdocs build --strict` still aborts at
+exactly 61 warnings (W2 baseline, unchanged); W5 introduced zero
+new warnings.  `ls docs/e2e-walkthroughs/*_*.md` returns empty.
+`grep -rnE '(Phase |Wave |Sprint |BUG-[0-9])'
+docs/e2e-walkthroughs/README.md` returns empty.  Historical
+sprint-log files under `docs/internal/dev-log/` and
+`docs/internal/roadmap_archive.md` retain their underscore-form
+references as factual records and are excluded from `mkdocs`
+build via the `exclude_docs: internal/*` rule.
