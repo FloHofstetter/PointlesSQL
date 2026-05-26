@@ -1,0 +1,200 @@
+[
+  {
+    "id": "01",
+    "name": "Bootstrap — Sprint 1–23",
+    "slug": "bootstrap",
+    "phases": "0-7",
+    "to_commit": "9a2f0d22ba5865d307be4554cb9ba3f5669ec001",
+    "closed": "2026-04-17",
+    "synopsis": "Initial project scaffolding through Phase 7 (DAG engine + Playwright orchestration). Catalog browser, PQL helper, embedded JupyterLab, auth (Sprint 5-7), Postgres sync, foreign-catalog UI, logging/observability, docstrings + pydoclint, exception hierarchy, papermill executor, MCP walkthrough harness."
+  },
+  {
+    "id": "02",
+    "name": "Release-Engineering — Sprint 24–40",
+    "slug": "release-engineering",
+    "phases": "8-10",
+    "to_commit": "aa814a5737d8d9ceb08233c1042d7911e5694162",
+    "closed": "2026-04-18",
+    "synopsis": "Phase 10 closes the original 10-phase MVP plan. Release-engineering: bump-version.sh, cliff.toml, release.yml workflow, GHCR docker.yml, soyuz-catalog-client path-dep to git-tag pin, v0.1.0rc1/rc2/rc3 tags."
+  },
+  {
+    "id": "03",
+    "name": "Foundation Phases 11–13",
+    "slug": "foundation-11-13",
+    "phases": "11-13",
+    "to_commit": "4f6e56edda170164ea4e9e214c8557d8fcebd151",
+    "closed": "2026-04-25",
+    "synopsis": "Phase 11 (notebook persistence), Phase 12 (notebook editor v1 + settings drawer + keymap overlay), Phase 13 (Medallion core + DuckDB-first opinion + agent registry/store; Hermes-first integration; Drift-Monitor demo)."
+  },
+  {
+    "id": "04",
+    "name": "Phase 14–15 audit-trail + lineage",
+    "slug": "audit-trail-lineage",
+    "phases": "14-15",
+    "to_commit": "45f6584924aa61f6d6562a92e24c4f9d3cd5f496",
+    "closed": "2026-04-26",
+    "synopsis": "Phase 14 (audit-trail close + public-launch defer split), Phase 15.5 + 15.6 sprints (lineage backend foundation)."
+  },
+  {
+    "id": "05",
+    "name": "Phase 16 + 16.5 Delta-Branching spike",
+    "slug": "delta-branching",
+    "phases": "16-16.5",
+    "to_commit": "88ee7db812a66b068324817c795e4eaa40d563c6",
+    "closed": "2026-04-29",
+    "synopsis": "Phase 16 (lineage cockpit) + Phase 16.5 Delta-Branching ADR-0003 spike — zero-copy Delta shallow-clone branches per agent-run. E2E walkthrough included."
+  },
+  {
+    "id": "06",
+    "name": "Phase 17 UI Overhaul",
+    "slug": "ui-overhaul-17",
+    "phases": "17",
+    "to_commit": "9b50cf846b134e20e2ed9ddb400996f119d70823",
+    "closed": "2026-04-29",
+    "synopsis": "Phase 17 UI Overhaul — icon-rail + context-panel + tab-aware run-detail + 6-tab table-detail. Five sub-sprints + 17.3.1/17.5.1 polish."
+  },
+  {
+    "id": "07",
+    "name": "Phase 18–20 Audit Cockpit",
+    "slug": "audit-cockpit",
+    "phases": "18-20",
+    "to_commit": "19ea59501847037e1b2ccacf562278d3ab826f56",
+    "closed": "2026-04-29",
+    "synopsis": "Phase 18 (Audit Cockpit), Phase 19 (Audit-Reviewer Agent + Grafana), Phase 20 (Forensics + Retention)."
+  },
+  {
+    "id": "08",
+    "name": "Phase 21–22 Audit-Foundation + Docs",
+    "slug": "audit-foundation-docs",
+    "phases": "21-22",
+    "to_commit": "7d88be5c76e18bb8a44311612a517b119095e0e3",
+    "closed": "2026-04-30",
+    "synopsis": "Phase 21 audit-foundation (cross-repo agent-ml-registry walkthrough), Phase 22 (docs landing page + quickstart + concepts overview)."
+  },
+  {
+    "id": "09",
+    "name": "Phase 23–44 (Admin + Federation + DBT + CDF)",
+    "slug": "admin-federation-dbt-cdf",
+    "phases": "23-44",
+    "to_commit": "6402b44894718c55a227609219f023253748b561",
+    "closed": "2026-05-07",
+    "synopsis": "Long span covering admin landing + audit-sinks + API-Keys UI (Phase 33), Grafana governance panels (Phase 34), DBT integration (Phase 36 Stream A + auto-rollback), and Sprint 40.6 CDF events tab + subscriptions admin."
+  },
+  {
+    "id": "10",
+    "name": "Phase 51–55 (UI exploration + Bootstrap 5.3 research)",
+    "slug": "ui-exploration-51-55",
+    "phases": "51-55",
+    "to_commit": "4de128b2c9ca0c1659a6bebb6fd3bc03ea2afc52",
+    "closed": "2026-05-08",
+    "synopsis": "Phase 51 (concept page + walkthrough), Phase 53 UI overhaul research (bootstrap53-gap-analysis + ui-overhaul-proposal), Phase 54 (Bootstrap 5.3 modernize wave), Phase 55 (UI polish nachzug)."
+  },
+  {
+    "id": "11",
+    "name": "Phase 56–65 (Pagination + accordion + lens)",
+    "slug": "pagination-accordion-lens",
+    "phases": "56-65",
+    "to_commit": "c6d8a13b9b64d318f85a43e217ffe10e2201700b",
+    "closed": "2026-05-10",
+    "synopsis": "Phase 56 (BUG-53 closure + Alpine regression tests), Phase 57-58 (mid-wave), Phase 59 (7 sub-sprints), Phase 65 (Lens read-only Q&A surface)."
+  },
+  {
+    "id": "12",
+    "name": "Phase 66–68 Notebook editor v2",
+    "slug": "notebook-editor-v2",
+    "phases": "66-68",
+    "to_commit": "bf19a65367531ad370393e2fe6c1d34923e0e164",
+    "closed": "2026-05-12",
+    "synopsis": "Phase 66 (notebook editor v2), Phase 67 (Notebook Operations), Phase 68 (Frontend modularization — sql_editor CSS extract + notebook.css lazy-load)."
+  },
+  {
+    "id": "13",
+    "name": "Phase 70–77 Lens + Social + Data products",
+    "slug": "lens-social-dp",
+    "phases": "70-77",
+    "to_commit": "9cb9e05598356b031a1293e0ddd19f7c0d1f61fe",
+    "closed": "2026-05-15",
+    "synopsis": "Phase 70 (member-access + 5-submodule JS-split), Phase 71-72 (Session B closures), Phase 73 (agent-authored data products), Phase 74-75 (social network primitives), Phase 76 (Full Social Network for Data Products), Phase 77 (workspace landing + pin CRUD + 11 sub-sprints)."
+  },
+  {
+    "id": "14",
+    "name": "Phase 78–81 (Hygiene + Phase 81 feed/launchpad)",
+    "slug": "hygiene-feed-launchpad",
+    "phases": "78-81",
+    "to_commit": "a3e524dcec1692b095f7d8b0a6f1e4107038a422",
+    "closed": "2026-05-16",
+    "synopsis": "Phase 78-79 (stale-comment + broad-except sweep), Phase 80 (phase-80.9 close-out), Phase 81 (large feed/launchpad wave: 81.G inline-edit, 81.H /new launchpad, 81.K Activity/Discover tabs, 81.L /help reference, 81.M entity action menus)."
+  },
+  {
+    "id": "15",
+    "name": "Phase 82–86 Ingest UI + Modularisation",
+    "slug": "ingest-modularisation",
+    "phases": "82-86",
+    "to_commit": "4edf6a38beebdcec2bcee6f2b734b0d475df2e3b",
+    "closed": "2026-05-16",
+    "synopsis": "Phase 82 (Ingest UI: 6 sub-phases, 7 connectors, 60 new pytest), Phase 83-85 (Saved Views + VQB + DP GitHub-polish + dataflow canvas), Phase 86 (modularisation + dedup wave: feed/jobs/alerts/governance routes split, get_templates centralization, star.js extract)."
+  },
+  {
+    "id": "16",
+    "name": "Phase 87–89 Restschuld I–III",
+    "slug": "restschuld-i-iii",
+    "phases": "87-89",
+    "to_commit": "7e551e9603d9c179d884f6ee7b82390c3c834d6f",
+    "closed": "2026-05-16",
+    "synopsis": "Phase 87 (config/_settings + repo_assets + audit/_legacy splits), Phase 88 (SQL/dbt cluster: _dispatcher + editor + dbt/routes), Phase 89 (Restschuld III endgame: _polymorphic_handlers 9-axis split + main.py lifespan extraction)."
+  },
+  {
+    "id": "17",
+    "name": "Phase 90–94 NL→SQL + Memory + Vector-Search",
+    "slug": "nlsql-memory-vector",
+    "phases": "90-94",
+    "to_commit": "612cf077d0961f59ce23c40638704c881f170a2f",
+    "closed": "2026-05-19",
+    "synopsis": "Phase 90 (pql.memory facade + /memory/<agent-id> brain browser), Phase 91 (NL→SQL chat panel via in-process hermes-agent), Phase 92 (vector-search compute primitive + 5 follow-ups)."
+  },
+  {
+    "id": "18",
+    "name": "Phase 95–106 Notebook v3 (Cell-social + Co-edit composite)",
+    "slug": "notebook-v3-composite",
+    "phases": "95-106",
+    "to_commit": "177dd8a026c10a56da1d86a253bfc1c4b170e36a",
+    "closed": "2026-05-21",
+    "synopsis": "Largest single cluster: Phase 95 (cell-level social), Phase 96 (inline AI-Assistant + sql_chat→editor_chat rename), Phase 97 (revision history + cell-diff), Phase 98 (notebook tags + magic + cell-lineage + export), Phase 99 (widgets + permissions), Phase 100 (publish/snapshot), Phase 101 (per-cell authorship + AI-acceptance hook), Phase 102 (branch-aware notebooks), Phase 103-104 (replay/scenario + NL→Notebook sequence proposals), Phase 105 (real-time co-edit via Y.Doc + awareness + agent-presence + compaction scheduler), Phase 106 hygiene close."
+  },
+  {
+    "id": "19",
+    "name": "Phase 107–114 post-Notebook UI + Co-edit bus + Branch backend",
+    "slug": "post-notebook-ui",
+    "phases": "107-114",
+    "to_commit": "d689b2dc1c1278427c5bef282c5764da96746d93",
+    "closed": "2026-05-23",
+    "synopsis": "Phase 107 (toolbar icon-only mode + close-all panels), Phase 108 (live-server + multi-tab Playwright CI gate + replay-worker test), Phase 109 (multi-worker co-edit bus PG LISTEN/NOTIFY + admin status endpoint), Phase 110 (Restschuld IV modularization: 9 splits), Phase 111 (Restschuld V wave: 7 splits, restschuld pipeline empty), Phase 112+113 (right meta panel + editor surface consolidation: tabbed Schedule+Run + unified right drawer), Phase 114 (Workspace navigation overhaul: tree + filter + drag-drop + inline rename)."
+  },
+  {
+    "id": "20",
+    "name": "Phase 115–117 Drag-drop + Toolbar + SQL Statement API",
+    "slug": "dragdrop-toolbar-sql",
+    "phases": "115-117",
+    "to_commit": "9f18e63227ee0c34170f28b9091711f1312f7ae0",
+    "closed": "2026-05-23",
+    "synopsis": "Phase 115 (cell drag-drop reorder + CRDT sync + header-as-handle + live-splice FLIP), Phase 116 (notebook editor toolbar redesign: vital pills v2 + Save/Run state buttons), Phase 117 (external SQL Statement Execution API at /api/2.0/sql/statements; SELECT-only v1; Bearer-only auth)."
+  },
+  {
+    "id": "21",
+    "name": "Phase 118–121 API-Key family + Restschuld V tail",
+    "slug": "api-key-family",
+    "phases": "118-121",
+    "to_commit": "475bb72640635c92b7c291e24271a0f39b095c64",
+    "closed": "2026-05-24",
+    "synopsis": "Phase 118 (token format pql_{env}_v1_{body40}_{crc8} + admin surface), Phase 119 (API-key lifecycle: TTL + rotation + soft-quarantine), Phase 120 (API-key ACLs + usage dashboard: 3 CASCADE tables + 6 admin endpoints), Phase 121 (Restschuld V: 9 sub-sprints — error-envelope unification, pagination service-layer rollout, soyuz facade completion, pydoclint tightening, settings cache, micro-extractions, PII redaction in audit details)."
+  },
+  {
+    "id": "22",
+    "name": "Phase 122–123 Publication-readiness",
+    "slug": "publication-readiness",
+    "phases": "122-123",
+    "to_commit": "05ceed0012914c3bcb927a6931368b05271ec5c5",
+    "closed": "2026-05-25",
+    "synopsis": "Phase 122 (Source-Code Sanitization for Publication: 1622→260 phase refs across 4 sprints; CLAUDE.md forward-guard for templates/JS/CSS/UI strings; README outside-reader polish), Phase 123 (Frontend Master-Plan 8-wave modernisation: forward-guard W1, inline-script-exodus W2, JS-subsystem-splits W3, template-splits+macros W4, CSS-architektur W5, docs W6, JS-quality W7 (biome), A11y form-labels W8)."
+  }
+]
