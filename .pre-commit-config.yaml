@@ -120,3 +120,9 @@ repos:
         language: system
         pass_filenames: false
         files: ^pointlessql/
+      - id: dump-openapi
+        name: regenerate docs/reference/_generated/openapi.json
+        entry: uv run python scripts/dump-openapi.py
+        language: system
+        pass_filenames: false
+        files: ^pointlessql/api/.*\.py$
