@@ -42,7 +42,13 @@ The decisions cited below are locked in
 | `operator`       | 16    | ~2,250   |
 | `outsider-tutorial` (guides + e2e) | 74 | ~16,860  |
 | `internal`       | 32    | ~22,000  |
-| **Total**        | 162   | ~46,500  |
+| **Total**        | 173   | ~48,150  |
+
+W4 expanded `contributor` reference surface (§5) from 5 → 16 pages
+(+11 net: 6 `pql/` axis pages, 5 `services/` pages, 1 REST OAD
+page; 2 deletions when `pql.md` + `services.md` moved into
+subdirs).  See `## Counts after W4 closes` below for the full
+breakdown.
 
 Distribution skews heavily toward tutorial content (74 files,
 ~50 % of LOC).  The largest single file is
@@ -478,3 +484,43 @@ passes valid Conventional-Commits messages and rejects empty /
 type-less ones.  `docs/internal/dev-log/` is automatically excluded
 from gh-pages render via the `exclude_docs: internal/*` glob
 established in W2.
+
+---
+
+## Counts after W4 closes (2026-05-26)
+
+| Metric                                           | Before W4 | After W4 | Owner |
+|--------------------------------------------------|----------:|---------:|-------|
+| Markdown files under `docs/`                     | 162       | 173 (+11) | W4.2 + W4.3 |
+| `docs/reference/python/` pages                   | 3         | 13       | W4.3 |
+| `docs/reference/api/` pages                      | 0         | 1 (auto-gen) | W4.2 |
+| Documented `pql.*` exports                       | 1/51 (PQL only) | 51/51 | W4.3 |
+| REST routes covered by auto-doc                  | 0         | ~500 (via `app.openapi()`) | W4.2 |
+| `docs/reference/_generated/openapi.json`         | n/a       | 1.1 MB / 501 paths | W4.0 |
+| `[dependency-groups.docs]` packages              | 3         | 4 (+neoteroi-mkdocs) | W4.0 |
+| `scripts/dump-openapi.py`                        | n/a       | 38 LOC | W4.0 |
+| Pre-commit hooks                                 | 14        | 15 (+dump-openapi) | W4.1 |
+| OpenAPI-dump policy                              | manual    | pre-commit auto (on `pointlessql/api/**.py` change) | W4.1 |
+
+W4 implements ADR-0009 D6's "fully-automatic API documentation"
+half by wiring `mkdocstrings` over the full `pql.*` public surface
+(11 new per-axis pages under `docs/reference/python/`) and adding
+`neoteroi-mkdocs` for native-Markdown rendering of the FastAPI
+OpenAPI schema (1 page covering ~500 routes).  The OpenAPI dump
+is a checked-in artefact under `docs/reference/_generated/` so
+the docs build has no app-import overhead; a pre-commit hook
+regenerates the JSON automatically whenever any file under
+`pointlessql/api/` changes.
+
+**Verified post-W4**: `mkdocs build --strict` still emits exactly
+61 warnings (unchanged from W3 baseline; W4's 11 new pages add
+zero new warnings).  Pre-commit `dump-openapi` hook regenerates
+the openapi.json deterministically (smoke-tested 2026-05-26).
+Two pre-existing FastAPI warnings (`Duplicate Operation ID`
+on `mlflow_proxy` + `dbt_proxy` catch-all `{path:path}` routes)
+surface during the dump but are not blockers — they predate W4
+and reflect intentional multi-method registration on the same
+path pattern.
+
+W5 will pick up the e2e-walkthrough surface (theme-grouping,
+naming-drift fixes, notebook-editor.md split).
