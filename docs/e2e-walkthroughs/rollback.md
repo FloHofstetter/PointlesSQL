@@ -24,7 +24,7 @@ row whose `delta_version_before/after` proves the table moved.
 ## Preconditions
 
 1. **PointlesSQL** + **soyuz-catalog** running per the
- [Hermes-Medallion playbook](hermes_medallion.md) preconditions.
+ [Hermes-Medallion playbook](hermes-medallion.md) preconditions.
 2. The Medallion notebook
  [`notebooks/hermes_medallion.py`](https://github.com/FloHofstetter/PointlesSQL/blob/main/notebooks/hermes_medallion.py)
  has been replayed at least once so silver and gold tables

@@ -258,7 +258,7 @@ PointlesSQL
 │   │         [`docs/concepts/cell-level-social.md`](docs/concepts/cell-level-social.md)
 │   │         explains the reconciliation algorithm + the documented
 │   │         limitation + the forward-compat contract Phase 101 keys
-│   │         off.  [`docs/e2e-walkthroughs/notebook_cell_social.md`](docs/e2e-walkthroughs/notebook_cell_social.md)
+│   │         off.  [`docs/e2e-walkthroughs/notebook-cell-social.md`](docs/e2e-walkthroughs/notebook-cell-social.md)
 │   │         covers the 8-step Playwright playbook with step 5 as
 │   │         the headline identity-survival test.  Concept nav entry
 │   │         after ``Agent memory``; walkthrough entry in the
@@ -331,7 +331,7 @@ PointlesSQL
 │   │         flush round-trip for both propose + fix).  Plugin
 │   │         side adds 10 tests in ``tests/test_cell_tools.py``.
 │   │         Markdown walkthrough
-│   │         [`docs/e2e-walkthroughs/notebook_assistant.md`](docs/e2e-walkthroughs/notebook_assistant.md)
+│   │         [`docs/e2e-walkthroughs/notebook-assistant.md`](docs/e2e-walkthroughs/notebook-assistant.md)
 │   │         + seed notebook
 │   │         [`notebooks/phase96_walkthrough.py`](notebooks/phase96_walkthrough.py).
 │   │
@@ -943,7 +943,7 @@ PointlesSQL
 │   │       ``5ca77eb0``, asset rc139 → rc140.
 │   │     - **122.3 — e2e-walkthroughs feature-rename + content-clean.**
 │   │       ✅ done 2026-05-24.  Renamed
-│   │       ``sprint_13_11_reflexive_tools.md`` → ``reflexive_tools.md``;
+│   │       ``sprint_13_11_reflexive-tools.md`` → ``reflexive-tools.md``;
 │   │       cross-references in ``mkdocs.yml`` / ``docs/guides/`` /
 │   │       walkthrough README updated.  Dropped the ``| Phase |``
 │   │       column from the 4 walkthrough-mode tables in the README.

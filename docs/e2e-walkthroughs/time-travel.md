@@ -12,7 +12,7 @@ what did this row look like" admin-only lookup. Builds on the
 - PointlesSQL is running on `http://127.0.0.1:8000`.
 - A Delta table exists with at least three historical versions.
  The Hermes-medallion notebook from
- [`docs/e2e-walkthroughs/hermes_medallion.md`](hermes_medallion.md)
+ [`docs/e2e-walkthroughs/hermes-medallion.md`](hermes-medallion.md)
  produces enough versions if no real fixture is on hand:
  - autoload bronze (v0)
  - merge silver (v0 of silver, v1 of bronze if upstream changed)

@@ -238,7 +238,7 @@ this act — it has the richest lineage state.
  not a 404 ( wiring sanity check).
 
 [deep-dive: [`admin-audit.md`](admin-audit.md),
-[`hermes_medallion.md`](hermes_medallion.md),
+[`hermes-medallion.md`](hermes-medallion.md),
 [`operational.md`](operational.md)]
 
 ### Act 7 — Models + inference DAG (5 steps, ~5 min)
@@ -466,7 +466,7 @@ What this tour intentionally does NOT cover, and where to find it:
  [`compliance-bot.md`](compliance-bot.md),
  [`incident-responder.md`](incident-responder.md),
  [`agent-ml-registry.md`](agent-ml-registry.md),
- [`agent_drift_monitor.md`](agent_drift_monitor.md).
+ [`agent-drift-monitor.md`](agent-drift-monitor.md).
 - **OIDC SSO bring-up** — needs an external IdP or the e2e
  `mock-oidc` sidecar plus an env-var flip. See
  [`oidc.md`](oidc.md).
@@ -478,7 +478,7 @@ What this tour intentionally does NOT cover, and where to find it:
 - **Notebook editor (Monaco LSP, kernel restart, Variable Explorer,
  Insert-from-catalog)** — needs Firefox + a writable
  `notebooks/` dir. See [`notebook-editor.md`](notebook-editor.md)
- and [`notebook_full_walkthrough.md`](notebook_full_walkthrough.md).
+ and [`notebook-full-walkthrough.md`](notebook-full-walkthrough.md).
 - **Auth bootstrap on a clean DB** (first-user admin promotion,
  redirect-to-login middleware, rate-limiter floor) — needs an
  empty user table. See [`auth.md`](auth.md),

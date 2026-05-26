@@ -154,7 +154,7 @@ the "deleted cell" placeholder page.
 
 ## Related walkthroughs
 
-* [`agent_memory.md`](agent_memory.md) — Phase 90's brain browser
+* [`agent-memory.md`](agent-memory.md) — Phase 90's brain browser
   uses the same polymorphic social surface for `agent_memory`.
 * [`notebook-editor.md`](notebook-editor.md) — the broader notebook
   editor walkthrough.

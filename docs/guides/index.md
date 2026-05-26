@@ -47,7 +47,7 @@ Claude Code through Playwright MCP.
 [inline-editors.md](../e2e-walkthroughs/inline-editors.md) ·
 [time-travel.md](../e2e-walkthroughs/time-travel.md) ·
 [branches.md](../e2e-walkthroughs/branches.md) ·
-[hermes_medallion.md](../e2e-walkthroughs/hermes_medallion.md) ·
+[hermes-medallion.md](../e2e-walkthroughs/hermes-medallion.md) ·
 [federation.md](../e2e-walkthroughs/federation.md) ·
 [foreign-catalog-sync.md](../e2e-walkthroughs/foreign-catalog-sync.md) ·
 [dashboards.md](../e2e-walkthroughs/dashboards.md) ·
@@ -58,7 +58,7 @@ Claude Code through Playwright MCP.
 ### Notebooks + jobs
 
 [notebook-editor.md](../e2e-walkthroughs/notebook-editor.md) ·
-[notebook_full_walkthrough.md](../e2e-walkthroughs/notebook_full_walkthrough.md) ·
+[notebook-full-walkthrough.md](../e2e-walkthroughs/notebook-full-walkthrough.md) ·
 [notebook-jobs.md](../e2e-walkthroughs/notebook-jobs.md) ·
 [jobs-dag.md](../e2e-walkthroughs/jobs-dag.md)
 
@@ -71,7 +71,7 @@ Claude Code through Playwright MCP.
 [incident-responder.md](../e2e-walkthroughs/incident-responder.md) ·
 [rollback.md](../e2e-walkthroughs/rollback.md) ·
 [operational.md](../e2e-walkthroughs/operational.md) ·
-[agent_drift_monitor.md](../e2e-walkthroughs/agent_drift_monitor.md)
+[agent-drift-monitor.md](../e2e-walkthroughs/agent-drift-monitor.md)
 
 ### Agents + ML registry
 
@@ -79,7 +79,7 @@ Claude Code through Playwright MCP.
 [models-tab.md](../e2e-walkthroughs/models-tab.md) ·
 [models-promotion.md](../e2e-walkthroughs/models-promotion.md) ·
 [inference-lineage.md](../e2e-walkthroughs/inference-lineage.md) ·
-[reflexive_tools.md](../e2e-walkthroughs/reflexive_tools.md)
+[reflexive-tools.md](../e2e-walkthroughs/reflexive-tools.md)
 
 ## Replay convention
 

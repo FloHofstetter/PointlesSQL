@@ -125,5 +125,5 @@ is set, the WS closes with code 1011 + reason
 - [Agent memory](agent-memory.md) — Phase 90 storage side
 - [Agent supervision](agent-supervision.md) — three privilege
   families that decide which tools each session sees
-- [SQL chat walkthrough](../e2e-walkthroughs/sql_chat.md) —
+- [SQL chat walkthrough](../e2e-walkthroughs/sql-chat.md) —
   Playwright playbook covering the full flow

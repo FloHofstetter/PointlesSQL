@@ -22,7 +22,7 @@ CloudEvent emission as Hermes would produce.
 ## Why each tool exists
 
 The 2026-04-25 Hermes-Medallion live replay surfaced three bugs
-([`docs/e2e-walkthroughs/hermes_medallion.md`](hermes_medallion.md)
+([`docs/e2e-walkthroughs/hermes-medallion.md`](hermes-medallion.md)
 captures the original session). Each tool answers
 one of them:
 

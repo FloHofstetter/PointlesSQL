@@ -83,8 +83,6 @@ markdown_extensions:
   - toc:
       permalink: true
 
-# Alphabetical inside e2e-walkthroughs for now; theme-grouping is a
-# follow-up.
 nav:
   - Home: index.md
   - Getting Started:
@@ -145,11 +143,11 @@ nav:
           - Working with data:
               - Full-stack demo (raw → ML): e2e-walkthroughs/full-stack-demo.md
               - SQL editor: e2e-walkthroughs/sql-editor.md
-              - SQL chat: e2e-walkthroughs/sql_chat.md
+              - SQL chat: e2e-walkthroughs/sql-chat.md
               - Inline editors: e2e-walkthroughs/inline-editors.md
               - Time travel: e2e-walkthroughs/time-travel.md
               - Branches: e2e-walkthroughs/branches.md
-              - Hermes medallion: e2e-walkthroughs/hermes_medallion.md
+              - Hermes medallion: e2e-walkthroughs/hermes-medallion.md
               - Federation: e2e-walkthroughs/federation.md
               - Foreign catalog sync: e2e-walkthroughs/foreign-catalog-sync.md
               - Dashboards: e2e-walkthroughs/dashboards.md
@@ -157,10 +155,12 @@ nav:
               - Error handling: e2e-walkthroughs/error-handling.md
               - Packaging: e2e-walkthroughs/packaging.md
           - Notebooks + jobs:
-              - Notebook editor: e2e-walkthroughs/notebook-editor.md
-              - Notebook full walkthrough: e2e-walkthroughs/notebook_full_walkthrough.md
+              - Notebook editor (core): e2e-walkthroughs/notebook-editor.md
+              - Notebook editor (UI surfaces): e2e-walkthroughs/notebook-editor-ui.md
+              - Notebook editor (advanced cells): e2e-walkthroughs/notebook-editor-advanced.md
+              - Notebook full walkthrough: e2e-walkthroughs/notebook-full-walkthrough.md
               - Notebook jobs: e2e-walkthroughs/notebook-jobs.md
-              - Notebook cell social: e2e-walkthroughs/notebook_cell_social.md
+              - Notebook cell social: e2e-walkthroughs/notebook-cell-social.md
               - Jobs DAG: e2e-walkthroughs/jobs-dag.md
           - Audit + lineage:
               - Admin audit: e2e-walkthroughs/admin-audit.md
@@ -171,18 +171,18 @@ nav:
               - Incident responder: e2e-walkthroughs/incident-responder.md
               - Rollback: e2e-walkthroughs/rollback.md
               - Operational: e2e-walkthroughs/operational.md
-              - Agent drift monitor: e2e-walkthroughs/agent_drift_monitor.md
+              - Agent drift monitor: e2e-walkthroughs/agent-drift-monitor.md
               - Multi-workspace setup: e2e-walkthroughs/multi-workspace-setup.md
               - Git-backed workspaces: e2e-walkthroughs/git-backed-workspaces.md
               - Volumes: e2e-walkthroughs/volumes.md
           - Agents + ML registry:
-              - Agent memory: e2e-walkthroughs/agent_memory.md
+              - Agent memory: e2e-walkthroughs/agent-memory.md
               - Agent ML registry: e2e-walkthroughs/agent-ml-registry.md
               - Models tab: e2e-walkthroughs/models-tab.md
               - Model compare: e2e-walkthroughs/model-compare.md
               - Models promotion: e2e-walkthroughs/models-promotion.md
               - Inference lineage: e2e-walkthroughs/inference-lineage.md
-              - Reflexive tools: e2e-walkthroughs/reflexive_tools.md
+              - Reflexive tools: e2e-walkthroughs/reflexive-tools.md
   - Reference:
       - reference/index.md
       - Python API:

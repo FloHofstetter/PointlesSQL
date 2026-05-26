@@ -10,25 +10,26 @@ can be replayed by either:
 - **Claude Code** in an MCP-enabled session using the
  `mcp__playwright__browser_*` tool family.
 
- of [`ROADMAP.md`](https://github.com/FloHofstetter/PointlesSQL/blob/main/ROADMAP.md) explains the
-motivation: unit and integration tests have never instantiated
-the rendered templates — commit `e09a661` (the job-pause form
-landing on a raw JSON page) is the kind of bug only a live
-browser surfaces.
+[`ROADMAP.md`](https://github.com/FloHofstetter/PointlesSQL/blob/main/ROADMAP.md)
+explains the motivation: unit and integration tests have never
+instantiated the rendered templates — commit `e09a661` (the
+job-pause form landing on a raw JSON page) is the kind of bug
+only a live browser surfaces.
 
- delivered the harness plus the five **data-surface**
-playbooks. adds five **orchestration + operational**
-playbooks on top of the same harness (jobs, notebook, OIDC,
-`/metrics`, config matrix) — closing.
+The harness covers data-surface playbooks (auth, catalog,
+inline editors, federation, foreign-catalog sync), orchestration
++ operational playbooks (jobs, notebook editor, OIDC,
+`/healthz` + `/metrics`, config matrix), agent-supervision
+playbooks (drift monitor, medallion, ML registry promotion,
+inference lineage), and the social, audit-cockpit, branches,
+ML registry, dbt-pipeline, and packaging surfaces.
 
 ## Inventory (full)
 
-61 walkthroughs total (55 + 1 lens-overview + 1 lens-mcp + 1
-playwright-MCP carve-out + 1 notebook-overview + 1 notebook-jobs + 1 social ).  Each carries a
-`> **Mode:**` tag in its first content block; this section is the
-grep-friendly index.
+69 walkthroughs total. Each carries a `> **Mode:**` tag in its
+first content block; this section is the grep-friendly index.
 
-### `Mode: browser` — Playwright MCP replay (42)
+### `Mode: browser` — Playwright MCP replay (50)
 
 Reload `auth.md` first; later ones reuse seeded users + catalog.
 
@@ -42,9 +43,15 @@ Reload `auth.md` first; later ones reuse seeded users + catalog.
 | [`federation.md`](federation.md) | `/connections`, `/external-locations`, `/credentials` | |
 | [`foreign-catalog-sync.md`](foreign-catalog-sync.md) | foreign-catalog modal + sync history | |
 | [`jobs-dag.md`](jobs-dag.md) | `/jobs` + DAG editor + run-detail | |
-| [`notebook-editor.md`](notebook-editor.md) | native `.py` notebook editor | |
-| [`notebook-jobs.md`](notebook-jobs.md) | schedule notebook as job | |
-| [`notebook_full_walkthrough.md`](notebook_full_walkthrough.md) | `.py` notebook full lifecycle | |
+| [`notebook-editor.md`](notebook-editor.md) | native `.py` notebook editor — core (autosave / kernel / Pyright / Variable Explorer) | |
+| [`notebook-editor-ui.md`](notebook-editor-ui.md) | notebook editor UI surfaces (sidebar / SQL cell / multi-tab / markdown+KaTeX / Outline) | |
+| [`notebook-editor-advanced.md`](notebook-editor-advanced.md) | notebook editor advanced cells (PQL.sql / ipywidgets / run history / settings / pin-to-memory) | |
+| [`notebook-full-walkthrough.md`](notebook-full-walkthrough.md) | `.py` notebook full lifecycle | |
+| [`notebook-assistant.md`](notebook-assistant.md) | inline AI assistant in the notebook editor | |
+| [`notebook-cell-social.md`](notebook-cell-social.md) | per-cell comments + tags + Alpine thread chip | |
+| [`agent-memory.md`](agent-memory.md) | `/memory/<agent-id>` browse + pin + diff | |
+| [`sql-chat.md`](sql-chat.md) | NL → SQL chat drawer + propose/accept DML | |
+| [`lens-overview.md`](lens-overview.md) | `/lens` chat-style natural-language catalog Q&A | |
 | [`oidc.md`](oidc.md) | OIDC SSO sidecar | |
 | [`operational.md`](operational.md) | `/healthz`, `/metrics`, `X-Request-ID` | |
 | [`csrf.md`](csrf.md) | CSRF cookie + token refresh | |
@@ -79,23 +86,25 @@ Reload `auth.md` first; later ones reuse seeded users + catalog.
 | [`notebook-coedit-multi-tab.md`](notebook-coedit-multi-tab.md) | Two-tab real-time co-edit (CRDT + awareness + agent presence) | |
 | [`social.md`](social.md) | DP Discussion+Reviews tabs · `/users` · `/agents` · `/topics` · `/feed` · `/notifications` · `/me/settings` | |
 
-### `Mode: hybrid` — notebook / CLI + browser (8)
+### `Mode: hybrid` — notebook / CLI + browser (10)
 
 Browser steps are present but only after a notebook or CLI
 prelude completes. Replay needs both contexts.
 
 | Walkthrough | Surface |
 |---|---|
-| [`hermes_medallion.md`](hermes_medallion.md) | Hermes session + run-detail (the "done moment") | |
-| [`agent_drift_monitor.md`](agent_drift_monitor.md) | notebook + `/runs/{id}` | |
+| [`hermes-medallion.md`](hermes-medallion.md) | Hermes session + run-detail (the "done moment") | |
+| [`agent-drift-monitor.md`](agent-drift-monitor.md) | notebook + `/runs/{id}` | |
 | [`inference-lineage.md`](inference-lineage.md) | notebook + run-detail Graph tab | |
 | [`full-stack-demo.md`](full-stack-demo.md) | seed + multi-page UI | |
 | [`config-matrix.md`](config-matrix.md) | env overlays + UI smoke | |
 | [`explain-rewrite.md`](explain-rewrite.md) | Hermes plugin + run-detail Rewrites tab | |
 | [`packaging.md`](packaging.md) | docker CLI + home-page smoke | |
-| [`data_products.md`](data_products.md) | yaml reload + `/data-products` browse | |
+| [`data-products.md`](data-products.md) | yaml reload + `/data-products` browse | |
+| [`library-facts.md`](library-facts.md) | `/library/facts` browse + per-fact detail | |
+| [`vector-search.md`](vector-search.md) | HNSW vector index + `pql.vector_search` + REST + UI tab | |
 
-### `Mode: hermes` — Hermes / operational, no browser (6)
+### `Mode: hermes` — Hermes / operational, no browser (7)
 
 Pure agent-runtime or ops-runbook playbooks. Do not load
 Playwright MCP for these — they call the Hermes CLI or curl
@@ -108,16 +117,18 @@ endpoints directly.
 | [`incident-responder.md`](incident-responder.md) | Hermes one-shot persona | |
 | [`agent-ml-registry.md`](agent-ml-registry.md) | Hermes plugin tools | |
 | [`models-promotion.md`](models-promotion.md) | Hermes plugin promote-tool | |
-| [`reflexive_tools.md`](reflexive_tools.md) | Hermes reflexive tools | |
+| [`reflexive-tools.md`](reflexive-tools.md) | Hermes reflexive tools | |
+| [`lens-mcp.md`](lens-mcp.md) | `pointlessql lens-mcp` (stdio) + `/mcp/health` + `/mcp/info` | |
 
-### `Mode: curl` — JSON API, no UI (1)
+### `Mode: curl` — JSON API, no UI (2)
 
-yaml-canonical surface. The admin pages here are
-JSON-only by design — there is no HTML UI to drive.
+JSON-canonical surfaces. The admin pages here are JSON-only by
+design — there is no HTML UI to drive.
 
 | Walkthrough | Surface |
 |---|---|
 | [`git-backed-workspaces.md`](git-backed-workspaces.md) | `/api/admin/repos` + webhook | |
+| [`external-sql-api.md`](external-sql-api.md) | `/api/2.0/sql/statements` Databricks-compatible REST | |
 
 ---
 
@@ -194,7 +205,7 @@ at all. Runs on its own, no dependency on the harness above:
 CloudEvents + control-room surface end-to-end through an
 external runtime that pretends to be Hermes:
 
-12. [`agent_drift_monitor.md`](agent_drift_monitor.md) —
+12. [`agent-drift-monitor.md`](agent-drift-monitor.md) —
  demo. Registers an agent run via
  `POST /api/agent-runs`, runs the
  [`notebooks/agent_drift_monitor.py`](https://github.com/FloHofstetter/PointlesSQL/blob/main/notebooks/agent_drift_monitor.py)
@@ -205,7 +216,7 @@ external runtime that pretends to be Hermes:
  tables-touched chips, all attributed to the
  `X-Principal`-forwarded identity.
 
-13. [`hermes_medallion.md`](hermes_medallion.md) —
+13. [`hermes-medallion.md`](hermes-medallion.md) —
  the **done moment**. A real
  Hermes session (with `hermes-plugin-pointlessql` loaded)
  autoloads
@@ -254,32 +265,28 @@ model lives in soyuz:
  inference → promote) — fully HTTP-only, no PointlesSQL
  imports on the agent side.
 
-**admin + audit cockpit + dbt**.  Five new
-playbooks (one rewritten + four new) closing coverage gaps
-that opened 17, 18.6+, 28, 33, and 36.  Replay
-them after `auth.md` (admin user must exist + be signed in):
+**admin + audit cockpit + dbt**.  Five playbooks closing the
+admin + audit-cockpit + dbt coverage:
 
 19. [`admin-console.md`](admin-console.md) — admin landing 7-card grid + ``/admin/external-writes``
- () + ``/admin/api-keys`` (with the plaintext-
- secret modal + load-bearing
- secret-not-in-outerHTML assertion) + ``/admin/review-
- destinations`` + ``/admin/system-info``.  ``/admin/audit-
- sinks`` and ``/admin/workspaces`` cross-link out to the
- dedicated playbooks.
+ + ``/admin/api-keys`` (with the plaintext-secret modal +
+ load-bearing secret-not-in-outerHTML assertion) +
+ ``/admin/review-destinations`` + ``/admin/system-info``.
+ ``/admin/audit-sinks`` and ``/admin/workspaces`` cross-link
+ out to the dedicated playbooks.
 20. [`audit-cockpit-deep.md`](audit-cockpit-deep.md) — the
- four → 18.x cockpit pages: anomaly inbox +
- FTS search ('s custom path-segment tokenizer
- verified) + by-table reverse index +
+ four cockpit pages: anomaly inbox + FTS search (custom
+ path-segment tokenizer verified) + by-table reverse index +
  saved audit queries workbench.  Distinguishes "chrome"
  path (works on ``seed-e2e.py``) from "data" path (needs
  ``seed-full-stack-demo.py --demo-rollback --keep-state``).
 21. [`run-comparisons.md`](run-comparisons.md) — both
  compare surfaces in one playbook: the structured 6-tab
- audit run-diff at ``/runs/{a}/diff/{b}`` ()
- with Chart.js bars + the side-by-side jobs run-compare
- at ``/jobs/{job_id}/runs/{a}/compare?with={b}``
- ().  Carries the prior-art mitigation
- for Chart.js async render against hidden tab-panes.
+ audit run-diff at ``/runs/{a}/diff/{b}`` with Chart.js bars
+ + the side-by-side jobs run-compare at
+ ``/jobs/{job_id}/runs/{a}/compare?with={b}``.  Carries the
+ prior-art mitigation for Chart.js async render against
+ hidden tab-panes.
 22. [`alerts.md`](alerts.md) — alert list + detail +
  destination CRUD with HMAC redaction + the per-user
  ``/alerts/feed.atom`` + ``/alerts/feed.json`` pull feed
@@ -290,7 +297,7 @@ them after `auth.md` (admin user must exist + be signed in):
  down).  The read-only API surface
  (``/api/dbt/manifest``, ``/coverage``, ``/test-failures``)
  is exercised programmatically pending the still-paused
- chrome work (filed as).
+ chrome work.
 24. [`explain-rewrite.md`](explain-rewrite.md) — agent
  EXPLAIN-driven self-rewrite loop.  Hermes plugin's
  ``pql_query`` calls ``GET /api/sql/explain`` first; on
@@ -301,34 +308,31 @@ them after `auth.md` (admin user must exist + be signed in):
  averted cost-gate denials per week").
 25. [`admin-cdf-tail.md`](admin-cdf-tail.md) — foreign-Delta CDF tail subscriptions admin page +
  table-detail "CDF events" tab + auditor-scope plugin tools.
- Pull-modell counterpart to push-modell OpenLineage; per-table
+ Pull-model counterpart to push-model OpenLineage; per-table
  opt-in registry + idempotent ``DeltaTable.load_cdf()``-driven
  capture.
 
-[`audit-sinks.md`](audit-sinks.md) was rewritten from a
-curl-only operational runbook into a UI-driven walkthrough
-during Wave 0a — the original "no UI yet" caveat is
-gone.  Wave 0a also surfaced (Alpine ``x-data``
-attribute escaping on four admin row templates), fixed in
-``a744b52``.
+[`audit-sinks.md`](audit-sinks.md) is the UI-driven walkthrough
+that replaced the earlier curl-only operational runbook.  The
+same pass surfaced an Alpine ``x-data`` attribute-escaping bug
+on four admin row templates, fixed in ``a744b52``.
 
 **full social network**.  Replay after
-``auth.md`` and ``data_products.md``:
+``auth.md`` and ``data-products.md``:
 
-26. [`social.md`](social.md) — close-out replay.
- Walks the full social surface: the new DP Discussion tab
- (cite-token render via ``body_md_resolved`` + ``@``-mention
- picker + threaded replies + accepted-answer marking +
- reactions + agent author badge), Reviews tab (same render
- path), endorsement serialiser (curl-only — no UI block
- yet), ``/users/{id}`` user profile + follow-user,
- ``/agents/{slug}`` agent profile, ``/topics/{slug}`` topic
- follow, ``/feed`` aggregation, ``/notifications`` + topbar
- SSE bell, ``/me/settings`` digest toggle, and the Alpine
- x-data smoke across all six social pages that inherited
- the quote-fix. Closes Bug 1 / 4 / 5 / 6 / 7 /
- 12 / 14 surfaced during the replay; Bug 13
- (endorsement render block) stays deferred .
+26. [`social.md`](social.md) — full social surface walk:
+ the DP Discussion tab (cite-token render via
+ ``body_md_resolved`` + ``@``-mention picker + threaded
+ replies + accepted-answer marking + reactions + agent author
+ badge), Reviews tab (same render path), endorsement
+ serialiser (curl-only — no UI block yet), ``/users/{id}``
+ user profile + follow-user, ``/agents/{slug}`` agent
+ profile, ``/topics/{slug}`` topic follow, ``/feed``
+ aggregation, ``/notifications`` + topbar SSE bell,
+ ``/me/settings`` digest toggle, and the Alpine x-data smoke
+ across all six social pages that inherited the quote-fix.
+ The endorsement-render block is documented as a known
+ follow-up.
 
 ## Stack start
 
@@ -435,10 +439,11 @@ Every playbook has three sections:
  the action to take (MCP tool call or equivalent browser
  interaction), and the assertion that confirms the step worked.
 - **Found bugs** — problems surfaced in a live run. Either
- fixed in the same sprint commit (with a short-SHA link) or
- left as a `BUG-22-NN` TODO with a clear next action. No
- "something was weird" entries (per
- [`ROADMAP.md`](https://github.com/FloHofstetter/PointlesSQL/blob/main/ROADMAP.md) prelude).
+ fixed in the same commit (with a short-SHA link) or left as
+ a `BUG-…` TODO with a clear next action. No "something was
+ weird" entries (per
+ [`ROADMAP.md`](https://github.com/FloHofstetter/PointlesSQL/blob/main/ROADMAP.md)
+ prelude).
 
 ### Human replay
 

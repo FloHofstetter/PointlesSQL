@@ -17,7 +17,7 @@ time over SSE, and `/feed` aggregates everything you follow.
 
 1. `auth.md` has been run — `admin@pql.test` exists and is logged
    in; `user@pql.test` exists.
-2. `data_products.md` has been run at least once — at least one
+2. `data-products.md` has been run at least once — at least one
    data product (typical: `main.sales_gold`) is cached.
 3. A second cached data product makes the cross-DP citation step
    testable. If only one DP is cached, drop a second

@@ -142,7 +142,7 @@ pyarrow nicknames across surfaces.
 
 ## See also
 
-- [`docs/e2e-walkthroughs/data_products.md`](../e2e-walkthroughs/data_products.md)
+- [`docs/e2e-walkthroughs/data-products.md`](../e2e-walkthroughs/data-products.md)
   — replayable browser + agent + write happy-path.
 - [`pointlessql/data_products/`](https://github.com/FloHofstetter/PointlesSQL/tree/main/pointlessql/data_products)
   — the package source.
