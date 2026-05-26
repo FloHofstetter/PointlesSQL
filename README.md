@@ -133,7 +133,7 @@ echo "$GHCR_PAT" | docker login ghcr.io -u <your-github-username> --password-std
 
 ```bash
 mkdir ~/pointlessql && cd ~/pointlessql
-curl -L -o docker/docker-compose.yml \
+curl -L -o docker-compose.yml \
   https://raw.githubusercontent.com/FloHofstetter/PointlesSQL/v0.1.0rc3/docker-compose.yml
 ```
 
@@ -280,8 +280,6 @@ see `.env.example` for the full list.
 | `POINTLESSQL_SERVER_PORT` | `8000` | HTTP port |
 | `POINTLESSQL_DB_URL` | `sqlite:///./pointlessql.db` | SQLAlchemy database URL |
 | `POINTLESSQL_AUTH_SECRET_KEY` | `change-me-in-production` | JWT signing key |
-| `POINTLESSQL_JUPYTER_ENABLED` | `true` | Enable embedded JupyterLab |
-| `POINTLESSQL_JUPYTER_PORT` | `8888` | JupyterLab port |
 
 ## Jobs
 
