@@ -69,8 +69,12 @@ every commit.
   `feat/audit-cockpit-search`, …).
 - **Commits**: [Conventional Commits](https://www.conventionalcommits.org/)
   format — `feat(scope): …`, `fix(scope): …`, `docs(scope): …`,
-  `chore(scope): …`. Scope is the subsystem touched
-  (`ui`, `pql`, `audit`, `alembic`, `docs`, `ci`, …).
+  `refactor(scope): …`, `chore(scope): …`. Scope is the subsystem
+  touched. Common scopes: `ui` (frontend templates + JS),
+  `pql` (PQL bridge), `audit` (audit-cockpit + lineage),
+  `alembic` (migrations), `notebooks` (native editor),
+  `auth` (login + API keys), `docs` (markdown site), `ci`
+  (workflows + pre-commit), `e2e` (Playwright walkthroughs).
 
 ## Pull request process
 
@@ -116,8 +120,49 @@ After picking the subdirectory and adding the file:
 3. The pre-commit `doc-orphans` hook
    ([`scripts/check-doc-orphans.sh`](scripts/check-doc-orphans.sh))
    fails any commit that leaves a new `.md` file orphan. The
-   baseline allowance is 18 e2e-walkthroughs that are tracked for
-   theme-grouped renaming in a later wave.
+   current orphan allowance is encoded in the script; if your new
+   page is intentionally outside the nav (e.g. a maintainer-only
+   artifact under `docs/internal/`), add it to `exclude_docs:` in
+   `mkdocs.yml` instead of relying on the orphan allowance.
+
+## Source conventions
+
+Two project-specific conventions beyond the ruff + pyright +
+pydoclint baseline:
+
+**No project-management markers in source.** Comments, docstrings,
+and user-facing strings (badge text, tooltip titles, alert bodies,
+modal labels) MUST NOT reference Phase / Sprint / Wave numbers or
+`BUG-NN-NN` markers. That metadata belongs in `ROADMAP.md`,
+`CHANGELOG.md`, and git commit messages only — phase tags rot as
+the project grows and read as cryptic insider language to anyone
+outside the team.
+
+Scope covers every commented source format the project ships:
+Python (`#` + `"""..."""`), Jinja (`{# ... #}`), HTML
+(`<!-- ... -->`), JavaScript (`//` + `/* ... */`), CSS, and any
+string rendered to the UI.
+
+The exception is `pointlessql/alembic/versions/*.py` — the phase
+tag in a migration filename + docstring is the schema-change
+identity, not project noise.
+
+The `scripts/check-no-phase-refs.sh` pre-commit hook enforces this
+on `frontend/` today (clean baseline); `pointlessql/` scope
+widening is a tracked follow-up.
+
+**Docstring style.** Google-style docstrings are enforced by
+`pydoclint`. Every public callable carries:
+
+1. A one-line summary that does NOT just restate the signature.
+2. A blank line.
+3. A body that explains the *why* — the constraint, invariant, or
+   surprise the caller needs to know — not the *what* (the
+   signature already says what).
+
+`pydoclint` runs in pre-commit; CI re-runs it for safety. Open a
+draft PR even with `D` warnings — the reviewer will help wire the
+body.
 
 ## Code of conduct
 
