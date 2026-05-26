@@ -21,9 +21,7 @@ import pytest
 pytestmark = pytest.mark.e2e
 
 
-def test_healthz_responds_via_live_server(
-    playwright_context: Any, live_server_url: str
-) -> None:
+def test_healthz_responds_via_live_server(playwright_context: Any, live_server_url: str) -> None:
     """Headless Chromium hits ``/healthz`` and gets the JSON envelope."""
     page = playwright_context.new_page()
     try:

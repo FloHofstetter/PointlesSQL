@@ -57,9 +57,7 @@ _LIVE_PILL_TIMEOUT_MS = 8_000
 _PEER_RAIL_TIMEOUT_MS = 12_000
 
 
-def _create_notebook(
-    live_server_url: str, cookies: dict[str, str], path: str
-) -> str:
+def _create_notebook(live_server_url: str, cookies: dict[str, str], path: str) -> str:
     """Create + pre-save a one-cell test notebook; return ``notebook_uuid``.
 
     The pre-save step is what gives the seed cell a persistent
@@ -70,8 +68,7 @@ def _create_notebook(
         create = client.post("/api/notebooks/create", json={"path": path})
         if create.status_code not in (200, 201):
             raise RuntimeError(
-                f"POST /api/notebooks/create {path!r} → {create.status_code} "
-                f"{create.text[:200]!r}"
+                f"POST /api/notebooks/create {path!r} → {create.status_code} {create.text[:200]!r}"
             )
         seed_cell_uuid = str(uuid.uuid4())
         save = client.post(
@@ -89,29 +86,23 @@ def _create_notebook(
         )
         if save.status_code not in (200, 201):
             raise RuntimeError(
-                f"POST /api/notebooks/save {path!r} → {save.status_code} "
-                f"{save.text[:200]!r}"
+                f"POST /api/notebooks/save {path!r} → {save.status_code} {save.text[:200]!r}"
             )
         loaded = client.get("/api/notebooks/load", params={"path": path})
         if loaded.status_code != 200:
-            raise RuntimeError(
-                f"GET /api/notebooks/load {path!r} → {loaded.status_code}"
-            )
+            raise RuntimeError(f"GET /api/notebooks/load {path!r} → {loaded.status_code}")
         envelope = loaded.json()
         notebook_uuid = envelope.get("notebook_uuid")
         if not notebook_uuid:
-            raise RuntimeError(
-                f"load envelope missing notebook_uuid: {envelope!r}"
-            )
+            raise RuntimeError(f"load envelope missing notebook_uuid: {envelope!r}")
         return str(notebook_uuid)
 
 
-def _open_editor_tab(
-    context: Any, live_server_url: str, path: str
-) -> Any:
+def _open_editor_tab(context: Any, live_server_url: str, path: str) -> Any:
     """Open a fresh tab on the editor; wait for the live-pill = Live."""
     page = context.new_page()
     console_errors: list[str] = []
+
     def _record_error(msg: Any) -> None:
         # We only care about *script* errors here — Alpine binding
         # failures, ReferenceErrors, TypeErrors.  Generic browser
@@ -128,9 +119,7 @@ def _open_editor_tab(
     page.on("console", _record_error)
     page.on("pageerror", lambda exc: console_errors.append(str(exc)))
     page.console_errors = console_errors  # type: ignore[attr-defined]
-    page.goto(
-        f"{live_server_url}/notebooks/edit/{path}", wait_until="domcontentloaded"
-    )
+    page.goto(f"{live_server_url}/notebooks/edit/{path}", wait_until="domcontentloaded")
     # the verbose ``notebook-coedit-pill`` (dot + label)
     # collapsed into one of three vital-sign dots in the toolbar.  The
     # dot has no visible text; its class binds via ``coeditDotClass()``,
@@ -183,9 +172,7 @@ def _peer_count(page: Any) -> int:
     return page.locator('[data-testid^="notebook-coedit-peer-"]').count()
 
 
-def _wait_for_peer_count(
-    page: Any, minimum: int, timeout_ms: int
-) -> int:
+def _wait_for_peer_count(page: Any, minimum: int, timeout_ms: int) -> int:
     deadline = time.time() + (timeout_ms / 1000.0)
     seen = 0
     while time.time() < deadline:
@@ -193,9 +180,7 @@ def _wait_for_peer_count(
         if seen >= minimum:
             return seen
         time.sleep(0.15)
-    raise AssertionError(
-        f"peer count never reached {minimum}; last={seen}"
-    )
+    raise AssertionError(f"peer count never reached {minimum}; last={seen}")
 
 
 def test_phase105_7_multi_tab_coedit_core_invariants(
@@ -239,12 +224,8 @@ def test_phase105_7_multi_tab_coedit_core_invariants(
     all_errors: list[str] = []
     for tab in (tab1, tab2):
         all_errors.extend(getattr(tab, "console_errors", []))
-    assert not all_errors, (
-        f"console errors during multi-tab co-edit session: {all_errors!r}"
-    )
-    factory_ok = tab1.evaluate(
-        "() => typeof window.notebookChatPanel === 'function'"
-    )
+    assert not all_errors, f"console errors during multi-tab co-edit session: {all_errors!r}"
+    factory_ok = tab1.evaluate("() => typeof window.notebookChatPanel === 'function'")
     assert factory_ok is True, (
         "window.notebookChatPanel is not a function — chat_drawer "
         "x-data quoting regression (Bug-1 class)"

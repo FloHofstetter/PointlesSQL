@@ -107,9 +107,7 @@ def _seed_admin_user(db_url: str, email: str, password: str) -> int:
             # Alembic upgrade head ships a data-migration that creates
             # the default workspace (slug=``default``); reuse it if
             # present, otherwise insert one with the test description.
-            workspace = (
-                session.query(Workspace).filter_by(slug="default").one_or_none()
-            )
+            workspace = session.query(Workspace).filter_by(slug="default").one_or_none()
             if workspace is None:
                 workspace = Workspace(
                     slug="default",
@@ -219,15 +217,13 @@ def live_server_url(tmp_path_factory: pytest.TempPathFactory) -> Iterator[str]:
             r = httpx.get(f"{base_url}/healthz", timeout=1.0)
             if r.status_code == 200:
                 break
-        except (httpx.ConnectError, httpx.ReadError, httpx.ReadTimeout):
+        except httpx.ConnectError, httpx.ReadError, httpx.ReadTimeout:
             pass
         time.sleep(0.1)
     else:
         server.should_exit = True
         thread.join(timeout=3.0)
-        raise RuntimeError(
-            f"Phase 108 e2e live server did not become ready at {base_url}"
-        )
+        raise RuntimeError(f"Phase 108 e2e live server did not become ready at {base_url}")
 
     try:
         yield base_url
@@ -268,8 +264,7 @@ def admin_session_cookies(live_server_url: str) -> dict[str, str]:
         )
         if login_resp.status_code not in (200, 302, 303):
             raise RuntimeError(
-                f"POST /auth/login failed: {login_resp.status_code} "
-                f"body={login_resp.text[:200]!r}"
+                f"POST /auth/login failed: {login_resp.status_code} body={login_resp.text[:200]!r}"
             )
         return {name: value for name, value in client.cookies.items()}
 

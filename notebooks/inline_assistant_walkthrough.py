@@ -29,9 +29,7 @@
 # %%
 import pandas as pd
 
-df = pd.DataFrame(
-    {"country": ["DE", "FR", "US", "JP"], "events": [120, 90, 240, 60]}
-)
+df = pd.DataFrame({"country": ["DE", "FR", "US", "JP"], "events": [120, 90, 240, 60]})
 df
 
 # %%

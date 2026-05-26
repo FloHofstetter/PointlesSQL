@@ -7,7 +7,7 @@
     value       — current value (may be None/empty)
     placeholder — shown when empty, also used as the "click to add" hint
     multiline   — when truthy, renders a <textarea> instead of <input>
-                 
+
 #}
 {% set _placeholder = placeholder or ("Click to add " ~ field) %}
 {% set _multiline = multiline if multiline is defined else false %}

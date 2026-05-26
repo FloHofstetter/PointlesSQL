@@ -22,7 +22,7 @@
 # an ``agent_run_operations`` row because
 # ``POINTLESSQL_AGENT_RUN_ID`` was set by the
 # ``hermes-plugin-pointlessql`` ``on_session_start`` hook
-#.
+# .
 #
 # **Inputs**:
 #
