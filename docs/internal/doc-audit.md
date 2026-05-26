@@ -571,3 +571,52 @@ sprint-log files under `docs/internal/dev-log/` and
 `docs/internal/roadmap_archive.md` retain their underscore-form
 references as factual records and are excluded from `mkdocs`
 build via the `exclude_docs: internal/*` rule.
+
+## Counts after W6 closes (2026-05-26)
+
+| Metric                                            | Before W6 | After W6 | Owner |
+|---------------------------------------------------|----------:|---------:|-------|
+| README.md broken install curl URL (functional)    | 1         | 0        | W6.0 |
+| README.md stale `POINTLESSQL_JUPYTER_*` config rows | 2       | 0        | W6.0 |
+| `docs/getting-started/` Phase / BUG-NN markers in prose | 3   | 0        | W6.1 |
+| `docs/getting-started/` broken install curl URLs  | 2         | 0        | W6.1 |
+| `docs/getting-started/` dangling phase-strip parens | 3       | 0        | W6.1 |
+| CONTRIBUTING.md "Source conventions" section      | absent    | present  | W6.2 |
+| CONTRIBUTING.md "Docstring style" guidance        | absent    | present  | W6.2 |
+| CONTRIBUTING.md stale "18 e2e-walkthroughs baseline" | 1      | 0        | W6.2 |
+| CONTRIBUTING.md commit-scope catalog (named scopes) | 6       | 9        | W6.2 |
+| mkdocs strict warnings                            | 61        | 61 (unchanged) | — |
+| doc-inventory TSV rows                            | 178       | 178 (unchanged) | — |
+
+W6 closes the outsider-tutorial surface — the entry path a reader
+takes who has never seen the project before.  Install instructions
+in `README.md`, `docs/getting-started/quickstart.md`, and
+`docs/getting-started/installation.md` were all telling readers to
+`curl -L -o docker/docker-compose.yml` into a fresh directory and
+then `docker compose up -d` from that same directory — but `docker
+compose` looks for `./docker-compose.yml` by default, not
+`./docker/docker-compose.yml`, so the documented flow could not
+actually start the stack.  All three URLs now save to root-level
+`docker-compose.yml` and pin the source to tag `v0.1.0rc3` (where
+the file actually lived at repo root).  The `README.md`
+configuration table dropped two stale `POINTLESSQL_JUPYTER_*` rows
+that contradicted the "JupyterLab iframe is gone" migration note
+immediately above them.  `docs/getting-started/concepts.md` got
+three phase-strip artifacts cleaned (broken-grammar lead-in,
+dangling `(,)` parens in an ASCII tree, "Phase 19.0 overlay"
+turned into a concrete file reference); `quickstart.md` and
+`installation.md` lost a dangling parenthetical and a
+`BUG-grand-09`-marker respectively.  `CONTRIBUTING.md` grew a
+"Source conventions" section that surfaces the CLAUDE.md
+no-phase-refs rule and the Google-style docstring convention to
+outside contributors, refreshes a stale "18 e2e-walkthroughs"
+baseline reference (W5 closed that gap), and expands the
+commit-scope catalog to nine named scopes.
+
+**Verified post-W6**: `mkdocs build --strict` still aborts at
+exactly 61 warnings; W6 introduced zero new warnings.  `grep
+-rnE '(Phase|BUG-[0-9])' docs/getting-started/` returns empty.
+`grep -nE '18 e2e-walkthroughs' CONTRIBUTING.md` returns empty.
+The two new bold-headers `**No project-management markers in
+source.**` and `**Docstring style.**` are present inside the
+`## Source conventions` section.
