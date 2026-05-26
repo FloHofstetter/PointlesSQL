@@ -1031,37 +1031,12 @@ defined in ``scripts/clusters.json``. -->
 
 
 
-### Bug Fixes
-
-- BUG-17.2-01 — single-quote x-data so |tojson "‎" don't terminate the attr (fc940be)
-
-### Chores
-
-- Bump soyuz-catalog-client v0.2.0rc3 → v0.2.0rc5 (3dae193)
-
 ### Documentation
 
-- Close Phase 17 — UI Overhaul (5 sub-sprints landed) (3cc200c)
-- Queue Sprint 17.3.1 / 17.5.1 / 17.6 — Phase-17 follow-ups (fc1943f)
-- Sprint 16.5.0 — Delta-Branching shallow-clone spike (bd15265)
-- Sprint 16.5.7 — close Phase 16.5 with e2e walkthrough (88ee7db)
-- Close Sprint 17.3.1 + 17.5.1 polish (9b50cf8)
 - Close Sprint 21.8 cross-repo + agent-ml-registry walkthrough (22e1a75)
 
 ### Features
 
-- Sprint 17.1 — Two-column sidebar (icon-rail + contextual panel) (d64b609)
-- Sprint 17.2 — Run-detail tab consolidation (10 → 4 top-tabs) (e60975e)
-- Sprint 17.3 — Lineage-DAG view + GET /api/runs/{run_id}/graph (dc2a7fe)
-- Sprint 17.4 — Table-detail tab refactor (4823dec)
-- Sprint 17.5 — Catalog-Browser search + recent tables (b3ff06d)
-- Sprint 16.5.1 + 16.5.2 — branch tag schema + pql.branch primitive (64a7d31)
-- Sprint 16.5.3 — pql.branch_discard + branch_audit_log (3b72261)
-- Sprint 16.5.4 — pql.branch_promote (pointer-swap) (36baac1)
-- Sprint 16.5.5 — Control-Room UI for branches (ac9d18a)
-- Sprint 16.5.6 — auto-cleanup loop (opt-in) (7cf3743)
-- Sprint 17.3.1 — lazy-load cytoscape on the Graph sub-tab (168960b)
-- Sprint 17.5.1 — server-side tree search + DB-backed recents (eb4d4c4)
 - Phase 21 audit-foundation — MLflow subprocess + cross-link (21.0/21.1/21.2) (100e1b4)
 - Sprint 21.5 — Models catalog tab + model-detail + compare-view (4ab468b)
 - Sprint 21.6 — Champion/Challenger model promotion-hop (a777e4c)
@@ -1075,10 +1050,6 @@ defined in ``scripts/clusters.json``. -->
 - Sprint 22.3 — reference manual (Python + REST + CLI + config + events + permissions) (2378fe9)
 - Sprint 22.4 — guides + cookbook (5bbfea8)
 - Sprint 22.5 — polish + launch-ready (closes Phase 22) (7d88be5)
-
-## [Cluster 07 — Phase 18–20 Audit Cockpit] - 2026-04-29
-
-> Phase 18 (Audit Cockpit), Phase 19 (Audit-Reviewer Agent + Grafana), Phase 20 (Forensics + Retention).
 
 ## [Cluster 06 — Phase 17 UI Overhaul] - 2026-04-29
 
@@ -1107,11 +1078,40 @@ defined in ``scripts/clusters.json``. -->
 
 ### Bug Fixes
 
+- BUG-17.2-01 — single-quote x-data so |tojson "‎" don't terminate the attr (fc940be)
+
+### Documentation
+
+- Close Phase 17 — UI Overhaul (5 sub-sprints landed) (3cc200c)
+- Queue Sprint 17.3.1 / 17.5.1 / 17.6 — Phase-17 follow-ups (fc1943f)
+- Sprint 16.5.0 — Delta-Branching shallow-clone spike (bd15265)
+- Sprint 16.5.7 — close Phase 16.5 with e2e walkthrough (88ee7db)
+
+### Features
+
+- Sprint 17.1 — Two-column sidebar (icon-rail + contextual panel) (d64b609)
+- Sprint 17.2 — Run-detail tab consolidation (10 → 4 top-tabs) (e60975e)
+- Sprint 17.3 — Lineage-DAG view + GET /api/runs/{run_id}/graph (dc2a7fe)
+- Sprint 17.4 — Table-detail tab refactor (4823dec)
+- Sprint 17.5 — Catalog-Browser search + recent tables (b3ff06d)
+- Sprint 16.5.1 + 16.5.2 — branch tag schema + pql.branch primitive (64a7d31)
+- Sprint 16.5.3 — pql.branch_discard + branch_audit_log (3b72261)
+- Sprint 16.5.4 — pql.branch_promote (pointer-swap) (36baac1)
+- Sprint 16.5.5 — Control-Room UI for branches (ac9d18a)
+- Sprint 16.5.6 — auto-cleanup loop (opt-in) (7cf3743)
+
+## [Cluster 07 — Phase 18–20 Audit Cockpit] - 2026-04-29
+
+> Phase 18 (Audit Cockpit), Phase 19 (Audit-Reviewer Agent + Grafana), Phase 20 (Forensics + Retention).
+
+
+
+### Bug Fixes
+
 - Repair SQLite autoincrement + run-view header URL (749ed49)
 - Sprint 18.4 — render run-diff charts lazily on tab activation (b7dc2b6)
 - Sprint 18.5 — anomaly banner button overflow + empty-baseline wording (4c4f5bc)
 - Bug-hunt sweep — 7 bugs found via walkthrough replay (a912c56)
-- BUG-17.2-01 — single-quote x-data so |tojson "‎" don't terminate the attr (fc940be)
 
 ### Chores
 
@@ -1131,10 +1131,6 @@ defined in ``scripts/clusters.json``. -->
 - Close Phase 18 — Audit Cockpit (6 sub-sprints landed) (7ca2e1f)
 - Close Phase 19 — Audit-Reviewer Agent + Grafana (6 sub-sprints landed) (995490b)
 - Close Phase 20 — Forensics + Retention (5 sub-sprints landed) (19ea595)
-- Close Phase 17 — UI Overhaul (5 sub-sprints landed) (3cc200c)
-- Queue Sprint 17.3.1 / 17.5.1 / 17.6 — Phase-17 follow-ups (fc1943f)
-- Sprint 16.5.0 — Delta-Branching shallow-clone spike (bd15265)
-- Sprint 16.5.7 — close Phase 16.5 with e2e walkthrough (88ee7db)
 
 ### Features
 
@@ -1175,16 +1171,6 @@ defined in ``scripts/clusters.json``. -->
 - Sprint 20.2 — Lineage retention TTLs (ca07013)
 - Sprint 20.3 — Time-travel value queries in UI (f06ba97)
 - Sprint 20.4 — emit columnLineage + valueChange facets to soyuz (8050c2f)
-- Sprint 17.1 — Two-column sidebar (icon-rail + contextual panel) (d64b609)
-- Sprint 17.2 — Run-detail tab consolidation (10 → 4 top-tabs) (e60975e)
-- Sprint 17.3 — Lineage-DAG view + GET /api/runs/{run_id}/graph (dc2a7fe)
-- Sprint 17.4 — Table-detail tab refactor (4823dec)
-- Sprint 17.5 — Catalog-Browser search + recent tables (b3ff06d)
-- Sprint 16.5.1 + 16.5.2 — branch tag schema + pql.branch primitive (64a7d31)
-- Sprint 16.5.3 — pql.branch_discard + branch_audit_log (3b72261)
-- Sprint 16.5.4 — pql.branch_promote (pointer-swap) (36baac1)
-- Sprint 16.5.5 — Control-Room UI for branches (ac9d18a)
-- Sprint 16.5.6 — auto-cleanup loop (opt-in) (7cf3743)
 
 ## [Cluster 04 — Phase 14–15 audit-trail + lineage] - 2026-04-26
 
@@ -1430,7 +1416,6 @@ defined in ``scripts/clusters.json``. -->
 ### Tests
 
 - Sprint 47 — fix pre-existing test-suite regressions (b6381a6)
-## [0.1.0rc3] - 2026-04-18
 
 ## [Cluster 02 — Release-Engineering — Sprint 24–40] - 2026-04-18
 
@@ -1438,18 +1423,15 @@ defined in ``scripts/clusters.json``. -->
 
 
 
-### Documentation
-
-- Point Sprint 39 at the landed v0.1.0rc2 release (ed9dc85)
-- Record Sprint 40 landing sha (aa814a5)
-
-### Features
-
-- Sprint 40 — docker.yml GHCR publish + clean-machine install (c242464)
-## [0.1.0rc2] - 2026-04-18
-
 ### Bug Fixes
 
+- Sprint 26 same-sprint — surface BUG-26-01 + BUG-26-02 from live replay (9b7146b)
+- Sprint 27 same-sprint — surface BUG-27-01 from live replay (78a8bd9)
+- Sprint 28 same-sprint — surface BUG-28-01 from live replay (23022f5)
+- BUG-28-02 — anchor notebooks_dir against startup CWD (733919d)
+- BUG-33-01 — quote cron + last-run x-data attrs with single quotes (cae5515)
+- BUG-33-02 — parse UTC-naive server timestamps as UTC, not local (bf656f6)
+- Mirror migration-created indexes in model __table_args__ (94c8580)
 - Use token-as-username URL form for private soyuz-catalog pull (87b908c)
 - Use `gh auth setup-git` for private soyuz-catalog dep (64b6b32)
 - Hoist GH_TOKEN to job-level env so uv sync inherits it (afc5d44)
@@ -1466,37 +1448,14 @@ defined in ``scripts/clusters.json``. -->
 - Replace auth-triangulation probes with a tight preflight check (33b9cff)
 - Alembic needs a migrated target, not an empty sqlite file (bcdaf9f)
 
+### Build
+
+- Sprint 38 — swap soyuz-catalog-client path-dep to git-tag pin (41868bc)
+
 ### CI
 
 - Retrigger with classic PAT secret (3e1656c)
 - Retrigger after secret fix (0ae3e9a)
-
-### Documentation
-
-- Record Sprint 39 commit hash + v0.1.0rc1 tag (f02311b)
-- Record preflight + alembic-upgrade CI fixes landed after the main Sprint 38 follow-on (3d1a95f)
-
-### Other
-
-- Probe GIT_CONFIG_* propagation before uv sync (599015c)
-- Verify SOYUZ_READ_TOKEN length + auth over curl (3ceaf45)
-- Add non-leaking SOYUZ_READ_TOKEN length check (8b2ecb7)
-- Triangulate why SOYUZ_READ_TOKEN is rejected for git ops (3a00579)
-## [0.1.0rc1] - 2026-04-17
-
-### Bug Fixes
-
-- Sprint 26 same-sprint — surface BUG-26-01 + BUG-26-02 from live replay (9b7146b)
-- Sprint 27 same-sprint — surface BUG-27-01 from live replay (78a8bd9)
-- Sprint 28 same-sprint — surface BUG-28-01 from live replay (23022f5)
-- BUG-28-02 — anchor notebooks_dir against startup CWD (733919d)
-- BUG-33-01 — quote cron + last-run x-data attrs with single quotes (cae5515)
-- BUG-33-02 — parse UTC-naive server timestamps as UTC, not local (bf656f6)
-- Mirror migration-created indexes in model __table_args__ (94c8580)
-
-### Build
-
-- Sprint 38 — swap soyuz-catalog-client path-dep to git-tag pin (41868bc)
 
 ### Documentation
 
@@ -1519,6 +1478,10 @@ defined in ``scripts/clusters.json``. -->
 - Open Phase 10 and record Sprint 37 landing (774b419)
 - Record Sprint 37 commit hash (3459e11)
 - Record Sprint 38 commit hash (3301d18)
+- Record Sprint 39 commit hash + v0.1.0rc1 tag (f02311b)
+- Record preflight + alembic-upgrade CI fixes landed after the main Sprint 38 follow-on (3d1a95f)
+- Point Sprint 39 at the landed v0.1.0rc2 release (ed9dc85)
+- Record Sprint 40 landing sha (aa814a5)
 
 ### Features
 
@@ -1536,6 +1499,14 @@ defined in ``scripts/clusters.json``. -->
 - Sprint 35 — mobile + responsive (59cf50c)
 - Sprint 36 — shared utilities + shortcuts + Phase-9 close (ec3facc)
 - Sprint 39 — PointlesSQL release engineering (9f73dc3)
+- Sprint 40 — docker.yml GHCR publish + clean-machine install (c242464)
+
+### Other
+
+- Probe GIT_CONFIG_* propagation before uv sync (599015c)
+- Verify SOYUZ_READ_TOKEN length + auth over curl (3ceaf45)
+- Add non-leaking SOYUZ_READ_TOKEN length check (8b2ecb7)
+- Triangulate why SOYUZ_READ_TOKEN is rejected for git ops (3a00579)
 
 ### Tests
 

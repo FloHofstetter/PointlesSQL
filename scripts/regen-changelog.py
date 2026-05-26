@@ -63,6 +63,12 @@ def run_cliff(commit_range: str) -> str:
         commit_range,
         "--config", str(CLIFF_CONFIG),
         "--strip", "header",
+        # Suppress per-tag sub-sectioning inside a cluster range.  The
+        # repo carries v0.1.0rc1/rc2/rc3 tags from the Sprint 39 release
+        # engineering trial; without --ignore-tags those would split
+        # Cluster 02's body into 3 extra `## [vX]` sub-headings on top
+        # of the cluster heading the wrapper injects.
+        "--ignore-tags", "v.*",
         "--output", "-",
     ]
     result = subprocess.run(cmd, capture_output=True, text=True, cwd=REPO_ROOT)
@@ -94,18 +100,51 @@ def wrap_cluster(cluster: dict, prev_to: str | None) -> str:
     return body.rstrip() + "\n\n"
 
 
+def commit_timestamp(commit: str) -> int:
+    """Return committer-date Unix timestamp of *commit*."""
+    out = subprocess.run(
+        ["git", "log", "-1", "--format=%ct", commit],
+        capture_output=True, text=True, cwd=REPO_ROOT, check=True,
+    )
+    return int(out.stdout.strip())
+
+
+def compute_from(cluster: dict, all_clusters: list[dict]) -> str | None:
+    """Pick the previous cluster's to_commit by chronological order.
+
+    Some phases closed out of phase-number order (Phase 17 polish landed
+    AFTER Phase 20 close on the same day), so iterating ``clusters`` by
+    list index would produce empty ranges and double-count commits.
+    Instead, pick the chronologically-most-recent ``to_commit`` from
+    any OTHER cluster that is strictly older than the current cluster's
+    ``to_commit``.
+    """
+    target_ts = commit_timestamp(cluster["to_commit"])
+    candidates = [
+        (commit_timestamp(c["to_commit"]), c["to_commit"])
+        for c in all_clusters
+        if c["id"] != cluster["id"]
+    ]
+    older = [(ts, sha) for ts, sha in candidates if ts < target_ts]
+    if not older:
+        return None
+    older.sort()
+    return older[-1][1]
+
+
 def main() -> int:
     clusters = json.loads(CLUSTERS_PATH.read_text())
     parts = [HEADER]
-    prev_to: str | None = None
-    # Newest-first: ADR-0009 D1 says release notes scan newest→oldest,
-    # which is also the Keep-a-Changelog convention.  The cluster list
-    # is stored oldest-first (chronological) for readability and is
-    # reversed here for output ordering.
-    for cluster in reversed(clusters):
-        # Determine the previous cluster's to_commit by index lookup.
-        idx = clusters.index(cluster)
-        prev_to = clusters[idx - 1]["to_commit"] if idx > 0 else None
+    # Output newest-first (ADR-0009 D1 + Keep-a-Changelog convention).
+    # Sort clusters by commit timestamp descending so the output order
+    # is independent of clusters.json list ordering.
+    sorted_clusters = sorted(
+        clusters,
+        key=lambda c: commit_timestamp(c["to_commit"]),
+        reverse=True,
+    )
+    for cluster in sorted_clusters:
+        prev_to = compute_from(cluster, clusters)
         parts.append(wrap_cluster(cluster, prev_to))
     CHANGELOG_PATH.write_text("".join(parts))
     print(f"Wrote {CHANGELOG_PATH} ({len(''.join(parts))} bytes, "
