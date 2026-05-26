@@ -1,0 +1,11 @@
+# Allow GitHub blob URLs for this repo without rate-limit pressure.
+# These resolve to real files on github.com but hammering the API
+# from CI is wasteful — they only break if the underlying file is
+# renamed, which `mkdocs build --strict` already catches for in-tree
+# refs.
+https://github\.com/FloHofstetter/PointlesSQL/blob/main/.*
+
+# Localhost references in walkthroughs (these never resolve in CI).
+^http://localhost:.*
+^http://127\.0\.0\.1:.*
+^http://0\.0\.0\.0:.*
