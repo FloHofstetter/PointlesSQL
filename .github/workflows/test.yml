@@ -127,6 +127,16 @@ jobs:
         # 4.1.2).  See frontend/templates/_macros/labeled_input.html
         # for the macro to use.
         run: bash scripts/check-form-labels.sh
+      - name: Docs — orphan-file drift guard
+        # W1 drift-guard.  Compares the markdown files under docs/
+        # with mkdocs.yml nav: / not_in_nav: / exclude_docs: entries
+        # and fails if the orphan count exceeds DOC_ORPHAN_THRESHOLD
+        # (default 18; baseline after W1.5 is the 18 e2e-walkthrough
+        # files that stay orphan until W5 introduces theme-grouped
+        # sub-nav).  Catches the "new page forgot to wire into nav"
+        # mistake before mkdocs --strict surfaces it.  See
+        # docs/internal/doc-site-ia.md for the contract.
+        run: bash scripts/check-doc-orphans.sh
       - name: Pytest with coverage
         # Runs the unit-test suite (integration + postgres markers
         # excluded by pyproject's addopts).  The --cov-fail-under

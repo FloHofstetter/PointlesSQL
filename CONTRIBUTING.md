@@ -96,6 +96,29 @@ dependency we own, fix it there instead of working around it
 locally — that keeps both codebases clean and avoids stale
 workaround code outliving the bug.
 
+## Adding a documentation page
+
+The `docs/` tree is governed by
+[`docs/internal/doc-site-ia.md`](docs/internal/doc-site-ia.md) —
+the IA contract that decides which subdirectory a new page
+belongs in (`getting-started/`, `concepts/`, `guides/`,
+`e2e-walkthroughs/`, `admin/`, `integrations/`, `reference/`,
+`development/`, `decisions/`, `research/`, or the maintainer-only
+`internal/`).
+
+After picking the subdirectory and adding the file:
+
+1. Add a `nav:` entry in [`mkdocs.yml`](mkdocs.yml) under the
+   matching group — OR add it to `exclude_docs:` if the file is a
+   maintainer-only artifact under `docs/internal/`.
+2. Run `uv run --group docs --no-default-groups mkdocs build`
+   locally to surface broken links.
+3. The pre-commit `doc-orphans` hook
+   ([`scripts/check-doc-orphans.sh`](scripts/check-doc-orphans.sh))
+   fails any commit that leaves a new `.md` file orphan. The
+   baseline allowance is 18 e2e-walkthroughs that are tracked for
+   theme-grouped renaming in a later wave.
+
 ## Code of conduct
 
 Be kind. Disagree with code, not with people. The project follows

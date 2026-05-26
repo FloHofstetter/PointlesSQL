@@ -84,6 +84,12 @@ repos:
         language: system
         pass_filenames: false
         files: ^frontend/templates/.*\.html$
+      - id: doc-orphans
+        name: doc-tree orphan guard (mkdocs nav vs filesystem)
+        entry: bash scripts/check-doc-orphans.sh
+        language: system
+        pass_filenames: false
+        files: ^(docs/.*\.md|mkdocs\.yml)$
       - id: pyright
         name: pyright (strict)
         entry: uv run pyright pointlessql
