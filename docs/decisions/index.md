@@ -11,6 +11,7 @@ Decision, Consequences.
 | [0002](0002-duckdb-first.md) | Accepted | DuckDB-first: DuckDB owns compute, deltalake owns writes |
 | [0003](0003-delta-branching-spike.md) | Accepted | Delta-branching: hybrid symlink-local / deep-copy-cloud |
 | [0004](0004-public-flip-checklist.md) | Accepted | Docs-site public-flip three-commit procedure with EUIPO / NOTICE / CLA / domain pre-flight |
+| [0009](0009-doc-publication-decisions.md) | Accepted | Doc-publication: 8 cross-cutting decisions (CHANGELOG granularity, dev-log location, version scheme, doc visibility, asset storage, auto-gen balance, density norm, doc-vs-code scope) |
 
 ## Conventions
 
