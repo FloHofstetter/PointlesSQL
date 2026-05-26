@@ -7,22 +7,19 @@
 # Sprint / Wave numbers or BUG-NN-NN markers" rule with a mechanical
 # check so drift can't creep back in via routine edits.
 #
-# Scope is intentionally limited to frontend/ today: pointlessql/
-# still carries ~107 historical refs in module docstrings that
-# pre-date the rule, and tightening the gate broader without first
-# scrubbing them would block every commit.  A follow-up wave can
-# clean pointlessql/ and then widen this script's scope.
-#
-# alembic/versions/ stays exempt project-wide — the phase tag in a
-# migration is the schema-change identity, not project noise.
+# Scope covers frontend/ and pointlessql/.  alembic/versions/
+# remains exempt project-wide — the phase tag in a migration
+# filename + docstring is the schema-change identity, not project
+# noise.
 
 set -euo pipefail
 
-TARGET_DIRS=("frontend")
+TARGET_DIRS=("frontend" "pointlessql")
 
 PATTERN='(Phase|Sprint|Wave)\s+\w+(\.\w+)*|BUG-\d+'
 
-HITS="$(grep -rEn "$PATTERN" "${TARGET_DIRS[@]}" 2>/dev/null || true)"
+HITS="$(grep -rEn "$PATTERN" "${TARGET_DIRS[@]}" 2>/dev/null \
+    | grep -v "pointlessql/alembic/versions/" || true)"
 
 if [ -n "$HITS" ]; then
     cat >&2 <<'EOF'

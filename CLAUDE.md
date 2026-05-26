@@ -298,8 +298,6 @@ not sufficient for the in-session tool surface.
   cross-reference to ROADMAP.md / CHANGELOG.md sprint anchors.
 
   Enforcement: `scripts/check-no-phase-refs.sh` runs as a local
-  pre-commit hook scoped to `frontend/` today (clean baseline,
-  drift protection). `pointlessql/` still carries ~100 residual
-  refs in module docstrings inherited from before the rule
-  landed; a future cleanup wave will scrub them and the hook
-  scope will widen.
+  pre-commit hook scoped to `frontend/` + `pointlessql/`
+  (excluding `alembic/versions/`).  Clean baseline; drift
+  protection.
