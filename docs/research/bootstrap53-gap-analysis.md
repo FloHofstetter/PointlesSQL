@@ -5,7 +5,7 @@
 > Date: 2026-05-07.
 
 This document is **input** for the Phase 53 UI Overhaul Proposal
-([`ui-overhaul-proposal.md`](../ui-overhaul-proposal.md)). It is
+([`ui-overhaul-proposal.md`](ui-overhaul-proposal.md)). It is
 NOT a recommendation by itself — it is the data layer.
 
 ## TL;DR
@@ -184,7 +184,7 @@ demo data).
 ## Recommendation Summary
 
 Three concrete patterns to adopt — Sprint C
-([`ui-overhaul-proposal.md`](../ui-overhaul-proposal.md)) maps
+([`ui-overhaul-proposal.md`](ui-overhaul-proposal.md)) maps
 these to Overhaul S/M/L sizes:
 
 1. **Color-modes toggle** (½ day) — biggest visible win for

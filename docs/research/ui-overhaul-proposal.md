@@ -1,9 +1,9 @@
 # UI Overhaul Proposal
 
 > Phase 53 Sprint C — Synthesis of replay screenshots
-> ([_notes.md](e2e-walkthroughs/screenshots/phase53-replay/_notes.md))
+> ([_notes.md](../e2e-walkthroughs/screenshots/phase53-replay/_notes.md))
 > + Bootstrap 5.3 gap analysis
-> ([bootstrap53-gap-analysis.md](research/bootstrap53-gap-analysis.md)).
+> ([bootstrap53-gap-analysis.md](bootstrap53-gap-analysis.md)).
 > Date: 2026-05-07.
 
 ## Executive Summary
@@ -29,7 +29,7 @@ missing routes, not visual-quality issues.
 
 Ten distinct patterns observed across 50 screenshots in 25 surface
 subdirectories. Detail in
-[_notes.md](e2e-walkthroughs/screenshots/phase53-replay/_notes.md);
+[_notes.md](../e2e-walkthroughs/screenshots/phase53-replay/_notes.md);
 summary here:
 
 | # | Pattern | Severity | Where it shows up |
@@ -52,7 +52,7 @@ summary here:
 ## Bootstrap 5.3 Gap Analysis — from research
 
 Detail in
-[bootstrap53-gap-analysis.md](research/bootstrap53-gap-analysis.md).
+[bootstrap53-gap-analysis.md](bootstrap53-gap-analysis.md).
 
 Top-3 adoption opportunities (ranked by impact/effort):
 
