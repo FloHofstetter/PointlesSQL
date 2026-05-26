@@ -1,7 +1,6 @@
-"""``/api/users/...`` — user-directory API surface (Phase 76.1+).
+"""``/api/users/...`` — user-directory API surface.
 
-The package facade aggregates per-axis sub-modules.  Sub-sprints
-extend the surface progressively:
+The package facade aggregates per-axis sub-modules:
 
 * 76.1 — ``search`` (typeahead for @-autocomplete).
 * 76.2 — ``profile`` + ``follows`` (profile page + user-to-user

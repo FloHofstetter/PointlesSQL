@@ -3,8 +3,8 @@
 
 The :class:`PQL` class is the public façade — the bulk of its method
 bodies delegates to sibling helper modules (``_read``, ``_write``,
-``_merge``, …).  Phase 111.7 split the 1060-LOC class definition into
-three per-concern files behind it:
+``_merge``, …).  The class definition itself is split into three
+per-concern files behind the facade:
 
 * :mod:`._pql_base`        — :class:`PQLBase` (constructor + the two
   private helpers ``_unreachable_msg`` / ``_branch_remap``).

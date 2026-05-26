@@ -162,10 +162,10 @@ async def post_polymorphic_comment(
         request: Incoming FastAPI request.
         as_agent: Optional agent slug — when set, the caller posts
             *on behalf of* that agent and ``author_agent_id`` lands
-            on the row.  Phase 101 review-loop closure: ungated the
-            DP-only flow so cell-level review decisions
-            authored by ``hermes`` plugin (and other notebook
-            entities) carry the same presentation-layer envelope.
+            on the row.  The review-loop closure ungated this flow
+            beyond DPs so cell-level review decisions authored by
+            ``hermes`` plugin (and other notebook entities) carry
+            the same presentation-layer envelope.
             The principal-or-admin gate in
             :func:`resolve_agent_for_principal` still applies.
 

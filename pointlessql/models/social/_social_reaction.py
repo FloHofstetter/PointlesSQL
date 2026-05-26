@@ -1,9 +1,8 @@
 """Polymorphic emoji reactions on any entity.
 
-Replaces the 71.2-vintage ``data_product_reactions`` table that
-77.0.G / 77.8.C grew a polymorphic ``social_target_id`` UNIQUE
-on top of.  Phase 78 polish retires the legacy table entirely:
-this row carries the same shape but keys exclusively on
+Replaces the original ``data_product_reactions`` table (which
+later grew a polymorphic ``social_target_id`` UNIQUE on top).
+This row carries the same shape but keys exclusively on
 ``social_target_id`` (the kind-agnostic polymorphic anchor).
 DP reactions live here too — the social_target row's
 ``data_product_id`` back-pointer (when ``entity_kind='dp'``)

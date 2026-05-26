@@ -1,8 +1,7 @@
 # pyright: reportPrivateUsage=false
 """``pql.merge()`` — thin facade over Delta MERGE, split per concern.
 
-The pre-Phase-111 layout collapsed every concern into one ~770 LOC
-``_merge.py`` module.  Phase 111.2 split it along the natural axes:
+The merge primitive is split along the natural axes:
 
 * :mod:`._constants`  — ``LINEAGE_ROW_ID_COLUMN``, ``MergeStrategy``,
   SCD-2 audit column names.

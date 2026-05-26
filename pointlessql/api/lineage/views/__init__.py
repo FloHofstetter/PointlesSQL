@@ -1,8 +1,7 @@
 """Per-row + per-column lineage trace routes — split per surface.
 
-The pre-Phase-110 layout collapsed every lineage HTTP surface into one
-~780 LOC ``views.py`` module.  Phase 110.4 split it per route family so
-each surface owns its own file with the helpers it needs:
+The lineage HTTP surface is split per route family so each surface
+owns its own file with the helpers it needs:
 
 * :mod:`._helpers`       — shared auth gate, op-metadata join, value-
   change / CDF-event attachment, PII masking, source-file enrichment.

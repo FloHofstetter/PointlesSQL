@@ -1,7 +1,6 @@
 """Per-run data loaders — split into per-axis submodules.
 
-The pre-Phase-111.4 layout collapsed every loader into one ~733 LOC
-``_loaders.py`` module.  Phase 111.4 split it along the natural axes:
+The loaders are organised along the natural axes:
 
 * :mod:`._runs`       — :func:`load_runs`, :func:`load_source_for_run`,
   :func:`load_events_for_run` (run-lifecycle axis).

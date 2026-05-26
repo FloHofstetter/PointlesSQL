@@ -209,9 +209,9 @@ async def execute_delete(ctx: DispatchContext) -> ExecutionResult:
 async def execute_merge(ctx: DispatchContext) -> ExecutionResult:
     """Translate MERGE AST → :class:`MergeCallSpec` → :meth:`PQL.merge`.
 
-    The translator (Phase 63.5,
-    :mod:`pointlessql.pql.sql_merge_translator`) raises
-    :class:`SQLMergeUnsupportedError` for AST features outside
+    The translator (:mod:`pointlessql.pql.sql_merge_translator`)
+    raises :class:`SQLMergeUnsupportedError` for AST features
+    outside
     the ``upsert`` / ``upsert + INSERT`` shape ``pql.merge``
     supports.
 

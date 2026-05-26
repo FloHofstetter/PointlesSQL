@@ -1,6 +1,6 @@
 """CDF tail subscription registry + captured event log.
 
-Phase 40.5 pull-modell counterpart to the Phase-40.1 push-modell
+Pull-model counterpart to the push-model
 ``POST /api/lineage/openlineage`` endpoint.  Admins register one
 :class:`CdfTailSubscription` per Delta table whose Change Data Feed
 they want PointlesSQL to tail; a background worker advances each

@@ -2,9 +2,9 @@
 
 Routes opt into the OpenAPI-visible error contract by passing
 ``responses=STANDARD_ERROR_RESPONSES`` (or one of the more specific
-constants) to ``@router.get()`` / ``@router.post()``.  Sprint 43.4
-applies this selectively to plugin-facing routes; the other routes
-keep their default OpenAPI rendering until a follow-up sweep.
+constants) to ``@router.get()`` / ``@router.post()``.  Plugin-facing
+routes apply this selectively today; the other routes keep their
+default OpenAPI rendering until a follow-up sweep.
 """
 
 from __future__ import annotations

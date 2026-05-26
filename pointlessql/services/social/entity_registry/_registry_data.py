@@ -289,8 +289,8 @@ REGISTRY: dict[str, EntityKindSpec] = {
     # save-path reconciler in
     # ``pointlessql.services.notebook.cell_reconciliation``.  Reviews
     # off (cells aren't curated artefacts); endorsements / READMEs /
-    # issues off (overkill at cell scope — Phase 101 will layer
-    # reviewer-per-cell on top of the same anchor).  Stars off (cells
+    # issues off (overkill at cell scope — reviewer-per-cell layers
+    # on top of the same anchor when needed).  Stars off (cells
     # are notebook-internal; bookmarks live at notebook level).
     "notebook_cell": EntityKindSpec(
         key="notebook_cell",

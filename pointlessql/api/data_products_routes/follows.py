@@ -9,9 +9,8 @@ Four endpoints:
 * ``GET /followers`` — full list, restricted to steward + admin
   for privacy.
 
-Phase 78 polish consolidated the legacy ``data_product_follows``
-table into the polymorphic ``social_follows`` sibling.  This
-route resolves the DP's ``social_target_id`` via
+DP follows live in the polymorphic ``social_follows`` table.
+This route resolves the DP's ``social_target_id`` via
 :func:`resolve_dp_target` and runs every query against
 ``social_follows`` keyed on that anchor.
 """

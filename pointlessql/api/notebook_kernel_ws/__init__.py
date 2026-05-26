@@ -1,8 +1,7 @@
 """WebSocket bridging browser cells to per-notebook ipykernel subprocesses — split per layer.
 
-The pre-Phase-110 layout collapsed every helper, handler, pump, and the
-WS endpoint itself into one ~835 LOC ``notebook_kernel_ws.py`` module.
-Phase 110.6 split it along the natural layering:
+The helper, handler, pump, and WS endpoint are split along the
+natural layering:
 
 * :mod:`._protocol` — JSON-RPC envelope helpers (``send_error``,
   ``user_can_use_editor``, ``RESERVED_BOOTSTRAP_HASH`` sentinel).

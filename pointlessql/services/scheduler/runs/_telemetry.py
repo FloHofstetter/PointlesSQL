@@ -103,7 +103,7 @@ async def _post_failure_webhook(
     # Look up the factory and timeout via the parent package so the test
     # ``monkeypatch.setattr(scheduler_service.runs, ...)`` reaches this call
     # site (same call-time-lookup pattern as ``_sleep`` / ``_build_pql``
-    # elsewhere — see Phase 110.2 / 110.9 / 111.7).
+    # use elsewhere).
     from pointlessql.services.scheduler import runs as _runs
 
     try:

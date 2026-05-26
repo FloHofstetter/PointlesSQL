@@ -1,8 +1,8 @@
 """``/api/2.0/sql/statements`` — public DBX-compatible SQL API.
 
-Phase 117 opens the first **token-only** REST surface for external
-SQL clients (curl, dbt, BI tools) to run SELECT queries against the
-PointlesSQL lakehouse without driving the browser UI.
+A **token-only** REST surface for external SQL clients (curl, dbt,
+BI tools) to run SELECT queries against the PointlesSQL lakehouse
+without driving the browser UI.
 
 Wire shape mirrors the documented Databricks SQL Statement Execution
 API so the official ``databricks-sql-python`` client, the

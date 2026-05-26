@@ -9,8 +9,8 @@ matters.
 The schedule itself lives on the ``jobs`` table (one ``Job`` row per
 active source, ``Job.kind = 'ingest_pull'``, ``Job.config`` carries
 ``{source_id, mapping_index}``).  Per-mapping execution history reads
-through ``job_runs``.  No new scheduling tables — Phase 82 reuses the
-Phase-8 scheduler verbatim.
+through ``job_runs``.  Ingest reuses the existing job scheduler
+verbatim — no new scheduling tables.
 """
 
 from __future__ import annotations

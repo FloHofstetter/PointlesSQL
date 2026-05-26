@@ -14,11 +14,11 @@ TAG_SYNC_UPDATE: Final[int] = 0x02
 TAG_AWARENESS_UPDATE: Final[int] = 0x03
 TAG_CELL_UUID_REMAP: Final[int] = 0x04
 # agent-presence ride-along; defined alongside its
-# REST emitter in ``notebook_coedit_agent_routes.py`` but Phase 109
-# needs the constant for the cross-worker dispatch switch.
+# REST emitter in ``notebook_coedit_agent_routes.py`` but the
+# cross-worker dispatch switch needs the constant here too.
 TAG_AGENT_PRESENCE: Final[int] = 0x05
 
-# Tags that ride the Phase-109 cross-worker bus.  Handshake bytes
+# Tags that ride the cross-worker bus.  Handshake bytes
 # (sync_step1/2) stay strictly local — they are per-client and
 # the answering hub has the authoritative state.
 BUS_RELAYED_TAGS: Final[frozenset[int]] = frozenset(

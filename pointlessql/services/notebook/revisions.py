@@ -181,7 +181,7 @@ def set_revision_signature(
     """Persist a signature blob produced by an external signer.
 
     reserved ``signature`` + ``signature_alg`` for the
-    forthcoming shoreguard sign-revision API.  Phase 97 Wave-D ships
+    forthcoming shoreguard sign-revision API.  This module ships
     the *receiving* half: any out-of-band signer (shoreguard, an
     enterprise reviewer, a CI step) POSTs the signature back here and
     the row gets ``signed=true`` for the UI badge.  No verification is

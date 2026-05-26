@@ -314,7 +314,7 @@ _TEXT_TYPE_PREFIXES: tuple[str, ...] = ("STRING", "VARCHAR", "CHAR", "TEXT")
 def _is_text_column_type(type_text: str) -> bool:
     """Whether *type_text* is a text-shaped column type.
 
-    Phase 92 vector-index create-form dropdown filters by this so the
+    The vector-index create-form dropdown filters by this so the
     user cannot pick a numeric column.  The check is intentionally
     permissive: it matches by prefix to handle ``VARCHAR(200)`` etc.
     """

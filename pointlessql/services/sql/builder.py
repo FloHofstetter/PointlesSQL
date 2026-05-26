@@ -10,8 +10,8 @@ Two pure-functional pieces:
   to raw-SQL-only.
 
 The builder deliberately rejects multi-table queries (CTEs, JOINs,
-subqueries).  Phase 83.2 ships single-table "filter + group + agg"
-support; richer shapes are 83.x territory.
+subqueries).  Single-table "filter + group + agg" is the supported
+shape; richer queries land as follow-ups.
 """
 
 from __future__ import annotations

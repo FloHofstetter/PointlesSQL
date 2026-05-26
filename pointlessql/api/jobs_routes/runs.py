@@ -66,7 +66,7 @@ async def api_list_job_runs(
     :class:`~pointlessql.models.JobRun`. The default cap of 50 keeps
     the response payload small for the notebook-jobs panel
     while still surfacing enough history for a quick scan; deeper
-    paging would land in a Sprint 67.4 follow-up if needed.
+    paging would land in a follow-up if needed.
 
     Args:
         request: Incoming FastAPI request — gated via

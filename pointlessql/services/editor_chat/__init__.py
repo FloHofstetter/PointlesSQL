@@ -1,4 +1,4 @@
-"""Editor-chat services (Phase 91, renamed from ``sql_chat`` ).
+"""Editor-chat services (renamed from ``sql_chat``).
 
 The package is built in three layers:
 

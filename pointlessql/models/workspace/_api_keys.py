@@ -88,11 +88,11 @@ class ApiKey(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
     secret_hash: Mapped[str] = mapped_column(String(128), nullable=False)
-    # Phase 118 widened from VARCHAR(8) to VARCHAR(32) so the new
+    # Widened from VARCHAR(8) to VARCHAR(32) so the new
     # ``pql_{env}_v1_xxxxxxxxxx`` prefix (~24 chars) fits.  Legacy
     # keys keep their original 8-char prefix unchanged.
     secret_prefix: Mapped[str] = mapped_column(String(32), nullable=False)
-    # token format discriminator.  ``'legacy'`` for pre-118
+    # token format discriminator.  ``'legacy'`` for the original
     # ``secrets.token_urlsafe(32)`` tokens; ``'v1'`` for the
     # ``pql_{env}_v1_{body40}_{crc8}`` format.  Drives badge rendering
     # and lets future code drop legacy support cleanly.

@@ -1,8 +1,6 @@
 """Threaded discussion routes for data-products — split per surface.
 
-The pre-Phase-110 layout collapsed every route + helper into one
-~883 LOC ``comments.py`` module.  Phase 110.5 split it along the
-natural axes:
+The routes + helpers are organised along the natural axes:
 
 * :mod:`._constants`      — audit-action strings, allowed
   categories/emojis, thread-depth cap, regex patterns.

@@ -1,8 +1,6 @@
 """Polymorphic entity registry — split per concern.
 
-The pre-Phase-111.5 layout collapsed every helper into one ~729 LOC
-``entity_registry.py`` module.  Phase 111.5 split it along the
-natural axes:
+The helpers are split along the natural axes:
 
 * :mod:`._spec`          — the :class:`EntityKindSpec` dataclass.
 * :mod:`._url_builders`  — the 15 ``_xxx_url`` helpers, one per

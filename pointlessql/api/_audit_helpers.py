@@ -91,7 +91,7 @@ async def record_query_async(
             header through.
         read_kind: Discriminator stored on the row (default
             ``ReadKind.SQL_EXECUTE`` matches the legacy SELECT
-            path).  Phase 63 dispatcher passes ``"sql_dml"`` for
+            path).  The dispatcher passes ``"sql_dml"`` for
             INSERT/UPDATE/DELETE/MERGE and ``"sql_ddl"`` for
             DROP/CREATE so :file:`/queries` can filter editor
             traffic by family.

@@ -273,8 +273,8 @@ def build_lens_mcp_sse_app(
     ``Authorization: Bearer`` header per-request, so a single FastMCP
     instance serves every analyst.
 
-    Note: Sprint 65.4 ships the SSE app shape but route-layer auth
-    enforcement lands as a small wrapper in
+    Note: this factory only builds the SSE app shape.  Route-layer
+    auth enforcement lives in a small wrapper in
     :mod:`pointlessql.api.mcp` that delegates to
     :func:`require_analyst` before forwarding to the FastMCP app.
 

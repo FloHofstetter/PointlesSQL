@@ -19,8 +19,7 @@ The four helper functions consumed by the dispatcher
 ``run_sql_export_sync``) re-export from this facade so external
 imports stay unchanged.
 
-Phase 88.2 split this module from a 1127-LOC monolith into the
-sub-package below.
+The module is structured as a facade over the sub-package below.
 """
 
 from __future__ import annotations

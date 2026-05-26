@@ -3,7 +3,7 @@
 Wire shape is locked by the frontend chat panels — ``chat.js``
 (``frontend/js/sql_editor/chat.js``) and ``notebook/chat.js`` both
 parse ``frame.error.message`` directly to render error toasts.
-Phase 121.1.d consolidates two byte-identical ``_send_error``
+This module consolidates two byte-identical ``_send_error``
 helpers in ``sql_chat_ws.py`` and ``notebook_chat_ws.py`` into one
 shared function so future error-vocabulary changes (new codes,
 extra fields) land in a single place.  The wire bytes are

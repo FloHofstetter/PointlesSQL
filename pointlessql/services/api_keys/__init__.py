@@ -182,9 +182,9 @@ def parse_keys(raw: str | None) -> dict[str, tuple[str, bool, bool, bool, bool, 
     - ``name:secret`` — non-privileged agent key (legacy default).
     - ``name:secret:supervisor`` — supervisor scope.
     - ``name:secret:auditor`` — auditor scope.
-    - ``name:secret:lineage_inbound`` — Phase-40 federation scope.
-    - ``name:secret:analyst`` — Phase 65 Lens read-only Q&A scope.
-    - ``name:secret:sql_execute`` — Phase 117 public SQL API scope.
+    - ``name:secret:lineage_inbound`` — federation scope.
+    - ``name:secret:analyst`` — Lens read-only Q&A scope.
+    - ``name:secret:sql_execute`` — public SQL API scope.
 
     Anything else as the third token raises so a typo can't silently
     grant a privileged scope.  A single env entry maps to exactly one
@@ -380,9 +380,10 @@ def create_api_key(
             visually distinct in audit logs and git leaks.  Defaults
             to ``'live'`` so existing call-sites keep producing
             production-grade keys without an explicit argument.
-        expires_at: Optional Phase 119 TTL deadline.  ``None`` (the
-            default) means the key never expires, matching pre-119
-            behaviour.  Aware ``datetime`` recommended; naive values
+        expires_at: Optional TTL deadline.  ``None`` (the default)
+            means the key never expires, matching the original
+            no-expiry behaviour.  Aware ``datetime`` recommended;
+            naive values
             are treated as UTC by the verify path.
 
     Returns:

@@ -1,7 +1,7 @@
 """Retention sweeper for the public SQL Statement API store.
 
-Phase 117 keeps every submission in ``sql_statements`` until the
-sweep prunes it.  The default retention is 24h (configurable via
+Every submission lives in ``sql_statements`` until the sweep
+prunes it.  The default retention is 24h (configurable via
 ``settings.sql_execution_api.result_payload_retention_hours``);
 shorter than the query-history retention because the wire client
 already has the result in hand.

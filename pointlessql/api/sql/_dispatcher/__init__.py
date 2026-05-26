@@ -1,8 +1,6 @@
 """Dispatch a single SQL statement to its typed primitive.
 
-The SQL editor's ``POST /api/sql/execute`` route used to be a
-SELECT-only runner that parsed → enforced ``SELECT`` per table →
-executed against DuckDB.  Phase 63 turned it into an
+The SQL editor's ``POST /api/sql/execute`` route is an
 AST-classifying **dispatcher** that routes each statement family
 to its correct primitive:
 
@@ -15,8 +13,8 @@ to its correct primitive:
 * ``DROP TABLE`` → ``soyuz.delete_table``.
 * ``CREATE/DROP SCHEMA`` → ``soyuz.create_schema`` / ``soyuz.delete_schema``.
 * ``ALTER TABLE`` → currently rejected with a structured "use the
-  table-detail UI" error (Phase 63.3 deferred — needs cross-repo
-  soyuz ``update_table`` route).
+  table-detail UI" error (deferred — needs cross-repo soyuz
+  ``update_table`` route).
 
 Audit semantics:
 

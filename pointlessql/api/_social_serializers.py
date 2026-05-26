@@ -1,6 +1,6 @@
 """Shared JSON serialisers across the social route surface.
 
-Phase 79.4 extraction.  Three pieces of duplication concentrated
+This module dedupes three pieces of duplication that concentrated
 on the agent-on-behalf-of payload shape:
 
 * ``_agent_payload(agent: Agent | None)`` lived once in

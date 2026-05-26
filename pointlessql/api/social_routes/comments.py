@@ -76,13 +76,13 @@ async def accept_social_answer(
     if kind == "dp":
         catalog, schema = parse_dp_ref(kind, ref)
         return await accept_answer(catalog, schema, comment_id, request)
-    # bare-http-ok: feature is DP-only this phase.
+    # bare-http-ok: feature is DP-only today.
     raise HTTPException(
         status_code=501,
         detail=(
-            f"accept-answer for kind={kind!r} is deferred — "
-            "Phase 77.7 (Issues) brings question/answer flow to "
-            "polymorphic entities"
+            f"accept-answer for kind={kind!r} is deferred — the "
+            "polymorphic Issues surface will bring question/answer "
+            "flow to non-DP entities"
         ),
     )
 

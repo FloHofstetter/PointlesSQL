@@ -4,8 +4,7 @@ For ``kind='dp'`` the call delegates to the existing DP reaction
 handlers so that the legacy fan-out + audit prefix semantics
 stay intact.  For every other kind the entity-level **and**
 comment-level reaction endpoints route to the polymorphic
-handlers landed (entity) and Phase 78 polish
-(comment).  ``data_product_comment_reactions`` is already
+handlers.  ``data_product_comment_reactions`` is already
 polymorphic-safe — it keys on ``comment_id`` — so the unlock
 is purely a routing change.
 """

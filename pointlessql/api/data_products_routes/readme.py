@@ -12,10 +12,10 @@ Five endpoints:
 * ``GET /readme/diff?from=A&to=B`` — unified diff between two
   versions for the History modal.
 
-Phase 78 polish renamed the underlying table to ``entity_readmes``
-and dropped the DP-only ``data_product_id`` column.  This route
-resolves the polymorphic ``social_target_id`` once per request
-and uses it as the version-stream key.
+The underlying table is ``entity_readmes`` (polymorphic by
+``social_target_id``).  This route resolves the DP's
+``social_target_id`` once per request and uses it as the
+version-stream key.
 """
 
 from __future__ import annotations

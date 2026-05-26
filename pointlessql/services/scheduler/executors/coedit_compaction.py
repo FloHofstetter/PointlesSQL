@@ -1,9 +1,10 @@
 # pyright: reportUnusedFunction=false
 """``coedit_compaction`` job kind — compact stale ``notebook_crdt_state`` blobs.
 
-Phase 105.8 executor for the co-edit hub.  The job is opt-in via the
-scheduler UI; we deliberately do not auto-register a default cron entry
-so single-worker installs without the bus see no scheduler activity.
+This executor backs the co-edit hub.  The job is opt-in via the
+scheduler UI; we deliberately do not auto-register a default cron
+entry so single-worker installs without the bus see no scheduler
+activity.
 """
 
 from __future__ import annotations

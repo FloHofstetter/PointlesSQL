@@ -1,7 +1,6 @@
 """Op-by-op + tool-call-by-tool-call + lineage diff service — split per concern.
 
-The pre-Phase-111 layout collapsed every helper into one ~724 LOC
-``run_diff.py`` module.  Phase 111.3 split it along the natural axes:
+The helpers are split along the natural axes:
 
 * :mod:`._serialize`  — per-row JSON serializers + one-layer
   ``_params_diff``.

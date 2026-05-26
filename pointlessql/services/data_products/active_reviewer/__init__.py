@@ -1,8 +1,6 @@
-"""split per concern.
+"""Active-reviewer pipeline — split per concern.
 
-The pre-Phase-110 layout collapsed every concern into one ~760 LOC
-``active_reviewer.py`` module.  Phase 110.8 split it along the natural
-axes:
+The pipeline is split along the natural axes:
 
 * :mod:`._verdict`  — ``ReviewVerdict`` dataclass +
   ``parse_review_result``.

@@ -317,7 +317,7 @@ async def api_explain_cell(
     is anchored to the cell without waiting for a save.  This is
     the behavior the user picked during planning: explanations are
     notes, not mutations; persisting them now means they survive
-    conversation resets and Phase 97 revision history can render
+    conversation resets and the revision-history UI can render
     them per cell.
 
     Args:

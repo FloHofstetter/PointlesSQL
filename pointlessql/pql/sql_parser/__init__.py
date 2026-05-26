@@ -1,7 +1,6 @@
 """Parse SQL and prepare it for the right execution path — split per concern.
 
-The pre-Phase-111 layout collapsed every concern into one ~762 LOC
-``sql_parser.py`` module.  Phase 111.1 split it along the natural axes:
+The parser is split along the natural axes:
 
 * :mod:`._types`           — ``StmtType`` enum + ``SQLParseError`` +
   ``PreparedSQL`` dataclass.

@@ -1,11 +1,10 @@
 """Polymorphic follow rows for every entity kind.
 
-introduced this kind-agnostic sibling alongside the
-legacy ``data_product_follows`` (which had a composite PK on
-``(workspace_id, data_product_id, user_id)`` that the 77.0.G
-polymorphic rewrite couldn't relax without an SQLite-unfriendly
-PK swap).  Phase 78 polish consolidated the two: every follow,
-DP or otherwise, now lives in this table keyed by
+replaces the legacy ``data_product_follows`` (which had a
+composite PK on ``(workspace_id, data_product_id, user_id)`` that
+the polymorphic rewrite could not relax without an SQLite-
+unfriendly PK swap).  Every follow — DP or otherwise — now lives
+in this table keyed by
 ``(workspace_id, social_target_id, user_id)``.
 
 DP follower lookups join through :class:`SocialTarget` (where

@@ -39,8 +39,8 @@ class UserNotification(Base):
         source_data_product_id: Optional FK on ``data_products.id``
             for click-through.  Nullable so the table can later
             absorb non-DP events without a schema change.
-        source_entity_kind: Phase 77.0.D polymorphic discriminator —
-            one of the kinds registered in :mod:`pointlessql.models.social`.
+        source_entity_kind: Polymorphic discriminator — one of the
+            kinds registered in :mod:`pointlessql.models.social`.
             ``None`` only on legacy rows written before the column
             existed.
         source_entity_ref: Reference within ``source_entity_kind``

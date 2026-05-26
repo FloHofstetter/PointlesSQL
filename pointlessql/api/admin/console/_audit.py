@@ -45,12 +45,11 @@ async def admin_audit_index(
     the page inherits sorting, search, and mobile stacking without
     new frontend primitives.
 
-    Phase 54.3 turned the previous single-shot truncation cap into a
-    real ``offset``-based pagination: a separate ``COUNT(*)`` query
-    drives the page-link footer (Bootstrap 5.3 ``pagination``
-    component via ``_macros/pagination.html``).  The client-side
-    filter chips operate on the visible page only — same trade-off
-    as ``/runs``.
+    The viewer uses real ``offset``-based pagination: a separate
+    ``COUNT(*)`` query drives the page-link footer (Bootstrap 5.3
+    ``pagination`` component via ``_macros/pagination.html``).  The
+    client-side filter chips operate on the visible page only —
+    same trade-off as ``/runs``.
     """
     from sqlalchemy import func as _func
     from sqlalchemy import select as _select

@@ -93,9 +93,9 @@ def build_agent(
             forward tokens to the WS send queue.
         surface: Which propose-tool family the plugin should
             register inside this run.  Defaults to ``"sql"`` for
-            backwards-compat with Phase-91 callers; the
-            Phase-96 notebook chat WS passes ``"notebook"``.
-        notebook_id: Phase 105.6 — when set, stamped into
+            backwards-compat with SQL callers; the notebook chat
+            WS passes ``"notebook"``.
+        notebook_id: When set, stamped into
             ``POINTLESSQL_NOTEBOOK_ID`` so the plugin's
             ``propose_cell`` / ``fix_cell`` / ``explain_cell`` tools
             can fire pre/post ``coedit/agent-presence`` broadcasts

@@ -20,7 +20,7 @@ below
 * ``notebook`` (NotebookOutput, NotebookCellRun, NotebookCellRunSource
   — no model FKs; the ``agent_run_id`` column is logical-link only)
 * ``lens`` package (LensSession, LensMessage, LensPinnedAnswer,
-  LensProviderCreds — Phase 65 read-only Q&A surface; FKs to
+  LensProviderCreds — read-only Q&A surface; FKs to
   Workspace + User)
 * ``agent`` package (AgentRun, AgentRunSource, AgentRunOperation,
   AgentRunEvent, AgentRunToolCall, AgentReview, ReviewDestination,

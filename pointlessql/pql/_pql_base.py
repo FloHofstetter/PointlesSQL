@@ -120,8 +120,8 @@ class PQLBase:
     def _branch_remap(self, full_name: str) -> str:
         """Rewrite a 3-part FQN into the bound branch's sibling schema.
 
-        Phase 102 records the branch binding metadata; this remap is
-        the kernel-side bridge.  When
+        The branch-binding metadata is recorded by the binding
+        registry; this remap is the kernel-side bridge.  When
         :func:`pointlessql.pql.context.current_branch` returns ``None``
         (interactive use outside the editor, or no active binding),
         the FQN passes through unchanged.

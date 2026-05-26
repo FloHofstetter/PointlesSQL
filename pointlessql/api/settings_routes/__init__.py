@@ -1,4 +1,4 @@
-"""``/api/settings/...`` — per-caller settings surface (Phase 76.4+)."""
+"""``/api/settings/...`` — per-caller settings surface."""
 
 from __future__ import annotations
 

@@ -19,11 +19,10 @@ a frozen dataclass with three callables:
   match + the resolver's output; returns either an anchor
   markdown string or the original token (literal fallback).
 
-Phase 77.1+ adds new kinds (``#table:cat.sch.tbl``,
-``#model:cat.sch.name``, ``#branch:<fqn>``, ``#run:<uuid>``,
-``#notebook:<uuid>``, ``#query:<slug>``) by appending one
-dataclass per kind to the registry.  Zero behaviour drift for
-the four existing kinds.
+New kinds (``#table:cat.sch.tbl``, ``#model:cat.sch.name``,
+``#branch:<fqn>``, ``#run:<uuid>``, ``#notebook:<uuid>``,
+``#query:<slug>``) plug in by appending one dataclass per kind to
+the registry.  Zero behaviour drift for the four original kinds.
 """
 
 from __future__ import annotations

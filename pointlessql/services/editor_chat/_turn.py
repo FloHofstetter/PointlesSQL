@@ -95,10 +95,10 @@ async def run_turn(
             — tests inject a :class:`FakeAIAgent` factory here.
         surface: Which propose-tool family the plugin should
             register inside this turn.  ``"sql"`` (default) for
-            the Phase-91 SQL chat; ``"notebook"`` for the Phase-96
-            notebook AI assistant.  Forwarded to ``build_agent``.
-        notebook_id: Phase 105.6 — optional notebook UUID
-            forwarded to ``build_agent`` so the plugin can fire
+            the SQL chat; ``"notebook"`` for the notebook AI
+            assistant.  Forwarded to ``build_agent``.
+        notebook_id: Optional notebook UUID forwarded to
+            ``build_agent`` so the plugin can fire
             ``coedit/agent-presence`` broadcasts.  Only meaningful
             for ``surface="notebook"``; ignored otherwise.
 

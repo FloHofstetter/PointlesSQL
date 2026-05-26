@@ -13,10 +13,9 @@ This module reads both files and emits one
 or test.  No engine state mutates here — the bridge is a pure
 manifest → audit-row mapping.
 
-Sprint 36.2 covers model + test execution rows.  Sprint 36.3 layers
-``lineage_row_rejects`` for failing tests on top.  Sprint 36.5 layers
-severity enforcement (``error`` → AgentRun ``failed``) and rollback
-hooks on top.
+The bridge emits model + test execution rows, layers
+``lineage_row_rejects`` for failing tests, and enforces severity
+(``error`` → AgentRun ``failed``) with rollback hooks on top.
 
 All schema reads use ``.get(...)`` with explicit defaults so a future
 dbt-version manifest-schema bump that adds new fields does not crash

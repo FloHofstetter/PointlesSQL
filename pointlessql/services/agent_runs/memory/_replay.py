@@ -161,7 +161,7 @@ def _rewrite_schema_refs_in_query(
     word-boundary matches.  Robust enough for the dot-delimited
     three-part identifiers PointlesSQL emits; insufficient for
     quoted-identifier corner cases (``"weird name"."table"``).
-    Phase 90 trades that completeness for a 6-line implementation;
+    Trades full completeness for a 6-line implementation;
     full sqlglot-AST rewriting is a follow-up.
 
     Args:

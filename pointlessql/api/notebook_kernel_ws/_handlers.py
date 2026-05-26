@@ -71,8 +71,7 @@ async def handle_execute(
     # IPython history + skip the notebook_cell_run persistence."
     # The Variable Inspector polls hit this path; without it,
     # IPython's ``_ih`` / ``_oh`` grew indefinitely and the
-    # notebook_cell_runs table accumulated rows for every probe
-    # (caught Phase 105 replay).
+    # notebook_cell_runs table accumulated rows for every probe.
     silent = bool(params.get("silent"))
     if not isinstance(cell_type, str):
         cell_type = "code"

@@ -85,7 +85,7 @@ class AuditSettings(BaseSettings):
     redact_detail_payloads: bool = Field(
         default=False,
         description=(
-            "Phase 121.7c — when True, log_action() pipes detail "
+            "When True, log_action() pipes detail "
             "dicts through services/pii/_audit_redactor before "
             "persistence, using audit.pii_mode for the redaction "
             "shape (clear / hash / placeholder).  Default False "

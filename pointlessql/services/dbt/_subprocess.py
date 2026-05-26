@@ -20,9 +20,10 @@ Two preconditions must hold for the spawn to actually run:
    ``/dbt`` page can render a friendly "no project compiled yet"
    banner instead of a 5xx.
 
-The third precondition keeps Sprint 36.1 useful even when no dbt
-project has been authored yet: the lifespan hook does not block
-startup on a missing project, and the page surfaces the gap clearly.
+The third precondition keeps the integration useful even when no
+dbt project has been authored yet: the lifespan hook does not
+block startup on a missing project, and the page surfaces the gap
+clearly.
 """
 
 from __future__ import annotations

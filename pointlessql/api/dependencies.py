@@ -179,7 +179,7 @@ _VALID_ROLES = frozenset({"admin", "supervisor", "auditor", "analyst", "user"})
 def require_role(*roles: str) -> Callable[[Request], None]:
     """Return a Depends-compatible callable enforcing role-set membership.
 
-    Phase 121.4 generalises the existing single-role
+    The factory generalises the single-role
     ``require_admin`` / ``require_supervisor`` / ``require_auditor``
     gates into one parametrised form.  Routes that need
     "admin OR auditor" (read-paths shared between tenant ops + audit
@@ -644,7 +644,7 @@ def get_templates(request: Request) -> Jinja2Templates:
     The template factory is configured once at app startup (filters,
     autoescape, search path) and stashed on
     ``request.app.state.templates``.  Routes used to redefine a private
-    ``_templates`` helper file-by-file — Phase 86 promoted it here so
+    ``_templates`` helper file-by-file — it is promoted here so
     HTML routes share one helper and bug-fixes to the rendering shim
     only land in one place.
 

@@ -87,7 +87,7 @@ class ApiKeyIpGrant(Base):
 class ApiKeyUsageBucket(Base):
     """One ``(api_key, minute, source_ip)`` usage aggregate.
 
-    Phase 120 records every successful Bearer auth into an in-process
+    Every successful Bearer auth is recorded into an in-process
     ``collections.Counter`` keyed on this triple.  The scheduler loop
     flushes the counter every 30s into this table via UPSERT, so a
     high-throughput key adds at most one row per minute per distinct

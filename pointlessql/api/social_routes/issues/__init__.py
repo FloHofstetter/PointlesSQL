@@ -1,7 +1,6 @@
 """Polymorphic Issues router — split per CRUD verb.
 
-The pre-Phase-110 layout collapsed every route + helper into one
-~749 LOC ``issues.py`` module.  Phase 110.7 split it per verb-group:
+The routes + helpers are organised per verb-group:
 
 * :mod:`._open`   — ``POST /api/social/{parent_kind}/{parent_ref}/issues``
   with audit + governance + fanout side-effects.  Owns the

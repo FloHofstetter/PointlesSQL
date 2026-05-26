@@ -124,9 +124,9 @@ def resolve_agent_for_principal(
 ) -> int:
     """Resolve an ``?as_agent=<slug>`` token to an :class:`Agent` PK.
 
-    Authorisation rule (Phase 76.5+): only the agent's
-    ``principal_user_id`` (or install-admin) may speak as the
-    agent.  Anyone else gets an :class:`AuthorizationError`.
+    Authorisation rule: only the agent's ``principal_user_id``
+    (or install-admin) may speak as the agent.  Anyone else gets
+    an :class:`AuthorizationError`.
 
     Args:
         session_factory: SQLAlchemy sessionmaker from app state.

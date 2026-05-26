@@ -15,10 +15,9 @@ Entry points:
 * :func:`load_contract` (yaml → Pydantic → optional DB UPSERT)
 * :class:`DataProductRef` (validated ``catalog.schema`` identifier)
 * :class:`DataProductError` family (fail-loud exceptions)
-* :func:`check_contract_for_write` (pre-write enforcement hook,
-  Phase 50.3)
+* :func:`check_contract_for_write` (pre-write enforcement hook)
 * :func:`diff_contract_against_table` (yaml ↔ on-disk Delta schema
-  diff, Phase 50.3)
+  diff)
 """
 
 from __future__ import annotations

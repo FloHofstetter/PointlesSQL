@@ -14,7 +14,7 @@ returns the model's response.  Tool-call dispatch lives in the
 chat-loop (:mod:`pointlessql.services.lens._chat_loop`); the
 adapter is just the wire-format translator.
 
-Sprint 65.5 ships non-streaming responses; streaming + SSE
+The adapter returns non-streaming responses; streaming + SSE
 deltas are queued for a follow-up once the chat-UI proves out.
 """
 

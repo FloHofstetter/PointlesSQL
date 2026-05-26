@@ -1,10 +1,11 @@
 """Versioned per-entity READMEs.
 
-Phase 71.5 shipped this table as ``data_product_readmes``.  77.0.B
-added the polymorphic ``social_target_id`` anchor so non-DP kinds
-could carry their own README history.  Phase 78 polish dropped
-the DP-only ``data_product_id`` column + renamed the table to
-``entity_readmes`` to make the polymorphic shape primary.
+The table grew through three shapes: it started as
+``data_product_readmes`` (DP-only), gained a polymorphic
+``social_target_id`` anchor so non-DP kinds could carry their own
+README history, and finally dropped the DP-only ``data_product_id``
+column + got renamed to ``entity_readmes`` to make the polymorphic
+shape primary.
 
 One row per *version* of an entity's README.  ``version_int`` is
 monotonic per ``(workspace_id, social_target_id)``; latest = max.

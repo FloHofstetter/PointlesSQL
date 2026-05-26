@@ -147,9 +147,10 @@ def row_from_comment(
 ) -> dict[str, Any]:
     """Normalise a comment to the feed row shape.
 
-    Phase 81.K.2 carries the full ``body_md`` (Alpine truncates +
-    "Show more"), ``actor_display_name``, ``comment_id``, and a
-    ``render_kind`` of ``comment`` for the per-kind renderer.
+    The serialised dict carries the full ``body_md`` (Alpine
+    truncates + "Show more"), ``actor_display_name``,
+    ``comment_id``, and a ``render_kind`` of ``comment`` for the
+    per-kind renderer.
 
     Args:
         comment: The comment row to normalise.
@@ -196,9 +197,9 @@ def row_from_review(
 ) -> dict[str, Any]:
     """Normalise a review to the feed row shape.
 
-    Phase 81.K.2 carries ``stars`` as a separate integer field
-    (Alpine renders the actual stars row), full ``body_md``, and
-    ``actor_display_name`` for the per-kind renderer.
+    The serialised dict carries ``stars`` as a separate integer
+    field (Alpine renders the actual stars row), full ``body_md``,
+    and ``actor_display_name`` for the per-kind renderer.
 
     Args:
         review: The review row to normalise.

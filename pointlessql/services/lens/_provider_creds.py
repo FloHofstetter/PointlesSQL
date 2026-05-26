@@ -2,8 +2,9 @@
 
 Wraps the :class:`LensProviderCreds` table with Fernet
 encryption-at-rest using the install-scoped master key from
-:mod:`pointlessql.services.secrets` (analog Phase 51 workspace-repo
-secrets).  Cleartext API keys never enter the DB; the chat-loop
+:mod:`pointlessql.services.secrets` (analogous to the
+workspace-repo secrets shape).  Cleartext API keys never enter
+the DB; the chat-loop
 decrypts on demand for each LLM round-trip and discards.
 """
 

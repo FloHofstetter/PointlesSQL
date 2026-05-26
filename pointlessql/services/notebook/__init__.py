@@ -16,9 +16,9 @@ sub-packages at ``pointlessql/services/`` root:
 The two sub-sub-packages keep their own facade ``__init__.py`` so
 their internal multi-module split (outputs/ has cell_runs +
 outputs; kernel_session/ has messages + session + registry) stays
-addressable.  This is the only 2-level nesting in the Phase A–C
-reorg — it's load-bearing because the alternative is leaving half
-the notebook subsystem flat.
+addressable.  This is the only 2-level nesting in the notebook
+service tree — it's load-bearing because the alternative is
+leaving half the notebook subsystem flat.
 """
 
 from __future__ import annotations

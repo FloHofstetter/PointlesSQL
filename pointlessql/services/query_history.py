@@ -134,11 +134,11 @@ def record_query(
             (CLI, scheduler, fixtures) keep working without explicit
             threading; HTTP routes pass ``request.state.workspace_id``
             for proper isolation.
-        notebook_path: Phase 66.5 — relative path of the SQL cell's
-            host notebook (``.py`` jupytext file) when the query
+        notebook_path: Relative path of the SQL cell's host
+            notebook (``.py`` jupytext file) when the query
             originated from a browser notebook editor SQL cell.
-        notebook_content_hash: Phase 66.5 — FNV-1a-64 cell identity,
-            paired with ``notebook_path`` so the audit cockpit can
+        notebook_content_hash: FNV-1a-64 cell identity, paired
+            with ``notebook_path`` so the audit cockpit can
             deep-link the row back to the originating cell.
 
     Returns:

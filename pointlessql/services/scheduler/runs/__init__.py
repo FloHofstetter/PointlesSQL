@@ -1,8 +1,7 @@
 # pyright: reportUnusedFunction=false, reportPrivateUsage=false
 """Job + task run lifecycle, structured logging, and failure-webhook telemetry.
 
-The pre-Phase-110 layout collapsed all four concerns into one ~860 LOC
-``runs.py`` module.  Phase 110.2 split it along the natural axes:
+The four concerns are split along the natural axes:
 
 * :mod:`._db`        — DB helpers used by both the loop and the execution body.
 * :mod:`._tasks`     — per-task lifecycle + DAG walker + the ``_sleep`` test hook.

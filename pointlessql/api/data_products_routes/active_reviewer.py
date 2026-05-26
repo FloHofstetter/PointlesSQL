@@ -1,4 +1,4 @@
-"""``/api/data-products/{c}/{s}/active-reviewer`` — Phase 74 config.
+"""``/api/data-products/{c}/{s}/active-reviewer`` — active-reviewer config.
 
 Three endpoints:
 

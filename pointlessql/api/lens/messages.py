@@ -1,9 +1,8 @@
 """Lens message endpoint — POST a user turn, get back the assistant turn.
 
-Sprint 65.5 ships non-streaming responses.  The browser chat-UI
+The endpoint returns non-streaming responses.  The browser chat-UI
 shows a "thinking …" skeleton while the round-trip completes; an SSE
-streaming variant is queued for when the chat-UI proves out (Sprint
-65.7 walkthrough will validate the flow).
+streaming variant is queued for when the chat-UI proves out.
 """
 
 from __future__ import annotations

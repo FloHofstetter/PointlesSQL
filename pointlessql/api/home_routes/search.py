@@ -7,7 +7,7 @@ descending.  Per-source try/except so a partial outage degrades to
 "those hits missing" instead of failing the whole palette — the
 shortcut would feel fragile otherwise.
 
-Operator syntax (Phase 80.6, Slack convention):
+Operator syntax (Slack convention):
 
 * ``@<term>`` narrows to user hits.
 * ``#<term>`` narrows to topic hits.

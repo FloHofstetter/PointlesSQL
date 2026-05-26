@@ -25,9 +25,9 @@ RESERVED_BOOTSTRAP_HASH = "__pql_sql_bootstrap__"
 def user_can_use_editor(user: UserInfo) -> bool:
     """Return whether the resolved user is permitted to drive the editor.
 
-    Phase 70 broadened the gate from admin-or-auditor to any
-    authenticated user (matches the workspace + edit HTTP routes,
-    which dropped ``require_admin`` for ``require_user``).
+    The gate accepts any authenticated user — matching the
+    workspace + edit HTTP routes, which use ``require_user``
+    rather than ``require_admin``.
     """
     return bool(user.get("id"))
 

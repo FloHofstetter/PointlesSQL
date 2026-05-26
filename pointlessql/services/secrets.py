@@ -31,9 +31,9 @@ Why Fernet:
 What this is NOT:
 
 * Not a workspace-scoped key — one master key per install, every
-  workspace's secrets share it.  Phase 52+ may introduce
-  per-workspace keys for stricter blast-radius containment;
-  callers that need that today should not rely on these helpers.
+  workspace's secrets share it.  Per-workspace keys for stricter
+  blast-radius containment are a future option; callers that need
+  that today should not rely on these helpers.
 * Not a key-rotation system — :func:`rotate_master_key` is
   deliberately absent.  When the time comes to rotate, write a
   one-shot CLI that decrypts every row with the old key and

@@ -8,10 +8,10 @@ Merges four source streams into one chronologically-sorted feed:
 2. ``audit_log`` rows whose ``target`` contains the DP catalog or
    schema reference — best-effort, free-form text match.
 3. ``data_product_contract_events`` rows where
-   ``data_product_id = dp.id`` — Phase 50 contract validations.
+   ``data_product_id = dp.id`` — contract validations.
 4. ``governance_events`` rows of type
    ``pointlessql.data_product.sla_violated`` whose payload's
-   ``data_product_ref`` matches the DP.4 freshness.
+   ``data_product_ref`` matches the DP — freshness signal.
 
 Heuristics:
 

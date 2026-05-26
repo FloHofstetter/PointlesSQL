@@ -3,8 +3,9 @@
 Each workspace can register one credential per provider (OpenAI,
 Anthropic).  The plaintext API key is never persisted; it is
 encrypted via :func:`pointlessql.services.secrets.encrypt_value`
-(install-scoped Fernet master key analog Phase 51) and the ciphertext
-is stored here.  Decryption happens only at chat-loop invocation time
+(install-scoped Fernet master key, analogous to the workspace-repo
+secrets shape) and the ciphertext is stored here.  Decryption
+happens only at chat-loop invocation time
 and the cleartext stays in process memory for the duration of a
 single LLM round-trip.
 

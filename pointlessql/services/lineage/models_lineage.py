@@ -255,7 +255,7 @@ def aggregate_table_ml_relations(
         [], "scoring_models": [{"full_name", "version",
         "edge_count"}, ...]}}``.  ``trained_models`` is always an
         empty list; the key is preserved so the UI contract
-        survives a future Phase that adds the inverse direction.
+        survives a future change that adds the inverse direction.
         Empty outer dict when no inference edges exist.
     """
     stmt = (

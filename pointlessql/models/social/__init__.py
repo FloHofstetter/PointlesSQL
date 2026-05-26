@@ -1,4 +1,4 @@
-"""Social-graph models (Phase 76.2+).
+"""Social-graph models.
 
 Houses the user-to-user follow + per-user profile + badge tables
 that drive ``/users/{id}`` pages and per-user activity feeds.

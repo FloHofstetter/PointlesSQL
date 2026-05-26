@@ -72,8 +72,8 @@ def fanout_event(
 ) -> int:
     """Fan a social event out to one row per recipient.
 
-    Phase 77.0.D generalised the Phase-71.4 helper into this
-    polymorphic shape.  Followers come from :class:`SocialFollow`
+    This polymorphic shape supersedes the earlier DP-only fan-out
+    helper.  Followers come from :class:`SocialFollow`
     joined through :class:`SocialTarget` so the lookup works
     uniformly for every kind that registers a polymorphic
     anchor.  ``data_product_id`` stays a legacy back-pointer for

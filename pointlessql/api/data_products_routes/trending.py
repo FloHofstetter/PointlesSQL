@@ -5,8 +5,7 @@ Two endpoints:
 * ``GET /api/data-products/trending`` — JSON list of the
   freshest cached trending rows.  ``workspace_scope='current'``
   (default) filters to the caller's workspace; ``='all'``
-  requires an admin / auditor (Phase 34 cross-workspace
-  precedent).
+  requires an admin / auditor (cross-workspace precedent).
 * ``GET /data-products/trending`` — HTML page rendering the
   same data.
 """

@@ -82,7 +82,7 @@ class DataProductActiveReviewerConfig(Base):
             ``author_agent_id`` on the posted comment + endorsement
             so the row renders as authored *by the agent on behalf
             of* ``acting_user_id``.  ``None`` falls back to the
-            steward-proxy posting path (existing Phase 74 behaviour).
+            steward-proxy posting path (the original behaviour).
         created_at: Wall-clock at insert.
         updated_at: Wall-clock of the most recent UPSERT.
     """

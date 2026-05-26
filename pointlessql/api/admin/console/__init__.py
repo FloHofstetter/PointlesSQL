@@ -1,8 +1,7 @@
 """Admin landing page + audit-log viewer + export — split per route surface.
 
-The pre-Phase-110 layout collapsed every admin-HTML route into one
-~830 LOC ``console.py`` module.  Phase 110.3 split it per page so each
-surface owns its own file with the queries it needs:
+The admin-HTML routes are split per page so each surface owns its
+own file with the queries it needs:
 
 * :mod:`._landing`             — ``GET /admin`` card-grid index.
 * :mod:`._review_destinations` — ``GET /admin/review-destinations``.

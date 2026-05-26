@@ -1,4 +1,4 @@
-"""Social-graph service helpers (Phase 76.2+)."""
+"""Social-graph service helpers."""
 
 from __future__ import annotations
 

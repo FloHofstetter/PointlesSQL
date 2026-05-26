@@ -1,4 +1,4 @@
-"""Phase 118 token format v1.
+"""API-key token format v1.
 
 PointlesSQL's professional Bearer-token format, modelled after
 Stripe + GitHub PAT v2:

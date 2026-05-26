@@ -18,8 +18,7 @@ Sync function the ``_user_badges_loop`` invokes via
   entity since 77.0).
 * ``endorser_50plus`` — applied ≥50 active endorsements (any kind).
 
-Phase 78 polish added three per-kind thresholds for entity
-specialists:
+Three per-kind thresholds reward entity specialists:
 
 * ``commenter_table_50plus`` — author of ≥50 live comments on
   ``entity_kind='table'``.

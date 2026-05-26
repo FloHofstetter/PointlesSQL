@@ -407,7 +407,7 @@ async def _active_reviewer_loop(  # pyright: ignore[reportUnusedFunction]
     factory: Any,
     settings: Settings,
 ) -> None:
-    """Phase 74 active-reviewer daily tick.
+    """Active-reviewer daily tick.
 
     Active only when
     ``data_products.active_reviewer_enabled`` is true.  Sleeps

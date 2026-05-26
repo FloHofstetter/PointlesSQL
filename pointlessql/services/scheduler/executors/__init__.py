@@ -1,10 +1,8 @@
 # pyright: reportPrivateUsage=false
 """Built-in job executors split per kind.
 
-The pre-Phase-110 layout collapsed every executor into one ~880 LOC
-``executors.py`` module.  Phase 110.1 split it per kind so each new
-job-type lives in its own file with the helpers it needs.  Every
-executor still matches the
+Executors are split per kind so each new job-type lives in its own
+file with the helpers it needs.  Every executor matches the
 :data:`pointlessql.services.scheduler.registry.JobExecutor` signature
 and gets wired into
 :func:`pointlessql.services.scheduler.registry.build_default_registry`

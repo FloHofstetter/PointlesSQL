@@ -31,11 +31,10 @@ from pointlessql.services.notebook import (
 def _resolve_chat_session_int_id(request: Request, raw: str) -> int:
     """Resolve ``raw`` (integer string or editor_session_id UUID) to int id.
 
-    int`` directly; Phase 104
-    accepts the matching editor_session_id (UUID7) too so the
-    hermes-plugin tool can address the session by the same id it uses
-    for ``propose-cell``.  Plain integer strings keep working for backward
-    compatibility.
+    The route also accepts the matching editor_session_id (UUID7)
+    so the hermes-plugin tool can address the session by the same
+    id it uses for ``propose-cell``.  Plain integer strings keep
+    working for backward compatibility.
 
     Args:
         request: Incoming request.
@@ -84,9 +83,8 @@ async def api_propose_sequence(
         rationale: Optional narrative.
 
     ``chat_session_id`` accepts the integer ``editor_chat_sessions.id``
-    (legacy / Phase-104 original) or the ``editor_session_id`` UUID7
-    (Phase 104 Wave-D — symmetry with the ``propose-cell`` route the
-    hermes-plugin already uses).
+    (original form) or the ``editor_session_id`` UUID7 (symmetry
+    with the ``propose-cell`` route the hermes-plugin already uses).
     """
     require_user(request)
     if not isinstance(body, dict):

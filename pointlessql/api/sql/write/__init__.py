@@ -1,9 +1,8 @@
 # pyright: reportPrivateUsage=false
 """PQL write-side endpoints — split per route family.
 
-The pre-Phase-110 layout collapsed every ``POST /api/pql/...`` write
-route + its helpers into one ~730 LOC ``sql/write.py`` module.
-Phase 110.9 split it per route family:
+The ``POST /api/pql/...`` write routes + their helpers are split
+per route family:
 
 * :mod:`._helpers`   — ``_approve_select_refs`` (SELECT auth gate),
   ``_check_write_target`` (MODIFY / USE SCHEMA gate),

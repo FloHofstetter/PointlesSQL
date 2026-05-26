@@ -47,7 +47,7 @@ class NotebookRevision(Base):
 
     ``content_sha256`` is a deterministic hash of the canonical JSON
     encoding of ``(cells, outputs)``.  It is the basis for a future
-    shoreguard-fresh cryptographic signature (Phase 97 stretch goal;
+    shoreguard-fresh cryptographic signature (stretch goal,
     deferred until the shoreguard signing API ships).  Two columns
     ride along ready for that integration: ``signature_alg`` (e.g.
     ``"shoreguard-v1"``) and ``signature`` (the opaque blob).  Both

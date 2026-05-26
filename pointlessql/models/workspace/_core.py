@@ -79,7 +79,7 @@ class Workspace(Base):
             ``None`` for active workspaces.  Archived workspaces hide
             from the switcher and from default listings but keep their
             data so historical audit rows still resolve.
-        branch_promote_requires_endorsement: Phase 77.3 opt-in gate
+        branch_promote_requires_endorsement: Opt-in gate
             on ``POST /api/branches/{fqn}/promote``.  Default
             ``False``; flipped on by an admin per workspace to
             require ≥1 active ``branch-approved-for-promotion``

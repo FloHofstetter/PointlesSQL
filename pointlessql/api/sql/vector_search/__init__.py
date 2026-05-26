@@ -1,4 +1,4 @@
-"""``/api/sql/vector_search/*`` — Phase 92 REST surface.
+"""``/api/sql/vector_search/*`` — REST surface for semantic search.
 
 Three routers:
 
