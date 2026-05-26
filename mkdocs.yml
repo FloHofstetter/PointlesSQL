@@ -99,6 +99,7 @@ nav:
       - Agent memory: concepts/agent-memory.md
       - Cell-level social: concepts/cell-level-social.md
       - NL → SQL chat: concepts/nl-to-sql.md
+      - Vector search: concepts/vector-search.md
       - Auth: concepts/auth.md
       - Data layers: concepts/data-layers.md
       - PII modes: concepts/pii-modes.md
@@ -107,13 +108,16 @@ nav:
       - Data products: concepts/data-products.md
       - Git-backed workspaces: concepts/git-backed-workspaces.md
   - Research:
-      - UI overhaul proposal (Phase 53): ui-overhaul-proposal.md
+      - UI overhaul proposal (Phase 53): research/ui-overhaul-proposal.md
       - Bootstrap 5.3 gap analysis: research/bootstrap53-gap-analysis.md
   - Admin:
       - Workspace management: admin/workspace-management.md
       - OIDC group map: admin/oidc-group-map.md
       - Postgres deployment: admin/postgres-deployment.md
       - Performance baseline: admin/performance.md
+      - API key token format: admin/api-key-format.md
+      - API key lifecycle: admin/api-key-lifecycle.md
+      - API key ACLs + usage: admin/api-key-acls.md
   - Guides:
       - guides/index.md
       - Agent bring-up: guides/agent-bring-up.md
@@ -200,6 +204,7 @@ nav:
           - Incident responder: integrations/hermes-jobs/incident-responder.md
   - Development:
       - development/index.md
+      - Frontend architecture: development/frontend-architecture.md
       - Design tokens: development/design-tokens.md
       - Frontend conventions: development/frontend-conventions.md
       - Test suite: development/test-suite.md
@@ -210,13 +215,28 @@ nav:
       - "ADR-0003 Delta-branching spike": decisions/0003-delta-branching-spike.md
       - "ADR-0004 Public-flip checklist": decisions/0004-public-flip-checklist.md
       - "ADR-0008 Workspace soft isolation": decisions/0008-workspace-soft-isolation.md
+      - "ADR-0009 Doc-publication decisions": decisions/0009-doc-publication-decisions.md
   - "What's new": changelog.md
 
-# `architecture.excalidraw` and `**/*.json` are copied as static assets
-# (referenced by markdown), not surfaced in nav.
+# Files shipped on disk but deliberately absent from the gh-pages
+# nav.  Used for static assets referenced by markdown pages
+# (excalidraw source, hermes-jobs JSON samples).
 not_in_nav: |
   /architecture.excalidraw
   /integrations/hermes-jobs/*.json
+
+# Files shipped on disk but NOT rendered to HTML on gh-pages.
+# Stronger contract than `not_in_nav`: the file ships for repo-
+# viewing on GitHub but produces no HTML output, so strict-mode
+# cross-link warnings into the source tree never fire.
+#
+# Use for maintainer-only artifacts under `docs/internal/` — IA
+# contracts, audit reports, archive material — that legitimately
+# reference source files outside `docs/` and would otherwise drown
+# the strict-build with cross-link warnings.  See
+# `docs/internal/doc-site-ia.md` for the contract.
+exclude_docs: |
+  internal/*
 
 strict: true  # every cross-link in the walkthroughs resolves
               # either to a docs page or to the canonical GitHub
