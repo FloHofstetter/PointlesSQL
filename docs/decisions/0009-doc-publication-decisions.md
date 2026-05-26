@@ -273,3 +273,38 @@ wave is out of master-plan scope.
 - Whether `mike` versions the docs site (W7 detail-plan).
 - The semver flip — explicitly deferred per D3.
 - The follow-on code wave for docstring stubs from D8.
+
+## 2026-05-26 W7 closure addendum
+
+W7 resolved two items previously listed as "Out of scope":
+
+- **mike-versioning** is now wired in `mkdocs.yml`
+  (`extra.version.provider: mike`) and `.github/workflows/docs.yml`
+  (commented `mike deploy` step ready for the launch-sprint flip).
+  No public versions exist yet; the first `mike deploy` happens in
+  the launch sprint, which also flips the `push:` trigger and
+  activates the `pages: write` + `id-token: write` permissions.
+
+- **Cross-repo link contract** — the strict-mode comment in
+  `mkdocs.yml` L256-258 states cross-links resolve "either to a
+  docs page or to the canonical GitHub URL".  W7 rewrote 97
+  in-tree `../../pointlessql/*`, `../../frontend/*`, and stragglers
+  (top-level `CLAUDE.md`, sibling `hermes-plugin-pointlessql`,
+  `scripts/`) to `https://github.com/FloHofstetter/PointlesSQL/blob/main/...`
+  form.  `mkdocs build --strict` now exits with zero warnings.
+
+W7 also widened `scripts/check-no-phase-refs.sh` from
+`frontend/`-only to `frontend/` + `pointlessql/` (excluding
+`alembic/versions/`) after a mechanical strip of 107 historical
+phase/sprint/wave refs from non-alembic Python docstrings + inline
+comments.  The CLAUDE.md "future cleanup wave" stub is gone.
+
+A new `link-check` job in `.github/workflows/docs.yml` runs the
+[lychee](https://github.com/lycheeverse/lychee) link-checker over
+`docs/`, `README.md`, `CHANGELOG.md`, and `CONTRIBUTING.md` to
+catch future cross-link drift before it reaches main.
+
+Still out of scope:
+- Semver-flip — per D3, explicit defer to post-publication.
+- First public mike-deploy — launch-sprint operator decision.
+- Repo visibility flip — manual GitHub-Settings step.

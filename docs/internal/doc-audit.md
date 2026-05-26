@@ -620,3 +620,28 @@ exactly 61 warnings; W6 introduced zero new warnings.  `grep
 The two new bold-headers `**No project-management markers in
 source.**` and `**Docstring style.**` are present inside the
 `## Source conventions` section.
+
+## Counts after W7 closes (2026-05-26)
+
+| Metric                                            | Pre-W7 | Post-W7 |
+|---------------------------------------------------|-------:|--------:|
+| pointlessql/ phase/sprint/wave refs (non-alembic) |    107 |       0 |
+| mkdocs --strict warnings                          |     61 |       0 |
+| Cross-repo `../../` relative links in docs/       |     91 |       0 |
+| check-no-phase-refs.sh scope                      | frontend only | frontend + pointlessql |
+| mike-Versioning wired in mkdocs.yml               | absent | present (prep-only) |
+| Lychee link-hygiene CI gate                       | absent | present |
+| CLAUDE.md "future cleanup wave" stub              |      1 |       0 |
+| docs.yml top-comment phase-ref                    |      1 |       0 |
+| TSV inventory rows                                |    178 |     178 |
+
+Master-plan complete (7 waves, 2026-05-25 → 2026-05-26).
+Bundle-push-window stays open for User-Entscheid.
+
+The W7.2 sweep covered 97 links (more than the 61 strict-build
+warnings flagged) because `docs/internal/` is `exclude_docs`'d
+from mkdocs but still ships in-repo, and four stragglers pointed
+at `scripts/`, top-level `CLAUDE.md`, the sibling
+`hermes-plugin-pointlessql` repo, and a deleted `.claude/projects/`
+private-memory file (the last was deleted entirely — should never
+have been in public docs).
