@@ -1,9 +1,7 @@
 # UI Overhaul Proposal
 
-> Phase 53 Sprint C — Synthesis of replay screenshots
-> ([_notes.md](../e2e-walkthroughs/screenshots/phase53-replay/_notes.md))
-> + Bootstrap 5.3 gap analysis
-> ([bootstrap53-gap-analysis.md](bootstrap53-gap-analysis.md)).
+> Synthesis of a replay-screenshot sweep + Bootstrap 5.3 gap
+> analysis ([bootstrap53-gap-analysis.md](bootstrap53-gap-analysis.md)).
 > Date: 2026-05-07.
 
 ## Executive Summary
@@ -28,9 +26,7 @@ missing routes, not visual-quality issues.
 ## Visual Debt — from screenshots
 
 Ten distinct patterns observed across 50 screenshots in 25 surface
-subdirectories. Detail in
-[_notes.md](../e2e-walkthroughs/screenshots/phase53-replay/_notes.md);
-summary here:
+subdirectories. Summary:
 
 | # | Pattern | Severity | Where it shows up |
 |---|---|---|---|

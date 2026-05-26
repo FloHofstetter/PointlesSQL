@@ -7,7 +7,7 @@ set of entries below.
 
 This document was introduced in Phase 80 (the navigation/UX overhaul)
 and supersedes the implicit IA carried in
-[icon_rail.html](../../frontend/templates/components/icon_rail.html)
+[icon_rail.html](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/templates/components/icon_rail.html)
 and ad-hoc URL discovery.
 
 ## Chrome model
@@ -33,10 +33,10 @@ PointlesSQL uses **four chrome slots**.  No layout may add a fifth.
 ```
 
 * **Top bar** — persona-agnostic global operations.  Implementation:
-  [base.html](../../frontend/templates/base.html) lines 91–159 plus
-  [workspace_switcher.html](../../frontend/templates/components/workspace_switcher.html),
-  [notification_bell.html](../../frontend/templates/components/notification_bell.html),
-  [user_menu.html](../../frontend/templates/components/user_menu.html),
+  [base.html](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/templates/base.html) lines 91–159 plus
+  [workspace_switcher.html](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/templates/components/workspace_switcher.html),
+  [notification_bell.html](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/templates/components/notification_bell.html),
+  [user_menu.html](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/templates/components/user_menu.html),
   and the Phase-80 additions
   `components/quick_create_menu.html`.
 * **Primary sidebar** — five grouped intent-sections + admin footer.
@@ -44,7 +44,7 @@ PointlesSQL uses **four chrome slots**.  No layout may add a fifth.
   `components/primary_rail.html` (renamed from `icon_rail.html` in
   Phase 80.1).
 * **Context sidebar** — per-section secondary nav.  Implementation:
-  [context_panel.html](../../frontend/templates/components/context_panel.html)
+  [context_panel.html](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/templates/components/context_panel.html)
   dispatching on `active_section`.
 * **Footer** — ambient awareness strip, hidden on auth pages.
   Implementation: `components/footer_bar.html` (Phase 80.7).
@@ -62,69 +62,69 @@ partial (see next section).
 
 | Label  | URL    | Template                      | Route handler                                              | Badge |
 |---|---|---|---|---|
-| Today  | `/`    | `pages/home.html`             | [home_routes.py](../../pointlessql/api/home_routes.py)     | —     |
-| Feed   | `/feed`| `pages/feed.html`             | [feed_html_routes.py](../../pointlessql/api/feed_html_routes.py) | —   |
+| Today  | `/`    | `pages/home.html`             | [home_routes.py](https://github.com/FloHofstetter/PointlesSQL/blob/main/pointlessql/api/home_routes.py)     | —     |
+| Feed   | `/feed`| `pages/feed.html`             | [feed_html_routes.py](https://github.com/FloHofstetter/PointlesSQL/blob/main/pointlessql/api/feed_html_routes.py) | —   |
 
 ### WATCH (supervision)
 
 | Label              | URL              | Template                       | Route handler                                                                | Badge                  |
 |---|---|---|---|---|
-| Agent runs         | `/runs`          | `pages/runs_list.html`         | [runs_routes/list_view.py](../../pointlessql/api/runs_routes/list_view.py)   | pending approvals      |
-| Audit cockpit      | `/audit/inbox`   | `pages/audit_inbox.html`       | [audit/inbox.py](../../pointlessql/api/audit/inbox.py)                       | unread anomalies       |
-| Alerts             | `/alerts`        | `pages/alerts.html`            | [alerts_routes.py](../../pointlessql/api/alerts_routes.py)                   | firing                 |
+| Agent runs         | `/runs`          | `pages/runs_list.html`         | [runs_routes/list_view.py](https://github.com/FloHofstetter/PointlesSQL/blob/main/pointlessql/api/runs_routes/list_view.py)   | pending approvals      |
+| Audit cockpit      | `/audit/inbox`   | `pages/audit_inbox.html`       | [audit/inbox.py](https://github.com/FloHofstetter/PointlesSQL/blob/main/pointlessql/api/audit/inbox.py)                       | unread anomalies       |
+| Alerts             | `/alerts`        | `pages/alerts.html`            | [alerts_routes.py](https://github.com/FloHofstetter/PointlesSQL/blob/main/pointlessql/api/alerts_routes.py)                   | firing                 |
 
 ### BUILD (authoring)
 
 | Label              | URL                    | Template                       | Route handler                                                                       | Badge |
 |---|---|---|---|---|
-| SQL editor         | `/sql`                 | `pages/sql_editor.html`        | [sql/editor.py](../../pointlessql/api/sql/editor.py)                                | —     |
+| SQL editor         | `/sql`                 | `pages/sql_editor.html`        | [sql/editor.py](https://github.com/FloHofstetter/PointlesSQL/blob/main/pointlessql/api/sql/editor.py)                                | —     |
 | Lens (Q&A)         | `/lens`                | `pages/lens.html`              | `pointlessql/api/lens_routes.py`                                                    | —     |
-| Notebooks          | `/notebooks/workspace` | `pages/notebooks_workspace.html` | [notebooks_routes/pages.py](../../pointlessql/api/notebooks_routes/pages.py)      | —     |
-| Dashboards         | `/dashboards`          | `pages/dashboards.html`        | [dashboards_routes.py](../../pointlessql/api/dashboards_routes.py)                  | —     |
-| Scheduled jobs     | `/jobs`                | `pages/jobs.html`              | [jobs_routes.py](../../pointlessql/api/jobs_routes.py)                              | —     |
-| dbt                | `/dbt`                 | `pages/dbt.html`               | [dbt/html.py](../../pointlessql/api/dbt/html.py)                                    | —     |
+| Notebooks          | `/notebooks/workspace` | `pages/notebooks_workspace.html` | [notebooks_routes/pages.py](https://github.com/FloHofstetter/PointlesSQL/blob/main/pointlessql/api/notebooks_routes/pages.py)      | —     |
+| Dashboards         | `/dashboards`          | `pages/dashboards.html`        | [dashboards_routes.py](https://github.com/FloHofstetter/PointlesSQL/blob/main/pointlessql/api/dashboards_routes.py)                  | —     |
+| Scheduled jobs     | `/jobs`                | `pages/jobs.html`              | [jobs_routes.py](https://github.com/FloHofstetter/PointlesSQL/blob/main/pointlessql/api/jobs_routes.py)                              | —     |
+| dbt                | `/dbt`                 | `pages/dbt.html`               | [dbt/html.py](https://github.com/FloHofstetter/PointlesSQL/blob/main/pointlessql/api/dbt/html.py)                                    | —     |
 
 ### DATA (browse + lineage)
 
 | Label              | URL              | Template                       | Route handler                                                                | Notes                              |
 |---|---|---|---|---|
-| Catalog            | `/`              | `pages/home.html` + tree       | [catalog_html_routes.py](../../pointlessql/api/catalog_html_routes.py)       | Shares URL with HOME → Today via `active_section` |
-| Data products      | `/data-products` | `pages/data_products.html`     | [data_products_html_routes.py](../../pointlessql/api/data_products_html_routes.py) | —                                  |
-| ML models          | `/models`        | `pages/models.html`            | [models_html_routes.py](../../pointlessql/api/models_html_routes.py)         | —                                  |
-| MLflow tracking    | `/ml`            | `pages/mlflow.html`            | [mlflow_html_routes.py](../../pointlessql/api/mlflow_html_routes.py)         | iframe wrapper                     |
+| Catalog            | `/`              | `pages/home.html` + tree       | [catalog_html_routes.py](https://github.com/FloHofstetter/PointlesSQL/blob/main/pointlessql/api/catalog_html_routes.py)       | Shares URL with HOME → Today via `active_section` |
+| Data products      | `/data-products` | `pages/data_products.html`     | [data_products_html_routes.py](https://github.com/FloHofstetter/PointlesSQL/blob/main/pointlessql/api/data_products_html_routes.py) | —                                  |
+| ML models          | `/models`        | `pages/models.html`            | [models_html_routes.py](https://github.com/FloHofstetter/PointlesSQL/blob/main/pointlessql/api/models_html_routes.py)         | —                                  |
+| MLflow tracking    | `/ml`            | `pages/mlflow.html`            | [mlflow_html_routes.py](https://github.com/FloHofstetter/PointlesSQL/blob/main/pointlessql/api/mlflow_html_routes.py)         | iframe wrapper                     |
 | Delta branches     | `/branches`      | `pages/branches.html`          | `pointlessql/api/branches_routes.py`                                         | —                                  |
-| Lineage explorer   | `/lineage`       | `pages/lineage_index.html`     | [lineage/views.py](../../pointlessql/api/lineage/views.py)                   | **NEW** (Phase 80.4)               |
+| Lineage explorer   | `/lineage`       | `pages/lineage_index.html`     | [lineage/views.py](https://github.com/FloHofstetter/PointlesSQL/blob/main/pointlessql/api/lineage/views.py)                   | **NEW** (Phase 80.4)               |
 
 ### COMMUNITY (social)
 
 | Label   | URL        | Template                     | Route handler                                                                | Notes                |
 |---|---|---|---|---|
-| Topics  | `/topics`  | `pages/topics_index.html`    | [topics_html_routes.py](../../pointlessql/api/topics_html_routes.py)         | —                    |
-| Issues  | `/issues`  | `pages/issues_index.html`    | [issues_html_routes.py](../../pointlessql/api/issues_html_routes.py)         | —                    |
-| People  | `/users`   | `pages/users_index.html`     | [users_html_routes.py](../../pointlessql/api/users_html_routes.py)           | **NEW** (Phase 80.4) |
-| Agents  | `/agents`  | `pages/agents_index.html`    | [agents_html_routes.py](../../pointlessql/api/agents_html_routes.py)         | —                    |
+| Topics  | `/topics`  | `pages/topics_index.html`    | [topics_html_routes.py](https://github.com/FloHofstetter/PointlesSQL/blob/main/pointlessql/api/topics_html_routes.py)         | —                    |
+| Issues  | `/issues`  | `pages/issues_index.html`    | [issues_html_routes.py](https://github.com/FloHofstetter/PointlesSQL/blob/main/pointlessql/api/issues_html_routes.py)         | —                    |
+| People  | `/users`   | `pages/users_index.html`     | [users_html_routes.py](https://github.com/FloHofstetter/PointlesSQL/blob/main/pointlessql/api/users_html_routes.py)           | **NEW** (Phase 80.4) |
+| Agents  | `/agents`  | `pages/agents_index.html`    | [agents_html_routes.py](https://github.com/FloHofstetter/PointlesSQL/blob/main/pointlessql/api/agents_html_routes.py)         | —                    |
 
 ### WORKSPACE
 
 | Label              | URL                              | Template                          | Route handler                                                        | Gate            |
 |---|---|---|---|---|
-| Workspace home     | `/workspaces/<my-slug>`          | `pages/workspace_landing.html`    | [workspaces_routes.py](../../pointlessql/api/workspaces_routes.py)   | member          |
-| Members & settings | `/workspaces/<my-slug>/settings` | `pages/workspace_settings.html`   | [workspaces_routes.py](../../pointlessql/api/workspaces_routes.py)   | workspace admin |
+| Workspace home     | `/workspaces/<my-slug>`          | `pages/workspace_landing.html`    | [workspaces_routes.py](https://github.com/FloHofstetter/PointlesSQL/blob/main/pointlessql/api/workspaces_routes.py)   | member          |
+| Members & settings | `/workspaces/<my-slug>/settings` | `pages/workspace_settings.html`   | [workspaces_routes.py](https://github.com/FloHofstetter/PointlesSQL/blob/main/pointlessql/api/workspaces_routes.py)   | workspace admin |
 
 ### Rail footer
 
 | Label              | URL              | Template                       | Route handler                                                        | Gate         |
 |---|---|---|---|---|
-| Admin              | `/admin`         | `pages/admin_index.html`       | [admin/console.py](../../pointlessql/api/admin/console.py)           | install admin |
+| Admin              | `/admin`         | `pages/admin_index.html`       | [admin/console.py](https://github.com/FloHofstetter/PointlesSQL/blob/main/pointlessql/api/admin/console.py)           | install admin |
 | Help & shortcuts   | (modal)          | inside `command_palette.html`  | —                                                                    | —             |
 
 ## Context-panel partials
 
 The context panel (right of the primary rail, 240 px) renders a
 different partial per `active_section`.  Mapping carried by
-[context_panel.html](../../frontend/templates/components/context_panel.html);
+[context_panel.html](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/templates/components/context_panel.html);
 section is derived in
-[base.html](../../frontend/templates/base.html) `_section_map`.
+[base.html](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/templates/base.html) `_section_map`.
 
 | `active_section`  | Partial                                                      | Content                                                                  |
 |---|---|---|
@@ -163,9 +163,9 @@ directly in `context_panel.html` because the content is fully static.
 | Search    | Cmd+K trigger → `command_palette.html`                   | always (≥ md)         |
 | Quick-create | `components/quick_create_menu.html` (Phase 80.8)      | always (≥ md)         |
 | Theme     | dropdown                                                 | always (≥ md)         |
-| Workspace | [workspace_switcher.html](../../frontend/templates/components/workspace_switcher.html) | members of ≥ 2 workspaces |
-| Bell      | [notification_bell.html](../../frontend/templates/components/notification_bell.html)   | authenticated |
-| User      | [user_menu.html](../../frontend/templates/components/user_menu.html)                   | authenticated |
+| Workspace | [workspace_switcher.html](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/templates/components/workspace_switcher.html) | members of ≥ 2 workspaces |
+| Bell      | [notification_bell.html](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/templates/components/notification_bell.html)   | authenticated |
+| User      | [user_menu.html](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/templates/components/user_menu.html)                   | authenticated |
 
 ## Footer slots (Phase 80.7)
 

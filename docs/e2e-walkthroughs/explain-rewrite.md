@@ -4,7 +4,7 @@
 
 Exercises the explain-first rewrite loop end to end:
 
-- The Hermes plugin's [`pql_query`](../../../hermes-plugin-pointlessql/hermes_plugin_pointlessql/tools/query.py)
+- The Hermes plugin's [`pql_query`](https://github.com/FloHofstetter/hermes-plugin-pointlessql/blob/main/hermes_plugin_pointlessql/tools/query.py)
   tool calls `GET /api/sql/explain` before `POST /api/sql/execute`.
   When the cost-gate verdict says `needs_approval=True` the tool
   returns a structured `cost_gate_denied` envelope carrying the
@@ -12,14 +12,14 @@ Exercises the explain-first rewrite loop end to end:
 - The plugin caps the loop at 3 attempts.  At attempt 4 the envelope
   flips to `human_approval_required` and the plugin POSTs one row to
   the new
-  [`POST /api/agent-runs/{id}/rewrite-attempt`](../../pointlessql/api/agent_runs_routes/rewrite_attempts.py)
+  [`POST /api/agent-runs/{id}/rewrite-attempt`](https://github.com/FloHofstetter/PointlesSQL/blob/main/pointlessql/api/agent_runs_routes/rewrite_attempts.py)
   route with `verdict='human_approval_required'`.
 - A revised SQL that passes the cost-gate (`needs_approval=False`
   after a previous denial) writes an `auto_rewrite_succeeded` row
   with the original + rewritten cost so a Grafana panel can compute
   weekly savings.
 - The
-  [run-detail Operations top-tab](../../frontend/templates/partials/_run_tab_operations.html)
+  [run-detail Operations top-tab](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/templates/partials/_run_tab_operations.html)
   carries a new "Rewrites" sub-pane showing every attempt with
   Δ-cost colour coding.
 
@@ -35,14 +35,14 @@ Exercises the explain-first rewrite loop end to end:
   run-detail UI.  The agent-side flow uses an API key with
   ``agent`` scope (any working-agent key works).
 - A Hermes-cli session with the
-  [`hermes-plugin-pointlessql`](../../../hermes-plugin-pointlessql/)
+  [`hermes-plugin-pointlessql`](https://github.com/FloHofstetter/hermes-plugin-pointlessql)
   plugin loaded.  Set ``POINTLESSQL_API_KEY`` and
   ``POINTLESSQL_BASE_URL=http://127.0.0.1:8000`` in the env.
 - The cost-gate threshold is the install default
   (``POINTLESSQL_SQL_COST_GATE_THRESHOLD_ROWS=1000000``); seed-e2e
   loads enough rows in `main.bronze.events` to trip it on a
   ``SELECT *``.
-- Playwright MCP Firefox lock-file gotcha: see [CLAUDE.md](../../CLAUDE.md)
+- Playwright MCP Firefox lock-file gotcha: see [CLAUDE.md](https://github.com/FloHofstetter/PointlesSQL/blob/main/CLAUDE.md)
   line 227-235.
 
 ## Walkthrough

@@ -84,7 +84,7 @@ contract that admin pages share with `/admin/api-keys` and
      a 2xx from the upstream sink.
    - Note: test envelopes are NOT persisted to the
      `governance_events` table (see
-     [pointlessql/api/audit_sinks_routes.py:411](../../pointlessql/api/audit_sinks_routes.py#L411))
+     [pointlessql/api/audit_sinks_routes.py:411](https://github.com/FloHofstetter/PointlesSQL/blob/main/pointlessql/api/audit_sinks_routes.py#L411))
      because they bypass the standard dispatch path. So
      `GET /api/admin/audit-sinks/recent-events` stays empty until
      a real governance event fires (audit export, external-write
@@ -193,7 +193,7 @@ Browser replay for the three sink kinds (webhook / S3 / CloudTrail):
   never executed the page's Alpine layer.
 
 - **BUG-37-02** ✅ Fixed — admin sidebar in
-  [`components/context_panel.html`](../../frontend/templates/components/context_panel.html)
+  [`components/context_panel.html`](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/templates/components/context_panel.html)
   now lists Overview / Audit log / Audit cockpit / External
   writes / Workspaces / Audit sinks / Review destinations /
   API keys / System info, with active highlighting driven by

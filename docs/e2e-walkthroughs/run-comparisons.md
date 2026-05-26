@@ -9,8 +9,8 @@ mixing them up:
 
 | Route | Page | Audience | Sprint |
 |---|---|---|---|
-| `/runs/{a}/diff/{b}` | [`agent_run_compare.html`](../../frontend/templates/pages/agent_run_compare.html) | Audit / agent supervision | 18.4 |
-| `/jobs/{job_id}/runs/{a}/compare?with={b}` | [`run_compare.html`](../../frontend/templates/pages/run_compare.html) | Notebook job ops | 12.x |
+| `/runs/{a}/diff/{b}` | [`agent_run_compare.html`](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/templates/pages/agent_run_compare.html) | Audit / agent supervision | 18.4 |
+| `/jobs/{job_id}/runs/{a}/compare?with={b}` | [`run_compare.html`](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/templates/pages/run_compare.html) | Notebook job ops | 12.x |
 
 The audit run-diff is structured: 6 tabs (Ops, Lineage, Rejects,
 Tools, Cells, Column lineage) with Chart.js bar charts on the

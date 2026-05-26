@@ -68,7 +68,7 @@ in `pages/_partials/<page>/`.
   `filter_collapsible`, `help_icon`, `metadata`, `pagination`,
   `permission_link`, `state_container`, `timestamps`, `truncate`)
   is documented in
-  [`frontend/templates/_macros/README.md`](../../frontend/templates/_macros/README.md).
+  [`frontend/templates/_macros/README.md`](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/templates/_macros/README.md).
 - **Partials** — chunks of markup `{% include %}`-d into a page,
   inheriting the parent's Alpine `x-data` scope.  This is the
   preferred way to pass state from a parent factory to nested
@@ -106,7 +106,7 @@ frontend/js/
 - `bootstrap.js` imports each and re-attaches it to `window.<name>` so
   templates' `x-data="myFactory({...})"` keep resolving without
   per-page `<script>` tags.  See
-  [`frontend/js/README.md`](../../frontend/js/README.md) for the
+  [`frontend/js/README.md`](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/js/README.md) for the
   attach pattern.
 - **`pql*` prefix** for utility singletons surfaced via `window`
   (`pqlApi`, `pqlToast`, `pqlRelativeTime`).  No prefix for Alpine
@@ -169,6 +169,6 @@ Default to the smaller, more locally-scoped option:
 - [Frontend architecture](frontend-architecture.md) — stack overview,
   cascade tiers, bootstrap.js attachment patterns, notebook subsystem map
 - [Design tokens](design-tokens.md) — the `--pql-*` token catalog
-- [`frontend/js/README.md`](../../frontend/js/README.md) — JS module conventions
-- [`frontend/templates/_macros/README.md`](../../frontend/templates/_macros/README.md) —
+- [`frontend/js/README.md`](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/js/README.md) — JS module conventions
+- [`frontend/templates/_macros/README.md`](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/templates/_macros/README.md) —
   Jinja macro catalog

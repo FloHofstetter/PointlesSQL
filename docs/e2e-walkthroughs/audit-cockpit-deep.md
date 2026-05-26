@@ -6,13 +6,13 @@ End-to-end exercise of the → 18.x audit cockpit
 surfaces that grew on top of the daily Audit-Reviewer
 loop:
 
-- [`audit_inbox.html`](../../frontend/templates/pages/audit_inbox.html).6 anomaly inbox (cross-run cross-metric σ-breach
+- [`audit_inbox.html`](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/templates/pages/audit_inbox.html).6 anomaly inbox (cross-run cross-metric σ-breach
   feed)
-- [`audit_search.html`](../../frontend/templates/pages/audit_search.html).7 FTS over runs / ops / queries / tool_calls /
+- [`audit_search.html`](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/templates/pages/audit_search.html).7 FTS over runs / ops / queries / tool_calls /
   audit_log
-- [`audit_by_table.html`](../../frontend/templates/pages/audit_by_table.html).8 reverse index (which runs touched / wrote /
+- [`audit_by_table.html`](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/templates/pages/audit_by_table.html).8 reverse index (which runs touched / wrote /
   read a given table)
-- [`audit_queries.html`](../../frontend/templates/pages/audit_queries.html).x admin SQL workbench against the audit tables
+- [`audit_queries.html`](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/templates/pages/audit_queries.html).x admin SQL workbench against the audit tables
   (5 seeded starter queries + custom CRUD)
 
 This is the "auditor's morning" companion to

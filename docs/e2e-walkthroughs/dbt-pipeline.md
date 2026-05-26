@@ -4,7 +4,7 @@
 
 Exercises the dbt cockpit at `/dbt`:
 
-- [`dbt.html`](../../frontend/templates/pages/dbt.html)
+- [`dbt.html`](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/templates/pages/dbt.html)
   — chrome page (icon-rail + breadcrumbs) with three sub-tabs
   (Pipeline docs / Recent runs / Test failures) and a manifest
   summary card row at the top (model count, test count,
@@ -14,7 +14,7 @@ Exercises the dbt cockpit at `/dbt`:
   predate the chrome work:
   - **`dbt_running == True`**: iframe to `/dbt-docs/` (dbt's
     own SPA, served by the lifespan-managed subprocess in
-    [pointlessql/services/dbt_subprocess.py](../../pointlessql/services/dbt_subprocess.py))
+    [pointlessql/services/dbt_subprocess.py](https://github.com/FloHofstetter/PointlesSQL/blob/main/pointlessql/services/dbt_subprocess.py))
   - **`dbt_running == False`**: warning card with the install
     + compile + restart instructions
 - Recent-runs sub-tab fetches `/api/dbt/runs` (newest 20

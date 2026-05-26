@@ -213,7 +213,7 @@ during a dead-selector sweep because nothing in the project
 consumed them; the call-sites used Bootstrap utility classes
 (`badge bg-success`) or scoped per-component styling instead.
 If a real consumer appears, re-add the modifier in
-[`primitives.css`](../../frontend/css/primitives.css) and document
+[`primitives.css`](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/css/primitives.css) and document
 it here in the same commit.
 
 ### Breakpoints
@@ -253,5 +253,5 @@ Touch targets switch to ≥ 44 px minimum under `@media (hover: none)`.
   cascade tiers, lazy-load pattern
 - [Frontend conventions](frontend-conventions.md) — template/JS/CSS
   layout disciplines
-- [`frontend/templates/_macros/README.md`](../../frontend/templates/_macros/README.md) —
+- [`frontend/templates/_macros/README.md`](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/templates/_macros/README.md) —
   Jinja macro catalog that consumes these tokens

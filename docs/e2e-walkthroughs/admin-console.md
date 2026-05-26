@@ -236,7 +236,7 @@ Replay through the 7-card admin landing + the four sub-pages:
 ## Found bugs
 
 - **BUG-37-02** ✅ Fixed — admin sidebar in
-  [`components/context_panel.html`](../../frontend/templates/components/context_panel.html)
+  [`components/context_panel.html`](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/templates/components/context_panel.html)
   now lists nine entries: Overview, Audit log, Audit cockpit,
   External writes, Workspaces, Audit sinks, Review
   destinations, API keys, System info. Active highlighting
@@ -245,7 +245,7 @@ Replay through the 7-card admin landing + the four sub-pages:
 
 - **BUG-37-03** ✅ Fixed — the lone duplicate Admin link with
   `href="#"` lived in
-  [`components/nav_links.html`](../../frontend/templates/components/nav_links.html)
+  [`components/nav_links.html`](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/templates/components/nav_links.html)
   (rendered in the mobile offcanvas drawer). Replaced the
   dropdown shell with a direct link to `/admin`. The
   desktop icon-rail's footer-list Admin link already points

@@ -98,7 +98,7 @@ OpenAI (`sk-…`), Anthropic (`sk-ant-api03-…`), Slack (`xoxb-…`).
 PointlesSQL's `pql_…` format follows the same playbook.
 
 PointlesSQL **does** use JWTs — for short-lived cookie sessions
-([pointlessql/api/auth/_jwt.py](../../pointlessql/api/auth/_jwt.py)),
+([pointlessql/api/auth/_jwt.py](https://github.com/FloHofstetter/PointlesSQL/blob/main/pointlessql/api/auth/_jwt.py)),
 which is the correct place for them.
 
 ## Why SHA-256 (not bcrypt / Argon2)?
@@ -141,7 +141,7 @@ minting legacy-format keys for new integrations.
 ## Operator notes
 
 - The `secret_prefix` column was widened from `VARCHAR(8)` →
-  `VARCHAR(32)` in [migration `d3e5f7g9b1c4`](../../pointlessql/alembic/versions/d3e5f7g9b1c4_phase118_token_format_v1.py).
+  `VARCHAR(32)` in [migration `d3e5f7g9b1c4`](https://github.com/FloHofstetter/PointlesSQL/blob/main/pointlessql/alembic/versions/d3e5f7g9b1c4_phase118_token_format_v1.py).
   Legacy rows keep their 8-char prefix unchanged.
 - A bootstrapped key from `POINTLESSQL_API_KEYS` env var is auto-tagged
   `token_format='v1'` if its secret matches the new envelope shape,

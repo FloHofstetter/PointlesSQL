@@ -28,7 +28,7 @@ The check runs after Phase-117's `qualify_sql` pre-pass, so 1- and
 `catalog` / `schema` body fields before being checked.
 
 **Where it runs:** in the public SQL Statement Execution API
-([pointlessql/api/external_sql_routes.py](../../pointlessql/api/external_sql_routes.py))
+([pointlessql/api/external_sql_routes.py](https://github.com/FloHofstetter/PointlesSQL/blob/main/pointlessql/api/external_sql_routes.py))
 after parse + qualify, before dispatch.  Internal editor routes
 (cookie auth) bypass — this is an API-key-only surface.
 

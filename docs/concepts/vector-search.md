@@ -82,7 +82,7 @@ env > `sentence_transformers`.
 ## Auto-rebuild on merge
 
 The post-commit hook in
-[`_lifecycle.py`](../../pointlessql/services/agent_runs/operations/_lifecycle.py)
+[`_lifecycle.py`](https://github.com/FloHofstetter/PointlesSQL/blob/main/pointlessql/services/agent_runs/operations/_lifecycle.py)
 calls
 `rebuild_vss_indices_after_commit` after the contract-event hook.
 Rebuild fires on these trigger op_names:
@@ -101,7 +101,7 @@ A "Semantic search" tab appears on
 `/catalogs/{c}/schemas/{s}/tables/{t}` when at least one index
 exists for the table.  The Alpine factory
 `semanticSearch()` in
-[`frontend/js/table/semantic_search.js`](../../frontend/js/table/semantic_search.js)
+[`frontend/js/table/semantic_search.js`](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/js/table/semantic_search.js)
 owns the column picker, query input, and result rendering.  A
 "Copy share URL" button produces a deep link to
 `/embed/semantic_search/<fqn>?column=&q=&k=` that an outside doc
@@ -121,5 +121,5 @@ can `<iframe>` for a read-only result snippet.
   need a dedicated checkpoint.
 * **Hermes embed tool** — once hermes-agent exposes an `embed`
   endpoint, replacing
-  [`_hermes.py`](../../pointlessql/pql/embedders/_hermes.py)'s
+  [`_hermes.py`](https://github.com/FloHofstetter/PointlesSQL/blob/main/pointlessql/pql/embedders/_hermes.py)'s
   body is the only change needed; the registry slot is reserved.

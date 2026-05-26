@@ -16,9 +16,9 @@ For a quick orientation, see also:
 - [Design tokens](design-tokens.md) — the `--pql-*` token catalog
 - [Frontend conventions](frontend-conventions.md) — template/JS/CSS
   layout disciplines
-- [`frontend/js/README.md`](../../frontend/js/README.md) — JS module
+- [`frontend/js/README.md`](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/js/README.md) — JS module
   conventions
-- [`frontend/templates/_macros/README.md`](../../frontend/templates/_macros/README.md) —
+- [`frontend/templates/_macros/README.md`](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/templates/_macros/README.md) —
   Jinja macro catalog
 
 ## Stack
@@ -125,12 +125,12 @@ asserts the importmap → `bootstrap.js` → Alpine load order in
 
 ## CSS cascade (4 tiers + lazy)
 
-[`style.css`](../../frontend/css/style.css) `@import`s every other
+[`style.css`](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/css/style.css) `@import`s every other
 file in cascade-critical order. Later imports override earlier ones
 for the same selector at equal specificity, so refactors that move
 rules between files must keep the order stable.
 
-1. **Tier 1 — Tokens & reset** ([`base.css`](../../frontend/css/base.css))
+1. **Tier 1 — Tokens & reset** ([`base.css`](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/css/base.css))
    - `:root` block with `--pql-*` tokens (spacing, typography, radius,
      elevation, motion, breakpoints, colors, layout sizes)
    - `:root[data-bs-theme="light"]` token overrides
@@ -140,16 +140,16 @@ rules between files must keep the order stable.
    - HTMX View-Transitions cross-fade keyframes
    - Skeleton + badge-pulse keyframes
 2. **Tier 2 — Primitives & layout**
-   - [`primitives.css`](../../frontend/css/primitives.css) — `.pql-stack`,
+   - [`primitives.css`](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/css/primitives.css) — `.pql-stack`,
      `.pql-cluster`, `.pql-card`, `.pql-badge`. CSS-only; no JS.
-   - [`layout.css`](../../frontend/css/layout.css) — shell grid,
+   - [`layout.css`](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/css/layout.css) — shell grid,
      topbar, sidebar, tree, content area.
-3. **Tier 3 — Per-feature components** ([`components/*.css`](../../frontend/css/components/))
+3. **Tier 3 — Per-feature components** ([`components/*.css`](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/css/components/))
    - 17 per-feature stylesheets (`icon_rail`, `breadcrumbs`,
      `meta_panel`, `sql_editor`, `feed`, `command_palette`, etc.).
    - One per feature surface; size budget ≤ ~350 LOC each (largest
      today is `icon_rail.css` at 354 LOC).
-4. **Tier 4 — Responsive overrides** ([`responsive.css`](../../frontend/css/responsive.css))
+4. **Tier 4 — Responsive overrides** ([`responsive.css`](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/css/responsive.css))
    - 44-px minimum touch targets under `@media (hover: none)`.
    - Blanket `prefers-reduced-motion: reduce` rule that zeroes every
      animation + transition (including third-party CSS that ships
@@ -157,9 +157,9 @@ rules between files must keep the order stable.
 
 **Lazy-load tier (5)** — A page-only stylesheet is loaded via
 `{% block extra_css %}` in the page template, *outside* the
-`style.css` cascade. [`notebook.css`](../../frontend/css/notebook.css)
+`style.css` cascade. [`notebook.css`](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/css/notebook.css)
 is the canonical example: 22 LOC index that `@import`s 7
-[`notebook/*.css`](../../frontend/css/notebook/) sub-files (one per
+[`notebook/*.css`](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/css/notebook/) sub-files (one per
 concern axis: shell, tag_pickers, cell_meta, revisions, cells,
 drawer, interactions). The browser only fetches the sub-files
 when the parent is requested, saving ~800 LOC on every non-notebook
@@ -193,7 +193,7 @@ suffix.
 
 ## Forward-guard hook
 
-[`scripts/check-no-phase-refs.sh`](../../scripts/check-no-phase-refs.sh)
+[`scripts/check-no-phase-refs.sh`](https://github.com/FloHofstetter/PointlesSQL/blob/main/scripts/check-no-phase-refs.sh)
 is a local pre-commit hook scoped to `frontend/` and `pointlessql/`
 (excluding `pointlessql/alembic/versions/`). It greps for
 `Phase X.Y` / `Sprint X` / `Wave X` / `BUG-NN-NN` markers in source
@@ -213,30 +213,30 @@ modules + 7 CSS sub-files + a nested template subfolder tree**
 (`pages/_partials/notebook_editor/{meta_panel,revisions_panel}/`).
 Quick orientation for editing in the subsystem:
 
-- **Coediting (5 modules)** — [`coedit.js`](../../frontend/js/notebook/coedit.js)
+- **Coediting (5 modules)** — [`coedit.js`](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/js/notebook/coedit.js)
   is the facade that calls three concern-axis installers in order:
-  - [`coedit_core.js`](../../frontend/js/notebook/coedit_core.js) — lifecycle
+  - [`coedit_core.js`](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/js/notebook/coedit_core.js) — lifecycle
     (`_initCoedit`, status pill, label/dot/tooltip helpers)
-  - [`coedit_awareness.js`](../../frontend/js/notebook/coedit_awareness.js) —
+  - [`coedit_awareness.js`](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/js/notebook/coedit_awareness.js) —
     Y-protocol awareness, peer-rail rendering, broadcast scheduling
-  - [`coedit_cell_binding.js`](../../frontend/js/notebook/coedit_cell_binding.js) —
+  - [`coedit_cell_binding.js`](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/js/notebook/coedit_cell_binding.js) —
     per-cell Y.Text binding, cells_order observer, FLIP-reorder
-  - [`coedit_client.js`](../../frontend/js/notebook/coedit_client.js) is
+  - [`coedit_client.js`](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/js/notebook/coedit_client.js) is
     the Y.Doc + WebSocket transport (separate from the lifecycle facade).
-- **Execution (3 modules)** — [`kernel_execution.js`](../../frontend/js/notebook/kernel_execution.js)
+- **Execution (3 modules)** — [`kernel_execution.js`](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/js/notebook/kernel_execution.js)
   (run cells, cancel, content-hash dirty-tracking),
-  [`variable_inspector.js`](../../frontend/js/notebook/variable_inspector.js)
-  (snapshot/detail UI), [`kernel_ws.js`](../../frontend/js/notebook/kernel_ws.js)
+  [`variable_inspector.js`](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/js/notebook/variable_inspector.js)
+  (snapshot/detail UI), [`kernel_ws.js`](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/js/notebook/kernel_ws.js)
   (kernel WebSocket transport).
-- **Revisions (2 modules)** — [`revisions.js`](../../frontend/js/notebook/revisions.js)
-  (list + snapshot + pin-as-fact), [`revision_diff.js`](../../frontend/js/notebook/revision_diff.js)
+- **Revisions (2 modules)** — [`revisions.js`](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/js/notebook/revisions.js)
+  (list + snapshot + pin-as-fact), [`revision_diff.js`](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/js/notebook/revision_diff.js)
   (L/R diff selection + unified diff render).
-- **Per-cell UI (4 modules)** — [`cell_thread.js`](../../frontend/js/notebook/cell_thread.js)
+- **Per-cell UI (4 modules)** — [`cell_thread.js`](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/js/notebook/cell_thread.js)
   (comments + reactions + reviews + explanations),
-  [`cell_tag_picker.js`](../../frontend/js/notebook/cell_tag_picker.js)
-  (per-cell tag picker slice), [`cell_lineage.js`](../../frontend/js/notebook/cell_lineage.js),
-  [`cell_facts.js`](../../frontend/js/notebook/cell_facts.js).
-- **Coordinator** — [`notebook_editor.js`](../../frontend/js/notebook/notebook_editor.js)
+  [`cell_tag_picker.js`](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/js/notebook/cell_tag_picker.js)
+  (per-cell tag picker slice), [`cell_lineage.js`](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/js/notebook/cell_lineage.js),
+  [`cell_facts.js`](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/js/notebook/cell_facts.js).
+- **Coordinator** — [`notebook_editor.js`](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/js/notebook/notebook_editor.js)
   owns the top-level Alpine factory `notebookEditor()`, instantiates
   the mixin installers, and handles dirty-tracking + save.
 
@@ -261,7 +261,7 @@ flowchart TD
     NE --> CF[cell_facts.js]
 ```
 
-The CSS counterpart lives in [`frontend/css/notebook/`](../../frontend/css/notebook/):
+The CSS counterpart lives in [`frontend/css/notebook/`](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/css/notebook/):
 `shell.css` (toolbar + vitals), `tag_pickers.css`, `cell_meta.css`
 (author chip + share rows + shared panel skin), `revisions.css`
 (diff card + rows), `cells.css` (the largest at 250 LOC — cell
@@ -281,8 +281,8 @@ reasons:
   `<meta name="csrf-token">` and injects `X-CSRF-Token` on every
   non-GET/HEAD/OPTIONS request. HTMX uses the same source via
   the `htmx:configRequest` hook in
-  [`base_htmx_bridge.js`](../../frontend/js/base_htmx_bridge.js).
-- **Cookie CSRF**: [`http.js`](../../frontend/js/http.js) exports
+  [`base_htmx_bridge.js`](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/js/base_htmx_bridge.js).
+- **Cookie CSRF**: [`http.js`](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/js/http.js) exports
   `jsonFetch(url, options)`, which reads the `csrftoken` cookie
   (Django/Starlette idiom) and injects `X-CSRFToken`. The notebook
   subsystem (`cell_thread.js`) consumes this helper.

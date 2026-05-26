@@ -4,9 +4,9 @@
 
 End-to-end exercise of the alert subscription surfaces:
 
-- [`alerts.html`](../../frontend/templates/pages/alerts.html)
+- [`alerts.html`](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/templates/pages/alerts.html)
   — `/alerts` list with the New-alert modal + feed-URLs panel
-- [`alert_detail.html`](../../frontend/templates/pages/alert_detail.html)
+- [`alert_detail.html`](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/templates/pages/alert_detail.html)
   — `/alerts/{slug}` detail with destination CRUD, history,
   and condition / cron editing
 - `/alerts/feed.atom` + `/alerts/feed.json` — pull-feed URLs

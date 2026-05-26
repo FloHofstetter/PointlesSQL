@@ -177,6 +177,5 @@ audit-trail wiring (every editor write lands an
 - The destructive-confirm modal fires exactly twice in this
   walkthrough (step 4 and step 6).
 - The `View op trace` deep-link works for every DML/DDL write.
-- Phase-14 external-write scanner does NOT flag any of the
-  Phase-63 writes as unattributed (per
-  [project_phase63_closed.md](../../../.claude/projects/-home-flo-git-PointlesSQL/memory/project_phase63_closed.md)).
+- The external-write scanner does NOT flag any of the
+  dispatcher-driven writes as unattributed.

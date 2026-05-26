@@ -46,7 +46,7 @@ adopting them would create more friction than value:
 
 | Bootstrap 5.3 pattern | Have? | Worth adopting? | Effort | Notes |
 |---|---|---|---|---|
-| `data-bs-theme` color-modes API | **Half** | **Yes** (high impact) | S (½ day) | CSS-vars done in [base.css](../../frontend/css/base.css). Need: toggle UI + localStorage + `prefers-color-scheme` listener. |
+| `data-bs-theme` color-modes API | **Half** | **Yes** (high impact) | S (½ day) | CSS-vars done in [base.css](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/css/base.css). Need: toggle UI + localStorage + `prefers-color-scheme` listener. |
 | `accordion` for stacked details | **No** | **Yes** | S-M | Use on `/runs/{id}` Operations/Rejects/Cells panels and `/audit/search` filter pane. |
 | `pagination` component | **No** | **Yes** | S | Pages already paginate server-side; only render is missing. Audit-search, query-history, /runs, /jobs/.../runs. |
 | `scrollspy` | **No** | **No** | M | Would force tab-to-section reflow; our `nav-tabs` is canonical. |
@@ -76,7 +76,7 @@ adopting them would create more friction than value:
   recommended pattern: read `localStorage.theme`, fall back to
   `matchMedia('(prefers-color-scheme: dark)')`, persist on
   toggle, update `<html data-bs-theme="...">`).
-- **CSS:** already done — [base.css](../../frontend/css/base.css)
+- **CSS:** already done — [base.css](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/css/base.css)
   has full light-mode override under
   `:root[data-bs-theme="light"]`.
 - **Risk:** light-mode CSS may have visual debt (Phase 17 said
