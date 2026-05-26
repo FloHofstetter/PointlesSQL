@@ -1,14 +1,17 @@
 name: Docs
 
-# Sprint 22.0 — manual-only build; no public deploy.  The launch
-# sprint flips the trigger to push-on-main and uncomments the
-# gh-deploy step.  Until then this workflow proves the build is
-# green without making the docs URL public.
+# Manual-only docs build + link-check.  No public deploy yet.
+# The launch-sprint flip swaps `workflow_dispatch:` for `push:`,
+# uncomments the mike-deploy step + permissions block, and
+# triggers the first gh-pages publish at
+# flohofstetter.github.io/PointlesSQL.  Until then this workflow
+# proves the build is green + cross-links are clean without
+# making the docs URL public.
 #
 # To flip live (launch sprint):
 #   1. Replace `workflow_dispatch:` with the commented-out
 #      `push:` block below.
-#   2. Uncomment the `gh-deploy` step.
+#   2. Uncomment the `mike deploy` step + the permissions block.
 #   3. Repo visibility flips public (separate gh CLI call).
 #   4. README badge points at flohofstetter.github.io/PointlesSQL.
 
@@ -23,6 +26,9 @@ on:
 
 permissions:
   contents: write
+  # Needed when push trigger flips live (launch sprint):
+  # pages: write
+  # id-token: write
 
 concurrency:
   group: docs-${{ github.ref }}
@@ -38,4 +44,9 @@ jobs:
           python-version: "3.14"
       - run: uv sync --group docs
       - run: uv run mkdocs build --strict
-      # - run: uv run mkdocs gh-deploy --force   # <-- uncomment in launch sprint
+      # Launch-sprint mike deploy (uncomment + bump version when going live):
+      # - name: Configure git for mike
+      #   run: |
+      #     git config user.name "github-actions[bot]"
+      #     git config user.email "github-actions[bot]@users.noreply.github.com"
+      # - run: uv run mike deploy --push --update-aliases rc173 latest

@@ -164,6 +164,28 @@ widening is a tracked follow-up.
 draft PR even with `D` warnings — the reviewer will help wire the
 body.
 
+## Releasing docs
+
+The docs site is built by `.github/workflows/docs.yml` and deployed
+to GitHub Pages via [mike](https://github.com/jimporter/mike) under
+the version selector.
+
+To cut a new docs version:
+
+1. Bump the project version in `pyproject.toml` following the
+   `rcXXX` scheme per ADR-0009 D3.
+2. Trigger the workflow manually (`workflow_dispatch`) or — once
+   the launch-sprint flip lands — push to `main` with changes
+   under `docs/`, `mkdocs.yml`, or `CHANGELOG.md`.
+3. The workflow runs `mike deploy --push --update-aliases <version>
+   latest`, which writes a versioned subdirectory under
+   `gh-pages/<version>/` and aliases `latest/` to it.
+
+The version selector in the rendered theme picks up every deployed
+version automatically. To retire an old version (e.g. an obsolete
+rc), run `mike delete <version>` locally and push the resulting
+`gh-pages` branch.
+
 ## Code of conduct
 
 Be kind. Disagree with code, not with people. The project follows

@@ -42,6 +42,9 @@ extra:
   social:
     - icon: fontawesome/brands/github
       link: https://github.com/FloHofstetter/PointlesSQL
+  version:
+    provider: mike
+    default: latest
 
 plugins:
   - search
