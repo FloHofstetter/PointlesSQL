@@ -59,6 +59,8 @@ plugins:
             merge_init_into_class: true
             show_signature_annotations: true
             separate_signature: true
+  - neoteroi.mkdocsoad:
+      use_pymdownx: true
 
 markdown_extensions:
   - admonition
@@ -185,9 +187,22 @@ nav:
       - reference/index.md
       - Python API:
           - reference/python/index.md
-          - PQL class: reference/python/pql.md
-          - Service modules: reference/python/services.md
-      - REST API: reference/api.md
+          - PQL class: reference/python/pql/index.md
+          - Engines: reference/python/pql/engines.md
+          - SQL parsing: reference/python/pql/sql.md
+          - Branching: reference/python/pql/branching.md
+          - Writes & contracts: reference/python/pql/writes.md
+          - Sub-packages: reference/python/pql/subpackages.md
+          - Service modules:
+              - reference/python/services/index.md
+              - Operations: reference/python/services/operations.md
+              - Training context: reference/python/services/training_context.md
+              - Audit: reference/python/services/audit.md
+              - Branch tags: reference/python/services/branch_tags.md
+              - MLflow subprocess: reference/python/services/mlflow_subprocess.md
+      - REST API:
+          - reference/api.md
+          - Full OpenAPI reference: reference/api/openapi.md
       - CLI: reference/cli.md
       - Configuration: reference/configuration.md
       - CloudEvents: reference/cloudevents.md
