@@ -58,6 +58,17 @@ repos:
             pointlessql/alembic/versions/
           )
 
+  - repo: https://github.com/alessandrojcm/commitlint-pre-commit-hook
+    rev: v9.18.0
+    hooks:
+      - id: commitlint
+        # Enforces Conventional-Commits shape so the cliff-driven
+        # CHANGELOG regen (scripts/regen-changelog.py) can categorise
+        # every commit deterministically.  Activate locally with
+        # ``uv run pre-commit install --hook-type commit-msg``.
+        stages: [commit-msg]
+        additional_dependencies: ["@commitlint/config-conventional@19.5.0"]
+
   - repo: https://github.com/biomejs/pre-commit
     rev: v0.6.1
     hooks:

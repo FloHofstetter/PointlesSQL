@@ -1,0 +1,26 @@
+name: Commit-message lint
+
+# CI gate for Conventional-Commits shape (W3 D6 follow-up).
+# Runs only on pull_request because the rules are not enforced
+# retroactively against the main-branch history (which has 5 legacy
+# `debug(ci):` commits and one `docs+chore(phase16):` predating this
+# gate).
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  commitlint:
+    name: Validate PR commit messages
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # commitlint-github-action needs the full PR commit history
+          # to validate every commit, not just the merge commit.
+          fetch-depth: 0
+      - name: Run commitlint
+        uses: wagoid/commitlint-github-action@v6
+        with:
+          configFile: commitlint.config.js
