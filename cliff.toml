@@ -1,12 +1,24 @@
 # git-cliff configuration — https://git-cliff.org/docs/configuration
 #
-# Sprint 39: drives `scripts/bump-version.sh` (version bump +
-# changelog flip) and the `release.yml` GitHub workflow (release-notes
-# body). Mirrors the soyuz-catalog Sprint 19 shape so both repos share
-# a single release-engineering contract. Keyed to the Conventional
-# Commit scopes already in use on main (`feat(ui)`, `feat(client)`,
-# `fix(ui)`, `docs(roadmap)`, `build(packaging)`, …). Output shape
-# preserves the Keep-a-Changelog heading that opens CHANGELOG.md.
+# Two consumers:
+#
+# 1. `scripts/bump-version.sh` (Sprint 39) + `release.yml` workflow —
+#    invoke cliff with `--unreleased`/`--latest` against a tag-anchored
+#    history.  Both keep the existing "## [X.Y.Z] - YYYY-MM-DD" heading
+#    shape; the bump script renames `## [Unreleased]` to the new tag
+#    after running cliff.
+#
+# 2. `scripts/regen-changelog.py` (W3) — invokes cliff per-range
+#    (`<from>..<to>` commit-pair) using `--strip header` to drop the
+#    version line; the wrapper script prepends a per-cluster
+#    `## [Cluster <id> — <name>] - YYYY-MM-DD` heading + synopsis
+#    instead.  No tag-pattern dependency; cluster boundaries live in
+#    `scripts/clusters.json`.
+#
+# Output shape preserves the Keep-a-Changelog top heading that opens
+# CHANGELOG.md.  Scope-aware grouping is OFF in the body template
+# (would conflict with consumer #1's release-notes shape); the cluster
+# regenerator can post-process for sub-headings if desired.
 
 [changelog]
 header = """
@@ -24,7 +36,7 @@ body = """
 {% for group, commits in commits | group_by(attribute="group") %}
 ### {{ group | upper_first }}
 {% for commit in commits %}
-- `{{ commit.message | split(pat="\\n") | first | upper_first | trim }}`{% if commit.id %} ({{ commit.id | truncate(length=7, end="") }}){% endif %}
+- {{ commit.message | split(pat="\\n") | first | upper_first | trim }}{% if commit.id %} ({{ commit.id | truncate(length=7, end="") }}){% endif %}
 {%- endfor %}
 {% endfor %}
 """
@@ -33,21 +45,34 @@ trim = true
 
 [git]
 conventional_commits = true
-filter_unconventional = true
+# Keep unconventional commits VISIBLE in the regen output so the
+# historical pre-W3 era (when not every commit followed conventional
+# shape) is not silently dropped.  The commit-msg gate (W3.4 commitlint)
+# enforces conventional shape for all future commits, so this fallback
+# bucket should drain over time.
+filter_unconventional = false
 split_commits = false
 commit_parsers = [
+    # Conventional types — ordered for readability in output.
     { message = "^feat", group = "Features" },
     { message = "^fix", group = "Bug Fixes" },
-    { message = "^docs", group = "Documentation" },
     { message = "^perf", group = "Performance" },
     { message = "^refactor", group = "Refactor" },
+    { message = "^docs", group = "Documentation" },
     { message = "^test", group = "Tests" },
     { message = "^build", group = "Build" },
+    { message = "^ci", group = "CI" },
+    { message = "^style", group = "Style" },
+    { message = "^revert", group = "Reverted" },
+    # Bookkeeping — auto-version-bumps don't earn a CHANGELOG entry.
     { message = "^chore\\(release\\)", skip = true },
     { message = "^chore", group = "Chores" },
-    { message = "^ci", group = "CI" },
+    # Escape hatches.
     { body = ".*\\[skip changelog\\]", skip = true },
     { message = "^Merge", skip = true },
+    # Catch-all for non-conventional historical commits (Sprint 1-23
+    # era predates conventional discipline).  Renders under "Other".
+    { message = ".*", group = "Other" },
 ]
 filter_commits = false
 tag_pattern = "v[0-9]*"
