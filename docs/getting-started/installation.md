@@ -38,7 +38,7 @@ active):
 
 ```bash
 mkdir ~/pointlessql && cd ~/pointlessql
-curl -L -o docker/docker-compose.yml \
+curl -L -o docker-compose.yml \
  https://raw.githubusercontent.com/FloHofstetter/PointlesSQL/v0.1.0rc3/docker-compose.yml
 ```
 
@@ -219,10 +219,10 @@ The soyuz-catalog image failed to start. Check logs with
 
 ## Default file locations
 
-Since the BUG-grand-09 fix the SQLite database, MLflow tracking
-store, and MLflow artifact root all anchor to the **repository
-root** rather than the working directory the server was launched
-from. Concretely the defaults resolve to:
+The SQLite database, MLflow tracking store, and MLflow artifact
+root all anchor to the **repository root** rather than the working
+directory the server was launched from. Concretely the defaults
+resolve to:
 
 | File | Default path | Override env var |
 |---|---|---|

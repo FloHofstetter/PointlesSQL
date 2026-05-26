@@ -11,8 +11,8 @@ source) see [Installation](installation.md).
 
 ```bash
 mkdir ~/pointlessql-quickstart && cd ~/pointlessql-quickstart
-curl -L -o docker/docker-compose.yml \
- https://raw.githubusercontent.com/FloHofstetter/PointlesSQL/main/docker-compose.yml
+curl -L -o docker-compose.yml \
+ https://raw.githubusercontent.com/FloHofstetter/PointlesSQL/v0.1.0rc3/docker-compose.yml
 echo "$GHCR_PAT" | docker login ghcr.io -u <your-github-handle> --password-stdin
 docker compose pull
 ```
@@ -127,9 +127,8 @@ lineage, optional rollback target.
 - [Concepts overview](concepts.md) — mental model in one read
  (catalogs, agent runs, lineage chain, audit cockpit)
 - [Guides](../guides/index.md) — task-oriented walkthroughs
-- [Architecture](../concepts/auth.md) ( will fill in
- the architecture page; for now the auth page is the deepest
- available concept doc)
+- [Architecture](../concepts/architecture.md) — full system
+ architecture diagram + data-flow walkthrough
 - [Reference](../reference/index.md) — Python +
  REST + CLI + config
 

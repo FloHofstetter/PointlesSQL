@@ -1,8 +1,8 @@
 # Concepts at a glance
 
 Read this once and you'll have the mental model for every other
-PointlesSQL doc. expands each section into a
-dedicated [concept page](../concepts/index.md); this page is the
+PointlesSQL doc. The [Concepts section](../concepts/index.md)
+expands each topic into a dedicated page; this page is the
 **ten-minute read** that links the pieces together.
 
 ## The four-layer stack
@@ -73,8 +73,8 @@ called inside that session gets stamped with the run id.
 ```
 agent_runs: one row per agent session
  └─ agent_run_operations: one row per pql.* call
- ├─ training_params_json (, for train_model ops)
- └─ env_snapshot (, hardware fingerprint)
+ ├─ training_params_json (for train_model ops)
+ └─ env_snapshot (hardware fingerprint)
 ```
 
 The session boundary comes from the `POINTLESSQL_AGENT_RUN_ID`
@@ -119,8 +119,8 @@ record into actionable views:
  diff two runs against each other
 - **Latest review** — most recent `agent_review` from the daily
  Audit-Reviewer-Bot
-- **Anomaly time-series** — Grafana dashboard at `:3000` (Phase
- 19.0 overlay)
+- **Anomaly time-series** — Grafana dashboard at `:3000` exposed
+ via the `docker/docker-compose.grafana.yml` overlay
 
 See the [admin audit walkthrough](../e2e-walkthroughs/admin-audit.md).
 
