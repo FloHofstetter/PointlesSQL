@@ -136,6 +136,11 @@ from pointlessql.models.catalog._metadata import (
     SavedQuery,
     TableStats,
 )
+from pointlessql.models.catalog._policy_module import (
+    POLICY_MODULE_EFFECTS,
+    PolicyModule,
+    PolicyModuleDecision,
+)
 from pointlessql.models.catalog._ports import (
     INPUT_PORT_KINDS,
     OUTPUT_PORT_KINDS,
@@ -186,6 +191,7 @@ __all__ = [
     "OUTPUT_PORT_KINDS",
     "PASSPORT_TRIGGERS",
     "PERF_STATUSES",
+    "POLICY_MODULE_EFFECTS",
     "PROPOSAL_STATUSES",
     "SLO_COMPARATORS",
     "SLO_KINDS",
@@ -232,6 +238,8 @@ __all__ = [
     "GlossaryTermRelation",
     "MeshEntity",
     "MeshEntityBinding",
+    "PolicyModule",
+    "PolicyModuleDecision",
     "QueryHistory",
     "QueryHistoryTable",
     "RateLimitEvent",

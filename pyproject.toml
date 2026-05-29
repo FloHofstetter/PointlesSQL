@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "pointlessql"
-version = "0.1.0rc186"
+version = "0.1.0rc187"
 description = "A web UI for Unity Catalog and other open-source Databricks components"
 license = "Apache-2.0"
 readme = "README.md"
@@ -66,6 +66,7 @@ dependencies = [
     # C-extension (binding to yrs).  Sprint 105.1 verifies install
     # via ``uv sync`` before the rest of the phase builds on it.
     "pycrdt>=0.10",
+    "cedarpy>=4.8",
 ]
 
 [project.optional-dependencies]

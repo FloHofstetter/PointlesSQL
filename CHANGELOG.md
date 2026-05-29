@@ -17,6 +17,42 @@ defined in ``scripts/clusters.json``. -->
 
 ### Features
 
+- Computational Policy-as-Code via Cedar (Phase 141 — Backend-only).
+  Erste Substrat-Vertiefung des Mega-Cluster 135–146.  Migration
+  `b9n1p3r5t7v9_phase141_cedar_policies` (down_rev `z7l9n1p3r5t7`)
+  legt zwei neue Tabellen an (`policy_modules`,
+  `policy_module_decisions`) plus `linked_policy_module_ids` JSON
+  column auf `workspace_governance_policies` +
+  `data_product_policies`.  Neue Dep `cedarpy>=4.8` (PyO3-Bindings
+  zur Cedar-Rust-Engine).  Service-Paket
+  `services/policy_as_code/` mit Engine-Wrapper (per-`(module_id,
+  version)`-Cache, fail-closed bei parse + runtime + empty), Loader
+  (product⇐workspace Link-Inheritance), Translator
+  (Principal/Action/Resource UID-Konvention), CRUD,
+  Decision-Audit-Helper, und Bootstrap, der ein idempotentes
+  before-read + before-write-Paar an die zentrale `pql/_hooks.py`
+  Registry hängt.  Hooks resolvieren gelinkte Module für das
+  Authoring-Produkt, evaluieren via `cedarpy.is_authorized`,
+  persistieren die Decision separat vom Audit-Log, und werfen
+  `PermissionDeniedError` bei `forbid` — Parse-/Runtime-Errors
+  collapsen identisch zu `forbid` mit `error_class` im
+  `context_json`.  Admin-Routes
+  (GET/POST/PUT/DELETE `/api/admin/policy-modules`,
+  POST `.../test` Dry-Run, GET `.../decisions` Ledger,
+  PUT `/api/data-products/{c}/{s}/policy-modules` Link).
+  POLICY_FIELDS-Inheritance auf 8 Felder erweitert.  ADR-0010
+  dokumentiert die Decision (Cedar vs. OPA/DSL, ABAC-Begründung,
+  Fail-Closed-Rationale).  23 neue pytest grün
+  (test_cedar_engine + test_cedar_translator + test_cedar_hooks),
+  full suite 3842/0/10, ruff/pyright/check-no-phase-refs clean.
+  Frontend (Policy-Module-Editor mit CodeMirror Cedar-Syntax,
+  Test-Sandbox, Decision-Log-View), Plugin-Tools
+  (`pql_create_policy_module`, `pql_test_policy_module`,
+  `pql_link_policy_module_to_product`,
+  `pql_list_policy_decisions`), Walkthrough
+  `computational-policy-as-code.md` bleiben für die finale
+  Surface-Welle.  Asset rc186→rc187.
+
 - Data-Mesh Buch-Vollständigkeit Foundation-Welle (Phase 135–140 —
   Backend-only).  Erste Welle des Mega-Cluster 135–146.  Migration-
   Kette `q8s0u2w5y7a9` → `z7l9n1p3r5t7` (6 chained revisions).

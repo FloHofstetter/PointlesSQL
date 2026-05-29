@@ -30,6 +30,7 @@ POLICY_FIELDS: tuple[str, ...] = (
     "consent_basis",
     "consumption_enforcement",
     "iso8601_enforcement",
+    "linked_policy_module_ids",
 )
 
 

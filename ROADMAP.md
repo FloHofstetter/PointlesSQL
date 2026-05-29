@@ -2143,6 +2143,87 @@ PointlesSQL
 │       DP-as-Code, Schema-Versioning, Entity-Auto-Discovery,
 │       Cost+Quotas+Dashboard) bleiben für nächste Session offen.
 │
+├── Phase 141 — Computational Policy-as-Code via Cedar (Backend-only)  🟦 (2026-05-30)
+│   │
+│   │   Substrat-Vertiefung Welle 2 des Mega-Cluster 135–146.
+│   │   Cedar (AWS-Ursprung, Rust-Engine über PyO3-Bindings als
+│   │   `cedarpy>=4.8`) als Policy-as-Code-Engine wegen
+│   │   ABAC-Nativ-Support, Single-Process-Tauglichkeit, und
+│   │   Buch-Alignment (Dehghani nennt Cedar namentlich).
+│   │
+│   ├── 141.1 — Migration + Models (`b9n1p3r5t7v9_phase141_cedar_policies`)
+│   │       Zwei neue Tabellen `policy_modules` (workspace-scoped,
+│   │       name unique, version+enabled flags, cedar_source Text)
+│   │       und `policy_module_decisions` (per-eval Ledger mit
+│   │       module FK, principal, action, resource_type+id, effect
+│   │       CHECK('permit','forbid'), context_json, latency_ms,
+│   │       indices auf module+time + principal+time).  ALTER
+│   │       `workspace_governance_policies` + `data_product_policies`
+│   │       add `linked_policy_module_ids` JSON-Text nullable.
+│   │       POLICY_FIELDS-Tuple um neunten Eintrag erweitert
+│   │       (linked_policy_module_ids inheritance product⇐workspace).
+│   │
+│   ├── 141.2 — Service-Paket `services/policy_as_code/`
+│   │       Engine-Wrapper (cedarpy.is_authorized,
+│   │       per-(module_id, version) AST-Cache mit explicit
+│   │       invalidation, fail-closed bei Parse-Error
+│   │       (`cedar_parse_error`) + Runtime-Error
+│   │       (`cedar_runtime_error`) + Empty-Set).  Loader
+│   │       (workspace-Modul-Listing + linked-modules-Resolver mit
+│   │       product⇐workspace-Override-Order, disabled rows
+│   │       filtered).  Translator (User::"id" Principal-UID,
+│   │       Action::"verb", DataProduct::"catalog.schema" /
+│   │       OutputPort::"pk" Resource-UID-Konvention).  Audit
+│   │       (persist Decision + emit `policy.evaluation` Audit-Log-
+│   │       Row in einem Helper).  CRUD (create+update+delete+list
+│   │       Module mit IntegrityError → ValueError translation,
+│   │       cedar_source-Edit bumpt version, link_modules_to_product
+│   │       + _to_workspace mit JSON-Encoding).
+│   │
+│   ├── 141.3 — Hook-Bootstrap (Linksverschiebung)
+│   │       `register_cedar_hooks(factory)` idempotent, registriert
+│   │       je einen before_read + before_write hook an der
+│   │       zentralen `pql/_hooks.py` Registry (Phase 139).  Beide
+│   │       Hooks resolvieren `load_linked_modules_for_product`,
+│   │       skippen wenn kein Modul gelinkt, sonst evaluieren via
+│   │       cedar_evaluate (Action::"read" / Action::"write",
+│   │       DataProduct::"<catalog>.<schema>" Resource).  Decision
+│   │       wird per-Modul persistiert (emit_audit=False auf hot
+│   │       read-path).  forbid raised PermissionDeniedError mit
+│   │       error_class im Detail.
+│   │
+│   ├── 141.4 — Admin-Routes `api/admin/policy_modules.py`
+│   │       GET/POST/PUT/DELETE `/api/admin/policy-modules` für
+│   │       Modul-CRUD; POST `.../test` für Dry-Run mit
+│   │       principal+action+resource+context Body; GET
+│   │       `.../decisions` Ledger-Listing mit Pagination; PUT
+│   │       `/api/data-products/{c}/{s}/policy-modules` für
+│   │       Link/Unlink (steward/admin guard via load_one+role check).
+│   │       Audit-Aktionen `policy_module.created/updated/deleted/
+│   │       linked_to_product`.
+│   │
+│   └── 141.5 — Verifikation + Dokumentation
+│           23 neue pytest (test_cedar_engine ×8 für
+│           parse/permit/forbid/cache/empty-set/fail-closed,
+│           test_cedar_translator ×6 für Principal/Action/Resource
+│           UID-Helper, test_cedar_hooks ×9 für Idempotenz, unlinked-
+│           passthrough, permit/forbid hook-paths, write-action,
+│           parse-error fail-closed, workspace-default-link).  Full
+│           suite 3842/0/10, ruff/pyright/check-no-phase-refs/
+│           bare-broad-except/bare-http clean.  Alembic head
+│           `b9n1p3r5t7v9`, down→up round-trip clean.  ADR-0010
+│           dokumentiert die Cedar-vs-OPA/DSL-Entscheidung,
+│           Fail-Closed-Rationale, und offene Follow-Ups
+│           (Schema-basiertes ABAC, Cross-Workspace-Inheritance).
+│
+│       Asset rc186→rc187.  Deferred: Admin-Surface (Editor +
+│       CodeMirror Cedar-Syntax + Test-Sandbox + Decision-Log-View),
+│       Plugin-Tools (`pql_create_policy_module`,
+│       `pql_test_policy_module`, `pql_link_policy_module_to_product`,
+│       `pql_list_policy_decisions`), Walkthrough
+│       `computational-policy-as-code.md` — landen alle in der
+│       finalen Surface-Welle.
+│
 
 
 
