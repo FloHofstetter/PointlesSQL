@@ -93,6 +93,14 @@ from pointlessql.models.catalog._domains import (
     Domain,
     DomainMember,
 )
+from pointlessql.models.catalog._contract_test import (
+    ASSERTION_KINDS,
+    CONTRACT_TEST_SEVERITIES,
+    CONTRACT_TEST_STATUSES,
+    DataProductContractTest,
+    DataProductContractTestResult,
+    DataProductFixture,
+)
 from pointlessql.models.catalog._entity import (
     ENTITY_LINK_KINDS,
     DataProductEntity,
@@ -177,7 +185,10 @@ __all__ = [
     "DP_TRANSFORMATION_KINDS",
     "ENCRYPTION_CLASSES",
     "ENDORSEMENT_TYPES",
+    "ASSERTION_KINDS",
     "AVAILABILITY_STATUSES",
+    "CONTRACT_TEST_SEVERITIES",
+    "CONTRACT_TEST_STATUSES",
     "ENTITY_LINK_KINDS",
     "EVENT_DELIVERY_STATUSES",
     "EVENT_SUBSCRIPTION_STATUSES",
@@ -202,6 +213,8 @@ __all__ = [
     "DataProductActiveReviewerConfig",
     "DataProductBitemporalPolicy",
     "DataProductColumnClassification",
+    "DataProductContractTest",
+    "DataProductContractTestResult",
     "DataProductEventDelivery",
     "DataProductEventSubscription",
     "DataProductInfrastructure",
@@ -215,6 +228,7 @@ __all__ = [
     "DataProductAvailabilityProbe",
     "DataProductEndorsement",
     "DataProductEntity",
+    "DataProductFixture",
     "DataProductForgetRequest",
     "DataProductInputPort",
     "DataProductOutputPort",

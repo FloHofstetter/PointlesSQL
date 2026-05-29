@@ -2224,6 +2224,58 @@ PointlesSQL
 │       `computational-policy-as-code.md` — landen alle in der
 │       finalen Surface-Welle.
 │
+├── Phase 142 — Synthetic-Data + Contract-Tests (Backend-only)  🟦 (2026-05-30)
+│   │
+│   │   Substrat-Vertiefung Welle 3 des Mega-Cluster 135–146.
+│   │   Per-Produkt Contract-Tests + Faker-driven synthetic
+│   │   fixtures als Consumer-Smoke-Test.
+│   │
+│   ├── 142.1 — Migration `d1p3r5t7v9x1_phase142_contract_tests`
+│   │       Drei neue Tabellen: `data_product_fixtures` (Generator-
+│   │       Spec pro declared Table, unique pro Produkt),
+│   │       `data_product_contract_tests` (CHECK-bounded
+│   │       assertion_kind in 6 Werten + severity + enabled, unique
+│   │       (data_product_id, name)),
+│   │       `data_product_contract_test_results` (append-only Ledger
+│   │       mit CHECK status in (pass, fail, error) + Index auf
+│   │       contract_test_id + run_at).  Faker>=24.0 als neue Dep.
+│   │
+│   ├── 142.2 — Service-Paket `services/contract_tests/`
+│   │       Generator (deterministischer Arrow-Table-Builder mit 8
+│   │       Generator-Kinds: email/name/int/float/iso8601_ts/choice/
+│   │       uuid/bool; seed-reproducible).  Assertion-Evaluator
+│   │       (row_count_range/column_present/value_distribution/
+│   │       null_rate/referential/freshness; AssertionVerdict mit
+│   │       status + observation dict; spec-error → status=error).
+│   │       Runner (orchestriert run_contract_tests in
+│   │       `synthetic`/`live` mode; live nimmt table_provider als
+│   │       Closure; result row persistiert; `contract_test.run`
+│   │       Audit emittiert).  CRUD (idempotente declare-by-name +
+│   │       delete + paginated list für tests + fixtures + results).
+│   │
+│   ├── 142.3 — Routes `api/data_products_routes/contract_tests.py`
+│   │       GET/POST/DELETE `.../contract-tests` + GET/POST/DELETE
+│   │       `.../fixtures` mit steward/admin guard via load_one,
+│   │       POST `.../contract-tests/run?mode=synthetic|live`
+│   │       synchron, GET
+│   │       `.../contract-tests/{id}/results?limit=&offset=`.
+│   │
+│   └── 142.4 — Verifikation
+│           29 neue pytest (test_contract_test_generator ×8 für
+│           Determinismus, kind-Coverage, JSON-spec, empty-spec;
+│           test_contract_test_assertions ×15 für alle 6
+│           Asserter-Pfade + error-cases; test_contract_test_runner
+│           ×6 für synthetic-pass, synthetic-fail, live-no-provider,
+│           live-with-provider, unknown-mode, disabled-skip).  Full
+│           suite grün, alembic head `d1p3r5t7v9x1`, round-trip
+│           clean.  ruff/pyright/check-no-phase-refs clean.
+│
+│       Asset rc187→rc188.  Deferred: Scheduler-Kind
+│       `contract_test_evaluation`, Frontend-Tab "Contract Tests",
+│       Plugin-Tools (`pql_declare_contract_test`,
+│       `pql_run_contract_tests`, `pql_declare_synthetic_fixture`),
+│       Walkthrough `data-product-contract-tests.md`.
+│
 
 
 

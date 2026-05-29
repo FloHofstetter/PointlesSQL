@@ -17,6 +17,33 @@ defined in ``scripts/clusters.json``. -->
 
 ### Features
 
+- Synthetic-Data + Contract-Tests (Phase 142 — Backend-only).
+  Substrat-Vertiefung Welle 3 des Mega-Cluster 135-146.  Migration
+  `d1p3r5t7v9x1_phase142_contract_tests` (down_rev `b9n1p3r5t7v9`)
+  legt drei Tabellen an: `data_product_fixtures` (Faker-Spec pro
+  declared table, unique pro Produkt), `data_product_contract_tests`
+  (CHECK-bounded assertion_kind in row_count_range/column_present/
+  value_distribution/null_rate/referential/freshness + severity +
+  enabled), `data_product_contract_test_results` (append-only Ledger
+  mit CHECK status pass/fail/error + Indizes auf
+  contract_test_id+run_at).  Neue Dep `Faker>=24.0`.  Service-Paket
+  `services/contract_tests/` mit Generator (deterministischer Arrow-
+  Table-Builder mit 8 Generator-Kinds: email/name/int/float/
+  iso8601_ts/choice/uuid/bool), Assertion-Evaluator (sechs Asserter,
+  jeder retourniert AssertionVerdict mit Status + Observation-Dict),
+  Runner (orchestriert run_contract_tests in `synthetic` oder
+  `live` mode, persistiert Result-Row, emittiert
+  `contract_test.run` Audit), CRUD (idempotent declare + delete +
+  list für tests + fixtures + results pagination).  Routes
+  `api/data_products_routes/contract_tests.py` mit GET/POST/DELETE
+  für tests + fixtures (steward/admin POST+DELETE, any-user GET),
+  POST `.../contract-tests/run?mode=` synchron, GET `.../results`
+  paginated.  29 neue pytest grün (test_contract_test_generator ×8,
+  test_contract_test_assertions ×15, test_contract_test_runner ×6).
+  Asset rc187→rc188.  Scheduler-Kind `contract_test_evaluation`
+  bleibt für die Surface-Welle deferred (default-disabled toggle,
+  Frontend-Tab "Contract Tests" + Plugin-Tools).
+
 - Computational Policy-as-Code via Cedar (Phase 141 — Backend-only).
   Erste Substrat-Vertiefung des Mega-Cluster 135–146.  Migration
   `b9n1p3r5t7v9_phase141_cedar_policies` (down_rev `z7l9n1p3r5t7`)

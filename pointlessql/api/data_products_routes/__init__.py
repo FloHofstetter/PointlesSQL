@@ -35,6 +35,9 @@ from pointlessql.api.data_products_routes.consumer_voice import (
 from pointlessql.api.data_products_routes.consumption_events import (
     router as _consumption_events_router,
 )
+from pointlessql.api.data_products_routes.contract_tests import (
+    router as _contract_tests_router,
+)
 from pointlessql.api.data_products_routes.contracts import router as _contracts_router
 from pointlessql.api.data_products_routes.detail import router as _detail_router
 from pointlessql.api.data_products_routes.diff import router as _diff_router
@@ -122,6 +125,7 @@ router.include_router(_consumer_voice_router)
 router.include_router(_consumption_events_router)
 router.include_router(_bitemporal_policy_router)
 router.include_router(_entities_router)
+router.include_router(_contract_tests_router)
 
 
 # Backwards-compatible aliases — ``_load_one`` was the original
