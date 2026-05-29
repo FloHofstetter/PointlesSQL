@@ -1,0 +1,181 @@
+        <div class="tab-pane fade" id="tab-interop" role="tabpanel">
+            <div x-data='dataProductInterop({{ product.catalog|tojson }}, {{ product.schema|tojson }})'
+                 x-init="init()">
+                <div class="alert alert-danger py-1 px-2 small" x-show="error" x-text="error" x-cloak></div>
+
+                <!-- Mesh neighbourhood. -->
+                <div class="card mb-3">
+                    <div class="card-header d-flex align-items-center gap-2">
+                        <i class="bi bi-diagram-3"></i>
+                        <span>Mesh neighbourhood</span>
+                        <a href="/mesh" class="ms-auto small">Full mesh graph</a>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted small mb-2">
+                            This product (red) plus the products it declares as upstreams and the
+                            products that declare it — the graph that emerges from local input-port
+                            declarations.
+                        </p>
+                        <div id="dp-mesh-cy" style="width: 100%; height: 320px;"></div>
+                        <div class="text-muted small" x-show="(neighbourhood.nodes || []).length <= 1" x-cloak>
+                            No declared upstream/downstream products yet. Declare upstream input ports
+                            on the Lineage tab to grow the mesh.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Polysemic entity bindings + join helper. -->
+                <div class="card mb-3">
+                    <div class="card-header d-flex align-items-center gap-2">
+                        <i class="bi bi-tags"></i>
+                        <span>Shared entities</span>
+                    </div>
+                    <div class="card-body">
+                        <ul class="list-group list-group-flush mb-2">
+                            <template x-for="b in bindings" :key="b.id">
+                                <li class="list-group-item d-flex justify-content-between align-items-center px-2 py-1">
+                                    <span>
+                                        <code x-text="b.table + '.' + b.column"></code>
+                                        <i class="bi bi-arrow-right mx-1"></i>
+                                        <span class="badge text-bg-info" x-text="b.mesh_entity_id"></span>
+                                    </span>
+                                    <button type="button" class="btn btn-sm btn-outline-danger"
+                                            x-show="canManage" @click="removeBinding(b.id)">Remove</button>
+                                </li>
+                            </template>
+                            <li class="list-group-item text-muted small px-2 py-1" x-show="bindings.length === 0">
+                                No columns bound to a shared entity yet. Binding a column to a mesh
+                                entity lets the platform suggest cross-product join keys.
+                            </li>
+                        </ul>
+                        <template x-if="canManage">
+                            <div class="row g-2 align-items-end">
+                                <div class="col-sm-4">
+                                    <label class="form-label small mb-0">Entity</label>
+                                    <select class="form-select form-select-sm" x-model="newBinding.entity_slug">
+                                        <option value="">choose…</option>
+                                        <template x-for="e in availableEntities" :key="e.id">
+                                            <option :value="e.slug" x-text="e.name"></option>
+                                        </template>
+                                    </select>
+                                </div>
+                                <div class="col-sm-3">
+                                    <input type="text" class="form-control form-control-sm" x-model="newBinding.table" placeholder="table">
+                                </div>
+                                <div class="col-sm-3">
+                                    <input type="text" class="form-control form-control-sm" x-model="newBinding.column" placeholder="column">
+                                </div>
+                                <div class="col-sm-2">
+                                    <button type="button" class="btn btn-sm btn-outline-primary w-100" @click="bindEntity()">Bind</button>
+                                </div>
+                            </div>
+                        </template>
+                        <p class="text-muted small mb-0 mt-2" x-show="availableEntities.length === 0" x-cloak>
+                            No mesh entities defined yet — an admin creates them under
+                            <a href="/admin/mesh-entities">Mesh entities</a>.
+                        </p>
+
+                        <!-- Join helper. -->
+                        <hr class="my-3">
+                        <label class="form-label small mb-1">Joinable with another product</label>
+                        <div class="row g-2 align-items-end mb-2">
+                            <div class="col-sm-8">
+                                <input type="text" class="form-control form-control-sm" x-model="joinOther" placeholder="catalog.schema of the other product">
+                            </div>
+                            <div class="col-sm-4">
+                                <button type="button" class="btn btn-sm btn-outline-secondary w-100" @click="loadJoinable()">Find join keys</button>
+                            </div>
+                        </div>
+                        <div class="alert alert-danger py-1 px-2 small" x-show="joinError" x-text="joinError" x-cloak></div>
+                        <template x-if="joinSuggestions !== null">
+                            <div>
+                                <template x-for="(s, i) in joinSuggestions" :key="i">
+                                    <div class="border rounded p-2 mb-2 small">
+                                        <div>
+                                            <span class="badge text-bg-info me-1" x-text="s.entity.name"></span>
+                                            <code x-text="s.left.column"></code> =
+                                            <code x-text="s.right.column"></code>
+                                        </div>
+                                        <pre class="bg-body-tertiary p-2 mt-1 mb-0 rounded small" x-text="s.join_sql"></pre>
+                                    </div>
+                                </template>
+                                <div class="text-muted small" x-show="joinSuggestions.length === 0">
+                                    No shared entities — bind the same entity in both products to get a join key.
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- Point-in-time read. -->
+                <template x-if="canManage">
+                    <div class="card mb-3">
+                        <div class="card-header d-flex align-items-center gap-2">
+                            <i class="bi bi-clock-history"></i>
+                            <span>Point-in-time read</span>
+                        </div>
+                        <div class="card-body">
+                            <p class="text-muted small">
+                                Resolve the Delta version each declared table was at, as of an instant —
+                                the manifest for a reproducible cross-product snapshot.
+                            </p>
+                            <div class="row g-2 align-items-end mb-2">
+                                <div class="col-sm-5">
+                                    <label class="form-label small mb-0">As of</label>
+                                    <input type="datetime-local" class="form-control form-control-sm" x-model="pit.when">
+                                </div>
+                                <div class="col-sm-5">
+                                    <label class="form-label small mb-0">Also include (comma-sep refs)</label>
+                                    <input type="text" class="form-control form-control-sm" x-model="pit.products" placeholder="cat.schema, cat.schema">
+                                </div>
+                                <div class="col-sm-2">
+                                    <button type="button" class="btn btn-sm btn-outline-primary w-100" @click="runPointInTime()">Resolve</button>
+                                </div>
+                            </div>
+                            <div class="alert alert-danger py-1 px-2 small" x-show="pitError" x-text="pitError" x-cloak></div>
+                            <template x-if="pitManifest">
+                                <div class="small">
+                                    <div class="text-muted mb-1">As of <span x-text="pitManifest.when"></span>:</div>
+                                    <template x-for="(p, ref) in pitManifest.products" :key="ref">
+                                        <div class="mb-1">
+                                            <strong x-text="ref"></strong>
+                                            <ul class="mb-0">
+                                                <template x-for="(t, name) in p.tables" :key="name">
+                                                    <li>
+                                                        <code x-text="name"></code> —
+                                                        v<span x-text="t.as_of_version !== null ? t.as_of_version : '—'"></span>,
+                                                        <span x-text="t.row_count !== null ? t.row_count + ' rows' : 'rows n/a'"></span>
+                                                    </li>
+                                                </template>
+                                            </ul>
+                                        </div>
+                                    </template>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                </template>
+
+                <!-- Bitemporal convention. -->
+                <div class="card mb-3">
+                    <div class="card-header d-flex align-items-center gap-2">
+                        <i class="bi bi-hourglass-split"></i>
+                        <span>Bitemporal convention</span>
+                    </div>
+                    <div class="card-body small">
+                        <p class="mb-1">
+                            Processing-time injection:
+                            <span class="badge"
+                                  :class="bitemporal.inject_processing_time ? 'text-bg-success' : 'text-bg-secondary'"
+                                  x-text="bitemporal.inject_processing_time ? 'on' : 'off'"></span>
+                        </p>
+                        <p class="text-muted mb-0">
+                            Processing-time column <code x-text="bitemporal.processing_time_column"></code>
+                            (stamped at write when enabled); event/business-time column
+                            <code x-text="bitemporal.event_time_column"></code> is a producer convention used
+                            by the as-of-event-time read helper.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>

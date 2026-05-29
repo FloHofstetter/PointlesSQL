@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}Mesh entities · Admin · PointlesSQL{% endblock %}
+
+{% set breadcrumbs = [
+ {"label": "Home", "href": "/"},
+ {"label": "Admin", "href": "/admin"},
+ {"label": "Mesh entities"}
+] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block content %}
+<div x-data="adminMeshEntities()" x-init="init()">
+    <div class="d-flex align-items-center gap-2 mb-3">
+        <i class="bi bi-tags fs-3"></i>
+        <h1 class="h3 mb-0">Mesh entities</h1>
+    </div>
+
+    <p class="text-muted">
+        The shared business-entity vocabulary. Stewards bind a product's columns to these entities
+        on each product's Interop tab; two columns bound to the same entity become a join key.
+    </p>
+
+    <div class="alert alert-danger" x-show="error" x-text="error" x-cloak></div>
+
+    <div class="card mb-3">
+        <div class="card-header">New entity</div>
+        <div class="card-body">
+            <div class="row g-2 align-items-end">
+                <div class="col-sm-3">
+                    <label class="form-label small mb-0">Name</label>
+                    <input type="text" class="form-control form-control-sm" x-model="newEntity.name" placeholder="Customer">
+                </div>
+                <div class="col-sm-3">
+                    <label class="form-label small mb-0">Slug (optional)</label>
+                    <input type="text" class="form-control form-control-sm" x-model="newEntity.slug" placeholder="auto from name">
+                </div>
+                <div class="col-sm-4">
+                    <label class="form-label small mb-0">Description</label>
+                    <input type="text" class="form-control form-control-sm" x-model="newEntity.description">
+                </div>
+                <div class="col-sm-2">
+                    <button type="button" class="btn btn-sm btn-primary w-100" @click="create()">Create</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div x-show="loading" class="text-muted" x-cloak>Loading entities&hellip;</div>
+
+    <div class="card" x-show="!loading" x-cloak>
+        <div class="table-responsive">
+            <table class="table table-sm align-middle mb-0">
+                <thead>
+                    <tr><th>Name</th><th>Slug</th><th>Description</th><th>Bindings</th><th></th></tr>
+                </thead>
+                <tbody>
+                    <template x-for="e in entities" :key="e.id">
+                        <tr>
+                            <td x-text="e.name"></td>
+                            <td><code x-text="e.slug"></code></td>
+                            <td class="text-muted small" x-text="e.description"></td>
+                            <td x-text="e.binding_count"></td>
+                            <td class="text-end">
+                                <button type="button" class="btn btn-sm btn-outline-danger py-0"
+                                        @click="remove(e.id)">Delete</button>
+                            </td>
+                        </tr>
+                    </template>
+                    <tr x-show="entities.length === 0">
+                        <td colspan="5" class="text-muted small">No entities yet.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

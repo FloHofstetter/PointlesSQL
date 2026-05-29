@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block title %}Mesh health · PointlesSQL{% endblock %}
+
+{% set breadcrumbs = [
+ {"label": "Home", "href": "/"},
+ {"label": "Mesh", "href": "/mesh"},
+ {"label": "Health"}
+] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block content %}
+<div x-data="meshHealth({{ ((is_admin) or false)|tojson }})" x-init="init()">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <div class="d-flex align-items-center gap-2">
+            <i class="bi bi-heart-pulse fs-3"></i>
+            <h1 class="h3 mb-0">Mesh health</h1>
+        </div>
+        <button type="button" class="btn btn-outline-primary btn-sm" x-show="isAdmin"
+                :disabled="scanning" @click="runScan()">
+            <i class="bi bi-arrow-repeat me-1"></i>
+            <span x-text="scanning ? 'Scanning…' : 'Evaluate SLOs now'"></span>
+        </button>
+    </div>
+
+    <p class="text-muted">
+        SLO verdicts rolled up across every product. A product is red if any objective fails,
+        green if at least one is scored and none fail.
+    </p>
+
+    <div x-show="loading" class="text-muted" x-cloak>Loading mesh health&hellip;</div>
+    <div class="alert alert-danger" x-show="error" x-text="error" x-cloak></div>
+    <div class="alert alert-info py-1 px-2 small" x-show="scanResult" x-text="scanResult" x-cloak></div>
+
+    <div class="row g-3 mb-3" x-show="!loading" x-cloak>
+        <div class="col-6 col-md-3">
+            <div class="card text-center"><div class="card-body py-2">
+                <div class="h4 mb-0" x-text="summary.total_products"></div>
+                <div class="text-muted small">products</div>
+            </div></div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card text-center border-success"><div class="card-body py-2">
+                <div class="h4 mb-0 text-success" x-text="(summary.bands && summary.bands.green) || 0"></div>
+                <div class="text-muted small">green</div>
+            </div></div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card text-center border-danger"><div class="card-body py-2">
+                <div class="h4 mb-0 text-danger" x-text="(summary.bands && summary.bands.red) || 0"></div>
+                <div class="text-muted small">red</div>
+            </div></div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card text-center"><div class="card-body py-2">
+                <div class="h4 mb-0" x-text="rate(summary.pass_rate)"></div>
+                <div class="text-muted small">objective pass rate</div>
+            </div></div>
+        </div>
+    </div>
+
+    <div class="card" x-show="!loading" x-cloak>
+        <div class="table-responsive">
+            <table class="table table-sm align-middle mb-0">
+                <thead>
+                    <tr><th>Product</th><th>Band</th><th>Passed</th><th>Failed</th><th>Unmeasured</th><th>Pass rate</th></tr>
+                </thead>
+                <tbody>
+                    <template x-for="p in products" :key="p.data_product_id">
+                        <tr>
+                            <td><a :href="'/data-products/' + p.catalog + '/' + p.schema" x-text="p.ref"></a></td>
+                            <td><span class="badge" :class="bandClass(p.band)" x-text="p.band"></span></td>
+                            <td x-text="p.passed"></td>
+                            <td x-text="p.failed"></td>
+                            <td x-text="p.unmeasured"></td>
+                            <td x-text="rate(p.pass_rate)"></td>
+                        </tr>
+                    </template>
+                    <tr x-show="products.length === 0">
+                        <td colspan="6" class="text-muted small">No products in this workspace.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

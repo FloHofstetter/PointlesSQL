@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Mesh · PointlesSQL{% endblock %}
+
+{% set breadcrumbs = [
+ {"label": "Home", "href": "/"},
+ {"label": "Mesh"}
+] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block content %}
+<div x-data="meshGraph()" x-init="init()">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <div class="d-flex align-items-center gap-2">
+            <i class="bi bi-diagram-3 fs-3"></i>
+            <h1 class="h3 mb-0">Mesh graph</h1>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="/mesh/health" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-heart-pulse me-1"></i>Health
+            </a>
+            <a href="/mesh/entities" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-tags me-1"></i>Entities
+            </a>
+        </div>
+    </div>
+
+    <p class="text-muted">
+        The dependency graph that emerges from each product declaring its own upstreams:
+        nodes are data products, edges are declared <code>upstream_product</code> input ports
+        (producer → consumer).
+    </p>
+
+    <div x-show="loading" class="text-muted" x-cloak>Loading mesh graph&hellip;</div>
+    <div class="alert alert-danger" x-show="error" x-text="error" x-cloak></div>
+
+    <div class="card" x-show="!loading" x-cloak>
+        <div class="card-body">
+            <div class="text-muted small mb-2">
+                <span x-text="nodeCount"></span> products,
+                <span x-text="edgeCount"></span> declared edges
+            </div>
+            <div id="mesh-cy" style="width: 100%; height: 600px;"></div>
+            <div class="text-muted small" x-show="nodeCount === 0">
+                No data products yet.
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

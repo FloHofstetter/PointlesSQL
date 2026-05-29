@@ -88,6 +88,7 @@ def build_default_registry() -> KindRegistry:
         _pg_sync_executor,
         _policy_compliance_executor,
         _python_executor,
+        _slo_evaluation_executor,
     )
 
     registry = KindRegistry()
@@ -98,5 +99,6 @@ def build_default_registry() -> KindRegistry:
     registry.register("branch_cleanup", _branch_cleanup_executor)
     registry.register("coedit_compaction", _coedit_compaction_executor)
     registry.register("policy_compliance", _policy_compliance_executor)
+    registry.register("slo_evaluation", _slo_evaluation_executor)
     registry.register("ingest_pull", ingest_pull_executor)
     return registry

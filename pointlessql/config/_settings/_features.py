@@ -213,6 +213,32 @@ class ConventionsSettings(BaseSettings):
     path: Path | None = None
 
 
+class BitemporalSettings(BaseSettings):
+    """Bitemporal-convention configuration for data-product writes.
+
+    Reads ``POINTLESSQL_BITEMPORAL_*`` environment variables.  Data Mesh
+    treats every record as carrying two clocks: *processing time* (when
+    the platform recorded it) and *event/business time* (when the fact
+    happened).  The platform can stamp processing time itself — but
+    business time lives in the data and can only be a convention the
+    producer follows.
+
+    ``inject_processing_time`` is **opt-in (default off)** because
+    stamping a new column evolves the Delta schema of every written
+    table; enabling it on an existing table triggers a schema evolution
+    on the next write.  ``processing_time_column`` / ``event_time_column``
+    name the standard columns the convention uses; the discovery
+    contract advertises them and the as-of read helper filters on
+    ``event_time_column``.
+    """
+
+    model_config = SettingsConfigDict(env_prefix="POINTLESSQL_BITEMPORAL_")
+
+    inject_processing_time: bool = False
+    processing_time_column: str = "_processing_time"
+    event_time_column: str = "_event_time"
+
+
 class DataProductsSettings(BaseSettings):
     """Data-product loader + freshness-scanner configuration.
 

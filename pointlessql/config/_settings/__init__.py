@@ -33,6 +33,7 @@ from pointlessql.config._settings._auth import (
 from pointlessql.config._settings._features import (
     ApiKeyAclSettings,
     ApiKeyLifecycleSettings,
+    BitemporalSettings,
     BranchSettings,
     CoeditSettings,
     ConventionsSettings,
@@ -95,6 +96,7 @@ class Settings(BaseSettings):
     cdf_tail: CDFTailSettings = Field(default_factory=CDFTailSettings)
     branch: BranchSettings = Field(default_factory=BranchSettings)
     conventions: ConventionsSettings = Field(default_factory=ConventionsSettings)
+    bitemporal: BitemporalSettings = Field(default_factory=BitemporalSettings)
     data_products: DataProductsSettings = Field(default_factory=DataProductsSettings)
     notifications: NotificationsSettings = Field(default_factory=NotificationsSettings)
     workspace_repos: WorkspaceReposSettings = Field(default_factory=WorkspaceReposSettings)
@@ -112,6 +114,7 @@ __all__ = [
     "AuditSettings",
     "AuditStreamSettings",
     "AuthSettings",
+    "BitemporalSettings",
     "BranchSettings",
     "CDFTailSettings",
     "CoeditSettings",

@@ -1925,7 +1925,7 @@
     },
     "/admin/audit": {
       "get": {
-        "description": "Render the admin audit-log viewer.\n\nReads from the ``audit_log`` table (written append-only by\nevery admin state-change via :func:`audit`) and shows\n:data:`ADMIN_AUDIT_LIMIT` rows per page matching the requested\nfilters.  Admin-gated because the log carries cross-user activity\nthat a non-admin principal must not see.  Re-uses the ``/jobs``\n``listTable`` Alpine component for search and chip filtering so\nthe page inherits sorting, search, and mobile stacking without\nnew frontend primitives.\n\nPhase 54.3 turned the previous single-shot truncation cap into a\nreal ``offset``-based pagination: a separate ``COUNT(*)`` query\ndrives the page-link footer (Bootstrap 5.3 ``pagination``\ncomponent via ``_macros/pagination.html``).  The client-side\nfilter chips operate on the visible page only \u2014 same trade-off\nas ``/runs``.",
+        "description": "Render the admin audit-log viewer.\n\nReads from the ``audit_log`` table (written append-only by\nevery admin state-change via :func:`audit`) and shows\n:data:`ADMIN_AUDIT_LIMIT` rows per page matching the requested\nfilters.  Admin-gated because the log carries cross-user activity\nthat a non-admin principal must not see.  Re-uses the ``/jobs``\n``listTable`` Alpine component for search and chip filtering so\nthe page inherits sorting, search, and mobile stacking without\nnew frontend primitives.\n\nThe viewer uses real ``offset``-based pagination: a separate\n``COUNT(*)`` query drives the page-link footer (Bootstrap 5.3\n``pagination`` component via ``_macros/pagination.html``).  The\nclient-side filter chips operate on the visible page only \u2014\nsame trade-off as ``/runs``.",
         "operationId": "admin_audit_index_admin_audit_get",
         "parameters": [
           {
@@ -2334,6 +2334,28 @@
         ]
       }
     },
+    "/admin/domains": {
+      "get": {
+        "description": "Render the admin domains cockpit.\n\nCombines the list view, create form, and per-row member\ndrill-down into one HTMX-driven page so admins manage the most\ncommon flows without route hopping.",
+        "operationId": "admin_domains_page_admin_domains_get",
+        "responses": {
+          "200": {
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Admin Domains Page",
+        "tags": [
+          "admin-domains"
+        ]
+      }
+    },
     "/admin/external-writes": {
       "get": {
         "description": "Render the unattributed-writes admin page.\n\nArgs:\n    request: Incoming FastAPI request.\n    table_fqn_like: Optional substring filter on ``table_fqn``.\n    only_unacknowledged: Toggle for the unacknowledged-only\n        view (default ``True`` \u2014 that's the queue admins\n        actually need to work on).\n\nReturns:\n    The rendered HTML page.",
@@ -2392,6 +2414,72 @@
         "tags": [
           "admin",
           "external-writes"
+        ]
+      }
+    },
+    "/admin/glossary": {
+      "get": {
+        "description": "Render the admin glossary cockpit (list + create + bindings).",
+        "operationId": "admin_glossary_page_admin_glossary_get",
+        "responses": {
+          "200": {
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Admin Glossary Page",
+        "tags": [
+          "admin-glossary"
+        ]
+      }
+    },
+    "/admin/governance": {
+      "get": {
+        "description": "Render the admin governance cockpit (workspace default + scan).",
+        "operationId": "admin_governance_page_admin_governance_get",
+        "responses": {
+          "200": {
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Admin Governance Page",
+        "tags": [
+          "admin-governance"
+        ]
+      }
+    },
+    "/admin/mesh-entities": {
+      "get": {
+        "description": "Render the admin mesh-entity cockpit (list + create).",
+        "operationId": "admin_mesh_entities_page_admin_mesh_entities_get",
+        "responses": {
+          "200": {
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Admin Mesh Entities Page",
+        "tags": [
+          "admin-mesh-entities"
         ]
       }
     },
@@ -4137,6 +4225,416 @@
         ]
       }
     },
+    "/api/admin/domains": {
+      "get": {
+        "description": "List the active workspace's domains.\n\nArgs:\n    request: Incoming FastAPI request.\n    include_archived: When ``True`` archived domains are included.\n\nReturns:\n    ``{\"domains\": [...]}`` ordered by name ascending.",
+        "operationId": "api_admin_list_domains_api_admin_domains_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "include_archived",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Include Archived",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Admin List Domains Api Admin Domains Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Admin List Domains",
+        "tags": [
+          "admin-domains"
+        ]
+      },
+      "post": {
+        "description": "Create a domain + an owner membership for the caller.\n\nArgs:\n    request: Incoming FastAPI request.\n    body: ``{\"slug\": str, \"name\": str, \"archetype\": str,\n        \"description\"?: str}``.\n\nReturns:\n    The serialized domain row.\n\nRaises:\n    ValidationError: On malformed slug / name / archetype or a\n        slug already taken in the workspace.",
+        "operationId": "api_admin_create_domain_api_admin_domains_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Body",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Admin Create Domain Api Admin Domains Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Admin Create Domain",
+        "tags": [
+          "admin-domains"
+        ]
+      }
+    },
+    "/api/admin/domains/{domain_id}": {
+      "patch": {
+        "description": "Rename a domain, edit its description, or change its archetype.\n\nArgs:\n    request: Incoming FastAPI request.\n    domain_id: ``Domain.id``.\n    body: ``{\"name\"?: str, \"description\"?: str | None,\n        \"archetype\"?: str}``.  At least one field required; slug\n        is intentionally immutable (audit + URLs reference it).\n\nReturns:\n    The updated domain row.\n\nRaises:\n    ValidationError: When the body is empty or a field is invalid.\n    CatalogNotFoundError: When no domain has that id.",
+        "operationId": "api_admin_update_domain_api_admin_domains__domain_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "domain_id",
+            "required": true,
+            "schema": {
+              "title": "Domain Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Body",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Admin Update Domain Api Admin Domains  Domain Id  Patch",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Admin Update Domain",
+        "tags": [
+          "admin-domains"
+        ]
+      }
+    },
+    "/api/admin/domains/{domain_id}/archive": {
+      "post": {
+        "description": "Soft-archive *domain_id*.\n\nArchiving leaves any product ``domain_id`` references intact \u2014 the\nproducts simply point at an archived domain, which the browse UI\nhides from the active list.\n\nArgs:\n    request: Incoming FastAPI request.\n    domain_id: ``Domain.id`` to archive.\n\nReturns:\n    The archived domain row.",
+        "operationId": "api_admin_archive_domain_api_admin_domains__domain_id__archive_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "domain_id",
+            "required": true,
+            "schema": {
+              "title": "Domain Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Admin Archive Domain Api Admin Domains  Domain Id  Archive Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Admin Archive Domain",
+        "tags": [
+          "admin-domains"
+        ]
+      }
+    },
+    "/api/admin/domains/{domain_id}/members": {
+      "get": {
+        "description": "Return every member of *domain_id* with their joined email.",
+        "operationId": "api_admin_list_members_api_admin_domains__domain_id__members_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "domain_id",
+            "required": true,
+            "schema": {
+              "title": "Domain Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Admin List Members Api Admin Domains  Domain Id  Members Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Admin List Members",
+        "tags": [
+          "admin-domains"
+        ]
+      },
+      "post": {
+        "description": "Add (or update the role of) one member to a domain.\n\nIdempotent: re-adding a user with a different role updates the\nexisting row in place.\n\nArgs:\n    request: Incoming FastAPI request.\n    domain_id: Target domain.\n    body: ``{\"user_id\"?: int, \"user_email\"?: str, \"role\"?: str}``.\n        One of ``user_id`` / ``user_email`` is required; ``role``\n        defaults to ``\"owner\"``.\n\nReturns:\n    Serialized member row.\n\nRaises:\n    ValidationError: When the body is malformed.\n    CatalogNotFoundError: When the domain or user does not exist.",
+        "operationId": "api_admin_add_member_api_admin_domains__domain_id__members_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "domain_id",
+            "required": true,
+            "schema": {
+              "title": "Domain Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Body",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Admin Add Member Api Admin Domains  Domain Id  Members Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Admin Add Member",
+        "tags": [
+          "admin-domains"
+        ]
+      }
+    },
+    "/api/admin/domains/{domain_id}/members/{user_id}": {
+      "delete": {
+        "description": "Remove a user from a domain.\n\nReturns:\n    ``{\"deleted\": bool}`` \u2014 ``False`` when no membership existed.",
+        "operationId": "api_admin_remove_member_api_admin_domains__domain_id__members__user_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "domain_id",
+            "required": true,
+            "schema": {
+              "title": "Domain Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "title": "User Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Admin Remove Member Api Admin Domains  Domain Id  Members  User Id  Delete",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Admin Remove Member",
+        "tags": [
+          "admin-domains"
+        ]
+      },
+      "patch": {
+        "description": "Change a member's role.\n\nArgs:\n    request: Incoming FastAPI request.\n    domain_id: ``Domain.id``.\n    user_id: ``User.id``.\n    body: ``{\"role\": \"owner\" | \"developer\"}``.\n\nReturns:\n    Updated member row.\n\nRaises:\n    CatalogNotFoundError: When the membership does not exist.\n    ValidationError: When the role is invalid.",
+        "operationId": "api_admin_update_member_role_api_admin_domains__domain_id__members__user_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "domain_id",
+            "required": true,
+            "schema": {
+              "title": "Domain Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "title": "User Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Body",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Admin Update Member Role Api Admin Domains  Domain Id  Members  User Id  Patch",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Admin Update Member Role",
+        "tags": [
+          "admin-domains"
+        ]
+      }
+    },
     "/api/admin/expected-producers": {
       "get": {
         "description": "List registered upstream-producer expectations for this workspace.\n\nArgs:\n    request: Incoming FastAPI request.\n    only_active: When True, omits ``is_active=False`` rows.\n\nReturns:\n    ``{\"expectations\": [{...}, ...]}`` ordered by ``created_at DESC``.",
@@ -4533,6 +5031,365 @@
         ]
       }
     },
+    "/api/admin/glossary": {
+      "get": {
+        "description": "List the active workspace's glossary terms.",
+        "operationId": "api_admin_list_terms_api_admin_glossary_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Admin List Terms Api Admin Glossary Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Api Admin List Terms",
+        "tags": [
+          "admin-glossary"
+        ]
+      },
+      "post": {
+        "description": "Create a glossary term.\n\nArgs:\n    request: Incoming FastAPI request.\n    body: ``{\"slug\": str, \"term\": str, \"definition\"?: str}``.\n\nReturns:\n    The serialized term row.\n\nRaises:\n    ValidationError: On malformed slug / term or a slug already\n        taken in the workspace.",
+        "operationId": "api_admin_create_term_api_admin_glossary_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Body",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Admin Create Term Api Admin Glossary Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Admin Create Term",
+        "tags": [
+          "admin-glossary"
+        ]
+      }
+    },
+    "/api/admin/glossary/{term_id}": {
+      "delete": {
+        "description": "Delete a glossary term (and, via CASCADE, its bindings).",
+        "operationId": "api_admin_delete_term_api_admin_glossary__term_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "term_id",
+            "required": true,
+            "schema": {
+              "title": "Term Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Admin Delete Term Api Admin Glossary  Term Id  Delete",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Admin Delete Term",
+        "tags": [
+          "admin-glossary"
+        ]
+      }
+    },
+    "/api/admin/glossary/{term_id}/bindings": {
+      "get": {
+        "description": "Return every column binding for a term.",
+        "operationId": "api_admin_list_bindings_api_admin_glossary__term_id__bindings_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "term_id",
+            "required": true,
+            "schema": {
+              "title": "Term Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Admin List Bindings Api Admin Glossary  Term Id  Bindings Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Admin List Bindings",
+        "tags": [
+          "admin-glossary"
+        ]
+      },
+      "post": {
+        "description": "Bind a term to one UC column.\n\nArgs:\n    request: Incoming FastAPI request.\n    term_id: ``GlossaryTerm.id``.\n    body: ``{\"catalog\": str, \"schema\": str, \"table\": str,\n        \"column\": str}``.\n\nReturns:\n    The serialized binding row.\n\nRaises:\n    ValidationError: When a ref segment is missing.",
+        "operationId": "api_admin_bind_column_api_admin_glossary__term_id__bindings_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "term_id",
+            "required": true,
+            "schema": {
+              "title": "Term Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Body",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Admin Bind Column Api Admin Glossary  Term Id  Bindings Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Admin Bind Column",
+        "tags": [
+          "admin-glossary"
+        ]
+      }
+    },
+    "/api/admin/glossary/{term_id}/bindings/{binding_id}": {
+      "delete": {
+        "description": "Remove a column binding from a term.",
+        "operationId": "api_admin_unbind_column_api_admin_glossary__term_id__bindings__binding_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "term_id",
+            "required": true,
+            "schema": {
+              "title": "Term Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "binding_id",
+            "required": true,
+            "schema": {
+              "title": "Binding Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Admin Unbind Column Api Admin Glossary  Term Id  Bindings  Binding Id  Delete",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Admin Unbind Column",
+        "tags": [
+          "admin-glossary"
+        ]
+      }
+    },
+    "/api/admin/governance/policy": {
+      "get": {
+        "description": "Return the workspace default policy.",
+        "operationId": "api_admin_get_policy_api_admin_governance_policy_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Admin Get Policy Api Admin Governance Policy Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Api Admin Get Policy",
+        "tags": [
+          "admin-governance"
+        ]
+      },
+      "put": {
+        "description": "Set the workspace default policy.\n\nBody keys (all optional): ``retention_days``, ``encryption_class``,\n``residency_region``, ``consent_required``, ``consent_basis``.",
+        "operationId": "api_admin_set_policy_api_admin_governance_policy_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "default": {},
+                "title": "Body",
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Admin Set Policy Api Admin Governance Policy Put",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Admin Set Policy",
+        "tags": [
+          "admin-governance"
+        ]
+      }
+    },
+    "/api/admin/governance/scan": {
+      "post": {
+        "description": "Run the policy-compliance scan now and return a summary.",
+        "operationId": "api_admin_run_scan_api_admin_governance_scan_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Admin Run Scan Api Admin Governance Scan Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Api Admin Run Scan",
+        "tags": [
+          "admin-governance"
+        ]
+      }
+    },
     "/api/admin/ingest-sources": {
       "get": {
         "description": "List every IngestSource with a rollup health row.\n\nArgs:\n    request: Incoming FastAPI request.\n\nReturns:\n    ``{\"sources\": [{...}, ...]}`` ordered newest-first.",
@@ -4733,6 +5590,119 @@
           }
         },
         "summary": "Test Provider Endpoint"
+      }
+    },
+    "/api/admin/mesh-entities": {
+      "get": {
+        "description": "List the active workspace's mesh entities with binding counts.",
+        "operationId": "api_admin_list_entities_api_admin_mesh_entities_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Admin List Entities Api Admin Mesh Entities Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Api Admin List Entities",
+        "tags": [
+          "admin-mesh-entities"
+        ]
+      },
+      "post": {
+        "description": "Create a mesh entity.\n\nArgs:\n    request: Incoming FastAPI request.\n    body: ``{\"name\": str, \"slug\"?: str, \"description\"?: str}``.\n\nReturns:\n    The serialized entity row.\n\nRaises:\n    ValidationError: On an empty name or invalid slug.",
+        "operationId": "api_admin_create_entity_api_admin_mesh_entities_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Body",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Admin Create Entity Api Admin Mesh Entities Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Admin Create Entity",
+        "tags": [
+          "admin-mesh-entities"
+        ]
+      }
+    },
+    "/api/admin/mesh-entities/{entity_id}": {
+      "delete": {
+        "description": "Delete a mesh entity (and, via CASCADE, its bindings).",
+        "operationId": "api_admin_delete_entity_api_admin_mesh_entities__entity_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "entity_id",
+            "required": true,
+            "schema": {
+              "title": "Entity Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Admin Delete Entity Api Admin Mesh Entities  Entity Id  Delete",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Admin Delete Entity",
+        "tags": [
+          "admin-mesh-entities"
+        ]
       }
     },
     "/api/admin/repos": {
@@ -11748,6 +12718,190 @@
         ]
       }
     },
+    "/api/data-products/{catalog}/{schema}/classifications": {
+      "get": {
+        "description": "List the column classifications declared on this product.",
+        "operationId": "list_classifications_api_data_products__catalog___schema__classifications_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "catalog",
+            "required": true,
+            "schema": {
+              "title": "Catalog",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "schema",
+            "required": true,
+            "schema": {
+              "title": "Schema",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response List Classifications Api Data Products  Catalog   Schema  Classifications Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Classifications",
+        "tags": [
+          "data-products",
+          "data-products"
+        ]
+      },
+      "post": {
+        "description": "Classify one column.\n\nBody: ``{\"table\": str, \"column\": str, \"classification\":\n\"public\"|\"internal\"|\"confidential\"|\"pii\"|\"phi\",\n\"masking_strategy\"?: str}``.",
+        "operationId": "add_classification_api_data_products__catalog___schema__classifications_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "catalog",
+            "required": true,
+            "schema": {
+              "title": "Catalog",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "schema",
+            "required": true,
+            "schema": {
+              "title": "Schema",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "default": {},
+                "title": "Body",
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Add Classification Api Data Products  Catalog   Schema  Classifications Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Add Classification",
+        "tags": [
+          "data-products",
+          "data-products"
+        ]
+      }
+    },
+    "/api/data-products/{catalog}/{schema}/classifications/{classification_id}": {
+      "delete": {
+        "description": "Remove a column classification from this product.",
+        "operationId": "delete_classification_api_data_products__catalog___schema__classifications__classification_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "catalog",
+            "required": true,
+            "schema": {
+              "title": "Catalog",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "schema",
+            "required": true,
+            "schema": {
+              "title": "Schema",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "classification_id",
+            "required": true,
+            "schema": {
+              "title": "Classification Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Delete Classification Api Data Products  Catalog   Schema  Classifications  Classification Id  Delete",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Classification",
+        "tags": [
+          "data-products",
+          "data-products"
+        ]
+      }
+    },
     "/api/data-products/{catalog}/{schema}/comments": {
       "get": {
         "description": "Return every live comment for the product in threaded order.\n\nA soft-deleted top-level comment with no live children is\nomitted; a soft-deleted parent whose replies are still live\nis rendered as a placeholder so the reply chain stays\ncoherent.\n\nArgs:\n    catalog: UC catalog segment.\n    schema: UC schema segment.\n    request: Incoming FastAPI request.\n\nReturns:\n    ``{\"data_product_id\": int, \"comments\": [...]}`` flattened\n    in (parent_id, created_at) order.",
@@ -12199,6 +13353,140 @@
         ]
       }
     },
+    "/api/data-products/{catalog}/{schema}/control/forget": {
+      "post": {
+        "description": "Erase a data subject's rows across the product's declared tables.\n\nBody: ``{\"subject_column\": str, \"subject_value\": str}``.  Destructive\n+ irreversible \u2014 steward/admin only.  The subject value is used for\nthe delete predicate and a ledger hash; it is never stored raw.",
+        "operationId": "right_to_be_forgotten_api_data_products__catalog___schema__control_forget_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "catalog",
+            "required": true,
+            "schema": {
+              "title": "Catalog",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "schema",
+            "required": true,
+            "schema": {
+              "title": "Schema",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "default": {},
+                "title": "Body",
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Right To Be Forgotten Api Data Products  Catalog   Schema  Control Forget Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Right To Be Forgotten",
+        "tags": [
+          "data-products",
+          "data-products"
+        ]
+      }
+    },
+    "/api/data-products/{catalog}/{schema}/control/forget-requests": {
+      "post": {
+        "description": "Propose a right-to-be-forgotten request without executing it.\n\nThe path a supervised agent takes: it records a ``proposed`` ledger\nrow (subject value stored hashed, no deletion) that a steward/admin\nreviews and then executes via ``POST .../control/forget``.  Open to\nany authenticated user.",
+        "operationId": "propose_forget_request_api_data_products__catalog___schema__control_forget_requests_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "catalog",
+            "required": true,
+            "schema": {
+              "title": "Catalog",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "schema",
+            "required": true,
+            "schema": {
+              "title": "Schema",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "default": {},
+                "title": "Body",
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Propose Forget Request Api Data Products  Catalog   Schema  Control Forget Requests Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Propose Forget Request",
+        "tags": [
+          "data-products",
+          "data-products"
+        ]
+      }
+    },
     "/api/data-products/{catalog}/{schema}/diff": {
       "get": {
         "description": "Live-diff every declared table's contract against on-disk Delta schema.\n\nArgs:\n    catalog: UC catalog segment.\n    schema: UC schema segment.\n    request: Incoming FastAPI request.\n\nReturns:\n    ``{\"product_ref\": \"cat.sch\", \"tables\": [{name, ...diff} | {error}]}``\n    per declared table.  Tables not on disk surface ``error`` rather\n    than failing the whole call.",
@@ -12248,6 +13536,128 @@
           }
         },
         "summary": "Diff Data Product",
+        "tags": [
+          "data-products",
+          "data-products"
+        ]
+      }
+    },
+    "/api/data-products/{catalog}/{schema}/discovery": {
+      "get": {
+        "description": "Return the product's machine-readable discovery contract.\n\nArgs:\n    catalog: UC catalog segment.\n    schema: UC schema segment.\n    request: Incoming FastAPI request.\n\nReturns:\n    The discovery envelope (see module docstring).  Aggregate\n    collections are empty when the owner has not declared them\n    yet \u2014 the endpoint never 404s except when the product itself\n    is missing.",
+        "operationId": "get_discovery_contract_api_data_products__catalog___schema__discovery_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "catalog",
+            "required": true,
+            "schema": {
+              "title": "Catalog",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "schema",
+            "required": true,
+            "schema": {
+              "title": "Schema",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Discovery Contract Api Data Products  Catalog   Schema  Discovery Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Discovery Contract",
+        "tags": [
+          "data-products",
+          "data-products"
+        ]
+      }
+    },
+    "/api/data-products/{catalog}/{schema}/domain": {
+      "patch": {
+        "description": "Set or clear the product's owning domain.\n\nBody ``{\"domain_id\": int}`` assigns; ``{\"domain_id\": null}``\nunassigns.  The domain must live in the same workspace.\n\nReturns:\n    ``{\"data_product_id\": int, \"domain_id\": int | None}``.",
+        "operationId": "assign_domain_api_data_products__catalog___schema__domain_patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "catalog",
+            "required": true,
+            "schema": {
+              "title": "Catalog",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "schema",
+            "required": true,
+            "schema": {
+              "title": "Schema",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "default": {},
+                "title": "Body",
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Assign Domain Api Data Products  Catalog   Schema  Domain Patch",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Assign Domain",
         "tags": [
           "data-products",
           "data-products"
@@ -12436,6 +13846,250 @@
           }
         },
         "summary": "Remove Endorsement",
+        "tags": [
+          "data-products",
+          "data-products"
+        ]
+      }
+    },
+    "/api/data-products/{catalog}/{schema}/entities": {
+      "get": {
+        "description": "Return the entities bound to this product + the available registry.",
+        "operationId": "list_entity_bindings_api_data_products__catalog___schema__entities_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "catalog",
+            "required": true,
+            "schema": {
+              "title": "Catalog",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "schema",
+            "required": true,
+            "schema": {
+              "title": "Schema",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response List Entity Bindings Api Data Products  Catalog   Schema  Entities Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Entity Bindings",
+        "tags": [
+          "data-products",
+          "data-products"
+        ]
+      },
+      "post": {
+        "description": "Bind one of this product's columns to a mesh entity.\n\nBody: ``{\"entity_slug\": str, \"table\": str, \"column\": str}``.",
+        "operationId": "bind_entity_column_api_data_products__catalog___schema__entities_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "catalog",
+            "required": true,
+            "schema": {
+              "title": "Catalog",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "schema",
+            "required": true,
+            "schema": {
+              "title": "Schema",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "default": {},
+                "title": "Body",
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Bind Entity Column Api Data Products  Catalog   Schema  Entities Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Bind Entity Column",
+        "tags": [
+          "data-products",
+          "data-products"
+        ]
+      }
+    },
+    "/api/data-products/{catalog}/{schema}/entities/{binding_id}": {
+      "delete": {
+        "description": "Remove a mesh-entity binding from this product.",
+        "operationId": "unbind_entity_column_api_data_products__catalog___schema__entities__binding_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "catalog",
+            "required": true,
+            "schema": {
+              "title": "Catalog",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "schema",
+            "required": true,
+            "schema": {
+              "title": "Schema",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "binding_id",
+            "required": true,
+            "schema": {
+              "title": "Binding Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Unbind Entity Column Api Data Products  Catalog   Schema  Entities  Binding Id  Delete",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Unbind Entity Column",
+        "tags": [
+          "data-products",
+          "data-products"
+        ]
+      }
+    },
+    "/api/data-products/{catalog}/{schema}/export": {
+      "get": {
+        "description": "Stream one declared product table as a Parquet download.\n\nArgs:\n    catalog: UC catalog segment.\n    schema: UC schema segment.\n    request: Incoming FastAPI request.\n    table: The table to export \u2014 must be declared in the product\n        contract.\n\nReturns:\n    A ``StreamingResponse`` carrying the Parquet payload with a\n    ``Content-Disposition: attachment`` header.\n\nRaises:\n    BadRequestError: When the table isn't declared on the product.",
+        "operationId": "export_table_api_data_products__catalog___schema__export_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "catalog",
+            "required": true,
+            "schema": {
+              "title": "Catalog",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "schema",
+            "required": true,
+            "schema": {
+              "title": "Schema",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "table",
+            "required": true,
+            "schema": {
+              "title": "Table",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Export Table",
         "tags": [
           "data-products",
           "data-products"
@@ -12660,6 +14314,61 @@
         ]
       }
     },
+    "/api/data-products/{catalog}/{schema}/forget-requests": {
+      "get": {
+        "description": "Return the right-to-be-forgotten ledger for this product.",
+        "operationId": "list_forget_requests_api_data_products__catalog___schema__forget_requests_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "catalog",
+            "required": true,
+            "schema": {
+              "title": "Catalog",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "schema",
+            "required": true,
+            "schema": {
+              "title": "Schema",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response List Forget Requests Api Data Products  Catalog   Schema  Forget Requests Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Forget Requests",
+        "tags": [
+          "data-products",
+          "data-products"
+        ]
+      }
+    },
     "/api/data-products/{catalog}/{schema}/forks": {
       "get": {
         "description": "List active Delta-branch forks of the DP's UC schema.\n\nArgs:\n    request: Incoming FastAPI request.\n    catalog: UC catalog of the DP.\n    schema: UC schema of the DP.\n\nReturns:\n    ``{\"forks\": [{branch_schema_fqn, last_action, last_action_at}, ...]}``\n    ordered by most-recently-touched first.",
@@ -12713,6 +14422,61 @@
           "data-products",
           "data-products",
           "forks"
+        ]
+      }
+    },
+    "/api/data-products/{catalog}/{schema}/governance": {
+      "get": {
+        "description": "Return the aggregate the Governance tab renders.\n\nEffective policy + classifications + recent compliance violations +\nthe forget ledger (steward/admin only) + the A4 ownership\nsuggestion + a derived trust flag.",
+        "operationId": "governance_aggregate_api_data_products__catalog___schema__governance_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "catalog",
+            "required": true,
+            "schema": {
+              "title": "Catalog",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "schema",
+            "required": true,
+            "schema": {
+              "title": "Schema",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Governance Aggregate Api Data Products  Catalog   Schema  Governance Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Governance Aggregate",
+        "tags": [
+          "data-products",
+          "data-products"
         ]
       }
     },
@@ -12828,6 +14592,300 @@
         ]
       }
     },
+    "/api/data-products/{catalog}/{schema}/input-ports": {
+      "get": {
+        "description": "List the input ports declared on this product.",
+        "operationId": "list_input_ports_api_data_products__catalog___schema__input_ports_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "catalog",
+            "required": true,
+            "schema": {
+              "title": "Catalog",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "schema",
+            "required": true,
+            "schema": {
+              "title": "Schema",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response List Input Ports Api Data Products  Catalog   Schema  Input Ports Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Input Ports",
+        "tags": [
+          "data-products",
+          "data-products"
+        ]
+      },
+      "post": {
+        "description": "Declare an upstream input port on this product.\n\nBody: ``{\"name\": str, \"kind\": \"operational_system\"|\n\"upstream_product\"|\"external\", \"source_ref\"?: str,\n\"description\"?: str}``.",
+        "operationId": "create_input_port_api_data_products__catalog___schema__input_ports_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "catalog",
+            "required": true,
+            "schema": {
+              "title": "Catalog",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "schema",
+            "required": true,
+            "schema": {
+              "title": "Schema",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "default": {},
+                "title": "Body",
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Create Input Port Api Data Products  Catalog   Schema  Input Ports Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Input Port",
+        "tags": [
+          "data-products",
+          "data-products"
+        ]
+      }
+    },
+    "/api/data-products/{catalog}/{schema}/input-ports/{port_id}": {
+      "delete": {
+        "description": "Remove an input port from this product.",
+        "operationId": "delete_input_port_api_data_products__catalog___schema__input_ports__port_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "catalog",
+            "required": true,
+            "schema": {
+              "title": "Catalog",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "schema",
+            "required": true,
+            "schema": {
+              "title": "Schema",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "port_id",
+            "required": true,
+            "schema": {
+              "title": "Port Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Delete Input Port Api Data Products  Catalog   Schema  Input Ports  Port Id  Delete",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Input Port",
+        "tags": [
+          "data-products",
+          "data-products"
+        ]
+      }
+    },
+    "/api/data-products/{catalog}/{schema}/interop": {
+      "get": {
+        "description": "Return the aggregate the Interop tab renders.\n\nLocal mesh neighbourhood + entity bindings + the available entity\nregistry + the bitemporal convention + a manage flag.",
+        "operationId": "interop_aggregate_api_data_products__catalog___schema__interop_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "catalog",
+            "required": true,
+            "schema": {
+              "title": "Catalog",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "schema",
+            "required": true,
+            "schema": {
+              "title": "Schema",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Interop Aggregate Api Data Products  Catalog   Schema  Interop Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Interop Aggregate",
+        "tags": [
+          "data-products",
+          "data-products"
+        ]
+      }
+    },
+    "/api/data-products/{catalog}/{schema}/joinable": {
+      "get": {
+        "description": "Return shared-entity join keys between this product and ``other``.\n\nQuery param ``other`` is a ``catalog.schema`` ref.",
+        "operationId": "joinable_api_data_products__catalog___schema__joinable_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "catalog",
+            "required": true,
+            "schema": {
+              "title": "Catalog",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "schema",
+            "required": true,
+            "schema": {
+              "title": "Schema",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Joinable Api Data Products  Catalog   Schema  Joinable Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Joinable",
+        "tags": [
+          "data-products",
+          "data-products"
+        ]
+      }
+    },
     "/api/data-products/{catalog}/{schema}/lineage": {
       "get": {
         "description": "Return a minimal cytoscape graph of the product's tables + neighbours.\n\nEach declared table becomes a node; one-hop producers (via\n``lineage_row_edges.source_table``) and consumers (via\n``target_table``) are included so the steward sees what flows\ninto and out of the product.\n\nArgs:\n    catalog: UC catalog segment.\n    schema: UC schema segment.\n    request: Incoming FastAPI request.\n\nReturns:\n    ``{\"nodes\": [...], \"edges\": [...]}`` in the cytoscape data\n    shape (same as ``/api/models/.../lineage``).",
@@ -12877,6 +14935,245 @@
           }
         },
         "summary": "Get Data Product Lineage",
+        "tags": [
+          "data-products",
+          "data-products"
+        ]
+      }
+    },
+    "/api/data-products/{catalog}/{schema}/mesh-graph": {
+      "get": {
+        "description": "Return the product's local neighbourhood in the mesh graph.",
+        "operationId": "get_mesh_graph_api_data_products__catalog___schema__mesh_graph_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "catalog",
+            "required": true,
+            "schema": {
+              "title": "Catalog",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "schema",
+            "required": true,
+            "schema": {
+              "title": "Schema",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Mesh Graph Api Data Products  Catalog   Schema  Mesh Graph Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Mesh Graph",
+        "tags": [
+          "data-products",
+          "data-products"
+        ]
+      }
+    },
+    "/api/data-products/{catalog}/{schema}/output-ports": {
+      "get": {
+        "description": "List the output ports declared on this product.",
+        "operationId": "list_output_ports_api_data_products__catalog___schema__output_ports_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "catalog",
+            "required": true,
+            "schema": {
+              "title": "Catalog",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "schema",
+            "required": true,
+            "schema": {
+              "title": "Schema",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response List Output Ports Api Data Products  Catalog   Schema  Output Ports Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Output Ports",
+        "tags": [
+          "data-products",
+          "data-products"
+        ]
+      },
+      "post": {
+        "description": "Declare an output port on this product.\n\nBody: ``{\"name\": str, \"kind\": \"sql\"|\"file\"|\"event\",\n\"description\"?: str, \"format\"?: str, \"location\"?: str}``.",
+        "operationId": "create_output_port_api_data_products__catalog___schema__output_ports_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "catalog",
+            "required": true,
+            "schema": {
+              "title": "Catalog",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "schema",
+            "required": true,
+            "schema": {
+              "title": "Schema",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "default": {},
+                "title": "Body",
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Create Output Port Api Data Products  Catalog   Schema  Output Ports Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Output Port",
+        "tags": [
+          "data-products",
+          "data-products"
+        ]
+      }
+    },
+    "/api/data-products/{catalog}/{schema}/output-ports/{port_id}": {
+      "delete": {
+        "description": "Remove an output port from this product.",
+        "operationId": "delete_output_port_api_data_products__catalog___schema__output_ports__port_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "catalog",
+            "required": true,
+            "schema": {
+              "title": "Catalog",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "schema",
+            "required": true,
+            "schema": {
+              "title": "Schema",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "port_id",
+            "required": true,
+            "schema": {
+              "title": "Port Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Delete Output Port Api Data Products  Catalog   Schema  Output Ports  Port Id  Delete",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Output Port",
         "tags": [
           "data-products",
           "data-products"
@@ -12987,6 +15284,193 @@
           }
         },
         "summary": "Post Refresh Passport",
+        "tags": [
+          "data-products",
+          "data-products"
+        ]
+      }
+    },
+    "/api/data-products/{catalog}/{schema}/point-in-time-read": {
+      "post": {
+        "description": "Resolve a consistent as-of snapshot manifest across products.\n\nBody: ``{\"when\": iso8601, \"products\"?: [\"cat.schema\", ...]}``.  The\ntarget product is always included; extra products are added by ref.\nReturns the resolved Delta version + row count per declared table \u2014\nthe manifest a consumer uses to pull a reproducible cross-product\nsnapshot.",
+        "operationId": "point_in_time_read_api_data_products__catalog___schema__point_in_time_read_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "catalog",
+            "required": true,
+            "schema": {
+              "title": "Catalog",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "schema",
+            "required": true,
+            "schema": {
+              "title": "Schema",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "default": {},
+                "title": "Body",
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Point In Time Read Api Data Products  Catalog   Schema  Point In Time Read Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Point In Time Read",
+        "tags": [
+          "data-products",
+          "data-products"
+        ]
+      }
+    },
+    "/api/data-products/{catalog}/{schema}/policy": {
+      "get": {
+        "description": "Return the product's effective policy + raw override + workspace default.",
+        "operationId": "get_policy_api_data_products__catalog___schema__policy_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "catalog",
+            "required": true,
+            "schema": {
+              "title": "Catalog",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "schema",
+            "required": true,
+            "schema": {
+              "title": "Schema",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Policy Api Data Products  Catalog   Schema  Policy Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Policy",
+        "tags": [
+          "data-products",
+          "data-products"
+        ]
+      },
+      "put": {
+        "description": "Set the product's policy overrides.\n\nBody keys (all optional): ``retention_days``, ``encryption_class``,\n``residency_region``, ``consent_required``, ``consent_basis``.  Pass\nan explicit ``null`` to clear a field back to \"inherit\".",
+        "operationId": "set_policy_api_data_products__catalog___schema__policy_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "catalog",
+            "required": true,
+            "schema": {
+              "title": "Catalog",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "schema",
+            "required": true,
+            "schema": {
+              "title": "Schema",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "default": {},
+                "title": "Body",
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Set Policy Api Data Products  Catalog   Schema  Policy Put",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Set Policy",
         "tags": [
           "data-products",
           "data-products"
@@ -14035,6 +16519,553 @@
         ]
       }
     },
+    "/api/data-products/{catalog}/{schema}/semantic": {
+      "get": {
+        "description": "Return the product's semantic concepts + example query.",
+        "operationId": "get_semantic_api_data_products__catalog___schema__semantic_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "catalog",
+            "required": true,
+            "schema": {
+              "title": "Catalog",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "schema",
+            "required": true,
+            "schema": {
+              "title": "Schema",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Semantic Api Data Products  Catalog   Schema  Semantic Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Semantic",
+        "tags": [
+          "data-products",
+          "data-products"
+        ]
+      }
+    },
+    "/api/data-products/{catalog}/{schema}/semantic/concepts": {
+      "post": {
+        "description": "Declare a business concept on this product.\n\nBody: ``{\"concept\": str, \"description\"?: str, \"maps_to\"?: str}``.",
+        "operationId": "add_concept_api_data_products__catalog___schema__semantic_concepts_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "catalog",
+            "required": true,
+            "schema": {
+              "title": "Catalog",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "schema",
+            "required": true,
+            "schema": {
+              "title": "Schema",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "default": {},
+                "title": "Body",
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Add Concept Api Data Products  Catalog   Schema  Semantic Concepts Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Add Concept",
+        "tags": [
+          "data-products",
+          "data-products"
+        ]
+      }
+    },
+    "/api/data-products/{catalog}/{schema}/semantic/concepts/{concept_id}": {
+      "delete": {
+        "description": "Remove a semantic concept from this product.",
+        "operationId": "delete_concept_api_data_products__catalog___schema__semantic_concepts__concept_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "catalog",
+            "required": true,
+            "schema": {
+              "title": "Catalog",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "schema",
+            "required": true,
+            "schema": {
+              "title": "Schema",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "concept_id",
+            "required": true,
+            "schema": {
+              "title": "Concept Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Delete Concept Api Data Products  Catalog   Schema  Semantic Concepts  Concept Id  Delete",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Concept",
+        "tags": [
+          "data-products",
+          "data-products"
+        ]
+      }
+    },
+    "/api/data-products/{catalog}/{schema}/semantic/sample-sql": {
+      "put": {
+        "description": "Set or clear the product's example query.\n\nBody: ``{\"sample_sql\": str | null}``.",
+        "operationId": "set_sample_sql_api_data_products__catalog___schema__semantic_sample_sql_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "catalog",
+            "required": true,
+            "schema": {
+              "title": "Catalog",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "schema",
+            "required": true,
+            "schema": {
+              "title": "Schema",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "default": {},
+                "title": "Body",
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Set Sample Sql Api Data Products  Catalog   Schema  Semantic Sample Sql Put",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Set Sample Sql",
+        "tags": [
+          "data-products",
+          "data-products"
+        ]
+      }
+    },
+    "/api/data-products/{catalog}/{schema}/slo-evaluation": {
+      "get": {
+        "description": "Return live SLO verdicts + the pass-rate roll-up for this product.",
+        "operationId": "slo_evaluation_api_data_products__catalog___schema__slo_evaluation_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "catalog",
+            "required": true,
+            "schema": {
+              "title": "Catalog",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "schema",
+            "required": true,
+            "schema": {
+              "title": "Schema",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Slo Evaluation Api Data Products  Catalog   Schema  Slo Evaluation Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Slo Evaluation",
+        "tags": [
+          "data-products",
+          "data-products"
+        ]
+      }
+    },
+    "/api/data-products/{catalog}/{schema}/slos": {
+      "get": {
+        "description": "List the objectives declared on this product + the kind catalog.",
+        "operationId": "list_slos_api_data_products__catalog___schema__slos_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "catalog",
+            "required": true,
+            "schema": {
+              "title": "Catalog",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "schema",
+            "required": true,
+            "schema": {
+              "title": "Schema",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response List Slos Api Data Products  Catalog   Schema  Slos Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Slos",
+        "tags": [
+          "data-products",
+          "data-products"
+        ]
+      },
+      "post": {
+        "description": "Declare or update one SLO.\n\nBody: ``{\"slo_kind\": str, \"target_value\"?: number, \"table\"?: str,\n\"comparator\"?: \"lte\"|\"gte\"|\"eq\", \"unit\"?: str, \"enabled\"?: bool}``.",
+        "operationId": "declare_slo_api_data_products__catalog___schema__slos_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "catalog",
+            "required": true,
+            "schema": {
+              "title": "Catalog",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "schema",
+            "required": true,
+            "schema": {
+              "title": "Schema",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "default": {},
+                "title": "Body",
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Declare Slo Api Data Products  Catalog   Schema  Slos Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Declare Slo",
+        "tags": [
+          "data-products",
+          "data-products"
+        ]
+      }
+    },
+    "/api/data-products/{catalog}/{schema}/slos/{slo_id}": {
+      "delete": {
+        "description": "Remove an SLO from this product.",
+        "operationId": "delete_slo_api_data_products__catalog___schema__slos__slo_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "catalog",
+            "required": true,
+            "schema": {
+              "title": "Catalog",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "schema",
+            "required": true,
+            "schema": {
+              "title": "Schema",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "slo_id",
+            "required": true,
+            "schema": {
+              "title": "Slo Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Delete Slo Api Data Products  Catalog   Schema  Slos  Slo Id  Delete",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Slo",
+        "tags": [
+          "data-products",
+          "data-products"
+        ]
+      }
+    },
+    "/api/data-products/{catalog}/{schema}/statistics": {
+      "get": {
+        "description": "Return the latest self-generated statistics snapshot per table.",
+        "operationId": "get_statistics_api_data_products__catalog___schema__statistics_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "catalog",
+            "required": true,
+            "schema": {
+              "title": "Catalog",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "schema",
+            "required": true,
+            "schema": {
+              "title": "Schema",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Statistics Api Data Products  Catalog   Schema  Statistics Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Statistics",
+        "tags": [
+          "data-products",
+          "data-products"
+        ]
+      }
+    },
     "/api/data-products/{catalog}/{schema}/topics": {
       "get": {
         "description": "Return the topics currently assigned to a DP.\n\nArgs:\n    catalog: UC catalog segment.\n    schema: UC schema segment.\n    request: Incoming FastAPI request.\n\nReturns:\n    ``{\"data_product_id\": int, \"topics\": [{slug,\n    display_name}, ...]}``.",
@@ -14140,6 +17171,190 @@
         "tags": [
           "topics",
           "topics"
+        ]
+      }
+    },
+    "/api/data-products/{catalog}/{schema}/transformations": {
+      "get": {
+        "description": "List the transformations bound to this product.",
+        "operationId": "list_transformations_api_data_products__catalog___schema__transformations_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "catalog",
+            "required": true,
+            "schema": {
+              "title": "Catalog",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "schema",
+            "required": true,
+            "schema": {
+              "title": "Schema",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response List Transformations Api Data Products  Catalog   Schema  Transformations Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Transformations",
+        "tags": [
+          "data-products",
+          "data-products"
+        ]
+      },
+      "post": {
+        "description": "Bind a notebook or dbt model to this product.\n\nBody: ``{\"kind\": \"notebook\", \"notebook_id\": str}`` or\n``{\"kind\": \"dbt_model\", \"dbt_model_name\": str}``.",
+        "operationId": "bind_transformation_api_data_products__catalog___schema__transformations_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "catalog",
+            "required": true,
+            "schema": {
+              "title": "Catalog",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "schema",
+            "required": true,
+            "schema": {
+              "title": "Schema",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "default": {},
+                "title": "Body",
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Bind Transformation Api Data Products  Catalog   Schema  Transformations Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Bind Transformation",
+        "tags": [
+          "data-products",
+          "data-products"
+        ]
+      }
+    },
+    "/api/data-products/{catalog}/{schema}/transformations/{transformation_id}": {
+      "delete": {
+        "description": "Remove a transformation binding from this product.",
+        "operationId": "unbind_transformation_api_data_products__catalog___schema__transformations__transformation_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "catalog",
+            "required": true,
+            "schema": {
+              "title": "Catalog",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "schema",
+            "required": true,
+            "schema": {
+              "title": "Schema",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "transformation_id",
+            "required": true,
+            "schema": {
+              "title": "Transformation Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Unbind Transformation Api Data Products  Catalog   Schema  Transformations  Transformation Id  Delete",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Unbind Transformation",
+        "tags": [
+          "data-products",
+          "data-products"
         ]
       }
     },
@@ -14479,6 +17694,97 @@
         "summary": "Api Dbt Test Failures",
         "tags": [
           "dbt"
+        ]
+      }
+    },
+    "/api/domains": {
+      "get": {
+        "description": "List the active workspace's domains with owner + product counts.",
+        "operationId": "api_list_domains_api_domains_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "include_archived",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Include Archived",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api List Domains Api Domains Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api List Domains",
+        "tags": [
+          "domains"
+        ]
+      }
+    },
+    "/api/domains/{slug}": {
+      "get": {
+        "description": "Return one domain with its members + owned products.",
+        "operationId": "api_domain_detail_api_domains__slug__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Domain Detail Api Domains  Slug  Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Domain Detail",
+        "tags": [
+          "domains"
         ]
       }
     },
@@ -15110,6 +18416,75 @@
         "tags": [
           "feed",
           "feed"
+        ]
+      }
+    },
+    "/api/glossary": {
+      "get": {
+        "description": "List the active workspace's glossary terms with binding counts.",
+        "operationId": "api_list_terms_api_glossary_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api List Terms Api Glossary Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Api List Terms",
+        "tags": [
+          "glossary"
+        ]
+      }
+    },
+    "/api/glossary/{slug}": {
+      "get": {
+        "description": "Return one glossary term with its column bindings.",
+        "operationId": "api_term_detail_api_glossary__slug__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Term Detail Api Glossary  Slug  Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Term Detail",
+        "tags": [
+          "glossary"
         ]
       }
     },
@@ -16215,7 +19590,7 @@
     },
     "/api/jobs/{job_id}/runs": {
       "get": {
-        "description": "Return the most-recent :class:`JobRun` rows for *job_id*.\n\nNewest-first ordering rides the\n``(job_id, started_at DESC)`` index declared on\n:class:`~pointlessql.models.JobRun`. The default cap of 50 keeps\nthe response payload small for the notebook-jobs panel\nwhile still surfacing enough history for a quick scan; deeper\npaging would land in a Sprint 67.4 follow-up if needed.\n\nArgs:\n    request: Incoming FastAPI request \u2014 gated via\n        :func:`load_job_or_404` so non-owners get a 404.\n    job_id: Target job id.\n    limit: Optional row cap, clamped to ``[1, 200]``.\n\nReturns:\n    Serialised run rows, newest first.",
+        "description": "Return the most-recent :class:`JobRun` rows for *job_id*.\n\nNewest-first ordering rides the\n``(job_id, started_at DESC)`` index declared on\n:class:`~pointlessql.models.JobRun`. The default cap of 50 keeps\nthe response payload small for the notebook-jobs panel\nwhile still surfacing enough history for a quick scan; deeper\npaging would land in a follow-up if needed.\n\nArgs:\n    request: Incoming FastAPI request \u2014 gated via\n        :func:`load_job_or_404` so non-owners get a 404.\n    job_id: Target job id.\n    limit: Optional row cap, clamped to ``[1, 200]``.\n\nReturns:\n    Serialised run rows, newest first.",
         "operationId": "api_list_job_runs_api_jobs__job_id__runs_get",
         "parameters": [
           {
@@ -18076,6 +21451,147 @@
         ]
       }
     },
+    "/api/mesh/entities": {
+      "get": {
+        "description": "List the workspace's mesh entities with binding counts.",
+        "operationId": "api_mesh_entities_api_mesh_entities_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Mesh Entities Api Mesh Entities Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Api Mesh Entities",
+        "tags": [
+          "mesh"
+        ]
+      }
+    },
+    "/api/mesh/graph": {
+      "get": {
+        "description": "Return the workspace's emergent mesh dependency graph.",
+        "operationId": "api_mesh_graph_api_mesh_graph_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Mesh Graph Api Mesh Graph Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Api Mesh Graph",
+        "tags": [
+          "mesh"
+        ]
+      }
+    },
+    "/api/mesh/health": {
+      "get": {
+        "description": "Return the SLO-health rollup across every product in the mesh.",
+        "operationId": "api_mesh_health_api_mesh_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Mesh Health Api Mesh Health Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Api Mesh Health",
+        "tags": [
+          "mesh"
+        ]
+      }
+    },
+    "/api/mesh/slo-scan": {
+      "post": {
+        "description": "Evaluate every product's SLOs now and log failures to the audit log.",
+        "operationId": "api_mesh_slo_scan_api_mesh_slo_scan_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Mesh Slo Scan Api Mesh Slo Scan Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Api Mesh Slo Scan",
+        "tags": [
+          "mesh"
+        ]
+      }
+    },
+    "/api/mesh/trace/{correlation_id}": {
+      "get": {
+        "description": "Return every operation sharing a correlation id as a timeline.\n\nArgs:\n    correlation_id: The cross-product trace id.\n    request: Incoming FastAPI request.\n\nReturns:\n    ``{\"correlation_id\", \"operations\": [...]}`` ordered by start\n    time \u2014 each op carries its run id, name, target, and timing.",
+        "operationId": "api_mesh_trace_api_mesh_trace__correlation_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "correlation_id",
+            "required": true,
+            "schema": {
+              "title": "Correlation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Mesh Trace Api Mesh Trace  Correlation Id  Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Mesh Trace",
+        "tags": [
+          "mesh"
+        ]
+      }
+    },
     "/api/ml/table-relations": {
       "get": {
         "description": "Reverse-index UC tables \u2192 ML models that scored into them.\n\nSingle-call analog of ``/api/dbt/manifest`` for the MLflow side.\nPowers the catalog-tree ML pill, schema-detail badge, and the\ntable-detail \"ML model\" card.\n\nArgs:\n    request: FastAPI request.\n    catalog: Optional catalog filter \u2014 narrows the result to\n        tables under one catalog.\n    schema: Optional schema filter \u2014 narrows further within a\n        catalog.  Ignored when ``catalog`` is omitted.\n\nReturns:\n    ``{\"tables\": {\"catalog.schema.table\": {\"trained_models\":\n    [], \"scoring_models\": [{\"full_name\", \"version\",\n    \"edge_count\"}, ...]}}}``.",
@@ -18807,7 +22323,7 @@
     },
     "/api/notebook/chat/{chat_session_id}/propose-sequence": {
       "post": {
-        "description": "Insert a new sequence proposal.\n\nBody keys:\n    prompt: Verbatim user prompt that drove the suggestion.\n    cells: Ordered list of cell dicts.\n    rationale: Optional narrative.\n\n``chat_session_id`` accepts the integer ``editor_chat_sessions.id``\n(legacy / Phase-104 original) or the ``editor_session_id`` UUID7\n(Phase 104 Wave-D \u2014 symmetry with the ``propose-cell`` route the\nhermes-plugin already uses).",
+        "description": "Insert a new sequence proposal.\n\nBody keys:\n    prompt: Verbatim user prompt that drove the suggestion.\n    cells: Ordered list of cell dicts.\n    rationale: Optional narrative.\n\n``chat_session_id`` accepts the integer ``editor_chat_sessions.id``\n(original form) or the ``editor_session_id`` UUID7 (symmetry\nwith the ``propose-cell`` route the hermes-plugin already uses).",
         "operationId": "api_propose_sequence_api_notebook_chat__chat_session_id__propose_sequence_post",
         "parameters": [
           {
@@ -18901,7 +22417,7 @@
     },
     "/api/notebook/chat/{editor_session_id}/explain-cell": {
       "post": {
-        "description": "Attach an explanation to an existing notebook cell (auto-accept).\n\nAuto-accepts on create \u2014 no Run button \u2014 and writes a\n``NotebookCellProvenance`` row immediately so the explanation\nis anchored to the cell without waiting for a save.  This is\nthe behavior the user picked during planning: explanations are\nnotes, not mutations; persisting them now means they survive\nconversation resets and Phase 97 revision history can render\nthem per cell.\n\nArgs:\n    request: Incoming request \u2014 must carry an\n        ``X-Agent-Run-Id`` matching the session's agent run.\n    editor_session_id: UUID7 of the target chat session.\n    body: Validated :class:`ExplainCellBody`.\n\nReturns:\n    ``{\"proposal_id\": str, \"action\": \"explain\",\n    \"status\": \"accepted\"}``.\n\nRaises:\n    HTTPException: 403 on X-Agent-Run-Id mismatch; 404 on\n        unknown session.  Body validation errors surface as 422\n        via FastAPI.",
+        "description": "Attach an explanation to an existing notebook cell (auto-accept).\n\nAuto-accepts on create \u2014 no Run button \u2014 and writes a\n``NotebookCellProvenance`` row immediately so the explanation\nis anchored to the cell without waiting for a save.  This is\nthe behavior the user picked during planning: explanations are\nnotes, not mutations; persisting them now means they survive\nconversation resets and the revision-history UI can render\nthem per cell.\n\nArgs:\n    request: Incoming request \u2014 must carry an\n        ``X-Agent-Run-Id`` matching the session's agent run.\n    editor_session_id: UUID7 of the target chat session.\n    body: Validated :class:`ExplainCellBody`.\n\nReturns:\n    ``{\"proposal_id\": str, \"action\": \"explain\",\n    \"status\": \"accepted\"}``.\n\nRaises:\n    HTTPException: 403 on X-Agent-Run-Id mismatch; 404 on\n        unknown session.  Body validation errors surface as 422\n        via FastAPI.",
         "operationId": "api_explain_cell_api_notebook_chat__editor_session_id__explain_cell_post",
         "parameters": [
           {
@@ -30045,7 +33561,7 @@
     "/dbt-docs/{path}": {
       "delete": {
         "description": "Forward an authenticated request to the dbt-docs subprocess.\n\nArgs:\n    path: Captured path segment after ``/dbt-docs/`` \u2014 empty for\n        the SPA root, ``static/...`` for bundled JS/CSS,\n        ``manifest.json`` for the rendered manifest, etc.\n    request: The incoming FastAPI request.\n\nReturns:\n    Response: The upstream response with content + status + safe\n        headers preserved.  Anonymous callers get 401, a missing\n        subprocess gets 503.\n\nRaises:\n    AuthenticationError: 401 when the request is anonymous.\n    DBTStartupError: 503 when the dbt-docs subprocess is not\n        running.\n    HTTPException: 502 on upstream HTTP error from the dbt-docs\n        subprocess.",
-        "operationId": "dbt_proxy_dbt_docs__path__delete",
+        "operationId": "dbt_proxy_dbt_docs__path__post",
         "parameters": [
           {
             "in": "path",
@@ -30084,7 +33600,7 @@
       },
       "get": {
         "description": "Forward an authenticated request to the dbt-docs subprocess.\n\nArgs:\n    path: Captured path segment after ``/dbt-docs/`` \u2014 empty for\n        the SPA root, ``static/...`` for bundled JS/CSS,\n        ``manifest.json`` for the rendered manifest, etc.\n    request: The incoming FastAPI request.\n\nReturns:\n    Response: The upstream response with content + status + safe\n        headers preserved.  Anonymous callers get 401, a missing\n        subprocess gets 503.\n\nRaises:\n    AuthenticationError: 401 when the request is anonymous.\n    DBTStartupError: 503 when the dbt-docs subprocess is not\n        running.\n    HTTPException: 502 on upstream HTTP error from the dbt-docs\n        subprocess.",
-        "operationId": "dbt_proxy_dbt_docs__path__delete",
+        "operationId": "dbt_proxy_dbt_docs__path__post",
         "parameters": [
           {
             "in": "path",
@@ -30123,7 +33639,7 @@
       },
       "head": {
         "description": "Forward an authenticated request to the dbt-docs subprocess.\n\nArgs:\n    path: Captured path segment after ``/dbt-docs/`` \u2014 empty for\n        the SPA root, ``static/...`` for bundled JS/CSS,\n        ``manifest.json`` for the rendered manifest, etc.\n    request: The incoming FastAPI request.\n\nReturns:\n    Response: The upstream response with content + status + safe\n        headers preserved.  Anonymous callers get 401, a missing\n        subprocess gets 503.\n\nRaises:\n    AuthenticationError: 401 when the request is anonymous.\n    DBTStartupError: 503 when the dbt-docs subprocess is not\n        running.\n    HTTPException: 502 on upstream HTTP error from the dbt-docs\n        subprocess.",
-        "operationId": "dbt_proxy_dbt_docs__path__delete",
+        "operationId": "dbt_proxy_dbt_docs__path__post",
         "parameters": [
           {
             "in": "path",
@@ -30162,7 +33678,7 @@
       },
       "options": {
         "description": "Forward an authenticated request to the dbt-docs subprocess.\n\nArgs:\n    path: Captured path segment after ``/dbt-docs/`` \u2014 empty for\n        the SPA root, ``static/...`` for bundled JS/CSS,\n        ``manifest.json`` for the rendered manifest, etc.\n    request: The incoming FastAPI request.\n\nReturns:\n    Response: The upstream response with content + status + safe\n        headers preserved.  Anonymous callers get 401, a missing\n        subprocess gets 503.\n\nRaises:\n    AuthenticationError: 401 when the request is anonymous.\n    DBTStartupError: 503 when the dbt-docs subprocess is not\n        running.\n    HTTPException: 502 on upstream HTTP error from the dbt-docs\n        subprocess.",
-        "operationId": "dbt_proxy_dbt_docs__path__delete",
+        "operationId": "dbt_proxy_dbt_docs__path__post",
         "parameters": [
           {
             "in": "path",
@@ -30201,7 +33717,7 @@
       },
       "patch": {
         "description": "Forward an authenticated request to the dbt-docs subprocess.\n\nArgs:\n    path: Captured path segment after ``/dbt-docs/`` \u2014 empty for\n        the SPA root, ``static/...`` for bundled JS/CSS,\n        ``manifest.json`` for the rendered manifest, etc.\n    request: The incoming FastAPI request.\n\nReturns:\n    Response: The upstream response with content + status + safe\n        headers preserved.  Anonymous callers get 401, a missing\n        subprocess gets 503.\n\nRaises:\n    AuthenticationError: 401 when the request is anonymous.\n    DBTStartupError: 503 when the dbt-docs subprocess is not\n        running.\n    HTTPException: 502 on upstream HTTP error from the dbt-docs\n        subprocess.",
-        "operationId": "dbt_proxy_dbt_docs__path__delete",
+        "operationId": "dbt_proxy_dbt_docs__path__post",
         "parameters": [
           {
             "in": "path",
@@ -30240,7 +33756,7 @@
       },
       "post": {
         "description": "Forward an authenticated request to the dbt-docs subprocess.\n\nArgs:\n    path: Captured path segment after ``/dbt-docs/`` \u2014 empty for\n        the SPA root, ``static/...`` for bundled JS/CSS,\n        ``manifest.json`` for the rendered manifest, etc.\n    request: The incoming FastAPI request.\n\nReturns:\n    Response: The upstream response with content + status + safe\n        headers preserved.  Anonymous callers get 401, a missing\n        subprocess gets 503.\n\nRaises:\n    AuthenticationError: 401 when the request is anonymous.\n    DBTStartupError: 503 when the dbt-docs subprocess is not\n        running.\n    HTTPException: 502 on upstream HTTP error from the dbt-docs\n        subprocess.",
-        "operationId": "dbt_proxy_dbt_docs__path__delete",
+        "operationId": "dbt_proxy_dbt_docs__path__post",
         "parameters": [
           {
             "in": "path",
@@ -30279,7 +33795,7 @@
       },
       "put": {
         "description": "Forward an authenticated request to the dbt-docs subprocess.\n\nArgs:\n    path: Captured path segment after ``/dbt-docs/`` \u2014 empty for\n        the SPA root, ``static/...`` for bundled JS/CSS,\n        ``manifest.json`` for the rendered manifest, etc.\n    request: The incoming FastAPI request.\n\nReturns:\n    Response: The upstream response with content + status + safe\n        headers preserved.  Anonymous callers get 401, a missing\n        subprocess gets 503.\n\nRaises:\n    AuthenticationError: 401 when the request is anonymous.\n    DBTStartupError: 503 when the dbt-docs subprocess is not\n        running.\n    HTTPException: 502 on upstream HTTP error from the dbt-docs\n        subprocess.",
-        "operationId": "dbt_proxy_dbt_docs__path__delete",
+        "operationId": "dbt_proxy_dbt_docs__path__post",
         "parameters": [
           {
             "in": "path",
@@ -30314,6 +33830,71 @@
         "summary": "Dbt Proxy",
         "tags": [
           "dbt"
+        ]
+      }
+    },
+    "/domains": {
+      "get": {
+        "description": "Render the workspace-wide domain index page.",
+        "operationId": "domains_index_page_domains_get",
+        "responses": {
+          "200": {
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Domains Index Page",
+        "tags": [
+          "domains"
+        ]
+      }
+    },
+    "/domains/{slug}": {
+      "get": {
+        "description": "Render one domain's detail page (members + owned products).",
+        "operationId": "domain_detail_page_domains__slug__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Domain Detail Page",
+        "tags": [
+          "domains"
         ]
       }
     },
@@ -30524,6 +34105,71 @@
         "summary": "Feed Page",
         "tags": [
           "feed"
+        ]
+      }
+    },
+    "/glossary": {
+      "get": {
+        "description": "Render the workspace-wide glossary index page.",
+        "operationId": "glossary_index_page_glossary_get",
+        "responses": {
+          "200": {
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Glossary Index Page",
+        "tags": [
+          "glossary"
+        ]
+      }
+    },
+    "/glossary/{slug}": {
+      "get": {
+        "description": "Render one glossary term's detail page (definition + bindings).",
+        "operationId": "glossary_detail_page_glossary__slug__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Glossary Detail Page",
+        "tags": [
+          "glossary"
         ]
       }
     },
@@ -31201,6 +34847,72 @@
         ]
       }
     },
+    "/mesh": {
+      "get": {
+        "description": "Render the workspace mesh-graph browse page.",
+        "operationId": "mesh_graph_page_mesh_get",
+        "responses": {
+          "200": {
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Mesh Graph Page",
+        "tags": [
+          "mesh"
+        ]
+      }
+    },
+    "/mesh/entities": {
+      "get": {
+        "description": "Render the mesh-entity registry browse page.",
+        "operationId": "mesh_entities_page_mesh_entities_get",
+        "responses": {
+          "200": {
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Mesh Entities Page",
+        "tags": [
+          "mesh"
+        ]
+      }
+    },
+    "/mesh/health": {
+      "get": {
+        "description": "Render the mesh-health dashboard page.",
+        "operationId": "mesh_health_page_mesh_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Mesh Health Page",
+        "tags": [
+          "mesh"
+        ]
+      }
+    },
     "/metrics": {
       "get": {
         "description": "Expose Prometheus metrics for the scheduler (admin-only).\n\nReturns the default text exposition format so any Prometheus\nscraper works without extra negotiation. Gated by\n:func:`_require_admin` because the metrics surface includes the\nnames of every job in the install, which is sensitive information\non multi-tenant deployments.",
@@ -31243,7 +34955,7 @@
     "/mlflow/{path}": {
       "delete": {
         "description": "Forward an authenticated request to the MLflow subprocess.\n\nArgs:\n    path: Captured path segment after ``/mlflow/`` \u2014 empty for the\n        UI root, ``api/2.0/mlflow/...`` for tracking REST calls,\n        ``static/...`` for the bundled JS/CSS, etc.\n    request: The incoming FastAPI request (used for method, body,\n        query-string, and auth-state).\n\nReturns:\n    Response: The upstream response with content + status + safe\n        headers preserved. Anonymous callers get a 401 instead.\n\nRaises:\n    AuthenticationError: 401 when the request is anonymous.\n    MLflowStartupError: 503 if the MLflow subprocess never came\n        up healthy at startup.\n    HTTPException: 502 on upstream HTTP error from the MLflow\n        subprocess.",
-        "operationId": "mlflow_proxy_mlflow__path__delete",
+        "operationId": "mlflow_proxy_mlflow__path__post",
         "parameters": [
           {
             "in": "path",
@@ -31282,7 +34994,7 @@
       },
       "get": {
         "description": "Forward an authenticated request to the MLflow subprocess.\n\nArgs:\n    path: Captured path segment after ``/mlflow/`` \u2014 empty for the\n        UI root, ``api/2.0/mlflow/...`` for tracking REST calls,\n        ``static/...`` for the bundled JS/CSS, etc.\n    request: The incoming FastAPI request (used for method, body,\n        query-string, and auth-state).\n\nReturns:\n    Response: The upstream response with content + status + safe\n        headers preserved. Anonymous callers get a 401 instead.\n\nRaises:\n    AuthenticationError: 401 when the request is anonymous.\n    MLflowStartupError: 503 if the MLflow subprocess never came\n        up healthy at startup.\n    HTTPException: 502 on upstream HTTP error from the MLflow\n        subprocess.",
-        "operationId": "mlflow_proxy_mlflow__path__delete",
+        "operationId": "mlflow_proxy_mlflow__path__post",
         "parameters": [
           {
             "in": "path",
@@ -31321,7 +35033,7 @@
       },
       "head": {
         "description": "Forward an authenticated request to the MLflow subprocess.\n\nArgs:\n    path: Captured path segment after ``/mlflow/`` \u2014 empty for the\n        UI root, ``api/2.0/mlflow/...`` for tracking REST calls,\n        ``static/...`` for the bundled JS/CSS, etc.\n    request: The incoming FastAPI request (used for method, body,\n        query-string, and auth-state).\n\nReturns:\n    Response: The upstream response with content + status + safe\n        headers preserved. Anonymous callers get a 401 instead.\n\nRaises:\n    AuthenticationError: 401 when the request is anonymous.\n    MLflowStartupError: 503 if the MLflow subprocess never came\n        up healthy at startup.\n    HTTPException: 502 on upstream HTTP error from the MLflow\n        subprocess.",
-        "operationId": "mlflow_proxy_mlflow__path__delete",
+        "operationId": "mlflow_proxy_mlflow__path__post",
         "parameters": [
           {
             "in": "path",
@@ -31360,7 +35072,7 @@
       },
       "options": {
         "description": "Forward an authenticated request to the MLflow subprocess.\n\nArgs:\n    path: Captured path segment after ``/mlflow/`` \u2014 empty for the\n        UI root, ``api/2.0/mlflow/...`` for tracking REST calls,\n        ``static/...`` for the bundled JS/CSS, etc.\n    request: The incoming FastAPI request (used for method, body,\n        query-string, and auth-state).\n\nReturns:\n    Response: The upstream response with content + status + safe\n        headers preserved. Anonymous callers get a 401 instead.\n\nRaises:\n    AuthenticationError: 401 when the request is anonymous.\n    MLflowStartupError: 503 if the MLflow subprocess never came\n        up healthy at startup.\n    HTTPException: 502 on upstream HTTP error from the MLflow\n        subprocess.",
-        "operationId": "mlflow_proxy_mlflow__path__delete",
+        "operationId": "mlflow_proxy_mlflow__path__post",
         "parameters": [
           {
             "in": "path",
@@ -31399,7 +35111,7 @@
       },
       "patch": {
         "description": "Forward an authenticated request to the MLflow subprocess.\n\nArgs:\n    path: Captured path segment after ``/mlflow/`` \u2014 empty for the\n        UI root, ``api/2.0/mlflow/...`` for tracking REST calls,\n        ``static/...`` for the bundled JS/CSS, etc.\n    request: The incoming FastAPI request (used for method, body,\n        query-string, and auth-state).\n\nReturns:\n    Response: The upstream response with content + status + safe\n        headers preserved. Anonymous callers get a 401 instead.\n\nRaises:\n    AuthenticationError: 401 when the request is anonymous.\n    MLflowStartupError: 503 if the MLflow subprocess never came\n        up healthy at startup.\n    HTTPException: 502 on upstream HTTP error from the MLflow\n        subprocess.",
-        "operationId": "mlflow_proxy_mlflow__path__delete",
+        "operationId": "mlflow_proxy_mlflow__path__post",
         "parameters": [
           {
             "in": "path",
@@ -31438,7 +35150,7 @@
       },
       "post": {
         "description": "Forward an authenticated request to the MLflow subprocess.\n\nArgs:\n    path: Captured path segment after ``/mlflow/`` \u2014 empty for the\n        UI root, ``api/2.0/mlflow/...`` for tracking REST calls,\n        ``static/...`` for the bundled JS/CSS, etc.\n    request: The incoming FastAPI request (used for method, body,\n        query-string, and auth-state).\n\nReturns:\n    Response: The upstream response with content + status + safe\n        headers preserved. Anonymous callers get a 401 instead.\n\nRaises:\n    AuthenticationError: 401 when the request is anonymous.\n    MLflowStartupError: 503 if the MLflow subprocess never came\n        up healthy at startup.\n    HTTPException: 502 on upstream HTTP error from the MLflow\n        subprocess.",
-        "operationId": "mlflow_proxy_mlflow__path__delete",
+        "operationId": "mlflow_proxy_mlflow__path__post",
         "parameters": [
           {
             "in": "path",
@@ -31477,7 +35189,7 @@
       },
       "put": {
         "description": "Forward an authenticated request to the MLflow subprocess.\n\nArgs:\n    path: Captured path segment after ``/mlflow/`` \u2014 empty for the\n        UI root, ``api/2.0/mlflow/...`` for tracking REST calls,\n        ``static/...`` for the bundled JS/CSS, etc.\n    request: The incoming FastAPI request (used for method, body,\n        query-string, and auth-state).\n\nReturns:\n    Response: The upstream response with content + status + safe\n        headers preserved. Anonymous callers get a 401 instead.\n\nRaises:\n    AuthenticationError: 401 when the request is anonymous.\n    MLflowStartupError: 503 if the MLflow subprocess never came\n        up healthy at startup.\n    HTTPException: 502 on upstream HTTP error from the MLflow\n        subprocess.",
-        "operationId": "mlflow_proxy_mlflow__path__delete",
+        "operationId": "mlflow_proxy_mlflow__path__post",
         "parameters": [
           {
             "in": "path",

@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}Mesh entities · PointlesSQL{% endblock %}
+
+{% set breadcrumbs = [
+ {"label": "Home", "href": "/"},
+ {"label": "Mesh", "href": "/mesh"},
+ {"label": "Entities"}
+] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block content %}
+<div x-data="meshEntities()" x-init="init()">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <div class="d-flex align-items-center gap-2">
+            <i class="bi bi-tags fs-3"></i>
+            <h1 class="h3 mb-0">Mesh entities</h1>
+        </div>
+        {% if is_admin %}
+        <a href="/admin/mesh-entities" class="btn btn-outline-primary btn-sm">
+            <i class="bi bi-gear me-1"></i>Manage entities
+        </a>
+        {% endif %}
+    </div>
+
+    <p class="text-muted">
+        Polysemic identifiers: a shared business entity (e.g. <em>Customer</em>) bound to the
+        columns across products that realise it, so the platform can suggest cross-product joins.
+    </p>
+
+    <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
+        <input type="search" class="form-control form-control-sm" style="max-width: 18rem;"
+               x-model="filter" placeholder="Filter entities&hellip;">
+    </div>
+
+    <div x-show="loading" class="text-muted" x-cloak>Loading entities&hellip;</div>
+    <div class="alert alert-danger" x-show="error" x-text="error" x-cloak></div>
+
+    <div class="row g-3" x-show="!loading" x-cloak>
+        <template x-for="e in filtered" :key="e.id">
+            <div class="col-12 col-md-6 col-lg-4">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title mb-1" x-text="e.name"></h5>
+                        <div class="text-muted small mb-2 font-monospace" x-text="e.slug"></div>
+                        <p class="card-text small text-muted" x-show="e.description" x-text="e.description"></p>
+                        <div class="small text-muted mt-2 mb-1">
+                            <i class="bi bi-link-45deg"></i>
+                            <span x-text="e.binding_count"></span> column bindings
+                        </div>
+                        <ul class="list-unstyled small mb-0">
+                            <template x-for="(b, i) in e.bindings" :key="i">
+                                <li><code x-text="b.ref"></code></li>
+                            </template>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </template>
+        <div class="col-12 text-muted" x-show="filtered.length === 0">
+            No entities match.
+        </div>
+    </div>
+</div>
+{% endblock %}

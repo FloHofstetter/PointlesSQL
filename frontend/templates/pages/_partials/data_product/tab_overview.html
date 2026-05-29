@@ -39,6 +39,70 @@
                 </div>
             </div>
 
+            <!-- Service-level objectives + live verdicts. -->
+            <div class="card mb-3"
+                 x-data='dataProductSloPanel({{ product.catalog|tojson }}, {{ product.schema|tojson }}, {{ ((is_admin or is_steward) or false)|tojson }})'
+                 x-init="init()">
+                <div class="card-header d-flex align-items-center gap-2">
+                    <i class="bi bi-speedometer2"></i>
+                    <span>Service-level objectives</span>
+                    <span class="badge ms-auto" :class="passRateClass()" x-text="'pass ' + passRateLabel()"></span>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-danger py-1 px-2 small" x-show="error" x-text="error" x-cloak></div>
+                    <table class="table table-sm align-middle mb-2" x-show="evaluation.results.length > 0" x-cloak>
+                        <thead>
+                            <tr><th>Objective</th><th>Target</th><th>Observed</th><th>Verdict</th><th></th></tr>
+                        </thead>
+                        <tbody>
+                            <template x-for="r in evaluation.results" :key="r.slo_kind + (r.table || '')">
+                                <tr>
+                                    <td>
+                                        <code x-text="r.slo_kind"></code>
+                                        <span class="text-muted small" x-show="r.table" x-text="r.table"></span>
+                                    </td>
+                                    <td x-text="(r.target !== null ? r.comparator + ' ' + r.target : '—') + (r.unit ? ' ' + r.unit : '')"></td>
+                                    <td x-text="r.observed !== null && r.observed !== undefined ? Math.round(r.observed * 100) / 100 : '—'"></td>
+                                    <td><span class="badge" :class="verdictClass(r.verdict)" x-text="r.verdict"></span></td>
+                                    <td class="text-end">
+                                        <button type="button" class="btn btn-sm btn-outline-danger py-0"
+                                                x-show="canManage && r.source === 'declared'"
+                                                @click="remove(slos.find(s => s.slo_kind === r.slo_kind && (s.table || '') === (r.table || '')) ? slos.find(s => s.slo_kind === r.slo_kind && (s.table || '') === (r.table || '')).id : 0)">×</button>
+                                    </td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                    <div class="text-muted small mb-2" x-show="evaluation.results.length === 0" x-cloak>
+                        No objectives declared. Freshness is tracked from the product's SLA; declare
+                        volume / completeness / shape objectives below.
+                    </div>
+                    <template x-if="canManage">
+                        <div class="row g-2 align-items-end">
+                            <div class="col-sm-3">
+                                <label class="form-label small mb-0">Kind</label>
+                                <select class="form-select form-select-sm" x-model="newSlo.slo_kind">
+                                    <template x-for="(meta, kind) in kinds" :key="kind">
+                                        <option :value="kind" x-text="meta.label + (meta.measurable ? '' : ' (declared)')"></option>
+                                    </template>
+                                </select>
+                            </div>
+                            <div class="col-sm-3">
+                                <label class="form-label small mb-0">Target</label>
+                                <input type="number" step="any" class="form-control form-control-sm" x-model="newSlo.target_value" placeholder="value">
+                            </div>
+                            <div class="col-sm-3">
+                                <label class="form-label small mb-0">Table (optional)</label>
+                                <input type="text" class="form-control form-control-sm" x-model="newSlo.table" placeholder="product-wide">
+                            </div>
+                            <div class="col-sm-3">
+                                <button type="button" class="btn btn-sm btn-outline-primary w-100" @click="declare()">Declare SLO</button>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+
             <!-- Domain ownership + bound transformations. -->
             <div class="card mb-3"
                  x-data='dataProductDomainPanel({{ product.catalog|tojson }}, {{ product.schema|tojson }}, {{ ((is_admin or is_steward) or false)|tojson }})'

@@ -231,6 +231,7 @@ def write_table(
 
             assert location is not None  # noqa: S101 — guarded above
 
+            df = _maybe_stamp_processing_time(df)
             engine.write(df, location, mode)
 
             if not table_exists:
@@ -268,6 +269,30 @@ def write_table(
                 _create_table.sync(client=client, body=body)
         except httpx.ConnectError as exc:
             raise CatalogUnavailableError(unreachable_msg) from exc
+
+
+def _maybe_stamp_processing_time(df: Any) -> Any:
+    """Stamp the standard processing-time column when the convention is on.
+
+    Opt-in via ``settings.bitemporal.inject_processing_time`` (default
+    off, because adding a column evolves the Delta schema).  Best-effort
+    and side-effect-free on the caller's frame; returns the frame
+    unchanged when the convention is disabled.
+
+    Args:
+        df: The frame about to be written.
+
+    Returns:
+        The (possibly stamped) frame.
+    """
+    from pointlessql.config import get_settings
+
+    bitemporal = get_settings().bitemporal
+    if not bitemporal.inject_processing_time:
+        return df
+    from pointlessql.services.bitemporal import inject_processing_time
+
+    return inject_processing_time(df, column=bitemporal.processing_time_column)
 
 
 def _stamp_lineage_for_write(df: Any, target_full_name: str) -> tuple[list[str], list[str], Any]:

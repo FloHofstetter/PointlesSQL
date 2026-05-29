@@ -22,6 +22,7 @@ from typing import TYPE_CHECKING, Any
 from sqlalchemy import func, select
 from sqlalchemy.exc import SQLAlchemyError
 
+from pointlessql.config import correlation_id_var
 from pointlessql.exceptions import AuditUnavailableError
 from pointlessql.models import AgentRun, AgentRunOperation
 from pointlessql.services.agent_runs.mlflow_detector import detect_mlflow_run_id
@@ -122,6 +123,11 @@ def record_operation(
     # Side-effect-free; returns ``None`` for non-ML ops.
     mlflow_run_id = detect_mlflow_run_id()
 
+    # Cross-product trace id from the current request scope (set by the
+    # request-id middleware).  ``None`` outside a request (e.g. a
+    # scheduler tick), which is fine — only mesh-traced ops need it.
+    correlation_id = correlation_id_var.get()
+
     # stamp the cached env-fingerprint when the caller
     # didn't supply one.  Best-effort — `cached_env_snapshot()` returns
     # `None` if the import-time capture failed; we never raise.
@@ -179,6 +185,7 @@ def record_operation(
                 training_params_json=training_params_json,
                 env_snapshot=env_snapshot,
                 warnings_json=warnings_json,
+                correlation_id=correlation_id,
             )
             session.add(row)
             # backfill the parent agent_runs row's

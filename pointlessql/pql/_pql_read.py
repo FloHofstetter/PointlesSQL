@@ -87,3 +87,42 @@ class _ReadMixin(_PQLBase):
             when=when,
             unreachable_msg=self._unreachable_msg(),
         )
+
+    def table_as_of_event_time(
+        self, full_name: str, *, when: Any, event_column: str | None = None
+    ) -> Any:
+        """Read the current table filtered to rows whose event time ≤ *when*.
+
+        This is the *business-time* read of the bitemporal convention:
+        unlike :meth:`table_at_timestamp` (which time-travels the Delta
+        *processing* history), this reads the latest data and keeps only
+        rows whose declared event-time column is at or before *when*.  It
+        relies on the producer following the convention of carrying an
+        event-time column; rows missing the column are dropped from the
+        result.
+
+        Args:
+            full_name: Three-part name ``"catalog.schema.table"``.
+            when: The business-time upper bound (timezone-aware
+                ``datetime`` or any value comparable to the column).
+            event_column: The event-time column name; defaults to the
+                configured ``bitemporal.event_time_column``.
+
+        Returns:
+            A pandas DataFrame of rows with ``event_column`` ≤ *when*.
+
+        Raises:
+            ValidationError: When the table carries no such column.
+        """
+        from pointlessql.config import get_settings
+
+        column = event_column or get_settings().bitemporal.event_time_column
+        frame = self.table(full_name)
+        if not hasattr(frame, "columns") or column not in getattr(frame, "columns", []):
+            from pointlessql.exceptions import ValidationError
+
+            raise ValidationError(
+                f"table {full_name!r} has no event-time column {column!r}; "
+                "the as-of-event-time read needs the bitemporal convention"
+            )
+        return frame[frame[column] <= when]

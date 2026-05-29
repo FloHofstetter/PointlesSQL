@@ -40,6 +40,9 @@ from pointlessql.services.scheduler.executors.policy_compliance import (
     _policy_compliance_executor,
 )
 from pointlessql.services.scheduler.executors.python import _python_executor
+from pointlessql.services.scheduler.executors.slo_evaluation import (
+    _slo_evaluation_executor,
+)
 
 __all__ = [
     "_PAPERMILL_INPUT_SUFFIXES",
@@ -56,5 +59,6 @@ __all__ = [
     "_python_executor",
     "_resolve_repo_notebook_path",
     "_run_papermill_blocking",
+    "_slo_evaluation_executor",
     "resolve_notebook_path",
 ]

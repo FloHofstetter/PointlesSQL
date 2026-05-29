@@ -156,6 +156,11 @@ class AgentRunOperation(Base):
             itself raised"; this column carries side-effect
             warnings without poisoning the operation's status.
             ``None`` when no marker was stamped.
+        correlation_id: Optional cross-product trace id.  Stamped from
+            the inbound ``X-Correlation-ID`` header (falling back to
+            the per-request id) so operations spanning several products
+            in one logical task can be grouped into a single timeline.
+            ``None`` when no correlation context was present.
     """
 
     __tablename__ = "agent_run_operations"
@@ -167,6 +172,7 @@ class AgentRunOperation(Base):
             "workspace_id",
             "agent_run_id",
         ),
+        Index("ix_agent_run_operations_correlation", "correlation_id"),
         CheckConstraint(
             "op_name IN "
             "('autoload','merge','write_table','sql','aggregate','rollback',"
@@ -215,6 +221,10 @@ class AgentRunOperation(Base):
     # ``{"markers": [str, ...]}``.  ``error_message`` stays reserved
     # for "the primitive itself raised".
     warnings_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Cross-product trace id stamped from the X-Correlation-ID header
+    # (falling back to the per-request id) so a multi-product task can
+    # be reassembled into one timeline.
+    correlation_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
 
 
 class AgentRunEvent(Base):

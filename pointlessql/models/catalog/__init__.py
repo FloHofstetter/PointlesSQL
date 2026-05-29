@@ -97,6 +97,10 @@ from pointlessql.models.catalog._governance import (
     DataProductPolicy,
     WorkspaceGovernancePolicy,
 )
+from pointlessql.models.catalog._mesh import (
+    MeshEntity,
+    MeshEntityBinding,
+)
 from pointlessql.models.catalog._metadata import (
     Dashboard,
     QueryHistory,
@@ -115,6 +119,12 @@ from pointlessql.models.catalog._recents import RecentTable
 from pointlessql.models.catalog._semantic import (
     DataProductSemanticConcept,
 )
+from pointlessql.models.catalog._slo import (
+    MEASURABLE_SLO_KINDS,
+    SLO_COMPARATORS,
+    SLO_KINDS,
+    DataProductSLO,
+)
 from pointlessql.models.catalog._sync import SyncRun
 
 __all__ = [
@@ -131,9 +141,12 @@ __all__ = [
     "FORGET_STATUSES",
     "INPUT_PORT_KINDS",
     "MASKING_STRATEGIES",
+    "MEASURABLE_SLO_KINDS",
     "OUTPUT_PORT_KINDS",
     "PASSPORT_TRIGGERS",
     "PROPOSAL_STATUSES",
+    "SLO_COMPARATORS",
+    "SLO_KINDS",
     "YAML_DRAFT_SOURCE_KINDS",
     "AutoloadCheckpoint",
     "Dashboard",
@@ -152,6 +165,7 @@ __all__ = [
     "DataProductPolicy",
     "DataProductPromotionCandidate",
     "DataProductReview",
+    "DataProductSLO",
     "DataProductSchemaProposal",
     "DataProductSemanticConcept",
     "DataProductStatistics",
@@ -162,6 +176,8 @@ __all__ = [
     "DomainMember",
     "GlossaryTerm",
     "GlossaryTermColumn",
+    "MeshEntity",
+    "MeshEntityBinding",
     "QueryHistory",
     "QueryHistoryTable",
     "RateLimitEvent",

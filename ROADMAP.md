@@ -1841,13 +1841,43 @@ PointlesSQL
 │   │     `pql_request_right_to_be_forgotten` (Agenten schlagen vor,
 │   │     Steward/Admin führt aus).
 │   │
-│   └── Phase 127 — Data-Mesh: Interoperabilität & Mesh-Observability  ⏳ planned
-│         Querschnitt + Reifegrad-Abschluss (D1-bitemporal, D5-Graph,
-│         F1–F3, F5, G1–G5).  Bitemporalität (Business- + Processing-
-│         Time), polysemer/universeller Identifikator, point-in-time-
-│         konsistente produktübergreifende Reads, voller SLO-Satz,
-│         multimodale Output-Ports (File/Event), Mesh-Health-Dashboard.
-│         Detail-Ausplanung folgt.
+│   └── Phase 127 — Data-Mesh: Interoperabilität & Mesh-Observability  ✅ 2026-05-29
+│         Querschnitt + Reifegrad-Abschluss — schließt den 124–127
+│         Data-Mesh-Cluster (volles δ, ehrliche Trennung; D1-bitemporal,
+│         D5-Graph, F1–F3/F5, G1–G5).  DB-backed (wie 124–126): neue
+│         Tabellen `data_product_slos` (voller SLO-Satz) + `mesh_entities`
+│         / `mesh_entity_bindings` (polysemer Identifikator) +
+│         `agent_run_operations.correlation_id` (Cross-Produkt-Trace).
+│         **G5 Emergenter Mesh-Graph**: `services/mesh/_graph.py` baut den
+│         Abhängigkeitsgraphen aus den deklarierten `upstream_product`-
+│         Input-Ports (Phase 125) — Produkte = Knoten, deklarierte
+│         Upstreams = Kanten; `GET /api/mesh/graph` + Browse `/mesh` +
+│         Produkt-Interop-Tab-Nachbarschaft (cytoscape).  **F3 Polysemer
+│         Identifikator**: Mesh-Entitäten (Admin-CRUD `/admin/mesh-entities`
+│         + Browse `/mesh/entities`) + Spalten-Bindungen am Produkt-
+│         Interop-Tab → **D5 Join-Helfer** (`/joinable` schlägt
+│         gemeinsame-Entität-Join-Keys + Sample-SQL vor).  **F2 Point-in-
+│         time**: `resolve_as_of` löst je Produkt-Tabelle die Delta-
+│         Version zum Zeitpunkt auf (`POST .../point-in-time-read` → Manifest;
+│         schwerer Read bleibt PQL-Primitive).  **G1 Voller SLO-Satz**:
+│         `services/slo/` deklariert alle Arten, misst die berechenbaren
+│         (Freshness/Volume/Completeness/Statistical-Shape-Drift/Lineage-
+│         Coverage), Rest = ehrliche Deklarationen; Live-Verdikte am
+│         Overview-SLO-Panel.  **G3 Drift**: Baseline aus der
+│         `data_product_statistics`-Historie (z-Score).  **G2 Mesh-Health**:
+│         `/mesh/health` rollt SLO-Bänder über alle Produkte; Scheduler-Job
+│         `kind="slo_evaluation"` + Admin-„evaluate now" flaggen `fail` ins
+│         Audit-Log (`slo.violation`).  **F1/D1/F5 Bitemporalität**:
+│         opt-in Processing-Time-Injektion beim Write (default off —
+│         Schema-Evolution; `services/bitemporal/`), Event-Time bleibt
+│         Konvention + `table_as_of_event_time`-Read-Helfer.  **G4
+│         Correlation-IDs**: `X-Correlation-ID` (Middleware) → auf jeder
+│         `agent_run_operations`-Zeile gestempelt; `GET /api/mesh/trace/{id}`
+│         als produktübergreifende Timeline.  Discovery-Envelope um
+│         `entities` + `bitemporal`-Blöcke + `slos.additional` + `mesh`-Link
+│         erweitert.  Agent-nativ: hermes-Tools `pql_get_mesh_graph` +
+│         `pql_get_mesh_health` + `pql_declare_data_product_slo` +
+│         `pql_register_mesh_entity` + `pql_bind_mesh_entity_column`.
 │
 
 

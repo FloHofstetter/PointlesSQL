@@ -120,6 +120,12 @@
         </a>
     </li>
     <li class="nav-item">
+        <a class="nav-link d-flex align-items-center gap-2{% if active_section == 'mesh' or (active_page is defined and active_page == 'mesh') %} active{% endif %}"
+           href="/mesh">
+            <i class="bi bi-diagram-3"></i> Mesh
+        </a>
+    </li>
+    <li class="nav-item">
         <a class="nav-link d-flex align-items-center gap-2{% if active_page is defined and active_page == 'models' %} active{% endif %}"
            href="/models">
             <i class="bi bi-cpu"></i> ML models

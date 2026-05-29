@@ -26,10 +26,13 @@ from pointlessql.api.data_products_routes._shared import (
     serialise_table_contracts,
 )
 from pointlessql.api.dependencies import current_workspace_id, require_user
+from pointlessql.config import Settings
 from pointlessql.models import Workspace
 from pointlessql.services import data_product_ports as ports_service
 from pointlessql.services import data_product_semantic as semantic_service
 from pointlessql.services import governance as governance_service
+from pointlessql.services import mesh as mesh_service
+from pointlessql.services import slo as slo_service
 from pointlessql.services.data_product_stats import read_latest_statistics
 
 router = APIRouter(tags=["data-products"])
@@ -73,6 +76,9 @@ async def get_discovery_contract(catalog: str, schema: str, request: Request) ->
         factory, data_product_id=row.id, workspace_id=workspace_id
     )
     classifications = governance_service.list_classifications(factory, data_product_id=row.id)
+    slos = slo_service.list_slos(factory, data_product_id=row.id)
+    entity_index = mesh_service.entities_for_schema(factory, catalog=catalog, schema=schema)
+    settings: Settings = request.app.state.settings
 
     base = f"/api/data-products/{catalog}/{schema}"
     return {
@@ -128,11 +134,34 @@ async def get_discovery_contract(catalog: str, schema: str, request: Request) ->
                 for c in classifications
             ],
         },
-        "slos": {"sla_minutes": row.sla_minutes, "additional": []},
+        "slos": {
+            "sla_minutes": row.sla_minutes,
+            "additional": [
+                {
+                    "slo_kind": s.slo_kind,
+                    "table": s.table_name,
+                    "target_value": s.target_value,
+                    "comparator": s.comparator,
+                    "unit": s.unit,
+                    "enabled": s.enabled,
+                }
+                for s in slos
+            ],
+        },
+        "entities": [
+            {"table": table, "column": column, "entities": slugs}
+            for (table, column), slugs in sorted(entity_index.items())
+        ],
+        "bitemporal": {
+            "inject_processing_time": settings.bitemporal.inject_processing_time,
+            "processing_time_column": settings.bitemporal.processing_time_column,
+            "event_time_column": settings.bitemporal.event_time_column,
+        },
         "statistics": statistics,
         "links": {
             "self": base,
             "passport": f"{base}/passport",
             "lineage": f"{base}/lineage",
+            "mesh": f"{base}/mesh-graph",
         },
     }

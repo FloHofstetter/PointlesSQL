@@ -213,6 +213,7 @@ import { auditSinkCreate, auditSinkRow } from './pages/admin_audit_sinks.js';
 import { adminDomains, domainArchiveButton, domainMembers } from './pages/admin_domains.js';
 import { adminGlossary } from './pages/admin_glossary.js';
 import { adminGovernance } from './pages/admin_governance.js';
+import { adminMeshEntities } from './pages/admin_mesh_entities.js';
 import { reviewDestCreate, reviewDestRow } from './pages/admin_review_destinations.js';
 import { adminSourcesList } from './pages/admin_sources.js';
 import { adminWorkspaces, archiveButton } from './pages/admin_workspaces.js';
@@ -231,6 +232,7 @@ import { dataProductDetail } from './pages/data_product.js';
 import { dataProductDomainPanel } from './pages/data_product_domain.js';
 import { dpReleasesCard, ingestStatusBand } from './pages/data_product_extras.js';
 import { dataProductGovernance } from './pages/data_product_governance.js';
+import { dataProductInterop, dataProductSloPanel } from './pages/data_product_interop.js';
 import {
   dataProductDiscoveryCard,
   dataProductPortsPanel,
@@ -256,6 +258,9 @@ import { lensChat } from './pages/lens_index.js';
 import { lineageExplorerForm } from './pages/lineage_index.js';
 import { meSettingsForm } from './pages/me_settings.js';
 import { meSubscriptions } from './pages/me_subscriptions.js';
+import { meshEntities } from './pages/mesh_entities.js';
+import { meshGraph } from './pages/mesh_graph.js';
+import { meshHealth } from './pages/mesh_health.js';
 import { mlTableContext } from './pages/ml_table_context.js';
 import { mlflowCockpit } from './pages/mlflow_cockpit.js';
 import {
@@ -385,6 +390,12 @@ window.dataProductSemanticPanel = dataProductSemanticPanel;
 window.dataProductStatsPanel = dataProductStatsPanel;
 window.dataProductDiscoveryCard = dataProductDiscoveryCard;
 window.dataProductGovernance = dataProductGovernance;
+window.dataProductInterop = dataProductInterop;
+window.dataProductSloPanel = dataProductSloPanel;
+window.meshGraph = meshGraph;
+window.meshHealth = meshHealth;
+window.meshEntities = meshEntities;
+window.adminMeshEntities = adminMeshEntities;
 window.adminGlossary = adminGlossary;
 window.adminGovernance = adminGovernance;
 window.glossaryBrowse = glossaryBrowse;

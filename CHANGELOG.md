@@ -17,6 +17,36 @@ defined in ``scripts/clusters.json``. -->
 
 ### Features
 
+- Data-Mesh Interoperability & Mesh-Observability: closes the
+  Data-Mesh maturity model. An **emergent mesh graph** built from each
+  product's declared `upstream_product` input ports (products as nodes,
+  declared upstreams as edges) at `/mesh` + a per-product neighbourhood
+  on a new **Interop tab**. A **polysemic identifier** registry
+  (admin-curated mesh entities + per-product column bindings) that powers
+  a **cross-product join helper** (suggests shared-entity join keys +
+  sample SQL). **Point-in-time** cross-product reads (`resolve_as_of`
+  resolves each declared table's Delta version at an instant; the heavy
+  read stays a PQL primitive). A **full SLO set** per product
+  (freshness/timeliness/completeness/volume/statistical-shape/lineage/
+  precision-accuracy/availability/performance) with live verdicts on the
+  Overview SLO panel — honest split: the platform measures the ones
+  derivable from the self-generated statistics + Delta history
+  (freshness, volume, completeness, statistical-shape drift via z-score,
+  lineage coverage) and honestly declares the rest. A **mesh-health
+  dashboard** (`/mesh/health`) rolling SLO bands across all products + an
+  `slo_evaluation` scheduler job (and admin "evaluate now") that flags
+  failing objectives into the audit log (`slo.violation`).
+  **Bitemporality** as an opt-in processing-time injection at write
+  (default off — it evolves the Delta schema) plus a documented
+  event/business-time convention + a `table_as_of_event_time` read
+  helper. **Correlation-ids** (`X-Correlation-ID`, falling back to the
+  request id) stamped on every `agent_run_operations` row, with a
+  cross-product trace at `GET /api/mesh/trace/{id}`. The discovery
+  envelope gains `entities` + `bitemporal` blocks, a populated
+  `slos.additional`, and a `mesh` link. Agents read + propose via the
+  `pql_get_mesh_graph` / `pql_get_mesh_health` /
+  `pql_declare_data_product_slo` / `pql_register_mesh_entity` /
+  `pql_bind_mesh_entity_column` hermes tools.
 - Data-Mesh Computational Governance: per-product policy-as-code with
   workspace-default inheritance (retention, encryption class, residency,
   consent), column confidentiality classification (public/internal/

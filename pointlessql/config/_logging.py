@@ -21,6 +21,11 @@ from typing import Any, Literal
 request_id_var: ContextVar[str | None] = ContextVar("request_id", default=None)
 job_run_id_var: ContextVar[str | None] = ContextVar("job_run_id", default=None)
 task_id_var: ContextVar[str | None] = ContextVar("task_id", default=None)
+#: Cross-product trace id, shared across the operations of one logical
+#: task even when they span several requests.  Set from the inbound
+#: ``X-Correlation-ID`` header (falling back to the request id) and
+#: stamped onto every ``agent_run_operations`` row for the mesh trace.
+correlation_id_var: ContextVar[str | None] = ContextVar("correlation_id", default=None)
 
 _HANDLER_MARKER = "_pointlessql_handler"
 _UVICORN_LOGGERS = ("uvicorn", "uvicorn.access", "uvicorn.error")

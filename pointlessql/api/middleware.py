@@ -36,7 +36,7 @@ from pointlessql.api.csrf_middleware import csrf_middleware as _csrf_middleware
 from pointlessql.api.rate_limit_middleware import (
     rate_limit_middleware as _rate_limit_middleware,
 )
-from pointlessql.config import request_id_var
+from pointlessql.config import correlation_id_var, request_id_var
 from pointlessql.services import api_keys as api_keys_service
 from pointlessql.services import auth as auth_service
 from pointlessql.services.workspace import _crud as workspaces_service
@@ -405,12 +405,17 @@ async def request_id_middleware(request: Request, call_next: Any) -> Response:
     """
     request_id = request.headers.get("X-Request-ID") or str(uuid4())
     request.state.request_id = request_id
+    correlation_id = request.headers.get("X-Correlation-ID") or request_id
+    request.state.correlation_id = correlation_id
     token = request_id_var.set(request_id)
+    corr_token = correlation_id_var.set(correlation_id)
     try:
         response = await call_next(request)
     finally:
         request_id_var.reset(token)
+        correlation_id_var.reset(corr_token)
     response.headers["X-Request-ID"] = request_id
+    response.headers["X-Correlation-ID"] = correlation_id
     return response
 
 

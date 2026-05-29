@@ -1,0 +1,136 @@
+"""Correlation-ids — cross-product tracing.
+
+Covers the data-mesh δ correlation half: the request-id middleware
+echoing/propagating ``X-Correlation-ID``, the op recorder stamping it
+onto ``agent_run_operations``, and the mesh trace query grouping every
+operation that shares a correlation id into one timeline.
+"""
+
+from __future__ import annotations
+
+import datetime
+
+import httpx
+from sqlalchemy import select
+
+from pointlessql.api.main import app
+from pointlessql.config import correlation_id_var
+from pointlessql.models import AgentRun, AgentRunOperation
+from pointlessql.services.agent_runs.operations._lifecycle import record_operation
+
+
+def _factory():
+    return app.state.session_factory
+
+
+def _create_run(run_id: str) -> str:
+    with _factory()() as session:
+        session.add(
+            AgentRun(
+                id=run_id,
+                principal=None,
+                agent_id="test-agent",
+                notebook_path="demo/x.py",
+                status="running",
+                started_at=datetime.datetime.now(datetime.UTC),
+            )
+        )
+        session.commit()
+    return run_id
+
+
+def _record(run_id: str, op_name: str = "write_table", target: str | None = None) -> int:
+    started = datetime.datetime.now(datetime.UTC)
+    return record_operation(
+        _factory(),
+        agent_run_id=run_id,
+        op_name=op_name,
+        params={"full_name": target or "main.x.y"},
+        target_table=target,
+        input_sha=None,
+        rows_affected=1,
+        delta_version_before=None,
+        delta_version_after=0,
+        started_at=started,
+        finished_at=started + datetime.timedelta(milliseconds=1),
+        error_message=None,
+    )
+
+
+def test_record_operation_stamps_correlation_from_contextvar() -> None:
+    run_id = _create_run("cccccccc-cccc-cccc-cccc-cccccccccccc")
+    token = correlation_id_var.set("corr-abc")
+    try:
+        op_id = _record(run_id, target="main.a.t1")
+    finally:
+        correlation_id_var.reset(token)
+    with _factory()() as session:
+        row = session.get(AgentRunOperation, op_id)
+        assert row is not None
+        assert row.correlation_id == "corr-abc"
+
+
+def test_record_operation_no_correlation_outside_request() -> None:
+    run_id = _create_run("dddddddd-dddd-dddd-dddd-dddddddddddd")
+    # No correlation context set → column stays NULL.
+    op_id = _record(run_id, target="main.a.t2")
+    with _factory()() as session:
+        assert session.get(AgentRunOperation, op_id).correlation_id is None
+
+
+def test_trace_query_groups_ops_by_correlation() -> None:
+    run_id = _create_run("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee")
+    token = correlation_id_var.set("trace-xyz")
+    try:
+        _record(run_id, target="main.a.one")
+        _record(run_id, target="main.b.two")
+    finally:
+        correlation_id_var.reset(token)
+    with _factory()() as session:
+        ops = session.scalars(
+            select(AgentRunOperation).where(AgentRunOperation.correlation_id == "trace-xyz")
+        ).all()
+    assert len(ops) == 2
+
+
+async def test_middleware_echoes_correlation_header() -> None:
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app),
+        base_url="http://test",
+        cookies=app.state._test_auth_cookie,
+    ) as client:
+        res = await client.get("/api/mesh/graph", headers={"X-Correlation-ID": "my-trace"})
+    assert res.status_code == 200, res.text
+    assert res.headers.get("X-Correlation-ID") == "my-trace"
+
+
+async def test_middleware_defaults_correlation_to_request_id() -> None:
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app),
+        base_url="http://test",
+        cookies=app.state._test_auth_cookie,
+    ) as client:
+        res = await client.get("/api/mesh/graph")
+    assert res.status_code == 200, res.text
+    # No inbound correlation id → falls back to the request id.
+    assert res.headers.get("X-Correlation-ID") == res.headers.get("X-Request-ID")
+
+
+async def test_trace_endpoint_returns_timeline() -> None:
+    run_id = _create_run("ffffffff-ffff-ffff-ffff-ffffffffffff")
+    token = correlation_id_var.set("api-trace")
+    try:
+        _record(run_id, target="main.a.alpha")
+        _record(run_id, target="main.b.beta")
+    finally:
+        correlation_id_var.reset(token)
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app),
+        base_url="http://test",
+        cookies=app.state._test_auth_cookie,
+    ) as client:
+        res = await client.get("/api/mesh/trace/api-trace")
+    assert res.status_code == 200, res.text
+    body = res.json()
+    assert body["correlation_id"] == "api-trace"
+    assert len(body["operations"]) == 2

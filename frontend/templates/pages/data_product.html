@@ -135,6 +135,11 @@
                     data-pql-tab-key="governance">Governance</button>
         </li>
         <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-interop-btn" data-bs-toggle="tab"
+                    data-bs-target="#tab-interop" type="button" role="tab"
+                    data-pql-tab-key="interop">Interop</button>
+        </li>
+        <li class="nav-item" role="presentation">
             <button class="nav-link" id="tab-activity-btn" data-bs-toggle="tab"
                     data-bs-target="#tab-activity" type="button" role="tab"
                     data-pql-tab-key="activity">
@@ -164,6 +169,8 @@
         {% include "pages/_partials/data_product/tab_compliance.html" %}
 
         {% include "pages/_partials/data_product/tab_governance.html" %}
+
+        {% include "pages/_partials/data_product/tab_interop.html" %}
 
         {% include "pages/_partials/data_product/tab_activity.html" %}
 

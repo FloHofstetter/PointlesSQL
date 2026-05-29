@@ -201,6 +201,15 @@
             </a>
         </li>
         <li class="pql-icon-rail__item">
+            <a href="/mesh"
+               data-section="mesh"
+               class="pql-icon-rail__link{% if active_section == 'mesh' or (active_page is defined and active_page == 'mesh') %} active{% endif %}"
+               title="Mesh — emergent graph, health, entities">
+                <i class="bi bi-diagram-3"></i>
+                <span class="pql-icon-rail__label">Mesh</span>
+            </a>
+        </li>
+        <li class="pql-icon-rail__item">
             <a href="/ingest/sources"
                data-section="ingest"
                class="pql-icon-rail__link{% if active_page is defined and active_page == 'ingest' %} active{% endif %}"
