@@ -23,6 +23,7 @@ from pointlessql.exceptions import AuthorizationError, ResourceNotFoundError
 from pointlessql.models.agent._agents import Agent
 from pointlessql.models.auth import User
 from pointlessql.models.catalog._data_products import DataProduct
+from pointlessql.models.catalog._domains import Domain
 from pointlessql.types._user_types import UserInfo
 
 
@@ -31,6 +32,7 @@ def serialise_product(
     *,
     steward_email: str | None,
     steward_display_name: str | None,
+    domain: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Render one ``DataProduct`` cache row as a JSON-friendly dict.
 
@@ -42,6 +44,9 @@ def serialise_product(
         steward_email: Pre-resolved steward email, or ``None`` when
             the row's ``steward_user_id`` is NULL.
         steward_display_name: Pre-resolved steward display name.
+        domain: Pre-resolved owning-domain dict
+            (``{"id", "slug", "name", "archetype"}``) or ``None`` when
+            the product is unassigned.
 
     Returns:
         Dict ready for ``jsonable_encoder`` / FastAPI response.
@@ -60,10 +65,67 @@ def serialise_product(
             "email": steward_email,
             "display_name": steward_display_name,
         },
+        "domain": domain,
         "contract_yaml_hash": row.contract_yaml_hash,
         "last_loaded_at": row.last_loaded_at.isoformat(),
         "last_alerted_at": (row.last_alerted_at.isoformat() if row.last_alerted_at else None),
     }
+
+
+def resolve_domain(session_factory: Any, domain_id: int | None) -> dict[str, Any] | None:
+    """Resolve a product's ``domain_id`` to a small JSON dict, or ``None``.
+
+    Args:
+        session_factory: SQLAlchemy session factory from app state.
+        domain_id: The product's ``domain_id`` (may be ``None``).
+
+    Returns:
+        ``{"id", "slug", "name", "archetype"}`` when the domain exists,
+        else ``None``.
+    """
+    if domain_id is None:
+        return None
+    with session_factory() as session:
+        domain = session.get(Domain, domain_id)
+        if domain is None:
+            return None
+        return {
+            "id": domain.id,
+            "slug": domain.slug,
+            "name": domain.name,
+            "archetype": domain.archetype,
+        }
+
+
+def serialise_table_contracts(contract: DataProductContract) -> list[dict[str, Any]]:
+    """Render a contract's per-table column specs as JSON dicts.
+
+    Shared by the detail handler and the discovery contract so both
+    expose the table shape identically.
+
+    Args:
+        contract: The parsed pydantic contract.
+
+    Returns:
+        One dict per declared table — ``name``, ``primary_key``, and
+        an ordered ``columns`` list.
+    """
+    return [
+        {
+            "name": t.name,
+            "primary_key": list(t.primary_key) if t.primary_key else [],
+            "columns": [
+                {
+                    "name": c.name,
+                    "type": c.type,
+                    "nullable": c.nullable,
+                    "description": c.description,
+                }
+                for c in t.columns
+            ],
+        }
+        for t in contract.tables
+    ]
 
 
 def load_one(

@@ -1,0 +1,236 @@
+        <div class="tab-pane fade" id="tab-governance" role="tabpanel">
+            <div x-data='dataProductGovernance({{ product.catalog|tojson }}, {{ product.schema|tojson }})'
+                 x-init="init()">
+                <div class="alert alert-danger py-1 px-2 small" x-show="error" x-text="error" x-cloak></div>
+
+                <!-- Policy (effective: inherited vs. overridden). -->
+                <div class="card mb-3">
+                    <div class="card-header d-flex align-items-center gap-2">
+                        <i class="bi bi-shield-lock"></i>
+                        <span>Policy</span>
+                        <span class="badge text-bg-warning ms-auto" x-show="trustDowngraded" x-cloak>
+                            <i class="bi bi-exclamation-triangle me-1"></i>trust downgraded
+                        </span>
+                    </div>
+                    <div class="card-body">
+                        <table class="table table-sm align-middle mb-3">
+                            <thead>
+                                <tr><th>Policy</th><th>Effective value</th><th>Source</th></tr>
+                            </thead>
+                            <tbody>
+                                <template x-for="field in ['retention_days','encryption_class','residency_region','consent_required','consent_basis']" :key="field">
+                                    <tr>
+                                        <td><code x-text="field"></code></td>
+                                        <td x-text="value(field)"></td>
+                                        <td>
+                                            <span class="badge"
+                                                  :class="source(field) === 'product' ? 'text-bg-primary' : (source(field) === 'workspace' ? 'text-bg-secondary' : 'text-bg-light')"
+                                                  x-text="source(field) === 'product' ? 'overridden' : (source(field) === 'workspace' ? 'inherited' : 'unset')"></span>
+                                        </td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+
+                        <template x-if="canManage">
+                            <div class="row g-2 align-items-end">
+                                <div class="col-sm-4">
+                                    <label class="form-label small mb-0">Retention (days)</label>
+                                    <input type="number" min="0" class="form-control form-control-sm" x-model="editPolicy.retention_days" placeholder="inherit">
+                                </div>
+                                <div class="col-sm-4">
+                                    <label class="form-label small mb-0">Encryption class</label>
+                                    <select class="form-select form-select-sm" x-model="editPolicy.encryption_class">
+                                        <option value="">inherit</option>
+                                        <option value="none">none</option>
+                                        <option value="at_rest">at_rest</option>
+                                        <option value="in_transit">in_transit</option>
+                                        <option value="full">full</option>
+                                    </select>
+                                </div>
+                                <div class="col-sm-4">
+                                    <label class="form-label small mb-0">Residency region</label>
+                                    <input type="text" class="form-control form-control-sm" x-model="editPolicy.residency_region" placeholder="inherit">
+                                </div>
+                                <div class="col-sm-4">
+                                    <label class="form-label small mb-0">Consent required</label>
+                                    <select class="form-select form-select-sm" x-model="editPolicy.consent_required">
+                                        <option value="">inherit</option>
+                                        <option value="true">yes</option>
+                                        <option value="false">no</option>
+                                    </select>
+                                </div>
+                                <div class="col-sm-4">
+                                    <label class="form-label small mb-0">Consent basis</label>
+                                    <input type="text" class="form-control form-control-sm" x-model="editPolicy.consent_basis" placeholder="inherit">
+                                </div>
+                                <div class="col-sm-4">
+                                    <button type="button" class="btn btn-sm btn-primary w-100" @click="savePolicy()">Save policy</button>
+                                </div>
+                            </div>
+                        </template>
+                        <p class="text-muted small mb-0 mt-2">
+                            Encryption class, residency, and consent are declarations surfaced in the
+                            discovery contract and the compliance scan; retention is monitored and PII
+                            classification is enforced at read time.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Column classifications (drive read-time masking). -->
+                <div class="card mb-3">
+                    <div class="card-header d-flex align-items-center gap-2">
+                        <i class="bi bi-tags"></i>
+                        <span>Column classifications</span>
+                    </div>
+                    <div class="card-body">
+                        <ul class="list-group list-group-flush mb-2">
+                            <template x-for="c in classifications" :key="c.id">
+                                <li class="list-group-item d-flex justify-content-between align-items-center px-2 py-1">
+                                    <span>
+                                        <code x-text="c.table + '.' + c.column"></code>
+                                        <span class="badge text-bg-danger ms-1" x-text="c.classification"></span>
+                                        <span class="badge text-bg-secondary ms-1" x-text="'mask: ' + c.masking_strategy"></span>
+                                    </span>
+                                    <button type="button" class="btn btn-sm btn-outline-danger"
+                                            x-show="canManage" @click="removeClassification(c.id)">Remove</button>
+                                </li>
+                            </template>
+                            <li class="list-group-item text-muted small px-2 py-1" x-show="classifications.length === 0">
+                                No columns classified. Classified PII/PHI columns are masked at the
+                                product's output ports for non-privileged viewers.
+                            </li>
+                        </ul>
+                        <template x-if="canManage">
+                            <div class="row g-2 align-items-end">
+                                <div class="col-sm-3">
+                                    <input type="text" class="form-control form-control-sm" x-model="newClass.table" placeholder="table">
+                                </div>
+                                <div class="col-sm-3">
+                                    <input type="text" class="form-control form-control-sm" x-model="newClass.column" placeholder="column">
+                                </div>
+                                <div class="col-sm-3">
+                                    <select class="form-select form-select-sm" x-model="newClass.classification">
+                                        <option value="public">public</option>
+                                        <option value="internal">internal</option>
+                                        <option value="confidential">confidential</option>
+                                        <option value="pii">pii</option>
+                                        <option value="phi">phi</option>
+                                    </select>
+                                </div>
+                                <div class="col-sm-3">
+                                    <button type="button" class="btn btn-sm btn-outline-primary w-100" @click="addClassification()">Classify</button>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- Control-Port: right-to-be-forgotten. -->
+                <template x-if="canManage">
+                    <div class="card mb-3 border-danger-subtle">
+                        <div class="card-header d-flex align-items-center gap-2">
+                            <i class="bi bi-person-x"></i>
+                            <span>Control-Port — right-to-be-forgotten</span>
+                        </div>
+                        <div class="card-body">
+                            <p class="text-muted small">
+                                Delete a data subject's rows across every declared table that carries
+                                the column. Destructive and irreversible.
+                            </p>
+                            <div class="row g-2 align-items-end mb-2">
+                                <div class="col-sm-4">
+                                    <input type="text" class="form-control form-control-sm" x-model="forget.subject_column" placeholder="subject column (e.g. customer_id)">
+                                </div>
+                                <div class="col-sm-4">
+                                    <input type="text" class="form-control form-control-sm" x-model="forget.subject_value" placeholder="subject value">
+                                </div>
+                                <div class="col-sm-4">
+                                    <button type="button" class="btn btn-sm btn-danger w-100"
+                                            :disabled="!forget.subject_column || !forget.subject_value"
+                                            @click="showForgetConfirm = true">Erase subject…</button>
+                                </div>
+                            </div>
+
+                            <ul class="list-group list-group-flush">
+                                <template x-for="r in forgetRequests" :key="r.id">
+                                    <li class="list-group-item d-flex justify-content-between align-items-center px-2 py-1 small">
+                                        <span>
+                                            <span class="badge me-1"
+                                                  :class="r.status === 'executed' ? 'text-bg-success' : (r.status === 'proposed' ? 'text-bg-warning' : 'text-bg-secondary')"
+                                                  x-text="r.status"></span>
+                                            <code x-text="r.subject_column"></code>
+                                            <span class="text-muted" x-show="r.rows_deleted != null" x-text="' · ' + r.rows_deleted + ' row(s)'"></span>
+                                        </span>
+                                        <span class="text-muted" x-text="r.executed_at || r.created_at"></span>
+                                    </li>
+                                </template>
+                                <li class="list-group-item text-muted small px-2 py-1" x-show="forgetRequests.length === 0">
+                                    No erasure requests yet.
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </template>
+
+                <!-- Compliance violations + A4 ownership hint. -->
+                <div class="card mb-3">
+                    <div class="card-header d-flex align-items-center gap-2">
+                        <i class="bi bi-clipboard-check"></i>
+                        <span>Compliance</span>
+                    </div>
+                    <div class="card-body">
+                        <ul class="list-group list-group-flush mb-2">
+                            <template x-for="(v, i) in violations" :key="i">
+                                <li class="list-group-item d-flex justify-content-between align-items-start px-2 py-1 small">
+                                    <span>
+                                        <span class="badge me-1"
+                                              :class="v.severity === 'critical' ? 'text-bg-danger' : 'text-bg-warning'"
+                                              x-text="v.kind"></span>
+                                        <span x-text="v.message"></span>
+                                    </span>
+                                    <span class="text-muted text-nowrap ms-2" x-text="v.created_at"></span>
+                                </li>
+                            </template>
+                            <li class="list-group-item text-muted small px-2 py-1" x-show="violations.length === 0">
+                                No open compliance violations.
+                            </li>
+                        </ul>
+                        <template x-if="ownershipSuggestion">
+                            <div class="alert alert-info py-2 px-2 small mb-0">
+                                <i class="bi bi-lightbulb me-1"></i>
+                                Suggested owning domain:
+                                <strong x-text="ownershipSuggestion.suggested_domain.name"></strong>
+                                — <span x-text="ownershipSuggestion.rationale"></span>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- Erase-subject confirm modal. -->
+                <div class="modal fade" :class="{ 'd-block show': showForgetConfirm }"
+                     tabindex="-1" x-show="showForgetConfirm" x-cloak
+                     style="background: rgba(0,0,0,.5);">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">Confirm erasure</h5>
+                                <button type="button" class="btn-close" @click="showForgetConfirm = false"></button>
+                            </div>
+                            <div class="modal-body">
+                                <p>
+                                    Permanently delete all rows where
+                                    <code x-text="forget.subject_column"></code> =
+                                    <code x-text="forget.subject_value"></code>
+                                    across this product's declared tables? This cannot be undone.
+                                </p>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" @click="showForgetConfirm = false">Cancel</button>
+                                <button type="button" class="btn btn-danger" @click="runForget()">Erase subject</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>

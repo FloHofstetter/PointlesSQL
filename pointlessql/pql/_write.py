@@ -206,6 +206,22 @@ def write_table(
                     enforcement.details,
                     enforcement.data_product_id,
                 )
+            # self-generated statistics: when the target schema is a
+            # product, compute a cheap shape from the in-memory frame
+            # (no Delta re-scan) and stash it for the post-commit hook.
+            # delta_version + row_count are read off the recorder; the
+            # version is filled in after the write below.
+            if enforcement.data_product_id is not None:
+                from pointlessql.services.data_product_stats import light_shape
+
+                recorder.pending_statistics = (
+                    enforcement.data_product_id,
+                    table,
+                    None,
+                    recorder.rows_affected,
+                    light_shape(df),
+                    "light",
+                )
             if enforcement.violation is not None:
                 raise enforcement.violation
 
@@ -224,6 +240,19 @@ def write_table(
 
             if agent_run_id is not None:
                 recorder.delta_version_after = safe_delta_version(location)
+                # backfill the now-known delta version onto the pending
+                # statistics tuple so the post-commit hook can match an
+                # on-demand profile cached at this exact version.
+                if recorder.pending_statistics is not None:
+                    dp_id, tbl, _, rows, shape, kind = recorder.pending_statistics
+                    recorder.pending_statistics = (
+                        dp_id,
+                        tbl,
+                        recorder.delta_version_after,
+                        rows,
+                        shape,
+                        kind,
+                    )
 
             if not table_exists:
                 columns = columns_from_tuples(engine.columns_info(df))

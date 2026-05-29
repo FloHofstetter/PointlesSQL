@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+{% from "_macros/timestamps.html" import relative_time %}
+{% block title %}Domains · PointlesSQL{% endblock %}
+
+{% set breadcrumbs = [
+ {"label": "Home", "href": "/"},
+ {"label": "Admin", "href": "/admin"},
+ {"label": "Domains"}
+] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-3">
+    <div class="d-flex align-items-center gap-2">
+        <i class="bi bi-diagram-2 fs-3"></i>
+        <h1 class="h3 mb-0">Domains</h1>
+    </div>
+    <div class="d-flex align-items-center gap-3">
+        <span class="text-muted small">
+            {{ active_domains|length }} active{% if archived_domains %}, {{ archived_domains|length }} archived{% endif %}
+        </span>
+        <button type="button" class="btn btn-primary btn-sm"
+                data-bs-toggle="modal" data-bs-target="#createDomainModal">
+            <i class="bi bi-plus-lg me-1"></i>New domain
+        </button>
+    </div>
+</div>
+
+<p class="text-muted">
+    A domain is the owning team for a set of data products. Each domain has an
+    <em>archetype</em> (source-aligned, aggregate, or consumer-aligned) and
+    owner / developer members. Assign products to a domain from the product's
+    Overview tab.
+</p>
+
+<div class="modal fade" id="createDomainModal" tabindex="-1"
+     aria-labelledby="createDomainModalLabel" aria-hidden="true"
+     x-data="adminDomains()">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="createDomainModalLabel">New domain</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label" for="dom-slug">Slug</label>
+                    <input id="dom-slug" type="text" class="form-control font-monospace"
+                           x-model="form.slug" placeholder="sales" maxlength="64">
+                    <div class="form-text">Lower-case letters / digits / <code>-</code> / <code>_</code>. Used in the domain URL.</div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" for="dom-name">Name</label>
+                    <input id="dom-name" type="text" class="form-control"
+                           x-model="form.name" placeholder="Sales" maxlength="200">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" for="dom-archetype">Archetype</label>
+                    <select id="dom-archetype" class="form-select" x-model="form.archetype">
+                        <option value="source-aligned">Source-aligned</option>
+                        <option value="aggregate">Aggregate</option>
+                        <option value="consumer-aligned">Consumer-aligned</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" for="dom-desc">Description (optional)</label>
+                    <textarea id="dom-desc" class="form-control" rows="2"
+                              x-model="form.description" maxlength="500"
+                              placeholder="What this domain owns and who runs it."></textarea>
+                </div>
+                <div class="alert alert-danger" x-show="error" x-text="error" x-cloak></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary"
+                        :disabled="!form.slug || !form.name || creating"
+                        @click="create()">
+                    <span x-show="creating" x-cloak><i class="bi bi-hourglass-split me-1"></i></span>
+                    <span x-show="!creating">Create domain</span>
+                    <span x-show="creating">Creating&hellip;</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<h2 class="h5 mb-2">Active domains</h2>
+<div class="table-responsive mb-4">
+    <table class="table table-sm align-middle pql-list-table">
+        <thead>
+            <tr>
+                <th>Slug</th>
+                <th>Name</th>
+                <th>Archetype</th>
+                <th class="text-end">Members</th>
+                <th class="text-end">Products</th>
+                <th>Created</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for d in active_domains %}
+            <tr data-domain-id="{{ d.id }}" data-domain-slug="{{ d.slug }}"
+                x-data='domainMembers({{ d.id }})'>
+                <td data-label="Slug"><a href="/domains/{{ d.slug }}"><code>{{ d.slug }}</code></a></td>
+                <td data-label="Name">{{ d.name }}{% if d.description %}<div class="text-muted small">{{ d.description }}</div>{% endif %}</td>
+                <td data-label="Archetype"><span class="badge text-bg-light border">{{ d.archetype }}</span></td>
+                <td data-label="Members" class="text-end">{{ member_counts.get(d.id, 0) }}</td>
+                <td data-label="Products" class="text-end">{{ product_counts.get(d.id, 0) }}</td>
+                <td data-label="Created" class="text-muted small">{{ relative_time(d.created_at.isoformat() if d.created_at else None) }}</td>
+                <td data-label="Actions" class="text-nowrap">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" @click="toggle()">
+                        <i class="bi bi-people"></i> Members
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-warning"
+                            x-data='domainArchiveButton({{ d.id }}, {{ d.slug|tojson }})'
+                            @click="archive()">
+                        <i class="bi bi-archive"></i> Archive
+                    </button>
+                    <div x-show="open" x-cloak class="mt-2 p-2 border rounded bg-body-tertiary">
+                        <div class="d-flex gap-2 align-items-end mb-2">
+                            <div class="flex-grow-1">
+                                <label class="form-label small mb-0">Add by email</label>
+                                <input type="email" class="form-control form-control-sm"
+                                       x-model="newEmail" placeholder="user@example.com">
+                            </div>
+                            <div>
+                                <label class="form-label small mb-0">Role</label>
+                                <select class="form-select form-select-sm" x-model="newRole">
+                                    <option value="owner">owner</option>
+                                    <option value="developer">developer</option>
+                                </select>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-primary" @click="add()">Add</button>
+                        </div>
+                        <div class="alert alert-danger py-1 px-2 small" x-show="error" x-text="error" x-cloak></div>
+                        <div x-show="loading" class="text-muted small">Loading&hellip;</div>
+                        <ul class="list-group list-group-flush" x-show="!loading">
+                            <template x-for="m in members" :key="m.user_id">
+                                <li class="list-group-item d-flex justify-content-between align-items-center px-2 py-1">
+                                    <span>
+                                        <span x-text="m.email"></span>
+                                        <span class="badge ms-1"
+                                              :class="m.role === 'owner' ? 'text-bg-primary' : 'text-bg-secondary'"
+                                              x-text="m.role"></span>
+                                    </span>
+                                    <span class="btn-group btn-group-sm">
+                                        <button class="btn btn-outline-secondary"
+                                                @click="changeRole(m.user_id, m.role === 'owner' ? 'developer' : 'owner')"
+                                                x-text="m.role === 'owner' ? 'Make developer' : 'Make owner'"></button>
+                                        <button class="btn btn-outline-danger" @click="remove(m.user_id)">Remove</button>
+                                    </span>
+                                </li>
+                            </template>
+                            <li class="list-group-item text-muted small px-2 py-1" x-show="members.length === 0">No members yet.</li>
+                        </ul>
+                    </div>
+                </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="7" class="text-muted">No active domains. Create one to start assigning products.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% if archived_domains %}
+<h2 class="h5 mb-2 text-muted">Archived</h2>
+<div class="table-responsive">
+    <table class="table table-sm align-middle pql-list-table">
+        <thead>
+            <tr><th>Slug</th><th>Name</th><th>Archetype</th><th>Archived at</th></tr>
+        </thead>
+        <tbody>
+            {% for d in archived_domains %}
+            <tr>
+                <td data-label="Slug"><code>{{ d.slug }}</code></td>
+                <td data-label="Name">{{ d.name }}</td>
+                <td data-label="Archetype"><span class="badge text-bg-light border">{{ d.archetype }}</span></td>
+                <td data-label="Archived at" class="text-muted small">{{ relative_time(d.archived_at.isoformat() if d.archived_at else None) }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+{% endblock %}

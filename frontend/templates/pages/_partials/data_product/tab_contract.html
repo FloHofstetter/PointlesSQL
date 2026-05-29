@@ -38,7 +38,14 @@
                                         <tbody>
                                             <template x-for="c in t.columns" :key="c.name">
                                                 <tr>
-                                                    <td><code x-text="c.name"></code></td>
+                                                    <td>
+                                                        <code x-text="c.name"></code>
+                                                        <template x-for="term in (c.glossary_terms || [])" :key="term">
+                                                            <span class="badge text-bg-light border ms-1" title="Glossary term">
+                                                                <i class="bi bi-book"></i> <span x-text="term"></span>
+                                                            </span>
+                                                        </template>
+                                                    </td>
                                                     <td><span class="badge bg-secondary" x-text="c.type"></span></td>
                                                     <td>
                                                         <template x-if="c.nullable">

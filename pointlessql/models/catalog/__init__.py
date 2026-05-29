@@ -73,6 +73,29 @@ from pointlessql.models.catalog._data_products import (
     CONTRACT_EVENT_OUTCOMES,
     DataProduct,
     DataProductContractEvent,
+    DataProductStatistics,
+)
+from pointlessql.models.catalog._domains import (
+    DOMAIN_ARCHETYPES,
+    DOMAIN_MEMBER_ROLES,
+    DP_TRANSFORMATION_KINDS,
+    DataProductTransformation,
+    Domain,
+    DomainMember,
+)
+from pointlessql.models.catalog._glossary import (
+    GlossaryTerm,
+    GlossaryTermColumn,
+)
+from pointlessql.models.catalog._governance import (
+    CLASSIFICATIONS,
+    ENCRYPTION_CLASSES,
+    FORGET_STATUSES,
+    MASKING_STRATEGIES,
+    DataProductColumnClassification,
+    DataProductForgetRequest,
+    DataProductPolicy,
+    WorkspaceGovernancePolicy,
 )
 from pointlessql.models.catalog._metadata import (
     Dashboard,
@@ -82,15 +105,33 @@ from pointlessql.models.catalog._metadata import (
     SavedQuery,
     TableStats,
 )
+from pointlessql.models.catalog._ports import (
+    INPUT_PORT_KINDS,
+    OUTPUT_PORT_KINDS,
+    DataProductInputPort,
+    DataProductOutputPort,
+)
 from pointlessql.models.catalog._recents import RecentTable
+from pointlessql.models.catalog._semantic import (
+    DataProductSemanticConcept,
+)
 from pointlessql.models.catalog._sync import SyncRun
 
 __all__ = [
     "ACTIVE_REVIEWER_PROVIDERS",
     "ACTIVE_REVIEWER_RUNNERS",
     "CANDIDATE_STATUSES",
+    "CLASSIFICATIONS",
     "CONTRACT_EVENT_OUTCOMES",
+    "DOMAIN_ARCHETYPES",
+    "DOMAIN_MEMBER_ROLES",
+    "DP_TRANSFORMATION_KINDS",
+    "ENCRYPTION_CLASSES",
     "ENDORSEMENT_TYPES",
+    "FORGET_STATUSES",
+    "INPUT_PORT_KINDS",
+    "MASKING_STRATEGIES",
+    "OUTPUT_PORT_KINDS",
     "PASSPORT_TRIGGERS",
     "PROPOSAL_STATUSES",
     "YAML_DRAFT_SOURCE_KINDS",
@@ -98,17 +139,29 @@ __all__ = [
     "Dashboard",
     "DataProduct",
     "DataProductActiveReviewerConfig",
+    "DataProductColumnClassification",
     "DataProductComment",
     "DataProductCommentReaction",
     "DataProductContractEvent",
     "DataProductCooccurrence",
     "DataProductEndorsement",
+    "DataProductForgetRequest",
+    "DataProductInputPort",
+    "DataProductOutputPort",
     "DataProductPassport",
+    "DataProductPolicy",
     "DataProductPromotionCandidate",
     "DataProductReview",
     "DataProductSchemaProposal",
+    "DataProductSemanticConcept",
+    "DataProductStatistics",
+    "DataProductTransformation",
     "DataProductTrending",
     "DataProductYamlDraft",
+    "Domain",
+    "DomainMember",
+    "GlossaryTerm",
+    "GlossaryTermColumn",
     "QueryHistory",
     "QueryHistoryTable",
     "RateLimitEvent",
@@ -116,4 +169,5 @@ __all__ = [
     "SavedQuery",
     "SyncRun",
     "TableStats",
+    "WorkspaceGovernancePolicy",
 ]

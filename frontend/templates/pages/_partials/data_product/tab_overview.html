@@ -39,6 +39,312 @@
                 </div>
             </div>
 
+            <!-- Domain ownership + bound transformations. -->
+            <div class="card mb-3"
+                 x-data='dataProductDomainPanel({{ product.catalog|tojson }}, {{ product.schema|tojson }}, {{ ((is_admin or is_steward) or false)|tojson }})'
+                 x-init="init()">
+                <div class="card-header d-flex align-items-center gap-2">
+                    <i class="bi bi-diagram-2"></i>
+                    <span>Domain</span>
+                    <template x-if="domain">
+                        <a class="ms-auto" :href="'/domains/' + domain.slug">
+                            <span x-text="domain.name"></span>
+                            <span class="badge text-bg-light border ms-1" x-text="domain.archetype"></span>
+                        </a>
+                    </template>
+                    <template x-if="!domain">
+                        <span class="ms-auto text-muted fst-italic">Unassigned</span>
+                    </template>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-danger py-1 px-2 small" x-show="error" x-text="error" x-cloak></div>
+
+                    <template x-if="canManage">
+                        <div class="row g-2 align-items-end mb-3">
+                            <div class="col-sm-8">
+                                <label class="form-label small mb-0" for="dp-domain-select">Owning domain</label>
+                                <select id="dp-domain-select" class="form-select form-select-sm" x-model="selectedDomainId">
+                                    <option value="">— Unassigned —</option>
+                                    <template x-for="d in domains" :key="d.id">
+                                        <option :value="String(d.id)" x-text="d.name + ' (' + d.archetype + ')'"></option>
+                                    </template>
+                                </select>
+                            </div>
+                            <div class="col-sm-4">
+                                <button type="button" class="btn btn-sm btn-primary w-100" @click="assign()">Save domain</button>
+                            </div>
+                        </div>
+                    </template>
+
+                    <h6 class="text-muted small text-uppercase mb-2">Transformations</h6>
+                    <ul class="list-group list-group-flush mb-2">
+                        <template x-for="t in transformations" :key="t.id">
+                            <li class="list-group-item d-flex justify-content-between align-items-center px-2 py-1">
+                                <span>
+                                    <span class="badge text-bg-secondary me-1" x-text="t.kind"></span>
+                                    <span x-text="t.notebook_path || t.notebook_id || t.dbt_model_name"></span>
+                                </span>
+                                <button type="button" class="btn btn-sm btn-outline-danger"
+                                        x-show="canManage" @click="unbind(t.id)">Remove</button>
+                            </li>
+                        </template>
+                        <li class="list-group-item text-muted small px-2 py-1" x-show="transformations.length === 0">
+                            No transformation bound yet.
+                        </li>
+                    </ul>
+
+                    <template x-if="canManage">
+                        <div class="row g-2 align-items-end">
+                            <div class="col-sm-3">
+                                <label class="form-label small mb-0" for="dp-bind-kind">Bind</label>
+                                <select id="dp-bind-kind" class="form-select form-select-sm" x-model="bindKind">
+                                    <option value="notebook">notebook</option>
+                                    <option value="dbt_model">dbt model</option>
+                                </select>
+                            </div>
+                            <div class="col-sm-6">
+                                <template x-if="bindKind === 'notebook'">
+                                    <input type="text" class="form-control form-control-sm"
+                                           x-model="bindNotebookId" placeholder="notebook id (uuid)">
+                                </template>
+                                <template x-if="bindKind === 'dbt_model'">
+                                    <input type="text" class="form-control form-control-sm"
+                                           x-model="bindDbtModel" placeholder="dbt model name">
+                                </template>
+                            </div>
+                            <div class="col-sm-3">
+                                <button type="button" class="btn btn-sm btn-outline-primary w-100" @click="bind()">Bind</button>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+
+            <!-- Discovery contract URI. -->
+            <div class="card mb-3"
+                 x-data='dataProductDiscoveryCard({{ product.catalog|tojson }}, {{ product.schema|tojson }})'
+                 x-init="init()">
+                <div class="card-header d-flex align-items-center gap-2">
+                    <i class="bi bi-compass"></i>
+                    <span>Discovery</span>
+                    <a class="ms-auto small" :href="discoveryHref" target="_blank" rel="noopener">
+                        View contract JSON <i class="bi bi-box-arrow-up-right"></i>
+                    </a>
+                </div>
+                <div class="card-body">
+                    <label class="form-label small text-muted mb-1">Stable discovery URI</label>
+                    <div class="input-group input-group-sm">
+                        <code class="form-control text-truncate" x-text="uri || '—'"></code>
+                        <button type="button" class="btn btn-outline-secondary"
+                                @click="copyUri()" :disabled="!uri" title="Copy URI">
+                            <i class="bi bi-clipboard"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Declared output / input ports. -->
+            <div class="card mb-3"
+                 x-data='dataProductPortsPanel({{ product.catalog|tojson }}, {{ product.schema|tojson }}, {{ ((is_admin or is_steward) or false)|tojson }})'
+                 x-init="init()">
+                <div class="card-header d-flex align-items-center gap-2">
+                    <i class="bi bi-diagram-3"></i>
+                    <span>Ports</span>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-danger py-1 px-2 small" x-show="error" x-text="error" x-cloak></div>
+
+                    <h6 class="text-muted small text-uppercase mb-2">Output ports</h6>
+                    <ul class="list-group list-group-flush mb-2">
+                        <template x-for="p in outputPorts" :key="p.id">
+                            <li class="list-group-item d-flex justify-content-between align-items-center px-2 py-1">
+                                <span>
+                                    <span class="badge text-bg-primary me-1" x-text="p.kind"></span>
+                                    <strong x-text="p.name"></strong>
+                                    <span class="text-muted small" x-show="p.format" x-text="' · ' + p.format"></span>
+                                    <span class="text-muted small" x-show="p.description" x-text="' — ' + p.description"></span>
+                                </span>
+                                <button type="button" class="btn btn-sm btn-outline-danger"
+                                        x-show="canManage" @click="removeOutput(p.id)">Remove</button>
+                            </li>
+                        </template>
+                        <li class="list-group-item text-muted small px-2 py-1" x-show="outputPorts.length === 0">
+                            No output ports declared. SQL access is always available.
+                        </li>
+                    </ul>
+
+                    <template x-if="canManage">
+                        <div class="row g-2 align-items-end mb-3">
+                            <div class="col-sm-3">
+                                <input type="text" class="form-control form-control-sm" x-model="newOutput.name" placeholder="name">
+                            </div>
+                            <div class="col-sm-3">
+                                <select class="form-select form-select-sm" x-model="newOutput.kind">
+                                    <option value="sql">sql</option>
+                                    <option value="file">file</option>
+                                    <option value="event">event</option>
+                                </select>
+                            </div>
+                            <div class="col-sm-3">
+                                <input type="text" class="form-control form-control-sm" x-model="newOutput.format" placeholder="format (e.g. parquet)">
+                            </div>
+                            <div class="col-sm-3">
+                                <button type="button" class="btn btn-sm btn-outline-primary w-100" @click="addOutput()">Add output</button>
+                            </div>
+                        </div>
+                    </template>
+
+                    <h6 class="text-muted small text-uppercase mb-2">Input ports (declared upstream)</h6>
+                    <ul class="list-group list-group-flush mb-2">
+                        <template x-for="p in inputPorts" :key="p.id">
+                            <li class="list-group-item d-flex justify-content-between align-items-center px-2 py-1">
+                                <span>
+                                    <span class="badge text-bg-secondary me-1" x-text="p.kind"></span>
+                                    <strong x-text="p.name"></strong>
+                                    <template x-if="upstreamHref(p)">
+                                        <a class="ms-1" :href="upstreamHref(p)"><code x-text="p.source_ref"></code></a>
+                                    </template>
+                                    <template x-if="!upstreamHref(p) && p.source_ref">
+                                        <code class="ms-1" x-text="p.source_ref"></code>
+                                    </template>
+                                    <span class="text-muted small" x-show="p.description" x-text="' — ' + p.description"></span>
+                                </span>
+                                <button type="button" class="btn btn-sm btn-outline-danger"
+                                        x-show="canManage" @click="removeInput(p.id)">Remove</button>
+                            </li>
+                        </template>
+                        <li class="list-group-item text-muted small px-2 py-1" x-show="inputPorts.length === 0">
+                            No upstream sources declared.
+                        </li>
+                    </ul>
+
+                    <template x-if="canManage">
+                        <div class="row g-2 align-items-end">
+                            <div class="col-sm-3">
+                                <input type="text" class="form-control form-control-sm" x-model="newInput.name" placeholder="name">
+                            </div>
+                            <div class="col-sm-3">
+                                <select class="form-select form-select-sm" x-model="newInput.kind">
+                                    <option value="operational_system">operational_system</option>
+                                    <option value="upstream_product">upstream_product</option>
+                                    <option value="external">external</option>
+                                </select>
+                            </div>
+                            <div class="col-sm-3">
+                                <input type="text" class="form-control form-control-sm" x-model="newInput.source_ref" placeholder="catalog.schema or URI">
+                            </div>
+                            <div class="col-sm-3">
+                                <button type="button" class="btn btn-sm btn-outline-primary w-100" @click="addInput()">Add input</button>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+
+            <!-- Semantic model + sample query. -->
+            <div class="card mb-3"
+                 x-data='dataProductSemanticPanel({{ product.catalog|tojson }}, {{ product.schema|tojson }}, {{ ((is_admin or is_steward) or false)|tojson }})'
+                 x-init="init()">
+                <div class="card-header d-flex align-items-center gap-2">
+                    <i class="bi bi-bezier2"></i>
+                    <span>Semantic model</span>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-danger py-1 px-2 small" x-show="error" x-text="error" x-cloak></div>
+
+                    <h6 class="text-muted small text-uppercase mb-2">Concepts</h6>
+                    <ul class="list-group list-group-flush mb-2">
+                        <template x-for="c in concepts" :key="c.id">
+                            <li class="list-group-item d-flex justify-content-between align-items-center px-2 py-1">
+                                <span>
+                                    <strong x-text="c.concept"></strong>
+                                    <span class="text-muted small" x-show="c.description" x-text="' — ' + c.description"></span>
+                                    <code class="ms-1 small" x-show="c.maps_to" x-text="c.maps_to"></code>
+                                </span>
+                                <button type="button" class="btn btn-sm btn-outline-danger"
+                                        x-show="canManage" @click="removeConcept(c.id)">Remove</button>
+                            </li>
+                        </template>
+                        <li class="list-group-item text-muted small px-2 py-1" x-show="concepts.length === 0">
+                            No concepts declared.
+                        </li>
+                    </ul>
+
+                    <template x-if="canManage">
+                        <div class="row g-2 align-items-end mb-3">
+                            <div class="col-sm-3">
+                                <input type="text" class="form-control form-control-sm" x-model="newConcept.concept" placeholder="concept">
+                            </div>
+                            <div class="col-sm-4">
+                                <input type="text" class="form-control form-control-sm" x-model="newConcept.description" placeholder="description">
+                            </div>
+                            <div class="col-sm-3">
+                                <input type="text" class="form-control form-control-sm" x-model="newConcept.maps_to" placeholder="catalog.schema.table.column">
+                            </div>
+                            <div class="col-sm-2">
+                                <button type="button" class="btn btn-sm btn-outline-primary w-100" @click="addConcept()">Add</button>
+                            </div>
+                        </div>
+                    </template>
+
+                    <h6 class="text-muted small text-uppercase mb-2">Sample query</h6>
+                    <template x-if="!canManage">
+                        <pre class="bg-body-tertiary p-2 rounded small mb-0" x-show="sampleSql" x-text="sampleSql"></pre>
+                    </template>
+                    <template x-if="!canManage && !sampleSql">
+                        <p class="text-muted small mb-0">No sample query.</p>
+                    </template>
+                    <template x-if="canManage">
+                        <div>
+                            <textarea class="form-control form-control-sm font-monospace mb-2" rows="3"
+                                      x-model="editingSql" placeholder="SELECT ..."></textarea>
+                            <button type="button" class="btn btn-sm btn-outline-primary" @click="saveSql()">Save sample SQL</button>
+                        </div>
+                    </template>
+                </div>
+            </div>
+
+            <!-- Self-generated statistics. -->
+            <div class="card mb-3"
+                 x-data='dataProductStatsPanel({{ product.catalog|tojson }}, {{ product.schema|tojson }})'
+                 x-init="init()">
+                <div class="card-header d-flex align-items-center gap-2">
+                    <i class="bi bi-bar-chart-line"></i>
+                    <span>Statistics</span>
+                    <span class="text-muted small ms-auto">stamped at write time</span>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-danger py-1 px-2 small" x-show="error" x-text="error" x-cloak></div>
+                    <div class="table-responsive">
+                        <table class="table table-sm mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Table</th>
+                                    <th class="text-end">Rows</th>
+                                    <th class="text-end">Columns</th>
+                                    <th class="text-end">Δ version</th>
+                                    <th class="text-end">Age (min)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <template x-for="s in stats" :key="s.table_name">
+                                    <tr>
+                                        <td><code x-text="s.table_name"></code></td>
+                                        <td class="text-end" x-text="s.row_count != null ? s.row_count : '—'"></td>
+                                        <td class="text-end" x-text="columnCount(s)"></td>
+                                        <td class="text-end" x-text="s.delta_log_version != null ? s.delta_log_version : '—'"></td>
+                                        <td class="text-end" x-text="s.freshness_lag_minutes != null ? s.freshness_lag_minutes : '—'"></td>
+                                    </tr>
+                                </template>
+                                <tr x-show="stats.length === 0">
+                                    <td colspan="5" class="text-muted small">No statistics yet — write to this product to stamp a snapshot.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
             <!-- README as canonical landing card. -->
             <div class="card mb-3 pql-dp-readme-hero" x-show="readmeLoaded">
                 <div class="card-header d-flex align-items-center gap-2">

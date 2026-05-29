@@ -12,6 +12,7 @@ dependency injection):
 
 * ``console``           — admin landing + system info.
 * ``workspaces``        — workspace CRUD + group mappings.
+* ``domains``           — data-mesh domain CRUD + members.
 * ``workspace_pins``    — pinned-workspace bookmark management.
 * ``repos``             — workspace-repo registration + sync.
 * ``cdf_tail``          — Change Data Feed tail viewer.
@@ -28,10 +29,13 @@ from pointlessql.api.admin.api_keys import router as _api_keys_router
 from pointlessql.api.admin.cdf_tail import router as _cdf_tail_router
 from pointlessql.api.admin.coedit_bus import router as _coedit_bus_router
 from pointlessql.api.admin.console import router as _console_router
+from pointlessql.api.admin.domains import router as _domains_router
 from pointlessql.api.admin.expected_producers import (
     router as _expected_producers_router,
 )
 from pointlessql.api.admin.external_writes import router as _external_writes_router
+from pointlessql.api.admin.glossary import router as _glossary_router
+from pointlessql.api.admin.governance import router as _admin_governance_router
 from pointlessql.api.admin.ingest_sources import (
     router as _admin_ingest_sources_router,
 )
@@ -43,6 +47,9 @@ from pointlessql.api.admin.workspaces import router as _workspaces_router
 router = APIRouter()
 router.include_router(_console_router)
 router.include_router(_workspaces_router)
+router.include_router(_domains_router)
+router.include_router(_glossary_router)
+router.include_router(_admin_governance_router)
 router.include_router(_workspace_pins_router)
 router.include_router(_repos_router)
 router.include_router(_cdf_tail_router)

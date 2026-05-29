@@ -14,6 +14,7 @@ from pointlessql.models.auth import User
 from pointlessql.models.catalog._data_product_comments import DataProductComment
 from pointlessql.models.catalog._data_product_reviews import DataProductReview
 from pointlessql.models.catalog._data_products import DataProduct
+from pointlessql.models.catalog._domains import Domain
 from pointlessql.models.social._entity_readme import EntityReadme
 from pointlessql.models.social._social_follow import SocialFollow
 from pointlessql.models.social._social_target import SocialTarget
@@ -92,6 +93,15 @@ async def list_data_products(request: Request, q: str | None = None) -> dict[str
         if steward_ids:
             users = session.execute(select(User).where(User.id.in_(steward_ids))).scalars().all()
             steward_map = {u.id: (u.email, u.display_name) for u in users}
+
+        domain_ids = [r.domain_id for r in rows if r.domain_id is not None]
+        domain_map: dict[int, dict[str, Any]] = {}
+        if domain_ids:
+            domains = session.execute(select(Domain).where(Domain.id.in_(domain_ids))).scalars()
+            domain_map = {
+                d.id: {"id": d.id, "slug": d.slug, "name": d.name, "archetype": d.archetype}
+                for d in domains
+            }
 
         dp_ids = [r.id for r in rows]
         review_agg: dict[int, tuple[float | None, int]] = {}
@@ -184,6 +194,7 @@ async def list_data_products(request: Request, q: str | None = None) -> dict[str
                 row,
                 steward_email=email,
                 steward_display_name=display,
+                domain=domain_map.get(row.domain_id) if row.domain_id is not None else None,
             )
             avg, count = review_agg.get(row.id, (None, 0))
             payload["avg_stars"] = avg

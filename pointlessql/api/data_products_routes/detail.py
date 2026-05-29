@@ -8,9 +8,15 @@ from typing import Any
 from fastapi import APIRouter, Request
 from sqlalchemy import select
 
-from pointlessql.api.data_products_routes._shared import load_one, serialise_product
+from pointlessql.api.data_products_routes._shared import (
+    load_one,
+    resolve_domain,
+    serialise_product,
+    serialise_table_contracts,
+)
 from pointlessql.api.dependencies import current_workspace_id
 from pointlessql.models.catalog._data_products import DataProductContractEvent
+from pointlessql.services import glossary as glossary_service
 from pointlessql.services.data_products import compute_badges_for_dp
 
 router = APIRouter(tags=["data-products"])
@@ -60,28 +66,22 @@ async def get_data_product(
             for e in events
         ]
 
-    tables_payload = [
-        {
-            "name": t.name,
-            "primary_key": list(t.primary_key) if t.primary_key else [],
-            "columns": [
-                {
-                    "name": c.name,
-                    "type": c.type,
-                    "nullable": c.nullable,
-                    "description": c.description,
-                }
-                for c in t.columns
-            ],
-        }
-        for t in contract.tables
-    ]
+    tables_payload = serialise_table_contracts(contract)
+    # Attach glossary term labels per column so the Contract tab can
+    # badge each column with the shared vocabulary bound to it.
+    term_map = glossary_service.terms_for_schema(
+        factory, workspace_id=workspace_id, catalog=catalog, schema=schema
+    )
+    for table in tables_payload:
+        for column in table["columns"]:
+            column["glossary_terms"] = term_map.get(f"{table['name']}.{column['name']}", [])
 
     return {
         "product": serialise_product(
             row,
             steward_email=steward_email,
             steward_display_name=steward_display,
+            domain=resolve_domain(factory, row.domain_id),
         ),
         "name": contract.name,
         "tables": tables_payload,

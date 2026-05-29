@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}{{ term_name }} · Glossary · PointlesSQL{% endblock %}
+
+{% set breadcrumbs = [
+ {"label": "Home", "href": "/"},
+ {"label": "Glossary", "href": "/glossary"},
+ {"label": term_name}
+] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block content %}
+<div x-data='glossaryDetail({{ term_slug|tojson }})' x-init="init()">
+    <div x-show="loading" class="text-muted" x-cloak>Loading&hellip;</div>
+    <div class="alert alert-danger" x-show="error" x-text="error" x-cloak></div>
+
+    <template x-if="term">
+        <div>
+            <div class="d-flex align-items-center justify-content-between mb-3">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-book fs-3"></i>
+                    <h1 class="h3 mb-0" x-text="term.term"></h1>
+                </div>
+                {% if is_admin %}
+                <a href="/admin/glossary" class="btn btn-outline-primary btn-sm">
+                    <i class="bi bi-gear me-1"></i>Manage
+                </a>
+                {% endif %}
+            </div>
+
+            <p class="text-muted" x-show="term.definition" x-text="term.definition"></p>
+
+            <div class="card">
+                <div class="card-header"><i class="bi bi-link-45deg me-1"></i>Bound columns</div>
+                <ul class="list-group list-group-flush">
+                    <template x-for="b in bindings" :key="b.ref">
+                        <li class="list-group-item">
+                            <a :href="columnHref(b)"><code x-text="b.ref"></code></a>
+                        </li>
+                    </template>
+                    <li class="list-group-item text-muted" x-show="bindings.length === 0">
+                        This term is not bound to any column yet.
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </template>
+</div>
+{% endblock %}

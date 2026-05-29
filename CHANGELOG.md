@@ -15,6 +15,40 @@ contributors who need finer commit-level granularity.
 <!-- Future commits land here until the next cluster boundary is
 defined in ``scripts/clusters.json``. -->
 
+### Features
+
+- Data-Mesh Computational Governance: per-product policy-as-code with
+  workspace-default inheritance (retention, encryption class, residency,
+  consent), column confidentiality classification (public/internal/
+  confidential/pii/phi) that drives **read-time masking** at the
+  product's access points (export port + table preview exactly; SQL
+  editor best-effort — notebook-kernel SQL is a documented gap), a
+  Control-Port with a **right-to-be-forgotten** operation (steward/admin
+  executes immediately, agents only propose; subject value stored only
+  hashed), a policy-compliance scanner (`policy_compliance` scheduler
+  job + admin "scan now") that flags retention-overdue + unclassified
+  PII-looking columns into the audit log with a trust-downgrade chip,
+  and an aggregate-ownership suggestion.  Honest split: retention is
+  monitored and PII masking + erasure are enforced, while encryption
+  class / residency / consent are declarations surfaced in the discovery
+  contract.  Agents propose policies + classifications via the
+  `pql_get_data_product_policy` / `pql_set_data_product_policy` /
+  `pql_classify_data_product_column` /
+  `pql_request_right_to_be_forgotten` hermes tools.
+- Data-Mesh Quantum-Ports & Discovery: data products gain declared
+  output/input ports (with declared-upstream lineage), a per-product
+  semantic model + sample query, self-generated statistics stamped at
+  write time, a machine-readable discovery contract with a stable
+  `urn:pointlessql:product:…` URI, a working Parquet file-export port,
+  and a workspace business glossary (term→column bindings surfaced as
+  Contract-tab badges).  Agents propose ports + read discovery via the
+  `pql_get_data_product_discovery` / `pql_add_data_product_*_port`
+  hermes tools (steward/admin-gated).
+- Data-Mesh Domänen-Fundament: `Domain` / `domain_members` entities,
+  product↔domain assignment, and notebook/dbt transformation binding,
+  with admin CRUD + read-only browse and the `pql_list_domains` /
+  `pql_assign_data_product_domain` hermes tools.
+
 ## [Cluster 22 — Phase 122–123 Publication-readiness] - 2026-05-25
 
 > Phase 122 (Source-Code Sanitization for Publication: 1622→260 phase refs across 4 sprints; CLAUDE.md forward-guard for templates/JS/CSS/UI strings; README outside-reader polish), Phase 123 (Frontend Master-Plan 8-wave modernisation: forward-guard W1, inline-script-exodus W2, JS-subsystem-splits W3, template-splits+macros W4, CSS-architektur W5, docs W6, JS-quality W7 (biome), A11y form-labels W8).

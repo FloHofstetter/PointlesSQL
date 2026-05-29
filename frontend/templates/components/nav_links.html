@@ -108,6 +108,18 @@
         </a>
     </li>
     <li class="nav-item">
+        <a class="nav-link d-flex align-items-center gap-2{% if active_section == 'domains' %} active{% endif %}"
+           href="/domains">
+            <i class="bi bi-diagram-2"></i> Domains
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link d-flex align-items-center gap-2{% if active_section == 'glossary' %} active{% endif %}"
+           href="/glossary">
+            <i class="bi bi-book"></i> Glossary
+        </a>
+    </li>
+    <li class="nav-item">
         <a class="nav-link d-flex align-items-center gap-2{% if active_page is defined and active_page == 'models' %} active{% endif %}"
            href="/models">
             <i class="bi bi-cpu"></i> ML models

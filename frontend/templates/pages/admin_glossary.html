@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% from "_macros/timestamps.html" import relative_time %}
+{% block title %}Glossary · PointlesSQL{% endblock %}
+
+{% set breadcrumbs = [
+ {"label": "Home", "href": "/"},
+ {"label": "Admin", "href": "/admin"},
+ {"label": "Glossary"}
+] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block content %}
+<div x-data="adminGlossary()">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <div class="d-flex align-items-center gap-2">
+            <i class="bi bi-book fs-3"></i>
+            <h1 class="h3 mb-0">Glossary</h1>
+        </div>
+        <div class="d-flex align-items-center gap-3">
+            <span class="text-muted small">{{ terms|length }} term{{ '' if terms|length == 1 else 's' }}</span>
+            <button type="button" class="btn btn-primary btn-sm"
+                    data-bs-toggle="modal" data-bs-target="#createTermModal">
+                <i class="bi bi-plus-lg me-1"></i>New term
+            </button>
+        </div>
+    </div>
+
+    <p class="text-muted">
+        A glossary term is a shared business definition. Bind a term to one or
+        more <code>catalog.schema.table.column</code> references; the binding
+        surfaces as a badge on the product's Contract tab.
+    </p>
+
+    <div class="modal fade" id="createTermModal" tabindex="-1"
+         aria-labelledby="createTermModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="createTermModalLabel">New glossary term</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label" for="gl-slug">Slug</label>
+                        <input id="gl-slug" type="text" class="form-control font-monospace"
+                               x-model="form.slug" placeholder="net-revenue" maxlength="64">
+                        <div class="form-text">Lower-case letters / digits / <code>-</code> / <code>_</code>. Used in the glossary URL.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="gl-term">Term</label>
+                        <input id="gl-term" type="text" class="form-control"
+                               x-model="form.term" placeholder="Net Revenue" maxlength="200">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="gl-def">Definition (optional)</label>
+                        <textarea id="gl-def" class="form-control" rows="3"
+                                  x-model="form.definition"
+                                  placeholder="Revenue after returns and discounts."></textarea>
+                    </div>
+                    <div class="alert alert-danger" x-show="error" x-text="error" x-cloak></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary"
+                            :disabled="!form.slug || !form.term || creating"
+                            @click="create()">
+                        <span x-show="!creating">Create term</span>
+                        <span x-show="creating" x-cloak>Creating&hellip;</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-sm align-middle pql-list-table">
+            <thead>
+                <tr>
+                    <th>Slug</th>
+                    <th>Term</th>
+                    <th class="text-end">Bindings</th>
+                    <th>Created</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for t in terms %}
+                <tr>
+                    <td data-label="Slug"><a href="/glossary/{{ t.slug }}"><code>{{ t.slug }}</code></a></td>
+                    <td data-label="Term">{{ t.term }}{% if t.definition %}<div class="text-muted small">{{ t.definition }}</div>{% endif %}</td>
+                    <td data-label="Bindings" class="text-end">{{ binding_counts.get(t.id, 0) }}</td>
+                    <td data-label="Created" class="text-muted small">{{ relative_time(t.created_at.isoformat() if t.created_at else None) }}</td>
+                    <td data-label="Actions" class="text-nowrap">
+                        <button type="button" class="btn btn-sm btn-outline-secondary" @click="toggle({{ t.id }})">
+                            <i class="bi bi-link-45deg"></i> Bindings
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-danger"
+                                @click="deleteTerm({{ t.id }}, '{{ t.slug }}')">
+                            <i class="bi bi-trash"></i> Delete
+                        </button>
+                        <template x-if="open[{{ t.id }}]">
+                            <div class="mt-2 p-2 border rounded bg-body-tertiary">
+                                <div class="row g-2 align-items-end mb-2">
+                                    <div class="col"><input type="text" class="form-control form-control-sm" x-model="drafts[{{ t.id }}].catalog" placeholder="catalog"></div>
+                                    <div class="col"><input type="text" class="form-control form-control-sm" x-model="drafts[{{ t.id }}].schema" placeholder="schema"></div>
+                                    <div class="col"><input type="text" class="form-control form-control-sm" x-model="drafts[{{ t.id }}].table" placeholder="table"></div>
+                                    <div class="col"><input type="text" class="form-control form-control-sm" x-model="drafts[{{ t.id }}].column" placeholder="column"></div>
+                                    <div class="col-auto"><button type="button" class="btn btn-sm btn-primary" @click="bind({{ t.id }}, drafts[{{ t.id }}])">Bind</button></div>
+                                </div>
+                                <div class="alert alert-danger py-1 px-2 small" x-show="error" x-text="error" x-cloak></div>
+                                <ul class="list-group list-group-flush">
+                                    <template x-for="b in (bindings[{{ t.id }}] || [])" :key="b.id">
+                                        <li class="list-group-item d-flex justify-content-between align-items-center px-2 py-1">
+                                            <code x-text="b.ref"></code>
+                                            <button type="button" class="btn btn-sm btn-outline-danger" @click="unbind({{ t.id }}, b.id)">Remove</button>
+                                        </li>
+                                    </template>
+                                    <li class="list-group-item text-muted small px-2 py-1" x-show="(bindings[{{ t.id }}] || []).length === 0">No bindings yet.</li>
+                                </ul>
+                            </div>
+                        </template>
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="5" class="text-muted">No glossary terms yet. Create one to start binding columns.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

@@ -210,6 +210,9 @@ import { notebookDiscussion, notebookReadme } from './notebook/discussion.js';
 import { apiKeyGrants, apiKeyUsageChart } from './pages/admin_api_key_detail.js';
 import { apiKeyCreate, apiKeyCreatedModal, apiKeyRow } from './pages/admin_api_keys.js';
 import { auditSinkCreate, auditSinkRow } from './pages/admin_audit_sinks.js';
+import { adminDomains, domainArchiveButton, domainMembers } from './pages/admin_domains.js';
+import { adminGlossary } from './pages/admin_glossary.js';
+import { adminGovernance } from './pages/admin_governance.js';
 import { reviewDestCreate, reviewDestRow } from './pages/admin_review_destinations.js';
 import { adminSourcesList } from './pages/admin_sources.js';
 import { adminWorkspaces, archiveButton } from './pages/admin_workspaces.js';
@@ -225,14 +228,25 @@ import { branchDiscussion } from './pages/branch_detail.js';
 import { canvasEditor } from './pages/canvas.js';
 import { catalogTree, pathFromUrl } from './pages/catalog_tree.js';
 import { dataProductDetail } from './pages/data_product.js';
+import { dataProductDomainPanel } from './pages/data_product_domain.js';
 import { dpReleasesCard, ingestStatusBand } from './pages/data_product_extras.js';
+import { dataProductGovernance } from './pages/data_product_governance.js';
+import {
+  dataProductDiscoveryCard,
+  dataProductPortsPanel,
+  dataProductSemanticPanel,
+  dataProductStatsPanel,
+} from './pages/data_product_quantum.js';
 import { dataProductsBrowse } from './pages/data_products.js';
 import { dataProductsCandidates } from './pages/data_products_candidates.js';
 import { dataProductsFollowed } from './pages/data_products_followed.js';
 import { dataProductsTrending } from './pages/data_products_trending.js';
 import { dbtSchemaContext } from './pages/dbt_schema_context.js';
 import { dbtTableContext } from './pages/dbt_table_context.js';
+import { domainDetail } from './pages/domain_detail.js';
+import { domainsBrowse } from './pages/domains.js';
 import { feedPage } from './pages/feed.js';
+import { glossaryBrowse, glossaryDetail } from './pages/glossary.js';
 import { homeRecentCatalogs, homeSparkline } from './pages/home.js';
 import { ingestSourceDetail } from './pages/ingest_source_detail.js';
 import { ingestSourceCreate } from './pages/ingest_sources_new.js';
@@ -360,6 +374,21 @@ window.workspaceLanding = workspaceLanding;
 window.footerBar = footerBar;
 window.adminWorkspaces = adminWorkspaces;
 window.archiveButton = archiveButton;
+window.adminDomains = adminDomains;
+window.domainArchiveButton = domainArchiveButton;
+window.domainMembers = domainMembers;
+window.domainsBrowse = domainsBrowse;
+window.domainDetail = domainDetail;
+window.dataProductDomainPanel = dataProductDomainPanel;
+window.dataProductPortsPanel = dataProductPortsPanel;
+window.dataProductSemanticPanel = dataProductSemanticPanel;
+window.dataProductStatsPanel = dataProductStatsPanel;
+window.dataProductDiscoveryCard = dataProductDiscoveryCard;
+window.dataProductGovernance = dataProductGovernance;
+window.adminGlossary = adminGlossary;
+window.adminGovernance = adminGovernance;
+window.glossaryBrowse = glossaryBrowse;
+window.glossaryDetail = glossaryDetail;
 window.savedViewDetail = savedViewDetail;
 window.issuesPane = issuesPane;
 window.savedViewForm = savedViewForm;

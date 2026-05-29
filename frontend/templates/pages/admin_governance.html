@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}Governance · PointlesSQL{% endblock %}
+
+{% set breadcrumbs = [
+ {"label": "Home", "href": "/"},
+ {"label": "Admin", "href": "/admin"},
+ {"label": "Governance"}
+] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block content %}
+<div x-data="adminGovernance()" x-init="init()">
+    <div class="d-flex align-items-center gap-2 mb-3">
+        <i class="bi bi-shield-lock fs-3"></i>
+        <h1 class="h3 mb-0">Governance</h1>
+    </div>
+
+    <p class="text-muted">
+        The workspace-default policy applies mesh-wide: every data product inherits
+        these values unless it overrides them on its own Governance tab. Encryption
+        class, residency, and consent are declarations surfaced in the discovery
+        contract and the compliance scan; retention is monitored.
+    </p>
+
+    <div class="alert alert-danger" x-show="error" x-text="error" x-cloak></div>
+
+    <div class="card mb-4" style="max-width: 640px;">
+        <div class="card-header">Workspace default policy</div>
+        <div class="card-body">
+            <div class="mb-3">
+                <label class="form-label" for="gov-retention">Retention (days)</label>
+                <input id="gov-retention" type="number" min="0" class="form-control"
+                       x-model="policy.retention_days" placeholder="no expectation">
+            </div>
+            <div class="mb-3">
+                <label class="form-label" for="gov-enc">Encryption class</label>
+                <select id="gov-enc" class="form-select" x-model="policy.encryption_class">
+                    <option value="">undeclared</option>
+                    <option value="none">none</option>
+                    <option value="at_rest">at_rest</option>
+                    <option value="in_transit">in_transit</option>
+                    <option value="full">full</option>
+                </select>
+            </div>
+            <div class="mb-3">
+                <label class="form-label" for="gov-res">Residency region</label>
+                <input id="gov-res" type="text" class="form-control"
+                       x-model="policy.residency_region" placeholder="e.g. eu-central">
+            </div>
+            <div class="mb-3">
+                <label class="form-label" for="gov-consent">Consent required</label>
+                <select id="gov-consent" class="form-select" x-model="policy.consent_required">
+                    <option value="">undeclared</option>
+                    <option value="true">yes</option>
+                    <option value="false">no</option>
+                </select>
+            </div>
+            <div class="mb-3">
+                <label class="form-label" for="gov-basis">Consent basis</label>
+                <input id="gov-basis" type="text" class="form-control"
+                       x-model="policy.consent_basis" placeholder="legal basis note">
+            </div>
+            <button type="button" class="btn btn-primary" :disabled="saving" @click="save()">
+                <span x-show="!saving">Save default policy</span>
+                <span x-show="saving" x-cloak>Saving&hellip;</span>
+            </button>
+        </div>
+    </div>
+
+    <div class="card" style="max-width: 640px;">
+        <div class="card-header">Policy-compliance scan</div>
+        <div class="card-body">
+            <p class="text-muted small">
+                Run the deterministic checks now (retention overdue, unclassified
+                PII-looking columns). Findings are written to the audit log and surface
+                on each product's Governance tab.
+            </p>
+            <button type="button" class="btn btn-outline-primary" :disabled="scanning" @click="runScan()">
+                <span x-show="!scanning">Run scan now</span>
+                <span x-show="scanning" x-cloak>Scanning&hellip;</span>
+            </button>
+            <div class="mt-3 small" x-show="scanSummary" x-cloak>
+                Scanned <strong x-text="scanSummary && scanSummary.products_scanned"></strong>
+                product(s), found
+                <strong x-text="scanSummary && scanSummary.violations.length"></strong>
+                violation(s).
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

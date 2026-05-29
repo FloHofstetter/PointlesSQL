@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Glossary · PointlesSQL{% endblock %}
+
+{% set breadcrumbs = [
+ {"label": "Home", "href": "/"},
+ {"label": "Glossary"}
+] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block content %}
+<div x-data="glossaryBrowse()" x-init="init()">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <div class="d-flex align-items-center gap-2">
+            <i class="bi bi-book fs-3"></i>
+            <h1 class="h3 mb-0">Glossary</h1>
+        </div>
+        {% if is_admin %}
+        <a href="/admin/glossary" class="btn btn-outline-primary btn-sm">
+            <i class="bi bi-gear me-1"></i>Manage glossary
+        </a>
+        {% endif %}
+    </div>
+
+    <p class="text-muted">
+        Shared business vocabulary. Each term can be bound to the columns
+        across data products that realise it, so meaning travels with the data.
+    </p>
+
+    <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
+        <input type="search" class="form-control form-control-sm" style="max-width: 18rem;"
+               x-model="filter" placeholder="Filter terms&hellip;">
+    </div>
+
+    <div x-show="loading" class="text-muted" x-cloak>Loading glossary&hellip;</div>
+    <div class="alert alert-danger" x-show="error" x-text="error" x-cloak></div>
+
+    <div class="row g-3" x-show="!loading" x-cloak>
+        <template x-for="t in filtered" :key="t.id">
+            <div class="col-12 col-md-6 col-lg-4">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title mb-1">
+                            <a :href="'/glossary/' + t.slug" x-text="t.term"></a>
+                        </h5>
+                        <div class="text-muted small mb-2 font-monospace" x-text="t.slug"></div>
+                        <p class="card-text small text-muted" x-show="t.definition" x-text="t.definition"></p>
+                        <div class="small text-muted mt-2">
+                            <i class="bi bi-link-45deg"></i>
+                            <span x-text="t.binding_count"></span> column bindings
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </template>
+        <div class="col-12 text-muted" x-show="filtered.length === 0">
+            No terms match.
+        </div>
+    </div>
+</div>
+{% endblock %}

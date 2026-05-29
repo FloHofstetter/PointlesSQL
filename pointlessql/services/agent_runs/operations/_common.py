@@ -110,6 +110,12 @@ class OperationRecorder:
             row keyed on the just-inserted ``op_id``.  ``None`` means
             "no enforcement attempted" — the post-commit hook is a
             no-op then.
+        pending_statistics: Set by the write path when the target
+            schema resolved to a data product.  Tuple of
+            ``(data_product_id, table_name, delta_log_version,
+            row_count, shape, profile_kind)``.  The post-commit hook
+            stamps one ``data_product_statistics`` row.  ``None`` means
+            the write didn't target a product — the hook is a no-op.
     """
 
     input_sha: str | None = None
@@ -135,6 +141,14 @@ class OperationRecorder:
     # one of CONTRACT_EVENT_OUTCOMES.  None means "enforcement not
     # checked" (interactive PQL or feature disabled).
     pending_contract_event: tuple[str, dict[str, Any], int | None] | None = None
+    # populated by the write path when the target schema resolved to a
+    # data product.  Tuple of
+    # (data_product_id, table_name, delta_log_version, row_count,
+    # shape, profile_kind).  The post-commit hook stamps one
+    # data_product_statistics row.  None means "not a product write".
+    pending_statistics: (
+        tuple[int, str, int | None, int | None, dict[str, Any], str] | None
+    ) = None
 
 
 def serialise_warnings(markers: list[str]) -> str | None:

@@ -74,6 +74,7 @@ EVENT_TYPE_DBT_AUTO_ROLLBACK_EXECUTED = "pointlessql.dbt.auto_rollback.executed"
 # last_write_at_iso, age_minutes) so subscribers can route alerts to
 # the steward and render age in their preferred timezone.
 EVENT_TYPE_DATA_PRODUCT_SLA_VIOLATED = "pointlessql.data_product.sla_violated"
+EVENT_TYPE_DATA_PRODUCT_FORGOTTEN = "pointlessql.data_product.subject_forgotten"
 
 # data-product marketplace social events.  Comment +
 # review + follow events go through the same forwarder as the rest
@@ -129,6 +130,7 @@ GOVERNANCE_EVENT_TYPES: tuple[str, ...] = (
     EVENT_TYPE_DBT_TEST_WARNED,
     EVENT_TYPE_DBT_AUTO_ROLLBACK_EXECUTED,
     EVENT_TYPE_DATA_PRODUCT_SLA_VIOLATED,
+    EVENT_TYPE_DATA_PRODUCT_FORGOTTEN,
     EVENT_TYPE_DATA_PRODUCT_COMMENTED,
     EVENT_TYPE_DATA_PRODUCT_REVIEWED,
     EVENT_TYPE_DATA_PRODUCT_FOLLOWED,

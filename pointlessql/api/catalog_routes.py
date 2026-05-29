@@ -24,11 +24,13 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse, Response
 
 from pointlessql.api.dependencies import (
+    current_workspace_id,
     effective_principal,
     get_uc_client,
     get_user,
 )
 from pointlessql.config import Settings
+from pointlessql.services import governance as governance_service
 from pointlessql.services.authorization import (
     SELECT,
     USE_CATALOG,
@@ -36,6 +38,7 @@ from pointlessql.services.authorization import (
     check_privilege,
     check_privilege_from_effective,
 )
+from pointlessql.services.pii._redactor import get_or_create_pii_hash_secret
 from pointlessql.services.soyuz_client import make_principal_client, make_soyuz_client
 from pointlessql.types import TableFqn
 
@@ -448,6 +451,65 @@ def run_table_preview(settings: Settings, principal: str, full_name: str) -> dic
     return jsonable_encoder({"columns": columns, "rows": rows, "truncated": truncated})
 
 
+def _mask_preview_payload(
+    request: Request,
+    *,
+    catalog: str,
+    schema: str,
+    table: str,
+    payload: dict[str, Any],
+) -> dict[str, Any]:
+    """Apply column-classification masking to a preview payload.
+
+    The governance sidecar at the catalog-preview access point: when the
+    previewed table belongs to a data product with classified columns
+    and the viewer is neither admin nor the product steward, masks the
+    classified columns before the rows leave the server.  Tables outside
+    a product, or with no classifications, pass through untouched.
+    """
+    if "rows" not in payload or "columns" not in payload:
+        return payload
+    factory = request.app.state.session_factory
+    class_index = governance_service.classifications_for_schema(
+        factory, catalog=catalog, schema=schema
+    )
+    strategies = {
+        column: strategy for (tbl, column), (_cls, strategy) in class_index.items() if tbl == table
+    }
+    if not strategies:
+        return payload
+
+    from sqlalchemy import select  # noqa: PLC0415
+
+    from pointlessql.models import DataProduct  # noqa: PLC0415
+
+    user = get_user(request)
+    workspace_id = current_workspace_id(request)
+    with factory() as session:
+        product = session.scalar(
+            select(DataProduct).where(
+                DataProduct.workspace_id == workspace_id,
+                DataProduct.catalog_name == catalog,
+                DataProduct.schema_name == schema,
+            )
+        )
+        is_steward = (
+            product is not None
+            and product.steward_user_id is not None
+            and product.steward_user_id == user["id"]
+        )
+    unmask = governance_service.viewer_sees_clear(
+        is_admin=bool(user.get("is_admin")), is_steward=is_steward
+    )
+    if unmask:
+        return payload
+    secret = get_or_create_pii_hash_secret(factory)
+    payload["rows"] = governance_service.mask_sql_rows(
+        payload["columns"], payload["rows"], strategies, unmask=False, secret=secret
+    )
+    return payload
+
+
 @router.get("/api/catalogs/{catalog_name}/schemas/{schema_name}/tables/{table_name}/preview")
 async def api_table_preview(
     request: Request,
@@ -481,6 +543,13 @@ async def api_table_preview(
         settings,
         principal,
         full_name,
+    )
+    payload = _mask_preview_payload(
+        request,
+        catalog=catalog_name,
+        schema=schema_name,
+        table=table_name,
+        payload=payload,
     )
     return JSONResponse(content=payload, headers={"Cache-Control": "no-store"})
 

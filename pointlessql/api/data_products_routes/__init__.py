@@ -29,11 +29,15 @@ from pointlessql.api.data_products_routes.comments import router as _comments_ro
 from pointlessql.api.data_products_routes.contracts import router as _contracts_router
 from pointlessql.api.data_products_routes.detail import router as _detail_router
 from pointlessql.api.data_products_routes.diff import router as _diff_router
+from pointlessql.api.data_products_routes.discovery import router as _discovery_router
+from pointlessql.api.data_products_routes.domain import router as _domain_router
 from pointlessql.api.data_products_routes.endorsements import (
     router as _endorsements_router,
 )
+from pointlessql.api.data_products_routes.export import router as _export_router
 from pointlessql.api.data_products_routes.follows import router as _follows_router
 from pointlessql.api.data_products_routes.forks import router as _forks_router
+from pointlessql.api.data_products_routes.governance import router as _governance_router
 from pointlessql.api.data_products_routes.heatmap import router as _heatmap_router
 from pointlessql.api.data_products_routes.ingest_status import (
     router as _ingest_status_router,
@@ -41,6 +45,7 @@ from pointlessql.api.data_products_routes.ingest_status import (
 from pointlessql.api.data_products_routes.lineage import router as _lineage_router
 from pointlessql.api.data_products_routes.listing import router as _listing_router
 from pointlessql.api.data_products_routes.passport import router as _passport_router
+from pointlessql.api.data_products_routes.ports import router as _ports_router
 from pointlessql.api.data_products_routes.proposals import (
     router as _proposals_router,
 )
@@ -52,6 +57,8 @@ from pointlessql.api.data_products_routes.recommendations import (
 from pointlessql.api.data_products_routes.releases import router as _releases_router
 from pointlessql.api.data_products_routes.reload import router as _reload_router
 from pointlessql.api.data_products_routes.reviews import router as _reviews_router
+from pointlessql.api.data_products_routes.semantic import router as _semantic_router
+from pointlessql.api.data_products_routes.statistics import router as _statistics_router
 from pointlessql.api.data_products_routes.trending import router as _trending_router
 
 router = APIRouter(tags=["data-products"])
@@ -78,6 +85,13 @@ router.include_router(_ingest_status_router)
 router.include_router(_forks_router)
 router.include_router(_heatmap_router)
 router.include_router(_releases_router)
+router.include_router(_domain_router)
+router.include_router(_discovery_router)
+router.include_router(_ports_router)
+router.include_router(_semantic_router)
+router.include_router(_statistics_router)
+router.include_router(_export_router)
+router.include_router(_governance_router)
 
 
 # Backwards-compatible aliases — ``_load_one`` was the original

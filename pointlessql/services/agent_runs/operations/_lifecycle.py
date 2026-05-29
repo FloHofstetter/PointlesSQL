@@ -41,6 +41,9 @@ from pointlessql.services.agent_runs.operations._lineage import (
 from pointlessql.services.agent_runs.operations._rejects import (
     record_rejects_after_commit,
 )
+from pointlessql.services.agent_runs.operations._statistics import (
+    record_statistics_after_commit,
+)
 from pointlessql.services.agent_runs.operations._value_changes import (
     record_value_changes_after_commit,
 )
@@ -352,6 +355,12 @@ def operation_context(
         session_factory,
         op_id=op_id,
         pending=recorder.pending_contract_event,
+    )
+    record_statistics_after_commit(
+        session_factory,
+        op_id=op_id,
+        target_table=final_target,
+        pending=recorder.pending_statistics,
     )
     rebuild_vss_indices_after_commit(
         session_factory,

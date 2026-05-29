@@ -26,6 +26,7 @@ from __future__ import annotations
 import datetime
 
 from sqlalchemy import (
+    BigInteger,
     CheckConstraint,
     DateTime,
     ForeignKey,
@@ -74,6 +75,10 @@ class DataProduct(Base):
             the yaml's ``steward_email`` resolves to a persisted
             user; left NULL otherwise.  The detail-page UI falls
             back to a mailto link in the NULL case.
+        domain_id: Nullable FK on ``domains.id``.  Set when the
+            product is assigned to a business domain; ``SET NULL``
+            on domain delete so a removed domain never orphans the
+            product.  NULL means "unassigned".
         version: SemVer string from the yaml (e.g. ``"1.2.0"``).
         description: One-paragraph description from the yaml.
         sla_minutes: Optional freshness SLA in minutes; NULL
@@ -85,6 +90,10 @@ class DataProduct(Base):
         contract_json: The pydantic-validated contract serialised
             as JSON.  Read by the diff helper, the enforcement
             hook, and the plugin tools without re-reading yaml.
+        sample_sql: Optional example query that demonstrates how to
+            use the product.  Surfaced in the discovery contract +
+            the Semantic panel so a consumer has runnable starter
+            code; ``None`` when no example was declared.
         last_loaded_at: Wall-clock when ``load_contract`` last
             UPSERTed this row.
         last_alerted_at: Wall-clock when the freshness scanner
@@ -109,6 +118,7 @@ class DataProduct(Base):
             "last_loaded_at",
         ),
         Index("ix_data_products_steward", "steward_user_id"),
+        Index("ix_data_products_domain", "domain_id"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -123,11 +133,15 @@ class DataProduct(Base):
     steward_user_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("users.id"), nullable=True
     )
+    domain_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("domains.id", ondelete="SET NULL"), nullable=True
+    )
     version: Mapped[str] = mapped_column(String(32), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False, default="")
     sla_minutes: Mapped[int | None] = mapped_column(Integer, nullable=True)
     contract_yaml_hash: Mapped[str] = mapped_column(String(64), nullable=False)
     contract_json: Mapped[str] = mapped_column(Text, nullable=False)
+    sample_sql: Mapped[str | None] = mapped_column(Text, nullable=True)
     last_loaded_at: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True), nullable=False
     )
@@ -196,4 +210,78 @@ class DataProductContractEvent(Base):
     )
     outcome: Mapped[str] = mapped_column(String(32), nullable=False)
     details_json: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class DataProductStatistics(Base):
+    """Self-generated statistics snapshot, stamped at write time.
+
+    Every write against a product-bearing schema stamps one row
+    (analogue to :class:`DataProductContractEvent`) so a product
+    *generates its own* shape + freshness metrics rather than having
+    them extracted by an external profiler later.  The latest row per
+    ``(data_product_id, table_name)`` feeds the discovery contract +
+    the Statistics panel.
+
+    The shape is computed cheaply from the in-memory frame the write
+    already holds (per-column null/distinct), so the write path never
+    pays for a full table re-scan.  When a full on-demand profile
+    already exists for the exact delta version (``table_stats`` cache),
+    the post-commit hook upgrades ``shape_json`` from it and sets
+    ``profile_kind='reused'``.
+
+    Attributes:
+        id: Auto-incremented primary key.
+        data_product_id: FK on ``data_products.id`` with CASCADE
+            delete.  Always set — a row exists only because the write
+            resolved to a product.
+        agent_run_operation_id: Nullable FK on
+            ``agent_run_operations.id`` (SET NULL on delete) — the
+            snapshot is product history that outlives audit pruning.
+        table_name: UC table name (last segment) the write targeted.
+        delta_log_version: ``DeltaTable.version()`` after the write,
+            or ``None`` when the version could not be read.
+        row_count: Rows in the written frame, or ``None``.
+        shape_json: JSON ``{"column_count": int, "columns":
+            {"<col>": {"null_count": int, "distinct": int|null}}}``.
+        profile_kind: ``light`` (in-memory shape), ``reused``
+            (upgraded from the on-demand cache), or ``full``.
+        freshness_lag_minutes: Left ``None`` at write (lag is ~0);
+            the discovery reader computes lag at read time.
+        created_at: Wall-clock the snapshot was stamped.
+    """
+
+    __tablename__ = "data_product_statistics"
+
+    __table_args__ = (
+        CheckConstraint(
+            "profile_kind IN ('light','full','reused')",
+            name="ck_data_product_statistics_profile_kind",
+        ),
+        Index(
+            "ix_dp_statistics_latest",
+            "data_product_id",
+            "table_name",
+            "created_at",
+        ),
+        Index("ix_dp_statistics_op", "agent_run_operation_id"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    data_product_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("data_products.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    agent_run_operation_id: Mapped[int | None] = mapped_column(
+        Integer,
+        ForeignKey("agent_run_operations.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    table_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    delta_log_version: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    row_count: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    shape_json: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
+    profile_kind: Mapped[str] = mapped_column(String(16), nullable=False, default="light")
+    freshness_lag_minutes: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)

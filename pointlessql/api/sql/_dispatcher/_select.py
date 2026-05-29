@@ -10,10 +10,40 @@ import cycles when the editor evolves.
 from __future__ import annotations
 
 import asyncio
+from typing import Any
 
 from pointlessql.api.sql._dispatcher._privilege import enforce_select_per_table
 from pointlessql.api.sql._dispatcher._types import DispatchContext, ExecutionResult
 from pointlessql.pql import prepare_sql
+from pointlessql.services import governance as governance_service
+from pointlessql.services.pii._redactor import get_or_create_pii_hash_secret
+
+
+def _sql_strategies(factory: Any, approved: dict[str, str]) -> dict[str, str]:
+    """Build a ``{column_name_lower: strategy}`` map for approved tables.
+
+    Best-effort governance for the free-form SQL surface: a result
+    column that still carries its source name gets masked.  A query
+    that aliases or computes a classified column produces a name that
+    no longer matches, so it slips through — exact masking only holds
+    at the product's declared output ports.
+    """
+    strategies: dict[str, str] = {}
+    index_cache: dict[tuple[str, str], dict[tuple[str, str], tuple[str, str]]] = {}
+    for full_name in approved:
+        parts = full_name.split(".")
+        if len(parts) != 3:
+            continue
+        catalog, schema, table = parts
+        key = (catalog, schema)
+        if key not in index_cache:
+            index_cache[key] = governance_service.classifications_for_schema(
+                factory, catalog=catalog, schema=schema
+            )
+        for (tbl, column), (_cls, strategy) in index_cache[key].items():
+            if tbl == table and strategy != "none":
+                strategies[column.lower()] = strategy
+    return strategies
 
 
 async def execute_select(ctx: DispatchContext) -> ExecutionResult:
@@ -44,10 +74,21 @@ async def execute_select(ctx: DispatchContext) -> ExecutionResult:
         ctx.conn,
         False,  # explain handled in the route
     )
+
+    rows = list(result.rows)
+    if not ctx.is_admin:
+        factory = ctx.request.app.state.session_factory
+        strategies = _sql_strategies(factory, approved)
+        if strategies:
+            secret = get_or_create_pii_hash_secret(factory)
+            rows = governance_service.mask_sql_rows(
+                list(result.columns), rows, strategies, unmask=False, secret=secret
+            )
+
     return ExecutionResult(
         kind="select",
         columns=list(result.columns),
-        rows=list(result.rows),
+        rows=rows,
         row_count=result.row_count,
         truncated=result.truncated,
         duration_ms=result.duration_ms,

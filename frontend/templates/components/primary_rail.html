@@ -183,6 +183,24 @@
             </a>
         </li>
         <li class="pql-icon-rail__item">
+            <a href="/domains"
+               data-section="domains"
+               class="pql-icon-rail__link{% if active_section == 'domains' %} active{% endif %}"
+               title="Domains — data-mesh ownership structures">
+                <i class="bi bi-diagram-2"></i>
+                <span class="pql-icon-rail__label">Domains</span>
+            </a>
+        </li>
+        <li class="pql-icon-rail__item">
+            <a href="/glossary"
+               data-section="glossary"
+               class="pql-icon-rail__link{% if active_section == 'glossary' %} active{% endif %}"
+               title="Glossary — shared business vocabulary">
+                <i class="bi bi-book"></i>
+                <span class="pql-icon-rail__label">Glossary</span>
+            </a>
+        </li>
+        <li class="pql-icon-rail__item">
             <a href="/ingest/sources"
                data-section="ingest"
                class="pql-icon-rail__link{% if active_page is defined and active_page == 'ingest' %} active{% endif %}"

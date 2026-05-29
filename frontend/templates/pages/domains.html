@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}Domains · PointlesSQL{% endblock %}
+
+{% set breadcrumbs = [
+ {"label": "Home", "href": "/"},
+ {"label": "Domains"}
+] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block content %}
+<div x-data="domainsBrowse()" x-init="init()">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <div class="d-flex align-items-center gap-2">
+            <i class="bi bi-diagram-2 fs-3"></i>
+            <h1 class="h3 mb-0">Domains</h1>
+        </div>
+        {% if is_admin %}
+        <a href="/admin/domains" class="btn btn-outline-primary btn-sm">
+            <i class="bi bi-gear me-1"></i>Manage domains
+        </a>
+        {% endif %}
+    </div>
+
+    <p class="text-muted">
+        Business domains that own data products. Pick a domain to see its
+        owners, developers, and the products it is responsible for.
+    </p>
+
+    <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
+        <input type="search" class="form-control form-control-sm" style="max-width: 18rem;"
+               x-model="filter" placeholder="Filter domains&hellip;">
+        <div class="btn-group btn-group-sm" role="group" aria-label="Archetype filter">
+            <button type="button" class="btn btn-outline-secondary"
+                    :class="{ active: activeArchetype === 'all' }"
+                    @click="activeArchetype = 'all'">All</button>
+            <button type="button" class="btn btn-outline-secondary"
+                    :class="{ active: activeArchetype === 'source-aligned' }"
+                    @click="activeArchetype = 'source-aligned'">Source</button>
+            <button type="button" class="btn btn-outline-secondary"
+                    :class="{ active: activeArchetype === 'aggregate' }"
+                    @click="activeArchetype = 'aggregate'">Aggregate</button>
+            <button type="button" class="btn btn-outline-secondary"
+                    :class="{ active: activeArchetype === 'consumer-aligned' }"
+                    @click="activeArchetype = 'consumer-aligned'">Consumer</button>
+        </div>
+    </div>
+
+    <div x-show="loading" class="text-muted" x-cloak>Loading domains&hellip;</div>
+    <div class="alert alert-danger" x-show="error" x-text="error" x-cloak></div>
+
+    <div class="row g-3" x-show="!loading" x-cloak>
+        <template x-for="d in filtered" :key="d.id">
+            <div class="col-12 col-md-6 col-lg-4">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <h5 class="card-title mb-1">
+                                <a :href="'/domains/' + d.slug" x-text="d.name"></a>
+                            </h5>
+                            <span class="badge text-bg-light border" x-text="d.archetype"></span>
+                        </div>
+                        <div class="text-muted small mb-2 font-monospace" x-text="d.slug"></div>
+                        <p class="card-text small text-muted" x-show="d.description" x-text="d.description"></p>
+                        <div class="d-flex justify-content-between small text-muted mt-2">
+                            <span><i class="bi bi-person"></i> <span x-text="ownerLabel(d)"></span></span>
+                            <span><i class="bi bi-collection"></i> <span x-text="d.product_count"></span> products</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </template>
+        <div class="col-12 text-muted" x-show="filtered.length === 0">
+            No domains match.
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -36,6 +36,9 @@ from pointlessql.services.scheduler.executors.papermill import (
     resolve_notebook_path,
 )
 from pointlessql.services.scheduler.executors.pg_sync import _pg_sync_executor
+from pointlessql.services.scheduler.executors.policy_compliance import (
+    _policy_compliance_executor,
+)
 from pointlessql.services.scheduler.executors.python import _python_executor
 
 __all__ = [
@@ -49,6 +52,7 @@ __all__ = [
     "_papermill_executor",
     "_persist_papermill_outputs",
     "_pg_sync_executor",
+    "_policy_compliance_executor",
     "_python_executor",
     "_resolve_repo_notebook_path",
     "_run_papermill_blocking",

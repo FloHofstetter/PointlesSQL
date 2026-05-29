@@ -1754,6 +1754,103 @@ PointlesSQL
 │
 
 
+├── Phases 124–127 — Data-Mesh-Plattform-Initiative           ⏳ planned
+│       Strategische Achse: PointlesSQL zur erstklassigen
+│       Implementierungs-Plattform für Data Meshes (nach Dehghani)
+│       ausbauen.  Vollständige Gap-Analyse + Capability-Mapping in
+│       [`docs/internal/data-mesh-requirements.md`](docs/internal/data-mesh-requirements.md);
+│       die ROADMAP führt hier nur die grobe Phasenfolge — die
+│       detaillierte Ausplanung jeder Phase folgt als eigenes Plan-/
+│       ADR-Dokument vor Sprintbeginn.  Drei strukturelle Kernlücken
+│       treiben die Reihenfolge: (1) keine Domänen-/Team-Entität
+│       (Ownership nur user-skopiert), (2) Datenprodukt ist passive
+│       Metadaten statt aktivem Architektur-Quantum (keine Ports/
+│       Sidecar), (3) Governance ist zentral statt Policy-as-Code pro
+│       Produkt.  Leitprinzip: agent-nativ — Agenten *schlagen*
+│       Domänen-Zuschnitt, Contracts, Ports und Policies vor, Owner
+│       geben frei (knüpft an die Agent-Supervision-Ebene + die
+│       AI-native-Lakehouse-Vision an).
+│
+│   ├── Phase 124 — Data-Mesh: Domänen-Fundament              ✅ 2026-05-29
+│   │     Grundstein (A1–A3, B5).  Neue `Domain` + `domain_members`
+│   │     Entität (Archetyp source/aggregate/consumer-aligned am
+│   │     Domain; Owner/Developer-Rollen); `domain_id` am Datenprodukt
+│   │     (kein Katalog-Cache existiert → N/A); Transformation
+│   │     (Notebook-FK oder dbt-Model-Name) per
+│   │     `data_product_transformations` ans Produkt gebunden.  Admin-
+│   │     CRUD `/admin/domains` + read-only Browse `/domains` +
+│   │     `/domains/{slug}`; Produkt-Detail-Panel für Zuweisung +
+│   │     Binding.  Agent-nativ: hermes-Tools `pql_list_domains` +
+│   │     `pql_assign_data_product_domain` (steward/admin-gated).
+│   │     A4 (Aggregat-Ownership-Heuristik) verschoben nach Phase 126.
+│   │
+│   ├── Phase 125 — Data-Mesh: Quantum-Ports & Discovery      ✅ 2026-05-29
+│   │     Datenprodukt vom passiven Metadaten-Cache zum aktiven
+│   │     Architektur-Quantum (B1–B3, B7, C-discoverable/addressable/
+│   │     understandable, F4-Anfang).  DB-backed + UI-editierbar (nicht
+│   │     YAML): neue Tabellen `data_product_output_ports` /
+│   │     `data_product_input_ports` (deklarierte Upstreams →
+│   │     deklarierte Lineage), `data_product_semantic_concepts` +
+│   │     `data_products.sample_sql`, `data_product_statistics`,
+│   │     `glossary_terms` + `glossary_term_columns`.  Discovery-Port
+│   │     `GET .../discovery` (maschinenlesbar) + stabile URI
+│   │     `urn:pointlessql:product:{ws}:{cat}:{schema}` mit Copy-Button.
+│   │     B7: Shape + Row-Count beim Write am Produkt gestempelt
+│   │     (Post-Commit-Hook, analog contract_events; in-memory light-
+│   │     profile, kein Delta-Re-Scan; Reuse des table_stats-Cache).
+│   │     B1: funktionierender Parquet-File-Export-Port
+│   │     `GET .../export?table=` (SELECT-gated).  F4: Business-Glossar
+│   │     (Admin-CRUD `/admin/glossary` + Browse `/glossary` +
+│   │     Term→Spalte-Bindung → Badges auf dem Contract-Tab).  Overview-
+│   │     Panels (Ports / Semantic / Statistics / Discovery), Nav.
+│   │     Agent-nativ: hermes-Tools `pql_get_data_product_discovery` +
+│   │     `pql_add_data_product_output_port` +
+│   │     `pql_add_data_product_input_port` (steward/admin-gated).
+│   │
+│   ├── Phase 126 — Data-Mesh: Computational Governance       ✅ 2026-05-29
+│   │     Von zentralen Checks zu Policy-as-Code pro Produkt
+│   │     (E1–E9, B4, B6 + A4).  DB-backed + UI-editierbar (wie 124/125):
+│   │     neue Tabellen `workspace_governance_policies` (E8-Defaults),
+│   │     `data_product_policies` (Produkt-Override, vererbt sonst den
+│   │     Workspace-Default), `data_product_column_classifications`
+│   │     (PII/PHI-Klasse → Read-Time-Masking) und
+│   │     `data_product_forget_requests` (Right-to-be-forgotten-Ledger,
+│   │     Subjektwert nur gehasht).  **Sidecar (B6)**: gemeinsamer
+│   │     `services/governance/`-Layer führt die Klassifizierungs-
+│   │     Policy am Zugriffspunkt aus — Read-Time-Masking am Export-Port
+│   │     + Table-Preview (exakte Spalten-Zuordnung) + best-effort im
+│   │     SQL-Editor (Notebook-Kernel-SQL bleibt bewusst eine
+│   │     dokumentierte Lücke).  **Control-Port (B4)**: `GET/PUT .../policy`,
+│   │     `GET/POST/DELETE .../classifications`, `POST .../control/forget`
+│   │     (Steward/Admin-direkt, sofortige Löschung über die deklarierten
+│   │     Tabellen, auditiert + Governance-Event) und
+│   │     `POST .../control/forget-requests` (Agent-Vorschlag, nur
+│   │     `proposed`).  **Ehrliche Trennung**: Retention wird überwacht,
+│   │     PII-Masking + Right-to-be-forgotten werden erzwungen;
+│   │     Encryption-Klasse/Residency/Consent sind Deklarationen
+│   │     (im Discovery-Vertrag + Compliance-Scan sichtbar).  **E9**:
+│   │     Scheduler-Job `kind="policy_compliance"` + Admin-„scan now"
+│   │     flaggen Retention-Überzug + unklassifizierte PII-Spalten ins
+│   │     Audit-Log (Trust-Downgrade-Chip am Produkt).  E8 Workspace-
+│   │     Default unter `/admin/governance`.  A4: Aggregat-Ownership-
+│   │     Heuristik (Mehrheits-Domäne der deklarierten Upstreams) als
+│   │     Hinweis auf dem Governance-Tab.  Discovery-Envelope um einen
+│   │     `policies`-Block erweitert.  Agent-nativ: hermes-Tools
+│   │     `pql_get_data_product_policy` + `pql_set_data_product_policy`
+│   │     + `pql_classify_data_product_column` +
+│   │     `pql_request_right_to_be_forgotten` (Agenten schlagen vor,
+│   │     Steward/Admin führt aus).
+│   │
+│   └── Phase 127 — Data-Mesh: Interoperabilität & Mesh-Observability  ⏳ planned
+│         Querschnitt + Reifegrad-Abschluss (D1-bitemporal, D5-Graph,
+│         F1–F3, F5, G1–G5).  Bitemporalität (Business- + Processing-
+│         Time), polysemer/universeller Identifikator, point-in-time-
+│         konsistente produktübergreifende Reads, voller SLO-Satz,
+│         multimodale Output-Ports (File/Event), Mesh-Health-Dashboard.
+│         Detail-Ausplanung folgt.
+│
+
+
 ├── Phase 81 — Feed overhaul + help surface + entity ⋯-menu  ✅ archived (2026-05-16)
 │   │
 │   │   Detail moved to [`roadmap_archive.md#phase-81-feed-overhaul--help-surface--entity--menu`](docs/internal/roadmap_archive.md#phase-81-feed-overhaul--help-surface--entity--menu) in W2.
