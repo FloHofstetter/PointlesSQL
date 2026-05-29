@@ -141,6 +141,9 @@ class WorkspaceGovernancePolicy(Base):
     consumption_enforcement: Mapped[str] = mapped_column(
         String(16), nullable=False, default="advisory", server_default="advisory"
     )
+    iso8601_enforcement: Mapped[str] = mapped_column(
+        String(8), nullable=False, default="warn", server_default="warn"
+    )
     updated_by_user_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("users.id"), nullable=True
     )
@@ -199,6 +202,7 @@ class DataProductPolicy(Base):
     consent_required: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     consent_basis: Mapped[str | None] = mapped_column(String(200), nullable=True)
     consumption_enforcement: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    iso8601_enforcement: Mapped[str | None] = mapped_column(String(8), nullable=True)
     updated_by_user_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("users.id"), nullable=True
     )

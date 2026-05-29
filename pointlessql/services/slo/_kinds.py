@@ -81,4 +81,11 @@ KIND_META: dict[str, dict[str, Any]] = {
         "measurable": False,
         "help": "Max query latency at the output port (declared).",
     },
+    "interval_of_change": {
+        "label": "Interval of change",
+        "unit": "minutes",
+        "comparator": "lte",
+        "measurable": True,
+        "help": "Median or p95 of the time between consecutive writes.",
+    },
 }

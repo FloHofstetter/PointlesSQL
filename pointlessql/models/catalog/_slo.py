@@ -52,6 +52,7 @@ SLO_KINDS: tuple[str, ...] = (
     "precision_accuracy",
     "availability",
     "performance",
+    "interval_of_change",
 )
 
 #: The subset of :data:`SLO_KINDS` the SLO evaluator can compute a
@@ -63,6 +64,7 @@ MEASURABLE_SLO_KINDS: tuple[str, ...] = (
     "volume",
     "statistical_shape",
     "lineage",
+    "interval_of_change",
 )
 
 #: How an observed value is compared against the declared target.
@@ -111,7 +113,7 @@ class DataProductSLO(Base):
         CheckConstraint(
             "slo_kind IN ('freshness','timeliness','completeness','volume',"
             "'statistical_shape','lineage','precision_accuracy','availability',"
-            "'performance')",
+            "'performance','interval_of_change')",
             name="ck_dp_slos_kind",
         ),
         CheckConstraint(

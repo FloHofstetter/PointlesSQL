@@ -18,14 +18,24 @@ from pointlessql.services.glossary._crud import (
     terms_for_schema,
     unbind_column,
 )
+from pointlessql.services.glossary._relations import (
+    add_relation,
+    delete_relation,
+    list_relations,
+    term_graph,
+)
 
 __all__ = [
+    "add_relation",
     "bind_column",
     "create_term",
+    "delete_relation",
     "delete_term",
     "get_term_by_slug",
     "list_bindings",
+    "list_relations",
     "list_terms",
+    "term_graph",
     "terms_for_column",
     "terms_for_schema",
     "unbind_column",

@@ -43,6 +43,9 @@ from pointlessql.api.data_products_routes.domain import router as _domain_router
 from pointlessql.api.data_products_routes.endorsements import (
     router as _endorsements_router,
 )
+from pointlessql.api.data_products_routes.entities import (
+    router as _entities_router,
+)
 from pointlessql.api.data_products_routes.event_port import (
     router as _event_port_router,
 )
@@ -118,6 +121,7 @@ router.include_router(_infrastructure_router)
 router.include_router(_consumer_voice_router)
 router.include_router(_consumption_events_router)
 router.include_router(_bitemporal_policy_router)
+router.include_router(_entities_router)
 
 
 # Backwards-compatible aliases — ``_load_one`` was the original

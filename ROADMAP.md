@@ -2054,6 +2054,95 @@ PointlesSQL
 │       47 neue pytest gesamt (37 Platform + 10 Plugin), full suite
 │       grün, alembic 124→133 round-trip clean, ruff/pyright clean.
 │
+├── Phase 135-140 — Buch-Lücken-Foundation-Wave (Backend-only)  🟦 (2026-05-29)
+│   │
+│   │   Erste Welle des Mega-Cluster 135–146 (Buch-Vollständigkeit).
+│   │   Backend-Substrat für sechs Phasen landet als ein cohesiver
+│   │   Commit; Frontend / Plugin-Tools / Walkthroughs für alle sechs
+│   │   bleiben für eine spätere Welle deferred.  Migration-Kette
+│   │   q8s0u2w5y7a9 → z7l9n1p3r5t7 (6 neue Revisions chained).
+│   │   103 neue pytest grün, ruff/pyright/check-no-phase-refs/
+│   │   broad-except-hook clean.
+│   │
+│   ├── 135 — F3 Polysemic Entity-ID + F4 Glossary-Knowledge-Graph
+│   │       Drei neue Tabellen (`data_product_entities`,
+│   │       `entity_links`, `glossary_term_relations`); Service-Layer
+│   │       `services/entities/_crud.py` + `_resolver.py` (BFS über
+│   │       `same_as`-Graph für globale polysemische Identität);
+│   │       `services/glossary/_relations.py` (Term-Relationen +
+│   │       bounded knowledge-graph BFS).  Routen-Module
+│   │       `data_products_routes/entities.py` +
+│   │       `glossary_relations_routes.py`.  24 pytest.
+│   │
+│   ├── 136 — G4 Correlation-IDs + F5 ISO-8601-Enforcement
+│   │       Additive Migration: `correlation_id` String(40) auf
+│   │       `audit_log`, `data_product_contract_events`,
+│   │       `data_product_event_deliveries` (agent_run_operations
+│   │       hatte die Spalte bereits aus Phase 127); plus
+│   │       `iso8601_enforcement` CHECK('off','warn','strict') auf
+│   │       workspace + product policy.  `services/tracing/_context.py`
+│   │       wrappt die ContextVars.  `services/governance/_iso8601.py`
+│   │       parst Timestamp-Spalten gegen die ISO-8601-Grammatik;
+│   │       strict-mode raised `Iso8601Violation` (PermissionDenied →
+│   │       403).  POLICY_FIELDS um `iso8601_enforcement` erweitert.
+│   │       8 pytest.
+│   │
+│   ├── 137 — D5 Graph-Queries + F2 As-of (substrate-deferred)
+│   │       `services/lineage/_graph_query.py`:
+│   │       find_upstream/find_downstream/find_shortest_path/
+│   │       cluster_by_domain.  Routen `api/lineage_query_routes.py`
+│   │       (GET upstream/downstream/path/clusters).  F2-As-of-
+│   │       Substrate existiert bereits in
+│   │       `pql/_time_travel.py`+`services/mesh/_point_in_time.py`
+│   │       — `?as_of=`-Query-Exposure auf Routes bleibt deferred.
+│   │       9 pytest.
+│   │
+│   ├── 138 — G1 Interval-of-Change + G2 Mesh-Health-MVP
+│   │       SLO-Kind CHECK auf `data_product_slos.slo_kind`
+│   │       erweitert um `interval_of_change`.  Modell-Tupel
+│   │       SLO_KINDS + MEASURABLE_SLO_KINDS sync.
+│   │       `services/slo/_interval_of_change.py` misst Median/p95
+│   │       der Zeit zwischen aufeinanderfolgenden Writes via
+│   │       `data_product_contract_events`.  G2-Mesh-Health
+│   │       (`services/mesh/_health.py`) bereits MVP-vorhanden.
+│   │       10 pytest.
+│   │
+│   ├── 139 — E10 Per-Output-Port Identity + B6 PQL-Hook-Registry
+│   │       Migration: `identity_requirements` Text/JSON nullable
+│   │       auf `data_product_output_ports`.
+│   │       `services/governance/_port_identity.py`:
+│   │       `assert_port_identity(req_json, principal)` validiert
+│   │       OIDC-audiences (any-match), required scopes (all-match),
+│   │       min-role rank (admin bypass).  Failure raised
+│   │       `PortIdentityViolation` (PermissionDenied → 403).
+│   │       `pql/_hooks.py` neue zentrale Hook-Registry
+│   │       (before/after read/write) mit Test-`HookContext`
+│   │       Snapshot/Restore-Helper.  19 pytest.
+│   │
+│   └── 140 — Runtime-Messung der 4 Decl-only SLO-Kinds
+│           Migration: `last_measured_at` +
+│           `last_measurement_detail_json` auf `data_product_slos`;
+│           zwei neue Substrat-Tabellen
+│           (`data_product_availability_probes`,
+│           `data_product_query_perf_samples`).
+│           `services/slo/_runtime.py` mit
+│           measure_timeliness/precision_accuracy/availability/
+│           performance + dispatcher.  precision/availability/
+│           performance measure aus existing Snapshots/Probes;
+│           timeliness gibt `unmeasured` mit Declaration-Sentinel
+│           zurück (engine-side scan noch nicht gewired).
+│           MEASURABLE_SLO_KINDS bleibt unverändert
+│           (precision/availability/performance bekommen
+│           Runtime-Messer, aber nicht alle Verdicts erreichen pass
+│           ohne weitere Wiring).  12 pytest.
+│
+│       Asset rc180→rc186 (Plattform).  Deferred bis späterer
+│       Welle: Frontend-Panels für alle 6 Phasen, Plugin-Tools,
+│       Walkthroughs, Playwright-Replay, F2-`?as_of=`-Route-Exposure.
+│       Phase 141–146 (Cedar Policy-as-Code, Contract-Tests,
+│       DP-as-Code, Schema-Versioning, Entity-Auto-Discovery,
+│       Cost+Quotas+Dashboard) bleiben für nächste Session offen.
+│
 
 
 

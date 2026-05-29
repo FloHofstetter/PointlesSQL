@@ -103,6 +103,7 @@ class DataProductOutputPort(Base):
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     format: Mapped[str | None] = mapped_column(String(32), nullable=True)
     location: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    identity_requirements: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_by_user_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("users.id"), nullable=True
     )

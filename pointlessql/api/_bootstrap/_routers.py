@@ -51,6 +51,9 @@ def register_routers(app: FastAPI) -> None:
     from pointlessql.api.feed_html_routes import router as feed_html_router
     from pointlessql.api.feed_routes import router as feed_router
     from pointlessql.api.glossary_html_routes import router as glossary_html_router
+    from pointlessql.api.glossary_relations_routes import (
+        router as glossary_relations_router,
+    )
     from pointlessql.api.governance_routes import router as governance_router
     from pointlessql.api.health_routes import router as health_router
     from pointlessql.api.help_routes import router as help_router
@@ -61,6 +64,9 @@ def register_routers(app: FastAPI) -> None:
     from pointlessql.api.jobs_routes import router as jobs_router
     from pointlessql.api.lens import router as lens_router
     from pointlessql.api.lineage import router as lineage_router
+    from pointlessql.api.lineage_query_routes import (
+        router as lineage_query_router,
+    )
     from pointlessql.api.mcp import router as mcp_router
     from pointlessql.api.me_routes import router as me_router
     from pointlessql.api.me_subscriptions_routes import (
@@ -131,6 +137,7 @@ def register_routers(app: FastAPI) -> None:
     app.include_router(canvas_router)
     app.include_router(volumes_router)
     app.include_router(lineage_router)
+    app.include_router(lineage_query_router)
     app.include_router(time_travel_router)
     app.include_router(governance_router)
     app.include_router(notebooks_router)
@@ -159,6 +166,7 @@ def register_routers(app: FastAPI) -> None:
     app.include_router(data_products_html_router)
     app.include_router(domains_html_router)
     app.include_router(glossary_html_router)
+    app.include_router(glossary_relations_router)
     app.include_router(mesh_router)
     app.include_router(social_router)
     app.include_router(issues_html_router)

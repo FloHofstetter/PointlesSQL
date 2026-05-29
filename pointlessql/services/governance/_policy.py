@@ -29,6 +29,7 @@ POLICY_FIELDS: tuple[str, ...] = (
     "consent_required",
     "consent_basis",
     "consumption_enforcement",
+    "iso8601_enforcement",
 )
 
 

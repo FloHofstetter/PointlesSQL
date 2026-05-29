@@ -25,6 +25,7 @@ from __future__ import annotations
 import datetime
 
 from sqlalchemy import (
+    CheckConstraint,
     DateTime,
     ForeignKey,
     Index,
@@ -36,6 +37,10 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column
 
 from pointlessql.models.base import Base
+
+GLOSSARY_TERM_RELATION_KINDS: tuple[str, ...] = (
+    "parent", "child", "synonym", "related", "antonym",
+)
 
 
 class GlossaryTerm(Base):
@@ -128,3 +133,57 @@ class GlossaryTermColumn(Base):
     table_name: Mapped[str] = mapped_column(String(255), nullable=False)
     column_name: Mapped[str] = mapped_column(String(255), nullable=False)
     created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class GlossaryTermRelation(Base):
+    """Directed relation between two glossary terms.
+
+    Builds the knowledge-graph the binding surface (M:N to columns)
+    lacked: hierarchy (``parent``/``child``), lateral synonyms,
+    softer ``related`` references, and inverse ``antonym`` links.
+
+    Attributes:
+        id: Auto-incremented primary key.
+        source_term_id: FK on ``glossary_terms.id`` with CASCADE
+            delete.
+        target_term_id: FK on ``glossary_terms.id`` with CASCADE
+            delete.
+        kind: One of :data:`GLOSSARY_TERM_RELATION_KINDS`.
+        created_by_user_id: Author of the declaration, nullable FK
+            on ``users.id``.
+        created_at: Wall-clock the relation was created.
+    """
+
+    __tablename__ = "glossary_term_relations"
+
+    __table_args__ = (
+        UniqueConstraint(
+            "source_term_id", "target_term_id", "kind",
+            name="uq_glossary_term_relations_identity",
+        ),
+        CheckConstraint(
+            "kind IN ('parent','child','synonym','related','antonym')",
+            name="ck_glossary_term_relations_kind",
+        ),
+        Index("ix_glossary_term_relations_source", "source_term_id"),
+        Index("ix_glossary_term_relations_target", "target_term_id"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    source_term_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("glossary_terms.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    target_term_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("glossary_terms.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    kind: Mapped[str] = mapped_column(String(16), nullable=False)
+    created_by_user_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("users.id"), nullable=True
+    )
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )

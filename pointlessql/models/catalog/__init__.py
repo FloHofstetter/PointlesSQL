@@ -93,6 +93,11 @@ from pointlessql.models.catalog._domains import (
     Domain,
     DomainMember,
 )
+from pointlessql.models.catalog._entity import (
+    ENTITY_LINK_KINDS,
+    DataProductEntity,
+    EntityLink,
+)
 from pointlessql.models.catalog._event_port import (
     EVENT_DELIVERY_STATUSES,
     EVENT_SUBSCRIPTION_STATUSES,
@@ -100,8 +105,10 @@ from pointlessql.models.catalog._event_port import (
     DataProductEventSubscription,
 )
 from pointlessql.models.catalog._glossary import (
+    GLOSSARY_TERM_RELATION_KINDS,
     GlossaryTerm,
     GlossaryTermColumn,
+    GlossaryTermRelation,
 )
 from pointlessql.models.catalog._governance import (
     CLASSIFICATIONS,
@@ -136,6 +143,12 @@ from pointlessql.models.catalog._ports import (
     DataProductOutputPort,
 )
 from pointlessql.models.catalog._recents import RecentTable
+from pointlessql.models.catalog._runtime_slo import (
+    AVAILABILITY_STATUSES,
+    PERF_STATUSES,
+    DataProductAvailabilityProbe,
+    DataProductQueryPerfSample,
+)
 from pointlessql.models.catalog._semantic import (
     DataProductSemanticConcept,
 )
@@ -159,9 +172,12 @@ __all__ = [
     "DP_TRANSFORMATION_KINDS",
     "ENCRYPTION_CLASSES",
     "ENDORSEMENT_TYPES",
+    "AVAILABILITY_STATUSES",
+    "ENTITY_LINK_KINDS",
     "EVENT_DELIVERY_STATUSES",
     "EVENT_SUBSCRIPTION_STATUSES",
     "FORGET_STATUSES",
+    "GLOSSARY_TERM_RELATION_KINDS",
     "INFRASTRUCTURE_STORAGE_CLASSES",
     "INPUT_PORT_KINDS",
     "LIFECYCLE_STATES",
@@ -169,6 +185,7 @@ __all__ = [
     "MEASURABLE_SLO_KINDS",
     "OUTPUT_PORT_KINDS",
     "PASSPORT_TRIGGERS",
+    "PERF_STATUSES",
     "PROPOSAL_STATUSES",
     "SLO_COMPARATORS",
     "SLO_KINDS",
@@ -189,13 +206,16 @@ __all__ = [
     "DataProductCommentReaction",
     "DataProductContractEvent",
     "DataProductCooccurrence",
+    "DataProductAvailabilityProbe",
     "DataProductEndorsement",
+    "DataProductEntity",
     "DataProductForgetRequest",
     "DataProductInputPort",
     "DataProductOutputPort",
     "DataProductPassport",
     "DataProductPolicy",
     "DataProductPromotionCandidate",
+    "DataProductQueryPerfSample",
     "DataProductReview",
     "DataProductSLO",
     "DataProductSchemaProposal",
@@ -206,8 +226,10 @@ __all__ = [
     "DataProductYamlDraft",
     "Domain",
     "DomainMember",
+    "EntityLink",
     "GlossaryTerm",
     "GlossaryTermColumn",
+    "GlossaryTermRelation",
     "MeshEntity",
     "MeshEntityBinding",
     "QueryHistory",

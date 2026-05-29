@@ -17,6 +17,38 @@ defined in ``scripts/clusters.json``. -->
 
 ### Features
 
+- Data-Mesh Buch-Vollständigkeit Foundation-Welle (Phase 135–140 —
+  Backend-only).  Erste Welle des Mega-Cluster 135–146.  Migration-
+  Kette `q8s0u2w5y7a9` → `z7l9n1p3r5t7` (6 chained revisions).
+  Phase 135 (Entities + Glossary-Knowledge-Graph): drei neue Tabellen
+  (`data_product_entities`, `entity_links`, `glossary_term_relations`),
+  Polysemic-Identity-Resolver via `same_as`-Graph-BFS, bounded
+  term-graph BFS für Glossary-Drawer.  Phase 136 (Correlation-IDs +
+  ISO-8601-Enforcement): `correlation_id` auf 3 Audit-Tabellen +
+  `iso8601_enforcement` CHECK column auf Workspace + Product Policy,
+  ISO-8601-Validator mit warn/strict modes, POLICY_FIELDS-Inheritance
+  erweitert.  Phase 137 (D5 Graph-Queries): upstream/downstream/
+  shortest-path/cluster-by-domain auf der bestehenden Mesh-Graph-
+  Substrat (F2-As-of-Substrate existiert bereits; route-`?as_of=`-
+  Exposure deferred).  Phase 138 (G1 Interval-of-Change): neuer
+  measurable SLO-Kind misst median/p95 inter-write-intervals via
+  `data_product_contract_events`-Diffs; G2 Mesh-Health-Card MVP
+  bereits in `services/mesh/_health.py`.  Phase 139 (E10 Port-Identity
+  + B6 PQL-Hook-Registry): `identity_requirements` JSON-Spalte auf
+  Output-Ports + Assert-Helper (OIDC-aud / scopes / min-role),
+  zentrale `pql/_hooks.py` Hook-Registry (before/after read/write)
+  mit Test-`HookContext`.  Phase 140 (Runtime-Messung der 4 Decl-only
+  SLO-Kinds): 2 neue Substrat-Tabellen (Availability-Probes,
+  Query-Perf-Samples) + 4 Measurer-Module + Dispatcher; precision/
+  availability/performance lesen aus existing Snapshots,
+  timeliness gibt Declaration-Sentinel zurück.  103 neue pytest grün,
+  ruff/check-no-phase-refs/broad-except-hook clean.  Frontend-Panels,
+  Plugin-Tools, Walkthroughs, Playwright-Replay über alle 6 Phasen
+  bleiben für die nächste Welle (zusammen mit Phase 141–146:
+  Cedar Policy-as-Code, Contract-Tests, DP-as-Code, Schema-
+  Versioning, Entity-Auto-Discovery, Cost+Quotas+Dashboard).
+  Asset rc180→rc186.
+
 - Data-Mesh Quantum-Completeness (Phase 134 — Cluster Restschuld):
   vervollständigt die 129–133-Substrate zu nutzbarer Plattform.
   Neue Authoring-Product-Dependency (Header
