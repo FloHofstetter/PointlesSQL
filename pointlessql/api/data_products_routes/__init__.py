@@ -22,10 +22,19 @@ from pointlessql.api.data_products_routes.active_reviewer import (
     router as _active_reviewer_router,
 )
 from pointlessql.api.data_products_routes.activity import router as _activity_router
+from pointlessql.api.data_products_routes.bitemporal_policy import (
+    router as _bitemporal_policy_router,
+)
 from pointlessql.api.data_products_routes.candidates import (
     router as _candidates_router,
 )
 from pointlessql.api.data_products_routes.comments import router as _comments_router
+from pointlessql.api.data_products_routes.consumer_voice import (
+    router as _consumer_voice_router,
+)
+from pointlessql.api.data_products_routes.consumption_events import (
+    router as _consumption_events_router,
+)
 from pointlessql.api.data_products_routes.contracts import router as _contracts_router
 from pointlessql.api.data_products_routes.detail import router as _detail_router
 from pointlessql.api.data_products_routes.diff import router as _diff_router
@@ -34,11 +43,17 @@ from pointlessql.api.data_products_routes.domain import router as _domain_router
 from pointlessql.api.data_products_routes.endorsements import (
     router as _endorsements_router,
 )
+from pointlessql.api.data_products_routes.event_port import (
+    router as _event_port_router,
+)
 from pointlessql.api.data_products_routes.export import router as _export_router
 from pointlessql.api.data_products_routes.follows import router as _follows_router
 from pointlessql.api.data_products_routes.forks import router as _forks_router
 from pointlessql.api.data_products_routes.governance import router as _governance_router
 from pointlessql.api.data_products_routes.heatmap import router as _heatmap_router
+from pointlessql.api.data_products_routes.infrastructure import (
+    router as _infrastructure_router,
+)
 from pointlessql.api.data_products_routes.ingest_status import (
     router as _ingest_status_router,
 )
@@ -98,6 +113,11 @@ router.include_router(_governance_router)
 router.include_router(_interop_router)
 router.include_router(_slo_router)
 router.include_router(_lifecycle_router)
+router.include_router(_event_port_router)
+router.include_router(_infrastructure_router)
+router.include_router(_consumer_voice_router)
+router.include_router(_consumption_events_router)
+router.include_router(_bitemporal_policy_router)
 
 
 # Backwards-compatible aliases — ``_load_one`` was the original

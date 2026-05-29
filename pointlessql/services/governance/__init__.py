@@ -30,6 +30,7 @@ from pointlessql.services.governance._consumption import (
     ConsumptionVerdict,
     ConsumptionViolation,
     assert_declared_consumption,
+    emit_consumption_audit,
     evaluate_consumption,
 )
 from pointlessql.services.governance._forget import (
@@ -67,6 +68,7 @@ __all__ = [
     "classifications_for_schema",
     "delete_classification",
     "effective_strategy",
+    "emit_consumption_audit",
     "evaluate_consumption",
     "execute_forget",
     "get_effective_policy",

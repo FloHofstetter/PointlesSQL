@@ -19,13 +19,15 @@ import logging
 import re
 from typing import Any
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse, Response
 
+from pointlessql.api._consumption_hook import enforce_consumption_for_read
 from pointlessql.api.dependencies import (
     current_workspace_id,
     effective_principal,
+    get_authoring_product,
     get_uc_client,
     get_user,
 )
@@ -516,6 +518,7 @@ async def api_table_preview(
     catalog_name: str,
     schema_name: str,
     table_name: str,
+    authoring_product_id: int | None = Depends(get_authoring_product),
 ) -> Response:
     """Return up to 10 rows from a Delta table as JSON.
 
@@ -527,6 +530,14 @@ async def api_table_preview(
     client = get_uc_client(request)
     user = get_user(request)
     full_name = TableFqn.from_parts(catalog_name, schema_name, table_name)
+    enforce_consumption_for_read(
+        request,
+        factory=request.app.state.session_factory,
+        workspace_id=current_workspace_id(request),
+        user=user,
+        authoring_product_id=authoring_product_id,
+        source_fqn=full_name,
+    )
     principal = effective_principal(request) or user.get("email", "")
     effective = await client.get_effective_permissions("table", full_name)
     check_privilege_from_effective(

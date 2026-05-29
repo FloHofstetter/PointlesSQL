@@ -12,6 +12,8 @@ from __future__ import annotations
 import asyncio
 from typing import Any
 
+from pointlessql.api._consumption_hook import enforce_consumption_for_read
+from pointlessql.api.dependencies import current_workspace_id, get_authoring_product, get_user
 from pointlessql.api.sql._dispatcher._privilege import enforce_select_per_table
 from pointlessql.api.sql._dispatcher._types import DispatchContext, ExecutionResult
 from pointlessql.pql import prepare_sql
@@ -64,6 +66,21 @@ async def execute_select(ctx: DispatchContext) -> ExecutionResult:
 
     prepared = prepare_sql(ctx.sql)
     approved = await enforce_select_per_table(ctx, prepared.refs)
+
+    authoring_product_id = get_authoring_product(ctx.request)
+    if authoring_product_id is not None:
+        factory = ctx.request.app.state.session_factory
+        workspace_id = current_workspace_id(ctx.request)
+        user = get_user(ctx.request)
+        for full_name in approved:
+            enforce_consumption_for_read(
+                ctx.request,
+                factory=factory,
+                workspace_id=workspace_id,
+                user=user,
+                authoring_product_id=authoring_product_id,
+                source_fqn=full_name,
+            )
 
     result = await asyncio.to_thread(
         run_sql_sync,

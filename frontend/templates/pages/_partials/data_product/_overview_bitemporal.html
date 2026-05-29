@@ -1,0 +1,30 @@
+<div class="card mb-3"
+     x-data='dataProductBitemporalPanel({{ product.catalog|tojson }}, {{ product.schema|tojson }})'
+     x-init="init()">
+    <div class="card-header d-flex align-items-center gap-2">
+        <i class="bi bi-stopwatch"></i>
+        <span>Bitemporal</span>
+        <span class="badge ms-auto"
+              :class="{
+                'bg-success': enforcement === 'required',
+                'bg-warning text-dark': enforcement === 'opt_in',
+                'bg-secondary': enforcement === 'off' || !enforcement
+              }"
+              x-text="enforcement || 'off'"></span>
+    </div>
+    <div class="card-body">
+        <div class="alert alert-danger py-1 px-2 small" x-show="error" x-text="error" x-cloak></div>
+        <dl class="row mb-0 small">
+            <dt class="col-sm-5 text-muted">Event-time column</dt>
+            <dd class="col-sm-7"><code x-text="eventCol || '_event_time'"></code></dd>
+            <dt class="col-sm-5 text-muted">Processing-time column</dt>
+            <dd class="col-sm-7"><code x-text="procCol || '_processing_time'"></code></dd>
+            <dt class="col-sm-5 text-muted">Require event-time</dt>
+            <dd class="col-sm-7" x-text="requireEventTime ? 'yes' : 'no'"></dd>
+        </dl>
+        <p class="text-muted small mb-0 mt-2"
+           x-show="enforcement === 'required'" x-cloak>
+            Writes that miss the event-time column are rejected at the write hook.
+        </p>
+    </div>
+</div>

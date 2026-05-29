@@ -14,13 +14,15 @@ import asyncio
 import io
 from typing import Any
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import StreamingResponse
 
+from pointlessql.api._consumption_hook import enforce_consumption_for_read
 from pointlessql.api.data_products_routes._shared import load_one
 from pointlessql.api.dependencies import (
     current_workspace_id,
     effective_principal,
+    get_authoring_product,
     get_uc_client,
     get_user,
     require_user,
@@ -78,6 +80,7 @@ async def export_table(
     schema: str,
     request: Request,
     table: str,
+    authoring_product_id: int | None = Depends(get_authoring_product),
 ) -> StreamingResponse:
     """Stream one declared product table as a Parquet download.
 
@@ -87,6 +90,11 @@ async def export_table(
         request: Incoming FastAPI request.
         table: The table to export — must be declared in the product
             contract.
+        authoring_product_id: Resolved by
+            :func:`get_authoring_product` — the consumer product the
+            export is happening "in the context of"; drives the D2
+            consumption-enforcement hook.  ``None`` when the request
+            isn't bound to a product (free-form export).
 
     Returns:
         A ``StreamingResponse`` carrying the Parquet payload with a
@@ -108,6 +116,14 @@ async def export_table(
         )
 
     full_name = f"{catalog}.{schema}.{table}"
+    enforce_consumption_for_read(
+        request,
+        factory=factory,
+        workspace_id=workspace_id,
+        user=user,
+        authoring_product_id=authoring_product_id,
+        source_fqn=full_name,
+    )
     principal = effective_principal(request) or user.get("email", "")
     client = get_uc_client(request)
     effective = await client.get_effective_permissions("table", full_name)

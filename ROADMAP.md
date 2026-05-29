@@ -1973,6 +1973,88 @@ PointlesSQL
 │       Asset rc178→rc179.  Komplettes pytest: 3701/0/10 grün.
 │       ruff sauber, alembic round-trips 124→133.
 │
+├── Phase 134 — Quantum-Completeness-Cluster Restschuld (Wiring + UI + Plugin-Tools + Walkthroughs)  ✅ (2026-05-29)
+│   │
+│   │   Vervollständigt die 129–133-Substrate zu nutzbarer Plattform-
+│   │   Oberfläche.  Keine eigene Migration — alle Tabellen aus dem
+│   │   vorigen Cluster reichen.
+│   │
+│   ├── 134.1 — D2 Konsumtions-Enforcement-Route-Hooks
+│   │       Neue FastAPI-Dependency `get_authoring_product` (Header
+│   │       `X-PointlesSQL-Authoring-Product` / Query `?as_product=` /
+│   │       Session-State).  Shared Hook `enforce_consumption_for_read`
+│   │       (Service `_consumption_hook.py`) eingehängt an Export
+│   │       (`export.py`), Tabellen-Preview (`catalog_routes.py`) und
+│   │       SQL-Editor-SELECT (`sql/_dispatcher/_select.py`).  WARN
+│   │       schreibt Audit + erlaubt; BLOCK raised
+│   │       `ConsumptionViolation` (jetzt
+│   │       `PermissionDeniedError`-Subklass → 403 Envelope mit
+│   │       strukturierten Extras).  13 neue pytest.
+│   │
+│   ├── 134.2 — F1 Bitemporal-Validate-Wiring in pql/_write.py
+│   │       Neuer Helper `_maybe_validate_and_stamp_bitemporal` ruft
+│   │       `effective_policy(...)` für das (factory, data_product_id)-
+│   │       Paar auf, validiert event-time-Spalte (raised
+│   │       `BitemporalRequirementError` bei `require_event_time=True`
+│   │       + fehlend / wrong dtype), stempelt processing-time wenn
+│   │       Policy es verlangt.  Existing `_maybe_stamp_processing_time`
+│   │       ersetzt; alte Test-Imports umbenannt.  8 neue pytest.
+│   │
+│   ├── 134.3 — B1 Event-Port-Runtime (CDF + Hub + Pump + Endpunkte)
+│   │       `services/event_port/_cdf_reader.py` (deltalake load_cdf-
+│   │       Wrapper, bounded), `_ws_hub.py` (per-(product,table)
+│   │       Lazy-Init + Lock + broadcast/release-if-empty, mirror
+│   │       coedit-Hub Pattern), `_pump.py` (advanced position +
+│   │       ledger + broadcast; injizierbarer reader für Tests).
+│   │       Scheduler-Executor `event_port_pump` registriert in
+│   │       `build_default_registry()` (gated by
+│   │       `EventPortSettings.enabled`).  Neue Routen-Datei
+│   │       `data_products_routes/event_port.py`: CRUD
+│   │       (GET/POST/DELETE event-subscriptions),
+│   │       pause/resume/rewind, HTTP-Chunked NDJSON-Stream
+│   │       (`GET .../events`), WebSocket (`WS .../events`).
+│   │       16 neue pytest.
+│   │
+│   ├── 134.4 — UI-Panels (5 neue + 1 erweitert) + Asset-Bump rc179→rc180
+│   │       Sechs neue Partials in
+│   │       `frontend/templates/pages/_partials/data_product/`:
+│   │       lifecycle (state-badge + history + transition-buttons),
+│   │       bitemporal (read-only badge card), infrastructure (steward
+│   │       edit-form), consumer-voice (use-cases list + rating
+│   │       widget), consumption (mode-badge + recent-undeclared feed),
+│   │       event-port (port info + subscriptions table +
+│   │       curl/WS-snippets).  Sieben neue Alpine-Factories in
+│   │       `frontend/js/pages/data_product_overview_panels.js`,
+│   │       registriert in `bootstrap.js`.  Drei neue REST-Routes
+│   │       (`infrastructure.py`, `consumer_voice.py`,
+│   │       `consumption_events.py`, `bitemporal_policy.py`).
+│   │
+│   ├── 134.5 — Hermes-Plugin-Tools (13 neue Tools)
+│   │       Cross-Repo (`hermes-plugin-pointlessql`):
+│   │       13 neue Client-Methoden auf `PointlessClient` + 13
+│   │       Tool-Register-Funktionen in `tools/data_mesh_extras.py`
+│   │       (lifecycle set/propose, consumption set/ack, bitemporal
+│   │       get/set, infrastructure set, use-cases add/vote, rating
+│   │       upsert, event-port subscribe/read/control).  Registriert
+│   │       in `register_all()` via Schleife über `REGISTER_FUNCTIONS`.
+│   │       10 neue pytest auf Plugin-Seite.
+│   │
+│   └── 134.6 — Playwright-Walkthroughs (6 .md authored)
+│           Neue Walkthroughs in `docs/e2e-walkthroughs/`:
+│           `data-product-lifecycle.md`,
+│           `data-product-consumption-enforcement.md`,
+│           `data-product-bitemporal-enforcement.md`,
+│           `data-product-infrastructure.md`,
+│           `data-product-consumer-voice.md`,
+│           `data-product-event-port.md`.  README-Index erweitert.
+│           Live-Replay-Gate deferred (autonomer Lauf ohne
+│           Browser-Setup).
+│
+│       Asset rc179→rc180 (Plattform).  Plugin eigener Versionsraum.
+│       47 neue pytest gesamt (37 Platform + 10 Plugin), full suite
+│       grün, alembic 124→133 round-trip clean, ruff/pyright clean.
+│
+
 
 
 ├── Phase 81 — Feed overhaul + help surface + entity ⋯-menu  ✅ archived (2026-05-16)

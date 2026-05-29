@@ -1,0 +1,72 @@
+<div class="card mb-3"
+     x-data='dataProductInfrastructurePanel({{ product.catalog|tojson }}, {{ product.schema|tojson }}, {{ ((is_admin or is_steward) or false)|tojson }})'
+     x-init="init()">
+    <div class="card-header d-flex align-items-center gap-2">
+        <i class="bi bi-hdd-stack"></i>
+        <span>Infrastructure</span>
+        <button type="button" class="btn btn-sm btn-outline-secondary ms-auto"
+                x-show="canManage" x-cloak
+                @click="editing = !editing"
+                x-text="editing ? 'Cancel' : 'Edit'"></button>
+    </div>
+    <div class="card-body">
+        <div class="alert alert-danger py-1 px-2 small" x-show="error" x-text="error" x-cloak></div>
+
+        <dl class="row mb-0 small" x-show="!editing">
+            <dt class="col-sm-4 text-muted">Storage class</dt>
+            <dd class="col-sm-8" x-text="record.storage_class || '—'"></dd>
+            <dt class="col-sm-4 text-muted">Compute runtime</dt>
+            <dd class="col-sm-8" x-text="record.compute_runtime || '—'"></dd>
+            <dt class="col-sm-4 text-muted">Access methods</dt>
+            <dd class="col-sm-8">
+                <template x-for="m in (record.access_methods || [])" :key="m">
+                    <span class="badge bg-light text-dark border me-1" x-text="m"></span>
+                </template>
+                <span x-show="(record.access_methods || []).length === 0">—</span>
+            </dd>
+            <dt class="col-sm-4 text-muted">Region</dt>
+            <dd class="col-sm-8" x-text="record.region || '—'"></dd>
+            <dt class="col-sm-4 text-muted" x-show="record.notes">Notes</dt>
+            <dd class="col-sm-8" x-show="record.notes" x-text="record.notes"></dd>
+        </dl>
+
+        <form @submit.prevent="save()" x-show="editing" x-cloak class="small">
+            <div class="row g-2 mb-2">
+                <div class="col-md-6">
+                    <label class="form-label mb-0">Storage class</label>
+                    <input class="form-control form-control-sm"
+                           list="lifecycle-storage-options"
+                           x-model="draft.storage_class">
+                    <datalist id="lifecycle-storage-options">
+                        <option value="delta"></option>
+                        <option value="parquet"></option>
+                        <option value="external"></option>
+                    </datalist>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label mb-0">Compute runtime</label>
+                    <input class="form-control form-control-sm"
+                           placeholder="pql|spark|dbt|…"
+                           x-model="draft.compute_runtime">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label mb-0">Access methods (comma)</label>
+                    <input class="form-control form-control-sm"
+                           x-model="draft.access_methods_csv"
+                           placeholder="sql,file,event">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label mb-0">Region</label>
+                    <input class="form-control form-control-sm" x-model="draft.region">
+                </div>
+                <div class="col-12">
+                    <label class="form-label mb-0">Notes</label>
+                    <textarea class="form-control form-control-sm" rows="2"
+                              x-model="draft.notes"></textarea>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-sm btn-primary">Save</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" @click="editing = false">Cancel</button>
+        </form>
+    </div>
+</div>

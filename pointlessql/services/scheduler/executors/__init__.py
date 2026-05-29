@@ -24,6 +24,9 @@ from pointlessql.services.scheduler.executors.branch_cleanup import (
 from pointlessql.services.scheduler.executors.coedit_compaction import (
     _coedit_compaction_executor,
 )
+from pointlessql.services.scheduler.executors.event_port_pump import (
+    _event_port_pump_executor,
+)
 from pointlessql.services.scheduler.executors.papermill import (
     _PAPERMILL_INPUT_SUFFIXES,
     _REPO_PREFIX,
@@ -50,6 +53,7 @@ __all__ = [
     "_alert_check_executor",
     "_branch_cleanup_executor",
     "_coedit_compaction_executor",
+    "_event_port_pump_executor",
     "_jupytext_py_to_ipynb",
     "_papermill_env_lock",
     "_papermill_executor",

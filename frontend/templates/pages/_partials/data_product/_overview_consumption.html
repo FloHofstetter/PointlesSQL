@@ -1,0 +1,39 @@
+<div class="card mb-3"
+     x-data='dataProductConsumptionPanel({{ product.catalog|tojson }}, {{ product.schema|tojson }}, {{ ((is_admin or is_steward) or false)|tojson }})'
+     x-init="init()">
+    <div class="card-header d-flex align-items-center gap-2">
+        <i class="bi bi-shield-check"></i>
+        <span>Consumption enforcement</span>
+        <span class="badge ms-auto"
+              :class="{
+                'bg-success': mode === 'strict',
+                'bg-warning text-dark': mode === 'advisory',
+                'bg-secondary': mode === 'off' || !mode
+              }"
+              x-text="(mode || 'advisory') + (modeSource ? ' (' + modeSource + ')' : '')"></span>
+    </div>
+    <div class="card-body">
+        <div class="alert alert-danger py-1 px-2 small" x-show="error" x-text="error" x-cloak></div>
+        <p class="text-muted small mb-2"
+           x-show="mode === 'advisory'" x-cloak>
+            Undeclared upstream reads are audited but allowed.  Flip to <code>strict</code>
+            (steward / admin) to refuse them with HTTP 403.
+        </p>
+
+        <h6 class="small text-muted mt-2 mb-1">Recent undeclared consumption</h6>
+        <ul class="list-unstyled small mb-0" x-show="recent.length > 0" x-cloak>
+            <template x-for="r in recent.slice(0, 10)" :key="r.id">
+                <li class="d-flex align-items-center gap-2 border-start ps-2 py-1">
+                    <span class="text-muted" x-text="r.created_at || ''"></span>
+                    <code class="text-truncate" x-text="r.source"></code>
+                    <button type="button" class="btn btn-sm btn-outline-secondary ms-auto py-0"
+                            x-show="canManage"
+                            @click="ack(r.id)">Ack</button>
+                </li>
+            </template>
+        </ul>
+        <div class="text-muted small" x-show="recent.length === 0" x-cloak>
+            No undeclared consumption recorded yet.
+        </div>
+    </div>
+</div>

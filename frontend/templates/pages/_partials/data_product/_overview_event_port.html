@@ -1,0 +1,87 @@
+<div class="card mb-3"
+     x-data='dataProductEventPortPanel({{ product.catalog|tojson }}, {{ product.schema|tojson }}, {{ ((is_admin or is_steward) or false)|tojson }})'
+     x-init="init()">
+    <div class="card-header d-flex align-items-center gap-2">
+        <i class="bi bi-broadcast"></i>
+        <span>Event stream</span>
+        <span class="badge ms-auto"
+              :class="hasPort ? 'bg-success' : 'bg-secondary'"
+              x-text="hasPort ? 'declared' : 'not declared'"></span>
+    </div>
+    <div class="card-body">
+        <div class="alert alert-danger py-1 px-2 small" x-show="error" x-text="error" x-cloak></div>
+
+        <template x-if="hasPort">
+            <div>
+                <dl class="row mb-2 small">
+                    <dt class="col-sm-4 text-muted">Port</dt>
+                    <dd class="col-sm-8"><code x-text="port.name"></code></dd>
+                    <dt class="col-sm-4 text-muted">Format</dt>
+                    <dd class="col-sm-8"><code x-text="port.format || 'ndjson'"></code></dd>
+                    <dt class="col-sm-4 text-muted">Subscribers</dt>
+                    <dd class="col-sm-8" x-text="subscriptions.length"></dd>
+                </dl>
+
+                <details>
+                    <summary class="small text-muted">
+                        Connect (curl / WebSocket)
+                    </summary>
+                    <pre class="bg-light p-2 small mt-2 mb-2"><code x-text="curlSnippet()"></code></pre>
+                    <pre class="bg-light p-2 small mb-0"><code x-text="wsSnippet()"></code></pre>
+                </details>
+
+                <h6 class="small text-muted mt-3 mb-1">Subscriptions</h6>
+                <table class="table table-sm small mb-2" x-show="subscriptions.length > 0" x-cloak>
+                    <thead>
+                        <tr>
+                            <th>Label</th><th>Table</th><th>Status</th><th>Cursor</th><th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <template x-for="s in subscriptions" :key="s.id">
+                            <tr>
+                                <td><code x-text="s.consumer_label"></code></td>
+                                <td x-text="s.table_name"></td>
+                                <td>
+                                    <span class="badge"
+                                          :class="{
+                                            'bg-success': s.status === 'active',
+                                            'bg-warning text-dark': s.status === 'paused',
+                                            'bg-secondary': s.status === 'closed'
+                                          }"
+                                          x-text="s.status"></span>
+                                </td>
+                                <td x-text="'v' + (s.position?.version ?? 0)"></td>
+                                <td class="text-end">
+                                    <button type="button" class="btn btn-sm btn-outline-secondary py-0"
+                                            x-show="canManage && s.status === 'active'"
+                                            @click="pause(s.id)">Pause</button>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary py-0"
+                                            x-show="canManage && s.status === 'paused'"
+                                            @click="resume(s.id)">Resume</button>
+                                </td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+                <div class="text-muted small" x-show="subscriptions.length === 0" x-cloak>
+                    No subscriptions yet.
+                </div>
+
+                <form @submit.prevent="subscribe()" class="d-flex gap-2 mt-2 small">
+                    <input class="form-control form-control-sm"
+                           placeholder="Source table"
+                           x-model="draft.table" required>
+                    <input class="form-control form-control-sm"
+                           placeholder="Consumer label"
+                           x-model="draft.consumer_label" required>
+                    <button type="submit" class="btn btn-sm btn-primary">Subscribe</button>
+                </form>
+            </div>
+        </template>
+
+        <p class="text-muted small mb-0" x-show="!hasPort" x-cloak>
+            This product does not declare an event output port.
+        </p>
+    </div>
+</div>

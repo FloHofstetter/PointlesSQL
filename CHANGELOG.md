@@ -17,6 +17,38 @@ defined in ``scripts/clusters.json``. -->
 
 ### Features
 
+- Data-Mesh Quantum-Completeness (Phase 134 — Cluster Restschuld):
+  vervollständigt die 129–133-Substrate zu nutzbarer Plattform.
+  Neue Authoring-Product-Dependency (Header
+  `X-PointlesSQL-Authoring-Product`, Query `?as_product=`, Session-
+  State) plus geteilter Hook `enforce_consumption_for_read`
+  eingehängt an drei Read-Routen (Export, Tabellen-Preview,
+  SQL-Editor SELECT) — `strict` blockt jetzt mit HTTP 403 +
+  strukturiertem Envelope, `advisory` schreibt ein Audit-Row und
+  erlaubt. Bitemporal-Validate ist jetzt im Write-Path:
+  `pql/_write.py` löst per Produkt `effective_policy(...)` auf,
+  validiert die event-time-Spalte (raised
+  `BitemporalRequirementError` bei `require_event_time=True` +
+  Fehlen / falscher Dtype) und stempelt processing-time gemäß
+  Policy.  Event-Port-Runtime ist live: CDF-Reader
+  (deltalake-Wrapper), in-memory WS-Hub (broadcast/release-if-empty
+  mirror coedit), Pump (advance-position + ledger + broadcast,
+  scheduler-driven via neuen `event_port_pump`-Executor, gated by
+  `EventPortSettings.enabled`), plus vier neue Endpunkte: HTTP
+  chunked NDJSON-Stream (`GET .../events`), WebSocket-Live-Push
+  (`WS .../events`), Subscription-CRUD und pause/resume/rewind-
+  Control.  Sechs neue Overview-Panels (lifecycle, bitemporal,
+  infrastructure, use-cases + rating, consumption, event-port)
+  mit sieben neuen Alpine-Factories.  Vier neue REST-Modules
+  (`bitemporal_policy.py`, `infrastructure.py`, `consumer_voice.py`,
+  `consumption_events.py`).  13 neue Hermes-Plugin-Tools im
+  Cross-Repo (`data_mesh_extras.py`): lifecycle set/propose,
+  consumption set/ack, bitemporal get/set, infrastructure set,
+  use-cases add/vote, rating, event-port subscribe/read/control.
+  Sechs neue Playwright-Walkthroughs (live-replay-gate deferred).
+  47 neue pytest (37 Platform + 10 Plugin), full suite grün,
+  ruff/pyright clean, alembic round-trip clean.  Asset bump
+  rc179→rc180.
 - Data-Mesh Quantum-Completeness (Cluster 129–133): backend foundation
   for the six genuinely-missing capabilities the gap analysis flagged
   after 124–128 shipped. **Phase 129 — Product Lifecycle**: a

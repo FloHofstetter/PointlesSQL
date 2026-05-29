@@ -75,7 +75,8 @@ def build_default_registry() -> KindRegistry:
     Returns:
         A fresh registry with ``"pg_sync"``, ``"python"``, ``"papermill"``,
         ``"alert_check"``, ``"branch_cleanup"``, ``"coedit_compaction"``,
-        ``"policy_compliance"``, and ``"ingest_pull"`` bound.
+        ``"policy_compliance"``, ``"ingest_pull"`` and
+        ``"event_port_pump"`` bound.
     """
     # Local import: executors module imports from registry, but registry
     # only needs the executors at factory-call time.
@@ -84,6 +85,7 @@ def build_default_registry() -> KindRegistry:
         _alert_check_executor,
         _branch_cleanup_executor,
         _coedit_compaction_executor,
+        _event_port_pump_executor,
         _papermill_executor,
         _pg_sync_executor,
         _policy_compliance_executor,
@@ -101,4 +103,5 @@ def build_default_registry() -> KindRegistry:
     registry.register("policy_compliance", _policy_compliance_executor)
     registry.register("slo_evaluation", _slo_evaluation_executor)
     registry.register("ingest_pull", ingest_pull_executor)
+    registry.register("event_port_pump", _event_port_pump_executor)
     return registry

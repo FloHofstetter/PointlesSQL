@@ -689,6 +689,13 @@
                 </div>
             </template>
 
+            {% include "pages/_partials/data_product/_overview_lifecycle.html" %}
+            {% include "pages/_partials/data_product/_overview_bitemporal.html" %}
+            {% include "pages/_partials/data_product/_overview_consumption.html" %}
+            {% include "pages/_partials/data_product/_overview_event_port.html" %}
+            {% include "pages/_partials/data_product/_overview_infrastructure.html" %}
+            {% include "pages/_partials/data_product/_overview_consumer_voice.html" %}
+
             <!-- Related data products. -->
             <template x-if="relatedLoaded && related.length > 0">
                 <div class="card mt-3 pql-dp-related-card">

@@ -105,6 +105,12 @@ prelude completes. Replay needs both contexts.
 | [`data-product-discovery.md`](data-product-discovery.md) | Overview discovery/ports/stats panels + glossary + Contract badge | |
 | [`data-governance.md`](data-governance.md) | product Governance tab + `/admin/governance` + compliance scan | |
 | [`data-mesh.md`](data-mesh.md) | `/mesh` graph + `/mesh/health` + entities + Interop tab + SLO panel | |
+| [`data-product-lifecycle.md`](data-product-lifecycle.md) | Lifecycle state-machine card + transitions + history | |
+| [`data-product-consumption-enforcement.md`](data-product-consumption-enforcement.md) | D2 declared-input gate + audit feed + ack | |
+| [`data-product-bitemporal-enforcement.md`](data-product-bitemporal-enforcement.md) | F1/F5 event-time / processing-time write gate | |
+| [`data-product-event-port.md`](data-product-event-port.md) | B1/D1 Delta CDF + WS / HTTP fan-out + subscription CRUD | |
+| [`data-product-infrastructure.md`](data-product-infrastructure.md) | B8 declarative deployment block (playwright-only) | |
+| [`data-product-consumer-voice.md`](data-product-consumer-voice.md) | C consumer-side use cases + ratings (playwright-only) | |
 | [`library-facts.md`](library-facts.md) | `/library/facts` browse + per-fact detail | |
 | [`vector-search.md`](vector-search.md) | HNSW vector index + `pql.vector_search` + REST + UI tab | |
 

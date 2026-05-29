@@ -231,7 +231,15 @@ def write_table(
 
             assert location is not None  # noqa: S101 — guarded above
 
-            df = _maybe_stamp_processing_time(df)
+            df = _maybe_validate_and_stamp_bitemporal(
+                df,
+                factory=factory,
+                data_product_id=(
+                    enforcement.data_product_id
+                    if agent_run_id is not None and factory is not None
+                    else None
+                ),
+            )
             engine.write(df, location, mode)
 
             if not table_exists:
@@ -271,28 +279,82 @@ def write_table(
             raise CatalogUnavailableError(unreachable_msg) from exc
 
 
-def _maybe_stamp_processing_time(df: Any) -> Any:
-    """Stamp the standard processing-time column when the convention is on.
+def _maybe_validate_and_stamp_bitemporal(
+    df: Any,
+    *,
+    factory: Any = None,
+    data_product_id: int | None = None,
+) -> Any:
+    """Validate event-time + stamp processing-time per effective policy.
 
-    Opt-in via ``settings.bitemporal.inject_processing_time`` (default
-    off, because adding a column evolves the Delta schema).  Best-effort
-    and side-effect-free on the caller's frame; returns the frame
-    unchanged when the convention is disabled.
+    The bitemporal contract layers product-override ⇐ workspace-default
+    via :func:`pointlessql.services.bitemporal.effective_policy`:
+
+    * When the resolved policy requires an event-time column, the
+      frame is checked for column presence + temporal dtype.  Missing
+      or wrong-typed columns raise
+      :class:`BitemporalRequirementError`.
+    * When the resolved policy enables processing-time injection
+      (``required`` enforcement, or ``opt_in`` with the workspace
+      setting on), the column is stamped on the frame.
+
+    When *data_product_id* is ``None`` (no product context — generic
+    in-memory write) the workspace settings still apply, but the
+    per-product override is bypassed.
 
     Args:
-        df: The frame about to be written.
+        df: Frame about to be written.
+        factory: Sessionmaker callable; when ``None`` the per-product
+            override lookup is skipped and only workspace settings
+            apply.
+        data_product_id: Product PK to resolve the override against.
 
     Returns:
         The (possibly stamped) frame.
+
+    Raises:
+        BitemporalRequirementError: When the resolved policy requires
+            an event-time column and the frame is missing or
+            wrong-typed.
     """
     from pointlessql.config import get_settings
+    from pointlessql.services.bitemporal import (
+        EffectiveBitemporal,
+        effective_policy,
+        inject_processing_time,
+        validate_event_time_column,
+    )
 
-    bitemporal = get_settings().bitemporal
-    if not bitemporal.inject_processing_time:
+    bitemporal_settings = get_settings().bitemporal
+    if factory is not None and data_product_id is not None:
+        effective = effective_policy(
+            factory,
+            settings=bitemporal_settings,
+            data_product_id=data_product_id,
+        )
+    else:
+        do_inject = (
+            True
+            if bitemporal_settings.enforcement == "required"
+            else (False if bitemporal_settings.enforcement == "off"
+                  else bool(bitemporal_settings.inject_processing_time))
+        )
+        effective = EffectiveBitemporal(
+            enforcement=bitemporal_settings.enforcement,
+            inject_processing_time=do_inject,
+            processing_time_column=bitemporal_settings.processing_time_column,
+            event_time_column=bitemporal_settings.event_time_column,
+            require_event_time=bool(bitemporal_settings.require_event_time),
+            enforcement_source="workspace",
+        )
+    validate_event_time_column(
+        df,
+        column=effective.event_time_column,
+        require=effective.require_event_time,
+    )
+    if not effective.inject_processing_time:
         return df
-    from pointlessql.services.bitemporal import inject_processing_time
-
-    return inject_processing_time(df, column=bitemporal.processing_time_column)
+    return inject_processing_time(df, column=effective.processing_time_column)
 
 
 def _stamp_lineage_for_write(df: Any, target_full_name: str) -> tuple[list[str], list[str], Any]:

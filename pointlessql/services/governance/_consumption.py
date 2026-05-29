@@ -1,9 +1,9 @@
-"""Declared-consumption verdict for product-bound reads (Phase 130, D2).
+"""Declared-consumption verdict for product-bound reads (D2).
 
 Resolves whether a read of ``catalog.schema.table`` from the context of
 a *consuming* data product is permitted by the consumer's declared
 input-ports.  The three modes ``off`` / ``advisory`` / ``strict`` follow
-the cluster's "honest split" — the default is ``advisory`` so an
+the platform's "honest split" — the default is ``advisory`` so an
 upgrade never blocks an existing workflow; a steward flips to
 ``strict`` per-product (or per-workspace) once the inputs are
 documented.
@@ -11,8 +11,8 @@ documented.
 This module never *reads* the data — it only returns a verdict the
 route layer acts on (audit-only in ``advisory``, HTTP 403 in
 ``strict``).  Identity-time checks (who is the caller, what is the
-authoring product) live at the route hooks, mirroring the Phase 126
-masking pattern.
+authoring product) live at the route hooks, mirroring the same
+masking-at-the-port pattern the PII layer uses.
 """
 
 from __future__ import annotations
@@ -23,6 +23,7 @@ from typing import Any, Protocol
 
 from sqlalchemy import select
 
+from pointlessql.exceptions import PermissionDeniedError
 from pointlessql.models import DataProductInputPort
 
 #: Audit-log action emitted when an ``advisory`` verdict allows an
@@ -67,12 +68,27 @@ class ConsumptionDecision:
     reason: str
 
 
-class ConsumptionViolation(PermissionError):
-    """Raised when a ``strict`` verdict blocks a route-layer read."""
+class ConsumptionViolation(PermissionDeniedError):
+    """Raised when a ``strict`` verdict blocks a route-layer read.
+
+    Inherits from :class:`PermissionDeniedError` so the centralised
+    FastAPI exception handler renders the block as a 403 with the
+    structured decision surfaced through
+    :meth:`extension_members`.
+    """
 
     def __init__(self, decision: ConsumptionDecision) -> None:
         super().__init__(decision.reason)
         self.decision = decision
+
+    def extension_members(self) -> dict[str, Any] | None:
+        """Surface the structured consumption decision on the 403 envelope."""
+        return {
+            "mode": self.decision.mode,
+            "consumer_product_id": self.decision.consumer_product_id,
+            "source": self.decision.source_fqn,
+            "declared": self.decision.declared,
+        }
 
 
 class _SessionFactory(Protocol):
@@ -206,3 +222,59 @@ def assert_declared_consumption(
     if decision.verdict is ConsumptionVerdict.BLOCK:
         raise ConsumptionViolation(decision)
     return decision
+
+
+def emit_consumption_audit(
+    factory: _SessionFactory,
+    *,
+    decision: ConsumptionDecision,
+    user_id: int,
+    user_email: str,
+    actor_role: str = "user",
+    workspace_id: int = 1,
+    client_ip: str | None = None,
+) -> None:
+    """Write an audit row for a non-``ALLOW`` consumption verdict.
+
+    No-op for :data:`ConsumptionVerdict.ALLOW` — declared reads are
+    silent.  ``WARN`` and ``BLOCK`` both produce a row; the action
+    constant distinguishes them so the Governance tab's "Recent
+    Undeclared Consumption" card can list advisory drift separately
+    from strict refusals.
+
+    Args:
+        factory: Sessionmaker callable.
+        decision: The verdict returned by
+            :func:`evaluate_consumption` or
+            :func:`assert_declared_consumption`.
+        user_id: Acting user id (0 for system / background).
+        user_email: Acting user email snapshot.
+        actor_role: ``user`` / ``admin`` / ``system``.
+        workspace_id: Workspace the read happened in.
+        client_ip: Optional client IP for the audit row.
+    """
+    from pointlessql.services.audit import log_action
+
+    if decision.verdict is ConsumptionVerdict.ALLOW:
+        return
+    action = (
+        CONSUMPTION_BLOCKED_ACTION
+        if decision.verdict is ConsumptionVerdict.BLOCK
+        else CONSUMPTION_UNDECLARED_ACTION
+    )
+    log_action(
+        factory,
+        user_id,
+        user_email,
+        action,
+        f"data_product:{decision.consumer_product_id}",
+        detail={
+            "mode": decision.mode,
+            "source": decision.source_fqn,
+            "declared": decision.declared,
+            "reason": decision.reason,
+        },
+        actor_role=actor_role,
+        client_ip=client_ip,
+        workspace_id=workspace_id,
+    )

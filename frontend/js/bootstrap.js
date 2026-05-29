@@ -234,6 +234,15 @@ import { dpReleasesCard, ingestStatusBand } from './pages/data_product_extras.js
 import { dataProductGovernance } from './pages/data_product_governance.js';
 import { dataProductInterop, dataProductSloPanel } from './pages/data_product_interop.js';
 import {
+  dataProductBitemporalPanel,
+  dataProductConsumptionPanel,
+  dataProductEventPortPanel,
+  dataProductInfrastructurePanel,
+  dataProductLifecyclePanel,
+  dataProductRatingWidget,
+  dataProductUseCasesPanel,
+} from './pages/data_product_overview_panels.js';
+import {
   dataProductDiscoveryCard,
   dataProductPortsPanel,
   dataProductSemanticPanel,
@@ -392,6 +401,13 @@ window.dataProductDiscoveryCard = dataProductDiscoveryCard;
 window.dataProductGovernance = dataProductGovernance;
 window.dataProductInterop = dataProductInterop;
 window.dataProductSloPanel = dataProductSloPanel;
+window.dataProductLifecyclePanel = dataProductLifecyclePanel;
+window.dataProductBitemporalPanel = dataProductBitemporalPanel;
+window.dataProductInfrastructurePanel = dataProductInfrastructurePanel;
+window.dataProductUseCasesPanel = dataProductUseCasesPanel;
+window.dataProductRatingWidget = dataProductRatingWidget;
+window.dataProductConsumptionPanel = dataProductConsumptionPanel;
+window.dataProductEventPortPanel = dataProductEventPortPanel;
 window.meshGraph = meshGraph;
 window.meshHealth = meshHealth;
 window.meshEntities = meshEntities;

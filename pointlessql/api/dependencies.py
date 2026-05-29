@@ -18,7 +18,7 @@ from fastapi.responses import Response
 from fastapi.templating import Jinja2Templates
 
 from pointlessql.exceptions import AuthorizationError, CatalogUnavailableError
-from pointlessql.models import Workspace
+from pointlessql.models import DataProduct, Workspace
 from pointlessql.services.unitycatalog import UnityCatalogClient
 from pointlessql.services.workspace import _crud as workspaces_service
 from pointlessql.types import UserInfo
@@ -538,6 +538,73 @@ def current_workspace_id(request: Request) -> int:
     if isinstance(value, int) and value > 0:
         return value
     return workspaces_service.DEFAULT_WORKSPACE_ID
+
+
+_AUTHORING_PRODUCT_HEADER = "x-pointlessql-authoring-product"
+
+
+def get_authoring_product(request: Request) -> int | None:
+    """Return the data-product PK the caller is reading "in the context of".
+
+    Resolved in order:
+
+    1. The ``X-PointlesSQL-Authoring-Product`` header,
+       ``catalog.schema`` form.  External agents (Hermes, dbt, an
+       ops script) declare the consuming product explicitly so the
+       D2 consumption check has something to enforce against.
+    2. The ``?as_product=`` query param on the SQL-editor / notebook
+       session — the in-browser flow that binds an editor tab to a
+       product.
+    3. ``request.state.authoring_data_product_id`` when the caller
+       opened a notebook in product-context (set by the notebook
+       open handler when 124's domain binding is present).
+
+    When none of these set a value the function returns ``None`` —
+    no enforcement; admin / free-form reads keep working untouched.
+    The honest-split lives here: the *absence* of an authoring
+    product is interpreted as "the request is not bound to a product
+    contract" rather than "deny by default".
+
+    Args:
+        request: Incoming FastAPI request.
+
+    Returns:
+        The matching :class:`DataProduct` PK, or ``None`` when no
+        authoring product is bound or the binding can't be resolved.
+    """
+    from sqlalchemy import select  # noqa: PLC0415 — lazy, dep-tree gain
+
+    raw: str | None = None
+    header = request.headers.get(_AUTHORING_PRODUCT_HEADER)
+    if header and header.strip():
+        raw = header.strip()
+    if raw is None:
+        query_value = request.query_params.get("as_product")
+        if query_value and query_value.strip():
+            raw = query_value.strip()
+    if raw is None:
+        state_value = getattr(request.state, "authoring_data_product_id", None)
+        if isinstance(state_value, int) and state_value > 0:
+            return state_value
+        return None
+
+    parts = raw.split(".")
+    if len(parts) != 2 or not all(parts):
+        return None
+    catalog, schema = parts[0], parts[1]
+    factory = getattr(request.app.state, "session_factory", None)
+    if factory is None:
+        return None
+    workspace_id = current_workspace_id(request)
+    with factory() as session:
+        row = session.scalar(
+            select(DataProduct).where(
+                DataProduct.workspace_id == workspace_id,
+                DataProduct.catalog_name == catalog,
+                DataProduct.schema_name == schema,
+            )
+        )
+    return int(row.id) if row is not None else None
 
 
 def current_workspace(request: Request) -> Workspace:

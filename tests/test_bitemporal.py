@@ -15,7 +15,7 @@ import pandas as pd
 import pyarrow as pa
 
 from pointlessql.config import reset_settings_cache
-from pointlessql.pql._write import _maybe_stamp_processing_time
+from pointlessql.pql._write import _maybe_validate_and_stamp_bitemporal
 from pointlessql.services.bitemporal import inject_processing_time
 
 _TS = datetime.datetime(2026, 5, 29, 12, 0, tzinfo=datetime.UTC)
@@ -45,7 +45,7 @@ def test_inject_processing_time_passthrough_unknown_frame() -> None:
 def test_write_hook_off_by_default_returns_frame_unchanged() -> None:
     reset_settings_cache()
     df = pd.DataFrame({"a": [1]})
-    out = _maybe_stamp_processing_time(df)
+    out = _maybe_validate_and_stamp_bitemporal(df)
     assert "_processing_time" not in out.columns
 
 
@@ -54,7 +54,7 @@ def test_write_hook_stamps_when_enabled() -> None:
     reset_settings_cache()
     try:
         df = pd.DataFrame({"a": [1, 2]})
-        out = _maybe_stamp_processing_time(df)
+        out = _maybe_validate_and_stamp_bitemporal(df)
         assert "_processing_time" in out.columns
     finally:
         del os.environ["POINTLESSQL_BITEMPORAL_INJECT_PROCESSING_TIME"]
@@ -66,7 +66,7 @@ def test_write_hook_respects_custom_column_name() -> None:
     os.environ["POINTLESSQL_BITEMPORAL_PROCESSING_TIME_COLUMN"] = "_ingested_at"
     reset_settings_cache()
     try:
-        out = _maybe_stamp_processing_time(pd.DataFrame({"a": [1]}))
+        out = _maybe_validate_and_stamp_bitemporal(pd.DataFrame({"a": [1]}))
         assert "_ingested_at" in out.columns
     finally:
         del os.environ["POINTLESSQL_BITEMPORAL_INJECT_PROCESSING_TIME"]
