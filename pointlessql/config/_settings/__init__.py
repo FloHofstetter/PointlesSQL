@@ -39,6 +39,7 @@ from pointlessql.config._settings._features import (
     ConventionsSettings,
     DataProductsSettings,
     EditorChatSettings,
+    EventPortSettings,
     LensSettings,
     NotificationsSettings,
     SqlExecutionApiSettings,
@@ -97,6 +98,7 @@ class Settings(BaseSettings):
     branch: BranchSettings = Field(default_factory=BranchSettings)
     conventions: ConventionsSettings = Field(default_factory=ConventionsSettings)
     bitemporal: BitemporalSettings = Field(default_factory=BitemporalSettings)
+    event_port: EventPortSettings = Field(default_factory=EventPortSettings)
     data_products: DataProductsSettings = Field(default_factory=DataProductsSettings)
     notifications: NotificationsSettings = Field(default_factory=NotificationsSettings)
     workspace_repos: WorkspaceReposSettings = Field(default_factory=WorkspaceReposSettings)
@@ -124,6 +126,7 @@ __all__ = [
     "DatabaseSettings",
     "DeltaSettings",
     "EditorChatSettings",
+    "EventPortSettings",
     "ExternalWritesSettings",
     "GroupMapping",
     "JupyterSettings",

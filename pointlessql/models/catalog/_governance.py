@@ -76,6 +76,11 @@ ENCRYPTION_CLASSES: tuple[str, ...] = ("none", "at_rest", "in_transit", "full")
 #: (the deletion ran) or ``rejected``.
 FORGET_STATUSES: tuple[str, ...] = ("proposed", "executed", "rejected")
 
+#: Allowed values for ``consumption_enforcement`` on both
+#: :class:`WorkspaceGovernancePolicy` and :class:`DataProductPolicy`.
+#: ``off`` — disabled, ``advisory`` — warn + audit, ``strict`` — block.
+CONSUMPTION_ENFORCEMENT_MODES: tuple[str, ...] = ("off", "advisory", "strict")
+
 
 class WorkspaceGovernancePolicy(Base):
     """Workspace-wide default policy that products inherit.
@@ -113,6 +118,10 @@ class WorkspaceGovernancePolicy(Base):
             "encryption_class IN ('none','at_rest','in_transit','full')",
             name="ck_workspace_governance_policies_encryption",
         ),
+        CheckConstraint(
+            "consumption_enforcement IN ('off','advisory','strict')",
+            name="ck_workspace_governance_policies_consumption",
+        ),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -129,6 +138,9 @@ class WorkspaceGovernancePolicy(Base):
         Boolean, nullable=False, default=False, server_default="0"
     )
     consent_basis: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    consumption_enforcement: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="advisory", server_default="advisory"
+    )
     updated_by_user_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("users.id"), nullable=True
     )
@@ -168,6 +180,11 @@ class DataProductPolicy(Base):
             "encryption_class IN ('none','at_rest','in_transit','full')",
             name="ck_data_product_policies_encryption",
         ),
+        CheckConstraint(
+            "consumption_enforcement IS NULL OR "
+            "consumption_enforcement IN ('off','advisory','strict')",
+            name="ck_data_product_policies_consumption",
+        ),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -181,6 +198,7 @@ class DataProductPolicy(Base):
     residency_region: Mapped[str | None] = mapped_column(String(64), nullable=True)
     consent_required: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     consent_basis: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    consumption_enforcement: Mapped[str | None] = mapped_column(String(16), nullable=True)
     updated_by_user_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("users.id"), nullable=True
     )

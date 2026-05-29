@@ -27,10 +27,12 @@ from pointlessql.api.data_products_routes._shared import (
 )
 from pointlessql.api.dependencies import current_workspace_id, require_user
 from pointlessql.config import Settings
-from pointlessql.models import Workspace
+from pointlessql.models import DataProduct, Workspace
+from pointlessql.services import consumer_voice as consumer_voice_service
 from pointlessql.services import data_product_ports as ports_service
 from pointlessql.services import data_product_semantic as semantic_service
 from pointlessql.services import governance as governance_service
+from pointlessql.services import infrastructure as infrastructure_service
 from pointlessql.services import mesh as mesh_service
 from pointlessql.services import slo as slo_service
 from pointlessql.services.data_product_stats import read_latest_statistics
@@ -43,6 +45,20 @@ def _workspace_slug(factory: Any, workspace_id: int) -> str:
     with factory() as session:
         ws = session.get(Workspace, workspace_id)
         return ws.slug if ws is not None else str(workspace_id)
+
+
+def _replacement_uri(
+    factory: Any, workspace_id: int, replacement_id: int | None
+) -> str | None:
+    """Render the successor product's URN, or ``None`` when none is set."""
+    if replacement_id is None:
+        return None
+    with factory() as session:
+        row = session.get(DataProduct, replacement_id)
+        if row is None:
+            return None
+    slug = _workspace_slug(factory, workspace_id)
+    return f"urn:pointlessql:product:{slug}:{row.catalog_name}:{row.schema_name}"
 
 
 @router.get("/api/data-products/{catalog}/{schema}/discovery")
@@ -78,6 +94,15 @@ async def get_discovery_contract(catalog: str, schema: str, request: Request) ->
     classifications = governance_service.list_classifications(factory, data_product_id=row.id)
     slos = slo_service.list_slos(factory, data_product_id=row.id)
     entity_index = mesh_service.entities_for_schema(factory, catalog=catalog, schema=schema)
+    infrastructure = infrastructure_service.get_infrastructure(
+        factory, data_product_id=row.id
+    )
+    top_use_cases = consumer_voice_service.list_use_cases(
+        factory, data_product_id=row.id, limit=5
+    )
+    rating_summary = consumer_voice_service.list_rating_summary(
+        factory, data_product_id=row.id
+    )
     settings: Settings = request.app.state.settings
 
     base = f"/api/data-products/{catalog}/{schema}"
@@ -122,6 +147,9 @@ async def get_discovery_contract(catalog: str, schema: str, request: Request) ->
             "encryption_class": effective_policy["encryption_class"]["value"],
             "residency_region": effective_policy["residency_region"]["value"],
             "consent_required": bool(effective_policy["consent_required"]["value"]),
+            "consumption_enforcement": effective_policy["consumption_enforcement"][
+                "value"
+            ],
             "classifications": [
                 {
                     "table": c.table_name,
@@ -152,10 +180,26 @@ async def get_discovery_contract(catalog: str, schema: str, request: Request) ->
             {"table": table, "column": column, "entities": slugs}
             for (table, column), slugs in sorted(entity_index.items())
         ],
+        "lifecycle": {
+            "state": row.lifecycle_state,
+            "changed_at": (
+                row.lifecycle_changed_at.isoformat()
+                if row.lifecycle_changed_at
+                else None
+            ),
+            "replacement_uri": _replacement_uri(
+                factory, workspace_id, row.replacement_data_product_id
+            ),
+        },
+        "infrastructure": infrastructure,
+        "use_cases": top_use_cases,
+        "rating": rating_summary,
         "bitemporal": {
             "inject_processing_time": settings.bitemporal.inject_processing_time,
             "processing_time_column": settings.bitemporal.processing_time_column,
             "event_time_column": settings.bitemporal.event_time_column,
+            "enforcement": settings.bitemporal.enforcement,
+            "require_event_time": settings.bitemporal.require_event_time,
         },
         "statistics": statistics,
         "links": {

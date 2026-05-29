@@ -47,6 +47,17 @@ CONTRACT_EVENT_OUTCOMES: tuple[str, ...] = (
     "no_contract",
 )
 
+#: Allowed values for :attr:`DataProduct.lifecycle_state`.  Mirrors the
+#: state machine the lifecycle service enforces and the SQL CHECK on
+#: ``data_products.lifecycle_state``.
+LIFECYCLE_STATES: tuple[str, ...] = (
+    "draft",
+    "active",
+    "deprecated",
+    "retired",
+    "archived",
+)
+
 
 class DataProduct(Base):
     """Cached metadata for one UC schema declared as a data product.
@@ -101,6 +112,17 @@ class DataProduct(Base):
             alert suppression (analogue to
             :class:`ExpectedLineageInbound`).
         created_at: Wall-clock when the row was first inserted.
+        lifecycle_state: Operational state.  One of
+            :data:`LIFECYCLE_STATES`.  Default ``'active'``; the
+            lifecycle service is the only writer.
+        lifecycle_changed_at: Wall-clock of the last transition,
+            or ``None`` if the product is still in its
+            insert-time state.
+        lifecycle_changed_by_user_id: Nullable FK on ``users.id``
+            recording who drove the last transition.
+        replacement_data_product_id: When the product is
+            ``retired`` and a successor exists, nullable FK to the
+            successor row so consumers can follow a redirect.
     """
 
     __tablename__ = "data_products"
@@ -119,6 +141,11 @@ class DataProduct(Base):
         ),
         Index("ix_data_products_steward", "steward_user_id"),
         Index("ix_data_products_domain", "domain_id"),
+        Index("ix_data_products_lifecycle_state", "lifecycle_state"),
+        CheckConstraint(
+            "lifecycle_state IN ('draft','active','deprecated','retired','archived')",
+            name="ck_data_products_lifecycle_state",
+        ),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -149,6 +176,18 @@ class DataProduct(Base):
         DateTime(timezone=True), nullable=True
     )
     created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    lifecycle_state: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="active", server_default="active"
+    )
+    lifecycle_changed_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    lifecycle_changed_by_user_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("users.id"), nullable=True
+    )
+    replacement_data_product_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("data_products.id"), nullable=True
+    )
 
 
 class DataProductContractEvent(Base):

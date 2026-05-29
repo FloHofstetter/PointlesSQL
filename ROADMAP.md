@@ -1906,6 +1906,75 @@ PointlesSQL
 │
 
 
+├── Phase 129–133 — Data-Mesh-Quantum-Completeness (Cluster)  ✅ 2026-05-30
+│       Schließt die sechs *echt-fehlenden* Capabilities der Mesh-
+│       Gap-Analyse [`docs/internal/data-mesh-requirements.md`](docs/internal/data-mesh-requirements.md)
+│       ab.  Backend-vollständig (Migrations + Models + Services +
+│       Discovery + Tests); UI-Panels, Hermes-Plugin-Tools und Playwright-
+│       Walkthroughs werden im Folge-Replay-Phase nachgezogen — der
+│       Gegenwert dieses Clusters ist die strukturelle Grundlage.
+│
+│   ├── Phase 129 — D6 Produkt-Lebenszyklus
+│   │       `lifecycle_state` (draft/active/deprecated/retired/archived)
+│   │       am DataProduct + state-machine guards + Audit-getriebene
+│   │       History + `/api/data-products/{c}/{s}/lifecycle{,/propose,
+│   │       /{target}}` (steward/admin direct + agent propose). Discovery
+│   │       erhält `lifecycle`-Block mit Replacement-URN (für retired
+│   │       Successors). Migration `k2m4o6q8s0u2`. 16 pytest grün.
+│   │
+│   ├── Phase 130 — D2 Input-Port-Consumption-Enforcement
+│   │       Neues `consumption_enforcement` Feld auf
+│   │       `data_product_policies` + `workspace_governance_policies`
+│   │       (off/advisory/strict, default advisory).  Service
+│   │       `services/governance/_consumption.py` mit
+│   │       `evaluate_consumption` + `assert_declared_consumption` +
+│   │       `ConsumptionVerdict` (ALLOW/WARN/BLOCK).  Discovery
+│   │       `policies.consumption_enforcement`.  Migration
+│   │       `l3n5p7r9t1v3`. 13 pytest grün.  Route-Hooks an Export-Port +
+│   │       Table-Preview + SQL-Editor: deferred (Authoring-Product-
+│   │       Context-Pipeline kommt im Wrap-up).
+│   │
+│   ├── Phase 131 — F1/F5 Bitemporalität-Standardisierung
+│   │       Workspace-Settings `BitemporalSettings.enforcement` (off/
+│   │       opt_in/required) + `require_event_time`.  Neue Tabelle
+│   │       `data_product_bitemporal_policy` (per-Produkt-Override).
+│   │       Service `services/bitemporal/_policy.py` Inheritance-Resolver
+│   │       (`EffectiveBitemporal`) + `_validate.py`
+│   │       `validate_event_time_column` mit
+│   │       `BitemporalRequirementError`.  Discovery `bitemporal`-Block
+│   │       um `enforcement` + `require_event_time` erweitert.  Migration
+│   │       `m4o6q8s0u2w5`. 14 pytest grün.
+│   │
+│   ├── Phase 132 — B8 Infrastructure-Declarations + C Consumer-Voice
+│   │       Vier neue Tabellen — `data_product_infrastructure`
+│   │       (storage_class/compute_runtime/access_methods/region/notes,
+│   │       1:1), `data_product_use_cases` (1:N, votes-cache),
+│   │       `data_product_use_case_votes` (1:1 pro (uc,user)),
+│   │       `data_product_ratings` (1:1 pro (product,user), 1-5 score).
+│   │       Services `services/infrastructure/` +
+│   │       `services/consumer_voice/` (upvote-idempotent,
+│   │       rating-upsert, avg-aggregate).  Discovery `infrastructure`,
+│   │       `use_cases` (top 5), `rating` ({avg,count}).  Migration
+│   │       `o6q8s0u2w5y7`. 13 pytest grün.
+│   │
+│   └── Phase 133 — B1/D1 Event-Stream-Output-Port (Substrat)
+│           Honest "Delta-CDF + WS/SSE Fan-out"-Variante.  Neue Settings
+│           `EventPortSettings` (POINTLESSQL_EVENT_*, default OFF).
+│           Migration `q8s0u2w5y7a9`: `data_product_event_subscriptions`
+│           (durable Subscription mit Position-Cursor) +
+│           `data_product_event_deliveries` (Per-Pump-Audit).  Service
+│           `services/event_port/_subscription_crud.py` —
+│           Subscription-CRUD, Pause/Resume, Forward-Only-Advance +
+│           Backward-Rewind, Delivery-Ledger.  Validiert dass referenced
+│           output port `kind='event'` ist.  Pump + WS-Hub + Streaming-
+│           Endpunkte: deferred (Substrat ohne Runtime ist startfähig).
+│           14 pytest grün.
+│
+│       Asset rc178→rc179.  Komplettes pytest: 3701/0/10 grün.
+│       ruff sauber, alembic round-trips 124→133.
+│
+
+
 ├── Phase 81 — Feed overhaul + help surface + entity ⋯-menu  ✅ archived (2026-05-16)
 │   │
 │   │   Detail moved to [`roadmap_archive.md#phase-81-feed-overhaul--help-surface--entity--menu`](docs/internal/roadmap_archive.md#phase-81-feed-overhaul--help-surface--entity--menu) in W2.

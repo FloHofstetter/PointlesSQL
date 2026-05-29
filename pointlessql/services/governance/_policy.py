@@ -28,6 +28,7 @@ POLICY_FIELDS: tuple[str, ...] = (
     "residency_region",
     "consent_required",
     "consent_basis",
+    "consumption_enforcement",
 )
 
 

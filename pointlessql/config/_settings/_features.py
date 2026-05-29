@@ -237,6 +237,41 @@ class BitemporalSettings(BaseSettings):
     inject_processing_time: bool = False
     processing_time_column: str = "_processing_time"
     event_time_column: str = "_event_time"
+    #: Workspace-default enforcement mode for processing-time injection.
+    #:
+    #: * ``off``      — never inject, never validate.
+    #: * ``opt_in``   — inject when ``inject_processing_time`` is True
+    #:                  (today's behaviour), pass-through on failure.
+    #: * ``required`` — inject always; failure raises rather than
+    #:                  silently passing through.
+    enforcement: str = "opt_in"
+    #: When True, the write path validates that the event-time column
+    #: is present + has a temporal dtype before write; otherwise raises
+    #: a :class:`BitemporalRequirementError`.
+    require_event_time: bool = False
+
+
+class EventPortSettings(BaseSettings):
+    """Event-stream output-port runtime configuration.
+
+    Reads ``POINTLESSQL_EVENT_*`` environment variables.  The event port
+    is a Delta-Change-Data-Feed-backed stream that fan-outs CDF rows
+    over HTTP/1.1 chunked + WebSocket to consumers who have declared a
+    durable subscription on the product's ``kind='event'`` output port.
+
+    The runtime is **default-OFF**: enabling it begins writing
+    ``delta.enableChangeDataFeed=true`` to managed product tables on
+    the next write, which evolves table properties.  The platform flag
+    + the per-product output-port row together gate the substrate;
+    flipping just one is insufficient.
+    """
+
+    model_config = SettingsConfigDict(env_prefix="POINTLESSQL_EVENT_")
+
+    enabled: bool = False
+    default_format: str = "ndjson"
+    ws_buffer_size: int = 256
+    cdf_max_versions_per_pump: int = 100
 
 
 class DataProductsSettings(BaseSettings):

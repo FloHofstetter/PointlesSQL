@@ -17,6 +17,37 @@ defined in ``scripts/clusters.json``. -->
 
 ### Features
 
+- Data-Mesh Quantum-Completeness (Cluster 129–133): backend foundation
+  for the six genuinely-missing capabilities the gap analysis flagged
+  after 124–128 shipped. **Phase 129 — Product Lifecycle**: a
+  `lifecycle_state` (draft/active/deprecated/retired/archived) on every
+  data product with a guarded state-machine, audit-driven history,
+  steward/admin transitions + an any-user `propose` path for supervised
+  agents, and a `lifecycle` block in the discovery envelope carrying
+  the optional `replacement_uri` for retired successors. **Phase 130 —
+  Consumption Enforcement**: a `consumption_enforcement`
+  (off/advisory/strict, default advisory) field on the per-product +
+  workspace-default policy with a `ConsumptionVerdict` service that
+  resolves "is this read declared as an input port?" — route hooks at
+  export/table-preview/SQL-editor deferred to a later wiring pass.
+  **Phase 131 — Bitemporality Standardization**: workspace settings
+  gain `enforcement` (off/opt_in/required) and `require_event_time`; a
+  new `data_product_bitemporal_policy` table allows per-product
+  override; a `validate_event_time_column` helper raises
+  `BitemporalRequirementError` when required columns are absent or
+  non-temporal. **Phase 132 — Infrastructure + Consumer Voice**: four
+  new tables for producer-declared infrastructure (storage class,
+  compute runtime, access methods, region) and consumer-contributed
+  metadata (use cases with idempotent up/down-votes, 1-5 ratings with
+  upsert and avg+count summary); all three blocks surface in the
+  discovery envelope. **Phase 133 — Event-Stream Output Port (substrate)**:
+  durable `data_product_event_subscriptions` with a Delta-CDF
+  position cursor, a `data_product_event_deliveries` audit ledger, and
+  a subscription CRUD that validates the referenced output port is
+  `kind='event'`; the pump + WS hub + streaming endpoints stay
+  deferred until `EventPortSettings.enabled` is flipped. Cluster
+  total: 70 new pytest, full suite 3701/0/10 green, ruff clean,
+  alembic 124→133 round-trips clean.
 - Data-Mesh Interoperability & Mesh-Observability: closes the
   Data-Mesh maturity model. An **emergent mesh graph** built from each
   product's declared `upstream_product` input ports (products as nodes,

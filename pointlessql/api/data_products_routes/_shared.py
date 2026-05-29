@@ -69,6 +69,10 @@ def serialise_product(
         "contract_yaml_hash": row.contract_yaml_hash,
         "last_loaded_at": row.last_loaded_at.isoformat(),
         "last_alerted_at": (row.last_alerted_at.isoformat() if row.last_alerted_at else None),
+        "lifecycle_state": row.lifecycle_state,
+        "lifecycle_changed_at": (
+            row.lifecycle_changed_at.isoformat() if row.lifecycle_changed_at else None
+        ),
     }
 
 

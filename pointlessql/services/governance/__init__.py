@@ -23,6 +23,15 @@ from pointlessql.services.governance._compliance import (
     scan_workspace,
     unclassified_pii_findings,
 )
+from pointlessql.services.governance._consumption import (
+    CONSUMPTION_BLOCKED_ACTION,
+    CONSUMPTION_UNDECLARED_ACTION,
+    ConsumptionDecision,
+    ConsumptionVerdict,
+    ConsumptionViolation,
+    assert_declared_consumption,
+    evaluate_consumption,
+)
 from pointlessql.services.governance._forget import (
     execute_forget,
     list_forget_requests,
@@ -46,12 +55,19 @@ from pointlessql.services.governance._policy import (
 
 __all__ = [
     "COMPLIANCE_VIOLATION_ACTION",
+    "CONSUMPTION_BLOCKED_ACTION",
+    "CONSUMPTION_UNDECLARED_ACTION",
+    "ConsumptionDecision",
+    "ConsumptionVerdict",
+    "ConsumptionViolation",
     "DEFAULT_STRATEGY_BY_CLASS",
     "POLICY_FIELDS",
     "add_classification",
+    "assert_declared_consumption",
     "classifications_for_schema",
     "delete_classification",
     "effective_strategy",
+    "evaluate_consumption",
     "execute_forget",
     "get_effective_policy",
     "get_product_policy",

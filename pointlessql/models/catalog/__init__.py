@@ -35,6 +35,15 @@ Layout:
 from __future__ import annotations
 
 from pointlessql.models.catalog._autoload import AutoloadCheckpoint
+from pointlessql.models.catalog._bitemporal import (
+    BITEMPORAL_ENFORCEMENT_MODES,
+    DataProductBitemporalPolicy,
+)
+from pointlessql.models.catalog._consumer_voice import (
+    DataProductRating,
+    DataProductUseCase,
+    DataProductUseCaseVote,
+)
 from pointlessql.models.catalog._data_product_active_reviewer_config import (
     ACTIVE_REVIEWER_PROVIDERS,
     ACTIVE_REVIEWER_RUNNERS,
@@ -71,6 +80,7 @@ from pointlessql.models.catalog._data_product_yaml_draft import (
 )
 from pointlessql.models.catalog._data_products import (
     CONTRACT_EVENT_OUTCOMES,
+    LIFECYCLE_STATES,
     DataProduct,
     DataProductContractEvent,
     DataProductStatistics,
@@ -82,6 +92,12 @@ from pointlessql.models.catalog._domains import (
     DataProductTransformation,
     Domain,
     DomainMember,
+)
+from pointlessql.models.catalog._event_port import (
+    EVENT_DELIVERY_STATUSES,
+    EVENT_SUBSCRIPTION_STATUSES,
+    DataProductEventDelivery,
+    DataProductEventSubscription,
 )
 from pointlessql.models.catalog._glossary import (
     GlossaryTerm,
@@ -96,6 +112,10 @@ from pointlessql.models.catalog._governance import (
     DataProductForgetRequest,
     DataProductPolicy,
     WorkspaceGovernancePolicy,
+)
+from pointlessql.models.catalog._infrastructure import (
+    INFRASTRUCTURE_STORAGE_CLASSES,
+    DataProductInfrastructure,
 )
 from pointlessql.models.catalog._mesh import (
     MeshEntity,
@@ -130,6 +150,7 @@ from pointlessql.models.catalog._sync import SyncRun
 __all__ = [
     "ACTIVE_REVIEWER_PROVIDERS",
     "ACTIVE_REVIEWER_RUNNERS",
+    "BITEMPORAL_ENFORCEMENT_MODES",
     "CANDIDATE_STATUSES",
     "CLASSIFICATIONS",
     "CONTRACT_EVENT_OUTCOMES",
@@ -138,8 +159,12 @@ __all__ = [
     "DP_TRANSFORMATION_KINDS",
     "ENCRYPTION_CLASSES",
     "ENDORSEMENT_TYPES",
+    "EVENT_DELIVERY_STATUSES",
+    "EVENT_SUBSCRIPTION_STATUSES",
     "FORGET_STATUSES",
+    "INFRASTRUCTURE_STORAGE_CLASSES",
     "INPUT_PORT_KINDS",
+    "LIFECYCLE_STATES",
     "MASKING_STRATEGIES",
     "MEASURABLE_SLO_KINDS",
     "OUTPUT_PORT_KINDS",
@@ -152,7 +177,14 @@ __all__ = [
     "Dashboard",
     "DataProduct",
     "DataProductActiveReviewerConfig",
+    "DataProductBitemporalPolicy",
     "DataProductColumnClassification",
+    "DataProductEventDelivery",
+    "DataProductEventSubscription",
+    "DataProductInfrastructure",
+    "DataProductRating",
+    "DataProductUseCase",
+    "DataProductUseCaseVote",
     "DataProductComment",
     "DataProductCommentReaction",
     "DataProductContractEvent",
