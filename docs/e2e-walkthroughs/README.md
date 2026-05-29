@@ -26,7 +26,7 @@ ML registry, dbt-pipeline, and packaging surfaces.
 
 ## Inventory (full)
 
-69 walkthroughs total. Each carries a `> **Mode:**` tag in its
+73 walkthroughs total. Each carries a `> **Mode:**` tag in its
 first content block; this section is the grep-friendly index.
 
 ### `Mode: browser` — Playwright MCP replay (50)
@@ -86,7 +86,7 @@ Reload `auth.md` first; later ones reuse seeded users + catalog.
 | [`notebook-coedit-multi-tab.md`](notebook-coedit-multi-tab.md) | Two-tab real-time co-edit (CRDT + awareness + agent presence) | |
 | [`social.md`](social.md) | DP Discussion+Reviews tabs · `/users` · `/agents` · `/topics` · `/feed` · `/notifications` · `/me/settings` | |
 
-### `Mode: hybrid` — notebook / CLI + browser (10)
+### `Mode: hybrid` — notebook / CLI + browser (14)
 
 Browser steps are present but only after a notebook or CLI
 prelude completes. Replay needs both contexts.
@@ -101,6 +101,10 @@ prelude completes. Replay needs both contexts.
 | [`explain-rewrite.md`](explain-rewrite.md) | Hermes plugin + run-detail Rewrites tab | |
 | [`packaging.md`](packaging.md) | docker CLI + home-page smoke | |
 | [`data-products.md`](data-products.md) | yaml reload + `/data-products` browse | |
+| [`data-domains.md`](data-domains.md) | `/admin/domains` + `/domains` + product domain panel | |
+| [`data-product-discovery.md`](data-product-discovery.md) | Overview discovery/ports/stats panels + glossary + Contract badge | |
+| [`data-governance.md`](data-governance.md) | product Governance tab + `/admin/governance` + compliance scan | |
+| [`data-mesh.md`](data-mesh.md) | `/mesh` graph + `/mesh/health` + entities + Interop tab + SLO panel | |
 | [`library-facts.md`](library-facts.md) | `/library/facts` browse + per-fact detail | |
 | [`vector-search.md`](vector-search.md) | HNSW vector index + `pql.vector_search` + REST + UI tab | |
 

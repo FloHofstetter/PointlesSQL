@@ -79,6 +79,24 @@ defined in ``scripts/clusters.json``. -->
   with admin CRUD + read-only browse and the `pql_list_domains` /
   `pql_assign_data_product_domain` hermes tools.
 
+### Fixes
+
+- Data-product detail tabs: the **Governance** and **Interop** tabs
+  (and Diff / Lineage / Compliance / Activity) rendered blank when
+  selected — the Contract-tab partial was missing a closing `</div>`, so
+  every tab pane declared after it was parsed as a child of the Contract
+  pane and hidden whenever Contract was the inactive (hidden) tab. Added
+  the missing close so the panes are siblings again. Surfaced by the
+  first browser-replay of the Data-Mesh UI cluster.
+
+### Documentation
+
+- Four end-to-end walkthrough playbooks covering the Data-Mesh UI
+  cluster (`data-domains`, `data-product-discovery`, `data-governance`,
+  `data-mesh`) plus an idempotent `scripts/seed-mesh-demo.py` that seeds
+  the replay substrate (two products with an upstream edge, statistics,
+  and one passing / one failing SLO).
+
 ## [Cluster 22 — Phase 122–123 Publication-readiness] - 2026-05-25
 
 > Phase 122 (Source-Code Sanitization for Publication: 1622→260 phase refs across 4 sprints; CLAUDE.md forward-guard for templates/JS/CSS/UI strings; README outside-reader polish), Phase 123 (Frontend Master-Plan 8-wave modernisation: forward-guard W1, inline-script-exodus W2, JS-subsystem-splits W3, template-splits+macros W4, CSS-architektur W5, docs W6, JS-quality W7 (biome), A11y form-labels W8).

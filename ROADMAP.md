@@ -1881,6 +1881,31 @@ PointlesSQL
 │
 
 
+├── Phase 128 — Data-Mesh-Cluster Browser-Replay & Walkthroughs  ✅ 2026-05-29
+│       Retroaktives Anlegen des Playwright-Gates für den 124–127-
+│       Cluster, der über zwei Commits ohne Browser-Replay + ohne
+│       e2e-Playbooks gelandet war.  Vollständiger Firefox-Replay aller
+│       Mesh-/Domänen-/Quantum-/Governance-Flächen (admin-domains/
+│       domains/glossary/mesh-graph/health/entities + Produkt-Overview-
+│       Panels + Contract-Badge + Governance-Tab + Interop-Tab + SLO-
+│       Panel) — jede Fläche gerendert, Primäraktion ausgeführt, Konsole
+│       cluster-fehlerfrei.  **Gefundener Bug (BUG-128-01, gefixt):**
+│       `_partials/data_product/tab_contract.html` fehlte das schließende
+│       `</div>` — dadurch waren Diff/Lineage/Compliance/**Governance**/
+│       **Interop**/Activity-Panes als Kinder des Contract-Panes
+│       verschachtelt und beim direkten Anwählen unsichtbar
+│       (`display:none` über das Eltern-Pane).  Der Governance-Tab (126)
+│       und der Interop-Tab (127) rendern erst nach dem Fix.  Zusätzlich
+│       `mesh_health.html` x-data auf Single-Quote normalisiert
+│       (Konsistenz; boolescher tojson war benigne).  Neuer idempotenter
+│       `scripts/seed-mesh-demo.py` (2 Produkte + Upstream-Kante +
+│       Statistiken + 1 pass/1 fail SLO) als Replay-Substrat.  4 neue
+│       hybrid-Playbooks: `data-domains.md`, `data-product-discovery.md`,
+│       `data-governance.md`, `data-mesh.md` (+ README-Index 69→73).
+│       Asset rc177→rc178.
+│
+
+
 ├── Phase 81 — Feed overhaul + help surface + entity ⋯-menu  ✅ archived (2026-05-16)
 │   │
 │   │   Detail moved to [`roadmap_archive.md#phase-81-feed-overhaul--help-surface--entity--menu`](docs/internal/roadmap_archive.md#phase-81-feed-overhaul--help-surface--entity--menu) in W2.
