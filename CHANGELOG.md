@@ -17,6 +17,39 @@ defined in ``scripts/clusters.json``. -->
 
 ### Features
 
+- Data-Product-as-Code (Phase 143 — Backend-only).
+  Substrat-Vertiefung Welle 4 des Mega-Cluster 135-146.  Keine
+  Migration — alles Service + Routes.  Neues Paket
+  `services/data_product_as_code/` mit strict pydantic
+  `DataProductSpec` (extra=`forbid`, `protected_namespaces=()` für
+  `schema` field) + `parse_spec` (YAML oder dict), Planner
+  (`plan_spec` walkt jede Subentity, vergleicht gegen DB-State,
+  emittiert ordered Ops `additions`/`modifications`/`removals`),
+  Applier (`apply_plan` dispatcht jeden Op an existing CRUD-Helpers
+  — `create_output_port`, `declare_entity`, `declare_slo`,
+  `declare_contract_test`, `declare_fixture`, `set_product_policy`
+  — keine direct ORM-writes), Exporter (`export_data_product`
+  snapshots live state in `DataProductSpec`; round-trip
+  `apply→export→plan` ist no-op).  Routes
+  `api/data_products_routes/apply.py`: POST `/api/data-products/plan`
+  (any-user, dry-run), POST `/api/data-products/apply`
+  (steward/admin, ?dry_run=), POST
+  `/api/data-products/{c}/{s}/export` (any-user).
+  SLO-unit-Auto-Resolution im Planner (wenn Spec unit=None, DB-unit
+  wird als desired übernommen — sonst würde KIND_META's
+  Auto-Assignment jedes Apply zu modification ops machen).
+  16 neue pytest grün (test_dp_as_code_spec ×6 für strict-extra,
+  blank-name, YAML-parse, round-trip dump; test_dp_as_code_planner_applier
+  ×10 für empty-DB add-all, apply-creates-product, dry-run-no-write,
+  idempotent-on-repeat, removal-op, modification-op,
+  export-round-trip-noop, export-LookupError, policies-apply,
+  policies-export).  ADR-0011 dokumentiert state-vs-migration-style,
+  strict-spec-rationale, applier-reuses-CRUDs.  Asset rc188→rc189.
+  Deferred für Surface-Welle: CLI (`pql apply / plan / export`),
+  Admin-Surface `/admin/data-product-apply` (YAML Editor +
+  Plan-Diff-View + Apply-Button), Plugin-Tools, Walkthrough
+  `data-product-as-code.md`.
+
 - Synthetic-Data + Contract-Tests (Phase 142 — Backend-only).
   Substrat-Vertiefung Welle 3 des Mega-Cluster 135-146.  Migration
   `d1p3r5t7v9x1_phase142_contract_tests` (down_rev `b9n1p3r5t7v9`)

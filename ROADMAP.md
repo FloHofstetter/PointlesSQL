@@ -2276,6 +2276,85 @@ PointlesSQL
 │       `pql_run_contract_tests`, `pql_declare_synthetic_fixture`),
 │       Walkthrough `data-product-contract-tests.md`.
 │
+├── Phase 143 — Data-Product-as-Code (Backend-only)  🟦 (2026-05-30)
+│   │
+│   │   Substrat-Vertiefung Welle 4 des Mega-Cluster 135–146.
+│   │   State-style YAML-Spec → plan → apply Reconciler ohne neue
+│   │   Migration; alles Service + Routes + ADR.
+│   │
+│   ├── 143.1 — Spec-Model `services/data_product_as_code/_spec.py`
+│   │       Strict pydantic mit `extra=forbid` auf jedem nested
+│   │       Model.  `DataProductSpec` ist die Top-Wurzel mit
+│   │       `protected_namespaces=()` damit `schema` als domain-Field
+│   │       überlebt.  Sub-Specs: InputPortSpec, OutputPortSpec
+│   │       (mit identity_requirements dict), SloSpec, PolicySpec
+│   │       (alle 8 POLICY_FIELDS), EntitySpec, ContractTestSpec,
+│   │       FixtureSpec, GlossaryBindingSpec.  `parse_spec` akzeptiert
+│   │       YAML-text oder dict; YAML-Fehler werden zu ValueError.
+│   │
+│   ├── 143.2 — Planner `_planner.py`
+│   │       `plan_spec(factory, spec, workspace_id) -> Plan`.
+│   │       Lädt DB-State der Subentitäten, vergleicht shallow gegen
+│   │       discovery-shaped dicts, emittiert ordered `Op`-Records
+│   │       (additions / modifications / removals).  Op-Felder:
+│   │       kind (product / output_port / input_port / slo / entity
+│   │       / contract_test / fixture / policies), action (add /
+│   │       update / remove), target, before, after.  SLO-unit
+│   │       Auto-Resolution: wenn Spec unit=None, DB-unit wird in
+│   │       desired übernommen (sonst würde KIND_META's Auto-
+│   │       Assignment jeden Apply zu modification ops machen).
+│   │
+│   ├── 143.3 — Applier `_applier.py`
+│   │       `apply_plan(factory, spec, plan, dry_run=False) ->
+│   │       ApplyOutcome` mit Idempotenz-Garantie.  Top-Level
+│   │       `_ensure_product` upsertet `DataProduct`-Row.  Pro Op
+│   │       eine `_apply_<kind>` Routine, die existierende CRUD-
+│   │       Helpers nutzt: `create_output_port`,
+│   │       `create_input_port`, `declare_slo`, `declare_entity`,
+│   │       `declare_contract_test`, `declare_fixture`,
+│   │       `set_product_policy`.  Keine direct ORM-writes.
+│   │       Fehler werden in outcome.errors gesammelt, keine
+│   │       partial-failure-Rollback (idempotent-on-retry ist die
+│   │       Recovery-Story).
+│   │
+│   ├── 143.4 — Exporter `_exporter.py`
+│   │       `export_data_product(factory, catalog, schema) ->
+│   │       DataProductSpec`.  Snapshots live DB-State in Spec für
+│   │       Round-Trip `apply → export → plan` ergibt no-op Plan.
+│   │       LookupError bei unbekanntem Produkt.
+│   │
+│   ├── 143.5 — Routes `api/data_products_routes/apply.py`
+│   │       POST `/api/data-products/plan` (any-user, dry-run only).
+│   │       POST `/api/data-products/apply?dry_run=` (steward/admin
+│   │       guard auf existing product; admin bypass).  POST
+│   │       `/api/data-products/{c}/{s}/export` (any-user).
+│   │       Body akzeptiert `{spec_yaml: "..."}` oder
+│   │       `{spec: {...}}` oder direct dict.  Audit:
+│   │       `data_product.apply` mit `{dry_run, op_count, applied,
+│   │       errors}`.
+│   │
+│   └── 143.6 — Verifikation + ADR
+│           16 neue pytest (test_dp_as_code_spec ×6 für strict-
+│           extra-rejection, blank-name, YAML-parse, round-trip-
+│           dump; test_dp_as_code_planner_applier ×10 für empty-DB-
+│           add-all, apply-creates-product-and-subentities, dry-run-
+│           no-write, idempotent-on-repeat, removal-op-emit,
+│           modification-op-emit, export-round-trip-noop, export-
+│           unknown-raises-LookupError, policies-apply-writes-row,
+│           policies-export).  ruff/pyright/check-no-phase-refs
+│           clean.  ADR-0011 dokumentiert state-vs-migration-style-
+│           Wahl, strict-spec-Rationale, applier-reuses-CRUDs-
+│           Prinzip, offene Follow-Ups (CLI, glossary bindings als
+│           eigene op-kind).
+│
+│       Asset rc188→rc189.  Deferred für Surface-Welle: CLI
+│       (`pql apply / plan / export` via Typer), Admin-Surface
+│       `/admin/data-product-apply` (YAML-Editor + Plan-Diff-View +
+│       Apply-Button + Outcome-Link), Plugin-Tools
+│       (`pql_data_product_apply`, `pql_data_product_plan`,
+│       `pql_data_product_export`), Walkthrough
+│       `data-product-as-code.md`.
+│
 
 
 
