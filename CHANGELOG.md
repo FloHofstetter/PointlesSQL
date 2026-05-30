@@ -17,6 +17,24 @@ defined in ``scripts/clusters.json``. -->
 
 ### Features
 
+- Phase 145 Auto-Discovery Entity-Links Closure (rc201).  Three
+  new `hermes-plugin-pointlessql` tools close the remaining
+  plugin scope from the Phase 145 deferred-block:
+  `pql_accept_entity_link_candidate` (POST promotion via the
+  canonical `link_entities` helper),
+  `pql_reject_entity_link_candidate` (POST decision=rejected),
+  and `pql_defer_entity_link_candidate` (POST decision=deferred).
+  Together with the already-shipped
+  `pql_list_pending_entity_link_candidates`, the four tools
+  close the agent-side of the steward review queue.  Seven new
+  plugin pytest in `test_entity_discovery_tools.py`; the
+  `test_read_tools.py` Surface-Welle expected set grows from
+  seventeen to twenty.  New agent-flow walkthrough
+  `docs/e2e-walkthroughs/entity-link-discovery.md` covers the
+  eight-step list → inspect → accept → re-list → reject →
+  defer → 409 conflict → run-now flow.  ROADMAP Phase 145
+  flips 🟦 → ✅.
+
 - Phase 144 Schema-Contract-Versioning Closure (rc200).  Three
   new `hermes-plugin-pointlessql` tools close the remaining
   plugin scope from the Phase 144 deferred-block:

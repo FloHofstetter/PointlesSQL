@@ -2436,7 +2436,7 @@ PointlesSQL
 │       History-Liste + Diff-Viewer + Workspace-Governance-Selektor
 │       remain a future browser-surface follow-up.
 │
-├── Phase 145 — Auto-Discovery Entity-Links (Backend-only)  🟦 (2026-05-30)
+├── Phase 145 — Auto-Discovery Entity-Links  ✅ (2026-05-30)
 │   │
 │   │   Substrat-Vertiefung Welle 6 des Mega-Cluster 135–146.
 │   │   Auto-Discovery von Entity-Link-Candidates plus
@@ -2488,14 +2488,18 @@ PointlesSQL
 │           Alembic head `h5t7v9x1z3b5`, down→up round-trip clean.
 │           ruff/pyright/check-no-phase-refs clean.
 │
-│       Asset rc190→rc191.  Deferred für Surface-Welle:
-│       Scheduler-Kind `entity_link_discovery` (default-disabled
-│       Toggle via Settings), Admin-Surface `/admin/entity-discovery`
-│       mit Pending-Queue-Tabelle + Accept/Reject/Defer-Buttons +
-│       Run-Now-Trigger, Plugin-Tools
-│       (`pql_list_pending_entity_link_candidates`,
-│       `pql_accept_entity_link_candidate`, etc.), Walkthrough
-│       `entity-link-discovery.md`.
+│       Asset rc190→rc191 (backbone) → rc201 (closure).  Closure
+│       2026-05-30: 3 plugin tools (`pql_accept_entity_link_candidate`,
+│       `pql_reject_entity_link_candidate`,
+│       `pql_defer_entity_link_candidate`) close the agent-side of
+│       the steward review queue.  `pql_list_pending_entity_link_candidates`
+│       already shipped via the Surface-Welle batch.  Agent-flow
+│       walkthrough `entity-link-discovery.md` covers the eight-
+│       step list → inspect → accept → re-list → reject → defer →
+│       409-conflict → run-now flow.  Scheduler-Kind
+│       `entity_link_discovery` + Admin-Surface
+│       `/admin/entity-discovery` already shipped in commits
+│       `9f9d5d32` / `b5f5de29`.
 │
 ├── Phase 146 — Cost-Attribution + Quotas + Mesh-Health-Dashboard (Backend-only)  🟦 (2026-05-30)
 │   │
