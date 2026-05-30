@@ -16,38 +16,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      # Rewrite HTTPS clones of github.com to tunnel through the
-      # SOYUZ_READ_TOKEN (classic PAT, Contents: Read on the private
-      # soyuz-catalog repo). `uv sync` resolves the pinned
-      # `[tool.uv.sources]` git-tag source directly — no sibling
-      # checkout, no uv.toml override.
-      - name: Configure git for private soyuz-catalog pull
-        env:
-          SOYUZ_READ_TOKEN: ${{ secrets.SOYUZ_READ_TOKEN }}
-        run: |
-          # Preflight: catch an empty / truncated / typo'd secret
-          # before we get the inscrutable
-          # `remote: Invalid username or token` from git. Classic PATs
-          # are 40 chars (ghp_ + 36); fine-grained PATs are ~93 chars.
-          LEN=$(printf '%s' "$SOYUZ_READ_TOKEN" | wc -c)
-          if [ "$LEN" -lt 30 ]; then
-            echo "::error::SOYUZ_READ_TOKEN is missing or truncated (${LEN} bytes). Re-paste it in Settings → Secrets → Actions." >&2
-            exit 1
-          fi
-          # Validate that GitHub actually accepts the PAT. An expired
-          # or revoked PAT returns 401 from /user — which is the
-          # cheapest way to surface the right error before uv spends
-          # a minute resolving dependencies.
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
-            -H "Authorization: token ${SOYUZ_READ_TOKEN}" \
-            https://api.github.com/user)
-          if [ "$STATUS" != "200" ]; then
-            echo "::error::SOYUZ_READ_TOKEN is not accepted by GitHub (GET /user → HTTP ${STATUS}). The PAT may be revoked, expired, or corrupted during paste." >&2
-            exit 1
-          fi
-          git config --global \
-            url."https://x-access-token:${SOYUZ_READ_TOKEN}@github.com/".insteadOf \
-            "https://github.com/"
       - name: Install uv
         uses: astral-sh/setup-uv@v5
         with:
@@ -193,18 +161,6 @@ jobs:
     continue-on-error: true
     steps:
       - uses: actions/checkout@v4
-      - name: Configure git for private soyuz-catalog pull
-        env:
-          SOYUZ_READ_TOKEN: ${{ secrets.SOYUZ_READ_TOKEN }}
-        run: |
-          LEN=$(printf '%s' "$SOYUZ_READ_TOKEN" | wc -c)
-          if [ "$LEN" -lt 30 ]; then
-            echo "::error::SOYUZ_READ_TOKEN is missing or truncated (${LEN} bytes)." >&2
-            exit 1
-          fi
-          git config --global \
-            url."https://x-access-token:${SOYUZ_READ_TOKEN}@github.com/".insteadOf \
-            "https://github.com/"
       - name: Install uv
         uses: astral-sh/setup-uv@v5
         with:
@@ -249,25 +205,6 @@ jobs:
       POINTLESSQL_DB_URL: postgresql+psycopg://pointlessql:pointlessql@localhost:5432/pointlessql  # pragma: allowlist secret
     steps:
       - uses: actions/checkout@v4
-      - name: Configure git for private soyuz-catalog pull
-        env:
-          SOYUZ_READ_TOKEN: ${{ secrets.SOYUZ_READ_TOKEN }}
-        run: |
-          LEN=$(printf '%s' "$SOYUZ_READ_TOKEN" | wc -c)
-          if [ "$LEN" -lt 30 ]; then
-            echo "::error::SOYUZ_READ_TOKEN is missing or truncated (${LEN} bytes). Re-paste it in Settings → Secrets → Actions." >&2
-            exit 1
-          fi
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
-            -H "Authorization: token ${SOYUZ_READ_TOKEN}" \
-            https://api.github.com/user)
-          if [ "$STATUS" != "200" ]; then
-            echo "::error::SOYUZ_READ_TOKEN is not accepted by GitHub (GET /user → HTTP ${STATUS})." >&2
-            exit 1
-          fi
-          git config --global \
-            url."https://x-access-token:${SOYUZ_READ_TOKEN}@github.com/".insteadOf \
-            "https://github.com/"
       - name: Install uv
         uses: astral-sh/setup-uv@v5
         with:
@@ -336,18 +273,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Configure git for private soyuz-catalog pull
-        env:
-          SOYUZ_READ_TOKEN: ${{ secrets.SOYUZ_READ_TOKEN }}
-        run: |
-          LEN=$(printf '%s' "$SOYUZ_READ_TOKEN" | wc -c)
-          if [ "$LEN" -lt 30 ]; then
-            echo "::error::SOYUZ_READ_TOKEN is missing or truncated (${LEN} bytes)." >&2
-            exit 1
-          fi
-          git config --global \
-            url."https://x-access-token:${SOYUZ_READ_TOKEN}@github.com/".insteadOf \
-            "https://github.com/"
       - name: Install uv
         uses: astral-sh/setup-uv@v5
         with:
@@ -359,9 +284,9 @@ jobs:
       - name: pip-audit
         # ``--skip-editable`` excludes the local ``pointlessql`` install
         # (editable wheel has no PyPI release to compare against). The
-        # private ``soyuz-catalog-client`` is also auto-skipped with a
-        # "could not be audited" reason since its source is a private
-        # git tag, not PyPI. We deliberately omit ``--strict`` so those
+        # ``soyuz-catalog-client`` is also auto-skipped with a
+        # "could not be audited" reason since its source is a git tag,
+        # not PyPI. We deliberately omit ``--strict`` so those
         # skips don't fail the job; any third-party PyPI dep with a
         # known CVE still fails because pip-audit exits non-zero on
         # actual findings. Run on every PR to catch new advisories
