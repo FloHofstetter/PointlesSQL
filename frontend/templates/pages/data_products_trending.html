@@ -9,8 +9,7 @@
 {% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
 
 {% block content %}
-<div x-data='dataProductsTrending({{ trending | tojson }}, {{ can_cross_workspace | tojson }})'
-     x-init="init()">
+<div x-data='dataProductsTrending({{ trending | tojson }}, {{ can_cross_workspace | tojson }})'>
 
     <div class="d-flex align-items-center gap-2 mb-3">
         <i class="bi bi-fire fs-3"></i>

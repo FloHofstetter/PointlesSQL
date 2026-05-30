@@ -14,7 +14,7 @@
         current_user_id: {{ current_user_id | tojson }},
         is_admin: {{ (is_admin or false) | tojson }},
         is_steward: {{ (is_steward or false) | tojson }}
-    })' x-init="init()">
+    })'>
 
     <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
         <i class="bi bi-collection fs-3"></i>

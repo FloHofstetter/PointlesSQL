@@ -66,7 +66,7 @@
  </div>
  </div>
 
- <div class="card mt-4" x-data='tableStats({{ (catalog_name ~ "." ~ schema_name ~ "." ~ table_name)|tojson }})' x-init="init()">
+ <div class="card mt-4" x-data='tableStats({{ (catalog_name ~ "." ~ schema_name ~ "." ~ table_name)|tojson }})'>
  <div class="card-header d-flex align-items-center justify-content-between">
  <span>Column statistics{{ info('tables.column-statistics') }}</span>
  <div class="d-flex gap-2 align-items-center">

@@ -12,10 +12,9 @@
 {% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
 
 {% block content %}
-<div x-data='dbtSchemaContext({{ catalog_name|tojson }}, {{ schema_name|tojson }})' x-init="init()">
+<div x-data='dbtSchemaContext({{ catalog_name|tojson }}, {{ schema_name|tojson }})'>
 <div class="d-flex align-items-center gap-2 mb-4"
-     x-data='pqlStarToggle({kind: "schema", ref: {{ (catalog_name ~ "." ~ schema_name)|tojson }}})'
-     x-init="init()">
+     x-data='pqlStarToggle({kind: "schema", ref: {{ (catalog_name ~ "." ~ schema_name)|tojson }}})'>
     <i class="bi bi-collection fs-3"></i>
     <h1 class="h3 mb-0">{{ catalog_name }}.{{ schema_name }}{{ info('schemas.what-is-a-schema') }}</h1>
     <button type="button"
@@ -344,8 +343,7 @@
         </ul>
         <div class="tab-content">
             <div class="tab-pane fade show active" id="tab-discussion" role="tabpanel"
-                 x-data='schemaDiscussion({{ (catalog_name ~ "." ~ schema_name)|tojson }})'
-                 x-init="init()">
+                 x-data='schemaDiscussion({{ (catalog_name ~ "." ~ schema_name)|tojson }})'>
               <template x-if="!commentsLoaded">
                <div class="text-muted small p-3">Loading discussion…</div>
               </template>
@@ -388,8 +386,7 @@
             {% include 'partials/social/_endorsements_pane.html' %}
             {% include 'partials/social/_followers_pane.html' %}
             <div class="tab-pane fade" id="tab-readme" role="tabpanel"
-                 x-data='schemaReadme({{ (catalog_name ~ "." ~ schema_name)|tojson }})'
-                 x-init="init()">
+                 x-data='schemaReadme({{ (catalog_name ~ "." ~ schema_name)|tojson }})'>
               <template x-if="!readmeLoaded">
                <div class="text-muted small p-3">Loading README…</div>
               </template>

@@ -3,7 +3,7 @@
  this directly; users paste table+row_id+column or arrive
  from a Row-trace step's value-changes details). #}
  <div class="tab-pane fade" id="tab-lineage-value-changes" role="tabpanel" aria-labelledby="tab-lineage-value-changes-btn">
- <div x-data="valueChangesPane()" x-init="init()">
+ <div x-data="valueChangesPane()">
  <form class="row g-2 align-items-end mb-3" @submit.prevent="fetch()">
  <div class="col-md-4">
  <label class="form-label small" for="value-changes-table">Table (3-part FQN)</label>

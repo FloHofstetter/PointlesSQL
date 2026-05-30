@@ -1,6 +1,5 @@
 <div class="card mb-3"
-     x-data='dataProductUseCasesPanel({{ product.catalog|tojson }}, {{ product.schema|tojson }}, {{ ((current_user.id if current_user else 0))|tojson }})'
-     x-init="init()">
+     x-data='dataProductUseCasesPanel({{ product.catalog|tojson }}, {{ product.schema|tojson }}, {{ ((current_user.id if current_user else 0))|tojson }})'>
     <div class="card-header d-flex align-items-center gap-2">
         <i class="bi bi-chat-square-quote"></i>
         <span>Use cases</span>
@@ -52,8 +51,7 @@
 </div>
 
 <div class="card mb-3"
-     x-data='dataProductRatingWidget({{ product.catalog|tojson }}, {{ product.schema|tojson }}, {{ ((current_user.id if current_user else 0))|tojson }})'
-     x-init="init()">
+     x-data='dataProductRatingWidget({{ product.catalog|tojson }}, {{ product.schema|tojson }}, {{ ((current_user.id if current_user else 0))|tojson }})'>
     <div class="card-header d-flex align-items-center gap-2">
         <i class="bi bi-star"></i>
         <span>Rating</span>

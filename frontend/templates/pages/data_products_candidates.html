@@ -9,8 +9,7 @@
 {% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
 
 {% block content %}
-<div x-data='dataProductsCandidates({{ candidates | tojson }}, {{ is_admin | tojson }})'
-     x-init="init()">
+<div x-data='dataProductsCandidates({{ candidates | tojson }}, {{ is_admin | tojson }})'>
 
     <div class="d-flex align-items-center gap-2 mb-3">
         <i class="bi bi-lightbulb fs-3"></i>

@@ -6,8 +6,7 @@
  available width while the side-panel stays a fixed
  320 px column. #}
  <div class="tab-pane fade" id="tab-lineage-graph" role="tabpanel" aria-labelledby="tab-lineage-graph-btn">
- <div x-data="lineageDag({ runId: '{{ run.id }}', opId: {% if filter_op_id %}{{ filter_op_id }}{% else %}null{% endif %} })"
- x-init="init()">
+ <div x-data="lineageDag({ runId: '{{ run.id }}', opId: {% if filter_op_id %}{{ filter_op_id }}{% else %}null{% endif %} })">
  <template x-if="loading">
  <div class="text-muted small p-3" role="status" aria-live="polite">
  <span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>Loading lineage graph<span class="text-muted ms-1">— this can take a few seconds for large runs.</span>

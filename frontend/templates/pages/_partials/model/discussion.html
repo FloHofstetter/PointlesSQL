@@ -1,8 +1,7 @@
 {# Discussion pane — inline kind-agnostic x-data.  Talks to the
    polymorphic /api/social/model/{ref}/comments endpoints. #}
 <div class="tab-pane fade show active" id="tab-discussion" role="tabpanel"
-     x-data='modelDiscussion({{ model.full_name|tojson }})'
-     x-init="init()">
+     x-data='modelDiscussion({{ model.full_name|tojson }})'>
     <template x-if="!commentsLoaded">
         <div class="text-muted small p-3">Loading discussion…</div>
     </template>

@@ -9,8 +9,7 @@
 {% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
 
 {% block content %}
-<div x-data='userProfile({{ target_user | tojson }}, { current_user_id: {{ current_user_id }}, is_admin: {{ is_admin|tojson }} })'
-     x-init="init()">
+<div x-data='userProfile({{ target_user | tojson }}, { current_user_id: {{ current_user_id }}, is_admin: {{ is_admin|tojson }} })'>
 
     <template x-if="!loaded">
         <div class="text-muted small p-3">Loading…</div>

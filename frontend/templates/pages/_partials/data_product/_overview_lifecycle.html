@@ -1,6 +1,5 @@
 <div class="card mb-3"
-     x-data='dataProductLifecyclePanel({{ product.catalog|tojson }}, {{ product.schema|tojson }}, {{ ((is_admin or is_steward) or false)|tojson }})'
-     x-init="init()">
+     x-data='dataProductLifecyclePanel({{ product.catalog|tojson }}, {{ product.schema|tojson }}, {{ ((is_admin or is_steward) or false)|tojson }})'>
     <div class="card-header d-flex align-items-center gap-2">
         <i class="bi bi-arrow-repeat"></i>
         <span>Lifecycle</span>

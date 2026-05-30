@@ -9,10 +9,9 @@
 {% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
 
 {% block content %}
-<div x-data='issueDetail({{ issue_id|tojson }})' x-init="init()">
+<div x-data='issueDetail({{ issue_id|tojson }})'>
   <div class="d-flex align-items-center gap-2 mb-3"
-       x-data='pqlStarToggle({kind: "issue", ref: {{ issue_id|tojson }}})'
-       x-init="init()">
+       x-data='pqlStarToggle({kind: "issue", ref: {{ issue_id|tojson }}})'>
     <i class="bi bi-exclamation-circle fs-3"></i>
     <h1 class="h4 mb-0 d-flex align-items-center gap-2 flex-grow-1">
       <span class="text-muted">#{{ issue_id }}</span>

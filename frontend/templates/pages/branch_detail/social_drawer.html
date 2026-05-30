@@ -65,8 +65,7 @@
         <div class="tab-content">
             {# Discussion pane — inline x-data via branchDiscussion. #}
             <div class="tab-pane fade show active" id="tab-discussion" role="tabpanel"
-                 x-data='branchDiscussion({{ branch_schema_fqn|tojson }})'
-                 x-init="init()">
+                 x-data='branchDiscussion({{ branch_schema_fqn|tojson }})'>
                 <template x-if="!commentsLoaded">
                     <div class="text-muted small p-3">Loading discussion…</div>
                 </template>

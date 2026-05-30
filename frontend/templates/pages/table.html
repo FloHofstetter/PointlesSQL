@@ -14,8 +14,8 @@
 {% endblock %}
 
 {% block content %}
-<div x-data='mlTableContext({{ catalog_name|tojson }}, {{ schema_name|tojson }}, {{ table_name|tojson }})' x-init="init()">
-<div x-data='dbtTableContext({{ catalog_name|tojson }}, {{ schema_name|tojson }}, {{ table_name|tojson }})' x-init="init()">
+<div x-data='mlTableContext({{ catalog_name|tojson }}, {{ schema_name|tojson }}, {{ table_name|tojson }})'>
+<div x-data='dbtTableContext({{ catalog_name|tojson }}, {{ schema_name|tojson }}, {{ table_name|tojson }})'>
 <div class="d-flex align-items-center gap-2 mb-4"
      x-data='pqlStarToggle({kind: "table", catalog: {{ catalog_name|tojson }}, schema: {{ schema_name|tojson }}, table: {{ table_name|tojson }}})'>
  <i class="bi bi-table fs-3"></i>
@@ -239,8 +239,7 @@
       polymorphic /api/social/table/{ref}/comments endpoints.  Default
       active because Discussion is the most-touched surface. #}
    <div class="tab-pane fade show active" id="tab-discussion" role="tabpanel"
-        x-data='tableDiscussion({{ (catalog_name ~ "." ~ schema_name ~ "." ~ table_name)|tojson }})'
-        x-init="init()">
+        x-data='tableDiscussion({{ (catalog_name ~ "." ~ schema_name ~ "." ~ table_name)|tojson }})'>
     <template x-if="!commentsLoaded">
      <div class="text-muted small p-3">Loading discussion…</div>
     </template>
@@ -299,8 +298,7 @@
    {# README pane — inline kind-agnostic x-data.  Talks to the
       polymorphic /api/social/table/{ref}/readme endpoints. #}
    <div class="tab-pane fade" id="tab-readme" role="tabpanel"
-        x-data='tableReadme({{ (catalog_name ~ "." ~ schema_name ~ "." ~ table_name)|tojson }})'
-        x-init="init()">
+        x-data='tableReadme({{ (catalog_name ~ "." ~ schema_name ~ "." ~ table_name)|tojson }})'>
     <template x-if="!readmeLoaded">
      <div class="text-muted small p-3">Loading README…</div>
     </template>

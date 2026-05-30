@@ -39,7 +39,6 @@
          email: {{ current_user_email | tojson }}
        }
      })'
-     x-init="init()"
      @beforeunload.window="destroy()"
      @pql:cell-tag-changed="dirty = true; _scheduleAutosave && _scheduleAutosave()">
 

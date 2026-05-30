@@ -9,7 +9,7 @@
 {% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
 
 {% block content %}
-<div x-data='volumeDetail({fullName: {{ volume.full_name|tojson }}, files: {{ files|tojson }}})' x-init="init()">
+<div x-data='volumeDetail({fullName: {{ volume.full_name|tojson }}, files: {{ files|tojson }}})'>
  <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
  <div class="d-flex align-items-center gap-2">
  <i class="bi bi-hdd-stack fs-3"></i>

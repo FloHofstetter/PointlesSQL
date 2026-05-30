@@ -11,8 +11,7 @@
 
 {% block content %}
 <div class="d-flex align-items-center gap-2 mb-4"
-     x-data='pqlStarToggle({kind: "catalog", ref: {{ catalog_name|tojson }}})'
-     x-init="init()">
+     x-data='pqlStarToggle({kind: "catalog", ref: {{ catalog_name|tojson }}})'>
     <i class="bi bi-folder2 fs-3"></i>
     <h1 class="h3 mb-0">{{ catalog_name }}</h1>
     {% if catalog and catalog.connection_name %}
@@ -250,8 +249,7 @@
         </ul>
         <div class="tab-content">
             <div class="tab-pane fade show active" id="tab-discussion" role="tabpanel"
-                 x-data='catalogDiscussion({{ catalog_name|tojson }})'
-                 x-init="init()">
+                 x-data='catalogDiscussion({{ catalog_name|tojson }})'>
               <template x-if="!commentsLoaded">
                <div class="text-muted small p-3">Loading discussion…</div>
               </template>
@@ -294,8 +292,7 @@
             {% include 'partials/social/_endorsements_pane.html' %}
             {% include 'partials/social/_followers_pane.html' %}
             <div class="tab-pane fade" id="tab-readme" role="tabpanel"
-                 x-data='catalogReadme({{ catalog_name|tojson }})'
-                 x-init="init()">
+                 x-data='catalogReadme({{ catalog_name|tojson }})'>
               <template x-if="!readmeLoaded">
                <div class="text-muted small p-3">Loading README…</div>
               </template>

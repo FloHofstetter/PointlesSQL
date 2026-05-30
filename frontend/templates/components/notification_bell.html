@@ -13,8 +13,7 @@
 #}
 {% if current_user is defined and current_user %}
 <div class="nav-item d-flex align-items-center me-2 pql-notif-bell"
-     x-data="notificationBell()"
-     x-init="init()">
+     x-data="notificationBell()">
     <a class="nav-link position-relative px-2"
        href="/notifications"
        aria-label="Notifications"

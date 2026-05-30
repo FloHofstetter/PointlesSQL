@@ -1,6 +1,5 @@
         <div class="tab-pane fade" id="tab-interop" role="tabpanel">
-            <div x-data='dataProductInterop({{ product.catalog|tojson }}, {{ product.schema|tojson }})'
-                 x-init="init()">
+            <div x-data='dataProductInterop({{ product.catalog|tojson }}, {{ product.schema|tojson }})'>
                 <div class="alert alert-danger py-1 px-2 small" x-show="error" x-text="error" x-cloak></div>
 
                 <!-- Mesh neighbourhood. -->

@@ -24,8 +24,7 @@
 
 {% block content %}
 <div class="d-flex align-items-start justify-content-between gap-3 mb-3"
-     x-data='pqlStarToggle({kind: "saved_query", ref: {{ query.slug|tojson }}})'
-     x-init="init()">
+     x-data='pqlStarToggle({kind: "saved_query", ref: {{ query.slug|tojson }}})'>
     <div class="d-flex align-items-center gap-2 flex-grow-1 me-3">
         <i class="bi bi-bookmark-star fs-3"></i>
         {% if query.is_starter %}
@@ -167,8 +166,7 @@
 {% include 'partials/social/_followers_pane.html' %}
 
 <div class="tab-pane fade" id="tab-discussion" role="tabpanel"
-     x-data='savedQueryDiscussion({{ query.slug|tojson }})'
-     x-init="init()">
+     x-data='savedQueryDiscussion({{ query.slug|tojson }})'>
     <template x-if="!commentsLoaded">
         <div class="text-muted small p-3">Loading discussion…</div>
     </template>
@@ -196,8 +194,7 @@
 </div>
 
 <div class="tab-pane fade" id="tab-readme" role="tabpanel"
-     x-data='savedQueryReadme({{ query.slug|tojson }})'
-     x-init="init()">
+     x-data='savedQueryReadme({{ query.slug|tojson }})'>
     <template x-if="!readmeLoaded">
         <div class="text-muted small p-3">Loading README…</div>
     </template>

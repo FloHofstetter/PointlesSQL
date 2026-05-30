@@ -13,8 +13,7 @@
 
 {% block content %}
 <div class="d-flex align-items-center gap-2 mb-2"
-     x-data='pqlStarToggle({kind: "model", ref: {{ model.full_name|tojson }}})'
-     x-init="init()">
+     x-data='pqlStarToggle({kind: "model", ref: {{ model.full_name|tojson }}})'>
     <i class="bi bi-box-seam fs-3"></i>
     <h1 class="h3 mb-0">{{ model.full_name }}{{ copy_btn(model.full_name, label="Copy model URI") }}</h1>
     {% if model.owner %}

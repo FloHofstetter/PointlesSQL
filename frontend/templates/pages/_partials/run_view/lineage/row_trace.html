@@ -4,7 +4,7 @@
  from Summary "Trace target row" buttons.  Cold-start
  fallback: two text inputs + Trace button. #}
  <div class="tab-pane fade" id="tab-lineage-row-trace" role="tabpanel" aria-labelledby="tab-lineage-row-trace-btn">
- <div x-data="rowTracePane()" x-init="init()">
+ <div x-data="rowTracePane()">
  <form class="row g-2 align-items-end mb-3" @submit.prevent="fetch()">
  <div class="col-md-5">
  <label class="form-label small" for="row-trace-table">Table (3-part FQN)</label>

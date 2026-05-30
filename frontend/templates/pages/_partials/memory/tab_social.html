@@ -50,8 +50,7 @@
      })'>
 
     <div class="tab-pane fade show active" id="mem-discussion" role="tabpanel"
-         x-data='memoryDiscussion({{ social_entity_kind|tojson }}, {{ social_entity_ref|tojson }})'
-         x-init="init()">
+         x-data='memoryDiscussion({{ social_entity_kind|tojson }}, {{ social_entity_ref|tojson }})'>
         <template x-if="!commentsLoaded">
             <div class="text-muted small p-3">Loading discussion…</div>
         </template>

@@ -8,7 +8,7 @@
 {% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
 
 {% block content %}
-<div x-data="feedPage()" x-init="init()" :class="density === 'comfortable' ? '' : ('pql-feed--' + density)">
+<div x-data="feedPage()" :class="density === 'comfortable' ? '' : ('pql-feed--' + density)">
 
     {# Top-level tabs: Activity (the feed stream) vs Discover
        (trending + people-to-follow + saved searches).  The page

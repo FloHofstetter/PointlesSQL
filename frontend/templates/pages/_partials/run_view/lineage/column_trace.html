@@ -2,7 +2,7 @@
  Deep-linked via pql:trace-column from Graph side-panel
  column-pair "Trace this column" buttons. #}
  <div class="tab-pane fade" id="tab-lineage-column-trace" role="tabpanel" aria-labelledby="tab-lineage-column-trace-btn">
- <div x-data="columnTracePane()" x-init="init()">
+ <div x-data="columnTracePane()">
  <form class="row g-2 align-items-end mb-3" @submit.prevent="fetch()">
  <div class="col-md-5">
  <label class="form-label small" for="column-trace-table">Table (3-part FQN)</label>

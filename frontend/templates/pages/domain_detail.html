@@ -9,7 +9,7 @@
 {% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
 
 {% block content %}
-<div x-data='domainDetail({{ domain_slug|tojson }})' x-init="init()">
+<div x-data='domainDetail({{ domain_slug|tojson }})'>
     <div x-show="loading" class="text-muted" x-cloak>Loading&hellip;</div>
     <div class="alert alert-danger" x-show="error" x-text="error" x-cloak></div>
 

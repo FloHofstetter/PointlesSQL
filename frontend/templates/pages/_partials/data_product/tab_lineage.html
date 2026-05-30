@@ -3,7 +3,6 @@
                  dependency graph alongside the runtime-captured edges. -->
             <div class="card mb-3"
                  x-data='dataProductPortsPanel({{ product.catalog|tojson }}, {{ product.schema|tojson }}, false)'
-                 x-init="init()"
                  x-show="inputPorts.length > 0" x-cloak>
                 <div class="card-header d-flex align-items-center gap-2">
                     <i class="bi bi-box-arrow-in-down"></i>

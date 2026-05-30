@@ -1,6 +1,5 @@
         <div class="tab-pane fade" id="tab-contract-tests" role="tabpanel">
-            <div x-data='dataProductContractTests({{ product.catalog|tojson }}, {{ product.schema|tojson }}, {{ ((is_admin or is_steward) or false)|tojson }})'
-                 x-init="init()">
+            <div x-data='dataProductContractTests({{ product.catalog|tojson }}, {{ product.schema|tojson }}, {{ ((is_admin or is_steward) or false)|tojson }})'>
 
                 <div class="alert alert-danger py-1 px-2 small" x-show="error" x-text="error" x-cloak></div>
 

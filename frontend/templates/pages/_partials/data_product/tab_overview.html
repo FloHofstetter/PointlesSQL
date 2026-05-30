@@ -41,8 +41,7 @@
 
             <!-- Service-level objectives + live verdicts. -->
             <div class="card mb-3"
-                 x-data='dataProductSloPanel({{ product.catalog|tojson }}, {{ product.schema|tojson }}, {{ ((is_admin or is_steward) or false)|tojson }})'
-                 x-init="init()">
+                 x-data='dataProductSloPanel({{ product.catalog|tojson }}, {{ product.schema|tojson }}, {{ ((is_admin or is_steward) or false)|tojson }})'>
                 <div class="card-header d-flex align-items-center gap-2">
                     <i class="bi bi-speedometer2"></i>
                     <span>Service-level objectives</span>
@@ -105,8 +104,7 @@
 
             <!-- Domain ownership + bound transformations. -->
             <div class="card mb-3"
-                 x-data='dataProductDomainPanel({{ product.catalog|tojson }}, {{ product.schema|tojson }}, {{ ((is_admin or is_steward) or false)|tojson }})'
-                 x-init="init()">
+                 x-data='dataProductDomainPanel({{ product.catalog|tojson }}, {{ product.schema|tojson }}, {{ ((is_admin or is_steward) or false)|tojson }})'>
                 <div class="card-header d-flex align-items-center gap-2">
                     <i class="bi bi-diagram-2"></i>
                     <span>Domain</span>
@@ -186,8 +184,7 @@
 
             <!-- Discovery contract URI. -->
             <div class="card mb-3"
-                 x-data='dataProductDiscoveryCard({{ product.catalog|tojson }}, {{ product.schema|tojson }})'
-                 x-init="init()">
+                 x-data='dataProductDiscoveryCard({{ product.catalog|tojson }}, {{ product.schema|tojson }})'>
                 <div class="card-header d-flex align-items-center gap-2">
                     <i class="bi bi-compass"></i>
                     <span>Discovery</span>
@@ -209,8 +206,7 @@
 
             <!-- Declared output / input ports. -->
             <div class="card mb-3"
-                 x-data='dataProductPortsPanel({{ product.catalog|tojson }}, {{ product.schema|tojson }}, {{ ((is_admin or is_steward) or false)|tojson }})'
-                 x-init="init()">
+                 x-data='dataProductPortsPanel({{ product.catalog|tojson }}, {{ product.schema|tojson }}, {{ ((is_admin or is_steward) or false)|tojson }})'>
                 <div class="card-header d-flex align-items-center gap-2">
                     <i class="bi bi-diagram-3"></i>
                     <span>Ports</span>
@@ -394,8 +390,7 @@
 
             <!-- Semantic model + sample query. -->
             <div class="card mb-3"
-                 x-data='dataProductSemanticPanel({{ product.catalog|tojson }}, {{ product.schema|tojson }}, {{ ((is_admin or is_steward) or false)|tojson }})'
-                 x-init="init()">
+                 x-data='dataProductSemanticPanel({{ product.catalog|tojson }}, {{ product.schema|tojson }}, {{ ((is_admin or is_steward) or false)|tojson }})'>
                 <div class="card-header d-flex align-items-center gap-2">
                     <i class="bi bi-bezier2"></i>
                     <span>Semantic model</span>
@@ -457,8 +452,7 @@
 
             <!-- Self-generated statistics. -->
             <div class="card mb-3"
-                 x-data='dataProductStatsPanel({{ product.catalog|tojson }}, {{ product.schema|tojson }})'
-                 x-init="init()">
+                 x-data='dataProductStatsPanel({{ product.catalog|tojson }}, {{ product.schema|tojson }})'>
                 <div class="card-header d-flex align-items-center gap-2">
                     <i class="bi bi-bar-chart-line"></i>
                     <span>Statistics</span>
