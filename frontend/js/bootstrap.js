@@ -249,6 +249,7 @@ import {
 } from './pages/data_product_overview_panels.js';
 import {
   dataProductDiscoveryCard,
+  dataProductInputPortsList,
   dataProductPortsPanel,
   dataProductSemanticPanel,
   dataProductStatsPanel,
@@ -400,6 +401,7 @@ window.domainsBrowse = domainsBrowse;
 window.domainDetail = domainDetail;
 window.dataProductDomainPanel = dataProductDomainPanel;
 window.dataProductPortsPanel = dataProductPortsPanel;
+window.dataProductInputPortsList = dataProductInputPortsList;
 window.dataProductSemanticPanel = dataProductSemanticPanel;
 window.dataProductStatsPanel = dataProductStatsPanel;
 window.dataProductDiscoveryCard = dataProductDiscoveryCard;

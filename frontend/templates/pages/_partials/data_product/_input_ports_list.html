@@ -1,0 +1,24 @@
+<div class="card mb-3"
+     x-data='dataProductInputPortsList({{ product.catalog|tojson }}, {{ product.schema|tojson }})'
+     x-show="inputPorts.length > 0" x-cloak>
+    <div class="card-header d-flex align-items-center gap-2">
+        <i class="bi bi-box-arrow-in-down"></i>
+        <span>Declared upstream</span>
+    </div>
+    <ul class="list-group list-group-flush">
+        <template x-for="p in inputPorts" :key="p.id">
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+                <span>
+                    <span class="badge text-bg-secondary me-1" x-text="p.kind"></span>
+                    <strong x-text="p.name"></strong>
+                    <template x-if="upstreamHref(p)">
+                        <a class="ms-1" :href="upstreamHref(p)"><code x-text="p.source_ref"></code></a>
+                    </template>
+                    <template x-if="!upstreamHref(p) && p.source_ref">
+                        <code class="ms-1" x-text="p.source_ref"></code>
+                    </template>
+                </span>
+            </li>
+        </template>
+    </ul>
+</div>

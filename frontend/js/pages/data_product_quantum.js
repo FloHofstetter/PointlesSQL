@@ -158,6 +158,32 @@ export function dataProductPortsPanel(catalog, schema, canManage) {
   };
 }
 
+export function dataProductInputPortsList(catalog, schema) {
+  return {
+    catalog: catalog,
+    schema: schema,
+    inputPorts: [],
+    error: '',
+
+    async init() {
+      this.error = '';
+      try {
+        const res = await fetch(dpBase(this.catalog, this.schema) + '/input-ports');
+        if (res.ok) this.inputPorts = (await res.json()).input_ports || [];
+      } catch (e) {
+        this.error = 'Failed to load input ports: ' + e.message;
+      }
+    },
+
+    upstreamHref(port) {
+      if (port.kind !== 'upstream_product' || !port.source_ref) return null;
+      const parts = port.source_ref.split('.');
+      if (parts.length < 2) return null;
+      return '/data-products/' + encodeURIComponent(parts[0]) + '/' + encodeURIComponent(parts[1]);
+    },
+  };
+}
+
 export function dataProductSemanticPanel(catalog, schema, canManage) {
   return {
     catalog: catalog,
