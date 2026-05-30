@@ -244,8 +244,10 @@
                         </li>
                     </ul>
 
-                    <div class="modal fade" tabindex="-1" :class="{ 'd-block': versionDrawerOpen }"
-                         x-show="versionDrawerOpen" x-cloak>
+                    <div class="modal fade" tabindex="-1"
+                         :class="{ 'show d-block': versionDrawerOpen }"
+                         :style="versionDrawerOpen ? 'background: rgba(0,0,0,0.5)' : ''"
+                         x-cloak>
                         <div class="modal-dialog modal-lg">
                             <div class="modal-content">
                                 <div class="modal-header">

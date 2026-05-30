@@ -59,7 +59,7 @@
                    ``dataProductDetail`` doesn't provide those names. #}
                 <div x-data='{
                     kind: "dp",
-                    ref: product.catalog_name + "." + product.schema_name
+                    ref: product.catalog + "." + product.schema
                 }'>
                     {% include "partials/social/_issues_pane.html" %}
                 </div>

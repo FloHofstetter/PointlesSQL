@@ -17,7 +17,7 @@ export function issuesPane(args) {
       this.loading = true;
       try {
         const url = `/api/social/${encodeURIComponent(this.kind)}/${encodeURI(this.ref)}/issues`;
-        const res = await window.pqlApi.fetch(url);
+        const res = await window.pqlApi.fetch(url, { silent: true });
         this.issues = (res && res.ok && res.data && res.data.issues) || [];
       } finally {
         this.loading = false;

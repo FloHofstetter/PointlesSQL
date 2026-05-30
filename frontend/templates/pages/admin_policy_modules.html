@@ -145,7 +145,7 @@
                                        'alert-warning': testResult?.empty }">
                             <strong x-text="testResult?.effect"></strong>
                             <span x-show="testResult?.error_class" class="ms-2 small"
-                                  x-text="'(' + testResult.error_class + ')'"></span>
+                                  x-text="'(' + (testResult?.error_class || '') + ')'"></span>
                         </div>
                     </div>
                 </div>
