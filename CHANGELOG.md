@@ -17,6 +17,25 @@ defined in ``scripts/clusters.json``. -->
 
 ### Features
 
+- Phase 144 Schema-Contract-Versioning Closure (rc200).  Three
+  new `hermes-plugin-pointlessql` tools close the remaining
+  plugin scope from the Phase 144 deferred-block:
+  `pql_get_schema_version_history` (GET versions newest-first),
+  `pql_propose_schema_bump` (POST a new schema and surface the
+  computed MAJOR / MINOR / PATCH diff), and
+  `pql_compute_schema_diff` (GET diff between two registered
+  versions, with optional from / to bounds).  The
+  `before_write` enforcement hook already ships via the
+  Surface-Welle Backend-Completion commit; these tools cover
+  the agent-authoring half of the loop.  Seven new plugin
+  pytest in `test_schema_versioning_tools.py`; the
+  `test_read_tools.py` Surface-Welle expected set grows from
+  fourteen to seventeen.  New agent-flow walkthrough
+  `docs/e2e-walkthroughs/output-port-schema-versioning.md`
+  covers the eight-step list → MINOR bump → MAJOR bump → diff
+  → before_write block → PATCH bump flow.  ROADMAP Phase 144
+  flips 🟦 → ✅.
+
 - Phase 143 Data-Product-as-Code Closure (rc199).  One new
   `hermes-plugin-pointlessql` tool closes the remaining plugin
   scope: `pql_data_product_export` snapshots a live data

@@ -2367,7 +2367,7 @@ PointlesSQL
 │       stays deferred — agents prefer the tool surface, the
 │       browser surface covers humans, and a CLI duplicates both.
 │
-├── Phase 144 — Schema-Contract-Versioning (Backend-only)  🟦 (2026-05-30)
+├── Phase 144 — Schema-Contract-Versioning  ✅ (2026-05-30)
 │   │
 │   │   Substrat-Vertiefung Welle 5 des Mega-Cluster 135–146.
 │   │   Output-Ports bekommen MAJOR.MINOR.PATCH-Versionierung +
@@ -2425,14 +2425,16 @@ PointlesSQL
 │           `f3r5t7v9x1z3`, down→up round-trip clean.
 │           ruff/pyright/check-no-phase-refs clean.
 │
-│       Asset rc189→rc190.  Deferred für Surface-Welle:
-│       `pql/_hooks.py` before_write-Hook Integration
-│       (Enforcer-Substrat existiert bereits), Output-Port-Detail
-│       History-Liste + Diff-Viewer + "Propose Bump"-Form,
-│       Workspace-Governance-Tab Selektor, Plugin-Tools
-│       (`pql_get_schema_version_history`, `pql_propose_schema_bump`,
-│       `pql_compute_schema_diff`), Walkthrough
-│       `output-port-schema-versioning.md`.
+│       Asset rc189→rc190 (backbone) → rc200 (closure).  Closure
+│       2026-05-30: 3 plugin tools (`pql_get_schema_version_history`,
+│       `pql_propose_schema_bump`, `pql_compute_schema_diff`) wrap
+│       the per-port history + bump + diff REST surface.  Agent-flow
+│       walkthrough `output-port-schema-versioning.md` covers the
+│       MINOR / MAJOR / PATCH classification flow.  before_write
+│       Hook-Integration already shipped via the Surface-Welle
+│       Backend-Completion commit `9f9d5d32`.  Output-Port-Detail
+│       History-Liste + Diff-Viewer + Workspace-Governance-Selektor
+│       remain a future browser-surface follow-up.
 │
 ├── Phase 145 — Auto-Discovery Entity-Links (Backend-only)  🟦 (2026-05-30)
 │   │
