@@ -2143,7 +2143,7 @@ PointlesSQL
 │       DP-as-Code, Schema-Versioning, Entity-Auto-Discovery,
 │       Cost+Quotas+Dashboard) bleiben für nächste Session offen.
 │
-├── Phase 141 — Computational Policy-as-Code via Cedar (Backend-only)  🟦 (2026-05-30)
+├── Phase 141 — Computational Policy-as-Code via Cedar  ✅ (2026-05-30)
 │   │
 │   │   Substrat-Vertiefung Welle 2 des Mega-Cluster 135–146.
 │   │   Cedar (AWS-Ursprung, Rust-Engine über PyO3-Bindings als
@@ -2216,13 +2216,18 @@ PointlesSQL
 │           Fail-Closed-Rationale, und offene Follow-Ups
 │           (Schema-basiertes ABAC, Cross-Workspace-Inheritance).
 │
-│       Asset rc186→rc187.  Deferred: Admin-Surface (Editor +
-│       CodeMirror Cedar-Syntax + Test-Sandbox + Decision-Log-View),
-│       Plugin-Tools (`pql_create_policy_module`,
-│       `pql_test_policy_module`, `pql_link_policy_module_to_product`,
-│       `pql_list_policy_decisions`), Walkthrough
-│       `computational-policy-as-code.md` — landen alle in der
-│       finalen Surface-Welle.
+│       Asset rc186→rc187 (backbone) → rc193 (admin-surface in
+│       commit `b5f5de29`) → rc197 (this closure).  Surface-Welle
+│       commit `b5f5de29` shipped /admin/policy-modules (plain
+│       textarea editor + dry-run dialog + decision-log dialog —
+│       CodeMirror Cedar-Mode not bundled, vendor-add deferred).
+│       Closure 2026-05-30: four plugin tools
+│       (`pql_create_policy_module`, `pql_test_policy_module`,
+│       `pql_link_policy_module_to_product`,
+│       `pql_list_policy_decisions`) plus the agent-flow
+│       walkthrough `computational-policy-as-code.md`
+│       complementing the existing browser walkthrough
+│       `admin-policy-modules.md`.
 │
 ├── Phase 142 — Synthetic-Data + Contract-Tests (Backend-only)  🟦 (2026-05-30)
 │   │

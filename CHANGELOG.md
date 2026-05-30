@@ -17,6 +17,21 @@ defined in ``scripts/clusters.json``. -->
 
 ### Features
 
+- Phase 141 Cedar Policy-as-Code Closure (rc197).  Four new
+  `hermes-plugin-pointlessql` tools close the remaining plugin scope
+  from the Phase 141 deferred-block: `pql_create_policy_module`,
+  `pql_test_policy_module`, `pql_link_policy_module_to_product`, and
+  `pql_list_policy_decisions`.  Each wraps a single existing admin
+  REST endpoint; arg-validation + error-envelope shape matches the
+  rest of the plugin surface.  Seven new plugin pytest cover happy
+  paths + arg-error gates + registry shape; `test_read_tools.py`
+  Surface-Welle expected set grows from six to ten.  New agent-flow
+  walkthrough `docs/e2e-walkthroughs/computational-policy-as-code.md`
+  complements the existing browser walkthrough
+  `admin-policy-modules.md` — six numbered steps that author, dry-
+  run, link, surface a forbid, and read the decision ledger end-to-
+  end through the agent surface.  ROADMAP Phase 141 flips 🟦 → ✅.
+
 - Surface-Welle 135–146 Backend-Completion + Admin-Surfaces
   (rc193).  Closes the dormant-substrate gap left by Phase 141–146:
   hooks were declared but never registered, the cost meter was wired
