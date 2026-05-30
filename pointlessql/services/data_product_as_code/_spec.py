@@ -65,6 +65,7 @@ class PolicySpec(BaseModel):
     consumption_enforcement: str | None = None
     iso8601_enforcement: str | None = None
     linked_policy_module_ids: list[int] | None = None
+    breaking_change_policy: str | None = None
 
 
 class EntitySpec(BaseModel):

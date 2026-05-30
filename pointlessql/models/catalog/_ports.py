@@ -104,6 +104,9 @@ class DataProductOutputPort(Base):
     format: Mapped[str | None] = mapped_column(String(32), nullable=True)
     location: Mapped[str | None] = mapped_column(String(500), nullable=True)
     identity_requirements: Mapped[str | None] = mapped_column(Text, nullable=True)
+    version_semver: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="0.1.0", server_default="0.1.0"
+    )
     created_by_user_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("users.id"), nullable=True
     )

@@ -31,6 +31,7 @@ POLICY_FIELDS: tuple[str, ...] = (
     "consumption_enforcement",
     "iso8601_enforcement",
     "linked_policy_module_ids",
+    "breaking_change_policy",
 )
 
 

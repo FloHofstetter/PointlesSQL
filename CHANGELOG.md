@@ -17,6 +17,78 @@ defined in ``scripts/clusters.json``. -->
 
 ### Features
 
+- Auto-Discovery Entity-Links (Phase 145 — Backend-only).
+  Substrat-Vertiefung Welle 6 des Mega-Cluster 135-146.  Migration
+  `h5t7v9x1z3b5_phase145_entity_link_candidates` (down_rev
+  `f3r5t7v9x1z3`) legt `entity_link_candidates` an (source +
+  target FKs auf `data_product_entities`, CHECK kind in
+  (same_as, derives_from), CHECK decision NULL or in
+  (accepted, rejected, deferred), confidence_score Numeric(3,2),
+  evidence_json Text, UNIQUE(source, target, kind) verhindert
+  Duplikate auf scheduler-Ticks, index auf (decision, confidence)
+  für pending-Queue-Listings).  Service-Erweiterung von
+  `services/entities/` um `_candidates.py` (score_pk_overlap via
+  Jaccard-similarity der PK-column-Sets, score_column_similarity
+  via Token-Overlap auf entity_name nach snake/CamelCase-Splitting,
+  score_combined als 60/40-gewichtete Summe, discover_candidates
+  dedupliziert gegen existing entity_links + entity_link_candidates
+  via UNIQUE) und `_review_queue.py` (list_pending_candidates
+  sortiert nach confidence desc, accept_candidate promoted via
+  existing link_entities-Helper, reject/defer stempeln decision +
+  reviewed_at, double-decision raised ValueError).  Routes
+  `api/data_products_routes/entity_candidates.py`:
+  GET `/api/entity-link-candidates?status=pending|accepted|...`
+  (any-user), POST `.../accept/.../reject/.../defer` (admin),
+  POST `/api/admin/entity-discovery/run-now` (admin sync trigger).
+  19 neue pytest grün (test_entity_candidate_scoring ×11 für
+  Jaccard-pk-overlap-Edge-Cases, column-similarity-tokenisation,
+  combined-weighted-sum, threshold-cutoff, dedup-against-links,
+  dedup-against-candidates; test_entity_review_queue ×8 für
+  pending-only-list, accept-promotes, reject-no-link, defer-
+  separate-filter, double-decision-ValueError, unknown-LookupError,
+  sort-by-confidence, pagination).  Asset rc190→rc191.  Deferred
+  für Surface-Welle: Scheduler-Kind `entity_link_discovery`
+  (default-disabled toggle), Admin-Surface `/admin/entity-discovery`
+  mit Pending-Queue-Tabelle, Plugin-Tools
+  (`pql_list_pending_entity_link_candidates`,
+  `pql_accept_entity_link_candidate`, etc.), Walkthrough
+  `entity-link-discovery.md`.
+
+- Schema-Contract-Versioning (Phase 144 — Backend-only).
+  Substrat-Vertiefung Welle 5 des Mega-Cluster 135-146.  Migration
+  `f3r5t7v9x1z3_phase144_schema_versioning` (down_rev
+  `d1p3r5t7v9x1`) erweitert
+  `data_product_output_ports.version_semver` String(16) NOT NULL
+  default "0.1.0", legt `output_port_schema_versions` an (Bump-
+  History mit CHECK change_kind in (major,minor,patch) + unique
+  (port_id, version_semver) + index on bumped_at), und fügt
+  `breaking_change_policy` String(8) CHECK ('block','warn','off')
+  auf workspace + product policy mit SQLite batch_alter_table
+  hinzu.  Service-Paket `services/schema_versioning/` mit Diff
+  (compute_diff klassifiziert in major/minor/patch/none nach Regeln
+  removed/narrowed/not-null-tightened/added-not-null=major,
+  added-nullable=minor, description-change=patch), Bumper
+  (propose_bump verwendet packaging.Version), Enforcer
+  (assert_schema_compatibility raised SchemaBreakingChangeError als
+  PermissionDeniedError-Subclass → 403 bei block+major-diff;
+  warn=outcome-only; off=no-op), CRUD (bump_port_version persistiert
+  History-Row, advance port.version_semver, idempotent bei no-op
+  diff).  Routes auf data-products router: GET
+  `.../output-ports/{port_id}/versions`, POST `.../bump`
+  (steward/admin), GET `.../diff?from_version=&to_version=`.
+  POLICY_FIELDS um `breaking_change_policy` erweitert (jetzt 9
+  Felder mit product⇐workspace inheritance).  22 neue pytest grün
+  (test_schema_diff ×12 für alle Klassifikations-Regeln + collapse-
+  to-strongest + edge-cases; test_schema_enforcer ×10 für
+  propose_bump kinds, block-raise, warn-outcome, off-noop, no-port,
+  port-semver advance, no-op-idempotent).  Asset rc189→rc190.
+  Deferred für Surface-Welle: pql/_hooks.py before_write Hook
+  Integration (Substrat-Helper existiert), Output-Port-Detail
+  History-Liste + Diff-Viewer, Plugin-Tools
+  (`pql_get_schema_version_history`, `pql_propose_schema_bump`,
+  `pql_compute_schema_diff`), Walkthrough
+  `output-port-schema-versioning.md`.
+
 - Data-Product-as-Code (Phase 143 — Backend-only).
   Substrat-Vertiefung Welle 4 des Mega-Cluster 135-146.  Keine
   Migration — alles Service + Routes.  Neues Paket

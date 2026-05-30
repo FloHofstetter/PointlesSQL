@@ -19,6 +19,9 @@ from pointlessql.api.data_products_routes._shared import (
     serialise_product,
 )
 from pointlessql.api.data_products_routes.apply import router as _apply_router
+from pointlessql.api.data_products_routes.schema_versions import (
+    router as _schema_versions_router,
+)
 from pointlessql.api.data_products_routes.active_reviewer import (
     router as _active_reviewer_router,
 )
@@ -49,6 +52,9 @@ from pointlessql.api.data_products_routes.endorsements import (
 )
 from pointlessql.api.data_products_routes.entities import (
     router as _entities_router,
+)
+from pointlessql.api.data_products_routes.entity_candidates import (
+    router as _entity_candidates_router,
 )
 from pointlessql.api.data_products_routes.event_port import (
     router as _event_port_router,
@@ -128,6 +134,8 @@ router.include_router(_bitemporal_policy_router)
 router.include_router(_entities_router)
 router.include_router(_contract_tests_router)
 router.include_router(_apply_router)
+router.include_router(_schema_versions_router)
+router.include_router(_entity_candidates_router)
 
 
 # Backwards-compatible aliases — ``_load_one`` was the original

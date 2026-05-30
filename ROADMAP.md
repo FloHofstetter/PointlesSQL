@@ -2355,6 +2355,134 @@ PointlesSQL
 │       `pql_data_product_export`), Walkthrough
 │       `data-product-as-code.md`.
 │
+├── Phase 144 — Schema-Contract-Versioning (Backend-only)  🟦 (2026-05-30)
+│   │
+│   │   Substrat-Vertiefung Welle 5 des Mega-Cluster 135–146.
+│   │   Output-Ports bekommen MAJOR.MINOR.PATCH-Versionierung +
+│   │   automatische Breaking-Change-Erkennung; Migration wechselt
+│   │   für die zwei Policy-Tabellen auf SQLite batch_alter_table.
+│   │
+│   ├── 144.1 — Migration `f3r5t7v9x1z3_phase144_schema_versioning`
+│   │       Add `version_semver` String(16) NOT NULL default
+│   │       "0.1.0" auf `data_product_output_ports`.  Neue Tabelle
+│   │       `output_port_schema_versions` (port FK + version_semver
+│   │       + schema_json + CHECK change_kind in (major,minor,patch)
+│   │       + change_summary + bumped_at + unique (port_id,
+│   │       version_semver) + index port+bumped_at).  ALTER
+│   │       workspace + product policy add `breaking_change_policy`
+│   │       String(8) CHECK ('block','warn','off') via
+│   │       batch_alter_table (SQLite).
+│   │
+│   ├── 144.2 — Service-Paket `services/schema_versioning/`
+│   │       Diff (`compute_diff` mit deterministischen Regeln:
+│   │       removed/narrowed/not-null-tightened/added-not-null →
+│   │       MAJOR; added-nullable → MINOR; description-only → PATCH;
+│   │       no-op → NONE; NARROWING_PAIRS Tabelle listet die
+│   │       erkannten Type-Narrowings).  Bumper
+│   │       (`propose_bump(current, diff) -> (next_semver, kind)`
+│   │       via packaging.Version, no-op gibt current zurück).
+│   │       Enforcer (`assert_schema_compatibility` resolved port,
+│   │       lädt prior schema, computed diff, raised
+│   │       `SchemaBreakingChangeError` (PermissionDeniedError →
+│   │       403) bei block+major; warn gibt EnforcementOutcome zurück;
+│   │       off skippt sofort).  CRUD (`bump_port_version` persistiert
+│   │       History-Row + advanced port.version_semver in einer
+│   │       Transaction; no-op-diff = kein Insert).
+│   │
+│   ├── 144.3 — Models + POLICY_FIELDS
+│   │       `OutputPortSchemaVersion` Model + Konstanten
+│   │       `CHANGE_KINDS` (major/minor/patch) + `BREAKING_CHANGE_POLICIES`
+│   │       (block/warn/off).  POLICY_FIELDS um `breaking_change_policy`
+│   │       erweitert (jetzt 9 Felder, product⇐workspace inheritance
+│   │       unverändert).  `version_semver` Column auf
+│   │       DataProductOutputPort.
+│   │
+│   ├── 144.4 — Routes `api/data_products_routes/schema_versions.py`
+│   │       GET `.../output-ports/{port_id}/versions` (any-user)
+│   │       History-Listing newest-first.  POST `.../bump`
+│   │       (steward/admin) Body `{schema, change_summary}` →
+│   │       bumped row + diff.  GET `.../diff?from_version=&to_version=`
+│   │       für beliebige Version-Paar-Diffs.
+│   │
+│   └── 144.5 — Verifikation
+│           22 neue pytest (test_schema_diff ×12 für alle
+│           Klassifikations-Regeln + collapse-to-strongest +
+│           edge-cases; test_schema_enforcer ×10 für propose_bump
+│           kinds, block-raise, warn-outcome, off-noop, no-port,
+│           port-semver advance, no-op-idempotent).  Alembic head
+│           `f3r5t7v9x1z3`, down→up round-trip clean.
+│           ruff/pyright/check-no-phase-refs clean.
+│
+│       Asset rc189→rc190.  Deferred für Surface-Welle:
+│       `pql/_hooks.py` before_write-Hook Integration
+│       (Enforcer-Substrat existiert bereits), Output-Port-Detail
+│       History-Liste + Diff-Viewer + "Propose Bump"-Form,
+│       Workspace-Governance-Tab Selektor, Plugin-Tools
+│       (`pql_get_schema_version_history`, `pql_propose_schema_bump`,
+│       `pql_compute_schema_diff`), Walkthrough
+│       `output-port-schema-versioning.md`.
+│
+├── Phase 145 — Auto-Discovery Entity-Links (Backend-only)  🟦 (2026-05-30)
+│   │
+│   │   Substrat-Vertiefung Welle 6 des Mega-Cluster 135–146.
+│   │   Auto-Discovery von Entity-Link-Candidates plus
+│   │   Steward-Review-Queue auf dem Phase-135-Substrat.
+│   │
+│   ├── 145.1 — Migration `h5t7v9x1z3b5_phase145_entity_link_candidates`
+│   │       Neue Tabelle `entity_link_candidates` mit source +
+│   │       target FKs auf `data_product_entities`, CHECK kind in
+│   │       (same_as, derives_from), CHECK decision NULL or in
+│   │       (accepted, rejected, deferred) (NULL = pending),
+│   │       confidence_score Numeric(3,2), evidence_json Text NOT
+│   │       NULL, discovered_at + optional reviewed_at +
+│   │       reviewed_by_user_id FK.  UNIQUE(source, target, kind)
+│   │       verhindert Duplikate auf scheduler-Ticks; Index auf
+│   │       (decision, confidence) für pending-Queue-Sortierung.
+│   │
+│   ├── 145.2 — Service-Erweiterung von `services/entities/`
+│   │       `_candidates.py`: score_pk_overlap via Jaccard auf
+│   │       PK-Column-Set, score_column_similarity via
+│   │       Token-Overlap nach snake/CamelCase-Splitting,
+│   │       score_combined als 60/40 gewichtete Summe, NumPy-frei.
+│   │       discover_candidates(workspace, threshold=0.7) scant
+│   │       alle Entity-Paare desselben Workspace, persistiert
+│   │       Candidates über Threshold, dedup gegen existing
+│   │       entity_links + bestehende entity_link_candidates via
+│   │       UNIQUE-Constraint.  `_review_queue.py`:
+│   │       list_pending_candidates sortiert nach confidence desc;
+│   │       accept_candidate promotes via existing link_entities-
+│   │       Helper (single source of truth); reject/defer stempeln
+│   │       decision + reviewed_at; double-decision raised
+│   │       ValueError.
+│   │
+│   ├── 145.3 — Routes `api/data_products_routes/entity_candidates.py`
+│   │       GET `/api/entity-link-candidates?status=pending|...&limit=&offset=`
+│   │       (any-user), POST `.../accept`, `.../reject`, `.../defer`
+│   │       (admin), POST `/api/admin/entity-discovery/run-now`
+│   │       (admin) → synchron-trigger.  Conflict-Mapping: 409 für
+│   │       already-decided, 404 für unknown candidate.
+│   │
+│   └── 145.4 — Verifikation
+│           19 neue pytest (test_entity_candidate_scoring ×11 für
+│           Jaccard-pk-overlap edge-cases incl. disjoint+partial,
+│           column-similarity tokenisation, combined-weighted-sum,
+│           threshold-cutoff, dedup-against-links, dedup-against-
+│           candidates; test_entity_review_queue ×8 für pending-
+│           only-list, accept-promotes-to-EntityLink, reject-no-
+│           link, defer-separate-filter, double-decision-ValueError,
+│           unknown-LookupError, sort-by-confidence, pagination).
+│           Alembic head `h5t7v9x1z3b5`, down→up round-trip clean.
+│           ruff/pyright/check-no-phase-refs clean.
+│
+│       Asset rc190→rc191.  Deferred für Surface-Welle:
+│       Scheduler-Kind `entity_link_discovery` (default-disabled
+│       Toggle via Settings), Admin-Surface `/admin/entity-discovery`
+│       mit Pending-Queue-Tabelle + Accept/Reject/Defer-Buttons +
+│       Run-Now-Trigger, Plugin-Tools
+│       (`pql_list_pending_entity_link_candidates`,
+│       `pql_accept_entity_link_candidate`, etc.), Walkthrough
+│       `entity-link-discovery.md`.
+│
 
 
 

@@ -106,6 +106,10 @@ from pointlessql.models.catalog._entity import (
     DataProductEntity,
     EntityLink,
 )
+from pointlessql.models.catalog._entity_candidate import (
+    CANDIDATE_DECISIONS,
+    EntityLinkCandidate,
+)
 from pointlessql.models.catalog._event_port import (
     EVENT_DELIVERY_STATUSES,
     EVENT_SUBSCRIPTION_STATUSES,
@@ -162,6 +166,11 @@ from pointlessql.models.catalog._runtime_slo import (
     DataProductAvailabilityProbe,
     DataProductQueryPerfSample,
 )
+from pointlessql.models.catalog._schema_version import (
+    BREAKING_CHANGE_POLICIES,
+    CHANGE_KINDS,
+    OutputPortSchemaVersion,
+)
 from pointlessql.models.catalog._semantic import (
     DataProductSemanticConcept,
 )
@@ -187,6 +196,9 @@ __all__ = [
     "ENDORSEMENT_TYPES",
     "ASSERTION_KINDS",
     "AVAILABILITY_STATUSES",
+    "BREAKING_CHANGE_POLICIES",
+    "CANDIDATE_DECISIONS",
+    "CHANGE_KINDS",
     "CONTRACT_TEST_SEVERITIES",
     "CONTRACT_TEST_STATUSES",
     "ENTITY_LINK_KINDS",
@@ -247,11 +259,13 @@ __all__ = [
     "Domain",
     "DomainMember",
     "EntityLink",
+    "EntityLinkCandidate",
     "GlossaryTerm",
     "GlossaryTermColumn",
     "GlossaryTermRelation",
     "MeshEntity",
     "MeshEntityBinding",
+    "OutputPortSchemaVersion",
     "PolicyModule",
     "PolicyModuleDecision",
     "QueryHistory",
