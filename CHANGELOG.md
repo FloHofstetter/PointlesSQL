@@ -17,6 +17,23 @@ defined in ``scripts/clusters.json``. -->
 
 ### Features
 
+- Phase 142 Synthetic-Data + Contract-Tests Closure (rc198).
+  Three new `hermes-plugin-pointlessql` tools close the
+  remaining plugin scope from the Phase 142 deferred-block:
+  `pql_declare_contract_test` (POST per-product, idempotent by
+  name), `pql_declare_synthetic_fixture` (POST Faker-driven
+  fixture for an output-port table), and `pql_run_contract_tests`
+  (POST sync run in `synthetic` or `live` mode).  Each wraps a
+  single existing steward/admin REST endpoint; arg-validation +
+  error-envelope shape matches the rest of the plugin surface.
+  Seven new plugin pytest in `test_contract_test_tools.py` cover
+  happy paths + arg-error gates + registry shape; the
+  `test_read_tools.py` Surface-Welle expected set grows from ten
+  to thirteen.  New agent-flow walkthrough
+  `docs/e2e-walkthroughs/data-product-contract-tests.md` covers
+  the seven-step author → fixture → synthetic run → live run →
+  read history flow.  ROADMAP Phase 142 flips 🟦 → ✅.
+
 - Phase 141 Cedar Policy-as-Code Closure (rc197).  Four new
   `hermes-plugin-pointlessql` tools close the remaining plugin scope
   from the Phase 141 deferred-block: `pql_create_policy_module`,

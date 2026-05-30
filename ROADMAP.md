@@ -2229,7 +2229,7 @@ PointlesSQL
 │       complementing the existing browser walkthrough
 │       `admin-policy-modules.md`.
 │
-├── Phase 142 — Synthetic-Data + Contract-Tests (Backend-only)  🟦 (2026-05-30)
+├── Phase 142 — Synthetic-Data + Contract-Tests  ✅ (2026-05-30)
 │   │
 │   │   Substrat-Vertiefung Welle 3 des Mega-Cluster 135–146.
 │   │   Per-Produkt Contract-Tests + Faker-driven synthetic
@@ -2275,11 +2275,14 @@ PointlesSQL
 │           suite grün, alembic head `d1p3r5t7v9x1`, round-trip
 │           clean.  ruff/pyright/check-no-phase-refs clean.
 │
-│       Asset rc187→rc188.  Deferred: Scheduler-Kind
-│       `contract_test_evaluation`, Frontend-Tab "Contract Tests",
-│       Plugin-Tools (`pql_declare_contract_test`,
-│       `pql_run_contract_tests`, `pql_declare_synthetic_fixture`),
-│       Walkthrough `data-product-contract-tests.md`.
+│       Asset rc187→rc188 (backbone) → rc198 (closure).  Closure
+│       2026-05-30: 3 plugin tools (`pql_declare_contract_test`,
+│       `pql_declare_synthetic_fixture`, `pql_run_contract_tests`)
+│       wrap the per-product declare + sync-run REST surface.
+│       Agent-flow walkthrough `data-product-contract-tests.md`
+│       complements the Contract-Tests browser tab.  Scheduler-Kind
+│       `contract_test_evaluation` already shipped via the Surface-
+│       Welle Backend-Completion commit `9f9d5d32`.
 │
 ├── Phase 143 — Data-Product-as-Code (Backend-only)  🟦 (2026-05-30)
 │   │
