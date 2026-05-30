@@ -2284,7 +2284,7 @@ PointlesSQL
 │       `contract_test_evaluation` already shipped via the Surface-
 │       Welle Backend-Completion commit `9f9d5d32`.
 │
-├── Phase 143 — Data-Product-as-Code (Backend-only)  🟦 (2026-05-30)
+├── Phase 143 — Data-Product-as-Code  ✅ (2026-05-30)
 │   │
 │   │   Substrat-Vertiefung Welle 4 des Mega-Cluster 135–146.
 │   │   State-style YAML-Spec → plan → apply Reconciler ohne neue
@@ -2355,13 +2355,17 @@ PointlesSQL
 │           Prinzip, offene Follow-Ups (CLI, glossary bindings als
 │           eigene op-kind).
 │
-│       Asset rc188→rc189.  Deferred für Surface-Welle: CLI
-│       (`pql apply / plan / export` via Typer), Admin-Surface
-│       `/admin/data-product-apply` (YAML-Editor + Plan-Diff-View +
-│       Apply-Button + Outcome-Link), Plugin-Tools
-│       (`pql_data_product_apply`, `pql_data_product_plan`,
-│       `pql_data_product_export`), Walkthrough
-│       `data-product-as-code.md`.
+│       Asset rc188→rc189 (backbone) → rc199 (closure).  Closure
+│       2026-05-30: `pql_data_product_plan` + `pql_data_product_apply`
+│       shipped via Surface-Welle batch; this closure lands the
+│       missing `pql_data_product_export` so the round-trip story
+│       (plan → apply → export → plan-noop) holds end-to-end.
+│       Agent-flow walkthrough `data-product-as-code.md` replays
+│       the eight-step authoring flow.  Admin-Surface
+│       `/admin/data-product-apply` already shipped in commit
+│       `b5f5de29`.  CLI (`pql apply / plan / export` via Typer)
+│       stays deferred — agents prefer the tool surface, the
+│       browser surface covers humans, and a CLI duplicates both.
 │
 ├── Phase 144 — Schema-Contract-Versioning (Backend-only)  🟦 (2026-05-30)
 │   │

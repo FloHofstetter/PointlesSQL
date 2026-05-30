@@ -17,6 +17,22 @@ defined in ``scripts/clusters.json``. -->
 
 ### Features
 
+- Phase 143 Data-Product-as-Code Closure (rc199).  One new
+  `hermes-plugin-pointlessql` tool closes the remaining plugin
+  scope: `pql_data_product_export` snapshots a live data
+  product into `DataProductSpec` form so the round-trip flow
+  (plan → apply → export → plan-noop) holds end-to-end through
+  the agent surface.  `pql_data_product_plan` and
+  `pql_data_product_apply` already shipped in the Surface-Welle
+  Backend-Completion wave.  Three new plugin pytest in
+  `test_dp_as_code_export_tool.py`; the `test_read_tools.py`
+  Surface-Welle expected set grows from thirteen to fourteen.
+  New agent-flow walkthrough
+  `docs/e2e-walkthroughs/data-product-as-code.md` covers the
+  eight-step author → plan → apply → re-apply (idempotent) →
+  export → round-trip → modify → re-apply flow.  ROADMAP
+  Phase 143 flips 🟦 → ✅.
+
 - Phase 142 Synthetic-Data + Contract-Tests Closure (rc198).
   Three new `hermes-plugin-pointlessql` tools close the
   remaining plugin scope from the Phase 142 deferred-block:
