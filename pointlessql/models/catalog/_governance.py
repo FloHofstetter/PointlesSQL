@@ -34,8 +34,10 @@ classifications are authored — agents propose, owners approve.
 from __future__ import annotations
 
 import datetime
+from decimal import Decimal
 
 from sqlalchemy import (
+    Numeric,
     Boolean,
     CheckConstraint,
     DateTime,
@@ -150,6 +152,15 @@ class WorkspaceGovernancePolicy(Base):
     breaking_change_policy: Mapped[str] = mapped_column(
         String(8), nullable=False, default="warn", server_default="warn"
     )
+    max_cost_per_day: Mapped[Decimal | None] = mapped_column(
+        Numeric(precision=10, scale=2), nullable=True
+    )
+    max_queries_per_hour: Mapped[int | None] = mapped_column(
+        Integer, nullable=True
+    )
+    quota_enforcement: Mapped[str] = mapped_column(
+        String(8), nullable=False, default="off", server_default="off"
+    )
     updated_by_user_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("users.id"), nullable=True
     )
@@ -213,6 +224,15 @@ class DataProductPolicy(Base):
         Text(), nullable=True
     )
     breaking_change_policy: Mapped[str | None] = mapped_column(
+        String(8), nullable=True
+    )
+    max_cost_per_day: Mapped[Decimal | None] = mapped_column(
+        Numeric(precision=10, scale=2), nullable=True
+    )
+    max_queries_per_hour: Mapped[int | None] = mapped_column(
+        Integer, nullable=True
+    )
+    quota_enforcement: Mapped[str | None] = mapped_column(
         String(8), nullable=True
     )
     updated_by_user_id: Mapped[int | None] = mapped_column(

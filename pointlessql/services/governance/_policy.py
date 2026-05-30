@@ -32,6 +32,9 @@ POLICY_FIELDS: tuple[str, ...] = (
     "iso8601_enforcement",
     "linked_policy_module_ids",
     "breaking_change_policy",
+    "max_cost_per_day",
+    "max_queries_per_hour",
+    "quota_enforcement",
 )
 
 

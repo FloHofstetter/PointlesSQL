@@ -66,6 +66,9 @@ class PolicySpec(BaseModel):
     iso8601_enforcement: str | None = None
     linked_policy_module_ids: list[int] | None = None
     breaking_change_policy: str | None = None
+    max_cost_per_day: float | None = None
+    max_queries_per_hour: int | None = None
+    quota_enforcement: str | None = None
 
 
 class EntitySpec(BaseModel):

@@ -107,3 +107,6 @@ class ErrorCode(StrEnum):
     LENS_SESSION_BUDGET_EXCEEDED = "lens_session_budget_exceeded"
     LENS_NON_SELECT_BLOCKED = "lens_non_select_blocked"
     LENS_PROVIDER_NOT_CONFIGURED = "lens_provider_not_configured"
+
+    # Cost + quotas.
+    QUOTA_EXCEEDED = "quota_exceeded"

@@ -17,6 +17,59 @@ defined in ``scripts/clusters.json``. -->
 
 ### Features
 
+- Cost-Attribution + Quota-Enforcement + Mesh-Health-Dashboard
+  (Phase 146 — Backend-only).  Substrat-Vertiefung Welle 7 des
+  Mega-Cluster 135-146.  Migration `j7v9x1z3b5d7_phase146_cost_and_quotas`
+  (down_rev `h5t7v9x1z3b5`) legt zwei Tabellen an:
+  `data_product_query_cost` (raw per-query meter mit Cost +
+  Bytes/Rows + Attribution principal/api_key/authoring/consumer
+  product + query_kind + error_class) und
+  `data_product_cost_buckets_hourly` (hourly rollup mit
+  UNIQUE(bucket_hour, product, consumer_user) für idempotente
+  re-runs).  ALTER workspace + product policy via SQLite
+  batch_alter_table fügt max_cost_per_day Numeric(10,2),
+  max_queries_per_hour Integer, quota_enforcement String(8) CHECK
+  in (off, warn, strict) hinzu (workspace default 'off', product
+  override nullable).  POLICY_FIELDS erweitert auf 12 Felder.
+  PolicySpec (Phase 143) bekommt die drei neuen Felder.  Neue
+  Exception `QuotaExceededError(PointlessSQLError)` mit
+  status_code=429 und ErrorCode.QUOTA_EXCEEDED; carries metric,
+  limit, observed, consumer_id, data_product_id als Extension-
+  Members.  Service-Paket `services/cost/` mit Meter
+  (record_query_cost + MeterContext dataclass; tabular insertion
+  ins ledger), Quota (check_quota + resolve_quota_mode aggregieren
+  current-day + current-hour aus bucket-table mit timezone-aware
+  _same_hour helper, off=no-op, warn=outcome only, strict=raise),
+  Rollup (roll_up_hourly_buckets aggregiert raw rows in buckets,
+  idempotent via UPSERT-pattern), Dashboard (cost_by_product +
+  cost_by_consumer als window-Aggregatoren; mesh_health_full
+  layered auf existing services.mesh.mesh_health mit per_domain +
+  cost_trend + top_consumers + recent_deliveries).  Routes
+  `api/admin/cost_routes.py`: GET /api/mesh/health/full (any-user),
+  GET /api/cost/by-product (steward/admin), GET
+  /api/cost/by-consumer (admin only), PUT
+  /api/admin/governance/quota (admin) für Workspace-Default-Quotas.
+  21 neue pytest grün (test_cost_meter ×3 für persistence +
+  no-attribution + float-input; test_cost_quota ×8 für off/warn/
+  strict modes, cost+queries breach, below-limit-pass, stale-hour,
+  resolve-mode-default, override; test_cost_rollup ×3 für creates-
+  bucket, idempotent-on-rerun, skips-no-authoring; test_mesh_health_full
+  ×7 für sums-buckets, groups-by-user, base-payload, per-domain,
+  time-window, empty-workspace, top-10-truncated).  ADR-0012
+  dokumentiert raw+rollup split, estimated-vs-real cost trade-off,
+  off/warn/strict inheritance, fail-open vs fail-closed Wahl,
+  offene Follow-Ups (engine-side cost, ledger-retention, cache TTL,
+  SQL-side aggregation).  Asset rc191→rc192.  Deferred für
+  Surface-Welle: pql/_hooks.py before_read check_quota integration
+  (Substrat steht), Scheduler-Kind `cost_rollup_hourly`
+  (default-enabled, 1h interval), services/lens/cost_gate.py
+  Meter-Hook, Admin-Page /admin/mesh-dashboard mit Chart.js
+  Cost-Trend-Lines + Per-Domain-Stacked-Bar + Freshness-Heatmap +
+  Top-Consumers-Tabelle, Plugin-Tools (`pql_mesh_health_full`,
+  `pql_cost_by_product`, `pql_cost_by_consumer`,
+  `pql_set_data_product_quota`), Walkthroughs
+  `mesh-cost-dashboard.md` + `product-quota-enforcement.md`.
+
 - Auto-Discovery Entity-Links (Phase 145 — Backend-only).
   Substrat-Vertiefung Welle 6 des Mega-Cluster 135-146.  Migration
   `h5t7v9x1z3b5_phase145_entity_link_candidates` (down_rev

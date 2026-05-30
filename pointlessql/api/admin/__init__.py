@@ -28,6 +28,7 @@ from fastapi import APIRouter
 from pointlessql.api.admin.api_keys import router as _api_keys_router
 from pointlessql.api.admin.cdf_tail import router as _cdf_tail_router
 from pointlessql.api.admin.coedit_bus import router as _coedit_bus_router
+from pointlessql.api.admin.cost_routes import router as _cost_routes_router
 from pointlessql.api.admin.console import router as _console_router
 from pointlessql.api.admin.domains import router as _domains_router
 from pointlessql.api.admin.expected_producers import (
@@ -63,5 +64,6 @@ router.include_router(_lens_providers_router)
 router.include_router(_admin_ingest_sources_router)
 router.include_router(_coedit_bus_router)
 router.include_router(_policy_modules_router)
+router.include_router(_cost_routes_router)
 
 __all__ = ["router"]

@@ -170,6 +170,51 @@ class AuthorizationError(PointlessSQLError):
         }
 
 
+class QuotaExceededError(PointlessSQLError):
+    """Raised when a query would exceed the consumer's daily-cost or hourly-query quota.
+
+    Mapped to HTTP 429 by the global exception handler so quota-aware
+    clients can retry after the next bucket boundary.
+
+    Attributes:
+        status_code: Always 429.
+        error_code: Always ``ErrorCode.QUOTA_EXCEEDED``.
+    """
+
+    status_code: int = 429
+    error_code: ErrorCode = ErrorCode.QUOTA_EXCEEDED
+
+    def __init__(
+        self,
+        *,
+        consumer_id: int | None,
+        data_product_id: int | None,
+        metric: str,
+        limit: float,
+        observed: float,
+    ) -> None:
+        detail = (
+            f"quota exceeded on {metric}: observed={observed} > limit={limit}"
+        )
+        Exception.__init__(self, detail)
+        self.detail = detail
+        self.consumer_id = consumer_id
+        self.data_product_id = data_product_id
+        self.metric = metric
+        self.limit = float(limit)
+        self.observed = float(observed)
+
+    def extension_members(self) -> dict[str, Any] | None:
+        """Surface quota context to the client envelope."""
+        return {
+            "consumer_id": self.consumer_id,
+            "data_product_id": self.data_product_id,
+            "metric": self.metric,
+            "limit": self.limit,
+            "observed": self.observed,
+        }
+
+
 class PermissionDeniedError(AuthorizationError):
     """Raised when caller has insufficient privilege without a securable to name.
 

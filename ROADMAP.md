@@ -2483,6 +2483,96 @@ PointlesSQL
 │       `pql_accept_entity_link_candidate`, etc.), Walkthrough
 │       `entity-link-discovery.md`.
 │
+├── Phase 146 — Cost-Attribution + Quotas + Mesh-Health-Dashboard (Backend-only)  🟦 (2026-05-30)
+│   │
+│   │   Substrat-Vertiefung Welle 7 + finale Substrat-Phase des
+│   │   Mega-Cluster 135–146.  Per-product/per-consumer cost-
+│   │   attribution + 429-style quota-enforcement + voll
+│   │   mesh-health-dashboard auf einer cohesiven Substrat-Welle.
+│   │
+│   ├── 146.1 — Migration `j7v9x1z3b5d7_phase146_cost_and_quotas`
+│   │       Zwei neue Tabellen: `data_product_query_cost` (raw
+│   │       per-query meter mit started/completed/duration, cost
+│   │       Numeric, bytes/rows BigInt, table_list_json,
+│   │       attribution principal_user/api_key/authoring_product/
+│   │       consumer_product, query_kind, error_class; Indices auf
+│   │       started_at, authoring+started, principal+started) und
+│   │       `data_product_cost_buckets_hourly` (hourly rollup mit
+│   │       UNIQUE(bucket_hour, data_product, consumer_user) für
+│   │       idempotente re-runs; Index auf bucket_hour).  ALTER
+│   │       workspace + product policy via SQLite batch_alter_table
+│   │       add max_cost_per_day Numeric(10,2), max_queries_per_hour
+│   │       Integer, quota_enforcement String(8) CHECK in
+│   │       (off,warn,strict).  Workspace default 'off'; product
+│   │       override nullable.
+│   │
+│   ├── 146.2 — Models + Exception + POLICY_FIELDS
+│   │       `DataProductQueryCost` + `DataProductCostBucketHourly`
+│   │       Models mit Konstanten `QUERY_KINDS` + `QUOTA_ENFORCEMENT_MODES`.
+│   │       Neue Exception `QuotaExceededError(PointlessSQLError)` mit
+│   │       status_code=429 und ErrorCode.QUOTA_EXCEEDED; carries
+│   │       metric, limit, observed, consumer_id, data_product_id
+│   │       als Extension-Members für strukturierte Envelope.
+│   │       POLICY_FIELDS um die drei neuen Felder erweitert (jetzt
+│   │       12 Felder, product⇐workspace inheritance unverändert).
+│   │       PolicySpec (Phase 143) bekommt die drei neuen Felder.
+│   │
+│   ├── 146.3 — Service-Paket `services/cost/`
+│   │       Meter (record_query_cost + MeterContext dataclass mit
+│   │       allen Attribution-Feldern; tabular row insert).  Quota
+│   │       (check_quota + resolve_quota_mode aggregieren current-
+│   │       day + current-hour aus bucket-table mit
+│   │       timezone-aware `_same_hour` helper für SQLite-Read-Path;
+│   │       off=no-op, warn=outcome only, strict=raise
+│   │       QuotaExceededError).  Rollup (roll_up_hourly_buckets
+│   │       aggregiert raw rows in buckets; idempotent via
+│   │       UPSERT-pattern, skippt rows ohne authoring_product).
+│   │       Dashboard (cost_by_product + cost_by_consumer als
+│   │       window-Aggregatoren mit configurable since/until; sort
+│   │       nach cost desc / query_count desc; mesh_health_full
+│   │       layered auf existing services.mesh.mesh_health mit
+│   │       per_domain SLO-Bänder + cost_trend last-7d + top_consumers
+│   │       cap 10 + recent_deliveries shape).
+│   │
+│   ├── 146.4 — Routes `api/admin/cost_routes.py`
+│   │       GET `/api/mesh/health/full` (any-user) für comprehensive
+│   │       Dashboard payload.  GET `/api/cost/by-product?since=&until=`
+│   │       (steward/admin guard) für per-product rollup.  GET
+│   │       `/api/cost/by-consumer?since=&until=` (admin only).
+│   │       PUT `/api/admin/governance/quota` (admin) für Workspace-
+│   │       Default-Quotas mit Audit `governance.workspace_quota_set`.
+│   │       Window-parameter best-effort ISO-8601 parse mit
+│   │       BadRequestError bei malformed input.
+│   │
+│   └── 146.5 — Verifikation + ADR
+│           21 neue pytest (test_cost_meter ×3 für persistence +
+│           no-attribution + float-input; test_cost_quota ×8 für
+│           off/warn/strict modes, cost+queries breach, below-
+│           limit-pass, stale-hour-skip, resolve-mode-default,
+│           override-respect; test_cost_rollup ×3 für creates-
+│           bucket, idempotent-on-rerun, skips-no-authoring;
+│           test_mesh_health_full ×7 für sums-buckets, groups-by-
+│           user, base-payload-shape, per-domain-bucket-shape,
+│           time-window, empty-workspace, top-consumers-truncated-
+│           to-ten).  Alembic head `j7v9x1z3b5d7`, down→up round-
+│           trip clean.  ruff/pyright/check-no-phase-refs clean.
+│           ADR-0012 dokumentiert raw+rollup split, estimated-vs-
+│           real cost trade-off, off/warn/strict inheritance,
+│           offene Follow-Ups (engine-side cost integration,
+│           ledger-retention, cache TTL, SQL-side aggregation).
+│
+│       Asset rc191→rc192.  Deferred für Surface-Welle:
+│       `pql/_hooks.py` before_read check_quota integration
+│       (Substrat steht), Scheduler-Kind `cost_rollup_hourly`
+│       (default-enabled, 1h interval), services/lens/cost_gate.py
+│       Meter-Hook für engine-runtime cost-recording, Admin-Page
+│       `/admin/mesh-dashboard` mit Chart.js Cost-Trend-Lines +
+│       Per-Domain-Stacked-Bar + Freshness-Heatmap + Top-
+│       Consumers-Tabelle, Plugin-Tools (`pql_mesh_health_full`,
+│       `pql_cost_by_product`, `pql_cost_by_consumer`,
+│       `pql_set_data_product_quota`), Walkthroughs
+│       `mesh-cost-dashboard.md` + `product-quota-enforcement.md`.
+│
 
 
 

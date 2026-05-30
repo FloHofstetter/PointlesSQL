@@ -93,6 +93,12 @@ from pointlessql.models.catalog._domains import (
     Domain,
     DomainMember,
 )
+from pointlessql.models.catalog._cost import (
+    QUERY_KINDS,
+    QUOTA_ENFORCEMENT_MODES,
+    DataProductCostBucketHourly,
+    DataProductQueryCost,
+)
 from pointlessql.models.catalog._contract_test import (
     ASSERTION_KINDS,
     CONTRACT_TEST_SEVERITIES,
@@ -202,6 +208,8 @@ __all__ = [
     "CONTRACT_TEST_SEVERITIES",
     "CONTRACT_TEST_STATUSES",
     "ENTITY_LINK_KINDS",
+    "QUERY_KINDS",
+    "QUOTA_ENFORCEMENT_MODES",
     "EVENT_DELIVERY_STATUSES",
     "EVENT_SUBSCRIPTION_STATUSES",
     "FORGET_STATUSES",
@@ -227,6 +235,7 @@ __all__ = [
     "DataProductColumnClassification",
     "DataProductContractTest",
     "DataProductContractTestResult",
+    "DataProductCostBucketHourly",
     "DataProductEventDelivery",
     "DataProductEventSubscription",
     "DataProductInfrastructure",
@@ -246,6 +255,7 @@ __all__ = [
     "DataProductOutputPort",
     "DataProductPassport",
     "DataProductPolicy",
+    "DataProductQueryCost",
     "DataProductPromotionCandidate",
     "DataProductQueryPerfSample",
     "DataProductReview",

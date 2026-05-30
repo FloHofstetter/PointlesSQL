@@ -14,6 +14,7 @@ Decision, Consequences.
 | [0009](0009-doc-publication-decisions.md) | Accepted | Doc-publication: 8 cross-cutting decisions (CHANGELOG granularity, dev-log location, version scheme, doc visibility, asset storage, auto-gen balance, density norm, doc-vs-code scope) |
 | [0010](0010-cedar-policy-as-code.md) | Accepted | Cedar policy-as-code: cedarpy hooks into pql/_hooks, fail-closed on parse/runtime error, per-version cache, decision ledger separate from audit log |
 | [0011](0011-data-product-as-code.md) | Accepted | Data-Product-as-Code: strict pydantic DataProductSpec + state-style plan→apply reconciler that reuses existing CRUDs; round-trip apply→export→plan is a no-op |
+| [0012](0012-cost-attribution-and-quotas.md) | Accepted | Cost-attribution + quotas + mesh-health dashboard: raw query ledger + hourly rollup + QuotaExceededError → 429 in strict mode, mesh-health-full layers per-domain rollups + cost trend + top consumers |
 
 ## Conventions
 
