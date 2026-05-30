@@ -225,17 +225,102 @@
                                 <span>
                                     <span class="badge text-bg-primary me-1" x-text="p.kind"></span>
                                     <strong x-text="p.name"></strong>
+                                    <span class="badge text-bg-secondary ms-1"
+                                          x-show="p.version_semver"
+                                          x-text="'v' + p.version_semver"></span>
                                     <span class="text-muted small" x-show="p.format" x-text="' · ' + p.format"></span>
                                     <span class="text-muted small" x-show="p.description" x-text="' — ' + p.description"></span>
                                 </span>
-                                <button type="button" class="btn btn-sm btn-outline-danger"
-                                        x-show="canManage" @click="removeOutput(p.id)">Remove</button>
+                                <span class="d-flex gap-1">
+                                    <button type="button" class="btn btn-sm btn-outline-secondary"
+                                            @click="openVersionDrawer(p)">Versions</button>
+                                    <button type="button" class="btn btn-sm btn-outline-danger"
+                                            x-show="canManage" @click="removeOutput(p.id)">Remove</button>
+                                </span>
                             </li>
                         </template>
                         <li class="list-group-item text-muted small px-2 py-1" x-show="outputPorts.length === 0">
                             No output ports declared. SQL access is always available.
                         </li>
                     </ul>
+
+                    <div class="modal fade" tabindex="-1" :class="{ 'd-block': versionDrawerOpen }"
+                         x-show="versionDrawerOpen" x-cloak>
+                        <div class="modal-dialog modal-lg">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title">
+                                        Schema versions —
+                                        <span class="font-monospace" x-text="versionDrawerPort?.name || ''"></span>
+                                        <span class="badge text-bg-secondary ms-1"
+                                              x-text="'v' + (versionDrawerPort?.version_semver || '0.1.0')"></span>
+                                    </h5>
+                                    <button type="button" class="btn-close" @click="closeVersionDrawer()"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <div class="alert alert-danger py-1 px-2 small"
+                                         x-show="versionError" x-text="versionError" x-cloak></div>
+                                    <table class="table table-sm">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Version</th>
+                                                <th>Kind</th>
+                                                <th>Bumped</th>
+                                                <th>Summary</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <template x-for="v in versionHistory" :key="v.version_semver">
+                                                <tr>
+                                                    <td class="font-monospace small" x-text="v.version_semver"></td>
+                                                    <td>
+                                                        <span class="badge"
+                                                              :class="v.change_kind === 'major' ? 'text-bg-danger' : (v.change_kind === 'minor' ? 'text-bg-warning text-dark' : 'text-bg-info')"
+                                                              x-text="v.change_kind"></span>
+                                                    </td>
+                                                    <td class="small text-muted" x-text="v.bumped_at"></td>
+                                                    <td class="small" x-text="v.change_summary || '—'"></td>
+                                                </tr>
+                                            </template>
+                                            <tr x-show="versionHistory.length === 0 && versionHistoryLoaded" x-cloak>
+                                                <td colspan="4" class="text-center text-muted py-3">
+                                                    No registered versions yet.  Use Propose-Bump to register
+                                                    the current schema as a starting baseline.
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                    <template x-if="canManage">
+                                        <div class="border-top pt-3 mt-3">
+                                            <h6 class="small text-muted text-uppercase mb-2">Propose bump</h6>
+                                            <div class="row g-2 align-items-end">
+                                                <div class="col-12">
+                                                    <label class="form-label small mb-0">New schema (JSON)</label>
+                                                    <textarea class="form-control form-control-sm font-monospace"
+                                                              rows="6"
+                                                              x-model="proposeBump.schema_json"
+                                                              placeholder='{"columns":[{"name":"id","type":"int64","nullable":false}]}'></textarea>
+                                                </div>
+                                                <div class="col-sm-8">
+                                                    <label class="form-label small mb-0">Summary</label>
+                                                    <input class="form-control form-control-sm"
+                                                           x-model="proposeBump.change_summary"
+                                                           placeholder="why this bump?">
+                                                </div>
+                                                <div class="col-12">
+                                                    <button type="button" class="btn btn-sm btn-primary"
+                                                            :disabled="!proposeBump.change_summary || !proposeBump.schema_json"
+                                                            @click="submitBump()">
+                                                        Bump version
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
                     <template x-if="canManage">
                         <div class="row g-2 align-items-end mb-3">

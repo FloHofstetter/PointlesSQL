@@ -17,6 +17,9 @@ const POLICY_FIELDS = [
   'residency_region',
   'consent_required',
   'consent_basis',
+  'quota_enforcement',
+  'max_cost_per_day',
+  'max_queries_per_hour',
 ];
 
 export function dataProductGovernance(catalog, schema) {
@@ -38,7 +41,12 @@ export function dataProductGovernance(catalog, schema) {
       residency_region: '',
       consent_required: '',
       consent_basis: '',
+      quota_enforcement: '',
+      max_cost_per_day: '',
+      max_queries_per_hour: '',
     },
+    costSummary: null,
+    quotaMode: 'off',
     newClass: { table: '', column: '', classification: 'pii', masking_strategy: '' },
     forget: { subject_column: '', subject_value: '' },
     showForgetConfirm: false,
@@ -64,6 +72,9 @@ export function dataProductGovernance(catalog, schema) {
         this.forgetRequests = data.forget_requests || [];
         this.ownershipSuggestion = data.ownership_suggestion || null;
         this.seedEdit();
+        const quotaCell = this.effectivePolicy.quota_enforcement;
+        this.quotaMode = quotaCell && quotaCell.value ? String(quotaCell.value) : 'off';
+        await this.loadCostSummary();
         this.loaded = true;
       } catch (e) {
         this.error = 'Failed to load governance: ' + e.message;
@@ -80,6 +91,17 @@ export function dataProductGovernance(catalog, schema) {
       // a never-set consent reads as "inherit" rather than "false".
       const consent = this.effectivePolicy.consent_required;
       if (!consent || consent.source === 'unset') this.editPolicy.consent_required = '';
+    },
+
+    async loadCostSummary() {
+      try {
+        const res = await fetch(dpBase(this.catalog, this.schema) + '/discovery');
+        if (!res.ok) return;
+        const data = await res.json();
+        this.costSummary = data.cost || null;
+      } catch (e) {
+        // bare-broad-ok: cost summary is observational; ignore failure.
+      }
     },
 
     source(field) {
@@ -104,6 +126,13 @@ export function dataProductGovernance(catalog, schema) {
             ? null
             : this.editPolicy.consent_required === 'true',
         consent_basis: this.editPolicy.consent_basis || null,
+        quota_enforcement: this.editPolicy.quota_enforcement || null,
+        max_cost_per_day:
+          this.editPolicy.max_cost_per_day === '' ? null : Number(this.editPolicy.max_cost_per_day),
+        max_queries_per_hour:
+          this.editPolicy.max_queries_per_hour === ''
+            ? null
+            : Number(this.editPolicy.max_queries_per_hour),
       };
       const res = await window.pqlApi.fetch(dpBase(this.catalog, this.schema) + '/policy', {
         method: 'PUT',

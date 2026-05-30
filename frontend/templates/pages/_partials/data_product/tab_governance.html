@@ -77,6 +77,63 @@
                     </div>
                 </div>
 
+                <!-- Cost telemetry + quota enforcement. -->
+                <div class="card mb-3">
+                    <div class="card-header d-flex align-items-center gap-2">
+                        <i class="bi bi-cash-coin"></i>
+                        <span>Cost &amp; quota</span>
+                        <span class="badge text-bg-secondary ms-auto" x-text="'7d: ' + (costSummary?.last_7d_query_count ?? 0) + ' queries'"></span>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-2 mb-3">
+                            <div class="col-sm-6">
+                                <div class="border rounded p-2">
+                                    <div class="text-muted small">Estimated cost (last 7 days)</div>
+                                    <div class="h4 mb-0" x-text="(costSummary?.last_7d_total_estimated_cost ?? 0).toFixed(2)"></div>
+                                </div>
+                            </div>
+                            <div class="col-sm-6">
+                                <div class="border rounded p-2">
+                                    <div class="text-muted small">Active quota mode</div>
+                                    <div class="h4 mb-0">
+                                        <span class="badge"
+                                              :class="quotaMode === 'strict' ? 'text-bg-danger' : (quotaMode === 'warn' ? 'text-bg-warning text-dark' : 'text-bg-secondary')"
+                                              x-text="quotaMode"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <template x-if="canManage">
+                            <div class="row g-2 align-items-end">
+                                <div class="col-sm-4">
+                                    <label class="form-label small mb-0">Quota enforcement</label>
+                                    <select class="form-select form-select-sm" x-model="editPolicy.quota_enforcement">
+                                        <option value="">inherit</option>
+                                        <option value="off">off</option>
+                                        <option value="warn">warn</option>
+                                        <option value="strict">strict</option>
+                                    </select>
+                                </div>
+                                <div class="col-sm-4">
+                                    <label class="form-label small mb-0">Max cost / day</label>
+                                    <input type="number" min="0" step="0.01" class="form-control form-control-sm"
+                                           x-model="editPolicy.max_cost_per_day" placeholder="inherit">
+                                </div>
+                                <div class="col-sm-4">
+                                    <label class="form-label small mb-0">Max queries / hour</label>
+                                    <input type="number" min="0" class="form-control form-control-sm"
+                                           x-model="editPolicy.max_queries_per_hour" placeholder="inherit">
+                                </div>
+                            </div>
+                        </template>
+                        <p class="text-muted small mb-0 mt-2">
+                            Strict mode raises HTTP 429 on the next read once a limit is breached.  Warn
+                            mode records a decision row and lets the read through.  Cost is estimated
+                            (cost-gate plan-walk), not actual engine cost.
+                        </p>
+                    </div>
+                </div>
+
                 <!-- Column classifications (drive read-time masking). -->
                 <div class="card mb-3">
                     <div class="card-header d-flex align-items-center gap-2">

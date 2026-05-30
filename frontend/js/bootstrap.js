@@ -235,6 +235,7 @@ import { catalogTree, pathFromUrl } from './pages/catalog_tree.js';
 import { dataProductDetail } from './pages/data_product.js';
 import { dataProductDomainPanel } from './pages/data_product_domain.js';
 import { dpReleasesCard, ingestStatusBand } from './pages/data_product_extras.js';
+import { dataProductContractTests } from './pages/data_product_contract_tests.js';
 import { dataProductGovernance } from './pages/data_product_governance.js';
 import { dataProductInterop, dataProductSloPanel } from './pages/data_product_interop.js';
 import {
@@ -403,6 +404,7 @@ window.dataProductSemanticPanel = dataProductSemanticPanel;
 window.dataProductStatsPanel = dataProductStatsPanel;
 window.dataProductDiscoveryCard = dataProductDiscoveryCard;
 window.dataProductGovernance = dataProductGovernance;
+window.dataProductContractTests = dataProductContractTests;
 window.dataProductInterop = dataProductInterop;
 window.dataProductSloPanel = dataProductSloPanel;
 window.dataProductLifecyclePanel = dataProductLifecyclePanel;

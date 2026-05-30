@@ -135,6 +135,11 @@
                     data-pql-tab-key="governance">Governance</button>
         </li>
         <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-contract-tests-btn" data-bs-toggle="tab"
+                    data-bs-target="#tab-contract-tests" type="button" role="tab"
+                    data-pql-tab-key="contract-tests">Contract tests</button>
+        </li>
+        <li class="nav-item" role="presentation">
             <button class="nav-link" id="tab-interop-btn" data-bs-toggle="tab"
                     data-bs-target="#tab-interop" type="button" role="tab"
                     data-pql-tab-key="interop">Interop</button>
@@ -169,6 +174,8 @@
         {% include "pages/_partials/data_product/tab_compliance.html" %}
 
         {% include "pages/_partials/data_product/tab_governance.html" %}
+
+        {% include "pages/_partials/data_product/tab_contract_tests.html" %}
 
         {% include "pages/_partials/data_product/tab_interop.html" %}
 

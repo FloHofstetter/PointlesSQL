@@ -21,6 +21,12 @@ export function dataProductPortsPanel(catalog, schema, canManage) {
     error: '',
     newOutput: { name: '', kind: 'file', format: '', description: '' },
     newInput: { name: '', kind: 'upstream_product', source_ref: '', description: '' },
+    versionDrawerOpen: false,
+    versionDrawerPort: null,
+    versionHistory: [],
+    versionHistoryLoaded: false,
+    versionError: '',
+    proposeBump: { change_summary: '', schema_json: '' },
 
     async init() {
       await this.reload();
@@ -96,6 +102,58 @@ export function dataProductPortsPanel(catalog, schema, canManage) {
         { method: 'DELETE' }
       );
       if (res.ok) await this.reload();
+    },
+
+    async openVersionDrawer(port) {
+      this.versionDrawerPort = port;
+      this.versionHistory = [];
+      this.versionHistoryLoaded = false;
+      this.versionError = '';
+      this.proposeBump = { change_summary: '', schema_json: '' };
+      this.versionDrawerOpen = true;
+      const res = await fetch(
+        dpBase(this.catalog, this.schema) + '/output-ports/' + port.id + '/versions'
+      );
+      if (res.ok) {
+        const data = await res.json();
+        this.versionHistory = data.versions || data.history || [];
+      } else {
+        this.versionError = 'Failed to load version history';
+      }
+      this.versionHistoryLoaded = true;
+    },
+
+    closeVersionDrawer() {
+      this.versionDrawerOpen = false;
+    },
+
+    async submitBump() {
+      if (!this.versionDrawerPort) return;
+      this.versionError = '';
+      let schema;
+      try {
+        schema = JSON.parse(this.proposeBump.schema_json);
+      } catch (e) {
+        this.versionError = 'schema JSON invalid: ' + e.message;
+        return;
+      }
+      const res = await window.pqlApi.fetch(
+        dpBase(this.catalog, this.schema) + '/output-ports/' + this.versionDrawerPort.id + '/bump',
+        {
+          method: 'POST',
+          body: {
+            schema: schema,
+            change_summary: this.proposeBump.change_summary,
+          },
+        }
+      );
+      if (!res.ok) {
+        this.versionError = res.error || 'Bump failed';
+        return;
+      }
+      this.proposeBump = { change_summary: '', schema_json: '' };
+      await this.openVersionDrawer(this.versionDrawerPort);
+      await this.reload();
     },
   };
 }
