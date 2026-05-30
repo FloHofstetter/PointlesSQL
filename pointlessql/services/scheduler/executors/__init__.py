@@ -24,6 +24,15 @@ from pointlessql.services.scheduler.executors.branch_cleanup import (
 from pointlessql.services.scheduler.executors.coedit_compaction import (
     _coedit_compaction_executor,
 )
+from pointlessql.services.scheduler.executors.contract_test_evaluation import (
+    _contract_test_evaluation_executor,
+)
+from pointlessql.services.scheduler.executors.cost_rollup_hourly import (
+    _cost_rollup_hourly_executor,
+)
+from pointlessql.services.scheduler.executors.entity_link_discovery import (
+    _entity_link_discovery_executor,
+)
 from pointlessql.services.scheduler.executors.event_port_pump import (
     _event_port_pump_executor,
 )
@@ -53,6 +62,9 @@ __all__ = [
     "_alert_check_executor",
     "_branch_cleanup_executor",
     "_coedit_compaction_executor",
+    "_contract_test_evaluation_executor",
+    "_cost_rollup_hourly_executor",
+    "_entity_link_discovery_executor",
     "_event_port_pump_executor",
     "_jupytext_py_to_ipynb",
     "_papermill_env_lock",

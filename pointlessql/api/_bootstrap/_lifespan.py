@@ -158,6 +158,21 @@ def make_lifespan(
             if inserted:
                 logger.info("Bootstrapped %d API key(s) from POINTLESSQL_API_KEYS", inserted)
 
+        # PQL hook registry — left-shift policy / quota / schema-vers
+        # enforcement to the read+write primitives so notebook, script
+        # and agent callers can never bypass them.  All three
+        # registrars are idempotent.
+        if not fast_test_lifespan:
+            from pointlessql.services.cost import register_cost_hooks
+            from pointlessql.services.policy_as_code import register_cedar_hooks
+            from pointlessql.services.schema_versioning import (
+                register_schema_versioning_hooks,
+            )
+
+            register_cedar_hooks(app.state.session_factory)
+            register_schema_versioning_hooks(app.state.session_factory)
+            register_cost_hooks(app.state.session_factory)
+
         scheduler: scheduler_service.Scheduler | None = None
         if settings.scheduler.enabled and not fast_test_lifespan:
             scheduler = scheduler_service.Scheduler(app.state.session_factory, settings)

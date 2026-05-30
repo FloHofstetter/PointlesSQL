@@ -35,7 +35,17 @@ from pointlessql.services import governance as governance_service
 from pointlessql.services import infrastructure as infrastructure_service
 from pointlessql.services import mesh as mesh_service
 from pointlessql.services import slo as slo_service
+from pointlessql.services.contract_tests import (
+    list_contract_tests,
+    list_fixtures,
+)
+from pointlessql.services.cost import cost_by_product
+from pointlessql.services.cost._quota import resolve_quota_mode
 from pointlessql.services.data_product_stats import read_latest_statistics
+from pointlessql.services.policy_as_code._loader import (
+    load_linked_modules_for_product,
+)
+from pointlessql.services.schema_versioning import list_versions
 
 router = APIRouter(tags=["data-products"])
 
@@ -45,6 +55,44 @@ def _workspace_slug(factory: Any, workspace_id: int) -> str:
     with factory() as session:
         ws = session.get(Workspace, workspace_id)
         return ws.slug if ws is not None else str(workspace_id)
+
+
+def _summarise_cost(
+    factory: Any, data_product_id: int, workspace_id: int
+) -> dict[str, Any]:
+    """Return a 7-day cost rollup for *data_product_id*.
+
+    Aggregates the hourly bucket table over the last 7 days so the
+    discovery envelope stays cheap — no raw-ledger scan, no per-row
+    work.  Empty buckets render as zeros so consumers can rely on the
+    shape.
+    """
+    import datetime as _datetime
+
+    end = _datetime.datetime.now(_datetime.UTC)
+    start = end - _datetime.timedelta(days=7)
+    rollup = cost_by_product(
+        factory, workspace_id=workspace_id, since=start, until=end
+    )
+    entry = next(
+        (
+            row
+            for row in rollup
+            if int(row.get("data_product_id") or 0) == int(data_product_id)
+        ),
+        None,
+    )
+    if entry is None:
+        return {
+            "last_7d_total_estimated_cost": 0.0,
+            "last_7d_query_count": 0,
+        }
+    return {
+        "last_7d_total_estimated_cost": float(
+            entry.get("total_estimated_cost") or 0
+        ),
+        "last_7d_query_count": int(entry.get("query_count") or 0),
+    }
 
 
 def _replacement_uri(
@@ -103,6 +151,15 @@ async def get_discovery_contract(catalog: str, schema: str, request: Request) ->
     rating_summary = consumer_voice_service.list_rating_summary(
         factory, data_product_id=row.id
     )
+    policy_modules = load_linked_modules_for_product(
+        factory, data_product_id=row.id, workspace_id=workspace_id
+    )
+    contract_tests = list_contract_tests(factory, data_product_id=row.id)
+    fixtures = list_fixtures(factory, data_product_id=row.id)
+    quota_mode, quota_limits = resolve_quota_mode(
+        factory, data_product_id=row.id, workspace_id=workspace_id
+    )
+    cost_summary = _summarise_cost(factory, row.id, workspace_id)
     settings: Settings = request.app.state.settings
 
     base = f"/api/data-products/{catalog}/{schema}"
@@ -129,6 +186,11 @@ async def get_discovery_contract(catalog: str, schema: str, request: Request) ->
                 "format": p.format,
                 "location": p.location,
                 "description": p.description,
+                "version_semver": getattr(p, "version_semver", None) or "0.1.0",
+                "identity_requirements": getattr(
+                    p, "identity_requirements_json", None
+                ),
+                "schema_history": list_versions(factory, output_port_id=int(p.id))[:5],
             }
             for p in output_ports
         ],
@@ -150,6 +212,18 @@ async def get_discovery_contract(catalog: str, schema: str, request: Request) ->
             "consumption_enforcement": effective_policy["consumption_enforcement"][
                 "value"
             ],
+            "iso8601_enforcement": effective_policy.get(
+                "iso8601_enforcement", {}
+            ).get("value"),
+            "linked_policy_module_ids": [
+                int(m.id) for m in policy_modules
+            ],
+            "breaking_change_policy": effective_policy.get(
+                "breaking_change_policy", {}
+            ).get("value"),
+            "quota_enforcement": quota_mode,
+            "max_cost_per_day": quota_limits.get("max_cost_per_day"),
+            "max_queries_per_hour": quota_limits.get("max_queries_per_hour"),
             "classifications": [
                 {
                     "table": c.table_name,
@@ -202,6 +276,18 @@ async def get_discovery_contract(catalog: str, schema: str, request: Request) ->
             "require_event_time": settings.bitemporal.require_event_time,
         },
         "statistics": statistics,
+        "policy_modules": [
+            {
+                "id": int(m.id),
+                "name": m.name,
+                "version": int(getattr(m, "version", 1) or 1),
+                "enabled": bool(getattr(m, "enabled", True)),
+            }
+            for m in policy_modules
+        ],
+        "contract_tests": contract_tests,
+        "fixtures": fixtures,
+        "cost": cost_summary,
         "links": {
             "self": base,
             "passport": f"{base}/passport",

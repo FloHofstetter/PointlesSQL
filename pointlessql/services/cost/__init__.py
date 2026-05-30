@@ -13,6 +13,9 @@ Public surface:
 
 from __future__ import annotations
 
+from pointlessql.services.cost._bootstrap import (
+    register_cost_hooks,
+)
 from pointlessql.services.cost._dashboard import (
     cost_by_consumer,
     cost_by_product,
@@ -39,6 +42,7 @@ __all__ = [
     "cost_by_product",
     "mesh_health_full",
     "record_query_cost",
+    "register_cost_hooks",
     "resolve_quota_mode",
     "roll_up_hourly_buckets",
 ]

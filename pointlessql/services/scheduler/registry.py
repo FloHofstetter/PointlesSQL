@@ -85,6 +85,9 @@ def build_default_registry() -> KindRegistry:
         _alert_check_executor,
         _branch_cleanup_executor,
         _coedit_compaction_executor,
+        _contract_test_evaluation_executor,
+        _cost_rollup_hourly_executor,
+        _entity_link_discovery_executor,
         _event_port_pump_executor,
         _papermill_executor,
         _pg_sync_executor,
@@ -104,4 +107,9 @@ def build_default_registry() -> KindRegistry:
     registry.register("slo_evaluation", _slo_evaluation_executor)
     registry.register("ingest_pull", ingest_pull_executor)
     registry.register("event_port_pump", _event_port_pump_executor)
+    registry.register("cost_rollup_hourly", _cost_rollup_hourly_executor)
+    registry.register(
+        "contract_test_evaluation", _contract_test_evaluation_executor
+    )
+    registry.register("entity_link_discovery", _entity_link_discovery_executor)
     return registry

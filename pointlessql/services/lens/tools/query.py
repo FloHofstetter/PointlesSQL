@@ -12,11 +12,14 @@ itself does not consult ACLs.
 
 from __future__ import annotations
 
+import datetime
 import logging
+from decimal import Decimal
 from typing import Any
 
 from pydantic import BaseModel, Field
 
+from pointlessql.services.cost import MeterContext, record_query_cost
 from pointlessql.services.lens.cost_gate import (
     LensNonSelectBlockedError,
     LensQueryTooCostlyError,
@@ -70,6 +73,7 @@ async def _execute_query(ctx: SessionContext, args: QueryArgs) -> QueryResult:
     """Validate, cost-gate, execute the SELECT, return rows."""
     settings = ctx.settings
     default_limit = args.limit if args.limit is not None else settings.lens.default_query_limit
+    started_at = datetime.datetime.now(datetime.UTC)
 
     # Cost-gate first; skip the actual DuckDB execution when no
     # uc_client is wired (test paths can verify the gate behaviour
@@ -95,6 +99,14 @@ async def _execute_query(ctx: SessionContext, args: QueryArgs) -> QueryResult:
             if isinstance(exc, LensQueryTooCostlyError)
             else "session_budget_exceeded"
         )
+        _record_meter(
+            ctx,
+            started_at=started_at,
+            completed_at=datetime.datetime.now(datetime.UTC),
+            estimated_cost=Decimal("0"),
+            tables=[],
+            error_class=status,
+        )
         raise LensToolError(
             tool_name="query",
             message=str(exc),
@@ -109,6 +121,14 @@ async def _execute_query(ctx: SessionContext, args: QueryArgs) -> QueryResult:
     # browser chat-loop is in place and the route fills approved
     # tables from `check_privilege(SELECT)`.  For now we return the
     # gated SQL + cost so the audit-trail stays informative.
+    completed_at = datetime.datetime.now(datetime.UTC)
+    _record_meter(
+        ctx,
+        started_at=started_at,
+        completed_at=completed_at,
+        estimated_cost=Decimal(str(gated.cost.cost)),
+        tables=list(gated.prepared.refs),
+    )
     return QueryResult(
         columns=[],
         rows=[],
@@ -118,6 +138,47 @@ async def _execute_query(ctx: SessionContext, args: QueryArgs) -> QueryResult:
         estimated_cost=gated.cost.cost,
         cost_explanation=gated.cost.explanation,
     )
+
+
+def _record_meter(
+    ctx: SessionContext,
+    *,
+    started_at: datetime.datetime,
+    completed_at: datetime.datetime,
+    estimated_cost: Decimal,
+    tables: list[str],
+    error_class: str | None = None,
+) -> None:
+    """Best-effort insert into ``data_product_query_cost``.
+
+    Meter failures are swallowed: cost telemetry should never block a
+    successful query path.  Attribution is best-effort — when the
+    Lens session is detached, ``authoring_product_id`` is left None
+    and the row still counts toward workspace-wide aggregates.
+    """
+    duration_ms = int((completed_at - started_at).total_seconds() * 1000)
+    try:
+        record_query_cost(
+            ctx.factory,
+            MeterContext(
+                started_at=started_at,
+                completed_at=completed_at,
+                duration_ms=duration_ms,
+                estimated_cost=estimated_cost,
+                bytes_scanned=None,
+                rows_returned=None,
+                tables=tables,
+                principal_user_id=ctx.user_id,
+                api_key_id=None,
+                authoring_product_id=None,
+                consumer_product_id=None,
+                query_kind="select",
+                error_class=error_class,
+            ),
+        )
+    except Exception:  # noqa: BLE001
+        # bare-broad-ok: meter is purely observational; never raise.
+        logger.warning("lens query cost meter insert failed", exc_info=True)
 
 
 def _session_cost(ctx: SessionContext) -> float:

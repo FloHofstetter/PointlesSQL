@@ -17,6 +17,9 @@ Public surface:
 
 from __future__ import annotations
 
+from pointlessql.services.schema_versioning._bootstrap import (
+    register_schema_versioning_hooks,
+)
 from pointlessql.services.schema_versioning._bumper import (
     propose_bump,
 )
@@ -45,4 +48,5 @@ __all__ = [
     "get_version_history",
     "list_versions",
     "propose_bump",
+    "register_schema_versioning_hooks",
 ]

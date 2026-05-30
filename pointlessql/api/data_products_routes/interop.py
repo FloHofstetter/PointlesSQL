@@ -205,6 +205,59 @@ async def joinable(catalog: str, schema: str, request: Request) -> dict[str, Any
     return {"other": other_ref, "suggestions": suggestions}
 
 
+@router.get("/api/data-products/{catalog}/{schema}/point-in-time-read")
+async def point_in_time_read_get(
+    catalog: str,
+    schema: str,
+    request: Request,
+    as_of: str,
+) -> dict[str, Any]:
+    """GET-equivalent of the POST point-in-time endpoint.
+
+    Browser + plugin callers prefer a query-string interface so the
+    URL is shareable.  The path resolves the same manifest as the
+    POST sibling for the target product alone.
+
+    Args:
+        catalog: UC catalog segment.
+        schema: UC schema segment.
+        request: Incoming FastAPI request.
+        as_of: ISO-8601 timestamp.  ``Z`` is normalised to ``+00:00``;
+            naive values default to UTC.
+
+    Returns:
+        Same shape as :func:`point_in_time_read`.
+    """
+    require_user(request)
+    user = get_user(request)
+    workspace_id = current_workspace_id(request)
+    factory = request.app.state.session_factory
+    dp_row, _c, _e, _d = load_one(factory, workspace_id, catalog, schema)
+    _require_steward_or_admin(user, dp_row)
+
+    raw = as_of.strip()
+    if not raw:
+        raise BadRequestError("'as_of' (ISO-8601 timestamp) is required")
+    try:
+        when = datetime.datetime.fromisoformat(raw.replace("Z", "+00:00"))
+    except ValueError as exc:
+        raise BadRequestError(f"invalid 'as_of' timestamp: {raw!r}") from exc
+    if when.tzinfo is None:
+        when = when.replace(tzinfo=datetime.UTC)
+
+    uc = get_uc_client(request)
+    try:
+        return await mesh_service.resolve_as_of(
+            factory,
+            uc,
+            workspace_id=workspace_id,
+            product_ids=[dp_row.id],
+            when=when,
+        )
+    except ValueError as exc:
+        raise BadRequestError(str(exc)) from exc
+
+
 @router.post("/api/data-products/{catalog}/{schema}/point-in-time-read")
 async def point_in_time_read(
     catalog: str,
