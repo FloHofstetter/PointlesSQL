@@ -1,22 +1,25 @@
+# PointlesSQL — pull-and-run stack.
+#
+# Zero-credential quickstart on any machine with Docker:
+#
+#   curl -fsSL https://raw.githubusercontent.com/FloHofstetter/PointlesSQL/main/docker/docker-compose.yml -o docker-compose.yml
+#   docker compose up -d
+#
+# Pulls published images from GHCR — no source checkout, no login.
+# Pin a specific release with PQL_VERSION / SOYUZ_VERSION.
+#
+# Contributors who build from a local checkout layer the dev override:
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+
 services:
   soyuz-catalog:
-    # GHCR alternative — comment out the entire `build:` block below
-    # and uncomment the `image:` line to pull from GHCR instead of
-    # building locally. Requires `docker login ghcr.io` first. The
-    # tag must match the `soyuz-catalog-client` tag pinned in
-    # pyproject.toml's [tool.uv.sources].
-    # image: ghcr.io/flohofstetter/soyuz-catalog:v0.2.0rc2
-    build:
-      context: ..
-      dockerfile: docker/Dockerfile.soyuz
-      additional_contexts:
-        soyuz-catalog: ../../soyuz-catalog
+    image: ghcr.io/flohofstetter/soyuz-catalog:${SOYUZ_VERSION:-v0.3.0rc3}
     ports:
       - "${SOYUZ_HOST_PORT:-8080}:8080"
     environment:
       SOYUZ_DATABASE_URL: "sqlite:////app/data/soyuz.db"
     volumes:
-      - ../warehouse:/app/warehouse
+      - warehouse_data:/app/warehouse
       - soyuz_data:/app/data
     healthcheck:
       test:
@@ -32,37 +35,20 @@ services:
       start_period: 10s
 
   pointlessql:
-    # GHCR alternative — comment out the entire `build:` block below
-    # and uncomment the `image:` line to pull from GHCR instead of
-    # building locally. Requires `docker login ghcr.io` first. See
-    # docs/install.md for the full clean-machine pull flow.
-    # image: ghcr.io/flohofstetter/pointlessql:v0.1.0rc3
-    build:
-      context: ..
-      dockerfile: docker/Dockerfile
-      # Dual-auth: contributor path uses ssh-agent via
-      # `docker compose build --ssh default`; clean-machine / CI path
-      # uses a PAT via `GH_PAT=$(gh auth token) docker compose build`.
-      ssh:
-        - default
-      secrets:
-        - gh_pat
+    image: ghcr.io/flohofstetter/pointlessql:${PQL_VERSION:-v0.1.0rc3}
     ports:
       - "${PQL_HOST_PORT:-8000}:8000"
       - "${JUPYTER_HOST_PORT:-8888}:8888"
     environment:
       POINTLESSQL_SOYUZ_CATALOG_URL: "http://soyuz-catalog:8080"
-      # Sprint 45 moved these four under sub-model ``env_prefix``:
-      # ``ENGINE`` → ``DELTA_ENGINE``, ``HOST`` → ``SERVER_HOST``,
-      # ``DATABASE_URL`` → ``DB_URL``, ``SECRET_KEY`` → ``AUTH_SECRET_KEY``.
       POINTLESSQL_DELTA_ENGINE: "${POINTLESSQL_DELTA_ENGINE:-pandas}"
       POINTLESSQL_SERVER_HOST: "0.0.0.0"
       POINTLESSQL_DB_URL: "sqlite:////app/data/pointlessql.db"
       POINTLESSQL_AUTH_SECRET_KEY: "docker-dev-secret-change-in-prod"
     volumes:
-      - ../warehouse:/app/warehouse
+      - warehouse_data:/app/warehouse
       - pointlessql_data:/app/data
-      - ../notebooks:/app/notebooks
+      - notebooks_data:/app/notebooks
     depends_on:
       soyuz-catalog:
         condition: service_healthy
@@ -82,11 +68,5 @@ services:
 volumes:
   soyuz_data:
   pointlessql_data:
-
-secrets:
-  # Token used by the PointlesSQL Dockerfile to fetch the private
-  # soyuz-catalog-client wheel at the pinned git tag. Optional for
-  # contributors who use the ssh-agent path (Sprint 38 ergonomics).
-  # Set via `GH_PAT=$(gh auth token) docker compose build`.
-  gh_pat:
-    environment: GH_PAT
+  warehouse_data:
+  notebooks_data:

@@ -1,0 +1,25 @@
+# Contributor override — build both images from a local checkout
+# instead of pulling from GHCR. Layer it on top of the base file:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+#
+# Requires a sibling ../../soyuz-catalog checkout for the soyuz image
+# build context. No credentials needed (soyuz-catalog is public).
+#
+# Note: notebooks are baked into the image at build time. The base
+# file mounts a named volume over /app/notebooks, which persists
+# across rebuilds — run `docker compose down -v` to pick up notebook
+# changes baked into a fresh image.
+
+services:
+  soyuz-catalog:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.soyuz
+      additional_contexts:
+        soyuz-catalog: ../../soyuz-catalog
+
+  pointlessql:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
