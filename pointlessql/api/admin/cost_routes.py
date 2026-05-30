@@ -6,10 +6,12 @@ import datetime
 from typing import Any
 
 from fastapi import APIRouter, Body, Request
+from fastapi.responses import HTMLResponse
 
 from pointlessql.api._audit_helpers import audit
 from pointlessql.api.dependencies import (
     current_workspace_id,
+    get_templates,
     get_user,
     require_admin,
     require_user,
@@ -19,6 +21,22 @@ from pointlessql.services import cost as cost_service
 from pointlessql.services.governance._policy import set_workspace_policy
 
 router = APIRouter(tags=["admin-cost"])
+
+
+@router.get("/admin/mesh-dashboard", response_class=HTMLResponse)
+async def admin_mesh_dashboard_index(request: Request) -> HTMLResponse:
+    """Render the mesh dashboard admin page."""
+    require_admin(request)
+    return get_templates(request).TemplateResponse(
+        request,
+        "pages/admin_mesh_dashboard.html",
+        {
+            "active_page": "admin",
+            "active_catalog": None,
+            "active_schema": None,
+            "active_table": None,
+        },
+    )
 
 
 def _parse_window(

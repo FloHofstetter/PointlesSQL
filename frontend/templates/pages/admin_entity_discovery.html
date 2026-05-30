@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}Entity discovery · PointlesSQL{% endblock %}
+
+{% set breadcrumbs = [
+    {"label": "Home", "href": "/"},
+    {"label": "Admin", "href": "/admin"},
+    {"label": "Entity discovery"}
+] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block content %}
+<div x-data="adminEntityDiscovery()" x-init="load()">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <div class="d-flex align-items-center gap-2">
+            <i class="bi bi-link-45deg fs-3"></i>
+            <h1 class="h3 mb-0">Entity discovery</h1>
+        </div>
+        <button type="button" class="btn btn-outline-primary btn-sm" @click="runNow()">
+            <i class="bi bi-play me-1"></i>Run now
+        </button>
+    </div>
+
+    <p class="text-muted">
+        Pending same-as candidates suggested by the PK-overlap + column-
+        similarity scorer. Accept promotes a row into the canonical
+        <code>entity_links</code> table; reject drops it; defer leaves
+        it visible for later review.
+    </p>
+
+    <div class="card">
+        <div class="card-body p-0">
+            <table class="table table-sm mb-0 align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Source</th>
+                        <th>Target</th>
+                        <th class="text-end">Confidence</th>
+                        <th>Discovered</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <template x-for="c in candidates" :key="c.id">
+                        <tr>
+                            <td class="font-monospace small" x-text="c.source_label"></td>
+                            <td class="font-monospace small" x-text="c.target_label"></td>
+                            <td class="text-end" x-text="Number(c.confidence_score).toFixed(2)"></td>
+                            <td class="text-muted small" x-text="c.discovered_at"></td>
+                            <td class="text-end">
+                                <button class="btn btn-sm btn-outline-success"
+                                        @click="decide(c.id, 'accept')">Accept</button>
+                                <button class="btn btn-sm btn-outline-danger"
+                                        @click="decide(c.id, 'reject')">Reject</button>
+                                <button class="btn btn-sm btn-outline-secondary"
+                                        @click="decide(c.id, 'defer')">Defer</button>
+                            </td>
+                        </tr>
+                    </template>
+                    <tr x-show="candidates.length === 0 && !loading" x-cloak>
+                        <td colspan="5" class="text-center text-muted py-4">
+                            No pending candidates.
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card mt-3" x-show="error" x-cloak>
+        <div class="card-body text-danger" x-text="error"></div>
+    </div>
+</div>
+{% endblock %}

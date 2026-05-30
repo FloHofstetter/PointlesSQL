@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% block title %}Mesh dashboard · PointlesSQL{% endblock %}
+
+{% set breadcrumbs = [
+    {"label": "Home", "href": "/"},
+    {"label": "Admin", "href": "/admin"},
+    {"label": "Mesh dashboard"}
+] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block content %}
+<div x-data="adminMeshDashboard()" x-init="load()">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <div class="d-flex align-items-center gap-2">
+            <i class="bi bi-speedometer2 fs-3"></i>
+            <h1 class="h3 mb-0">Mesh dashboard</h1>
+        </div>
+        <span class="text-muted small">7-day window</span>
+    </div>
+
+    <p class="text-muted">
+        Per-domain SLO bands + cost trend + top consumers across every
+        data product in the workspace. Refreshes on page reload; cost
+        rollups are populated by the hourly scheduler kind.
+    </p>
+
+    <div class="row g-3 mb-4">
+        <div class="col-md-3 col-sm-6">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="text-muted small">Products</div>
+                    <div class="h2 mb-0" x-text="health?.totals?.products ?? '—'"></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="text-muted small">Green</div>
+                    <div class="h2 mb-0 text-success" x-text="health?.totals?.green ?? '—'"></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="text-muted small">Red</div>
+                    <div class="h2 mb-0 text-danger" x-text="health?.totals?.red ?? '—'"></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="text-muted small">Total est. cost (7d)</div>
+                    <div class="h2 mb-0" x-text="totalCost.toFixed(2)"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-lg-7">
+            <div class="card h-100">
+                <div class="card-header">
+                    <strong>Cost by product</strong>
+                </div>
+                <div class="card-body p-0">
+                    <table class="table table-sm mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Product</th>
+                                <th class="text-end">Queries</th>
+                                <th class="text-end">Est. cost</th>
+                                <th class="text-end">Bytes scanned</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template x-for="row in costByProduct" :key="row.data_product_id">
+                                <tr>
+                                    <td class="font-monospace small" x-text="row.ref"></td>
+                                    <td class="text-end" x-text="row.query_count"></td>
+                                    <td class="text-end" x-text="row.total_estimated_cost.toFixed(2)"></td>
+                                    <td class="text-end text-muted small" x-text="row.total_bytes_scanned"></td>
+                                </tr>
+                            </template>
+                            <tr x-show="costByProduct.length === 0" x-cloak>
+                                <td colspan="4" class="text-center text-muted py-3">No cost data yet.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-5">
+            <div class="card h-100">
+                <div class="card-header">
+                    <strong>Top consumers</strong>
+                </div>
+                <div class="card-body p-0">
+                    <table class="table table-sm mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Consumer</th>
+                                <th class="text-end">Queries</th>
+                                <th class="text-end">Cost</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template x-for="row in topConsumers" :key="row.consumer_user_id">
+                                <tr>
+                                    <td class="font-monospace small"
+                                        x-text="row.consumer_user_id ?? 'anonymous'"></td>
+                                    <td class="text-end" x-text="row.query_count"></td>
+                                    <td class="text-end" x-text="row.total_estimated_cost.toFixed(2)"></td>
+                                </tr>
+                            </template>
+                            <tr x-show="topConsumers.length === 0" x-cloak>
+                                <td colspan="3" class="text-center text-muted py-3">No consumers yet.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mt-3" x-show="error" x-cloak>
+        <div class="card-body text-danger" x-text="error"></div>
+    </div>
+</div>
+{% endblock %}

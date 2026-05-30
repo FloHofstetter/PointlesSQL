@@ -10,10 +10,12 @@ from __future__ import annotations
 from typing import Any
 
 from fastapi import APIRouter, Body, HTTPException, Request
+from fastapi.responses import HTMLResponse
 
 from pointlessql.api._audit_helpers import audit
 from pointlessql.api.dependencies import (
     current_workspace_id,
+    get_templates,
     get_user,
     require_admin,
 )
@@ -21,6 +23,22 @@ from pointlessql.exceptions import BadRequestError
 from pointlessql.services import policy_as_code as policy_service
 
 router = APIRouter(tags=["admin-policy-modules"])
+
+
+@router.get("/admin/policy-modules", response_class=HTMLResponse)
+async def admin_policy_modules_index(request: Request) -> HTMLResponse:
+    """Render the Cedar policy-modules admin page."""
+    require_admin(request)
+    return get_templates(request).TemplateResponse(
+        request,
+        "pages/admin_policy_modules.html",
+        {
+            "active_page": "admin",
+            "active_catalog": None,
+            "active_schema": None,
+            "active_table": None,
+        },
+    )
 
 
 @router.get("/api/admin/policy-modules")

@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}Data-product apply · PointlesSQL{% endblock %}
+
+{% set breadcrumbs = [
+    {"label": "Home", "href": "/"},
+    {"label": "Admin", "href": "/admin"},
+    {"label": "Data-product apply"}
+] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block content %}
+<div x-data="adminDataProductApply()">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <div class="d-flex align-items-center gap-2">
+            <i class="bi bi-file-earmark-code fs-3"></i>
+            <h1 class="h3 mb-0">Data-product apply</h1>
+        </div>
+    </div>
+
+    <p class="text-muted">
+        Paste a <code>DataProductSpec</code> YAML to plan + apply
+        idempotent changes against the catalog. Plan diffs every
+        sub-entity (ports, SLOs, entities, contract tests, fixtures,
+        policies); Apply runs each Op through its standard CRUD
+        service. Re-running an applied spec is a no-op.
+    </p>
+
+    <div class="row g-3">
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-header"><strong>Spec (YAML / JSON)</strong></div>
+                <div class="card-body">
+                    <textarea class="form-control font-monospace" rows="18"
+                              x-model="spec"
+                              placeholder="name: my_product&#10;catalog: main&#10;schema: silver&#10;owner_email: alice@example.com&#10;output_ports: []&#10;"></textarea>
+                    <div class="d-flex gap-2 mt-3">
+                        <button class="btn btn-outline-secondary" @click="runPlan()"
+                                :disabled="!spec || busy">Plan</button>
+                        <button class="btn btn-primary" @click="runApply()"
+                                :disabled="!spec || busy">Apply</button>
+                    </div>
+                    <div class="alert alert-danger mt-3" x-show="error" x-cloak
+                         x-text="error"></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-header">
+                    <strong>Plan / Outcome</strong>
+                </div>
+                <div class="card-body">
+                    <div x-show="!plan && !outcome" x-cloak class="text-muted small">
+                        Plan + outcome render here.
+                    </div>
+                    <div x-show="plan" x-cloak>
+                        <div class="d-flex gap-3 mb-2 small">
+                            <span class="badge bg-success" x-text="(plan?.additions?.length || 0) + ' add'"></span>
+                            <span class="badge bg-warning text-dark"
+                                  x-text="(plan?.modifications?.length || 0) + ' modify'"></span>
+                            <span class="badge bg-danger"
+                                  x-text="(plan?.removals?.length || 0) + ' remove'"></span>
+                        </div>
+                        <pre class="bg-light p-2 small" style="max-height: 24rem; overflow:auto"
+                             x-text="JSON.stringify(plan, null, 2)"></pre>
+                    </div>
+                    <div x-show="outcome" x-cloak class="mt-3">
+                        <strong>Outcome</strong>
+                        <pre class="bg-light p-2 small" x-text="JSON.stringify(outcome, null, 2)"></pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -6,17 +6,36 @@ from typing import Any
 
 import yaml
 from fastapi import APIRouter, Body, Request
+from fastapi.responses import HTMLResponse
 
 from pointlessql.api._audit_helpers import audit
 from pointlessql.api.dependencies import (
     current_workspace_id,
+    get_templates,
     get_user,
+    require_admin,
     require_user,
 )
 from pointlessql.exceptions import AuthorizationError, BadRequestError
 from pointlessql.services import data_product_as_code as dpac_service
 
 router = APIRouter(tags=["data-products"])
+
+
+@router.get("/admin/data-product-apply", response_class=HTMLResponse)
+async def admin_data_product_apply_index(request: Request) -> HTMLResponse:
+    """Render the data-product-as-code admin page."""
+    require_admin(request)
+    return get_templates(request).TemplateResponse(
+        request,
+        "pages/admin_data_product_apply.html",
+        {
+            "active_page": "admin",
+            "active_catalog": None,
+            "active_schema": None,
+            "active_table": None,
+        },
+    )
 
 
 def _spec_from_body(body: dict[str, Any]) -> dpac_service.DataProductSpec:

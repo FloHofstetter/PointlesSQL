@@ -1,0 +1,196 @@
+{% extends "base.html" %}
+{% from "_macros/timestamps.html" import relative_time %}
+{% block title %}Policy modules · PointlesSQL{% endblock %}
+
+{% set breadcrumbs = [
+    {"label": "Home", "href": "/"},
+    {"label": "Admin", "href": "/admin"},
+    {"label": "Policy modules"}
+] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block content %}
+<div x-data="adminPolicyModules()" x-init="load()">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <div class="d-flex align-items-center gap-2">
+            <i class="bi bi-shield-lock fs-3"></i>
+            <h1 class="h3 mb-0">Policy modules</h1>
+        </div>
+        <button type="button" class="btn btn-primary btn-sm" @click="openCreate()">
+            <i class="bi bi-plus-lg me-1"></i>New module
+        </button>
+    </div>
+
+    <p class="text-muted">
+        Cedar policy modules layer ABAC rules on top of the standard
+        product⇐workspace policy fields. Link a module to a product
+        from the product's Governance tab, or attach it workspace-wide
+        as a default. Fail-closed on parse / runtime errors.
+    </p>
+
+    <div class="card mb-3" x-show="error" x-cloak>
+        <div class="card-body text-danger" x-text="error"></div>
+    </div>
+
+    <div class="card">
+        <div class="card-body p-0">
+            <table class="table table-sm mb-0 align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Name</th>
+                        <th>Version</th>
+                        <th>Enabled</th>
+                        <th>Created</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <template x-for="m in modules" :key="m.id">
+                        <tr>
+                            <td class="font-monospace small" x-text="m.name"></td>
+                            <td x-text="'v' + m.version"></td>
+                            <td>
+                                <span class="badge bg-success" x-show="m.enabled">on</span>
+                                <span class="badge bg-secondary" x-show="!m.enabled" x-cloak>off</span>
+                            </td>
+                            <td class="text-muted small" x-text="m.created_at"></td>
+                            <td class="text-end">
+                                <button class="btn btn-sm btn-outline-secondary"
+                                        @click="openEdit(m)">Edit</button>
+                                <button class="btn btn-sm btn-outline-secondary"
+                                        @click="openTest(m)">Test</button>
+                                <button class="btn btn-sm btn-outline-secondary"
+                                        @click="openDecisions(m)">Log</button>
+                                <button class="btn btn-sm btn-outline-danger"
+                                        @click="remove(m)">Delete</button>
+                            </td>
+                        </tr>
+                    </template>
+                    <tr x-show="modules.length === 0 && !loading" x-cloak>
+                        <td colspan="5" class="text-center text-muted py-4">
+                            No policy modules yet.
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="modal fade" tabindex="-1" :class="{ 'd-block': editorOpen }"
+         x-show="editorOpen" x-cloak>
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" x-text="editing.id ? 'Edit policy module' : 'New policy module'"></h5>
+                    <button type="button" class="btn-close" @click="closeEditor()"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Name</label>
+                        <input type="text" class="form-control font-monospace" maxlength="200"
+                               x-model="editing.name" placeholder="block_pii_exfil">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Cedar source</label>
+                        <textarea class="form-control font-monospace" rows="10"
+                                  x-model="editing.cedar_source"
+                                  placeholder='permit(principal, action == Action::"read", resource);'></textarea>
+                    </div>
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="moduleEnabled"
+                               x-model="editing.enabled">
+                        <label class="form-check-label" for="moduleEnabled">Enabled</label>
+                    </div>
+                    <div class="alert alert-danger mt-3" x-show="editorError" x-cloak
+                         x-text="editorError"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @click="closeEditor()">Cancel</button>
+                    <button type="button" class="btn btn-primary"
+                            :disabled="!editing.name || !editing.cedar_source || saving"
+                            @click="save()">
+                        <span x-text="editing.id ? 'Save' : 'Create'"></span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" tabindex="-1" :class="{ 'd-block': testOpen }"
+         x-show="testOpen" x-cloak>
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Dry-run module</h5>
+                    <button type="button" class="btn-close" @click="testOpen = false"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-2">
+                        <label class="form-label small">Principal</label>
+                        <input class="form-control font-monospace" x-model="testForm.principal">
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small">Action</label>
+                        <input class="form-control font-monospace" x-model="testForm.action">
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small">Resource</label>
+                        <input class="form-control font-monospace" x-model="testForm.resource">
+                    </div>
+                    <button class="btn btn-primary btn-sm" @click="runTest()">Evaluate</button>
+                    <div class="mt-3" x-show="testResult" x-cloak>
+                        <div class="alert"
+                             :class="{ 'alert-success': testResult?.effect === 'permit',
+                                       'alert-danger': testResult?.effect === 'forbid',
+                                       'alert-warning': testResult?.empty }">
+                            <strong x-text="testResult?.effect"></strong>
+                            <span x-show="testResult?.error_class" class="ms-2 small"
+                                  x-text="'(' + testResult.error_class + ')'"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" tabindex="-1" :class="{ 'd-block': decisionsOpen }"
+         x-show="decisionsOpen" x-cloak>
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Decision log</h5>
+                    <button type="button" class="btn-close" @click="decisionsOpen = false"></button>
+                </div>
+                <div class="modal-body">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>When</th>
+                                <th>Action</th>
+                                <th>Effect</th>
+                                <th>Principal</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template x-for="d in decisions" :key="d.id">
+                                <tr>
+                                    <td class="small text-muted" x-text="d.decision_at"></td>
+                                    <td class="font-monospace small" x-text="d.action"></td>
+                                    <td>
+                                        <span class="badge bg-success" x-show="d.effect === 'permit'">permit</span>
+                                        <span class="badge bg-danger" x-show="d.effect === 'forbid'" x-cloak>forbid</span>
+                                    </td>
+                                    <td class="font-monospace small" x-text="d.principal_user_id || '—'"></td>
+                                </tr>
+                            </template>
+                            <tr x-show="decisions.length === 0" x-cloak>
+                                <td colspan="4" class="text-center text-muted py-3">No decisions yet.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

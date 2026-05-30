@@ -5,12 +5,34 @@ from __future__ import annotations
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request
+from fastapi.responses import HTMLResponse
 
-from pointlessql.api.dependencies import get_user, require_user
+from pointlessql.api.dependencies import (
+    get_templates,
+    get_user,
+    require_admin,
+    require_user,
+)
 from pointlessql.exceptions import AuthorizationError
 from pointlessql.services import entities as entities_service
 
 router = APIRouter(tags=["data-products"])
+
+
+@router.get("/admin/entity-discovery", response_class=HTMLResponse)
+async def admin_entity_discovery_index(request: Request) -> HTMLResponse:
+    """Render the entity-discovery review queue admin page."""
+    require_admin(request)
+    return get_templates(request).TemplateResponse(
+        request,
+        "pages/admin_entity_discovery.html",
+        {
+            "active_page": "admin",
+            "active_catalog": None,
+            "active_schema": None,
+            "active_table": None,
+        },
+    )
 
 
 def _require_steward_or_admin(request: Request) -> None:
