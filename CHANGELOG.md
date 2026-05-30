@@ -17,6 +17,35 @@ defined in ``scripts/clusters.json``. -->
 
 ### Features
 
+- Surface-Welle 135–146 Backend-Completion + Admin-Surfaces
+  (rc193).  Closes the dormant-substrate gap left by Phase 141–146:
+  hooks were declared but never registered, the cost meter was wired
+  but no caller fed it, three scheduler kinds were defined in the
+  plan but missing from `build_default_registry`, and the discovery
+  envelope did not surface the five new policy fields nor the four
+  new top-level blocks (`policy_modules`, `contract_tests`,
+  `fixtures`, `cost`).  Two new `_bootstrap.py` modules
+  (`services/cost`, `services/schema_versioning`) register the
+  before-read + before-write hooks alongside the existing Cedar
+  bootstrap; all three idempotent registrars now fire from
+  `api/_bootstrap/_lifespan.py` next to the api-key bootstrap.
+  `services/lens/tools/query.py` records a `data_product_query_cost`
+  row after the gate (and a row tagged with the cost-denied class on
+  rejection).  `build_default_registry` gains `cost_rollup_hourly`,
+  `contract_test_evaluation`, and `entity_link_discovery` — each a
+  thin executor over the existing service surface, none cron-
+  scheduled by default.  Discovery envelope extends with the missing
+  policy fields, per-port `version_semver` + `schema_history`, and
+  the four new blocks (additively — no existing key changed).  New
+  `GET /api/data-products/{c}/{s}/point-in-time-read?as_of=` is the
+  query-string sibling of the POST endpoint so plugin / UI consumers
+  can resolve a single product's as-of manifest without a body.
+  Four new admin surfaces (`/admin/policy-modules`,
+  `/admin/mesh-dashboard`, `/admin/entity-discovery`,
+  `/admin/data-product-apply`) expose the substrate to operators —
+  each a self-contained Alpine page + page-level JS factory + HTML
+  render route, with four matching cards on `/admin`.  23 new
+  pytests (3972/0 full-suite green).  rc192 → rc193.
 - Cost-Attribution + Quota-Enforcement + Mesh-Health-Dashboard
   (Phase 146 — Backend-only).  Substrat-Vertiefung Welle 7 des
   Mega-Cluster 135-146.  Migration `j7v9x1z3b5d7_phase146_cost_and_quotas`

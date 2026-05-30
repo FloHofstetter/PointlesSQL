@@ -2573,6 +2573,54 @@ PointlesSQL
 │       `pql_set_data_product_quota`), Walkthroughs
 │       `mesh-cost-dashboard.md` + `product-quota-enforcement.md`.
 │
+├── Surface-Welle 135–146 Backend-Completion + Admin-Surfaces  ✅ (2026-05-30)
+│   │
+│   ├── Backend-Completion — `9f9d5d32`.  Schließt die Dormant-
+│   │   Substrate-Lücke aus Phase 141–146: zwei neue `_bootstrap.py`
+│   │   (`services/cost`, `services/schema_versioning`) registrieren
+│   │   die before-read + before-write Hooks; alle drei
+│   │   `register_*_hooks(factory)` werden idempotent aus
+│   │   `api/_bootstrap/_lifespan.py` neben dem api-keys Bootstrap
+│   │   aufgerufen.  `services/lens/tools/query.py` schreibt
+│   │   `data_product_query_cost` nach dem Cost-Gate (und auf
+│   │   Gate-Rejection mit `error_class`).  `build_default_registry`
+│   │   bekommt `cost_rollup_hourly`, `contract_test_evaluation`,
+│   │   `entity_link_discovery` — jeweils dünne Executors über die
+│   │   bestehende Service-Surface, keiner default-cron-scheduled.
+│   │   Discovery-Envelope ergänzt: 5 Policy-Felder
+│   │   (`iso8601_enforcement`, `linked_policy_module_ids`,
+│   │   `breaking_change_policy`, `quota_enforcement`,
+│   │   `max_cost_per_day`, `max_queries_per_hour`),
+│   │   per-port `version_semver` + `schema_history`, und 4 Top-
+│   │   Level-Blöcke (`policy_modules`, `contract_tests`,
+│   │   `fixtures`, `cost`).  Neu:
+│   │   `GET /api/data-products/{c}/{s}/point-in-time-read?as_of=`
+│   │   als Query-String-Pendant zum POST.  15 neue pytests.
+│   │
+│   ├── Admin-Surfaces — `b5f5de29`.  Vier neue Admin-Seiten exposen
+│   │   das Substrat operativ.  Jede ist Alpine-Page + page-level JS
+│   │   Factory + HTML-Render-Route auf dem existierenden Admin-
+│   │   Router + Karte auf `/admin`:
+│   │   * `/admin/policy-modules` — Cedar Module CRUD + Dry-Run
+│   │     Dialog + Decision-Log Dialog (plain textarea, kein
+│   │     CodeMirror).
+│   │   * `/admin/mesh-dashboard` — Vital-Signs Cards (Products /
+│   │     Green / Red / Total Cost) + Cost-by-Product + Top-
+│   │     Consumers für 7-Tage-Window.
+│   │   * `/admin/entity-discovery` — Pending Same-As Queue mit
+│   │     Accept / Reject / Defer + Run-Now-Button.
+│   │   * `/admin/data-product-apply` — YAML-Textarea + Plan /
+│   │     Apply Buttons + Plan-Diff + Outcome-Viewer.
+│   │   8 neue pytests (Render-Smoke + Non-Admin-Gate).
+│   │
+│   │   Asset rc192→rc193.  Full pytest 3972/0/10.
+│   │
+│   │   Deferred (separate Commits): ~28 Plugin-Tools im
+│   │   hermes-plugin-pointlessql, 16 Walkthroughs für die einzelnen
+│   │   Phase-Surfaces, Frontend-Detail-Polish (Chart.js Cost-Trend-
+│   │   Line, Cytoscape Term-Graph-Drawer, CodeMirror Cedar-Mode,
+│   │   F2 `?as_of=` Picker im SQL-Editor + Preview + Export).
+│
 
 
 
