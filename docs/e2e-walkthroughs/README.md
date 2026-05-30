@@ -74,6 +74,10 @@ Reload `auth.md` first; later ones reuse seeded users + catalog.
 | [`admin-audit.md`](admin-audit.md) | `/admin/audit` | |
 | [`admin-cdf-tail.md`](admin-cdf-tail.md) | `/admin/cdf-tail` + table CDF tab | |
 | [`admin-console.md`](admin-console.md) | `/admin/*` 7-card landing | |
+| [`admin-policy-modules.md`](admin-policy-modules.md) | `/admin/policy-modules` CRUD + dry-run | |
+| [`admin-mesh-dashboard.md`](admin-mesh-dashboard.md) | `/admin/mesh-dashboard` vital signs + cost rollups | |
+| [`admin-entity-discovery.md`](admin-entity-discovery.md) | `/admin/entity-discovery` review queue | |
+| [`admin-data-product-apply.md`](admin-data-product-apply.md) | `/admin/data-product-apply` YAML plan + apply | |
 | [`multi-workspace-setup.md`](multi-workspace-setup.md) | `/admin/workspaces` CRUD | |
 | [`models-tab.md`](models-tab.md) | `/models` + 5-tab detail | |
 | [`model-compare.md`](model-compare.md) | `/models/{fqn}/compare?v1=&v2=` | |
