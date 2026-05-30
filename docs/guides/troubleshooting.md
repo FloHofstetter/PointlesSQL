@@ -5,45 +5,24 @@ a `BUG-NN-NN` source comment, that's referenced too.
 
 ## Install + first boot
 
-### `docker: pull access denied for ghcr.io/flohofstetter/...`
+### `docker: pull access denied` / `manifest unknown` for `ghcr.io/flohofstetter/...`
 
-GHCR login expired. Re-run:
+The pinned tag doesn't exist. Drop `PQL_VERSION` / `SOYUZ_VERSION`
+to use the compose defaults, or check the published tags on the
+repo's GHCR packages page. The packages are public — no
+`docker login` is needed.
 
-```bash
-echo "$GHCR_PAT" | docker login ghcr.io -u <handle> --password-stdin
-```
+### `docker compose -f … -f docker-compose.dev.yml build` fails on the soyuz build context
 
-Both PointlesSQL and soyuz-catalog images are private under the
-repo-owner namespace.
-
-### `docker compose build` hangs on `fetching soyuz-catalog-client`
-
-Neither the SSH nor the GH_PAT secret was passed. Pick one:
+The contributor build override needs a sibling `../soyuz-catalog`
+checkout:
 
 ```bash
-docker compose build --ssh default # ssh-agent path
-GH_PAT=$(gh auth token) docker compose build # token path
+git clone https://github.com/FloHofstetter/soyuz-catalog.git ../soyuz-catalog
 ```
 
-### `--mount=type=secret: unknown flag`
-
-BuildKit is disabled. Either set `DOCKER_BUILDKIT=1` in your
-shell or add `"features": {"buildkit": true}` to
-`~/.docker/config.json`.
-
-### `uv sync` fails with `Authentication failed for...soyuz-catalog`
-
-The `url.insteadOf` rewrite isn't active in this shell:
-
-```bash
-git config --global \
- url."https://x-access-token:${GH_PAT}@github.com/".insteadOf \
- "https://github.com/"
-```
-
-Use a **classic** PAT, not a fine-grained one — fine-grained
-PATs need a per-repo grant the classic `Contents: Read` scope
-bypasses.
+Or drop the `-f docker-compose.dev.yml` override to pull the
+published image instead of building.
 
 ### `http://127.0.0.1:8000` returns 404 for everything immediately
 

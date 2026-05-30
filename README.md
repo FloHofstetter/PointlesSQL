@@ -117,46 +117,28 @@ PointlesSQL imports the typed client library and talks to
 soyuz-catalog over HTTP — no shared Python state, no shared
 database.
 
-## Quick start (Docker + GHCR images)
+## Quick start (Docker)
 
-Zero-build install — both images pull from GHCR. No source
-checkout required. Full detail including PAT-creation and
-troubleshooting in [`docs/getting-started/installation.md`](docs/getting-started/installation.md).
-
-**1. Log in to GHCR** with a classic PAT that has `read:packages`:
+Two commands, no GitHub account, no local build:
 
 ```bash
-echo "$GHCR_PAT" | docker login ghcr.io -u <your-github-username> --password-stdin
-```
-
-**2. Download the reference compose file into a fresh directory:**
-
-```bash
-mkdir ~/pointlessql && cd ~/pointlessql
-curl -L -o docker-compose.yml \
-  https://raw.githubusercontent.com/FloHofstetter/PointlesSQL/v0.1.0rc3/docker-compose.yml
-```
-
-**3. Flip both services from `build:` to `image:`** — in each
-service comment out the `build:` block and uncomment the `image:`
-line directly above it. See [`docs/getting-started/installation.md`](docs/getting-started/installation.md)
-for the exact two-line edit.
-
-**4. Pull and start:**
-
-```bash
-docker compose pull
+curl -fsSL https://raw.githubusercontent.com/FloHofstetter/PointlesSQL/main/docker/docker-compose.yml -o docker-compose.yml
 docker compose up -d
 ```
 
-- **soyuz-catalog** on <http://localhost:8080>
-- **PointlesSQL** on <http://localhost:8000>
+Both images pull from GHCR — no source checkout, no `docker login`.
 
-Delta tables are stored in `./warehouse/` (bind-mounted into both
-containers). Notebooks are stored in `./notebooks/` as
-``.py`` jupytext Percent-format files; the JupyterLab iframe was
-retired in favour of the native editor (see the
-[migration note](#migrating-from-the-jupyterlab-iframe)).
+- **PointlesSQL** on <http://localhost:8000>
+- **soyuz-catalog** UC API on <http://localhost:8080>
+- **JupyterLab** on <http://localhost:8888>
+
+Pin a specific release with `PQL_VERSION` / `SOYUZ_VERSION`
+environment variables; the defaults track the latest published
+images. Delta tables and notebooks live in named Docker volumes
+that survive `docker compose down`. See
+[`docs/getting-started/installation.md`](docs/getting-started/installation.md)
+for production pinning, the Grafana audit overlay, and
+troubleshooting.
 
 ## Quick start (local development)
 
@@ -167,7 +149,7 @@ guide.
 **1. Start soyuz-catalog:**
 
 ```bash
-git clone git@github.com:FloHofstetter/soyuz-catalog.git ~/git/soyuz-catalog
+git clone https://github.com/FloHofstetter/soyuz-catalog.git ~/git/soyuz-catalog
 cd ~/git/soyuz-catalog
 uv sync
 uv run soyuz-catalog
@@ -177,17 +159,16 @@ uv run soyuz-catalog
 **2. Start PointlesSQL:**
 
 ```bash
-git clone git@github.com:FloHofstetter/PointlesSQL.git ~/git/PointlesSQL
+git clone https://github.com/FloHofstetter/PointlesSQL.git ~/git/PointlesSQL
 cd ~/git/PointlesSQL
 uv sync
 uv run pointlessql
 # listening on http://127.0.0.1:8000
 ```
 
-`uv sync` fetches the private `soyuz-catalog-client` wheel at the
-pinned git tag using your shell's existing git credentials — an
-ssh key against `git@github.com` is the simplest setup. If you
-want edits to `../soyuz-catalog` to surface without a tag bump,
+`uv sync` fetches the `soyuz-catalog-client` wheel from the public
+git tag pinned in `pyproject.toml` — no credentials required. If
+you want edits to `../soyuz-catalog` to surface without a tag bump,
 `bash scripts/use-editable-soyuz.sh` swaps the pin to the sibling
 checkout.
 
@@ -260,10 +241,9 @@ uv run pyright               # type-check
 uv run pre-commit run -a     # all hooks
 ```
 
-If `uv sync` fails to fetch `soyuz-catalog-client`, confirm your
-shell has git credentials for the private soyuz-catalog repo (an
-ssh key against `github.com`, or a classic PAT wired through
-`git config --global url.insteadOf`). See
+`uv sync` fetches `soyuz-catalog-client` from its public git tag
+with no credentials. If it fails, confirm you can reach
+`https://github.com/FloHofstetter/soyuz-catalog` over HTTPS. See
 [`docs/getting-started/installation.md`](docs/getting-started/installation.md) Troubleshooting for the full
 checklist.
 

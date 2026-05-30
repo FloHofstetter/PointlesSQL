@@ -1,70 +1,33 @@
 # Installing PointlesSQL
 
 Three supported install flavours. Pick the one that matches your
-situation. All three require access to the private
-[soyuz-catalog][sc] repository, which backs PointlesSQL's catalog.
+situation. None of them require GitHub credentials — both
+PointlesSQL and the [soyuz-catalog][sc] catalog backend are public.
 
 [sc]: https://github.com/FloHofstetter/soyuz-catalog
 
 | Flavour | Who it is for | What it needs |
 |---|---|---|
-| [Docker + GHCR images](#docker-ghcr-images-recommended) | End users, quick-start | Docker Engine 24+, a PAT with `read:packages` |
-| [pip install from git tag](#pip-install-from-git-tag) | Library consumers, scripting | Python 3.14, `uv`, a PAT with `Contents: Read` on soyuz-catalog |
-| [Source checkout](#source-checkout-contributors) | Contributors | Git, Python 3.14, `uv`, an ssh key or PAT |
+| [Docker (recommended)](#docker-recommended) | End users, quick-start | Docker Engine 24+ |
+| [pip install from git tag](#pip-install-from-git-tag) | Library consumers, scripting | Python 3.14, `uv` |
+| [Source checkout](#source-checkout-contributors) | Contributors | Git, Python 3.14, `uv` |
 
-## Docker + GHCR images (recommended)
+## Docker (recommended)
 
-Zero-build install. No sibling `../soyuz-catalog` checkout needed.
-Pulls both images from GHCR, runs the full stack in ≤2 minutes.
+Zero-build, zero-credential install. Pulls both images from GHCR
+and runs the full stack in ≤2 minutes.
 
-**1. Create a classic PAT** at
-<https://github.com/settings/tokens> with scope `read:packages`.
-Export it:
-
-```bash
-export GHCR_PAT='ghp_...'
-```
-
-**2. Log in to GHCR:**
-
-```bash
-echo "$GHCR_PAT" | docker login ghcr.io -u <your-github-username> --password-stdin
-```
-
-**3. Download the reference `docker/docker-compose.yml`** into a fresh
-working directory (do NOT run this inside a PointlesSQL source
-clone — compose will pick up the local file with `build:` still
-active):
+**1. Download the reference compose file** into a fresh working
+directory (not inside a PointlesSQL source clone):
 
 ```bash
 mkdir ~/pointlessql && cd ~/pointlessql
-curl -L -o docker-compose.yml \
- https://raw.githubusercontent.com/FloHofstetter/PointlesSQL/v0.1.0rc3/docker-compose.yml
+curl -fsSL https://raw.githubusercontent.com/FloHofstetter/PointlesSQL/main/docker/docker-compose.yml -o docker-compose.yml
 ```
 
-**4. Flip the two services from `build:` → `image:`.** In each
-service block, comment out the `build:` block and uncomment the
-`image:` line directly above it:
-
-```yaml
-soyuz-catalog:
- image: ghcr.io/flohofstetter/soyuz-catalog:v0.2.0rc2 # ← uncomment
- # build: # ← comment
- # context:. # entire
- # dockerfile: docker/Dockerfile.soyuz # block
- # additional_contexts:
- # soyuz-catalog:../soyuz-catalog
- ports:
- - "${SOYUZ_HOST_PORT:-8080}:8080"
-...
-```
-
-Same edit on the `pointlessql:` service.
-
-**5. Pull and start:**
+**2. Start the stack:**
 
 ```bash
-docker compose pull
 docker compose up -d
 ```
 
@@ -72,18 +35,30 @@ docker compose up -d
 welcome page. JupyterLab is on `:8888`, soyuz-catalog's UC API on
 `:8080`.
 
+The compose file defaults to the latest published image tags. Pin a
+specific release by exporting `PQL_VERSION` / `SOYUZ_VERSION` before
+`docker compose up`:
+
+```bash
+PQL_VERSION=v0.1.0rc3 SOYUZ_VERSION=v0.3.0rc3 docker compose up -d
+```
+
+Delta tables and notebooks persist in named Docker volumes
+(`warehouse_data`, `notebooks_data`, …) that survive
+`docker compose down`. Wipe them with `docker compose down -v`.
+
 **Optional — Grafana audit dashboard.** Append the
 `docker/docker-compose.grafana.yml` overlay to spin up Grafana with a
 pre-provisioned audit + lineage dashboard at
 `http://127.0.0.1:3000`:
 
 ```bash
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.grafana.yml up -d
+docker compose -f docker-compose.yml -f docker-compose.grafana.yml up -d
 ```
 
 Reads the same SQLite metadata DB the app uses; no agent code,
 no API changes, no extra config. Postgres deployments aren't yet
-supported here (see in
+supported here (see
 [`ROADMAP.md`](https://github.com/FloHofstetter/PointlesSQL/blob/main/ROADMAP.md)).
 
 Pin to a digest for reproducibility in production:
@@ -98,38 +73,23 @@ Install PointlesSQL as a Python package via `uv`. Useful for
 scripting / library use where you already have soyuz-catalog
 running elsewhere.
 
-**1. Create a classic PAT** at
-<https://github.com/settings/tokens> with scope
-`Contents: Read` on soyuz-catalog. Export it:
-
-```bash
-export GH_PAT='ghp_...'
-```
-
-**2. Rewrite HTTPS github clones through the token** (this is how
-`uv` resolves the private `[tool.uv.sources]` pin transitively):
-
-```bash
-git config --global \
- url."https://x-access-token:${GH_PAT}@github.com/".insteadOf \
- "https://github.com/"
-```
-
-**3. Install PointlesSQL:**
+**1. Install PointlesSQL** from a tagged release. The
+`soyuz-catalog-client` dependency resolves from its public git tag
+with no credentials:
 
 ```bash
 uv pip install "pointlessql @ git+https://github.com/FloHofstetter/PointlesSQL.git@v0.1.0rc3"
 ```
 
-**4. Start soyuz-catalog** however suits your deployment. If you
+**2. Start soyuz-catalog** however suits your deployment. If you
 have the soyuz-catalog repo checked out, `uv run soyuz-catalog`
 listens on `:8080`. Otherwise run the Docker image:
 
 ```bash
-docker run -p 8080:8080 ghcr.io/flohofstetter/soyuz-catalog:v0.2.0rc2
+docker run -p 8080:8080 ghcr.io/flohofstetter/soyuz-catalog:v0.3.0rc3
 ```
 
-**5. Start PointlesSQL:**
+**3. Start PointlesSQL:**
 
 ```bash
 POINTLESSQL_SOYUZ_CATALOG_URL=http://127.0.0.1:8080 pointlessql
@@ -146,14 +106,13 @@ you were iterating on PointlesSQL itself.
 **1. Clone the repo:**
 
 ```bash
-git clone git@github.com:FloHofstetter/PointlesSQL.git
+git clone https://github.com/FloHofstetter/PointlesSQL.git
 cd PointlesSQL
 ```
 
-**2. Install dependencies.** `uv sync` reuses whatever shell git
-credentials your user has already configured (an ssh key against
-`git@github.com` is the simplest). The soyuz-catalog-client wheel
-is fetched from its pinned tag:
+**2. Install dependencies.** `uv sync` fetches the
+`soyuz-catalog-client` wheel from its pinned public git tag — no
+credentials required:
 
 ```bash
 uv sync
@@ -164,16 +123,16 @@ need regenerated client output to surface without a tag bump,
 flip the dependency to an editable sibling checkout:
 
 ```bash
-git clone git@github.com:FloHofstetter/soyuz-catalog.git../soyuz-catalog
-bash scripts/use-editable-soyuz.sh # pyproject.toml dirty on purpose
-#...iterate: edit soyuz-catalog, regen client, `uv sync`, test...
-bash scripts/use-pinned-soyuz.sh # restore before committing
+git clone https://github.com/FloHofstetter/soyuz-catalog.git ../soyuz-catalog
+bash scripts/use-editable-soyuz.sh   # pyproject.toml dirty on purpose
+# …iterate: edit soyuz-catalog, regen client, `uv sync`, test…
+bash scripts/use-pinned-soyuz.sh     # restore before committing
 ```
 
 **4. Start both processes.** In terminal 1:
 
 ```bash
-cd../soyuz-catalog
+cd ../soyuz-catalog
 uv sync
 uv run soyuz-catalog
 ```
@@ -188,34 +147,34 @@ uv run pointlessql
 **Expected state:** `http://127.0.0.1:8000/` renders the welcome
 page. Code reloads with `uvicorn --reload` (see `pointlessql/api/main.py`).
 
+To build the Docker images from your local checkout instead of
+pulling from GHCR, layer the contributor override:
+
+```bash
+docker compose -f docker/docker-compose.yml -f docker/docker-compose.dev.yml up --build
+```
+
+This requires a sibling `../soyuz-catalog` checkout for the soyuz
+image build context.
+
 ## Troubleshooting
 
-**`docker: pull access denied for ghcr.io/flohofstetter/...`** —
-Your GHCR login is missing or expired. Re-run step 2 of the Docker
-flavour. Images are private under the repo-owner namespace.
-
-**`docker compose build` hangs on `fetching soyuz-catalog-client`** —
-Neither the `ssh` nor the `gh_pat` secret was passed. Either
-`docker compose build --ssh default` (requires an ssh-agent
-authenticated against `git@github.com`) or `GH_PAT=$(gh auth token)
-docker compose build`.
-
-**`--mount=type=secret: unknown flag`** — BuildKit is disabled.
-Set `DOCKER_BUILDKIT=1` in your shell or configure
-`"features": {"buildkit": true}` in `~/.docker/config.json`.
-
-**`uv sync` fails with `Authentication failed for...soyuz-catalog`** —
-The `url.insteadOf` rewrite isn't active in this shell. Confirm
-with `git config --global --get url."https://x-access-token:...@github.com/".insteadOf`.
-Use a **classic** PAT, not a fine-grained one — fine-grained PATs
-need a per-repo grant that the `Contents: Read` classic scope
-bypasses.
+**`docker: pull access denied` / `manifest unknown` for
+`ghcr.io/flohofstetter/...`** — The tag you pinned doesn't exist.
+Drop `PQL_VERSION` / `SOYUZ_VERSION` to use the defaults, or check
+the published tags on the repo's GHCR packages page.
 
 **`docker compose up` says `soyuz-catalog healthcheck: unhealthy`** —
 The soyuz-catalog image failed to start. Check logs with
 `docker compose logs soyuz-catalog`. Most common cause: the
 `/app/data` volume has a stale SQLite from a previous version;
 `docker compose down -v` wipes it.
+
+**`docker compose -f … -f docker-compose.dev.yml build` fails on the
+soyuz-catalog build context** — The contributor override needs a
+sibling `../soyuz-catalog` checkout. Clone it next to PointlesSQL,
+or drop the `-f docker-compose.dev.yml` override to pull the
+published image instead.
 
 ## Default file locations
 

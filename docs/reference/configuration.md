@@ -243,7 +243,6 @@ not by `Settings`:
 | `POINTLESSQL_API_KEY` | `None` | Bearer token for HTTP calls. Mint with `pointlessql admin issue-auditor-key`. |
 | `POINTLESSQL_SUPERVISOR_MODE` | `0` | `1` = plugin registers supervisor-gated tools at session start. |
 | `POINTLESSQL_AUDITOR_MODE` | `0` | `1` = plugin registers auditor tools at session start. |
-| `GHCR_PAT` | `None` | Used by the Docker quickstart for `docker login ghcr.io`. |
 
 For the plugin-side env-var contract see
 [`hermes-plugin-pointlessql/CLAUDE.md`](https://github.com/FloHofstetter/hermes-plugin-pointlessql/blob/main/CLAUDE.md)

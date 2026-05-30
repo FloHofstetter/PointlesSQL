@@ -100,21 +100,21 @@ In `~/git/soyuz-catalog` start the server in one terminal:
 uv run soyuz-catalog       # listens on http://127.0.0.1:8080
 ```
 
-In this repo, `soyuz-catalog-client` is pinned to a **private
+In this repo, `soyuz-catalog-client` is pinned to a **public
 GitHub tag** under `[tool.uv.sources]`:
 
 ```toml
 soyuz-catalog-client = {
   git = "https://github.com/FloHofstetter/soyuz-catalog",
-  tag = "v0.2.0rc2",
+  tag = "v0.3.0rc3",
   subdirectory = "soyuz-catalog-client",
 }
 ```
 
-`uv sync` fetches that wheel over HTTPS, reusing your shell's git
-credentials (SSH key or `GH_TOKEN`). A sibling `../soyuz-catalog`
-checkout is **no longer required** — Sprint 38 was the first sprint
-where `git clone && uv sync` works on a truly empty host.
+`uv sync` fetches that wheel over HTTPS with **no credentials** —
+soyuz-catalog is a public repository. A sibling `../soyuz-catalog`
+checkout is not required; `git clone && uv sync` works on a truly
+empty host.
 
 ```bash
 uv sync
@@ -148,17 +148,13 @@ approach above is the working replacement.
 
 ### Docker builds
 
-Sprint 40 made the Dockerfile dual-auth. BuildKit can fetch the
-private soyuz-catalog-client wheel via EITHER
-`--mount=type=ssh` (ssh-agent, Sprint 38 ergonomics) OR
-`--mount=type=secret,id=gh_pat` (token file, CI + clean-machine).
-Both mounts are `required=false`; the `RUN` prefers the token if
-present, else falls back to SSH. Pick whichever your workstation
-already has authenticated:
+The Dockerfile fetches the soyuz-catalog-client wheel from its
+public git tag with no credentials. Contributors who build both
+images from a local checkout layer the dev override (which needs a
+sibling `../soyuz-catalog` checkout for the soyuz build context):
 
 ```bash
-docker compose build --ssh default pointlessql           # contributor
-GH_PAT=$(gh auth token) docker compose build pointlessql # token path
+docker compose -f docker/docker-compose.yml -f docker/docker-compose.dev.yml up --build
 ```
 
 ### GHCR images (recommended for end users)
@@ -171,13 +167,12 @@ namespace:
 - `ghcr.io/flohofstetter/pointlessql:<tag>`
 - `ghcr.io/flohofstetter/soyuz-catalog:<pinned-soyuz-tag>`
 
-Images are private; consumers authenticate with
-`docker login ghcr.io` and a classic PAT scoped `read:packages`.
-The commented `image:` lines in `docker/docker-compose.yml` turn the
-stack into a pure-pull install with no source checkout required —
-[`docs/getting-started/installation.md`](docs/getting-started/installation.md) and the
-[`docs/e2e-walkthroughs/packaging.md`](docs/e2e-walkthroughs/packaging.md)
-playbook walk through this flow.
+The packages are public, so `docker/docker-compose.yml` pulls them
+with no `docker login`. The default `docker compose up` is a pure
+pull-and-run install — no source checkout, no credentials. Pin a
+release with `PQL_VERSION` / `SOYUZ_VERSION`.
+[`docs/getting-started/installation.md`](docs/getting-started/installation.md)
+walks through the flow.
 
 ### Don't start the JVM UC server
 

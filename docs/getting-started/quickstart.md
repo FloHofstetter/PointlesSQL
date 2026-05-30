@@ -11,19 +11,16 @@ source) see [Installation](installation.md).
 
 ```bash
 mkdir ~/pointlessql-quickstart && cd ~/pointlessql-quickstart
-curl -L -o docker-compose.yml \
- https://raw.githubusercontent.com/FloHofstetter/PointlesSQL/v0.1.0rc3/docker-compose.yml
-echo "$GHCR_PAT" | docker login ghcr.io -u <your-github-handle> --password-stdin
+curl -fsSL https://raw.githubusercontent.com/FloHofstetter/PointlesSQL/main/docker/docker-compose.yml -o docker-compose.yml
 docker compose pull
 ```
 
-The two images (`pointlessql` + `soyuz-catalog`) are private on
-GHCR for now — `GHCR_PAT` is a classic GitHub PAT with
-`read:packages`. See
-[Installation → Docker + GHCR](installation.md#docker-ghcr-images-recommended)
-for the PAT-creation flow.
+Both images (`pointlessql` + `soyuz-catalog`) pull from GHCR with
+no `docker login` — the packages are public. See
+[Installation → Docker](installation.md#docker-recommended)
+for release pinning.
 
-!!! tip "No GHCR access?"
+!!! tip "Prefer building from source?"
  Use the source-checkout flavour: `git clone` and
  `uv run pointlessql`. The quickstart works the same way
  once port 8000 is listening.
