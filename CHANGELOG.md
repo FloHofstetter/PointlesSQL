@@ -17,6 +17,27 @@ defined in ``scripts/clusters.json``. -->
 
 ### Features
 
+- Phase 146 Cost-Attribution + Quotas + Mesh-Health-Dashboard
+  Closure (rc202).  Two new `hermes-plugin-pointlessql` tools
+  complete the Phase 146 plugin scope: `pql_cost_by_consumer`
+  (GET per-consumer cost rollup over a window; admin-only,
+  mirrors the existing `pql_cost_by_product`) and
+  `pql_set_workspace_quota` (PUT workspace-default quota fields
+  `max_cost_per_day` / `max_queries_per_hour` /
+  `quota_enforcement`).  Per-product quota overrides ride on
+  the existing `pql_set_data_product_policy` since the three
+  quota fields are part of POLICY_FIELDS.  Six new plugin
+  pytest in `test_cost_quota_tools.py`; the
+  `test_read_tools.py` Surface-Welle expected set grows from
+  twenty to twenty-two — the full Surface-Welle plugin scope
+  for Phase 135–146 is now complete.  Two new agent-flow
+  walkthroughs: `docs/e2e-walkthroughs/mesh-cost-dashboard.md`
+  (seven-step read flow over the cost-telemetry surface) and
+  `docs/e2e-walkthroughs/product-quota-enforcement.md` (eight-
+  step set → breach → 429 → product-override → warn-mode →
+  cross-check flow).  ROADMAP Phase 146 flips 🟦 → ✅,
+  closing the Mega-Cluster 135–146 substrate wave.
+
 - Phase 145 Auto-Discovery Entity-Links Closure (rc201).  Three
   new `hermes-plugin-pointlessql` tools close the remaining
   plugin scope from the Phase 145 deferred-block:

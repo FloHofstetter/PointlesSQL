@@ -2501,7 +2501,7 @@ PointlesSQL
 │       `/admin/entity-discovery` already shipped in commits
 │       `9f9d5d32` / `b5f5de29`.
 │
-├── Phase 146 — Cost-Attribution + Quotas + Mesh-Health-Dashboard (Backend-only)  🟦 (2026-05-30)
+├── Phase 146 — Cost-Attribution + Quotas + Mesh-Health-Dashboard  ✅ (2026-05-30)
 │   │
 │   │   Substrat-Vertiefung Welle 7 + finale Substrat-Phase des
 │   │   Mega-Cluster 135–146.  Per-product/per-consumer cost-
@@ -2579,17 +2579,21 @@ PointlesSQL
 │           offene Follow-Ups (engine-side cost integration,
 │           ledger-retention, cache TTL, SQL-side aggregation).
 │
-│       Asset rc191→rc192.  Deferred für Surface-Welle:
-│       `pql/_hooks.py` before_read check_quota integration
-│       (Substrat steht), Scheduler-Kind `cost_rollup_hourly`
-│       (default-enabled, 1h interval), services/lens/cost_gate.py
-│       Meter-Hook für engine-runtime cost-recording, Admin-Page
-│       `/admin/mesh-dashboard` mit Chart.js Cost-Trend-Lines +
-│       Per-Domain-Stacked-Bar + Freshness-Heatmap + Top-
-│       Consumers-Tabelle, Plugin-Tools (`pql_mesh_health_full`,
-│       `pql_cost_by_product`, `pql_cost_by_consumer`,
-│       `pql_set_data_product_quota`), Walkthroughs
-│       `mesh-cost-dashboard.md` + `product-quota-enforcement.md`.
+│       Asset rc191→rc192 (backbone) → rc202 (closure).  Closure
+│       2026-05-30: 2 plugin tools (`pql_cost_by_consumer`,
+│       `pql_set_workspace_quota`) close the cost + quota agent
+│       surface.  `pql_mesh_health_full` + `pql_cost_by_product`
+│       already shipped via the Surface-Welle batch; the per-product
+│       quota field-set rides on the existing
+│       `pql_set_data_product_policy` since the three quota fields
+│       are part of POLICY_FIELDS.  Two agent-flow walkthroughs
+│       `mesh-cost-dashboard.md` (read flow) and
+│       `product-quota-enforcement.md` (set → breach → 429 flow).
+│       `pql/_hooks.py` before_read check_quota integration,
+│       Scheduler-Kind `cost_rollup_hourly`, and Admin-Page
+│       `/admin/mesh-dashboard` already shipped in commits
+│       `9f9d5d32` / `b5f5de29`.  services/lens/cost_gate.py
+│       meter-hook also wired via the Backend-Completion commit.
 │
 ├── Surface-Welle 135–146 Backend-Completion + Admin-Surfaces  ✅ (2026-05-30)
 │   │
