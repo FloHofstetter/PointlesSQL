@@ -249,6 +249,28 @@ configs, edges, and (cosmetic) positions.
 | Open `/dp/{id}/canvas/diff?from=N&to=M` between two versions | Three columns render — added, removed, modified — with per-node JSON side-by-side for modified nodes; position-only changes are intentionally ignored |
 | Diff between identical versions | "No structural changes" alert renders |
 
+## Real-time co-edit (Wave G — opt-in via `?coedit=1`)
+
+The editor URL accepts a `?coedit=1` query parameter that lights up
+a Y.Doc-backed real-time hub at `/ws/dp-canvas/{dp_id}`. Two browser
+tabs (or two physical users on the same DP) see each other's edits
+flow live; the hub flushes a fresh `data_product_canvas_graph` row
+every ~1.5 s while edits are happening and once more on the last
+disconnect.
+
+| Step | Expect |
+|---|---|
+| Open `/dp/{id}/canvas?coedit=1` in tab A | Editor mounts as usual; in the background `coedit.js` connects the WS and synchronises the Y.Doc |
+| Open the same URL in tab B | Tab B receives the initial state; both tabs now share a Y.Doc |
+| In tab A, drop a block + wire it | Within ~50 ms tab B re-renders the canvas with the new block; tab B's editor isn't double-counted (a 50 ms suppression window blocks the echo from triggering tab B's own autosave) |
+| Move a block in tab A | Tab B's editor mirrors the position |
+| Close both tabs | The hub flushes a final version row and tears down |
+
+If the URL omits `?coedit=1` the Y.js download path doesn't fire,
+the WS hub is never reached, and the editor behaves exactly as the
+single-user surface. Disabling the flag is the explicit fallback
+when the co-edit feature surfaces a bug.
+
 ## Found bugs
 
 _None yet — populate after the first replay pass uncovers any._

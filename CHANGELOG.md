@@ -17,6 +17,39 @@ defined in ``scripts/clusters.json``. -->
 
 ### Features
 
+- Visual Data Product editor — opt-in real-time co-edit (rc211).
+  Wave G of the cluster wires a Y.Doc-backed co-edit hub to the
+  canvas editor, mirroring the Phase-105 notebook pattern at a
+  smaller scale.  Single-file WS endpoint at
+  [dp_canvas_coedit_ws.py](pointlessql/api/dp_canvas_coedit_ws.py)
+  maintains an in-memory pycrdt.Doc per data-product id (root
+  Y.Map "canvas" with one "json" entry carrying the serialised
+  CanvasDoc), handles the same 4-tag protocol as the notebook hub
+  (SYNC_STEP1 / SYNC_STEP2 / SYNC_UPDATE + AWARENESS_UPDATE), and
+  runs a 1.5 s flush_loop that calls a new service helper
+  ([_coedit.py](pointlessql/services/dp_canvas/_coedit.py)) to
+  persist the live Y.Doc into a fresh `data_product_canvas_graph`
+  row via the existing `save_graph` path.  The hub skips
+  persistence when the live doc hasn't structurally changed since
+  the latest saved row — idle hubs don't flood the version ledger.
+  Frontend
+  [coedit.js](frontend/js/dp_canvas/coedit.js) lazy-imports yjs +
+  y-protocols/sync + y-protocols/awareness from the existing
+  base.html importmap and conditionally mounts only when the
+  editor URL carries `?coedit=1`, so the single-user mode pays no
+  Y.js download cost by default.  Local Drawflow mutations push
+  the editor's current serialisation into the Y.Map; remote
+  updates reload the editor through the existing `_loadIntoDrawflow`
+  pipeline with a 50 ms suppression window so the editor's own
+  autosave doesn't echo back upstream.  4 new pytest cover the
+  service helpers (empty seed, seeded-from-DB, identical-skip,
+  bump-on-change); the WS endpoint is exercised by manual browser
+  replay since asyncio + uvicorn + Starlette WS testing setup is
+  larger than the feature's surface justifies for v1.  Full suite
+  stays green.  Single-file design (vs. the 8-file notebook
+  package) is intentional — DP canvases don't need the
+  cross-process bus or cell-uuid remap that the notebook hub
+  ships.
 - Visual Data Product editor — DP-as-Code round-trip + version
   diff-view (rc210).  Wave F gives canvases full git-tracking
   parity with the rest of the DP-as-Code spec.  (1) New

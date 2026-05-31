@@ -365,6 +365,19 @@ export function dpCanvasEditor(product, ctx) {
       );
 
       await this.loadLatest();
+
+      // Conditional co-edit attach — opt-in via ?coedit=1 so the
+      // single-user editor pays no Y.js download cost by default.
+      try {
+        const { attachCanvasCoedit, isCoeditEnabled } = await import(
+          '../dp_canvas/coedit.js'
+        );
+        if (isCoeditEnabled()) {
+          this._coeditController = await attachCanvasCoedit(this, this.product.id);
+        }
+      } catch (e) {
+        // Coedit is best-effort; never block the single-user editor.
+      }
     },
 
     saveStateLabel() {

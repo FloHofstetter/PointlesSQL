@@ -2919,26 +2919,37 @@ PointlesSQL
 │           Layout (added/removed/modified), JSON-tree-diff im
 │           "modified" Bereich.
 │
-├── Phase 153 — Visual DP Editor: Real-time Co-Edit (Wave G)  ⏳ planned
+├── Phase 153 — Visual DP Editor: Real-time Co-Edit (Wave G)  ✅ shipped (local, 2026-05-31)
 │   │
-│   │   Reused Phase-105-Infrastruktur — Adapter, keine neue Infra.
-│   │   Pattern-Match zu Notebook-Co-Edit damit UX konsistent bleibt.
+│   │   Single-file WS hub (vs. Phase-105's 8-module split) — same
+│   │   wire-format (SYNC_STEP1/2/UPDATE + AWARENESS_UPDATE) but
+│   │   minus the cross-process bus + cell-uuid remap (DPs don't
+│   │   need those v1). Conditional client mount via `?coedit=1`
+│   │   so single-user mode pays no Y.js cost by default.
 │   │
 │   ├── 153.1 — Y.Doc-Binding für Canvas-Graph
-│   │       Neuer WS-Hub `/ws/dp-canvas/{dp_id}` mirrors Phase-105
-│   │       Notebook-Hub-Pattern. Y.Map als Document-Root, Block-
-│   │       Mutations als Y.Map-Operations.
+│   │       `pointlessql/api/dp_canvas_coedit_ws.py` (one file): WS-
+│   │       Endpoint `/ws/dp-canvas/{dp_id}` + in-memory hub per dp_id
+│   │       + flush_loop. Service-Helper
+│   │       `pointlessql/services/dp_canvas/_coedit.py` (4 funktionen):
+│   │       `get_or_init_canvas_ydoc` seedet aus latest saved graph,
+│   │       `persist_canvas_ydoc` minted neue version row via
+│   │       existing `save_graph` (skipped wenn dokument unchanged).
+│   │       Y.Map-Root `canvas` mit einem `json`-Slot der die
+│   │       serialisierte CanvasDoc trägt.
 │   │
 │   ├── 153.2 — Awareness-Layer
-│   │       Peer-Cursors / Selection-Rectangles / Live-Remote-Edit-
-│   │       Highlights. Selbes Pattern wie Phase 105.4 Notebook-
-│   │       Awareness (FNV-1a-32 HSL-Color per User).
+│   │       Frontend `frontend/js/dp_canvas/coedit.js` instantiate
+│   │       `y-protocols/awareness` Awareness und sendet
+│   │       `TAG_AWARENESS_UPDATE` (0x03) frames. Server-Hub relayed
+│   │       das verbatim ohne zu persistieren.
 │   │
 │   └── 153.3 — Save-Path-Barrier
-│           Debounced CRDT-to-JSON-Persistenz mit Version-Bump in
-│           `data_product_canvas_graph`-Tabelle. Pattern aus Phase
-│           105.5 (TAG_CELL_UUID_REMAP-Style Broadcast für ID-
-│           Remaps).
+│           Hub-`flush_loop` ruft alle 1.5s `persist_canvas_ydoc`
+│           wenn `dirty=True`. Last-subscriber-leave triggert finalen
+│           sync-flush vor hub-teardown. Idempotent: identical-doc-
+│           skip vermeidet eine flood von version-rows wenn ein hub
+│           idle ist.
 │
 ├── Phase 154 — Visual DP Editor: Operations + AI-Author-Surface (Wave H)  ⏳ planned
 │   │
