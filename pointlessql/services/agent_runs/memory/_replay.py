@@ -97,6 +97,7 @@ UNSAFE_OPS: frozenset[str] = frozenset(
         OpName.DROP_SCHEMA.value,
         OpName.ALTER_TABLE.value,
         OpName.VECTOR_INDEX.value,
+        OpName.CANVAS_MATERIALIZE.value,
     }
 )
 

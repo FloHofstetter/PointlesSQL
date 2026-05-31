@@ -2723,41 +2723,57 @@ PointlesSQL
 │           trip; lineage edges emittiert; OutputPort registriert
 │           in soyuz; alembic upgrade/downgrade clean.
 │
-├── Phase 148 — Visual DP Editor: Frontend Editor (Wave B)  ⏳ planned
+├── Phase 148 — Visual DP Editor: Frontend Editor (Wave B)  ✅ shipped (local, 2026-05-31)
 │   │
-│   │   Rete.js-Mount + minimum-viable Authoring-UI. Gegen Wave-A-
-│   │   Backend, daher keine Mocks nötig.
+│   │   Standalone full-screen editor at `/dp/{id}/canvas` mit Drawflow-
+│   │   block-and-wire-Canvas, 8 Block-Palette + Drag-to-Canvas + Auto-
+│   │   Save + Edit-Zeit-Validierung + Per-Block-Config-Forms + Run-
+│   │   Modal mit Materialize-Pipeline. Library-Choice deviation:
+│   │   Drawflow statt Rete.js v2 (Rete v2 fordert Vue/React/Lit-Render-
+│   │   Plugin; Drawflow ist single-file UMD + vanilla DOM, passt
+│   │   sauber in den build-step-losen Alpine-Stack).
 │   │
-│   ├── 148.1 — Rete.js Bundle-Setup + Alpine-Mount
-│   │       Library-Integration in `frontend/js/`-Build, Alpine
-│   │       mixin `installDpCanvasEditor(state)` nach Pattern aus
-│   │       `frontend/js/notebook/notebook_editor.js`. Neues Editor-
-│   │       Template `frontend/templates/dp_canvas_editor.html`.
-│   │       Routes: `POST /api/dp/{id}/canvas` (save) +
-│   │       `GET /api/dp/{id}/canvas` (load).
+│   ├── 148.1 — Routes + Drawflow-Mount + Empty Editor Page
+│   │       Neuer `data_products_routes/canvas.py` mit 5 Routes
+│   │       (GET/POST/versions/validate/materialize) unter
+│   │       `/api/dp/{dp_id}/canvas`. Neuer HTML-Router
+│   │       `api/dp_canvas_html_routes.py` rendert
+│   │       `frontend/templates/pages/dp_canvas_editor.html`. Alpine-
+│   │       Factory `dpCanvasEditor()` in `frontend/js/pages/`.
+│   │       Canvas-Tab im DP-Detail-Page lazy-loadet die Version-
+│   │       Liste und linkt auf das standalone Editor-Page.
 │   │
-│   ├── 148.2 — Block-Palette + Drag-to-Canvas + Save
-│   │       Sidebar-Palette mit den 8 Atom-Blöcken aus 147.2,
-│   │       drag-to-canvas-Interaktion, manuelles Save via 148.1-
-│   │       Route. JSON-Persistenz schon funktional.
+│   ├── 148.2 — Block-Palette + Drag-to-Canvas + Save Round-Trip
+│   │       Sidebar-Palette mit den 8 Atom-Blöcken aus Wave A.
+│   │       HTML5-drag/drop API von der Palette auf das Drawflow-
+│   │       Canvas. Auto-Save (debounced 1500 ms) + manuelles
+│   │       Save-Button mit optimistic-concurrency expected_base_
+│   │       version. Connection-Drawing via Drawflow built-in.
 │   │
 │   ├── 148.3 — Pin-Type-Rendering + Edit-Zeit-Validierung
-│   │       Sockets farbig pro Pin-Typ, Validierungs-Badges, rote
-│   │       Wires bei Type-Mismatch (konsumiert Wave-A-Schema-Flow-
-│   │       Output aus 147.4).
+│   │       `POST /api/dp/{id}/canvas/validate` resolved jede
+│   │       InputPort-FQN gegen soyuz, propagiert Pin-Schemas durch
+│   │       den DAG, retourniert pin_schemas + CompileError-Liste.
+│   │       Editor rendert Per-Node-Error-Badges + Status-Bar mit
+│   │       klickbarer Error-Liste. Debounced 800 ms nach Mutation.
 │   │
 │   ├── 148.4 — Per-Block-Config-Forms
-│   │       Alpine x-data Forms für Filter (Predicate), Join (Keys +
-│   │       Strategy), GroupBy (Keys + Aggregations), Project
-│   │       (Column-Liste). SQL-Block: einfaches Textarea v1,
-│   │       CodeMirror kommt erst in 149.2.
+│   │       Rechte Drawer mit block-type-spezifischen Alpine-Forms
+│   │       für alle 8 Block-Types (InputPort/Filter/Project/Join/
+│   │       GroupBy/Limit/SQL/OutputPort). Project + Join + GroupBy
+│   │       mit chip-input für Spalten-Listen; GroupBy mit dynamic
+│   │       aggregation-rows; OutputPort mit conditional merge_on
+│   │       wenn mode=merge.
 │   │
 │   └── 148.5 — Materialize-Button + Skeleton-Walkthrough
-│           Materialize-Button → Wire zu Wave-A-Executor → Render
-│           Run-Feedback + Lineage-Echo. Skeleton-Doc
-│           `docs/e2e-walkthroughs/dp-canvas-builder.md` mit Drop-
-│           Wire-Save-Materialize-Pfad; Verifikation manuell via
-│           Playwright-MCP.
+│           "Run ▶"-Button öffnet Modal mit Target-Preview, ruft
+│           `POST /api/dp/{id}/canvas/materialize` (compile → execute_
+│           canvas → write Delta → register OutputPort → save graph
+│           version). Erfolg-Banner zeigt rows_written + target_fqn
+│           + graph_version. Neuer Walkthrough
+│           `docs/e2e-walkthroughs/dp-canvas-builder.md` mit Setup-
+│           Block (2 UC-Tabellen + leerer DP) + Browser-Flow-Tabelle
+│           + Agent-Flow (httpx-Snippet).
 │
 ├── Phase 149 — Visual DP Editor: Live Preview + Expression Editor (Wave C)  ⏳ planned
 │   │

@@ -18,20 +18,18 @@ from pointlessql.api.data_products_routes._shared import (
     load_one,
     serialise_product,
 )
-from pointlessql.api.data_products_routes.apply import router as _apply_router
-from pointlessql.api.data_products_routes.schema_versions import (
-    router as _schema_versions_router,
-)
 from pointlessql.api.data_products_routes.active_reviewer import (
     router as _active_reviewer_router,
 )
 from pointlessql.api.data_products_routes.activity import router as _activity_router
+from pointlessql.api.data_products_routes.apply import router as _apply_router
 from pointlessql.api.data_products_routes.bitemporal_policy import (
     router as _bitemporal_policy_router,
 )
 from pointlessql.api.data_products_routes.candidates import (
     router as _candidates_router,
 )
+from pointlessql.api.data_products_routes.canvas import router as _canvas_router
 from pointlessql.api.data_products_routes.comments import router as _comments_router
 from pointlessql.api.data_products_routes.consumer_voice import (
     router as _consumer_voice_router,
@@ -87,6 +85,9 @@ from pointlessql.api.data_products_routes.recommendations import (
 from pointlessql.api.data_products_routes.releases import router as _releases_router
 from pointlessql.api.data_products_routes.reload import router as _reload_router
 from pointlessql.api.data_products_routes.reviews import router as _reviews_router
+from pointlessql.api.data_products_routes.schema_versions import (
+    router as _schema_versions_router,
+)
 from pointlessql.api.data_products_routes.semantic import router as _semantic_router
 from pointlessql.api.data_products_routes.slo import router as _slo_router
 from pointlessql.api.data_products_routes.statistics import router as _statistics_router
@@ -136,6 +137,7 @@ router.include_router(_contract_tests_router)
 router.include_router(_apply_router)
 router.include_router(_schema_versions_router)
 router.include_router(_entity_candidates_router)
+router.include_router(_canvas_router)
 
 
 # Backwards-compatible aliases — ``_load_one`` was the original

@@ -115,6 +115,7 @@ prelude completes. Replay needs both contexts.
 | [`data-product-event-port.md`](data-product-event-port.md) | B1/D1 Delta CDF + WS / HTTP fan-out + subscription CRUD | |
 | [`data-product-infrastructure.md`](data-product-infrastructure.md) | B8 declarative deployment block (playwright-only) | |
 | [`data-product-consumer-voice.md`](data-product-consumer-voice.md) | C consumer-side use cases + ratings (playwright-only) | |
+| [`dp-canvas-builder.md`](dp-canvas-builder.md) | Visual block-and-wire DP editor at `/dp/{id}/canvas` | |
 | [`library-facts.md`](library-facts.md) | `/library/facts` browse + per-fact detail | |
 | [`vector-search.md`](vector-search.md) | HNSW vector index + `pql.vector_search` + REST + UI tab | |
 

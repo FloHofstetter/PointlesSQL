@@ -154,6 +154,11 @@
                       x-text="activityTotal"></span>
             </button>
         </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-canvas-btn" data-bs-toggle="tab"
+                    data-bs-target="#tab-canvas" type="button" role="tab"
+                    data-pql-tab-key="canvas">Canvas</button>
+        </li>
         {# Discussion / Reviews / README / Issues
            moved into the offcanvas drawer at the bottom of this
            template.  Count badges still update via dataProductDetail
@@ -180,6 +185,8 @@
         {% include "pages/_partials/data_product/tab_interop.html" %}
 
         {% include "pages/_partials/data_product/tab_activity.html" %}
+
+        {% include "pages/_partials/data_product/tab_canvas.html" %}
 
     </div>
 

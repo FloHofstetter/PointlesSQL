@@ -1,0 +1,71 @@
+{# Canvas tab for the data-product detail page.
+
+   Lightweight summary card pointing at the standalone visual editor
+   at ``/dp/{id}/canvas``.  Lazy-fetches the version list when the tab
+   is activated so the initial page render isn't blocked by an extra
+   round-trip for users who never open the Canvas tab.
+#}
+<div class="tab-pane fade" id="tab-canvas" role="tabpanel"
+     x-data="{
+        versions: null,
+        loading: false,
+        error: null,
+        async load() {
+          if (this.versions !== null || this.loading) return;
+          this.loading = true;
+          const res = await window.pqlApi.fetch(
+            '/api/dp/' + product.id + '/canvas/versions',
+            { silent: true },
+          );
+          this.loading = false;
+          if (!res.ok) { this.error = res.error || 'Failed to load versions'; return; }
+          this.versions = res.data.versions || [];
+        }
+     }"
+     @shown.bs.tab.window="$event.target && $event.target.id === 'tab-canvas-btn' && load()">
+    <div class="card">
+        <div class="card-body">
+            <div class="d-flex align-items-start gap-3">
+                <i class="bi bi-diagram-3 fs-2 text-primary"></i>
+                <div class="flex-grow-1">
+                    <h5 class="mb-1">Visual editor</h5>
+                    <p class="text-muted small mb-3">
+                        Author this data product as a block-and-wire graph.
+                        Drop blocks on the canvas, wire pins together, run
+                        the graph and the result materialises through a
+                        registered output port.
+                    </p>
+
+                    <template x-if="loading">
+                        <div class="small text-muted">
+                            <span class="spinner-border spinner-border-sm me-1"></span>
+                            Loading versions…
+                        </div>
+                    </template>
+                    <template x-if="error">
+                        <div class="alert alert-danger small mb-3" x-text="error"></div>
+                    </template>
+                    <template x-if="versions && versions.length === 0">
+                        <div class="small text-muted mb-3">
+                            No canvas saved yet — open the editor to create one.
+                        </div>
+                    </template>
+                    <template x-if="versions && versions.length > 0">
+                        <div class="small text-muted mb-3">
+                            <strong>Latest:</strong>
+                            v<span x-text="versions[0].version"></span>
+                            · saved <span x-text="(versions[0].created_at || '').substring(0, 19).replace('T', ' ')"></span>
+                            · <span x-text="versions.length"></span> version<span x-show="versions.length !== 1">s</span> on record
+                        </div>
+                    </template>
+
+                    <a class="btn btn-primary btn-sm"
+                       :href="'/dp/' + product.id + '/canvas'">
+                        <i class="bi bi-box-arrow-up-right"></i>
+                        Open editor
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,125 @@
+/*
+ * Visual data-product canvas editor.
+ *
+ * Layout: shell is full-viewport flexbox.  The drawflow canvas paints
+ * inside ``.pql-dp-canvas-drawflow`` and supplies its own internals
+ * (.drawflow, .drawflow-node, .connection); only block-skin overrides
+ * live here.
+ */
+
+.pql-dp-canvas-shell {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - var(--pql-topbar-height, 56px));
+  min-height: 480px;
+}
+
+.pql-dp-canvas-topbar {
+  flex: 0 0 auto;
+}
+
+.pql-dp-canvas-body {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.pql-dp-canvas-palette {
+  width: 220px;
+  flex: 0 0 220px;
+  overflow-y: auto;
+}
+
+.pql-dp-canvas-palette-item {
+  background: var(--bs-body-bg);
+  cursor: grab;
+  user-select: none;
+}
+
+.pql-dp-canvas-palette-item:active {
+  cursor: grabbing;
+}
+
+.pql-dp-canvas-palette-item:hover {
+  border-color: var(--bs-primary) !important;
+  background: var(--bs-primary-bg-subtle);
+}
+
+.pql-dp-canvas-stage {
+  background: var(--bs-tertiary-bg);
+  overflow: hidden;
+}
+
+.pql-dp-canvas-drawflow {
+  position: absolute;
+  inset: 0;
+}
+
+.pql-dp-canvas-drawer {
+  width: 320px;
+  flex: 0 0 320px;
+  overflow-y: auto;
+}
+
+/* Drawflow node skin. */
+.pql-dp-canvas-drawflow .drawflow-node {
+  background: var(--bs-body-bg);
+  border: 1px solid var(--bs-border-color);
+  border-radius: 6px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  padding: 0;
+  min-width: 180px;
+  color: var(--bs-body-color);
+}
+
+.pql-dp-canvas-drawflow .drawflow-node.selected {
+  border-color: var(--bs-primary);
+  box-shadow: 0 0 0 2px rgba(var(--bs-primary-rgb), 0.25);
+}
+
+.pql-dp-canvas-drawflow .drawflow-node.pql-node-error {
+  border-color: var(--bs-danger);
+  box-shadow: 0 0 0 2px rgba(var(--bs-danger-rgb), 0.25);
+}
+
+.pql-dp-canvas-drawflow .drawflow-node .pql-node-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.6rem;
+  border-bottom: 1px solid var(--bs-border-color);
+  background: var(--bs-secondary-bg);
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.pql-dp-canvas-drawflow .drawflow-node .pql-node-body {
+  padding: 0.4rem 0.6rem;
+  font-size: 0.8rem;
+  color: var(--bs-secondary-color);
+}
+
+.pql-dp-canvas-drawflow .drawflow-node .pql-node-body code {
+  font-size: 0.75rem;
+}
+
+.pql-dp-canvas-drawflow .drawflow-node .pql-node-badge {
+  margin-left: auto;
+  font-size: 0.7rem;
+}
+
+/* Drawflow sockets / connections — Bootstrap-aligned palette. */
+.pql-dp-canvas-drawflow .drawflow .input,
+.pql-dp-canvas-drawflow .drawflow .output {
+  background: var(--bs-primary);
+  border: 2px solid var(--bs-body-bg);
+}
+
+.pql-dp-canvas-drawflow .drawflow .connection .main-path {
+  stroke: var(--bs-primary);
+  stroke-width: 2;
+}
+
+.pql-dp-canvas-drawflow .drawflow .connection.pql-canvas-edge-err .main-path {
+  stroke: var(--bs-danger);
+  stroke-dasharray: 6 4;
+}

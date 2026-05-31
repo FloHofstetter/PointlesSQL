@@ -1,0 +1,242 @@
+{% extends "base.html" %}
+{% block title %}Canvas · {{ product.ref }} · PointlesSQL{% endblock %}
+
+{% set breadcrumbs = [
+    {"label": "Home", "href": "/"},
+    {"label": "Data Products", "href": "/data-products"},
+    {"label": product.ref, "href": "/data-products/" ~ product.catalog ~ "/" ~ product.schema},
+    {"label": "Canvas"}
+] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block extra_css %}
+{{ super() }}
+<link rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/drawflow@0.0.59/dist/drawflow.min.css">
+<link rel="stylesheet"
+      href="/static/css/dp_canvas_editor.css?v={{ asset_version }}">
+{% endblock %}
+
+{% block body_data_attrs %}data-pql-shell-locked="1"{% endblock %}
+
+{% block content %}
+<div class="pql-dp-canvas-shell"
+     x-data='dpCanvasEditor({{ product | tojson }}, {
+         current_user_id: {{ current_user_id | tojson }},
+         is_admin: {{ (is_admin or false) | tojson }},
+         is_steward: {{ (is_steward or false) | tojson }}
+     })'
+     x-init="init()">
+
+    <div class="pql-dp-canvas-topbar d-flex align-items-center gap-2 px-3 py-2 border-bottom bg-body-tertiary">
+        <a class="btn btn-sm btn-outline-secondary"
+           :href="'/data-products/' + product.catalog + '/' + product.schema"
+           title="Back to data product detail">
+            <i class="bi bi-arrow-left"></i>
+        </a>
+        <div class="d-flex flex-column lh-sm">
+            <strong class="small" x-text="product.ref"></strong>
+            <span class="text-muted" style="font-size: 0.75rem;">
+                Canvas v<span x-text="version || 'new'"></span>
+            </span>
+        </div>
+        <span class="ms-3 small text-muted" x-text="saveStateLabel()"></span>
+        <div class="ms-auto d-flex align-items-center gap-2">
+            <span class="badge"
+                  :class="errors.length === 0 ? 'bg-success-subtle text-success-emphasis' : 'bg-danger-subtle text-danger-emphasis'"
+                  x-text="errors.length === 0
+                      ? 'no errors'
+                      : (errors.length + ' validation error' + (errors.length === 1 ? '' : 's'))">
+            </span>
+            <button class="btn btn-sm btn-outline-secondary"
+                    @click="save()"
+                    :disabled="!canWrite || saving">
+                <i class="bi bi-save"></i> Save
+            </button>
+            <button class="btn btn-sm btn-primary"
+                    @click="openMaterializeModal()"
+                    :disabled="!canWrite || errors.length > 0 || nodeCount === 0">
+                <i class="bi bi-play-fill"></i> Run
+            </button>
+        </div>
+    </div>
+
+    <div class="pql-dp-canvas-body d-flex">
+
+        {# Palette (left rail) #}
+        <aside class="pql-dp-canvas-palette border-end bg-body p-2">
+            <div class="small text-uppercase text-muted fw-semibold mb-1">Sources</div>
+            <template x-for="kind in paletteGroups.sources" :key="kind">
+                <div class="pql-dp-canvas-palette-item d-flex align-items-center gap-2 p-2 mb-1 border rounded"
+                     draggable="true"
+                     @dragstart="onPaletteDragStart($event, kind)"
+                     :title="blockHelp(kind)">
+                    <i class="bi" :class="blockIcon(kind)"></i>
+                    <span class="small" x-text="blockLabel(kind)"></span>
+                </div>
+            </template>
+
+            <div class="small text-uppercase text-muted fw-semibold mb-1 mt-3">Transforms</div>
+            <template x-for="kind in paletteGroups.transforms" :key="kind">
+                <div class="pql-dp-canvas-palette-item d-flex align-items-center gap-2 p-2 mb-1 border rounded"
+                     draggable="true"
+                     @dragstart="onPaletteDragStart($event, kind)"
+                     :title="blockHelp(kind)">
+                    <i class="bi" :class="blockIcon(kind)"></i>
+                    <span class="small" x-text="blockLabel(kind)"></span>
+                </div>
+            </template>
+
+            <div class="small text-uppercase text-muted fw-semibold mb-1 mt-3">Sinks</div>
+            <template x-for="kind in paletteGroups.sinks" :key="kind">
+                <div class="pql-dp-canvas-palette-item d-flex align-items-center gap-2 p-2 mb-1 border rounded"
+                     draggable="true"
+                     @dragstart="onPaletteDragStart($event, kind)"
+                     :title="blockHelp(kind)">
+                    <i class="bi" :class="blockIcon(kind)"></i>
+                    <span class="small" x-text="blockLabel(kind)"></span>
+                </div>
+            </template>
+
+            <div class="small text-muted mt-4 px-1">
+                Drag a block onto the canvas. Wire output pins to input pins by dragging
+                between them. Click a block to edit its configuration in the right panel.
+            </div>
+        </aside>
+
+        {# Canvas (centre) #}
+        <main class="pql-dp-canvas-stage flex-grow-1 position-relative"
+              @dragover.prevent
+              @drop.prevent="onCanvasDrop($event)">
+            <div x-ref="canvas" id="dp-canvas-drawflow" class="pql-dp-canvas-drawflow"></div>
+
+            <div class="pql-dp-canvas-empty position-absolute top-50 start-50 translate-middle text-center text-muted"
+                 x-show="!loading && nodeCount === 0">
+                <i class="bi bi-diagram-3 fs-1 d-block opacity-50"></i>
+                <div class="mt-2 small">Drop a block from the palette to start.</div>
+            </div>
+
+            <div class="pql-dp-canvas-loading position-absolute top-50 start-50 translate-middle text-muted"
+                 x-show="loading">
+                <div class="spinner-border spinner-border-sm me-2"></div>
+                Loading…
+            </div>
+        </main>
+
+        {# Config drawer (right rail) #}
+        <aside class="pql-dp-canvas-drawer border-start bg-body p-3">
+            <template x-if="selectedNode === null">
+                <div>
+                    <div class="small text-uppercase text-muted fw-semibold mb-2">Overview</div>
+                    <dl class="row mb-0 small">
+                        <dt class="col-6">Blocks</dt>
+                        <dd class="col-6 mb-0" x-text="nodeCount"></dd>
+                        <dt class="col-6">Edges</dt>
+                        <dd class="col-6 mb-0" x-text="edgeCount"></dd>
+                        <dt class="col-6">Latest version</dt>
+                        <dd class="col-6 mb-0" x-text="version || '—'"></dd>
+                    </dl>
+                    <div class="text-muted small mt-3">Click a block to configure it.</div>
+
+                    <template x-if="errors.length > 0">
+                        <div class="mt-3">
+                            <div class="small text-uppercase text-danger-emphasis fw-semibold mb-1">Errors</div>
+                            <ul class="list-unstyled small mb-0">
+                                <template x-for="err in errors" :key="err.node_id + ':' + err.pin + ':' + err.message">
+                                    <li class="border-start border-danger ps-2 mb-1">
+                                        <a href="#" class="text-decoration-none"
+                                           @click.prevent="focusNode(err.node_id)">
+                                            <span class="badge bg-danger-subtle text-danger-emphasis me-1"
+                                                  x-text="err.kind"></span>
+                                            <span x-text="err.message"></span>
+                                        </a>
+                                    </li>
+                                </template>
+                            </ul>
+                        </div>
+                    </template>
+                </div>
+            </template>
+
+            <template x-if="selectedNode !== null">
+                <div>
+                    <div class="d-flex align-items-center gap-2 mb-3">
+                        <i class="bi" :class="blockIcon(selectedNode.block_type)"></i>
+                        <strong x-text="blockLabel(selectedNode.block_type)"></strong>
+                        <button class="btn btn-sm btn-outline-danger ms-auto"
+                                @click="deleteSelectedNode()"
+                                :disabled="!canWrite"
+                                title="Delete this block">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+
+                    {% include "pages/_partials/dp_canvas_editor/config_forms.html" %}
+                </div>
+            </template>
+        </aside>
+    </div>
+
+    {# Materialize confirmation modal #}
+    <div class="modal fade" :class="{ 'show d-block': materializeOpen }"
+         tabindex="-1" :style="materializeOpen ? 'background: rgba(0,0,0,0.5);' : ''"
+         @click.self="closeMaterializeModal()">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="bi bi-play-fill"></i> Materialize canvas
+                    </h5>
+                    <button type="button" class="btn-close"
+                            @click="closeMaterializeModal()"></button>
+                </div>
+                <div class="modal-body">
+                    <template x-if="materializePreview">
+                        <div>
+                            <div class="mb-3 small">
+                                <div><strong>Target:</strong> <code x-text="materializePreview.target_fqn || '—'"></code></div>
+                                <div><strong>Mode:</strong> <span x-text="materializePreview.mode || '—'"></span></div>
+                            </div>
+                            <div class="small text-muted mb-1">Compiled SQL preview:</div>
+                            <pre class="border bg-body-tertiary p-2 small mb-0"
+                                 style="max-height: 400px; overflow: auto;"
+                                 x-text="materializePreview.sql || 'No SQL preview available.'"></pre>
+                        </div>
+                    </template>
+                    <template x-if="materializeResult">
+                        <div class="alert alert-success">
+                            <i class="bi bi-check-circle"></i>
+                            Materialised <strong x-text="materializeResult.rows_written"></strong>
+                            rows to <code x-text="materializeResult.target_fqn"></code>
+                            (graph v<span x-text="materializeResult.graph_version"></span>).
+                        </div>
+                    </template>
+                    <template x-if="materializeError">
+                        <div class="alert alert-danger">
+                            <i class="bi bi-exclamation-triangle"></i>
+                            <span x-text="materializeError"></span>
+                        </div>
+                    </template>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-outline-secondary"
+                            @click="closeMaterializeModal()">Close</button>
+                    <button class="btn btn-primary"
+                            @click="confirmMaterialize()"
+                            :disabled="materializing || !!materializeResult">
+                        <span x-show="!materializing"><i class="bi bi-play-fill"></i> Run</span>
+                        <span x-show="materializing">
+                            <span class="spinner-border spinner-border-sm"></span> Running…
+                        </span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{{ super() }}
+<script src="https://cdn.jsdelivr.net/npm/drawflow@0.0.59/dist/drawflow.min.js"></script>
+{% endblock %}

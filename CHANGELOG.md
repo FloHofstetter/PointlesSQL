@@ -17,6 +17,36 @@ defined in ``scripts/clusters.json``. -->
 
 ### Features
 
+- Visual Data Product editor — frontend editor (rc206).  Standalone
+  full-screen authoring surface at `/dp/{id}/canvas` that consumes
+  the rc205 compiler backbone end-to-end.  Drawflow-based
+  block-and-wire canvas (chosen over Rete.js v2 because the latter
+  forces a Vue / React / Lit render-plugin while this codebase
+  carries none of those — Drawflow is a single-file UMD that drops
+  into the existing build-step-less Alpine stack); three-pane layout
+  with a draggable palette of all eight Wave-A block types, the
+  canvas, and a right drawer that renders per-block-type
+  configuration forms (chip-inputs for column lists, dynamic
+  aggregation rows, conditional merge-on for `mode=merge`).  Five
+  thin HTTP routes
+  ([canvas.py](pointlessql/api/data_products_routes/canvas.py))
+  wrap the service-layer surface: load latest doc, save new version
+  (with optimistic-concurrency `expected_base_version`), list
+  versions newest-first, edit-time schema-flow validate (resolves
+  each `InputPort.table_fqn` against soyuz so propagation has real
+  upstream schemas), and materialise (compile → execute → write
+  Delta → register output port → save version).  Auto-save debounces
+  at 1.5 s after the last graph mutation; the validate round-trip
+  follows ~0.8 s after edits and the editor renders per-node error
+  badges + a clickable status-bar error list.  A Canvas tab on the
+  data-product detail page lazy-fetches the version list and links
+  to the standalone editor.  New e2e walkthrough
+  ([dp-canvas-builder.md](docs/e2e-walkthroughs/dp-canvas-builder.md))
+  covers the drop → wire → save → run → lineage path.  16 new pytest
+  cover save / load / versions / 403-write / 404-unknown / round-trip
+  with all 8 block types / optimistic-concurrency conflict /
+  validate happy + bad-UC-table / materialise success + 422 +
+  404; full suite 4034 / 0 / 10 green.
 - Visual Data Product editor — compiler backbone (rc205).  New
   `pointlessql/services/dp_canvas/` service package that turns a
   visual block-and-wire DAG into executable DuckDB SQL and
@@ -55,6 +85,16 @@ defined in ``scripts/clusters.json``. -->
 
 ### Fixes
 
+- Replay buckets now classify `canvas_materialize` as unsafe
+  (rc206).  The rc205 compiler backbone added the
+  `OpName.CANVAS_MATERIALIZE` enum value but missed extending the
+  replay dispatcher's `UNSAFE_OPS` set, so the
+  `test_unrecognised_op_name_records_skip` drift-guard test fired
+  after the new enum value landed.  Replaying a canvas-materialise
+  onto a branch would re-execute the Delta write against the
+  OutputPort-hardcoded target FQN — the same semantic class as
+  `DBT_MODEL` / `TRAIN_MODEL` / `WRITE_TABLE`, so it joins them in
+  `UNSAFE_OPS` and the dispatcher refuses to replay it.
 - Workspace-policy save now omits empty form rows instead of
   emitting `null` (rc204).  Several columns on
   `workspace_governance_policies` are `NOT NULL` with server

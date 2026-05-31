@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "pointlessql"
-version = "0.1.0rc205"
+version = "0.1.0rc206"
 description = "A web UI for Unity Catalog and other open-source Databricks components"
 license = "Apache-2.0"
 readme = "README.md"
@@ -224,6 +224,7 @@ pydocstyle.convention = "google"
 "pointlessql/services/agent_runs/mlflow_soyuz_link.py" = ["TID251"]
 "pointlessql/services/dbt/_bridge.py" = ["TID251"]
 "pointlessql/services/dp_canvas/**" = ["TID251"]
+"pointlessql/api/data_products_routes/canvas.py" = ["TID251"]
 "pointlessql/api/_bootstrap/**" = ["TID251"]
 
 [tool.pyright]
