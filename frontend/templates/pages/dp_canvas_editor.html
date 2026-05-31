@@ -78,8 +78,18 @@
                             <span class="badge"
                                   :class="v.version === version ? 'bg-primary' : 'bg-secondary-subtle text-secondary-emphasis'"
                                   x-text="'v' + v.version"></span>
+                            <i class="bi bi-pin-angle-fill text-warning"
+                               x-show="v.is_production"
+                               title="Production version"></i>
                             <span class="text-muted flex-grow-1"
                                   x-text="new Date(v.created_at).toLocaleString()"></span>
+                            <button class="btn btn-sm btn-outline-warning"
+                                    @click.stop="togglePin(v)"
+                                    :disabled="!canWrite"
+                                    :title="v.is_production ? 'Unpin production version' : 'Pin as production version'">
+                                <i class="bi"
+                                   :class="v.is_production ? 'bi-pin-angle-fill' : 'bi-pin-angle'"></i>
+                            </button>
                             <button class="btn btn-sm btn-outline-secondary"
                                     @click.stop="restoreVersion(v.version)"
                                     :disabled="!canWrite || v.version === version"
@@ -97,6 +107,12 @@
                     </template>
                 </div>
             </div>
+            <span class="badge bg-warning-subtle text-warning-emphasis"
+                  x-show="pinnedVersion !== null"
+                  :title="'Pinned production version v' + pinnedVersion">
+                <i class="bi bi-pin-angle-fill"></i>
+                <span x-text="'v' + pinnedVersion + ' pinned'"></span>
+            </span>
             <button class="btn btn-sm btn-outline-secondary"
                     @click="save()"
                     :disabled="!canWrite || saving">
@@ -246,6 +262,14 @@
                             @click="closeMaterializeModal()"></button>
                 </div>
                 <div class="modal-body">
+                    <div class="alert alert-warning small mb-3"
+                         x-show="pinnedVersion !== null && pinnedVersion !== version">
+                        <i class="bi bi-pin-angle-fill"></i>
+                        This materialise replaces pinned production version
+                        <strong x-text="'v' + pinnedVersion"></strong>
+                        with the current draft
+                        <strong x-text="'v' + version"></strong>.
+                    </div>
                     <template x-if="materializePreview">
                         <div>
                             <div class="mb-3 small">

@@ -3002,6 +3002,26 @@ PointlesSQL
    browser users use. 8 commits, rc204→rc212, ALL LOCAL until
    final push.
 │
+├── Mega-Cluster 155-164 — Visual DP Editor + Platform Polish  ⏳ in progress (2026-05-31)
+│   │   10 improvement phases on top of the Mega-Cluster 147-154
+│   │   surface and on adjacent platform surfaces (audit log,
+│   │   API-key dashboard).  No new features — UX polish,
+│   │   performance, deferred-but-needed gaps.
+│   │   1 commit per phase, single push at end.  rc212→rc222.
+│
+├── Phase 155 — Visual DP Editor: Pin/Unpin Production-Version  ✅ shipped (local, 2026-05-31)
+│   │
+│   │   Per-version production-pin flag on
+│   │   ``data_product_canvas_graph``.  Versions ▾ dropdown shows
+│   │   pin badge + pin/unpin button per row; "v{N} pinned" badge
+│   │   in toolbar; materialise modal warns when current draft
+│   │   replaces the pinned production version.  Partial unique
+│   │   index enforces "at most one production version per DP".
+│   │   New ``canvas_pin`` / ``canvas_unpin`` audit actions.
+│   │   Alembic ``m1a3c5e7g9i1`` widens the op_name CHECK so
+│   │   future agent-mediated pin/unpin can reuse the same enum
+│   │   values.
+│
 
 
 

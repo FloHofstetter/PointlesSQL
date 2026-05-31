@@ -59,6 +59,12 @@ from pointlessql.services.dp_canvas import (
     validate_schema_flow,
 )
 from pointlessql.services.dp_canvas._diff import CanvasDiff, diff_docs
+from pointlessql.services.dp_canvas._pinning import (
+    pin_version as _pin_canvas_version,
+)
+from pointlessql.services.dp_canvas._pinning import (
+    unpin_version as _unpin_canvas_version,
+)
 from pointlessql.services.dp_canvas._preview import PreviewResult, preview_until
 
 router = APIRouter(prefix="/api/dp", tags=["data-products-canvas"])
@@ -265,12 +271,14 @@ class CanvasVersionEntry(BaseModel):
     version: int
     created_at: datetime.datetime
     author_user_id: int | None
+    is_production: bool = False
 
 
 class CanvasVersionsResponse(BaseModel):
     """Response for ``GET /api/dp/{dp_id}/canvas/versions``."""
 
     versions: list[CanvasVersionEntry]
+    pinned_version: int | None = None
 
 
 class CanvasValidateRequest(BaseModel):
@@ -431,10 +439,12 @@ def list_canvas_versions(dp_id: int, request: Request) -> CanvasVersionsResponse
             version=r.version,
             created_at=r.created_at,
             author_user_id=r.author_user_id,
+            is_production=bool(r.is_production),
         )
         for r in rows
     ]
-    return CanvasVersionsResponse(versions=entries)
+    pinned = next((e.version for e in entries if e.is_production), None)
+    return CanvasVersionsResponse(versions=entries, pinned_version=pinned)
 
 
 @router.post("/{dp_id}/canvas/validate", response_model=CanvasValidateResponse)
@@ -458,6 +468,46 @@ def validate_canvas(
     return CanvasValidateResponse(
         pin_schemas=wire_schemas,
         errors=[*seed_errors, *flow_errors],
+    )
+
+
+@router.post("/{dp_id}/canvas/versions/{version}/pin", status_code=204)
+def pin_canvas_version(dp_id: int, version: int, request: Request) -> None:
+    """Mark *version* of canvas *dp_id* as the production revision."""
+    require_user(request)
+    user = get_user(request)
+    dp = _load_dp(request, dp_id)
+    _require_dp_write(user, dp)
+    factory = request.app.state.session_factory
+    client_ip = request.client.host if request.client else None
+    _pin_canvas_version(
+        factory,
+        dp_id=dp_id,
+        version=version,
+        actor_user_id=int(user["id"]),
+        actor_user_email=str(user.get("email") or ""),
+        workspace_id=current_workspace_id(request),
+        client_ip=client_ip,
+    )
+
+
+@router.post("/{dp_id}/canvas/versions/{version}/unpin", status_code=204)
+def unpin_canvas_version(dp_id: int, version: int, request: Request) -> None:
+    """Clear the production-pin from *version* of canvas *dp_id*."""
+    require_user(request)
+    user = get_user(request)
+    dp = _load_dp(request, dp_id)
+    _require_dp_write(user, dp)
+    factory = request.app.state.session_factory
+    client_ip = request.client.host if request.client else None
+    _unpin_canvas_version(
+        factory,
+        dp_id=dp_id,
+        version=version,
+        actor_user_id=int(user["id"]),
+        actor_user_email=str(user.get("email") or ""),
+        workspace_id=current_workspace_id(request),
+        client_ip=client_ip,
     )
 
 

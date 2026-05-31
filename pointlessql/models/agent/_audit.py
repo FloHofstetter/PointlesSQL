@@ -180,7 +180,7 @@ class AgentRunOperation(Base):
             "'dbt_model','dbt_test','sql_explain',"
             "'update','delete','drop_table','create_schema','drop_schema',"
             "'alter_table','vector_index','vector_search','pin_fact',"
-            "'canvas_materialize')",
+            "'canvas_materialize','canvas_pin','canvas_unpin')",
             name="ck_agent_run_operations_op_name",
         ),
     )

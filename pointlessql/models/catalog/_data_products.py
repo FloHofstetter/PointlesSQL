@@ -25,8 +25,10 @@ from __future__ import annotations
 
 import datetime
 
+import sqlalchemy as sa
 from sqlalchemy import (
     BigInteger,
+    Boolean,
     CheckConstraint,
     DateTime,
     ForeignKey,
@@ -352,6 +354,11 @@ class DataProductCanvasGraph(Base):
             (cleared on user deletion via SET NULL so history survives
             account removal).
         created_at: Wall-clock the version row was minted.
+        is_production: True for the one row per ``data_product_id`` that
+            is marked as the live production revision.  Enforced as
+            "at most one per product" by a partial unique index on
+            ``(data_product_id) WHERE is_production = TRUE``.  Default
+            False; the column is opt-in and not auto-set on save.
     """
 
     __tablename__ = "data_product_canvas_graph"
@@ -379,3 +386,6 @@ class DataProductCanvasGraph(Base):
         nullable=True,
     )
     created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    is_production: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=sa.false()
+    )

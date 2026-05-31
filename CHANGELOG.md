@@ -17,6 +17,23 @@ defined in ``scripts/clusters.json``. -->
 
 ### Features
 
+- Visual DP Editor — Pin / Unpin production canvas version (rc213).
+  Opens the Mega-Cluster 155-164 polish wave on top of the freshly
+  shipped Mega-Cluster 147-154 surface.  Each saved canvas version
+  in [data_product_canvas_graph](pointlessql/models/catalog/_data_products.py)
+  now carries an ``is_production`` flag; the Versions ▾ dropdown
+  shows a pin badge per row and a steward-only pin/unpin button.
+  A partial unique index enforces "at most one pinned version per
+  data product"; the materialise modal warns when the current
+  draft would replace the pinned production version (soft warning
+  only — no block).  Two new routes
+  ``POST /api/dp/{id}/canvas/versions/{n}/pin`` and
+  ``.../unpin`` emit ``canvas_pin`` / ``canvas_unpin`` audit-log
+  events.  Alembic ``m1a3c5e7g9i1`` widens the
+  ``ck_agent_run_operations_op_name`` CHECK with the same two
+  values so future agent-mediated pin/unpin via plugin tools can
+  reuse the enum without another migration.
+
 - Visual Data Product editor — versioning UI + plugin MCP tools
   + cluster closure (rc212).  Wave H closes the Mega-Cluster
   147-154.  (1) Editor toolbar gains a new **Versions ▾**

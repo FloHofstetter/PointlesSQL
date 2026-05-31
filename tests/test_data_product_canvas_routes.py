@@ -682,3 +682,106 @@ async def test_preview_output_port_rejected(
         },
     )
     assert res.status_code == 422, res.text
+
+
+# ---------------------------------------------------------------------------
+# 155 — pin / unpin production canvas version
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_pin_version_sets_flag_unique(
+    admin_client: httpx.AsyncClient,
+) -> None:
+    dp_id = _seed_dp(schema_name="pin_unique")
+    payload = {"document": _doc_dict(_bare_doc())}
+    await admin_client.post(f"/api/dp/{dp_id}/canvas", json=payload)
+    await admin_client.post(f"/api/dp/{dp_id}/canvas", json=payload)
+    res1 = await admin_client.post(f"/api/dp/{dp_id}/canvas/versions/1/pin")
+    assert res1.status_code == 204, res1.text
+    res2 = await admin_client.post(f"/api/dp/{dp_id}/canvas/versions/2/pin")
+    assert res2.status_code == 204, res2.text
+    listing = (await admin_client.get(f"/api/dp/{dp_id}/canvas/versions")).json()
+    assert listing["pinned_version"] == 2
+    flags = {v["version"]: v["is_production"] for v in listing["versions"]}
+    assert flags == {1: False, 2: True}
+
+
+@pytest.mark.asyncio
+async def test_unpin_version_clears_flag(
+    admin_client: httpx.AsyncClient,
+) -> None:
+    dp_id = _seed_dp(schema_name="unpin_clear")
+    await admin_client.post(
+        f"/api/dp/{dp_id}/canvas", json={"document": _doc_dict(_bare_doc())}
+    )
+    await admin_client.post(f"/api/dp/{dp_id}/canvas/versions/1/pin")
+    listing = (await admin_client.get(f"/api/dp/{dp_id}/canvas/versions")).json()
+    assert listing["pinned_version"] == 1
+    res = await admin_client.post(f"/api/dp/{dp_id}/canvas/versions/1/unpin")
+    assert res.status_code == 204
+    listing2 = (await admin_client.get(f"/api/dp/{dp_id}/canvas/versions")).json()
+    assert listing2["pinned_version"] is None
+
+
+@pytest.mark.asyncio
+async def test_pin_non_steward_forbidden(
+    non_admin_client: httpx.AsyncClient,
+    admin_client: httpx.AsyncClient,
+) -> None:
+    dp_id = _seed_dp(schema_name="pin_forbidden")
+    await admin_client.post(
+        f"/api/dp/{dp_id}/canvas", json={"document": _doc_dict(_bare_doc())}
+    )
+    res = await non_admin_client.post(f"/api/dp/{dp_id}/canvas/versions/1/pin")
+    assert res.status_code == 403, res.text
+
+
+@pytest.mark.asyncio
+async def test_versions_list_includes_pinned_flag(
+    admin_client: httpx.AsyncClient,
+) -> None:
+    dp_id = _seed_dp(schema_name="pin_listing")
+    payload = {"document": _doc_dict(_bare_doc())}
+    await admin_client.post(f"/api/dp/{dp_id}/canvas", json=payload)
+    listing_before = (await admin_client.get(f"/api/dp/{dp_id}/canvas/versions")).json()
+    assert listing_before["versions"][0]["is_production"] is False
+    assert listing_before["pinned_version"] is None
+    await admin_client.post(f"/api/dp/{dp_id}/canvas/versions/1/pin")
+    listing_after = (await admin_client.get(f"/api/dp/{dp_id}/canvas/versions")).json()
+    assert listing_after["versions"][0]["is_production"] is True
+    assert listing_after["pinned_version"] == 1
+
+
+@pytest.mark.asyncio
+async def test_pin_emits_audit_row(
+    admin_client: httpx.AsyncClient,
+) -> None:
+    from pointlessql.models import AuditLog
+
+    dp_id = _seed_dp(schema_name="pin_audit")
+    await admin_client.post(
+        f"/api/dp/{dp_id}/canvas", json={"document": _doc_dict(_bare_doc())}
+    )
+    await admin_client.post(f"/api/dp/{dp_id}/canvas/versions/1/pin")
+    factory = app.state.session_factory
+    with factory() as session:
+        rows = (
+            session.execute(
+                select(AuditLog)
+                .where(AuditLog.action == "canvas_pin")
+                .where(AuditLog.target == f"data_product_canvas_graph:{dp_id}:v1")
+            )
+            .scalars()
+            .all()
+        )
+    assert len(rows) == 1
+
+
+@pytest.mark.asyncio
+async def test_pin_unknown_version_404(
+    admin_client: httpx.AsyncClient,
+) -> None:
+    dp_id = _seed_dp(schema_name="pin_missing")
+    res = await admin_client.post(f"/api/dp/{dp_id}/canvas/versions/9/pin")
+    assert res.status_code == 404, res.text

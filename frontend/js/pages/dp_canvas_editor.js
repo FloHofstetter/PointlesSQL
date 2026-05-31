@@ -19,7 +19,7 @@ const BLOCK_DEFS = {
   InputPort: {
     label: 'Input port',
     icon: 'bi-box-arrow-in-right',
-    help: 'Read a Unity Catalog table as the canvas\'s upstream source.',
+    help: "Read a Unity Catalog table as the canvas's upstream source.",
     inputs: 0,
     outputs: 1,
     group: 'sources',
@@ -92,72 +92,96 @@ const BLOCK_DEFS = {
     label: 'Window',
     icon: 'bi-graph-up',
     help: 'Add a windowed aggregation column over a PARTITION/ORDER spec.',
-    inputs: 1, outputs: 1, group: 'transforms',
+    inputs: 1,
+    outputs: 1,
+    group: 'transforms',
     defaultConfig: () => ({
-      function: 'row_number', target_alias: 'rn', partition_by: [], order_by: [], args: [],
+      function: 'row_number',
+      target_alias: 'rn',
+      partition_by: [],
+      order_by: [],
+      args: [],
     }),
   },
   Pivot: {
     label: 'Pivot',
     icon: 'bi-arrow-90deg-right',
     help: 'DuckDB PIVOT — turn distinct values of a column into new columns.',
-    inputs: 1, outputs: 1, group: 'transforms',
+    inputs: 1,
+    outputs: 1,
+    group: 'transforms',
     defaultConfig: () => ({ on_column: '', value_column: '', aggregate: 'sum' }),
   },
   Unpivot: {
     label: 'Unpivot',
     icon: 'bi-arrow-90deg-down',
     help: 'DuckDB UNPIVOT — collapse multiple columns into name/value rows.',
-    inputs: 1, outputs: 1, group: 'transforms',
+    inputs: 1,
+    outputs: 1,
+    group: 'transforms',
     defaultConfig: () => ({ value_columns: [], name_label: 'name', value_label: 'value' }),
   },
   Union: {
     label: 'Union',
     icon: 'bi-share',
     help: 'Stack two upstream tables row-wise (UNION ALL when `all`).',
-    inputs: 2, outputs: 1, group: 'transforms',
+    inputs: 2,
+    outputs: 1,
+    group: 'transforms',
     defaultConfig: () => ({ all: true }),
   },
   Distinct: {
     label: 'Distinct',
     icon: 'bi-filter-square',
     help: 'Keep distinct rows (optionally on a subset of columns).',
-    inputs: 1, outputs: 1, group: 'transforms',
+    inputs: 1,
+    outputs: 1,
+    group: 'transforms',
     defaultConfig: () => ({ columns: [] }),
   },
   Sort: {
     label: 'Sort',
     icon: 'bi-sort-down',
     help: 'ORDER BY multi-key with ASC/DESC per column.',
-    inputs: 1, outputs: 1, group: 'transforms',
+    inputs: 1,
+    outputs: 1,
+    group: 'transforms',
     defaultConfig: () => ({ order_by: [] }),
   },
   Sample: {
     label: 'Sample',
     icon: 'bi-droplet-half',
     help: 'TABLESAMPLE — pick a percentage or row count at random.',
-    inputs: 1, outputs: 1, group: 'transforms',
+    inputs: 1,
+    outputs: 1,
+    group: 'transforms',
     defaultConfig: () => ({ kind: 'percent', value: 10 }),
   },
   Cast: {
     label: 'Cast',
     icon: 'bi-arrow-repeat',
     help: 'Per-column DuckDB type cast.',
-    inputs: 1, outputs: 1, group: 'transforms',
+    inputs: 1,
+    outputs: 1,
+    group: 'transforms',
     defaultConfig: () => ({ casts: [] }),
   },
   Rename: {
     label: 'Rename',
     icon: 'bi-tag',
     help: 'Per-column rename map.',
-    inputs: 1, outputs: 1, group: 'transforms',
+    inputs: 1,
+    outputs: 1,
+    group: 'transforms',
     defaultConfig: () => ({ renames: {} }),
   },
   CalcColumn: {
     label: 'Calc column',
     icon: 'bi-calculator',
     help: 'Compute a new column from a DuckDB expression.',
-    inputs: 1, outputs: 1, group: 'transforms',
+    inputs: 1,
+    outputs: 1,
+    group: 'transforms',
     defaultConfig: () => ({ expression: '', target_alias: 'calc' }),
   },
   OutputPort: {
@@ -216,11 +240,15 @@ function describeConfig(blockType, cfg) {
   if (!cfg) return '';
   switch (blockType) {
     case 'InputPort':
-      return cfg.table_fqn ? `<code>${cfg.table_fqn}</code>` : '<em class="text-muted">no table</em>';
+      return cfg.table_fqn
+        ? `<code>${cfg.table_fqn}</code>`
+        : '<em class="text-muted">no table</em>';
     case 'Filter':
-      return cfg.predicate ? `<code>${cfg.predicate.slice(0, 40)}</code>` : '<em class="text-muted">no predicate</em>';
+      return cfg.predicate
+        ? `<code>${cfg.predicate.slice(0, 40)}</code>`
+        : '<em class="text-muted">no predicate</em>';
     case 'Project':
-      return (cfg.columns && cfg.columns.length > 0)
+      return cfg.columns && cfg.columns.length > 0
         ? `${cfg.columns.length} col${cfg.columns.length === 1 ? '' : 's'}`
         : '<em class="text-muted">no columns</em>';
     case 'Join':
@@ -230,7 +258,9 @@ function describeConfig(blockType, cfg) {
     case 'Limit':
       return `n = ${cfg.n}`;
     case 'SQL':
-      return cfg.query ? `<code>${(cfg.query || '').slice(0, 36)}…</code>` : '<em class="text-muted">no query</em>';
+      return cfg.query
+        ? `<code>${(cfg.query || '').slice(0, 36)}…</code>`
+        : '<em class="text-muted">no query</em>';
     case 'OutputPort':
       return cfg.materialized_table
         ? `→ <code>${cfg.materialized_table}</code> (${cfg.mode || 'overwrite'})`
@@ -264,9 +294,22 @@ export function dpCanvasEditor(product, ctx) {
     paletteGroups: {
       sources: ['InputPort', 'DataProduct'],
       transforms: [
-        'Filter', 'Project', 'Join', 'GroupBy', 'Limit', 'SQL',
-        'Window', 'Pivot', 'Unpivot', 'Union', 'Distinct', 'Sort', 'Sample',
-        'Cast', 'Rename', 'CalcColumn',
+        'Filter',
+        'Project',
+        'Join',
+        'GroupBy',
+        'Limit',
+        'SQL',
+        'Window',
+        'Pivot',
+        'Unpivot',
+        'Union',
+        'Distinct',
+        'Sort',
+        'Sample',
+        'Cast',
+        'Rename',
+        'CalcColumn',
       ],
       sinks: ['OutputPort'],
     },
@@ -294,6 +337,7 @@ export function dpCanvasEditor(product, ctx) {
 
     versionsOpen: false,
     versionsList: [],
+    pinnedVersion: null,
 
     _drawflow: null,
     _drawflowNodes: {},
@@ -361,20 +405,17 @@ export function dpCanvasEditor(product, ctx) {
       // selectedNode is null, which surfaces as a console error on every
       // empty-canvas load.  The deep watcher still catches every config
       // mutation once a node is selected.
-      this.$watch(
-        '(selectedNode && selectedNode.config) || null',
-        () => this.onConfigChanged(),
-        { deep: true },
-      );
+      this.$watch('(selectedNode && selectedNode.config) || null', () => this.onConfigChanged(), {
+        deep: true,
+      });
 
       await this.loadLatest();
+      await this._refreshVersionsList();
 
       // Conditional co-edit attach — opt-in via ?coedit=1 so the
       // single-user editor pays no Y.js download cost by default.
       try {
-        const { attachCanvasCoedit, isCoeditEnabled } = await import(
-          '../dp_canvas/coedit.js'
-        );
+        const { attachCanvasCoedit, isCoeditEnabled } = await import('../dp_canvas/coedit.js');
         if (isCoeditEnabled()) {
           this._coeditController = await attachCanvasCoedit(this, this.product.id);
         }
@@ -437,7 +478,7 @@ export function dpCanvasEditor(product, ctx) {
           node.block_type,
           { pql_node_id: node.id, block_type: node.block_type },
           nodeHtml(node.block_type, node.id),
-          false,
+          false
         );
         this._drawflowNodes[node.id] = dfId;
         this.nodes[node.id] = {
@@ -455,7 +496,11 @@ export function dpCanvasEditor(product, ctx) {
         if (!sourceDf || !targetDf) continue;
         const targetNode = (doc.nodes || []).find((n) => n.id === edge.target_node_id);
         const sourceIdx = 1; // Single-output blocks only.
-        const targetIdx = this._pinIndex(targetNode ? targetNode.block_type : '', edge.target_pin, 'in');
+        const targetIdx = this._pinIndex(
+          targetNode ? targetNode.block_type : '',
+          edge.target_pin,
+          'in'
+        );
         try {
           df.addConnection(sourceDf, targetDf, `output_${sourceIdx}`, `input_${targetIdx + 1}`);
         } catch (e) {
@@ -491,7 +536,9 @@ export function dpCanvasEditor(product, ctx) {
         newNodes[pqlId] = {
           id: pqlId,
           block_type: data.block_type,
-          config: existing ? existing.config : (BLOCK_DEFS[data.block_type] || { defaultConfig: () => ({}) }).defaultConfig(),
+          config: existing
+            ? existing.config
+            : (BLOCK_DEFS[data.block_type] || { defaultConfig: () => ({}) }).defaultConfig(),
           position: { x: dfNode.pos_x, y: dfNode.pos_y },
         };
       }
@@ -513,9 +560,12 @@ export function dpCanvasEditor(product, ctx) {
             const sourcePin = 'out';
             const targetIdx = parseInt((conn.output || '').replace('input_', ''), 10) - 1;
             const targetBlock = newNodes[pqlTargetId] ? newNodes[pqlTargetId].block_type : '';
-            const targetPin = (targetBlock === 'Join' || targetBlock === 'Union')
-              ? (targetIdx === 1 ? 'right' : 'left')
-              : 'in';
+            const targetPin =
+              targetBlock === 'Join' || targetBlock === 'Union'
+                ? targetIdx === 1
+                  ? 'right'
+                  : 'left'
+                : 'in';
             const sourceOutputIdx = parseInt((outputName || '').replace('output_', ''), 10);
             if (!Number.isFinite(sourceOutputIdx)) continue;
             const edgeId = `e-${pqlSourceId}:${sourcePin}->${pqlTargetId}:${targetPin}`;
@@ -614,7 +664,7 @@ export function dpCanvasEditor(product, ctx) {
         kind,
         { pql_node_id: pqlId, block_type: kind },
         nodeHtml(kind, pqlId),
-        false,
+        false
       );
       this._drawflowNodes[pqlId] = dfId;
       this.nodes[pqlId] = {
@@ -882,17 +932,14 @@ export function dpCanvasEditor(product, ctx) {
       if (this.materializing) return;
       this.materializing = true;
       this.materializeError = null;
-      const res = await window.pqlApi.fetch(
-        `/api/dp/${this.product.id}/canvas/materialize`,
-        {
-          method: 'POST',
-          body: {
-            document: this._buildDocument(),
-            expected_base_version: this.version,
-          },
-          silent: true,
+      const res = await window.pqlApi.fetch(`/api/dp/${this.product.id}/canvas/materialize`, {
+        method: 'POST',
+        body: {
+          document: this._buildDocument(),
+          expected_base_version: this.version,
         },
-      );
+        silent: true,
+      });
       this.materializing = false;
       if (!res.ok) {
         this.materializeError = res.error || 'Materialize failed';
@@ -955,7 +1002,7 @@ export function dpCanvasEditor(product, ctx) {
       if (!nodeEl) return;
       const dfId = (nodeEl.id || '').replace('node-', '');
       const pqlId = Object.keys(this._drawflowNodes).find(
-        (k) => String(this._drawflowNodes[k]) === dfId,
+        (k) => String(this._drawflowNodes[k]) === dfId
       );
       const node = pqlId && this.nodes[pqlId];
       if (!node || node.block_type !== 'DataProduct') return;
@@ -996,13 +1043,31 @@ export function dpCanvasEditor(product, ctx) {
     async openVersionsDropdown() {
       this.versionsOpen = !this.versionsOpen;
       if (!this.versionsOpen) return;
-      const res = await window.pqlApi.fetch(
-        `/api/dp/${this.product.id}/canvas/versions`,
-        { silent: true },
-      );
+      await this._refreshVersionsList();
+    },
+
+    async _refreshVersionsList() {
+      const res = await window.pqlApi.fetch(`/api/dp/${this.product.id}/canvas/versions`, {
+        silent: true,
+      });
       if (res.ok) {
         this.versionsList = res.data.versions || [];
+        this.pinnedVersion = res.data.pinned_version ?? null;
       }
+    },
+
+    async togglePin(v) {
+      if (!this.canWrite) return;
+      const action = v.is_production ? 'unpin' : 'pin';
+      const res = await window.pqlApi.fetch(
+        `/api/dp/${this.product.id}/canvas/versions/${v.version}/${action}`,
+        { method: 'POST', silent: true }
+      );
+      if (!res.ok) {
+        window.alert(action + ' failed: ' + (res.error || 'rejected'));
+        return;
+      }
+      await this._refreshVersionsList();
     },
 
     async restoreVersion(version) {
@@ -1012,17 +1077,18 @@ export function dpCanvasEditor(product, ctx) {
       }
       const fetched = await window.pqlApi.fetch(
         `/api/dp/${this.product.id}/canvas/versions/${version}`,
-        { silent: true },
+        { silent: true }
       );
       if (!fetched.ok) {
         window.alert('Restore failed: ' + (fetched.error || 'cannot load version'));
         return;
       }
       const doc = fetched.data.document;
-      const saved = await window.pqlApi.fetch(
-        `/api/dp/${this.product.id}/canvas`,
-        { method: 'POST', body: { document: doc }, silent: true },
-      );
+      const saved = await window.pqlApi.fetch(`/api/dp/${this.product.id}/canvas`, {
+        method: 'POST',
+        body: { document: doc },
+        silent: true,
+      });
       if (!saved.ok) {
         window.alert('Restore failed: ' + (saved.error || 'save rejected'));
         return;
@@ -1042,18 +1108,15 @@ export function dpCanvasEditor(product, ctx) {
       if (!this.previewNodeId) return;
       this.previewBusy = true;
       this.previewError = null;
-      const res = await window.pqlApi.fetch(
-        `/api/dp/${this.product.id}/canvas/preview`,
-        {
-          method: 'POST',
-          body: {
-            document: this._buildDocument(),
-            upto_node_id: this.previewNodeId,
-            limit: this.previewLimit,
-          },
-          silent: true,
+      const res = await window.pqlApi.fetch(`/api/dp/${this.product.id}/canvas/preview`, {
+        method: 'POST',
+        body: {
+          document: this._buildDocument(),
+          upto_node_id: this.previewNodeId,
+          limit: this.previewLimit,
         },
-      );
+        silent: true,
+      });
       this.previewBusy = false;
       if (!res.ok) {
         this.previewError = res.error || 'Preview failed';

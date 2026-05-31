@@ -65,6 +65,8 @@ class OpName(StrEnum):
     VECTOR_SEARCH = "vector_search"
     PIN_FACT = "pin_fact"
     CANVAS_MATERIALIZE = "canvas_materialize"
+    CANVAS_PIN = "canvas_pin"
+    CANVAS_UNPIN = "canvas_unpin"
 
 
 class ReadKind(StrEnum):
