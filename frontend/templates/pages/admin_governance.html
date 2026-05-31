@@ -60,6 +60,33 @@
                 <input id="gov-basis" type="text" class="form-control"
                        x-model="policy.consent_basis" placeholder="legal basis note">
             </div>
+            <hr class="my-3">
+            <h2 class="h6 text-muted text-uppercase mb-2">Cost &amp; quota defaults</h2>
+            <p class="text-muted small mb-3">
+                Workspace-wide ceilings; per-product overrides ride on each
+                product's Governance tab. <code>strict</code> raises HTTP 429
+                on the next read once a limit is breached; <code>warn</code>
+                logs a decision row and lets the read through.
+            </p>
+            <div class="mb-3">
+                <label class="form-label" for="gov-quota-mode">Quota enforcement</label>
+                <select id="gov-quota-mode" class="form-select" x-model="policy.quota_enforcement">
+                    <option value="">undeclared</option>
+                    <option value="off">off</option>
+                    <option value="warn">warn</option>
+                    <option value="strict">strict</option>
+                </select>
+            </div>
+            <div class="mb-3">
+                <label class="form-label" for="gov-max-cost">Max cost per day</label>
+                <input id="gov-max-cost" type="number" min="0" step="0.01" class="form-control"
+                       x-model="policy.max_cost_per_day" placeholder="no ceiling">
+            </div>
+            <div class="mb-3">
+                <label class="form-label" for="gov-max-qph">Max queries per hour</label>
+                <input id="gov-max-qph" type="number" min="0" class="form-control"
+                       x-model="policy.max_queries_per_hour" placeholder="no ceiling">
+            </div>
             <button type="button" class="btn btn-primary" :disabled="saving" @click="save()">
                 <span x-show="!saving">Save default policy</span>
                 <span x-show="saving" x-cloak>Saving&hellip;</span>

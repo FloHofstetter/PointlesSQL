@@ -134,3 +134,21 @@ call surfaces any new matches.
   symptom; switching to `res.data?.candidates` and re-triggering
   `Run now` confirmed the fix. Fixed at source in
   [frontend/js/pages/admin_entity_discovery.js](../../frontend/js/pages/admin_entity_discovery.js).
+* **Three-way route collision on `/api/data-products/{catalog}/{schema}/entities`**
+  blocks seed-via-API for end-to-end accept/reject/defer replay
+  (2026-05-31 round-two replay, pre-existing). GET / POST / DELETE
+  on `…/entities` are each defined twice — once in
+  [api/data_products_routes/entities.py](../../pointlessql/api/data_products_routes/entities.py)
+  (the Phase-134 declare-entity surface that the candidate scorer
+  feeds from) and once in
+  [api/data_products_routes/interop.py](../../pointlessql/api/data_products_routes/interop.py)
+  (mesh column-to-entity binding). `interop_router` is registered
+  first, so the entities.py handlers are unreachable from the
+  network. POST `{entity_name, source_table, primary_key_columns}`
+  returns the interop validator's `"entity_slug, table and column
+  are required"`. No client (UI, plugin, hermes-agent) currently
+  uses the shadowed entities.py POST, so production paths still
+  work via the plugin tool surface — but the bug means the Phase
+  145 admin review queue cannot be exercised end-to-end from the
+  browser alone until the routes are disambiguated. Out-of-scope
+  for the replay session; flagged for a future refactor pass.

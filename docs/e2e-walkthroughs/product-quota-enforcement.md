@@ -129,4 +129,24 @@ via `pql_set_workspace_quota` with `{quota_enforcement: "off"}`.
 
 ## Found bugs
 
-(none at time of writing — fill in during the first live replay)
+* **Workspace-default quota form was missing from `/admin/governance`**
+  (2026-05-31 round-two replay). The Phase 146 closure shipped the
+  per-product Cost & quota panel on the data-product detail page, but
+  the workspace-default counterpart on the admin governance cockpit
+  never landed — the page rendered only the five "classic" fields
+  (retention / encryption / residency / consent / consent-basis).
+  Operators could only set the workspace default through the plugin
+  tool `pql_set_workspace_quota` or a direct `/api/admin/governance/quota`
+  call. Added the three quota rows + JS bindings in
+  [admin_governance.html](../../frontend/templates/pages/admin_governance.html)
+  and [admin_governance.js](../../frontend/js/pages/admin_governance.js).
+* **Same form choked on a 500 (NOT NULL constraint) the first time
+  it included quota fields.** The save factory sent `null` for every
+  undeclared form row, but several columns
+  (`consent_required`, `consent_basis`, `consumption_enforcement`,
+  `quota_enforcement`) are `NOT NULL` with server defaults. The
+  service-layer `set_workspace_policy` then issued
+  `UPDATE … SET consent_required=NULL` and the DB rejected it. Fixed
+  by switching the JS to *omit* keys whose form value is `''`
+  ("no change" semantics) — workspace policy is the inheritance
+  base, so `null` can never mean "clear" on these columns.

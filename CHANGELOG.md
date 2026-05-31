@@ -15,7 +15,39 @@ contributors who need finer commit-level granularity.
 <!-- Future commits land here until the next cluster boundary is
 defined in ``scripts/clusters.json``. -->
 
+### Features
+
+- Workspace-default Cost & quota form on `/admin/governance`
+  (rc204).  The Phase 146 closure shipped the per-product
+  Cost & quota panel on the data-product detail page but never
+  added the workspace-default counterpart on the admin governance
+  cockpit, even though [admin-mesh-dashboard.md](docs/e2e-walkthroughs/admin-mesh-dashboard.md)
+  and the Phase 146 walkthroughs assumed both layers existed.
+  Added the three rows
+  ([admin_governance.html](frontend/templates/pages/admin_governance.html))
+  + the load / save wiring
+  ([admin_governance.js](frontend/js/pages/admin_governance.js))
+  routed through the existing PUT `/api/admin/governance/policy`
+  endpoint (which already accepted all POLICY_FIELDS).  Surfaced
+  a pre-existing bug en route — see the matching Fixes entry.
+
 ### Fixes
+
+- Workspace-policy save now omits empty form rows instead of
+  emitting `null` (rc204).  Several columns on
+  `workspace_governance_policies` are `NOT NULL` with server
+  defaults (`consent_required`, `consumption_enforcement`,
+  `iso8601_enforcement`, `quota_enforcement`,
+  `breaking_change_policy`); the old save factory blindly sent
+  `null` for every undeclared field, then
+  `governance_service.set_workspace_policy` did
+  `setattr(row, field, None)` and the DB rejected the UPDATE
+  with `IntegrityError: NOT NULL constraint failed: …`.  The
+  factory now treats `''` as "no change" and skips the key
+  entirely, mirroring `set_product_policy`'s docstring contract
+  ("Only keys present in *fields* are written").  Workspace
+  policy is the inheritance base — `null` can never validly mean
+  "clear" on a NOT NULL column.
 
 - Mega-Cluster 135–146 admin-surface browser-replay sweep
   (rc203).  First live UI replay against the four admin pages
