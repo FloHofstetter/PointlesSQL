@@ -17,6 +17,24 @@ defined in ``scripts/clusters.json``. -->
 
 ### Features
 
+- Mesh-canvas — Cross-workspace upstream edges (rc220).  Adds a
+  nullable ``source_workspace_id`` FK on
+  ``data_product_input_ports`` (``ON DELETE RESTRICT``) so an
+  upstream binding can point at a data product in a different
+  workspace.  Backward-compatible: every existing row has the
+  column NULL = "same workspace as the consumer," the historic
+  semantics.  The mesh-canvas read path now exposes cross-
+  workspace upstreams as ghost-nodes carrying the foreign
+  workspace's slug; the write path accepts edges with
+  ``source_workspace_slug``, resolves the foreign workspace and
+  DP, then writes the binding.  New admin-only picker endpoint
+  ``GET /api/mesh/canvas/picker/{workspace_slug}`` lists
+  candidate upstream DPs in a foreign workspace.  Cross-
+  workspace browse is admin-only — opens a permission surface
+  general users shouldn't walk.  Frontend right-click "Create
+  new DP here" + workspace picker UI deferred to a future polish
+  phase.
+
 - Visual DP Editor — Duplicate this block (rc219).  Selected
   canvas blocks gain a Duplicate button in the right drawer
   toolbar (next to the Delete trash icon) and a ``Ctrl+D`` /

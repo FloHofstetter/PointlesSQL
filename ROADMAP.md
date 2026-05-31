@@ -3034,6 +3034,23 @@ PointlesSQL
 │   │   badge + a "Bust cache" button.  Per-process only; multi-
 │   │   worker fan-out is out of scope for v1.
 │
+├── Phase 162 — Mesh-Canvas: Cross-Workspace Edges  ✅ shipped (local, 2026-05-31)
+│   │
+│   │   Alembic ``n2b4d6f8h0j2`` adds a nullable
+│   │   ``source_workspace_id`` FK on ``data_product_input_ports``
+│   │   (``ON DELETE RESTRICT``).  ``NULL`` = same workspace as
+│   │   the consuming DP (status quo).  Non-null = cross-workspace
+│   │   binding.  Mesh-canvas service now reads + writes the
+│   │   field: ``build_mesh_canvas_doc`` exposes cross-workspace
+│   │   upstreams as ghost-nodes carrying the foreign workspace's
+│   │   slug; ``apply_mesh_canvas_doc`` accepts edges with
+│   │   ``source_workspace_slug``, looks up the foreign workspace
+│   │   and DP, then writes a cross-workspace input-port row.
+│   │   New admin-only ``GET /api/mesh/canvas/picker/{slug}`` lists
+│   │   candidate upstream DPs in a foreign workspace.  Frontend
+│   │   right-click "Create new DP here" context menu intentionally
+│   │   deferred — out of scope for v1.
+│   │
 ├── Phase 161 — Visual DP Editor: Block-Library Config-UX Polish  ✅ shipped (local, 2026-05-31)
 │   │
 │   │   Adds a "Duplicate this block" action: toolbar button next

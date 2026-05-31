@@ -18,7 +18,7 @@ from typing import TYPE_CHECKING, Any
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select
 
-from pointlessql.models import DataProduct, DataProductInputPort
+from pointlessql.models import DataProduct, DataProductInputPort, Workspace
 from pointlessql.services.data_product_ports import (
     create_input_port,
     delete_input_port,
@@ -40,6 +40,7 @@ class MeshCanvasNode(BaseModel):
     dp_id: int
     ref: str
     position: dict[str, float] | None = None
+    workspace_slug: str | None = None
 
 
 class MeshCanvasEdge(BaseModel):
@@ -50,6 +51,7 @@ class MeshCanvasEdge(BaseModel):
     id: str = Field(min_length=1, max_length=80)
     source_dp_id: int
     target_dp_id: int
+    source_workspace_slug: str | None = None
 
 
 class MeshCanvasDoc(BaseModel):
@@ -73,6 +75,10 @@ def build_mesh_canvas_doc(
     Edge IDs are deterministic (``mesh_edge_<port_id>``) so the
     save-side diff can match round-tripped client docs against the
     DB rows they were derived from.
+
+    Cross-workspace upstreams (``source_workspace_id`` non-null on
+    the port) appear as additional ghost nodes carrying the foreign
+    workspace's slug so the renderer can distinguish them.
     """
     with factory() as session:
         dps = list(
@@ -90,13 +96,57 @@ def build_mesh_canvas_doc(
             )
         )
         ref_to_dp = {_dp_ref(dp): dp.id for dp in dps}
-        nodes = [
+        nodes: list[MeshCanvasNode] = [
             MeshCanvasNode(dp_id=dp.id, ref=_dp_ref(dp))
             for dp in dps
         ]
+        cross_ws_ports = [p for p in ports if p.source_workspace_id is not None]
+        cross_ws_ids = {p.source_workspace_id for p in cross_ws_ports}
+        ws_by_id: dict[int, Workspace] = {}
+        if cross_ws_ids:
+            for ws in session.scalars(
+                select(Workspace).where(Workspace.id.in_(cross_ws_ids))
+            ):
+                ws_by_id[ws.id] = ws
+        cross_ws_refs: dict[tuple[int, str], int] = {}
+        next_ghost_id = -1
+        for port in cross_ws_ports:
+            if port.source_ref is None or port.source_workspace_id is None:
+                continue
+            ws = ws_by_id.get(port.source_workspace_id)
+            if ws is None:
+                continue
+            key = (port.source_workspace_id, port.source_ref)
+            if key in cross_ws_refs:
+                continue
+            cross_ws_refs[key] = next_ghost_id
+            nodes.append(
+                MeshCanvasNode(
+                    dp_id=next_ghost_id,
+                    ref=port.source_ref,
+                    workspace_slug=ws.slug,
+                )
+            )
+            next_ghost_id -= 1
         edges: list[MeshCanvasEdge] = []
         for port in ports:
             if port.source_ref is None:
+                continue
+            if port.source_workspace_id is not None:
+                ws = ws_by_id.get(port.source_workspace_id)
+                if ws is None:
+                    continue
+                ghost_id = cross_ws_refs.get((port.source_workspace_id, port.source_ref))
+                if ghost_id is None:
+                    continue
+                edges.append(
+                    MeshCanvasEdge(
+                        id=f"{_EDGE_PORT_PREFIX}{port.id}",
+                        source_dp_id=ghost_id,
+                        target_dp_id=port.data_product_id,
+                        source_workspace_slug=ws.slug,
+                    )
+                )
                 continue
             upstream_id = ref_to_dp.get(port.source_ref)
             if upstream_id is None:
@@ -178,12 +228,25 @@ def apply_mesh_canvas_doc(
     for edge in doc.edges:
         if edge.id in current_ids:
             continue
-        if (
-            edge.source_dp_id not in valid_dp_ids
-            or edge.target_dp_id not in valid_dp_ids
-        ):
+        if edge.target_dp_id not in valid_dp_ids:
             summary.skipped.append(
-                f"edge {edge.id!r} references dp_id outside workspace"
+                f"edge {edge.id!r} target dp_id outside workspace"
+            )
+            continue
+        if edge.source_workspace_slug:
+            cross_added = _apply_cross_workspace_edge(
+                factory,
+                edge=edge,
+                actor_user_id=actor_user_id,
+                next_seq=next_seq,
+                summary=summary,
+            )
+            if cross_added:
+                next_seq += 1
+            continue
+        if edge.source_dp_id not in valid_dp_ids:
+            summary.skipped.append(
+                f"edge {edge.id!r} source dp_id outside workspace"
             )
             continue
         upstream = dps_by_id.get(edge.source_dp_id)
@@ -210,6 +273,59 @@ def apply_mesh_canvas_doc(
             summary.skipped.append(f"edge {edge.id!r}: {exc}")
 
     return summary
+
+
+def _apply_cross_workspace_edge(
+    factory: sessionmaker[Session],
+    *,
+    edge: MeshCanvasEdge,
+    actor_user_id: int | None,
+    next_seq: int,
+    summary: MeshDiffSummary,
+) -> bool:
+    """Look up the foreign workspace + create a cross-workspace input-port row.
+
+    Returns True when a port was created, False on any validation
+    failure (the per-edge skip is appended to *summary.skipped*).
+    """
+    with factory() as session:
+        ws_row = session.scalar(
+            select(Workspace).where(Workspace.slug == edge.source_workspace_slug)
+        )
+        if ws_row is None:
+            summary.skipped.append(
+                f"edge {edge.id!r} unknown source workspace {edge.source_workspace_slug!r}"
+            )
+            return False
+        upstream = session.get(DataProduct, edge.source_dp_id)
+        if upstream is None or upstream.workspace_id != ws_row.id:
+            summary.skipped.append(
+                f"edge {edge.id!r} upstream dp not in workspace "
+                f"{edge.source_workspace_slug!r}"
+            )
+            return False
+        ref = _dp_ref(upstream)
+        source_workspace_id = ws_row.id
+    name = f"mesh_xws_{edge.source_dp_id}_{next_seq}"
+    try:
+        create_input_port(
+            factory,
+            data_product_id=edge.target_dp_id,
+            name=name,
+            kind=_UPSTREAM_KIND,
+            source_ref=ref,
+            source_workspace_id=source_workspace_id,
+            description=(
+                f"Mesh-canvas cross-workspace binding from "
+                f"{edge.source_workspace_slug}:{ref}"
+            ),
+            created_by_user_id=actor_user_id,
+        )
+        summary.added += 1
+        return True
+    except ValueError as exc:
+        summary.skipped.append(f"edge {edge.id!r}: {exc}")
+        return False
 
 
 def validate_mesh_canvas_doc(doc: MeshCanvasDoc) -> list[str]:

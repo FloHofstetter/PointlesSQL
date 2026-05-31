@@ -130,6 +130,14 @@ class DataProductInputPort(Base):
         kind: One of :data:`INPUT_PORT_KINDS`.
         source_ref: ``catalog.schema`` for ``upstream_product``; a
             URI or system name otherwise; ``None`` when unspecified.
+        source_workspace_id: Optional FK on ``workspaces.id`` —
+            ``None`` means the upstream lives in the same workspace
+            as the consuming product (status quo for all rows
+            predating the cross-workspace mesh-edge feature).  Set
+            non-null when the mesh-canvas editor wires an edge that
+            crosses workspace boundaries.  ``ON DELETE RESTRICT`` so
+            removing a workspace does not silently sever a declared
+            cross-workspace lineage edge.
         description: Free-form note on the dependency.
         created_by_user_id: Nullable FK on ``users.id``.
         created_at: Wall-clock the input was declared.
@@ -140,6 +148,7 @@ class DataProductInputPort(Base):
     __table_args__ = (
         UniqueConstraint("data_product_id", "name", name="uq_dp_input_ports_name"),
         Index("ix_dp_input_ports_product", "data_product_id"),
+        Index("ix_dp_input_ports_source_ws", "source_workspace_id"),
         CheckConstraint(
             "kind IN ('operational_system','upstream_product','external')",
             name="ck_dp_input_ports_kind",
@@ -155,6 +164,12 @@ class DataProductInputPort(Base):
     name: Mapped[str] = mapped_column(String(120), nullable=False)
     kind: Mapped[str] = mapped_column(String(16), nullable=False)
     source_ref: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    source_workspace_id: Mapped[int | None] = mapped_column(
+        Integer,
+        ForeignKey("workspaces.id", ondelete="RESTRICT"),
+        nullable=True,
+        default=None,
+    )
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_by_user_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("users.id"), nullable=True

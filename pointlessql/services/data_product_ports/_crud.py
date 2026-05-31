@@ -150,6 +150,7 @@ def create_input_port(
     name: str,
     kind: str,
     source_ref: str | None = None,
+    source_workspace_id: int | None = None,
     description: str | None = None,
     created_by_user_id: int | None = None,
 ) -> DataProductInputPort:
@@ -162,6 +163,9 @@ def create_input_port(
         kind: One of :data:`INPUT_PORT_KINDS`.
         source_ref: ``catalog.schema`` for ``upstream_product``; a URI
             or system name otherwise.
+        source_workspace_id: Optional workspace id when the upstream
+            lives outside the consuming product's workspace.  ``None``
+            (default) means same workspace as the consuming product.
         description: Optional free-form note.
         created_by_user_id: User declaring the input.
 
@@ -192,6 +196,7 @@ def create_input_port(
             name=cleaned_name,
             kind=kind,
             source_ref=source_ref.strip() if source_ref else None,
+            source_workspace_id=source_workspace_id,
             description=description.strip() if description else None,
             created_by_user_id=created_by_user_id,
             created_at=now,

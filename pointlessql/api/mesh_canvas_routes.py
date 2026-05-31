@@ -18,13 +18,18 @@ from __future__ import annotations
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from pydantic import BaseModel, ConfigDict
+from sqlalchemy import select
 
 from pointlessql.api.dependencies import (
     current_workspace_id,
     get_user,
     require_user,
 )
-from pointlessql.exceptions import AuthorizationError
+from pointlessql.exceptions import (
+    AuthorizationError,
+    ResourceNotFoundError,
+)
+from pointlessql.models import DataProduct, Workspace
 from pointlessql.services.mesh._canvas import (
     MeshCanvasDoc,
     MeshDiffSummary,
@@ -122,6 +127,66 @@ def validate_mesh_canvas(
     require_user(request)
     issues = validate_mesh_canvas_doc(body.document)
     return MeshCanvasValidateResponse(issues=issues)
+
+
+class MeshXwsPickerEntry(BaseModel):
+    """One candidate cross-workspace upstream DP for the mesh-canvas picker."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    dp_id: int
+    ref: str
+
+
+class MeshXwsPickerResponse(BaseModel):
+    """Response for ``GET /api/mesh/canvas/picker/{workspace_slug}``."""
+
+    workspace_slug: str
+    data_products: list[MeshXwsPickerEntry]
+
+
+@router.get(
+    "/canvas/picker/{workspace_slug}",
+    response_model=MeshXwsPickerResponse,
+)
+def mesh_canvas_picker(
+    workspace_slug: str, request: Request
+) -> MeshXwsPickerResponse:
+    """List DPs in *workspace_slug* the mesh-canvas can wire as upstreams.
+
+    Admin-only — cross-workspace browse opens a permission surface
+    we don't want general users walking.  Returns 404 when the slug
+    is unknown so callers don't enumerate workspaces.
+    """
+    require_user(request)
+    user = get_user(request)
+    if not bool(user.get("is_admin")):
+        raise AuthorizationError(
+            principal=str(user.get("email", "")),
+            privilege="mesh-canvas-cross-workspace-browse",
+            securable_type="workspace",
+            full_name=workspace_slug,
+        )
+    factory = request.app.state.session_factory
+    with factory() as session:
+        ws = session.scalar(select(Workspace).where(Workspace.slug == workspace_slug))
+        if ws is None:
+            raise ResourceNotFoundError(f"workspace slug={workspace_slug!r} not found")
+        dps = list(
+            session.scalars(
+                select(DataProduct).where(DataProduct.workspace_id == ws.id)
+            )
+        )
+        entries = [
+            MeshXwsPickerEntry(
+                dp_id=dp.id, ref=f"{dp.catalog_name}.{dp.schema_name}"
+            )
+            for dp in dps
+        ]
+    return MeshXwsPickerResponse(
+        workspace_slug=workspace_slug,
+        data_products=entries,
+    )
 
 
 @html_router.get(
