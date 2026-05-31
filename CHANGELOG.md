@@ -17,6 +17,18 @@ defined in ``scripts/clusters.json``. -->
 
 ### Features
 
+- Visual DP Editor — Granular per-block Y.Doc co-edit sync
+  (rc218).  Co-edit Y.Doc shape upgraded from a single ``json``
+  slot holding the whole serialised CanvasDoc to per-block +
+  per-edge structured Y.Maps (``nodes_order`` / ``nodes_map`` /
+  ``edges_order`` / ``edges_map``).  Two peers editing two
+  different nodes' configs now write to different Y.Map keys and
+  never conflict at the Y.js layer.  Legacy v1 single-slot Y.Docs
+  are auto-migrated on first ``extract_canvas_doc`` read so any
+  in-flight co-edit session re-opens cleanly under v2.  Frontend
+  hub client still does a coarse full-replay on observe — granular
+  client-side mutation handlers are out of scope for v1.
+
 - Visual DP Editor — CodeMirror polish: format-on-blur + snippets
   (rc217).  The multi-line SQL block editor formats the document
   on blur using a small inhouse DuckDB-ish formatter (uppercase

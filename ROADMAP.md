@@ -3034,6 +3034,22 @@ PointlesSQL
 │   │   badge + a "Bust cache" button.  Per-process only; multi-
 │   │   worker fan-out is out of scope for v1.
 │
+├── Phase 160 — Visual DP Editor: Granular per-block Y.Doc Sync  ✅ shipped (local, 2026-05-31)
+│   │
+│   │   Co-edit Y.Doc shape upgraded from "one slot holding the
+│   │   whole serialised CanvasDoc" to per-block + per-edge
+│   │   structured Y.Maps: ``nodes_order`` / ``nodes_map`` /
+│   │   ``edges_order`` / ``edges_map``.  Per-block configs +
+│   │   positions are JSON-encoded strings inside the per-node
+│   │   sub-map (full per-key Y.Map nesting deferred).  Two
+│   │   peers editing two different nodes' configs now hit
+│   │   different Y.Map keys and never conflict at the Y.js
+│   │   layer.  Legacy v1 single-slot Y.Docs are auto-migrated
+│   │   on first ``extract_canvas_doc`` read so in-flight co-
+│   │   edit sessions don't break.  Frontend hub client still
+│   │   does a coarse full-replay on observe — granular client-
+│   │   side mutation handlers are out of scope for v1.
+│   │
 ├── Phase 159 — Visual DP Editor: CodeMirror Polish  ✅ shipped (local, 2026-05-31)
 │   │
 │   │   SQL block editor (multi-line) gains format-on-blur (inhouse
