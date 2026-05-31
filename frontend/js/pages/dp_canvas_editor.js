@@ -15,7 +15,10 @@
  *   are registered by the CDN bundle loaded from ``dp_canvas_editor.html``.
  */
 
-import { findNonOverlappingPosition } from '../dp_canvas/_canvas_helpers.js';
+import {
+  findNonOverlappingPosition,
+  installZoomObserver,
+} from '../dp_canvas/_canvas_helpers.js';
 
 const BLOCK_DEFS = {
   InputPort: {
@@ -541,8 +544,20 @@ export function dpCanvasEditor(product, ctx) {
       // Live zoom value as CSS custom property so the edge-stroke math
       // (and hit-area width) stay legible at every zoom level — same
       // technique n8n uses, only stroke-driven via CSS instead of OKLCH.
-      df.on('zoom', (z) => this._updateZoomCssVar(z));
-      this._updateZoomCssVar(df.zoom || 1);
+      //
+      // Drawflow 0.0.59 only emits the ``zoom`` event for mousewheel
+      // input — programmatic ``df.zoom_in/out/reset`` and any other
+      // path that mutates the transform silently bypass the listener.
+      // A MutationObserver on the live ``.drawflow`` transform is the
+      // only reliable hook, so the helper does both jobs at once:
+      // mirror the scale into ``--pql-zoom`` and call the existing
+      // ``_updateZoomCssVar`` hook so output-plus + mid-toolbar still
+      // reposition on every zoom step.
+      const inner = node && node.querySelector('.drawflow');
+      this._zoomObserver = installZoomObserver(inner, node, (z) => {
+        this._scheduleAllOutputPlusReposition();
+        this._scheduleEdgeToolbarReposition();
+      });
 
       // Click on empty canvas clears any selected edge.  Click on an
       // edge SVG is handled inside the per-connection decoration below.
@@ -1649,13 +1664,38 @@ export function dpCanvasEditor(product, ctx) {
         // _decoratedSvgs early-return branch above.
       }
 
+      // Hover-on with 80 ms debounce so a cursor crossing several
+      // edges in succession does not flicker every one through their
+      // hover styles (matches n8n's ``delayedHovered`` behaviour).
+      // Glow radius scales with the visible path length so short
+      // edges between adjacent nodes still get a perceptible halo
+      // and long edges don't drown in a bloom — ``--pql-edge-glow``
+      // is the CSS custom property the shared stylesheet reads in
+      // its ``drop-shadow()`` filter.
+      let hoverTimer = null;
       hit.addEventListener('mouseenter', () => {
-        svgEl.classList.add('pql-edge-hover');
-        const edgeId = this._edgeIdForSvg(svgEl);
-        if (edgeId) this._showEdgeToolbar(svgEl, edgeId);
+        if (hoverTimer) window.clearTimeout(hoverTimer);
+        hoverTimer = window.setTimeout(() => {
+          hoverTimer = null;
+          try {
+            const len = mainPath.getTotalLength();
+            const glow = Math.min(Math.max(len / 30, 2), 8);
+            svgEl.style.setProperty('--pql-edge-glow', `${glow}px`);
+          } catch (_e) {
+            // Path may be zero-length pre-paint; default 4 px is fine.
+          }
+          svgEl.classList.add('pql-edge-hover');
+          const edgeId = this._edgeIdForSvg(svgEl);
+          if (edgeId) this._showEdgeToolbar(svgEl, edgeId);
+        }, 80);
       });
       hit.addEventListener('mouseleave', () => {
+        if (hoverTimer) {
+          window.clearTimeout(hoverTimer);
+          hoverTimer = null;
+        }
         svgEl.classList.remove('pql-edge-hover');
+        svgEl.style.removeProperty('--pql-edge-glow');
         this._scheduleEdgeToolbarHide();
       });
       hit.addEventListener('click', (ev) => {
@@ -1935,17 +1975,6 @@ export function dpCanvasEditor(product, ctx) {
       this._renderOutputPlus(newPqlId);
       this._scheduleAutosave();
       this._scheduleValidate();
-    },
-
-    _updateZoomCssVar(zoom) {
-      const root = this.$refs.canvas;
-      if (!root) return;
-      const z = Number.isFinite(zoom) && zoom > 0 ? zoom : 1;
-      root.style.setProperty('--pql-zoom', String(z));
-      // Output-plus elements are mounted in stage-coords (outside the
-      // Drawflow precanvas transform), so reposition them when zoom shifts.
-      this._scheduleAllOutputPlusReposition();
-      this._scheduleEdgeToolbarReposition();
     },
 
     // ---------------------------------------------------------------------

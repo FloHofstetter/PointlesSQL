@@ -181,6 +181,56 @@ export function dpCanvasDiff(product) {
         beforeHost.classList.add('pql-diff-only-changed');
         afterHost.classList.add('pql-diff-only-changed');
       }
+      // Auto-fit both panes once their nodes are mounted — the diff
+      // surface has no manual pan / zoom controls so an offscreen
+      // graph would be invisible until the user discovered Drawflow's
+      // wheel-zoom.  Defer one frame so layout settles first.
+      window.setTimeout(() => {
+        this.fitPanel('before');
+        this.fitPanel('after');
+      }, 50);
+    },
+
+    fitPanel(side) {
+      const df = side === 'before' ? this._dfBefore : this._dfAfter;
+      const host = side === 'before' ? this.$refs.dfBefore : this.$refs.dfAfter;
+      if (!df || !host) return;
+      const nodes = host.querySelectorAll('.drawflow-node');
+      if (nodes.length === 0) return;
+      // BBox in canvas-local coords (before zoom).
+      let minX = Infinity;
+      let minY = Infinity;
+      let maxX = -Infinity;
+      let maxY = -Infinity;
+      for (const el of nodes) {
+        const x = parseFloat(el.style.left) || 0;
+        const y = parseFloat(el.style.top) || 0;
+        const r = el.getBoundingClientRect();
+        // Width/height come from rendered geometry; safer than reading
+        // the node's intrinsic content size which Drawflow caches.
+        const w = r.width / (df.zoom || 1);
+        const h = r.height / (df.zoom || 1);
+        if (x < minX) minX = x;
+        if (y < minY) minY = y;
+        if (x + w > maxX) maxX = x + w;
+        if (y + h > maxY) maxY = y + h;
+      }
+      const padding = 40;
+      const bboxW = maxX - minX + 2 * padding;
+      const bboxH = maxY - minY + 2 * padding;
+      const hostRect = host.getBoundingClientRect();
+      const zoomX = hostRect.width / bboxW;
+      const zoomY = hostRect.height / bboxH;
+      const zoom = Math.max(0.2, Math.min(1, Math.min(zoomX, zoomY)));
+      const tx = -((minX - padding) * zoom);
+      const ty = -((minY - padding) * zoom);
+      df.zoom = zoom;
+      df.canvas_x = tx;
+      df.canvas_y = ty;
+      const inner = host.querySelector('.drawflow');
+      if (inner) {
+        inner.style.transform = `translate(${tx}px, ${ty}px) scale(${zoom})`;
+      }
     },
 
     _wireSyncScroll(beforeHost, afterHost) {

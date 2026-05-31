@@ -1,3 +1,5 @@
+import { installZoomObserver } from '../dp_canvas/_canvas_helpers.js';
+
 /*
  * Mesh-canvas editor — Alpine factory.
  *
@@ -100,6 +102,10 @@ export function meshCanvasEditor() {
       });
       df.on('connectionRemoved', () => this._syncEdges());
       df.on('nodeMoved', () => this._scheduleDecorate());
+
+      // Zoom-compensated stroke math (same hook DP-Canvas uses).
+      const inner = this.$refs.canvas.querySelector('.drawflow');
+      this._zoomObserver = installZoomObserver(inner, this.$refs.canvas);
 
       // Right-click on canvas background opens the context menu.
       const canvasEl = this.$refs.canvas;
