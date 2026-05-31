@@ -3034,6 +3034,20 @@ PointlesSQL
 │   │   badge + a "Bust cache" button.  Per-process only; multi-
 │   │   worker fan-out is out of scope for v1.
 │
+├── Phase 159 — Visual DP Editor: CodeMirror Polish  ✅ shipped (local, 2026-05-31)
+│   │
+│   │   SQL block editor (multi-line) gains format-on-blur (inhouse
+│   │   ~140-line DuckDB-ish formatter — uppercase keywords +
+│   │   newline before SELECT/FROM/WHERE/JOIN-family) and ten
+│   │   hardcoded snippets (cte / win / agg / case / ljoin / ijoin
+│   │   / gbh / olim / unnest / cast).  Snippets ride the same
+│   │   completion source the column-autocomplete already uses, so
+│   │   typing 3 letters + Tab expands the pattern.  Multi-cursor
+│   │   (Alt+Click) was already on by default in CodeMirror 6 —
+│   │   noted in user-facing docs.  Linter for unbalanced parens
+│   │   intentionally deferred (DOM-level squiggle would need
+│   │   ``@codemirror/lint`` which we don't currently load).
+│   │
 ├── Phase 158 — Visual DP Editor: Diff-View Visual Canvas-Overlay  ✅ shipped (local, 2026-05-31)
 │   │
 │   │   ``/dp/{id}/canvas/diff`` gains a side-by-side visual mode

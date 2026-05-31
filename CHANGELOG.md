@@ -17,6 +17,17 @@ defined in ``scripts/clusters.json``. -->
 
 ### Features
 
+- Visual DP Editor — CodeMirror polish: format-on-blur + snippets
+  (rc217).  The multi-line SQL block editor formats the document
+  on blur using a small inhouse DuckDB-ish formatter (uppercase
+  keywords + newline before SELECT/FROM/WHERE/JOIN families).  Ten
+  hardcoded snippets ride the existing completion source so
+  typing ``cte``+Tab expands to a CTE skeleton, ``win``+Tab to a
+  window-over clause, etc.  Multi-cursor (Alt+Click) was already
+  enabled in CodeMirror 6; documented in user-facing tooltip.
+  Linter for unbalanced parens is intentionally deferred to keep
+  the bundle small.
+
 - Visual DP Editor — Diff-view visual canvas overlay (rc216).
   The ``/dp/{id}/canvas/diff`` page now defaults to a side-by-side
   visual diff with two read-only Drawflow editors holding the

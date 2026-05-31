@@ -22,20 +22,22 @@
  * a notebook in this session.
  */
 
+import { buildSqlSnippetCompletions } from './_codemirror_snippets.js';
+import { formatSql } from './_sql_format.js';
+
 let _cmCache = null;
 
 async function _loadCm() {
   if (_cmCache) return _cmCache;
-  const [stateMod, viewMod, commandsMod, languageMod, sqlMod, themeMod, acMod] =
-    await Promise.all([
-      import('@codemirror/state'),
-      import('@codemirror/view'),
-      import('@codemirror/commands'),
-      import('@codemirror/language'),
-      import('@codemirror/lang-sql'),
-      import('@codemirror/theme-one-dark'),
-      import('@codemirror/autocomplete'),
-    ]);
+  const [stateMod, viewMod, commandsMod, languageMod, sqlMod, themeMod, acMod] = await Promise.all([
+    import('@codemirror/state'),
+    import('@codemirror/view'),
+    import('@codemirror/commands'),
+    import('@codemirror/language'),
+    import('@codemirror/lang-sql'),
+    import('@codemirror/theme-one-dark'),
+    import('@codemirror/autocomplete'),
+  ]);
   _cmCache = {
     EditorState: stateMod.EditorState,
     EditorView: viewMod.EditorView,
@@ -55,25 +57,26 @@ async function _loadCm() {
   return _cmCache;
 }
 
-function _columnsCompletionSource(getColumns) {
+function _columnsCompletionSource(getColumns, includeSnippets) {
   return (context) => {
     const word = context.matchBefore(/[\w]*/);
     if (!word) return null;
     if (word.from === word.to && !context.explicit) return null;
     const columns = (typeof getColumns === 'function' ? getColumns() : []) || [];
-    if (!columns.length) return null;
-    return {
-      from: word.from,
-      options: columns.map((name) => ({
-        label: name,
-        type: 'variable',
-        detail: 'column',
-      })),
-    };
+    const options = columns.map((name) => ({
+      label: name,
+      type: 'variable',
+      detail: 'column',
+    }));
+    if (includeSnippets) {
+      options.push(...buildSqlSnippetCompletions());
+    }
+    if (!options.length) return null;
+    return { from: word.from, options };
   };
 }
 
-async function _mount(host, { multiLine, initialValue, onChange, getColumns }) {
+async function _mount(host, { multiLine, initialValue, onChange, getColumns, formatOnBlur }) {
   if (!host) return null;
   if (host.dataset.pqlCanvasCmInit === '1') return null;
   host.dataset.pqlCanvasCmInit = '1';
@@ -84,7 +87,9 @@ async function _mount(host, { multiLine, initialValue, onChange, getColumns }) {
   const extensions = [
     cm.sql(),
     cm.bracketMatching(),
-    cm.autocompletion({ override: [_columnsCompletionSource(getColumns)] }),
+    cm.autocompletion({
+      override: [_columnsCompletionSource(getColumns, Boolean(multiLine))],
+    }),
     cm.syntaxHighlighting(cm.defaultHighlightStyle),
     cm.EditorView.updateListener.of((update) => {
       if (update.docChanged && typeof onChange === 'function') {
@@ -96,7 +101,25 @@ async function _mount(host, { multiLine, initialValue, onChange, getColumns }) {
   if (multiLine) {
     extensions.unshift(cm.lineNumbers());
     extensions.push(cm.history());
-    extensions.push(cm.keymap.of([...cm.defaultKeymap, ...cm.historyKeymap, ...cm.completionKeymap]));
+    extensions.push(
+      cm.keymap.of([...cm.defaultKeymap, ...cm.historyKeymap, ...cm.completionKeymap])
+    );
+    if (formatOnBlur !== false) {
+      extensions.push(
+        cm.EditorView.domEventHandlers({
+          blur: (_event, view) => {
+            const before = view.state.doc.toString();
+            const after = formatSql(before);
+            if (after && after !== before) {
+              view.dispatch({
+                changes: { from: 0, to: before.length, insert: after },
+              });
+            }
+            return false;
+          },
+        })
+      );
+    }
   } else {
     // Single-line: swallow Enter so the predicate stays one row.
     extensions.push(
@@ -104,7 +127,7 @@ async function _mount(host, { multiLine, initialValue, onChange, getColumns }) {
         ...cm.defaultKeymap.filter((b) => b.key !== 'Enter'),
         ...cm.completionKeymap,
         { key: 'Enter', run: () => true },
-      ]),
+      ])
     );
     extensions.push(
       cm.EditorState.transactionFilter.of((tr) => {
@@ -114,7 +137,7 @@ async function _mount(host, { multiLine, initialValue, onChange, getColumns }) {
           if (inserted && inserted.lines > 1) rejected = true;
         });
         return rejected ? [] : tr;
-      }),
+      })
     );
   }
 
