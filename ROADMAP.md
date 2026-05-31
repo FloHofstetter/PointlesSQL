@@ -3034,6 +3034,17 @@ PointlesSQL
 │   │   badge + a "Bust cache" button.  Per-process only; multi-
 │   │   worker fan-out is out of scope for v1.
 │
+├── Phase 158 — Visual DP Editor: Diff-View Visual Canvas-Overlay  ✅ shipped (local, 2026-05-31)
+│   │
+│   │   ``/dp/{id}/canvas/diff`` gains a side-by-side visual mode
+│   │   (default) where two read-only Drawflow editors paint the
+│   │   before + after canvases with colour overlays: added nodes
+│   │   green, removed red, modified yellow.  Edges added/removed
+│   │   get matching stroke colours.  The legacy 3-column list
+│   │   view remains as a toggle.  New shared
+│   │   ``_drawflow_loader.js`` helper extracted so editor + diff
+│   │   pages reuse the same Drawflow node-add / connect dance.
+│   │
 ├── Phase 157 — Visual DP Editor: Schema-Flow Diagnostics UX  ✅ shipped (local, 2026-05-31)
 │   │
 │   │   CompileError envelope grows optional ``column`` /

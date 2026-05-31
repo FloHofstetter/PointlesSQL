@@ -12,7 +12,15 @@
 
 {% block extra_css %}
 {{ super() }}
+<link rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/drawflow@0.0.59/dist/drawflow.min.css">
 <link rel="stylesheet" href="/static/css/dp_canvas_editor.css?v={{ asset_version }}">
+<link rel="stylesheet" href="/static/css/dp_canvas_diff.css?v={{ asset_version }}">
+{% endblock %}
+
+{% block extra_js %}
+{{ super() }}
+<script src="https://cdn.jsdelivr.net/npm/drawflow@0.0.59/dist/drawflow.min.js"></script>
 {% endblock %}
 
 {% block content %}
@@ -45,6 +53,46 @@
         </div>
     </div>
 
+    <div class="d-flex align-items-center gap-2 mb-3">
+        <div class="btn-group btn-group-sm" role="group">
+            <button type="button" class="btn btn-outline-secondary"
+                    :class="{ active: viewMode === 'visual' }"
+                    @click="viewMode = 'visual'">
+                <i class="bi bi-diagram-3"></i> Side-by-side
+            </button>
+            <button type="button" class="btn btn-outline-secondary"
+                    :class="{ active: viewMode === 'list' }"
+                    @click="viewMode = 'list'">
+                <i class="bi bi-list-ul"></i> List
+            </button>
+        </div>
+        <div class="small text-muted ms-2"
+             x-show="viewMode === 'visual' && diff && diff.diff && !diffEmpty()">
+            <span class="badge bg-success me-1">●</span> added
+            <span class="badge bg-danger ms-2 me-1">●</span> removed
+            <span class="badge bg-warning ms-2 me-1">●</span> modified
+        </div>
+    </div>
+
+    <template x-if="viewMode === 'visual' && diff && diff.diff && !diffEmpty()">
+        <div class="row g-2">
+            <div class="col-12 col-md-6">
+                <div class="small text-muted mb-1">
+                    Before: <strong>v<span x-text="diff.from_version"></span></strong>
+                </div>
+                <div x-ref="dfBefore" class="pql-dp-canvas-diff-pane border rounded bg-body"
+                     style="height: 600px; position: relative;"></div>
+            </div>
+            <div class="col-12 col-md-6">
+                <div class="small text-muted mb-1">
+                    After: <strong>v<span x-text="diff.to_version"></span></strong>
+                </div>
+                <div x-ref="dfAfter" class="pql-dp-canvas-diff-pane border rounded bg-body"
+                     style="height: 600px; position: relative;"></div>
+            </div>
+        </div>
+    </template>
+
     <template x-if="error">
         <div class="alert alert-danger small" x-text="error"></div>
     </template>
@@ -55,7 +103,7 @@
         </div>
     </template>
 
-    <template x-if="diff && diff.diff && !diffEmpty()">
+    <template x-if="viewMode === 'list' && diff && diff.diff && !diffEmpty()">
         <div class="row g-3">
             <div class="col-12 col-md-4">
                 <h6 class="small text-uppercase text-success-emphasis">

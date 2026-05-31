@@ -17,6 +17,18 @@ defined in ``scripts/clusters.json``. -->
 
 ### Features
 
+- Visual DP Editor — Diff-view visual canvas overlay (rc216).
+  The ``/dp/{id}/canvas/diff`` page now defaults to a side-by-side
+  visual diff with two read-only Drawflow editors holding the
+  before + after canvases.  Added nodes get a green outline,
+  removed get red (with 60% opacity on the before-pane), modified
+  get yellow on both panes; added/removed edges follow matching
+  stroke colours (dashed for removed).  The original 3-column
+  list view is still reachable via a toggle.  Extracts a shared
+  ``_drawflow_loader.js`` helper so the editor and diff pages
+  reuse the same Drawflow node-add + connect dance instead of
+  duplicating it.
+
 - Visual DP Editor — Schema-flow diagnostics UX (rc215).
   Per-node error badges in the canvas editor now carry a
   hover-tooltip with the full structured diagnostic (kind, pin,

@@ -1,0 +1,39 @@
+/*
+ * Diff-view canvas overlay styles.
+ *
+ * The side-by-side Drawflow editors on the diff page paint node
+ * outlines in three colors to surface added / removed / modified
+ * blocks visually.  Edge overlays use stroke colour + width on the
+ * connection-path SVGs Drawflow renders.
+ */
+
+.pql-dp-canvas-diff-pane .drawflow {
+  background-color: var(--bs-body-bg);
+}
+
+.pql-dp-canvas-diff-pane .pql-diff-added {
+  box-shadow: 0 0 0 3px #198754;
+  border-radius: 4px;
+}
+
+.pql-dp-canvas-diff-pane .pql-diff-removed {
+  box-shadow: 0 0 0 3px #dc3545;
+  border-radius: 4px;
+  opacity: 0.6;
+}
+
+.pql-dp-canvas-diff-pane .pql-diff-modified {
+  box-shadow: 0 0 0 3px #ffc107;
+  border-radius: 4px;
+}
+
+.pql-dp-canvas-diff-pane .connection.pql-diff-edge-added svg path {
+  stroke: #198754;
+  stroke-width: 3;
+}
+
+.pql-dp-canvas-diff-pane .connection.pql-diff-edge-removed svg path {
+  stroke: #dc3545;
+  stroke-width: 3;
+  stroke-dasharray: 6 3;
+}
