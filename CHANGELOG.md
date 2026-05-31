@@ -17,6 +17,22 @@ defined in ``scripts/clusters.json``. -->
 
 ### Features
 
+- DP-Canvas + Mesh-Canvas drag performance — node positions stay
+  glued to the cursor during drag (rc223).  The ``nodeMoved``
+  handler used to call ``_syncFromDrawflow`` on every animation
+  frame, which exported the full Drawflow document, rebuilt the
+  ``nodes`` + ``edges`` dicts, and queued debounced validate +
+  autosave passes on each cursor tick.  Position-only mutations
+  now flow through a ``requestAnimationFrame``-coalesced
+  ``_onNodePositionChanged`` path that touches only
+  ``nodes[id].position`` and schedules a single autosave; the
+  structural sync (edges, validate) stays on the
+  ``connectionCreated`` / ``connectionRemoved`` / ``nodeRemoved``
+  / ``nodeDataChanged`` paths.  Mesh-Canvas dropped its
+  ``nodeMoved`` listener entirely (mesh positions are not part of
+  the persisted document model — they were doing a full
+  ``_syncEdges`` + validate per frame for no payload change).
+
 - API-key usage — WoW diff + 3σ anomaly heuristic (rc222).
   Closes Mega-Cluster 155-164.  ``get_usage_summary`` response
   envelope extended with three new sub-objects: ``wow`` (last-7d

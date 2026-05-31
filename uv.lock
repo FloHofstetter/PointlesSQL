@@ -2995,7 +2995,7 @@ wheels = [
 
 [[package]]
 name = "pointlessql"
-version = "0.1.0rc222"
+version = "0.1.0rc223"
 source = { editable = "." }
 dependencies = [
     { name = "aiosqlite" },

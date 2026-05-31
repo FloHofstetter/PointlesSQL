@@ -388,7 +388,7 @@ export function dpCanvasEditor(product, ctx) {
       df.on('nodeUnselected', () => {
         this.selectedNodeId = null;
       });
-      df.on('nodeMoved', () => this._syncFromDrawflow());
+      df.on('nodeMoved', (dfId) => this._onNodePositionChanged(dfId));
       df.on('connectionCreated', () => this._syncFromDrawflow());
       df.on('connectionRemoved', () => this._syncFromDrawflow());
       df.on('nodeRemoved', () => this._syncFromDrawflow());
@@ -526,6 +526,40 @@ export function dpCanvasEditor(product, ctx) {
         return pinName === 'right' ? 1 : 0;
       }
       return 0;
+    },
+
+    // Position-only handler: coalesced via requestAnimationFrame so a 60Hz
+    // mousemove stream never triggers a full graph rebuild mid-drag.  The
+    // node stays glued to the cursor; the structural sync (autosave,
+    // validate, edge re-derive) stays on the connection / data-change paths.
+    _onNodePositionChanged(dfId) {
+      if (!this._dragDirtyDfIds) this._dragDirtyDfIds = new Set();
+      this._dragDirtyDfIds.add(String(dfId));
+      if (this._dragRafHandle != null) return;
+      this._dragRafHandle = window.requestAnimationFrame(() => {
+        this._dragRafHandle = null;
+        this._flushDragPositions();
+      });
+    },
+
+    _flushDragPositions() {
+      const dirty = this._dragDirtyDfIds;
+      if (!dirty || dirty.size === 0) return;
+      this._dragDirtyDfIds = new Set();
+      if (!this._drawflow) return;
+      const raw = this._drawflow.export();
+      const home = raw && raw.drawflow && raw.drawflow.Home;
+      const dfNodes = (home && home.data) || {};
+      for (const dfId of dirty) {
+        const dfNode = dfNodes[dfId];
+        if (!dfNode) continue;
+        const pqlId = (dfNode.data || {}).pql_node_id;
+        if (!pqlId || !this.nodes[pqlId]) continue;
+        this.nodes[pqlId].position = { x: dfNode.pos_x, y: dfNode.pos_y };
+      }
+      if (!this._suppressAutosave) {
+        this._scheduleAutosave();
+      }
     },
 
     _syncFromDrawflow() {

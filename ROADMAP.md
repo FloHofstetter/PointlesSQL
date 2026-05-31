@@ -3051,6 +3051,42 @@ PointlesSQL
 │   │
 │   └── Mega-Cluster 155-164 closed below.
 │
+├── Mega-Cluster 165-174 — Canvas Quality Cluster (DP + Mesh + Diff)  ⏳ in progress (2026-05-31)
+│   │
+│   │   10-phase improvement wave targeting the three canvas
+│   │   surfaces: DP-Canvas editor at ``/dp/{id}/canvas``,
+│   │   Mesh-Canvas at ``/mesh/canvas``, Diff-Canvas at
+│   │   ``/dp/{id}/canvas/diff``.  Scope picks: drag-performance
+│   │   (165), richer node body (166), connector visual upgrade
+│   │   (167), multi-select + bulk ops (168), minimap + search
+│   │   (169), auto-layout via dagre (170), mesh polish closing
+│   │   deferred-162 (171), diff polish closing deferred-158
+│   │   (172), block-config UX closing deferred-161 (173),
+│   │   granular Y.Doc client + sticky notes closing deferred-160
+│   │   (174).  Each phase one commit; rc222→rc232.  ALL LOCAL
+│   │   until single final push.
+│   │
+├── Phase 165 — DP-Canvas + Mesh-Canvas: drag-performance fix  ✅ shipped (local, 2026-05-31)
+│   │
+│   │   Opens Mega-Cluster 165-174.  Root-cause: the
+│   │   ``nodeMoved`` handler on the DP-Canvas editor invoked
+│   │   ``_syncFromDrawflow`` on every animation frame of the
+│   │   mouse-move stream — a full Drawflow export, ``nodes`` +
+│   │   ``edges`` dict rebuild, debounced validate + autosave
+│   │   queue per cursor tick.  Mesh-Canvas had the same anti-
+│   │   pattern (``nodeMoved`` → ``_syncEdges`` → validate)
+│   │   despite never persisting node positions.  Fix splits
+│   │   position-only mutations onto a
+│   │   ``requestAnimationFrame``-coalesced
+│   │   ``_onNodePositionChanged`` path that touches only
+│   │   ``nodes[id].position`` and schedules a single autosave;
+│   │   structural sync (edges, validate) stays on
+│   │   ``connectionCreated`` / ``connectionRemoved`` /
+│   │   ``nodeRemoved`` / ``nodeDataChanged``.  Mesh-Canvas
+│   │   dropped its ``nodeMoved`` handler entirely.  Diff-Canvas
+│   │   read-only — no change.  Pure-frontend; full pytest
+│   │   4109/0/10 green.  rc222→rc223.
+│   │
 ├── Mega-Cluster 155-164 — Visual DP Editor + Platform Polish  ✅ shipped (local, 2026-05-31)
 │   │
 │   │   10-phase improvement wave on top of the freshly shipped

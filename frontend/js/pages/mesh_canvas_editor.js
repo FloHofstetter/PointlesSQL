@@ -61,7 +61,6 @@ export function meshCanvasEditor() {
 
       df.on('connectionCreated', () => this._syncEdges());
       df.on('connectionRemoved', () => this._syncEdges());
-      df.on('nodeMoved', () => this._syncEdges());
 
       await this.load();
     },
