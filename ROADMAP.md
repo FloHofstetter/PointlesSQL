@@ -3066,6 +3066,19 @@ PointlesSQL
 │   │   (174).  Each phase one commit; rc222→rc232.  ALL LOCAL
 │   │   until single final push.
 │   │
+├── Phase 168 — DP-Canvas: multi-select + bulk delete + copy/paste  ✅ shipped (local, 2026-05-31)
+│   │
+│   │   Shift+Click on a block toggles it in
+│   │   ``multiSelectedNodeIds``; plain click clears the set.
+│   │   Delete / Backspace with >1 selected prompts
+│   │   ``Delete N blocks?`` then bulk-removes.  Ctrl+C copies
+│   │   selected blocks + internal edges to
+│   │   ``localStorage["pql-canvas-clipboard"]``; Ctrl+V pastes
+│   │   with a +40/+40 offset and fresh PQL ids.  Rubber-band
+│   │   marquee deferred (collides with Drawflow native pan
+│   │   handler — needs Space-or-middle-click escape hatch).
+│   │   Pure frontend.  rc225→rc226.
+│   │
 ├── Phase 167 — DP-Canvas: connector visual upgrade (type-coloring + orthogonal toggle)  ✅ shipped (local, 2026-05-31)
 │   │
 │   │   New ``pointlessql/services/dp_canvas/_edge_types.py``

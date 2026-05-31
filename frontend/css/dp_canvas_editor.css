@@ -148,6 +148,10 @@
   font-size: 0.7rem;
 }
 
+.pql-dp-canvas-drawflow .drawflow-node.pql-node-selected-multi {
+  box-shadow: 0 0 0 3px var(--bs-primary);
+}
+
 /* Drawflow sockets / connections — Bootstrap-aligned palette. */
 .pql-dp-canvas-drawflow .drawflow .input,
 .pql-dp-canvas-drawflow .drawflow .output {

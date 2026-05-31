@@ -17,6 +17,19 @@ defined in ``scripts/clusters.json``. -->
 
 ### Features
 
+- DP-Canvas: multi-select + bulk operations (rc226).  Shift+Click
+  on a block toggles it in a parallel ``multiSelectedNodeIds``
+  set (a plain click clears the set so the single-edit right
+  drawer stays unsurprising).  Delete / Backspace with more than
+  one block selected prompts ``Delete N blocks?`` then bulk-
+  removes via ``df.removeNodeId``.  Ctrl+C copies the selected
+  blocks (and the internal edges between them) into
+  ``localStorage["pql-canvas-clipboard"]``; Ctrl+V pastes them
+  with a +40/+40 offset and fresh PQL ids.  Rubber-band marquee
+  selection deferred — collides with Drawflow's native canvas-bg
+  pan handler and needs a Space-or-middle-click escape hatch
+  designed in.
+
 - DP-Canvas edges now coloured by upstream data-type family
   (rc225).  New ``_edge_types.categorize_pin_schema`` helper
   inspects each edge's upstream ``PinSchema`` and assigns one of

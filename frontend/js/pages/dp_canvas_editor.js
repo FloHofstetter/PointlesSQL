@@ -355,6 +355,7 @@ export function dpCanvasEditor(product, ctx) {
     compactBodies: false,
     edgeCategories: {},
     orthogonalEdges: false,
+    multiSelectedNodeIds: [],
 
     nodes: {},
     edges: {},
@@ -468,15 +469,64 @@ export function dpCanvasEditor(product, ctx) {
       const canvasEl = this.$refs.canvas;
       canvasEl.addEventListener('dblclick', (ev) => this._onCanvasDoubleClick(ev));
 
-      // Ctrl+D / Cmd+D on a selected block clones it next to itself
-      // (matches the toolbar Duplicate button).
+      // Keyboard shortcuts: Ctrl+D dupes the single-selected node;
+      // Ctrl+C / Ctrl+V copy / paste honour the multi-select set if any
+      // (otherwise fall back to the single selection); Delete / Backspace
+      // bulk-removes the multi-selected set with a confirm prompt.
       document.addEventListener('keydown', (ev) => {
+        if (this._isFormFocused(ev.target)) return;
         if ((ev.ctrlKey || ev.metaKey) && (ev.key === 'd' || ev.key === 'D')) {
           if (!this.selectedNodeId) return;
           ev.preventDefault();
           this.duplicateSelectedNode();
+          return;
+        }
+        if ((ev.ctrlKey || ev.metaKey) && (ev.key === 'c' || ev.key === 'C')) {
+          if (this.multiSelectedNodeIds.length === 0 && !this.selectedNodeId) return;
+          ev.preventDefault();
+          this.copySelectionToClipboard();
+          return;
+        }
+        if ((ev.ctrlKey || ev.metaKey) && (ev.key === 'v' || ev.key === 'V')) {
+          ev.preventDefault();
+          this.pasteClipboard();
+          return;
+        }
+        if (ev.key === 'Delete' || ev.key === 'Backspace') {
+          if (this.multiSelectedNodeIds.length > 1) {
+            ev.preventDefault();
+            this.bulkDeleteSelected();
+          }
         }
       });
+
+      // Shift+click on a node toggles it in the multi-selection set;
+      // a plain click clears the set so the right-drawer single-edit
+      // flow stays unsurprising.
+      canvasEl.addEventListener(
+        'click',
+        (ev) => {
+          const nodeEl = ev.target.closest('.drawflow-node');
+          if (!nodeEl) {
+            this._clearMultiSelection();
+            return;
+          }
+          if (!ev.shiftKey) {
+            this._clearMultiSelection();
+            return;
+          }
+          ev.preventDefault();
+          ev.stopPropagation();
+          const dfId = nodeEl.id.replace('node-', '');
+          const pqlId = this._pqlIdForDfId(dfId);
+          if (!pqlId) return;
+          const idx = this.multiSelectedNodeIds.indexOf(pqlId);
+          if (idx >= 0) this.multiSelectedNodeIds.splice(idx, 1);
+          else this.multiSelectedNodeIds.push(pqlId);
+          this._refreshMultiSelectStyles();
+        },
+        true,
+      );
 
       this._restoreBreadcrumb();
 
@@ -763,6 +813,145 @@ export function dpCanvasEditor(product, ctx) {
       this.compactBodies = !this.compactBodies;
       const wrap = this.$refs.canvas;
       if (wrap) wrap.classList.toggle('pql-canvas-compact', this.compactBodies);
+    },
+
+    _isFormFocused(target) {
+      if (!target || target.matches == null) return false;
+      return (
+        target.matches('input, textarea, select, [contenteditable], [contenteditable=""]') ||
+        target.closest('.cm-editor') != null
+      );
+    },
+
+    _pqlIdForDfId(dfId) {
+      for (const [pqlId, mappedDfId] of Object.entries(this._drawflowNodes)) {
+        if (String(mappedDfId) === String(dfId)) return pqlId;
+      }
+      return null;
+    },
+
+    _clearMultiSelection() {
+      if (this.multiSelectedNodeIds.length === 0) return;
+      this.multiSelectedNodeIds = [];
+      this._refreshMultiSelectStyles();
+    },
+
+    _refreshMultiSelectStyles() {
+      const df = this._drawflow;
+      if (!df) return;
+      const selected = new Set(this.multiSelectedNodeIds);
+      for (const [pqlId, dfId] of Object.entries(this._drawflowNodes)) {
+        const el = df.container.querySelector(`#node-${dfId}`);
+        if (!el) continue;
+        el.classList.toggle('pql-node-selected-multi', selected.has(pqlId));
+      }
+    },
+
+    async bulkDeleteSelected() {
+      const ids = [...this.multiSelectedNodeIds];
+      if (ids.length === 0) return;
+      const ok = window.confirm(`Delete ${ids.length} blocks?`);
+      if (!ok) return;
+      const df = this._drawflow;
+      if (!df) return;
+      this._suppressAutosave = true;
+      for (const pqlId of ids) {
+        const dfId = this._drawflowNodes[pqlId];
+        if (dfId != null) df.removeNodeId('node-' + dfId);
+      }
+      this._suppressAutosave = false;
+      this.multiSelectedNodeIds = [];
+      this._syncFromDrawflow();
+    },
+
+    copySelectionToClipboard() {
+      const ids =
+        this.multiSelectedNodeIds.length > 0
+          ? [...this.multiSelectedNodeIds]
+          : this.selectedNodeId
+            ? [this.selectedNodeId]
+            : [];
+      if (ids.length === 0) return;
+      const set = new Set(ids);
+      const nodes = ids
+        .map((id) => this.nodes[id])
+        .filter(Boolean)
+        .map((n) => ({
+          id: n.id,
+          block_type: n.block_type,
+          config: JSON.parse(JSON.stringify(n.config || {})),
+          position: { ...(n.position || { x: 100, y: 100 }) },
+        }));
+      const edges = Object.values(this.edges).filter(
+        (e) => set.has(e.source_node_id) && set.has(e.target_node_id),
+      );
+      const payload = { kind: 'pql-canvas-clipboard', version: 1, nodes, edges };
+      try {
+        window.localStorage.setItem('pql-canvas-clipboard', JSON.stringify(payload));
+      } catch (_e) {
+        // Quota / disabled — silent.
+      }
+    },
+
+    pasteClipboard() {
+      let payload = null;
+      try {
+        const raw = window.localStorage.getItem('pql-canvas-clipboard');
+        if (raw) payload = JSON.parse(raw);
+      } catch (_e) {
+        return;
+      }
+      if (!payload || payload.kind !== 'pql-canvas-clipboard' || !Array.isArray(payload.nodes)) {
+        return;
+      }
+      const df = this._drawflow;
+      if (!df) return;
+      const idMap = {};
+      this._suppressAutosave = true;
+      for (const n of payload.nodes) {
+        const def = BLOCK_DEFS[n.block_type];
+        if (!def) continue;
+        const newId = generateNodeId();
+        idMap[n.id] = newId;
+        const pos = {
+          x: (n.position && n.position.x ? n.position.x : 100) + 40,
+          y: (n.position && n.position.y ? n.position.y : 100) + 40,
+        };
+        const dfId = df.addNode(
+          n.block_type,
+          def.inputs || 0,
+          def.outputs || 0,
+          pos.x,
+          pos.y,
+          n.block_type,
+          { pql_node_id: newId, block_type: n.block_type },
+          nodeHtml(n.block_type, newId),
+          false,
+        );
+        this._drawflowNodes[newId] = dfId;
+        this.nodes[newId] = {
+          id: newId,
+          block_type: n.block_type,
+          config: JSON.parse(JSON.stringify(n.config || {})),
+          position: pos,
+        };
+      }
+      for (const e of payload.edges || []) {
+        const srcNew = idMap[e.source_node_id];
+        const tgtNew = idMap[e.target_node_id];
+        if (!srcNew || !tgtNew) continue;
+        const srcDf = this._drawflowNodes[srcNew];
+        const tgtDf = this._drawflowNodes[tgtNew];
+        if (!srcDf || !tgtDf) continue;
+        const targetIdx = this._pinIndex(this.nodes[tgtNew].block_type, e.target_pin, 'in');
+        try {
+          df.addConnection(srcDf, tgtDf, 'output_1', `input_${targetIdx + 1}`);
+        } catch (_e) {
+          // Skip invalid wire.
+        }
+      }
+      this._suppressAutosave = false;
+      this._syncFromDrawflow();
     },
 
     toggleOrthogonalEdges() {
