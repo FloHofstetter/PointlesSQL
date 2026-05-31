@@ -170,8 +170,8 @@ export function dpCanvasDiff(product) {
         this._dfAfter.reroute = true;
         this._dfAfter.start();
       }
-      const beforeIds = loadCanvasIntoDrawflow(this._dfBefore, beforeDoc);
-      const afterIds = loadCanvasIntoDrawflow(this._dfAfter, afterDoc);
+      const beforeIds = loadCanvasIntoDrawflow(this._dfBefore, beforeDoc, { mode: 'compact' });
+      const afterIds = loadCanvasIntoDrawflow(this._dfAfter, afterDoc, { mode: 'compact' });
       this._applyNodeOverlays(beforeHost, beforeIds, 'before');
       this._applyNodeOverlays(afterHost, afterIds, 'after');
       this._applyEdgeOverlays(beforeHost, beforeDoc, 'before');
@@ -189,6 +189,16 @@ export function dpCanvasDiff(product) {
         this.fitPanel('before');
         this.fitPanel('after');
       }, 50);
+    },
+
+    zoomPanel(side, action) {
+      const df = side === 'before' ? this._dfBefore : this._dfAfter;
+      if (!df) return;
+      // Drawflow's zoom_in/out/reset all mutate transform internally so
+      // the MutationObserver-based --pql-zoom hook stays in sync.
+      if (action === 'in' && typeof df.zoom_in === 'function') df.zoom_in();
+      else if (action === 'out' && typeof df.zoom_out === 'function') df.zoom_out();
+      else if (action === 'reset' && typeof df.zoom_reset === 'function') df.zoom_reset();
     },
 
     fitPanel(side) {

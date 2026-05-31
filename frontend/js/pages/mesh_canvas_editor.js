@@ -43,6 +43,7 @@ export function meshCanvasEditor() {
     lastSavedAt: null,
     lastSummary: null,
     focusMode: false,
+    bannerDismissed: false,
 
     document: { nodes: [], edges: [] },
     issues: [],
@@ -71,6 +72,7 @@ export function meshCanvasEditor() {
     async init() {
       try {
         this.focusMode = localStorage.getItem('pql.focus-mode') === '1';
+        this.bannerDismissed = localStorage.getItem('pql.mesh.banner.dismissed') === '1';
       } catch (_e) {
         this.focusMode = false;
       }
@@ -130,6 +132,15 @@ export function meshCanvasEditor() {
     createDpHere() {
       this.ctxMenuOpen = false;
       window.location.assign('/dp/new');
+    },
+
+    dismissBanner() {
+      this.bannerDismissed = true;
+      try {
+        localStorage.setItem('pql.mesh.banner.dismissed', '1');
+      } catch (_e) {
+        // Per-session dismissal still works without storage.
+      }
     },
 
     async openCrossWsPicker() {

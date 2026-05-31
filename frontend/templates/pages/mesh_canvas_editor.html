@@ -33,7 +33,8 @@
         <div class="d-flex flex-column lh-sm">
             <strong class="small">Workspace mesh canvas</strong>
             <span class="text-muted" style="font-size: 0.75rem;">
-                Wire upstream → downstream DPs by dragging between nodes.
+                <span x-text="(document.nodes || []).length"></span> DPs
+                · <span x-text="(document.edges || []).length"></span> wires
             </span>
         </div>
         <span class="ms-3 small text-muted" x-text="statusLabel()"></span>
@@ -60,41 +61,14 @@
 
     <div class="pql-dp-canvas-body d-flex">
 
-        {# Left rail = short instructions. #}
-        <aside class="pql-dp-canvas-palette border-end bg-body p-3 small">
-            <p class="text-muted">
-                Each node is a data product. Drag from the right pin of one DP
-                to the left pin of another to declare an upstream binding.
-                Remove a wire to delete the binding. Click <strong>Save</strong>
-                to apply the diff via the existing port-CRUD service — no
-                Delta data is moved.
-            </p>
-            <p class="text-muted">
-                Last save:
-                <strong x-text="lastSavedAt ? new Date(lastSavedAt).toLocaleTimeString() : '—'"></strong>
-            </p>
-            <p class="text-muted">
-                Workspace DPs: <strong x-text="(document.nodes || []).length"></strong>
-                · Wires: <strong x-text="(document.edges || []).length"></strong>
-            </p>
-            <template x-if="lastSummary">
-                <div class="border rounded p-2 mt-2 small bg-body-tertiary">
-                    <div><strong>Last diff</strong></div>
-                    <div>Added: <strong x-text="lastSummary.added"></strong></div>
-                    <div>Removed: <strong x-text="lastSummary.removed"></strong></div>
-                    <template x-if="lastSummary.skipped && lastSummary.skipped.length">
-                        <div class="text-warning-emphasis">
-                            Skipped:
-                            <template x-for="msg in lastSummary.skipped" :key="msg">
-                                <div class="ms-2" x-text="'· ' + msg"></div>
-                            </template>
-                        </div>
-                    </template>
-                </div>
-            </template>
-        </aside>
-
-        {# Centre = Drawflow surface. #}
+        {# Centre = Drawflow surface — the prior two help-text sidebars
+           added ~480 px of static prose to a canvas-heavy page, so they
+           moved into a dismissible toast banner that floats over the
+           stage on first visit and stays hidden after the user clicks
+           "Got it".  Dismissal persists via
+           ``localStorage['pql.mesh.banner.dismissed']``.  The numerical
+           bits (workspace DP count, wire count, last-save time, last
+           diff) live in the topbar so the user never loses them. #}
         <main class="pql-dp-canvas-stage flex-grow-1 position-relative">
             <div x-ref="canvas" id="mesh-canvas-drawflow" class="pql-canvas pql-dp-canvas-drawflow"></div>
 
@@ -113,6 +87,28 @@
                     </marker>
                 </defs>
             </svg>
+            {# First-visit help banner — replaces the prior left/right
+               sidebars.  Dismissible via the close button; once
+               dismissed the localStorage flag keeps it hidden until
+               the user manually re-enables it from a future surface. #}
+            <div class="alert alert-info shadow-sm position-absolute small"
+                 x-show="!bannerDismissed"
+                 x-cloak
+                 style="top: 12px; left: 12px; right: 12px; z-index: 5;">
+                <button type="button"
+                        class="btn-close float-end"
+                        @click="dismissBanner()"
+                        aria-label="Dismiss"></button>
+                <strong>Mesh canvas.</strong>
+                Each node is a data product. Drag from the right pin of
+                one DP to the left pin of another to declare an upstream
+                binding. Remove a wire to delete the binding. Click
+                <strong>Save</strong> to apply the diff via the existing
+                port-CRUD service — no Delta data is moved.
+                Validation runs automatically; issues surface in the
+                topbar badge.
+            </div>
+
             <div class="pql-dp-canvas-empty position-absolute top-50 start-50 translate-middle text-center text-muted"
                  x-show="!loading && (document.nodes || []).length === 0">
                 <i class="bi bi-diagram-3 fs-1 d-block opacity-50"></i>
@@ -141,27 +137,29 @@
                     <i class="bi bi-diagram-3"></i> Auto-layout
                 </button>
             </div>
-        </main>
 
-        {# Right rail = issue list. #}
-        <aside class="pql-dp-canvas-drawer border-start bg-body p-3 small">
-            <template x-if="issues.length === 0">
-                <div class="text-muted">
-                    Validation runs whenever the graph changes. Issues are
-                    surfaced here without touching the DB.
+            {# Issue list — float bottom-left over the stage when any
+               issue surfaces.  Tucks back out of sight when the graph
+               validates clean so the canvas is unobstructed in the
+               common case.  Replaces the prior full-height right rail. #}
+            <div class="card shadow-sm small position-absolute"
+                 x-show="issues.length > 0"
+                 x-cloak
+                 style="bottom: 12px; left: 12px; max-width: 360px; z-index: 4;">
+                <div class="card-header py-1 px-2 d-flex align-items-center gap-2 bg-warning-subtle">
+                    <i class="bi bi-exclamation-triangle text-warning-emphasis"></i>
+                    <strong class="text-uppercase">Issues</strong>
+                    <span class="badge bg-warning-subtle text-warning-emphasis ms-auto"
+                          x-text="issues.length"></span>
                 </div>
-            </template>
-            <template x-if="issues.length > 0">
-                <div>
-                    <div class="text-uppercase text-warning-emphasis fw-semibold mb-2">Issues</div>
-                    <ul class="list-unstyled mb-0">
-                        <template x-for="msg in issues" :key="msg">
-                            <li class="border-start border-warning ps-2 mb-1" x-text="msg"></li>
-                        </template>
-                    </ul>
-                </div>
-            </template>
-        </aside>
+                <ul class="list-unstyled mb-0 px-2 py-1"
+                    style="max-height: 240px; overflow-y: auto;">
+                    <template x-for="msg in issues" :key="msg">
+                        <li class="border-start border-warning ps-2 mb-1" x-text="msg"></li>
+                    </template>
+                </ul>
+            </div>
+        </main>
     </div>
 
     {# Cross-WS picker modal — appears as overlay when triggered. #}

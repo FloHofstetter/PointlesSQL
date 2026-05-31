@@ -32,8 +32,23 @@ const BLOCK_LABELS = {
   OutputPort: { label: 'Output port', icon: 'bi-box-arrow-up-right', inputs: 1, outputs: 0 },
 };
 
-function nodeHtml(blockType, nodeId) {
+function nodeHtml(blockType, nodeId, mode = 'full') {
   const def = BLOCK_LABELS[blockType] || { label: blockType, icon: 'bi-question-square' };
+  if (mode === 'compact') {
+    // Compact reads as a single horizontal strip — header only with the
+    // block type as a side-note.  Used by the diff page so a side-by-
+    // side comparison fits more blocks per panel without each one
+    // pulling its full schema body.
+    return `
+      <div data-pql-node-id="${nodeId}">
+        <div class="pql-node-header">
+          <i class="bi ${def.icon}"></i>
+          <span>${def.label}</span>
+          <span class="text-muted small ms-auto">${blockType}</span>
+        </div>
+      </div>
+    `;
+  }
   return `
     <div data-pql-node-id="${nodeId}">
       <div class="pql-node-header">
@@ -59,7 +74,8 @@ function pinIndex(blockType, pinName, direction) {
  * `{pqlNodeId: drawflowId}` so callers can layer per-node CSS overlays
  * after the load completes.
  */
-export function loadCanvasIntoDrawflow(df, doc) {
+export function loadCanvasIntoDrawflow(df, doc, opts = {}) {
+  const mode = opts.mode || 'full';
   df.clear();
   const drawflowIds = {};
   for (const node of doc.nodes || []) {
@@ -74,7 +90,7 @@ export function loadCanvasIntoDrawflow(df, doc) {
       pos.y || 100,
       node.block_type,
       { pql_node_id: node.id, block_type: node.block_type },
-      nodeHtml(node.block_type, node.id),
+      nodeHtml(node.block_type, node.id, mode),
       false
     );
     drawflowIds[node.id] = dfId;

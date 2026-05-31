@@ -462,6 +462,9 @@ export function dpCanvasEditor(product, ctx) {
     async init() {
       try {
         this.focusMode = localStorage.getItem('pql.focus-mode') === '1';
+        if (localStorage.getItem('pql.canvas.minimap.collapsed') === '1') {
+          this.minimapVisible = false;
+        }
       } catch (_e) {
         this.focusMode = false;
       }
@@ -1054,6 +1057,15 @@ export function dpCanvasEditor(product, ctx) {
 
     toggleMinimap() {
       this.minimapVisible = !this.minimapVisible;
+      try {
+        if (this.minimapVisible) {
+          localStorage.removeItem('pql.canvas.minimap.collapsed');
+        } else {
+          localStorage.setItem('pql.canvas.minimap.collapsed', '1');
+        }
+      } catch (_e) {
+        // localStorage disabled — visibility still toggles per-session.
+      }
       if (this.minimapVisible) this._scheduleMinimapRender();
     },
 

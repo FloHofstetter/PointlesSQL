@@ -91,29 +91,63 @@
     <template x-if="viewMode === 'visual' && diff && diff.diff && !diffEmpty()">
         <div class="row g-2">
             <div class="col-12 col-md-6">
-                <div class="d-flex align-items-center mb-1">
+                <div class="d-flex align-items-center mb-1 gap-1">
                     <div class="small text-muted">
                         Before: <strong>v<span x-text="diff.from_version"></span></strong>
                     </div>
-                    <button class="btn btn-sm btn-outline-secondary ms-auto py-0 px-1"
-                            @click="fitPanel('before')"
-                            title="Fit before-pane to view">
-                        <i class="bi bi-fullscreen"></i>
-                    </button>
+                    <div class="btn-group btn-group-sm ms-auto" role="group">
+                        <button class="btn btn-outline-secondary py-0 px-1"
+                                @click="zoomPanel('before', 'out')"
+                                title="Zoom out">
+                            <i class="bi bi-zoom-out"></i>
+                        </button>
+                        <button class="btn btn-outline-secondary py-0 px-1"
+                                @click="zoomPanel('before', 'in')"
+                                title="Zoom in">
+                            <i class="bi bi-zoom-in"></i>
+                        </button>
+                        <button class="btn btn-outline-secondary py-0 px-1"
+                                @click="zoomPanel('before', 'reset')"
+                                title="Reset zoom">
+                            <i class="bi bi-arrow-counterclockwise"></i>
+                        </button>
+                        <button class="btn btn-outline-secondary py-0 px-1"
+                                @click="fitPanel('before')"
+                                title="Fit before-pane to view">
+                            <i class="bi bi-fullscreen"></i>
+                        </button>
+                    </div>
                 </div>
                 <div x-ref="dfBefore" class="pql-canvas pql-dp-canvas-diff-pane border rounded bg-body"
                      style="height: 600px; position: relative;"></div>
             </div>
             <div class="col-12 col-md-6">
-                <div class="d-flex align-items-center mb-1">
+                <div class="d-flex align-items-center mb-1 gap-1">
                     <div class="small text-muted">
                         After: <strong>v<span x-text="diff.to_version"></span></strong>
                     </div>
-                    <button class="btn btn-sm btn-outline-secondary ms-auto py-0 px-1"
-                            @click="fitPanel('after')"
-                            title="Fit after-pane to view">
-                        <i class="bi bi-fullscreen"></i>
-                    </button>
+                    <div class="btn-group btn-group-sm ms-auto" role="group">
+                        <button class="btn btn-outline-secondary py-0 px-1"
+                                @click="zoomPanel('after', 'out')"
+                                title="Zoom out">
+                            <i class="bi bi-zoom-out"></i>
+                        </button>
+                        <button class="btn btn-outline-secondary py-0 px-1"
+                                @click="zoomPanel('after', 'in')"
+                                title="Zoom in">
+                            <i class="bi bi-zoom-in"></i>
+                        </button>
+                        <button class="btn btn-outline-secondary py-0 px-1"
+                                @click="zoomPanel('after', 'reset')"
+                                title="Reset zoom">
+                            <i class="bi bi-arrow-counterclockwise"></i>
+                        </button>
+                        <button class="btn btn-outline-secondary py-0 px-1"
+                                @click="fitPanel('after')"
+                                title="Fit after-pane to view">
+                            <i class="bi bi-fullscreen"></i>
+                        </button>
+                    </div>
                 </div>
                 <div x-ref="dfAfter" class="pql-canvas pql-dp-canvas-diff-pane border rounded bg-body"
                      style="height: 600px; position: relative;"></div>
