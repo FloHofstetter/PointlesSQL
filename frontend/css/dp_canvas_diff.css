@@ -27,18 +27,18 @@
   border-radius: 4px;
 }
 
-.pql-dp-canvas-diff-pane .connection.pql-diff-edge-added svg path {
+.pql-dp-canvas-diff-pane .connection.pql-diff-edge-added .main-path {
   stroke: #198754;
   stroke-width: 3;
 }
 
-.pql-dp-canvas-diff-pane .connection.pql-diff-edge-removed svg path {
+.pql-dp-canvas-diff-pane .connection.pql-diff-edge-removed .main-path {
   stroke: #dc3545;
   stroke-width: 3;
   stroke-dasharray: 6 3;
 }
 
-.pql-dp-canvas-diff-pane .connection.pql-diff-edge-modified svg path {
+.pql-dp-canvas-diff-pane .connection.pql-diff-edge-modified .main-path {
   stroke: #ffc107;
   stroke-width: 3;
 }

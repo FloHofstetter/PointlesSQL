@@ -141,10 +141,10 @@
     </div>
 
     {# Cross-WS picker modal — appears as overlay when triggered. #}
-    <div class="modal d-block" tabindex="-1"
-         x-show="pickerOpen"
-         style="background: rgba(0,0,0,0.5); z-index: 1060;"
-         x-cloak>
+    <div class="modal" tabindex="-1"
+         :class="{ 'd-block': pickerOpen }"
+         x-cloak
+         style="background: rgba(0,0,0,0.5); z-index: 1060;">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header">

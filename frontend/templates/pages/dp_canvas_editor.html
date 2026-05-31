@@ -142,6 +142,12 @@
                     title="Auto-layout (Ctrl+L)">
                 <i class="bi bi-diagram-3"></i>
             </button>
+            <button class="btn btn-sm btn-outline-secondary"
+                    @click="fitToView()"
+                    :disabled="nodeCount === 0"
+                    title="Fit canvas to view">
+                <i class="bi bi-fullscreen"></i>
+            </button>
             <button class="btn btn-sm btn-outline-warning"
                     @click="addStickyNote()"
                     :disabled="!canWrite"
@@ -448,9 +454,9 @@
                             </span>
                             <span x-show="previewResult && previewResult.row_count > 0"
                                   class="badge bg-info-subtle text-info-emphasis"
-                                  x-text="previewResult.truncated
+                                  x-text="previewResult && (previewResult.truncated
                                       ? ('≥' + previewResult.row_count + ' rows')
-                                      : (previewResult.row_count + ' rows')">
+                                      : (previewResult.row_count + ' rows'))">
                             </span>
                         </div>
                     </div>

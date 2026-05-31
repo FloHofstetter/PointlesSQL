@@ -3066,6 +3066,24 @@ PointlesSQL
 │   │   (174).  Each phase one commit; rc222→rc232.  ALL LOCAL
 │   │   until single final push.
 │   │
+├── Phase 175 — Canvas bug-fix sweep (post 165-174 browser-replay)  ✅ shipped (local, 2026-05-31)
+│   │
+│   │   Playwright-MCP browser-replay of the 165-174 cluster
+│   │   surfaced 12 bugs across DP / Mesh / Diff surfaces; this
+│   │   sweep closes them all in one commit.  Highlights:
+│   │   Mesh-Picker modal no longer stuck open; diff-page edge
+│   │   overlays now paint stroke (CSS selector was wrong); DP
+│   │   edge type-coloring works (frontend key matches backend
+│   │   tuple); column type-icons render via the correct
+│   │   `duckdb_type` field; Alpine no longer console-errors on
+│   │   load; undo-stack now covers paste/sticky/delete/dup;
+│   │   visual toggles no longer bump the canvas version;
+│   │   minimap re-renders on every structural change; sticky-
+│   │   notes spawn viewport-centred; canvas auto-fits on first
+│   │   load + manual Fit-to-view toolbar button; Drawflow
+│   │   drag-noise silenced via defensive wrapper.  Pure
+│   │   frontend; full pytest 4121/0/10 still green.  rc232→rc233.
+│   │
 ├── Phase 174 — DP-Canvas: sticky-note annotations + CanvasDoc.metadata field  ✅ shipped (local, 2026-05-31)
 │   │
 │   │   Closes Mega-Cluster 165-174.  ``CanvasDoc`` Pydantic

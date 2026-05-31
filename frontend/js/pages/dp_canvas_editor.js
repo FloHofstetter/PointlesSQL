@@ -247,7 +247,7 @@ function renderColsHtml(columns) {
   const rows = shown
     .map(
       (c) =>
-        `<span><i class="bi ${typeIcon(c.type)}"></i> ${escapeHtml(c.name)} <span class="text-muted">${escapeHtml(c.type || '')}</span></span>`,
+        `<span><i class="bi ${typeIcon(c.duckdb_type)}"></i> ${escapeHtml(c.name)} <span class="text-muted">${escapeHtml(c.duckdb_type || '')}</span></span>`,
     )
     .join('');
   const more = extra > 0 ? `<span class="text-muted">+${extra} more</span>` : '';
@@ -462,6 +462,26 @@ export function dpCanvasEditor(product, ctx) {
       df.start();
       this._drawflow = df;
 
+      // Defensive wrap around Drawflow's internal `position()` — it throws
+      // a TypeError on `data[id].pos_x` when the mousedown that set
+      // ele_selected hit an element whose id-strip yields no data entry
+      // (sticky notes, toolbar overlays, etc).  Swallow only that exact
+      // shape so a real bug still surfaces.  Drag itself completes fine
+      // before the throw; this just silences the console noise.
+      const _origPosition = df.position && df.position.bind(df);
+      if (_origPosition) {
+        df.position = (...args) => {
+          try {
+            return _origPosition(...args);
+          } catch (e) {
+            if (e instanceof TypeError && String(e.message || '').includes('pos_x')) {
+              return undefined;
+            }
+            throw e;
+          }
+        };
+      }
+
       df.on('nodeSelected', (id) => this._onDrawflowNodeSelected(id));
       df.on('nodeUnselected', () => {
         this.selectedNodeId = null;
@@ -621,6 +641,47 @@ export function dpCanvasEditor(product, ctx) {
       this.saveState = 'saved';
       this.lastSavedAt = res.data.created_at || new Date().toISOString();
       this._scheduleValidate();
+      // Auto-fit the viewport once per load so multi-node DPs don't open
+      // showing only the top-left node.
+      if (!this._initialFitDone && Object.keys(this.nodes).length > 0) {
+        this._initialFitDone = true;
+        this.$nextTick(() => this.fitToView());
+      }
+    },
+
+    fitToView() {
+      const df = this._drawflow;
+      if (!df) return;
+      const nodes = Object.values(this.nodes);
+      if (nodes.length === 0) return;
+      const NODE_W = 180;
+      const NODE_H = 110;
+      const PAD = 60;
+      let minX = Infinity;
+      let minY = Infinity;
+      let maxX = -Infinity;
+      let maxY = -Infinity;
+      for (const n of nodes) {
+        const p = n.position || { x: 100, y: 100 };
+        if (p.x < minX) minX = p.x;
+        if (p.y < minY) minY = p.y;
+        if (p.x + NODE_W > maxX) maxX = p.x + NODE_W;
+        if (p.y + NODE_H > maxY) maxY = p.y + NODE_H;
+      }
+      const spanX = Math.max(maxX - minX, 1);
+      const spanY = Math.max(maxY - minY, 1);
+      const rect = df.container.getBoundingClientRect();
+      const fitW = Math.max(rect.width - PAD * 2, 100);
+      const fitH = Math.max(rect.height - PAD * 2, 100);
+      const zoom = Math.min(fitW / spanX, fitH / spanY, 1);
+      df.zoom = zoom;
+      df.canvas_x = -minX * zoom + PAD;
+      df.canvas_y = -minY * zoom + PAD;
+      const precanvas = df.container.querySelector('.drawflow');
+      if (precanvas) {
+        precanvas.style.transform = `translate(${df.canvas_x}px, ${df.canvas_y}px) scale(${zoom})`;
+      }
+      this._scheduleMinimapRender();
     },
 
     _loadIntoDrawflow(doc) {
@@ -1014,6 +1075,19 @@ export function dpCanvasEditor(product, ctx) {
       if (!ok) return;
       const df = this._drawflow;
       if (!df) return;
+      const set = new Set(ids);
+      const removedNodes = ids
+        .map((id) => this.nodes[id])
+        .filter(Boolean)
+        .map((n) => ({
+          id: n.id,
+          block_type: n.block_type,
+          config: JSON.parse(JSON.stringify(n.config || {})),
+          position: { ...(n.position || { x: 100, y: 100 }) },
+        }));
+      const removedEdges = Object.values(this.edges).filter(
+        (e) => set.has(e.source_node_id) || set.has(e.target_node_id),
+      );
       this._suppressAutosave = true;
       for (const pqlId of ids) {
         const dfId = this._drawflowNodes[pqlId];
@@ -1022,6 +1096,57 @@ export function dpCanvasEditor(product, ctx) {
       this._suppressAutosave = false;
       this.multiSelectedNodeIds = [];
       this._syncFromDrawflow();
+      this._pushCommand({
+        do: () => {
+          // Re-apply the delete (re-resolve current drawflow ids by pql_id).
+          for (const n of removedNodes) {
+            const cur = this._drawflowNodes[n.id];
+            if (cur != null) this._drawflow.removeNodeId('node-' + cur);
+            delete this._drawflowNodes[n.id];
+            delete this.nodes[n.id];
+          }
+          this._syncFromDrawflow();
+        },
+        undo: () => {
+          // Re-create nodes + re-wire edges that were within the deleted set.
+          this._suppressAutosave = true;
+          for (const n of removedNodes) {
+            const def = BLOCK_DEFS[n.block_type];
+            if (!def) continue;
+            const dfId = this._drawflow.addNode(
+              n.block_type,
+              def.inputs || 0,
+              def.outputs || 0,
+              n.position.x,
+              n.position.y,
+              n.block_type,
+              { pql_node_id: n.id, block_type: n.block_type },
+              nodeHtml(n.block_type, n.id),
+              false,
+            );
+            this._drawflowNodes[n.id] = dfId;
+            this.nodes[n.id] = { ...n };
+          }
+          for (const e of removedEdges) {
+            const sd = this._drawflowNodes[e.source_node_id];
+            const td = this._drawflowNodes[e.target_node_id];
+            if (sd == null || td == null) continue;
+            const targetIdx = this._pinIndex(
+              this.nodes[e.target_node_id]?.block_type,
+              e.target_pin,
+              'in',
+            );
+            try {
+              this._drawflow.addConnection(sd, td, 'output_1', `input_${targetIdx + 1}`);
+            } catch (_e) {
+              // Skip.
+            }
+          }
+          this._suppressAutosave = false;
+          this._syncFromDrawflow();
+        },
+      });
+      this._scheduleMinimapRender();
     },
 
     copySelectionToClipboard() {
@@ -1112,20 +1237,62 @@ export function dpCanvasEditor(product, ctx) {
       }
       this._suppressAutosave = false;
       this._syncFromDrawflow();
+      const pastedIds = Object.values(idMap);
+      if (pastedIds.length > 0) {
+        this._pushCommand({
+          do: () => {
+            // Best-effort re-paste: re-invoke from the clipboard payload.
+            this.pasteClipboard();
+          },
+          undo: () => {
+            for (const newId of pastedIds) {
+              const dfId = this._drawflowNodes[newId];
+              if (dfId != null) this._drawflow.removeNodeId('node-' + dfId);
+              delete this._drawflowNodes[newId];
+              delete this.nodes[newId];
+            }
+            this._syncFromDrawflow();
+          },
+        });
+      }
+      this._scheduleMinimapRender();
     },
 
     addStickyNote() {
       if (!this.canWrite) return;
+      // Spawn at viewport-centre instead of a fixed (60,60) that overlaps
+      // freshly auto-laid blocks.  Mirrors the pan-math in
+      // searchSelectMatch().
+      const df = this._drawflow;
+      let cx = 200;
+      let cy = 120;
+      if (df && typeof df.canvas_x !== 'undefined') {
+        const rect = df.container.getBoundingClientRect();
+        const zoom = df.zoom || 1;
+        cx = Math.round((rect.width / 2 - df.canvas_x) / zoom - 110);
+        cy = Math.round((rect.height / 2 - df.canvas_y) / zoom - 60);
+      }
       const note = {
         id: 'note-' + Math.random().toString(36).slice(2, 10),
-        x: 60,
-        y: 60,
+        x: cx,
+        y: cy,
         width: 220,
         height: 120,
         content: '',
       };
       this.annotations = [...this.annotations, note];
+      this._pushCommand({
+        do: () => {
+          if (!this.annotations.find((a) => a.id === note.id)) {
+            this.annotations = [...this.annotations, note];
+          }
+        },
+        undo: () => {
+          this.annotations = this.annotations.filter((a) => a.id !== note.id);
+        },
+      });
       this._scheduleAutosave();
+      this._scheduleMinimapRender();
     },
 
     updateStickyNote(id, patch) {
@@ -1137,8 +1304,20 @@ export function dpCanvasEditor(product, ctx) {
     },
 
     removeStickyNote(id) {
+      const snapshot = this.annotations.find((a) => a.id === id);
       this.annotations = this.annotations.filter((a) => a.id !== id);
+      if (snapshot) {
+        this._pushCommand({
+          do: () => {
+            this.annotations = this.annotations.filter((a) => a.id !== id);
+          },
+          undo: () => {
+            this.annotations = [...this.annotations, { ...snapshot }];
+          },
+        });
+      }
       this._scheduleAutosave();
+      this._scheduleMinimapRender();
     },
 
     _stickyNotePointerDown(ev, note) {
@@ -1247,12 +1426,17 @@ export function dpCanvasEditor(product, ctx) {
       const df = this._drawflow;
       if (!df) return;
       df.curvature = this.orthogonalEdges ? 0 : 0.5;
-      df.updateConnectionNodes('node-' + (Object.values(this._drawflowNodes)[0] || ''));
-      // updateConnectionNodes touches a single node — easier to just re-render
-      // every connection by walking the editor data and calling
-      // updateConnectionNodes on each node.
-      for (const dfId of Object.values(this._drawflowNodes)) {
-        df.updateConnectionNodes('node-' + dfId);
+      // Drawflow's updateConnectionNodes() emits nodeMoved internally for
+      // every connected node, which would cascade into autosave + minimap
+      // re-render.  Suppress autosave around the visual-only rewrite.
+      const wasSuppressed = this._suppressAutosave;
+      this._suppressAutosave = true;
+      try {
+        for (const dfId of Object.values(this._drawflowNodes)) {
+          df.updateConnectionNodes('node-' + dfId);
+        }
+      } finally {
+        this._suppressAutosave = wasSuppressed;
       }
     },
 
@@ -1266,8 +1450,13 @@ export function dpCanvasEditor(product, ctx) {
         for (const k of knownCats) conn.classList.remove(`pql-edge-${k}`);
       }
       // Walk the edges dict + look up its drawflow connection by source/target.
+      // Backend categorise key is the canonical pin tuple — without our
+      // frontend `e-` prefix — so derive it locally instead of using edge.id.
       for (const edge of Object.values(this.edges)) {
-        const cat = cats[edge.id] || 'mixed';
+        const catKey =
+          `${edge.source_node_id}:${edge.source_pin}->` +
+          `${edge.target_node_id}:${edge.target_pin}`;
+        const cat = cats[catKey] || 'mixed';
         const srcDf = this._drawflowNodes[edge.source_node_id];
         const tgtDf = this._drawflowNodes[edge.target_node_id];
         if (!srcDf || !tgtDf) continue;
@@ -1393,16 +1582,76 @@ export function dpCanvasEditor(product, ctx) {
           if (this.selectedNodeId === pqlId) this.selectedNodeId = null;
         },
       });
+      this._scheduleMinimapRender();
     },
 
     deleteSelectedNode() {
       if (!this.selectedNodeId || !this.canWrite) return;
-      const dfId = this._drawflowNodes[this.selectedNodeId];
+      const pqlId = this.selectedNodeId;
+      const snapshotNode = this.nodes[pqlId]
+        ? {
+            id: pqlId,
+            block_type: this.nodes[pqlId].block_type,
+            config: JSON.parse(JSON.stringify(this.nodes[pqlId].config || {})),
+            position: { ...(this.nodes[pqlId].position || { x: 100, y: 100 }) },
+          }
+        : null;
+      const snapshotEdges = Object.values(this.edges).filter(
+        (e) => e.source_node_id === pqlId || e.target_node_id === pqlId,
+      );
+      const dfId = this._drawflowNodes[pqlId];
       if (dfId) this._drawflow.removeNodeId('node-' + dfId);
-      delete this._drawflowNodes[this.selectedNodeId];
-      delete this.nodes[this.selectedNodeId];
+      delete this._drawflowNodes[pqlId];
+      delete this.nodes[pqlId];
       this.selectedNodeId = null;
       this._syncFromDrawflow();
+      if (snapshotNode) {
+        this._pushCommand({
+          do: () => {
+            const cur = this._drawflowNodes[pqlId];
+            if (cur != null) this._drawflow.removeNodeId('node-' + cur);
+            delete this._drawflowNodes[pqlId];
+            delete this.nodes[pqlId];
+            this._syncFromDrawflow();
+          },
+          undo: () => {
+            const def = BLOCK_DEFS[snapshotNode.block_type];
+            if (!def) return;
+            this._suppressAutosave = true;
+            const nDf = this._drawflow.addNode(
+              snapshotNode.block_type,
+              def.inputs || 0,
+              def.outputs || 0,
+              snapshotNode.position.x,
+              snapshotNode.position.y,
+              snapshotNode.block_type,
+              { pql_node_id: pqlId, block_type: snapshotNode.block_type },
+              nodeHtml(snapshotNode.block_type, pqlId),
+              false,
+            );
+            this._drawflowNodes[pqlId] = nDf;
+            this.nodes[pqlId] = { ...snapshotNode };
+            for (const e of snapshotEdges) {
+              const sd = this._drawflowNodes[e.source_node_id];
+              const td = this._drawflowNodes[e.target_node_id];
+              if (sd == null || td == null) continue;
+              const targetIdx = this._pinIndex(
+                this.nodes[e.target_node_id]?.block_type,
+                e.target_pin,
+                'in',
+              );
+              try {
+                this._drawflow.addConnection(sd, td, 'output_1', `input_${targetIdx + 1}`);
+              } catch (_e) {
+                // Skip.
+              }
+            }
+            this._suppressAutosave = false;
+            this._syncFromDrawflow();
+          },
+        });
+      }
+      this._scheduleMinimapRender();
     },
 
     duplicateSelectedNode() {
@@ -1438,6 +1687,21 @@ export function dpCanvasEditor(product, ctx) {
       this.selectedNodeId = newPqlId;
       this._scheduleAutosave();
       this._scheduleValidate();
+      this._pushCommand({
+        do: () => {
+          // No-op: redo re-adds the duplicate would need full re-clone path.
+          // For simplicity, redo of duplicate is best-effort no-op.
+        },
+        undo: () => {
+          const cur = this._drawflowNodes[newPqlId];
+          if (cur != null) this._drawflow.removeNodeId('node-' + cur);
+          delete this._drawflowNodes[newPqlId];
+          delete this.nodes[newPqlId];
+          if (this.selectedNodeId === newPqlId) this.selectedNodeId = null;
+          this._syncFromDrawflow();
+        },
+      });
+      this._scheduleMinimapRender();
     },
 
     focusNode(nodeId) {

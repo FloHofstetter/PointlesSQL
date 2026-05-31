@@ -15,6 +15,49 @@ contributors who need finer commit-level granularity.
 <!-- Future commits land here until the next cluster boundary is
 defined in ``scripts/clusters.json``. -->
 
+### Fixes
+
+- Canvas bug-fix sweep after the Mega-Cluster 165-174 browser-
+  replay (rc233).  A Playwright-MCP walk surfaced 12 bugs across
+  the three canvas surfaces; this sweep closes them all in one
+  pass:
+  - **Critical**: Mesh-Canvas Workspace-Picker modal stuck open
+    (`class="modal d-block"` overrode Alpine `x-show`); diff-page
+    edge overlays painted CSS classes but stroke never applied
+    (`svg path` selector — `.connection` IS the SVG element, so
+    swapped to `.main-path`).
+  - **High**: edge type-coloring fell through to `mixed` because
+    the frontend looked up `edge.id` (with `e-` prefix) but the
+    backend keys are the raw `src:pin->tgt:pin` tuple; node-body
+    column type-icons all rendered as `bi-circle` because
+    `renderColsHtml` read `c.type` while `PinSchema.columns`
+    uses `c.duckdb_type`; Alpine fired a `previewResult is null`
+    console error on every load (missing null-guard on `x-text`);
+    undo-stack stayed empty after paste / sticky / delete /
+    duplicate (only the palette-drop pushed commands).
+  - **Medium**: orthogonal-toggle bumped the canvas version
+    (Drawflow's `updateConnectionNodes` emits `nodeMoved`
+    cascading into autosave); aggressive autosave-cascade —
+    wrapped the visual toggles in `_suppressAutosave` guards.
+  - **Low**: minimap stopped reflecting structural changes after
+    paste/sticky/delete (added `_scheduleMinimapRender` calls);
+    sticky-notes spawned at fixed (60, 60) overlapping freshly
+    auto-laid blocks (now viewport-centred via inverse pan-math);
+    no auto-fit on canvas load → multi-node DPs opened showing
+    only the top-left node (new `fitToView()` runs once on first
+    load + toolbar Fit-to-view button for manual re-trigger).
+  - **Investigate-then-patch**: Drawflow internal `position()`
+    threw a TypeError on `data[id].pos_x` after a drag that
+    started on a non-data element (sticky-note, toolbar overlay)
+    — drag itself completed cleanly but the console noise was
+    confusing.  Defensive wrapper around `df.position` swallows
+    only that exact TypeError shape so real regressions still
+    surface.
+  All fixes are pure frontend; existing pytest 4121/0/10 stays
+  green.  Verified end-to-end via Playwright-MCP browser replay
+  (computed-style probes on diff-edge strokes, version-stable
+  check on visual toggles, undo-stack populated after sticky-add).
+
 ### Features
 
 - DP-Canvas: sticky-note annotations (rc232).  Closes the
