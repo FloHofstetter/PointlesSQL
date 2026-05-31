@@ -161,6 +161,27 @@ m = client.post(f"/api/dp/{dp_id}/canvas/materialize", json={"document": doc})
 print(m.json())  # {"rows_written": 4, "target_fqn": "...", ...}
 ```
 
+## Live preview + CodeMirror predicates (Wave C)
+
+Once a `Filter` block is selected and configured, click the new
+**Preview** button in the right drawer to run the upstream slice
+through DuckDB and inspect the first 100 rows. The button is
+disabled for the `OutputPort` block (use **Run** for that path)
+and whenever the topbar shows validation errors.
+
+| Step | Expect |
+|---|---|
+| Select the **Filter** block | The predicate field renders as a CodeMirror editor (single-line, SQL grammar) instead of a plain textarea |
+| Type `am` then press <kbd>Ctrl-Space</kbd> | Autocomplete pop-up offers `amount` (and any other upstream column) sourced from the cached pin-schema |
+| Click **Preview** in the right drawer | Modal opens, shows columns + rows queried from `main.canvas_walk.orders`, filtered by the current predicate |
+| Change the **Rows** input to 2 and press **Refresh** | Modal re-fires; only 2 rows + a "Showing first 2 rows" badge appear; the truncation flag drives that badge |
+| Add an **SQL** block, wire `Filter.out → SQL.in`, type `SELECT customer_id, SUM(amount) AS total FROM {{in}} GROUP BY customer_id` | The downstream block accepts the inferred schema; if you wire a Project block after it, `customer_id` + `total` are offered in the autocomplete (proves the SQL block runs DuckDB `DESCRIBE`) |
+| Select the **SQL** block and click **Preview** | Modal returns the aggregated rows; "Compiled SQL" `<details>` shows the rendered `WITH … SELECT *` text wrapped in `LIMIT N` |
+
+The preview path is **read-only**: no Delta write, no UC mutation,
+no canvas-graph version bump. It is the fastest way to debug a
+predicate or an SQL expression before clicking Run.
+
 ## Found bugs
 
 _None yet — populate after the first replay pass uncovers any._

@@ -2775,27 +2775,46 @@ PointlesSQL
 │           Block (2 UC-Tabellen + leerer DP) + Browser-Flow-Tabelle
 │           + Agent-Flow (httpx-Snippet).
 │
-├── Phase 149 — Visual DP Editor: Live Preview + Expression Editor (Wave C)  ⏳ planned
+├── Phase 149 — Visual DP Editor: Live Preview + Expression Editor (Wave C)  ✅ shipped (local, 2026-05-31)
 │   │
-│   │   Per-Node-Preview ist KNIMEs killer-Feature; CodeMirror mit
-│   │   DuckDB-Grammar macht Filter-Predicates und SQL-Blöcke
-│   │   produktiv editierbar.
+│   │   Per-Node-Preview macht Edit-Loop konkret; CodeMirror mit
+│   │   DuckDB-Grammar + Spalten-Autocomplete macht Filter und
+│   │   SQL-Blöcke produktiv editierbar; SQL-Block schema-inference
+│   │   per DuckDB DESCRIBE entlockt downstream Pin-Typen.
 │   │
 │   ├── 149.1 — Per-Node-Preview-Endpoint
-│   │       `GET /api/dp/{id}/canvas/preview?upto={node_id}&limit=100`
-│   │       compiliert Graph truncated-at-cursor → DuckDB → JSON
-│   │       rows. Target-Latenz <500ms auf 1M-Zeilen-Delta dank
-│   │       lazy Delta-Scan via PyArrow-Bridge.
+│   │       `POST /api/dp/{id}/canvas/preview` (Body trägt aktuell
+│   │       editiertes Document; POST statt GET damit der dirty in-
+│   │       memory Doc ohne URL-Encoding mitkommt). Service-helper
+│   │       `_preview.preview_until` macht Doc-Slice via reverse-BFS
+│   │       upstream-of-upto-node, injiziert synthetischen OutputPort,
+│   │       compiliert über bestehendes `compile_canvas`, rendert SQL
+│   │       gewrappt in `SELECT * FROM (…) LIMIT N`, registriert Delta-
+│   │       Views via existing `register_delta_view`, fetcht rows. Read-
+│   │       only — kein Delta-write, kein Version-bump. Frontend:
+│   │       "Preview"-Button im config-drawer + Modal mit
+│   │       columns/rows-Tabelle + truncation-Badge + "Compiled SQL"
+│   │       details. Bonus-fix: pyright `reportUnnecessaryCast` error
+│   │       in `_raw_soyuz_client` (Phase 148 closure miss).
 │   │
 │   ├── 149.2 — CodeMirror DuckDB-Grammar-Editor
-│   │       CodeMirror-Mount in Filter/CalcColumn/SQL-Block-Config-
-│   │       Forms aus 148.4. Column-Autocomplete fed via Upstream-
-│   │       Pin-Schema aus Wave-A-Schema-Flow.
+│   │       Neues `frontend/js/dp_canvas/codemirror_predicate.js` mit
+│   │       `mountPredicateEditor` (single-line, Enter swallowed) +
+│   │       `mountSqlEditor` (multi-line, line-numbers, history).
+│   │       Beide nutzen den existing `@codemirror/lang-sql` +
+│   │       `@codemirror/autocomplete` aus dem base.html-importmap.
+│   │       Spalten-Autocomplete via custom CompletionSource +
+│   │       `upstreamColumns(nodeId)` aus 148.4. Filter und SQL
+│   │       config-forms wechseln von `<textarea>` auf `<div>`-mounts.
 │   │
 │   └── 149.3 — Schema-Inferenz für raw SQL-Block
-│           DuckDB `DESCRIBE`-Round-Trip auf dry-run-Query — sonst
-│           kann Downstream-Schema nicht propagiert werden. Cache
-│           pro (block_id, sql_hash).
+│           `_infer_sql` in `_blocks.py` macht jetzt einen DuckDB
+│           DESCRIBE round-trip: temp-table mit upstream-Spalten +
+│           {{in}}→table-name rewrite + `DESCRIBE (rewritten)`. Fail-
+│           graceful: ohne upstream → unknown schema; DuckDB-parse-
+│           error → `CompileError(kind="bad_config")`. Downstream
+│           Blöcke (Project chip-input z.B.) sehen jetzt SQL-Output-
+│           Spalten und können autocomplete bedienen.
 │
 ├── Phase 150 — Visual DP Editor: Hierarchy / Compound-Blocks (Wave D)  ⏳ planned
 │   │

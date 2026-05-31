@@ -123,3 +123,26 @@
   stroke: var(--bs-danger);
   stroke-dasharray: 6 4;
 }
+
+/* CodeMirror mount slots inside the per-block config drawer. */
+.pql-canvas-cm-host {
+  min-height: 38px;
+  background: var(--bs-body-bg);
+  overflow: hidden;
+}
+.pql-canvas-cm-host-multi {
+  min-height: 180px;
+  max-height: 320px;
+  overflow: auto;
+}
+.pql-canvas-cm-host .cm-editor {
+  font-size: 0.85rem;
+}
+.pql-canvas-cm-host.pql-canvas-cm-single .cm-editor {
+  padding: 0.25rem 0.5rem;
+}
+.pql-canvas-cm-host .cm-editor.cm-focused {
+  outline: 2px solid var(--bs-primary);
+  outline-offset: -2px;
+}
+

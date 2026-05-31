@@ -197,6 +197,13 @@ export function dpCanvasEditor(product, ctx) {
     materializing: false,
     materializePreview: null,
 
+    previewOpen: false,
+    previewBusy: false,
+    previewNodeId: null,
+    previewLimit: 100,
+    previewResult: null,
+    previewError: null,
+
     _drawflow: null,
     _drawflowNodes: {},
     _saveTimer: null,
@@ -681,6 +688,42 @@ export function dpCanvasEditor(product, ctx) {
       this._refreshAllNodeErrors();
     },
 
+    async mountPredicateCm(host, nodeId, field) {
+      if (!host) return;
+      const { mountPredicateEditor } = await import('../dp_canvas/codemirror_predicate.js');
+      const node = this.nodes[nodeId];
+      if (!node) return;
+      await mountPredicateEditor(host, {
+        initialValue: String((node.config && node.config[field]) || ''),
+        onChange: (value) => {
+          const live = this.nodes[nodeId];
+          if (!live) return;
+          if ((live.config[field] || '') === value) return;
+          live.config[field] = value;
+          this.onConfigChanged();
+        },
+        getColumns: () => this.upstreamColumns(nodeId, 'in'),
+      });
+    },
+
+    async mountSqlCm(host, nodeId, field) {
+      if (!host) return;
+      const { mountSqlEditor } = await import('../dp_canvas/codemirror_predicate.js');
+      const node = this.nodes[nodeId];
+      if (!node) return;
+      await mountSqlEditor(host, {
+        initialValue: String((node.config && node.config[field]) || ''),
+        onChange: (value) => {
+          const live = this.nodes[nodeId];
+          if (!live) return;
+          if ((live.config[field] || '') === value) return;
+          live.config[field] = value;
+          this.onConfigChanged();
+        },
+        getColumns: () => this.upstreamColumns(nodeId, 'in'),
+      });
+    },
+
     upstreamColumns(nodeId, pinName) {
       // Walk reverse edges to find the upstream node feeding *pinName*,
       // then return its output PinSchema columns (if cached).
@@ -737,6 +780,52 @@ export function dpCanvasEditor(product, ctx) {
       this.version = res.data.graph_version;
       this.saveState = 'saved';
       this.lastSavedAt = new Date().toISOString();
+    },
+
+    canPreviewSelected() {
+      const node = this.selectedNode;
+      if (!node) return false;
+      if (node.block_type === 'OutputPort') return false;
+      return true;
+    },
+
+    openPreviewForSelected() {
+      if (!this.canPreviewSelected()) return;
+      this.previewNodeId = this.selectedNodeId;
+      this.previewOpen = true;
+      this.previewResult = null;
+      this.previewError = null;
+      // Auto-fire on open so the user sees rows without an extra click.
+      this.runPreview();
+    },
+
+    closePreviewModal() {
+      this.previewOpen = false;
+    },
+
+    async runPreview() {
+      if (this.previewBusy) return;
+      if (!this.previewNodeId) return;
+      this.previewBusy = true;
+      this.previewError = null;
+      const res = await window.pqlApi.fetch(
+        `/api/dp/${this.product.id}/canvas/preview`,
+        {
+          method: 'POST',
+          body: {
+            document: this._buildDocument(),
+            upto_node_id: this.previewNodeId,
+            limit: this.previewLimit,
+          },
+          silent: true,
+        },
+      );
+      this.previewBusy = false;
+      if (!res.ok) {
+        this.previewError = res.error || 'Preview failed';
+        return;
+      }
+      this.previewResult = res.data;
     },
   };
 }

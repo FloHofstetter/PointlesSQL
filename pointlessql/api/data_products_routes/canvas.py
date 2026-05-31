@@ -21,12 +21,12 @@ canonical DP browsing URLs.
 from __future__ import annotations
 
 import datetime
-from typing import Any, cast
+from typing import Any
 
 import httpx
 from fastapi import APIRouter, Request
 from pydantic import BaseModel, ConfigDict, Field
-from soyuz_catalog_client import Client
+from soyuz_catalog_client import Client as SoyuzClient
 from soyuz_catalog_client.api.tables import (
     get_table_api_2_1_unity_catalog_tables_full_name_get as _get_table,
 )
@@ -58,6 +58,7 @@ from pointlessql.services.dp_canvas import (
     save_graph,
     validate_schema_flow,
 )
+from pointlessql.services.dp_canvas._preview import PreviewResult, preview_until
 
 router = APIRouter(prefix="/api/dp", tags=["data-products-canvas"])
 
@@ -87,7 +88,7 @@ def _require_dp_write(user: Any, row: DataProduct) -> None:
         )
 
 
-def _raw_soyuz_client(request: Request) -> Client:
+def _raw_soyuz_client(request: Request) -> SoyuzClient:
     """Return the per-request raw ``soyuz_catalog_client.Client``.
 
     The visual canvas executor + validator both consume the generated
@@ -96,7 +97,7 @@ def _raw_soyuz_client(request: Request) -> Client:
     hop on every base-table lookup.
     """
     uc = get_uc_client(request)
-    return cast(Client, uc._client)  # pyright: ignore[reportPrivateUsage]
+    return uc._client  # pyright: ignore[reportPrivateUsage]
 
 
 def _table_info_to_pin_schema(info: TableInfo) -> PinSchema:
@@ -120,7 +121,7 @@ def _table_info_to_pin_schema(info: TableInfo) -> PinSchema:
 
 
 def _seed_schemas_for_doc(
-    doc: CanvasDoc, client: Client
+    doc: CanvasDoc, client: SoyuzClient
 ) -> tuple[dict[str, PinSchema], list[CompileError]]:
     """Resolve every ``InputPort.table_fqn`` to a ``PinSchema`` via soyuz.
 
@@ -233,6 +234,30 @@ class CanvasValidateResponse(BaseModel):
     """
 
     pin_schemas: dict[str, PinSchema]
+    errors: list[CompileError]
+
+
+class CanvasPreviewRequest(BaseModel):
+    """Body for ``POST /api/dp/{dp_id}/canvas/preview``.
+
+    POST (not GET) so the editor can send the in-memory dirty document
+    without the URL-encoding pain of cramming JSON into a query string.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    document: CanvasDoc
+    upto_node_id: str = Field(min_length=1, max_length=64)
+    limit: int = Field(default=100, ge=1, le=1000)
+
+
+class CanvasPreviewResponse(BaseModel):
+    """Response for ``POST /api/dp/{dp_id}/canvas/preview``."""
+
+    columns: list[str]
+    rows: list[list[Any]]
+    truncated: bool
+    sql: str
     errors: list[CompileError]
 
 
@@ -363,6 +388,37 @@ def validate_canvas(
     )
 
 
+@router.post("/{dp_id}/canvas/preview", response_model=CanvasPreviewResponse)
+def preview_canvas(
+    dp_id: int, body: CanvasPreviewRequest, request: Request
+) -> CanvasPreviewResponse:
+    """Compile the canvas slice ending at *upto_node_id* and return preview rows.
+
+    Read-only: the request is rejected for ``OutputPort`` nodes (use
+    materialise for that path), no Delta write happens, and the graph
+    version is *not* bumped — the document is consumed verbatim from
+    the request body so the editor can preview dirty unsaved state.
+    """
+    require_user(request)
+    _load_dp(request, dp_id)
+    client = _raw_soyuz_client(request)
+    seeds, _seed_errors = _seed_schemas_for_doc(body.document, client)
+    result: PreviewResult = preview_until(
+        body.document,
+        upto_node_id=body.upto_node_id,
+        limit=body.limit,
+        soyuz_client=client,
+        upstream_seeds=seeds,
+    )
+    return CanvasPreviewResponse(
+        columns=list(result.columns),
+        rows=[list(row) for row in result.rows],
+        truncated=result.truncated,
+        sql=result.sql,
+        errors=list(result.errors),
+    )
+
+
 @router.post(
     "/{dp_id}/canvas/materialize", response_model=CanvasMaterializeResponse
 )
@@ -421,6 +477,8 @@ __all__ = [
     "CanvasLoadResponse",
     "CanvasMaterializeRequest",
     "CanvasMaterializeResponse",
+    "CanvasPreviewRequest",
+    "CanvasPreviewResponse",
     "CanvasSaveRequest",
     "CanvasSaveResponse",
     "CanvasValidateRequest",

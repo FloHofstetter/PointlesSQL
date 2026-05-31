@@ -595,11 +595,96 @@ def _infer_sql(
     *,
     seed: PinSchema | None,
 ) -> PinSchema:
-    # Raw-SQL schema inference needs a DuckDB ``DESCRIBE`` round-trip
-    # on a dry-run of the query; until that lands, every SQL-block
-    # output is opaque to the schema-flow pass.
-    del node_id, input_schemas, cfg, errors, seed
-    return _unknown_schema()
+    del seed
+    query = _coerce_str(cfg.get("query")).strip()
+    if not query:
+        return _unknown_schema()
+    inferred = _describe_sql_block(node_id, query, input_schemas, errors)
+    if inferred is None:
+        return _unknown_schema()
+    return inferred
+
+
+def _quote_ident(name: str) -> str:
+    """Return *name* wrapped in DuckDB-safe double quotes."""
+    return '"' + name.replace('"', '""') + '"'
+
+
+def _seed_table_name(node_id: str) -> str:
+    """Synthetic temp-table name standing in for the upstream input pin."""
+    safe = re.sub(r"[^A-Za-z0-9_]", "_", node_id)
+    return f"pql_sql_seed_{safe}"
+
+
+def _describe_sql_block(
+    node_id: str,
+    query: str,
+    input_schemas: dict[str, PinSchema],
+    errors: list[CompileError],
+) -> PinSchema | None:
+    """Run ``DESCRIBE (rewritten_query)`` on an in-memory DuckDB conn.
+
+    The upstream pin schema (when wired) is registered as an empty
+    temp table whose columns mirror the propagated :class:`PinSchema`;
+    ``{{in}}`` placeholders rewrite to that table name so DESCRIBE
+    runs on a valid query without needing real data.
+    """
+    import duckdb
+
+    upstream = input_schemas.get("in")
+    references_in = bool(_SQL_PLACEHOLDER.search(query))
+    if references_in:
+        # Without a real upstream schema (no wire, or upstream itself
+        # opaque) DESCRIBE cannot bind {{in}} to anything sensible —
+        # fall back to unknown rather than surfacing a misleading
+        # "table not found" error on the SQL node.
+        if upstream is None or upstream.unknown or not upstream.columns:
+            return None
+    rewritten = query
+    temp_table_name: str | None = None
+    if upstream is not None and references_in:
+        temp_table_name = _seed_table_name(node_id)
+        rewritten = _SQL_PLACEHOLDER.sub(_quote_ident(temp_table_name), query)
+
+    conn = duckdb.connect()
+    try:
+        if temp_table_name and upstream is not None and upstream.columns:
+            col_clauses = ", ".join(
+                f"{_quote_ident(col.name)} {col.duckdb_type}" for col in upstream.columns
+            )
+            conn.execute(
+                f"CREATE TEMP TABLE {_quote_ident(temp_table_name)} ({col_clauses})"
+            )
+        try:
+            rows = conn.execute(f"DESCRIBE ({rewritten})").fetchall()
+        except (duckdb.Error, RuntimeError) as exc:
+            errors.append(
+                CompileError(
+                    kind="bad_config",
+                    node_id=node_id,
+                    pin="out",
+                    message=f"SQL.query DESCRIBE failed: {exc}",
+                )
+            )
+            return None
+    finally:
+        conn.close()
+
+    specs: list[ColumnSpec] = []
+    for row in rows:
+        # DuckDB DESCRIBE returns (column_name, column_type, null, key, default, extra).
+        if not row:
+            continue
+        name = str(row[0])
+        type_text = str(row[1] or "VARCHAR")
+        nullable = True
+        if len(row) > 2 and row[2] is not None:
+            nullable = str(row[2]).upper() != "NO"
+        specs.append(ColumnSpec(name=name, duckdb_type=type_text, nullable=nullable))
+
+    if not specs:
+        return None
+    return PinSchema(kind="table", columns=specs, unknown=False)
 
 
 _register(

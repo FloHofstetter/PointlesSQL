@@ -29,6 +29,7 @@ from pointlessql.services.dp_canvas import CanvasDoc
 from tests.dp_canvas._helpers import edge, linear_doc, node
 
 _EXECUTOR_MOD = "pointlessql.services.dp_canvas._executor"
+_PREVIEW_MOD = "pointlessql.services.dp_canvas._preview"
 
 
 def _seed_dp(
@@ -424,3 +425,192 @@ async def test_materialize_404_unknown_dp(admin_client: httpx.AsyncClient) -> No
         json={"document": _doc_dict(_bare_doc())},
     )
     assert res.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# 149.1 — per-node preview
+# ---------------------------------------------------------------------------
+
+
+def _install_preview_patches(
+    monkeypatch,
+    *,
+    source_paths_to_columns: dict[str, tuple[str, list[ColumnInfo]]],
+):
+    """Patch both seeding (canvas route) and storage-resolve (preview helper).
+
+    ``source_paths_to_columns`` maps each FQN to ``(delta_path, columns)``.
+    The seed-side returns ``ColumnInfo`` lists so the editor's schema-flow
+    has real types; the preview-side returns ``storage_location`` so
+    DuckDB can attach a Delta view.
+    """
+    import pointlessql.api.data_products_routes.canvas as canvas_module
+
+    seed_table = MagicMock()
+    preview_table = MagicMock()
+
+    def _seed_sync(*, client: Any, full_name: str) -> Any:
+        if full_name in source_paths_to_columns:
+            _, columns = source_paths_to_columns[full_name]
+            return TableInfo(name=full_name.split(".")[-1], columns=columns)
+        raise UnexpectedStatus(404, b"Not Found")
+
+    def _preview_sync(*, client: Any, full_name: str) -> Any:
+        if full_name in source_paths_to_columns:
+            location, _ = source_paths_to_columns[full_name]
+            return TableInfo(
+                name=full_name.split(".")[-1], storage_location=location
+            )
+        raise UnexpectedStatus(404, b"Not Found")
+
+    seed_table.sync.side_effect = _seed_sync
+    preview_table.sync.side_effect = _preview_sync
+    monkeypatch.setattr(canvas_module, "_get_table", seed_table)
+    monkeypatch.setattr(f"{_PREVIEW_MOD}._get_table", preview_table)
+
+
+@pytest.mark.asyncio
+async def test_preview_input_port_returns_rows(
+    admin_client: httpx.AsyncClient, tmp_path, monkeypatch
+) -> None:
+    dp_id = _seed_dp(schema_name="prev_inp")
+    src_path = str(tmp_path / "prev_inp_src")
+    deltalake.write_deltalake(
+        src_path,
+        pd.DataFrame({"id": [1, 2, 3], "amt": [10, 20, 30]}),
+        mode="overwrite",
+    )
+    _install_preview_patches(
+        monkeypatch,
+        source_paths_to_columns={
+            "main.prev_inp.src": (
+                src_path,
+                [
+                    ColumnInfo(name="id", type_text="BIGINT", nullable=False),
+                    ColumnInfo(name="amt", type_text="BIGINT", nullable=True),
+                ],
+            ),
+        },
+    )
+    doc = linear_doc("main.prev_inp.src", "main.prev_inp.tgt")
+    res = await admin_client.post(
+        f"/api/dp/{dp_id}/canvas/preview",
+        json={
+            "document": _doc_dict(doc),
+            "upto_node_id": "inp",
+            "limit": 10,
+        },
+    )
+    assert res.status_code == 200, res.text
+    body = res.json()
+    assert body["errors"] == []
+    assert sorted(body["columns"]) == ["amt", "id"]
+    assert len(body["rows"]) == 3
+    assert body["truncated"] is False
+
+
+@pytest.mark.asyncio
+async def test_preview_filter_applies_predicate(
+    admin_client: httpx.AsyncClient, tmp_path, monkeypatch
+) -> None:
+    dp_id = _seed_dp(schema_name="prev_flt")
+    src_path = str(tmp_path / "prev_flt_src")
+    deltalake.write_deltalake(
+        src_path,
+        pd.DataFrame({"id": [1, 2, 3, 4], "amt": [5, 15, 25, 35]}),
+        mode="overwrite",
+    )
+    _install_preview_patches(
+        monkeypatch,
+        source_paths_to_columns={
+            "main.prev_flt.src": (
+                src_path,
+                [
+                    ColumnInfo(name="id", type_text="BIGINT", nullable=False),
+                    ColumnInfo(name="amt", type_text="BIGINT", nullable=True),
+                ],
+            ),
+        },
+    )
+    doc = linear_doc(
+        "main.prev_flt.src", "main.prev_flt.tgt", predicate="amt > 10"
+    )
+    res = await admin_client.post(
+        f"/api/dp/{dp_id}/canvas/preview",
+        json={
+            "document": _doc_dict(doc),
+            "upto_node_id": "flt",
+            "limit": 100,
+        },
+    )
+    assert res.status_code == 200, res.text
+    body = res.json()
+    assert body["errors"] == []
+    assert len(body["rows"]) == 3
+
+
+@pytest.mark.asyncio
+async def test_preview_limit_truncates(
+    admin_client: httpx.AsyncClient, tmp_path, monkeypatch
+) -> None:
+    dp_id = _seed_dp(schema_name="prev_lim")
+    src_path = str(tmp_path / "prev_lim_src")
+    deltalake.write_deltalake(
+        src_path,
+        pd.DataFrame({"id": list(range(10))}),
+        mode="overwrite",
+    )
+    _install_preview_patches(
+        monkeypatch,
+        source_paths_to_columns={
+            "main.prev_lim.src": (
+                src_path,
+                [ColumnInfo(name="id", type_text="BIGINT", nullable=False)],
+            ),
+        },
+    )
+    doc = linear_doc("main.prev_lim.src", "main.prev_lim.tgt")
+    res = await admin_client.post(
+        f"/api/dp/{dp_id}/canvas/preview",
+        json={
+            "document": _doc_dict(doc),
+            "upto_node_id": "inp",
+            "limit": 4,
+        },
+    )
+    assert res.status_code == 200, res.text
+    body = res.json()
+    assert len(body["rows"]) == 4
+    assert body["truncated"] is True
+
+
+@pytest.mark.asyncio
+async def test_preview_unknown_node_returns_404(
+    admin_client: httpx.AsyncClient,
+) -> None:
+    dp_id = _seed_dp(schema_name="prev_404")
+    res = await admin_client.post(
+        f"/api/dp/{dp_id}/canvas/preview",
+        json={
+            "document": _doc_dict(_bare_doc()),
+            "upto_node_id": "does_not_exist",
+            "limit": 10,
+        },
+    )
+    assert res.status_code == 404, res.text
+
+
+@pytest.mark.asyncio
+async def test_preview_output_port_rejected(
+    admin_client: httpx.AsyncClient,
+) -> None:
+    dp_id = _seed_dp(schema_name="prev_outport")
+    res = await admin_client.post(
+        f"/api/dp/{dp_id}/canvas/preview",
+        json={
+            "document": _doc_dict(_bare_doc()),
+            "upto_node_id": "out",
+            "limit": 10,
+        },
+    )
+    assert res.status_code == 422, res.text

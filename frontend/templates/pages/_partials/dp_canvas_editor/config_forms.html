@@ -24,20 +24,16 @@
     </div>
 </template>
 
-{# Filter: free-form predicate. #}
+{# Filter: free-form predicate (CodeMirror DuckDB-grammar + column autocomplete). #}
 <template x-if="selectedNode.block_type === 'Filter'">
     <div>
         <label class="form-label small">Predicate (SQL boolean expression)</label>
-        <textarea class="form-control form-control-sm font-monospace"
-                  rows="4"
-                  x-model="selectedNode.config.predicate"
-                  @input.debounce.300ms="onConfigChanged()"
-                  :disabled="!canWrite"
-                  spellcheck="false"
-                  placeholder="amount > 0 AND status = 'paid'"></textarea>
+        <div x-ref="cmFilterPredicate"
+             x-init="mountPredicateCm($refs.cmFilterPredicate, selectedNode.id, 'predicate')"
+             class="pql-canvas-cm-host border rounded"></div>
         <div class="form-text small">
             Anything DuckDB accepts in a <code>WHERE</code> clause.
-            Column names come from the upstream output schema.
+            <kbd>Ctrl-Space</kbd> autocompletes upstream column names.
         </div>
     </div>
 </template>
@@ -201,20 +197,16 @@
     </div>
 </template>
 
-{# SQL: free-form SQL with {{in}} placeholder. #}
+{# SQL: free-form SQL with {{in}} placeholder (CodeMirror multi-line). #}
 <template x-if="selectedNode.block_type === 'SQL'">
     <div>
         <label class="form-label small">SQL query</label>
-        <textarea class="form-control form-control-sm font-monospace"
-                  rows="8"
-                  x-model="selectedNode.config.query"
-                  @input.debounce.300ms="onConfigChanged()"
-                  :disabled="!canWrite"
-                  spellcheck="false"
-                  placeholder="SELECT col, COUNT(*) FROM {{ '{{' }}in{{ '}}' }} GROUP BY col"></textarea>
+        <div x-ref="cmSqlQuery"
+             x-init="mountSqlCm($refs.cmSqlQuery, selectedNode.id, 'query')"
+             class="pql-canvas-cm-host pql-canvas-cm-host-multi border rounded"></div>
         <div class="form-text small">
             Use <code>{{ '{{' }}in{{ '}}' }}</code> as a placeholder for the input table.
-            CodeMirror highlighting comes in a follow-up wave.
+            Schema is inferred via DuckDB <code>DESCRIBE</code> when downstream blocks need it.
         </div>
     </div>
 </template>

@@ -17,6 +17,42 @@ defined in ``scripts/clusters.json``. -->
 
 ### Features
 
+- Visual Data Product editor — live preview + CodeMirror predicates
+  + SQL schema-inference (rc207).  Three Wave-C additions on top of
+  rc206:  (1) per-node preview — new
+  `POST /api/dp/{id}/canvas/preview` route + service helper
+  ([_preview.py](pointlessql/services/dp_canvas/_preview.py)) that
+  prunes the canvas DAG to everything upstream-of-cursor via reverse
+  BFS, injects a synthetic sink so the existing `compile_canvas`
+  machinery keeps working unchanged, wraps the rendered CTE in
+  `SELECT * FROM (…) LIMIT N`, registers Delta views the same way
+  the executor does, and returns the first ≤1000 rows as plain JSON
+  (read-only: no Delta write, no canvas-graph version bump).  The
+  drawer-side **Preview** button opens a Bootstrap modal with a
+  columns/rows table, a row-limit picker, a "Showing first N rows"
+  truncation badge, and a `<details>` block for the rendered SQL.
+  (2) CodeMirror DuckDB-grammar editors for Filter.predicate +
+  SQL.query — new helper module
+  ([codemirror_predicate.js](frontend/js/dp_canvas/codemirror_predicate.js))
+  exports `mountPredicateEditor` (single-line, Enter swallowed) and
+  `mountSqlEditor` (multi-line, line-numbers + history), both
+  reusing the `@codemirror/lang-sql` + `@codemirror/autocomplete`
+  modules already loaded by the
+  [base.html importmap](frontend/templates/base.html).  Column-name
+  autocomplete pulls from the cached pin-schemas via
+  `upstreamColumns()` so users get live offers of upstream columns
+  as they type.  (3) SQL-block schema inference — `_infer_sql` runs
+  a DuckDB `DESCRIBE (rewritten_query)` against an in-memory
+  connection seeded with a temp table whose columns mirror the
+  upstream `PinSchema`; downstream blocks now see real columns
+  flowing out of raw SQL blocks instead of opaque `unknown=True`
+  pin schemas.  Five new pytest cover the preview route's happy +
+  truncation + 404 + 422 paths; four new pytest cover SQL-block
+  schema-inference (select-star, two-input join, invalid query
+  → bad_config, no-upstream-with-placeholder → unknown).  Bonus
+  fix: removed a leftover `cast(Client, uc._client)` that pyright
+  strict mode flagged as unnecessary in the Phase 148 closure.
+  Full suite 4042 / 0 / 10 green.
 - Visual Data Product editor — frontend editor (rc206).  Standalone
   full-screen authoring surface at `/dp/{id}/canvas` that consumes
   the rc205 compiler backbone end-to-end.  Drawflow-based
