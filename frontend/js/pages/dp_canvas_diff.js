@@ -25,10 +25,9 @@ export function dpCanvasDiff(product) {
     async init() {
       this.fromVersion = _readQuery('from');
       this.toVersion = _readQuery('to');
-      const res = await window.pqlApi.fetch(
-        `/api/dp/${this.product.id}/canvas/versions`,
-        { silent: true },
-      );
+      const res = await window.pqlApi.fetch(`/api/dp/${this.product.id}/canvas/versions`, {
+        silent: true,
+      });
       if (res.ok) {
         this.versions = (res.data.versions || []).map((v) => v.version);
         if (!this.fromVersion || !this.versions.includes(this.fromVersion)) {
@@ -38,6 +37,11 @@ export function dpCanvasDiff(product) {
           this.toVersion = this.versions[0] || null;
         }
       }
+      this.$nextTick(() => {
+        const selects = this.$el.querySelectorAll('select');
+        if (selects[0]) selects[0].value = String(this.fromVersion ?? '');
+        if (selects[1]) selects[1].value = String(this.toVersion ?? '');
+      });
       if (this.fromVersion && this.toVersion) {
         await this.load();
       }
@@ -47,11 +51,11 @@ export function dpCanvasDiff(product) {
       const d = this.diff && this.diff.diff;
       if (!d) return true;
       return !(
-        d.added_nodes.length
-        || d.removed_nodes.length
-        || d.modified_nodes.length
-        || d.added_edges.length
-        || d.removed_edges.length
+        d.added_nodes.length ||
+        d.removed_nodes.length ||
+        d.modified_nodes.length ||
+        d.added_edges.length ||
+        d.removed_edges.length
       );
     },
 
@@ -63,8 +67,9 @@ export function dpCanvasDiff(product) {
       }
       this.busy = true;
       this.error = null;
-      const url = `/api/dp/${this.product.id}/canvas/diff`
-        + `?from_version=${this.fromVersion}&to_version=${this.toVersion}`;
+      const url =
+        `/api/dp/${this.product.id}/canvas/diff` +
+        `?from_version=${this.fromVersion}&to_version=${this.toVersion}`;
       const res = await window.pqlApi.fetch(url, { silent: true });
       this.busy = false;
       if (!res.ok) {

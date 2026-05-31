@@ -18,8 +18,8 @@ Wire format — every frame starts with a single tag byte:
 
 Scope is deliberately narrower than the notebook hub: no
 cross-process bus, no agent-presence tag, no cell-uuid remap.
-Single-worker browser-to-browser co-edit only — when the project
-needs multi-worker the same pattern as Phase 109 can be lifted in.
+Single-worker browser-to-browser co-edit only — multi-worker fan-out
+can be added later by mirroring the notebook hub's PG LISTEN/NOTIFY bus.
 
 Conditional client mount: the editor only joins the hub when the
 URL carries ``?coedit=1``, so the single-user path stays unchanged.
