@@ -19,7 +19,7 @@ export function adminEntityDiscovery() {
         this.error = res.error || 'Failed to load candidates';
         return;
       }
-      this.candidates = res.json?.candidates || [];
+      this.candidates = res.data?.candidates || [];
     },
 
     async decide(candidateId, verb) {

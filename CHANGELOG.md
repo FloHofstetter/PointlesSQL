@@ -15,6 +15,33 @@ contributors who need finer commit-level granularity.
 <!-- Future commits land here until the next cluster boundary is
 defined in ``scripts/clusters.json``. -->
 
+### Fixes
+
+- Mega-Cluster 135–146 admin-surface browser-replay sweep
+  (rc203).  First live UI replay against the four admin pages
+  shipped in the Phase 141–146 closure wave surfaced a shared
+  contract slip: every Alpine factory read `res.json?.…` from a
+  `window.pqlApi.fetch(...)` return, but `pqlApi.fetch` wraps the
+  parsed body under `res.data`.  Result: the Cedar policy-module
+  list + dry-run + decision modal (Phase 141), the contract-tests
+  "Latest run" card (Phase 142), the data-product Plan / Apply
+  outcome panel (Phase 143), and the entity-discovery candidate
+  queue (Phase 145) were all permanently empty in the browser.
+  Five JS files corrected at source; the DP-apply factory also
+  had a second bug — it POSTed the YAML body under `spec`, but
+  `_spec_from_body` only accepts strings under `spec_yaml`, so
+  the spec was treated as the request envelope and rejected with
+  four pydantic field-missing errors.  Affected files:
+  [admin_policy_modules.js](frontend/js/pages/admin_policy_modules.js),
+  [data_product_contract_tests.js](frontend/js/pages/data_product_contract_tests.js),
+  [admin_entity_discovery.js](frontend/js/pages/admin_entity_discovery.js),
+  [admin_data_product_apply.js](frontend/js/pages/admin_data_product_apply.js).
+  Found-bugs entries added to the four walkthroughs that cover
+  these surfaces.  No new tests — the failures lived in the
+  Alpine factory's read of the pqlApi return shape, which is not
+  exercised by the existing pytest suite; future regressions
+  belong on the Playwright e2e gate.
+
 ### Features
 
 - Phase 146 Cost-Attribution + Quotas + Mesh-Health-Dashboard

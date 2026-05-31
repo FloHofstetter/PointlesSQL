@@ -127,4 +127,10 @@ call surfaces any new matches.
 
 ## Found bugs
 
-(none at time of writing — fill in during the first live replay)
+* **Admin review queue at `/admin/entity-discovery` would never
+  surface candidates** (2026-05-31 replay). The Alpine factory
+  read `res.json?.candidates`, but `window.pqlApi.fetch` returns
+  the parsed body under `res.data`. Empty workspace masked the
+  symptom; switching to `res.data?.candidates` and re-triggering
+  `Run now` confirmed the fix. Fixed at source in
+  [frontend/js/pages/admin_entity_discovery.js](../../frontend/js/pages/admin_entity_discovery.js).

@@ -159,4 +159,8 @@ does not expose deletes by design.
 
 ## Found bugs
 
-(none at time of writing — fill in during the first live replay)
+* **Latest-run panel stayed empty after a successful run** (2026-05-31
+  replay). The Contract-tests tab Alpine factory read
+  `res.json` from a `window.pqlApi.fetch(...)` return where the
+  parsed body lives under `res.data`. Fixed at source in
+  [frontend/js/pages/data_product_contract_tests.js](../../frontend/js/pages/data_product_contract_tests.js).

@@ -111,7 +111,7 @@ export function dataProductContractTests(catalog, schema, canManage) {
         this.error = res.error || 'Run failed';
         return;
       }
-      this.outcome = res.json || null;
+      this.outcome = res.data || null;
     },
   };
 }

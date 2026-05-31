@@ -16,7 +16,7 @@ export function adminDataProductApply() {
       this.outcome = null;
       const res = await window.pqlApi.fetch('/api/data-products/plan', {
         method: 'POST',
-        body: { spec: this.spec },
+        body: { spec_yaml: this.spec },
       });
       this.busy = false;
       if (!res.ok) {
@@ -24,7 +24,7 @@ export function adminDataProductApply() {
         this.plan = null;
         return;
       }
-      this.plan = res.json?.plan || null;
+      this.plan = res.data?.plan || null;
     },
 
     async runApply() {
@@ -32,15 +32,15 @@ export function adminDataProductApply() {
       this.error = '';
       const res = await window.pqlApi.fetch('/api/data-products/apply', {
         method: 'POST',
-        body: { spec: this.spec },
+        body: { spec_yaml: this.spec },
       });
       this.busy = false;
       if (!res.ok) {
         this.error = res.error || 'Apply failed';
         return;
       }
-      this.plan = res.json?.plan || null;
-      this.outcome = res.json?.outcome || null;
+      this.plan = res.data?.plan || null;
+      this.outcome = res.data?.outcome || null;
     },
   };
 }

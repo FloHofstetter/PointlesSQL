@@ -143,4 +143,12 @@ delete tool by design (deletes go through the browser surface).
 
 ## Found bugs
 
-(none at time of writing — fill in during the first live replay)
+* **Admin policy-modules surface at `/admin/policy-modules` would
+  never render any module, decision, or dry-run verdict**
+  (2026-05-31 replay). Three sites in the Alpine factory read
+  `res.json?.modules / decision / decisions`, but
+  `window.pqlApi.fetch` puts the parsed body under `res.data`.
+  Switched to `res.data?.…` for all three reads, recreated a
+  module via the UI, and verified the dry-run modal correctly
+  returned `permit`. Fixed at source in
+  [frontend/js/pages/admin_policy_modules.js](../../frontend/js/pages/admin_policy_modules.js).

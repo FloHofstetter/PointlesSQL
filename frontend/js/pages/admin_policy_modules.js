@@ -31,7 +31,7 @@ export function adminPolicyModules() {
         this.error = res.error || 'Failed to load modules';
         return;
       }
-      this.modules = res.json?.modules || [];
+      this.modules = res.data?.modules || [];
     },
 
     openCreate() {
@@ -103,7 +103,7 @@ export function adminPolicyModules() {
         this.testResult = { effect: 'error', error_class: res.error || 'failed' };
         return;
       }
-      this.testResult = res.json?.decision || null;
+      this.testResult = res.data?.decision || null;
     },
 
     async openDecisions(module) {
@@ -111,7 +111,7 @@ export function adminPolicyModules() {
       const res = await window.pqlApi.fetch(
         '/api/admin/policy-modules/' + module.id + '/decisions'
       );
-      this.decisions = res.ok ? (res.json?.decisions || []) : [];
+      this.decisions = res.ok ? (res.data?.decisions || []) : [];
     },
   };
 }

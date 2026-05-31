@@ -142,4 +142,16 @@ those rows only; the product row itself stays.
 
 ## Found bugs
 
-(none at time of writing — fill in during the first live replay)
+* **Browser admin surface `/admin/data-product-apply` sent the YAML
+  body under the wrong key** (2026-05-31 replay). The Alpine
+  factory POSTed `{spec: "<yaml string>"}`; the backend's
+  `_spec_from_body` only accepts a YAML string under `spec_yaml`
+  or a dict under `spec`. Result: the server treated the wrapper
+  as the spec and returned a 4-field-missing pydantic error.
+  Fixed at source in
+  [frontend/js/pages/admin_data_product_apply.js](../../frontend/js/pages/admin_data_product_apply.js).
+* **`res.json?.plan / outcome` read the wrong key on apply
+  response** (same replay). `window.pqlApi.fetch` puts the parsed
+  body in `res.data`. Even after fixing the YAML key the panel
+  would have shown empty Plan/Outcome until the read switched to
+  `res.data?.plan / outcome`.
