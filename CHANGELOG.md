@@ -17,6 +17,20 @@ defined in ``scripts/clusters.json``. -->
 
 ### Features
 
+- DP-Canvas edges now coloured by upstream data-type family
+  (rc225).  New ``_edge_types.categorize_pin_schema`` helper
+  inspects each edge's upstream ``PinSchema`` and assigns one of
+  six buckets (``numeric``, ``text``, ``temporal``, ``boolean``,
+  ``complex``, ``mixed``).  Validate-endpoint response gains
+  ``edge_categories`` mapping ``{edge_id: bucket}``; editor
+  applies ``pql-edge-${bucket}`` CSS classes to each
+  ``.drawflow .connection`` so a glance at the canvas reveals
+  where the numeric backbone runs, where text columns flow, and
+  where temporal joins fan out.  Toolbar gains an orthogonal-
+  routing toggle that flips ``Drawflow.curvature`` between Bezier
+  (0.5) and straight-segment (0) and re-renders all connection
+  paths.
+
 - DP-Canvas node body now shows inline schema preview, last-preview
   row-count, and validation status (rc224).  Each node renders up
   to 3 output columns (with type-icons inferred from the column's

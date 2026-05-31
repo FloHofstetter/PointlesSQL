@@ -353,6 +353,8 @@ export function dpCanvasEditor(product, ctx) {
     validating: false,
     previewRowCountByNode: {},
     compactBodies: false,
+    edgeCategories: {},
+    orthogonalEdges: false,
 
     nodes: {},
     edges: {},
@@ -763,6 +765,43 @@ export function dpCanvasEditor(product, ctx) {
       if (wrap) wrap.classList.toggle('pql-canvas-compact', this.compactBodies);
     },
 
+    toggleOrthogonalEdges() {
+      this.orthogonalEdges = !this.orthogonalEdges;
+      const df = this._drawflow;
+      if (!df) return;
+      df.curvature = this.orthogonalEdges ? 0 : 0.5;
+      df.updateConnectionNodes('node-' + (Object.values(this._drawflowNodes)[0] || ''));
+      // updateConnectionNodes touches a single node — easier to just re-render
+      // every connection by walking the editor data and calling
+      // updateConnectionNodes on each node.
+      for (const dfId of Object.values(this._drawflowNodes)) {
+        df.updateConnectionNodes('node-' + dfId);
+      }
+    },
+
+    _refreshEdgeCategoryStyles() {
+      const df = this._drawflow;
+      if (!df) return;
+      const cats = this.edgeCategories || {};
+      const knownCats = ['numeric', 'text', 'temporal', 'boolean', 'complex', 'mixed'];
+      const connections = df.container.querySelectorAll('.drawflow .connection');
+      for (const conn of connections) {
+        for (const k of knownCats) conn.classList.remove(`pql-edge-${k}`);
+      }
+      // Walk the edges dict + look up its drawflow connection by source/target.
+      for (const edge of Object.values(this.edges)) {
+        const cat = cats[edge.id] || 'mixed';
+        const srcDf = this._drawflowNodes[edge.source_node_id];
+        const tgtDf = this._drawflowNodes[edge.target_node_id];
+        if (!srcDf || !tgtDf) continue;
+        const sel =
+          `.drawflow .connection.node_in_node-${tgtDf}` +
+          `.node_out_node-${srcDf}`;
+        const els = df.container.querySelectorAll(sel);
+        for (const el of els) el.classList.add(`pql-edge-${cat}`);
+      }
+    },
+
     _refreshAllNodeErrors() {
       const df = this._drawflow;
       if (!df) return;
@@ -1060,8 +1099,10 @@ export function dpCanvasEditor(product, ctx) {
       }
       this.errors = res.data.errors || [];
       this.pinSchemas = res.data.pin_schemas || {};
+      this.edgeCategories = res.data.edge_categories || {};
       this._refreshAllNodeErrors();
       this._refreshAllNodeBodies();
+      this._refreshEdgeCategoryStyles();
     },
 
     async mountPredicateCm(host, nodeId, field) {

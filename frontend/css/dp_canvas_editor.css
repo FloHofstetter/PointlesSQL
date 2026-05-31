@@ -165,6 +165,26 @@
   stroke-dasharray: 6 4;
 }
 
+/* Edge type-coloring: dominant data type of the upstream pin schema. */
+.pql-dp-canvas-drawflow .drawflow .connection.pql-edge-numeric .main-path {
+  stroke: var(--bs-primary);
+}
+.pql-dp-canvas-drawflow .drawflow .connection.pql-edge-text .main-path {
+  stroke: var(--bs-success);
+}
+.pql-dp-canvas-drawflow .drawflow .connection.pql-edge-temporal .main-path {
+  stroke: var(--bs-warning);
+}
+.pql-dp-canvas-drawflow .drawflow .connection.pql-edge-boolean .main-path {
+  stroke: var(--bs-info);
+}
+.pql-dp-canvas-drawflow .drawflow .connection.pql-edge-complex .main-path {
+  stroke: #6f42c1;
+}
+.pql-dp-canvas-drawflow .drawflow .connection.pql-edge-mixed .main-path {
+  stroke: var(--bs-secondary);
+}
+
 /* CodeMirror mount slots inside the per-block config drawer. */
 .pql-canvas-cm-host {
   min-height: 38px;

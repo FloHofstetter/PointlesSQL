@@ -3066,6 +3066,24 @@ PointlesSQL
 │   │   (174).  Each phase one commit; rc222→rc232.  ALL LOCAL
 │   │   until single final push.
 │   │
+├── Phase 167 — DP-Canvas: connector visual upgrade (type-coloring + orthogonal toggle)  ✅ shipped (local, 2026-05-31)
+│   │
+│   │   New ``pointlessql/services/dp_canvas/_edge_types.py``
+│   │   maps a ``PinSchema`` to one of six dominant-type buckets
+│   │   (``numeric``, ``text``, ``temporal``, ``boolean``,
+│   │   ``complex``, ``mixed``).  Validate route response gains
+│   │   ``edge_categories: {edge_id: bucket}``; editor applies
+│   │   ``pql-edge-${bucket}`` CSS classes to every
+│   │   ``.drawflow .connection`` so the canvas reveals at a
+│   │   glance which edges carry numeric vs text vs temporal
+│   │   payloads.  Toolbar adds an orthogonal-routing toggle that
+│   │   flips ``Drawflow.curvature`` between Bezier (0.5) and
+│   │   straight-segments (0) and re-renders all paths.
+│   │   Pin-label hover tooltip deferred (Drawflow's per-pin
+│   │   socket DOM is awkward to enrich; defer until socket
+│   │   render is owned by us).  8 new pytest, full canvas-routes
+│   │   suite green.  rc224→rc225.
+│   │
 ├── Phase 166 — DP-Canvas: richer node display (schema + row-count + status)  ✅ shipped (local, 2026-05-31)
 │   │
 │   │   Each DP-Canvas block-node now shows up to 3 output columns

@@ -59,6 +59,7 @@ from pointlessql.services.dp_canvas import (
     validate_schema_flow,
 )
 from pointlessql.services.dp_canvas._diff import CanvasDiff, diff_docs
+from pointlessql.services.dp_canvas._edge_types import categorize_pin_schema
 from pointlessql.services.dp_canvas._pinning import (
     pin_version as _pin_canvas_version,
 )
@@ -293,11 +294,16 @@ class CanvasValidateResponse(BaseModel):
     """Response for ``POST /api/dp/{dp_id}/canvas/validate``.
 
     ``pin_schemas`` is keyed as ``f"{node_id}:{pin_name}"`` because JSON
-    cannot represent tuple keys.
+    cannot represent tuple keys.  ``edge_categories`` maps an edge id
+    (``"{source_node_id}:{source_pin}->{target_node_id}:{target_pin}"``)
+    to a dominant data-type bucket (``numeric``, ``text``, ``temporal``,
+    ``boolean``, ``complex``, ``mixed``) so the editor can colour each
+    connection by what flows through it.
     """
 
     pin_schemas: dict[str, PinSchema]
     errors: list[CompileError]
+    edge_categories: dict[str, str] = Field(default_factory=dict)
 
 
 class CanvasLoadVersionResponse(BaseModel):
@@ -467,9 +473,18 @@ def validate_canvas(
     wire_schemas = {
         f"{node_id}:{pin}": schema for (node_id, pin), schema in pin_schemas.items()
     }
+    edge_categories: dict[str, str] = {}
+    for edge in resolved_doc.edges:
+        source_schema = pin_schemas.get((edge.source_node_id, edge.source_pin))
+        key = (
+            f"{edge.source_node_id}:{edge.source_pin}->"
+            f"{edge.target_node_id}:{edge.target_pin}"
+        )
+        edge_categories[key] = categorize_pin_schema(source_schema)
     return CanvasValidateResponse(
         pin_schemas=wire_schemas,
         errors=[*seed_errors, *flow_errors],
+        edge_categories=edge_categories,
     )
 
 
