@@ -213,11 +213,76 @@ function nodeHtml(blockType, nodeId) {
         <span class="pql-node-badge badge bg-danger" style="display:none"
               data-pql-node-error-badge></span>
       </div>
+      <div class="pql-node-cols" data-pql-node-cols></div>
       <div class="pql-node-body" data-pql-node-body>
         <span class="text-muted">${def.label}</span>
       </div>
+      <div class="pql-node-footer" data-pql-node-footer></div>
     </div>
   `;
+}
+
+const TYPE_ICON_MAP = [
+  [/^(INT|BIGINT|SMALLINT|TINYINT|INTEGER|HUGEINT|UBIGINT|UINTEGER|USMALLINT|UTINYINT)/i, 'bi-hash'],
+  [/^(DOUBLE|FLOAT|REAL|DECIMAL|NUMERIC)/i, 'bi-calculator'],
+  [/^(VARCHAR|TEXT|CHAR|STRING|BLOB|BIT)/i, 'bi-text-paragraph'],
+  [/^(DATE|TIMESTAMP|TIME|INTERVAL)/i, 'bi-calendar3'],
+  [/^(BOOL|BOOLEAN)/i, 'bi-check2-square'],
+  [/^(STRUCT|LIST|MAP|UNION|ARRAY|JSON)/i, 'bi-diagram-3'],
+];
+
+function typeIcon(typeName) {
+  const t = String(typeName || '').toUpperCase();
+  for (const [re, icon] of TYPE_ICON_MAP) {
+    if (re.test(t)) return icon;
+  }
+  return 'bi-circle';
+}
+
+function renderColsHtml(columns) {
+  if (!columns || columns.length === 0) return '';
+  const max = 3;
+  const shown = columns.slice(0, max);
+  const extra = columns.length - shown.length;
+  const rows = shown
+    .map(
+      (c) =>
+        `<span><i class="bi ${typeIcon(c.type)}"></i> ${escapeHtml(c.name)} <span class="text-muted">${escapeHtml(c.type || '')}</span></span>`,
+    )
+    .join('');
+  const more = extra > 0 ? `<span class="text-muted">+${extra} more</span>` : '';
+  return rows + more;
+}
+
+function renderFooterHtml(rowCount, status) {
+  const badge =
+    rowCount != null
+      ? `<span class="badge bg-secondary" title="rows from last preview">${escapeHtml(formatRowCount(rowCount))}</span>`
+      : '';
+  let statusIcon = '';
+  if (status === 'error') {
+    statusIcon = '<i class="bi bi-x-circle-fill text-danger" title="validation error"></i>';
+  } else if (status === 'ok') {
+    statusIcon = '<i class="bi bi-check-circle-fill text-success" title="validated"></i>';
+  } else {
+    statusIcon = '<i class="bi bi-circle text-muted" title="not yet validated"></i>';
+  }
+  return `${badge}${statusIcon}`;
+}
+
+function formatRowCount(n) {
+  if (n == null) return '';
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M rows`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k rows`;
+  return `${n} rows`;
+}
+
+function escapeHtml(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
 }
 
 function generateNodeId() {
@@ -286,6 +351,8 @@ export function dpCanvasEditor(product, ctx) {
     errors: [],
     pinSchemas: {},
     validating: false,
+    previewRowCountByNode: {},
+    compactBodies: false,
 
     nodes: {},
     edges: {},
@@ -657,6 +724,45 @@ export function dpCanvasEditor(product, ctx) {
       }
     },
 
+    _outputSchemaFor(nodeId) {
+      const key = `${nodeId}:out`;
+      const schema = this.pinSchemas[key];
+      if (schema && Array.isArray(schema.columns)) return schema.columns;
+      return null;
+    },
+
+    _statusFor(nodeId) {
+      const hasErr = this.errors.some((e) => e.node_id === nodeId);
+      if (hasErr) return 'error';
+      if (this._outputSchemaFor(nodeId)) return 'ok';
+      return 'pending';
+    },
+
+    _refreshAllNodeBodies() {
+      const df = this._drawflow;
+      if (!df) return;
+      for (const [pqlId, dfId] of Object.entries(this._drawflowNodes)) {
+        const wrap = df.container.querySelector(`#node-${dfId}`);
+        if (!wrap) continue;
+        const colsEl = wrap.querySelector('[data-pql-node-cols]');
+        const footerEl = wrap.querySelector('[data-pql-node-footer]');
+        const cols = this._outputSchemaFor(pqlId);
+        if (colsEl) colsEl.innerHTML = renderColsHtml(cols);
+        if (footerEl) {
+          footerEl.innerHTML = renderFooterHtml(
+            this.previewRowCountByNode[pqlId],
+            this._statusFor(pqlId),
+          );
+        }
+      }
+    },
+
+    toggleCompactBodies() {
+      this.compactBodies = !this.compactBodies;
+      const wrap = this.$refs.canvas;
+      if (wrap) wrap.classList.toggle('pql-canvas-compact', this.compactBodies);
+    },
+
     _refreshAllNodeErrors() {
       const df = this._drawflow;
       if (!df) return;
@@ -955,6 +1061,7 @@ export function dpCanvasEditor(product, ctx) {
       this.errors = res.data.errors || [];
       this.pinSchemas = res.data.pin_schemas || {};
       this._refreshAllNodeErrors();
+      this._refreshAllNodeBodies();
     },
 
     async mountPredicateCm(host, nodeId, field) {
@@ -1221,6 +1328,10 @@ export function dpCanvasEditor(product, ctx) {
         return;
       }
       this.previewResult = res.data;
+      if (this.previewNodeId && res.data && typeof res.data.row_count === 'number') {
+        this.previewRowCountByNode[this.previewNodeId] = res.data.row_count;
+        this._refreshAllNodeBodies();
+      }
     },
   };
 }

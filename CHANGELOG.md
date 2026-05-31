@@ -17,6 +17,19 @@ defined in ``scripts/clusters.json``. -->
 
 ### Features
 
+- DP-Canvas node body now shows inline schema preview, last-preview
+  row-count, and validation status (rc224).  Each node renders up
+  to 3 output columns (with type-icons inferred from the column's
+  DuckDB type — hash for INT, calculator for DOUBLE, calendar for
+  TIMESTAMP, etc.) plus a footer with the cached row-count from
+  the last preview run and a check / cross / circle icon for the
+  validate state.  Toolbar gains a Compact toggle that hides the
+  rich body when the canvas grows wide.  The body re-renders
+  after every successful validate (sourced from
+  ``pinSchemas[id:out]``) and after every preview run.  No
+  backend change — pure frontend over the existing validate +
+  preview responses.
+
 - DP-Canvas + Mesh-Canvas drag performance — node positions stay
   glued to the cursor during drag (rc223).  The ``nodeMoved``
   handler used to call ``_syncFromDrawflow`` on every animation

@@ -3066,6 +3066,20 @@ PointlesSQL
 │   │   (174).  Each phase one commit; rc222→rc232.  ALL LOCAL
 │   │   until single final push.
 │   │
+├── Phase 166 — DP-Canvas: richer node display (schema + row-count + status)  ✅ shipped (local, 2026-05-31)
+│   │
+│   │   Each DP-Canvas block-node now shows up to 3 output columns
+│   │   inline (with type-icons inferred from the DuckDB type:
+│   │   hash for INT, calculator for DOUBLE, calendar for
+│   │   TIMESTAMP, etc.) plus a footer with the row-count from the
+│   │   last preview call and a status badge (check / cross /
+│   │   circle for validated / error / pending).  Body re-renders
+│   │   after every successful validate (sourced from
+│   │   ``pinSchemas[id:out]``) and after each preview run.
+│   │   Toolbar gains a Compact toggle that hides the rich body
+│   │   when the canvas grows wide.  Pure frontend over existing
+│   │   validate + preview responses.  rc223→rc224.
+│   │
 ├── Phase 165 — DP-Canvas + Mesh-Canvas: drag-performance fix  ✅ shipped (local, 2026-05-31)
 │   │
 │   │   Opens Mega-Cluster 165-174.  Root-cause: the
