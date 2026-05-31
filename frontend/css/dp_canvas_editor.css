@@ -152,6 +152,28 @@
   box-shadow: 0 0 0 3px var(--bs-primary);
 }
 
+.pql-minimap {
+  bottom: 12px;
+  right: 12px;
+  width: 200px;
+  height: 130px;
+  background: var(--bs-tertiary-bg);
+  border: 1px solid var(--bs-border-color);
+  border-radius: 4px;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.pql-minimap svg {
+  display: block;
+}
+
+.pql-canvas-search {
+  background: var(--bs-body-bg);
+  max-height: 50vh;
+  overflow-y: auto;
+}
+
 /* Drawflow sockets / connections — Bootstrap-aligned palette. */
 .pql-dp-canvas-drawflow .drawflow .input,
 .pql-dp-canvas-drawflow .drawflow .output {

@@ -356,6 +356,10 @@ export function dpCanvasEditor(product, ctx) {
     edgeCategories: {},
     orthogonalEdges: false,
     multiSelectedNodeIds: [],
+    searchOpen: false,
+    searchQuery: '',
+    searchCursor: 0,
+    minimapVisible: true,
 
     nodes: {},
     edges: {},
@@ -497,6 +501,10 @@ export function dpCanvasEditor(product, ctx) {
             ev.preventDefault();
             this.bulkDeleteSelected();
           }
+        }
+        if ((ev.ctrlKey || ev.metaKey) && (ev.key === 'f' || ev.key === 'F')) {
+          ev.preventDefault();
+          this.openSearch();
         }
       });
 
@@ -679,6 +687,7 @@ export function dpCanvasEditor(product, ctx) {
       if (!this._suppressAutosave) {
         this._scheduleAutosave();
       }
+      this._scheduleMinimapRender();
     },
 
     _syncFromDrawflow() {
@@ -813,6 +822,126 @@ export function dpCanvasEditor(product, ctx) {
       this.compactBodies = !this.compactBodies;
       const wrap = this.$refs.canvas;
       if (wrap) wrap.classList.toggle('pql-canvas-compact', this.compactBodies);
+    },
+
+    openSearch() {
+      this.searchOpen = true;
+      this.searchQuery = '';
+      this.searchCursor = 0;
+      this.$nextTick(() => {
+        const el = this.$refs.searchInput;
+        if (el) el.focus();
+      });
+    },
+
+    closeSearch() {
+      this.searchOpen = false;
+    },
+
+    searchMatches() {
+      const q = (this.searchQuery || '').toLowerCase().trim();
+      const all = Object.values(this.nodes);
+      if (!q) return all.slice(0, 20);
+      return all
+        .filter(
+          (n) =>
+            n.block_type.toLowerCase().includes(q) ||
+            (n.id || '').toLowerCase().includes(q),
+        )
+        .slice(0, 20);
+    },
+
+    searchNavigate(direction) {
+      const matches = this.searchMatches();
+      if (matches.length === 0) return;
+      this.searchCursor =
+        (this.searchCursor + direction + matches.length) % matches.length;
+    },
+
+    searchSelectMatch() {
+      const matches = this.searchMatches();
+      const target = matches[this.searchCursor];
+      if (!target) return;
+      const dfId = this._drawflowNodes[target.id];
+      if (dfId == null) return;
+      const df = this._drawflow;
+      if (df && typeof df.canvas_x !== 'undefined') {
+        const pos = target.position || { x: 100, y: 100 };
+        const containerRect = df.container.getBoundingClientRect();
+        df.canvas_x = -pos.x * df.zoom + containerRect.width / 2;
+        df.canvas_y = -pos.y * df.zoom + containerRect.height / 2;
+        const precanvas = df.container.querySelector('.drawflow');
+        if (precanvas) {
+          precanvas.style.transform = `translate(${df.canvas_x}px, ${df.canvas_y}px) scale(${df.zoom})`;
+        }
+      }
+      this.selectedNodeId = target.id;
+      this.closeSearch();
+    },
+
+    toggleMinimap() {
+      this.minimapVisible = !this.minimapVisible;
+      if (this.minimapVisible) this._scheduleMinimapRender();
+    },
+
+    _scheduleMinimapRender() {
+      if (!this.minimapVisible) return;
+      if (this._minimapRafHandle != null) return;
+      this._minimapRafHandle = window.requestAnimationFrame(() => {
+        this._minimapRafHandle = null;
+        this._renderMinimap();
+      });
+    },
+
+    _renderMinimap() {
+      const host = this.$refs.minimap;
+      if (!host) return;
+      const W = 200;
+      const H = 130;
+      const PAD = 6;
+      const nodes = Object.values(this.nodes);
+      if (nodes.length === 0) {
+        host.innerHTML =
+          `<svg width="${W}" height="${H}"><rect width="${W}" height="${H}" fill="var(--bs-tertiary-bg)" stroke="var(--bs-border-color)" /></svg>`;
+        return;
+      }
+      let minX = Infinity;
+      let minY = Infinity;
+      let maxX = -Infinity;
+      let maxY = -Infinity;
+      for (const n of nodes) {
+        const p = n.position || { x: 100, y: 100 };
+        if (p.x < minX) minX = p.x;
+        if (p.y < minY) minY = p.y;
+        if (p.x > maxX) maxX = p.x;
+        if (p.y > maxY) maxY = p.y;
+      }
+      const NODE_W = 160;
+      const NODE_H = 80;
+      maxX += NODE_W;
+      maxY += NODE_H;
+      const spanX = Math.max(maxX - minX, 1);
+      const spanY = Math.max(maxY - minY, 1);
+      const scale = Math.min((W - PAD * 2) / spanX, (H - PAD * 2) / spanY);
+      const rects = nodes
+        .map((n) => {
+          const p = n.position || { x: 100, y: 100 };
+          const x = PAD + (p.x - minX) * scale;
+          const y = PAD + (p.y - minY) * scale;
+          const w = NODE_W * scale;
+          const h = NODE_H * scale;
+          const fill =
+            n.id === this.selectedNodeId
+              ? 'var(--bs-primary)'
+              : 'var(--bs-secondary)';
+          return `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}" fill="${fill}" />`;
+        })
+        .join('');
+      host.innerHTML =
+        `<svg width="${W}" height="${H}">` +
+        `<rect width="${W}" height="${H}" fill="var(--bs-tertiary-bg)" stroke="var(--bs-border-color)" />` +
+        rects +
+        '</svg>';
     },
 
     _isFormFocused(target) {
@@ -1292,6 +1421,7 @@ export function dpCanvasEditor(product, ctx) {
       this._refreshAllNodeErrors();
       this._refreshAllNodeBodies();
       this._refreshEdgeCategoryStyles();
+      this._scheduleMinimapRender();
     },
 
     async mountPredicateCm(host, nodeId, field) {

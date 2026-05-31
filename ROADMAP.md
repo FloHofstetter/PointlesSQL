@@ -3066,6 +3066,19 @@ PointlesSQL
 │   │   (174).  Each phase one commit; rc222→rc232.  ALL LOCAL
 │   │   until single final push.
 │   │
+├── Phase 169 — DP-Canvas: minimap + Ctrl+F block search  ✅ shipped (local, 2026-05-31)
+│   │
+│   │   Bottom-right 200×130 SVG minimap shows every block's
+│   │   scaled-to-fit position; selected block painted in primary
+│   │   blue, rest in secondary grey.  Toolbar gets a Map toggle.
+│   │   Ctrl+F opens a top-anchored search overlay that filters
+│   │   blocks by ``block_type`` (case-insensitive substring) or
+│   │   ``id``; arrow keys move the cursor, Enter pans canvas
+│   │   to the match + selects, Escape closes.  Minimap re-
+│   │   renders are rAF-coalesced through the same flush path
+│   │   the drag fix introduced — never throttles the cursor.
+│   │   Pure frontend.  rc226→rc227.
+│   │
 ├── Phase 168 — DP-Canvas: multi-select + bulk delete + copy/paste  ✅ shipped (local, 2026-05-31)
 │   │
 │   │   Shift+Click on a block toggles it in

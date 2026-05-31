@@ -17,6 +17,17 @@ defined in ``scripts/clusters.json``. -->
 
 ### Features
 
+- DP-Canvas: minimap + Ctrl+F block search (rc227).  Bottom-right
+  corner gets a 200×130 SVG minimap showing every block's
+  position scaled to fit; the currently-selected block is
+  rendered in the primary blue, the rest in secondary grey.
+  Toolbar gains a Map toggle.  Ctrl+F opens a top-anchored
+  search overlay that filters blocks by ``block_type`` (case-
+  insensitive substring) or ``id``; arrow keys move the cursor,
+  Enter pans the canvas to the match and selects it, Escape
+  closes.  Minimap re-renders are rAF-coalesced and reuse the
+  same drag-flush path so they never throttle the cursor.
+
 - DP-Canvas: multi-select + bulk operations (rc226).  Shift+Click
   on a block toggles it in a parallel ``multiSelectedNodeIds``
   set (a plain click clears the set so the single-edit right
