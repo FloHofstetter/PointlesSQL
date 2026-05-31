@@ -356,6 +356,9 @@ export function dpCanvasEditor(product, ctx) {
     edgeCategories: {},
     orthogonalEdges: false,
     multiSelectedNodeIds: [],
+    _undoStack: [],
+    _redoStack: [],
+    _UNDO_DEPTH: 50,
     searchOpen: false,
     searchQuery: '',
     searchCursor: 0,
@@ -463,7 +466,16 @@ export function dpCanvasEditor(product, ctx) {
         this.selectedNodeId = null;
       });
       df.on('nodeMoved', (dfId) => this._onNodePositionChanged(dfId));
-      df.on('connectionCreated', () => this._syncFromDrawflow());
+      df.on('connectionCreated', (info) => {
+        this._syncFromDrawflow();
+        // After the sync, the edge appears in `this.edges`; walk the
+        // target side and fill sensible defaults if its config is empty.
+        const tgtDfId = info && info.input_id;
+        if (tgtDfId != null) {
+          const tgtPqlId = this._pqlIdForDfId(tgtDfId);
+          if (tgtPqlId) this._applySensibleDefaultsIfEmpty(tgtPqlId);
+        }
+      });
       df.on('connectionRemoved', () => this._syncFromDrawflow());
       df.on('nodeRemoved', () => this._syncFromDrawflow());
       df.on('nodeDataChanged', () => this._syncFromDrawflow());
@@ -509,6 +521,17 @@ export function dpCanvasEditor(product, ctx) {
         if ((ev.ctrlKey || ev.metaKey) && (ev.key === 'l' || ev.key === 'L')) {
           ev.preventDefault();
           this.autoTidy();
+        }
+        if ((ev.ctrlKey || ev.metaKey) && !ev.shiftKey && (ev.key === 'z' || ev.key === 'Z')) {
+          ev.preventDefault();
+          this.undo();
+        }
+        if (
+          ((ev.ctrlKey || ev.metaKey) && (ev.key === 'y' || ev.key === 'Y')) ||
+          ((ev.ctrlKey || ev.metaKey) && ev.shiftKey && (ev.key === 'z' || ev.key === 'Z'))
+        ) {
+          ev.preventDefault();
+          this.redo();
         }
       });
 
@@ -1087,6 +1110,65 @@ export function dpCanvasEditor(product, ctx) {
       this._syncFromDrawflow();
     },
 
+    _pushCommand(cmd) {
+      this._undoStack.push(cmd);
+      if (this._undoStack.length > this._UNDO_DEPTH) this._undoStack.shift();
+      this._redoStack = [];
+    },
+
+    undo() {
+      const cmd = this._undoStack.pop();
+      if (!cmd) return;
+      try {
+        cmd.undo();
+        this._redoStack.push(cmd);
+      } catch (_e) {
+        // Swallow — best-effort restore.
+      }
+    },
+
+    redo() {
+      const cmd = this._redoStack.pop();
+      if (!cmd) return;
+      try {
+        cmd.do();
+        this._undoStack.push(cmd);
+      } catch (_e) {
+        // Swallow.
+      }
+    },
+
+    _applySensibleDefaultsIfEmpty(nodeId) {
+      const node = this.nodes[nodeId];
+      if (!node) return;
+      const upstream = this.upstreamColumns(nodeId, 'in');
+      if (upstream.length === 0) return;
+      const cfg = node.config || {};
+      switch (node.block_type) {
+        case 'Sort':
+          if (!cfg.order_by || cfg.order_by.length === 0) {
+            cfg.order_by = [{ column: upstream[0], direction: 'asc' }];
+            node.config = cfg;
+          }
+          break;
+        case 'Project':
+          if (!cfg.columns || cfg.columns.length === 0) {
+            cfg.columns = upstream.slice(0, 3);
+            node.config = cfg;
+          }
+          break;
+        case 'GroupBy':
+          if (!cfg.keys || cfg.keys.length === 0) {
+            cfg.keys = [upstream[0]];
+            node.config = cfg;
+          }
+          break;
+        default:
+          return;
+      }
+      this._refreshNodeBody(nodeId);
+    },
+
     async autoTidy() {
       const df = this._drawflow;
       if (!df) return;
@@ -1227,6 +1309,39 @@ export function dpCanvasEditor(product, ctx) {
       this._refreshNodeBody(pqlId);
       this._scheduleAutosave();
       this._scheduleValidate();
+      this._pushCommand({
+        do: () => {
+          // Re-create requires re-mint of df-id; punt and just call drop logic
+          // recursively from the snapshot.  For simplicity the redo just no-ops
+          // when the node already exists.
+          if (this.nodes[pqlId]) return;
+          const dfId2 = this._drawflow.addNode(
+            kind,
+            def.inputs,
+            def.outputs,
+            pos.x,
+            pos.y,
+            kind,
+            { pql_node_id: pqlId, block_type: kind },
+            nodeHtml(kind, pqlId),
+            false,
+          );
+          this._drawflowNodes[pqlId] = dfId2;
+          this.nodes[pqlId] = {
+            id: pqlId,
+            block_type: kind,
+            config: def.defaultConfig(),
+            position: pos,
+          };
+        },
+        undo: () => {
+          const cur = this._drawflowNodes[pqlId];
+          if (cur != null) this._drawflow.removeNodeId('node-' + cur);
+          delete this._drawflowNodes[pqlId];
+          delete this.nodes[pqlId];
+          if (this.selectedNodeId === pqlId) this.selectedNodeId = null;
+        },
+      });
     },
 
     deleteSelectedNode() {

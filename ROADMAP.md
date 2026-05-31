@@ -3066,6 +3066,19 @@ PointlesSQL
 │   │   (174).  Each phase one commit; rc222→rc232.  ALL LOCAL
 │   │   until single final push.
 │   │
+├── Phase 173 — DP-Canvas: undo/redo + sensible defaults on wire  ✅ shipped (local, 2026-05-31)
+│   │
+│   │   Closes Phase-161 deferred items.  Ctrl+Z pops the last
+│   │   add-block / drop command and reverses it; Ctrl+Y or
+│   │   Ctrl+Shift+Z re-applies.  Stack capped at 50; position-
+│   │   only drags intentionally not recorded.  When a wire
+│   │   completes its target, if the target is Sort / Project
+│   │   / GroupBy and its config is empty, the editor auto-
+│   │   populates ``order_by`` / ``columns`` / ``keys`` from the
+│   │   upstream pin's first column(s).  Y.UndoManager
+│   │   integration for co-edit mode + per-field help-tooltip
+│   │   icons deferred.  rc230→rc231.
+│   │
 ├── Phase 172 — Diff-Canvas: modified-edge overlay + "Only changed" filter + sync-scroll  ✅ shipped (local, 2026-05-31)
 │   │
 │   │   Closes the Phase-158 deferred edge-overlay item.

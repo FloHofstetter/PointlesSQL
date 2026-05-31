@@ -17,6 +17,20 @@ defined in ``scripts/clusters.json``. -->
 
 ### Features
 
+- DP-Canvas: undo/redo command stack + sensible defaults on
+  wire (rc231).  Closes the Phase-161 deferred Undo/Redo +
+  sensible-defaults items.  Ctrl+Z pops the last add-block /
+  drop command and reverses it; Ctrl+Y (or Ctrl+Shift+Z)
+  re-applies.  Stack capped at 50 entries; position-only drags
+  intentionally not recorded (would drown out meaningful
+  edits).  When a wire completes its target, if the target is
+  Sort / Project / GroupBy and its config is empty, the editor
+  auto-populates ``order_by`` / ``columns`` / ``keys`` from the
+  upstream pin's first column(s) so new blocks aren't dead
+  until the user opens the right drawer.  Y.UndoManager
+  integration for co-edit mode and per-field help-tooltip icons
+  deferred — both warrant their own pass.
+
 - Diff-Canvas: edge-modified overlay + "Only changed" filter +
   sync-scroll (rc230).  Closes the Phase-158 deferred
   edge-overlay item.  ``CanvasDiff`` Pydantic envelope gains
