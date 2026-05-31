@@ -2643,7 +2643,7 @@ PointlesSQL
 │   │   Line, Cytoscape Term-Graph-Drawer, CodeMirror Cedar-Mode,
 │   │   F2 `?as_of=` Picker im SQL-Editor + Preview + Export).
 │
-├── Mega-Cluster 147–154 — Visual Data Product Editor  ⏳ planned
+├── Mega-Cluster 147–154 — Visual Data Product Editor  ✅ shipped (local, 2026-05-31)
 │   │
 │   │   KNIME / Simulink / STEP-7-FUP-style Block-and-Wire-Editor
 │   │   zum Authoring von Data Products. Jeder Block hat typisierte
@@ -2951,32 +2951,56 @@ PointlesSQL
 │           skip vermeidet eine flood von version-rows wenn ein hub
 │           idle ist.
 │
-├── Phase 154 — Visual DP Editor: Operations + AI-Author-Surface (Wave H)  ⏳ planned
+├── Phase 154 — Visual DP Editor: Operations + AI-Author-Surface (Wave H)  ✅ shipped (local, 2026-05-31)
 │   │
-│   │   Closure-Wave: Versioning-UI, MCP-Tools für AI-Agent-
-│   │   Authoring (fits "Agents author pipelines"-Vision aus dem
-│   │   AI-native-Lakehouse-Strategie-Memo), Walkthrough, Roadmap-
-│   │   Closure.
+│   │   Closure-Wave: Versioning-UI im Editor-Toolbar, 5 MCP-Tools
+│   │   im hermes-plugin-pointlessql, voller Walkthrough mit allen
+│   │   8 Sub-Surfaces, Cluster-Closure.
 │   │
 │   ├── 154.1 — Versioning-UI
-│   │       Named-Versions listen, Restore, Compare. Consumes 152.3
-│   │       Diff-Komponente. Pin/Unpin von Production-Versions.
+│   │       Toolbar-Dropdown "Versions ▾" listet alle saved canvas-
+│   │       versions newest-first. Per-Version Restore-Button
+│   │       (creates new latest from chosen version) + Compare-Link
+│   │       in 152.3 diff-view. Pin/Unpin deferred (no
+│   │       is_production column yet).
+│   │       Neuer Route `GET /api/dp/{id}/canvas/versions/{version}`
+│   │       liefert das gespeicherte CanvasDoc einer beliebigen
+│   │       Version (vorher nur die latest via load_latest_graph).
 │   │
 │   ├── 154.2 — Plugin / MCP-Tools für AI-Agent-Authoring
-│   │       Im `hermes-plugin-pointlessql`: `pql_create_canvas_dp`,
-│   │       `pql_add_block`, `pql_wire_blocks`, `pql_validate_canvas`,
-│   │       `pql_materialize_canvas_dp`. Erlaubt Agents, ganze DPs
-│   │       visuell zu komponieren statt SQL zu generieren.
+│   │       Im `hermes-plugin-pointlessql` (commit `6047bc2`):
+│   │       `pql_canvas_load` (any-user), `pql_canvas_validate`
+│   │       (any-user), `pql_canvas_add_block` (supervisor),
+│   │       `pql_canvas_wire_blocks` (supervisor),
+│   │       `pql_canvas_materialize` (supervisor).
+│   │       Write/run-tools gegated auf `client._config.supervisor_mode`
+│   │       — gleiche Schiene wie `pql_promote_model`.
+│   │       PointlessClient erweitert um `get_dp_canvas`,
+│   │       `save_dp_canvas`, `validate_dp_canvas`,
+│   │       `materialize_dp_canvas`. 7 neue pytest im plugin
+│   │       (full suite 293/0 green).
 │   │
 │   ├── 154.3 — Full Walkthrough-Doc
-│   │       `docs/e2e-walkthroughs/dp-canvas-builder.md` (full):
-│   │       End-to-End Happy-Path + Multi-DP-Composition + Co-Edit
-│   │       + AI-Agent-Edit. Playwright-MCP-replay-fähig.
+│   │       `docs/e2e-walkthroughs/dp-canvas-builder.md` enthält
+│   │       jetzt sechs Wave-Sektionen (B Happy-Path, C Live-Preview
+│   │       + CodeMirror, D Compound-Blocks + Mesh, F YAML round-
+│   │       trip + Diff, G Co-Edit, H Versioning + Agent-Authoring).
 │   │
-│   └── 154.4 — ROADMAP-Closure + Archive-Roll
-│           Phase 147-154 Status-Marker auf ✅, CHANGELOG-Einträge,
-│           Archive-Roll falls inzwischen Mega-Phase 200+ läuft
-│           (gleiches Pattern wie Phase 48-99 nach roadmap_archive).
+│   └── 154.4 — Cluster-Closure + Push
+│           ROADMAP Mega-Cluster 147-154 ⏳→✅; CHANGELOG
+│           konsolidiert; Memory-Index aktualisiert; single push
+│           `git push origin main` für 8+ lokale commits.
+│
+└── Mega-Cluster 147-154 — Visual Data Product Editor  ✅ shipped (local, 2026-05-31)
+   PointlesSQL grew a KNIME-style block-and-wire authoring surface
+   for data products. 19 atom blocks (8 sources/sinks + 10
+   transforms + 1 DP◫ compound), live preview through DuckDB,
+   CodeMirror DuckDB-grammar editors with column autocomplete,
+   editable workspace mesh-canvas, DP-as-Code YAML round-trip with
+   version diff, opt-in Y.Doc real-time co-edit, and 5 MCP plugin
+   tools so agents can author canvases through the same path
+   browser users use. 8 commits, rc204→rc212, ALL LOCAL until
+   final push.
 │
 
 

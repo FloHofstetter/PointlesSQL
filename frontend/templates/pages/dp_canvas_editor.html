@@ -57,6 +57,46 @@
                       ? 'no errors'
                       : (errors.length + ' validation error' + (errors.length === 1 ? '' : 's'))">
             </span>
+            <div class="dropdown">
+                <button class="btn btn-sm btn-outline-secondary dropdown-toggle"
+                        @click="openVersionsDropdown()"
+                        type="button">
+                    <i class="bi bi-clock-history"></i> Versions
+                </button>
+                <template x-if="versionsOpen">
+                    <div class="dropdown-menu show end-0"
+                         style="max-height: 380px; overflow-y: auto; min-width: 320px;"
+                         @click.outside="versionsOpen = false">
+                        <h6 class="dropdown-header">Saved canvas versions</h6>
+                        <template x-if="versionsList.length === 0">
+                            <div class="px-3 py-1 small text-muted">No saved versions yet.</div>
+                        </template>
+                        <template x-for="v in versionsList" :key="v.version">
+                            <div class="dropdown-item d-flex align-items-center gap-2 small"
+                                 style="white-space: normal;">
+                                <span class="badge"
+                                      :class="v.version === version ? 'bg-primary' : 'bg-secondary-subtle text-secondary-emphasis'"
+                                      x-text="'v' + v.version"></span>
+                                <span class="text-muted flex-grow-1"
+                                      x-text="new Date(v.created_at).toLocaleString()"></span>
+                                <button class="btn btn-sm btn-outline-secondary"
+                                        @click.stop="restoreVersion(v.version)"
+                                        :disabled="!canWrite || v.version === version"
+                                        title="Restore this version">
+                                    <i class="bi bi-arrow-counterclockwise"></i>
+                                </button>
+                                <a class="btn btn-sm btn-outline-secondary"
+                                   :href="'/dp/' + product.id + '/canvas/diff?from=' + v.version + '&to=' + version"
+                                   target="_blank"
+                                   :class="{disabled: v.version === version}"
+                                   title="Compare with current">
+                                    <i class="bi bi-arrows-collapse-vertical"></i>
+                                </a>
+                            </div>
+                        </template>
+                    </div>
+                </template>
+            </div>
             <button class="btn btn-sm btn-outline-secondary"
                     @click="save()"
                     :disabled="!canWrite || saving">

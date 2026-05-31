@@ -601,6 +601,74 @@ async def test_preview_unknown_node_returns_404(
 
 
 @pytest.mark.asyncio
+async def test_diff_two_versions_surfaces_modified_node(
+    admin_client: httpx.AsyncClient,
+) -> None:
+    dp_id = _seed_dp(schema_name="diffroute")
+    await admin_client.post(
+        f"/api/dp/{dp_id}/canvas",
+        json={
+            "document": _doc_dict(
+                linear_doc(
+                    "main.diffroute.src", "main.diffroute.tgt", predicate="x > 0"
+                )
+            )
+        },
+    )
+    await admin_client.post(
+        f"/api/dp/{dp_id}/canvas",
+        json={
+            "document": _doc_dict(
+                linear_doc(
+                    "main.diffroute.src", "main.diffroute.tgt", predicate="x > 99"
+                )
+            )
+        },
+    )
+    res = await admin_client.get(
+        f"/api/dp/{dp_id}/canvas/diff?from_version=1&to_version=2"
+    )
+    assert res.status_code == 200, res.text
+    body = res.json()
+    assert body["from_version"] == 1
+    assert body["to_version"] == 2
+    modified = body["diff"]["modified_nodes"]
+    assert any(n["id"] == "flt" for n in modified)
+
+
+@pytest.mark.asyncio
+async def test_load_specific_version_returns_doc(
+    admin_client: httpx.AsyncClient,
+) -> None:
+    dp_id = _seed_dp(schema_name="vload")
+    # Save v1 + v2.
+    for predicate in ("amt > 1", "amt > 100"):
+        await admin_client.post(
+            f"/api/dp/{dp_id}/canvas",
+            json={
+                "document": _doc_dict(
+                    linear_doc("main.vload.src", "main.vload.tgt", predicate=predicate)
+                )
+            },
+        )
+    res = await admin_client.get(f"/api/dp/{dp_id}/canvas/versions/1")
+    assert res.status_code == 200, res.text
+    body = res.json()
+    assert body["version"] == 1
+    flt = next(n for n in body["document"]["nodes"] if n["block_type"] == "Filter")
+    assert flt["config"]["predicate"] == "amt > 1"
+
+
+@pytest.mark.asyncio
+async def test_load_unknown_version_404(
+    admin_client: httpx.AsyncClient,
+) -> None:
+    dp_id = _seed_dp(schema_name="vmiss")
+    res = await admin_client.get(f"/api/dp/{dp_id}/canvas/versions/999")
+    assert res.status_code == 404
+
+
+@pytest.mark.asyncio
 async def test_preview_output_port_rejected(
     admin_client: httpx.AsyncClient,
 ) -> None:

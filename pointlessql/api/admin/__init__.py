@@ -28,8 +28,8 @@ from fastapi import APIRouter
 from pointlessql.api.admin.api_keys import router as _api_keys_router
 from pointlessql.api.admin.cdf_tail import router as _cdf_tail_router
 from pointlessql.api.admin.coedit_bus import router as _coedit_bus_router
-from pointlessql.api.admin.cost_routes import router as _cost_routes_router
 from pointlessql.api.admin.console import router as _console_router
+from pointlessql.api.admin.cost_routes import router as _cost_routes_router
 from pointlessql.api.admin.domains import router as _domains_router
 from pointlessql.api.admin.expected_producers import (
     router as _expected_producers_router,

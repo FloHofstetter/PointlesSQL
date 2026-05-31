@@ -7,7 +7,6 @@ import pytest
 
 from pointlessql.api.main import app
 
-
 ADMIN_SURFACE_PATHS = [
     "/admin/policy-modules",
     "/admin/mesh-dashboard",

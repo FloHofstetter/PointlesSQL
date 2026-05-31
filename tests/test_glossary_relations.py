@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import datetime
-
 import pytest
 
 from pointlessql.api.main import app

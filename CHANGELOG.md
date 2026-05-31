@@ -17,6 +17,34 @@ defined in ``scripts/clusters.json``. -->
 
 ### Features
 
+- Visual Data Product editor — versioning UI + plugin MCP tools
+  + cluster closure (rc212).  Wave H closes the Mega-Cluster
+  147-154.  (1) Editor toolbar gains a new **Versions ▾**
+  dropdown that lists all saved canvas versions newest-first;
+  per-row Restore creates a fresh latest from the chosen version
+  (load-then-save round-trip), and a per-row Compare link opens
+  the Wave-F diff-view between that version and the current
+  latest.  New
+  [GET /api/dp/{id}/canvas/versions/{version}](pointlessql/api/data_products_routes/canvas.py)
+  route exposes the saved document for any version so the
+  restore flow can re-post it.  (2) Sibling
+  [hermes-plugin-pointlessql](../hermes-plugin-pointlessql) commit
+  `6047bc2` adds 5 MCP tools: `pql_canvas_load` + `pql_canvas_validate`
+  in the family-A unconditional batch; `pql_canvas_add_block` +
+  `pql_canvas_wire_blocks` + `pql_canvas_materialize` gated on
+  `supervisor_mode` (same scope that gates `pql_promote_model`).
+  PointlessClient gains 4 new methods to wrap the canvas routes.
+  Together they let agents author DPs end-to-end through the same
+  HTTP surface browser users use.  (3) The
+  [dp-canvas-builder walkthrough](docs/e2e-walkthroughs/dp-canvas-builder.md)
+  is now the full 6-wave reference (B Happy-Path, C Live-Preview +
+  CodeMirror, D Compound + Mesh, F YAML round-trip + Diff, G
+  Co-Edit, H Versioning + Agent flow).  2 new pytest in
+  [test_data_product_canvas_routes.py](tests/test_data_product_canvas_routes.py)
+  cover the version-load + diff routes; 7 new pytest in the
+  plugin cover the 5 new tools.  Cluster summary: 8 commits,
+  rc204 → rc212, full PointlesSQL suite 4074 / 0 / 10 green,
+  full plugin suite 293 / 0 green.
 - Visual Data Product editor — opt-in real-time co-edit (rc211).
   Wave G of the cluster wires a Y.Doc-backed co-edit hub to the
   canvas editor, mirroring the Phase-105 notebook pattern at a

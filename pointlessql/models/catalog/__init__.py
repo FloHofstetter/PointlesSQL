@@ -44,6 +44,20 @@ from pointlessql.models.catalog._consumer_voice import (
     DataProductUseCase,
     DataProductUseCaseVote,
 )
+from pointlessql.models.catalog._contract_test import (
+    ASSERTION_KINDS,
+    CONTRACT_TEST_SEVERITIES,
+    CONTRACT_TEST_STATUSES,
+    DataProductContractTest,
+    DataProductContractTestResult,
+    DataProductFixture,
+)
+from pointlessql.models.catalog._cost import (
+    QUERY_KINDS,
+    QUOTA_ENFORCEMENT_MODES,
+    DataProductCostBucketHourly,
+    DataProductQueryCost,
+)
 from pointlessql.models.catalog._data_product_active_reviewer_config import (
     ACTIVE_REVIEWER_PROVIDERS,
     ACTIVE_REVIEWER_RUNNERS,
@@ -93,20 +107,6 @@ from pointlessql.models.catalog._domains import (
     DataProductTransformation,
     Domain,
     DomainMember,
-)
-from pointlessql.models.catalog._cost import (
-    QUERY_KINDS,
-    QUOTA_ENFORCEMENT_MODES,
-    DataProductCostBucketHourly,
-    DataProductQueryCost,
-)
-from pointlessql.models.catalog._contract_test import (
-    ASSERTION_KINDS,
-    CONTRACT_TEST_SEVERITIES,
-    CONTRACT_TEST_STATUSES,
-    DataProductContractTest,
-    DataProductContractTestResult,
-    DataProductFixture,
 )
 from pointlessql.models.catalog._entity import (
     ENTITY_LINK_KINDS,

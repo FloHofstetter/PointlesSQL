@@ -292,6 +292,14 @@ class CanvasValidateResponse(BaseModel):
     errors: list[CompileError]
 
 
+class CanvasLoadVersionResponse(BaseModel):
+    """Response for ``GET /api/dp/{dp_id}/canvas/versions/{version}``."""
+
+    document: CanvasDoc
+    version: int
+    created_at: datetime.datetime
+
+
 class CanvasDiffResponse(BaseModel):
     """Response for ``GET /api/dp/{dp_id}/canvas/diff``."""
 
@@ -523,6 +531,34 @@ def list_dp_picker(request: Request) -> DataProductPickerResponse:
     )
 
 
+@router.get(
+    "/{dp_id}/canvas/versions/{version}", response_model=CanvasLoadVersionResponse
+)
+def load_canvas_version(
+    dp_id: int, version: int, request: Request
+) -> CanvasLoadVersionResponse:
+    """Return the canvas document for a specific stored version."""
+    require_user(request)
+    _load_dp(request, dp_id)
+    factory = request.app.state.session_factory
+    with factory() as session:
+        row = session.execute(
+            select(DataProductCanvasGraph).where(
+                DataProductCanvasGraph.data_product_id == dp_id,
+                DataProductCanvasGraph.version == version,
+            )
+        ).scalar_one_or_none()
+    if row is None:
+        raise ResourceNotFoundError(
+            f"canvas version v{version} not found on dp {dp_id}"
+        )
+    return CanvasLoadVersionResponse(
+        document=CanvasDoc.model_validate_json(row.document),
+        version=row.version,
+        created_at=row.created_at,
+    )
+
+
 @router.get("/{dp_id}/canvas/diff", response_model=CanvasDiffResponse)
 def diff_canvas_versions(
     dp_id: int,
@@ -646,6 +682,7 @@ def materialize_canvas(
 __all__ = [
     "CanvasDiffResponse",
     "CanvasLoadResponse",
+    "CanvasLoadVersionResponse",
     "CanvasMaterializeRequest",
     "CanvasMaterializeResponse",
     "CanvasPreviewRequest",

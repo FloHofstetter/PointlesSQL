@@ -271,6 +271,55 @@ the WS hub is never reached, and the editor behaves exactly as the
 single-user surface. Disabling the flag is the explicit fallback
 when the co-edit feature surfaces a bug.
 
+## Version history + agent authoring (Wave H)
+
+The Versions ▾ dropdown in the editor topbar surfaces the canvas's
+saved revision ledger. Restoring an old version saves it as a fresh
+latest (a forward-only ledger); the Compare link feeds the Wave-F
+diff-view.
+
+| Step | Expect |
+|---|---|
+| Click **Versions ▾** in the topbar | Dropdown lists all saved versions newest-first with badges + restore + compare buttons |
+| Click the restore button on an older version | Confirmation modal; after acceptance the editor reloads to the chosen version's contents and the badge advances to the new latest |
+| Click the compare button on an older version | A new tab opens the Wave-F diff-view between that version and the current latest |
+
+The same surface is reachable to AI agents through five plugin
+tools (in `hermes-plugin-pointlessql`):
+
+- `pql_canvas_load`        — read the latest saved canvas (any-user)
+- `pql_canvas_validate`    — schema-flow check without writing (any-user)
+- `pql_canvas_add_block`   — append a node (supervisor)
+- `pql_canvas_wire_blocks` — connect two nodes (supervisor)
+- `pql_canvas_materialize` — compile + execute the canvas (supervisor)
+
+Agent example (hermes prompt → ordered tool calls):
+
+```
+"Create a Filter→Output graph on DP id 7 that keeps orders > $100
+ and writes to main.gold.orders_big."
+```
+
+1. `pql_canvas_add_block { dp_id: 7, block_type: "InputPort",
+   config: { table_fqn: "main.bronze.orders" }, node_id: "n_inp" }`
+2. `pql_canvas_add_block { dp_id: 7, block_type: "Filter",
+   config: { predicate: "amount > 100" }, node_id: "n_flt" }`
+3. `pql_canvas_add_block { dp_id: 7, block_type: "OutputPort",
+   config: { port_name: "primary",
+             materialized_table: "main.gold.orders_big",
+             mode: "overwrite" }, node_id: "n_out" }`
+4. `pql_canvas_wire_blocks { dp_id: 7, source_node_id: "n_inp",
+   target_node_id: "n_flt" }`
+5. `pql_canvas_wire_blocks { dp_id: 7, source_node_id: "n_flt",
+   target_node_id: "n_out" }`
+6. `pql_canvas_validate { dp_id: 7 }` → expect `errors == []`
+7. `pql_canvas_materialize { dp_id: 7 }` →
+   `{ rows_written: N, target_fqn: "main.gold.orders_big", … }`
+
+The mutation tools self-gate on `supervisor_mode`; the read tools
+are always available so an unprivileged audit agent can inspect a
+canvas without being able to change it.
+
 ## Found bugs
 
 _None yet — populate after the first replay pass uncovers any._

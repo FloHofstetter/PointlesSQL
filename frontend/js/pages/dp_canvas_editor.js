@@ -292,6 +292,9 @@ export function dpCanvasEditor(product, ctx) {
     dpPicker: { loaded: false, products: [] },
     breadcrumbTrail: [],
 
+    versionsOpen: false,
+    versionsList: [],
+
     _drawflow: null,
     _drawflowNodes: {},
     _saveTimer: null,
@@ -988,6 +991,50 @@ export function dpCanvasEditor(product, ctx) {
       const updated = trail.slice(0, -1);
       window.localStorage.setItem('pql.dp_canvas.breadcrumb', JSON.stringify(updated));
       window.location.href = `/dp/${prev.dp_id}/canvas`;
+    },
+
+    async openVersionsDropdown() {
+      this.versionsOpen = !this.versionsOpen;
+      if (!this.versionsOpen) return;
+      const res = await window.pqlApi.fetch(
+        `/api/dp/${this.product.id}/canvas/versions`,
+        { silent: true },
+      );
+      if (res.ok) {
+        this.versionsList = res.data.versions || [];
+      }
+    },
+
+    async restoreVersion(version) {
+      if (!this.canWrite) return;
+      if (!window.confirm('Restore canvas to v' + version + '? This creates a new version.')) {
+        return;
+      }
+      const fetched = await window.pqlApi.fetch(
+        `/api/dp/${this.product.id}/canvas/versions/${version}`,
+        { silent: true },
+      );
+      if (!fetched.ok) {
+        window.alert('Restore failed: ' + (fetched.error || 'cannot load version'));
+        return;
+      }
+      const doc = fetched.data.document;
+      const saved = await window.pqlApi.fetch(
+        `/api/dp/${this.product.id}/canvas`,
+        { method: 'POST', body: { document: doc }, silent: true },
+      );
+      if (!saved.ok) {
+        window.alert('Restore failed: ' + (saved.error || 'save rejected'));
+        return;
+      }
+      this.version = saved.data.version;
+      this._suppressAutosave = true;
+      this._loadIntoDrawflow(doc);
+      this._suppressAutosave = false;
+      this.saveState = 'saved';
+      this.lastSavedAt = saved.data.created_at;
+      this.versionsOpen = false;
+      this._scheduleValidate();
     },
 
     async runPreview() {

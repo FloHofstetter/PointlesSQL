@@ -25,7 +25,6 @@ from pointlessql.api.dependencies import (
     require_user,
 )
 from pointlessql.exceptions import AuthorizationError
-from pointlessql.types import UserInfo
 from pointlessql.services.mesh._canvas import (
     MeshCanvasDoc,
     MeshDiffSummary,
@@ -33,6 +32,7 @@ from pointlessql.services.mesh._canvas import (
     build_mesh_canvas_doc,
     validate_mesh_canvas_doc,
 )
+from pointlessql.types import UserInfo
 
 router = APIRouter(prefix="/api/mesh", tags=["mesh-canvas"])
 html_router = APIRouter(tags=["mesh-canvas-html"])

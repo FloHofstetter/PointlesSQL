@@ -13,8 +13,8 @@ from pointlessql.services.entities._candidates import (
     DEFAULT_CONFIDENCE_THRESHOLD,
     CandidateScore,
     discover_candidates,
-    score_combined,
     score_column_similarity,
+    score_combined,
     score_pk_overlap,
 )
 from pointlessql.services.entities._crud import (
