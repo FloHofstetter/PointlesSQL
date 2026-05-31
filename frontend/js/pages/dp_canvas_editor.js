@@ -423,6 +423,15 @@ export function dpCanvasEditor(product, ctx) {
     _validateTimer: null,
     _suppressAutosave: false,
 
+    edgeToolbar: { visible: false, x: 0, y: 0, edgeId: null },
+    outputPlusPicker: { open: false, x: 0, y: 0, sourcePqlId: null },
+    _selectedEdgeId: null,
+    _edgeToolbarHideTimer: null,
+    _edgeToolbarRaf: null,
+    _runningEdgeIds: new Set(),
+    _outputPlusElements: new Map(),
+    _decoratedSvgs: new WeakSet(),
+
     get nodeCount() {
       return Object.keys(this.nodes).length;
     },
@@ -486,7 +495,11 @@ export function dpCanvasEditor(product, ctx) {
       df.on('nodeUnselected', () => {
         this.selectedNodeId = null;
       });
-      df.on('nodeMoved', (dfId) => this._onNodePositionChanged(dfId));
+      df.on('nodeMoved', (dfId) => {
+        this._onNodePositionChanged(dfId);
+        this._repositionOutputPlusFor(dfId);
+        this._scheduleEdgeToolbarReposition();
+      });
       df.on('connectionCreated', (info) => {
         this._syncFromDrawflow();
         // After the sync, the edge appears in `this.edges`; walk the
@@ -496,10 +509,29 @@ export function dpCanvasEditor(product, ctx) {
           const tgtPqlId = this._pqlIdForDfId(tgtDfId);
           if (tgtPqlId) this._applySensibleDefaultsIfEmpty(tgtPqlId);
         }
+        this._scheduleDecorateAllConnections();
       });
-      df.on('connectionRemoved', () => this._syncFromDrawflow());
+      df.on('connectionRemoved', () => {
+        this._clearSelectedEdge();
+        this._hideEdgeToolbar();
+        this._syncFromDrawflow();
+      });
       df.on('nodeRemoved', () => this._syncFromDrawflow());
       df.on('nodeDataChanged', () => this._syncFromDrawflow());
+
+      // Live zoom value as CSS custom property so the edge-stroke math
+      // (and hit-area width) stay legible at every zoom level — same
+      // technique n8n uses, only stroke-driven via CSS instead of OKLCH.
+      df.on('zoom', (z) => this._updateZoomCssVar(z));
+      this._updateZoomCssVar(df.zoom || 1);
+
+      // Click on empty canvas clears any selected edge.  Click on an
+      // edge SVG is handled inside the per-connection decoration below.
+      df.container.addEventListener('click', (ev) => {
+        if (ev.target.closest('.connection')) return;
+        if (ev.target.closest('.pql-edge-toolbar')) return;
+        this._clearSelectedEdge();
+      });
 
       // Double-click on a DP◫ node opens that DP's canvas in-place
       // (push the current DP onto the breadcrumb trail in localStorage).
@@ -530,6 +562,11 @@ export function dpCanvasEditor(product, ctx) {
           return;
         }
         if (ev.key === 'Delete' || ev.key === 'Backspace') {
+          if (this._selectedEdgeId) {
+            ev.preventDefault();
+            this.deleteEdgeById(this._selectedEdgeId);
+            return;
+          }
           if (this.multiSelectedNodeIds.length > 1) {
             ev.preventDefault();
             this.bulkDeleteSelected();
@@ -738,6 +775,10 @@ export function dpCanvasEditor(product, ctx) {
         }
       }
       this._syncFromDrawflow();
+      this._scheduleDecorateAllConnections();
+      this.$nextTick(() => {
+        for (const pqlId of Object.keys(this.nodes)) this._renderOutputPlus(pqlId);
+      });
     },
 
     _pinIndex(blockType, pinName, direction) {
@@ -1468,6 +1509,550 @@ export function dpCanvasEditor(product, ctx) {
       }
     },
 
+    // ---------------------------------------------------------------------
+    // Edge decoration — fat hit-area, hover/select states, directional
+    // arrow marker, click-to-select, mid-edge toolbar.  Drawflow renders
+    // every connection as a single <svg class="connection"> with a child
+    // <path class="main-path">; we decorate that SVG once after each
+    // creation (or full reload) without forking the library.
+    // ---------------------------------------------------------------------
+
+    _scheduleDecorateAllConnections() {
+      if (this._decorateRaf) return;
+      // setTimeout instead of rAF: rAF is throttled in non-painting tabs
+      // (and in headless Playwright runs), which would leave fresh edges
+      // un-decorated.  A 0-tick delay is enough for Drawflow's synchronous
+      // addConnection burst to settle and lets us batch repeated calls
+      // within the same event-loop turn.
+      this._decorateRaf = window.setTimeout(() => {
+        this._decorateRaf = null;
+        this._decorateAllConnections();
+      }, 0);
+    },
+
+    _decorateAllConnections() {
+      const df = this._drawflow;
+      if (!df) return;
+      const svgs = df.container.querySelectorAll('.drawflow .connection');
+      for (const svg of svgs) this._decorateConnection(svg);
+    },
+
+    _edgeIdForSvg(svgEl) {
+      // Drawflow stamps `node_in_node-<tgtDf>` and `node_out_node-<srcDf>`
+      // classes on each connection SVG.  Walk the edges dict and match
+      // the (srcDfId, tgtDfId) pair against the canonical edge.id.
+      let srcDf = null;
+      let tgtDf = null;
+      for (const cls of svgEl.classList) {
+        const inM = cls.match(/^node_in_node-(\d+)$/);
+        const outM = cls.match(/^node_out_node-(\d+)$/);
+        if (inM) tgtDf = parseInt(inM[1], 10);
+        if (outM) srcDf = parseInt(outM[1], 10);
+      }
+      if (srcDf == null || tgtDf == null) return null;
+      let srcPql = null;
+      let tgtPql = null;
+      for (const [pqlId, dfId] of Object.entries(this._drawflowNodes)) {
+        if (parseInt(dfId, 10) === srcDf) srcPql = pqlId;
+        if (parseInt(dfId, 10) === tgtDf) tgtPql = pqlId;
+      }
+      if (!srcPql || !tgtPql) return null;
+      for (const edge of Object.values(this.edges)) {
+        if (edge.source_node_id === srcPql && edge.target_node_id === tgtPql) {
+          return edge.id;
+        }
+      }
+      return null;
+    },
+
+    _decorateConnection(svgEl) {
+      if (!svgEl) return;
+      const mainPath = svgEl.querySelector('.main-path');
+      if (!mainPath) return;
+      // Arrow head — set every pass (cheap, idempotent).
+      mainPath.setAttribute('marker-end', 'url(#pql-arrow-end)');
+      if (this._decoratedSvgs.has(svgEl)) {
+        // Refresh hit-area `d` so it tracks moved nodes.
+        const hit = svgEl.querySelector('.pql-edge-hit-area');
+        if (hit) hit.setAttribute('d', mainPath.getAttribute('d') || '');
+        return;
+      }
+      this._decoratedSvgs.add(svgEl);
+
+      // Inject fat invisible sibling for hit-testing — same `d` as the
+      // visible path, transparent stroke 22 px wide.  Renders BEFORE
+      // the visible path so it sits beneath visually but captures the
+      // hover/click events thanks to pointer-events:stroke.
+      const svgNS = 'http://www.w3.org/2000/svg';
+      const hit = document.createElementNS(svgNS, 'path');
+      hit.setAttribute('class', 'pql-edge-hit-area');
+      hit.setAttribute('d', mainPath.getAttribute('d') || '');
+      hit.setAttribute('fill', 'none');
+      svgEl.insertBefore(hit, mainPath);
+
+      // Watch the visible path for `d` mutations (Drawflow rewrites it
+      // on every nodeMoved) and mirror them into the hit-area.
+      try {
+        const obs = new MutationObserver(() => {
+          hit.setAttribute('d', mainPath.getAttribute('d') || '');
+        });
+        obs.observe(mainPath, { attributes: true, attributeFilter: ['d'] });
+      } catch (_e) {
+        // MutationObserver may be unavailable in extreme sandboxes; the
+        // _decorateAllConnections rAF pass still refreshes via the
+        // _decoratedSvgs early-return branch above.
+      }
+
+      hit.addEventListener('mouseenter', () => {
+        svgEl.classList.add('pql-edge-hover');
+        const edgeId = this._edgeIdForSvg(svgEl);
+        if (edgeId) this._showEdgeToolbar(svgEl, edgeId);
+      });
+      hit.addEventListener('mouseleave', () => {
+        svgEl.classList.remove('pql-edge-hover');
+        this._scheduleEdgeToolbarHide();
+      });
+      hit.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        const edgeId = this._edgeIdForSvg(svgEl);
+        if (edgeId) this._selectEdge(edgeId);
+      });
+    },
+
+    _selectEdge(edgeId) {
+      this._clearSelectedEdge();
+      this._selectedEdgeId = edgeId;
+      const df = this._drawflow;
+      if (!df) return;
+      const svgs = df.container.querySelectorAll('.drawflow .connection');
+      for (const svg of svgs) {
+        if (this._edgeIdForSvg(svg) === edgeId) {
+          svg.classList.add('pql-edge-selected');
+        }
+      }
+    },
+
+    _clearSelectedEdge() {
+      this._selectedEdgeId = null;
+      const df = this._drawflow;
+      if (!df) return;
+      const svgs = df.container.querySelectorAll('.drawflow .connection.pql-edge-selected');
+      for (const svg of svgs) svg.classList.remove('pql-edge-selected');
+    },
+
+    _showEdgeToolbar(svgEl, edgeId) {
+      this._cancelEdgeToolbarHide();
+      this._edgeToolbarTarget = { svgEl, edgeId };
+      this.edgeToolbar = { ...this.edgeToolbar, edgeId, visible: true };
+      this._updateEdgeToolbarPosition();
+    },
+
+    _scheduleEdgeToolbarReposition() {
+      if (!this.edgeToolbar.visible) return;
+      if (this._edgeToolbarRaf) return;
+      this._edgeToolbarRaf = window.setTimeout(() => {
+        this._edgeToolbarRaf = null;
+        this._updateEdgeToolbarPosition();
+      }, 0);
+    },
+
+    _updateEdgeToolbarPosition() {
+      const target = this._edgeToolbarTarget;
+      if (!target || !target.svgEl) return;
+      const path = target.svgEl.querySelector('.main-path');
+      if (!path) return;
+      let mid;
+      try {
+        const len = path.getTotalLength();
+        mid = path.getPointAtLength(len / 2);
+      } catch (_e) {
+        // Some browsers throw if the path is unrendered (zero-length).
+        return;
+      }
+      // Translate from SVG-local coords to the stage's positioned ancestor.
+      const stage = this.$refs.canvas.parentElement;
+      const svgRect = target.svgEl.getBoundingClientRect();
+      const stageRect = stage.getBoundingClientRect();
+      const x = svgRect.left - stageRect.left + mid.x;
+      const y = svgRect.top - stageRect.top + mid.y;
+      this.edgeToolbar = { ...this.edgeToolbar, x, y };
+    },
+
+    _scheduleEdgeToolbarHide() {
+      this._cancelEdgeToolbarHide();
+      // 600 ms exit-delay — same forgiveness window n8n uses so the user
+      // can dart the cursor across the edge into the toolbar without it
+      // vanishing mid-flight.
+      this._edgeToolbarHideTimer = window.setTimeout(() => this._hideEdgeToolbar(), 600);
+    },
+
+    _cancelEdgeToolbarHide() {
+      if (this._edgeToolbarHideTimer) {
+        window.clearTimeout(this._edgeToolbarHideTimer);
+        this._edgeToolbarHideTimer = null;
+      }
+    },
+
+    _hideEdgeToolbar() {
+      this._cancelEdgeToolbarHide();
+      this.edgeToolbar = { visible: false, x: 0, y: 0, edgeId: null };
+      this._edgeToolbarTarget = null;
+    },
+
+    deleteEdgeById(edgeId) {
+      if (!this.canWrite || !edgeId) return;
+      const edge = this.edges[edgeId];
+      if (!edge) return;
+      const srcDf = this._drawflowNodes[edge.source_node_id];
+      const tgtDf = this._drawflowNodes[edge.target_node_id];
+      if (srcDf == null || tgtDf == null) return;
+      const targetIdx = this._pinIndex(
+        this.nodes[edge.target_node_id]?.block_type,
+        edge.target_pin,
+        'in',
+      );
+      const outClass = 'output_1';
+      const inClass = `input_${targetIdx + 1}`;
+      try {
+        this._drawflow.removeSingleConnection(srcDf, tgtDf, outClass, inClass);
+      } catch (_e) {
+        return;
+      }
+      this._pushCommand({
+        do: () => {
+          try {
+            this._drawflow.removeSingleConnection(srcDf, tgtDf, outClass, inClass);
+          } catch (_e) {
+            // Idempotent.
+          }
+        },
+        undo: () => {
+          try {
+            this._drawflow.addConnection(srcDf, tgtDf, outClass, inClass);
+          } catch (_e) {
+            // Connection target may have moved away.
+          }
+        },
+      });
+      this._hideEdgeToolbar();
+      this._clearSelectedEdge();
+    },
+
+    async insertBlockOnEdge(edgeId) {
+      if (!this.canWrite || !edgeId) return;
+      const edge = this.edges[edgeId];
+      if (!edge) return;
+      const srcPqlId = edge.source_node_id;
+      const tgtPqlId = edge.target_node_id;
+      const srcNode = this.nodes[srcPqlId];
+      const tgtNode = this.nodes[tgtPqlId];
+      if (!srcNode || !tgtNode) return;
+      // Hide the toolbar before opening the picker so it doesn't linger
+      // over the popover.
+      this._hideEdgeToolbar();
+      // Reuse the output-plus picker as a generic block chooser; remember
+      // both endpoints so we can re-wire after the pick.
+      const midX = ((srcNode.position?.x || 0) + (tgtNode.position?.x || 0)) / 2;
+      const midY = ((srcNode.position?.y || 0) + (tgtNode.position?.y || 0)) / 2;
+      this._insertOnEdgeContext = { edgeId, srcPqlId, tgtPqlId, targetPin: edge.target_pin };
+      // Position the picker in screen coords near the edge midpoint.
+      const stage = this.$refs.canvas.parentElement;
+      const stageRect = stage.getBoundingClientRect();
+      const df = this._drawflow;
+      const zoom = df ? df.zoom || 1 : 1;
+      const x = midX * zoom + (df ? df.canvas_x : 0) + 12;
+      const y = midY * zoom + (df ? df.canvas_y : 0) + 12;
+      this.outputPlusPicker = { open: true, x, y, sourcePqlId: null };
+      // Stash the dropped position for the new block.
+      this._insertOnEdgeContext.dropPos = { x: midX, y: midY };
+    },
+
+    _openOutputPlusPicker(sourcePqlId, anchorEl) {
+      if (!this.canWrite) return;
+      this._insertOnEdgeContext = null;
+      const stage = this.$refs.canvas.parentElement;
+      const stageRect = stage.getBoundingClientRect();
+      const anchorRect = anchorEl.getBoundingClientRect();
+      const x = anchorRect.right - stageRect.left + 8;
+      const y = anchorRect.top - stageRect.top;
+      this.outputPlusPicker = { open: true, x, y, sourcePqlId };
+    },
+
+    _closeOutputPlusPicker() {
+      this.outputPlusPicker = { open: false, x: 0, y: 0, sourcePqlId: null };
+      this._insertOnEdgeContext = null;
+    },
+
+    _pickOutputPlusBlock(kind) {
+      const def = BLOCK_DEFS[kind];
+      if (!def) return;
+      const insertCtx = this._insertOnEdgeContext;
+      const sourcePqlId = this.outputPlusPicker.sourcePqlId;
+      this._closeOutputPlusPicker();
+
+      if (insertCtx) {
+        // Insert-on-edge flow: remove original, drop new node at midpoint,
+        // wire src→new and new→tgt.  Single undo-command wraps the trio.
+        const srcEdge = this.edges[insertCtx.edgeId];
+        if (!srcEdge) return;
+        const srcDf = this._drawflowNodes[insertCtx.srcPqlId];
+        const tgtDf = this._drawflowNodes[insertCtx.tgtPqlId];
+        if (srcDf == null || tgtDf == null) return;
+        const tgtIdx = this._pinIndex(
+          this.nodes[insertCtx.tgtPqlId]?.block_type,
+          insertCtx.targetPin,
+          'in',
+        );
+        const origIn = `input_${tgtIdx + 1}`;
+        try {
+          this._drawflow.removeSingleConnection(srcDf, tgtDf, 'output_1', origIn);
+        } catch (_e) {
+          return;
+        }
+        const newPqlId = generateNodeId();
+        const pos = insertCtx.dropPos || { x: 200, y: 200 };
+        const newDf = this._drawflow.addNode(
+          kind,
+          def.inputs || 0,
+          def.outputs || 0,
+          pos.x,
+          pos.y,
+          kind,
+          { pql_node_id: newPqlId, block_type: kind },
+          nodeHtml(kind, newPqlId),
+          false,
+        );
+        this._drawflowNodes[newPqlId] = newDf;
+        this.nodes[newPqlId] = {
+          id: newPqlId,
+          block_type: kind,
+          config: def.defaultConfig(),
+          position: pos,
+        };
+        try {
+          this._drawflow.addConnection(srcDf, newDf, 'output_1', 'input_1');
+        } catch (_e) {
+          // Skip.
+        }
+        if ((def.outputs || 0) > 0 && (BLOCK_DEFS[this.nodes[insertCtx.tgtPqlId]?.block_type]?.inputs || 0) > 0) {
+          try {
+            this._drawflow.addConnection(newDf, tgtDf, 'output_1', origIn);
+          } catch (_e) {
+            // Skip.
+          }
+        }
+        this._refreshNodeBody(newPqlId);
+        this._renderOutputPlus(newPqlId);
+        this._scheduleAutosave();
+        this._scheduleValidate();
+        return;
+      }
+
+      if (!sourcePqlId) return;
+      // Plain output-plus flow: add new block 150 px right of source +
+      // auto-wire.
+      const src = this.nodes[sourcePqlId];
+      if (!src) return;
+      const srcDf = this._drawflowNodes[sourcePqlId];
+      if (srcDf == null) return;
+      const pos = {
+        x: (src.position?.x || 100) + 220,
+        y: src.position?.y || 100,
+      };
+      const newPqlId = generateNodeId();
+      const newDf = this._drawflow.addNode(
+        kind,
+        def.inputs || 0,
+        def.outputs || 0,
+        pos.x,
+        pos.y,
+        kind,
+        { pql_node_id: newPqlId, block_type: kind },
+        nodeHtml(kind, newPqlId),
+        false,
+      );
+      this._drawflowNodes[newPqlId] = newDf;
+      this.nodes[newPqlId] = {
+        id: newPqlId,
+        block_type: kind,
+        config: def.defaultConfig(),
+        position: pos,
+      };
+      if ((def.inputs || 0) > 0) {
+        try {
+          this._drawflow.addConnection(srcDf, newDf, 'output_1', 'input_1');
+        } catch (_e) {
+          // Skip.
+        }
+      }
+      this._refreshNodeBody(newPqlId);
+      this._renderOutputPlus(newPqlId);
+      this._scheduleAutosave();
+      this._scheduleValidate();
+    },
+
+    _updateZoomCssVar(zoom) {
+      const root = this.$refs.canvas;
+      if (!root) return;
+      const z = Number.isFinite(zoom) && zoom > 0 ? zoom : 1;
+      root.style.setProperty('--pql-zoom', String(z));
+      // Output-plus elements are mounted in stage-coords (outside the
+      // Drawflow precanvas transform), so reposition them when zoom shifts.
+      this._scheduleAllOutputPlusReposition();
+      this._scheduleEdgeToolbarReposition();
+    },
+
+    // ---------------------------------------------------------------------
+    // Marching-ants helpers — toggle `.pql-edge-running` on the connection
+    // SVG for every edge whose source feeds into the preview target node
+    // (transitive upstream walk).
+    // ---------------------------------------------------------------------
+
+    _edgesUpstreamOf(targetPqlId) {
+      const result = new Set();
+      if (!targetPqlId) return result;
+      const adj = new Map();
+      for (const edge of Object.values(this.edges)) {
+        if (!adj.has(edge.target_node_id)) adj.set(edge.target_node_id, []);
+        adj.get(edge.target_node_id).push(edge);
+      }
+      const stack = [targetPqlId];
+      const seen = new Set();
+      while (stack.length) {
+        const cur = stack.pop();
+        if (seen.has(cur)) continue;
+        seen.add(cur);
+        const upstream = adj.get(cur) || [];
+        for (const edge of upstream) {
+          result.add(edge.id);
+          stack.push(edge.source_node_id);
+        }
+      }
+      return result;
+    },
+
+    _setRunningEdges(edgeIds) {
+      const df = this._drawflow;
+      if (!df) return;
+      this._runningEdgeIds = edgeIds instanceof Set ? edgeIds : new Set(edgeIds);
+      const svgs = df.container.querySelectorAll('.drawflow .connection');
+      for (const svg of svgs) {
+        const id = this._edgeIdForSvg(svg);
+        if (this._runningEdgeIds.has(id)) svg.classList.add('pql-edge-running');
+        else svg.classList.remove('pql-edge-running');
+      }
+    },
+
+    // ---------------------------------------------------------------------
+    // Always-on output-plus handle — n8n's flagship affordance ported to
+    // Drawflow.  One <div> per output pin, mounted absolutely inside the
+    // stage (NOT inside the Drawflow precanvas), repositioned on every
+    // node-move and zoom event.  Click opens the block-picker; on pick
+    // the chosen block lands 220 px to the right of the source and is
+    // auto-wired.
+    // ---------------------------------------------------------------------
+
+    _renderOutputPlus(pqlId) {
+      const df = this._drawflow;
+      if (!df) return;
+      const dfId = this._drawflowNodes[pqlId];
+      if (dfId == null) return;
+      const node = this.nodes[pqlId];
+      if (!node) return;
+      const def = BLOCK_DEFS[node.block_type];
+      if (!def || (def.outputs || 0) === 0) return;
+      const stage = this.$refs.canvas.parentElement;
+      if (!stage) return;
+      const dfNodeEl = df.container.querySelector(`#node-${dfId}`);
+      if (!dfNodeEl) return;
+      // One handle per output pin.
+      for (let i = 1; i <= (def.outputs || 0); i++) {
+        const pinEl = dfNodeEl.querySelector(`.outputs .output_${i}`) ||
+          dfNodeEl.querySelector(`.outputs .output:nth-child(${i})`);
+        if (!pinEl) continue;
+        const key = `${pqlId}:${i}`;
+        let handle = this._outputPlusElements.get(key);
+        if (!handle) {
+          handle = document.createElement('div');
+          handle.className = 'pql-output-plus';
+          handle.innerHTML = '<i class="bi bi-plus"></i>';
+          handle.title = 'Add a block connected to this output';
+          handle.addEventListener('click', (ev) => {
+            ev.stopPropagation();
+            this._openOutputPlusPicker(pqlId, handle);
+          });
+          stage.appendChild(handle);
+          this._outputPlusElements.set(key, handle);
+        }
+        this._positionOutputPlus(handle, pinEl, stage);
+      }
+    },
+
+    _positionOutputPlus(handle, pinEl, stage) {
+      const pinRect = pinEl.getBoundingClientRect();
+      const stageRect = stage.getBoundingClientRect();
+      // Anchor the handle 42 px to the right of the pin centre.
+      const x = pinRect.right - stageRect.left + 36;
+      const y = pinRect.top - stageRect.top + pinRect.height / 2 - 11;
+      handle.style.left = `${x}px`;
+      handle.style.top = `${y}px`;
+    },
+
+    _repositionOutputPlusFor(dfId) {
+      const df = this._drawflow;
+      if (!df) return;
+      let pqlId = null;
+      for (const [id, mapped] of Object.entries(this._drawflowNodes)) {
+        if (String(mapped) === String(dfId)) {
+          pqlId = id;
+          break;
+        }
+      }
+      if (!pqlId) return;
+      const stage = this.$refs.canvas.parentElement;
+      if (!stage) return;
+      const dfNodeEl = df.container.querySelector(`#node-${dfId}`);
+      if (!dfNodeEl) return;
+      const def = BLOCK_DEFS[this.nodes[pqlId]?.block_type];
+      if (!def) return;
+      for (let i = 1; i <= (def.outputs || 0); i++) {
+        const key = `${pqlId}:${i}`;
+        const handle = this._outputPlusElements.get(key);
+        if (!handle) continue;
+        const pinEl = dfNodeEl.querySelector(`.outputs .output_${i}`) ||
+          dfNodeEl.querySelector(`.outputs .output:nth-child(${i})`);
+        if (!pinEl) continue;
+        this._positionOutputPlus(handle, pinEl, stage);
+      }
+    },
+
+    _scheduleAllOutputPlusReposition() {
+      if (this._outputPlusRaf) return;
+      this._outputPlusRaf = window.setTimeout(() => {
+        this._outputPlusRaf = null;
+        const df = this._drawflow;
+        if (!df) return;
+        const stage = this.$refs.canvas.parentElement;
+        if (!stage) return;
+        for (const [key, handle] of this._outputPlusElements) {
+          const [pqlId, idxStr] = key.split(':');
+          const dfId = this._drawflowNodes[pqlId];
+          if (dfId == null) {
+            handle.remove();
+            this._outputPlusElements.delete(key);
+            continue;
+          }
+          const dfNodeEl = df.container.querySelector(`#node-${dfId}`);
+          if (!dfNodeEl) continue;
+          const i = parseInt(idxStr, 10);
+          const pinEl = dfNodeEl.querySelector(`.outputs .output_${i}`) ||
+            dfNodeEl.querySelector(`.outputs .output:nth-child(${i})`);
+          if (!pinEl) continue;
+          this._positionOutputPlus(handle, pinEl, stage);
+        }
+      });
+    },
+
     _refreshAllNodeErrors() {
       const df = this._drawflow;
       if (!df) return;
@@ -1547,6 +2132,7 @@ export function dpCanvasEditor(product, ctx) {
         position: pos,
       };
       this._refreshNodeBody(pqlId);
+      this._renderOutputPlus(pqlId);
       this._scheduleAutosave();
       this._scheduleValidate();
       this._pushCommand({
@@ -2129,25 +2715,33 @@ export function dpCanvasEditor(product, ctx) {
       if (!this.previewNodeId) return;
       this.previewBusy = true;
       this.previewError = null;
+      // Marching-ants on every edge whose target is upstream of the
+      // preview-target node — i.e. the path the executor is walking.
+      this._setRunningEdges(this._edgesUpstreamOf(this.previewNodeId));
       const bust = opts.bust ? '?bust=1' : '';
-      const res = await window.pqlApi.fetch(`/api/dp/${this.product.id}/canvas/preview${bust}`, {
-        method: 'POST',
-        body: {
-          document: this._buildDocument(),
-          upto_node_id: this.previewNodeId,
-          limit: this.previewLimit,
-        },
-        silent: true,
-      });
-      this.previewBusy = false;
-      if (!res.ok) {
-        this.previewError = res.error || 'Preview failed';
-        return;
-      }
-      this.previewResult = res.data;
-      if (this.previewNodeId && res.data && typeof res.data.row_count === 'number') {
-        this.previewRowCountByNode[this.previewNodeId] = res.data.row_count;
-        this._refreshAllNodeBodies();
+      try {
+        const res = await window.pqlApi.fetch(`/api/dp/${this.product.id}/canvas/preview${bust}`, {
+          method: 'POST',
+          body: {
+            document: this._buildDocument(),
+            upto_node_id: this.previewNodeId,
+            limit: this.previewLimit,
+          },
+          silent: true,
+        });
+        this.previewBusy = false;
+        if (!res.ok) {
+          this.previewError = res.error || 'Preview failed';
+          return;
+        }
+        this.previewResult = res.data;
+        if (this.previewNodeId && res.data && typeof res.data.row_count === 'number') {
+          this.previewRowCountByNode[this.previewNodeId] = res.data.row_count;
+          this._refreshAllNodeBodies();
+        }
+      } finally {
+        this.previewBusy = false;
+        this._setRunningEdges(new Set());
       }
     },
   };

@@ -15,6 +15,52 @@ contributors who need finer commit-level granularity.
 <!-- Future commits land here until the next cluster boundary is
 defined in ``scripts/clusters.json``. -->
 
+### Features
+
+- Canvas connection UX overhaul on top of the post-cluster-165-174
+  bug sweep (rc234).  After the Phase 175 fixes the wires rendered
+  correctly but still looked like raw Drawflow defaults — 2 px
+  Béziers with no hover, no click affordance, no toolbar, no
+  arrows.  This wave lifts the connection layer to n8n parity
+  without swapping the underlying library:
+  - **Fat hit-area**: every connection now carries an invisible
+    sibling `<path>` 22 px wide with `pointer-events: stroke`, so
+    even hair-thin Béziers respond to hover/click anywhere along
+    their length.  Mirrors Vue Flow's `interaction-width=40`.
+  - **Hover + select states**: hover paints a stronger blue with
+    a soft drop-shadow glow; click selects the edge (yellow,
+    slightly thicker) and `Delete` / `Backspace` removes it.
+    Visual feedback on edges was previously absent entirely.
+  - **Mid-edge toolbar (insert + delete)**: hovering a wire pops
+    a two-button overlay anchored to the path midpoint via
+    `getPointAtLength`; 600 ms exit-delay matches n8n so the
+    cursor can dart from edge to toolbar without it vanishing.
+    The "+" opens the block-picker and splits the edge into
+    `src → new → tgt` atomically; trash removes the edge.  Both
+    actions push undo commands.
+  - **Directional arrows**: shared `<defs><marker>` injected once
+    near the canvas root, referenced from every `.main-path` via
+    `marker-end`; `fill="context-stroke"` makes the arrow inherit
+    the edge color automatically (incl. type-coloring + states).
+  - **Zoom-compensated stroke**: `df.on('zoom')` writes a
+    `--pql-zoom` CSS custom property on the canvas root; the
+    visible stroke AND the hit-area stroke both use
+    `calc(base / var(...))` so wires stay legible from 50 % to
+    160 % zoom without crowding nodes at high zoom.
+  - **Marching-ants animation on running edges**: `runPreview`
+    walks the transitive upstream of the preview target node and
+    sets `.pql-edge-running` on each edge; CSS keyframes pulse
+    the dasharray for the duration of the request.
+    `prefers-reduced-motion` users get a static dash.
+  - **Always-on "+" output handle**: every output pin sprouts a
+    22 px button 36 px to its right; click opens a Bootstrap-
+    themed block-picker positioned at the handle, and the chosen
+    block lands 220 px right and auto-wires.  Drag-from-6-px-pin
+    becomes click-on-22-px-button — the single biggest reason
+    n8n feels approachable to first-time users.
+  - 0 backend changes; pytest stays 4121/0/10.  Frontend assets
+    bump from rc233 to rc234 for cache-busting.
+
 ### Fixes
 
 - Canvas bug-fix sweep after the Mega-Cluster 165-174 browser-

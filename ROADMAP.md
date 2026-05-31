@@ -3066,6 +3066,29 @@ PointlesSQL
 │   │   (174).  Each phase one commit; rc222→rc232.  ALL LOCAL
 │   │   until single final push.
 │   │
+├── Phase 176 — Canvas connection UX overhaul (n8n-level)  ✅ shipped (local, 2026-05-31)
+│   │
+│   │   After Phase 175 the wires rendered correctly but still
+│   │   looked like raw Drawflow defaults — 2 px Béziers, no
+│   │   hover, no click affordance, no toolbar, no arrows.  This
+│   │   wave lifts the connection layer to n8n parity without
+│   │   swapping the underlying library.  Eight features land in
+│   │   one commit: fat 22 px invisible hit-area sibling path
+│   │   (hover/click work along the whole wire); hover + select
+│   │   states with stroke + drop-shadow glow; mid-edge insert/
+│   │   delete toolbar anchored to the path midpoint via
+│   │   `getPointAtLength` with 600 ms exit-delay; directional
+│   │   arrows via shared `<defs><marker stroke="context-stroke">`
+│   │   inherited per edge; `--pql-zoom` CSS custom property fed
+│   │   from `df.on('zoom')` keeps stroke widths legible from
+│   │   50 %–160 %; marching-ants animation on edges upstream of
+│   │   the running preview (respects prefers-reduced-motion);
+│   │   click + `Delete` deletion shortcut for selected edges;
+│   │   always-on "+" handle to the right of every output pin
+│   │   that opens the block-picker and auto-wires the new block
+│   │   220 px right.  ~485 LOC frontend, 0 backend; full pytest
+│   │   4121/0/10 still green.  rc233→rc234.
+│   │
 ├── Phase 175 — Canvas bug-fix sweep (post 165-174 browser-replay)  ✅ shipped (local, 2026-05-31)
 │   │
 │   │   Playwright-MCP browser-replay of the 165-174 cluster

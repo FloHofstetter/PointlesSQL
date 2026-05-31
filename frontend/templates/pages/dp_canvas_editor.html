@@ -216,6 +216,70 @@
               @drop.prevent="onCanvasDrop($event)">
             <div x-ref="canvas" id="dp-canvas-drawflow" class="pql-dp-canvas-drawflow"></div>
 
+            {# SVG <defs> for the directional arrow-head marker.  A single
+               <marker> instance is referenced by every edge via
+               marker-end="url(#pql-arrow-end)"; stroke="context-stroke"
+               makes the arrow inherit the path's color automatically. #}
+            <svg width="0" height="0" style="position: absolute;" aria-hidden="true">
+                <defs>
+                    <marker id="pql-arrow-end" viewBox="0 0 10 10"
+                            refX="9" refY="5"
+                            markerWidth="6" markerHeight="6"
+                            orient="auto-start-reverse">
+                        <path d="M0,0 L10,5 L0,10 z" fill="context-stroke" stroke="context-stroke"/>
+                    </marker>
+                </defs>
+            </svg>
+
+            {# Mid-edge hover toolbar.  Position is recomputed on the
+               JS side from the path midpoint every rAF while visible
+               (handles pan + zoom).  600 ms exit-delay forgives a
+               cursor that overshoots into empty space. #}
+            <div class="pql-edge-toolbar"
+                 x-show="edgeToolbar.visible"
+                 :style="`left:${edgeToolbar.x}px; top:${edgeToolbar.y}px;`"
+                 @mouseenter="_cancelEdgeToolbarHide()"
+                 @mouseleave="_scheduleEdgeToolbarHide()"
+                 x-cloak>
+                <button type="button"
+                        class="btn btn-sm btn-link p-0 px-1"
+                        @click="insertBlockOnEdge(edgeToolbar.edgeId)"
+                        title="Insert block on this edge">
+                    <i class="bi bi-plus-circle"></i>
+                </button>
+                <button type="button"
+                        class="btn btn-sm btn-link p-0 px-1 text-danger"
+                        @click="deleteEdgeById(edgeToolbar.edgeId)"
+                        title="Delete this connection">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </div>
+
+            {# Output-plus block-picker — opens when the user clicks the
+               always-on "+" handle to the right of any output pin.  Same
+               block taxonomy as the left palette, but auto-wires the
+               new block to the source output on selection. #}
+            <div class="pql-output-plus-picker"
+                 x-show="outputPlusPicker.open"
+                 :style="`left:${outputPlusPicker.x}px; top:${outputPlusPicker.y}px;`"
+                 @click.outside="_closeOutputPlusPicker()"
+                 @keydown.escape.window="_closeOutputPlusPicker()"
+                 x-cloak>
+                <template x-for="(blockKinds, group) in paletteGroups" :key="group">
+                    <div>
+                        <div class="pql-output-plus-picker-group" x-text="group"></div>
+                        <template x-for="kind in blockKinds" :key="kind">
+                            <div class="pql-output-plus-picker-item"
+                                 @click="_pickOutputPlusBlock(kind)"
+                                 :title="blockHelp(kind)">
+                                <i class="bi" :class="blockIcon(kind)"></i>
+                                <span x-text="blockLabel(kind)"></span>
+                            </div>
+                        </template>
+                    </div>
+                </template>
+            </div>
+
             <div class="pql-dp-canvas-empty position-absolute top-50 start-50 translate-middle text-center text-muted"
                  x-show="!loading && nodeCount === 0">
                 <i class="bi bi-diagram-3 fs-1 d-block opacity-50"></i>
