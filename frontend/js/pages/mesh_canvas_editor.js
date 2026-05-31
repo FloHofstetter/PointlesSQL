@@ -227,10 +227,22 @@ export function meshCanvasEditor() {
     statusLabel() {
       if (this.saving) return 'Saving…';
       if (this.saveState === 'error') return 'Save failed';
+      if (this.saveState === 'saved' && this.lastSavedAt) return '✓ Saved';
+      return '';
+    },
+
+    statusTooltip() {
       if (this.saveState === 'saved' && this.lastSavedAt) {
-        return 'Saved · ' + new Date(this.lastSavedAt).toLocaleTimeString();
+        return 'Last saved at ' + new Date(this.lastSavedAt).toLocaleString();
       }
       return '';
+    },
+
+    statusClass() {
+      if (this.saveState === 'error') return 'text-danger';
+      if (this.saving) return 'text-muted';
+      if (this.saveState === 'saved') return 'text-success';
+      return 'text-muted';
     },
 
     async load() {

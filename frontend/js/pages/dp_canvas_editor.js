@@ -685,13 +685,26 @@ export function dpCanvasEditor(product, ctx) {
 
     saveStateLabel() {
       if (this.saveState === 'saving') return 'Saving…';
-      if (this.saveState === 'error') return 'Save failed — ' + (this.saveError || '');
+      if (this.saveState === 'error') return 'Save failed';
+      if (this.saveState === 'saved' && this.lastSavedAt) return '✓ Saved';
+      if (this.version !== null) return 'v' + this.version;
+      return '';
+    },
+
+    saveStateTooltip() {
+      if (this.saveState === 'error') return this.saveError || 'Save failed';
       if (this.saveState === 'saved' && this.lastSavedAt) {
         const date = new Date(this.lastSavedAt);
-        return 'Saved · ' + date.toLocaleTimeString();
+        return 'Last saved at ' + date.toLocaleString();
       }
-      if (this.version !== null) return 'Loaded v' + this.version;
       return '';
+    },
+
+    saveStateClass() {
+      if (this.saveState === 'error') return 'text-danger';
+      if (this.saveState === 'saving') return 'text-muted';
+      if (this.saveState === 'saved') return 'text-success';
+      return 'text-muted';
     },
 
     async loadLatest() {

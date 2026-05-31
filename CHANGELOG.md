@@ -17,6 +17,71 @@ defined in ``scripts/clusters.json``. -->
 
 ### Features
 
+- Canvas Quality Push — cross-surface Phase-177 wave landing the
+  27-finding audit at
+  [`docs/internal/canvas-audit-2026-05-31.md`](docs/internal/canvas-audit-2026-05-31.md)
+  (rc237).  Phase 176 only polished the DP editor's edge layer;
+  mesh + diff still read as 2017-Drawflow demos.  This push lifts
+  every Drawflow surface to a shared visual baseline + closes the
+  bulk of the audit's Critical / High / Medium buckets:
+  - **Shared canvas foundation (Wave A)**: Phase-176's edge polish
+    promoted from `dp_canvas_editor.css` to a new
+    `canvas_shared.css` keyed on a `.pql-canvas` base class.  The
+    block anatomy (header / body / cols / footer / badge / compact
+    toggle) moved with it so editor + mesh + diff share one node
+    skin.  Diff's Drawflow-default turquoise fill goes away by
+    inheritance.  Two stateless helpers
+    (`installZoomObserver`, `findNonOverlappingPosition`) live in
+    `_canvas_helpers.js`.
+  - **Focus-mode toggle (#1)**: single `Shift+F` collapses the
+    primary rail + the context panel at once via existing
+    `data-pql-*` infra plus a new `data-pql-context-collapsed`
+    attribute.  Canvas real-estate climbs from ~33 % of viewport
+    (537 px on 1600 px wide) to ~58 % (932 px) on DP-Canvas.
+    State persists in `localStorage['pql.focus-mode']`; restores
+    the user's prior rail / panel preferences on toggle-off.
+  - **Output-plus hide-when-connected (#2)**: the always-on `+`
+    handle no longer overlaps an existing outgoing edge; toggles
+    back on when the edge is removed.
+  - **Sticky-note collision avoidance (#3)**: fresh notes slide
+    (+40, +40) up to eight attempts until overlap with existing
+    nodes / stickies drops below 30 % of the note area.
+  - **Mesh-Canvas edge polish (#M1)**: adopts the DP-style fat
+    hit-area + arrow marker + hover state.  No type-colour, no
+    mid-toolbar (mesh has no per-edge actions).
+  - **Diff-Canvas skin reuse + state side-band (#D1, #D4)**: the
+    3-px gold ring around modified blocks collapses to a 4-px
+    `border-left` side-band so the edge no longer fights the
+    node-skin override for visual weight.
+  - **Dynamic edge glow (#4)**: `getTotalLength()` on hover sets
+    `--pql-edge-glow` between 2 and 8 px so short ~75 px edges
+    between adjacent nodes don't drown in the drop-shadow halo.
+  - **Live zoom observer (#5)**: replaces the partial
+    `df.on('zoom')` binding with a `MutationObserver` on the
+    `.drawflow` `style.transform`.  Stroke compensation now
+    tracks every programmatic `zoom_in/out/reset` path too.
+  - **Hover debounce (#6)**: 80 ms timeout on hit-area mouseenter
+    so a cursor crossing several edges no longer flickers each
+    one through its full hover style.
+  - **Diff per-panel fit + zoom controls (#D2, #D5)**: each pane
+    gets a `[−][+][↺][⛶]` cluster + auto-fits both panes on first
+    paint.
+  - **Diff compact body (#D3)**: side-by-side diff fits roughly
+    twice as many blocks per panel via a one-strip header.
+  - **Mesh sidebar → banner (#M4, #M5)**: drops the two static
+    help-text rails into a dismissible toast + a bottom-left
+    floating issue card.  Mesh stage width climbs from ~600 px
+    to ~1080 px on a 1600 px viewport.
+  - **Minimap visibility persists (#10)**: state survives reloads.
+  - **Subtle save indicator (#12)**: "✓ Saved" replaces the
+    constantly-flickering "Saved · HH:MM:SS"; the precise
+    timestamp moves to a `title=` tooltip.
+  - **Topbar btn-groups + aria-labels (#13)**: view, navigate
+    and document button clusters get visual grouping and a11y
+    labels.
+  - 0 backend changes; pytest stays 4121/0/10.  Frontend assets
+    bump from rc236 to rc237 for cache-busting.
+
 - Canvas connection UX overhaul on top of the post-cluster-165-174
   bug sweep (rc234).  After the Phase 175 fixes the wires rendered
   correctly but still looked like raw Drawflow defaults — 2 px

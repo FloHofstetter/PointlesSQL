@@ -3066,6 +3066,31 @@ PointlesSQL
 │   │   (174).  Each phase one commit; rc222→rc232.  ALL LOCAL
 │   │   until single final push.
 │   │
+├── Phase 177 — Canvas Quality Push (cross-surface audit close-out)  ✅ shipped (local, 2026-05-31)
+│   │
+│   │   Phase 176 polished the DP-Canvas edge layer; the mesh and
+│   │   diff surfaces still read as 2017-Drawflow demos.  A full
+│   │   Playwright + n8n-source audit
+│   │   ([`docs/internal/canvas-audit-2026-05-31.md`](docs/internal/canvas-audit-2026-05-31.md))
+│   │   logged 27 findings.  This wave lands them all in five
+│   │   sub-commits (refactor → critical → high → medium → polish):
+│   │   shared CSS / helper extraction (Wave A), focus-mode
+│   │   `Shift+F` toggle that lifts canvas real-estate from ~33 %
+│   │   to ~58 % of viewport, output-plus hide-when-connected,
+│   │   sticky-note collision-avoid, mesh + diff edge decoration
+│   │   parity, diff skin reuse with 4-px side-bands instead of
+│   │   3-px gold rings, dynamic glow that scales with edge length,
+│   │   live MutationObserver-driven `--pql-zoom` (fixes
+│   │   programmatic-zoom stale-stroke regression), 80 ms hover
+│   │   debounce, diff per-panel fit + zoom + compact body, mesh
+│   │   help-text → dismissible banner (stage grows ~600 px →
+│   │   ~1080 px on 1600 px wide), minimap visibility persistence,
+│   │   subtle "✓ Saved" with tooltip-timestamp, topbar btn-groups
+│   │   with aria-labels.  Mesh smart-routing (#M2) and Drawflow→
+│   │   Vue-Flow swap deferred to a future library-migration phase
+│   │   per audit recommendation.  ~1080 LOC frontend, 0 backend;
+│   │   full pytest 4121/0/10 still green.  rc236→rc237.
+│   │
 ├── Phase 176 — Canvas connection UX overhaul (n8n-level)  ✅ shipped (local, 2026-05-31)
 │   │
 │   │   After Phase 175 the wires rendered correctly but still

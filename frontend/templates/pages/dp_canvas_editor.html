@@ -51,7 +51,10 @@
                 Canvas v<span x-text="version || 'new'"></span>
             </span>
         </div>
-        <span class="ms-3 small text-muted" x-text="saveStateLabel()"></span>
+        <span class="ms-3 small"
+              :class="saveStateClass()"
+              :title="saveStateTooltip()"
+              x-text="saveStateLabel()"></span>
         <div class="ms-auto d-flex align-items-center gap-2">
             <span class="badge"
                   :class="errors.length === 0 ? 'bg-success-subtle text-success-emphasis' : 'bg-danger-subtle text-danger-emphasis'"
@@ -115,63 +118,81 @@
                 <i class="bi bi-pin-angle-fill"></i>
                 <span x-text="'v' + pinnedVersion + ' pinned'"></span>
             </span>
-            <button class="btn btn-sm btn-outline-secondary"
-                    @click="toggleCompactBodies()"
-                    :class="{ active: compactBodies }"
-                    title="Toggle compact node bodies (hide column preview)">
-                <i class="bi" :class="compactBodies ? 'bi-arrows-angle-contract' : 'bi-arrows-angle-expand'"></i>
-            </button>
-            <button class="btn btn-sm btn-outline-secondary"
-                    @click="toggleOrthogonalEdges()"
-                    :class="{ active: orthogonalEdges }"
-                    title="Toggle orthogonal edge routing">
-                <i class="bi" :class="orthogonalEdges ? 'bi-bounding-box' : 'bi-bezier2'"></i>
-            </button>
-            <button class="btn btn-sm btn-outline-secondary"
-                    @click="toggleMinimap()"
-                    :class="{ active: minimapVisible }"
-                    title="Toggle minimap">
-                <i class="bi bi-map"></i>
-            </button>
-            <button class="btn btn-sm btn-outline-secondary"
-                    @click="openSearch()"
-                    title="Search blocks (Ctrl+F)">
-                <i class="bi bi-search"></i>
-            </button>
-            <button class="btn btn-sm btn-outline-secondary"
-                    @click="autoTidy()"
-                    :disabled="nodeCount === 0"
-                    title="Auto-layout (Ctrl+L)">
-                <i class="bi bi-diagram-3"></i>
-            </button>
-            <button class="btn btn-sm btn-outline-secondary"
-                    @click="fitToView()"
-                    :disabled="nodeCount === 0"
-                    title="Fit canvas to view">
-                <i class="bi bi-fullscreen"></i>
-            </button>
-            <button class="btn btn-sm btn-outline-secondary"
-                    @click="focusMode = window.pqlToggleFocusMode()"
-                    :class="{ active: focusMode }"
-                    title="Focus mode — hide side navigation (Shift+F)">
-                <i class="bi bi-window-fullscreen"></i>
-            </button>
+            <div class="btn-group btn-group-sm" role="group" aria-label="View toggles">
+                <button class="btn btn-outline-secondary"
+                        @click="toggleCompactBodies()"
+                        :class="{ active: compactBodies }"
+                        title="Toggle compact node bodies (hide column preview)"
+                        aria-label="Toggle compact node bodies">
+                    <i class="bi" :class="compactBodies ? 'bi-arrows-angle-contract' : 'bi-arrows-angle-expand'"></i>
+                </button>
+                <button class="btn btn-outline-secondary"
+                        @click="toggleOrthogonalEdges()"
+                        :class="{ active: orthogonalEdges }"
+                        title="Toggle orthogonal edge routing"
+                        aria-label="Toggle orthogonal edge routing">
+                    <i class="bi" :class="orthogonalEdges ? 'bi-bounding-box' : 'bi-bezier2'"></i>
+                </button>
+                <button class="btn btn-outline-secondary"
+                        @click="toggleMinimap()"
+                        :class="{ active: minimapVisible }"
+                        title="Toggle minimap"
+                        aria-label="Toggle minimap">
+                    <i class="bi bi-map"></i>
+                </button>
+            </div>
+            <div class="btn-group btn-group-sm" role="group" aria-label="Navigate">
+                <button class="btn btn-outline-secondary"
+                        @click="openSearch()"
+                        title="Search blocks (Ctrl+F)"
+                        aria-label="Search blocks">
+                    <i class="bi bi-search"></i>
+                </button>
+                <button class="btn btn-outline-secondary"
+                        @click="autoTidy()"
+                        :disabled="nodeCount === 0"
+                        title="Auto-layout (Ctrl+L)"
+                        aria-label="Auto-layout">
+                    <i class="bi bi-diagram-3"></i>
+                </button>
+                <button class="btn btn-outline-secondary"
+                        @click="fitToView()"
+                        :disabled="nodeCount === 0"
+                        title="Fit canvas to view"
+                        aria-label="Fit canvas to view">
+                    <i class="bi bi-fullscreen"></i>
+                </button>
+                <button class="btn btn-outline-secondary"
+                        @click="focusMode = window.pqlToggleFocusMode()"
+                        :class="{ active: focusMode }"
+                        title="Focus mode — hide side navigation (Shift+F)"
+                        aria-label="Focus mode">
+                    <i class="bi bi-window-fullscreen"></i>
+                </button>
+            </div>
             <button class="btn btn-sm btn-outline-warning"
                     @click="addStickyNote()"
                     :disabled="!canWrite"
-                    title="Add sticky note">
+                    title="Add sticky note"
+                    aria-label="Add sticky note">
                 <i class="bi bi-sticky"></i>
             </button>
-            <button class="btn btn-sm btn-outline-secondary"
-                    @click="save()"
-                    :disabled="!canWrite || saving">
-                <i class="bi bi-save"></i> Save
-            </button>
-            <button class="btn btn-sm btn-primary"
-                    @click="openMaterializeModal()"
-                    :disabled="!canWrite || errors.length > 0 || nodeCount === 0">
-                <i class="bi bi-play-fill"></i> Run
-            </button>
+            <div class="btn-group btn-group-sm" role="group" aria-label="Document">
+                <button class="btn btn-outline-secondary"
+                        @click="save()"
+                        :disabled="!canWrite || saving"
+                        title="Save canvas (Ctrl+S)"
+                        aria-label="Save canvas">
+                    <i class="bi bi-save"></i> Save
+                </button>
+                <button class="btn btn-primary"
+                        @click="openMaterializeModal()"
+                        :disabled="!canWrite || errors.length > 0 || nodeCount === 0"
+                        title="Materialize canvas to Delta target"
+                        aria-label="Materialize canvas">
+                    <i class="bi bi-play-fill"></i> Run
+                </button>
+            </div>
         </div>
     </div>
 

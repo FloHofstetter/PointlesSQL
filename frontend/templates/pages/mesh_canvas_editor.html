@@ -37,7 +37,10 @@
                 · <span x-text="(document.edges || []).length"></span> wires
             </span>
         </div>
-        <span class="ms-3 small text-muted" x-text="statusLabel()"></span>
+        <span class="ms-3 small"
+              :class="statusClass()"
+              :title="statusTooltip()"
+              x-text="statusLabel()"></span>
         <div class="ms-auto d-flex align-items-center gap-2">
             <span class="badge"
                   :class="issues.length === 0 ? 'bg-success-subtle text-success-emphasis' : 'bg-warning-subtle text-warning-emphasis'"
