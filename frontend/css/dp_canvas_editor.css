@@ -218,23 +218,46 @@
 
 /* Drawflow sockets / connections — Bootstrap-aligned palette. */
 .pql-dp-canvas-drawflow {
-  --pql-edge-stroke: 2px;
-  --pql-edge-stroke-hover: 3px;
-  --pql-edge-stroke-selected: 4px;
+  --pql-edge-stroke: 2.5px;
+  --pql-edge-stroke-hover: 4px;
+  --pql-edge-stroke-selected: 5px;
+  --pql-edge-color-default: var(--bs-secondary);
   --pql-edge-color-hover: #5b9dff;
   --pql-edge-color-selected: var(--bs-warning);
   --pql-zoom: 1;
 }
 
+/* Drawflow's default 14 px blue sockets dominated the canvas — shrink to
+   8 px neutral dots that read as connection anchors, not as primary UI
+   elements.  The blue accent only appears on hover or active drag. */
 .pql-dp-canvas-drawflow .drawflow .input,
 .pql-dp-canvas-drawflow .drawflow .output {
+  width: 10px;
+  height: 10px;
+  background: var(--bs-body-bg);
+  border: 1.5px solid var(--bs-secondary);
+  transition:
+    background 120ms ease,
+    border-color 120ms ease,
+    transform 120ms ease;
+}
+
+.pql-dp-canvas-drawflow .drawflow .input:hover,
+.pql-dp-canvas-drawflow .drawflow .output:hover,
+.pql-dp-canvas-drawflow .drawflow-node:hover .input,
+.pql-dp-canvas-drawflow .drawflow-node:hover .output {
   background: var(--bs-primary);
-  border: 2px solid var(--bs-body-bg);
+  border-color: var(--bs-primary);
+}
+
+.pql-dp-canvas-drawflow .drawflow .output:hover {
+  transform: scale(1.15);
 }
 
 .pql-dp-canvas-drawflow .drawflow .connection .main-path {
-  stroke: var(--bs-primary);
+  stroke: var(--pql-edge-color-default);
   stroke-width: calc(var(--pql-edge-stroke) / var(--pql-zoom));
+  stroke-linecap: round;
   transition:
     stroke 120ms ease,
     stroke-width 120ms ease,
@@ -342,18 +365,21 @@
   height: 22px;
   border-radius: 50%;
   background: var(--bs-body-bg);
-  border: 1.5px solid var(--bs-border-color);
+  border: 1.5px solid var(--bs-secondary);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  opacity: 0;
+  opacity: 0.75;
   transition:
     opacity 120ms ease,
     border-color 120ms ease,
-    color 120ms ease;
+    color 120ms ease,
+    transform 120ms ease,
+    box-shadow 120ms ease;
   color: var(--bs-secondary);
-  font-size: 0.85rem;
+  font-size: 0.95rem;
+  font-weight: 600;
   pointer-events: auto;
 }
 
@@ -363,9 +389,10 @@
   right: 22px;
   top: 50%;
   margin-top: -1px;
-  width: 36px;
-  height: 2px;
-  background: var(--bs-border-color);
+  width: 30px;
+  height: 1.5px;
+  background: var(--bs-secondary);
+  opacity: 0.55;
 }
 
 .pql-dp-canvas-drawflow .drawflow-node:hover .pql-output-plus,
@@ -376,10 +403,13 @@
 .pql-output-plus:hover {
   border-color: var(--bs-primary);
   color: var(--bs-primary);
+  transform: scale(1.1);
+  box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.15);
 }
 
 .pql-output-plus:hover::before {
   background: var(--bs-primary);
+  opacity: 1;
 }
 
 /* Output-plus block-picker popover. */
