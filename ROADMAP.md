@@ -3034,6 +3034,21 @@ PointlesSQL
 │   │   badge + a "Bust cache" button.  Per-process only; multi-
 │   │   worker fan-out is out of scope for v1.
 │
+├── Phase 163 — Audit-Log Filters UX: saved-filters + regex on details  ✅ shipped (local, 2026-05-31)
+│   │
+│   │   Alembic ``o3c5e7g9i1k3`` adds ``audit_saved_filters``
+│   │   (owner-private by default; per-row ``is_shared_workspace``
+│   │   flips it to workspace-visible).  4 new CRUD routes under
+│   │   ``/admin/audit/saved-filters`` for list / create / update /
+│   │   delete — admin-gated + CSRF-protected.  Admin audit
+│   │   viewer's index route gains a ``?details_regex=...`` query
+│   │   param that filters rows server-side post-DB-query (Python
+│   │   ``re.search`` on the JSON detail column).  Invalid regex
+│   │   surfaces a ``regex_error`` to the template without
+│   │   crashing the viewer.  Frontend HTML changes for the dropdown
+│   │   UI deferred — the API + storage are in place; users can
+│   │   already POST saved filters via the REST surface.
+│   │
 ├── Phase 162 — Mesh-Canvas: Cross-Workspace Edges  ✅ shipped (local, 2026-05-31)
 │   │
 │   │   Alembic ``n2b4d6f8h0j2`` adds a nullable

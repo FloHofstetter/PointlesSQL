@@ -17,6 +17,23 @@ defined in ``scripts/clusters.json``. -->
 
 ### Features
 
+- Audit-cockpit — Saved filters + details-regex search (rc221).
+  Admins can now name their favourite audit-filter combos
+  (since-window + action + user-substr + target-substr + details-
+  regex) and re-apply them with one click instead of re-typing
+  every time.  New ``audit_saved_filters`` table is owner-private
+  by default; per-row ``is_shared_workspace`` flips the filter to
+  workspace-wide visibility.  Four CRUD routes under
+  ``/admin/audit/saved-filters`` (list / create / update / delete)
+  are admin-gated + CSRF-protected.  The audit viewer's index
+  route gains a new ``?details_regex=...`` query parameter that
+  filters rows server-side after the DB hit (Python re.search on
+  the JSON ``detail`` column).  Invalid regexes surface a friendly
+  ``regex_error`` to the template instead of crashing the viewer.
+  Frontend HTML dropdown UI for the saved-filters selector is
+  intentionally deferred — the API + storage are in place; the
+  visible UI can land in a follow-up polish phase.
+
 - Mesh-canvas — Cross-workspace upstream edges (rc220).  Adds a
   nullable ``source_workspace_id`` FK on
   ``data_product_input_ports`` (``ON DELETE RESTRICT``) so an

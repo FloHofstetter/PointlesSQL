@@ -505,3 +505,120 @@ def test_anomalies_baseline_extended_when_since_bounded() -> None:
         assert "baseline_mean" in point
         assert "baseline_std" in point
         assert "severity" in point
+
+
+# ---------------------------------------------------------------------------
+# Phase 163 — saved audit filters CRUD
+# ---------------------------------------------------------------------------
+
+
+async def _csrf_headers(client: httpx.AsyncClient) -> dict[str, str]:
+    """Seed + return a CSRF header for any non-safe admin POST/PUT/DELETE."""
+    from tests.conftest import seed_csrf
+
+    token = await seed_csrf(client)
+    return {"X-CSRF-Token": token}
+
+
+@pytest.mark.asyncio
+async def test_audit_saved_filter_crud_owner(
+    admin_client: httpx.AsyncClient,
+) -> None:
+    headers = await _csrf_headers(admin_client)
+    create_res = await admin_client.post(
+        "/admin/audit/saved-filters",
+        json={
+            "name": "DP creates last week",
+            "filters": {"since": "7d", "action": "DP_CREATE"},
+            "is_shared_workspace": False,
+        },
+        headers=headers,
+    )
+    assert create_res.status_code == 201, create_res.text
+    entry = create_res.json()
+    assert entry["name"] == "DP creates last week"
+    assert entry["filters"]["action"] == "DP_CREATE"
+    filter_id = entry["id"]
+    list_res = await admin_client.get("/admin/audit/saved-filters")
+    assert list_res.status_code == 200
+    names = {e["name"] for e in list_res.json()}
+    assert "DP creates last week" in names
+    update_res = await admin_client.put(
+        f"/admin/audit/saved-filters/{filter_id}",
+        json={"name": "DP creates 2026", "filters": None, "is_shared_workspace": None},
+        headers=headers,
+    )
+    assert update_res.status_code == 200
+    assert update_res.json()["name"] == "DP creates 2026"
+    delete_res = await admin_client.delete(
+        f"/admin/audit/saved-filters/{filter_id}", headers=headers
+    )
+    assert delete_res.status_code == 204
+
+
+@pytest.mark.asyncio
+async def test_audit_saved_filter_duplicate_name_rejected(
+    admin_client: httpx.AsyncClient,
+) -> None:
+    headers = await _csrf_headers(admin_client)
+    payload = {
+        "name": "dup-test-filter",
+        "filters": {"since": "24h"},
+        "is_shared_workspace": False,
+    }
+    res1 = await admin_client.post(
+        "/admin/audit/saved-filters", json=payload, headers=headers
+    )
+    assert res1.status_code == 201
+    res2 = await admin_client.post(
+        "/admin/audit/saved-filters", json=payload, headers=headers
+    )
+    assert res2.status_code == 422
+    assert "already exists" in res2.text.lower()
+
+
+@pytest.mark.asyncio
+async def test_audit_saved_filter_share_visible_in_workspace_list(
+    admin_client: httpx.AsyncClient,
+) -> None:
+    headers = await _csrf_headers(admin_client)
+    create_res = await admin_client.post(
+        "/admin/audit/saved-filters",
+        json={
+            "name": "shared-team-filter",
+            "filters": {"since": "all"},
+            "is_shared_workspace": True,
+        },
+        headers=headers,
+    )
+    assert create_res.status_code == 201
+    entry = create_res.json()
+    assert entry["is_shared_workspace"] is True
+    assert entry["workspace_id"] is not None
+
+
+@pytest.mark.asyncio
+async def test_audit_saved_filter_non_admin_forbidden(
+    non_admin_client: httpx.AsyncClient,
+) -> None:
+    res = await non_admin_client.get("/admin/audit/saved-filters")
+    assert res.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_audit_index_details_regex_filters_in_python(
+    admin_client: httpx.AsyncClient,
+) -> None:
+    """Phase 163: ?details_regex=... filters server-side after the date window."""
+    res = await admin_client.get("/admin/audit?since=24h&details_regex=hash%3A.%2A%5Ba-f0-9%5D")
+    # Page renders even when no rows match — the regex is applied
+    # server-side without crashing the viewer.
+    assert res.status_code == 200, res.text
+
+
+@pytest.mark.asyncio
+async def test_audit_index_invalid_regex_does_not_crash(
+    admin_client: httpx.AsyncClient,
+) -> None:
+    res = await admin_client.get("/admin/audit?since=24h&details_regex=%5Bunclosed")
+    assert res.status_code == 200, res.text

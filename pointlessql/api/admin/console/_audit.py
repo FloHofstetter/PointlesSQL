@@ -6,11 +6,13 @@ import asyncio
 import hashlib
 import json
 import logging
+import re
 from datetime import UTC, datetime
 from typing import Any, Literal
 
 from fastapi import APIRouter, Request
-from fastapi.responses import HTMLResponse, Response
+from fastapi.responses import HTMLResponse, JSONResponse, Response
+from pydantic import BaseModel, ConfigDict, Field
 
 import pointlessql
 from pointlessql.api.admin.console._constants import (
@@ -18,7 +20,12 @@ from pointlessql.api.admin.console._constants import (
     ADMIN_AUDIT_SINCE_WINDOWS,
     AUDIT_EXPORT_LIMIT,
 )
-from pointlessql.api.dependencies import get_templates, get_user, require_admin
+from pointlessql.api.dependencies import (
+    current_workspace_id,
+    get_templates,
+    get_user,
+    require_admin,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +40,7 @@ async def admin_audit_index(
     target: str | None = None,
     since: Literal["24h", "7d", "30d", "all"] = "7d",
     offset: int = 0,
+    details_regex: str | None = None,
 ) -> HTMLResponse:
     """Render the admin audit-log viewer.
 
@@ -76,6 +84,14 @@ async def admin_audit_index(
     if target:
         base = base.where(AuditLogModel.target.ilike(f"%{target}%"))
 
+    compiled_regex: re.Pattern[str] | None = None
+    regex_error: str | None = None
+    if details_regex:
+        try:
+            compiled_regex = re.compile(details_regex)
+        except re.error as exc:
+            regex_error = f"invalid regex: {exc}"
+
     count_stmt = _select(_func.count()).select_from(base.subquery())
     page_stmt = (
         base.order_by(AuditLogModel.created_at.desc()).offset(offset).limit(ADMIN_AUDIT_LIMIT)
@@ -86,6 +102,9 @@ async def admin_audit_index(
         rows = list(session.scalars(page_stmt).all())
         for row in rows:
             session.expunge(row)
+
+    if compiled_regex is not None:
+        rows = [r for r in rows if r.detail and compiled_regex.search(r.detail)]
 
     entries = [
         {
@@ -116,6 +135,9 @@ async def admin_audit_index(
             "filter_user": user or "",
             "filter_target": target or "",
             "filter_since": since,
+            "filter_details_regex": details_regex or "",
+            "regex_error": regex_error,
+            "saved_filters": _list_saved_filters_for_request(request, current_user),
             "total": total,
             "offset": offset,
             "row_limit": ADMIN_AUDIT_LIMIT,
@@ -364,3 +386,115 @@ async def admin_audit_export_tarball(
             "Content-Disposition": (f'attachment; filename="pql-audit-{timestamp}.tar.gz"'),
         },
     )
+
+
+# ---------------------------------------------------------------------------
+# Saved-filters CRUD
+# ---------------------------------------------------------------------------
+
+
+def _list_saved_filters_for_request(
+    request: Request, current_user: Any
+) -> list[dict[str, Any]]:
+    """Best-effort fetch — returns [] on any DB error so the page still renders."""
+    try:
+        from pointlessql.services.audit._saved_filters import list_for_user
+
+        return list_for_user(
+            request.app.state.session_factory,
+            user_id=int(current_user.get("id") or 0),
+            workspace_id=current_workspace_id(request),
+        )
+    except Exception:  # noqa: BLE001 — viewer must never crash on saved-filters miss
+        logger.exception("admin_audit: list_saved_filters failed")
+        return []
+
+
+class SavedFilterCreateRequest(BaseModel):
+    """Body for ``POST /admin/audit/saved-filters``."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    name: str = Field(min_length=1, max_length=120)
+    filters: dict[str, Any]
+    is_shared_workspace: bool = False
+
+
+class SavedFilterUpdateRequest(BaseModel):
+    """Body for ``PUT /admin/audit/saved-filters/{filter_id}``."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    name: str | None = Field(default=None, min_length=1, max_length=120)
+    filters: dict[str, Any] | None = None
+    is_shared_workspace: bool | None = None
+
+
+@router.get("/admin/audit/saved-filters")
+def list_saved_filters(request: Request) -> JSONResponse:
+    """Return saved filters owned by + shared-with the current admin."""
+    require_admin(request)
+    current_user = get_user(request)
+    return JSONResponse(_list_saved_filters_for_request(request, current_user))
+
+
+@router.post("/admin/audit/saved-filters")
+def create_saved_filter(
+    body: SavedFilterCreateRequest, request: Request
+) -> JSONResponse:
+    """Create a new saved filter for the current admin."""
+    require_admin(request)
+    from pointlessql.exceptions import ValidationError as _ValidationError
+    from pointlessql.services.audit._saved_filters import create_filter
+
+    current_user = get_user(request)
+    workspace_id = current_workspace_id(request)
+    try:
+        entry = create_filter(
+            request.app.state.session_factory,
+            owner_user_id=int(current_user.get("id") or 0),
+            name=body.name,
+            filters=body.filters,
+            is_shared_workspace=body.is_shared_workspace,
+            workspace_id=workspace_id,
+        )
+    except ValueError as exc:
+        raise _ValidationError(str(exc)) from exc
+    return JSONResponse(entry, status_code=201)
+
+
+@router.put("/admin/audit/saved-filters/{filter_id}")
+def update_saved_filter(
+    filter_id: int, body: SavedFilterUpdateRequest, request: Request
+) -> JSONResponse:
+    """Update fields on a saved filter — owner-only."""
+    require_admin(request)
+    from pointlessql.services.audit._saved_filters import update_filter
+
+    current_user = get_user(request)
+    workspace_id = current_workspace_id(request)
+    entry = update_filter(
+        request.app.state.session_factory,
+        filter_id=filter_id,
+        actor_user_id=int(current_user.get("id") or 0),
+        name=body.name,
+        filters=body.filters,
+        is_shared_workspace=body.is_shared_workspace,
+        workspace_id=workspace_id,
+    )
+    return JSONResponse(entry)
+
+
+@router.delete("/admin/audit/saved-filters/{filter_id}", status_code=204)
+def delete_saved_filter(filter_id: int, request: Request) -> Response:
+    """Delete a saved filter — owner-only."""
+    require_admin(request)
+    from pointlessql.services.audit._saved_filters import delete_filter
+
+    current_user = get_user(request)
+    delete_filter(
+        request.app.state.session_factory,
+        filter_id=filter_id,
+        actor_user_id=int(current_user.get("id") or 0),
+    )
+    return Response(status_code=204)

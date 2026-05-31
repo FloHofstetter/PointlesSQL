@@ -24,6 +24,7 @@ from __future__ import annotations
 from pointlessql.models.audit._anomaly import AnomalyAck
 from pointlessql.models.audit._branch import BRANCH_ACTIONS, BranchAuditLog
 from pointlessql.models.audit._log import AuditLog
+from pointlessql.models.audit._saved_filters import AuditSavedFilter
 from pointlessql.models.audit._saved_queries import SavedAuditQuery
 from pointlessql.models.audit._sinks import (
     SINK_TYPES,
@@ -36,6 +37,7 @@ __all__ = [
     "SINK_TYPES",
     "AnomalyAck",
     "AuditLog",
+    "AuditSavedFilter",
     "AuditSink",
     "BranchAuditLog",
     "GovernanceEvent",
