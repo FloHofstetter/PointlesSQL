@@ -17,6 +17,38 @@ defined in ``scripts/clusters.json``. -->
 
 ### Features
 
+- Visual Data Product editor — compound DP blocks + editable mesh
+  canvas (rc208).  Wave D of the Mega-Cluster 147-154 closes the
+  Simulink-style "fat block = DP" metaphor:  (1) new
+  `DataProduct` block in `BLOCK_REGISTRY` whose config carries
+  `{dp_id, port_name, materialized_table}`; the route layer's new
+  `_resolve_dp_refs` pre-pass fills `materialized_table` from
+  `DataProductOutputPort.location` on save / validate / preview /
+  materialise so the compiler stays pure and emits the same
+  `SELECT * FROM <fqn>` shape as `InputPort`.  Frontend BLOCK_DEFS
+  gains the DP◫ entry plus a config-form with a DP-picker dropdown
+  fed by a new `GET /api/dp/_picker` route and a downstream
+  port-name picker driven by the chosen DP's
+  `DataProductOutputPort` rows.  (2) Double-click on a DP◫ block
+  navigates into that DP's canvas in place; a small localStorage-
+  backed breadcrumb stack (`pql.dp_canvas.breadcrumb`) lets the
+  topbar render a "◀◀ <previous-DP>" back-button that pops the
+  trail.  (3) New workspace-level mesh canvas at `/mesh/canvas`
+  with three thin routes (`GET/POST /api/mesh/canvas` +
+  `POST /api/mesh/canvas/validate`,
+  [mesh_canvas_routes.py](pointlessql/api/mesh_canvas_routes.py))
+  over a new service
+  ([_canvas.py](pointlessql/services/mesh/_canvas.py)) that
+  converts between a Drawflow-shaped `MeshCanvasDoc` and the
+  declared upstream-input-port rows: each wire is one
+  `DataProductInputPort(kind=upstream_product, source_ref=...)`,
+  save diffs the desired edge set against the DB and applies
+  the delta via the existing `create_input_port` /
+  `delete_input_port` CRUD helpers (no Delta data is moved).  4
+  new pytest cover the mesh routes (load / save-creates /
+  save-removes / validate-self-loop); 3 new pytest cover the
+  `DataProduct` block's compile + infer paths plus the registry
+  count flip from 8 to 9.  Full suite stays green.
 - Visual Data Product editor — live preview + CodeMirror predicates
   + SQL schema-inference (rc207).  Three Wave-C additions on top of
   rc206:  (1) per-node preview — new

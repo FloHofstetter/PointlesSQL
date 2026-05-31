@@ -34,6 +34,15 @@
            title="Back to data product detail">
             <i class="bi bi-arrow-left"></i>
         </a>
+        <template x-if="(breadcrumbTrail || []).length > 0">
+            <button class="btn btn-sm btn-outline-secondary"
+                    @click="popBreadcrumbBack()"
+                    :title="'Drill back to ' + breadcrumbTrail[breadcrumbTrail.length - 1].ref">
+                <i class="bi bi-chevron-double-left"></i>
+                <span class="small d-none d-md-inline"
+                      x-text="breadcrumbTrail[breadcrumbTrail.length - 1].ref"></span>
+            </button>
+        </template>
         <div class="d-flex flex-column lh-sm">
             <strong class="small" x-text="product.ref"></strong>
             <span class="text-muted" style="font-size: 0.75rem;">

@@ -46,7 +46,7 @@ from pointlessql.exceptions import (
     ResourceNotFoundError,
     ValidationError,
 )
-from pointlessql.models import DataProduct, DataProductCanvasGraph
+from pointlessql.models import DataProduct, DataProductCanvasGraph, DataProductOutputPort
 from pointlessql.services.dp_canvas import (
     CanvasDoc,
     ColumnSpec,
@@ -120,10 +120,60 @@ def _table_info_to_pin_schema(info: TableInfo) -> PinSchema:
     return PinSchema(kind="table", columns=specs, unknown=False)
 
 
+def _resolve_dp_refs(request: Request, doc: CanvasDoc) -> CanvasDoc:
+    """Walk every ``DataProduct`` block and fill ``materialized_table``.
+
+    The editor stores ``dp_id`` + ``port_name`` on the block; the
+    compiler reads the resolved 3-part FQN.  Doing the lookup here on
+    save (and re-doing it on validate / materialise) means the
+    compile path stays pure and a rename of the upstream port can be
+    surfaced at edit-time without rewriting saved docs.
+    """
+    factory = request.app.state.session_factory
+    needs = [
+        (n, int(n.config.get("dp_id", 0) or 0), str(n.config.get("port_name") or "").strip())
+        for n in doc.nodes
+        if n.block_type == "DataProduct"
+    ]
+    if not needs:
+        return doc
+    targets: dict[tuple[int, str], str] = {}
+    with factory() as session:
+        for _node, dp_id, port_name in needs:
+            if dp_id <= 0 or not port_name:
+                continue
+            key = (dp_id, port_name)
+            if key in targets:
+                continue
+            row = session.execute(
+                select(DataProductOutputPort).where(
+                    DataProductOutputPort.data_product_id == dp_id,
+                    DataProductOutputPort.name == port_name,
+                )
+            ).scalar_one_or_none()
+            if row is None or not row.location:
+                continue
+            targets[key] = row.location
+    updated_nodes = []
+    for node in doc.nodes:
+        if node.block_type != "DataProduct":
+            updated_nodes.append(node)
+            continue
+        dp_id = int(node.config.get("dp_id", 0) or 0)
+        port_name = str(node.config.get("port_name") or "").strip()
+        resolved = targets.get((dp_id, port_name))
+        if resolved:
+            new_cfg = {**node.config, "materialized_table": resolved}
+            updated_nodes.append(node.model_copy(update={"config": new_cfg}))
+        else:
+            updated_nodes.append(node)
+    return doc.model_copy(update={"nodes": updated_nodes})
+
+
 def _seed_schemas_for_doc(
     doc: CanvasDoc, client: SoyuzClient
 ) -> tuple[dict[str, PinSchema], list[CompileError]]:
-    """Resolve every ``InputPort.table_fqn`` to a ``PinSchema`` via soyuz.
+    """Resolve every InputPort + DataProduct source FQN to a ``PinSchema`` via soyuz.
 
     Returns a ``(seeds, errors)`` tuple; errors carry ``bad_config`` kind
     so the editor surfaces them on the offending node.
@@ -131,9 +181,13 @@ def _seed_schemas_for_doc(
     seeds: dict[str, PinSchema] = {}
     errors: list[CompileError] = []
     for node in doc.nodes:
-        if node.block_type != "InputPort":
+        if node.block_type == "InputPort":
+            fqn_key = "table_fqn"
+        elif node.block_type == "DataProduct":
+            fqn_key = "materialized_table"
+        else:
             continue
-        fqn = str(node.config.get("table_fqn") or "").strip()
+        fqn = str(node.config.get(fqn_key) or "").strip()
         if not fqn:
             continue
         try:
@@ -321,10 +375,11 @@ def save_canvas(
             )
 
     actor_id = int(user["id"]) if user["id"] > 0 else None
+    resolved_doc = _resolve_dp_refs(request, body.document)
     new_version = save_graph(
         factory,
         data_product_id=dp_id,
-        doc=body.document,
+        doc=resolved_doc,
         author_user_id=actor_id,
     )
     with factory() as session:
@@ -377,14 +432,85 @@ def validate_canvas(
     require_user(request)
     _load_dp(request, dp_id)
     client = _raw_soyuz_client(request)
-    seeds, seed_errors = _seed_schemas_for_doc(body.document, client)
-    pin_schemas, flow_errors = validate_schema_flow(body.document, seed_schemas=seeds)
+    resolved_doc = _resolve_dp_refs(request, body.document)
+    seeds, seed_errors = _seed_schemas_for_doc(resolved_doc, client)
+    pin_schemas, flow_errors = validate_schema_flow(resolved_doc, seed_schemas=seeds)
     wire_schemas = {
         f"{node_id}:{pin}": schema for (node_id, pin), schema in pin_schemas.items()
     }
     return CanvasValidateResponse(
         pin_schemas=wire_schemas,
         errors=[*seed_errors, *flow_errors],
+    )
+
+
+class DataProductPickerEntry(BaseModel):
+    """One row in the DP-picker dropdown the DP compound block uses."""
+
+    model_config = ConfigDict(protected_namespaces=(), populate_by_name=True)
+
+    dp_id: int
+    catalog: str
+    schema_name: str = Field(serialization_alias="schema")
+    ref: str
+    output_ports: list[dict[str, Any]]
+
+
+class DataProductPickerResponse(BaseModel):
+    """Response for ``GET /api/dp/_picker``."""
+
+    data_products: list[DataProductPickerEntry]
+
+
+@router.get("/_picker", response_model=DataProductPickerResponse)
+def list_dp_picker(request: Request) -> DataProductPickerResponse:
+    """Return DPs in the active workspace plus their output ports.
+
+    Powers the DataProduct compound-block's config-form dropdown so
+    the user can pick which upstream DP + which port to wire in.
+    """
+    require_user(request)
+    workspace_id = current_workspace_id(request)
+    factory = request.app.state.session_factory
+    with factory() as session:
+        dps = (
+            session.execute(
+                select(DataProduct).where(DataProduct.workspace_id == workspace_id)
+            )
+            .scalars()
+            .all()
+        )
+        ports = (
+            session.execute(
+                select(DataProductOutputPort).where(
+                    DataProductOutputPort.data_product_id.in_(
+                        [dp.id for dp in dps] or [-1]
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+    ports_by_dp: dict[int, list[dict[str, Any]]] = {}
+    for port in ports:
+        ports_by_dp.setdefault(port.data_product_id, []).append(
+            {
+                "name": port.name,
+                "kind": port.kind,
+                "location": port.location,
+            }
+        )
+    return DataProductPickerResponse(
+        data_products=[
+            DataProductPickerEntry(
+                dp_id=dp.id,
+                catalog=dp.catalog_name,
+                schema_name=dp.schema_name,
+                ref=f"{dp.catalog_name}.{dp.schema_name}",
+                output_ports=ports_by_dp.get(dp.id, []),
+            )
+            for dp in dps
+        ]
     )
 
 
@@ -402,9 +528,10 @@ def preview_canvas(
     require_user(request)
     _load_dp(request, dp_id)
     client = _raw_soyuz_client(request)
-    seeds, _seed_errors = _seed_schemas_for_doc(body.document, client)
+    resolved_doc = _resolve_dp_refs(request, body.document)
+    seeds, _seed_errors = _seed_schemas_for_doc(resolved_doc, client)
     result: PreviewResult = preview_until(
-        body.document,
+        resolved_doc,
         upto_node_id=body.upto_node_id,
         limit=body.limit,
         soyuz_client=client,
@@ -442,13 +569,14 @@ def materialize_canvas(
                     f"canvas materialise conflict: caller expected "
                     f"v{body.expected_base_version} but latest is v{existing_version}"
                 )
+        resolved_doc = _resolve_dp_refs(request, body.document)
         save_graph(
             factory,
             data_product_id=dp_id,
-            doc=body.document,
+            doc=resolved_doc,
             author_user_id=actor_id,
         )
-        doc = body.document
+        doc = resolved_doc
     else:
         loaded = load_latest_graph(factory, data_product_id=dp_id)
         if loaded is None:

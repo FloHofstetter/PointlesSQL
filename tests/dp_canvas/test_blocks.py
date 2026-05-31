@@ -218,9 +218,61 @@ class TestOutputPort:
         assert any("merge_on" in e.message for e in errors)
 
 
-def test_registry_has_eight_atom_blocks() -> None:
+class TestDataProduct:
+    def test_compile_emits_select_from_resolved_fqn(self) -> None:
+        errors: list = []
+        out = compile_block(
+            block_type="DataProduct",
+            node_id="dp1",
+            inputs={},
+            output_schema=_seed_schema(("id", "BIGINT")),
+            cfg={
+                "dp_id": 7,
+                "port_name": "primary",
+                "materialized_table": "main.gold.orders_summary",
+            },
+            errors=errors,
+        )
+        assert out is not None
+        assert out.sql == "SELECT * FROM main.gold.orders_summary"
+        assert errors == []
+
+    def test_compile_rejects_missing_resolved_fqn(self) -> None:
+        errors: list = []
+        out = compile_block(
+            block_type="DataProduct",
+            node_id="dp1",
+            inputs={},
+            output_schema=_seed_schema(),
+            cfg={"dp_id": 7, "port_name": "primary"},
+            errors=errors,
+        )
+        assert out is None
+        assert errors and errors[0].kind == "bad_config"
+
+    def test_infer_uses_seed_when_provided(self) -> None:
+        errors: list = []
+        seed = _seed_schema(("id", "BIGINT"), ("name", "VARCHAR"))
+        inferred = infer_block(
+            block_type="DataProduct",
+            node_id="dp1",
+            input_schemas={},
+            cfg={
+                "dp_id": 7,
+                "port_name": "primary",
+                "materialized_table": "main.gold.orders_summary",
+            },
+            errors=errors,
+            seed=seed,
+        )
+        assert inferred == seed
+        assert errors == []
+
+
+def test_registry_has_nine_atom_blocks() -> None:
     assert set(BLOCK_REGISTRY) == {
         "InputPort",
+        "DataProduct",
         "Filter",
         "Project",
         "Join",

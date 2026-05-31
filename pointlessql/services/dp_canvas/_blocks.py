@@ -148,6 +148,71 @@ def _infer_input_port(
 _register(BlockSpec(type_name="InputPort", input_pins=(), output_pins=(("out", "table"),)))
 
 
+# --------------------------------------------------------------------- DataProduct (DP◫)
+
+
+def _compile_data_product(
+    node_id: str,
+    inputs: dict[str, str],
+    output_schema: PinSchema,
+    cfg: dict[str, Any],
+    errors: list[CompileError],
+) -> CompiledBlock | None:
+    """Compile a DP compound block — reads the *materialized table* of one chosen output port.
+
+    The block stores the resolved 3-part UC name on save so the
+    compiler stays pure; the route layer fills ``materialized_table``
+    by looking up ``DataProductOutputPort`` for the chosen
+    ``(dp_id, port_name)`` pair.
+    """
+    del inputs
+    fqn = _coerce_str(cfg.get("materialized_table"))
+    if not _FQN_RE.match(fqn):
+        errors.append(
+            _bad_config(
+                node_id,
+                "DataProduct.materialized_table must be a UC three-part name "
+                "(resolved on save from the referenced output-port).",
+            )
+        )
+        return None
+    return CompiledBlock(
+        sql=f"SELECT * FROM {fqn}",
+        output_schema=output_schema,
+    )
+
+
+def _infer_data_product(
+    node_id: str,
+    input_schemas: dict[str, PinSchema],
+    cfg: dict[str, Any],
+    errors: list[CompileError],
+    *,
+    seed: PinSchema | None,
+) -> PinSchema:
+    del input_schemas
+    fqn = _coerce_str(cfg.get("materialized_table"))
+    if not _FQN_RE.match(fqn):
+        errors.append(
+            _bad_config(
+                node_id,
+                "DataProduct.materialized_table must be a UC three-part name "
+                "(resolved on save from the referenced output-port).",
+            )
+        )
+        return _unknown_schema()
+    if seed is not None:
+        return seed
+    return _unknown_schema()
+
+
+_register(
+    BlockSpec(
+        type_name="DataProduct", input_pins=(), output_pins=(("out", "table"),)
+    )
+)
+
+
 # --------------------------------------------------------------------- Filter
 
 
@@ -770,6 +835,7 @@ _InferFn = Callable[..., PinSchema]
 
 _COMPILE_DISPATCH: dict[str, _CompileFn] = {
     "InputPort": _compile_input_port,
+    "DataProduct": _compile_data_product,
     "Filter": _compile_filter,
     "Project": _compile_project,
     "Join": _compile_join,
@@ -781,6 +847,7 @@ _COMPILE_DISPATCH: dict[str, _CompileFn] = {
 
 _INFER_DISPATCH: dict[str, _InferFn] = {
     "InputPort": _infer_input_port,
+    "DataProduct": _infer_data_product,
     "Filter": _infer_filter,
     "Project": _infer_project,
     "Join": _infer_join,

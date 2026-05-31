@@ -25,6 +25,15 @@ const BLOCK_DEFS = {
     group: 'sources',
     defaultConfig: () => ({ table_fqn: '' }),
   },
+  DataProduct: {
+    label: 'Data product ◫',
+    icon: 'bi-box-seam',
+    help: 'Read the materialised table of an upstream data product output port (drill in via double-click).',
+    inputs: 0,
+    outputs: 1,
+    group: 'sources',
+    defaultConfig: () => ({ dp_id: 0, port_name: '', materialized_table: '' }),
+  },
   Filter: {
     label: 'Filter',
     icon: 'bi-funnel',
@@ -181,7 +190,7 @@ export function dpCanvasEditor(product, ctx) {
     selectedNodeId: null,
 
     paletteGroups: {
-      sources: ['InputPort'],
+      sources: ['InputPort', 'DataProduct'],
       transforms: ['Filter', 'Project', 'Join', 'GroupBy', 'Limit', 'SQL'],
       sinks: ['OutputPort'],
     },
@@ -203,6 +212,9 @@ export function dpCanvasEditor(product, ctx) {
     previewLimit: 100,
     previewResult: null,
     previewError: null,
+
+    dpPicker: { loaded: false, products: [] },
+    breadcrumbTrail: [],
 
     _drawflow: null,
     _drawflowNodes: {},
@@ -257,6 +269,14 @@ export function dpCanvasEditor(product, ctx) {
       df.on('connectionCreated', () => this._syncFromDrawflow());
       df.on('connectionRemoved', () => this._syncFromDrawflow());
       df.on('nodeRemoved', () => this._syncFromDrawflow());
+      df.on('nodeDataChanged', () => this._syncFromDrawflow());
+
+      // Double-click on a DP◫ node opens that DP's canvas in-place
+      // (push the current DP onto the breadcrumb trail in localStorage).
+      const canvasEl = this.$refs.canvas;
+      canvasEl.addEventListener('dblclick', (ev) => this._onCanvasDoubleClick(ev));
+
+      this._restoreBreadcrumb();
 
       // Optional-chain via "&&" — Alpine's expression evaluator complains when
       // selectedNode is null, which surfaces as a console error on every
@@ -809,6 +829,74 @@ export function dpCanvasEditor(product, ctx) {
 
     closePreviewModal() {
       this.previewOpen = false;
+    },
+
+    async ensureDpPickerLoaded() {
+      if (this.dpPicker.loaded) return;
+      const res = await window.pqlApi.fetch('/api/dp/_picker', { silent: true });
+      if (!res.ok) return;
+      this.dpPicker = { loaded: true, products: res.data.data_products || [] };
+    },
+
+    dpPortsFor(dpId) {
+      const entry = (this.dpPicker.products || []).find((p) => p.dp_id === dpId);
+      return entry ? entry.output_ports : [];
+    },
+
+    onDataProductPicked(node) {
+      // After cfg.dp_id changes, default the port to the first available.
+      const ports = this.dpPortsFor(node.config.dp_id);
+      if (ports.length > 0 && !ports.some((p) => p.name === node.config.port_name)) {
+        node.config.port_name = ports[0].name;
+        node.config.materialized_table = ports[0].location || '';
+      } else if (node.config.port_name) {
+        const port = ports.find((p) => p.name === node.config.port_name);
+        node.config.materialized_table = (port && port.location) || '';
+      }
+      this.onConfigChanged();
+    },
+
+    _onCanvasDoubleClick(ev) {
+      const nodeEl = ev.target.closest('.drawflow-node');
+      if (!nodeEl) return;
+      const dfId = (nodeEl.id || '').replace('node-', '');
+      const pqlId = Object.keys(this._drawflowNodes).find(
+        (k) => String(this._drawflowNodes[k]) === dfId,
+      );
+      const node = pqlId && this.nodes[pqlId];
+      if (!node || node.block_type !== 'DataProduct') return;
+      const targetDpId = Number(node.config.dp_id || 0);
+      if (!targetDpId) return;
+      this._pushBreadcrumb();
+      window.location.href = `/dp/${targetDpId}/canvas`;
+    },
+
+    _restoreBreadcrumb() {
+      try {
+        const raw = window.localStorage.getItem('pql.dp_canvas.breadcrumb');
+        this.breadcrumbTrail = raw ? JSON.parse(raw) : [];
+      } catch (e) {
+        this.breadcrumbTrail = [];
+      }
+    },
+
+    _pushBreadcrumb() {
+      const entry = {
+        dp_id: this.product.id,
+        ref: this.product.ref || `${this.product.catalog}.${this.product.schema}`,
+      };
+      const trail = (this.breadcrumbTrail || []).filter((e) => e.dp_id !== entry.dp_id);
+      trail.push(entry);
+      window.localStorage.setItem('pql.dp_canvas.breadcrumb', JSON.stringify(trail.slice(-6)));
+    },
+
+    popBreadcrumbBack() {
+      const trail = this.breadcrumbTrail || [];
+      const prev = trail[trail.length - 1];
+      if (!prev) return;
+      const updated = trail.slice(0, -1);
+      window.localStorage.setItem('pql.dp_canvas.breadcrumb', JSON.stringify(updated));
+      window.location.href = `/dp/${prev.dp_id}/canvas`;
     },
 
     async runPreview() {

@@ -2816,38 +2816,45 @@ PointlesSQL
 │           Blöcke (Project chip-input z.B.) sehen jetzt SQL-Output-
 │           Spalten und können autocomplete bedienen.
 │
-├── Phase 150 — Visual DP Editor: Hierarchy / Compound-Blocks (Wave D)  ⏳ planned
+├── Phase 150 — Visual DP Editor: Hierarchy / Compound-Blocks (Wave D)  ✅ shipped (local, 2026-05-31)
 │   │
 │   │   Simulink-Subsystem-Level. Closes-the-loop für die "fetter
 │   │   Block = DP"-Metapher. Mesh-Canvas wird editierbar.
 │   │
-│   ├── 150.1 — DP◫ Compound-Block-Typ
-│   │       Drop einer DP-Referenz auf Canvas rendert dessen
-│   │       OutputPorts als Output-Pins + InputPorts als Input-Pins.
-│   │       Compiler emittiert
-│   │       `WITH dp_x AS (SELECT * FROM <materialized_table>)` —
-│   │       KEIN Subgraph-Inlining, jeder DP bleibt eigene
-│   │       Deployable-Einheit (matcht Mesh-Modell).
+│   ├── 150.1 — DataProduct compound block
+│   │       Neuer `"DataProduct"` Block im `BLOCK_REGISTRY` mit config
+│   │       `{dp_id, port_name, materialized_table}`. Compiler emittiert
+│   │       `SELECT * FROM <materialized_table>` (gleiche shape wie
+│   │       InputPort). Route-Layer hat einen Save/Validate/Materialize
+│   │       pre-pass `_resolve_dp_refs` der die `materialized_table` aus
+│   │       `DataProductOutputPort.location` ableitet — Compiler bleibt
+│   │       pure. Frontend BLOCK_DEFS mit eigenem Icon (DP◫), config-
+│   │       form mit DP-Picker-Dropdown + Port-Picker (gefüttert von
+│   │       neuer `GET /api/dp/_picker` Route).
 │   │
 │   ├── 150.2 — Drill-in-Navigation + Breadcrumb
-│   │       Doppelklick auf DP◫ öffnet dessen internen Canvas mit
-│   │       Breadcrumb-UI (`workspaces > sales > orders_summary >
-│   │       internal`). Browser-History-Integration für Back-Button.
+│   │       Doppelklick auf DP◫ → `window.location.href = /dp/{id}/canvas`.
+│   │       Breadcrumb-Trail im localStorage (`pql.dp_canvas.breadcrumb`,
+│   │       max 6 Einträge), Topbar zeigt "◀◀ <previous-DP>"-Button der
+│   │       den Stack pop't.
 │   │
 │   ├── 150.3 — Editierbarer Mesh-Level-Canvas
-│   │       Existierender read-only `api/mesh_routes.py:/api/mesh/graph`
-│   │       wird zu editierbarem Canvas erweitert: Wire-Zeichnen
-│   │       erzeugt neuen `DataProductInputPort` (kind=upstream_product,
-│   │       source_ref=`<upstream_dp>:<port>`) via existierendem
-│   │       `services/data_product_ports/_crud.py:create_input_port`
-│   │       Service. Reuse `services/mesh/_graph.py:build_mesh_graph`
-│   │       für Initial-Layout.
+│   │       Neue Routes `GET/POST /api/mesh/canvas` + `POST /validate`
+│   │       (`pointlessql/api/mesh_canvas_routes.py`) + Service
+│   │       `pointlessql/services/mesh/_canvas.py` mit MeshCanvasDoc
+│   │       (nodes = DPs, edges = upstream-bindings). Save macht einen
+│   │       Diff gegen aktuelle ``upstream_product``-Port-Rows: neue
+│   │       Edges → `create_input_port`, fehlende → `delete_input_port`.
+│   │       Eigene Editor-Seite `/mesh/canvas` mit Drawflow-mount,
+│   │       links Status-Panel mit Last-Diff-Summary, rechts Issues-
+│   │       Liste. Nur Edges sind editierbar; Nodes read-only (DP-
+│   │       Katalog wird auf eigener Surface authored).
 │   │
 │   └── 150.4 — Zwei-Level-Walkthrough + Verifikation
-│           Walkthrough: Leaf-DP via Canvas bauen → Downstream-DP
-│           vom Mesh-Canvas referenzieren → beide materialisieren
-│           → in Mesh-Dashboard verlinkt sehen. Manuelle Playwright-
-│           MCP-Replay als Gate.
+│           Walkthrough-Sektion in `dp-canvas-builder.md` deckt: Leaf-DP
+│           bauen → materialise → Mesh-Canvas öffnen → DP◫ in zweitem
+│           DP wiren → save → run. Playwright-MCP Browser-Replay als
+│           Gate für Wave-D-Commit.
 │
 ├── Phase 151 — Visual DP Editor: Block Library Expansion (Wave E)  ⏳ planned
 │   │

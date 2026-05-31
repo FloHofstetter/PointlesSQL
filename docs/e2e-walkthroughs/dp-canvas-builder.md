@@ -182,6 +182,31 @@ The preview path is **read-only**: no Delta write, no UC mutation,
 no canvas-graph version bump. It is the fastest way to debug a
 predicate or an SQL expression before clicking Run.
 
+## Compound blocks + editable mesh canvas (Wave D)
+
+Once two data products exist in the workspace, a downstream DP can
+reference an upstream's materialised table via the new **DataProduct
+◫** compound block. The standalone mesh-level editor at
+`/mesh/canvas` exposes the same wiring at the workspace scale:
+each node is one DP, each wire is one declared
+`upstream_product` input-port row.
+
+| Step | Expect |
+|---|---|
+| In the leaf DP's canvas (`/dp/{leaf}/canvas`), drop **Data product ◫** from the Sources rail | Block appears with the DP-picker config form in the right drawer |
+| Pick an upstream DP from the dropdown, then a port | The block's body summarises `<materialized_table>`; auto-save persists the resolved FQN |
+| Double-click the DP◫ node on the canvas | Browser navigates to the upstream DP's canvas; topbar gains a "◀◀ `<previous-DP>`" breadcrumb |
+| Click the breadcrumb button | Browser returns to the original canvas; the trail entry is popped |
+| Navigate to `/mesh/canvas` | All workspace DPs render as Drawflow nodes; existing `upstream_product` bindings render as wires |
+| Drag from one DP's output pin to another DP's input pin | New wire renders; status bar shows the in-memory diff (added: 1) |
+| Click **Save** | Modal-less banner; "Last diff: added 1, removed 0"; the actual `DataProductInputPort` row is created via the existing CRUD service |
+| Remove an existing wire and click **Save** | Diff reports `removed: 1`; the corresponding `DataProductInputPort` row is deleted |
+| Click **Validate** (auto-runs on every change) | Self-loops + duplicate wires surface in the right rail without touching the DB |
+
+The mesh canvas treats DP nodes as **read-only**: deleting a DP
+itself stays on the catalog surface. Wires represent declared
+upstream bindings only; no Delta data is moved on save.
+
 ## Found bugs
 
 _None yet — populate after the first replay pass uncovers any._

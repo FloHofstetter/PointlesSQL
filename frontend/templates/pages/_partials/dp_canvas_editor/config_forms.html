@@ -24,6 +24,47 @@
     </div>
 </template>
 
+{# DataProduct compound block: pick an upstream DP + one of its output ports. #}
+<template x-if="selectedNode.block_type === 'DataProduct'">
+    <div x-init="ensureDpPickerLoaded()">
+        <label class="form-label small">Upstream data product</label>
+        <select class="form-select form-select-sm mb-2"
+                x-model.number="selectedNode.config.dp_id"
+                @change="onDataProductPicked(selectedNode)"
+                :disabled="!canWrite">
+            <option :value="0">— pick a data product —</option>
+            <template x-for="dp in (dpPicker.products || [])" :key="dp.dp_id">
+                <option :value="dp.dp_id" x-text="dp.ref + ' (id ' + dp.dp_id + ')'"></option>
+            </template>
+        </select>
+
+        <label class="form-label small">Output port</label>
+        <select class="form-select form-select-sm mb-2"
+                x-model="selectedNode.config.port_name"
+                @change="onDataProductPicked(selectedNode)"
+                :disabled="!canWrite || !selectedNode.config.dp_id">
+            <option value="">— pick a port —</option>
+            <template x-for="port in dpPortsFor(selectedNode.config.dp_id)" :key="port.name">
+                <option :value="port.name"
+                        x-text="port.name + ' (' + port.kind + ')' + (port.location ? ' → ' + port.location : '')"></option>
+            </template>
+        </select>
+
+        <template x-if="selectedNode.config.materialized_table">
+            <div class="form-text small">
+                Resolved to <code x-text="selectedNode.config.materialized_table"></code>.
+                Double-click this block on the canvas to drill into the upstream DP's editor.
+            </div>
+        </template>
+        <template x-if="!selectedNode.config.materialized_table && selectedNode.config.dp_id">
+            <div class="alert alert-warning small mt-2 mb-0">
+                The chosen port has no <code>location</code> set — materialise the
+                upstream DP first so its output table is registered.
+            </div>
+        </template>
+    </div>
+</template>
+
 {# Filter: free-form predicate (CodeMirror DuckDB-grammar + column autocomplete). #}
 <template x-if="selectedNode.block_type === 'Filter'">
     <div>
