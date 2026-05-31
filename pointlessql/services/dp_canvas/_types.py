@@ -136,6 +136,12 @@ class CompileError(BaseModel):
     one-at-a-time round-trips.  ``node_id`` and ``pin`` are populated
     when the error has a graph location; ``message`` is the
     human-readable summary the UI shows next to the offending pin.
+
+    Optional diagnostic fields (``expected_type`` / ``actual_type``
+    / ``column`` / ``suggestion``) carry just-enough structure for
+    the editor to render hover-tooltips with concrete next-steps —
+    e.g. surface "Expected INT, got VARCHAR on column foo" and
+    offer to wire in a Cast block automatically.
     """
 
     model_config = ConfigDict(frozen=True)
@@ -155,6 +161,10 @@ class CompileError(BaseModel):
     node_id: str | None = None
     pin: str | None = None
     message: str
+    expected_type: str | None = None
+    actual_type: str | None = None
+    column: str | None = None
+    suggestion: str | None = None
 
 
 class ExecuteResult(BaseModel):

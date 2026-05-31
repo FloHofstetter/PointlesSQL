@@ -334,6 +334,7 @@ def _infer_project(
                     kind="type_mismatch",
                     node_id=node_id,
                     pin="in",
+                    column=col,
                     message=f"Project column {col!r} not in upstream schema.",
                 )
             )
@@ -421,6 +422,7 @@ def _infer_join(
                         kind="type_mismatch",
                         node_id=node_id,
                         pin="left",
+                        column=key,
                         message=f"Join key {key!r} not in left schema.",
                     )
                 )
@@ -430,6 +432,7 @@ def _infer_join(
                         kind="type_mismatch",
                         node_id=node_id,
                         pin="right",
+                        column=key,
                         message=f"Join key {key!r} not in right schema.",
                     )
                 )
@@ -547,6 +550,7 @@ def _infer_group_by(
                     kind="type_mismatch",
                     node_id=node_id,
                     pin="in",
+                    column=key,
                     message=f"GroupBy key {key!r} not in upstream schema.",
                 )
             )
@@ -1061,9 +1065,14 @@ def _compile_cast(
             continue
         if not _is_known_duckdb_type(ttype):
             errors.append(
-                _bad_config(
-                    node_id,
-                    f"Cast target_type {ttype!r} not a known DuckDB type.",
+                CompileError(
+                    kind="bad_config",
+                    node_id=node_id,
+                    pin=None,
+                    column=col,
+                    actual_type=ttype,
+                    suggestion="UNKNOWN_DUCKDB_TYPE",
+                    message=f"Cast target_type {ttype!r} not a known DuckDB type.",
                 )
             )
             return None

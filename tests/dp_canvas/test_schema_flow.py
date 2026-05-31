@@ -228,3 +228,87 @@ def test_cycle_detected_in_schema_flow() -> None:
     )
     _, errors = validate_schema_flow(doc)
     assert any(e.kind == "cycle" for e in errors)
+
+
+def test_project_missing_column_carries_column_field() -> None:
+    """Phase 157: type_mismatch errors now include the offending column name."""
+    doc = CanvasDoc(
+        nodes=[
+            node("inp", "InputPort", {"table_fqn": "main.s.src"}),
+            node("prj", "Project", {"columns": ["ghost_col"]}),
+            node(
+                "out",
+                "OutputPort",
+                {"port_name": "p", "materialized_table": "main.s.t", "mode": "overwrite"},
+            ),
+        ],
+        edges=[
+            edge("e1", "inp", "out", "prj", "in"),
+            edge("e2", "prj", "out", "out", "in"),
+        ],
+    )
+    seeds = {"inp": _table_schema(("real_col", "BIGINT"))}
+    _per_pin, errors = validate_schema_flow(doc, seed_schemas=seeds)
+    project_errors = [e for e in errors if e.kind == "type_mismatch" and e.node_id == "prj"]
+    assert project_errors, "expected at least one type_mismatch on Project node"
+    assert any(e.column == "ghost_col" for e in project_errors)
+
+
+def test_groupby_missing_key_carries_column_field() -> None:
+    """Phase 157: GroupBy missing-key errors expose the offending key."""
+    doc = CanvasDoc(
+        nodes=[
+            node("inp", "InputPort", {"table_fqn": "main.s.src"}),
+            node("grp", "GroupBy", {"keys": ["missing_key"], "aggregations": []}),
+            node(
+                "out",
+                "OutputPort",
+                {"port_name": "p", "materialized_table": "main.s.t", "mode": "overwrite"},
+            ),
+        ],
+        edges=[
+            edge("e1", "inp", "out", "grp", "in"),
+            edge("e2", "grp", "out", "out", "in"),
+        ],
+    )
+    seeds = {"inp": _table_schema(("real_col", "BIGINT"))}
+    _per_pin, errors = validate_schema_flow(doc, seed_schemas=seeds)
+    assert any(
+        e.kind == "type_mismatch" and e.node_id == "grp" and e.column == "missing_key"
+        for e in errors
+    )
+
+
+def test_cast_unknown_type_carries_suggestion() -> None:
+    """Phase 157: bad_config on unknown cast target_type fills column + suggestion."""
+    from pointlessql.services.dp_canvas import compile_canvas
+
+    doc = CanvasDoc(
+        nodes=[
+            node("inp", "InputPort", {"table_fqn": "main.s.src"}),
+            node(
+                "cst",
+                "Cast",
+                {"casts": [{"column": "amt", "target_type": "BANANAS"}]},
+            ),
+            node(
+                "out",
+                "OutputPort",
+                {"port_name": "p", "materialized_table": "main.s.t", "mode": "overwrite"},
+            ),
+        ],
+        edges=[
+            edge("e1", "inp", "out", "cst", "in"),
+            edge("e2", "cst", "out", "out", "in"),
+        ],
+    )
+    seeds = {"inp": _table_schema(("amt", "BIGINT"))}
+    _frag, errors = compile_canvas(doc, upstream_schemas=seeds)
+    cast_errors = [e for e in errors if e.node_id == "cst"]
+    assert cast_errors, "expected at least one Cast diagnostic"
+    assert any(
+        e.column == "amt"
+        and e.actual_type == "BANANAS"
+        and e.suggestion == "UNKNOWN_DUCKDB_TYPE"
+        for e in cast_errors
+    )

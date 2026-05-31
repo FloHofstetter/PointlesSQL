@@ -617,9 +617,12 @@ export function dpCanvasEditor(product, ctx) {
       const df = this._drawflow;
       if (!df) return;
       const perNode = {};
+      const tooltipPerNode = {};
       for (const err of this.errors) {
         if (!err.node_id) continue;
         perNode[err.node_id] = (perNode[err.node_id] || 0) + 1;
+        if (!tooltipPerNode[err.node_id]) tooltipPerNode[err.node_id] = [];
+        tooltipPerNode[err.node_id].push(this._formatErrorTooltip(err));
       }
       for (const [pqlId, dfId] of Object.entries(this._drawflowNodes)) {
         const wrap = df.container.querySelector(`#node-${dfId}`);
@@ -630,12 +633,27 @@ export function dpCanvasEditor(product, ctx) {
           if (badge) {
             badge.style.display = '';
             badge.textContent = perNode[pqlId];
+            badge.title = (tooltipPerNode[pqlId] || []).join('\n');
+            badge.style.cursor = 'help';
           }
         } else {
           wrap.classList.remove('pql-node-error');
-          if (badge) badge.style.display = 'none';
+          if (badge) {
+            badge.style.display = 'none';
+            badge.removeAttribute('title');
+          }
         }
       }
+    },
+
+    _formatErrorTooltip(err) {
+      const parts = [`[${err.kind}]`];
+      if (err.pin) parts.push(`pin=${err.pin}`);
+      if (err.column) parts.push(`column=${err.column}`);
+      if (err.expected_type) parts.push(`expected=${err.expected_type}`);
+      if (err.actual_type) parts.push(`actual=${err.actual_type}`);
+      parts.push(err.message || '');
+      return parts.join(' ');
     },
 
     onPaletteDragStart(event, kind) {

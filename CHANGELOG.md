@@ -17,6 +17,22 @@ defined in ``scripts/clusters.json``. -->
 
 ### Features
 
+- Visual DP Editor — Schema-flow diagnostics UX (rc215).
+  Per-node error badges in the canvas editor now carry a
+  hover-tooltip with the full structured diagnostic (kind, pin,
+  column, expected/actual type, suggestion) instead of just a
+  numeric error count, so users can read what went wrong without
+  opening the validation panel.  Backend: the ``CompileError``
+  envelope grows optional ``column`` / ``expected_type`` /
+  ``actual_type`` / ``suggestion`` fields; Project + GroupBy +
+  Join column-presence errors fill ``column``; the Cast block's
+  unknown-target-type error fills ``column`` +
+  ``actual_type`` + ``suggestion="UNKNOWN_DUCKDB_TYPE"``.  The
+  "Insert Cast block" quick-fix is intentionally deferred until a
+  future block surfaces a true expected/actual type mismatch
+  with a matched column — today's validator only surfaces
+  column-presence errors where inserting a Cast would not help.
+
 - Visual DP Editor — Preview cache + truncation indicators
   (rc214).  Re-previewing the same canvas node now returns instantly
   from an in-process LRU keyed on the upstream-slice content hash;

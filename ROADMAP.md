@@ -3034,6 +3034,23 @@ PointlesSQL
 │   │   badge + a "Bust cache" button.  Per-process only; multi-
 │   │   worker fan-out is out of scope for v1.
 │
+├── Phase 157 — Visual DP Editor: Schema-Flow Diagnostics UX  ✅ shipped (local, 2026-05-31)
+│   │
+│   │   CompileError envelope grows optional ``column`` /
+│   │   ``expected_type`` / ``actual_type`` / ``suggestion``
+│   │   fields.  Project + GroupBy + Join column-presence errors
+│   │   now fill ``column``; the Cast block's unknown-type
+│   │   ``bad_config`` fills ``column`` + ``actual_type`` +
+│   │   ``suggestion="UNKNOWN_DUCKDB_TYPE"``.  The editor's
+│   │   per-node error-badge renders a hover-tooltip with the
+│   │   structured detail so users see "[type_mismatch]
+│   │   column=ghost ..." instead of just a numeric badge.
+│   │   The "insert Cast block" quick-fix is explicitly deferred:
+│   │   today's validator doesn't surface a type-mismatch with
+│   │   matched expected/actual columns where Cast would fix the
+│   │   problem — wait for a future block that does (DuckDB-level
+│   │   type-checked Filter, e.g.) before wiring the quick-fix UI.
+│
 
 
 
