@@ -356,6 +356,7 @@ export function dpCanvasEditor(product, ctx) {
     edgeCategories: {},
     orthogonalEdges: false,
     multiSelectedNodeIds: [],
+    annotations: [],
     _undoStack: [],
     _redoStack: [],
     _UNDO_DEPTH: 50,
@@ -628,6 +629,9 @@ export function dpCanvasEditor(product, ctx) {
       this._drawflowNodes = {};
       this.nodes = {};
       this.edges = {};
+      this.annotations = ((doc.metadata || {}).annotations || []).map((a) => ({
+        ...a,
+      }));
       // First pass: add nodes.
       for (const node of doc.nodes || []) {
         const def = BLOCK_DEFS[node.block_type];
@@ -1110,6 +1114,53 @@ export function dpCanvasEditor(product, ctx) {
       this._syncFromDrawflow();
     },
 
+    addStickyNote() {
+      if (!this.canWrite) return;
+      const note = {
+        id: 'note-' + Math.random().toString(36).slice(2, 10),
+        x: 60,
+        y: 60,
+        width: 220,
+        height: 120,
+        content: '',
+      };
+      this.annotations = [...this.annotations, note];
+      this._scheduleAutosave();
+    },
+
+    updateStickyNote(id, patch) {
+      const idx = this.annotations.findIndex((a) => a.id === id);
+      if (idx < 0) return;
+      this.annotations[idx] = { ...this.annotations[idx], ...patch };
+      this.annotations = [...this.annotations];
+      this._scheduleAutosave();
+    },
+
+    removeStickyNote(id) {
+      this.annotations = this.annotations.filter((a) => a.id !== id);
+      this._scheduleAutosave();
+    },
+
+    _stickyNotePointerDown(ev, note) {
+      if (ev.target.matches('button, textarea')) return;
+      ev.preventDefault();
+      const startX = ev.clientX;
+      const startY = ev.clientY;
+      const baseX = note.x;
+      const baseY = note.y;
+      const onMove = (e) => {
+        const dx = e.clientX - startX;
+        const dy = e.clientY - startY;
+        this.updateStickyNote(note.id, { x: baseX + dx, y: baseY + dy });
+      };
+      const onUp = () => {
+        document.removeEventListener('pointermove', onMove);
+        document.removeEventListener('pointerup', onUp);
+      };
+      document.addEventListener('pointermove', onMove);
+      document.addEventListener('pointerup', onUp);
+    },
+
     _pushCommand(cmd) {
       this._undoStack.push(cmd);
       if (this._undoStack.length > this._UNDO_DEPTH) this._undoStack.shift();
@@ -1508,6 +1559,7 @@ export function dpCanvasEditor(product, ctx) {
           target_node_id: edge.target_node_id,
           target_pin: edge.target_pin,
         })),
+        metadata: { annotations: this.annotations || [] },
       };
     },
 

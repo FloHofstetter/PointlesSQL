@@ -17,6 +17,22 @@ defined in ``scripts/clusters.json``. -->
 
 ### Features
 
+- DP-Canvas: sticky-note annotations (rc232).  Closes the
+  Mega-Cluster 165-174 wave.  Each canvas can carry free-form
+  yellow sticky notes that float above the Drawflow graph as
+  absolute-positioned ``div``s — they're NOT Drawflow nodes
+  and therefore never enter the compile pipeline.  Notes
+  persist in ``CanvasDoc.metadata.annotations``; the new
+  ``CanvasDoc.metadata: dict`` field is an opaque
+  default-factory dict so backends ignore unknown keys instead
+  of failing.  Toolbar gains a sticky-note button; click to
+  drop, drag from the body to move, type to edit, click the
+  small × to remove.  Granular Y.Doc remote-apply
+  improvements (the rest of Phase 160's deferred frontend)
+  explicitly postponed — the current full-replay is the safe
+  baseline and the optimisation deserves its own dedicated
+  pass.
+
 - DP-Canvas: undo/redo command stack + sensible defaults on
   wire (rc231).  Closes the Phase-161 deferred Undo/Redo +
   sensible-defaults items.  Ctrl+Z pops the last add-block /

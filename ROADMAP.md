@@ -3051,7 +3051,7 @@ PointlesSQL
 │   │
 │   └── Mega-Cluster 155-164 closed below.
 │
-├── Mega-Cluster 165-174 — Canvas Quality Cluster (DP + Mesh + Diff)  ⏳ in progress (2026-05-31)
+├── Mega-Cluster 165-174 — Canvas Quality Cluster (DP + Mesh + Diff)  ✅ shipped (local, 2026-05-31)
 │   │
 │   │   10-phase improvement wave targeting the three canvas
 │   │   surfaces: DP-Canvas editor at ``/dp/{id}/canvas``,
@@ -3065,6 +3065,21 @@ PointlesSQL
 │   │   granular Y.Doc client + sticky notes closing deferred-160
 │   │   (174).  Each phase one commit; rc222→rc232.  ALL LOCAL
 │   │   until single final push.
+│   │
+├── Phase 174 — DP-Canvas: sticky-note annotations + CanvasDoc.metadata field  ✅ shipped (local, 2026-05-31)
+│   │
+│   │   Closes Mega-Cluster 165-174.  ``CanvasDoc`` Pydantic
+│   │   gains a default-factory ``metadata: dict[str, Any]``
+│   │   field; sticky-notes live in
+│   │   ``metadata.annotations[]``.  Frontend renders notes as
+│   │   absolute-positioned yellow ``div``s above the Drawflow
+│   │   canvas (NOT Drawflow nodes — they never enter the
+│   │   compile pipeline).  Toolbar adds a sticky-note button;
+│   │   click to drop, drag from the body to move, type to
+│   │   edit, click × to remove.  Granular Y.Doc remote-apply
+│   │   improvements (the rest of Phase 160's deferred
+│   │   frontend) explicitly postponed.  3 new pytest covering
+│   │   roundtrip + isolation from nodes/edges.  rc231→rc232.
 │   │
 ├── Phase 173 — DP-Canvas: undo/redo + sensible defaults on wire  ✅ shipped (local, 2026-05-31)
 │   │

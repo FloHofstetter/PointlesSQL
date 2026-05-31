@@ -109,6 +109,7 @@ class CanvasDoc(BaseModel):
     nodes: list[CanvasNode] = Field(default_factory=list)
     edges: list[CanvasEdge] = Field(default_factory=list)
     schema_version: Literal[1] = 1
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
 
 class SQLFragment(BaseModel):
