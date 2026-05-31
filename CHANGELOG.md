@@ -17,6 +17,28 @@ defined in ``scripts/clusters.json``. -->
 
 ### Features
 
+- Visual Data Product editor — compiler backbone (rc205).  New
+  `pointlessql/services/dp_canvas/` service package that turns a
+  visual block-and-wire DAG into executable DuckDB SQL and
+  materialises the result into a Delta table the parent data
+  product publishes through a registered output port.  Eight
+  initial atom blocks (`InputPort`, `Filter`, `Project`, `Join`,
+  `GroupBy`, `Limit`, `SQL`, `OutputPort`); compiler runs Kahn's
+  topological sort + CTE-chain generation; schema-flow validator
+  forward-propagates per-pin schemas and surfaces edit-time type
+  mismatches as structured `CompileError` rows; executor wraps
+  compile → execute → materialise → output-port register → graph
+  versioning in a single `operation_context` so the audit trail
+  records one row + emits OpenLineage with every base table the
+  graph reads.  New ORM row + alembic migration
+  `l9x1z3b5d7f9` for `data_product_canvas_graph` (append-only
+  version ledger per product) plus a CHECK widening for the new
+  `OpName.CANVAS_MATERIALIZE` enum value.  HTTP routes + the
+  Rete.js editor frontend follow in sibling waves; this ships
+  pure service-layer so the editor can be swapped without
+  touching compile/materialise semantics.  44 new pytest covering
+  per-block compile + schema-flow propagation + end-to-end Delta
+  materialise + lineage capture; full suite stays green.
 - Workspace-default Cost & quota form on `/admin/governance`
   (rc204).  The Phase 146 closure shipped the per-product
   Cost & quota panel on the data-product detail page but never

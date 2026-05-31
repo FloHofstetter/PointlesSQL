@@ -86,7 +86,7 @@ def emit_lineage_after_commit(
     outputs: list[str] = []
     if target_table:
         outputs = [target_table]
-    if op_name == OpName.SQL:
+    if op_name in (OpName.SQL, OpName.CANVAS_MATERIALIZE):
         refs = params.get("referenced_tables")
         if isinstance(refs, list):
             inputs = [str(r) for r in refs if isinstance(r, str)]

@@ -2643,6 +2643,276 @@ PointlesSQL
 │   │   Line, Cytoscape Term-Graph-Drawer, CodeMirror Cedar-Mode,
 │   │   F2 `?as_of=` Picker im SQL-Editor + Preview + Export).
 │
+├── Mega-Cluster 147–154 — Visual Data Product Editor  ⏳ planned
+│   │
+│   │   KNIME / Simulink / STEP-7-FUP-style Block-and-Wire-Editor
+│   │   zum Authoring von Data Products. Jeder Block hat typisierte
+│   │   Input-/Output-Pins, Compound-Blöcke (= DPs) verschachteln
+│   │   sich Simulink-Subsystem-Stil, Graph kompiliert zu DuckDB-SQL
+│   │   auf der existierenden Query-Engine.
+│   │
+│   │   Vision: Domänen-Teams legen DPs visuell selbst an, ohne
+│   │   Notebook oder Roh-SQL. Schließt das Phase-85-Decision-Gate
+│   │   ("KEIN 2D-Canvas bis User-Pain real") — Pain ist mit der
+│   │   Mesh-Initiative (Phase 124-140) explizit geworden.
+│   │
+│   │   Stack-Entscheidung: Rete.js (TypeScript, MIT, framework-
+│   │   agnostisch — Alpine-mount-Pattern wie CodeMirror im
+│   │   Notebook-Editor). Co-Edit Wave G recycelt Phase-105 Y.js-
+│   │   Infrastruktur. Detail-Plan unter
+│   │   `~/.claude/plans/lege-die-phasen-f-r-immutable-oasis.md`.
+│   │
+│   │   Jede Wave A-H bekommt vor Implementation eigenen Plan-File
+│   │   mit detaillierten Sub-Phase-Plänen.
+│
+├── Phase 147 — Visual DP Editor: Compiler Backbone (Wave A)  ✅ shipped (local, 2026-05-31)
+│   │
+│   │   Backend-Foundation für den visuellen DP-Editor. Block-Graph
+│   │   → DuckDB-SQL via topologischer Sort + CTE-Chain-Compiler.
+│   │   Backend zuerst, damit Wave B gegen echte Compile-Execute-
+│   │   Pipeline arbeitet statt Mocks. Neues
+│   │   `pointlessql/services/dp_canvas/` Service-Package
+│   │   (`_types` + `_blocks` + `_compiler` + `_schema_flow` +
+│   │   `_executor` + `_storage`), 8 Atom-Blöcke, neue
+│   │   Alembic-Rev `l9x1z3b5d7f9` (Tabelle `data_product_canvas_graph`
+│   │   + CHECK-Erweiterung um `canvas_materialize`),
+│   │   neuer `OpName.CANVAS_MATERIALIZE` Enum-Wert mit Lineage-
+│   │   Branch in `emit_lineage_after_commit` (multi-input via
+│   │   `params["referenced_tables"]`). Executor: compile → DuckDB-
+│   │   Execute → Delta-Materialize → UC-OutputPort-Register →
+│   │   Graph-Version. 44 neue pytest (compile + schema-flow +
+│   │   per-Block-spec + end-to-end Executor mit echtem Delta +
+│   │   Lineage-Captures). Asset rc204→rc205.
+│   │
+│   ├── 147.1 — Alembic-Migration `data_product_canvas_graph`
+│   │       Neue Tabelle `dp_id` FK auf data_products, `version` int,
+│   │       `document` JSON, `author_user_id`, `created_at`. Eine
+│   │       Zeile pro gespeicherter Graph-Version (Versioning-
+│   │       Substrat für Phase 154.1).
+│   │
+│   ├── 147.2 — Block-Type-Registry + Pin-Type-System
+│   │       `services/dp_canvas/_blocks.py` mit initialen 8 Atom-
+│   │       Blöcken: InputPort, Filter, Project, Join, GroupBy,
+│   │       Limit, SQL (escape-hatch), OutputPort. Pin-Type-System
+│   │       v1: nur TableRef (Schema = [(col, duckdb_type, nullable),
+│   │       ...]). Erweiterungspunkte für ScalarValue/ModelRef/etc.
+│   │       in v2+ vorgesehen.
+│   │
+│   ├── 147.3 — Compiler v1
+│   │       `services/dp_canvas/_compiler.py` mit topologischem Sort
+│   │       + CTE-Kettengenerierung. Jeder Block hat `compile(inputs,
+│   │       cfg) → SQLFragment`. Pattern-Referenz (nicht reused):
+│   │       existierender linearer Compiler
+│   │       `services/canvas/_compiler.py:compile_nodes`.
+│   │
+│   ├── 147.4 — Schema-Flow-Validator
+│   │       `services/dp_canvas/_schema_flow.py` propagiert Output-
+│   │       Pin-Schemas vorwärts durch den Graph, gibt Edit-Zeit-
+│   │       Typfehler als strukturiertes Payload zurück. Wird in
+│   │       148.3 als rote Wires + Validierungs-Badges gerendert.
+│   │
+│   └── 147.5 — Executor + Materialize-Wiring + Verifikation
+│           `services/dp_canvas/_executor.py` orchestriert: Compile
+│           → reuse `api/sql/editor/_helpers.py:run_sql_sync` für
+│           Query-Exec → reuse `pql/_write.py:write_table` für
+│           Materialize → reuse
+│           `services/data_product_ports/_crud.py:create_output_port`
+│           für Port-Registration → reuse
+│           `services/agent_runs/operations/_lineage.py:emit_lineage_after_commit`
+│           für Lineage. 25+ neue pytest für compile+execute round-
+│           trip; lineage edges emittiert; OutputPort registriert
+│           in soyuz; alembic upgrade/downgrade clean.
+│
+├── Phase 148 — Visual DP Editor: Frontend Editor (Wave B)  ⏳ planned
+│   │
+│   │   Rete.js-Mount + minimum-viable Authoring-UI. Gegen Wave-A-
+│   │   Backend, daher keine Mocks nötig.
+│   │
+│   ├── 148.1 — Rete.js Bundle-Setup + Alpine-Mount
+│   │       Library-Integration in `frontend/js/`-Build, Alpine
+│   │       mixin `installDpCanvasEditor(state)` nach Pattern aus
+│   │       `frontend/js/notebook/notebook_editor.js`. Neues Editor-
+│   │       Template `frontend/templates/dp_canvas_editor.html`.
+│   │       Routes: `POST /api/dp/{id}/canvas` (save) +
+│   │       `GET /api/dp/{id}/canvas` (load).
+│   │
+│   ├── 148.2 — Block-Palette + Drag-to-Canvas + Save
+│   │       Sidebar-Palette mit den 8 Atom-Blöcken aus 147.2,
+│   │       drag-to-canvas-Interaktion, manuelles Save via 148.1-
+│   │       Route. JSON-Persistenz schon funktional.
+│   │
+│   ├── 148.3 — Pin-Type-Rendering + Edit-Zeit-Validierung
+│   │       Sockets farbig pro Pin-Typ, Validierungs-Badges, rote
+│   │       Wires bei Type-Mismatch (konsumiert Wave-A-Schema-Flow-
+│   │       Output aus 147.4).
+│   │
+│   ├── 148.4 — Per-Block-Config-Forms
+│   │       Alpine x-data Forms für Filter (Predicate), Join (Keys +
+│   │       Strategy), GroupBy (Keys + Aggregations), Project
+│   │       (Column-Liste). SQL-Block: einfaches Textarea v1,
+│   │       CodeMirror kommt erst in 149.2.
+│   │
+│   └── 148.5 — Materialize-Button + Skeleton-Walkthrough
+│           Materialize-Button → Wire zu Wave-A-Executor → Render
+│           Run-Feedback + Lineage-Echo. Skeleton-Doc
+│           `docs/e2e-walkthroughs/dp-canvas-builder.md` mit Drop-
+│           Wire-Save-Materialize-Pfad; Verifikation manuell via
+│           Playwright-MCP.
+│
+├── Phase 149 — Visual DP Editor: Live Preview + Expression Editor (Wave C)  ⏳ planned
+│   │
+│   │   Per-Node-Preview ist KNIMEs killer-Feature; CodeMirror mit
+│   │   DuckDB-Grammar macht Filter-Predicates und SQL-Blöcke
+│   │   produktiv editierbar.
+│   │
+│   ├── 149.1 — Per-Node-Preview-Endpoint
+│   │       `GET /api/dp/{id}/canvas/preview?upto={node_id}&limit=100`
+│   │       compiliert Graph truncated-at-cursor → DuckDB → JSON
+│   │       rows. Target-Latenz <500ms auf 1M-Zeilen-Delta dank
+│   │       lazy Delta-Scan via PyArrow-Bridge.
+│   │
+│   ├── 149.2 — CodeMirror DuckDB-Grammar-Editor
+│   │       CodeMirror-Mount in Filter/CalcColumn/SQL-Block-Config-
+│   │       Forms aus 148.4. Column-Autocomplete fed via Upstream-
+│   │       Pin-Schema aus Wave-A-Schema-Flow.
+│   │
+│   └── 149.3 — Schema-Inferenz für raw SQL-Block
+│           DuckDB `DESCRIBE`-Round-Trip auf dry-run-Query — sonst
+│           kann Downstream-Schema nicht propagiert werden. Cache
+│           pro (block_id, sql_hash).
+│
+├── Phase 150 — Visual DP Editor: Hierarchy / Compound-Blocks (Wave D)  ⏳ planned
+│   │
+│   │   Simulink-Subsystem-Level. Closes-the-loop für die "fetter
+│   │   Block = DP"-Metapher. Mesh-Canvas wird editierbar.
+│   │
+│   ├── 150.1 — DP◫ Compound-Block-Typ
+│   │       Drop einer DP-Referenz auf Canvas rendert dessen
+│   │       OutputPorts als Output-Pins + InputPorts als Input-Pins.
+│   │       Compiler emittiert
+│   │       `WITH dp_x AS (SELECT * FROM <materialized_table>)` —
+│   │       KEIN Subgraph-Inlining, jeder DP bleibt eigene
+│   │       Deployable-Einheit (matcht Mesh-Modell).
+│   │
+│   ├── 150.2 — Drill-in-Navigation + Breadcrumb
+│   │       Doppelklick auf DP◫ öffnet dessen internen Canvas mit
+│   │       Breadcrumb-UI (`workspaces > sales > orders_summary >
+│   │       internal`). Browser-History-Integration für Back-Button.
+│   │
+│   ├── 150.3 — Editierbarer Mesh-Level-Canvas
+│   │       Existierender read-only `api/mesh_routes.py:/api/mesh/graph`
+│   │       wird zu editierbarem Canvas erweitert: Wire-Zeichnen
+│   │       erzeugt neuen `DataProductInputPort` (kind=upstream_product,
+│   │       source_ref=`<upstream_dp>:<port>`) via existierendem
+│   │       `services/data_product_ports/_crud.py:create_input_port`
+│   │       Service. Reuse `services/mesh/_graph.py:build_mesh_graph`
+│   │       für Initial-Layout.
+│   │
+│   └── 150.4 — Zwei-Level-Walkthrough + Verifikation
+│           Walkthrough: Leaf-DP via Canvas bauen → Downstream-DP
+│           vom Mesh-Canvas referenzieren → beide materialisieren
+│           → in Mesh-Dashboard verlinkt sehen. Manuelle Playwright-
+│           MCP-Replay als Gate.
+│
+├── Phase 151 — Visual DP Editor: Block Library Expansion (Wave E)  ⏳ planned
+│   │
+│   │   Mehr Transform-Primitiven. Jede Sub-Phase = kleiner
+│   │   Compiler-Addition + Frontend-Palette-Entry + Tests. Bewusst
+│   │   knappes Set (~12 zusätzliche Blöcke); 600+ KNIME-Knoten-
+│   │   Parität ist explizit Non-Goal.
+│   │
+│   ├── 151.1 — Window-Block
+│   │       PARTITION BY / ORDER BY / Frame-Spec; Funktionen LAG,
+│   │       LEAD, ROW_NUMBER, RANK, SUM OVER, AVG OVER. Compiler
+│   │       emittiert OVER-Klausel; Pin-Type bleibt TableRef mit
+│   │       erweitertem Schema.
+│   │
+│   ├── 151.2 — Pivot / Unpivot
+│   │       DuckDB PIVOT/UNPIVOT-Statement-Wrapping. Spalten-zu-
+│   │       Zeilen-Transformation und reverse. Schema-Flow muss
+│   │       Dynamic-Column-Set handlen.
+│   │
+│   ├── 151.3 — Union / Distinct / Sort / Sample
+│   │       Vier kleine Blöcke. Union: Multi-Input mit Schema-
+│   │       Kompatibilitäts-Check. Distinct: Optional auf Spalten-
+│   │       Untermenge. Sort: ORDER BY mit Multi-Key + ASC/DESC.
+│   │       Sample: TABLESAMPLE-Wrapping mit Percent oder Rows.
+│   │
+│   └── 151.4 — Cast / Rename / CalcColumn
+│           Cast: Type-Coercion pro Spalte. Rename: Column-Map.
+│           CalcColumn: Neue Spalte aus Expression (CodeMirror-
+│           Editor aus 149.2 reused).
+│
+├── Phase 152 — Visual DP Editor: DP-as-Code Round-Trip (Wave F)  ⏳ planned
+│   │
+│   │   Bridge zwischen Visual-Editor und existierender YAML-DP-Spec
+│   │   (`services/data_product_as_code/_spec.py:DataProductSpec`).
+│   │   Macht Canvas-DPs vollständig Git-fähig.
+│   │
+│   ├── 152.1 — Serializer Canvas → YAML
+│   │       Neues `pipeline:`-Feld in `DataProductSpec`-Pydantic-
+│   │       Model. Export-DP-YAML inkludiert Canvas-Graph als
+│   │       eingebetteten JSON-String oder strukturiertes YAML-Sub-
+│   │       Tree (Decision per ADR während 152.1).
+│   │
+│   ├── 152.2 — Deserializer YAML → Canvas
+│   │       Import existierender DP-YAML mit `pipeline:`-Feld →
+│   │       Canvas im Editor rekonstruieren. Round-Trip-Property-
+│   │       Test garantiert Canvas → YAML → Canvas idempotent.
+│   │
+│   └── 152.3 — Diff-View
+│           Zwei Canvas-Graph-Versionen side-by-side: Visual-Overlay
+│           (verschobene/gelöschte/neue Blöcke farbig markiert) +
+│           JSON-Tree-Diff. Versions kommen aus 147.1-Tabelle.
+│
+├── Phase 153 — Visual DP Editor: Real-time Co-Edit (Wave G)  ⏳ planned
+│   │
+│   │   Reused Phase-105-Infrastruktur — Adapter, keine neue Infra.
+│   │   Pattern-Match zu Notebook-Co-Edit damit UX konsistent bleibt.
+│   │
+│   ├── 153.1 — Y.Doc-Binding für Canvas-Graph
+│   │       Neuer WS-Hub `/ws/dp-canvas/{dp_id}` mirrors Phase-105
+│   │       Notebook-Hub-Pattern. Y.Map als Document-Root, Block-
+│   │       Mutations als Y.Map-Operations.
+│   │
+│   ├── 153.2 — Awareness-Layer
+│   │       Peer-Cursors / Selection-Rectangles / Live-Remote-Edit-
+│   │       Highlights. Selbes Pattern wie Phase 105.4 Notebook-
+│   │       Awareness (FNV-1a-32 HSL-Color per User).
+│   │
+│   └── 153.3 — Save-Path-Barrier
+│           Debounced CRDT-to-JSON-Persistenz mit Version-Bump in
+│           `data_product_canvas_graph`-Tabelle. Pattern aus Phase
+│           105.5 (TAG_CELL_UUID_REMAP-Style Broadcast für ID-
+│           Remaps).
+│
+├── Phase 154 — Visual DP Editor: Operations + AI-Author-Surface (Wave H)  ⏳ planned
+│   │
+│   │   Closure-Wave: Versioning-UI, MCP-Tools für AI-Agent-
+│   │   Authoring (fits "Agents author pipelines"-Vision aus dem
+│   │   AI-native-Lakehouse-Strategie-Memo), Walkthrough, Roadmap-
+│   │   Closure.
+│   │
+│   ├── 154.1 — Versioning-UI
+│   │       Named-Versions listen, Restore, Compare. Consumes 152.3
+│   │       Diff-Komponente. Pin/Unpin von Production-Versions.
+│   │
+│   ├── 154.2 — Plugin / MCP-Tools für AI-Agent-Authoring
+│   │       Im `hermes-plugin-pointlessql`: `pql_create_canvas_dp`,
+│   │       `pql_add_block`, `pql_wire_blocks`, `pql_validate_canvas`,
+│   │       `pql_materialize_canvas_dp`. Erlaubt Agents, ganze DPs
+│   │       visuell zu komponieren statt SQL zu generieren.
+│   │
+│   ├── 154.3 — Full Walkthrough-Doc
+│   │       `docs/e2e-walkthroughs/dp-canvas-builder.md` (full):
+│   │       End-to-End Happy-Path + Multi-DP-Composition + Co-Edit
+│   │       + AI-Agent-Edit. Playwright-MCP-replay-fähig.
+│   │
+│   └── 154.4 — ROADMAP-Closure + Archive-Roll
+│           Phase 147-154 Status-Marker auf ✅, CHANGELOG-Einträge,
+│           Archive-Roll falls inzwischen Mega-Phase 200+ läuft
+│           (gleiches Pattern wie Phase 48-99 nach roadmap_archive).
+│
 
 
 

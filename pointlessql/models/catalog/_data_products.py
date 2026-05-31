@@ -324,3 +324,58 @@ class DataProductStatistics(Base):
     profile_kind: Mapped[str] = mapped_column(String(16), nullable=False, default="light")
     freshness_lag_minutes: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class DataProductCanvasGraph(Base):
+    """One stored version of a data product's visual block-and-wire graph.
+
+    The visual editor authors a DAG of typed blocks (InputPort, Filter,
+    Join, GroupBy, OutputPort, …) that compiles to DuckDB SQL and
+    materialises one or more output ports of the parent product.  This
+    table keeps an append-only ledger of graph versions per product so
+    the editor can offer named versions / restore / compare without
+    losing prior edits.  ``version`` is monotonic per
+    ``data_product_id`` (1-based), enforced by the UNIQUE constraint.
+
+    Attributes:
+        id: Auto-incremented primary key.
+        data_product_id: FK on ``data_products.id`` with CASCADE
+            delete.  When a product is removed the graph history goes
+            with it; there is no value in stranded canvases.
+        version: 1-based monotonic version per product.  The executor
+            mints the next integer above the current MAX on save.
+        document: JSON serialisation of the ``CanvasDoc`` Pydantic
+            envelope (nodes + edges + schema_version).  Text rather
+            than dialect-specific JSON so the SQLite test path stays
+            simple.
+        author_user_id: User who authored this version, nullable
+            (cleared on user deletion via SET NULL so history survives
+            account removal).
+        created_at: Wall-clock the version row was minted.
+    """
+
+    __tablename__ = "data_product_canvas_graph"
+
+    __table_args__ = (
+        UniqueConstraint(
+            "data_product_id",
+            "version",
+            name="uq_dp_canvas_graph_dp_version",
+        ),
+        Index("ix_dp_canvas_graph_dp", "data_product_id"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    data_product_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("data_products.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    version: Mapped[int] = mapped_column(Integer, nullable=False)
+    document: Mapped[str] = mapped_column(Text, nullable=False)
+    author_user_id: Mapped[int | None] = mapped_column(
+        Integer,
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)

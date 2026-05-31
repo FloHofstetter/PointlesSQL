@@ -82,6 +82,7 @@ from pointlessql.models.catalog._data_products import (
     CONTRACT_EVENT_OUTCOMES,
     LIFECYCLE_STATES,
     DataProduct,
+    DataProductCanvasGraph,
     DataProductContractEvent,
     DataProductStatistics,
 )
@@ -232,6 +233,7 @@ __all__ = [
     "DataProduct",
     "DataProductActiveReviewerConfig",
     "DataProductBitemporalPolicy",
+    "DataProductCanvasGraph",
     "DataProductColumnClassification",
     "DataProductContractTest",
     "DataProductContractTestResult",

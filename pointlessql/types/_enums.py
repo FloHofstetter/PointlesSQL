@@ -64,6 +64,7 @@ class OpName(StrEnum):
     VECTOR_INDEX = "vector_index"
     VECTOR_SEARCH = "vector_search"
     PIN_FACT = "pin_fact"
+    CANVAS_MATERIALIZE = "canvas_materialize"
 
 
 class ReadKind(StrEnum):

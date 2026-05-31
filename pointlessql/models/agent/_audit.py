@@ -179,7 +179,8 @@ class AgentRunOperation(Base):
             "'train_model','branch_create','branch_promote','branch_discard',"
             "'dbt_model','dbt_test','sql_explain',"
             "'update','delete','drop_table','create_schema','drop_schema',"
-            "'alter_table','vector_index','vector_search','pin_fact')",
+            "'alter_table','vector_index','vector_search','pin_fact',"
+            "'canvas_materialize')",
             name="ck_agent_run_operations_op_name",
         ),
     )
