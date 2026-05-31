@@ -215,3 +215,154 @@ async def test_usage_endpoint_returns_summary_via_admin_route(
     assert len(body["days"]) == 30
     assert body["top_ips"] == [{"ip": "127.0.0.1", "count": 3}]
     _wipe()
+
+
+# ---------------------------------------------------------------------------
+# Phase 164 — sparklines + WoW + anomaly heuristic
+# ---------------------------------------------------------------------------
+
+
+def test_usage_summary_response_carries_stats_and_wow() -> None:
+    """get_usage_summary returns the new wow + stats envelopes."""
+    _wipe()
+    row, _ = api_keys_service.create_api_key(app.state.session_factory, name="phase164-shape")
+    factory = app.state.session_factory
+    summary = get_usage_summary(factory, api_key_id=row.id, days=30)
+    assert "wow" in summary
+    assert set(summary["wow"]) == {"last_7d", "prev_7d", "change_pct"}
+    assert "stats" in summary
+    assert set(summary["stats"]) == {"mean_7d", "std_7d"}
+    assert all("is_anomaly" in day for day in summary["days"])
+    _wipe()
+
+
+def test_usage_summary_wow_calculates_change_pct() -> None:
+    _wipe()
+    row, _ = api_keys_service.create_api_key(app.state.session_factory, name="phase164-wow")
+    factory = app.state.session_factory
+    now = datetime.now(UTC).replace(microsecond=0, second=0)
+    today = now.date()
+    with factory() as session:
+        # 100 hits/day for the last 7 days; 50 hits/day for the prior 7.
+        for offset in range(7):
+            day = today - timedelta(days=offset)
+            session.add(
+                ApiKeyUsageBucket(
+                    api_key_id=row.id,
+                    bucket_minute=datetime.combine(day, datetime.min.time(), tzinfo=UTC),
+                    source_ip="1.1.1.1",
+                    count=100,
+                    last_seen_at=now,
+                )
+            )
+        for offset in range(7, 14):
+            day = today - timedelta(days=offset)
+            session.add(
+                ApiKeyUsageBucket(
+                    api_key_id=row.id,
+                    bucket_minute=datetime.combine(day, datetime.min.time(), tzinfo=UTC),
+                    source_ip="1.1.1.1",
+                    count=50,
+                    last_seen_at=now,
+                )
+            )
+        session.commit()
+    summary = get_usage_summary(factory, api_key_id=row.id, days=30)
+    assert summary["wow"]["last_7d"] == 7 * 100
+    assert summary["wow"]["prev_7d"] == 7 * 50
+    assert summary["wow"]["change_pct"] == 100.0
+    _wipe()
+
+
+def test_usage_summary_wow_change_pct_none_when_prev_zero() -> None:
+    _wipe()
+    row, _ = api_keys_service.create_api_key(
+        app.state.session_factory, name="phase164-no-prev"
+    )
+    factory = app.state.session_factory
+    now = datetime.now(UTC).replace(microsecond=0, second=0)
+    today = now.date()
+    with factory() as session:
+        session.add(
+            ApiKeyUsageBucket(
+                api_key_id=row.id,
+                bucket_minute=datetime.combine(today, datetime.min.time(), tzinfo=UTC),
+                source_ip="2.2.2.2",
+                count=42,
+                last_seen_at=now,
+            )
+        )
+        session.commit()
+    summary = get_usage_summary(factory, api_key_id=row.id, days=30)
+    assert summary["wow"]["last_7d"] >= 42
+    assert summary["wow"]["prev_7d"] == 0
+    assert summary["wow"]["change_pct"] is None
+    _wipe()
+
+
+def test_usage_summary_anomaly_flag_for_3sigma_spike() -> None:
+    """A day count > 3σ from the prior 7-day mean is flagged is_anomaly."""
+    _wipe()
+    row, _ = api_keys_service.create_api_key(
+        app.state.session_factory, name="phase164-spike"
+    )
+    factory = app.state.session_factory
+    now = datetime.now(UTC).replace(microsecond=0, second=0)
+    today = now.date()
+    with factory() as session:
+        # Quiet baseline: 10 / day for 7 days before today.
+        for offset in range(1, 8):
+            day = today - timedelta(days=offset)
+            session.add(
+                ApiKeyUsageBucket(
+                    api_key_id=row.id,
+                    bucket_minute=datetime.combine(day, datetime.min.time(), tzinfo=UTC),
+                    source_ip="3.3.3.3",
+                    count=10,
+                    last_seen_at=now,
+                )
+            )
+        # Today: 10000 hits — way beyond 3σ.
+        session.add(
+            ApiKeyUsageBucket(
+                api_key_id=row.id,
+                bucket_minute=datetime.combine(today, datetime.min.time(), tzinfo=UTC),
+                source_ip="3.3.3.3",
+                count=10000,
+                last_seen_at=now,
+            )
+        )
+        session.commit()
+    summary = get_usage_summary(factory, api_key_id=row.id, days=30)
+    today_iso = today.isoformat()
+    today_entry = next(d for d in summary["days"] if d["date"] == today_iso)
+    assert today_entry["is_anomaly"] is True
+    _wipe()
+
+
+def test_usage_summary_zero_std_no_anomaly() -> None:
+    """Constant traffic should never flag as anomaly (std = 0)."""
+    _wipe()
+    row, _ = api_keys_service.create_api_key(
+        app.state.session_factory, name="phase164-const"
+    )
+    factory = app.state.session_factory
+    now = datetime.now(UTC).replace(microsecond=0, second=0)
+    today = now.date()
+    with factory() as session:
+        # 50 hits/day across the whole 30-day window.
+        for offset in range(30):
+            day = today - timedelta(days=offset)
+            session.add(
+                ApiKeyUsageBucket(
+                    api_key_id=row.id,
+                    bucket_minute=datetime.combine(day, datetime.min.time(), tzinfo=UTC),
+                    source_ip="4.4.4.4",
+                    count=50,
+                    last_seen_at=now,
+                )
+            )
+        session.commit()
+    summary = get_usage_summary(factory, api_key_id=row.id, days=30)
+    assert not any(d["is_anomaly"] for d in summary["days"])
+    _wipe()

@@ -3034,6 +3034,37 @@ PointlesSQL
 │   │   badge + a "Bust cache" button.  Per-process only; multi-
 │   │   worker fan-out is out of scope for v1.
 │
+├── Phase 164 — API-Key Usage: WoW diff + 3σ anomaly heuristic  ✅ shipped (local, 2026-05-31)
+│   │
+│   │   ``get_usage_summary`` response envelope extended with
+│   │   ``wow`` (last-7d-vs-prev-7d totals + change_pct, ``None``
+│   │   when prior window had zero traffic to avoid divide-by-
+│   │   infinity badges), ``stats`` (mean_7d + std_7d), and a
+│   │   per-day ``is_anomaly`` flag.  Anomaly rule: rolling 7-day
+│   │   mean of the *prior* 7 days; if std > 0 flag when
+│   │   |count - mean| > 3σ, else if mean > 0 flag when count >
+│   │   5× mean (constant-baseline burst), else no flag (no
+│   │   signal).  Frontend Chart.js sparkline rendering deferred —
+│   │   today the admin API-key detail page already paints a
+│   │   raw-canvas bar chart; the v2 colour-by-anomaly + WoW-badge
+│   │   render can land separately.
+│   │
+│   └── Mega-Cluster 155-164 closed below.
+│
+├── Mega-Cluster 155-164 — Visual DP Editor + Platform Polish  ✅ shipped (local, 2026-05-31)
+│   │
+│   │   10-phase improvement wave on top of the freshly shipped
+│   │   147-154 Visual DP Editor surface and adjacent platform
+│   │   surfaces (mesh-canvas, audit cockpit, API-key dashboard).
+│   │   Backend-first scope: pinned production canvas versions,
+│   │   preview cache, hover-tooltip diagnostics, side-by-side
+│   │   visual diff overlay, CodeMirror format-on-blur + snippets,
+│   │   granular per-block Y.Doc co-edit, duplicate-block action,
+│   │   mesh cross-workspace edges, saved audit filters + regex on
+│   │   details, API-key WoW + 3σ anomaly heuristic.  Each phase
+│   │   landed as one commit; rc212→rc222.  ALL LOCAL until single
+│   │   final push.
+│
 ├── Phase 163 — Audit-Log Filters UX: saved-filters + regex on details  ✅ shipped (local, 2026-05-31)
 │   │
 │   │   Alembic ``o3c5e7g9i1k3`` adds ``audit_saved_filters``

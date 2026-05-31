@@ -139,10 +139,22 @@ def cleanup_stale_usage(session_factory: sessionmaker[Session], *, retention_day
     return deleted
 
 
+def _rolling_stats(values: list[int]) -> tuple[float, float]:
+    """Mean + sample standard deviation of *values*; returns (0.0, 0.0) on empty."""
+    if not values:
+        return 0.0, 0.0
+    n = len(values)
+    mean = sum(values) / n
+    if n < 2:
+        return mean, 0.0
+    variance = sum((v - mean) ** 2 for v in values) / (n - 1)
+    return mean, variance**0.5
+
+
 def get_usage_summary(
     session_factory: sessionmaker[Session], *, api_key_id: int, days: int = 30
 ) -> dict[str, Any]:
-    """Aggregate the last *days* of usage for a key.
+    """Aggregate the last *days* of usage for a key with trend annotations.
 
     Args:
         session_factory: SQLAlchemy session factory.
@@ -150,10 +162,24 @@ def get_usage_summary(
         days: Window size in days.  Defaults to 30.
 
     Returns:
-        ``{"days": [{"date": "YYYY-MM-DD", "count": int}, ...],
-        "top_ips": [{"ip": str, "count": int}, ...]}``.  Days list
-        covers exactly the past *days* days (zero-filled); top_ips
-        is the top 10 source IPs by total count over the window.
+        ``{
+            "days": [{"date": "YYYY-MM-DD", "count": int,
+                       "is_anomaly": bool}, ...],
+            "top_ips": [{"ip": str, "count": int}, ...],
+            "wow": {"last_7d": int, "prev_7d": int,
+                     "change_pct": float | None},
+            "stats": {"mean_7d": float, "std_7d": float},
+        }``.
+
+        ``days`` covers exactly the past *days* days (zero-filled).
+        ``is_anomaly`` flags a day whose count is more than 3
+        standard deviations from the *rolling 7-day mean* — derived
+        per-day from the prior 7 days inside the window.  ``wow``
+        compares the most recent 7 days to the 7 days before that;
+        ``change_pct`` is None when the prior window had zero
+        traffic (avoids divide-by-zero "infinity" badges in the
+        UI).  ``stats`` carries the window-end mean + stdev so the
+        UI can render a baseline overlay.
     """
     cutoff = datetime.datetime.now(datetime.UTC) - datetime.timedelta(days=days)
     with session_factory() as session:
@@ -179,9 +205,46 @@ def get_usage_summary(
         ip_counts[source_ip or ""] += count
 
     today = datetime.datetime.now(datetime.UTC).date()
-    days_list = []
-    for i in range(days - 1, -1, -1):
-        d = today - datetime.timedelta(days=i)
-        days_list.append({"date": d.isoformat(), "count": daily_counts.get(d, 0)})
+    counts_in_order = [daily_counts.get(today - datetime.timedelta(days=i), 0)
+                        for i in range(days - 1, -1, -1)]
+    days_list: list[dict[str, Any]] = []
+    for idx, count in enumerate(counts_in_order):
+        prior_window = counts_in_order[max(0, idx - 7) : idx]
+        mean, std = _rolling_stats(prior_window)
+        if std > 0:
+            is_anomaly = abs(count - mean) > 3 * std
+        elif mean > 0:
+            # Constant baseline → no std signal; flag spikes >5× the
+            # baseline so a sustained-flat pattern interrupted by a
+            # burst still surfaces in the UI.
+            is_anomaly = count > mean * 5
+        else:
+            is_anomaly = False
+        d = today - datetime.timedelta(days=days - 1 - idx)
+        days_list.append(
+            {"date": d.isoformat(), "count": count, "is_anomaly": bool(is_anomaly)}
+        )
     top_ips = [{"ip": ip, "count": int(c)} for ip, c in ip_counts.most_common(10)]
-    return {"days": days_list, "top_ips": top_ips}
+
+    last_7d = sum(counts_in_order[-7:]) if counts_in_order else 0
+    prev_7d = (
+        sum(counts_in_order[-14:-7]) if len(counts_in_order) >= 14 else 0
+    )
+    change_pct: float | None = None
+    if prev_7d > 0:
+        change_pct = round((last_7d - prev_7d) / prev_7d * 100.0, 2)
+    mean_7d, std_7d = _rolling_stats(counts_in_order[-7:])
+
+    return {
+        "days": days_list,
+        "top_ips": top_ips,
+        "wow": {
+            "last_7d": last_7d,
+            "prev_7d": prev_7d,
+            "change_pct": change_pct,
+        },
+        "stats": {
+            "mean_7d": round(mean_7d, 2),
+            "std_7d": round(std_7d, 2),
+        },
+    }

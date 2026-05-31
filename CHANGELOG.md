@@ -17,6 +17,21 @@ defined in ``scripts/clusters.json``. -->
 
 ### Features
 
+- API-key usage — WoW diff + 3σ anomaly heuristic (rc222).
+  Closes Mega-Cluster 155-164.  ``get_usage_summary`` response
+  envelope extended with three new sub-objects: ``wow`` (last-7d
+  vs prev-7d totals + change_pct; ``None`` when prior window had
+  zero traffic so the UI doesn't render +∞% badges), ``stats``
+  (window-end rolling 7-day mean + stdev), and a per-day
+  ``is_anomaly`` boolean.  Anomaly rule is layered: when the
+  prior 7-day window has variance, flag |count - mean| > 3σ;
+  when variance is zero but mean > 0, flag a count > 5× mean
+  (so a constant-baseline burst still surfaces); otherwise no
+  flag.  Five new pytest cover the envelope shape, WoW
+  calculation, divide-by-zero guard, true 3σ spike on noisy
+  baseline, and constant-baseline = no-flag.  Frontend Chart.js
+  sparkline rendering deferred to a follow-up polish phase.
+
 - Audit-cockpit — Saved filters + details-regex search (rc221).
   Admins can now name their favourite audit-filter combos
   (since-window + action + user-substr + target-substr + details-
