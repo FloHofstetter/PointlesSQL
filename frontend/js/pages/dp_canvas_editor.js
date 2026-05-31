@@ -88,6 +88,78 @@ const BLOCK_DEFS = {
     group: 'transforms',
     defaultConfig: () => ({ query: 'SELECT * FROM {{in}}' }),
   },
+  Window: {
+    label: 'Window',
+    icon: 'bi-graph-up',
+    help: 'Add a windowed aggregation column over a PARTITION/ORDER spec.',
+    inputs: 1, outputs: 1, group: 'transforms',
+    defaultConfig: () => ({
+      function: 'row_number', target_alias: 'rn', partition_by: [], order_by: [], args: [],
+    }),
+  },
+  Pivot: {
+    label: 'Pivot',
+    icon: 'bi-arrow-90deg-right',
+    help: 'DuckDB PIVOT — turn distinct values of a column into new columns.',
+    inputs: 1, outputs: 1, group: 'transforms',
+    defaultConfig: () => ({ on_column: '', value_column: '', aggregate: 'sum' }),
+  },
+  Unpivot: {
+    label: 'Unpivot',
+    icon: 'bi-arrow-90deg-down',
+    help: 'DuckDB UNPIVOT — collapse multiple columns into name/value rows.',
+    inputs: 1, outputs: 1, group: 'transforms',
+    defaultConfig: () => ({ value_columns: [], name_label: 'name', value_label: 'value' }),
+  },
+  Union: {
+    label: 'Union',
+    icon: 'bi-share',
+    help: 'Stack two upstream tables row-wise (UNION ALL when `all`).',
+    inputs: 2, outputs: 1, group: 'transforms',
+    defaultConfig: () => ({ all: true }),
+  },
+  Distinct: {
+    label: 'Distinct',
+    icon: 'bi-filter-square',
+    help: 'Keep distinct rows (optionally on a subset of columns).',
+    inputs: 1, outputs: 1, group: 'transforms',
+    defaultConfig: () => ({ columns: [] }),
+  },
+  Sort: {
+    label: 'Sort',
+    icon: 'bi-sort-down',
+    help: 'ORDER BY multi-key with ASC/DESC per column.',
+    inputs: 1, outputs: 1, group: 'transforms',
+    defaultConfig: () => ({ order_by: [] }),
+  },
+  Sample: {
+    label: 'Sample',
+    icon: 'bi-droplet-half',
+    help: 'TABLESAMPLE — pick a percentage or row count at random.',
+    inputs: 1, outputs: 1, group: 'transforms',
+    defaultConfig: () => ({ kind: 'percent', value: 10 }),
+  },
+  Cast: {
+    label: 'Cast',
+    icon: 'bi-arrow-repeat',
+    help: 'Per-column DuckDB type cast.',
+    inputs: 1, outputs: 1, group: 'transforms',
+    defaultConfig: () => ({ casts: [] }),
+  },
+  Rename: {
+    label: 'Rename',
+    icon: 'bi-tag',
+    help: 'Per-column rename map.',
+    inputs: 1, outputs: 1, group: 'transforms',
+    defaultConfig: () => ({ renames: {} }),
+  },
+  CalcColumn: {
+    label: 'Calc column',
+    icon: 'bi-calculator',
+    help: 'Compute a new column from a DuckDB expression.',
+    inputs: 1, outputs: 1, group: 'transforms',
+    defaultConfig: () => ({ expression: '', target_alias: 'calc' }),
+  },
   OutputPort: {
     label: 'Output port',
     icon: 'bi-box-arrow-up-right',
@@ -132,7 +204,7 @@ function generateNodeId() {
 }
 
 function inputPinName(blockType, idx) {
-  if (blockType === 'Join') return ['left', 'right'][idx] || 'in';
+  if (blockType === 'Join' || blockType === 'Union') return ['left', 'right'][idx] || 'in';
   return PIN_NAMES_IN[0];
 }
 
@@ -191,7 +263,11 @@ export function dpCanvasEditor(product, ctx) {
 
     paletteGroups: {
       sources: ['InputPort', 'DataProduct'],
-      transforms: ['Filter', 'Project', 'Join', 'GroupBy', 'Limit', 'SQL'],
+      transforms: [
+        'Filter', 'Project', 'Join', 'GroupBy', 'Limit', 'SQL',
+        'Window', 'Pivot', 'Unpivot', 'Union', 'Distinct', 'Sort', 'Sample',
+        'Cast', 'Rename', 'CalcColumn',
+      ],
       sinks: ['OutputPort'],
     },
 
@@ -375,7 +451,7 @@ export function dpCanvasEditor(product, ctx) {
     },
 
     _pinIndex(blockType, pinName, direction) {
-      if (direction === 'in' && blockType === 'Join') {
+      if (direction === 'in' && (blockType === 'Join' || blockType === 'Union')) {
         return pinName === 'right' ? 1 : 0;
       }
       return 0;
@@ -421,7 +497,9 @@ export function dpCanvasEditor(product, ctx) {
             const sourcePin = 'out';
             const targetIdx = parseInt((conn.output || '').replace('input_', ''), 10) - 1;
             const targetBlock = newNodes[pqlTargetId] ? newNodes[pqlTargetId].block_type : '';
-            const targetPin = (targetBlock === 'Join') ? (targetIdx === 1 ? 'right' : 'left') : 'in';
+            const targetPin = (targetBlock === 'Join' || targetBlock === 'Union')
+              ? (targetIdx === 1 ? 'right' : 'left')
+              : 'in';
             const sourceOutputIdx = parseInt((outputName || '').replace('output_', ''), 10);
             if (!Number.isFinite(sourceOutputIdx)) continue;
             const edgeId = `e-${pqlSourceId}:${sourcePin}->${pqlTargetId}:${targetPin}`;

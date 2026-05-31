@@ -2856,34 +2856,36 @@ PointlesSQL
 │           DP wiren → save → run. Playwright-MCP Browser-Replay als
 │           Gate für Wave-D-Commit.
 │
-├── Phase 151 — Visual DP Editor: Block Library Expansion (Wave E)  ⏳ planned
+├── Phase 151 — Visual DP Editor: Block Library Expansion (Wave E)  ✅ shipped (local, 2026-05-31)
 │   │
-│   │   Mehr Transform-Primitiven. Jede Sub-Phase = kleiner
-│   │   Compiler-Addition + Frontend-Palette-Entry + Tests. Bewusst
-│   │   knappes Set (~12 zusätzliche Blöcke); 600+ KNIME-Knoten-
-│   │   Parität ist explizit Non-Goal.
+│   │   10 neue Transform-Primitiven dazu (BLOCK_REGISTRY 9 → 19):
+│   │   Window, Pivot, Unpivot, Union, Distinct, Sort, Sample, Cast,
+│   │   Rename, CalcColumn.
 │   │
-│   ├── 151.1 — Window-Block
-│   │       PARTITION BY / ORDER BY / Frame-Spec; Funktionen LAG,
-│   │       LEAD, ROW_NUMBER, RANK, SUM OVER, AVG OVER. Compiler
-│   │       emittiert OVER-Klausel; Pin-Type bleibt TableRef mit
-│   │       erweitertem Schema.
+│   ├── 151.1 — Window
+│   │       `{partition_by, order_by, function, target_alias, args}`,
+│   │       Funktionen ROW_NUMBER/RANK/DENSE_RANK/LAG/LEAD/SUM/AVG/MIN/
+│   │       MAX/COUNT. Compiler emittiert OVER-Klausel; Schema-Inferenz
+│   │       fügt alias-Spalte mit BIGINT (für ranks/count) sonst DOUBLE.
 │   │
-│   ├── 151.2 — Pivot / Unpivot
-│   │       DuckDB PIVOT/UNPIVOT-Statement-Wrapping. Spalten-zu-
-│   │       Zeilen-Transformation und reverse. Schema-Flow muss
-│   │       Dynamic-Column-Set handlen.
+│   ├── 151.2 — Pivot + Unpivot
+│   │       DuckDB PIVOT-Statement-Wrapping (sum/avg/min/max/count/
+│   │       count_distinct). Unpivot mit NAME/VALUE-labels.  Pivot
+│   │       gibt Dynamic-Column-Set zurück (unknown=True downstream);
+│   │       Unpivot weiß die exakte Spaltenliste nach dem unpivot.
 │   │
-│   ├── 151.3 — Union / Distinct / Sort / Sample
-│   │       Vier kleine Blöcke. Union: Multi-Input mit Schema-
-│   │       Kompatibilitäts-Check. Distinct: Optional auf Spalten-
-│   │       Untermenge. Sort: ORDER BY mit Multi-Key + ASC/DESC.
-│   │       Sample: TABLESAMPLE-Wrapping mit Percent oder Rows.
+│   ├── 151.3 — Union + Distinct + Sort + Sample
+│   │       Union: 2-input (`left`+`right`) + UNION ALL toggle +
+│   │       schema-mismatch error. Distinct: SELECT DISTINCT mit
+│   │       optional `ON ({cols})`. Sort: ORDER BY mit list[OrderSpec]
+│   │       (strings oder `{column, direction}` objects). Sample:
+│   │       USING SAMPLE N PERCENT oder USING SAMPLE N ROWS.
 │   │
-│   └── 151.4 — Cast / Rename / CalcColumn
-│           Cast: Type-Coercion pro Spalte. Rename: Column-Map.
-│           CalcColumn: Neue Spalte aus Expression (CodeMirror-
-│           Editor aus 149.2 reused).
+│   └── 151.4 — Cast + Rename + CalcColumn
+│           Cast: pro-Spalte `::TYPE`-coercion (validate target_type ∈
+│           DuckDB-types). Rename: `{old: new}` mapping. CalcColumn:
+│           `{expression, target_alias}` mit CodeMirror-mount aus
+│           149.2 reused. Tests: 11 neue pytest.
 │
 ├── Phase 152 — Visual DP Editor: DP-as-Code Round-Trip (Wave F)  ⏳ planned
 │   │

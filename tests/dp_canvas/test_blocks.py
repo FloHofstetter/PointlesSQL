@@ -269,7 +269,185 @@ class TestDataProduct:
         assert errors == []
 
 
-def test_registry_has_nine_atom_blocks() -> None:
+class TestWindow:
+    def test_compile_row_number(self) -> None:
+        errors: list = []
+        out = compile_block(
+            block_type="Window",
+            node_id="w1",
+            inputs={"in": "upstream"},
+            output_schema=_seed_schema(),
+            cfg={
+                "function": "row_number",
+                "target_alias": "rn",
+                "partition_by": ["country"],
+                "order_by": ["ts"],
+            },
+            errors=errors,
+        )
+        assert out is not None
+        assert "ROW_NUMBER()" in out.sql
+        assert "PARTITION BY" in out.sql
+        assert 'AS "rn"' in out.sql
+
+    def test_compile_rejects_unknown_fn(self) -> None:
+        errors: list = []
+        out = compile_block(
+            block_type="Window",
+            node_id="w1",
+            inputs={"in": "u"},
+            output_schema=_seed_schema(),
+            cfg={"function": "wat", "target_alias": "x"},
+            errors=errors,
+        )
+        assert out is None
+        assert errors and errors[0].kind == "bad_config"
+
+
+class TestPivotUnpivot:
+    def test_compile_pivot(self) -> None:
+        errors: list = []
+        out = compile_block(
+            block_type="Pivot",
+            node_id="p1",
+            inputs={"in": "u"},
+            output_schema=_seed_schema(),
+            cfg={"on_column": "month", "value_column": "amt", "aggregate": "sum"},
+            errors=errors,
+        )
+        assert out is not None
+        assert "PIVOT u" in out.sql
+        assert 'ON "month"' in out.sql
+
+    def test_compile_unpivot(self) -> None:
+        errors: list = []
+        out = compile_block(
+            block_type="Unpivot",
+            node_id="u1",
+            inputs={"in": "u"},
+            output_schema=_seed_schema(),
+            cfg={"value_columns": ["jan", "feb"], "name_label": "m", "value_label": "v"},
+            errors=errors,
+        )
+        assert out is not None
+        assert "UNPIVOT u" in out.sql
+        assert '"jan", "feb"' in out.sql
+
+
+class TestUnion:
+    def test_compile_union_all(self) -> None:
+        errors: list = []
+        out = compile_block(
+            block_type="Union",
+            node_id="u1",
+            inputs={"left": "a", "right": "b"},
+            output_schema=_seed_schema(),
+            cfg={"all": True},
+            errors=errors,
+        )
+        assert out is not None
+        assert "UNION ALL" in out.sql
+
+    def test_infer_schema_mismatch_emits_error(self) -> None:
+        from pointlessql.services.dp_canvas._blocks import infer_block
+
+        errors: list = []
+        left = _seed_schema(("a", "BIGINT"))
+        right = _seed_schema(("b", "BIGINT"))
+        inferred = infer_block(
+            block_type="Union",
+            node_id="u1",
+            input_schemas={"left": left, "right": right},
+            cfg={},
+            errors=errors,
+        )
+        assert inferred.unknown is True
+        assert any(e.kind == "type_mismatch" for e in errors)
+
+
+class TestSortSampleDistinct:
+    def test_compile_distinct_all(self) -> None:
+        errors: list = []
+        out = compile_block(
+            block_type="Distinct",
+            node_id="d1",
+            inputs={"in": "u"},
+            output_schema=_seed_schema(),
+            cfg={},
+            errors=errors,
+        )
+        assert out is not None
+        assert "SELECT DISTINCT *" in out.sql
+
+    def test_compile_sort(self) -> None:
+        errors: list = []
+        out = compile_block(
+            block_type="Sort",
+            node_id="s1",
+            inputs={"in": "u"},
+            output_schema=_seed_schema(),
+            cfg={"order_by": ["a", {"column": "b", "direction": "desc"}]},
+            errors=errors,
+        )
+        assert out is not None
+        assert 'ORDER BY "a" ASC, "b" DESC' in out.sql
+
+    def test_compile_sample_percent(self) -> None:
+        errors: list = []
+        out = compile_block(
+            block_type="Sample",
+            node_id="sm1",
+            inputs={"in": "u"},
+            output_schema=_seed_schema(),
+            cfg={"kind": "percent", "value": 10},
+            errors=errors,
+        )
+        assert out is not None
+        assert "USING SAMPLE 10.0 PERCENT" in out.sql
+
+
+class TestCastRenameCalc:
+    def test_compile_cast(self) -> None:
+        errors: list = []
+        out = compile_block(
+            block_type="Cast",
+            node_id="c1",
+            inputs={"in": "u"},
+            output_schema=_seed_schema(),
+            cfg={"casts": [{"column": "amt", "target_type": "INTEGER"}]},
+            errors=errors,
+        )
+        assert out is not None
+        assert '"amt"::INTEGER AS "amt"' in out.sql
+
+    def test_compile_rename(self) -> None:
+        errors: list = []
+        out = compile_block(
+            block_type="Rename",
+            node_id="r1",
+            inputs={"in": "u"},
+            output_schema=_seed_schema(),
+            cfg={"renames": {"a": "alpha"}},
+            errors=errors,
+        )
+        assert out is not None
+        assert '"a" AS "alpha"' in out.sql
+
+    def test_compile_calc_column(self) -> None:
+        errors: list = []
+        out = compile_block(
+            block_type="CalcColumn",
+            node_id="cc1",
+            inputs={"in": "u"},
+            output_schema=_seed_schema(),
+            cfg={"expression": "amt * 1.1", "target_alias": "amt_x"},
+            errors=errors,
+        )
+        assert out is not None
+        assert '(amt * 1.1) AS "amt_x"' in out.sql
+
+
+def test_registry_has_full_block_set() -> None:
     assert set(BLOCK_REGISTRY) == {
         "InputPort",
         "DataProduct",
@@ -279,5 +457,15 @@ def test_registry_has_nine_atom_blocks() -> None:
         "GroupBy",
         "Limit",
         "SQL",
+        "Window",
+        "Pivot",
+        "Unpivot",
+        "Union",
+        "Distinct",
+        "Sort",
+        "Sample",
+        "Cast",
+        "Rename",
+        "CalcColumn",
         "OutputPort",
     }

@@ -17,6 +17,27 @@ defined in ``scripts/clusters.json``. -->
 
 ### Features
 
+- Visual Data Product editor — block library expansion (rc209).
+  Wave E adds 10 new transform-block types so the editor covers the
+  common shapes the previous 9-block set could not:
+  ``Window`` (PARTITION BY / ORDER BY OVER, with the canonical 10
+  DuckDB functions ROW_NUMBER/RANK/DENSE_RANK/LAG/LEAD/SUM/AVG/MIN/
+  MAX/COUNT), ``Pivot`` + ``Unpivot`` (DuckDB native statements; the
+  pivot output is intentionally `unknown=True` since the column set
+  is data-dependent), ``Union`` (multi-input with schema-mismatch
+  surfaced as a `type_mismatch` CompileError + UNION ALL toggle),
+  ``Distinct`` (optional `ON ({cols})`), ``Sort`` (multi-key
+  ORDER BY with per-column direction), ``Sample`` (USING SAMPLE
+  N PERCENT or N ROWS), ``Cast`` (per-column `::TYPE` coercion
+  with target-type allowlist), ``Rename`` (`{old: new}` map),
+  ``CalcColumn`` (new column from a DuckDB expression — reuses the
+  Wave-C CodeMirror predicate editor for the expression field).
+  Frontend palette gains a "Transforms" group of 16 entries; the
+  block-registry size goes from 9 to 19.  Union shares the
+  Join two-input pin layout (left + right); the editor's
+  ``inputPinName`` helper recognises both.  11 new pytest in
+  ``test_blocks.py`` + a registry-size assertion covering the
+  full 19-block set; full suite stays green.
 - Visual Data Product editor — compound DP blocks + editable mesh
   canvas (rc208).  Wave D of the Mega-Cluster 147-154 closes the
   Simulink-style "fat block = DP" metaphor:  (1) new

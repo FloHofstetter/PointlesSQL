@@ -252,6 +252,195 @@
     </div>
 </template>
 
+{# Window: function + alias + partition/order column lists. #}
+<template x-if="selectedNode.block_type === 'Window'">
+    <div>
+        <label class="form-label small">Function</label>
+        <select class="form-select form-select-sm mb-2"
+                x-model="selectedNode.config.function"
+                @change="onConfigChanged()"
+                :disabled="!canWrite">
+            <template x-for="fn in ['row_number','rank','dense_rank','lag','lead','sum','avg','min','max','count']" :key="fn">
+                <option :value="fn" x-text="fn"></option>
+            </template>
+        </select>
+        <label class="form-label small">Alias</label>
+        <input type="text" class="form-control form-control-sm mb-2"
+               x-model="selectedNode.config.target_alias"
+               @input.debounce.300ms="onConfigChanged()"
+               :disabled="!canWrite">
+        <label class="form-label small">Args (comma-separated)</label>
+        <input type="text" class="form-control form-control-sm mb-2"
+               :value="(selectedNode.config.args || []).join(', ')"
+               @input.debounce.300ms="selectedNode.config.args = $event.target.value.split(',').map(s => s.trim()).filter(Boolean); onConfigChanged()"
+               :disabled="!canWrite"
+               placeholder="amount">
+        <label class="form-label small">PARTITION BY (comma-separated)</label>
+        <input type="text" class="form-control form-control-sm mb-2"
+               :value="(selectedNode.config.partition_by || []).join(', ')"
+               @input.debounce.300ms="selectedNode.config.partition_by = $event.target.value.split(',').map(s => s.trim()).filter(Boolean); onConfigChanged()"
+               :disabled="!canWrite"
+               placeholder="country">
+        <label class="form-label small">ORDER BY (comma-separated)</label>
+        <input type="text" class="form-control form-control-sm mb-2"
+               :value="(selectedNode.config.order_by || []).join(', ')"
+               @input.debounce.300ms="selectedNode.config.order_by = $event.target.value.split(',').map(s => s.trim()).filter(Boolean); onConfigChanged()"
+               :disabled="!canWrite"
+               placeholder="ts">
+    </div>
+</template>
+
+{# Pivot: on-column + value-column + aggregate. #}
+<template x-if="selectedNode.block_type === 'Pivot'">
+    <div>
+        <label class="form-label small">ON column</label>
+        <input type="text" class="form-control form-control-sm mb-2"
+               x-model="selectedNode.config.on_column"
+               @input.debounce.300ms="onConfigChanged()"
+               :disabled="!canWrite">
+        <label class="form-label small">VALUE column</label>
+        <input type="text" class="form-control form-control-sm mb-2"
+               x-model="selectedNode.config.value_column"
+               @input.debounce.300ms="onConfigChanged()"
+               :disabled="!canWrite">
+        <label class="form-label small">Aggregate</label>
+        <select class="form-select form-select-sm" x-model="selectedNode.config.aggregate"
+                @change="onConfigChanged()" :disabled="!canWrite">
+            <template x-for="a in ['sum','avg','min','max','count','count_distinct']" :key="a">
+                <option :value="a" x-text="a"></option>
+            </template>
+        </select>
+    </div>
+</template>
+
+{# Unpivot: value-columns + name/value labels. #}
+<template x-if="selectedNode.block_type === 'Unpivot'">
+    <div>
+        <label class="form-label small">Columns to unpivot (comma-separated)</label>
+        <input type="text" class="form-control form-control-sm mb-2"
+               :value="(selectedNode.config.value_columns || []).join(', ')"
+               @input.debounce.300ms="selectedNode.config.value_columns = $event.target.value.split(',').map(s => s.trim()).filter(Boolean); onConfigChanged()"
+               :disabled="!canWrite"
+               placeholder="jan, feb, mar">
+        <label class="form-label small">NAME column label</label>
+        <input type="text" class="form-control form-control-sm mb-2"
+               x-model="selectedNode.config.name_label"
+               @input.debounce.300ms="onConfigChanged()"
+               :disabled="!canWrite">
+        <label class="form-label small">VALUE column label</label>
+        <input type="text" class="form-control form-control-sm"
+               x-model="selectedNode.config.value_label"
+               @input.debounce.300ms="onConfigChanged()"
+               :disabled="!canWrite">
+    </div>
+</template>
+
+{# Union: ALL toggle. #}
+<template x-if="selectedNode.block_type === 'Union'">
+    <div>
+        <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="union-all"
+                   x-model="selectedNode.config.all"
+                   @change="onConfigChanged()"
+                   :disabled="!canWrite">
+            <label class="form-check-label small" for="union-all">UNION ALL (keep duplicates)</label>
+        </div>
+        <div class="form-text small mt-2">
+            Wire two upstream tables (left + right pins). Column lists must match.
+        </div>
+    </div>
+</template>
+
+{# Distinct: optional subset of columns. #}
+<template x-if="selectedNode.block_type === 'Distinct'">
+    <div>
+        <label class="form-label small">Columns (empty = all)</label>
+        <input type="text" class="form-control form-control-sm"
+               :value="(selectedNode.config.columns || []).join(', ')"
+               @input.debounce.300ms="selectedNode.config.columns = $event.target.value.split(',').map(s => s.trim()).filter(Boolean); onConfigChanged()"
+               :disabled="!canWrite"
+               placeholder="email, signup_date">
+    </div>
+</template>
+
+{# Sort: order_by entries as JSON. #}
+<template x-if="selectedNode.block_type === 'Sort'">
+    <div>
+        <label class="form-label small">ORDER BY (JSON list of {column, direction})</label>
+        <textarea class="form-control form-control-sm font-monospace" rows="4"
+                  :value="JSON.stringify(selectedNode.config.order_by || [], null, 2)"
+                  @input.debounce.300ms="try { selectedNode.config.order_by = JSON.parse($event.target.value || '[]'); onConfigChanged(); } catch (e) {}"
+                  :disabled="!canWrite"
+                  spellcheck="false"></textarea>
+        <div class="form-text small">
+            Example: <code>[{"column":"amt","direction":"desc"}, "ts"]</code>
+        </div>
+    </div>
+</template>
+
+{# Sample: kind + value. #}
+<template x-if="selectedNode.block_type === 'Sample'">
+    <div>
+        <label class="form-label small">Kind</label>
+        <select class="form-select form-select-sm mb-2" x-model="selectedNode.config.kind"
+                @change="onConfigChanged()" :disabled="!canWrite">
+            <option value="percent">percent</option>
+            <option value="rows">rows</option>
+        </select>
+        <label class="form-label small">Value</label>
+        <input type="number" min="0" class="form-control form-control-sm"
+               x-model.number="selectedNode.config.value"
+               @input.debounce.300ms="onConfigChanged()"
+               :disabled="!canWrite">
+    </div>
+</template>
+
+{# Cast: list of {column, target_type}. #}
+<template x-if="selectedNode.block_type === 'Cast'">
+    <div>
+        <label class="form-label small">Casts (JSON list of {column, target_type})</label>
+        <textarea class="form-control form-control-sm font-monospace" rows="6"
+                  :value="JSON.stringify(selectedNode.config.casts || [], null, 2)"
+                  @input.debounce.300ms="try { selectedNode.config.casts = JSON.parse($event.target.value || '[]'); onConfigChanged(); } catch (e) {}"
+                  :disabled="!canWrite"
+                  spellcheck="false"></textarea>
+        <div class="form-text small">
+            Example: <code>[{"column":"amt","target_type":"DECIMAL(10,2)"}]</code>
+        </div>
+    </div>
+</template>
+
+{# Rename: {old: new} map. #}
+<template x-if="selectedNode.block_type === 'Rename'">
+    <div>
+        <label class="form-label small">Renames (JSON {old: new} map)</label>
+        <textarea class="form-control form-control-sm font-monospace" rows="6"
+                  :value="JSON.stringify(selectedNode.config.renames || {}, null, 2)"
+                  @input.debounce.300ms="try { selectedNode.config.renames = JSON.parse($event.target.value || '{}'); onConfigChanged(); } catch (e) {}"
+                  :disabled="!canWrite"
+                  spellcheck="false"></textarea>
+        <div class="form-text small">
+            Example: <code>{"customer_id": "cust_id"}</code>
+        </div>
+    </div>
+</template>
+
+{# CalcColumn: CodeMirror predicate + alias. #}
+<template x-if="selectedNode.block_type === 'CalcColumn'">
+    <div>
+        <label class="form-label small">Expression (DuckDB)</label>
+        <div x-ref="cmCalcExpr"
+             x-init="mountPredicateCm($refs.cmCalcExpr, selectedNode.id, 'expression')"
+             class="pql-canvas-cm-host border rounded mb-2"></div>
+        <label class="form-label small">Target alias</label>
+        <input type="text" class="form-control form-control-sm"
+               x-model="selectedNode.config.target_alias"
+               @input.debounce.300ms="onConfigChanged()"
+               :disabled="!canWrite"
+               placeholder="amount_x_1_1">
+    </div>
+</template>
+
 {# OutputPort: target FQN + mode + merge keys. #}
 <template x-if="selectedNode.block_type === 'OutputPort'">
     <div>

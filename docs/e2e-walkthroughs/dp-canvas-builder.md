@@ -207,6 +207,33 @@ The mesh canvas treats DP nodes as **read-only**: deleting a DP
 itself stays on the catalog surface. Wires represent declared
 upstream bindings only; no Delta data is moved on save.
 
+## Expanded block library (Wave E)
+
+The transforms rail of the palette now carries 16 blocks instead of
+the original 6. The 10 new entries fall into four groups:
+
+- **Window** — adds a windowed aggregation column over a
+  PARTITION/ORDER spec; pick the function from a dropdown
+  (`ROW_NUMBER`, `LAG`, etc.) and supply args / partition / order
+  as comma-separated column lists.
+- **Pivot + Unpivot** — DuckDB's PIVOT statement (with an
+  aggregate picker) and its inverse UNPIVOT (configure which
+  columns collapse into NAME/VALUE rows).
+- **Union + Distinct + Sort + Sample** — Union takes two upstream
+  inputs (left + right) and emits a `type_mismatch` error when
+  the column lists differ; Distinct optionally keys on a subset;
+  Sort takes a JSON list of column-or-`{column, direction}`
+  entries; Sample picks N percent or N rows.
+- **Cast + Rename + CalcColumn** — Cast accepts a JSON list of
+  `{column, target_type}` (target_type validated against the
+  DuckDB allowlist); Rename a `{old: new}` map; CalcColumn uses
+  the same CodeMirror DuckDB-grammar editor as the Filter block
+  for the expression input.
+
+Wire a graph that mixes a few of these blocks together, click
+**Preview** on any non-`OutputPort` node, and Wave-C's per-node
+preview path now runs through the new compiler entries unchanged.
+
 ## Found bugs
 
 _None yet — populate after the first replay pass uncovers any._
