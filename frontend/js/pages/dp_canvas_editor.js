@@ -15,6 +15,8 @@
  *   are registered by the CDN bundle loaded from ``dp_canvas_editor.html``.
  */
 
+import { findNonOverlappingPosition } from '../dp_canvas/_canvas_helpers.js';
+
 const BLOCK_DEFS = {
   InputPort: {
     label: 'Input port',
@@ -364,6 +366,7 @@ export function dpCanvasEditor(product, ctx) {
     searchQuery: '',
     searchCursor: 0,
     minimapVisible: true,
+    focusMode: false,
 
     nodes: {},
     edges: {},
@@ -454,6 +457,22 @@ export function dpCanvasEditor(product, ctx) {
     },
 
     async init() {
+      try {
+        this.focusMode = localStorage.getItem('pql.focus-mode') === '1';
+      } catch (_e) {
+        this.focusMode = false;
+      }
+      // Shift+F mirrors the topbar button.  Bound on the editor root
+      // (not window) so the shortcut is inert outside the canvas.
+      this._onFocusKey = (ev) => {
+        if (ev.shiftKey && (ev.key === 'F' || ev.key === 'f') && !ev.target.closest('input, textarea, .cm-editor')) {
+          ev.preventDefault();
+          if (typeof window.pqlToggleFocusMode === 'function') {
+            this.focusMode = window.pqlToggleFocusMode();
+          }
+        }
+      };
+      window.addEventListener('keydown', this._onFocusKey);
       if (typeof window.Drawflow !== 'function') {
         // Defer one tick — the bundle <script> at the bottom of the
         // template may not have executed yet when Alpine kicks init().
@@ -890,6 +909,12 @@ export function dpCanvasEditor(product, ctx) {
       if (this.selectedNodeId && !newNodes[this.selectedNodeId]) {
         this.selectedNodeId = null;
       }
+      // Output-plus visibility tracks outgoing-edge presence; refresh
+      // every source node after the edge dict settles so a freshly
+      // connected pin hides its plus and a freshly disconnected one
+      // un-hides.  Cheap idempotent loop — _renderOutputPlus reuses
+      // the existing handle and only updates style.display.
+      for (const pqlId of Object.keys(newNodes)) this._renderOutputPlus(pqlId);
       if (!this._suppressAutosave) {
         this._scheduleAutosave();
         this._scheduleValidate();
@@ -1313,12 +1338,29 @@ export function dpCanvasEditor(product, ctx) {
         cx = Math.round((rect.width / 2 - df.canvas_x) / zoom - 110);
         cy = Math.round((rect.height / 2 - df.canvas_y) / zoom - 60);
       }
+      const noteSize = { width: 220, height: 120 };
+      // Avoid landing on top of existing nodes or other stickies — slide
+      // (+40, +40) up to 8 attempts until the overlap drops below 30 %
+      // of the note area.  Helper lives in canvas_shared so mesh can
+      // reuse the same collision-avoid pattern later.
+      const obstacles = [
+        ...Object.values(this.nodes).map((n) => ({
+          x: n.position?.x || 0,
+          y: n.position?.y || 0,
+          width: 200,
+          height: 100,
+        })),
+        ...this.annotations.map((a) => ({
+          x: a.x, y: a.y, width: a.width || 220, height: a.height || 120,
+        })),
+      ];
+      const placed = findNonOverlappingPosition({ x: cx, y: cy }, noteSize, obstacles);
       const note = {
         id: 'note-' + Math.random().toString(36).slice(2, 10),
-        x: cx,
-        y: cy,
-        width: 220,
-        height: 120,
+        x: placed.x,
+        y: placed.y,
+        width: noteSize.width,
+        height: noteSize.height,
         content: '',
       };
       this.annotations = [...this.annotations, note];
@@ -1988,6 +2030,15 @@ export function dpCanvasEditor(product, ctx) {
           stage.appendChild(handle);
           this._outputPlusElements.set(key, handle);
         }
+        // Hide the plus when an outgoing edge already occupies this
+        // pin — the user has nothing to "add" there; the existing edge
+        // visually overlaps the handle and the dual-affordance reads
+        // as ambiguous.  Every block in the catalogue exposes a single
+        // ``out`` pin per output slot so a same-source check suffices.
+        const hasOutgoing = Object.values(this.edges).some(
+          (e) => e.source_node_id === pqlId,
+        );
+        handle.style.display = hasOutgoing ? 'none' : '';
         this._positionOutputPlus(handle, pinEl, stage);
       }
     },

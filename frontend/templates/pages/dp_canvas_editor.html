@@ -150,6 +150,12 @@
                     title="Fit canvas to view">
                 <i class="bi bi-fullscreen"></i>
             </button>
+            <button class="btn btn-sm btn-outline-secondary"
+                    @click="focusMode = window.pqlToggleFocusMode()"
+                    :class="{ active: focusMode }"
+                    title="Focus mode — hide side navigation (Shift+F)">
+                <i class="bi bi-window-fullscreen"></i>
+            </button>
             <button class="btn btn-sm btn-outline-warning"
                     @click="addStickyNote()"
                     :disabled="!canWrite"

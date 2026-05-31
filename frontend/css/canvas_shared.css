@@ -272,3 +272,99 @@
   color: var(--bs-secondary-color);
   background: transparent;
 }
+
+/* Block-style node skin — shared header / body / cols / footer shape
+   used by every Drawflow surface.  Surface-specific overrides (Drawer
+   widths, palette chrome) stay in the per-page file; the inner block
+   anatomy is the same everywhere so a user moving between editor,
+   mesh and diff recognises the same node shape. */
+.pql-canvas .drawflow-node {
+  background: var(--bs-body-bg);
+  border: 1px solid var(--bs-border-color);
+  border-radius: 6px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  padding: 0;
+  min-width: 180px;
+  color: var(--bs-body-color);
+}
+
+.pql-canvas .drawflow-node.selected {
+  border-color: var(--bs-primary);
+  box-shadow: 0 0 0 2px rgba(var(--bs-primary-rgb), 0.25);
+}
+
+.pql-canvas .drawflow-node.pql-node-error {
+  border-color: var(--bs-danger);
+  box-shadow: 0 0 0 2px rgba(var(--bs-danger-rgb), 0.25);
+}
+
+.pql-canvas .drawflow-node .pql-node-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.6rem;
+  border-bottom: 1px solid var(--bs-border-color);
+  background: var(--bs-secondary-bg);
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.pql-canvas .drawflow-node .pql-node-body {
+  padding: 0.4rem 0.6rem;
+  font-size: 0.8rem;
+  color: var(--bs-secondary-color);
+}
+
+.pql-canvas .drawflow-node .pql-node-body code {
+  font-size: 0.75rem;
+}
+
+.pql-canvas .drawflow-node .pql-node-cols {
+  padding: 0.3rem 0.6rem;
+  font-size: 0.72rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  border-bottom: 1px solid var(--bs-border-color);
+  background: var(--bs-tertiary-bg);
+  max-height: 64px;
+  overflow: hidden;
+}
+
+.pql-canvas .drawflow-node .pql-node-cols:empty {
+  display: none;
+}
+
+.pql-canvas .drawflow-node .pql-node-cols i {
+  width: 1em;
+  margin-right: 0.2em;
+}
+
+.pql-canvas .drawflow-node .pql-node-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.2rem 0.6rem;
+  font-size: 0.7rem;
+  border-top: 1px solid var(--bs-border-color);
+  background: var(--bs-tertiary-bg);
+}
+
+.pql-canvas .drawflow-node .pql-node-footer:empty {
+  display: none;
+}
+
+.pql-canvas.pql-canvas-compact .drawflow-node .pql-node-cols,
+.pql-canvas.pql-canvas-compact .drawflow-node .pql-node-body,
+.pql-canvas.pql-canvas-compact .drawflow-node .pql-node-footer {
+  display: none;
+}
+
+.pql-canvas .drawflow-node .pql-node-badge {
+  margin-left: auto;
+  font-size: 0.7rem;
+}
+
+.pql-canvas .drawflow-node.pql-node-selected-multi {
+  box-shadow: 0 0 0 3px var(--bs-primary);
+}

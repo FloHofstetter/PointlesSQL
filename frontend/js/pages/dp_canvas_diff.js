@@ -35,11 +35,25 @@ export function dpCanvasDiff(product) {
     error: null,
     viewMode: 'visual',
     onlyChanged: false,
+    focusMode: false,
     _dfBefore: null,
     _dfAfter: null,
     _syncingScroll: false,
 
     async init() {
+      try {
+        this.focusMode = localStorage.getItem('pql.focus-mode') === '1';
+      } catch (_e) {
+        this.focusMode = false;
+      }
+      window.addEventListener('keydown', (ev) => {
+        if (ev.shiftKey && (ev.key === 'F' || ev.key === 'f') && !ev.target.closest('input, textarea')) {
+          ev.preventDefault();
+          if (typeof window.pqlToggleFocusMode === 'function') {
+            this.focusMode = window.pqlToggleFocusMode();
+          }
+        }
+      });
       this.fromVersion = _readQuery('from');
       this.toVersion = _readQuery('to');
       const res = await window.pqlApi.fetch(`/api/dp/${this.product.id}/canvas/versions`, {

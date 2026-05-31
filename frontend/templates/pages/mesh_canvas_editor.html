@@ -44,6 +44,12 @@
                       ? 'no issues'
                       : (issues.length + ' issue' + (issues.length === 1 ? '' : 's'))">
             </span>
+            <button class="btn btn-sm btn-outline-secondary"
+                    @click="focusMode = window.pqlToggleFocusMode()"
+                    :class="{ active: focusMode }"
+                    title="Focus mode — hide side navigation (Shift+F)">
+                <i class="bi bi-window-fullscreen"></i>
+            </button>
             <button class="btn btn-sm btn-primary"
                     @click="save()"
                     :disabled="saving">
@@ -91,6 +97,22 @@
         {# Centre = Drawflow surface. #}
         <main class="pql-dp-canvas-stage flex-grow-1 position-relative">
             <div x-ref="canvas" id="mesh-canvas-drawflow" class="pql-canvas pql-dp-canvas-drawflow"></div>
+
+            {# Shared directional arrow marker for every connection.
+               ``context-stroke`` makes the arrowhead inherit the path
+               colour automatically so the mesh edge state (default,
+               hovered) and the arrow stay synchronised without per-
+               edge bookkeeping. #}
+            <svg width="0" height="0" style="position: absolute;" aria-hidden="true">
+                <defs>
+                    <marker id="pql-arrow-end" viewBox="0 0 10 10"
+                            refX="9" refY="5"
+                            markerWidth="6" markerHeight="6"
+                            orient="auto-start-reverse">
+                        <path d="M0,0 L10,5 L0,10 z" fill="context-stroke" stroke="context-stroke"/>
+                    </marker>
+                </defs>
+            </svg>
             <div class="pql-dp-canvas-empty position-absolute top-50 start-50 translate-middle text-center text-muted"
                  x-show="!loading && (document.nodes || []).length === 0">
                 <i class="bi bi-diagram-3 fs-1 d-block opacity-50"></i>

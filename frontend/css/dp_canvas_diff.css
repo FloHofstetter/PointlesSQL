@@ -1,49 +1,67 @@
 /*
  * Diff-view canvas overlay styles.
  *
- * The side-by-side Drawflow editors on the diff page paint node
- * outlines in three colors to surface added / removed / modified
- * blocks visually.  Edge overlays use stroke colour + width on the
- * connection-path SVGs Drawflow renders.
+ * Each diff pane is a Drawflow surface with ``.pql-canvas
+ * pql-dp-canvas-diff-pane`` on the host so the shared canvas chrome
+ * (edge stroke, hit-area, sockets) renders identically to the editor.
+ * The only extras here are the per-node overlay states (added /
+ * removed / modified) and the matching edge classes.  Block colour
+ * goes to a side-band (border-left) rather than a fat all-around
+ * box-shadow so the user's eye reaches the actual node content
+ * instead of being trapped by the highlight ring.
  */
 
+/* Node skin lives in ``canvas_shared.css`` under ``.pql-canvas``; the
+   diff pane's drawflow root carries that class so the editor and diff
+   share the same block anatomy automatically.  Only the diff-specific
+   tints (added / removed / modified side-bands) and the read-only
+   background override remain in this file. */
 .pql-dp-canvas-diff-pane .drawflow {
   background-color: var(--bs-body-bg);
 }
 
+/* Diff-state side-bands: 4 px tall left rail in the state colour with
+   a matching tint along the top so the affordance reads even when the
+   block sits at the top of the viewport.  Drops the prior 3 px gold
+   ring that competed with edges for visual weight. */
 .pql-dp-canvas-diff-pane .pql-diff-added {
-  box-shadow: 0 0 0 3px #198754;
-  border-radius: 4px;
+  border-left: 4px solid var(--bs-success);
+  border-radius: 6px;
 }
 
 .pql-dp-canvas-diff-pane .pql-diff-removed {
-  box-shadow: 0 0 0 3px #dc3545;
-  border-radius: 4px;
-  opacity: 0.6;
+  border-left: 4px solid var(--bs-danger);
+  border-radius: 6px;
+  opacity: 0.55;
+  filter: grayscale(0.2);
 }
 
 .pql-dp-canvas-diff-pane .pql-diff-modified {
-  box-shadow: 0 0 0 3px #ffc107;
-  border-radius: 4px;
+  border-left: 4px solid var(--bs-warning);
+  border-radius: 6px;
 }
 
+/* Edge state colors — kept thicker than the regular default-edge
+   stroke because the diff page reads as a static diagram, not an
+   interactive surface.  No hover/select state needed. */
 .pql-dp-canvas-diff-pane .connection.pql-diff-edge-added .main-path {
-  stroke: #198754;
+  stroke: var(--bs-success);
   stroke-width: 3;
 }
 
 .pql-dp-canvas-diff-pane .connection.pql-diff-edge-removed .main-path {
-  stroke: #dc3545;
+  stroke: var(--bs-danger);
   stroke-width: 3;
   stroke-dasharray: 6 3;
 }
 
 .pql-dp-canvas-diff-pane .connection.pql-diff-edge-modified .main-path {
-  stroke: #ffc107;
+  stroke: var(--bs-warning);
   stroke-width: 3;
 }
 
-/* "Only changed" filter — hide every node + edge without a diff overlay. */
+/* "Only changed" filter — fade nodes + edges with no diff overlay so
+   the user's eye snaps to actual changes. */
 .pql-diff-only-changed .drawflow-node:not(.pql-diff-added):not(.pql-diff-removed):not(.pql-diff-modified) {
   opacity: 0.15;
   filter: grayscale(0.9);

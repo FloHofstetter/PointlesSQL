@@ -40,6 +40,7 @@ export function meshCanvasEditor() {
     saveState: 'idle',
     lastSavedAt: null,
     lastSummary: null,
+    focusMode: false,
 
     document: { nodes: [], edges: [] },
     issues: [],
@@ -66,6 +67,19 @@ export function meshCanvasEditor() {
     _suppress: false,
 
     async init() {
+      try {
+        this.focusMode = localStorage.getItem('pql.focus-mode') === '1';
+      } catch (_e) {
+        this.focusMode = false;
+      }
+      window.addEventListener('keydown', (ev) => {
+        if (ev.shiftKey && (ev.key === 'F' || ev.key === 'f') && !ev.target.closest('input, textarea')) {
+          ev.preventDefault();
+          if (typeof window.pqlToggleFocusMode === 'function') {
+            this.focusMode = window.pqlToggleFocusMode();
+          }
+        }
+      });
       if (typeof window.Drawflow !== 'function') {
         await new Promise((r) => setTimeout(r, 50));
       }
@@ -80,8 +94,12 @@ export function meshCanvasEditor() {
       df.start();
       this._drawflow = df;
 
-      df.on('connectionCreated', () => this._syncEdges());
+      df.on('connectionCreated', () => {
+        this._syncEdges();
+        this._scheduleDecorate();
+      });
       df.on('connectionRemoved', () => this._syncEdges());
+      df.on('nodeMoved', () => this._scheduleDecorate());
 
       // Right-click on canvas background opens the context menu.
       const canvasEl = this.$refs.canvas;
@@ -214,6 +232,52 @@ export function meshCanvasEditor() {
       this._scheduleValidate();
     },
 
+    _scheduleDecorate() {
+      if (this._decorateRaf) return;
+      this._decorateRaf = window.setTimeout(() => {
+        this._decorateRaf = null;
+        this._decorateAllConnections();
+      }, 0);
+    },
+
+    _decorateAllConnections() {
+      const df = this._drawflow;
+      if (!df) return;
+      const svgs = df.container.querySelectorAll('.drawflow .connection');
+      const svgNS = 'http://www.w3.org/2000/svg';
+      for (const svg of svgs) {
+        const main = svg.querySelector('.main-path');
+        if (!main) continue;
+        main.setAttribute('marker-end', 'url(#pql-arrow-end)');
+        if (svg.dataset.pqlDecorated === '1') {
+          // Refresh hit-area `d` so it tracks moved nodes — same
+          // story as the DP-Canvas decorator: Drawflow rewrites
+          // children[0]'s `d` on every move, so the hit-area
+          // (children[1]) needs an explicit mirror.
+          const hit = svg.querySelector('.pql-edge-hit-area');
+          if (hit) hit.setAttribute('d', main.getAttribute('d') || '');
+          continue;
+        }
+        svg.dataset.pqlDecorated = '1';
+        const hit = document.createElementNS(svgNS, 'path');
+        hit.setAttribute('class', 'pql-edge-hit-area');
+        hit.setAttribute('d', main.getAttribute('d') || '');
+        hit.setAttribute('fill', 'none');
+        svg.appendChild(hit);
+        try {
+          const obs = new MutationObserver(() => {
+            hit.setAttribute('d', main.getAttribute('d') || '');
+          });
+          obs.observe(main, { attributes: true, attributeFilter: ['d'] });
+        } catch (_e) {
+          // MutationObserver absent in extreme sandboxes; the
+          // scheduled-decorate pass keeps `d` in sync.
+        }
+        hit.addEventListener('mouseenter', () => svg.classList.add('pql-edge-hover'));
+        hit.addEventListener('mouseleave', () => svg.classList.remove('pql-edge-hover'));
+      }
+    },
+
     _hydrate() {
       this._suppress = true;
       const df = this._drawflow;
@@ -247,6 +311,7 @@ export function meshCanvasEditor() {
         }
       });
       this._suppress = false;
+      this._scheduleDecorate();
     },
 
     _syncEdges() {
