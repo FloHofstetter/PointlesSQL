@@ -1580,15 +1580,19 @@ export function dpCanvasEditor(product, ctx) {
       this._decoratedSvgs.add(svgEl);
 
       // Inject fat invisible sibling for hit-testing — same `d` as the
-      // visible path, transparent stroke 22 px wide.  Renders BEFORE
-      // the visible path so it sits beneath visually but captures the
-      // hover/click events thanks to pointer-events:stroke.
+      // visible path, transparent stroke 22 px wide.  MUST come AFTER
+      // the .main-path because Drawflow's updateConnectionNodes writes
+      // the new `d` value into `connection.children[0]`; if the hit-
+      // area sat first, every node-drag would update the hit-area and
+      // leave the visible edge frozen.  Pointer-events:stroke on the
+      // hit-area still captures hover/click while sitting visually on
+      // top — transparency makes it invisible regardless of z-order.
       const svgNS = 'http://www.w3.org/2000/svg';
       const hit = document.createElementNS(svgNS, 'path');
       hit.setAttribute('class', 'pql-edge-hit-area');
       hit.setAttribute('d', mainPath.getAttribute('d') || '');
       hit.setAttribute('fill', 'none');
-      svgEl.insertBefore(hit, mainPath);
+      svgEl.appendChild(hit);
 
       // Watch the visible path for `d` mutations (Drawflow rewrites it
       // on every nodeMoved) and mirror them into the hit-area.
