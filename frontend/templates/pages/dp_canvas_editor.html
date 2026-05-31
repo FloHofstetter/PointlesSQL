@@ -234,6 +234,12 @@
                                 title="Preview rows up to this block">
                             <i class="bi bi-table"></i> Preview
                         </button>
+                        <button class="btn btn-sm btn-outline-secondary"
+                                @click="duplicateSelectedNode()"
+                                :disabled="!canWrite"
+                                title="Duplicate this block (Ctrl+D)">
+                            <i class="bi bi-files"></i>
+                        </button>
                         <button class="btn btn-sm btn-outline-danger"
                                 @click="deleteSelectedNode()"
                                 :disabled="!canWrite"

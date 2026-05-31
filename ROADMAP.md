@@ -3034,6 +3034,20 @@ PointlesSQL
 │   │   badge + a "Bust cache" button.  Per-process only; multi-
 │   │   worker fan-out is out of scope for v1.
 │
+├── Phase 161 — Visual DP Editor: Block-Library Config-UX Polish  ✅ shipped (local, 2026-05-31)
+│   │
+│   │   Adds a "Duplicate this block" action: toolbar button next
+│   │   to delete + ``Ctrl+D`` / ``Cmd+D`` keyboard shortcut.  The
+│   │   clone lands +40px offset, deep-copies config, gets a fresh
+│   │   PQL id, and becomes the new selection so the user can edit
+│   │   it immediately.  Help text on every block already lived in
+│   │   ``BLOCK_DEFS[type].help`` + ``form-text`` below each config
+│   │   field — surfaced via existing palette tooltips, so no
+│   │   per-field info icons added (would be noise).
+│   │   Sensible-defaults pre-fill (Sort.order_by / Project.columns
+│   │   from upstream schema) + Undo/Redo intentionally deferred —
+│   │   each is a phase-sized scope of its own.
+│   │
 ├── Phase 160 — Visual DP Editor: Granular per-block Y.Doc Sync  ✅ shipped (local, 2026-05-31)
 │   │
 │   │   Co-edit Y.Doc shape upgraded from "one slot holding the

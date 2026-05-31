@@ -17,6 +17,16 @@ defined in ``scripts/clusters.json``. -->
 
 ### Features
 
+- Visual DP Editor — Duplicate this block (rc219).  Selected
+  canvas blocks gain a Duplicate button in the right drawer
+  toolbar (next to the Delete trash icon) and a ``Ctrl+D`` /
+  ``Cmd+D`` keyboard shortcut.  The clone lands +40px offset,
+  deep-copies the source config + position, gets a fresh PQL
+  node id, and auto-selects so the user can edit it without
+  hunting.  Help text on every block was already wired through
+  the palette tooltips + per-field ``form-text`` strings so no
+  per-field info-icons added in this pass.
+
 - Visual DP Editor — Granular per-block Y.Doc co-edit sync
   (rc218).  Co-edit Y.Doc shape upgraded from a single ``json``
   slot holding the whole serialised CanvasDoc to per-block +

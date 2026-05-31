@@ -399,6 +399,16 @@ export function dpCanvasEditor(product, ctx) {
       const canvasEl = this.$refs.canvas;
       canvasEl.addEventListener('dblclick', (ev) => this._onCanvasDoubleClick(ev));
 
+      // Ctrl+D / Cmd+D on a selected block clones it next to itself
+      // (matches the toolbar Duplicate button).
+      document.addEventListener('keydown', (ev) => {
+        if ((ev.ctrlKey || ev.metaKey) && (ev.key === 'd' || ev.key === 'D')) {
+          if (!this.selectedNodeId) return;
+          ev.preventDefault();
+          this.duplicateSelectedNode();
+        }
+      });
+
       this._restoreBreadcrumb();
 
       // Optional-chain via "&&" — Alpine's expression evaluator complains when
@@ -704,6 +714,41 @@ export function dpCanvasEditor(product, ctx) {
       delete this.nodes[this.selectedNodeId];
       this.selectedNodeId = null;
       this._syncFromDrawflow();
+    },
+
+    duplicateSelectedNode() {
+      if (!this.selectedNodeId || !this.canWrite) return;
+      const src = this.nodes[this.selectedNodeId];
+      if (!src) return;
+      const def = BLOCK_DEFS[src.block_type];
+      if (!def) return;
+      const newPqlId = generateNodeId();
+      const pos = {
+        x: (src.position?.x || 100) + 40,
+        y: (src.position?.y || 100) + 40,
+      };
+      const dfId = this._drawflow.addNode(
+        src.block_type,
+        def.inputs,
+        def.outputs,
+        pos.x,
+        pos.y,
+        src.block_type,
+        { pql_node_id: newPqlId, block_type: src.block_type },
+        nodeHtml(src.block_type, newPqlId),
+        false
+      );
+      this._drawflowNodes[newPqlId] = dfId;
+      this.nodes[newPqlId] = {
+        id: newPqlId,
+        block_type: src.block_type,
+        config: JSON.parse(JSON.stringify(src.config || {})),
+        position: pos,
+      };
+      this._refreshNodeBody(newPqlId);
+      this.selectedNodeId = newPqlId;
+      this._scheduleAutosave();
+      this._scheduleValidate();
     },
 
     focusNode(nodeId) {
