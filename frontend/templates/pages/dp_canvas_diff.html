@@ -14,6 +14,7 @@
 {{ super() }}
 <link rel="stylesheet"
       href="https://cdn.jsdelivr.net/npm/drawflow@0.0.59/dist/drawflow.min.css">
+<link rel="stylesheet" href="/static/css/canvas_shared.css?v={{ asset_version }}">
 <link rel="stylesheet" href="/static/css/dp_canvas_editor.css?v={{ asset_version }}">
 <link rel="stylesheet" href="/static/css/dp_canvas_diff.css?v={{ asset_version }}">
 {% endblock %}
@@ -87,14 +88,14 @@
                 <div class="small text-muted mb-1">
                     Before: <strong>v<span x-text="diff.from_version"></span></strong>
                 </div>
-                <div x-ref="dfBefore" class="pql-dp-canvas-diff-pane border rounded bg-body"
+                <div x-ref="dfBefore" class="pql-canvas pql-dp-canvas-diff-pane border rounded bg-body"
                      style="height: 600px; position: relative;"></div>
             </div>
             <div class="col-12 col-md-6">
                 <div class="small text-muted mb-1">
                     After: <strong>v<span x-text="diff.to_version"></span></strong>
                 </div>
-                <div x-ref="dfAfter" class="pql-dp-canvas-diff-pane border rounded bg-body"
+                <div x-ref="dfAfter" class="pql-canvas pql-dp-canvas-diff-pane border rounded bg-body"
                      style="height: 600px; position: relative;"></div>
             </div>
         </div>

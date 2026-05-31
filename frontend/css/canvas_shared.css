@@ -1,0 +1,274 @@
+/*
+ * Cross-surface Drawflow canvas styles.
+ *
+ * Loaded by every Drawflow surface (DP editor, mesh editor, diff
+ * panes) via the ``.pql-canvas`` base class on the Drawflow root.
+ * Surface-specific styling (node skin width, drawer chrome,
+ * palette) stays in the per-page CSS file.
+ *
+ * All edge-related rules from the prior dp_canvas_editor.css polish
+ * pass live here so mesh + diff inherit the same visual language
+ * with zero JS work — the only requirement is that the Drawflow
+ * root carries ``.pql-canvas`` next to the surface-specific class.
+ */
+
+/* CSS-variable tokens that drive zoom-compensated stroke widths and
+   edge-state colours.  Surface overrides may shadow these inside
+   their own root selector. */
+.pql-canvas {
+  --pql-edge-stroke: 2.5px;
+  --pql-edge-stroke-hover: 4px;
+  --pql-edge-stroke-selected: 5px;
+  --pql-edge-color-default: var(--bs-secondary);
+  --pql-edge-color-hover: #5b9dff;
+  --pql-edge-color-selected: var(--bs-warning);
+  --pql-edge-glow: 4px;
+  --pql-zoom: 1;
+}
+
+/* Drawflow ships 14 px blue sockets that visually dominated the
+   canvas; shrink to 10 px neutral dots that read as connection
+   anchors, with the blue accent reserved for hover / active drag. */
+.pql-canvas .drawflow .input,
+.pql-canvas .drawflow .output {
+  width: 10px;
+  height: 10px;
+  background: var(--bs-body-bg);
+  border: 1.5px solid var(--bs-secondary);
+  transition:
+    background 120ms ease,
+    border-color 120ms ease,
+    transform 120ms ease;
+}
+
+.pql-canvas .drawflow .input:hover,
+.pql-canvas .drawflow .output:hover,
+.pql-canvas .drawflow-node:hover .input,
+.pql-canvas .drawflow-node:hover .output {
+  background: var(--bs-primary);
+  border-color: var(--bs-primary);
+}
+
+.pql-canvas .drawflow .output:hover {
+  transform: scale(1.15);
+}
+
+/* Main edge path — stroke is zoom-compensated via the --pql-zoom var
+   that the canvas helper keeps in sync with the live transform on
+   the .drawflow element (MutationObserver lives in JS). */
+.pql-canvas .drawflow .connection .main-path {
+  stroke: var(--pql-edge-color-default);
+  stroke-width: calc(var(--pql-edge-stroke) / var(--pql-zoom));
+  stroke-linecap: round;
+  transition:
+    stroke 120ms ease,
+    stroke-width 120ms ease,
+    filter 120ms ease;
+}
+
+/* Invisible 22 px sibling for pointer hit-testing — pointer-events
+   only on the stroke, full transparency keeps it visually inert.
+   Must sit AFTER .main-path because Drawflow's updateConnectionNodes
+   writes the recomputed `d` value into connection.children[0]; if
+   the hit-area sat first, every node-drag would update the hit-area
+   and leave the visible edge stale. */
+.pql-canvas .drawflow .connection .pql-edge-hit-area {
+  stroke: transparent;
+  stroke-width: calc(22px / var(--pql-zoom));
+  fill: none;
+  pointer-events: stroke;
+  cursor: pointer;
+}
+
+/* Validation-error edge state — dashed red. */
+.pql-canvas .drawflow .connection.pql-canvas-edge-err .main-path {
+  stroke: var(--bs-danger);
+  stroke-dasharray: 6 4;
+}
+
+/* Edge type-coloring based on the dominant upstream-pin schema.
+   Declared BEFORE hover/selected/running so the state rules win
+   without needing !important — same specificity, last-rule-wins. */
+.pql-canvas .drawflow .connection.pql-edge-numeric .main-path {
+  stroke: var(--bs-primary);
+}
+.pql-canvas .drawflow .connection.pql-edge-text .main-path {
+  stroke: var(--bs-success);
+}
+.pql-canvas .drawflow .connection.pql-edge-temporal .main-path {
+  stroke: var(--bs-warning);
+}
+.pql-canvas .drawflow .connection.pql-edge-boolean .main-path {
+  stroke: var(--bs-info);
+}
+.pql-canvas .drawflow .connection.pql-edge-complex .main-path {
+  stroke: #6f42c1;
+}
+.pql-canvas .drawflow .connection.pql-edge-mixed .main-path {
+  stroke: var(--bs-secondary);
+}
+
+/* Interactive edge states — hover / selected / running.  Glow radius
+   reads from --pql-edge-glow which the JS helper sets dynamically
+   from the path length so short edges don't get drowned out. */
+.pql-canvas .drawflow .connection.pql-edge-hover .main-path {
+  stroke: var(--pql-edge-color-hover);
+  stroke-width: calc(var(--pql-edge-stroke-hover) / var(--pql-zoom));
+  filter: drop-shadow(0 0 var(--pql-edge-glow) rgba(91, 157, 255, 0.45));
+}
+
+.pql-canvas .drawflow .connection.pql-edge-selected .main-path {
+  stroke: var(--pql-edge-color-selected);
+  stroke-width: calc(var(--pql-edge-stroke-selected) / var(--pql-zoom));
+  filter: drop-shadow(0 0 var(--pql-edge-glow) rgba(255, 193, 7, 0.55));
+}
+
+@keyframes pql-edge-march {
+  to {
+    stroke-dashoffset: -20;
+  }
+}
+
+.pql-canvas .drawflow .connection.pql-edge-running .main-path {
+  stroke-dasharray: 6 4;
+  animation: pql-edge-march 1s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pql-canvas .drawflow .connection.pql-edge-running .main-path {
+    animation: none;
+  }
+}
+
+/* Mid-edge hover toolbar — absolutely positioned in stage coords
+   (NOT inside Drawflow's transform), so it stays at a fixed screen
+   size regardless of zoom.  Position is recomputed in JS from the
+   path midpoint each frame the toolbar is visible. */
+.pql-edge-toolbar {
+  position: absolute;
+  z-index: 6;
+  display: flex;
+  gap: 2px;
+  background: var(--bs-body-bg);
+  border: 1px solid var(--bs-border-color);
+  border-radius: 6px;
+  padding: 2px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  pointer-events: auto;
+  transform: translate(-50%, -50%);
+}
+
+.pql-edge-toolbar .btn {
+  padding: 0.15rem 0.4rem;
+  line-height: 1;
+}
+
+/* Always-on "+" handle on every output pin.  Default opacity 0.75 so
+   the affordance is visible without being noisy; full opacity on
+   hover of the parent node or the handle itself.  The handle gets
+   hidden by JS when an outgoing edge already occupies the pin. */
+.pql-output-plus {
+  position: absolute;
+  z-index: 3;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--bs-body-bg);
+  border: 1.5px solid var(--bs-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0.75;
+  transform: scale(0.85);
+  transition:
+    opacity 120ms ease,
+    border-color 120ms ease,
+    color 120ms ease,
+    transform 180ms cubic-bezier(0.2, 0.8, 0.4, 1),
+    box-shadow 120ms ease;
+  color: var(--bs-secondary);
+  font-size: 0.95rem;
+  font-weight: 600;
+  pointer-events: auto;
+}
+
+.pql-output-plus::before {
+  content: '';
+  position: absolute;
+  right: 22px;
+  top: 50%;
+  margin-top: -1px;
+  width: 30px;
+  height: 1.5px;
+  background: var(--bs-secondary);
+  opacity: 0.55;
+}
+
+.pql-canvas .drawflow-node:hover .pql-output-plus,
+.pql-output-plus:hover {
+  opacity: 1;
+  transform: scale(1.0);
+}
+
+.pql-output-plus:hover {
+  border-color: var(--bs-primary);
+  color: var(--bs-primary);
+  transform: scale(1.08);
+  box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.15);
+}
+
+.pql-output-plus:hover::before {
+  background: var(--bs-primary);
+  opacity: 1;
+}
+
+/* Output-plus block-picker popover. */
+.pql-output-plus-picker {
+  position: absolute;
+  z-index: 7;
+  min-width: 220px;
+  max-height: 60vh;
+  overflow-y: auto;
+  background: var(--bs-body-bg);
+  border: 1px solid var(--bs-border-color);
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  padding: 0.35rem;
+}
+
+.pql-output-plus-picker-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.3rem 0.5rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.pql-output-plus-picker-item:hover {
+  background: var(--bs-secondary-bg);
+}
+
+.pql-output-plus-picker-item i {
+  width: 1em;
+  color: var(--bs-secondary);
+}
+
+.pql-output-plus-picker-group {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  color: var(--bs-secondary);
+  padding: 0.35rem 0.5rem 0.15rem;
+}
+
+/* Node-body inline-code rendering — Bootstrap's default <code> colour
+   is rose-pink which reads as "error" at first glance.  Override to a
+   neutral muted shade that still distinguishes code from prose. */
+.pql-canvas .drawflow-node code,
+.pql-canvas .drawflow-node .pql-node-body code,
+.pql-canvas .drawflow-node .pql-node-cols code {
+  color: var(--bs-secondary-color);
+  background: transparent;
+}
