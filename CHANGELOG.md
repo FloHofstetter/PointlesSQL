@@ -17,6 +17,21 @@ defined in ``scripts/clusters.json``. -->
 
 ### Features
 
+- Mesh-Canvas: cross-workspace picker UI + auto-layout (rc229).
+  Closes the frontend deferred from Phase 162.  Right-click on
+  the canvas background opens a context menu with three
+  actions: **Create new DP here** (navigates to ``/dp/new``),
+  **Add cross-workspace upstream…** (opens a two-stage picker
+  modal — first lists workspaces via
+  ``/api/admin/workspaces``, then lists their DPs via the
+  picker route introduced in Phase 162; selecting one mints a
+  ghost-node in the current document), and **Auto-layout**
+  (reuses Phase 170's Dagre helper with rankdir=TB so the mesh
+  reads top-to-bottom).  Ghost nodes carry a dashed warning-
+  coloured header and a ``ws: <slug>`` badge so they're
+  visually distinct from local DPs.  Dagre CDN added to the
+  mesh template.
+
 - DP-Canvas: auto-layout via Dagre (rc228).  Toolbar gets a Tidy
   button (Ctrl+L shortcut) that runs Dagre's layered LTR
   algorithm over the current nodes + edges, then animates each

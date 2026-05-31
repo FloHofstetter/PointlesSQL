@@ -3066,6 +3066,20 @@ PointlesSQL
 │   │   (174).  Each phase one commit; rc222→rc232.  ALL LOCAL
 │   │   until single final push.
 │   │
+├── Phase 171 — Mesh-Canvas: cross-workspace picker UI + auto-layout  ✅ shipped (local, 2026-05-31)
+│   │
+│   │   Closes the Phase-162 frontend-deferred.  Right-click on
+│   │   the canvas background opens a context menu with three
+│   │   actions: **Create new DP here** (navigates to
+│   │   ``/dp/new``), **Add cross-workspace upstream…** (two-
+│   │   stage picker modal — first ``/api/admin/workspaces``,
+│   │   then ``/api/mesh/canvas/picker/{slug}``; selecting a DP
+│   │   mints a ghost-node carrying the foreign workspace slug),
+│   │   and **Auto-layout** (reuses Phase 170's Dagre helper
+│   │   with rankdir=TB).  Ghost nodes get a dashed warning-
+│   │   coloured header + ``ws: <slug>`` badge.  Dagre CDN added
+│   │   to the mesh template.  rc228→rc229.
+│   │
 ├── Phase 170 — DP-Canvas: auto-layout via Dagre  ✅ shipped (local, 2026-05-31)
 │   │
 │   │   Toolbar gets a Tidy button (Ctrl+L) that runs Dagre's

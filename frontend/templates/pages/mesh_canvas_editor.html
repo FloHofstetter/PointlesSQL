@@ -99,6 +99,24 @@
                 <div class="spinner-border spinner-border-sm me-2"></div>
                 Loading…
             </div>
+
+            <div class="pql-mesh-ctxmenu position-fixed shadow-sm rounded bg-body border"
+                 x-show="ctxMenuOpen"
+                 :style="`top: ${ctxMenuY}px; left: ${ctxMenuX}px; z-index: 1050;`"
+                 @click.stop>
+                <button class="dropdown-item d-flex align-items-center gap-2 px-3 py-2"
+                        @click="createDpHere()">
+                    <i class="bi bi-plus-square"></i> Create new DP here
+                </button>
+                <button class="dropdown-item d-flex align-items-center gap-2 px-3 py-2"
+                        @click="openCrossWsPicker()">
+                    <i class="bi bi-link-45deg"></i> Add cross-workspace upstream…
+                </button>
+                <button class="dropdown-item d-flex align-items-center gap-2 px-3 py-2"
+                        @click="autoLayout()">
+                    <i class="bi bi-diagram-3"></i> Auto-layout
+                </button>
+            </div>
         </main>
 
         {# Right rail = issue list. #}
@@ -121,10 +139,61 @@
             </template>
         </aside>
     </div>
+
+    {# Cross-WS picker modal — appears as overlay when triggered. #}
+    <div class="modal d-block" tabindex="-1"
+         x-show="pickerOpen"
+         style="background: rgba(0,0,0,0.5); z-index: 1060;"
+         x-cloak>
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <span x-show="pickerStage === 'workspace'">Select workspace</span>
+                        <span x-show="pickerStage === 'dp'">Select data product</span>
+                    </h5>
+                    <button type="button" class="btn-close" @click="closePicker()"></button>
+                </div>
+                <div class="modal-body">
+                    <div x-show="pickerLoading" class="text-muted">Loading…</div>
+                    <div x-show="pickerError" class="alert alert-warning" x-text="pickerError"></div>
+
+                    <div x-show="pickerStage === 'workspace' && !pickerLoading">
+                        <div class="list-group">
+                            <template x-for="ws in pickerWorkspaces" :key="ws.id || ws.slug">
+                                <button class="list-group-item list-group-item-action d-flex justify-content-between"
+                                        @click="pickWorkspace(ws.slug)">
+                                    <span x-text="ws.name || ws.slug"></span>
+                                    <code class="text-muted" x-text="ws.slug"></code>
+                                </button>
+                            </template>
+                        </div>
+                    </div>
+
+                    <div x-show="pickerStage === 'dp' && !pickerLoading">
+                        <div class="text-muted small mb-2">
+                            Workspace: <code x-text="pickerWorkspaceSlug"></code>
+                        </div>
+                        <div class="list-group">
+                            <template x-for="dp in pickerDps" :key="dp.id">
+                                <button class="list-group-item list-group-item-action d-flex justify-content-between"
+                                        @click="pickDp(dp)">
+                                    <span x-text="dp.slug || dp.name || ('dp ' + dp.id)"></span>
+                                    <code class="text-muted" x-text="dp.id"></code>
+                                </button>
+                            </template>
+                            <div x-show="pickerDps.length === 0" class="text-muted small">No DPs in this workspace.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
 {{ super() }}
 <script src="https://cdn.jsdelivr.net/npm/drawflow@0.0.59/dist/drawflow.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dagre@0.8.5/dist/dagre.min.js"></script>
 {% endblock %}
