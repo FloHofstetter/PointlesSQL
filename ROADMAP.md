@@ -3066,6 +3066,18 @@ PointlesSQL
 │   │   (174).  Each phase one commit; rc222→rc232.  ALL LOCAL
 │   │   until single final push.
 │   │
+├── Phase 170 — DP-Canvas: auto-layout via Dagre  ✅ shipped (local, 2026-05-31)
+│   │
+│   │   Toolbar gets a Tidy button (Ctrl+L) that runs Dagre's
+│   │   layered LTR algorithm over the current nodes + edges,
+│   │   then animates each block to its target position with an
+│   │   easeInOutQuad tween over 250ms (blocks slide into place
+│   │   rather than teleporting).  New helper module
+│   │   ``frontend/js/dp_canvas/_auto_layout.js`` isolates the
+│   │   Dagre wrapper + tween from the editor page; Dagre loaded
+│   │   via jsdelivr CDN (``dagre@0.8.5``, ~30KB).  Pure
+│   │   frontend.  rc227→rc228.
+│   │
 ├── Phase 169 — DP-Canvas: minimap + Ctrl+F block search  ✅ shipped (local, 2026-05-31)
 │   │
 │   │   Bottom-right 200×130 SVG minimap shows every block's

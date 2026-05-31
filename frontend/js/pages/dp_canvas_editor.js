@@ -506,6 +506,10 @@ export function dpCanvasEditor(product, ctx) {
           ev.preventDefault();
           this.openSearch();
         }
+        if ((ev.ctrlKey || ev.metaKey) && (ev.key === 'l' || ev.key === 'L')) {
+          ev.preventDefault();
+          this.autoTidy();
+        }
       });
 
       // Shift+click on a node toggles it in the multi-selection set;
@@ -1081,6 +1085,28 @@ export function dpCanvasEditor(product, ctx) {
       }
       this._suppressAutosave = false;
       this._syncFromDrawflow();
+    },
+
+    async autoTidy() {
+      const df = this._drawflow;
+      if (!df) return;
+      const { computeLayout, animateTo } = await import('../dp_canvas/_auto_layout.js');
+      const nodes = Object.values(this.nodes);
+      const edges = Object.values(this.edges);
+      if (nodes.length === 0) return;
+      const targets = computeLayout(nodes, edges, { rankdir: 'LR' });
+      if (!targets || Object.keys(targets).length === 0) return;
+      const currentPos = {};
+      for (const n of nodes) currentPos[n.id] = n.position || { x: 100, y: 100 };
+      this._suppressAutosave = true;
+      await animateTo(df, this._drawflowNodes, currentPos, targets, 250);
+      // Persist final positions into the editor state.
+      for (const [pqlId, pos] of Object.entries(targets)) {
+        if (this.nodes[pqlId]) this.nodes[pqlId].position = { x: pos.x, y: pos.y };
+      }
+      this._suppressAutosave = false;
+      this._scheduleAutosave();
+      this._scheduleMinimapRender();
     },
 
     toggleOrthogonalEdges() {

@@ -17,6 +17,16 @@ defined in ``scripts/clusters.json``. -->
 
 ### Features
 
+- DP-Canvas: auto-layout via Dagre (rc228).  Toolbar gets a Tidy
+  button (Ctrl+L shortcut) that runs Dagre's layered LTR
+  algorithm over the current nodes + edges, then animates each
+  block to its target position with an easeInOutQuad tween over
+  250ms (so blocks slide into place rather than teleporting).
+  New helper module ``frontend/js/dp_canvas/_auto_layout.js``
+  isolates the Dagre wrapper + tween from the editor page.
+  Dagre loaded from the same jsdelivr CDN as Drawflow
+  (``dagre@0.8.5``, ~30KB).
+
 - DP-Canvas: minimap + Ctrl+F block search (rc227).  Bottom-right
   corner gets a 200×130 SVG minimap showing every block's
   position scaled to fit; the currently-selected block is
