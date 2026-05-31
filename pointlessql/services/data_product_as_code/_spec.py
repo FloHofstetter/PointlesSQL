@@ -13,6 +13,10 @@ from typing import Any
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from pointlessql.services.data_product_as_code._canvas_pipeline import (
+    CanvasPipelineSpec,
+)
+
 
 class InputPortSpec(BaseModel):
     """One declared upstream source."""
@@ -134,6 +138,7 @@ class DataProductSpec(BaseModel):
     fixtures: list[FixtureSpec] = Field(default_factory=list)
     entities: list[EntitySpec] = Field(default_factory=list)
     glossary_bindings: list[GlossaryBindingSpec] = Field(default_factory=list)
+    pipeline: CanvasPipelineSpec | None = None
 
     @field_validator("catalog", "schema", "name")
     @classmethod

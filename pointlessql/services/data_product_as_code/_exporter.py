@@ -168,6 +168,15 @@ def export_data_product(
         if any(policy_payload.get(f) is not None for f in POLICY_FIELDS)
         else None
     )
+    pipeline = None
+    from pointlessql.services.data_product_as_code._canvas_pipeline import (
+        from_canvas_doc,
+    )
+    from pointlessql.services.dp_canvas import load_latest_graph
+
+    latest = load_latest_graph(session_factory, data_product_id=product_id)
+    if latest is not None:
+        pipeline = from_canvas_doc(latest[0])
     return DataProductSpec(
         name=_extract_name(product_name, default=f"{catalog}.{schema}"),
         catalog=catalog,
@@ -180,6 +189,7 @@ def export_data_product(
         contract_tests=contract_tests,
         fixtures=fixtures,
         entities=entities,
+        pipeline=pipeline,
     )
 
 

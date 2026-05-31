@@ -17,6 +17,31 @@ defined in ``scripts/clusters.json``. -->
 
 ### Features
 
+- Visual Data Product editor — DP-as-Code round-trip + version
+  diff-view (rc210).  Wave F gives canvases full git-tracking
+  parity with the rest of the DP-as-Code spec.  (1) New
+  `CanvasPipelineSpec` Pydantic model in
+  [_canvas_pipeline.py](pointlessql/services/data_product_as_code/_canvas_pipeline.py)
+  defines a structured YAML sub-tree (chosen over an embedded JSON
+  string per the ADR call — git-diffable, human-readable) and
+  exports `from_canvas_doc` / `to_canvas_doc` round-trip helpers
+  that go back-and-forth with the canonical `CanvasDoc`.  The
+  existing `DataProductSpec` gains an optional `pipeline` field; the
+  exporter populates it from the latest `data_product_canvas_graph`
+  row when present, and `POST /api/data-products/apply` calls
+  `save_graph` with `to_canvas_doc(spec.pipeline)` after the
+  regular plan→apply pass, surfacing the new `canvas_version`
+  in the apply response.  (2) New service `_diff.py:diff_docs`
+  computes the structural delta between two canvas versions
+  (added/removed/modified nodes, added/removed edges); position-
+  only changes are deliberately ignored so cosmetic relayout
+  doesn't drown out config edits.  New
+  `GET /api/dp/{id}/canvas/diff?from_version=N&to_version=M` route
+  + standalone `/dp/{id}/canvas/diff` page render the result as a
+  3-column added/removed/modified layout with side-by-side JSON
+  trees for the modified-config case.  7 new pytest cover the
+  round-trip + diff service (`test_canvas_pipeline_roundtrip.py`);
+  full suite stays green.
 - Visual Data Product editor — block library expansion (rc209).
   Wave E adds 10 new transform-block types so the editor covers the
   common shapes the previous 9-block set could not:

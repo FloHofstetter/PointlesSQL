@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% block title %}Canvas diff · {{ product.ref }} · PointlesSQL{% endblock %}
+
+{% set breadcrumbs = [
+    {"label": "Home", "href": "/"},
+    {"label": "Data Products", "href": "/data-products"},
+    {"label": product.ref, "href": "/data-products/" ~ product.catalog ~ "/" ~ product.schema},
+    {"label": "Canvas", "href": "/dp/" ~ product.id ~ "/canvas"},
+    {"label": "Diff"}
+] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block extra_css %}
+{{ super() }}
+<link rel="stylesheet" href="/static/css/dp_canvas_editor.css?v={{ asset_version }}">
+{% endblock %}
+
+{% block content %}
+<main class="container-xl py-3"
+      x-data='dpCanvasDiff({{ product | tojson }})'
+      x-init="init()">
+    <div class="d-flex align-items-center gap-3 mb-3">
+        <a class="btn btn-sm btn-outline-secondary" :href="'/dp/' + product.id + '/canvas'">
+            <i class="bi bi-arrow-left"></i> Back to editor
+        </a>
+        <h5 class="mb-0">Canvas diff · <span x-text="product.ref"></span></h5>
+        <div class="ms-auto d-flex align-items-center gap-2">
+            <label class="form-label small mb-0">From v</label>
+            <select class="form-select form-select-sm" style="width: 90px;"
+                    x-model.number="fromVersion" @change="load()">
+                <template x-for="v in versions" :key="v">
+                    <option :value="v" x-text="v"></option>
+                </template>
+            </select>
+            <label class="form-label small mb-0">→ to v</label>
+            <select class="form-select form-select-sm" style="width: 90px;"
+                    x-model.number="toVersion" @change="load()">
+                <template x-for="v in versions" :key="v">
+                    <option :value="v" x-text="v"></option>
+                </template>
+            </select>
+            <button class="btn btn-sm btn-primary" @click="load()" :disabled="busy">
+                Refresh
+            </button>
+        </div>
+    </div>
+
+    <template x-if="error">
+        <div class="alert alert-danger small" x-text="error"></div>
+    </template>
+
+    <template x-if="diff && diff.diff && diffEmpty()">
+        <div class="alert alert-info small">No structural changes between
+            v<span x-text="diff.from_version"></span> and v<span x-text="diff.to_version"></span>.
+        </div>
+    </template>
+
+    <template x-if="diff && diff.diff && !diffEmpty()">
+        <div class="row g-3">
+            <div class="col-12 col-md-4">
+                <h6 class="small text-uppercase text-success-emphasis">
+                    <i class="bi bi-plus-circle"></i> Added (<span x-text="diff.diff.added_nodes.length + diff.diff.added_edges.length"></span>)
+                </h6>
+                <template x-for="n in diff.diff.added_nodes" :key="n.id">
+                    <div class="border-start border-success ps-2 mb-2 small">
+                        <strong x-text="n.block_type"></strong>
+                        <code class="ms-1" x-text="n.id"></code>
+                        <pre class="mb-0 mt-1 small bg-body-tertiary p-2" x-text="JSON.stringify(n.after_config, null, 2)"></pre>
+                    </div>
+                </template>
+                <template x-for="e in diff.diff.added_edges" :key="e.id">
+                    <div class="border-start border-success ps-2 mb-2 small">
+                        edge: <code x-text="e.source_node_id"></code>.<span x-text="e.source_pin"></span>
+                              → <code x-text="e.target_node_id"></code>.<span x-text="e.target_pin"></span>
+                    </div>
+                </template>
+            </div>
+
+            <div class="col-12 col-md-4">
+                <h6 class="small text-uppercase text-danger-emphasis">
+                    <i class="bi bi-dash-circle"></i> Removed (<span x-text="diff.diff.removed_nodes.length + diff.diff.removed_edges.length"></span>)
+                </h6>
+                <template x-for="n in diff.diff.removed_nodes" :key="n.id">
+                    <div class="border-start border-danger ps-2 mb-2 small">
+                        <strong x-text="n.block_type"></strong>
+                        <code class="ms-1" x-text="n.id"></code>
+                        <pre class="mb-0 mt-1 small bg-body-tertiary p-2" x-text="JSON.stringify(n.before_config, null, 2)"></pre>
+                    </div>
+                </template>
+                <template x-for="e in diff.diff.removed_edges" :key="e.id">
+                    <div class="border-start border-danger ps-2 mb-2 small">
+                        edge: <code x-text="e.source_node_id"></code>.<span x-text="e.source_pin"></span>
+                              → <code x-text="e.target_node_id"></code>.<span x-text="e.target_pin"></span>
+                    </div>
+                </template>
+            </div>
+
+            <div class="col-12 col-md-4">
+                <h6 class="small text-uppercase text-warning-emphasis">
+                    <i class="bi bi-pencil-square"></i> Modified (<span x-text="diff.diff.modified_nodes.length"></span>)
+                </h6>
+                <template x-for="n in diff.diff.modified_nodes" :key="n.id">
+                    <div class="border-start border-warning ps-2 mb-2 small">
+                        <strong x-text="n.block_type"></strong>
+                        <code class="ms-1" x-text="n.id"></code>
+                        <div class="row g-1 mt-1 small">
+                            <div class="col-6">
+                                <div class="text-muted">before</div>
+                                <pre class="mb-0 bg-body-tertiary p-2 small" x-text="JSON.stringify(n.before_config, null, 2)"></pre>
+                            </div>
+                            <div class="col-6">
+                                <div class="text-muted">after</div>
+                                <pre class="mb-0 bg-body-tertiary p-2 small" x-text="JSON.stringify(n.after_config, null, 2)"></pre>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </template>
+</main>
+{% endblock %}

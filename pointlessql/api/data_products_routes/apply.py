@@ -121,6 +121,31 @@ async def apply_data_product(
         workspace_id=workspace_id,
         user_id=int(user.get("id", 0) or 0) or None,
     )
+    canvas_version: int | None = None
+    if not dry_run and spec.pipeline is not None:
+        from sqlalchemy import select
+
+        from pointlessql.models import DataProduct
+        from pointlessql.services.data_product_as_code._canvas_pipeline import (
+            to_canvas_doc,
+        )
+        from pointlessql.services.dp_canvas import save_graph
+
+        with factory() as session:
+            dp = session.scalar(
+                select(DataProduct)
+                .where(DataProduct.workspace_id == workspace_id)
+                .where(DataProduct.catalog_name == spec.catalog)
+                .where(DataProduct.schema_name == spec.schema)
+            )
+        if dp is not None:
+            canvas_doc = to_canvas_doc(spec.pipeline)
+            canvas_version = save_graph(
+                factory,
+                data_product_id=dp.id,
+                doc=canvas_doc,
+                author_user_id=int(user.get("id", 0) or 0) or None,
+            )
     await audit(
         request,
         "data_product.apply",
@@ -130,9 +155,11 @@ async def apply_data_product(
             "op_count": plan.op_count(),
             "applied": outcome.applied,
             "errors": outcome.errors,
+            "canvas_version": canvas_version,
         },
     )
     return {
+        "canvas_version": canvas_version,
         "plan": {
             "product_present": plan.product_present,
             "op_count": plan.op_count(),

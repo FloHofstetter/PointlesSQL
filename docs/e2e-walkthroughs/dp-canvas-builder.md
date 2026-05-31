@@ -234,6 +234,21 @@ Wire a graph that mixes a few of these blocks together, click
 **Preview** on any non-`OutputPort` node, and Wave-C's per-node
 preview path now runs through the new compiler entries unchanged.
 
+## DP-as-Code round-trip + version diff (Wave F)
+
+Canvases are now git-trackable end-to-end. Export the DP YAML and
+the saved canvas comes along as a `pipeline:` sub-tree; apply that
+same YAML back in and the canvas restores with the same node ids,
+configs, edges, and (cosmetic) positions.
+
+| Step | Expect |
+|---|---|
+| `POST /api/data-products/{cat}/{schema}/export` for a DP with a saved canvas | Response YAML / dict carries a `pipeline: {version: 1, nodes: [...], edges: [...]}` sub-tree |
+| Edit a config in the exported YAML, `POST /api/data-products/apply` with the changes | Apply succeeds; response includes `canvas_version` and a new row in `data_product_canvas_graph` appears |
+| Open `/dp/{id}/canvas` for that DP | Editor loads the freshly-applied canvas; node ids and configs match the YAML |
+| Open `/dp/{id}/canvas/diff?from=N&to=M` between two versions | Three columns render — added, removed, modified — with per-node JSON side-by-side for modified nodes; position-only changes are intentionally ignored |
+| Diff between identical versions | "No structural changes" alert renders |
+
 ## Found bugs
 
 _None yet — populate after the first replay pass uncovers any._

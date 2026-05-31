@@ -84,3 +84,37 @@ async def dp_canvas_editor_page(
             "active_page": "data_products",
         },
     )
+
+
+@router.get(
+    "/dp/{dp_id}/canvas/diff",
+    response_class=HTMLResponse,
+    response_model=None,
+)
+async def dp_canvas_diff_page(
+    request: Request, dp_id: int
+) -> HTMLResponse | RedirectResponse:
+    """Render the canvas diff-viewer for *dp_id*."""  # noqa: DOC502
+    user = get_user(request)
+    if user["id"] == 0:
+        return RedirectResponse(
+            url=f"/auth/login?next=/dp/{dp_id}/canvas/diff", status_code=303
+        )
+    workspace_id = current_workspace_id(request)
+    factory = request.app.state.session_factory
+    with factory() as session:
+        row = session.get(DataProduct, dp_id)
+        if row is None or row.workspace_id != workspace_id:
+            raise ResourceNotFoundError(f"data product id={dp_id} not found")
+        product = {
+            "id": row.id,
+            "catalog": row.catalog_name,
+            "schema": row.schema_name,
+            "ref": f"{row.catalog_name}.{row.schema_name}",
+        }
+    templates = request.app.state.templates
+    return templates.TemplateResponse(
+        request,
+        "pages/dp_canvas_diff.html",
+        {"product": product, "active_page": "data_products"},
+    )

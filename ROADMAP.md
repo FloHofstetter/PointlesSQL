@@ -2887,27 +2887,37 @@ PointlesSQL
 │           `{expression, target_alias}` mit CodeMirror-mount aus
 │           149.2 reused. Tests: 11 neue pytest.
 │
-├── Phase 152 — Visual DP Editor: DP-as-Code Round-Trip (Wave F)  ⏳ planned
+├── Phase 152 — Visual DP Editor: DP-as-Code Round-Trip (Wave F)  ✅ shipped (local, 2026-05-31)
 │   │
-│   │   Bridge zwischen Visual-Editor und existierender YAML-DP-Spec
-│   │   (`services/data_product_as_code/_spec.py:DataProductSpec`).
-│   │   Macht Canvas-DPs vollständig Git-fähig.
+│   │   Bridge Visual-Editor ↔ YAML-DP-Spec. Macht Canvas-DPs
+│   │   vollständig Git-fähig + zeigt Diffs zwischen gespeicherten
+│   │   Versionen.
 │   │
-│   ├── 152.1 — Serializer Canvas → YAML
-│   │       Neues `pipeline:`-Feld in `DataProductSpec`-Pydantic-
-│   │       Model. Export-DP-YAML inkludiert Canvas-Graph als
-│   │       eingebetteten JSON-String oder strukturiertes YAML-Sub-
-│   │       Tree (Decision per ADR während 152.1).
+│   ├── 152.1 — Serializer Canvas → YAML (structured sub-tree)
+│   │       Neues `CanvasPipelineSpec` Pydantic-Model in
+│   │       `services/data_product_as_code/_canvas_pipeline.py` mit
+│   │       `{version: 1, nodes: [...], edges: [...]}` shape.
+│   │       Optionales `pipeline:` Feld auf `DataProductSpec`.
+│   │       Export-Pfad (`_exporter.py`) ruft `from_canvas_doc` mit
+│   │       der latest saved `data_product_canvas_graph` Row.
+│   │       **ADR-Entscheidung:** structured YAML statt embedded-JSON-
+│   │       String — git-diffable + human-readable.
 │   │
 │   ├── 152.2 — Deserializer YAML → Canvas
-│   │       Import existierender DP-YAML mit `pipeline:`-Feld →
-│   │       Canvas im Editor rekonstruieren. Round-Trip-Property-
-│   │       Test garantiert Canvas → YAML → Canvas idempotent.
+│   │       `POST /api/data-products/apply` erkennt `spec.pipeline`
+│   │       und ruft nach dem `apply_plan` Pfad `save_graph()` mit
+│   │       `to_canvas_doc(spec.pipeline)`. Response trägt jetzt
+│   │       `canvas_version` Feld. Audit-Eintrag protokolliert.
+│   │       Round-trip-Test garantiert idempotenz.
 │   │
 │   └── 152.3 — Diff-View
-│           Zwei Canvas-Graph-Versionen side-by-side: Visual-Overlay
-│           (verschobene/gelöschte/neue Blöcke farbig markiert) +
-│           JSON-Tree-Diff. Versions kommen aus 147.1-Tabelle.
+│           Neuer Service `_diff.py:diff_docs(before, after) →
+│           CanvasDiff` mit added/removed/modified nodes + edges
+│           (position-only changes ignoriert). Neuer Route
+│           `GET /api/dp/{id}/canvas/diff?from_version=N&to_version=M`
+│           + standalone Page `/dp/{id}/canvas/diff` mit 3-Spalten-
+│           Layout (added/removed/modified), JSON-tree-diff im
+│           "modified" Bereich.
 │
 ├── Phase 153 — Visual DP Editor: Real-time Co-Edit (Wave G)  ⏳ planned
 │   │
