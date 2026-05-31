@@ -115,6 +115,23 @@ def test_diff_modified_node_emits_before_after() -> None:
     assert diff.after_config == {"predicate": "amt > 100"}
 
 
+def test_diff_marks_edges_modified_when_endpoint_changes() -> None:
+    before = _doc_three_block()
+    new_nodes = [
+        CanvasNode(
+            id=n.id,
+            block_type=n.block_type,
+            config={"predicate": "amt > 100"} if n.id == "flt" else dict(n.config),
+            position=n.position,
+        )
+        for n in before.nodes
+    ]
+    after = CanvasDoc(nodes=new_nodes, edges=before.edges)
+    result = diff_docs(before, after)
+    # Both edges touch the modified `flt` node, so both end up in modified_edges.
+    assert {e.id for e in result.modified_edges} == {"e1", "e2"}
+
+
 def test_diff_ignores_position_only_change() -> None:
     before = _doc_three_block()
     new_nodes = [

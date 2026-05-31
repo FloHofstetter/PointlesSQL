@@ -37,3 +37,18 @@
   stroke-width: 3;
   stroke-dasharray: 6 3;
 }
+
+.pql-dp-canvas-diff-pane .connection.pql-diff-edge-modified svg path {
+  stroke: #ffc107;
+  stroke-width: 3;
+}
+
+/* "Only changed" filter — hide every node + edge without a diff overlay. */
+.pql-diff-only-changed .drawflow-node:not(.pql-diff-added):not(.pql-diff-removed):not(.pql-diff-modified) {
+  opacity: 0.15;
+  filter: grayscale(0.9);
+}
+
+.pql-diff-only-changed .connection:not(.pql-diff-edge-added):not(.pql-diff-edge-removed):not(.pql-diff-edge-modified) {
+  opacity: 0.1;
+}

@@ -17,6 +17,17 @@ defined in ``scripts/clusters.json``. -->
 
 ### Features
 
+- Diff-Canvas: edge-modified overlay + "Only changed" filter +
+  sync-scroll (rc230).  Closes the Phase-158 deferred
+  edge-overlay item.  ``CanvasDiff`` Pydantic envelope gains
+  ``modified_edges`` (edges whose endpoint is in
+  ``modified_nodes``); the visual diff renders them in warning
+  yellow alongside the existing added (green) / removed (red-
+  dashed) overlays.  New Only-changed toolbar toggle dims every
+  unchanged node + edge to ~15% opacity so the eye snaps to
+  the delta.  Before / after panes mirror scroll via a guarded
+  ``_syncingScroll`` flag so they stay aligned during pan.
+
 - Mesh-Canvas: cross-workspace picker UI + auto-layout (rc229).
   Closes the frontend deferred from Phase 162.  Right-click on
   the canvas background opens a context menu with three

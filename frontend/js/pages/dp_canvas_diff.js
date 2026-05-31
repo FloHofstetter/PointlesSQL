@@ -34,8 +34,10 @@ export function dpCanvasDiff(product) {
     busy: false,
     error: null,
     viewMode: 'visual',
+    onlyChanged: false,
     _dfBefore: null,
     _dfAfter: null,
+    _syncingScroll: false,
 
     async init() {
       this.fromVersion = _readQuery('from');
@@ -77,8 +79,17 @@ export function dpCanvasDiff(product) {
         d.removed_nodes.length ||
         d.modified_nodes.length ||
         d.added_edges.length ||
-        d.removed_edges.length
+        d.removed_edges.length ||
+        (d.modified_edges || []).length
       );
+    },
+
+    toggleOnlyChanged() {
+      this.onlyChanged = !this.onlyChanged;
+      const beforeHost = this.$refs.dfBefore;
+      const afterHost = this.$refs.dfAfter;
+      if (beforeHost) beforeHost.classList.toggle('pql-diff-only-changed', this.onlyChanged);
+      if (afterHost) afterHost.classList.toggle('pql-diff-only-changed', this.onlyChanged);
     },
 
     async load() {
@@ -151,6 +162,26 @@ export function dpCanvasDiff(product) {
       this._applyNodeOverlays(afterHost, afterIds, 'after');
       this._applyEdgeOverlays(beforeHost, beforeDoc, 'before');
       this._applyEdgeOverlays(afterHost, afterDoc, 'after');
+      this._wireSyncScroll(beforeHost, afterHost);
+      if (this.onlyChanged) {
+        beforeHost.classList.add('pql-diff-only-changed');
+        afterHost.classList.add('pql-diff-only-changed');
+      }
+    },
+
+    _wireSyncScroll(beforeHost, afterHost) {
+      const mirror = (src, dst) => () => {
+        if (this._syncingScroll) return;
+        this._syncingScroll = true;
+        try {
+          dst.scrollTop = src.scrollTop;
+          dst.scrollLeft = src.scrollLeft;
+        } finally {
+          this._syncingScroll = false;
+        }
+      };
+      beforeHost.addEventListener('scroll', mirror(beforeHost, afterHost));
+      afterHost.addEventListener('scroll', mirror(afterHost, beforeHost));
     },
 
     _applyNodeOverlays(hostEl, drawflowIds, side) {
@@ -173,25 +204,25 @@ export function dpCanvasDiff(product) {
 
     _applyEdgeOverlays(hostEl, doc, side) {
       const diff = this.diff.diff;
-      const list = side === 'after' ? diff.added_edges : diff.removed_edges;
-      const cssClass = side === 'after' ? 'pql-diff-edge-added' : 'pql-diff-edge-removed';
-      const docEdges = doc.edges || [];
       const matchKey = (e) =>
         `${e.source_node_id}|${e.source_pin}|${e.target_node_id}|${e.target_pin}`;
-      const matchedDocIds = new Set();
-      const matchedDiffSet = new Set(list.map(matchKey));
-      for (const e of docEdges) {
-        if (matchedDiffSet.has(matchKey(e))) matchedDocIds.add(e.id);
-      }
-      if (matchedDocIds.size === 0) return;
-      // Drawflow renders one .connection div per edge; without a stable
-      // id we walk all of them and tag the matching count.  Order in
-      // the DOM mirrors insertion order (loadCanvasIntoDrawflow follows
-      // doc.edges sequence) so we can index by position.
+      const docEdges = doc.edges || [];
       const conns = hostEl.querySelectorAll('.connection');
+
+      const sideDelta = side === 'after' ? diff.added_edges : diff.removed_edges;
+      const sideCls = side === 'after' ? 'pql-diff-edge-added' : 'pql-diff-edge-removed';
+      const sideKeys = new Set(sideDelta.map(matchKey));
+      const modKeys = new Set((diff.modified_edges || []).map(matchKey));
+
       docEdges.forEach((e, idx) => {
-        if (matchedDocIds.has(e.id) && conns[idx]) {
-          conns[idx].classList.add(cssClass);
+        const conn = conns[idx];
+        if (!conn) return;
+        const k = matchKey(e);
+        if (sideKeys.has(k)) {
+          conn.classList.add(sideCls);
+        }
+        if (modKeys.has(k)) {
+          conn.classList.add('pql-diff-edge-modified');
         }
       });
     },

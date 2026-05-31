@@ -49,6 +49,7 @@ class CanvasDiff(BaseModel):
     modified_nodes: list[CanvasNodeDiff] = Field(default_factory=lambda: [])
     added_edges: list[CanvasEdgeDiff] = Field(default_factory=lambda: [])
     removed_edges: list[CanvasEdgeDiff] = Field(default_factory=lambda: [])
+    modified_edges: list[CanvasEdgeDiff] = Field(default_factory=lambda: [])
 
     def is_empty(self) -> bool:
         return not (
@@ -57,6 +58,7 @@ class CanvasDiff(BaseModel):
             or self.modified_nodes
             or self.added_edges
             or self.removed_edges
+            or self.modified_edges
         )
 
 
@@ -135,12 +137,24 @@ def diff_docs(before: CanvasDoc, after: CanvasDoc) -> CanvasDiff:
         if k not in after_edge_keys
     ]
 
+    modified_node_ids = {n.id for n in modified_nodes}
+    modified_edges = [
+        _edge_diff_from(e)
+        for k, e in after_edge_keys.items()
+        if k in before_edge_keys
+        and (
+            e.source_node_id in modified_node_ids
+            or e.target_node_id in modified_node_ids
+        )
+    ]
+
     return CanvasDiff(
         added_nodes=added_nodes,
         removed_nodes=removed_nodes,
         modified_nodes=modified_nodes,
         added_edges=added_edges,
         removed_edges=removed_edges,
+        modified_edges=modified_edges,
     )
 
 

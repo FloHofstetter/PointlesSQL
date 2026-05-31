@@ -72,6 +72,13 @@
             <span class="badge bg-danger ms-2 me-1">●</span> removed
             <span class="badge bg-warning ms-2 me-1">●</span> modified
         </div>
+        <button class="btn btn-sm btn-outline-secondary ms-auto"
+                x-show="viewMode === 'visual' && diff && diff.diff && !diffEmpty()"
+                :class="{ active: onlyChanged }"
+                @click="toggleOnlyChanged()">
+            <i class="bi" :class="onlyChanged ? 'bi-funnel-fill' : 'bi-funnel'"></i>
+            Only changed
+        </button>
     </div>
 
     <template x-if="viewMode === 'visual' && diff && diff.diff && !diffEmpty()">

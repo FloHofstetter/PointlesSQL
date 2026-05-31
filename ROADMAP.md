@@ -3066,6 +3066,18 @@ PointlesSQL
 │   │   (174).  Each phase one commit; rc222→rc232.  ALL LOCAL
 │   │   until single final push.
 │   │
+├── Phase 172 — Diff-Canvas: modified-edge overlay + "Only changed" filter + sync-scroll  ✅ shipped (local, 2026-05-31)
+│   │
+│   │   Closes the Phase-158 deferred edge-overlay item.
+│   │   ``CanvasDiff`` Pydantic gains ``modified_edges`` (edges
+│   │   touching a node in ``modified_nodes``); visual diff
+│   │   colours them yellow.  Toolbar adds Only-changed toggle
+│   │   that dims unchanged nodes + edges to ~15% opacity so
+│   │   the eye snaps to the delta.  Before / after panes
+│   │   mirror scroll via a guarded ``_syncingScroll`` flag.
+│   │   1 new pytest in test_canvas_pipeline_roundtrip.
+│   │   rc229→rc230.
+│   │
 ├── Phase 171 — Mesh-Canvas: cross-workspace picker UI + auto-layout  ✅ shipped (local, 2026-05-31)
 │   │
 │   │   Closes the Phase-162 frontend-deferred.  Right-click on
