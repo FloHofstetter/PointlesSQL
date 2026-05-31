@@ -1103,12 +1103,13 @@ export function dpCanvasEditor(product, ctx) {
       this._scheduleValidate();
     },
 
-    async runPreview() {
+    async runPreview(opts = {}) {
       if (this.previewBusy) return;
       if (!this.previewNodeId) return;
       this.previewBusy = true;
       this.previewError = null;
-      const res = await window.pqlApi.fetch(`/api/dp/${this.product.id}/canvas/preview`, {
+      const bust = opts.bust ? '?bust=1' : '';
+      const res = await window.pqlApi.fetch(`/api/dp/${this.product.id}/canvas/preview${bust}`, {
         method: 'POST',
         body: {
           document: this._buildDocument(),

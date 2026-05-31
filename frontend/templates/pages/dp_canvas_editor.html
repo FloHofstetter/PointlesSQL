@@ -337,17 +337,33 @@
                                x-model.number="previewLimit"
                                @change="runPreview()">
                         <button class="btn btn-sm btn-outline-secondary"
-                                @click="runPreview()" :disabled="previewBusy">
+                                @click="runPreview()" :disabled="previewBusy"
+                                title="Re-run from cache when fresh">
                             <i class="bi bi-arrow-repeat"></i> Refresh
+                        </button>
+                        <button class="btn btn-sm btn-outline-warning"
+                                @click="runPreview({ bust: true })"
+                                :disabled="previewBusy"
+                                title="Bust cache and re-execute against DuckDB">
+                            <i class="bi bi-x-circle"></i> Bust cache
                         </button>
                         <span x-show="previewBusy" class="ms-2 text-muted small">
                             <span class="spinner-border spinner-border-sm"></span>
                             Querying DuckDB…
                         </span>
-                        <span x-show="previewResult && previewResult.truncated"
-                              class="ms-auto badge bg-warning-subtle text-warning-emphasis">
-                            Showing first <span x-text="previewLimit"></span> rows
-                        </span>
+                        <div class="ms-auto d-flex align-items-center gap-2">
+                            <span x-show="previewResult && previewResult.cache_hit"
+                                  class="badge bg-secondary"
+                                  title="Served from in-memory preview cache">
+                                <i class="bi bi-lightning-charge"></i> cached
+                            </span>
+                            <span x-show="previewResult && previewResult.row_count > 0"
+                                  class="badge bg-info-subtle text-info-emphasis"
+                                  x-text="previewResult.truncated
+                                      ? ('≥' + previewResult.row_count + ' rows')
+                                      : (previewResult.row_count + ' rows')">
+                            </span>
+                        </div>
                     </div>
                     <template x-if="previewError">
                         <div class="alert alert-danger small mb-2">

@@ -17,6 +17,20 @@ defined in ``scripts/clusters.json``. -->
 
 ### Features
 
+- Visual DP Editor — Preview cache + truncation indicators
+  (rc214).  Re-previewing the same canvas node now returns instantly
+  from an in-process LRU keyed on the upstream-slice content hash;
+  the `PreviewResult` envelope carries new ``row_count`` and
+  ``cache_hit`` fields so the editor surfaces a "cached" badge and a
+  per-call row count in the preview modal footer.  Save-graph
+  automatically busts cache entries for the DP so a fresh post-save
+  preview always re-executes against DuckDB.  Explicit cache
+  invalidation exposed via ``?bust=1`` on the preview endpoint
+  (wired to a "Bust cache" button) for the case where the upstream
+  Delta location was rewritten out-of-band.  Per-worker / in-process
+  only; multi-worker fan-out via Redis is explicit out-of-scope for
+  v1.
+
 - Visual DP Editor — Pin / Unpin production canvas version (rc213).
   Opens the Mega-Cluster 155-164 polish wave on top of the freshly
   shipped Mega-Cluster 147-154 surface.  Each saved canvas version

@@ -336,8 +336,10 @@ class CanvasPreviewResponse(BaseModel):
     columns: list[str]
     rows: list[list[Any]]
     truncated: bool
+    row_count: int
     sql: str
     errors: list[CompileError]
+    cache_hit: bool = False
 
 
 class CanvasMaterializeRequest(BaseModel):
@@ -644,7 +646,10 @@ def diff_canvas_versions(
 
 @router.post("/{dp_id}/canvas/preview", response_model=CanvasPreviewResponse)
 def preview_canvas(
-    dp_id: int, body: CanvasPreviewRequest, request: Request
+    dp_id: int,
+    body: CanvasPreviewRequest,
+    request: Request,
+    bust: int = 0,
 ) -> CanvasPreviewResponse:
     """Compile the canvas slice ending at *upto_node_id* and return preview rows.
 
@@ -652,9 +657,18 @@ def preview_canvas(
     materialise for that path), no Delta write happens, and the graph
     version is *not* bumped — the document is consumed verbatim from
     the request body so the editor can preview dirty unsaved state.
+
+    The result is memoised in an in-process LRU keyed on the upstream
+    slice's content hash so re-preview of the same node returns
+    instantly.  Pass ``?bust=1`` to drop the cache for this DP before
+    executing (used when an upstream Delta was rewritten out-of-band).
     """
     require_user(request)
     _load_dp(request, dp_id)
+    if bust:
+        from pointlessql.services.dp_canvas import _preview_cache
+
+        _preview_cache.clear_for_dp(dp_id)
     client = _raw_soyuz_client(request)
     resolved_doc = _resolve_dp_refs(request, body.document)
     seeds, _seed_errors = _seed_schemas_for_doc(resolved_doc, client)
@@ -664,11 +678,14 @@ def preview_canvas(
         limit=body.limit,
         soyuz_client=client,
         upstream_seeds=seeds,
+        cache_dp_id=dp_id,
     )
     return CanvasPreviewResponse(
         columns=list(result.columns),
         rows=[list(row) for row in result.rows],
         truncated=result.truncated,
+        row_count=result.row_count,
+        cache_hit=result.cache_hit,
         sql=result.sql,
         errors=list(result.errors),
     )

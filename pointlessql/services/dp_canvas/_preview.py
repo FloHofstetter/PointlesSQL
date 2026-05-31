@@ -70,11 +70,19 @@ class PreviewResult(BaseModel):
             the caller cannot tell whether more rows exist without
             re-running with a higher limit, so the editor shows a
             "showing first N" badge instead of a row count.
+        row_count: Number of rows returned in *rows*.  When
+            ``truncated`` is True this is also the cap (``= limit``);
+            when False it is the actual scan size.
         sql: The rendered DuckDB query.  Useful for the "show me what
             this preview ran" debug surface.
         errors: Compile errors when the truncated slice failed to
             compile.  Mirrors the validate endpoint's shape so the
             editor can reuse the same renderer.
+        cache_hit: ``True`` when this envelope was served from the
+            in-memory preview cache rather than re-executing the
+            DuckDB query.  The editor surfaces a "cached" badge in
+            the preview-modal footer so the user can tell a cheap
+            re-render from a fresh scan.
     """
 
     model_config = ConfigDict(frozen=True)
@@ -82,8 +90,10 @@ class PreviewResult(BaseModel):
     columns: list[str] = Field(default_factory=lambda: [])
     rows: list[list[Any]] = Field(default_factory=lambda: [])
     truncated: bool = False
+    row_count: int = 0
     sql: str = ""
     errors: list[CompileError] = Field(default_factory=lambda: [])
+    cache_hit: bool = False
 
 
 def _collect_ancestors(doc: CanvasDoc, upto_node_id: str) -> set[str]:
@@ -175,6 +185,7 @@ def preview_until(
     limit: int,
     soyuz_client: Client,
     upstream_seeds: dict[str, PinSchema] | None = None,
+    cache_dp_id: int | None = None,
 ) -> PreviewResult:
     """Compile a slice of *doc* ending at *upto_node_id* and return preview rows.
 
@@ -194,6 +205,10 @@ def preview_until(
         upstream_seeds: Optional ``{node_id: PinSchema}`` seeding for
             InputPort blocks; the validate route already builds this
             map and can hand it through so we don't re-query soyuz.
+        cache_dp_id: When non-None, look up + memoise the result in
+            the in-process preview cache keyed on the canvas upstream
+            slice's content hash.  The HTTP route passes the dp id;
+            unit tests can omit it for cache-free runs.
 
     Returns:
         A :class:`PreviewResult` envelope.  ``errors`` is populated
@@ -223,6 +238,18 @@ def preview_until(
         )
 
     safe_limit = max(1, min(int(limit or 100), _MAX_PREVIEW_LIMIT))
+
+    if cache_dp_id is not None:
+        from pointlessql.services.dp_canvas import _preview_cache
+
+        cached = _preview_cache.lookup(
+            dp_id=cache_dp_id,
+            doc=doc,
+            upto_node_id=upto_node_id,
+            limit=safe_limit,
+        )
+        if cached is not None:
+            return cached.model_copy(update={"cache_hit": True})
 
     preview_doc = _build_preview_doc(doc, target, pin)
     fragment, errors = compile_canvas(preview_doc, upstream_schemas=upstream_seeds)
@@ -267,13 +294,28 @@ def preview_until(
 
     rows = [[_coerce_cell(cell) for cell in row] for row in raw_rows]
     truncated = len(rows) == safe_limit
-    return PreviewResult(
+    result = PreviewResult(
         columns=column_names,
         rows=rows,
         truncated=truncated,
+        row_count=len(rows),
         sql=wrapped_sql,
         errors=[],
+        cache_hit=False,
     )
+
+    if cache_dp_id is not None:
+        from pointlessql.services.dp_canvas import _preview_cache
+
+        _preview_cache.store(
+            dp_id=cache_dp_id,
+            doc=doc,
+            upto_node_id=upto_node_id,
+            limit=safe_limit,
+            result=result,
+        )
+
+    return result
 
 
 __all__ = ["PreviewResult", "preview_until"]

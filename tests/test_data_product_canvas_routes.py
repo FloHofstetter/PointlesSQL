@@ -785,3 +785,182 @@ async def test_pin_unknown_version_404(
     dp_id = _seed_dp(schema_name="pin_missing")
     res = await admin_client.post(f"/api/dp/{dp_id}/canvas/versions/9/pin")
     assert res.status_code == 404, res.text
+
+
+# ---------------------------------------------------------------------------
+# 156 — preview cache + truncation indicators
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture(autouse=False)
+def _clear_preview_cache_between_tests():
+    """Clean preview cache around tests that observe cache state."""
+    from pointlessql.services.dp_canvas import _preview_cache
+
+    _preview_cache.clear_all()
+    yield
+    _preview_cache.clear_all()
+
+
+@pytest.mark.asyncio
+async def test_preview_response_includes_row_count_field(
+    admin_client: httpx.AsyncClient, tmp_path, monkeypatch
+) -> None:
+    dp_id = _seed_dp(schema_name="prev_rowcount")
+    src_path = str(tmp_path / "prev_rowcount_src")
+    deltalake.write_deltalake(
+        src_path,
+        pd.DataFrame({"id": [1, 2, 3, 4, 5]}),
+        mode="overwrite",
+    )
+    _install_preview_patches(
+        monkeypatch,
+        source_paths_to_columns={
+            "main.prev_rowcount.src": (
+                src_path,
+                [ColumnInfo(name="id", type_text="BIGINT", nullable=False)],
+            ),
+        },
+    )
+    doc = linear_doc("main.prev_rowcount.src", "main.prev_rowcount.tgt")
+    res = await admin_client.post(
+        f"/api/dp/{dp_id}/canvas/preview",
+        json={"document": _doc_dict(doc), "upto_node_id": "inp", "limit": 10},
+    )
+    body = res.json()
+    assert body["row_count"] == 5
+    assert body["truncated"] is False
+    assert body["cache_hit"] is False
+
+
+@pytest.mark.asyncio
+async def test_preview_second_call_is_cache_hit(
+    admin_client: httpx.AsyncClient, tmp_path, monkeypatch
+) -> None:
+    from pointlessql.services.dp_canvas import _preview_cache
+
+    _preview_cache.clear_all()
+    dp_id = _seed_dp(schema_name="prev_cache")
+    src_path = str(tmp_path / "prev_cache_src")
+    deltalake.write_deltalake(
+        src_path,
+        pd.DataFrame({"id": [1, 2, 3]}),
+        mode="overwrite",
+    )
+    _install_preview_patches(
+        monkeypatch,
+        source_paths_to_columns={
+            "main.prev_cache.src": (
+                src_path,
+                [ColumnInfo(name="id", type_text="BIGINT", nullable=False)],
+            ),
+        },
+    )
+    doc_dict = _doc_dict(linear_doc("main.prev_cache.src", "main.prev_cache.tgt"))
+    payload = {"document": doc_dict, "upto_node_id": "inp", "limit": 5}
+    res1 = await admin_client.post(f"/api/dp/{dp_id}/canvas/preview", json=payload)
+    assert res1.json()["cache_hit"] is False
+    res2 = await admin_client.post(f"/api/dp/{dp_id}/canvas/preview", json=payload)
+    assert res2.json()["cache_hit"] is True
+    assert res2.json()["row_count"] == res1.json()["row_count"]
+    assert res2.json()["rows"] == res1.json()["rows"]
+    _preview_cache.clear_all()
+
+
+@pytest.mark.asyncio
+async def test_preview_cache_busted_by_save_graph(
+    admin_client: httpx.AsyncClient, tmp_path, monkeypatch
+) -> None:
+    from pointlessql.services.dp_canvas import _preview_cache
+
+    _preview_cache.clear_all()
+    dp_id = _seed_dp(schema_name="prev_bustsave")
+    src_path = str(tmp_path / "prev_bustsave_src")
+    deltalake.write_deltalake(
+        src_path,
+        pd.DataFrame({"id": [1, 2, 3]}),
+        mode="overwrite",
+    )
+    _install_preview_patches(
+        monkeypatch,
+        source_paths_to_columns={
+            "main.prev_bustsave.src": (
+                src_path,
+                [ColumnInfo(name="id", type_text="BIGINT", nullable=False)],
+            ),
+        },
+    )
+    doc = linear_doc("main.prev_bustsave.src", "main.prev_bustsave.tgt")
+    payload = {"document": _doc_dict(doc), "upto_node_id": "inp", "limit": 5}
+    await admin_client.post(f"/api/dp/{dp_id}/canvas/preview", json=payload)
+    assert _preview_cache.size() == 1
+    save_res = await admin_client.post(
+        f"/api/dp/{dp_id}/canvas", json={"document": _doc_dict(doc)}
+    )
+    assert save_res.status_code == 200
+    assert _preview_cache.size() == 0
+    _preview_cache.clear_all()
+
+
+@pytest.mark.asyncio
+async def test_preview_explicit_bust_query_param(
+    admin_client: httpx.AsyncClient, tmp_path, monkeypatch
+) -> None:
+    from pointlessql.services.dp_canvas import _preview_cache
+
+    _preview_cache.clear_all()
+    dp_id = _seed_dp(schema_name="prev_bustparam")
+    src_path = str(tmp_path / "prev_bustparam_src")
+    deltalake.write_deltalake(
+        src_path,
+        pd.DataFrame({"id": [1, 2, 3]}),
+        mode="overwrite",
+    )
+    _install_preview_patches(
+        monkeypatch,
+        source_paths_to_columns={
+            "main.prev_bustparam.src": (
+                src_path,
+                [ColumnInfo(name="id", type_text="BIGINT", nullable=False)],
+            ),
+        },
+    )
+    doc = linear_doc("main.prev_bustparam.src", "main.prev_bustparam.tgt")
+    payload = {"document": _doc_dict(doc), "upto_node_id": "inp", "limit": 5}
+    await admin_client.post(f"/api/dp/{dp_id}/canvas/preview", json=payload)
+    res2 = await admin_client.post(
+        f"/api/dp/{dp_id}/canvas/preview?bust=1", json=payload
+    )
+    # bust=1 clears before executing → fresh scan → cache_hit=False
+    assert res2.json()["cache_hit"] is False
+    _preview_cache.clear_all()
+
+
+@pytest.mark.asyncio
+async def test_preview_truncated_when_rows_equal_limit(
+    admin_client: httpx.AsyncClient, tmp_path, monkeypatch
+) -> None:
+    dp_id = _seed_dp(schema_name="prev_trunc")
+    src_path = str(tmp_path / "prev_trunc_src")
+    deltalake.write_deltalake(
+        src_path,
+        pd.DataFrame({"id": list(range(10))}),
+        mode="overwrite",
+    )
+    _install_preview_patches(
+        monkeypatch,
+        source_paths_to_columns={
+            "main.prev_trunc.src": (
+                src_path,
+                [ColumnInfo(name="id", type_text="BIGINT", nullable=False)],
+            ),
+        },
+    )
+    doc = linear_doc("main.prev_trunc.src", "main.prev_trunc.tgt")
+    res = await admin_client.post(
+        f"/api/dp/{dp_id}/canvas/preview",
+        json={"document": _doc_dict(doc), "upto_node_id": "inp", "limit": 5},
+    )
+    body = res.json()
+    assert body["truncated"] is True
+    assert body["row_count"] == 5

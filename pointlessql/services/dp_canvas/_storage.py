@@ -54,7 +54,12 @@ def save_graph(
         )
         session.add(row)
         session.flush()
-        return next_version
+    # Bust any in-memory preview cache entries for this product so the
+    # next preview cannot return rows compiled against a stale doc.
+    from pointlessql.services.dp_canvas import _preview_cache
+
+    _preview_cache.clear_for_dp(data_product_id)
+    return next_version
 
 
 def load_latest_graph(

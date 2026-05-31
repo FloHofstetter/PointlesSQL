@@ -3022,6 +3022,18 @@ PointlesSQL
 │   │   future agent-mediated pin/unpin can reuse the same enum
 │   │   values.
 │
+├── Phase 156 — Visual DP Editor: Preview Cache + Truncation Indicators  ✅ shipped (local, 2026-05-31)
+│   │
+│   │   In-process LRU memoises ``preview_until`` results keyed on
+│   │   the upstream-slice content hash so re-preview returns
+│   │   instantly.  ``save_graph`` busts the cache for the DP
+│   │   automatically; ``?bust=1`` query param exposes manual
+│   │   busting from the editor UI.  PreviewResult envelope gains
+│   │   ``row_count`` + ``cache_hit`` fields; the preview modal
+│   │   shows a "cached" badge + a "≥N rows" / "N rows" count
+│   │   badge + a "Bust cache" button.  Per-process only; multi-
+│   │   worker fan-out is out of scope for v1.
+│
 
 
 
