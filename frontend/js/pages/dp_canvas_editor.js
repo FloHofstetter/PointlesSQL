@@ -258,7 +258,15 @@ export function dpCanvasEditor(product, ctx) {
       df.on('connectionRemoved', () => this._syncFromDrawflow());
       df.on('nodeRemoved', () => this._syncFromDrawflow());
 
-      this.$watch('selectedNode.config', () => this.onConfigChanged(), { deep: true });
+      // Optional-chain via "&&" — Alpine's expression evaluator complains when
+      // selectedNode is null, which surfaces as a console error on every
+      // empty-canvas load.  The deep watcher still catches every config
+      // mutation once a node is selected.
+      this.$watch(
+        '(selectedNode && selectedNode.config) || null',
+        () => this.onConfigChanged(),
+        { deep: true },
+      );
 
       await this.loadLatest();
     },
