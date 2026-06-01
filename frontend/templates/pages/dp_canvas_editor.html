@@ -255,7 +255,9 @@
         <main class="pql-dp-canvas-stage flex-grow-1 position-relative"
               @dragover.prevent
               @drop.prevent="onCanvasDrop($event)">
-            <div x-ref="canvas" id="dp-canvas-drawflow" class="pql-canvas pql-dp-canvas-drawflow"></div>
+            <div x-ref="canvas" id="dp-canvas-drawflow" class="pql-canvas pql-dp-canvas-drawflow"
+                 role="application" tabindex="0"
+                 aria-label="Data product canvas — Tab to a block, Enter to edit it, arrow keys to pan"></div>
 
             {# SVG <defs> for the directional arrow-head marker.  A single
                <marker> instance is referenced by every edge via

@@ -171,9 +171,29 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  /* Kill every canvas motion, not just the marching-ants: the edge-state
+     transitions + glow, the socket transitions, and the output-plus
+     hover all animate by default. */
   .pql-canvas .drawflow .connection.pql-edge-running .main-path {
     animation: none;
   }
+  .pql-canvas .drawflow .connection .main-path,
+  .pql-canvas .drawflow .input,
+  .pql-canvas .drawflow .output,
+  .pql-canvas .pql-output-plus {
+    transition: none !important;
+  }
+  .pql-canvas .drawflow .connection.pql-edge-hover .main-path,
+  .pql-canvas .drawflow .connection.pql-edge-selected .main-path {
+    filter: none;
+  }
+}
+
+/* Keyboard focus ring on focusable nodes — visible only for keyboard
+   users (`:focus-visible`), so mouse selection stays clean. */
+.pql-canvas .drawflow-node:focus-visible {
+  outline: 2px solid var(--bs-primary);
+  outline-offset: 2px;
 }
 
 /* Mid-edge hover toolbar — absolutely positioned in stage coords

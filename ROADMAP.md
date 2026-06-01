@@ -3073,6 +3073,19 @@ PointlesSQL
 │   │   Ghost-Diff-Overlay (Differenzierer), F A11y/Reduced-Motion, G Live-
 │   │   Drag-Validierung.  Je Welle ein Commit + rc-Bump + Browser-Replay.
 │   │
+├── Phase 184 — Canvas Depth F: Accessibility & Reduced-Motion  ✅ shipped (local, 2026-06-01)
+│   │
+│   │   Keyboard + Screenreader + Motion.  Jeder Knoten wird via
+│   │   ``_applyNodeA11y`` zu ``role=group`` + ``aria-label`` („<Block>
+│   │   block") + ``tabindex=0``; Canvas-Region ``role=application`` +
+│   │   tabindex + Anleitungs-Label.  Keydown auf ``df.container``:
+│   │   Enter/Space auf fokussiertem Knoten öffnet dessen Config,
+│   │   Pfeiltasten pannen (wenn nicht in Knoten/Formularfeld).
+│   │   ``prefers-reduced-motion`` jetzt vollständig — Edge-Transitions/
+│   │   Glow, Socket-Transitions und Output-Plus-Hover werden zusätzlich
+│   │   zur Marching-Ants-Animation abgeschaltet; ``:focus-visible``-Ring
+│   │   auf Knoten.  Frontend-only, rc245→rc246.  ALL LOCAL.
+│   │
 ├── Phase 183 — Canvas Depth E: Agent-Ghost-Diff-Overlay  ✅ shipped (local, 2026-06-01)
 │   │
 │   │   Differenzierer „Agent schlägt Pipeline vor → Mensch supervised am

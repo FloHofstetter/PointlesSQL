@@ -634,6 +634,33 @@ export function dpCanvasEditor(product, ctx) {
       // Right-click context menu — target-aware (node / edge / empty canvas).
       df.container.addEventListener('contextmenu', (ev) => this._onCanvasContextMenu(ev));
 
+      // Keyboard accessibility: Enter / Space on a focused node opens its
+      // config; arrow keys pan the canvas when focus is on the canvas chrome
+      // (not inside a node or a form field).
+      df.container.addEventListener('keydown', (ev) => {
+        const nodeEl = ev.target.closest && ev.target.closest('.drawflow-node');
+        if (nodeEl && (ev.key === 'Enter' || ev.key === ' ')) {
+          ev.preventDefault();
+          const pqlId = nodeEl.getAttribute('data-pql-pql-id');
+          if (pqlId && this.nodes[pqlId]) this.selectedNodeId = pqlId;
+          return;
+        }
+        if (this._isFormFocused(ev.target) || nodeEl) return;
+        const STEP = 60;
+        const pan = {
+          ArrowLeft: [STEP, 0],
+          ArrowRight: [-STEP, 0],
+          ArrowUp: [0, STEP],
+          ArrowDown: [0, -STEP],
+        }[ev.key];
+        if (!pan) return;
+        ev.preventDefault();
+        df.canvas_x += pan[0];
+        df.canvas_y += pan[1];
+        df.precanvas.style.transform = `translate(${df.canvas_x}px, ${df.canvas_y}px) scale(${df.zoom})`;
+        this._scheduleMinimapRender();
+      });
+
       // Double-click on a DP◫ node opens that DP's canvas in-place
       // (push the current DP onto the breadcrumb trail in localStorage).
       const canvasEl = this.$refs.canvas;
@@ -1135,6 +1162,25 @@ export function dpCanvasEditor(product, ctx) {
       if (this._initialFitDone && !this._refitAfterBodies) {
         this._refitAfterBodies = true;
         this.$nextTick(() => this.fitToView());
+      }
+      this._applyNodeA11y();
+    },
+
+    _applyNodeA11y() {
+      // Make each node a labelled, keyboard-focusable group so screen
+      // readers announce the block and Tab/Enter can drive it.
+      const df = this._drawflow;
+      if (!df) return;
+      for (const [pqlId, dfId] of Object.entries(this._drawflowNodes)) {
+        const wrap = df.container.querySelector(`#node-${dfId}`);
+        if (!wrap) continue;
+        const node = this.nodes[pqlId];
+        const def = node && BLOCK_DEFS[node.block_type];
+        const label = `${(def && def.label) || (node && node.block_type) || 'Block'} block`;
+        wrap.setAttribute('role', 'group');
+        wrap.setAttribute('aria-label', label);
+        wrap.setAttribute('data-pql-pql-id', pqlId);
+        if (!wrap.hasAttribute('tabindex')) wrap.setAttribute('tabindex', '0');
       }
     },
 

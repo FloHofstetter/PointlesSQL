@@ -46,7 +46,12 @@ defined in ``scripts/clusters.json``. -->
   blocks and connections with per-item accept toggles plus the proposal's
   validation issues, and merges the accepted deltas onto the current canvas
   on apply. (The translucent live-canvas overlay is deferred; the
-  accept/reject panel carries the supervision flow.)
+  accept/reject panel carries the supervision flow.) Wave F (accessibility):
+  every node is now a labelled, keyboard-focusable group (role=group +
+  aria-label + tabindex), the canvas is a role=application region, Enter/Space
+  on a focused node opens its config and arrow keys pan the view; and
+  prefers-reduced-motion now silences the edge transitions/glow, socket
+  transitions and output-plus hover (not just the marching-ants animation).
 - Canvas connection-rendering overhaul (rc238).  Fixed the long-standing
   root cause behind wires that looked unsmooth, sat off the connector
   pins, and a canvas that never centred on open: the canvas component
