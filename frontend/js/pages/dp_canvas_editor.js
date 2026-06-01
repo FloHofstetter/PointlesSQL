@@ -523,7 +523,17 @@ export function dpCanvasEditor(product, ctx) {
       // it must be recomputed or they point at the old pin position.
       this._nodeResizeObserver =
         typeof ResizeObserver === 'function'
-          ? new ResizeObserver(() => this._scheduleConnNodeUpdate())
+          ? new ResizeObserver((entries) => {
+              // Only the nodes that actually resized need their wires
+              // recomputed — collect their dfIds and do a targeted update
+              // instead of sweeping the whole graph on every body growth.
+              if (!this._connNodeDirty) this._connNodeDirty = new Set();
+              for (const e of entries) {
+                const m = e.target.id && e.target.id.match(/^node-(\d+)$/);
+                if (m) this._connNodeDirty.add(m[1]);
+              }
+              this._scheduleResizeConnUpdate();
+            })
           : null;
 
       // Defensive wrap around Drawflow's internal `position()` — it throws
@@ -995,6 +1005,18 @@ export function dpCanvasEditor(product, ctx) {
 
       this.nodes = newNodes;
       this.edges = newEdges;
+      // O(1) lookup from a connection SVG's `node_out_node-<src>` /
+      // `node_in_node-<tgt>` dfId pair to the canonical edge id.  Rebuilt
+      // each sync so hover, click-select and category styling don't each
+      // re-scan all nodes × edges per connection.
+      this._edgeByDfIds = {};
+      for (const edge of Object.values(newEdges)) {
+        const srcDf = this._drawflowNodes[edge.source_node_id];
+        const tgtDf = this._drawflowNodes[edge.target_node_id];
+        if (srcDf != null && tgtDf != null) {
+          this._edgeByDfIds[`${srcDf}|${tgtDf}`] = edge.id;
+        }
+      }
       if (this.selectedNodeId && !newNodes[this.selectedNodeId]) {
         this.selectedNodeId = null;
       }
@@ -1635,25 +1657,45 @@ export function dpCanvasEditor(product, ctx) {
       if (!df) return;
       const cats = this.edgeCategories || {};
       const knownCats = ['numeric', 'text', 'temporal', 'boolean', 'complex', 'mixed'];
-      const connections = df.container.querySelectorAll('.drawflow .connection');
-      for (const conn of connections) {
-        for (const k of knownCats) conn.classList.remove(`pql-edge-${k}`);
-      }
-      // Walk the edges dict + look up its drawflow connection by source/target.
-      // Backend categorise key is the canonical pin tuple — without our
-      // frontend `e-` prefix — so derive it locally instead of using edge.id.
+      // Pre-resolve edge.id → category once.  Backend categorise key is the
+      // canonical pin tuple (no `e-` prefix), so derive it from the edge.
+      const catByEdgeId = {};
       for (const edge of Object.values(this.edges)) {
         const catKey =
           `${edge.source_node_id}:${edge.source_pin}->` +
           `${edge.target_node_id}:${edge.target_pin}`;
-        const cat = cats[catKey] || 'mixed';
-        const srcDf = this._drawflowNodes[edge.source_node_id];
-        const tgtDf = this._drawflowNodes[edge.target_node_id];
-        if (!srcDf || !tgtDf) continue;
-        const sel = `.drawflow .connection.node_in_node-${tgtDf}` + `.node_out_node-${srcDf}`;
-        const els = df.container.querySelectorAll(sel);
-        for (const el of els) el.classList.add(`pql-edge-${cat}`);
+        catByEdgeId[edge.id] = cats[catKey] || 'mixed';
       }
+      // Single pass over the connection SVGs — each maps to its edge in O(1)
+      // via _edgeIdForSvg, so no per-edge DOM query.
+      const connections = df.container.querySelectorAll('.drawflow .connection');
+      for (const conn of connections) {
+        for (const k of knownCats) conn.classList.remove(`pql-edge-${k}`);
+        const edgeId = this._edgeIdForSvg(conn);
+        conn.classList.add(`pql-edge-${(edgeId && catByEdgeId[edgeId]) || 'mixed'}`);
+      }
+    },
+
+    _scheduleResizeConnUpdate() {
+      if (this._resizeConnRaf) return;
+      // setTimeout(0): batch a burst of ResizeObserver entries into one turn
+      // (rAF is throttled in background tabs / headless Playwright).
+      this._resizeConnRaf = window.setTimeout(() => {
+        this._resizeConnRaf = null;
+        const df = this._drawflow;
+        if (!df) return;
+        const ids = this._connNodeDirty ? [...this._connNodeDirty] : [];
+        if (this._connNodeDirty) this._connNodeDirty.clear();
+        // updateConnectionNodes emits nodeMoved internally → suppress autosave
+        // around this visual-only redraw (same guard as the full sweep).
+        const wasSuppressed = this._suppressAutosave;
+        this._suppressAutosave = true;
+        try {
+          for (const dfId of ids) df.updateConnectionNodes('node-' + dfId);
+        } finally {
+          this._suppressAutosave = wasSuppressed;
+        }
+      }, 0);
     },
 
     // ---------------------------------------------------------------------
@@ -1736,30 +1778,19 @@ export function dpCanvasEditor(product, ctx) {
 
     _edgeIdForSvg(svgEl) {
       // Drawflow stamps `node_in_node-<tgtDf>` and `node_out_node-<srcDf>`
-      // classes on each connection SVG.  Walk the edges dict and match
-      // the (srcDfId, tgtDfId) pair against the canonical edge.id.
+      // classes on each connection SVG.  Resolve the (srcDf, tgtDf) pair
+      // through the `_edgeByDfIds` index (built in _syncFromDrawflow) — O(1)
+      // instead of re-scanning every node and edge per call.
       let srcDf = null;
       let tgtDf = null;
       for (const cls of svgEl.classList) {
         const inM = cls.match(/^node_in_node-(\d+)$/);
         const outM = cls.match(/^node_out_node-(\d+)$/);
-        if (inM) tgtDf = parseInt(inM[1], 10);
-        if (outM) srcDf = parseInt(outM[1], 10);
+        if (inM) tgtDf = inM[1];
+        if (outM) srcDf = outM[1];
       }
       if (srcDf == null || tgtDf == null) return null;
-      let srcPql = null;
-      let tgtPql = null;
-      for (const [pqlId, dfId] of Object.entries(this._drawflowNodes)) {
-        if (parseInt(dfId, 10) === srcDf) srcPql = pqlId;
-        if (parseInt(dfId, 10) === tgtDf) tgtPql = pqlId;
-      }
-      if (!srcPql || !tgtPql) return null;
-      for (const edge of Object.values(this.edges)) {
-        if (edge.source_node_id === srcPql && edge.target_node_id === tgtPql) {
-          return edge.id;
-        }
-      }
-      return null;
+      return (this._edgeByDfIds && this._edgeByDfIds[`${srcDf}|${tgtDf}`]) || null;
     },
 
     _decorateConnection(svgEl) {

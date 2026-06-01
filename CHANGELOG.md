@@ -17,6 +17,14 @@ defined in ``scripts/clusters.json``. -->
 
 ### Features
 
+- Canvas Depth Cluster (rc241+) — a seven-wave improvement roadmap on the
+  post-overhaul canvas. Wave A (Perf): defused three O(n²) hot paths so
+  later waves scale to hundreds of nodes — a `_edgeByDfIds` index built once
+  per sync turns `_edgeIdForSvg` (hover/select/category) from
+  O(edges·nodes)-per-connection into O(1); `_refreshEdgeCategoryStyles` is a
+  single pass over the connections instead of a DOM query per edge; the node
+  ResizeObserver now recomputes only the nodes that actually resized rather
+  than sweeping the whole graph.
 - Canvas connection-rendering overhaul (rc238).  Fixed the long-standing
   root cause behind wires that looked unsmooth, sat off the connector
   pins, and a canvas that never centred on open: the canvas component

@@ -3066,6 +3066,25 @@ PointlesSQL
 │   │   (174).  Each phase one commit; rc222→rc232.  ALL LOCAL
 │   │   until single final push.
 │   │
+├── Canvas Depth Cluster — Phasen 179–185  ⏳ in progress (2026-06-01)
+│   │   Sieben-Wellen-Roadmap auf der Phase-178-Basis: A Perf/Edge-Index,
+│   │   B Navigation (Minimap-Viewport/Zoom-UI/Space-Pan), C Kontextmenü +
+│   │   Inline-Preview, D hindernis-umgehendes Orthogonal-Routing, E Agent-
+│   │   Ghost-Diff-Overlay (Differenzierer), F A11y/Reduced-Motion, G Live-
+│   │   Drag-Validierung.  Je Welle ein Commit + rc-Bump + Browser-Replay.
+│   │
+├── Phase 179 — Canvas Depth A: Perf-Hotspots + Edge-Index  ✅ shipped (local, 2026-06-01)
+│   │
+│   │   Drei O(n²)-Stellen entschärft, damit spätere Wellen (Routing,
+│   │   Ghost-Diff) auf größeren Graphen tragen.  Neuer ``_edgeByDfIds``-
+│   │   Index (``"<srcDf>|<tgtDf>" → edgeId``), einmal je ``_syncFromDrawflow``
+│   │   gebaut → ``_edgeIdForSvg`` von O(edges·nodes) je SVG auf O(1);
+│   │   ``_selectEdge``/``_clearSelectedEdge`` profitieren mit.
+│   │   ``_refreshEdgeCategoryStyles`` als Single-Pass über die Connections
+│   │   (statt ``querySelectorAll`` je Kante).  ResizeObserver aktualisiert
+│   │   nur die tatsächlich resizten Knoten (``_scheduleResizeConnUpdate``)
+│   │   statt Full-Graph-Sweep.  Frontend-only, rc240→rc241.  ALL LOCAL.
+│   │
 ├── Phase 178 — Canvas connection-rendering overhaul (double-init root-cause)  ✅ shipped (local, 2026-06-01)
 │   │
 │   │   User-reported: wires not smooth, gap to the node, not landing
