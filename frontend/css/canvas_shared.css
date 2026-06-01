@@ -41,6 +41,20 @@
     transform 120ms ease;
 }
 
+/* Drawflow parks its sockets well outside the node card (input at
+   left:-27px), so the wire — which lands dead-centre on the socket —
+   appears to stop short of the node with a gap.  Pull both sockets in so
+   their centre sits flush on the card edge; the wire then visually touches
+   the node.  The extra ``.drawflow-node`` raises specificity above
+   Drawflow's own ``.drawflow .drawflow-node .input`` rule, which is loaded
+   after ours. */
+.pql-canvas .drawflow .drawflow-node .input {
+  left: -5px;
+}
+.pql-canvas .drawflow .drawflow-node .output {
+  right: 5px;
+}
+
 /* Invisible grab-padding around each 10 px socket so the user can start /
    land a wire without pixel-hunting the dot — the visible anchor stays
    small, the pointer target is ~26 px.  Pins are position:relative in
