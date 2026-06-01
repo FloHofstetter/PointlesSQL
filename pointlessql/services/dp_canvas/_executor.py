@@ -351,7 +351,19 @@ def execute_canvas(
     conn = duckdb.connect()
     try:
         for ref in all_refs:
-            register_delta_view(conn, ref, approved_tables[ref])
+            try:
+                register_delta_view(conn, ref, approved_tables[ref])
+            except Exception as exc:
+                # Every sink reads from the shared base tables, so a
+                # source that resolves in the catalog but cannot be read
+                # from storage (missing/removed Delta files, bad
+                # location) is fatal to the whole run.  Surface it as a
+                # clear error naming the table instead of an opaque 500.
+                msg = (
+                    f"source table {ref!r} could not be read from its storage "
+                    f"location {approved_tables[ref]!r}: {exc}"
+                )
+                raise ValidationError(msg) from exc
         for ps in prepared_sinks:
             sink_results.append(
                 _materialise_sink(

@@ -198,11 +198,14 @@
                     <i class="bi bi-save"></i> Save
                 </button>
                 <button class="btn btn-primary"
-                        @click="openMaterializeModal()"
-                        :disabled="!canWrite || errors.length > 0 || nodeCount === 0"
-                        title="Materialize canvas to Delta target"
-                        aria-label="Materialize canvas">
-                    <i class="bi bi-play-fill"></i> Run
+                        @click="runCanvas()"
+                        :disabled="!canWrite || running || nodeCount === 0"
+                        title="Run canvas — write rows to the Delta targets"
+                        aria-label="Run canvas">
+                    <span x-show="!running"><i class="bi bi-play-fill"></i> Run</span>
+                    <span x-show="running">
+                        <span class="spinner-border spinner-border-sm"></span> Running…
+                    </span>
                 </button>
             </div>
         </div>
@@ -593,6 +596,62 @@
                     </div>
                 </template>
             </div>
+
+            {# Run status dock — anchored to the canvas, non-modal.  Shows
+               live run progress, per-sink results, and run/validation
+               errors right on the canvas instead of in a popup. #}
+            <div class="pql-canvas-run-dock" x-show="runDockOpen" x-cloak
+                 :class="runError ? 'pql-run-dock-error' : (runResult && runResult.sinks.some((s) => s.status === 'failed') ? 'pql-run-dock-warn' : '')">
+                <div class="d-flex align-items-center gap-2 px-3 py-2 border-bottom">
+                    <template x-if="running">
+                        <span class="spinner-border spinner-border-sm text-primary"></span>
+                    </template>
+                    <template x-if="!running">
+                        <i class="bi"
+                           :class="runError ? 'bi-exclamation-octagon-fill text-danger' : (runResult && runResult.sinks.some((s) => s.status === 'failed') ? 'bi-exclamation-triangle-fill text-warning' : 'bi-check-circle-fill text-success')"></i>
+                    </template>
+                    <strong x-show="running" class="small">Running…</strong>
+                    <strong x-show="!running && runError" class="small">Run failed</strong>
+                    <strong x-show="!running && runResult" class="small"
+                            x-text="runResult ? ('Materialised v' + runResult.graph_version + ' — ' + runResult.sinks.filter((s) => s.status === 'ok').length + ' of ' + runResult.sinks.length + ' sink(s) succeeded') : ''"></strong>
+                    <button type="button" class="btn-close ms-auto"
+                            aria-label="Dismiss run status" @click="closeRunDock()"></button>
+                </div>
+                <div class="pql-canvas-run-dock-body px-3 py-2">
+                    <template x-if="running">
+                        <div class="small text-muted">Compiling the graph and writing the Delta targets…</div>
+                    </template>
+                    <template x-if="!running && runError">
+                        <div class="small text-danger" x-text="runError"></div>
+                    </template>
+                    <template x-if="!running && runResult">
+                        <table class="table table-sm small mb-0 align-middle">
+                            <thead>
+                                <tr><th>Port</th><th>Target table</th><th>Rows</th><th>Status</th></tr>
+                            </thead>
+                            <tbody>
+                                <template x-for="s in runResult.sinks" :key="s.target_fqn">
+                                    <tr :class="s.status === 'failed' ? 'table-danger' : ''">
+                                        <td>
+                                            <a href="#" class="text-decoration-none"
+                                               @click.prevent="focusSinkByTarget(s.target_fqn)"
+                                               x-text="s.port_name"></a>
+                                        </td>
+                                        <td><code x-text="s.target_fqn"></code></td>
+                                        <td x-text="s.status === 'ok' ? s.rows_written : '—'"></td>
+                                        <td>
+                                            <span class="badge"
+                                                  :class="s.status === 'ok' ? 'bg-success' : 'bg-danger'"
+                                                  x-text="s.status"></span>
+                                            <div class="text-danger small" x-show="s.error" x-text="s.error"></div>
+                                        </td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </template>
+                </div>
+            </div>
         </main>
 
         {# Config drawer (right rail) #}
@@ -659,104 +718,6 @@
                 </div>
             </template>
         </aside>
-    </div>
-
-    {# Materialize confirmation modal #}
-    <div class="modal fade" :class="{ 'show d-block': materializeOpen }"
-         tabindex="-1" :style="materializeOpen ? 'background: rgba(0,0,0,0.5);' : ''"
-         @click.self="closeMaterializeModal()">
-        <div class="modal-dialog modal-lg modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">
-                        <i class="bi bi-play-fill"></i> Materialize canvas
-                    </h5>
-                    <button type="button" class="btn-close"
-                            @click="closeMaterializeModal()"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="alert alert-warning small mb-3"
-                         x-show="pinnedVersion !== null && pinnedVersion !== version">
-                        <i class="bi bi-pin-angle-fill"></i>
-                        This materialise replaces pinned production version
-                        <strong x-text="'v' + pinnedVersion"></strong>
-                        with the current draft
-                        <strong x-text="'v' + version"></strong>.
-                    </div>
-                    <template x-if="materializePreview && !materializeResult">
-                        <div>
-                            <div class="small text-muted mb-1"
-                                 x-text="(materializePreview.sinks.length === 1 ? 'This canvas materialises 1 output port:' : 'This canvas materialises ' + materializePreview.sinks.length + ' output ports:')"></div>
-                            <table class="table table-sm small mb-0">
-                                <thead>
-                                    <tr><th>Port</th><th>Target table</th><th>Mode</th></tr>
-                                </thead>
-                                <tbody>
-                                    <template x-for="s in materializePreview.sinks" :key="s.target_fqn">
-                                        <tr>
-                                            <td x-text="s.port_name"></td>
-                                            <td><code x-text="s.target_fqn"></code></td>
-                                            <td x-text="s.mode"></td>
-                                        </tr>
-                                    </template>
-                                </tbody>
-                            </table>
-                        </div>
-                    </template>
-                    <template x-if="materializeResult">
-                        <div>
-                            <div class="alert"
-                                 :class="materializeResult.sinks.some((s) => s.status === 'failed') ? 'alert-warning' : 'alert-success'">
-                                <i class="bi"
-                                   :class="materializeResult.sinks.some((s) => s.status === 'failed') ? 'bi-exclamation-triangle' : 'bi-check-circle'"></i>
-                                Materialised graph
-                                <strong x-text="'v' + materializeResult.graph_version"></strong>
-                                — <span x-text="materializeResult.sinks.filter((s) => s.status === 'ok').length"></span>
-                                of <span x-text="materializeResult.sinks.length"></span> sink(s) succeeded.
-                            </div>
-                            <table class="table table-sm small mb-0">
-                                <thead>
-                                    <tr><th>Port</th><th>Target table</th><th>Rows</th><th>Status</th></tr>
-                                </thead>
-                                <tbody>
-                                    <template x-for="s in materializeResult.sinks" :key="s.target_fqn">
-                                        <tr>
-                                            <td x-text="s.port_name"></td>
-                                            <td><code x-text="s.target_fqn"></code></td>
-                                            <td x-text="s.status === 'ok' ? s.rows_written : '—'"></td>
-                                            <td>
-                                                <span class="badge"
-                                                      :class="s.status === 'ok' ? 'bg-success' : 'bg-danger'"
-                                                      x-text="s.status"></span>
-                                                <div class="text-danger small" x-show="s.error" x-text="s.error"></div>
-                                            </td>
-                                        </tr>
-                                    </template>
-                                </tbody>
-                            </table>
-                        </div>
-                    </template>
-                    <template x-if="materializeError">
-                        <div class="alert alert-danger">
-                            <i class="bi bi-exclamation-triangle"></i>
-                            <span x-text="materializeError"></span>
-                        </div>
-                    </template>
-                </div>
-                <div class="modal-footer">
-                    <button class="btn btn-outline-secondary"
-                            @click="closeMaterializeModal()">Close</button>
-                    <button class="btn btn-primary"
-                            @click="confirmMaterialize()"
-                            :disabled="materializing || !!materializeResult">
-                        <span x-show="!materializing"><i class="bi bi-play-fill"></i> Run</span>
-                        <span x-show="materializing">
-                            <span class="spinner-border spinner-border-sm"></span> Running…
-                        </span>
-                    </button>
-                </div>
-            </div>
-        </div>
     </div>
 
     {# Preview-rows modal #}

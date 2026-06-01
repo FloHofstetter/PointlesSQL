@@ -3066,6 +3066,33 @@ PointlesSQL
 │   │   (174).  Each phase one commit; rc222→rc232.  ALL LOCAL
 │   │   until single final push.
 │   │
+├── Canvas Run UX — inline run dock + materialise version fixes  ✅ shipped (local, 2026-06-02)
+│   │
+│   │   Aus User-Feedback ("Warum sollte da ein neues Popup aufgehen?
+│   │   Fehler sollten am Canvas stehen") nach dem Multi-Sink-Cluster.
+│   │   Der Toolbar-**Run** materialisiert jetzt direkt statt ein
+│   │   Bestätigungs-Modal zu öffnen; Fortschritt, die Per-Senke-
+│   │   Ergebnistabelle (Port/Ziel/Zeilen/ok|failed) und Fehler stehen
+│   │   in einem Status-Dock *oben am Canvas* (zuerst unten platziert,
+│   │   auf User-Hinweis nach oben in den Sichtbereich verschoben),
+│   │   und jeder OutputPort-Block bekommt einen grünen (geschrieben) /
+│   │   roten (fehlgeschlagen) Ring direkt im Graph.  Run mit offenen
+│   │   Validierungsfehlern sackt nicht mehr ab, sondern nennt die
+│   │   Anzahl + fokussiert den ersten Block.  Das alte Materialize-
+│   │   Modal ist entfernt.  Dazu zwei Bugs an der Quelle gefixt:
+│   │   (a) die Route speicherte das Doc *vor* der Ausführung und der
+│   │   Executor nochmal danach → Doppel-Bump bei Erfolg, und bei einem
+│   │   Fehl-Run blieb eine gebumpte Version zurück, die der Client nie
+│   │   sah (Phantom-Konflikt beim Retry); der einzige autoritative Save
+│   │   liegt jetzt nur noch am Ende eines erfolgreichen Laufs
+│   │   (+1 je Lauf, Fehl-Lauf bumpt nicht).  (b) Eine Quelle, die im
+│   │   Katalog auflöst aber keine Delta-Dateien hat, meldet jetzt einen
+│   │   klaren Fehler mit Tabellennamen statt eines opaken 500.  Zwei
+│   │   neue Regressions-pytest; volle Suite 4135/0/10.  Browser-Replay
+│   │   (Firefox) verifiziert: Fan-out-Canvas (Input→Filter→2 OutputPorts)
+│   │   läuft grün mit "2 of 2 sink(s) succeeded", Fehlerfall zeigt klare
+│   │   Meldung, Retry ohne Konflikt.  rc252→rc254.  ALL LOCAL.
+│   │
 ├── Phase 188 — Echte Write-Modes (merge / append)  ✅ shipped (local, 2026-06-01)
 │   │
 │   │   Schließt den latenten Bug, dass der Executor ``mode='merge'`` still

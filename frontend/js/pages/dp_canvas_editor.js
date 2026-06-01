@@ -405,11 +405,13 @@ export function dpCanvasEditor(product, ctx) {
     groupKeyInput: '',
     mergeOnInput: '',
 
-    materializeOpen: false,
-    materializeResult: null,
-    materializeError: null,
-    materializing: false,
-    materializePreview: null,
+    // Run feedback lives in an inline dock anchored to the canvas
+    // (not a modal): `running` while the POST is in flight, then either
+    // `runResult` (per-sink outcome) or `runError` (a whole-run failure).
+    runDockOpen: false,
+    runResult: null,
+    runError: null,
+    running: false,
 
     previewOpen: false,
     previewBusy: false,
@@ -3285,6 +3287,8 @@ export function dpCanvasEditor(product, ctx) {
     },
 
     _scheduleValidate() {
+      // Any edit invalidates the last run's per-sink marks.
+      this._clearSinkRunMarks();
       if (this._validateTimer) window.clearTimeout(this._validateTimer);
       this._validateTimer = window.setTimeout(() => this.validate(), 800);
     },
@@ -3414,29 +3418,25 @@ export function dpCanvasEditor(product, ctx) {
       return [];
     },
 
-    async openMaterializeModal() {
-      this.materializeOpen = true;
-      this.materializeResult = null;
-      this.materializeError = null;
-      this.materializePreview = null;
-      const outputNodes = Object.values(this.nodes).filter((n) => n.block_type === 'OutputPort');
-      this.materializePreview = {
-        sinks: outputNodes.map((n) => ({
-          port_name: n.config.port_name || '—',
-          target_fqn: n.config.materialized_table || '—',
-          mode: n.config.mode || 'overwrite',
-        })),
-      };
-    },
+    async runCanvas() {
+      if (this.running) return;
+      this.runDockOpen = true;
+      this.runResult = null;
+      this.runError = null;
+      this._clearSinkRunMarks();
 
-    closeMaterializeModal() {
-      this.materializeOpen = false;
-    },
+      // Validation errors are already drawn on the canvas (node badges +
+      // the Errors list in the drawer); refuse to run and point the user
+      // at the first offending block instead of failing server-side.
+      if (this.errors.length > 0) {
+        const n = this.errors.length;
+        this.runError = `Fix ${n} validation ${n === 1 ? 'error' : 'errors'} before running.`;
+        const first = this.errors.find((e) => e.node_id);
+        if (first) this.focusNode(first.node_id);
+        return;
+      }
 
-    async confirmMaterialize() {
-      if (this.materializing) return;
-      this.materializing = true;
-      this.materializeError = null;
+      this.running = true;
       const res = await window.pqlApi.fetch(`/api/dp/${this.product.id}/canvas/materialize`, {
         method: 'POST',
         body: {
@@ -3445,15 +3445,55 @@ export function dpCanvasEditor(product, ctx) {
         },
         silent: true,
       });
-      this.materializing = false;
+      this.running = false;
       if (!res.ok) {
-        this.materializeError = res.error || 'Materialize failed';
+        this.runError = res.error || 'Run failed';
         return;
       }
-      this.materializeResult = res.data;
+      this.runResult = res.data;
       this.version = res.data.graph_version;
       this.saveState = 'saved';
       this.lastSavedAt = new Date().toISOString();
+      this._applySinkRunMarks(res.data.sinks);
+    },
+
+    closeRunDock() {
+      this.runDockOpen = false;
+    },
+
+    _outputNodeForSink(sink) {
+      return Object.values(this.nodes).find(
+        (n) =>
+          n.block_type === 'OutputPort' &&
+          (n.config.materialized_table === sink.target_fqn || n.config.port_name === sink.port_name)
+      );
+    },
+
+    focusSinkByTarget(targetFqn) {
+      const node = this._outputNodeForSink({ target_fqn: targetFqn, port_name: null });
+      if (node) this.focusNode(node.id);
+    },
+
+    _clearSinkRunMarks() {
+      const df = this._drawflow;
+      if (!df) return;
+      df.container.querySelectorAll('.pql-node-run-ok, .pql-node-run-failed').forEach((el) => {
+        el.classList.remove('pql-node-run-ok', 'pql-node-run-failed');
+      });
+    },
+
+    _applySinkRunMarks(sinks) {
+      const df = this._drawflow;
+      if (!df || !Array.isArray(sinks)) return;
+      for (const sink of sinks) {
+        const node = this._outputNodeForSink(sink);
+        if (!node) continue;
+        const dfId = this._drawflowNodes[node.id];
+        if (!dfId) continue;
+        const wrap = df.container.querySelector(`#node-${dfId}`);
+        if (!wrap) continue;
+        wrap.classList.add(sink.status === 'ok' ? 'pql-node-run-ok' : 'pql-node-run-failed');
+      }
     },
 
     canPreviewSelected() {

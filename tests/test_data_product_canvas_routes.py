@@ -506,6 +506,98 @@ async def test_materialize_partial_failure(
 
 
 @pytest.mark.asyncio
+async def test_materialize_bumps_version_by_one(
+    admin_client: httpx.AsyncClient, tmp_path, monkeypatch
+) -> None:
+    """Each successful materialise advances the graph version by exactly 1.
+
+    The route used to pre-save the document and then let the executor
+    save it again, double-bumping the version on every run.  The single
+    authoritative save now lives only at the end of a successful run.
+    """
+    dp_id = _seed_dp(schema_name="mat_bump")
+    src_path = str(tmp_path / "src_bump")
+    deltalake.write_deltalake(src_path, pd.DataFrame({"id": [1, 2]}), mode="overwrite")
+    _install_executor_patches(
+        monkeypatch,
+        source_paths={"main.mat_bump.src": src_path},
+        target_schema_root=str(tmp_path / "bump_root"),
+    )
+
+    doc = linear_doc("main.mat_bump.src", "main.mat_bump.tgt", port_name="p")
+    r1 = await admin_client.post(
+        f"/api/dp/{dp_id}/canvas/materialize", json={"document": _doc_dict(doc)}
+    )
+    assert r1.status_code == 200, r1.text
+    v1 = r1.json()["graph_version"]
+
+    r2 = await admin_client.post(
+        f"/api/dp/{dp_id}/canvas/materialize",
+        json={"document": _doc_dict(doc), "expected_base_version": v1},
+    )
+    assert r2.status_code == 200, r2.text
+    assert r2.json()["graph_version"] == v1 + 1
+
+
+@pytest.mark.asyncio
+async def test_failed_run_does_not_bump_version(
+    admin_client: httpx.AsyncClient, tmp_path, monkeypatch
+) -> None:
+    """A run that fails before any write leaves the graph version untouched.
+
+    Pre-saving the document would have stranded the client one version
+    behind on failure and blocked the retry with a phantom conflict.  An
+    unreadable source must instead surface a clear error naming the table
+    and leave the version where it was so the retry lines up.
+    """
+    dp_id = _seed_dp(schema_name="mat_retry")
+    good = str(tmp_path / "src_good")
+    deltalake.write_deltalake(good, pd.DataFrame({"id": [1, 2]}), mode="overwrite")
+    missing = str(tmp_path / "does_not_exist")  # never written to disk
+
+    _install_executor_patches(
+        monkeypatch,
+        source_paths={"main.mat_retry.src": good},
+        target_schema_root=str(tmp_path / "retry_root"),
+    )
+    doc = linear_doc("main.mat_retry.src", "main.mat_retry.tgt", port_name="p")
+    r1 = await admin_client.post(
+        f"/api/dp/{dp_id}/canvas/materialize", json={"document": _doc_dict(doc)}
+    )
+    assert r1.status_code == 200, r1.text
+    v1 = r1.json()["graph_version"]
+
+    # Point the source at a location that resolves in the catalog but has
+    # no Delta files on disk → the run fails before writing anything.
+    _install_executor_patches(
+        monkeypatch,
+        source_paths={"main.mat_retry.src": missing},
+        target_schema_root=str(tmp_path / "retry_root"),
+    )
+    rbad = await admin_client.post(
+        f"/api/dp/{dp_id}/canvas/materialize",
+        json={"document": _doc_dict(doc), "expected_base_version": v1},
+    )
+    assert rbad.status_code >= 400
+    assert "could not be read" in rbad.text
+    assert "main.mat_retry.src" in rbad.text
+
+    # Restore the good source; the retry must still line up on v1 (proving
+    # the failed run did not bump) and advance to exactly v1 + 1.
+    _install_executor_patches(
+        monkeypatch,
+        source_paths={"main.mat_retry.src": good},
+        target_schema_root=str(tmp_path / "retry_root"),
+    )
+    r2 = await admin_client.post(
+        f"/api/dp/{dp_id}/canvas/materialize",
+        json={"document": _doc_dict(doc), "expected_base_version": v1},
+    )
+    assert r2.status_code == 200, r2.text
+    assert r2.json()["graph_version"] == v1 + 1
+
+
+@pytest.mark.asyncio
 async def test_materialize_compile_failure_returns_422(
     admin_client: httpx.AsyncClient,
 ) -> None:

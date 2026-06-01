@@ -807,14 +807,13 @@ def materialize_canvas(
                     f"canvas materialise conflict: caller expected "
                     f"v{body.expected_base_version} but latest is v{existing_version}"
                 )
-        resolved_doc = _resolve_dp_refs(request, body.document)
-        save_graph(
-            factory,
-            data_product_id=dp_id,
-            doc=resolved_doc,
-            author_user_id=actor_id,
-        )
-        doc = resolved_doc
+        # execute_canvas stamps the single authoritative graph version
+        # after a successful run, so we deliberately do not pre-save the
+        # document here: pre-saving double-bumps the version on success
+        # and — worse — leaves a bumped version behind on a *failed* run,
+        # which desyncs the client and blocks the retry with a phantom
+        # version conflict.
+        doc = _resolve_dp_refs(request, body.document)
     else:
         loaded = load_latest_graph(factory, data_product_id=dp_id)
         if loaded is None:

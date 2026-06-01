@@ -17,6 +17,15 @@ defined in ``scripts/clusters.json``. -->
 
 ### Features
 
+- Canvas Run is now inline (rc253+) — the toolbar **Run** button materialises
+  the canvas straight away instead of opening a confirmation modal. Progress,
+  the per-sink result table (port / target / rows / ok|failed badge), and any
+  error are shown in a status dock docked to the top of the canvas, and each
+  `OutputPort` block is ringed green (written) or red (failed) right on the
+  graph. Clicking Run with unresolved validation errors no longer dead-ends:
+  the dock says how many to fix and focuses the first offending block. The
+  old materialize modal is gone.
+
 - Canvas write modes (rc250) — `OutputPort.mode = "merge"` now performs a real
   Delta `MERGE INTO` on the configured merge-keys (matched rows updated,
   unmatched inserted) instead of silently overwriting; `append` and
@@ -220,6 +229,21 @@ defined in ``scripts/clusters.json``. -->
     bump from rc233 to rc234 for cache-busting.
 
 ### Fixes
+
+- Canvas materialise no longer double-bumps the graph version, and a failed
+  run no longer strands the editor a version behind (rc254). The route used to
+  save the document (one version bump) before executing, while the executor
+  saved it again at the end — so a successful run advanced the version by two,
+  and a run that failed mid-execute left a bumped version on the server that
+  the client never saw, blocking the retry with a phantom
+  `expected vN but latest is vN+1` conflict. The single authoritative save now
+  lives only at the end of a successful run: each run advances the version by
+  exactly one, and a failed run leaves it untouched so the retry lines up.
+
+- A canvas Run whose source table resolves in the catalog but has no Delta
+  files on disk now reports a clear error naming the table
+  ("source table 'cat.sch.tbl' could not be read from its storage location …")
+  instead of an opaque "An unexpected error occurred." 500 (rc254).
 
 - Selecting a canvas block no longer paints it solid red / unreadable
   (rc252). Drawflow's bundled theme styles a selected node with
