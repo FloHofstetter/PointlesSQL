@@ -112,21 +112,45 @@ class CanvasDoc(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
-class SQLFragment(BaseModel):
-    """The compiler's output: an ordered CTE chain plus a final pick.
+class SinkSpec(BaseModel):
+    """One materialisation target the compiler resolved from an OutputPort.
 
-    ``ctes`` are emitted in execution order — the executor concatenates
-    them as ``WITH a AS (…), b AS (…) SELECT * FROM <final_cte>``.
-    ``referenced_tables`` is the union of every base-table FQN that
-    needs to be registered as a DuckDB view before the SQL runs.
+    A canvas may carry several ``OutputPort`` blocks — each publishes a
+    distinct Delta table from the *same* shared CTE chain.  ``final_cte``
+    names this sink's terminal CTE; the executor renders
+    ``WITH <shared ctes> SELECT * FROM <final_cte>`` per sink and writes
+    each result to its own ``target_fqn``.  ``port_name`` / ``mode`` /
+    ``merge_on`` are lifted from the OutputPort's ``config`` at compile
+    time so the executor never has to re-walk the document per sink.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    output_node_id: str = Field(min_length=1, max_length=64)
+    port_name: str = Field(min_length=1, max_length=255)
+    target_fqn: str = Field(min_length=1, max_length=512)
+    mode: str = Field(min_length=1, max_length=32)
+    merge_on: list[str] = Field(default_factory=list)
+    final_cte: str = Field(min_length=1, max_length=128)
+    output_schema: PinSchema
+
+
+class SQLFragment(BaseModel):
+    """The compiler's output: an ordered CTE chain plus one or more sinks.
+
+    ``ctes`` are emitted in execution order — every sink shares this same
+    chain, rendered as ``WITH a AS (…), b AS (…) SELECT * FROM
+    <sink.final_cte>``.  ``sinks`` holds one :class:`SinkSpec` per
+    ``OutputPort`` block (at least one).  ``referenced_tables`` is the
+    union of every base-table FQN that needs to be registered as a DuckDB
+    view before the SQL runs.
     """
 
     model_config = ConfigDict(frozen=True)
 
     ctes: list[tuple[str, str]] = Field(default_factory=list)
-    final_cte: str = Field(min_length=1, max_length=128)
+    sinks: list[SinkSpec] = Field(min_length=1)
     referenced_tables: list[str] = Field(default_factory=list)
-    output_schema: PinSchema
 
 
 class CompileError(BaseModel):
@@ -154,6 +178,7 @@ class CompileError(BaseModel):
         "unknown_block",
         "bad_config",
         "output_port_count",
+        "duplicate_sink",
         "type_mismatch",
         "duplicate_pin",
         "duplicate_node_id",
@@ -168,27 +193,53 @@ class CompileError(BaseModel):
     suggestion: str | None = None
 
 
-class ExecuteResult(BaseModel):
-    """The return envelope of :func:`execute_canvas`.
+class SinkResult(BaseModel):
+    """The per-sink outcome of one :func:`execute_canvas` run.
 
     Attributes:
-        rows_written: Number of rows the materialise wrote into the
-            target Delta table.
-        target_fqn: Three-part UC name the canvas materialised to.
+        port_name: ``OutputPort.config.port_name`` this result belongs to.
+        target_fqn: Three-part UC name this sink materialised to.
+        rows_written: Rows written into the target Delta table; ``0`` when
+            the sink failed before any write.
         output_port_id: PK of the ``data_product_output_ports`` row
             registered for the materialised table.  ``None`` when an
-            existing port with the same name was reused.
-        graph_version: ``version`` column the executor stamped on the
-            ``data_product_canvas_graph`` row it minted for this run.
-        compile_errors: Always empty on successful execute (errors
-            short-circuit before any write); reserved for callers that
-            want to inspect dry-run output in future waves.
+            existing port with the same name was reused or the sink failed.
+        status: ``"ok"`` when the write + registration succeeded,
+            ``"failed"`` when this sink raised mid-run (other sinks still
+            run — materialisation is best-effort per sink).
+        error: Human-readable failure summary when ``status == "failed"``.
     """
 
     model_config = ConfigDict(frozen=True)
 
-    rows_written: int
+    port_name: str
     target_fqn: str
-    output_port_id: int | None
+    rows_written: int = 0
+    output_port_id: int | None = None
+    status: Literal["ok", "failed"]
+    error: str | None = None
+
+
+class MultiExecuteResult(BaseModel):
+    """The return envelope of :func:`execute_canvas`.
+
+    A canvas may publish several output ports; ``sinks`` carries one
+    :class:`SinkResult` per ``OutputPort`` block, in document order.
+    Config / compile errors short-circuit before any write (the call
+    raises); a *runtime* write failure on one sink leaves the others
+    untouched and surfaces as that sink's ``status == "failed"``.
+
+    Attributes:
+        sinks: Per-sink outcomes for this run (at least one).
+        graph_version: ``version`` the executor stamped on the single
+            ``data_product_canvas_graph`` row minted for this run — all
+            sinks share it.
+        compile_errors: Always empty on a successful run; reserved for
+            callers that want to inspect dry-run output in future waves.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    sinks: list[SinkResult] = Field(default_factory=list)
     graph_version: int
     compile_errors: Sequence[CompileError] = Field(default_factory=list)

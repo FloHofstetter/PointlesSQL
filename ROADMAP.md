@@ -3066,6 +3066,39 @@ PointlesSQL
 │   │   (174).  Each phase one commit; rc222→rc232.  ALL LOCAL
 │   │   until single final push.
 │   │
+├── Fan-out / Multi-Sink Cluster — Phasen 186–188  ⏳ in progress (local, 2026-06-01)
+│   │   "Aus einer Quelle zwei Tabellen": ein Datenprodukt darf mehrere
+│   │   OutputPort-Blöcke (= mehrere UC-Output-Ports) tragen.  Zwischen-
+│   │   Fan-out (ein Output → mehrere Ketten) war im Compiler schon frei;
+│   │   diese Welle hebt das Ein-OutputPort-Limit auf (186 Backend), zieht
+│   │   das Frontend + Plugin nach (187) und implementiert echte
+│   │   Write-Modes merge/append (188, schließt den merge→overwrite-Bug).
+│   │
+├── Phase 186 — Multi-Sink Backbone (Compiler + Executor + Route)  ✅ shipped (local, 2026-06-01)
+│   │
+│   │   Der Compiler baute schon *eine* gemeinsame CTE-Kette für den
+│   │   ganzen DAG und wählte nur *einen* ``final_cte``.  Jetzt trägt
+│   │   ``SQLFragment`` eine ``sinks: list[SinkSpec]`` (ein Sink je
+│   │   OutputPort, gemeinsame ``ctes``); ``render_sql(fragment, sink)``
+│   │   rendert je Sink ``WITH <shared ctes> SELECT * FROM <final_cte_i>``.
+│   │   ``_collect_output_nodes`` ersetzt die "exactly one"-Wache (nur noch
+│   │   "mindestens eine"); neue ``duplicate_sink``-Diagnose bei doppeltem
+│   │   Ziel-FQN / Port-Namen; und die latente Lücke "ein Input-Pin doppelt
+│   │   verdrahtet" wird jetzt als ``duplicate_pin`` gemeldet statt still
+│   │   die zweite Kante zu verschlucken.  Der Executor löst alle Sink-Ziele
+│   │   + Basistabellen vorab auf (fail-fast vor jedem Write), registriert
+│   │   die DuckDB-Views einmal und materialisiert dann jeden Sink
+│   │   best-effort: ein Laufzeit-Schreibfehler an einem Sink wird als
+│   │   ``SinkResult(status="failed", error=…)`` zurückgegeben (+
+│   │   ``logger.exception``), die übrigen Sinks laufen weiter.  Jeder Sink
+│   │   bekommt seinen eigenen ``operation_context`` (saubere Per-Tabelle-
+│   │   Lineage) + ``DataProductOutputPort``-Upsert; alle Sinks teilen eine
+│   │   Graph-Version.  ``execute_canvas`` → ``MultiExecuteResult``;
+│   │   ``POST /canvas/materialize`` antwortet ``{sinks: [...],
+│   │   graph_version}`` (HTTP 200 auch bei Teil-Erfolg).  Keine Alembic-
+│   │   Migration (``CanvasDoc``-JSON war schon multi-sink-fähig).  Backend-
+│   │   only; volle pytest 4128/0/10.  rc247→rc248.  ALL LOCAL.
+│   │
 ├── Canvas Depth Cluster — Phasen 179–185  ✅ shipped (local, 2026-06-01)
 │   │   Sieben-Wellen-Roadmap auf der Phase-178-Basis: A Perf/Edge-Index,
 │   │   B Navigation (Minimap-Viewport/Zoom-UI/Space-Pan), C Kontextmenü +

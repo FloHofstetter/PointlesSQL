@@ -144,9 +144,11 @@ def test_simple_chain_materialises_and_registers_port(tmp_path, factory, monkeyp
         soyuz_client=MagicMock(),
     )
 
-    assert result.rows_written == 2
-    assert result.target_fqn == "main.ex_simple.tgt"
     assert result.graph_version == 1
+    assert len(result.sinks) == 1
+    assert result.sinks[0].status == "ok"
+    assert result.sinks[0].rows_written == 2
+    assert result.sinks[0].target_fqn == "main.ex_simple.tgt"
 
     # Materialised Delta exists and carries the expected rows.
     written = deltalake.DeltaTable(f"{target_schema_root}/tgt").to_pandas()
@@ -216,7 +218,7 @@ def test_two_input_join_materialises(tmp_path, factory, monkeypatch) -> None:
     )
     result = execute_canvas(factory, doc=doc, data_product_id=dp_id, soyuz_client=MagicMock())
     written = deltalake.DeltaTable(f"{target_schema_root}/tgt").to_pandas()
-    assert result.rows_written == 2
+    assert result.sinks[0].rows_written == 2
     assert set(written.columns) >= {"id", "v_l", "v_r"}
 
 
@@ -309,7 +311,7 @@ def test_canvas_materialize_op_recorded_under_agent_run(tmp_path, factory, monke
             soyuz_client=MagicMock(),
             agent_run_id=run_id,
         )
-    assert result.rows_written == 2
+    assert result.sinks[0].rows_written == 2
 
     with factory() as session:
         op = (

@@ -51,7 +51,7 @@ from pointlessql.services.dp_canvas import (
     CanvasDoc,
     ColumnSpec,
     CompileError,
-    ExecuteResult,
+    MultiExecuteResult,
     PinSchema,
     execute_canvas,
     load_latest_graph,
@@ -382,12 +382,27 @@ class CanvasMaterializeRequest(BaseModel):
     expected_base_version: int | None = None
 
 
-class CanvasMaterializeResponse(BaseModel):
-    """Response for ``POST /api/dp/{dp_id}/canvas/materialize``."""
+class CanvasMaterializeSink(BaseModel):
+    """One materialised sink's outcome in a materialize response."""
 
-    rows_written: int
+    port_name: str
     target_fqn: str
+    rows_written: int
     output_port_id: int | None
+    status: str
+    error: str | None = None
+
+
+class CanvasMaterializeResponse(BaseModel):
+    """Response for ``POST /api/dp/{dp_id}/canvas/materialize``.
+
+    A canvas may publish several output ports; ``sinks`` carries one entry
+    per ``OutputPort`` block.  Materialisation is best-effort per sink, so
+    a partial run returns HTTP 200 with a mix of ``ok`` / ``failed``
+    statuses rather than a top-level error.
+    """
+
+    sinks: list[CanvasMaterializeSink]
     graph_version: int
 
 
@@ -809,7 +824,7 @@ def materialize_canvas(
         doc = loaded[0]
 
     client = _raw_soyuz_client(request)
-    result: ExecuteResult = execute_canvas(
+    result: MultiExecuteResult = execute_canvas(
         factory,
         doc=doc,
         data_product_id=dp_id,
@@ -817,9 +832,17 @@ def materialize_canvas(
         actor_user_id=actor_id,
     )
     return CanvasMaterializeResponse(
-        rows_written=result.rows_written,
-        target_fqn=result.target_fqn,
-        output_port_id=result.output_port_id,
+        sinks=[
+            CanvasMaterializeSink(
+                port_name=sink.port_name,
+                target_fqn=sink.target_fqn,
+                rows_written=sink.rows_written,
+                output_port_id=sink.output_port_id,
+                status=sink.status,
+                error=sink.error,
+            )
+            for sink in result.sinks
+        ],
         graph_version=result.graph_version,
     )
 
@@ -832,6 +855,7 @@ __all__ = [
     "CanvasLoadVersionResponse",
     "CanvasMaterializeRequest",
     "CanvasMaterializeResponse",
+    "CanvasMaterializeSink",
     "CanvasPreviewRequest",
     "CanvasPreviewResponse",
     "CanvasSaveRequest",

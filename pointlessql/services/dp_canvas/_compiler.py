@@ -30,6 +30,7 @@ from pointlessql.services.dp_canvas._types import (
     CanvasNode,
     CompileError,
     PinSchema,
+    SinkSpec,
     SQLFragment,
 )
 
@@ -149,28 +150,34 @@ def _check_block_types(nodes: Iterable[CanvasNode], errors: list[CompileError]) 
             )
 
 
-def _check_output_port_count(
+def _collect_output_nodes(
     nodes: Iterable[CanvasNode], errors: list[CompileError]
-) -> CanvasNode | None:
+) -> list[CanvasNode]:
+    """Return every ``OutputPort`` node; error when the canvas has none.
+
+    A canvas may publish several sinks — one Delta table per OutputPort
+    block — so the only hard requirement here is that at least one sink
+    exists.  Per-sink config validity (port name, target FQN, mode) is
+    checked downstream by each block's own ``compile_block``; cross-sink
+    collisions (duplicate target / port name) are caught in
+    :func:`compile_canvas`.
+    """
     outputs = [n for n in nodes if n.block_type == "OutputPort"]
     if not outputs:
         errors.append(
             CompileError(
                 kind="output_port_count",
-                message="Canvas must contain exactly one OutputPort block.",
+                message="Canvas must contain at least one OutputPort block.",
             )
         )
-        return None
-    if len(outputs) > 1:
-        errors.append(
-            CompileError(
-                kind="output_port_count",
-                node_id=outputs[1].id,
-                message=("Canvas has multiple OutputPort blocks; v1 supports exactly one."),
-            )
-        )
-        return None
-    return outputs[0]
+    return outputs
+
+
+def _merge_on_from_config(cfg: dict[str, object]) -> list[str]:
+    raw = cfg.get("merge_on")
+    if not isinstance(raw, list):
+        return []
+    return [str(c).strip() for c in raw if str(c).strip()]
 
 
 def _extract_base_tables(sql: str) -> list[str]:
@@ -203,8 +210,8 @@ def compile_canvas(
     _check_block_types(doc.nodes, errors)
     if errors:
         return None, errors
-    output_node = _check_output_port_count(doc.nodes, errors)
-    if output_node is None:
+    output_nodes = _collect_output_nodes(doc.nodes, errors)
+    if not output_nodes:
         return None, errors
 
     ordered_nodes = _topo_sort(list(doc.nodes), list(doc.edges), errors)
@@ -212,13 +219,30 @@ def compile_canvas(
         return None, errors
 
     # Index edges by (target_node_id, target_pin) so each block can look
-    # up which upstream CTE feeds each of its input pins.
+    # up which upstream CTE feeds each of its input pins.  An input pin
+    # accepts exactly one connection — two edges landing on the same pin
+    # would silently overwrite here (last-edge-wins), so flag it instead
+    # of quietly dropping a wire.
     edges_in: dict[tuple[str, str], tuple[str, str]] = {}
     for edge in doc.edges:
-        edges_in[(edge.target_node_id, edge.target_pin)] = (
-            edge.source_node_id,
-            edge.source_pin,
-        )
+        key = (edge.target_node_id, edge.target_pin)
+        if key in edges_in:
+            errors.append(
+                CompileError(
+                    kind="duplicate_pin",
+                    node_id=edge.target_node_id,
+                    pin=edge.target_pin,
+                    message=(
+                        f"Input pin {edge.target_pin!r} on node "
+                        f"{edge.target_node_id!r} is wired by more than one edge; "
+                        "an input pin accepts a single connection."
+                    ),
+                )
+            )
+            continue
+        edges_in[key] = (edge.source_node_id, edge.source_pin)
+    if errors:
+        return None, errors
 
     seeds = upstream_schemas or {}
     cte_names: dict[str, str] = {}
@@ -267,15 +291,62 @@ def compile_canvas(
     if errors:
         return None, errors
 
-    final_cte = cte_names.get(output_node.id)
-    if final_cte is None:
-        errors.append(
-            CompileError(
-                kind="bad_config",
-                node_id=output_node.id,
-                message="OutputPort failed to compile — no CTE recorded.",
+    sinks: list[SinkSpec] = []
+    seen_targets: dict[str, str] = {}
+    seen_port_names: dict[str, str] = {}
+    for output_node in output_nodes:
+        final_cte = cte_names.get(output_node.id)
+        if final_cte is None:
+            errors.append(
+                CompileError(
+                    kind="bad_config",
+                    node_id=output_node.id,
+                    message="OutputPort failed to compile — no CTE recorded.",
+                )
+            )
+            continue
+        cfg = output_node.config
+        port_name = str(cfg.get("port_name") or "").strip()
+        target_fqn = str(cfg.get("materialized_table") or "").strip()
+        if target_fqn in seen_targets:
+            errors.append(
+                CompileError(
+                    kind="duplicate_sink",
+                    node_id=output_node.id,
+                    message=(
+                        f"Two OutputPort blocks write the same target table "
+                        f"{target_fqn!r}; each sink needs a distinct table."
+                    ),
+                )
+            )
+            continue
+        if port_name in seen_port_names:
+            errors.append(
+                CompileError(
+                    kind="duplicate_sink",
+                    node_id=output_node.id,
+                    message=(
+                        f"Two OutputPort blocks share the port name {port_name!r}; "
+                        "each output port needs a distinct name."
+                    ),
+                )
+            )
+            continue
+        seen_targets[target_fqn] = output_node.id
+        seen_port_names[port_name] = output_node.id
+        sinks.append(
+            SinkSpec(
+                output_node_id=output_node.id,
+                port_name=port_name,
+                target_fqn=target_fqn,
+                mode=str(cfg.get("mode") or "overwrite").strip().lower(),
+                merge_on=_merge_on_from_config(cfg),
+                final_cte=final_cte,
+                output_schema=output_schemas[output_node.id],
             )
         )
+
+    if errors:
         return None, errors
 
     base_tables: list[str] = []
@@ -289,19 +360,23 @@ def compile_canvas(
 
     fragment = SQLFragment(
         ctes=ctes,
-        final_cte=final_cte,
+        sinks=sinks,
         referenced_tables=base_tables,
-        output_schema=output_schemas[output_node.id],
     )
     return fragment, []
 
 
-def render_sql(fragment: SQLFragment) -> str:
-    """Render *fragment* as a single DuckDB-executable ``WITH … SELECT …`` string."""
+def render_sql(fragment: SQLFragment, sink: SinkSpec) -> str:
+    """Render one *sink* of *fragment* as a DuckDB ``WITH … SELECT …`` string.
+
+    Every sink shares *fragment*'s CTE chain; only the terminal
+    ``SELECT * FROM <final_cte>`` differs.  The executor calls this once
+    per sink against the same DuckDB connection.
+    """
     if not fragment.ctes:
-        return f"SELECT * FROM {fragment.final_cte}"
+        return f"SELECT * FROM {sink.final_cte}"
     cte_clauses = ",\n".join(f"{name} AS (\n{body}\n)" for name, body in fragment.ctes)
-    return f"WITH {cte_clauses}\nSELECT * FROM {fragment.final_cte}"
+    return f"WITH {cte_clauses}\nSELECT * FROM {sink.final_cte}"
 
 
 __all__ = ["compile_canvas", "render_sql"]

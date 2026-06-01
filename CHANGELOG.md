@@ -17,6 +17,21 @@ defined in ``scripts/clusters.json``. -->
 
 ### Features
 
+- Multi-sink canvas (rc248+) — a data-product canvas may now carry more than
+  one `OutputPort` block, materialising to several Delta tables / UC output
+  ports from one shared CTE chain (the idiomatic "two tables from one source"
+  mesh shape). The compiler dropped the "exactly one OutputPort" v1 limit
+  (`SQLFragment` now carries `sinks: list[SinkSpec]`; `render_sql` takes the
+  sink to render), added a `duplicate_sink` diagnostic for two ports writing
+  the same table or sharing a port name, and now flags an input pin wired by
+  more than one edge as `duplicate_pin` instead of silently dropping a wire.
+  The executor resolves every sink target up front (so a misconfigured sink
+  fails the run before any write), then materialises each sink best-effort —
+  a runtime write failure on one sink is reported as that sink's
+  `status: "failed"` while the others still land; each sink gets its own audit
+  operation (clean per-table lineage) and all sinks share one graph version.
+  `POST /api/dp/{id}/canvas/materialize` now returns `{sinks: [...],
+  graph_version}` (HTTP 200 even on partial success).
 - Canvas Depth Cluster (rc241+) — a seven-wave improvement roadmap on the
   post-overhaul canvas. Wave A (Perf): defused three O(n²) hot paths so
   later waves scale to hundreds of nodes — a `_edgeByDfIds` index built once

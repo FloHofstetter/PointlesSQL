@@ -383,9 +383,13 @@ async def test_materialize_writes_rows_and_registers_port(
     )
     assert res.status_code == 200, res.text
     body = res.json()
-    assert body["rows_written"] == 2
-    assert body["target_fqn"] == "main.mat_simple.tgt"
     assert body["graph_version"] >= 1
+    assert len(body["sinks"]) == 1
+    sink = body["sinks"][0]
+    assert sink["status"] == "ok"
+    assert sink["rows_written"] == 2
+    assert sink["target_fqn"] == "main.mat_simple.tgt"
+    assert sink["port_name"] == "primary"
 
     # Output port row exists on the DP.
     factory = app.state.session_factory
@@ -399,6 +403,106 @@ async def test_materialize_writes_rows_and_registers_port(
             )
         ).scalar_one()
     assert port.location == "main.mat_simple.tgt"
+
+
+def _fanout_doc(src_fqn: str, tgt_a: str, tgt_b: str) -> CanvasDoc:
+    """One InputPort fanning out to two OutputPort sinks."""
+    return CanvasDoc(
+        nodes=[
+            node("inp", "InputPort", {"table_fqn": src_fqn}),
+            node("oa", "OutputPort", {"port_name": "port_a", "materialized_table": tgt_a}),
+            node("ob", "OutputPort", {"port_name": "port_b", "materialized_table": tgt_b}),
+        ],
+        edges=[
+            edge("e1", "inp", "out", "oa", "in"),
+            edge("e2", "inp", "out", "ob", "in"),
+        ],
+    )
+
+
+@pytest.mark.asyncio
+async def test_materialize_multiple_sinks(
+    admin_client: httpx.AsyncClient, tmp_path, monkeypatch
+) -> None:
+    """Two OutputPorts from one source write two tables + register two ports."""
+    dp_id = _seed_dp(schema_name="mat_multi")
+    src_path = str(tmp_path / "src_multi")
+    deltalake.write_deltalake(
+        src_path,
+        pd.DataFrame({"id": [1, 2, 3]}),
+        mode="overwrite",
+    )
+    _install_executor_patches(
+        monkeypatch,
+        source_paths={"main.mat_multi.src": src_path},
+        target_schema_root=str(tmp_path / "multi_root"),
+    )
+
+    doc = _fanout_doc("main.mat_multi.src", "main.mat_multi.a", "main.mat_multi.b")
+    res = await admin_client.post(
+        f"/api/dp/{dp_id}/canvas/materialize",
+        json={"document": _doc_dict(doc)},
+    )
+    assert res.status_code == 200, res.text
+    body = res.json()
+    assert {s["target_fqn"] for s in body["sinks"]} == {
+        "main.mat_multi.a",
+        "main.mat_multi.b",
+    }
+    assert all(s["status"] == "ok" and s["rows_written"] == 3 for s in body["sinks"])
+
+    factory = app.state.session_factory
+    with factory() as session:
+        from pointlessql.models import DataProductOutputPort
+
+        names = {
+            r.name
+            for r in session.execute(
+                select(DataProductOutputPort).where(
+                    DataProductOutputPort.data_product_id == dp_id
+                )
+            ).scalars()
+        }
+    assert {"port_a", "port_b"} <= names
+
+
+@pytest.mark.asyncio
+async def test_materialize_partial_failure(
+    admin_client: httpx.AsyncClient, tmp_path, monkeypatch
+) -> None:
+    """One sink fails to write; the other still lands, HTTP stays 200."""
+    dp_id = _seed_dp(schema_name="mat_partial")
+    src_path = str(tmp_path / "src_partial")
+    deltalake.write_deltalake(src_path, pd.DataFrame({"id": [1, 2]}), mode="overwrite")
+    _install_executor_patches(
+        monkeypatch,
+        source_paths={"main.mat_partial.src": src_path},
+        target_schema_root=str(tmp_path / "partial_root"),
+    )
+
+    # Make the second sink's Delta write blow up, leave the first intact.
+    # The executor imports ``deltalake`` locally, so patch the module's
+    # ``write_deltalake`` directly — both bindings point at the same object.
+    real_write = deltalake.write_deltalake
+
+    def _flaky_write(location, data, *args, **kwargs):
+        if str(location).endswith("/boom"):
+            raise RuntimeError("simulated delta write failure")
+        return real_write(location, data, *args, **kwargs)
+
+    monkeypatch.setattr(deltalake, "write_deltalake", _flaky_write)
+
+    doc = _fanout_doc("main.mat_partial.src", "main.mat_partial.ok", "main.mat_partial.boom")
+    res = await admin_client.post(
+        f"/api/dp/{dp_id}/canvas/materialize",
+        json={"document": _doc_dict(doc)},
+    )
+    assert res.status_code == 200, res.text
+    body = res.json()
+    by_target = {s["target_fqn"]: s for s in body["sinks"]}
+    assert by_target["main.mat_partial.ok"]["status"] == "ok"
+    assert by_target["main.mat_partial.boom"]["status"] == "failed"
+    assert by_target["main.mat_partial.boom"]["error"]
 
 
 @pytest.mark.asyncio

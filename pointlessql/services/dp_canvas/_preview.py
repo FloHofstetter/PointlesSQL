@@ -256,7 +256,7 @@ def preview_until(
     if fragment is None or errors:
         return PreviewResult(errors=errors)
 
-    rendered = render_sql(fragment)
+    rendered = render_sql(fragment, fragment.sinks[0])
     wrapped_sql = f"SELECT * FROM ({rendered}) AS _preview_inner LIMIT {safe_limit}"
 
     approved: dict[str, str] = {}

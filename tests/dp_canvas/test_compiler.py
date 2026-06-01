@@ -26,7 +26,8 @@ def test_missing_output_port_errors() -> None:
     assert any(e.kind == "output_port_count" for e in errors)
 
 
-def test_multiple_output_ports_errors() -> None:
+def test_multiple_output_ports_compile() -> None:
+    """Two OutputPorts fan out from one source into two sinks sharing a CTE base."""
     doc = CanvasDoc(
         nodes=[
             node("inp", "InputPort", {"table_fqn": "c.s.t"}),
@@ -43,8 +44,83 @@ def test_multiple_output_ports_errors() -> None:
         ],
         edges=[edge("e1", "inp", "out", "o1", "in"), edge("e2", "inp", "out", "o2", "in")],
     )
+    fragment, errors = compile_canvas(doc)
+    assert errors == []
+    assert fragment is not None
+    assert len(fragment.sinks) == 2
+    assert {s.target_fqn for s in fragment.sinks} == {"c.s.x", "c.s.y"}
+    assert {s.port_name for s in fragment.sinks} == {"a", "b"}
+    # Both sinks share the same CTE chain; only the final SELECT differs.
+    assert fragment.referenced_tables == ["c.s.t"]
+
+
+def test_duplicate_sink_target_errors() -> None:
+    doc = CanvasDoc(
+        nodes=[
+            node("inp", "InputPort", {"table_fqn": "c.s.t"}),
+            node("o1", "OutputPort", {"port_name": "a", "materialized_table": "c.s.x"}),
+            node("o2", "OutputPort", {"port_name": "b", "materialized_table": "c.s.x"}),
+        ],
+        edges=[edge("e1", "inp", "out", "o1", "in"), edge("e2", "inp", "out", "o2", "in")],
+    )
     _, errors = compile_canvas(doc)
-    assert any(e.kind == "output_port_count" for e in errors)
+    assert any(e.kind == "duplicate_sink" for e in errors)
+
+
+def test_duplicate_sink_port_name_errors() -> None:
+    doc = CanvasDoc(
+        nodes=[
+            node("inp", "InputPort", {"table_fqn": "c.s.t"}),
+            node("o1", "OutputPort", {"port_name": "dup", "materialized_table": "c.s.x"}),
+            node("o2", "OutputPort", {"port_name": "dup", "materialized_table": "c.s.y"}),
+        ],
+        edges=[edge("e1", "inp", "out", "o1", "in"), edge("e2", "inp", "out", "o2", "in")],
+    )
+    _, errors = compile_canvas(doc)
+    assert any(e.kind == "duplicate_sink" for e in errors)
+
+
+def test_input_pin_wired_twice_errors() -> None:
+    """Two edges landing on one input pin is a footgun, not a silent overwrite."""
+    doc = CanvasDoc(
+        nodes=[
+            node("a", "InputPort", {"table_fqn": "c.s.a"}),
+            node("b", "InputPort", {"table_fqn": "c.s.b"}),
+            node("flt", "Filter", {"predicate": "1=1"}),
+            node("out", "OutputPort", {"port_name": "p", "materialized_table": "c.s.t"}),
+        ],
+        edges=[
+            edge("e1", "a", "out", "flt", "in"),
+            edge("e2", "b", "out", "flt", "in"),
+            edge("e_out", "flt", "out", "out", "in"),
+        ],
+    )
+    _, errors = compile_canvas(doc)
+    assert any(e.kind == "duplicate_pin" for e in errors)
+
+
+def test_fanout_one_source_two_chains() -> None:
+    """One source feeds two distinct downstream chains, each to its own sink."""
+    doc = CanvasDoc(
+        nodes=[
+            node("inp", "InputPort", {"table_fqn": "main.s.src"}),
+            node("f1", "Filter", {"predicate": "amount > 0"}),
+            node("f2", "Filter", {"predicate": "amount < 0"}),
+            node("o1", "OutputPort", {"port_name": "pos", "materialized_table": "main.s.pos"}),
+            node("o2", "OutputPort", {"port_name": "neg", "materialized_table": "main.s.neg"}),
+        ],
+        edges=[
+            edge("e1", "inp", "out", "f1", "in"),
+            edge("e2", "inp", "out", "f2", "in"),
+            edge("e3", "f1", "out", "o1", "in"),
+            edge("e4", "f2", "out", "o2", "in"),
+        ],
+    )
+    fragment, errors = compile_canvas(doc)
+    assert errors == []
+    assert fragment is not None
+    assert len(fragment.sinks) == 2
+    assert fragment.referenced_tables == ["main.s.src"]
 
 
 def test_simple_chain_compiles() -> None:
@@ -53,8 +129,9 @@ def test_simple_chain_compiles() -> None:
     assert errors == []
     assert fragment is not None
     assert fragment.referenced_tables == ["main.sales.src"]
-    assert fragment.final_cte == "n2_outputport"
-    rendered = render_sql(fragment)
+    assert len(fragment.sinks) == 1
+    assert fragment.sinks[0].final_cte == "n2_outputport"
+    rendered = render_sql(fragment, fragment.sinks[0])
     assert "WITH" in rendered
     assert "n0_inputport" in rendered
     assert "n1_filter" in rendered
@@ -178,15 +255,18 @@ def test_edge_target_missing_flagged() -> None:
 
 
 def test_render_sql_with_no_ctes_handles_gracefully() -> None:
-    from pointlessql.services.dp_canvas._types import PinSchema, SQLFragment
+    from pointlessql.services.dp_canvas._types import PinSchema, SinkSpec, SQLFragment
 
-    frag = SQLFragment(
-        ctes=[],
+    sink = SinkSpec(
+        output_node_id="out",
+        port_name="p",
+        target_fqn="c.s.t",
+        mode="overwrite",
         final_cte="cte_x",
-        referenced_tables=[],
         output_schema=PinSchema(kind="table", columns=[]),
     )
-    assert render_sql(frag) == "SELECT * FROM cte_x"
+    frag = SQLFragment(ctes=[], sinks=[sink], referenced_tables=[])
+    assert render_sql(frag, sink) == "SELECT * FROM cte_x"
 
 
 @pytest.mark.parametrize(
