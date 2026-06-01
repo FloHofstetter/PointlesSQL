@@ -3073,6 +3073,20 @@ PointlesSQL
 │   │   Ghost-Diff-Overlay (Differenzierer), F A11y/Reduced-Motion, G Live-
 │   │   Drag-Validierung.  Je Welle ein Commit + rc-Bump + Browser-Replay.
 │   │
+├── Phase 181 — Canvas Depth C: Kontextmenü + Inline-Preview  ✅ shipped (local, 2026-06-01)
+│   │
+│   │   Rechtsklick-Kontextmenü, zielsensitiv (``_onCanvasContextMenu`` →
+│   │   ``ctxMenu`` kind=node/edge/canvas): leere Fläche → „Add block here"
+│   │   (droppt einen Standalone-Knoten an der Cursor-Canvas-Position über
+│   │   eine neue Branch in ``_pickOutputPlusBlock``); Knoten → Quick peek /
+│   │   Preview… / Duplicate / Delete (reuse ``openPreviewForSelected``,
+│   │   ``duplicateSelectedNode``, ``deleteSelectedNode``); Kante → Insert
+│   │   block / Delete connection (reuse ``insertBlockOnEdge``,
+│   │   ``deleteEdgeById``).  Inline-Preview-Peek (``openInlinePeek``):
+│   │   kompaktes Popover am Knoten mit den ersten 5 Zeilen über denselben
+│   │   ``/canvas/preview``-Endpoint, behandelt Preview-Fehler graceful.
+│   │   Frontend-only, rc242→rc243.  ALL LOCAL.
+│   │
 ├── Phase 180 — Canvas Depth B: Navigation & View-Polish  ✅ shipped (local, 2026-06-01)
 │   │
 │   │   Minimap bekommt ein **Viewport-Rechteck** (aus precanvas-Transform,

@@ -27,7 +27,12 @@ defined in ``scripts/clusters.json``. -->
   than sweeping the whole graph. Wave B (Navigation): the minimap gained a
   live viewport rectangle and click/drag-to-pan; the topbar shows a zoom-%
   readout that doubles as a reset-to-100% button. (Space-drag panning was
-  left out — Drawflow already pans on background-drag in edit mode.)
+  left out — Drawflow already pans on background-drag in edit mode.) Wave C
+  (authoring): a target-aware right-click context menu — empty canvas →
+  "Add block here" (drops a node at the cursor), node → quick peek / preview
+  / duplicate / delete, edge → insert block / delete connection — all reusing
+  the existing actions; plus an inline preview peek that shows a node's first
+  rows in a compact popover instead of only the full modal.
 - Canvas connection-rendering overhaul (rc238).  Fixed the long-standing
   root cause behind wires that looked unsmooth, sat off the connector
   pins, and a canvas that never centred on open: the canvas component

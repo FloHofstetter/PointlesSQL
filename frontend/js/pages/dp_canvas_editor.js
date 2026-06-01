@@ -433,6 +433,8 @@ export function dpCanvasEditor(product, ctx) {
 
     edgeToolbar: { visible: false, x: 0, y: 0, edgeId: null },
     outputPlusPicker: { open: false, x: 0, y: 0, sourcePqlId: null },
+    ctxMenu: { open: false, x: 0, y: 0, kind: 'canvas', nodeId: null, edgeId: null },
+    inlinePeek: { open: false, x: 0, y: 0, nodeId: null, loading: false, columns: [], rows: [] },
     _selectedEdgeId: null,
     _edgeToolbarHideTimer: null,
     _edgeToolbarRaf: null,
@@ -619,6 +621,9 @@ export function dpCanvasEditor(product, ctx) {
         if (ev.target.closest('.pql-edge-toolbar')) return;
         this._clearSelectedEdge();
       });
+
+      // Right-click context menu — target-aware (node / edge / empty canvas).
+      df.container.addEventListener('contextmenu', (ev) => this._onCanvasContextMenu(ev));
 
       // Double-click on a DP◫ node opens that DP's canvas in-place
       // (push the current DP onto the breadcrumb trail in localStorage).
@@ -1304,6 +1309,124 @@ export function dpCanvasEditor(product, ctx) {
       };
       window.addEventListener('pointermove', move);
       window.addEventListener('pointerup', up);
+    },
+
+    // ---------------------------------------------------------------------
+    // Right-click context menu — target-aware, reuses existing actions.
+    // ---------------------------------------------------------------------
+
+    _onCanvasContextMenu(ev) {
+      const nodeEl = ev.target.closest('.drawflow-node');
+      const connEl = ev.target.closest('.connection');
+      ev.preventDefault();
+      let kind = 'canvas';
+      let nodeId = null;
+      let edgeId = null;
+      if (nodeEl) {
+        kind = 'node';
+        const m = nodeEl.id && nodeEl.id.match(/^node-(\d+)$/);
+        const dfId = m ? parseInt(m[1], 10) : null;
+        for (const [pql, df] of Object.entries(this._drawflowNodes)) {
+          if (df === dfId) {
+            nodeId = pql;
+            break;
+          }
+        }
+        if (nodeId) this.selectedNodeId = nodeId;
+      } else if (connEl) {
+        kind = 'edge';
+        edgeId = this._edgeIdForSvg(connEl);
+      }
+      // Stash the drop position (canvas-local) for "add block here".
+      const df = this._drawflow;
+      const rect = df.container.getBoundingClientRect();
+      this._ctxDropPos = {
+        x: (ev.clientX - rect.left - (df.canvas_x || 0)) / (df.zoom || 1),
+        y: (ev.clientY - rect.top - (df.canvas_y || 0)) / (df.zoom || 1),
+      };
+      this.ctxMenu = { open: true, x: ev.clientX, y: ev.clientY, kind, nodeId, edgeId };
+    },
+
+    closeContextMenu() {
+      this.ctxMenu = { ...this.ctxMenu, open: false };
+    },
+
+    ctxAction(action) {
+      const { kind, nodeId, edgeId } = this.ctxMenu;
+      this.closeContextMenu();
+      if (action === 'add') {
+        // Open the existing block picker at the cursor; _pickOutputPlusBlock
+        // drops a standalone node at the stashed drop position.
+        if (!this.canWrite) return;
+        this._insertOnEdgeContext = null;
+        this.outputPlusPicker = {
+          open: true,
+          x: this.ctxMenu.x - (this.$refs.canvas.parentElement.getBoundingClientRect().left || 0),
+          y: this.ctxMenu.y - (this.$refs.canvas.parentElement.getBoundingClientRect().top || 0),
+          sourcePqlId: null,
+        };
+        return;
+      }
+      if (kind === 'node' && nodeId) {
+        this.selectedNodeId = nodeId;
+        if (action === 'duplicate') this.duplicateSelectedNode();
+        else if (action === 'delete') this.deleteSelectedNode();
+        else if (action === 'preview') this.openPreviewForSelected();
+        else if (action === 'peek') {
+          const dfId = this._drawflowNodes[nodeId];
+          const el = dfId != null && this._drawflow.container.querySelector(`#node-${dfId}`);
+          this.openInlinePeek(nodeId, el || null);
+        }
+      } else if (kind === 'edge' && edgeId) {
+        if (action === 'deleteEdge') this.deleteEdgeById(edgeId);
+        else if (action === 'insert') this.insertBlockOnEdge(edgeId);
+      }
+    },
+
+    // ---------------------------------------------------------------------
+    // Inline preview peek — a compact popover at a node showing the first
+    // few output rows, reusing the same /canvas/preview endpoint as the
+    // full modal but capped tight.
+    // ---------------------------------------------------------------------
+
+    async openInlinePeek(nodeId, anchorEl) {
+      if (!nodeId) return;
+      const stage = this.$refs.canvas.parentElement;
+      const sr = stage.getBoundingClientRect();
+      const ar = (anchorEl || this.$refs.canvas).getBoundingClientRect();
+      this.inlinePeek = {
+        open: true,
+        x: ar.right - sr.left + 8,
+        y: ar.top - sr.top,
+        nodeId,
+        loading: true,
+        columns: [],
+        rows: [],
+      };
+      try {
+        const res = await window.pqlApi.fetch(`/api/dp/${this.product.id}/canvas/preview`, {
+          method: 'POST',
+          body: { document: this._buildDocument(), upto_node_id: nodeId, limit: 5 },
+          silent: true,
+        });
+        if (!this.inlinePeek.open || this.inlinePeek.nodeId !== nodeId) return;
+        if (res.ok && res.data) {
+          this.inlinePeek = {
+            ...this.inlinePeek,
+            loading: false,
+            columns: res.data.columns || [],
+            rows: (res.data.rows || []).slice(0, 5),
+          };
+        } else {
+          this.inlinePeek = { ...this.inlinePeek, loading: false };
+        }
+      } catch (_e) {
+        this.inlinePeek = { ...this.inlinePeek, loading: false };
+      }
+    },
+
+    closeInlinePeek() {
+      this.inlinePeek = { ...this.inlinePeek, open: false };
     },
 
     _isFormFocused(target) {
@@ -2186,7 +2309,39 @@ export function dpCanvasEditor(product, ctx) {
         return;
       }
 
-      if (!sourcePqlId) return;
+      if (!sourcePqlId) {
+        // Context-menu "add block here": drop a standalone, unwired node at
+        // the stashed canvas-local position.
+        const dropPos = this._ctxDropPos;
+        this._ctxDropPos = null;
+        if (!dropPos) return;
+        const newPqlId = generateNodeId();
+        const newDf = this._drawflow.addNode(
+          kind,
+          def.inputs || 0,
+          def.outputs || 0,
+          dropPos.x,
+          dropPos.y,
+          kind,
+          { pql_node_id: newPqlId, block_type: kind },
+          nodeHtml(kind, newPqlId),
+          false
+        );
+        this._drawflowNodes[newPqlId] = newDf;
+        this.nodes[newPqlId] = {
+          id: newPqlId,
+          block_type: kind,
+          config: def.defaultConfig(),
+          position: dropPos,
+        };
+        this._refreshNodeBody(newPqlId);
+        this._renderOutputPlus(newPqlId);
+        this.selectedNodeId = newPqlId;
+        this._scheduleAutosave();
+        this._scheduleValidate();
+        this._scheduleMinimapRender();
+        return;
+      }
       // Plain output-plus flow: add new block 150 px right of source +
       // auto-wire.
       const src = this.nodes[sourcePqlId];

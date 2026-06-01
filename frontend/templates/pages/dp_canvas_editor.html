@@ -334,6 +334,94 @@
                  @pointerdown="minimapPointerDown($event)"
                  x-ref="minimap"></div>
 
+            {# Right-click context menu — items vary by what was clicked. #}
+            <div class="pql-canvas-ctxmenu shadow-sm rounded bg-body border py-1"
+                 x-show="ctxMenu.open"
+                 x-cloak
+                 @click.outside="closeContextMenu()"
+                 @keydown.escape.window="closeContextMenu()"
+                 :style="`position: fixed; top: ${ctxMenu.y}px; left: ${ctxMenu.x}px; z-index: 1060; min-width: 190px;`">
+                <template x-if="ctxMenu.kind === 'canvas'">
+                    <button type="button" class="btn btn-sm w-100 text-start px-3"
+                            @click="ctxAction('add')">
+                        <i class="bi bi-plus-square me-2"></i>Add block here
+                    </button>
+                </template>
+                <template x-if="ctxMenu.kind === 'node'">
+                    <div>
+                        <button type="button" class="btn btn-sm w-100 text-start px-3"
+                                @click="ctxAction('peek')">
+                            <i class="bi bi-eye me-2"></i>Quick peek
+                        </button>
+                        <button type="button" class="btn btn-sm w-100 text-start px-3"
+                                @click="ctxAction('preview')">
+                            <i class="bi bi-table me-2"></i>Preview…
+                        </button>
+                        <button type="button" class="btn btn-sm w-100 text-start px-3"
+                                @click="ctxAction('duplicate')">
+                            <i class="bi bi-files me-2"></i>Duplicate
+                        </button>
+                        <button type="button" class="btn btn-sm w-100 text-start px-3 text-danger"
+                                @click="ctxAction('delete')">
+                            <i class="bi bi-trash me-2"></i>Delete
+                        </button>
+                    </div>
+                </template>
+                <template x-if="ctxMenu.kind === 'edge'">
+                    <div>
+                        <button type="button" class="btn btn-sm w-100 text-start px-3"
+                                @click="ctxAction('insert')">
+                            <i class="bi bi-node-plus me-2"></i>Insert block
+                        </button>
+                        <button type="button" class="btn btn-sm w-100 text-start px-3 text-danger"
+                                @click="ctxAction('deleteEdge')">
+                            <i class="bi bi-scissors me-2"></i>Delete connection
+                        </button>
+                    </div>
+                </template>
+            </div>
+
+            {# Inline preview peek — compact first-rows popover at a node. #}
+            <div class="pql-inline-peek position-absolute shadow rounded bg-body border p-2"
+                 x-show="inlinePeek.open"
+                 x-cloak
+                 @click.outside="closeInlinePeek()"
+                 @keydown.escape.window="closeInlinePeek()"
+                 :style="`top: ${inlinePeek.y}px; left: ${inlinePeek.x}px; z-index: 20; max-width: 380px; max-height: 240px; overflow: auto;`">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <span class="small fw-semibold"><i class="bi bi-eye me-1"></i>Quick peek</span>
+                    <button type="button" class="btn btn-sm btn-link p-0 lh-1"
+                            aria-label="Close peek" @click="closeInlinePeek()">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                </div>
+                <div x-show="inlinePeek.loading" class="small text-muted py-2">Loading…</div>
+                <div x-show="!inlinePeek.loading">
+                    <table class="table table-sm table-borderless mb-0"
+                           style="font-size: 0.72rem;">
+                        <thead>
+                            <tr>
+                                <template x-for="c in inlinePeek.columns" :key="c">
+                                    <th class="text-muted text-nowrap" x-text="c"></th>
+                                </template>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template x-for="(row, ri) in inlinePeek.rows" :key="ri">
+                                <tr>
+                                    <template x-for="(c, ci) in inlinePeek.columns" :key="ci">
+                                        <td class="text-nowrap" x-text="row[c] ?? row[ci] ?? ''"></td>
+                                    </template>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                    <div x-show="inlinePeek.columns.length === 0" class="small text-muted py-1">
+                        No output rows.
+                    </div>
+                </div>
+            </div>
+
             {# Sticky-note annotation layer: lives over the canvas, NOT
                inside Drawflow's node graph, so notes never enter the
                compile pipeline. #}
