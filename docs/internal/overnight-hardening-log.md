@@ -90,3 +90,11 @@ phase (rather than 20+ per-phase edits); this log is the per-phase record in the
   `table_as_of_event_time` — the `<=` business-time filter, settings-default column
   resolution, and the missing-column / non-frame guards via a `table`-overriding stub.
 - Committed.
+
+### Phase 7 — pql.aggregate pure helpers (suite 4245→4261, +16)
+- `tests/test_pql_aggregate.py` (+16): `pql/_aggregate.py` (was 59%). Fail-fast validation
+  (empty group_by / source_fqn / aggs, non-DataFrame, missing column); `_build_aggregate_frame`
+  groupby + deterministic `_lineage_row_id` stamping + fan-in source-id collection; and the
+  `_build_aggregate_column_edges` branch matrix (identity / derived / aggregate / unknown_origin
+  + the synth row-id edge). The catalog/engine write path is left to integration tests.
+- Committed.
