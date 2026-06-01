@@ -73,3 +73,10 @@ phase (rather than 20+ per-phase edits); this log is the per-phase record in the
 - Coedit-bus assessed + skipped: its 112 missing lines are PG LISTEN/NOTIFY async runtime
   paths (constructor rejects SQLite), not meaningfully unit-testable here.
 - Committed.
+
+### Phase 5 — PQL merge strategies + stats (suite 4220→4231, +11)
+- `tests/test_pql_merge.py` (+11): `pql/_merge/_stats.py` (was 48%) pure row-count rollups
+  + JSON-safe coercion; `pql/_merge/_strategies.py` (was 45%) `_augment_for_scd2` column
+  shaping plus real temp-Delta round-trips for `_do_upsert` (update+insert) and `_do_scd2`
+  (close open row + append new current). deltalake is a core dep, so the round-trips run live.
+- Committed.
