@@ -3073,6 +3073,25 @@ PointlesSQL
 │   │   Ghost-Diff-Overlay (Differenzierer), F A11y/Reduced-Motion, G Live-
 │   │   Drag-Validierung.  Je Welle ein Commit + rc-Bump + Browser-Replay.
 │   │
+├── Phase 183 — Canvas Depth E: Agent-Ghost-Diff-Overlay  ✅ shipped (local, 2026-06-01)
+│   │
+│   │   Differenzierer „Agent schlägt Pipeline vor → Mensch supervised am
+│   │   Canvas".  Neue read-only Route ``POST /api/dp/{id}/canvas/ghost-diff``
+│   │   ([canvas.py](pointlessql/api/data_products_routes/canvas.py)): lädt
+│   │   den gespeicherten Doc, nimmt ein ``proposed_document``, ruft das
+│   │   bestehende ``diff_docs(current, proposed)`` +
+│   │   ``validate_schema_flow`` + ``categorize_pin_schema`` — kein Save,
+│   │   kein Version-Bump.  Frontend: Review-Drawer (Robot-Toolbar-Button)
+│   │   lädt ein Proposal (Paste oder ``?propose=<base64>``), zeigt
+│   │   added/removed/modified Blöcke + Connections mit Per-Item-Accept +
+│   │   Validierungsfehler; „Apply accepted" merged die akzeptierten Deltas
+│   │   (Knoten/Kanten aus dem Proposal, Positionen erhalten) auf den
+│   │   aktuellen Doc und speichert.  Translucentes Live-Canvas-Overlay
+│   │   bewusst deferred (riskant gegen Drawflow) — das Accept/Reject-Panel
+│   │   liefert die Supervision robust.  2 neue pytest.  Backend+Frontend,
+│   │   rc244→rc245.  ALL LOCAL.  (Plugin-Tool ``pql_canvas_propose``
+│   │   als Folge-Schritt offen.)
+│   │
 ├── Phase 182 — Canvas Depth D: Obstacle-aware Orthogonal-Routing  ✅ shipped (local, 2026-06-01)
 │   │
 │   │   Im Orthogonal-Modus (opt-in Toggle) routet ein Post-Pass die Kanten

@@ -183,6 +183,12 @@
                     aria-label="Add sticky note">
                 <i class="bi bi-sticky"></i>
             </button>
+            <button class="btn btn-sm btn-outline-info"
+                    @click="openGhostReview()"
+                    title="Review an agent's proposed canvas changes"
+                    aria-label="Review proposal">
+                <i class="bi bi-robot"></i>
+            </button>
             <div class="btn-group btn-group-sm" role="group" aria-label="Document">
                 <button class="btn btn-outline-secondary"
                         @click="save()"
@@ -471,6 +477,119 @@
                     </div>
                 </template>
                 <div class="text-muted small px-2 py-1" x-show="searchMatches().length === 0">No matches</div>
+            </div>
+
+            {# Agent proposal review drawer — diff a proposed canvas against
+               the current one, accept/reject each change, then merge + save. #}
+            <div class="pql-ghost-review position-absolute top-0 end-0 h-100 bg-body border-start shadow p-3"
+                 x-show="ghost.open"
+                 x-cloak
+                 style="width: 360px; z-index: 30; overflow-y: auto;">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h6 class="mb-0"><i class="bi bi-robot me-1"></i>Proposal review</h6>
+                    <button type="button" class="btn btn-sm btn-link p-0" aria-label="Close proposal review"
+                            @click="closeGhostReview()"><i class="bi bi-x-lg"></i></button>
+                </div>
+
+                <template x-if="!ghost.diff">
+                    <div>
+                        <label class="form-label small text-muted">
+                            Paste a proposed canvas document (JSON), or open with
+                            <code>?propose=&lt;base64&gt;</code>.
+                        </label>
+                        <textarea class="form-control form-control-sm font-monospace" rows="8"
+                                  x-model="ghost.text" style="font-size: 0.72rem;"
+                                  placeholder='{ "nodes": [...], "edges": [...] }'></textarea>
+                        <button type="button" class="btn btn-sm btn-primary mt-2 w-100"
+                                @click="computeGhostDiff()"
+                                :disabled="ghost.busy || !ghost.text.trim()">
+                            <span x-show="!ghost.busy">Compute diff</span>
+                            <span x-show="ghost.busy">Computing…</span>
+                        </button>
+                        <template x-for="(e, i) in ghost.errors" :key="i">
+                            <div class="text-danger small mt-1" x-text="e.message"></div>
+                        </template>
+                    </div>
+                </template>
+
+                <template x-if="ghost.diff">
+                    <div>
+                        <div x-show="ghostDiffEmpty()" class="text-muted small py-2">
+                            No changes versus the current canvas.
+                        </div>
+                        <div x-show="!ghostDiffEmpty()">
+                            <div x-show="ghost.errors.length" class="alert alert-warning py-1 px-2 small mb-2">
+                                <i class="bi bi-exclamation-triangle me-1"></i>
+                                <span x-text="ghost.errors.length"></span> validation issue(s) in the proposal.
+                            </div>
+                            <template x-if="ghost.diff.added_nodes.length">
+                                <div class="mb-2">
+                                    <div class="small fw-semibold text-success">Added blocks</div>
+                                    <template x-for="n in ghost.diff.added_nodes" :key="n.id">
+                                        <label class="d-flex align-items-center gap-2 small">
+                                            <input type="checkbox" x-model="ghost.accept['an:'+n.id]">
+                                            <span x-text="n.block_type"></span>
+                                            <code class="text-muted ms-auto" x-text="n.id"></code>
+                                        </label>
+                                    </template>
+                                </div>
+                            </template>
+                            <template x-if="ghost.diff.modified_nodes.length">
+                                <div class="mb-2">
+                                    <div class="small fw-semibold text-warning">Modified blocks</div>
+                                    <template x-for="n in ghost.diff.modified_nodes" :key="n.id">
+                                        <label class="d-flex align-items-center gap-2 small">
+                                            <input type="checkbox" x-model="ghost.accept['mn:'+n.id]">
+                                            <span x-text="n.block_type"></span>
+                                            <code class="text-muted ms-auto" x-text="n.id"></code>
+                                        </label>
+                                    </template>
+                                </div>
+                            </template>
+                            <template x-if="ghost.diff.removed_nodes.length">
+                                <div class="mb-2">
+                                    <div class="small fw-semibold text-danger">Removed blocks</div>
+                                    <template x-for="n in ghost.diff.removed_nodes" :key="n.id">
+                                        <label class="d-flex align-items-center gap-2 small">
+                                            <input type="checkbox" x-model="ghost.accept['rn:'+n.id]">
+                                            <span x-text="n.block_type"></span>
+                                            <code class="text-muted ms-auto" x-text="n.id"></code>
+                                        </label>
+                                    </template>
+                                </div>
+                            </template>
+                            <template x-if="ghost.diff.added_edges.length">
+                                <div class="mb-2">
+                                    <div class="small fw-semibold text-success">Added connections</div>
+                                    <template x-for="e in ghost.diff.added_edges" :key="_ghostEdgeKey(e)">
+                                        <label class="d-flex align-items-center gap-2 small">
+                                            <input type="checkbox" x-model="ghost.accept['ae:'+_ghostEdgeKey(e)]">
+                                            <code class="text-muted" x-text="e.source_node_id + ' → ' + e.target_node_id"></code>
+                                        </label>
+                                    </template>
+                                </div>
+                            </template>
+                            <template x-if="ghost.diff.removed_edges.length">
+                                <div class="mb-2">
+                                    <div class="small fw-semibold text-danger">Removed connections</div>
+                                    <template x-for="e in ghost.diff.removed_edges" :key="_ghostEdgeKey(e)">
+                                        <label class="d-flex align-items-center gap-2 small">
+                                            <input type="checkbox" x-model="ghost.accept['re:'+_ghostEdgeKey(e)]">
+                                            <code class="text-muted" x-text="e.source_node_id + ' → ' + e.target_node_id"></code>
+                                        </label>
+                                    </template>
+                                </div>
+                            </template>
+                            <button type="button" class="btn btn-sm btn-success w-100 mt-2"
+                                    @click="applyGhostSelection()"
+                                    :disabled="ghost.busy || !canWrite">
+                                <i class="bi bi-check2-all me-1"></i>Apply accepted
+                            </button>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-link w-100 mt-1"
+                                @click="ghost.diff = null">Back to paste</button>
+                    </div>
+                </template>
             </div>
         </main>
 

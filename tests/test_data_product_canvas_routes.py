@@ -637,6 +637,56 @@ async def test_diff_two_versions_surfaces_modified_node(
 
 
 @pytest.mark.asyncio
+async def test_ghost_diff_proposed_vs_current(
+    admin_client: httpx.AsyncClient, monkeypatch
+) -> None:
+    dp_id = _seed_dp(schema_name="ghostdiff")
+    _stub_uc_client(
+        monkeypatch,
+        columns_by_fqn={
+            "main.ghostdiff.src": [
+                ColumnInfo(name="id", type_text="BIGINT", nullable=False),
+            ],
+        },
+    )
+    # Saved baseline: Input → Output, no filter.
+    await admin_client.post(
+        f"/api/dp/{dp_id}/canvas",
+        json={"document": _doc_dict(linear_doc("main.ghostdiff.src", "main.ghostdiff.tgt"))},
+    )
+    # Proposal inserts a Filter between the two.
+    proposed = linear_doc("main.ghostdiff.src", "main.ghostdiff.tgt", predicate="id > 0")
+    res = await admin_client.post(
+        f"/api/dp/{dp_id}/canvas/ghost-diff",
+        json={"proposed_document": _doc_dict(proposed)},
+    )
+    assert res.status_code == 200, res.text
+    body = res.json()
+    assert any(n["id"] == "flt" for n in body["diff"]["added_nodes"])
+    assert "errors" in body and "pin_schemas" in body and "edge_categories" in body
+    # No write happened — the saved canvas is still at version 1.
+    loaded = await admin_client.get(f"/api/dp/{dp_id}/canvas")
+    assert loaded.json()["version"] == 1
+
+
+@pytest.mark.asyncio
+async def test_ghost_diff_against_empty_current(
+    admin_client: httpx.AsyncClient, monkeypatch
+) -> None:
+    dp_id = _seed_dp(schema_name="ghostempty")
+    _stub_uc_client(monkeypatch, columns_by_fqn={})
+    proposed = linear_doc("main.ghostempty.src", "main.ghostempty.tgt")
+    res = await admin_client.post(
+        f"/api/dp/{dp_id}/canvas/ghost-diff",
+        json={"proposed_document": _doc_dict(proposed)},
+    )
+    assert res.status_code == 200, res.text
+    added_ids = {n["id"] for n in res.json()["diff"]["added_nodes"]}
+    # Nothing saved yet → every proposed node is an addition.
+    assert {"inp", "out"} <= added_ids
+
+
+@pytest.mark.asyncio
 async def test_load_specific_version_returns_doc(
     admin_client: httpx.AsyncClient,
 ) -> None:

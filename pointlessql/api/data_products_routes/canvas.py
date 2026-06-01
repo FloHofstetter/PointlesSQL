@@ -322,6 +322,31 @@ class CanvasDiffResponse(BaseModel):
     diff: CanvasDiff
 
 
+class CanvasGhostDiffRequest(BaseModel):
+    """Body for ``POST /api/dp/{dp_id}/canvas/ghost-diff``."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    proposed_document: CanvasDoc
+
+
+class CanvasGhostDiffResponse(BaseModel):
+    """Response for ``POST /api/dp/{dp_id}/canvas/ghost-diff``.
+
+    Diffs an agent- (or user-) proposed canvas against the currently saved
+    one and validates the proposal in the same pass, so a read-only editor
+    overlay can paint added / removed / modified nodes and edges, badge the
+    proposal's schema errors, and colour its wires — all before anyone
+    commits the change.  ``pin_schemas`` / ``edge_categories`` follow the
+    same shape as the validate endpoint.
+    """
+
+    diff: CanvasDiff
+    pin_schemas: dict[str, PinSchema]
+    errors: list[CompileError]
+    edge_categories: dict[str, str] = Field(default_factory=dict)
+
+
 class CanvasPreviewRequest(BaseModel):
     """Body for ``POST /api/dp/{dp_id}/canvas/preview``.
 
@@ -659,6 +684,44 @@ def diff_canvas_versions(
     )
 
 
+@router.post("/{dp_id}/canvas/ghost-diff", response_model=CanvasGhostDiffResponse)
+def ghost_diff_canvas(
+    dp_id: int, body: CanvasGhostDiffRequest, request: Request
+) -> CanvasGhostDiffResponse:
+    """Diff a proposed canvas against the saved one and validate it.
+
+    Read-only: no save, no version bump.  Powers the agent-proposal ghost
+    overlay — the editor paints the delta and surfaces the proposal's
+    schema errors so a human can accept or reject it before committing.
+    """
+    require_user(request)
+    _load_dp(request, dp_id)
+    factory = request.app.state.session_factory
+    result = load_latest_graph(factory, data_product_id=dp_id)
+    current = result[0] if result else CanvasDoc(nodes=[], edges=[])
+    proposed = _resolve_dp_refs(request, body.proposed_document)
+    client = _raw_soyuz_client(request)
+    seeds, seed_errors = _seed_schemas_for_doc(proposed, client)
+    pin_schemas, flow_errors = validate_schema_flow(proposed, seed_schemas=seeds)
+    wire_schemas = {
+        f"{node_id}:{pin}": schema for (node_id, pin), schema in pin_schemas.items()
+    }
+    edge_categories: dict[str, str] = {}
+    for edge in proposed.edges:
+        source_schema = pin_schemas.get((edge.source_node_id, edge.source_pin))
+        key = (
+            f"{edge.source_node_id}:{edge.source_pin}->"
+            f"{edge.target_node_id}:{edge.target_pin}"
+        )
+        edge_categories[key] = categorize_pin_schema(source_schema)
+    return CanvasGhostDiffResponse(
+        diff=diff_docs(current, proposed),
+        pin_schemas=wire_schemas,
+        errors=[*seed_errors, *flow_errors],
+        edge_categories=edge_categories,
+    )
+
+
 @router.post("/{dp_id}/canvas/preview", response_model=CanvasPreviewResponse)
 def preview_canvas(
     dp_id: int,
@@ -763,6 +826,8 @@ def materialize_canvas(
 
 __all__ = [
     "CanvasDiffResponse",
+    "CanvasGhostDiffRequest",
+    "CanvasGhostDiffResponse",
     "CanvasLoadResponse",
     "CanvasLoadVersionResponse",
     "CanvasMaterializeRequest",

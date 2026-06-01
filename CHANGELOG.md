@@ -37,7 +37,16 @@ defined in ``scripts/clusters.json``. -->
   instead of straight through them — a post-pass reads each connection's
   endpoints, fetches the node AABBs, and draws either a clear H-V-H midpoint
   path or, when that is blocked, a detour over/under the obstacle band. The
-  smooth bézier mode is unchanged.
+  smooth bézier mode is unchanged. Wave E (agent ghost-diff): a new read-only
+  `POST /api/dp/{id}/canvas/ghost-diff` endpoint diffs an agent- (or user-)
+  proposed canvas against the saved one and validates it in the same pass
+  (reusing `diff_docs` + `validate_schema_flow` + edge categorisation, no
+  save/version bump); the editor gains a proposal-review drawer that loads a
+  proposal (paste or `?propose=<base64>`), lists added/removed/modified
+  blocks and connections with per-item accept toggles plus the proposal's
+  validation issues, and merges the accepted deltas onto the current canvas
+  on apply. (The translucent live-canvas overlay is deferred; the
+  accept/reject panel carries the supervision flow.)
 - Canvas connection-rendering overhaul (rc238).  Fixed the long-standing
   root cause behind wires that looked unsmooth, sat off the connector
   pins, and a canvas that never centred on open: the canvas component
