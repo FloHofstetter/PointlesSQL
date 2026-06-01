@@ -52,6 +52,11 @@ defined in ``scripts/clusters.json``. -->
   on a focused node opens its config and arrow keys pan the view; and
   prefers-reduced-motion now silences the edge transitions/glow, socket
   transitions and output-plus hover (not just the marching-ants animation).
+  Wave G (live drag-validation): dragging a wire from an output now
+  highlights the valid input drop-targets in real time — a pointerdown
+  listener on the output sockets (parallel to Drawflow's own drag, which
+  exposes no start event) marks each input pin green when it is free and
+  wouldn't form a cycle, and dims the rest, clearing on pointer-up.
 - Canvas connection-rendering overhaul (rc238).  Fixed the long-standing
   root cause behind wires that looked unsmooth, sat off the connector
   pins, and a canvas that never centred on open: the canvas component

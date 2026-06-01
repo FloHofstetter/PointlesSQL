@@ -3066,12 +3066,26 @@ PointlesSQL
 │   │   (174).  Each phase one commit; rc222→rc232.  ALL LOCAL
 │   │   until single final push.
 │   │
-├── Canvas Depth Cluster — Phasen 179–185  ⏳ in progress (2026-06-01)
+├── Canvas Depth Cluster — Phasen 179–185  ✅ shipped (local, 2026-06-01)
 │   │   Sieben-Wellen-Roadmap auf der Phase-178-Basis: A Perf/Edge-Index,
 │   │   B Navigation (Minimap-Viewport/Zoom-UI/Space-Pan), C Kontextmenü +
 │   │   Inline-Preview, D hindernis-umgehendes Orthogonal-Routing, E Agent-
 │   │   Ghost-Diff-Overlay (Differenzierer), F A11y/Reduced-Motion, G Live-
 │   │   Drag-Validierung.  Je Welle ein Commit + rc-Bump + Browser-Replay.
+│   │
+├── Phase 185 — Canvas Depth G: Live-Drag-Validierung  ✅ shipped (local, 2026-06-01)
+│   │
+│   │   Schließt den Canvas Depth Cluster.  Drawflow hat kein Drag-Start-
+│   │   Event → eigener ``pointerdown``-Listener auf den ``.output``-Sockets
+│   │   (parallel zu Drawflows eigenem Wire-Drag) highlightet beim Ziehen die
+│   │   gültigen Input-Drop-Targets: ``_highlightDropTargets`` markiert jeden
+│   │   Input-Pin grün (``pql-pin-ok``), wenn er frei ist (``_isInputPinFree``)
+│   │   und keinen Zyklus erzeugt (``_wouldCycle`` BFS), sonst gedimmt
+│   │   (``pql-pin-no``); ``pointerup`` räumt auf.  Drawflows
+│   │   ``connectionCreated`` bleibt die Quelle der Wahrheit fürs tatsächliche
+│   │   Anlegen.  Höchstes Risiko (versionsabhängiges Pointer-Tracking);
+│   │   Fallback auf Drop-Validierung dokumentiert.  Frontend-only,
+│   │   rc246→rc247.  ALL LOCAL.  Cluster 179–185 komplett.
 │   │
 ├── Phase 184 — Canvas Depth F: Accessibility & Reduced-Motion  ✅ shipped (local, 2026-06-01)
 │   │

@@ -89,6 +89,18 @@
   transform: scale(1.15);
 }
 
+/* Live drag-to-connect feedback — while dragging a wire from an output,
+   valid input drop-targets pulse green and invalid ones dim out. */
+.pql-canvas .drawflow .input.pql-pin-ok {
+  background: var(--bs-success);
+  border-color: var(--bs-success);
+  box-shadow: 0 0 0 4px rgba(var(--bs-success-rgb), 0.25);
+  transform: scale(1.25);
+}
+.pql-canvas .drawflow .input.pql-pin-no {
+  opacity: 0.3;
+}
+
 /* Main edge path — stroke is zoom-compensated via the --pql-zoom var
    that the canvas helper keeps in sync with the live transform on
    the .drawflow element (MutationObserver lives in JS). */
