@@ -21,3 +21,18 @@ are skipped in favour of genuinely low-coverage ones.
 - Reviewed canvas run-dock WIP: coherent, already documented in ROADMAP + CHANGELOG;
   pyproject bump clean rc252→rc254. Staged only tracked files (left scratch `.jpg`s untracked).
 - Committed as Phase 0. Tree clean apart from scratch artifacts.
+
+Generated a full `--cov` map up front (`/tmp/pql-cov.json`) and drive Group A from it.
+ROADMAP/CHANGELOG churn is batched into a single Hardening-Cluster node at the closing
+phase (rather than 20+ per-phase edits); this log is the per-phase record in the meantime.
+
+### Phase 1 — pure-logic gap tests (suite 4131→4170, +39)
+- `tests/test_output_rendering.py` (+27): `services/output_rendering.py` was 0% / zero test
+  refs. Covers the full mime-bundle priority order (markdown>html>svg>png>jpeg>json>plain),
+  the widget placeholder + model_id truncation, stream stdout/stderr, error traceback vs
+  ename/evalue fallback, list-payload coercion, HTML-escaping, and the unknown-type fallbacks.
+- `tests/test_aws_sigv4.py` (+12): `services/aws_sigv4.py` was 22% / zero test refs. Verifies
+  the signature against an independent in-test re-derivation of the SigV4 algorithm (genuine
+  cross-check), the empty-body SHA-256 external known-answer, determinism for a fixed clock,
+  signature sensitivity to body/region, extra-header signing, and canonical-URI encoding.
+- Committed.
