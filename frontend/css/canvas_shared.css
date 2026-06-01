@@ -357,6 +357,11 @@
 }
 
 .pql-canvas .drawflow-node.selected {
+  /* Drawflow's bundled theme paints selected nodes solid red
+     (background: red), which bleeds through our transparent node body and
+     makes the content unreadable.  Keep the normal node background and
+     signal selection with the primary border + ring only. */
+  background: var(--bs-body-bg);
   border-color: var(--bs-primary);
   box-shadow: 0 0 0 2px rgba(var(--bs-primary-rgb), 0.25);
 }

@@ -221,6 +221,12 @@ defined in ``scripts/clusters.json``. -->
 
 ### Fixes
 
+- Selecting a canvas block no longer paints it solid red / unreadable
+  (rc252). Drawflow's bundled theme styles a selected node with
+  `background: red`, which bled through our transparent node body. The
+  block skin now keeps the normal node background on `.selected` and
+  signals selection with the primary-coloured border + ring only.
+
 - Data-product detail page no longer 500s when a product's stored
   contract is empty or invalid (rc251). Products registered before their
   YAML contract is committed — and demo / smoke fixtures seeded with
