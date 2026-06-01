@@ -80,3 +80,13 @@ phase (rather than 20+ per-phase edits); this log is the per-phase record in the
   shaping plus real temp-Delta round-trips for `_do_upsert` (update+insert) and `_do_scd2`
   (close open row + append new current). deltalake is a core dep, so the round-trips run live.
 - Committed.
+
+### Phase 6 — UC models mixin + business-time read (suite 4231→4245, +14)
+- `tests/test_unitycatalog_models.py` (+10): `services/unitycatalog/_models.py` (was 45%).
+  Hosts `ModelsMixin` on a stub and monkeypatches each generated endpoint's `.asyncio`
+  coroutine; covers list/get for registered models + versions (type guards, `.to_dict()`
+  projection, empty/None fallbacks) and the `update` patch-body construction.
+- `tests/test_pql_read_event_time.py` (+4): `pql/_pql_read.py` (was 48%)
+  `table_as_of_event_time` — the `<=` business-time filter, settings-default column
+  resolution, and the missing-column / non-frame guards via a `table`-overriding stub.
+- Committed.
