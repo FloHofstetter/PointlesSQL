@@ -143,7 +143,7 @@
             </div>
             <div class="btn-group btn-group-sm" role="group" aria-label="Navigate">
                 <button class="btn btn-outline-secondary"
-                        @click="openSearch()"
+                        @click.stop="openSearch()"
                         title="Search blocks (Ctrl+F)"
                         aria-label="Search blocks">
                     <i class="bi bi-search"></i>
@@ -348,16 +348,23 @@
 
             <div class="pql-canvas-search position-absolute top-0 start-50 translate-middle-x mt-3 p-2 shadow-sm rounded bg-body border"
                  x-show="searchOpen"
-                 @keydown.escape="closeSearch()"
+                 @keydown.escape.window="closeSearch()"
+                 @click.outside="closeSearch()"
                  style="z-index: 10; min-width: 320px;">
-                <input type="text"
-                       class="form-control form-control-sm mb-2"
-                       placeholder="Search blocks by type or id…"
-                       x-ref="searchInput"
-                       x-model="searchQuery"
-                       @keydown.arrow-down.prevent="searchNavigate(1)"
-                       @keydown.arrow-up.prevent="searchNavigate(-1)"
-                       @keydown.enter.prevent="searchSelectMatch()" />
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <input type="text"
+                           class="form-control form-control-sm"
+                           placeholder="Search blocks by type or id…"
+                           x-ref="searchInput"
+                           x-model="searchQuery"
+                           @keydown.arrow-down.prevent="searchNavigate(1)"
+                           @keydown.arrow-up.prevent="searchNavigate(-1)"
+                           @keydown.enter.prevent="searchSelectMatch()" />
+                    <button type="button" class="btn btn-sm btn-outline-secondary"
+                            aria-label="Close search" @click="closeSearch()">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                </div>
                 <template x-for="(match, idx) in searchMatches()" :key="match.id">
                     <div class="px-2 py-1 small d-flex align-items-center gap-2"
                          :class="{ 'bg-primary-subtle': idx === searchCursor }"

@@ -26,6 +26,15 @@
   --pql-zoom: 1;
 }
 
+/* Drawflow leaves the precanvas at the CSS-default transform-origin
+   (50% 50%).  Its own connection-endpoint math AND our fit-to-view both
+   assume the origin is the top-left corner, so a centred origin injects a
+   ``(size/2)·(1-zoom)`` offset that shoves the whole graph down-right and
+   off-centre at any zoom ≠ 1.  Pin it to 0 0. */
+.pql-canvas .drawflow {
+  transform-origin: 0 0;
+}
+
 /* Drawflow ships 14 px blue sockets that visually dominated the
    canvas; shrink to 10 px neutral dots that read as connection
    anchors, with the blue accent reserved for hover / active drag. */

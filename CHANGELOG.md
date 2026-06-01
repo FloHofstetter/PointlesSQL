@@ -34,6 +34,16 @@ defined in ``scripts/clusters.json``. -->
   centres the bounding box from live DOM rects with a one-shot re-fit
   after async bodies settle; a slimmer directional arrow-head; and a
   larger transparent pin grab-target.
+- Canvas centring + block-search close fixes (rc240).  The precanvas kept
+  the CSS-default `transform-origin: 50% 50%`, which both Drawflow's
+  endpoint math and fit-to-view assume is `0 0`; at any zoom ≠ 1 that
+  injected a `(size/2)·(1-zoom)` offset (~100 px) that shoved the graph
+  down-right and off-centre — pinned the origin to `0 0` so the graph
+  centres exactly and no longer overflows under the right panel.  The
+  block-search overlay (Ctrl+F) could only be dismissed while its input
+  held focus and had no visible affordance; added a window-level Escape
+  handler, a close (✕) button, and click-outside-to-close (with `.stop`
+  on the toolbar opener so it doesn't self-close).
 - Canvas Quality Push — cross-surface Phase-177 wave landing the
   27-finding audit at
   [`docs/internal/canvas-audit-2026-05-31.md`](docs/internal/canvas-audit-2026-05-31.md)
