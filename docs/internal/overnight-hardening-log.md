@@ -36,3 +36,17 @@ phase (rather than 20+ per-phase edits); this log is the per-phase record in the
   cross-check), the empty-body SHA-256 external known-answer, determinism for a fixed clock,
   signature sensitivity to body/region, extra-header signing, and canonical-URI encoding.
 - Committed.
+
+### Phase 2 — lineage + conformance gap tests (suite 4170→4192, +22)
+- `tests/test_lineage_graph_builder.py` (+6): `services/lineage/graph_builder.py` was 0%.
+  Seeds row-edges + column-map through the app session factory and asserts node/edge
+  aggregation, op-filter, NULL-source column annotation, row-only-edge fallback, and the
+  stable node/edge ordering contract. Found the `op_name` CHECK-constraint enum the hard
+  way (only the fixed `merge`/`sql`/`aggregate`/… set is allowed) — tests use valid names.
+- `tests/test_lineage_pruner.py` (+4): `services/lineage/pruner.py` was 0%. Drives
+  `prune_once` with a stand-in settings object: positive threshold deletes only old rows,
+  `None`/`<=0` skip the axis, fresh rows report a zero count.
+- `tests/test_conformance_checks.py` (+12): `services/conformance/_checks.py` was 28%.
+  Full coverage of schema-name layer inference + bronze/silver/gold checks and the
+  None/unknown-layer short-circuits. Pure functions, no DB.
+- Committed.
