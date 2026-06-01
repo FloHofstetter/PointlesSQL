@@ -162,6 +162,12 @@
                         aria-label="Fit canvas to view">
                     <i class="bi bi-fullscreen"></i>
                 </button>
+                <button class="btn btn-outline-secondary font-monospace"
+                        style="min-width: 3.5rem;"
+                        @click="zoomReset100()"
+                        title="Reset zoom to 100%"
+                        aria-label="Reset zoom to 100 percent"
+                        x-text="zoomPct + '%'"></button>
                 <button class="btn btn-outline-secondary"
                         @click="focusMode = window.pqlToggleFocusMode()"
                         :class="{ active: focusMode }"
@@ -325,6 +331,7 @@
 
             <div class="pql-minimap position-absolute"
                  x-show="minimapVisible"
+                 @pointerdown="minimapPointerDown($event)"
                  x-ref="minimap"></div>
 
             {# Sticky-note annotation layer: lives over the canvas, NOT

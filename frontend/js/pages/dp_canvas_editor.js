@@ -370,6 +370,7 @@ export function dpCanvasEditor(product, ctx) {
     searchQuery: '',
     searchCursor: 0,
     minimapVisible: true,
+    zoomPct: 100,
     focusMode: false,
 
     nodes: {},
@@ -604,6 +605,11 @@ export function dpCanvasEditor(product, ctx) {
       this._zoomObserver = installZoomObserver(inner, node, (z) => {
         this._scheduleAllOutputPlusReposition();
         this._scheduleEdgeToolbarReposition();
+        // The observer fires on every transform change (pan + zoom), so it's
+        // the right place to keep the zoom-% readout and the minimap viewport
+        // rectangle in sync.
+        this.zoomPct = Math.round(z * 100);
+        this._scheduleMinimapRender();
       });
 
       // Click on empty canvas clears any selected edge.  Click on an
@@ -829,6 +835,22 @@ export function dpCanvasEditor(product, ctx) {
       // pre-fit coordinates (the connections float away from their nodes).
       // CSS-transform changes don't trip the node ResizeObserver, so sweep
       // explicitly here.
+      this._scheduleConnNodeUpdate();
+      this._scheduleMinimapRender();
+    },
+
+    zoomReset100() {
+      // Reset to 1:1 zoom, keeping the current viewport centre fixed.
+      const df = this._drawflow;
+      if (!df || typeof df.canvas_x === 'undefined') return;
+      const rect = df.container.getBoundingClientRect();
+      const cx = rect.width / 2;
+      const cy = rect.height / 2;
+      const factor = 1 / (df.zoom || 1);
+      df.canvas_x = cx - (cx - df.canvas_x) * factor;
+      df.canvas_y = cy - (cy - df.canvas_y) * factor;
+      df.zoom = 1;
+      df.precanvas.style.transform = `translate(${df.canvas_x}px, ${df.canvas_y}px) scale(1)`;
       this._scheduleConnNodeUpdate();
       this._scheduleMinimapRender();
     },
@@ -1210,6 +1232,9 @@ export function dpCanvasEditor(product, ctx) {
       const spanX = Math.max(maxX - minX, 1);
       const spanY = Math.max(maxY - minY, 1);
       const scale = Math.min((W - PAD * 2) / spanX, (H - PAD * 2) / spanY);
+      // Remember the canvas-local → minimap mapping so the click/drag-pan
+      // handler can invert it.
+      this._minimapTransform = { minX, minY, scale, PAD, W, H };
       const rects = nodes
         .map((n) => {
           const p = n.position || { x: 100, y: 100 };
@@ -1221,11 +1246,64 @@ export function dpCanvasEditor(product, ctx) {
           return `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}" fill="${fill}" />`;
         })
         .join('');
+      // Viewport rectangle — the slice of the canvas currently on screen,
+      // derived from the precanvas transform (origin 0 0): screen 0 maps to
+      // canvas-local -canvas_x/zoom, and the visible span is container/zoom.
+      let viewport = '';
+      const df = this._drawflow;
+      if (df && typeof df.canvas_x !== 'undefined' && df.zoom) {
+        const rect = df.container.getBoundingClientRect();
+        const vlX = -df.canvas_x / df.zoom;
+        const vlY = -df.canvas_y / df.zoom;
+        const vW = rect.width / df.zoom;
+        const vH = rect.height / df.zoom;
+        const rx = PAD + (vlX - minX) * scale;
+        const ry = PAD + (vlY - minY) * scale;
+        const rw = vW * scale;
+        const rh = vH * scale;
+        viewport =
+          `<rect x="${rx.toFixed(1)}" y="${ry.toFixed(1)}" width="${rw.toFixed(1)}" height="${rh.toFixed(1)}" ` +
+          'fill="var(--bs-primary)" fill-opacity="0.12" stroke="var(--bs-primary)" stroke-width="1.5" pointer-events="none" />';
+      }
       host.innerHTML =
-        `<svg width="${W}" height="${H}">` +
+        `<svg width="${W}" height="${H}" style="cursor: pointer;">` +
         `<rect width="${W}" height="${H}" fill="var(--bs-tertiary-bg)" stroke="var(--bs-border-color)" />` +
         rects +
+        viewport +
         '</svg>';
+    },
+
+    _minimapPanTo(offsetX, offsetY) {
+      // Centre the viewport on the canvas-local point under the minimap
+      // cursor.  Pan is a pure translate (transform-origin 0 0) so no
+      // connection recompute is needed — only zoom changes affect local
+      // endpoint coords.
+      const t = this._minimapTransform;
+      const df = this._drawflow;
+      if (!t || !df || typeof df.canvas_x === 'undefined') return;
+      const localX = t.minX + (offsetX - t.PAD) / t.scale;
+      const localY = t.minY + (offsetY - t.PAD) / t.scale;
+      const rect = df.container.getBoundingClientRect();
+      df.canvas_x = -localX * df.zoom + rect.width / 2;
+      df.canvas_y = -localY * df.zoom + rect.height / 2;
+      df.precanvas.style.transform = `translate(${df.canvas_x}px, ${df.canvas_y}px) scale(${df.zoom})`;
+      this._scheduleMinimapRender();
+    },
+
+    minimapPointerDown(ev) {
+      ev.preventDefault();
+      const host = this.$refs.minimap;
+      if (!host) return;
+      const rect = host.getBoundingClientRect();
+      const toLocal = (e) => this._minimapPanTo(e.clientX - rect.left, e.clientY - rect.top);
+      toLocal(ev);
+      const move = (e) => toLocal(e);
+      const up = () => {
+        window.removeEventListener('pointermove', move);
+        window.removeEventListener('pointerup', up);
+      };
+      window.addEventListener('pointermove', move);
+      window.addEventListener('pointerup', up);
     },
 
     _isFormFocused(target) {

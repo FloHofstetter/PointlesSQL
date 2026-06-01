@@ -3073,6 +3073,18 @@ PointlesSQL
 │   │   Ghost-Diff-Overlay (Differenzierer), F A11y/Reduced-Motion, G Live-
 │   │   Drag-Validierung.  Je Welle ein Commit + rc-Bump + Browser-Replay.
 │   │
+├── Phase 180 — Canvas Depth B: Navigation & View-Polish  ✅ shipped (local, 2026-06-01)
+│   │
+│   │   Minimap bekommt ein **Viewport-Rechteck** (aus precanvas-Transform,
+│   │   origin 0 0) + **Klick/Drag-zum-Pannen** (``minimapPointerDown`` →
+│   │   ``_minimapPanTo``, invertiert die gespeicherte
+│   │   ``_minimapTransform``; Pan = reiner Translate → kein Connection-
+│   │   Recompute).  Topbar: **Zoom-%-Anzeige** (trackt via Zoom-Observer-
+│   │   Callback) als Button = **Reset auf 100%** (``zoomReset100``, hält die
+│   │   Viewport-Mitte).  Space-Drag-Pan bewusst weggelassen — Drawflow
+│   │   pannt im ``editor_mode='edit'`` bereits nativ per Hintergrund-Drag.
+│   │   Frontend-only, rc241→rc242.  ALL LOCAL.
+│   │
 ├── Phase 179 — Canvas Depth A: Perf-Hotspots + Edge-Index  ✅ shipped (local, 2026-06-01)
 │   │
 │   │   Drei O(n²)-Stellen entschärft, damit spätere Wellen (Routing,

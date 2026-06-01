@@ -24,7 +24,10 @@ defined in ``scripts/clusters.json``. -->
   O(edges·nodes)-per-connection into O(1); `_refreshEdgeCategoryStyles` is a
   single pass over the connections instead of a DOM query per edge; the node
   ResizeObserver now recomputes only the nodes that actually resized rather
-  than sweeping the whole graph.
+  than sweeping the whole graph. Wave B (Navigation): the minimap gained a
+  live viewport rectangle and click/drag-to-pan; the topbar shows a zoom-%
+  readout that doubles as a reset-to-100% button. (Space-drag panning was
+  left out — Drawflow already pans on background-drag in edit mode.)
 - Canvas connection-rendering overhaul (rc238).  Fixed the long-standing
   root cause behind wires that looked unsmooth, sat off the connector
   pins, and a canvas that never centred on open: the canvas component
