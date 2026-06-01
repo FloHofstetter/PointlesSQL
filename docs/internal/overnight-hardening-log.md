@@ -98,3 +98,15 @@ phase (rather than 20+ per-phase edits); this log is the per-phase record in the
   `_build_aggregate_column_edges` branch matrix (identity / derived / aggregate / unknown_origin
   + the synth row-id edge). The catalog/engine write path is left to integration tests.
 - Committed.
+
+### Phase 8 — data-product statistics hook (suite 4261→4266, +5)
+- `tests/test_agent_runs_statistics.py` (+5): `services/agent_runs/operations/_statistics.py`
+  (was 62%). Pure `_shape_from_cache` distiller (+ malformed-entry skip); the no-op
+  short-circuit; a plain snapshot insert; and the cache-upgrade branch that swaps in the
+  fuller shape via a monkeypatched `table_stats.read_cached`.
+- Closes Group A (test coverage). Net Group A: ~113 new tests, suite 4131→4266, all green.
+  The pure-logic / SQLite-testable gaps surfaced by the coverage map are now covered;
+  remaining low-coverage modules are PG-only or live-integration paths (logged where skipped).
+- Committed.
+
+## Group B — refactors (big-file splits, behind the Group-A nets)
