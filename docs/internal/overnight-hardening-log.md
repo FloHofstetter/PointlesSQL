@@ -110,3 +110,17 @@ phase (rather than 20+ per-phase edits); this log is the per-phase record in the
 - Committed.
 
 ## Group B — refactors (big-file splits, behind the Group-A nets)
+
+### Phase 10 — split `services/dp_canvas/_blocks.py` (1546 → package)
+- The 1546-line single-file block registry is now a `_blocks/` package: `_base.py` (180:
+  `BlockSpec`/`CompiledBlock`, `BLOCK_REGISTRY`, the two dispatch tables, public
+  `compile_block`/`infer_block`) + five cohesive category modules — `_io` (213),
+  `_relational` (454), `_reshape` (444), `_columns` (254), `_sql` (168) — plus `__init__`
+  (40) re-exporting the exact prior public surface. Each category module registers its
+  block types into the dispatch tables at import time; `__init__` imports them for the
+  side effect. Largest file 1546 → 454.
+- Old `_blocks.py` deleted (no shim). Bodies moved verbatim via line-range extraction;
+  inline `_register(...)` calls untouched. ruff/pyright(strict, 0 err)/pydoclint clean;
+  fixed a stale `BlockSpec` docstring (documented `compile`/`infer_output` attrs that the
+  dataclass never had — pydoclint DOC602/603) and dropped a phase-ref from the docstring.
+  Full suite 4266 (unchanged — pure refactor). Committed.
