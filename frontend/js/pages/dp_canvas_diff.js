@@ -16,7 +16,7 @@
  * persists per-tab via the same Alpine state.
  */
 
-import { loadCanvasIntoDrawflow } from '../dp_canvas/_drawflow_loader.js';
+import { installSmoothCurvature, loadCanvasIntoDrawflow } from '../dp_canvas/_drawflow_loader.js';
 
 function _readQuery(name) {
   const u = new URL(window.location.href);
@@ -41,13 +41,22 @@ export function dpCanvasDiff(product) {
     _syncingScroll: false,
 
     async init() {
+      // Alpine auto-invokes init() and the template also carries
+      // x-init="init()"; guard so the body (event listeners, version fetch)
+      // doesn't run twice.
+      if (this._initialized) return;
+      this._initialized = true;
       try {
         this.focusMode = localStorage.getItem('pql.focus-mode') === '1';
       } catch (_e) {
         this.focusMode = false;
       }
       window.addEventListener('keydown', (ev) => {
-        if (ev.shiftKey && (ev.key === 'F' || ev.key === 'f') && !ev.target.closest('input, textarea')) {
+        if (
+          ev.shiftKey &&
+          (ev.key === 'F' || ev.key === 'f') &&
+          !ev.target.closest('input, textarea')
+        ) {
           ev.preventDefault();
           if (typeof window.pqlToggleFocusMode === 'function') {
             this.focusMode = window.pqlToggleFocusMode();
@@ -158,17 +167,21 @@ export function dpCanvasDiff(product) {
       const beforeHost = this.$refs.dfBefore;
       const afterHost = this.$refs.dfAfter;
       if (!beforeHost || !afterHost) return;
+      // Shared smooth/step connection paths (idempotent across surfaces).
+      installSmoothCurvature(window.Drawflow);
       if (!this._dfBefore) {
         this._dfBefore = new window.Drawflow(beforeHost);
         this._dfBefore.editor_mode = 'view';
         this._dfBefore.reroute = true;
         this._dfBefore.start();
+        this._dfBefore.curvature = 0.5;
       }
       if (!this._dfAfter) {
         this._dfAfter = new window.Drawflow(afterHost);
         this._dfAfter.editor_mode = 'view';
         this._dfAfter.reroute = true;
         this._dfAfter.start();
+        this._dfAfter.curvature = 0.5;
       }
       const beforeIds = loadCanvasIntoDrawflow(this._dfBefore, beforeDoc, { mode: 'compact' });
       const afterIds = loadCanvasIntoDrawflow(this._dfAfter, afterDoc, { mode: 'compact' });

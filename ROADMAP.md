@@ -3002,7 +3002,7 @@ PointlesSQL
    browser users use. 8 commits, rc204→rc212, ALL LOCAL until
    final push.
 │
-├── Mega-Cluster 155-164 — Visual DP Editor + Platform Polish  ⏳ in progress (2026-05-31)
+├── Mega-Cluster 155-164 — Visual DP Editor + Platform Polish  ✅ shipped (local, 2026-05-31)
 │   │   10 improvement phases on top of the Mega-Cluster 147-154
 │   │   surface and on adjacent platform surfaces (audit log,
 │   │   API-key dashboard).  No new features — UX polish,
@@ -3065,6 +3065,33 @@ PointlesSQL
 │   │   granular Y.Doc client + sticky notes closing deferred-160
 │   │   (174).  Each phase one commit; rc222→rc232.  ALL LOCAL
 │   │   until single final push.
+│   │
+├── Phase 178 — Canvas connection-rendering overhaul (double-init root-cause)  ✅ shipped (local, 2026-06-01)
+│   │
+│   │   User-reported: wires not smooth, gap to the node, not landing
+│   │   on the connectors, canvas not centred on open.  A Playwright
+│   │   measurement pass found the shared root cause: the canvas
+│   │   component initialised twice (Alpine auto-``init()`` plus a
+│   │   redundant ``x-init="init()"``), so two Drawflow precanvases
+│   │   lived in one container.  ``fitToView`` / zoom / the zoom
+│   │   observer all targeted ``container.querySelector('.drawflow')``
+│   │   — the empty, DOM-first one — while the real graph stayed
+│   │   unpositioned, so wires drifted off their pins and the view
+│   │   never centred.  Fix: idempotent init guard on all three
+│   │   surfaces (editor, mesh, diff) + retarget every
+│   │   ``querySelector('.drawflow')`` to the authoritative
+│   │   ``df.precanvas``.  Verified pixel-exact (measured pin↔path
+│   │   gap 0,0 on output and input).  Plus, on the same pass:
+│   │   ``installSmoothCurvature`` prototype patch in the shared
+│   │   ``_drawflow_loader`` (floored-offset cubic bézier that never
+│   │   collapses on close / stacked / backward edges; ``curvature===0``
+│   │   now renders true right-angle step routing for the orthogonal
+│   │   toggle instead of a degenerate diagonal); a per-node
+│   │   ResizeObserver so wires follow nodes that grow a schema /
+│   │   row-count body; ``fitToView`` centres the bounding box (real
+│   │   DOM rects) with a one-shot re-fit after the async bodies
+│   │   settle; a slimmer arrow-head marker; and a larger transparent
+│   │   pin grab-target.  Frontend only; rc237→rc238.  ALL LOCAL.
 │   │
 ├── Phase 177 — Canvas Quality Push (cross-surface audit close-out)  ✅ shipped (local, 2026-05-31)
 │   │

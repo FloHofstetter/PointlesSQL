@@ -69,6 +69,104 @@ function pinIndex(blockType, pinName, direction) {
   return 0;
 }
 
+// Minimum horizontal stub a wire keeps before it starts to curve, so a
+// connection always leaves the output and enters the input horizontally
+// even when the two pins sit close together, stacked vertically, or the
+// target is to the left of the source.  ``CURVE_K`` scales the control
+// offset with the span so distant nodes still bow gracefully.
+const MIN_STUB = 40;
+const CURVE_K = 0.5;
+
+/**
+ * Replace Drawflow's connection-path generator with a smoother one.
+ *
+ * Drawflow's native ``createCurvature`` offsets the bezier control points
+ * by ``|dx| * curvature`` — that magnitude collapses to nothing when two
+ * nodes are close, vertically stacked, or the target sits left of the
+ * source, leaving a kinked near-straight line.  This drop-in keeps the
+ * same method signature but floors the control offset so the wire is
+ * smooth at every geometry, and treats ``curvature === 0`` as a request
+ * for true right-angle step routing (the "Orthogonal" toolbar toggle)
+ * rather than a degenerate diagonal.
+ *
+ * Idempotent: guarded on a flag set on the constructor function object so
+ * the three surfaces that share one ``window.Drawflow`` only patch once.
+ * The patch lives on the prototype and is read live on every
+ * ``updateConnection`` / ``updateConnectionNodes`` call, so it applies to
+ * already-instantiated editors on their next path recompute.
+ *
+ * @param {Function} Drawflow - the Drawflow constructor (``window.Drawflow``).
+ */
+export function installSmoothCurvature(Drawflow) {
+  if (!Drawflow || Drawflow.__pqlSmoothCurvature) return;
+  Drawflow.__pqlSmoothCurvature = true;
+
+  Drawflow.prototype.createCurvature = function (
+    start_pos_x,
+    start_pos_y,
+    end_pos_x,
+    end_pos_y,
+    curvature_value,
+    type
+  ) {
+    const sx = start_pos_x;
+    const sy = start_pos_y;
+    const ex = end_pos_x;
+    const ey = end_pos_y;
+
+    // Orthogonal / step routing.  Only the main node-to-node connection is
+    // drawn with curvature 0 (via the toolbar toggle); reroute waypoint
+    // segments keep their own non-zero curvature and fall through to the
+    // smooth branch below.
+    const isMain = type === 'openclose' || type === undefined || type === 'default';
+    if (curvature_value === 0 && isMain) {
+      if (ex >= sx) {
+        const midX = sx + (ex - sx) / 2;
+        return ` M ${sx} ${sy} L ${midX} ${sy} L ${midX} ${ey} L ${ex} ${ey}`;
+      }
+      // Target left of source — stub out of both pins and route around via
+      // the vertical midpoint so the wire never doubles back into a node.
+      const sStub = sx + MIN_STUB;
+      const eStub = ex - MIN_STUB;
+      const midY = sy + (ey - sy) / 2;
+      return (
+        ` M ${sx} ${sy} L ${sStub} ${sy} L ${sStub} ${midY}` +
+        ` L ${eStub} ${midY} L ${eStub} ${ey} L ${ex} ${ey}`
+      );
+    }
+
+    // Smooth horizontal cubic bezier with a floored control offset.
+    const dx = ex - sx;
+    const dy = ey - sy;
+    const off = Math.max(Math.abs(dx) * CURVE_K, MIN_STUB, Math.abs(dy) * CURVE_K);
+
+    // Reroute segments preserve Drawflow's per-type control-point sign
+    // pattern (open / close / other); only the magnitude is swapped to the
+    // floored offset so reroute waypoints don't render with the old
+    // collapsing formula.
+    let hx1;
+    let hx2;
+    switch (type) {
+      case 'open':
+        hx1 = sx + off;
+        hx2 = sx >= ex ? ex + off : ex - off;
+        break;
+      case 'close':
+        hx1 = sx >= ex ? sx - off : sx + off;
+        hx2 = ex - off;
+        break;
+      case 'other':
+        hx1 = sx >= ex ? sx - off : sx + off;
+        hx2 = sx >= ex ? ex + off : ex - off;
+        break;
+      default:
+        hx1 = sx + off;
+        hx2 = ex - off;
+    }
+    return ` M ${sx} ${sy} C ${hx1} ${sy} ${hx2} ${ey} ${ex} ${ey}`;
+  };
+}
+
 /**
  * Render `doc` into a Drawflow editor instance.  Returns a map of
  * `{pqlNodeId: drawflowId}` so callers can layer per-node CSS overlays

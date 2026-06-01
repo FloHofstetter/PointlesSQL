@@ -17,6 +17,23 @@ defined in ``scripts/clusters.json``. -->
 
 ### Features
 
+- Canvas connection-rendering overhaul (rc238).  Fixed the long-standing
+  root cause behind wires that looked unsmooth, sat off the connector
+  pins, and a canvas that never centred on open: the canvas component
+  initialised twice (Alpine's automatic `init()` plus a redundant
+  `x-init="init()"`), leaving two Drawflow precanvases in one container
+  with `fitToView` / zoom targeting the empty, DOM-first one.  Added an
+  idempotent init guard on all three surfaces (DP editor, mesh, diff) and
+  retargeted every `querySelector('.drawflow')` to the authoritative
+  `df.precanvas`; wires now land pixel-exact on output and input pins.
+  On the same pass: a shared `installSmoothCurvature` Drawflow prototype
+  patch (floored-offset cubic bézier that stays smooth on close, stacked
+  and backward edges; `curvature === 0` now draws true right-angle step
+  routing for the orthogonal toggle); a per-node `ResizeObserver` so
+  wires follow nodes that grow a schema / row-count body; `fitToView`
+  centres the bounding box from live DOM rects with a one-shot re-fit
+  after async bodies settle; a slimmer directional arrow-head; and a
+  larger transparent pin grab-target.
 - Canvas Quality Push — cross-surface Phase-177 wave landing the
   27-finding audit at
   [`docs/internal/canvas-audit-2026-05-31.md`](docs/internal/canvas-audit-2026-05-31.md)

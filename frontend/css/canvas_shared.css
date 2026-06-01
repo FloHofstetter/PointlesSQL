@@ -41,6 +41,19 @@
     transform 120ms ease;
 }
 
+/* Invisible grab-padding around each 10 px socket so the user can start /
+   land a wire without pixel-hunting the dot — the visible anchor stays
+   small, the pointer target is ~26 px.  Pins are position:relative in
+   Drawflow, so a negatively-inset ::before expands the hit area without
+   shifting the dot or the computed endpoint (which reads the dot's box). */
+.pql-canvas .drawflow .input::before,
+.pql-canvas .drawflow .output::before {
+  content: '';
+  position: absolute;
+  inset: -8px;
+  border-radius: 50%;
+}
+
 .pql-canvas .drawflow .input:hover,
 .pql-canvas .drawflow .output:hover,
 .pql-canvas .drawflow-node:hover .input,

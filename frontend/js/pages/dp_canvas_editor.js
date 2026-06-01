@@ -15,10 +15,8 @@
  *   are registered by the CDN bundle loaded from ``dp_canvas_editor.html``.
  */
 
-import {
-  findNonOverlappingPosition,
-  installZoomObserver,
-} from '../dp_canvas/_canvas_helpers.js';
+import { findNonOverlappingPosition, installZoomObserver } from '../dp_canvas/_canvas_helpers.js';
+import { installSmoothCurvature } from '../dp_canvas/_drawflow_loader.js';
 
 const BLOCK_DEFS = {
   InputPort: {
@@ -228,7 +226,10 @@ function nodeHtml(blockType, nodeId) {
 }
 
 const TYPE_ICON_MAP = [
-  [/^(INT|BIGINT|SMALLINT|TINYINT|INTEGER|HUGEINT|UBIGINT|UINTEGER|USMALLINT|UTINYINT)/i, 'bi-hash'],
+  [
+    /^(INT|BIGINT|SMALLINT|TINYINT|INTEGER|HUGEINT|UBIGINT|UINTEGER|USMALLINT|UTINYINT)/i,
+    'bi-hash',
+  ],
   [/^(DOUBLE|FLOAT|REAL|DECIMAL|NUMERIC)/i, 'bi-calculator'],
   [/^(VARCHAR|TEXT|CHAR|STRING|BLOB|BIT)/i, 'bi-text-paragraph'],
   [/^(DATE|TIMESTAMP|TIME|INTERVAL)/i, 'bi-calendar3'],
@@ -252,7 +253,7 @@ function renderColsHtml(columns) {
   const rows = shown
     .map(
       (c) =>
-        `<span><i class="bi ${typeIcon(c.duckdb_type)}"></i> ${escapeHtml(c.name)} <span class="text-muted">${escapeHtml(c.duckdb_type || '')}</span></span>`,
+        `<span><i class="bi ${typeIcon(c.duckdb_type)}"></i> ${escapeHtml(c.name)} <span class="text-muted">${escapeHtml(c.duckdb_type || '')}</span></span>`
     )
     .join('');
   const more = extra > 0 ? `<span class="text-muted">+${extra} more</span>` : '';
@@ -460,6 +461,15 @@ export function dpCanvasEditor(product, ctx) {
     },
 
     async init() {
+      // Alpine auto-invokes init() on any x-data object that defines it, and
+      // the template also carries x-init="init()" — so without this guard the
+      // body runs twice, spinning up two Drawflow instances (two .drawflow
+      // precanvases in one container).  The second became this._drawflow while
+      // the first was left empty but first in the DOM, so every
+      // querySelector('.drawflow') and the fit-to-view targeted the wrong,
+      // empty canvas.
+      if (this._initialized) return;
+      this._initialized = true;
       try {
         this.focusMode = localStorage.getItem('pql.focus-mode') === '1';
         if (localStorage.getItem('pql.canvas.minimap.collapsed') === '1') {
@@ -471,7 +481,11 @@ export function dpCanvasEditor(product, ctx) {
       // Shift+F mirrors the topbar button.  Bound on the editor root
       // (not window) so the shortcut is inert outside the canvas.
       this._onFocusKey = (ev) => {
-        if (ev.shiftKey && (ev.key === 'F' || ev.key === 'f') && !ev.target.closest('input, textarea, .cm-editor')) {
+        if (
+          ev.shiftKey &&
+          (ev.key === 'F' || ev.key === 'f') &&
+          !ev.target.closest('input, textarea, .cm-editor')
+        ) {
           ev.preventDefault();
           if (typeof window.pqlToggleFocusMode === 'function') {
             this.focusMode = window.pqlToggleFocusMode();
@@ -495,6 +509,22 @@ export function dpCanvasEditor(product, ctx) {
       df.reroute = true;
       df.start();
       this._drawflow = df;
+
+      // Swap in the smooth/step connection-path generator (shared with the
+      // mesh + diff surfaces).  ``df.curvature`` is 0.5 by Drawflow default,
+      // set explicitly so the orthogonal toggle has a known value to flip
+      // back to.
+      installSmoothCurvature(window.Drawflow);
+      df.curvature = 0.5;
+
+      // One shared observer for every node box: when a node grows (async
+      // schema columns, row-count / status footer, error badge, compact
+      // toggle, late web-font), its pins move, so the connections wired to
+      // it must be recomputed or they point at the old pin position.
+      this._nodeResizeObserver =
+        typeof ResizeObserver === 'function'
+          ? new ResizeObserver(() => this._scheduleConnNodeUpdate())
+          : null;
 
       // Defensive wrap around Drawflow's internal `position()` — it throws
       // a TypeError on `data[id].pos_x` when the mousedown that set
@@ -541,7 +571,11 @@ export function dpCanvasEditor(product, ctx) {
         this._hideEdgeToolbar();
         this._syncFromDrawflow();
       });
-      df.on('nodeRemoved', () => this._syncFromDrawflow());
+      df.on('nodeCreated', (dfId) => this._observeNode(dfId));
+      df.on('nodeRemoved', (dfId) => {
+        this._unobserveNode(dfId);
+        this._syncFromDrawflow();
+      });
       df.on('nodeDataChanged', () => this._syncFromDrawflow());
 
       // Live zoom value as CSS custom property so the edge-stroke math
@@ -556,7 +590,7 @@ export function dpCanvasEditor(product, ctx) {
       // mirror the scale into ``--pql-zoom`` and call the existing
       // ``_updateZoomCssVar`` hook so output-plus + mid-toolbar still
       // reposition on every zoom step.
-      const inner = node && node.querySelector('.drawflow');
+      const inner = df.precanvas;
       this._zoomObserver = installZoomObserver(inner, node, (z) => {
         this._scheduleAllOutputPlusReposition();
         this._scheduleEdgeToolbarReposition();
@@ -655,7 +689,7 @@ export function dpCanvasEditor(product, ctx) {
           else this.multiSelectedNodeIds.push(pqlId);
           this._refreshMultiSelectStyles();
         },
-        true,
+        true
       );
 
       this._restoreBreadcrumb();
@@ -748,12 +782,21 @@ export function dpCanvasEditor(product, ctx) {
       let minY = Infinity;
       let maxX = -Infinity;
       let maxY = -Infinity;
-      for (const n of nodes) {
+      for (const [pqlId, n] of Object.entries(this.nodes)) {
         const p = n.position || { x: 100, y: 100 };
-        if (p.x < minX) minX = p.x;
-        if (p.y < minY) minY = p.y;
-        if (p.x + NODE_W > maxX) maxX = p.x + NODE_W;
-        if (p.y + NODE_H > maxY) maxY = p.y + NODE_H;
+        // Prefer the live DOM box so the fit accounts for nodes that have
+        // grown a schema/row-count body; fall back to the saved position
+        // plus a nominal size before the node has rendered.
+        const dfId = this._drawflowNodes[pqlId];
+        const el = dfId && df.container.querySelector(`#node-${dfId}`);
+        const x0 = el ? el.offsetLeft : p.x;
+        const y0 = el ? el.offsetTop : p.y;
+        const w = el ? el.offsetWidth : NODE_W;
+        const h = el ? el.offsetHeight : NODE_H;
+        if (x0 < minX) minX = x0;
+        if (y0 < minY) minY = y0;
+        if (x0 + w > maxX) maxX = x0 + w;
+        if (y0 + h > maxY) maxY = y0 + h;
       }
       const spanX = Math.max(maxX - minX, 1);
       const spanY = Math.max(maxY - minY, 1);
@@ -762,12 +805,21 @@ export function dpCanvasEditor(product, ctx) {
       const fitH = Math.max(rect.height - PAD * 2, 100);
       const zoom = Math.min(fitW / spanX, fitH / spanY, 1);
       df.zoom = zoom;
-      df.canvas_x = -minX * zoom + PAD;
-      df.canvas_y = -minY * zoom + PAD;
-      const precanvas = df.container.querySelector('.drawflow');
+      // Centre the graph's bounding box in the viewport rather than pinning it
+      // to the top-left corner — a small DAG should sit in the middle of the
+      // canvas, not hug the palette edge.
+      df.canvas_x = (rect.width - spanX * zoom) / 2 - minX * zoom;
+      df.canvas_y = (rect.height - spanY * zoom) / 2 - minY * zoom;
+      const precanvas = df.precanvas;
       if (precanvas) {
         precanvas.style.transform = `translate(${df.canvas_x}px, ${df.canvas_y}px) scale(${zoom})`;
       }
+      // Drawflow computes connection endpoints in a zoom-dependent basis, so
+      // changing df.zoom without recomputing leaves every wire pinned to its
+      // pre-fit coordinates (the connections float away from their nodes).
+      // CSS-transform changes don't trip the node ResizeObserver, so sweep
+      // explicitly here.
+      this._scheduleConnNodeUpdate();
       this._scheduleMinimapRender();
     },
 
@@ -828,6 +880,12 @@ export function dpCanvasEditor(product, ctx) {
       this._scheduleDecorateAllConnections();
       this.$nextTick(() => {
         for (const pqlId of Object.keys(this.nodes)) this._renderOutputPlus(pqlId);
+        // Loaded nodes are observed via the nodeCreated event, but run one
+        // explicit observe + connection sweep here too: it catches any
+        // layout settle (web-font swap, scrollbar) between addNode and the
+        // first paint, and re-renders existing edges with the patched path.
+        for (const dfId of Object.values(this._drawflowNodes)) this._observeNode(dfId);
+        this._scheduleConnNodeUpdate();
       });
     },
 
@@ -1001,9 +1059,22 @@ export function dpCanvasEditor(product, ctx) {
         if (footerEl) {
           footerEl.innerHTML = renderFooterHtml(
             this.previewRowCountByNode[pqlId],
-            this._statusFor(pqlId),
+            this._statusFor(pqlId)
           );
         }
+      }
+      // The innerHTML rewrites above change node heights → pins move.  The
+      // shared ResizeObserver will catch it, but redraw synchronously too so
+      // a programmatic screenshot taken on the next tick already shows the
+      // wires landing on the new pin positions.
+      this._scheduleConnNodeUpdate();
+      // The initial fit ran before the async schema bodies arrived, so the
+      // graph's real height was unknown.  Re-fit exactly once now that the
+      // bodies have content — then never again, so the view never jumps out
+      // from under the user mid-edit.
+      if (this._initialFitDone && !this._refitAfterBodies) {
+        this._refitAfterBodies = true;
+        this.$nextTick(() => this.fitToView());
       }
     },
 
@@ -1033,9 +1104,7 @@ export function dpCanvasEditor(product, ctx) {
       if (!q) return all.slice(0, 20);
       return all
         .filter(
-          (n) =>
-            n.block_type.toLowerCase().includes(q) ||
-            (n.id || '').toLowerCase().includes(q),
+          (n) => n.block_type.toLowerCase().includes(q) || (n.id || '').toLowerCase().includes(q)
         )
         .slice(0, 20);
     },
@@ -1043,8 +1112,7 @@ export function dpCanvasEditor(product, ctx) {
     searchNavigate(direction) {
       const matches = this.searchMatches();
       if (matches.length === 0) return;
-      this.searchCursor =
-        (this.searchCursor + direction + matches.length) % matches.length;
+      this.searchCursor = (this.searchCursor + direction + matches.length) % matches.length;
     },
 
     searchSelectMatch() {
@@ -1059,7 +1127,7 @@ export function dpCanvasEditor(product, ctx) {
         const containerRect = df.container.getBoundingClientRect();
         df.canvas_x = -pos.x * df.zoom + containerRect.width / 2;
         df.canvas_y = -pos.y * df.zoom + containerRect.height / 2;
-        const precanvas = df.container.querySelector('.drawflow');
+        const precanvas = df.precanvas;
         if (precanvas) {
           precanvas.style.transform = `translate(${df.canvas_x}px, ${df.canvas_y}px) scale(${df.zoom})`;
         }
@@ -1099,8 +1167,7 @@ export function dpCanvasEditor(product, ctx) {
       const PAD = 6;
       const nodes = Object.values(this.nodes);
       if (nodes.length === 0) {
-        host.innerHTML =
-          `<svg width="${W}" height="${H}"><rect width="${W}" height="${H}" fill="var(--bs-tertiary-bg)" stroke="var(--bs-border-color)" /></svg>`;
+        host.innerHTML = `<svg width="${W}" height="${H}"><rect width="${W}" height="${H}" fill="var(--bs-tertiary-bg)" stroke="var(--bs-border-color)" /></svg>`;
         return;
       }
       let minX = Infinity;
@@ -1128,10 +1195,7 @@ export function dpCanvasEditor(product, ctx) {
           const y = PAD + (p.y - minY) * scale;
           const w = NODE_W * scale;
           const h = NODE_H * scale;
-          const fill =
-            n.id === this.selectedNodeId
-              ? 'var(--bs-primary)'
-              : 'var(--bs-secondary)';
+          const fill = n.id === this.selectedNodeId ? 'var(--bs-primary)' : 'var(--bs-secondary)';
           return `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}" fill="${fill}" />`;
         })
         .join('');
@@ -1192,7 +1256,7 @@ export function dpCanvasEditor(product, ctx) {
           position: { ...(n.position || { x: 100, y: 100 }) },
         }));
       const removedEdges = Object.values(this.edges).filter(
-        (e) => set.has(e.source_node_id) || set.has(e.target_node_id),
+        (e) => set.has(e.source_node_id) || set.has(e.target_node_id)
       );
       this._suppressAutosave = true;
       for (const pqlId of ids) {
@@ -1228,7 +1292,7 @@ export function dpCanvasEditor(product, ctx) {
               n.block_type,
               { pql_node_id: n.id, block_type: n.block_type },
               nodeHtml(n.block_type, n.id),
-              false,
+              false
             );
             this._drawflowNodes[n.id] = dfId;
             this.nodes[n.id] = { ...n };
@@ -1240,7 +1304,7 @@ export function dpCanvasEditor(product, ctx) {
             const targetIdx = this._pinIndex(
               this.nodes[e.target_node_id]?.block_type,
               e.target_pin,
-              'in',
+              'in'
             );
             try {
               this._drawflow.addConnection(sd, td, 'output_1', `input_${targetIdx + 1}`);
@@ -1274,7 +1338,7 @@ export function dpCanvasEditor(product, ctx) {
           position: { ...(n.position || { x: 100, y: 100 }) },
         }));
       const edges = Object.values(this.edges).filter(
-        (e) => set.has(e.source_node_id) && set.has(e.target_node_id),
+        (e) => set.has(e.source_node_id) && set.has(e.target_node_id)
       );
       const payload = { kind: 'pql-canvas-clipboard', version: 1, nodes, edges };
       try {
@@ -1317,7 +1381,7 @@ export function dpCanvasEditor(product, ctx) {
           n.block_type,
           { pql_node_id: newId, block_type: n.block_type },
           nodeHtml(n.block_type, newId),
-          false,
+          false
         );
         this._drawflowNodes[newId] = dfId;
         this.nodes[newId] = {
@@ -1391,7 +1455,10 @@ export function dpCanvasEditor(product, ctx) {
           height: 100,
         })),
         ...this.annotations.map((a) => ({
-          x: a.x, y: a.y, width: a.width || 220, height: a.height || 120,
+          x: a.x,
+          y: a.y,
+          width: a.width || 220,
+          height: a.height || 120,
         })),
       ];
       const placed = findNonOverlappingPosition({ x: cx, y: cy }, noteSize, obstacles);
@@ -1583,11 +1650,59 @@ export function dpCanvasEditor(product, ctx) {
         const srcDf = this._drawflowNodes[edge.source_node_id];
         const tgtDf = this._drawflowNodes[edge.target_node_id];
         if (!srcDf || !tgtDf) continue;
-        const sel =
-          `.drawflow .connection.node_in_node-${tgtDf}` +
-          `.node_out_node-${srcDf}`;
+        const sel = `.drawflow .connection.node_in_node-${tgtDf}` + `.node_out_node-${srcDf}`;
         const els = df.container.querySelectorAll(sel);
         for (const el of els) el.classList.add(`pql-edge-${cat}`);
+      }
+    },
+
+    // ---------------------------------------------------------------------
+    // Node-resize → connection-redraw.  Drawflow computes each connection's
+    // endpoints from the live pin DOM position, but only recomputes them on
+    // nodeMoved.  When a node's height changes (async schema columns, the
+    // row-count / status footer, an error badge, the compact toggle) its
+    // pins shift and the wires would point at the stale position.  A shared
+    // ResizeObserver re-runs updateConnectionNodes for every node that
+    // resizes, batched into one event-loop turn.
+    // ---------------------------------------------------------------------
+
+    _observeNode(dfId) {
+      if (!this._nodeResizeObserver) return;
+      const el = this._drawflow?.container.querySelector(`#node-${dfId}`);
+      if (el) this._nodeResizeObserver.observe(el);
+    },
+
+    _unobserveNode(dfId) {
+      if (!this._nodeResizeObserver) return;
+      const el = this._drawflow?.container.querySelector(`#node-${dfId}`);
+      if (el) this._nodeResizeObserver.unobserve(el);
+    },
+
+    _scheduleConnNodeUpdate() {
+      if (this._connNodeRaf) return;
+      // setTimeout(0), not rAF — same reason as the decoration batch: rAF is
+      // throttled in background tabs / headless Playwright and would leave
+      // edges pointing at stale pins.
+      this._connNodeRaf = window.setTimeout(() => {
+        this._connNodeRaf = null;
+        this._flushConnNodeUpdate();
+      }, 0);
+    },
+
+    _flushConnNodeUpdate() {
+      const df = this._drawflow;
+      if (!df) return;
+      // updateConnectionNodes emits nodeMoved internally for every connected
+      // node, which would cascade into autosave + minimap; this is a
+      // visual-only redraw, so suppress autosave around it.
+      const wasSuppressed = this._suppressAutosave;
+      this._suppressAutosave = true;
+      try {
+        for (const dfId of Object.values(this._drawflowNodes)) {
+          df.updateConnectionNodes('node-' + dfId);
+        }
+      } finally {
+        this._suppressAutosave = wasSuppressed;
       }
     },
 
@@ -1820,7 +1935,7 @@ export function dpCanvasEditor(product, ctx) {
       const targetIdx = this._pinIndex(
         this.nodes[edge.target_node_id]?.block_type,
         edge.target_pin,
-        'in',
+        'in'
       );
       const outClass = 'output_1';
       const inClass = `input_${targetIdx + 1}`;
@@ -1912,7 +2027,7 @@ export function dpCanvasEditor(product, ctx) {
         const tgtIdx = this._pinIndex(
           this.nodes[insertCtx.tgtPqlId]?.block_type,
           insertCtx.targetPin,
-          'in',
+          'in'
         );
         const origIn = `input_${tgtIdx + 1}`;
         try {
@@ -1931,7 +2046,7 @@ export function dpCanvasEditor(product, ctx) {
           kind,
           { pql_node_id: newPqlId, block_type: kind },
           nodeHtml(kind, newPqlId),
-          false,
+          false
         );
         this._drawflowNodes[newPqlId] = newDf;
         this.nodes[newPqlId] = {
@@ -1945,7 +2060,10 @@ export function dpCanvasEditor(product, ctx) {
         } catch (_e) {
           // Skip.
         }
-        if ((def.outputs || 0) > 0 && (BLOCK_DEFS[this.nodes[insertCtx.tgtPqlId]?.block_type]?.inputs || 0) > 0) {
+        if (
+          (def.outputs || 0) > 0 &&
+          (BLOCK_DEFS[this.nodes[insertCtx.tgtPqlId]?.block_type]?.inputs || 0) > 0
+        ) {
           try {
             this._drawflow.addConnection(newDf, tgtDf, 'output_1', origIn);
           } catch (_e) {
@@ -1980,7 +2098,7 @@ export function dpCanvasEditor(product, ctx) {
         kind,
         { pql_node_id: newPqlId, block_type: kind },
         nodeHtml(kind, newPqlId),
-        false,
+        false
       );
       this._drawflowNodes[newPqlId] = newDf;
       this.nodes[newPqlId] = {
@@ -2067,7 +2185,8 @@ export function dpCanvasEditor(product, ctx) {
       if (!dfNodeEl) return;
       // One handle per output pin.
       for (let i = 1; i <= (def.outputs || 0); i++) {
-        const pinEl = dfNodeEl.querySelector(`.outputs .output_${i}`) ||
+        const pinEl =
+          dfNodeEl.querySelector(`.outputs .output_${i}`) ||
           dfNodeEl.querySelector(`.outputs .output:nth-child(${i})`);
         if (!pinEl) continue;
         const key = `${pqlId}:${i}`;
@@ -2089,9 +2208,7 @@ export function dpCanvasEditor(product, ctx) {
         // visually overlaps the handle and the dual-affordance reads
         // as ambiguous.  Every block in the catalogue exposes a single
         // ``out`` pin per output slot so a same-source check suffices.
-        const hasOutgoing = Object.values(this.edges).some(
-          (e) => e.source_node_id === pqlId,
-        );
+        const hasOutgoing = Object.values(this.edges).some((e) => e.source_node_id === pqlId);
         handle.style.display = hasOutgoing ? 'none' : '';
         this._positionOutputPlus(handle, pinEl, stage);
       }
@@ -2128,7 +2245,8 @@ export function dpCanvasEditor(product, ctx) {
         const key = `${pqlId}:${i}`;
         const handle = this._outputPlusElements.get(key);
         if (!handle) continue;
-        const pinEl = dfNodeEl.querySelector(`.outputs .output_${i}`) ||
+        const pinEl =
+          dfNodeEl.querySelector(`.outputs .output_${i}`) ||
           dfNodeEl.querySelector(`.outputs .output:nth-child(${i})`);
         if (!pinEl) continue;
         this._positionOutputPlus(handle, pinEl, stage);
@@ -2154,7 +2272,8 @@ export function dpCanvasEditor(product, ctx) {
           const dfNodeEl = df.container.querySelector(`#node-${dfId}`);
           if (!dfNodeEl) continue;
           const i = parseInt(idxStr, 10);
-          const pinEl = dfNodeEl.querySelector(`.outputs .output_${i}`) ||
+          const pinEl =
+            dfNodeEl.querySelector(`.outputs .output_${i}`) ||
             dfNodeEl.querySelector(`.outputs .output:nth-child(${i})`);
           if (!pinEl) continue;
           this._positionOutputPlus(handle, pinEl, stage);
@@ -2259,7 +2378,7 @@ export function dpCanvasEditor(product, ctx) {
             kind,
             { pql_node_id: pqlId, block_type: kind },
             nodeHtml(kind, pqlId),
-            false,
+            false
           );
           this._drawflowNodes[pqlId] = dfId2;
           this.nodes[pqlId] = {
@@ -2292,7 +2411,7 @@ export function dpCanvasEditor(product, ctx) {
           }
         : null;
       const snapshotEdges = Object.values(this.edges).filter(
-        (e) => e.source_node_id === pqlId || e.target_node_id === pqlId,
+        (e) => e.source_node_id === pqlId || e.target_node_id === pqlId
       );
       const dfId = this._drawflowNodes[pqlId];
       if (dfId) this._drawflow.removeNodeId('node-' + dfId);
@@ -2322,7 +2441,7 @@ export function dpCanvasEditor(product, ctx) {
               snapshotNode.block_type,
               { pql_node_id: pqlId, block_type: snapshotNode.block_type },
               nodeHtml(snapshotNode.block_type, pqlId),
-              false,
+              false
             );
             this._drawflowNodes[pqlId] = nDf;
             this.nodes[pqlId] = { ...snapshotNode };
@@ -2333,7 +2452,7 @@ export function dpCanvasEditor(product, ctx) {
               const targetIdx = this._pinIndex(
                 this.nodes[e.target_node_id]?.block_type,
                 e.target_pin,
-                'in',
+                'in'
               );
               try {
                 this._drawflow.addConnection(sd, td, 'output_1', `input_${targetIdx + 1}`);

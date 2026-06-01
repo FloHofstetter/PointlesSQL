@@ -1,4 +1,5 @@
 import { installZoomObserver } from '../dp_canvas/_canvas_helpers.js';
+import { installSmoothCurvature } from '../dp_canvas/_drawflow_loader.js';
 
 /*
  * Mesh-canvas editor — Alpine factory.
@@ -26,7 +27,7 @@ function meshNodeHtml(node) {
   return `
     <div class="pql-node-header${isGhost ? ' pql-mesh-ghost-header' : ''}">
       <i class="bi bi-box-seam me-1"></i>
-      <span>${node.ref || ('dp ' + node.dp_id)}</span>
+      <span>${node.ref || 'dp ' + node.dp_id}</span>
       ${wsBadge}
     </div>
     <div class="pql-node-body">
@@ -70,6 +71,11 @@ export function meshCanvasEditor() {
     _suppress: false,
 
     async init() {
+      // Alpine auto-invokes init() and the template also carries
+      // x-init="init()"; guard against the double-run so we don't spin up two
+      // Drawflow instances (two .drawflow precanvases) in one container.
+      if (this._initialized) return;
+      this._initialized = true;
       try {
         this.focusMode = localStorage.getItem('pql.focus-mode') === '1';
         this.bannerDismissed = localStorage.getItem('pql.mesh.banner.dismissed') === '1';
@@ -77,7 +83,11 @@ export function meshCanvasEditor() {
         this.focusMode = false;
       }
       window.addEventListener('keydown', (ev) => {
-        if (ev.shiftKey && (ev.key === 'F' || ev.key === 'f') && !ev.target.closest('input, textarea')) {
+        if (
+          ev.shiftKey &&
+          (ev.key === 'F' || ev.key === 'f') &&
+          !ev.target.closest('input, textarea')
+        ) {
           ev.preventDefault();
           if (typeof window.pqlToggleFocusMode === 'function') {
             this.focusMode = window.pqlToggleFocusMode();
@@ -98,6 +108,11 @@ export function meshCanvasEditor() {
       df.start();
       this._drawflow = df;
 
+      // Same smooth/step connection paths as the DP editor (shared, single
+      // idempotent prototype patch across all Drawflow surfaces).
+      installSmoothCurvature(window.Drawflow);
+      df.curvature = 0.5;
+
       df.on('connectionCreated', () => {
         this._syncEdges();
         this._scheduleDecorate();
@@ -106,7 +121,7 @@ export function meshCanvasEditor() {
       df.on('nodeMoved', () => this._scheduleDecorate());
 
       // Zoom-compensated stroke math (same hook DP-Canvas uses).
-      const inner = this.$refs.canvas.querySelector('.drawflow');
+      const inner = df.precanvas;
       this._zoomObserver = installZoomObserver(inner, this.$refs.canvas);
 
       // Right-click on canvas background opens the context menu.
@@ -165,10 +180,9 @@ export function meshCanvasEditor() {
       this.pickerStage = 'dp';
       this.pickerLoading = true;
       this.pickerError = null;
-      const res = await window.pqlApi.fetch(
-        `/api/mesh/canvas/picker/${encodeURIComponent(slug)}`,
-        { silent: true },
-      );
+      const res = await window.pqlApi.fetch(`/api/mesh/canvas/picker/${encodeURIComponent(slug)}`, {
+        silent: true,
+      });
       this.pickerLoading = false;
       if (!res.ok) {
         this.pickerError = res.error || 'Failed to load DPs';
@@ -209,8 +223,7 @@ export function meshCanvasEditor() {
       const targets = computeLayout(nodes, edges, { rankdir: 'TB' });
       // Map back to drawflow ids; current positions read from drawflow state.
       const raw = this._drawflow.export();
-      const dfData =
-        (raw && raw.drawflow && raw.drawflow.Home && raw.drawflow.Home.data) || {};
+      const dfData = (raw && raw.drawflow && raw.drawflow.Home && raw.drawflow.Home.data) || {};
       const drawflowIdByPqlId = {};
       const currentPos = {};
       for (const n of this.document.nodes || []) {
@@ -325,7 +338,7 @@ export function meshCanvasEditor() {
           'dp_' + node.dp_id,
           { dp_id: node.dp_id, ref: node.ref },
           meshNodeHtml(node),
-          false,
+          false
         );
         this._dfIdByDpId[node.dp_id] = dfId;
       });
