@@ -50,3 +50,16 @@ phase (rather than 20+ per-phase edits); this log is the per-phase record in the
   Full coverage of schema-name layer inference + bronze/silver/gold checks and the
   None/unknown-layer short-circuits. Pure functions, no DB.
 - Committed.
+
+### Phase 3 — pql time-travel + sql-statements retention (suite 4192→4206, +14)
+- `tests/test_pql_time_travel.py` (+9): `pql/_time_travel.py` was 0%. Monkeypatches the
+  catalog lookup + `deltalake.DeltaTable`; covers storage-location resolution (found /
+  two-part-name / missing-table / no-location / connect-error), version + timestamp reads,
+  delta-error propagation, and the naive-datetime guard. (Audit row self-skips with no
+  `POINTLESSQL_AGENT_RUN_ID`, so no DB.)
+- `tests/test_sql_statements_retention.py` (+5): `services/sql_statements/_retention.py` was
+  38%. Window prune by `submitted_at`, zero/negative-retention no-ops, idempotent executor
+  registration that preserves an existing registry.
+- Noted in passing: `external_write_scanner.py:65` uses parens-free multi-exception `except`
+  (PEP 758, valid on the project's Python 3.14) — looked like a Py2 bug but imports fine.
+- Committed.
