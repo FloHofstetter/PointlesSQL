@@ -13,8 +13,10 @@ inside the package.
 from __future__ import annotations
 
 import json
+import logging
 from typing import Any
 
+from pydantic import ValidationError as PydanticValidationError
 from sqlalchemy import select
 
 from pointlessql.data_products import DataProductContract
@@ -25,6 +27,40 @@ from pointlessql.models.auth import User
 from pointlessql.models.catalog._data_products import DataProduct
 from pointlessql.models.catalog._domains import Domain
 from pointlessql.types._user_types import UserInfo
+
+logger = logging.getLogger(__name__)
+
+
+def _parse_contract(row: DataProduct) -> DataProductContract:
+    """Parse a product's stored contract, tolerating an empty/corrupt one.
+
+    A product's ``contract_json`` is authored separately (the YAML
+    contract loader writes it) and may legitimately be empty — e.g. a
+    product registered before its contract was committed, or a demo /
+    smoke-test fixture seeded with ``"{}"``.  A strict parse would 500
+    the whole detail page in that case; instead we fall back to a
+    minimal contract reconstructed from the row's own columns, which
+    already carry name / version / catalog / schema / description.
+    """
+    try:
+        raw = json.loads(row.contract_json) if row.contract_json else {}
+        return DataProductContract.model_validate(raw)
+    except (json.JSONDecodeError, PydanticValidationError):
+        logger.warning(
+            "data product %s.%s has an empty or invalid contract_json; "
+            "falling back to row-derived contract",
+            row.catalog_name,
+            row.schema_name,
+        )
+        return DataProductContract.model_validate(
+            {
+                "name": row.schema_name,
+                "version": row.version,
+                "description": row.description or "",
+                "catalog": row.catalog_name,
+                "schema": row.schema_name,
+            }
+        )
 
 
 def serialise_product(
@@ -163,7 +199,7 @@ def load_one(
         ).scalar_one_or_none()
         if row is None:
             raise ResourceNotFoundError(f"data product {catalog}.{schema!r} not found")
-        contract = DataProductContract.model_validate(json.loads(row.contract_json))
+        contract = _parse_contract(row)
         if row.steward_user_id is not None:
             user = session.get(User, row.steward_user_id)
             steward_email = user.email if user else None

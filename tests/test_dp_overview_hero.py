@@ -220,3 +220,38 @@ async def test_dp_page_renders_hero_blocks(
     assert "pql-dp-releases" in body
     assert "pql-dp-heatmap" in body
     assert "pql-dp-forks" in body
+
+
+async def test_dp_page_renders_with_empty_contract(
+    admin_client: httpx.AsyncClient,
+) -> None:
+    """An empty/invalid contract_json must not 500 the detail page.
+
+    Products can be registered before their YAML contract is committed
+    (and demo / smoke fixtures seed ``"{}"``); the page falls back to a
+    contract reconstructed from the row instead of crashing.
+    """
+    factory = app.state.session_factory
+    now = datetime.datetime.now(datetime.UTC)
+    with factory() as session:
+        dp = DataProduct(
+            workspace_id=1,
+            catalog_name="main",
+            schema_name="demo",
+            version="2.3.0",
+            description="no contract yet",
+            sla_minutes=60,
+            contract_yaml_hash="x" * 64,
+            contract_json="{}",
+            last_loaded_at=now,
+            created_at=now,
+        )
+        session.add(dp)
+        session.commit()
+
+    res = await admin_client.get("/data-products/main/demo")
+    assert res.status_code == 200, res.text
+    body = res.text
+    assert "pql-dp-health-hero" in body
+    # Row-derived fallback surfaces the row's own version.
+    assert "2.3.0" in body

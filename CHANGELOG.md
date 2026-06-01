@@ -221,6 +221,15 @@ defined in ``scripts/clusters.json``. -->
 
 ### Fixes
 
+- Data-product detail page no longer 500s when a product's stored
+  contract is empty or invalid (rc251). Products registered before their
+  YAML contract is committed — and demo / smoke fixtures seeded with
+  `"{}"` — used to crash the detail page with a strict
+  `DataProductContract` validation error; the loader now falls back to a
+  contract reconstructed from the row's own columns (name / version /
+  catalog / schema / description), matching the defensive parse the
+  compliance and point-in-time services already used.
+
 - Canvas bug-fix sweep after the Mega-Cluster 165-174 browser-
   replay (rc233).  A Playwright-MCP walk surfaced 12 bugs across
   the three canvas surfaces; this sweep closes them all in one
