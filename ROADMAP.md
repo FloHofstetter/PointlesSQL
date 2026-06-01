@@ -3066,7 +3066,25 @@ PointlesSQL
 │   │   (174).  Each phase one commit; rc222→rc232.  ALL LOCAL
 │   │   until single final push.
 │   │
-├── Fan-out / Multi-Sink Cluster — Phasen 186–188  ⏳ in progress (local, 2026-06-01)
+├── Phase 188 — Echte Write-Modes (merge / append)  ✅ shipped (local, 2026-06-01)
+│   │
+│   │   Schließt den latenten Bug, dass der Executor ``mode='merge'`` still
+│   │   auf ``overwrite`` abbildete, obwohl die UI Merge + Merge-Keys anbot.
+│   │   Neuer ``_write_arrow_to_target``-Helper wendet ``mode`` je Sink korrekt
+│   │   an: ``overwrite`` / ``append`` → ``write_deltalake``; ``merge`` → echtes
+│   │   Delta ``MERGE INTO`` auf den ``merge_on``-Keys
+│   │   (``when_matched_update_all`` + ``when_not_matched_insert_all``),
+│   │   ``rows_written`` = inserted + updated aus den Merge-Metriken.  Beim
+│   │   *ersten* Materialisieren eines Merge-Sinks existiert die Ziel-Tabelle
+│   │   noch nicht — dann degeneriert Merge ohnehin zu Insert-all, also
+│   │   seedet der Helper per ``overwrite``-Create und upsertet erst ab dem
+│   │   zweiten Lauf.  ``merge_on`` fließt über ``SinkSpec`` durch; der
+│   │   Compiler erzwingt es weiterhin bei ``mode='merge'`` (``bad_config``).
+│   │   Drei neue pytest mit echtem Delta (append akkumuliert, merge upsertet
+│   │   matched+inserted, merge-on required); volle Suite 4132/0/10.
+│   │   Backend-only; rc249→rc250.  ALL LOCAL.  Cluster 186–188 komplett.
+│   │
+├── Fan-out / Multi-Sink Cluster — Phasen 186–188  ✅ shipped (local, 2026-06-01)
 │   │   "Aus einer Quelle zwei Tabellen": ein Datenprodukt darf mehrere
 │   │   OutputPort-Blöcke (= mehrere UC-Output-Ports) tragen.  Zwischen-
 │   │   Fan-out (ein Output → mehrere Ketten) war im Compiler schon frei;

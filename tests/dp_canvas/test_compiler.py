@@ -123,6 +123,22 @@ def test_fanout_one_source_two_chains() -> None:
     assert fragment.referenced_tables == ["main.s.src"]
 
 
+def test_merge_mode_requires_merge_on() -> None:
+    doc = CanvasDoc(
+        nodes=[
+            node("inp", "InputPort", {"table_fqn": "c.s.t"}),
+            node(
+                "out",
+                "OutputPort",
+                {"port_name": "p", "materialized_table": "c.s.x", "mode": "merge"},
+            ),
+        ],
+        edges=[edge("e", "inp", "out", "out", "in")],
+    )
+    _, errors = compile_canvas(doc)
+    assert any(e.kind == "bad_config" for e in errors)
+
+
 def test_simple_chain_compiles() -> None:
     doc = linear_doc("main.sales.src", "main.sales.tgt", predicate="amount > 0")
     fragment, errors = compile_canvas(doc)

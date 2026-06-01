@@ -403,6 +403,49 @@ class _PreparedSink:
         self.target_was_new = target_was_new
 
 
+def _write_arrow_to_target(
+    deltalake: Any,
+    *,
+    location: str,
+    arrow_table: Any,
+    mode: str,
+    merge_on: list[str],
+    target_is_new: bool,
+) -> int:
+    """Write *arrow_table* to the Delta *location* honouring *mode*.
+
+    ``overwrite`` / ``append`` map straight to ``write_deltalake``.
+    ``merge`` performs a Delta ``MERGE INTO`` on the ``merge_on`` keys
+    (matched rows updated, unmatched inserted) — except on the very first
+    materialise of a sink, when the target table does not exist yet: there
+    merge degenerates to an insert-all, so we seed it with an
+    ``overwrite`` create instead and upsert on subsequent runs.
+
+    Returns the number of rows written / affected.
+    """
+    if mode == "merge" and not target_is_new:
+        predicate = " AND ".join(f"t.{key} = s.{key}" for key in merge_on)
+        table = deltalake.DeltaTable(location)
+        metrics = (
+            table.merge(
+                source=arrow_table,
+                predicate=predicate,
+                source_alias="s",
+                target_alias="t",
+            )
+            .when_matched_update_all()
+            .when_not_matched_insert_all()
+            .execute()
+        )
+        inserted = int(metrics.get("num_target_rows_inserted", 0))
+        updated = int(metrics.get("num_target_rows_updated", 0))
+        return inserted + updated
+
+    deltalake_mode = "append" if mode == "append" else "overwrite"
+    deltalake.write_deltalake(location, arrow_table, mode=deltalake_mode)
+    return int(arrow_table.num_rows)
+
+
 def _materialise_sink(
     ps: _PreparedSink,
     *,
@@ -438,9 +481,14 @@ def _materialise_sink(
             target_table=sink.target_fqn,
         ) as recorder:
             arrow_table = conn.execute(ps.rewritten_sql).to_arrow_table()
-            deltalake_mode: Any = "overwrite" if sink.mode in {"overwrite", "merge"} else "append"
-            deltalake.write_deltalake(ps.target_location, arrow_table, mode=deltalake_mode)
-            rows_written = arrow_table.num_rows
+            rows_written = _write_arrow_to_target(
+                deltalake,
+                location=ps.target_location,
+                arrow_table=arrow_table,
+                mode=sink.mode,
+                merge_on=sink.merge_on,
+                target_is_new=ps.target_was_new,
+            )
             recorder.rows_affected = rows_written
         arrow_columns = _arrow_columns_info(arrow_table)
         if ps.target_was_new:

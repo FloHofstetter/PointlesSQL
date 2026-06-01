@@ -17,6 +17,13 @@ defined in ``scripts/clusters.json``. -->
 
 ### Features
 
+- Canvas write modes (rc250) — `OutputPort.mode = "merge"` now performs a real
+  Delta `MERGE INTO` on the configured merge-keys (matched rows updated,
+  unmatched inserted) instead of silently overwriting; `append` and
+  `overwrite` are unchanged. The first materialise of a merge sink, when the
+  target table does not exist yet, seeds it with an overwrite-create and
+  upserts on subsequent runs.
+
 - Multi-sink canvas (rc248+) — a data-product canvas may now carry more than
   one `OutputPort` block, materialising to several Delta tables / UC output
   ports from one shared CTE chain (the idiomatic "two tables from one source"

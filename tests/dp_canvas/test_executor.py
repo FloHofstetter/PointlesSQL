@@ -222,6 +222,75 @@ def test_two_input_join_materialises(tmp_path, factory, monkeypatch) -> None:
     assert set(written.columns) >= {"id", "v_l", "v_r"}
 
 
+# ---------------------------------------------------------- write modes
+
+
+def _passthrough_doc(src_fqn: str, tgt_fqn: str, *, mode: str, merge_on=None) -> CanvasDoc:
+    """InputPort → OutputPort with the given write mode (no transform)."""
+    cfg: dict[str, Any] = {"port_name": "p", "materialized_table": tgt_fqn, "mode": mode}
+    if merge_on is not None:
+        cfg["merge_on"] = merge_on
+    return CanvasDoc(
+        nodes=[
+            node("inp", "InputPort", {"table_fqn": src_fqn}),
+            node("out", "OutputPort", cfg),
+        ],
+        edges=[edge("e", "inp", "out", "out", "in")],
+    )
+
+
+def test_materialize_append_adds_rows(tmp_path, factory, monkeypatch) -> None:
+    dp_id = _seed_data_product(factory, schema_name="ex_append")
+    src_path = _seed_source_delta(tmp_path, name="src_append", rows=pd.DataFrame({"id": [1, 2]}))
+    target_root = str(tmp_path / "append_root")
+    _install_soyuz_patches(
+        monkeypatch,
+        source_paths={"main.ex_append.src": src_path},
+        target_schema_root=target_root,
+    )
+    doc = _passthrough_doc("main.ex_append.src", "main.ex_append.tgt", mode="append")
+    r1 = execute_canvas(factory, doc=doc, data_product_id=dp_id, soyuz_client=MagicMock())
+    assert r1.sinks[0].status == "ok"
+    assert r1.sinks[0].rows_written == 2
+    r2 = execute_canvas(factory, doc=doc, data_product_id=dp_id, soyuz_client=MagicMock())
+    assert r2.sinks[0].rows_written == 2
+    final = deltalake.DeltaTable(f"{target_root}/tgt").to_pandas()
+    assert len(final) == 4
+
+
+def test_materialize_merge_upserts(tmp_path, factory, monkeypatch) -> None:
+    dp_id = _seed_data_product(factory, schema_name="ex_merge")
+    src_path = _seed_source_delta(
+        tmp_path, name="src_merge", rows=pd.DataFrame({"id": [1, 2, 3], "amt": [10, 20, 30]})
+    )
+    target_root = str(tmp_path / "merge_root")
+    # Mutable source-path map: after the first run we register the target so
+    # _register_target_if_new reports it as existing (target_was_new=False),
+    # which routes the second run through the real MERGE INTO path.
+    src_paths = {"main.ex_merge.src": src_path}
+    _install_soyuz_patches(monkeypatch, source_paths=src_paths, target_schema_root=target_root)
+    doc = _passthrough_doc("main.ex_merge.src", "main.ex_merge.tgt", mode="merge", merge_on=["id"])
+
+    r1 = execute_canvas(factory, doc=doc, data_product_id=dp_id, soyuz_client=MagicMock())
+    assert r1.sinks[0].status == "ok"
+    seeded = deltalake.DeltaTable(f"{target_root}/tgt").to_pandas()
+    assert sorted(seeded["id"].tolist()) == [1, 2, 3]  # first run seeds via overwrite
+
+    src_paths["main.ex_merge.tgt"] = f"{target_root}/tgt"  # target now "exists"
+    deltalake.write_deltalake(
+        src_path, pd.DataFrame({"id": [2, 4], "amt": [999, 40]}), mode="overwrite"
+    )
+    r2 = execute_canvas(factory, doc=doc, data_product_id=dp_id, soyuz_client=MagicMock())
+    assert r2.sinks[0].status == "ok"
+    assert r2.sinks[0].rows_written == 2  # 1 updated (id=2) + 1 inserted (id=4)
+
+    merged = deltalake.DeltaTable(f"{target_root}/tgt").to_pandas().set_index("id")
+    assert sorted(merged.index.tolist()) == [1, 2, 3, 4]
+    assert merged.loc[2, "amt"] == 999  # matched row updated
+    assert merged.loc[4, "amt"] == 40  # unmatched row inserted
+    assert merged.loc[1, "amt"] == 10  # untouched row preserved
+
+
 # ---------------------------------------------------------- error paths
 
 
