@@ -3419,11 +3419,13 @@ export function dpCanvasEditor(product, ctx) {
       this.materializeResult = null;
       this.materializeError = null;
       this.materializePreview = null;
-      const outputNode = Object.values(this.nodes).find((n) => n.block_type === 'OutputPort');
+      const outputNodes = Object.values(this.nodes).filter((n) => n.block_type === 'OutputPort');
       this.materializePreview = {
-        target_fqn: outputNode ? outputNode.config.materialized_table : null,
-        mode: outputNode ? outputNode.config.mode : null,
-        sql: '— SQL preview is rendered server-side on Run —',
+        sinks: outputNodes.map((n) => ({
+          port_name: n.config.port_name || '—',
+          target_fqn: n.config.materialized_table || '—',
+          mode: n.config.mode || 'overwrite',
+        })),
       };
     },
 

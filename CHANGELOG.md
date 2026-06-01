@@ -31,7 +31,11 @@ defined in ``scripts/clusters.json``. -->
   `status: "failed"` while the others still land; each sink gets its own audit
   operation (clean per-table lineage) and all sinks share one graph version.
   `POST /api/dp/{id}/canvas/materialize` now returns `{sinks: [...],
-  graph_version}` (HTTP 200 even on partial success).
+  graph_version}` (HTTP 200 even on partial success). The materialize modal
+  lists every sink up front (port / target / mode) and renders a per-sink
+  result table with ok/failed badges, row counts, error text, and an
+  "N of M sinks succeeded" banner; the `pql_canvas_materialize` MCP tool's
+  docstring documents the same `sinks[]` envelope.
 - Canvas Depth Cluster (rc241+) — a seven-wave improvement roadmap on the
   post-overhaul canvas. Wave A (Perf): defused three O(n²) hot paths so
   later waves scale to hundreds of nodes — a `_edgeByDfIds` index built once

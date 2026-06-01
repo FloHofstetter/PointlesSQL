@@ -683,24 +683,57 @@
                         with the current draft
                         <strong x-text="'v' + version"></strong>.
                     </div>
-                    <template x-if="materializePreview">
+                    <template x-if="materializePreview && !materializeResult">
                         <div>
-                            <div class="mb-3 small">
-                                <div><strong>Target:</strong> <code x-text="materializePreview.target_fqn || '—'"></code></div>
-                                <div><strong>Mode:</strong> <span x-text="materializePreview.mode || '—'"></span></div>
-                            </div>
-                            <div class="small text-muted mb-1">Compiled SQL preview:</div>
-                            <pre class="border bg-body-tertiary p-2 small mb-0"
-                                 style="max-height: 400px; overflow: auto;"
-                                 x-text="materializePreview.sql || 'No SQL preview available.'"></pre>
+                            <div class="small text-muted mb-1"
+                                 x-text="(materializePreview.sinks.length === 1 ? 'This canvas materialises 1 output port:' : 'This canvas materialises ' + materializePreview.sinks.length + ' output ports:')"></div>
+                            <table class="table table-sm small mb-0">
+                                <thead>
+                                    <tr><th>Port</th><th>Target table</th><th>Mode</th></tr>
+                                </thead>
+                                <tbody>
+                                    <template x-for="s in materializePreview.sinks" :key="s.target_fqn">
+                                        <tr>
+                                            <td x-text="s.port_name"></td>
+                                            <td><code x-text="s.target_fqn"></code></td>
+                                            <td x-text="s.mode"></td>
+                                        </tr>
+                                    </template>
+                                </tbody>
+                            </table>
                         </div>
                     </template>
                     <template x-if="materializeResult">
-                        <div class="alert alert-success">
-                            <i class="bi bi-check-circle"></i>
-                            Materialised <strong x-text="materializeResult.rows_written"></strong>
-                            rows to <code x-text="materializeResult.target_fqn"></code>
-                            (graph v<span x-text="materializeResult.graph_version"></span>).
+                        <div>
+                            <div class="alert"
+                                 :class="materializeResult.sinks.some((s) => s.status === 'failed') ? 'alert-warning' : 'alert-success'">
+                                <i class="bi"
+                                   :class="materializeResult.sinks.some((s) => s.status === 'failed') ? 'bi-exclamation-triangle' : 'bi-check-circle'"></i>
+                                Materialised graph
+                                <strong x-text="'v' + materializeResult.graph_version"></strong>
+                                — <span x-text="materializeResult.sinks.filter((s) => s.status === 'ok').length"></span>
+                                of <span x-text="materializeResult.sinks.length"></span> sink(s) succeeded.
+                            </div>
+                            <table class="table table-sm small mb-0">
+                                <thead>
+                                    <tr><th>Port</th><th>Target table</th><th>Rows</th><th>Status</th></tr>
+                                </thead>
+                                <tbody>
+                                    <template x-for="s in materializeResult.sinks" :key="s.target_fqn">
+                                        <tr>
+                                            <td x-text="s.port_name"></td>
+                                            <td><code x-text="s.target_fqn"></code></td>
+                                            <td x-text="s.status === 'ok' ? s.rows_written : '—'"></td>
+                                            <td>
+                                                <span class="badge"
+                                                      :class="s.status === 'ok' ? 'bg-success' : 'bg-danger'"
+                                                      x-text="s.status"></span>
+                                                <div class="text-danger small" x-show="s.error" x-text="s.error"></div>
+                                            </td>
+                                        </tr>
+                                    </template>
+                                </tbody>
+                            </table>
                         </div>
                     </template>
                     <template x-if="materializeError">

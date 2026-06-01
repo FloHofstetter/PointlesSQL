@@ -3074,6 +3074,22 @@ PointlesSQL
 │   │   das Frontend + Plugin nach (187) und implementiert echte
 │   │   Write-Modes merge/append (188, schließt den merge→overwrite-Bug).
 │   │
+├── Phase 187 — Multi-Sink Frontend + Plugin-Lockstep  ✅ shipped (local, 2026-06-01)
+│   │
+│   │   Das Materialize-Modal trägt jetzt die ``{sinks: [...]}``-Antwort:
+│   │   ``openMaterializeModal`` sammelt *alle* OutputPort-Knoten (statt nur
+│   │   ``.find``) und zeigt eine Vorschau-Tabelle (Port / Ziel-Tabelle /
+│   │   Mode) je Senke; das Ergebnis rendert eine Per-Senke-Tabelle mit
+│   │   ok/failed-Badge + Fehlertext + "N von M Senken erfolgreich"-Banner
+│   │   (gelb bei Teil-Erfolg).  Plugin-Lockstep in
+│   │   ``hermes-plugin-pointlessql``: ``pql_canvas_materialize``-Docstring +
+│   │   ``materialize_dp_canvas``-Docstring auf die ``sinks[]``-Form,
+│   │   ``test_canvas_tools`` auf die neue Antwort umgestellt (Client gibt
+│   │   JSON unverändert durch — kein Code-Change).  Browser-Replay (Firefox)
+│   │   verifiziert: Fan-out (ein Filter-Output → zwei OutputPorts) rendert
+│   │   sauber mit "no errors", 0 Konsolen-Fehler; Modal listet beide Senken;
+│   │   Ergebnis-Tabelle zeigt ok+failed korrekt.  rc248→rc249.  ALL LOCAL.
+│   │
 ├── Phase 186 — Multi-Sink Backbone (Compiler + Executor + Route)  ✅ shipped (local, 2026-06-01)
 │   │
 │   │   Der Compiler baute schon *eine* gemeinsame CTE-Kette für den
