@@ -32,7 +32,12 @@ defined in ``scripts/clusters.json``. -->
   "Add block here" (drops a node at the cursor), node → quick peek / preview
   / duplicate / delete, edge → insert block / delete connection — all reusing
   the existing actions; plus an inline preview peek that shows a node's first
-  rows in a compact popover instead of only the full modal.
+  rows in a compact popover instead of only the full modal. Wave D (routing):
+  the orthogonal-edge mode now routes wires *around* the other nodes' boxes
+  instead of straight through them — a post-pass reads each connection's
+  endpoints, fetches the node AABBs, and draws either a clear H-V-H midpoint
+  path or, when that is blocked, a detour over/under the obstacle band. The
+  smooth bézier mode is unchanged.
 - Canvas connection-rendering overhaul (rc238).  Fixed the long-standing
   root cause behind wires that looked unsmooth, sat off the connector
   pins, and a canvas that never centred on open: the canvas component

@@ -3073,6 +3073,19 @@ PointlesSQL
 │   │   Ghost-Diff-Overlay (Differenzierer), F A11y/Reduced-Motion, G Live-
 │   │   Drag-Validierung.  Je Welle ein Commit + rc-Bump + Browser-Replay.
 │   │
+├── Phase 182 — Canvas Depth D: Obstacle-aware Orthogonal-Routing  ✅ shipped (local, 2026-06-01)
+│   │
+│   │   Im Orthogonal-Modus (opt-in Toggle) routet ein Post-Pass die Kanten
+│   │   um die anderen Knoten-Boxen herum statt mittig durch sie hindurch.
+│   │   ``createCurvature`` sieht nur Endpunkte → neuer
+│   │   ``_rerouteOrthogonalEdges`` liest je Connection die Endpunkte aus
+│   │   dem ``d``, holt die Knoten-AABBs (``offsetLeft/Top/Width/Height``,
+│   │   ohne Quelle/Ziel) und baut über ``_orthogonalPath`` den Pfad: plain
+│   │   H-V-H-Mittelsplit wenn alle drei Segmente frei, sonst Über/Unter-
+│   │   Detour um das blockierende Band.  Gehängt an Toggle / Decorate /
+│   │   Drag-rAF / Fit / Resize (setTimeout-gebatcht); Bézier-Modus
+│   │   unberührt.  Frontend-only, rc243→rc244.  ALL LOCAL.
+│   │
 ├── Phase 181 — Canvas Depth C: Kontextmenü + Inline-Preview  ✅ shipped (local, 2026-06-01)
 │   │
 │   │   Rechtsklick-Kontextmenü, zielsensitiv (``_onCanvasContextMenu`` →
