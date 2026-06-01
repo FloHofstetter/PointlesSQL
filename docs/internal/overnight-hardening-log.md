@@ -63,3 +63,13 @@ phase (rather than 20+ per-phase edits); this log is the per-phase record in the
 - Noted in passing: `external_write_scanner.py:65` uses parens-free multi-exception `except`
   (PEP 758, valid on the project's Python 3.14) — looked like a Py2 bug but imports fine.
 - Committed.
+
+### Phase 4 — external write scanner (suite 4206→4220, +14)
+- `tests/test_external_write_scanner.py` (+14): `services/external_write_scanner.py` was 18%.
+  Pure `_parse_commit_timestamp`; `scan_table` against a fake `deltalake.DeltaTable`
+  (unattributed insert, attributed-skip via seeded `agent_run_operations`, idempotent
+  re-scan, history-read error, non-int version skip); and the `unattributed_writes` CRUD
+  helpers (list/ack/count).
+- Coedit-bus assessed + skipped: its 112 missing lines are PG LISTEN/NOTIFY async runtime
+  paths (constructor rejects SQLite), not meaningfully unit-testable here.
+- Committed.
