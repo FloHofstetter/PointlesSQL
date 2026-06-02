@@ -17,6 +17,7 @@
  */
 
 import { installSmoothCurvature, loadCanvasIntoDrawflow } from '../dp_canvas/_drawflow_loader.js';
+import { installFocusModeShortcut } from '../dp_canvas/_focus_mode.js';
 
 function _readQuery(name) {
   const u = new URL(window.location.href);
@@ -46,23 +47,7 @@ export function dpCanvasDiff(product) {
       // doesn't run twice.
       if (this._initialized) return;
       this._initialized = true;
-      try {
-        this.focusMode = localStorage.getItem('pql.focus-mode') === '1';
-      } catch (_e) {
-        this.focusMode = false;
-      }
-      window.addEventListener('keydown', (ev) => {
-        if (
-          ev.shiftKey &&
-          (ev.key === 'F' || ev.key === 'f') &&
-          !ev.target.closest('input, textarea')
-        ) {
-          ev.preventDefault();
-          if (typeof window.pqlToggleFocusMode === 'function') {
-            this.focusMode = window.pqlToggleFocusMode();
-          }
-        }
-      });
+      installFocusModeShortcut(this);
       this.fromVersion = _readQuery('from');
       this.toVersion = _readQuery('to');
       const res = await window.pqlApi.fetch(`/api/dp/${this.product.id}/canvas/versions`, {

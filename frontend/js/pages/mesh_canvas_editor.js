@@ -1,5 +1,6 @@
 import { installZoomObserver } from '../dp_canvas/_canvas_helpers.js';
 import { installSmoothCurvature } from '../dp_canvas/_drawflow_loader.js';
+import { installFocusModeShortcut } from '../dp_canvas/_focus_mode.js';
 
 /*
  * Mesh-canvas editor — Alpine factory.
@@ -76,24 +77,12 @@ export function meshCanvasEditor() {
       // Drawflow instances (two .drawflow precanvases) in one container.
       if (this._initialized) return;
       this._initialized = true;
+      installFocusModeShortcut(this);
       try {
-        this.focusMode = localStorage.getItem('pql.focus-mode') === '1';
         this.bannerDismissed = localStorage.getItem('pql.mesh.banner.dismissed') === '1';
       } catch (_e) {
-        this.focusMode = false;
+        this.bannerDismissed = false;
       }
-      window.addEventListener('keydown', (ev) => {
-        if (
-          ev.shiftKey &&
-          (ev.key === 'F' || ev.key === 'f') &&
-          !ev.target.closest('input, textarea')
-        ) {
-          ev.preventDefault();
-          if (typeof window.pqlToggleFocusMode === 'function') {
-            this.focusMode = window.pqlToggleFocusMode();
-          }
-        }
-      });
       if (typeof window.Drawflow !== 'function') {
         await new Promise((r) => setTimeout(r, 50));
       }

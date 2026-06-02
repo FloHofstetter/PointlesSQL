@@ -17,6 +17,7 @@
 
 import { findNonOverlappingPosition, installZoomObserver } from '../dp_canvas/_canvas_helpers.js';
 import { installSmoothCurvature } from '../dp_canvas/_drawflow_loader.js';
+import { installFocusModeShortcut } from '../dp_canvas/_focus_mode.js';
 import {
   BLOCK_DEFS,
   nodeHtml,
@@ -152,29 +153,14 @@ export function dpCanvasEditor(product, ctx) {
       // empty canvas.
       if (this._initialized) return;
       this._initialized = true;
+      this._focusModeOff = installFocusModeShortcut(this);
       try {
-        this.focusMode = localStorage.getItem('pql.focus-mode') === '1';
         if (localStorage.getItem('pql.canvas.minimap.collapsed') === '1') {
           this.minimapVisible = false;
         }
       } catch (_e) {
-        this.focusMode = false;
+        // localStorage unavailable — keep the minimap visible.
       }
-      // Shift+F mirrors the topbar button.  Bound on the editor root
-      // (not window) so the shortcut is inert outside the canvas.
-      this._onFocusKey = (ev) => {
-        if (
-          ev.shiftKey &&
-          (ev.key === 'F' || ev.key === 'f') &&
-          !ev.target.closest('input, textarea, .cm-editor')
-        ) {
-          ev.preventDefault();
-          if (typeof window.pqlToggleFocusMode === 'function') {
-            this.focusMode = window.pqlToggleFocusMode();
-          }
-        }
-      };
-      window.addEventListener('keydown', this._onFocusKey);
       if (typeof window.Drawflow !== 'function') {
         // Defer one tick — the bundle <script> at the bottom of the
         // template may not have executed yet when Alpine kicks init().

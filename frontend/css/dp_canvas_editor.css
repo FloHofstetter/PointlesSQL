@@ -91,40 +91,6 @@
   min-width: 240px;
 }
 
-.pql-sticky-note {
-  position: absolute;
-  background: #fff8b8;
-  border: 1px solid #d6c97a;
-  border-radius: 4px;
-  box-shadow: 2px 3px 5px rgba(0, 0, 0, 0.15);
-  display: flex;
-  flex-direction: column;
-  z-index: 4;
-  cursor: move;
-  user-select: none;
-}
-
-.pql-sticky-note-close {
-  position: absolute;
-  top: 0;
-  right: 4px;
-  z-index: 2;
-  color: #806b00;
-}
-
-.pql-sticky-note-body {
-  flex: 1;
-  width: 100%;
-  background: transparent;
-  border: 0;
-  outline: 0;
-  resize: none;
-  padding: 18px 8px 8px;
-  font-size: 0.8rem;
-  font-family: inherit;
-  color: #4a3d00;
-}
-
 .pql-dp-canvas-drawflow .drawflow-node .pql-mesh-ghost-header {
   border-bottom: 1px dashed var(--bs-warning);
 }

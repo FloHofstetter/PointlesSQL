@@ -6,22 +6,7 @@
    round-trip for users who never open the Canvas tab.
 #}
 <div class="tab-pane fade" id="tab-canvas" role="tabpanel"
-     x-data="{
-        versions: null,
-        loading: false,
-        error: null,
-        async load() {
-          if (this.versions !== null || this.loading) return;
-          this.loading = true;
-          const res = await window.pqlApi.fetch(
-            '/api/dp/' + product.id + '/canvas/versions',
-            { silent: true },
-          );
-          this.loading = false;
-          if (!res.ok) { this.error = res.error || 'Failed to load versions'; return; }
-          this.versions = res.data.versions || [];
-        }
-     }"
+     x-data='dataProductCanvasTab({{ product | tojson }})'
      @shown.bs.tab.window="$event.target && $event.target.id === 'tab-canvas-btn' && load()">
     <div class="card">
         <div class="card-body">
