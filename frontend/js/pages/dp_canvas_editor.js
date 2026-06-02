@@ -15,7 +15,7 @@
  *   are registered by the CDN bundle loaded from ``dp_canvas_editor.html``.
  */
 
-import { findNonOverlappingPosition, installZoomObserver } from '../dp_canvas/_canvas_helpers.js';
+import { installZoomObserver } from '../dp_canvas/_canvas_helpers.js';
 import { installSmoothCurvature } from '../dp_canvas/_drawflow_loader.js';
 import { installFocusModeShortcut } from '../dp_canvas/_focus_mode.js';
 import {
@@ -30,10 +30,20 @@ import {
   renderColsHtml,
   renderFooterHtml,
 } from '../dp_canvas/_render_helpers.js';
+import { annotationMethods } from '../dp_canvas/editor/annotations.js';
+import { configFormMethods } from '../dp_canvas/editor/config_form.js';
+import { historyMethods } from '../dp_canvas/editor/history.js';
 
 export function dpCanvasEditor(product, ctx) {
   const ctxSafe = ctx || {};
   return {
+    // Behaviour bundles — plain `this`-based method objects composed onto
+    // the component.  State + getters stay inline below (object spread
+    // would snapshot a getter's value, breaking reactivity).
+    ...historyMethods,
+    ...configFormMethods,
+    ...annotationMethods,
+
     product,
     canWrite: !!(ctxSafe.is_admin || ctxSafe.is_steward),
 
@@ -131,16 +141,6 @@ export function dpCanvasEditor(product, ctx) {
     get selectedNode() {
       if (!this.selectedNodeId) return null;
       return this.nodes[this.selectedNodeId] || null;
-    },
-
-    blockLabel(kind) {
-      return (BLOCK_DEFS[kind] && BLOCK_DEFS[kind].label) || kind;
-    },
-    blockIcon(kind) {
-      return (BLOCK_DEFS[kind] && BLOCK_DEFS[kind].icon) || 'bi-question-square';
-    },
-    blockHelp(kind) {
-      return (BLOCK_DEFS[kind] && BLOCK_DEFS[kind].help) || '';
     },
 
     async init() {
@@ -1601,136 +1601,6 @@ export function dpCanvasEditor(product, ctx) {
       this._scheduleMinimapRender();
     },
 
-    addStickyNote() {
-      if (!this.canWrite) return;
-      // Spawn at viewport-centre instead of a fixed (60,60) that overlaps
-      // freshly auto-laid blocks.  Mirrors the pan-math in
-      // searchSelectMatch().
-      const df = this._drawflow;
-      let cx = 200;
-      let cy = 120;
-      if (df && typeof df.canvas_x !== 'undefined') {
-        const rect = df.container.getBoundingClientRect();
-        const zoom = df.zoom || 1;
-        cx = Math.round((rect.width / 2 - df.canvas_x) / zoom - 110);
-        cy = Math.round((rect.height / 2 - df.canvas_y) / zoom - 60);
-      }
-      const noteSize = { width: 220, height: 120 };
-      // Avoid landing on top of existing nodes or other stickies — slide
-      // (+40, +40) up to 8 attempts until the overlap drops below 30 %
-      // of the note area.  Helper lives in canvas_shared so mesh can
-      // reuse the same collision-avoid pattern later.
-      const obstacles = [
-        ...Object.values(this.nodes).map((n) => ({
-          x: n.position?.x || 0,
-          y: n.position?.y || 0,
-          width: 200,
-          height: 100,
-        })),
-        ...this.annotations.map((a) => ({
-          x: a.x,
-          y: a.y,
-          width: a.width || 220,
-          height: a.height || 120,
-        })),
-      ];
-      const placed = findNonOverlappingPosition({ x: cx, y: cy }, noteSize, obstacles);
-      const note = {
-        id: 'note-' + Math.random().toString(36).slice(2, 10),
-        x: placed.x,
-        y: placed.y,
-        width: noteSize.width,
-        height: noteSize.height,
-        content: '',
-      };
-      this.annotations = [...this.annotations, note];
-      this._pushCommand({
-        do: () => {
-          if (!this.annotations.find((a) => a.id === note.id)) {
-            this.annotations = [...this.annotations, note];
-          }
-        },
-        undo: () => {
-          this.annotations = this.annotations.filter((a) => a.id !== note.id);
-        },
-      });
-      this._scheduleAutosave();
-      this._scheduleMinimapRender();
-    },
-
-    updateStickyNote(id, patch) {
-      const idx = this.annotations.findIndex((a) => a.id === id);
-      if (idx < 0) return;
-      this.annotations[idx] = { ...this.annotations[idx], ...patch };
-      this.annotations = [...this.annotations];
-      this._scheduleAutosave();
-    },
-
-    removeStickyNote(id) {
-      const snapshot = this.annotations.find((a) => a.id === id);
-      this.annotations = this.annotations.filter((a) => a.id !== id);
-      if (snapshot) {
-        this._pushCommand({
-          do: () => {
-            this.annotations = this.annotations.filter((a) => a.id !== id);
-          },
-          undo: () => {
-            this.annotations = [...this.annotations, { ...snapshot }];
-          },
-        });
-      }
-      this._scheduleAutosave();
-      this._scheduleMinimapRender();
-    },
-
-    _stickyNotePointerDown(ev, note) {
-      if (ev.target.matches('button, textarea')) return;
-      ev.preventDefault();
-      const startX = ev.clientX;
-      const startY = ev.clientY;
-      const baseX = note.x;
-      const baseY = note.y;
-      const onMove = (e) => {
-        const dx = e.clientX - startX;
-        const dy = e.clientY - startY;
-        this.updateStickyNote(note.id, { x: baseX + dx, y: baseY + dy });
-      };
-      const onUp = () => {
-        document.removeEventListener('pointermove', onMove);
-        document.removeEventListener('pointerup', onUp);
-      };
-      document.addEventListener('pointermove', onMove);
-      document.addEventListener('pointerup', onUp);
-    },
-
-    _pushCommand(cmd) {
-      this._undoStack.push(cmd);
-      if (this._undoStack.length > this._UNDO_DEPTH) this._undoStack.shift();
-      this._redoStack = [];
-    },
-
-    undo() {
-      const cmd = this._undoStack.pop();
-      if (!cmd) return;
-      try {
-        cmd.undo();
-        this._redoStack.push(cmd);
-      } catch (_e) {
-        // Swallow — best-effort restore.
-      }
-    },
-
-    redo() {
-      const cmd = this._redoStack.pop();
-      if (!cmd) return;
-      try {
-        cmd.do();
-        this._undoStack.push(cmd);
-      } catch (_e) {
-        // Swallow.
-      }
-    },
-
     _applySensibleDefaultsIfEmpty(nodeId) {
       const node = this.nodes[nodeId];
       if (!node) return;
@@ -2847,78 +2717,6 @@ export function dpCanvasEditor(product, ctx) {
       if (el && typeof el.click === 'function') el.click();
     },
 
-    addProjectColumn(col) {
-      const node = this.selectedNode;
-      if (!node || !col) return;
-      const trimmed = String(col).trim();
-      if (!trimmed) return;
-      if (node.config.columns.includes(trimmed)) return;
-      node.config.columns.push(trimmed);
-      this.onConfigChanged();
-    },
-    removeProjectColumn(idx) {
-      const node = this.selectedNode;
-      if (!node) return;
-      node.config.columns.splice(idx, 1);
-      this.onConfigChanged();
-    },
-    addJoinKey(col) {
-      const node = this.selectedNode;
-      if (!node || !col) return;
-      const trimmed = String(col).trim();
-      if (!trimmed || node.config.keys.includes(trimmed)) return;
-      node.config.keys.push(trimmed);
-      this.onConfigChanged();
-    },
-    removeJoinKey(idx) {
-      const node = this.selectedNode;
-      if (!node) return;
-      node.config.keys.splice(idx, 1);
-      this.onConfigChanged();
-    },
-    addGroupKey(col) {
-      const node = this.selectedNode;
-      if (!node || !col) return;
-      const trimmed = String(col).trim();
-      if (!trimmed || node.config.keys.includes(trimmed)) return;
-      node.config.keys.push(trimmed);
-      this.onConfigChanged();
-    },
-    removeGroupKey(idx) {
-      const node = this.selectedNode;
-      if (!node) return;
-      node.config.keys.splice(idx, 1);
-      this.onConfigChanged();
-    },
-    addAggregation() {
-      const node = this.selectedNode;
-      if (!node) return;
-      node.config.aggregations.push({ column: '', fn: 'sum', alias: '' });
-      this.onConfigChanged();
-    },
-    removeAggregation(idx) {
-      const node = this.selectedNode;
-      if (!node) return;
-      node.config.aggregations.splice(idx, 1);
-      this.onConfigChanged();
-    },
-    addMergeOn(col) {
-      const node = this.selectedNode;
-      if (!node || !col) return;
-      const trimmed = String(col).trim();
-      if (!trimmed) return;
-      if (!Array.isArray(node.config.merge_on)) node.config.merge_on = [];
-      if (node.config.merge_on.includes(trimmed)) return;
-      node.config.merge_on.push(trimmed);
-      this.onConfigChanged();
-    },
-    removeMergeOn(idx) {
-      const node = this.selectedNode;
-      if (!node) return;
-      if (!Array.isArray(node.config.merge_on)) return;
-      node.config.merge_on.splice(idx, 1);
-      this.onConfigChanged();
-    },
 
     onConfigChanged() {
       if (this.selectedNodeId) this._refreshNodeBody(this.selectedNodeId);
