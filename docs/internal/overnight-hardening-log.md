@@ -193,3 +193,9 @@ phase (rather than 20+ per-phase edits); this log is the per-phase record in the
   validation (blank name/source, duplicate-name conflict), get/list reads (+ disabled
   filter), in-place update (version bumps only on source change), enable toggle (no version
   bump), and delete (found/missing). Committed.
+
+### Data-product contract-test CRUD (+8 tests)
+- `tests/test_contract_tests_crud.py`: `services/contract_tests/_crud.py` (was 56%).
+  `declare_contract_test` validation (unknown assertion-kind / severity, blank name), its
+  idempotent create-then-update, dict-spec serialisation, and the list/delete helpers.
+  Committed.
