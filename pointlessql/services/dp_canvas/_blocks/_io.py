@@ -12,17 +12,14 @@ from __future__ import annotations
 from typing import Any
 
 from pointlessql.services.dp_canvas._blocks._base import (
-    _COMPILE_DISPATCH,
     _FQN_RE,
-    _INFER_DISPATCH,
     OUTPUT_MODES,
-    BlockSpec,
     CompiledBlock,
     _bad_config,
     _coerce_str,
     _coerce_str_list,
-    _register,
     _unknown_schema,
+    register_block,
 )
 from pointlessql.services.dp_canvas._types import CompileError, PinSchema
 
@@ -65,7 +62,13 @@ def _infer_input_port(
     return _unknown_schema()
 
 
-_register(BlockSpec(type_name="InputPort", input_pins=(), output_pins=(("out", "table"),)))
+register_block(
+    type_name="InputPort",
+    input_pins=(),
+    output_pins=(("out", "table"),),
+    compile_fn=_compile_input_port,
+    infer_fn=_infer_input_port,
+)
 
 
 # --------------------------------------------------------------------- DataProduct (DP◫)
@@ -126,10 +129,12 @@ def _infer_data_product(
     return _unknown_schema()
 
 
-_register(
-    BlockSpec(
-        type_name="DataProduct", input_pins=(), output_pins=(("out", "table"),)
-    )
+register_block(
+    type_name="DataProduct",
+    input_pins=(),
+    output_pins=(("out", "table"),),
+    compile_fn=_compile_data_product,
+    infer_fn=_infer_data_product,
 )
 
 
@@ -194,21 +199,10 @@ def _infer_output_port(
     return input_schemas.get("in", _unknown_schema())
 
 
-_register(BlockSpec(type_name="OutputPort", input_pins=(("in", "table"),), output_pins=()))
-
-
-
-_COMPILE_DISPATCH.update(
-    {
-        "InputPort": _compile_input_port,
-        "DataProduct": _compile_data_product,
-        "OutputPort": _compile_output_port,
-    }
-)
-_INFER_DISPATCH.update(
-    {
-        "InputPort": _infer_input_port,
-        "DataProduct": _infer_data_product,
-        "OutputPort": _infer_output_port,
-    }
+register_block(
+    type_name="OutputPort",
+    input_pins=(("in", "table"),),
+    output_pins=(),
+    compile_fn=_compile_output_port,
+    infer_fn=_infer_output_port,
 )

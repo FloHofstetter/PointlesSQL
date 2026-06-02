@@ -12,14 +12,11 @@ from __future__ import annotations
 from typing import Any
 
 from pointlessql.services.dp_canvas._blocks._base import (
-    _COMPILE_DISPATCH,
-    _INFER_DISPATCH,
-    BlockSpec,
     CompiledBlock,
     _bad_config,
     _coerce_str,
-    _register,
     _unknown_schema,
+    register_block,
 )
 from pointlessql.services.dp_canvas._types import ColumnSpec, CompileError, PinSchema
 
@@ -119,8 +116,12 @@ def _infer_cast(
     return PinSchema(kind="table", columns=out_cols)
 
 
-_register(
-    BlockSpec(type_name="Cast", input_pins=(("in", "table"),), output_pins=(("out", "table"),))
+register_block(
+    type_name="Cast",
+    input_pins=(("in", "table"),),
+    output_pins=(("out", "table"),),
+    compile_fn=_compile_cast,
+    infer_fn=_infer_cast,
 )
 
 
@@ -178,8 +179,12 @@ def _infer_rename(
     return PinSchema(kind="table", columns=out_cols)
 
 
-_register(
-    BlockSpec(type_name="Rename", input_pins=(("in", "table"),), output_pins=(("out", "table"),))
+register_block(
+    type_name="Rename",
+    input_pins=(("in", "table"),),
+    output_pins=(("out", "table"),),
+    compile_fn=_compile_rename,
+    infer_fn=_infer_rename,
 )
 
 
@@ -229,27 +234,10 @@ def _infer_calc_column(
     return PinSchema(kind="table", columns=[*upstream.columns, new_col])
 
 
-_register(
-    BlockSpec(
-        type_name="CalcColumn",
-        input_pins=(("in", "table"),),
-        output_pins=(("out", "table"),),
-    )
-)
-
-
-
-_COMPILE_DISPATCH.update(
-    {
-        "Cast": _compile_cast,
-        "Rename": _compile_rename,
-        "CalcColumn": _compile_calc_column,
-    }
-)
-_INFER_DISPATCH.update(
-    {
-        "Cast": _infer_cast,
-        "Rename": _infer_rename,
-        "CalcColumn": _infer_calc_column,
-    }
+register_block(
+    type_name="CalcColumn",
+    input_pins=(("in", "table"),),
+    output_pins=(("out", "table"),),
+    compile_fn=_compile_calc_column,
+    infer_fn=_infer_calc_column,
 )

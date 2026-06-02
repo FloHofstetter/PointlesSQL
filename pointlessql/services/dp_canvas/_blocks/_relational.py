@@ -13,16 +13,13 @@ import re
 from typing import Any
 
 from pointlessql.services.dp_canvas._blocks._base import (
-    _COMPILE_DISPATCH,
-    _INFER_DISPATCH,
-    BlockSpec,
     CompiledBlock,
     _bad_config,
     _coerce_str,
     _coerce_str_list,
-    _register,
     _schema_columns,
     _unknown_schema,
+    register_block,
 )
 from pointlessql.services.dp_canvas._types import ColumnSpec, CompileError, PinSchema
 
@@ -82,8 +79,12 @@ def _infer_filter(
     return upstream
 
 
-_register(
-    BlockSpec(type_name="Filter", input_pins=(("in", "table"),), output_pins=(("out", "table"),))
+register_block(
+    type_name="Filter",
+    input_pins=(("in", "table"),),
+    output_pins=(("out", "table"),),
+    compile_fn=_compile_filter,
+    infer_fn=_infer_filter,
 )
 
 
@@ -156,8 +157,12 @@ def _infer_project(
     return PinSchema(kind="table", columns=out_cols)
 
 
-_register(
-    BlockSpec(type_name="Project", input_pins=(("in", "table"),), output_pins=(("out", "table"),))
+register_block(
+    type_name="Project",
+    input_pins=(("in", "table"),),
+    output_pins=(("out", "table"),),
+    compile_fn=_compile_project,
+    infer_fn=_infer_project,
 )
 
 
@@ -268,12 +273,12 @@ def _infer_join(
     return PinSchema(kind="table", columns=merged, unknown=left.unknown or right.unknown)
 
 
-_register(
-    BlockSpec(
-        type_name="Join",
-        input_pins=(("left", "table"), ("right", "table")),
-        output_pins=(("out", "table"),),
-    )
+register_block(
+    type_name="Join",
+    input_pins=(("left", "table"), ("right", "table")),
+    output_pins=(("out", "table"),),
+    compile_fn=_compile_join,
+    infer_fn=_infer_join,
 )
 
 
@@ -381,8 +386,12 @@ def _infer_group_by(
     return PinSchema(kind="table", columns=out_cols, unknown=upstream_unknown)
 
 
-_register(
-    BlockSpec(type_name="GroupBy", input_pins=(("in", "table"),), output_pins=(("out", "table"),))
+register_block(
+    type_name="GroupBy",
+    input_pins=(("in", "table"),),
+    output_pins=(("out", "table"),),
+    compile_fn=_compile_group_by,
+    infer_fn=_infer_group_by,
 )
 
 
@@ -429,27 +438,10 @@ def _infer_limit(
     return input_schemas.get("in", _unknown_schema())
 
 
-_register(
-    BlockSpec(type_name="Limit", input_pins=(("in", "table"),), output_pins=(("out", "table"),))
-)
-
-
-
-_COMPILE_DISPATCH.update(
-    {
-        "Filter": _compile_filter,
-        "Project": _compile_project,
-        "Join": _compile_join,
-        "GroupBy": _compile_group_by,
-        "Limit": _compile_limit,
-    }
-)
-_INFER_DISPATCH.update(
-    {
-        "Filter": _infer_filter,
-        "Project": _infer_project,
-        "Join": _infer_join,
-        "GroupBy": _infer_group_by,
-        "Limit": _infer_limit,
-    }
+register_block(
+    type_name="Limit",
+    input_pins=(("in", "table"),),
+    output_pins=(("out", "table"),),
+    compile_fn=_compile_limit,
+    infer_fn=_infer_limit,
 )

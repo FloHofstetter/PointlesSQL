@@ -12,15 +12,12 @@ from __future__ import annotations
 from typing import Any
 
 from pointlessql.services.dp_canvas._blocks._base import (
-    _COMPILE_DISPATCH,
-    _INFER_DISPATCH,
-    BlockSpec,
     CompiledBlock,
     _bad_config,
     _coerce_str,
     _coerce_str_list,
-    _register,
     _unknown_schema,
+    register_block,
 )
 from pointlessql.services.dp_canvas._types import ColumnSpec, CompileError, PinSchema
 
@@ -94,8 +91,12 @@ def _infer_window(
     return PinSchema(kind="table", columns=[*upstream.columns, new_col])
 
 
-_register(
-    BlockSpec(type_name="Window", input_pins=(("in", "table"),), output_pins=(("out", "table"),))
+register_block(
+    type_name="Window",
+    input_pins=(("in", "table"),),
+    output_pins=(("out", "table"),),
+    compile_fn=_compile_window,
+    infer_fn=_infer_window,
 )
 
 
@@ -145,8 +146,12 @@ def _infer_pivot(
     return _unknown_schema()
 
 
-_register(
-    BlockSpec(type_name="Pivot", input_pins=(("in", "table"),), output_pins=(("out", "table"),))
+register_block(
+    type_name="Pivot",
+    input_pins=(("in", "table"),),
+    output_pins=(("out", "table"),),
+    compile_fn=_compile_pivot,
+    infer_fn=_infer_pivot,
 )
 
 
@@ -205,8 +210,12 @@ def _infer_unpivot(
     )
 
 
-_register(
-    BlockSpec(type_name="Unpivot", input_pins=(("in", "table"),), output_pins=(("out", "table"),))
+register_block(
+    type_name="Unpivot",
+    input_pins=(("in", "table"),),
+    output_pins=(("out", "table"),),
+    compile_fn=_compile_unpivot,
+    infer_fn=_infer_unpivot,
 )
 
 
@@ -263,12 +272,12 @@ def _infer_union(
     return left
 
 
-_register(
-    BlockSpec(
-        type_name="Union",
-        input_pins=(("left", "table"), ("right", "table")),
-        output_pins=(("out", "table"),),
-    )
+register_block(
+    type_name="Union",
+    input_pins=(("left", "table"), ("right", "table")),
+    output_pins=(("out", "table"),),
+    compile_fn=_compile_union,
+    infer_fn=_infer_union,
 )
 
 
@@ -311,8 +320,12 @@ def _infer_distinct(
     return input_schemas.get("in", _unknown_schema())
 
 
-_register(
-    BlockSpec(type_name="Distinct", input_pins=(("in", "table"),), output_pins=(("out", "table"),))
+register_block(
+    type_name="Distinct",
+    input_pins=(("in", "table"),),
+    output_pins=(("out", "table"),),
+    compile_fn=_compile_distinct,
+    infer_fn=_infer_distinct,
 )
 
 
@@ -363,8 +376,12 @@ def _infer_sort(
     return input_schemas.get("in", _unknown_schema())
 
 
-_register(
-    BlockSpec(type_name="Sort", input_pins=(("in", "table"),), output_pins=(("out", "table"),))
+register_block(
+    type_name="Sort",
+    input_pins=(("in", "table"),),
+    output_pins=(("out", "table"),),
+    compile_fn=_compile_sort,
+    infer_fn=_infer_sort,
 )
 
 
@@ -415,31 +432,10 @@ def _infer_sample(
     return input_schemas.get("in", _unknown_schema())
 
 
-_register(
-    BlockSpec(type_name="Sample", input_pins=(("in", "table"),), output_pins=(("out", "table"),))
-)
-
-
-
-_COMPILE_DISPATCH.update(
-    {
-        "Window": _compile_window,
-        "Pivot": _compile_pivot,
-        "Unpivot": _compile_unpivot,
-        "Union": _compile_union,
-        "Distinct": _compile_distinct,
-        "Sort": _compile_sort,
-        "Sample": _compile_sample,
-    }
-)
-_INFER_DISPATCH.update(
-    {
-        "Window": _infer_window,
-        "Pivot": _infer_pivot,
-        "Unpivot": _infer_unpivot,
-        "Union": _infer_union,
-        "Distinct": _infer_distinct,
-        "Sort": _infer_sort,
-        "Sample": _infer_sample,
-    }
+register_block(
+    type_name="Sample",
+    input_pins=(("in", "table"),),
+    output_pins=(("out", "table"),),
+    compile_fn=_compile_sample,
+    infer_fn=_infer_sample,
 )

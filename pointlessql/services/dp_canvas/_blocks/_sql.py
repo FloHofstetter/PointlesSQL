@@ -13,14 +13,11 @@ import re
 from typing import Any
 
 from pointlessql.services.dp_canvas._blocks._base import (
-    _COMPILE_DISPATCH,
-    _INFER_DISPATCH,
-    BlockSpec,
     CompiledBlock,
     _bad_config,
     _coerce_str,
-    _register,
     _unknown_schema,
+    register_block,
 )
 from pointlessql.services.dp_canvas._types import ColumnSpec, CompileError, PinSchema
 
@@ -159,11 +156,10 @@ def _describe_sql_block(
     return PinSchema(kind="table", columns=specs, unknown=False)
 
 
-_register(
-    BlockSpec(type_name="SQL", input_pins=(("in", "table"),), output_pins=(("out", "table"),))
+register_block(
+    type_name="SQL",
+    input_pins=(("in", "table"),),
+    output_pins=(("out", "table"),),
+    compile_fn=_compile_sql,
+    infer_fn=_infer_sql,
 )
-
-
-
-_COMPILE_DISPATCH.update({"SQL": _compile_sql})
-_INFER_DISPATCH.update({"SQL": _infer_sql})

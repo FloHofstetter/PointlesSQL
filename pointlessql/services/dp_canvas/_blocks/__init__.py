@@ -2,13 +2,14 @@
 """Block-type registry for the visual data-product canvas.
 
 The registry was a single 1.5k-line module; it is now a package whose
-:mod:`._base` holds the shared dataclasses, the ``BLOCK_REGISTRY``, the
-dispatch tables, and the public :func:`compile_block` / :func:`infer_block`
-entry points.  Each block's pure ``_compile_*`` / ``_infer_*`` helpers live
-in a per-category sibling module (``_io`` / ``_relational`` / ``_reshape``
-/ ``_columns`` / ``_sql``) that registers its types into the dispatch
-tables at import time.  Importing those modules here is what wires the
-registry, so the public import surface is unchanged for callers.
+:mod:`._base` holds the shared dataclasses, the ``BLOCK_REGISTRY``, and
+the public :func:`compile_block` / :func:`infer_block` entry points.
+Each block's pure ``_compile_*`` / ``_infer_*`` helpers live in a
+per-category sibling module (``_io`` / ``_relational`` / ``_reshape`` /
+``_columns`` / ``_sql``) that calls :func:`._base.register_block` to add
+its types — pins plus the two functions — to the registry at import
+time.  Importing those modules here is what wires the registry, so the
+public import surface is unchanged for callers.
 """
 
 from __future__ import annotations

@@ -15,13 +15,12 @@ Both methods are *pure* — they never read settings, never hit soyuz,
 never open a database connection.  Side-effects live in the executor.
 
 This module holds only the shared infrastructure: the ``BlockSpec`` /
-``CompiledBlock`` dataclasses, the ``BLOCK_REGISTRY``, the two dispatch
-tables, and the public :func:`compile_block` / :func:`infer_block`
-entry points.  Each block lives in its own ``_compile_*`` / ``_infer_*``
-helper in a per-category sibling module (``_io`` / ``_relational`` /
-``_reshape`` / ``_columns`` / ``_sql``); those modules populate the
-dispatch tables at import time, so a new block drops into a category
-module without editing this core.
+``CompiledBlock`` dataclasses, the ``BLOCK_REGISTRY``, and the public
+:func:`compile_block` / :func:`infer_block` entry points.  Each block
+lives in its own ``_compile_*`` / ``_infer_*`` helper in a per-category
+sibling module (``_io`` / ``_relational`` / ``_reshape`` / ``_columns``
+/ ``_sql``) that calls :func:`register_block` at import time, so a new
+block drops into a category module without editing this core.
 """
 
 from __future__ import annotations
@@ -48,13 +47,19 @@ class CompiledBlock:
     output_schema: PinSchema
 
 
+# Compile + schema-inference function signatures.  Both are pure: given
+# a node's resolved inputs + config they return the CTE body / output
+# schema, appending to the shared error list on bad config.
+_CompileFn = Callable[
+    [str, dict[str, str], PinSchema, dict[str, Any], list[CompileError]],
+    "CompiledBlock | None",
+]
+_InferFn = Callable[..., PinSchema]
+
+
 @dataclass(frozen=True)
 class BlockSpec:
-    """Static pin description of one block type.
-
-    The compile + schema-inference behaviour is no longer carried on the
-    spec; it lives in the dispatch tables (``_COMPILE_DISPATCH`` /
-    ``_INFER_DISPATCH``) the category modules populate at import time.
+    """One block type: its pin shape plus its pure compile + infer fns.
 
     Attributes:
         type_name: Registry key.
@@ -63,19 +68,42 @@ class BlockSpec:
             room for ``"scalar"`` / ``"model"`` later without
             re-spelling the registry.
         output_pins: Same shape; ``OutputPort`` has none.
+        compile_fn: Turns ``(inputs, config)`` into a CTE body.
+        infer_fn: Declares the output :class:`PinSchema` for schema-flow.
     """
 
     type_name: str
     input_pins: tuple[tuple[str, Literal["table"]], ...]
     output_pins: tuple[tuple[str, Literal["table"]], ...]
+    compile_fn: _CompileFn
+    infer_fn: _InferFn
 
 
 BLOCK_REGISTRY: dict[str, BlockSpec] = {}
 
 
-def _register(spec: BlockSpec) -> BlockSpec:
-    BLOCK_REGISTRY[spec.type_name] = spec
-    return spec
+def register_block(
+    type_name: str,
+    *,
+    input_pins: tuple[tuple[str, Literal["table"]], ...],
+    output_pins: tuple[tuple[str, Literal["table"]], ...],
+    compile_fn: _CompileFn,
+    infer_fn: _InferFn,
+) -> None:
+    """Register one block type into :data:`BLOCK_REGISTRY`.
+
+    Called once per block at import time from a category module, right
+    after that block's ``_compile_*`` / ``_infer_*`` helpers are defined.
+    The package ``__init__`` imports every category module so these
+    registrations run before anything reads the registry.
+    """
+    BLOCK_REGISTRY[type_name] = BlockSpec(
+        type_name=type_name,
+        input_pins=input_pins,
+        output_pins=output_pins,
+        compile_fn=compile_fn,
+        infer_fn=infer_fn,
+    )
 
 
 # --------------------------------------------------------------------- helpers
@@ -115,19 +143,6 @@ OUTPUT_MODES: tuple[str, ...] = ("overwrite", "append", "merge")
 
 # --------------------------------------------------------------------- dispatch
 
-_CompileFn = Callable[
-    [str, dict[str, str], PinSchema, dict[str, Any], list[CompileError]],
-    "CompiledBlock | None",
-]
-_InferFn = Callable[..., PinSchema]
-
-
-# Populated at import time by the per-category block modules (see the
-# package __init__, which imports each one for its registration side
-# effects).  Read at call time by compile_block / infer_block below.
-_COMPILE_DISPATCH: dict[str, _CompileFn] = {}
-_INFER_DISPATCH: dict[str, _InferFn] = {}
-
 
 def compile_block(
     *,
@@ -144,8 +159,8 @@ def compile_block(
     keeps marching through the rest of the graph rather than aborting
     at the first issue.
     """
-    handler = _COMPILE_DISPATCH.get(block_type)
-    if handler is None:
+    spec = BLOCK_REGISTRY.get(block_type)
+    if spec is None:
         errors.append(
             CompileError(
                 kind="unknown_block",
@@ -155,7 +170,7 @@ def compile_block(
             )
         )
         return None
-    return handler(node_id, inputs, output_schema, cfg, errors)
+    return spec.compile_fn(node_id, inputs, output_schema, cfg, errors)
 
 
 def infer_block(
@@ -168,8 +183,8 @@ def infer_block(
     seed: PinSchema | None = None,
 ) -> PinSchema:
     """Dispatch to the per-type schema-inference helper."""
-    handler = _INFER_DISPATCH.get(block_type)
-    if handler is None:
+    spec = BLOCK_REGISTRY.get(block_type)
+    if spec is None:
         errors.append(
             CompileError(
                 kind="unknown_block",
@@ -179,4 +194,4 @@ def infer_block(
             )
         )
         return _unknown_schema()
-    return handler(node_id, input_schemas, cfg, errors, seed=seed)
+    return spec.infer_fn(node_id, input_schemas, cfg, errors, seed=seed)
