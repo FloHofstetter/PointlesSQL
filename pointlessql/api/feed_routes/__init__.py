@@ -26,10 +26,12 @@ from fastapi import APIRouter
 from pointlessql.api.feed_routes.feed import router as _feed_router
 from pointlessql.api.feed_routes.muting import router as _muting_router
 from pointlessql.api.feed_routes.notifications import router as _notifications_router
+from pointlessql.api.feed_routes.signals import router as _signals_router
 
 router = APIRouter(tags=["feed"])
 router.include_router(_feed_router)
 router.include_router(_notifications_router)
 router.include_router(_muting_router)
+router.include_router(_signals_router)
 
 __all__ = ["router"]

@@ -196,9 +196,12 @@ class TestJsonEndpointsReturn502:
 
 
 class TestHtmlPagesShowError:
-    async def test_catalogs_index(self) -> None:
+    async def test_connections_index(self) -> None:
+        # The home surface is the feed now; the federation connections
+        # page is the representative catalog-backed HTML page that must
+        # degrade to an inline banner (not a 502) when soyuz is down.
         async with _authed_client() as client:
-            resp = await client.get("/")
+            resp = await client.get("/connections")
         assert resp.status_code == 200
         assert "Connection refused" in resp.text
 

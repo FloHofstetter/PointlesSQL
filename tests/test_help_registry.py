@@ -150,10 +150,11 @@ def test_sql_admin_anchors_present() -> None:
     assert expected <= set(HELP.keys()), f"missing Sprint-23.4 slugs: {expected - set(HELP.keys())}"
 
 
-def test_audit_branches_home_anchors_present() -> None:
-    """Sprint 23.3 wires 12 popovers across the audit cockpit
-    (inbox, search, by-table, queries), the branch-detail page,
-    and the home cockpit.  Pin the slugs to catch renames in CI.
+def test_audit_branches_anchors_present() -> None:
+    """Pin the audit-cockpit + branch-detail popover slugs to catch
+    renames in CI.  (The two ``home.*`` cockpit popovers were retired
+    with the overview dashboard when the feed became the home surface;
+    the anomaly cockpit lives at ``/admin/audit`` now.)
     """
     expected = {
         "audit.what-is-an-anomaly",
@@ -166,10 +167,8 @@ def test_audit_branches_home_anchors_present() -> None:
         "branches.preview-tab",
         "branches.promote-vs-discard",
         "branches.cleanup-loop",
-        "home.what-is-the-cockpit",
-        "home.anomaly-cards",
     }
-    assert expected <= set(HELP.keys()), f"missing Sprint-23.3 slugs: {expected - set(HELP.keys())}"
+    assert expected <= set(HELP.keys()), f"missing slugs: {expected - set(HELP.keys())}"
 
 
 def test_models_anchors_present() -> None:

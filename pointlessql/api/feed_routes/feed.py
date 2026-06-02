@@ -32,14 +32,19 @@ from pointlessql.api.feed_routes._serializers import (
     build_fqn_map,
     row_from_comment,
     row_from_notification,
+    row_from_pending_run,
     row_from_review,
+    row_from_signal,
 )
+from pointlessql.models.actionable_signals import STATUS_OPEN, ActionableSignal
+from pointlessql.models.agent._runs import STATUS_NEEDS_APPROVAL, AgentRun
 from pointlessql.models.auth import User
 from pointlessql.models.catalog._data_product_comments import DataProductComment
 from pointlessql.models.catalog._data_product_reviews import DataProductReview
 from pointlessql.models.notifications import UserNotification
 from pointlessql.models.social._social_target import SocialTarget
 from pointlessql.models.social._user_follow import UserFollow
+from pointlessql.services.notifications.categories import count_by_category
 from pointlessql.services.social import entity_registry
 
 router = APIRouter(tags=["feed"])
@@ -55,6 +60,7 @@ async def get_feed(
     limit: int = DEFAULT_LIMIT,
     q: str = "",
     kind: str | None = None,
+    category: str | None = None,
 ) -> dict[str, Any]:
     """Return the caller's merged feed.
 
@@ -78,10 +84,16 @@ async def get_feed(
         kind: Optional ``entity_kind`` narrow — e.g. ``table`` keeps
             only table comments/reviews/notifications.  ``None``
             disables the filter.
+        category: Optional coarse-lane narrow — one of ``approval``,
+            ``health``, ``social``, ``pipeline``, ``governance``.
+            ``None`` or ``all`` returns every lane.  The
+            ``category_counts`` in the response are computed *before*
+            this slice so the chip badges stay stable when a lane is
+            selected.
 
     Returns:
-        ``{"filter": str, "kind": str | None, "rows": [...]}``
-        sorted by ``created_at`` descending.
+        ``{"filter", "kind", "category", "rows", "category_counts"}``
+        with rows sorted by ``created_at`` descending.
     """
     require_user(request)
     caller = get_user(request)
@@ -166,6 +178,46 @@ async def get_feed(
         rows.extend(row_from_notification(n, fqn_map, actor_names) for n in inbox)
         rows.extend(row_from_comment(c, fqn_map, actor_names, t) for c, t in comments_rows)
         rows.extend(row_from_review(r, fqn_map, actor_names, t) for r, t in reviews_rows)
+
+        # Action-required lane (live): agent runs in ``needs_approval``
+        # are read straight from the source table — never stored as a
+        # notification — so the inline Approve / Deny card always
+        # reflects the run's current state.  Admin-gated: approving is
+        # admin-only, so only admins see the actionable cards.
+        if caller.get("is_admin"):
+            pending_runs = (
+                session.execute(
+                    select(AgentRun)
+                    .where(
+                        AgentRun.status == STATUS_NEEDS_APPROVAL,
+                        AgentRun.workspace_id == workspace_id,
+                    )
+                    .order_by(AgentRun.started_at.desc())
+                    .limit(limit)
+                )
+                .scalars()
+                .all()
+            )
+            rows.extend(row_from_pending_run(r) for r in pending_runs)
+
+            # Data-health / pipeline lane (live): open actionable
+            # signals are read straight from the ledger, so a card
+            # disappears the moment the underlying problem resolves.
+            # Admin-gated like approvals — admins triage data health.
+            open_signals = (
+                session.execute(
+                    select(ActionableSignal)
+                    .where(
+                        ActionableSignal.status == STATUS_OPEN,
+                        ActionableSignal.workspace_id == workspace_id,
+                    )
+                    .order_by(ActionableSignal.opened_at.desc())
+                    .limit(limit)
+                )
+                .scalars()
+                .all()
+            )
+            rows.extend(row_from_signal(s) for s in open_signals)
 
         # Mentions filter — resolve to the user's id and check
         # ``mentioned_user_ids_json``.  Authored ``my`` filter
@@ -272,7 +324,22 @@ async def get_feed(
         seen.add(key)
         unique.append(row)
 
-    return {"filter": filter, "kind": kind, "rows": unique[:limit]}
+    # Chip counts are tallied across every lane *before* the category
+    # slice so the badges don't collapse to the selected lane.
+    category_counts = count_by_category(unique)
+
+    # Category slice — coarse lane narrow over the stamped ``category``
+    # field.  ``all`` / unset returns every lane.
+    if category and category != "all":
+        unique = [r for r in unique if r.get("category") == category]
+
+    return {
+        "filter": filter,
+        "kind": kind,
+        "category": category,
+        "rows": unique[:limit],
+        "category_counts": category_counts,
+    }
 
 
 # ---------------------------------------------------------------

@@ -254,7 +254,14 @@ from pointlessql.models.workspace import (
     WorkspaceRepoSecret,
 )
 
+# Imported after ``workspace`` so the ``workspaces.id`` FK target is
+# registered before this referrer.
+from pointlessql.models.actionable_signals import (  # noqa: E402
+    ActionableSignal,
+)
+
 __all__ = [
+    "ActionableSignal",
     "AgentReview",
     "AgentRun",
     "AgentRunEvent",

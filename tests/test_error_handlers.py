@@ -110,13 +110,13 @@ class TestProblemJsonEnvelope:
 
 class TestHtmlErrorHandling:
     async def test_authorization_error_renders_403_page(self) -> None:
-        app.state.uc_client.list_catalogs = AsyncMock(
+        app.state.uc_client.list_connections = AsyncMock(
             side_effect=AuthorizationError("user@test.com", "USE CATALOG", "catalog", "test_cat")
         )
         async with _authed_client() as client:
-            resp = await client.get("/")
-        # catalogs_index catches CatalogUnavailableError but lets
-        # AuthorizationError propagate to the centralized handler.
+            resp = await client.get("/connections")
+        # render_page_with_fallback catches CatalogUnavailableError but
+        # lets AuthorizationError propagate to the centralized handler.
         assert resp.status_code == 403
         # The 403 template renders "Access denied" (lowercase 'd') via
         # both the ``status_title`` context and the static page copy.

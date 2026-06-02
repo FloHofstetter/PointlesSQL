@@ -1,54 +1,33 @@
 {% extends "base.html" %}
-{% block title %}Feed · PointlesSQL{% endblock %}
+{% block title %}Home · PointlesSQL{% endblock %}
 
-{% set breadcrumbs = [
-    {"label": "Home", "href": "/"},
-    {"label": "Feed"}
-] %}
+{# The feed IS the home surface — mount the right rail (Needs your
+   attention / Trending / People / Saved searches) into the meta-panel
+   column.  ``meta_panel_target`` renders the empty aside; the content
+   is x-teleported from inside the feedPage() scope below so the rail
+   shares the factory's reactive state. #}
+{% set meta_panel_target = True %}
+
+{% set breadcrumbs = [{"label": "Home"}] %}
 {% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
 
 {% block content %}
-<div x-data="feedPage()" :class="density === 'comfortable' ? '' : ('pql-feed--' + density)">
+<div x-data="feedPage({{ is_admin | default(false) | tojson }})" :class="density === 'comfortable' ? '' : ('pql-feed--' + density)">
 
-    {# Top-level tabs: Activity (the feed stream) vs Discover
-       (trending + people-to-follow + saved searches).  The page
-       heading + breadcrumb are redundant once the tabs are present,
-       so the heading is dropped and the page actions (Mark-all-read,
-       Notification settings) live on the tab strip's right side.
-       The "X new" pulse-pill rides on the Activity tab label so
-       live counts stay visible without a hero row. #}
-    <ul class="nav nav-tabs mb-3 align-items-center" role="tablist">
-        <li class="nav-item" role="presentation">
-            <button type="button"
-                    class="nav-link"
-                    :class="activeTab === 'activity' ? 'active' : ''"
-                    @click="setActiveTab('activity')"
-                    role="tab"
-                    aria-controls="pql-feed-activity-pane">
-                <i class="bi bi-rss me-1"></i>Activity
-                <span class="badge text-bg-secondary ms-1"
-                      x-show="loaded"
-                      x-text="rows.length"></span>
-                <span class="badge bg-primary ms-1"
-                      x-show="newCount > 0"
-                      data-pql-badge-pulse="1"
-                      x-text="newCount + ' new'"></span>
-            </button>
-        </li>
-        <li class="nav-item" role="presentation">
-            <button type="button"
-                    class="nav-link"
-                    :class="activeTab === 'discover' ? 'active' : ''"
-                    @click="setActiveTab('discover')"
-                    role="tab"
-                    aria-controls="pql-feed-discover-pane">
-                <i class="bi bi-compass me-1"></i>Discover
-                <span class="badge text-bg-secondary ms-1"
-                      x-show="trending.length + people.length > 0"
-                      x-text="trending.length + people.length"></span>
-            </button>
-        </li>
-        <li class="ms-auto d-flex align-items-center gap-2 pb-2">
+    {# Heading row — page actions live here now that the feed is a
+       single uninterrupted stream.  The "X new" pulse-pill rides next
+       to the title so live counts stay visible. #}
+    <div class="d-flex align-items-center gap-2 mb-3">
+        <h1 class="h4 mb-0 d-flex align-items-center gap-2">
+            <i class="bi bi-rss"></i>
+            <span>Home</span>
+            <span class="badge bg-primary"
+                  x-show="newCount > 0"
+                  x-cloak
+                  data-pql-badge-pulse="1"
+                  x-text="newCount + ' new'"></span>
+        </h1>
+        <div class="ms-auto d-flex align-items-center gap-2">
             <button type="button"
                     class="btn btn-sm btn-outline-secondary"
                     @click="markAllRead()"
@@ -59,18 +38,15 @@
                title="Notification settings">
                 <i class="bi bi-gear"></i>
             </a>
-        </li>
-    </ul>
-
-    <div class="tab-content">
-
-    {# === Activity tab pane ===================================== #}
+        </div>
+    </div>
 
     {% include "pages/_partials/feed/activity_pane.html" %}
 
-    {% include "pages/_partials/feed/discover_pane.html" %}
-
-    </div>{# /tab-content #}
+    {# Right rail — teleported into the meta-panel column. #}
+    <template x-teleport="#pql-meta-panel .pql-meta-panel__inner">
+        {% include "pages/_partials/feed/right_rail.html" %}
+    </template>
 </div>
 
 {% include "pages/_partials/feed/help_modal.html" %}

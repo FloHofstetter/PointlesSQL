@@ -1,0 +1,145 @@
+{#
+ Feed right rail — teleported into the meta panel.
+
+ Three stacked cards, social-home style:
+   1. Needs your attention — pending approvals / firing alerts /
+      unread, with live counts from the nav-badges context.  Each
+      row jumps to the surface that resolves it.
+   2. Trending today — entities with the most activity in 24 h.
+   3. People to follow — recent contributors you don't follow yet.
+   4. Saved searches — bookmarked filter combos (localStorage).
+
+ Rendered inside the ``x-data="feedPage()"`` scope (Alpine
+ ``x-teleport`` keeps it bound to the feed factory), so the trending /
+ people / saved lists use the factory's reactive state directly.
+#}
+{% set _badges = nav_badges if nav_badges is defined and nav_badges else {} %}
+{% set _attn_total = (_badges.runs_pending | default(0)) + (_badges.alerts_firing | default(0)) + (_badges.audit_unread | default(0)) %}
+<div class="pql-feed-rail d-flex flex-column gap-3">
+
+    {# 1. Needs your attention ===================================== #}
+    <section class="card pql-feed-rail__card">
+        <div class="card-header d-flex align-items-center gap-2 py-2">
+            <i class="bi bi-flag"></i>
+            <span class="fw-semibold small flex-grow-1">Needs your attention</span>
+            {% if _attn_total > 0 %}
+            <span class="badge rounded-pill text-bg-danger">{{ _attn_total }}</span>
+            {% endif %}
+        </div>
+        <ul class="list-group list-group-flush small">
+            <li class="list-group-item d-flex align-items-center gap-2">
+                <i class="bi bi-shield-check text-warning"></i>
+                <a class="text-decoration-none flex-grow-1" href="/runs?status=needs_approval">
+                    Approvals
+                </a>
+                <span class="badge rounded-pill text-bg-{{ 'warning' if (_badges.runs_pending | default(0)) > 0 else 'secondary' }}">
+                    {{ _badges.runs_pending | default(0) }}
+                </span>
+            </li>
+            <li class="list-group-item d-flex align-items-center gap-2">
+                <i class="bi bi-bell text-danger"></i>
+                <a class="text-decoration-none flex-grow-1" href="/alerts">
+                    Alerts firing
+                </a>
+                <span class="badge rounded-pill text-bg-{{ 'danger' if (_badges.alerts_firing | default(0)) > 0 else 'secondary' }}">
+                    {{ _badges.alerts_firing | default(0) }}
+                </span>
+            </li>
+            <li class="list-group-item d-flex align-items-center gap-2">
+                <i class="bi bi-inbox text-primary"></i>
+                <button type="button"
+                        class="btn btn-link p-0 text-decoration-none flex-grow-1 text-start"
+                        @click="markAllRead()">
+                    Unread inbox
+                </button>
+                <span class="badge rounded-pill text-bg-{{ 'primary' if (_badges.audit_unread | default(0)) > 0 else 'secondary' }}">
+                    {{ _badges.audit_unread | default(0) }}
+                </span>
+            </li>
+        </ul>
+    </section>
+
+    {# 2. Trending today ========================================== #}
+    <section class="card pql-feed-rail__card">
+        <div class="card-header d-flex align-items-center gap-2 py-2">
+            <i class="bi bi-graph-up-arrow"></i>
+            <span class="fw-semibold small flex-grow-1">Trending today</span>
+            <span class="badge text-bg-secondary" x-show="trending.length > 0" x-text="trending.length"></span>
+        </div>
+        <ul class="list-group list-group-flush small">
+            <template x-if="trending.length === 0">
+                <li class="list-group-item text-muted">Activity in the last 24 h is quiet.</li>
+            </template>
+            <template x-for="t in trending.slice(0, 8)" :key="t.entity_kind + ':' + t.entity_ref">
+                <li class="list-group-item d-flex align-items-center gap-2 pql-hover-lift">
+                    <i class="bi" :class="iconForKind(t.entity_kind)"></i>
+                    <a class="text-decoration-none flex-grow-1 text-truncate"
+                       :href="t.source_url" x-text="t.label"></a>
+                    <span class="badge text-bg-secondary" x-text="t.count"></span>
+                </li>
+            </template>
+        </ul>
+    </section>
+
+    {# 3. People to follow ======================================== #}
+    <section class="card pql-feed-rail__card">
+        <div class="card-header d-flex align-items-center gap-2 py-2">
+            <i class="bi bi-people"></i>
+            <span class="fw-semibold small flex-grow-1">People to follow</span>
+        </div>
+        <ul class="list-group list-group-flush small">
+            <template x-if="people.length === 0">
+                <li class="list-group-item text-muted">You follow every recent contributor.</li>
+            </template>
+            <template x-for="p in people.slice(0, 6)" :key="p.id">
+                <li class="list-group-item d-flex align-items-center gap-2 pql-hover-lift">
+                    <i class="bi bi-person-circle fs-5 text-muted"></i>
+                    <div class="flex-grow-1 text-truncate">
+                        <div class="text-truncate" x-text="p.display_name"></div>
+                        <div class="text-muted x-small" x-text="p.recent_event_count + ' this week'"></div>
+                    </div>
+                    <button type="button"
+                            class="btn btn-sm"
+                            :class="p._following ? 'btn-success' : 'btn-outline-primary'"
+                            @click="followUser(p)">
+                        <span x-text="p._following ? 'Following' : 'Follow'"></span>
+                    </button>
+                </li>
+            </template>
+        </ul>
+    </section>
+
+    {# 4. Saved searches ========================================== #}
+    <section class="card pql-feed-rail__card">
+        <div class="card-header d-flex align-items-center gap-2 py-2">
+            <i class="bi bi-bookmark"></i>
+            <span class="fw-semibold small flex-grow-1">Saved searches</span>
+            <button type="button"
+                    class="btn btn-sm btn-link p-0 text-decoration-none"
+                    @click="saveCurrentSearch()"
+                    title="Save current filter + search">
+                <i class="bi bi-plus-lg"></i>
+            </button>
+        </div>
+        <ul class="list-group list-group-flush small">
+            <template x-if="savedSearches.length === 0">
+                <li class="list-group-item text-muted">Pick a filter, then click + to bookmark it.</li>
+            </template>
+            <template x-for="(s, idx) in savedSearches" :key="s.id">
+                <li class="list-group-item d-flex align-items-center gap-2 pql-hover-lift">
+                    <button type="button"
+                            class="btn btn-link btn-sm text-decoration-none text-start flex-grow-1 p-0"
+                            @click="applySavedSearch(s)"
+                            x-text="s.label"></button>
+                    <button type="button"
+                            class="btn btn-link btn-sm text-danger p-0"
+                            @click="deleteSavedSearch(idx)"
+                            title="Delete saved search">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </li>
+            </template>
+        </ul>
+    </section>
+
+</div>

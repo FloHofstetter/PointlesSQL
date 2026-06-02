@@ -162,14 +162,16 @@ class TestCatalogDetailHtml:
         assert "/tmp/warehouse" in text
 
 
-class TestHomePageModal:
+class TestConnectionsPageForeignCatalogModal:
+    """The "Create foreign catalog" modal lives on the Connections page."""
+
     async def test_admin_sees_create_button_and_connection_options(
         self, admin_client: httpx.AsyncClient
     ) -> None:
         app.state.uc_client = _make_uc_mock(
             connections=[{"name": "my_pg", "connection_type": "POSTGRESQL"}]
         )
-        resp = await admin_client.get("/")
+        resp = await admin_client.get("/connections")
         assert resp.status_code == 200
         text = resp.text
         assert "Create foreign catalog" in text
@@ -178,13 +180,11 @@ class TestHomePageModal:
         assert "my_pg" in text
         assert "POSTGRESQL" in text
 
-    async def test_non_admin_has_no_create_button(
+    async def test_non_admin_cannot_reach_connections(
         self, non_admin_client: httpx.AsyncClient
     ) -> None:
         app.state.uc_client = _make_uc_mock()
-        resp = await non_admin_client.get("/")
-        assert resp.status_code == 200
-        assert "Create foreign catalog" not in resp.text
-        assert "createForeignCatalogModal" not in resp.text
-        # Non-admins never trigger a connection list call (federation is admin-only).
-        app.state.uc_client.list_connections.assert_not_awaited()
+        # Federation connections are admin-only, so foreign-catalog
+        # creation is unreachable for non-admins.
+        resp = await non_admin_client.get("/connections")
+        assert resp.status_code in (401, 403)

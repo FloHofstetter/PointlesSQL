@@ -21,10 +21,13 @@ checks without re-implementing the predicate.
 from __future__ import annotations
 
 import datetime
-from typing import Any
+import json
+from typing import Any, cast
 
 from sqlalchemy import or_, select
 
+from pointlessql.models.actionable_signals import ActionableSignal
+from pointlessql.models.agent._runs import AgentRun
 from pointlessql.models.auth import User
 from pointlessql.models.catalog._data_product_comments import DataProductComment
 from pointlessql.models.catalog._data_product_reviews import DataProductReview
@@ -32,6 +35,7 @@ from pointlessql.models.catalog._data_products import DataProduct
 from pointlessql.models.notifications import UserNotification
 from pointlessql.models.social._feed_mute import FeedMute
 from pointlessql.models.social._social_target import SocialTarget
+from pointlessql.services.notifications.categories import classify_category, classify_signal
 from pointlessql.services.social import entity_registry
 
 DEFAULT_LIMIT = 50
@@ -119,10 +123,13 @@ def row_from_notification(
     """
     source_url = row.source_url or dp_url_from_id(fqn_map, row.source_data_product_id)
     render_kind = classify_notification(row.event_type or "")
+    category, severity = classify_category(row.event_type or "")
     return {
         "id": row.id,
         "kind": "notification",
         "render_kind": render_kind,
+        "category": category,
+        "severity": severity,
         "event_type": row.event_type,
         "summary_md": row.summary_md,
         "body_md": row.summary_md,
@@ -174,6 +181,8 @@ def row_from_comment(
     return {
         "kind": "comment",
         "render_kind": "comment",
+        "category": "social",
+        "severity": "info",
         "event_type": "pointlessql.data_product.commented",
         "summary_md": comment.body_md[:160],
         "body_md": comment.body_md,
@@ -223,6 +232,8 @@ def row_from_review(
     return {
         "kind": "review",
         "render_kind": "review",
+        "category": "social",
+        "severity": "info",
         "event_type": "pointlessql.data_product.reviewed",
         "summary_md": f"{'★' * review.stars} — {review.body_md[:120]}",
         "body_md": review.body_md,
@@ -234,6 +245,97 @@ def row_from_review(
         "actor_user_id": review.author_user_id,
         "actor_display_name": actor_names.get(int(review.author_user_id)),
         "created_at": review.created_at.isoformat(),
+        "read_at": None,
+    }
+
+
+def row_from_pending_run(run: AgentRun) -> dict[str, Any]:
+    """Normalise an approval-pending agent run to the feed row shape.
+
+    This is a *live* row — it is read straight from ``agent_runs``
+    where ``status = 'needs_approval'`` at query time, never stored as
+    a notification.  Acting on it (or any other admin / the runtime
+    resolving the run) drops it from the next fetch, so the card can
+    never go stale.  The row carries the ``run_id`` + ``principal``
+    the inline Approve / Deny buttons need.
+
+    Args:
+        run: The agent-run row in ``needs_approval``.
+
+    Returns:
+        Feed-row dict with ``render_kind = 'approval'``.
+    """
+    short = run.id[:8]
+    actor = run.principal or run.agent_id or "an agent"
+    return {
+        "kind": "approval",
+        "render_kind": "approval",
+        "category": "approval",
+        "severity": "warn",
+        "event_type": "pointlessql.agent_run.needs_approval",
+        "run_id": run.id,
+        "principal": run.principal,
+        "notebook_path": run.notebook_path,
+        "summary_md": f"Agent run {short} is awaiting approval",
+        "body_md": run.notebook_path or "",
+        "source_url": f"/runs/{run.id}",
+        "data_product_id": None,
+        "entity_kind": "run",
+        "entity_ref": run.id,
+        "actor_user_id": None,
+        "actor_display_name": actor,
+        "created_at": run.started_at.isoformat() if run.started_at else "",
+        "read_at": None,
+    }
+
+
+def row_from_signal(signal: ActionableSignal) -> dict[str, Any]:
+    """Normalise an open actionable signal to the feed row shape.
+
+    Like the pending-run row, this is *live* — read straight from
+    ``actionable_signals`` where ``status='open'`` at query time, so
+    the card disappears the moment the problem is resolved.  The
+    ``render_kind`` is ``data_health`` for health lanes and
+    ``pipeline`` for failure lanes; ``severity`` drives the stripe.
+
+    Args:
+        signal: The open signal row.
+
+    Returns:
+        Feed-row dict carrying ``signal_kind`` + ``signal_id`` so the
+        inline acknowledge / snooze / retry actions can target it.
+    """
+    category, severity = classify_signal(signal.signal_kind)
+    render_kind = "pipeline" if category == "pipeline" else "data_health"
+    payload: dict[str, Any] = {}
+    if signal.payload_json:
+        try:
+            loaded: Any = json.loads(signal.payload_json)
+            if isinstance(loaded, dict):
+                payload = cast("dict[str, Any]", loaded)
+        except (ValueError, TypeError):
+            payload = {}
+    source_url = payload.get("source_url") or entity_registry.url_for(
+        signal.entity_kind, signal.entity_ref
+    )
+    return {
+        "kind": "signal",
+        "render_kind": render_kind,
+        "category": category,
+        "severity": signal.severity or severity,
+        "event_type": f"pointlessql.signal.{signal.signal_kind}",
+        "signal_id": signal.id,
+        "signal_kind": signal.signal_kind,
+        "summary_md": signal.summary_md,
+        "body_md": payload.get("detail") or signal.summary_md,
+        "source_url": source_url,
+        "data_product_id": None,
+        "entity_kind": signal.entity_kind,
+        "entity_ref": signal.entity_ref,
+        "actor_user_id": None,
+        "actor_display_name": None,
+        "payload": payload,
+        "created_at": signal.opened_at.isoformat() if signal.opened_at else "",
         "read_at": None,
     }
 

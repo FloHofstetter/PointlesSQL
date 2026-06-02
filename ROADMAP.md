@@ -3066,6 +3066,43 @@ PointlesSQL
 │   │   (174).  Each phase one commit; rc222→rc232.  ALL LOCAL
 │   │   until single final push.
 │   │
+├── Feed-as-Home: Unified Social/Operational Stream  ✅ shipped (local, 2026-06-02)
+│   │
+│   │   Aus User-Feedback ("der Feed sollte die zentrale Startseite sein,
+│   │   nicht das Overview-Dashboard … jedes relevante Ding als Feed,
+│   │   mit sinnvollen Filtern und direkten Aktionen — wie LinkedIn / X,
+│   │   optimiert für unsere Datenplattform").  Fünf Wellen:
+│   │   • W1 Feed wird Home — ``/`` rendert den Aktivitätsstream (Overview-
+│   │     Dashboard ``home.html`` + ``build_home_summary`` + ``/api/home/
+│   │     summary`` gelöscht, kein Shim); ``/feed`` bleibt Alias.  Rechte
+│   │     Meta-Panel-Spalte (x-teleport in feedPage-Scope): „Needs your
+│   │     attention“ (Approvals/Alerts/Unread → klickbar) + Trending +
+│   │     People + Saved searches.  Single-Stream statt Activity/Discover-Tabs.
+│   │   • W2 Kategorie-Taxonomie — zentrales ``services/notifications/
+│   │     categories.py`` leitet (category, severity) aus dem event_type ab
+│   │     (keine Schema-Spalte).  Chips All · Approvals · Data health · Social
+│   │     · Pipeline · Governance über der Audience-Filterleiste; stabile
+│   │     ``category_counts`` (vor dem Slice gezählt).
+│   │   • W3 Approvals-Lane — Live-Union ``agent_runs WHERE needs_approval``
+│   │     in den Feed (nie als Notification gespeichert → Karte veraltet nie,
+│   │     verschwindet sobald irgendein Admin entscheidet).  Inline Approve/
+│   │     Deny (optimistisch, collapse-in-place).  Terminal approved/denied
+│   │     fanned out an den Principal.
+│   │   • W4 Data-Health/Pipeline-Ledger — neue ``actionable_signals``-Tabelle
+│   │     (alembic ``p4d6f8h0j2l4``) mit Partial-Unique-Index WHERE status=
+│   │     'open' → genau eine Karte pro Problem (Storm-Guard).  Service
+│   │     ``emit_signal``/``resolve_signal`` (Transition-only, best-effort,
+│   │     SSE-Nudge an Admins).  Emit-Sites: alert_check (fire/clear),
+│   │     job-run-Telemetry (failed/succeeded), ingest-executor (PullError/
+│   │     success).  Live-Union offener Signals admin-gegated; Inline
+│   │     Acknowledge (resolve) + Snooze + Retry.
+│   │   • W5 Gate + Docs.  103+ neue pytest grün; pyright/pydoclint/biome/
+│   │     phase-ref sauber.  rc256 → rc257.  ALL LOCAL.
+│   │   Deferred (gleicher emit_signal-Einzeiler, wenn die Scanner reifen):
+│   │   SLO-/Contract-/Freshness-Signale; per-recipient Sichtbarkeit für
+│   │   Nicht-Admin-Owner; consecutive-similar Roll-up (Ledger-Dedup deckt
+│   │   den Storm-Fall bereits).
+│   │
 ├── Sidebar Hub-and-Spoke Redesign — declutter the primary rail  ✅ shipped (local, 2026-06-02)
 │   │
 │   │   Aus User-Feedback ("die linke Seitenleiste ist etwas überlaufen,

@@ -87,8 +87,9 @@ const KIND_LABELS = {
 // kind badge carry the affordance.
 const HIDE_ENTITY_REF_KINDS = new Set(['notebook_revision', 'notebook_cell_output']);
 
-export function feedPage() {
+export function feedPage(isAdmin = false) {
   return {
+    isAdmin: !!isAdmin,
     loaded: false,
     filter: 'all',
     kindFilter: [],
@@ -98,12 +99,24 @@ export function feedPage() {
     newCount: 0,
     density: 'comfortable',
     connState: 'disconnected',
-    activeTab: 'activity',
-    discoverTab: 'trending',
     trending: [],
     people: [],
     savedSearches: [],
     welcomeVisible: false,
+
+    // Coarse lane slice over the unified stream. Sits above the
+    // social ``filters`` axis below; the two compose (category narrows
+    // by event lane, filter narrows by audience).
+    category: 'all',
+    categoryCounts: {},
+    categories: [
+      { key: 'all', label: 'All', icon: 'bi-grid' },
+      { key: 'approval', label: 'Approvals', icon: 'bi-shield-check' },
+      { key: 'health', label: 'Data health', icon: 'bi-heart-pulse' },
+      { key: 'social', label: 'Social', icon: 'bi-chat-dots' },
+      { key: 'pipeline', label: 'Pipeline', icon: 'bi-diagram-2' },
+      { key: 'governance', label: 'Governance', icon: 'bi-bank' },
+    ],
 
     filters: [
       { key: 'all', label: 'For you', icon: 'bi-stars' },
@@ -137,20 +150,16 @@ export function feedPage() {
     _sseFirstFailedAt: 0,
 
     async init() {
-      // Restore density + active-tab from localStorage so the user
-      // lands on whichever surface they last used.
+      // Restore density from localStorage so the user lands on
+      // whichever stream density they last used.
       try {
         const v = window.localStorage?.getItem('pql.feed.density');
         if (v && ['comfortable', 'compact', 'headlines'].includes(v)) {
           this.density = v;
         }
-        const t = window.localStorage?.getItem('pql.feed.activeTab');
-        if (t && ['activity', 'discover'].includes(t)) {
-          this.activeTab = t;
-        }
-        const d = window.localStorage?.getItem('pql.feed.discoverTab');
-        if (d && ['trending', 'people', 'saved'].includes(d)) {
-          this.discoverTab = d;
+        const c = window.localStorage?.getItem('pql.feed.category');
+        if (c && this.categories.some((cat) => cat.key === c)) {
+          this.category = c;
         }
       } catch (e) {
         /* ignore storage errors */
@@ -225,15 +234,33 @@ export function feedPage() {
         console.warn('SSE payload parse failed', e);
         return;
       }
+      // A resolved-signal nudge: drop any matching open data-health /
+      // pipeline cards in place so the feed self-heals without a
+      // reload. No buffered row is added.
+      if (payload.signal_resolved) {
+        this.rows = this.rows.filter(
+          (x) =>
+            !(
+              x.kind === 'signal' &&
+              x.entity_kind === payload.source_entity_kind &&
+              x.entity_ref === payload.source_entity_ref
+            )
+        );
+        return;
+      }
       // Build a feed-row-shaped object so the renderer treats the new
-      // arrival like any /api/feed row. Server-side _row_from_notification
-      // owns the canonical shape but the SSE payload already carries most
-      // fields; we hydrate the remaining ``render_kind`` discriminator
-      // client-side.
+      // arrival like any /api/feed row. Signal pings carry an explicit
+      // ``render_kind`` / ``category`` / ``severity``; social fan-out
+      // pings derive them from the event type.
+      const derived = this._classifyCategory(payload.event_type || '');
+      const isSignal = !!payload.signal_kind;
       const row = {
-        kind: 'notification',
-        render_kind: this._classifyEvent(payload.event_type || ''),
+        kind: isSignal ? 'signal' : 'notification',
+        render_kind: payload.render_kind || this._classifyEvent(payload.event_type || ''),
+        category: payload.category || derived[0],
+        severity: payload.severity || derived[1],
         event_type: payload.event_type,
+        signal_kind: payload.signal_kind,
         summary_md: payload.summary_md,
         body_md: payload.summary_md,
         source_url: payload.source_url,
@@ -255,6 +282,7 @@ export function feedPage() {
       if (eventType.indexOf('mentioned') !== -1 || eventType.indexOf('.mention') !== -1) {
         return 'mention';
       }
+      if (eventType === 'pointlessql.agent_run.needs_approval') return 'approval';
       if (eventType.startsWith('pointlessql.agent_run.')) return 'agent_run';
       if (eventType.startsWith('pointlessql.user.badge_')) return 'badge_award';
       if (eventType.startsWith('pointlessql.issue.')) return 'issue';
@@ -263,22 +291,35 @@ export function feedPage() {
       return 'notification';
     },
 
-    setActiveTab(tab) {
-      this.activeTab = tab;
-      try {
-        window.localStorage?.setItem('pql.feed.activeTab', tab);
-      } catch (e) {
-        /* ignore */
+    // Mirror of services/notifications/categories.py:classify_category
+    // so SSE-built rows bucket into the same lane + severity as
+    // server-rendered rows without a round-trip.
+    _classifyCategory(eventType) {
+      if (!eventType) return ['social', 'info'];
+      if (eventType.indexOf('mention') !== -1) return ['social', 'info'];
+      const rules = [
+        ['pointlessql.agent_run.needs_approval', 'approval', 'warn'],
+        ['pointlessql.agent_run.approved', 'approval', 'info'],
+        ['pointlessql.agent_run.denied', 'approval', 'warn'],
+        ['pointlessql.agent_run.failed', 'pipeline', 'error'],
+        ['pointlessql.agent_run.', 'pipeline', 'info'],
+        ['pointlessql.alert.', 'health', 'error'],
+        ['pointlessql.slo.', 'health', 'warn'],
+        ['pointlessql.contract.', 'health', 'error'],
+        ['pointlessql.freshness.', 'health', 'warn'],
+        ['pointlessql.job_run.failed', 'pipeline', 'error'],
+        ['pointlessql.ingest.failed', 'pipeline', 'error'],
+        ['pointlessql.ingest.', 'pipeline', 'info'],
+        ['pointlessql.branch.', 'governance', 'info'],
+        ['pointlessql.agent_review.', 'governance', 'info'],
+        ['pointlessql.issue.', 'social', 'info'],
+        ['pointlessql.user.badge_', 'social', 'info'],
+        ['pointlessql.data_product.', 'social', 'info'],
+      ];
+      for (const [prefix, category, severity] of rules) {
+        if (eventType === prefix || eventType.startsWith(prefix)) return [category, severity];
       }
-    },
-
-    setDiscoverTab(key) {
-      this.discoverTab = key;
-      try {
-        window.localStorage?.setItem('pql.feed.discoverTab', key);
-      } catch (e) {
-        /* ignore */
-      }
+      return ['social', 'info'];
     },
 
     setDensity(key) {
@@ -295,11 +336,96 @@ export function feedPage() {
       await this.reload();
     },
 
+    async setCategory(key) {
+      this.category = key;
+      try {
+        window.localStorage?.setItem('pql.feed.category', key);
+      } catch (e) {
+        /* ignore */
+      }
+      await this.reload();
+    },
+
+    categoryCount(key) {
+      if (key === 'all') {
+        return Object.values(this.categoryCounts).reduce((sum, n) => sum + n, 0);
+      }
+      return this.categoryCounts[key] || 0;
+    },
+
+    // Inline approval actions. Optimistic: the card collapses in
+    // place to a muted "Approved/Denied by you" line (it isn't yanked
+    // mid-scroll), then drops on the next reload. The server enforces
+    // require_admin regardless of the client-side gate.
+    async approveRun(r) {
+      if (r._busy) return;
+      r._busy = true;
+      const res = await window.pqlApi.fetch('/api/agent-runs/' + r.run_id + '/approve', {
+        method: 'POST',
+      });
+      r._busy = false;
+      if (!res.ok) return; // pqlApi already toasted the error
+      r._resolved = 'approved';
+      window.pqlToast?.success?.('Run approved.');
+    },
+
+    toggleDenyForm(r) {
+      r._showDeny = !r._showDeny;
+    },
+
+    async denyRun(r) {
+      if (r._busy) return;
+      r._busy = true;
+      const res = await window.pqlApi.fetch('/api/agent-runs/' + r.run_id + '/deny', {
+        method: 'POST',
+        body: { reason: (r._denyReason || '').trim() },
+      });
+      r._busy = false;
+      if (!res.ok) return;
+      r._resolved = 'denied';
+      r._showDeny = false;
+      window.pqlToast?.success?.('Run denied.');
+    },
+
+    // Acknowledge a data-health card — resolves the underlying signal
+    // so it drops from every feed. If the condition is still truly
+    // breaching, the next scheduler tick re-opens a fresh card, so an
+    // ack can't permanently silence a live problem.
+    async acknowledgeHealth(r) {
+      if (r._busy || !r.signal_id) return;
+      r._busy = true;
+      const res = await window.pqlApi.fetch('/api/feed/signals/' + r.signal_id + '/ack', {
+        method: 'POST',
+      });
+      r._busy = false;
+      if (!res.ok) return;
+      r._resolved = 'acked';
+      window.pqlToast?.success?.('Acknowledged.');
+    },
+
+    // Retry a failed pipeline — POSTs the retry URL the signal payload
+    // carries (e.g. re-run a job). Falls back to opening the source.
+    async retryPipeline(r) {
+      const retryUrl = r.payload && r.payload.retry_url;
+      if (!retryUrl) {
+        if (r.source_url) window.location.href = r.source_url;
+        return;
+      }
+      if (r._busy) return;
+      r._busy = true;
+      const res = await window.pqlApi.fetch(retryUrl, { method: 'POST' });
+      r._busy = false;
+      if (!res.ok) return;
+      r._resolved = 'retried';
+      window.pqlToast?.success?.('Retry queued.');
+    },
+
     async reload() {
       this.loaded = false;
       try {
         const params = new URLSearchParams({ filter: this.filter });
         if (this.searchDraft.trim()) params.set('q', this.searchDraft.trim());
+        if (this.category && this.category !== 'all') params.set('category', this.category);
         // Multi-kind support: server still accepts a single ``kind`` param;
         // if multiple are selected we send a comma-joined list and let the
         // backend ignore the suffix until the route is widened.
@@ -308,7 +434,9 @@ export function feedPage() {
         }
         const res = await fetch('/api/feed?' + params.toString());
         if (!res.ok) throw new Error('HTTP ' + res.status);
-        this.rows = (await res.json()).rows || [];
+        const data = await res.json();
+        this.rows = data.rows || [];
+        this.categoryCounts = data.category_counts || {};
       } catch (e) {
         console.error('feed load failed', e);
         window.pqlToast?.error?.('Failed to load feed: ' + (e.message || 'unknown'));
@@ -482,6 +610,12 @@ export function feedPage() {
         'pql-feed-item--badge': rk === 'badge_award',
         'pql-feed-item--issue': rk === 'issue',
         'pql-feed-item--branch': rk === 'branch',
+        'pql-feed-item--approval': rk === 'approval',
+        'pql-feed-item--data-health': rk === 'data_health',
+        'pql-feed-item--pipeline': rk === 'pipeline',
+        'pql-feed-item--sev-warn': r.severity === 'warn',
+        'pql-feed-item--sev-error': r.severity === 'error',
+        'pql-feed-item--resolved': !!r._resolved,
         'pql-feed-item--fresh': !!r._fresh,
       };
     },
@@ -489,6 +623,9 @@ export function feedPage() {
     avatarIcon(r) {
       const rk = r.render_kind || r.kind;
       if (rk === 'agent_run') return 'bi-robot';
+      if (rk === 'approval') return 'bi-shield-check';
+      if (rk === 'data_health') return 'bi-heart-pulse';
+      if (rk === 'pipeline') return 'bi-diagram-2';
       if (rk === 'badge_award') return 'bi-award-fill';
       if (rk === 'issue') return 'bi-bug';
       if (rk === 'branch') return 'bi-bezier2';
@@ -500,6 +637,9 @@ export function feedPage() {
       if (r.actor_display_name) return r.actor_display_name;
       const rk = r.render_kind || r.kind;
       if (rk === 'agent_run') return 'Agent run';
+      if (rk === 'approval') return 'Agent run';
+      if (rk === 'data_health') return 'Data health';
+      if (rk === 'pipeline') return 'Pipeline';
       if (rk === 'badge_award') return 'System';
       if (rk === 'issue') return 'Issue';
       if (rk === 'branch') return 'Branch';
@@ -514,6 +654,9 @@ export function feedPage() {
       if (rk === 'agent_run') {
         return r.event_type && r.event_type.endsWith('.failed') ? 'failed on' : 'completed on';
       }
+      if (rk === 'approval') return 'needs your approval on';
+      if (rk === 'data_health') return '';
+      if (rk === 'pipeline') return '';
       if (rk === 'badge_award') return 'earned a badge for';
       if (rk === 'issue') return 'on';
       if (rk === 'branch') return 'on';

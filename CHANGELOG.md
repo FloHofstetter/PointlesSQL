@@ -17,6 +17,31 @@ defined in ``scripts/clusters.json``. -->
 
 ### Features
 
+- The home page is now the activity feed (rc257) — the static overview
+  dashboard at `/` (job sparkline, latest-runs table, "Today" digest) was
+  retired; `/` now renders the per-user activity stream (LinkedIn/X-style),
+  with `/feed` kept as an alias. A right rail carries **Needs your attention**
+  (live approvals / firing-alerts / unread counts that jump to the matching
+  surface), Trending, People-to-follow and Saved searches.
+- One filterable stream for every relevant event (rc257) — the feed now carries
+  **social** activity, **approvals**, and **data-health / pipeline** errors,
+  sliced by category chips (All · Approvals · Data health · Social · Pipeline ·
+  Governance) above the existing audience filter, with live count badges on the
+  action lanes. Categories + severity are derived from the event type via a
+  central registry (no schema column).
+- Inline actions in the feed (rc257) — agent runs awaiting approval render as
+  **Approve / Deny** cards (the principal is notified of the verdict); they are
+  read live from the run table so a card never goes stale and disappears once
+  any admin resolves it. Data-health cards expose **Acknowledge / Snooze** and
+  pipeline-failure cards **view logs**; acting collapses the card in place.
+- Data-health signal ledger (rc257) — a new `actionable_signals` open-ledger
+  surfaces firing alerts, failed jobs, and failed ingests as live cards. A
+  partial-unique index keeps **one card per ongoing problem** (a check that
+  re-fires every scheduler tick does not stack duplicates), and the card
+  self-heals: the condition clears, the signal resolves, the card drops from
+  the feed. Alert-check, job-run telemetry, and ingest emit/resolve signals on
+  state transitions.
+
 - Left navigation redesigned as hub-and-spoke (rc256) — the primary rail
   collapsed from 27 flat links to **six destination hubs** (Home, Watch, Build,
   Data, Community, plus the Admin footer), so it no longer scrolls. Every

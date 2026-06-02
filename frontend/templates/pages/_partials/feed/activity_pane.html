@@ -1,7 +1,8 @@
-    <div class="tab-pane"
-         :class="activeTab === 'activity' ? 'show active' : ''"
-         id="pql-feed-activity-pane"
-         role="tabpanel">
+    <div id="pql-feed-activity-pane">
+
+    {# Category chips — coarse lane slice, sits above the refinement
+       filter bar. #}
+    {% include "pages/_partials/feed/category_chips.html" %}
 
     {# Sticky filter bar — segmented pills, kind dropdown, search,
        density toggle.  Below md the kind dropdown + density toggle
@@ -341,6 +342,117 @@
                                                 </div>
                                             </template>
 
+                                            {# Approval — inline Approve / Deny (admin), resolves in place. #}
+                                            <template x-if="r.render_kind === 'approval'">
+                                                <div>
+                                                    <div class="small">
+                                                        <span class="text-muted">awaiting approval ·</span>
+                                                        <span x-text="r.principal || 'agent'"></span>
+                                                        <template x-if="r.notebook_path">
+                                                            <span class="text-muted"> · <span class="font-monospace" x-text="r.notebook_path"></span></span>
+                                                        </template>
+                                                    </div>
+
+                                                    {# Resolved confirmation — replaces the action row in place. #}
+                                                    <template x-if="r._resolved">
+                                                        <div class="text-muted small mt-1" aria-live="polite">
+                                                            <i class="bi"
+                                                               :class="r._resolved === 'approved' ? 'bi-check-circle text-success' : 'bi-x-circle text-danger'"></i>
+                                                            <span x-text="(r._resolved === 'approved' ? 'Approved' : 'Denied') + ' by you'"></span>
+                                                        </div>
+                                                    </template>
+
+                                                    {# Action row — admin only, hidden once resolved. #}
+                                                    <template x-if="isAdmin && !r._resolved">
+                                                        <div class="pql-feed-item__actions">
+                                                            <button type="button" class="btn btn-sm btn-success"
+                                                                    :disabled="!!r._busy" @click="approveRun(r)">
+                                                                <i class="bi bi-check2 me-1"></i>Approve
+                                                            </button>
+                                                            <button type="button" class="btn btn-sm btn-outline-danger"
+                                                                    :disabled="!!r._busy" @click="toggleDenyForm(r)">
+                                                                <i class="bi bi-x-lg me-1"></i>Deny
+                                                            </button>
+                                                            <a class="btn btn-sm btn-link" :href="r.source_url">view run →</a>
+                                                        </div>
+                                                    </template>
+
+                                                    {# Inline deny reason. #}
+                                                    <template x-if="isAdmin && r._showDeny && !r._resolved">
+                                                        <div class="mt-2 d-flex gap-2">
+                                                            <input type="text" class="form-control form-control-sm"
+                                                                   placeholder="Reason (optional)" x-model="r._denyReason"
+                                                                   @keydown.enter="denyRun(r)">
+                                                            <button type="button" class="btn btn-sm btn-danger"
+                                                                    :disabled="!!r._busy" @click="denyRun(r)">Confirm deny</button>
+                                                        </div>
+                                                    </template>
+                                                </div>
+                                            </template>
+
+                                            {# Data-health — severity chip + detail + acknowledge. #}
+                                            <template x-if="r.render_kind === 'data_health'">
+                                                <div>
+                                                    <div>
+                                                        <span class="badge"
+                                                              :class="r.severity === 'error' ? 'text-bg-danger' : 'text-bg-warning'"
+                                                              x-text="r.severity === 'error' ? 'Error' : 'Warn'"></span>
+                                                        <span class="ms-2" x-text="r.summary_md || ''"></span>
+                                                    </div>
+                                                    <template x-if="r._resolved">
+                                                        <div class="text-muted small mt-1" aria-live="polite">
+                                                            <i class="bi bi-check-circle text-success"></i>
+                                                            <span>Acknowledged</span>
+                                                        </div>
+                                                    </template>
+                                                    <template x-if="!r._resolved">
+                                                        <div class="pql-feed-item__actions">
+                                                            <a class="btn btn-sm btn-link p-0" :href="r.source_url">view details →</a>
+                                                            <template x-if="isAdmin">
+                                                                <button type="button" class="btn btn-sm btn-outline-secondary"
+                                                                        :disabled="!!r._busy" @click="acknowledgeHealth(r)">
+                                                                    <i class="bi bi-check2 me-1"></i>Acknowledge
+                                                                </button>
+                                                            </template>
+                                                            <button type="button" class="btn btn-sm btn-outline-secondary"
+                                                                    @click="snooze(r, '8h')" title="Snooze 8 hours">
+                                                                <i class="bi bi-alarm me-1"></i>Snooze
+                                                            </button>
+                                                        </div>
+                                                    </template>
+                                                </div>
+                                            </template>
+
+                                            {# Pipeline failure — error chip + detail + retry. #}
+                                            <template x-if="r.render_kind === 'pipeline'">
+                                                <div>
+                                                    <div>
+                                                        <span class="badge text-bg-danger">Failed</span>
+                                                        <span class="ms-2" x-text="r.summary_md || ''"></span>
+                                                    </div>
+                                                    <template x-if="r.body_md && r.body_md !== r.summary_md">
+                                                        <div class="pql-feed-item__snippet font-monospace small mt-1" x-text="r.body_md"></div>
+                                                    </template>
+                                                    <template x-if="r._resolved">
+                                                        <div class="text-muted small mt-1" aria-live="polite">
+                                                            <i class="bi bi-arrow-repeat text-info"></i>
+                                                            <span>Retry queued</span>
+                                                        </div>
+                                                    </template>
+                                                    <template x-if="!r._resolved">
+                                                        <div class="pql-feed-item__actions">
+                                                            <a class="btn btn-sm btn-link p-0" :href="r.source_url">view logs →</a>
+                                                            <template x-if="isAdmin && r.payload && r.payload.retry_url">
+                                                                <button type="button" class="btn btn-sm btn-outline-primary"
+                                                                        :disabled="!!r._busy" @click="retryPipeline(r)">
+                                                                    <i class="bi bi-arrow-repeat me-1"></i>Retry
+                                                                </button>
+                                                            </template>
+                                                        </div>
+                                                    </template>
+                                                </div>
+                                            </template>
+
                                             {# Badge award — celebration treatment. #}
                                             <template x-if="r.render_kind === 'badge_award'">
                                                 <div class="d-flex align-items-center gap-2">
@@ -393,4 +505,4 @@
                 </template>
             </div>
         </div>{# /single-column wrapper #}
-    </div>{# /activity tab-pane #}
+    </div>{# /activity pane #}

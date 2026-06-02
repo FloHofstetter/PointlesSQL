@@ -80,6 +80,9 @@ async def _alert_check_executor(
         saved_query_slug = saved.slug
         condition_op = alert.condition_op
         threshold = alert.threshold
+        workspace_id = int(alert.workspace_id)
+
+    from pointlessql.services.signals import emit_signal, resolve_signal
 
     try:
         prepared = prepare_sql(sql_text)
@@ -136,6 +139,15 @@ async def _alert_check_executor(
             logger.debug("alert %s: conn.close raised", alert_slug, exc_info=True)
 
     if not alerts_service.evaluate_condition(result.row_count, condition_op, threshold):
+        # Condition no longer met — clear any open data-health card so
+        # the feed self-heals when the alert stops firing.
+        resolve_signal(
+            factory,
+            signal_kind="alert_firing",
+            workspace_id=workspace_id,
+            entity_kind="alert",
+            entity_ref=str(alert_id),
+        )
         return
 
     now = datetime.datetime.now(datetime.UTC)
@@ -159,6 +171,21 @@ async def _alert_check_executor(
         row_count=result.row_count,
         outcome="fired",
         payload_json=payload_json,
+    )
+
+    # Open a data-health card (or keep one open) so the firing alert
+    # surfaces in the feed.  The ledger's dedupe guard means a still-
+    # firing alert produces one card, not one per tick.
+    emit_signal(
+        factory,
+        signal_kind="alert_firing",
+        workspace_id=workspace_id,
+        entity_kind="alert",
+        entity_ref=str(alert_id),
+        summary_md=(
+            f"Alert '{alert_slug}' fired — {result.row_count} rows {condition_op} {threshold}"
+        ),
+        source_url=f"/alerts/{alert_slug}",
     )
 
     # Fan out webhook dispatches.

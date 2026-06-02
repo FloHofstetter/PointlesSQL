@@ -1,11 +1,9 @@
 """Tests anomaly surfaces.
 
-Three surfaces:
-
-* ``/api/home/summary`` carries an ``anomalies`` block.
-* ``/runs/{id}`` HTML renders the anomaly chip when the latest
-  reject day breaches the configured σ threshold.
-* The home page banner appears when ``critical >= 1``.
+``/runs/{id}`` HTML renders the anomaly chip when the latest reject
+day breaches the configured σ threshold.  (The home dashboard's
+anomaly banner was retired when the feed became the home surface; the
+anomaly cockpit at ``/admin/audit`` is the canonical surface now.)
 
 The aggregator math is already covered in
 :mod:`tests.test_audit_aggregator`; here we focus on the wiring.
@@ -139,58 +137,6 @@ def _seed_anomalous_rejects(*, today_count: int, prior_days: list[int]) -> str:
             )
         s.commit()
     return today_run_id
-
-
-# ---------------------------------------------------------------------
-# /api/home/summary anomalies block
-# ---------------------------------------------------------------------
-
-
-@pytest.mark.asyncio
-async def test_home_summary_includes_anomalies_block(admin_client: httpx.AsyncClient) -> None:
-    r = await admin_client.get("/api/home/summary")
-    assert r.status_code == 200
-    body = r.json()
-    assert "anomalies" in body
-    assert "warn" in body["anomalies"]
-    assert "critical" in body["anomalies"]
-
-
-@pytest.mark.asyncio
-async def test_home_summary_anomalies_critical_for_synthetic_spike(
-    admin_client: httpx.AsyncClient,
-) -> None:
-    _seed_anomalous_rejects(today_count=50, prior_days=[2, 3, 1, 2, 4, 2, 3])
-    r = await admin_client.get("/api/home/summary")
-    body = r.json()
-    # Today has 50 rejects against a calm baseline.  Aggregator
-    # marks that "critical" given the >2σ rule.
-    assert body["anomalies"]["critical"] >= 1
-
-
-# ---------------------------------------------------------------------
-# Home HTML banner
-# ---------------------------------------------------------------------
-
-
-@pytest.mark.asyncio
-async def test_home_html_renders_anomaly_banner_on_critical(
-    admin_client: httpx.AsyncClient,
-) -> None:
-    _seed_anomalous_rejects(today_count=50, prior_days=[2, 3, 1, 2, 4, 2, 3])
-    r = await admin_client.get("/")
-    assert r.status_code == 200
-    body = r.text
-    assert "anomaly highlighting" in body
-    assert "Open audit cockpit" in body
-
-
-@pytest.mark.asyncio
-async def test_home_html_no_banner_when_baseline_steady(admin_client: httpx.AsyncClient) -> None:
-    _seed_anomalous_rejects(today_count=2, prior_days=[2, 3, 1, 2, 4, 2, 3])
-    r = await admin_client.get("/")
-    assert r.status_code == 200
-    assert "anomaly highlighting" not in r.text
 
 
 # ---------------------------------------------------------------------

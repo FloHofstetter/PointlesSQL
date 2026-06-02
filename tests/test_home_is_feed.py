@@ -1,8 +1,9 @@
-"""Today landing page digest tests.
+"""The home surface is the activity feed.
 
-Asserts the home page renders the three Today cards (approvals,
-inbox, alerts) and that the nav-rail badges are populated by the
-nav-badges service when underlying data exists.
+``GET /`` renders the same feed shell as ``GET /feed`` (the overview
+dashboard was retired) and the rail highlights the Home hub.  The
+nav-badges aggregator that powers the right-rail "Needs your
+attention" counts is exercised here too.
 """
 
 from __future__ import annotations
@@ -53,10 +54,10 @@ def _setup_app(tmp_path):
 
 
 def _seed_user(factory) -> str:
-    auth.register(factory, "today@pql.test", "Today User", "password123")
+    auth.register(factory, "home@pql.test", "Home User", "password123")
     token = auth.login(
         factory,
-        "today@pql.test",
+        "home@pql.test",
         "password123",
         "test-secret-key-for-unit-tests!!",
     )
@@ -64,56 +65,60 @@ def _seed_user(factory) -> str:
     return token
 
 
-class TestTodayCards:
-    """Three Today cards always render."""
+def _client(token: str) -> httpx.AsyncClient:
+    return httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app),
+        base_url="http://test",
+        cookies={auth.COOKIE_NAME: token},
+    )
+
+
+class TestHomeIsFeed:
+    """``/`` renders the feed; ``/feed`` is an alias of the same shell."""
 
     @pytest.mark.asyncio
-    async def test_three_today_cards_present(self):
-        factory = app.state.session_factory
-        token = _seed_user(factory)
-        async with httpx.AsyncClient(
-            transport=httpx.ASGITransport(app=app),
-            base_url="http://test",
-            cookies={auth.COOKIE_NAME: token},
-        ) as client:
+    async def test_root_renders_feed_shell(self):
+        token = _seed_user(app.state.session_factory)
+        async with _client(token) as client:
             resp = await client.get("/")
         assert resp.status_code == 200
         body = resp.text
-        for marker in ["approvals", "inbox", "alerts"]:
-            assert f'data-pql-today-card="{marker}"' in body, marker
+        # The Alpine feed factory mounts (with the is-admin arg) and the
+        # right rail teleports into the meta panel.
+        assert 'x-data="feedPage(' in body
+        assert 'x-teleport="#pql-meta-panel .pql-meta-panel__inner"' in body
+        assert "Needs your attention" in body
 
     @pytest.mark.asyncio
-    async def test_today_cards_link_to_full_surfaces(self):
-        factory = app.state.session_factory
-        token = _seed_user(factory)
+    async def test_root_and_feed_render_same_shell(self):
+        token = _seed_user(app.state.session_factory)
+        async with _client(token) as client:
+            root = await client.get("/")
+            feed = await client.get("/feed")
+        assert root.status_code == 200
+        assert feed.status_code == 200
+        for marker in ['x-data="feedPage(', "Needs your attention"]:
+            assert marker in root.text, marker
+            assert marker in feed.text, marker
+
+    @pytest.mark.asyncio
+    async def test_root_marks_home_hub_active(self):
+        token = _seed_user(app.state.session_factory)
+        async with _client(token) as client:
+            resp = await client.get("/")
+        # The feed is the Home hub, so the rail highlights it.
+        assert 'data-active-hub="home"' in resp.text
+
+    @pytest.mark.asyncio
+    async def test_anonymous_redirected_to_login(self):
         async with httpx.AsyncClient(
             transport=httpx.ASGITransport(app=app),
             base_url="http://test",
-            cookies={auth.COOKIE_NAME: token},
         ) as client:
-            resp = await client.get("/")
-        body = resp.text
-        assert 'href="/runs?status=needs_approval"' in body
-        assert 'href="/notifications"' in body
-        assert 'href="/alerts"' in body
-
-    @pytest.mark.asyncio
-    async def test_zero_state_does_not_panic(self):
-        """Empty install: no runs, no notifications, no alerts → zeros."""
-        factory = app.state.session_factory
-        token = _seed_user(factory)
-        async with httpx.AsyncClient(
-            transport=httpx.ASGITransport(app=app),
-            base_url="http://test",
-            cookies={auth.COOKIE_NAME: token},
-        ) as client:
-            resp = await client.get("/")
-        assert resp.status_code == 200
-        body = resp.text
-        # Zero state copy is rendered.
-        assert "Inbox zero" in body or "Nothing waiting" in body
-        assert "All caught up" in body
-        assert "No alerts configured" in body
+            resp = await client.get("/", follow_redirects=False)
+        # Unauthenticated lands on the login flow (303 from the route or
+        # the auth middleware), never a 200 feed.
+        assert resp.status_code in (302, 303, 307)
 
 
 class TestNavBadgesService:
@@ -130,7 +135,6 @@ class TestNavBadgesService:
 
         factory = app.state.session_factory
         result = compute_nav_badges(factory, user_id=0, workspace_id=0)
-        # All three keys present, all zero.
         assert result.get("runs_pending", -1) == 0
         assert result.get("audit_unread", -1) == 0
         assert result.get("alerts_firing", -1) == 0
@@ -142,22 +146,3 @@ class TestNavBadgesService:
         result = compute_nav_badges(factory, user_id=1, workspace_id=1)
         for k, v in result.items():
             assert v >= 0, f"{k} is negative: {v}"
-
-
-class TestActivePageHome:
-    """Home route flags active_page='home' so rail highlights Today."""
-
-    @pytest.mark.asyncio
-    async def test_home_marks_today_rail_active(self):
-        factory = app.state.session_factory
-        token = _seed_user(factory)
-        async with httpx.AsyncClient(
-            transport=httpx.ASGITransport(app=app),
-            base_url="http://test",
-            cookies={auth.COOKIE_NAME: token},
-        ) as client:
-            resp = await client.get("/")
-        body = resp.text
-        # The Today rail entry carries data-section="home" and gets
-        # the active class on the home page.
-        assert 'data-section="home"' in body

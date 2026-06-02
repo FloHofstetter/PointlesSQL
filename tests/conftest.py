@@ -145,9 +145,8 @@ def _test_engine() -> Iterator[tuple[Engine, sessionmaker[Any]]]:  # pyright: ig
     if db_url.startswith("sqlite"):
         # ``sqlite:///:memory:`` creates a *per-connection* database, so
         # a pooled QueuePool gives each worker thread its own empty
-        # copy — ``asyncio.to_thread``-backed code paths like
-        # ``_build_home_summary._db_block`` then report "no such
-        # table: jobs". Pinning every test to a single shared
+        # copy — ``asyncio.to_thread``-backed route code then reports
+        # "no such table: jobs". Pinning every test to a single shared
         # connection (``StaticPool`` + ``check_same_thread=False``)
         # keeps the schema alive across threads without forcing
         # callers onto a temp file.

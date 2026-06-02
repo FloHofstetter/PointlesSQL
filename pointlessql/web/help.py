@@ -422,26 +422,6 @@ HELP: dict[str, HelpEntry] = {
         ),
         learn_more="/concepts/architecture/",
     ),
-    "home.what-is-the-cockpit": HelpEntry(
-        title="Audit cockpit",
-        body=(
-            "The cockpit is the single place to triage runs, "
-            "anomalies, alerts and rollbacks. Cards refresh on "
-            "a 30-second interval; click any card to drill "
-            "into the underlying inbox or run."
-        ),
-        learn_more="/concepts/audit-trail/",
-    ),
-    "home.anomaly-cards": HelpEntry(
-        title="Anomaly cards",
-        body=(
-            "Live count of unacked warn / critical anomalies. "
-            "The badge link goes straight into the audit inbox "
-            "filtered to that severity so triage is one click "
-            "away."
-        ),
-        learn_more="/concepts/audit-trail/",
-    ),
     # SQL editor + admin + settings popovers.  Three SQL popovers
     # plus seven admin popovers covering the governance surfaces a
     # tenant admin actually has to operate.

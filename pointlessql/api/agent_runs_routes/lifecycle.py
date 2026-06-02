@@ -20,9 +20,61 @@ from pointlessql.api.agent_runs_routes._serializers import serialize_agent_run
 from pointlessql.api.dependencies import get_user, require_admin
 from pointlessql.exceptions import CatalogNotFoundError, ValidationError
 from pointlessql.models.agent._runs import AgentRun
+from pointlessql.services.notifications.fanout import (
+    fanout_event,
+    resolve_user_id_by_email,
+    resolve_workspace_admin_ids,
+)
 from pointlessql.types import RunStatus
 
 router = APIRouter()
+
+
+def _fanout_run_decision(
+    request: Request,
+    *,
+    run_id: str,
+    principal: str | None,
+    workspace_id: int,
+    actor_user_id: int,
+    event_type: str,
+    summary_md: str,
+) -> None:
+    """Fan a terminal approve / deny decision into the feed.
+
+    Best-effort informational lane: the decision is a permanent fact,
+    so it rides the immutable ``user_notifications`` pipe (with
+    read-state + live SSE).  Recipients are the run's principal (so
+    the author learns the verdict) plus the workspace admins; the
+    acting approver is excluded by ``fanout_event``.
+
+    Args:
+        request: Incoming FastAPI request (for the session factory).
+        run_id: The run that was decided.
+        principal: The run's principal email, if any.
+        workspace_id: The run's workspace.
+        actor_user_id: The deciding admin's user id (excluded from
+            the recipient set).
+        event_type: ``pointlessql.agent_run.approved`` / ``.denied``.
+        summary_md: One-line inbox summary.
+    """
+    factory = request.app.state.session_factory
+    with factory() as session:
+        recipients = resolve_workspace_admin_ids(session)
+        principal_id = resolve_user_id_by_email(session, principal)
+    if principal_id is not None:
+        recipients.append(principal_id)
+    fanout_event(
+        factory,
+        event_type=event_type,
+        entity_kind="run",
+        entity_ref=run_id,
+        workspace_id=workspace_id,
+        actor_user_id=actor_user_id,
+        source_url=f"/runs/{run_id}",
+        summary_md=summary_md,
+        extra_recipients=recipients,
+    )
 
 
 @router.post("/api/agent-runs/{run_id}/approve")
@@ -59,10 +111,21 @@ async def api_approve_agent_run(
         row.status = RunStatus.APPROVED
         row.approved_by = user["email"]
         row.approved_at = datetime.now(UTC)
+        principal = row.principal
+        workspace_id = int(row.workspace_id)
         session.commit()
         session.refresh(row)
         session.expunge(row)
     await audit(request, "approve_agent_run", f"agent_run:{run_id}")
+    _fanout_run_decision(
+        request,
+        run_id=run_id,
+        principal=principal,
+        workspace_id=workspace_id,
+        actor_user_id=int(user["id"]),
+        event_type="pointlessql.agent_run.approved",
+        summary_md=f"Run {run_id[:8]} approved by {user['email']}",
+    )
     return serialize_agent_run(row)
 
 
@@ -91,6 +154,7 @@ async def api_deny_agent_run(
         ValidationError: Run is not in ``needs_approval``.
     """
     require_admin(request)
+    user = get_user(request)
     reason_raw = body.get("reason")
     reason = str(reason_raw).strip() if isinstance(reason_raw, str) and reason_raw.strip() else None
     factory = request.app.state.session_factory
@@ -103,6 +167,8 @@ async def api_deny_agent_run(
         row.status = RunStatus.DENIED
         row.denied_reason = reason
         row.finished_at = datetime.now(UTC)
+        principal = row.principal
+        workspace_id = int(row.workspace_id)
         session.commit()
         session.refresh(row)
         session.expunge(row)
@@ -112,5 +178,14 @@ async def api_deny_agent_run(
         "deny_agent_run",
         f"agent_run:{run_id}",
         {"reason": reason},
+    )
+    _fanout_run_decision(
+        request,
+        run_id=run_id,
+        principal=principal,
+        workspace_id=workspace_id,
+        actor_user_id=int(user["id"]),
+        event_type="pointlessql.agent_run.denied",
+        summary_md=f"Run {run_id[:8]} denied{': ' + reason if reason else ''}",
     )
     return serialize_agent_run(row)

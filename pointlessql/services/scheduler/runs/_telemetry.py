@@ -115,6 +115,53 @@ async def _post_failure_webhook(
         logger.exception("scheduler: on_failure_url webhook to %s raised", url)
 
 
+def _sync_run_health_signal(
+    factory: sessionmaker[Session],
+    job_id: int,
+    job_name: str,
+    run: JobRun,
+) -> None:
+    """Open a pipeline signal on a failed run; resolve it on success.
+
+    A job that fails repeatedly produces one open card (the signal
+    ledger's dedupe guard), and the next successful run clears it.
+    Best-effort — the signal helpers swallow their own errors, and a
+    missing ``workspace_id`` (legacy row) just skips emission.
+
+    Args:
+        factory: Session factory.
+        job_id: Parent job id — the signal's entity ref.
+        job_name: Snapshot job name for the card summary.
+        run: The terminal run row.
+    """
+    workspace_id = getattr(run, "workspace_id", None)
+    if not workspace_id:
+        return
+    if run.status not in ("failed", "succeeded"):
+        return
+    from pointlessql.services.signals import emit_signal, resolve_signal
+
+    if run.status == "failed":
+        emit_signal(
+            factory,
+            signal_kind="job_failed",
+            workspace_id=int(workspace_id),
+            entity_kind="job",
+            entity_ref=str(job_id),
+            summary_md=f"Job '{job_name or job_id}' run failed",
+            source_url=f"/runs/{run.id}",
+            payload={"detail": run.error or ""},
+        )
+    else:
+        resolve_signal(
+            factory,
+            signal_kind="job_failed",
+            workspace_id=int(workspace_id),
+            entity_kind="job",
+            entity_ref=str(job_id),
+        )
+
+
 async def _emit_run_telemetry(
     factory: sessionmaker[Session],
     job_id: int,
@@ -136,6 +183,8 @@ async def _emit_run_telemetry(
     job_name, on_failure_url = _load_job_name_and_webhook(factory, job_id)
     duration = _duration_seconds(run)
     metrics_service.record_run(job_name, run.status, duration)
+
+    _sync_run_health_signal(factory, job_id, job_name, run)
 
     if run.status != "failed" or not on_failure_url:
         return

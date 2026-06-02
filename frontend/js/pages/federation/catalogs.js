@@ -2,8 +2,8 @@
  * Federation create-form — foreign UC catalogs + generic delete-confirm.
  *
  * Split out of ``federation.js``. Owns the
- * ``createForeignCatalogForm({connections})`` factory the home
- * page's "Create foreign catalog" modal mounts and
+ * ``createForeignCatalogForm({connections})`` factory the
+ * Connections page's "Create foreign catalog" modal mounts and
  * the small ``deleteConfirm({deleteUrl, redirectUrl})`` factory
  * the per-resource detail pages mount on their delete buttons.
  *

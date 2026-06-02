@@ -1,0 +1,30 @@
+{#
+ Category chips — the coarse lane slice over the unified stream.
+
+ Single-select radio row (one lane at a time).  Counts ride on the
+ action-bearing lanes (Approvals / Data health / Pipeline) so the eye
+ is drawn to things that need doing; All / Social / Governance stay
+ count-free to keep the row calm.  Counts come from the feed
+ response's ``category_counts`` (tallied across every lane before the
+ slice) so they don't collapse when a lane is selected.
+#}
+<div class="pql-feed-categories mb-2">
+    <ul class="nav nav-pills nav-pills-sm" role="tablist" aria-label="Feed categories">
+        <template x-for="c in categories" :key="c.key">
+            <li class="nav-item" role="presentation">
+                <button type="button"
+                        class="nav-link py-1 px-2 d-inline-flex align-items-center gap-1"
+                        :class="category === c.key ? 'active' : ''"
+                        :data-category="c.key"
+                        @click="setCategory(c.key)">
+                    <i class="bi" :class="c.icon"></i>
+                    <span x-text="c.label"></span>
+                    <span class="badge rounded-pill"
+                          :class="category === c.key ? 'text-bg-light' : 'text-bg-secondary'"
+                          x-show="['approval', 'health', 'pipeline'].includes(c.key) && categoryCount(c.key) > 0"
+                          x-text="categoryCount(c.key)"></span>
+                </button>
+            </li>
+        </template>
+    </ul>
+</div>

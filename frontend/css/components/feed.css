@@ -91,6 +91,50 @@
     border-left-color: var(--bs-secondary);
 }
 
+/* Platform-event lanes — approvals, data-health, pipeline. */
+.pql-feed-item--approval {
+    border-left-color: var(--bs-warning);
+}
+.pql-feed-item--data-health {
+    border-left-color: var(--bs-danger);
+}
+.pql-feed-item--pipeline {
+    border-left-color: var(--bs-danger);
+}
+
+/* Severity accents override the lane stripe so an ``error`` row reads
+ * red and a ``warn`` row amber regardless of which lane it came from.
+ * Drawn after the lane rules so the cascade lands on severity. */
+.pql-feed-item--sev-warn {
+    border-left-color: var(--bs-warning);
+}
+.pql-feed-item--sev-error {
+    border-left-color: var(--bs-danger);
+}
+
+/* Acted-on cards collapse to a muted, greyed slot until the next
+ * reload prunes them — the reaction stays visible (LinkedIn/X), the
+ * inline action row is hidden. */
+.pql-feed-item--resolved {
+    border-left-color: var(--bs-secondary);
+    opacity: 0.7;
+}
+.pql-feed-item--resolved .pql-feed-item__actions {
+    display: none;
+}
+
+/* Inline action rows under approval / health / pipeline cards. */
+.pql-feed-item__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+.pql-feed--compact .pql-feed-item__actions,
+.pql-feed--headlines .pql-feed-item__actions {
+    display: none;
+}
+
 /* Bootstrap renders dropdown-menus inside the dropdown <div> by
  * default, which sits inside the card's stacking context.  Cards
  * later in the feed (position: relative) draw on top of an open

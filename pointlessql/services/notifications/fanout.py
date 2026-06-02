@@ -57,6 +57,49 @@ def _opted_in_inbox(prefs_json: str | None, event_type: str) -> bool:
     return inbox is None or bool(inbox)
 
 
+def resolve_workspace_admin_ids(session: Any) -> list[int]:
+    """Return the user ids of every admin.
+
+    Platform events with no natural follower set (a run awaiting
+    approval, a branch promotion) target the workspace's supervisors
+    so a critical event is never under-delivered.  Admins are global
+    on the :class:`User` model (not workspace-scoped per row), so this
+    returns every admin and ``fanout_event`` scopes the resulting
+    notifications to the event's workspace.
+
+    Args:
+        session: SQLAlchemy session.
+
+    Returns:
+        List of admin user ids (possibly empty).
+    """
+    return [
+        int(uid)
+        for (uid,) in session.execute(select(User.id).where(User.is_admin.is_(True))).all()
+    ]
+
+
+def resolve_user_id_by_email(session: Any, email: str | None) -> int | None:
+    """Resolve a principal email to a user id, or ``None``.
+
+    Run principals are stored as the email the agent acted on behalf
+    of; the terminal approve / deny fan-out wants to notify that user
+    directly.  Returns ``None`` when the email is missing or unknown
+    (e.g. a purely background agent with no human principal).
+
+    Args:
+        session: SQLAlchemy session.
+        email: The principal email, or ``None``.
+
+    Returns:
+        The matching user id, or ``None``.
+    """
+    if not email:
+        return None
+    uid = session.execute(select(User.id).where(User.email == email)).scalar_one_or_none()
+    return int(uid) if uid is not None else None
+
+
 def fanout_event(
     session_factory: Any,
     *,
@@ -81,9 +124,9 @@ def fanout_event(
 
     Args:
         session_factory: SQLAlchemy session factory.
-        event_type: Governance event type (one of the Phase-71.4
-            / Phase-20 strings; new kinds may introduce new
-            event_type strings without a schema change).
+        event_type: Governance event type — a
+            ``pointlessql.<scope>.<verb>`` string.  New kinds may
+            introduce new event_type strings without a schema change.
         entity_kind: Discriminator from
             :data:`pointlessql.models.social.ENTITY_KINDS`.
         entity_ref: Reference string within *entity_kind*.

@@ -117,4 +117,8 @@ class TestUsersIndex:
         ) as client:
             resp = await client.get("/users")
         body = resp.text
-        assert 'data-section="people"' in body
+        # ``/users`` is the People section, grouped under the Community
+        # hub; the rail highlights the hub and ``<main>`` carries the
+        # resolved section.
+        assert 'data-active-hub="community"' in body
+        assert 'data-active-section="people"' in body

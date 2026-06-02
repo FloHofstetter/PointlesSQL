@@ -126,6 +126,18 @@ async def run_pull(
             target_fqn=str(mapping.get("target_fqn") or ""),
             summary=f"Pull from {source_name} failed: {exc.reason}",
         )
+        from pointlessql.services.signals import emit_signal
+
+        emit_signal(
+            factory,
+            signal_kind="ingest_failed",
+            workspace_id=int(workspace_id),
+            entity_kind="ingest_source",
+            entity_ref=str(source_id),
+            summary_md=f"Pull from {source_name} failed",
+            source_url=f"/ingest/sources/{source_id}",
+            payload={"detail": exc.reason},
+        )
         raise
 
     _record_pull_outcome(
@@ -149,6 +161,15 @@ async def run_pull(
         source_name=source_name,
         target_fqn=result.target_fqn,
         summary=(f"Pulled {result.rows_written} rows from {source_name} → {result.target_fqn}"),
+    )
+    from pointlessql.services.signals import resolve_signal
+
+    resolve_signal(
+        factory,
+        signal_kind="ingest_failed",
+        workspace_id=int(workspace_id),
+        entity_kind="ingest_source",
+        entity_ref=str(source_id),
     )
     return result.to_dict()
 
