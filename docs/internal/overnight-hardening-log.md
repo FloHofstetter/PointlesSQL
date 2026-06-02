@@ -303,3 +303,10 @@ genuinely-remaining gaps instead of the stale baseline.
 - `tests/test_review_dispatcher_helpers.py`: `services/review_dispatcher.py` (was 62%) pure
   helpers — `build_envelope` (CloudEvents 1.0 shape, auto event-id/time), `_hash_url` (stable
   prefixed digest), `_decode_workspace_filter` (fail-open routing). Committed.
+
+### Ingest-pull helpers (+15 tests)
+- `tests/test_ingest_pull_helpers.py`: `services/ingest/pull.py` (was 63%) pure helpers —
+  `_coerce_mapping` shape validation (mode / 3-part target_fqn / incremental high-water
+  requirement), `_wrap_with_high_water` + `_max_high_water_sql` incremental-SQL construction
+  (first-pull-is-full vs delta WHERE), and the `load_mappings` / `dump_mappings` JSON serde
+  (malformed / non-list / non-dict filtering + round-trip). Committed.
