@@ -14,49 +14,13 @@ as red wires + validation badges next to the offending pin.
 
 from __future__ import annotations
 
-from collections import defaultdict
-
 from pointlessql.services.dp_canvas._blocks import BLOCK_REGISTRY, infer_block
+from pointlessql.services.dp_canvas._graph import topo_sort
 from pointlessql.services.dp_canvas._types import (
     CanvasDoc,
-    CanvasEdge,
-    CanvasNode,
     CompileError,
     PinSchema,
 )
-
-
-def _topo_sort(
-    nodes: list[CanvasNode], edges: list[CanvasEdge], errors: list[CompileError]
-) -> list[CanvasNode] | None:
-    """Kahn's algorithm — duplicated here to keep this module compile-free."""
-    incoming: dict[str, set[str]] = defaultdict(set)
-    outgoing: dict[str, set[str]] = defaultdict(set)
-    for edge in edges:
-        incoming[edge.target_node_id].add(edge.source_node_id)
-        outgoing[edge.source_node_id].add(edge.target_node_id)
-    by_id = {n.id: n for n in nodes}
-    ready = sorted([n.id for n in nodes if not incoming.get(n.id)])
-    ordered: list[str] = []
-    while ready:
-        nid = ready.pop(0)
-        ordered.append(nid)
-        for downstream in sorted(outgoing.get(nid, set())):
-            incoming[downstream].discard(nid)
-            if not incoming[downstream]:
-                ready.append(downstream)
-                ready.sort()
-    if len(ordered) != len(nodes):
-        remaining = sorted({n.id for n in nodes} - set(ordered))
-        errors.append(
-            CompileError(
-                kind="cycle",
-                node_id=remaining[0] if remaining else None,
-                message=f"Canvas contains a cycle involving nodes {remaining!r}.",
-            )
-        )
-        return None
-    return [by_id[nid] for nid in ordered]
 
 
 def validate_schema_flow(
@@ -97,7 +61,7 @@ def validate_schema_flow(
     if errors:
         return {}, errors
 
-    ordered = _topo_sort(list(doc.nodes), list(doc.edges), errors)
+    ordered = topo_sort(list(doc.nodes), list(doc.edges), errors)
     if ordered is None:
         return {}, errors
 

@@ -16,7 +16,6 @@ diff view.
 from __future__ import annotations
 
 import re
-from collections import defaultdict
 from collections.abc import Iterable
 
 from pointlessql.services.dp_canvas._blocks import (
@@ -24,9 +23,9 @@ from pointlessql.services.dp_canvas._blocks import (
     compile_block,
     infer_block,
 )
+from pointlessql.services.dp_canvas._graph import topo_sort
 from pointlessql.services.dp_canvas._types import (
     CanvasDoc,
-    CanvasEdge,
     CanvasNode,
     CompileError,
     PinSchema,
@@ -105,39 +104,6 @@ def _validate_envelope(doc: CanvasDoc, errors: list[CompileError]) -> bool:
     return not errors
 
 
-def _topo_sort(
-    nodes: list[CanvasNode], edges: list[CanvasEdge], errors: list[CompileError]
-) -> list[CanvasNode] | None:
-    """Kahn's algorithm, returning ``None`` and recording an error on cycle."""
-    incoming: dict[str, set[str]] = defaultdict(set)
-    outgoing: dict[str, set[str]] = defaultdict(set)
-    for edge in edges:
-        incoming[edge.target_node_id].add(edge.source_node_id)
-        outgoing[edge.source_node_id].add(edge.target_node_id)
-    by_id = {n.id: n for n in nodes}
-    ready = sorted([n.id for n in nodes if not incoming.get(n.id)])
-    ordered: list[str] = []
-    while ready:
-        nid = ready.pop(0)
-        ordered.append(nid)
-        for downstream in sorted(outgoing.get(nid, set())):
-            incoming[downstream].discard(nid)
-            if not incoming[downstream]:
-                ready.append(downstream)
-                ready.sort()
-    if len(ordered) != len(nodes):
-        remaining = sorted({n.id for n in nodes} - set(ordered))
-        errors.append(
-            CompileError(
-                kind="cycle",
-                node_id=remaining[0] if remaining else None,
-                message=f"Canvas contains a cycle involving nodes {remaining!r}.",
-            )
-        )
-        return None
-    return [by_id[nid] for nid in ordered]
-
-
 def _check_block_types(nodes: Iterable[CanvasNode], errors: list[CompileError]) -> None:
     for node in nodes:
         if node.block_type not in BLOCK_REGISTRY:
@@ -214,7 +180,7 @@ def compile_canvas(
     if not output_nodes:
         return None, errors
 
-    ordered_nodes = _topo_sort(list(doc.nodes), list(doc.edges), errors)
+    ordered_nodes = topo_sort(list(doc.nodes), list(doc.edges), errors)
     if ordered_nodes is None:
         return None, errors
 
