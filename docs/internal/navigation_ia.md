@@ -39,13 +39,42 @@ PointlesSQL uses **four chrome slots**.  No layout may add a fifth.
   [user_menu.html](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/templates/components/user_menu.html),
   and the Phase-80 additions
   `components/quick_create_menu.html`.
-* **Primary sidebar** — five grouped intent-sections + admin footer.
-  Expandable 64 px ↔ 220 px.  Implementation:
-  `components/primary_rail.html` (renamed from `icon_rail.html` in
-  Phase 80.1).
-* **Context sidebar** — per-section secondary nav.  Implementation:
+* **Primary sidebar** — **six destination hubs** (Home · Watch ·
+  Build · Data · Community) plus the admin footer.  Expandable
+  64 px ↔ 220 px.  Implementation: `components/primary_rail.html`.
+  Each hub owns a *spoke list* of sub-features that renders in the
+  context sidebar; the rail itself stays short.
+* **Context sidebar** — the active hub's **spoke list** on top,
+  followed by the section's contextual content (catalog tree, runs
+  list, …).  Implementation:
   [context_panel.html](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/templates/components/context_panel.html)
-  dispatching on `active_section`.
+  dispatching the spoke partial on `active_hub` and the contextual
+  partial on `active_section`.
+
+## Hub-and-spoke model
+
+The rail collapses the long flat link list into six top-level hubs so
+it never scrolls.  Every destination is still one rail-click + one
+spoke-click away — the long tail simply lives in the second sidebar.
+
+| Hub | Rail href | `active_hub` | Spokes (see the group tables below) |
+|---|---|---|---|
+| **Home** | `/` | `home` | Today · Feed · Workspace home |
+| **Watch** | `/runs` | `watch` | Agent runs · Audit · Alerts (summed badge on the hub) |
+| **Build** | `/sql` | `build` | SQL editor · Lens · Notebooks · Dashboards · Scheduled jobs · dbt |
+| **Data** | `/data-products` | `data` | Catalog · Data products · Domains · Glossary · Mesh · Ingest · Views · Canvas · ML models · MLflow · Delta branches · Lineage |
+| **Community** | `/topics` | `community` | Topics · Issues · People · Agents |
+| **Admin** (footer) | `/admin` | `admin` | (the admin links already in `context_panel.html`) |
+
+`active_hub` is derived from `active_section` via `_hub_map` in
+`base.html` (one layer above the unchanged `_section_map`).  The rail
+highlight keys on `active_hub`; the in-panel spoke highlight keys on
+`active_section` / `active_page` exactly as the old flat rail did.
+Spoke lists live in `components/sidebars/_<hub>_hub_spokes.html`.
+
+The mobile offcanvas (`components/nav_links.html`) keeps the flat
+grouped IA — a scrollable drawer does not suffer the fixed-rail
+crowding, so it is intentionally decoupled from the hub rail.
 * **Footer** — ambient awareness strip, hidden on auth pages.
   Implementation: `components/footer_bar.html` (Phase 80.7).
 

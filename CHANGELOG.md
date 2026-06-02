@@ -17,6 +17,20 @@ defined in ``scripts/clusters.json``. -->
 
 ### Features
 
+- Left navigation redesigned as hub-and-spoke (rc256) — the primary rail
+  collapsed from 27 flat links to **six destination hubs** (Home, Watch, Build,
+  Data, Community, plus the Admin footer), so it no longer scrolls. Every
+  feature is preserved: clicking a hub fills the second sidebar with that hub's
+  full spoke list (e.g. the Data hub's Catalog, Data products, Domains,
+  Glossary, Mesh, Ingest, Views, Canvas, ML models, MLflow, Delta branches,
+  Lineage) above the existing contextual content (catalog tree, runs list, …).
+  The Watch hub shows a single summed badge (pending approvals + unread
+  anomalies + firing alerts); individual counts stay on the spokes. The Delta
+  branches entry is now admin-gated via the permission_link lock affordance
+  (it was previously an ungated rail link despite the route requiring admin).
+  The context panel re-opens automatically when a hub is clicked (unless
+  focus-mode is on); the mobile offcanvas keeps its flat grouped nav.
+
 - Canvas Run is now inline (rc253+) — the toolbar **Run** button materialises
   the canvas straight away instead of opening a confirmation modal. Progress,
   the per-sink result table (port / target / rows / ok|failed badge), and any

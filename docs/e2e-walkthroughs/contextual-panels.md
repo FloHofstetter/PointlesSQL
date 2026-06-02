@@ -2,15 +2,19 @@
 
 > **Mode:** `browser` · **Surface:** Sidebar context-panel
 
-Exercises the context-panels: the 240-px sidebar to the
-right of the icon-rail. Each rail icon now opens its own
-navigable list (catalog tree for Federation, runs/branches/
-workspace/jobs/alerts/mlflow for the others), so the user never
+Exercises the context-panels: the 240-px sidebar to the right of
+the primary rail. The rail is now **six hubs** (Home · Watch ·
+Build · Data · Community + Admin); each hub opens its **spoke
+list** in this panel, followed by the section's contextual content
+(catalog tree, runs list, branch list, …). So reaching e.g. Runs
+is: click the **Watch** hub, then the **Agent runs** spoke — and
+the deep contextual list still renders below, so the user never
 has to hop into the main listing page just to find one item.
 
-The goal is to prove that **every rail icon binds its own Alpine
-factory, fetches data, renders rows, exposes a help-popover, and
-does not leak state across boost-navigation**.
+The goal is to prove that **each hub renders its spoke list, every
+contextual panel binds its Alpine factory, fetches data, renders
+rows, exposes a help-popover, and does not leak state across
+boost-navigation**.
 
 This walkthrough is **driven from a browser** and replayable by
 Claude Code via `mcp__playwright__browser_*` against headful
@@ -28,19 +32,23 @@ Firefox.
 
 ## Walkthrough
 
-### 1. Federation panel (catalog tree)
+### 1. Federation panel (catalog tree) — under the Data hub
 
-- Action: navigate to `/connections`.
-- Assertion: the right-of-rail panel shows the catalog tree under
- the "CATALOG" header. At least one catalog row visible with a
- chevron. Tables, volumes (`bi-hdd-stack`), and models
- (`bi-box-seam`) render under their schemas when expanded.
-- Why it matters: this is the original panel and the
- reference pattern every panel mirrors.
+- Action: navigate to `/connections`. The **Data** hub is active.
+- Assertion: the panel shows the **DATA** spoke list on top
+ (Catalog · Data products · Domains · Glossary · Mesh · Ingest ·
+ Views · Canvas · ML models · MLflow · Delta branches · Lineage),
+ then the catalog tree under the "CATALOG" header. At least one
+ catalog row visible with a chevron. Tables, volumes
+ (`bi-hdd-stack`), and models (`bi-box-seam`) render under their
+ schemas when expanded.
+- Why it matters: this is the reference contextual partial; the
+ hub spokes sit above it without disturbing it.
 
 ### 2. Runs panel — three-bucket grouping
 
-- Action: click the **Runs** rail icon. URL becomes `/runs`.
+- Action: click the **Watch** hub, then the **Agent runs** spoke.
+ URL becomes `/runs`.
 - Assertion: the panel header reads "Runs" + an `info` icon.
  Below: any of "Needs approval" (warning), "Running" (info), or
  "Recent" (muted) buckets. Each row shows an 8-char short ID,
@@ -58,8 +66,9 @@ Firefox.
 
 ### 3. Branches panel — admin-gated
 
-- Action: click the **Branches** rail icon. URL becomes
- `/branches`.
+- Action: click the **Data** hub, then the **Delta branches**
+ spoke (admin-only — renders as a lock stub for non-admins). URL
+ becomes `/branches`.
 - Assertion: panel header "Branches" + `info` icon. Active /
  Promoted / Discarded sub-headers appear depending on which
  states have rows. Each row shows the branch FQN + a strategy
@@ -72,8 +81,8 @@ Firefox.
 
 ### 4. Workspace panel — flat notebook list
 
-- Action: click the **Workspace** rail icon. URL becomes
- `/notebooks/workspace`.
+- Action: click the **Build** hub, then the **Notebooks** spoke.
+ URL becomes `/notebooks/workspace`.
 - Assertion: panel shows alphabetically-sorted `.py` and `.ipynb`
  notebook paths, format-tagged (`py` info / `ipynb` warning).
  Help icon title "Workspace panel". Click any row → URL
@@ -84,7 +93,8 @@ Firefox.
 
 ### 5. Jobs panel — active/paused split
 
-- Action: click the **Jobs** rail icon. URL becomes `/jobs`.
+- Action: click the **Build** hub, then the **Scheduled jobs**
+ spoke. URL becomes `/jobs`.
 - Assertion: Active rows have a `bi-clock-history` icon + the
  most-recent run-status badge. Paused rows are muted with a
  `bi-pause-circle` icon and no status badge. Help icon title
@@ -92,16 +102,17 @@ Firefox.
 
 ### 6. Alerts panel — enabled/disabled split
 
-- Action: click the **Alerts** rail icon. URL becomes `/alerts`.
+- Action: click the **Watch** hub, then the **Alerts** spoke. URL
+ becomes `/alerts`.
 - Assertion: Enabled rows have a green `bi-bell`; disabled rows a
  muted `bi-bell-slash` and muted text. Help icon title "Alerts
  panel". Click a row → `/alerts/<slug>`.
 
 ### 7. MLflow panel — recent registered models
 
-- Action: click the **ML** rail icon. URL becomes `/ml`. The
- main area shows the MLflow Tracking iframe (or a
- warning if the subprocess isn't running).
+- Action: click the **Data** hub, then the **MLflow** spoke. URL
+ becomes `/ml`. The main area shows the MLflow Tracking iframe (or
+ a warning if the subprocess isn't running).
 - Assertion: panel header "MLflow" + `info` icon. "Recent
  models" sub-header. Each row shows the model name, a
  `v<latest_version>` badge, and a status badge (READY /
@@ -113,9 +124,10 @@ Firefox.
 
 ### 8. Cross-section round-trip — Alpine survives boost-swap
 
-- Action: from `/connections` (Federation), click the **Runs**
- rail icon. Then click **SQL**. Then click **Federation**
- again.
+- Action: from `/connections` (Data hub), click the **Watch** hub
+ then its **Agent runs** spoke. Then the **Build** hub → **SQL
+ editor** spoke. Then back to the **Data** hub → **Catalog**
+ spoke.
 - Assertion: each transition swaps the context-panel's contents
  via HTMX OOB (the panel has `id="pql-context-panel"` and
  `hx-swap-oob="true"`). No console errors. The catalog tree
@@ -152,36 +164,41 @@ Firefox.
 
 ## Playwright MCP script
 
-Condensed cross-section replay — exercises every rail icon's
-panel in one pass:
+Condensed cross-section replay — each step clicks a rail **hub**
+(`.pql-icon-rail__link[data-section='<hub>']`) then a **spoke** in
+the context panel (`.pql-context-panel__link:has-text('<label>')`):
 
 1. `browser_navigate('http://127.0.0.1:8000/connections')`
-   — assert
-   `browser_evaluate('() => document.querySelector("#pql-context-panel .panel-header").innerText')`
-   contains `CATALOG`.
-2. `browser_click(".rail-icon[aria-label='Runs']")`
+   — Data hub active; assert the panel shows a `DATA` spoke header
+   and the catalog tree's `CATALOG` header.
+2. `browser_click(".pql-icon-rail__link[data-section='watch']")`
+   then `browser_click(".pql-context-panel__link:has-text('Agent runs')")`
    — URL → `/runs`; panel header reads `Runs`; ≥ 1 row visible.
 3. `browser_click(".panel-header .info-icon")`
    — `browser_wait_for(".popover")` → title contains
    `Runs panel`; `browser_press_key("Escape")` to dismiss.
-4. `browser_click(".rail-icon[aria-label='Branches']")`
+4. `browser_click(".pql-icon-rail__link[data-section='data']")`
+   then `browser_click(".pql-context-panel__link:has-text('Delta branches')")`
    — URL → `/branches`; admin-only — assert visible.
-5. `browser_click(".rail-icon[aria-label='Workspace']")`
+5. `browser_click(".pql-icon-rail__link[data-section='build']")`
+   then `browser_click(".pql-context-panel__link:has-text('Notebooks')")`
    — URL → `/notebooks/workspace`.
-6. `browser_click(".rail-icon[aria-label='Jobs']")`
+6. (still Build hub) `browser_click(".pql-context-panel__link:has-text('Scheduled jobs')")`
    — URL → `/jobs`.
-7. `browser_click(".rail-icon[aria-label='Alerts']")`
+7. `browser_click(".pql-icon-rail__link[data-section='watch']")`
+   then `browser_click(".pql-context-panel__link:has-text('Alerts')")`
    — URL → `/alerts`.
-8. `browser_click(".rail-icon[aria-label='ML']")`
+8. `browser_click(".pql-icon-rail__link[data-section='data']")`
+   then `browser_click(".pql-context-panel__link:has-text('MLflow')")`
    — URL → `/ml`; panel header `MLflow`; ≥ 1 model row.
 9. `browser_click(".panel-row:first")` (on any panel)
    — assert the navigated row gets the
    `.panel-row--active` accent border.
-10. `browser_click(".rail-icon[aria-label='Federation']")`
-    then `browser_click(".rail-icon[aria-label='Runs']")` then
-    `browser_click(".rail-icon[aria-label='Federation']")`
+10. From the Data hub, `browser_click(".pql-context-panel__link:has-text('Catalog')")`
+    then Watch hub → `Agent runs`, then Data hub → `Catalog` again
     — assert no `htmx:swapError` in
-    `browser_console_messages()`; sidebar tree retains its
+    `browser_console_messages()`; the rail hub highlight follows
+    `data-active-hub`, and the catalog tree retains its
     expand/collapse state from sessionStorage.
 11. `browser_click(".panel-header .bi-arrow-clockwise")`
     — `browser_evaluate('() => sessionStorage.getItem("pql.contextPanel.runs")')`

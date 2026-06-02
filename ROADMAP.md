@@ -3066,6 +3066,31 @@ PointlesSQL
 │   │   (174).  Each phase one commit; rc222→rc232.  ALL LOCAL
 │   │   until single final push.
 │   │
+├── Sidebar Hub-and-Spoke Redesign — declutter the primary rail  ✅ shipped (local, 2026-06-02)
+│   │
+│   │   Aus User-Feedback ("die linke Seitenleiste ist etwas überlaufen,
+│   │   zu viele Optionen") nach dem Overnight-Hardening-Lauf.  Die
+│   │   primäre Navigationsleiste hatte 27 flache Links in 6 Gruppen
+│   │   (DATA allein 12) und scrollte.  Lösung ohne Feature-Verlust:
+│   │   • Rail schrumpft 27 → 6 Hubs (Home · Watch · Build · Data ·
+│   │     Community + Admin-Footer).  Jeder Hub besitzt eine Spoke-Liste
+│   │     seiner Unter-Features, die in der zweiten Sidebar (context_panel)
+│   │     über dem bestehenden kontextuellen Inhalt rendert.
+│   │   • Neue Ebene ``active_hub`` (``_hub_map`` in base.html) eine Stufe
+│   │     über dem unveränderten ``_section_map``; Rail-Highlight keyt auf
+│   │     den Hub, der Spoke-Highlight weiter auf ``active_section`` /
+│   │     ``active_page``.  5 Spoke-Partials unter components/sidebars/.
+│   │   • Watch-Hub trägt ein summiertes Badge (pending + unread + firing);
+│   │     Einzel-Badges bleiben auf den Spokes.  Delta-branches-Spoke jetzt
+│   │     via permission_link admin-gegated (schließt eine latente Lücke —
+│   │     die alte Rail-Zeile war ungated trotz require_admin).
+│   │   • Panel öffnet sich beim Hub-Klick automatisch wieder (außer im
+│   │     Focus-Mode); afterSwap-Sync vergleicht jetzt gegen den Hub.
+│   │     Mobile-Offcanvas bleibt bewusst flach (kein Fixed-Rail-Druck).
+│   │   Browser-verifiziert (alle 6 Hubs, Firefox).  test_nav_rail.py auf
+│   │   den Hub-Vertrag umgeschrieben; navigation_ia.md + contextual-panels
+│   │   Walkthrough aktualisiert.  rc255 → rc256.  ALL LOCAL.
+│   │
 ├── Overnight Hardening Cluster — coverage + refactor + types + a11y  ✅ shipped (local, 2026-06-02)
 │   │
 │   │   Autonomous overnight run hardening the existing codebase — no new
