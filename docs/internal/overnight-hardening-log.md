@@ -239,3 +239,10 @@ genuinely-remaining gaps instead of the stale baseline.
   (missing input, bad function/aggregate/kind, missing required config, non-numeric value)
   and inference paths (Window alias typing, Union column-mismatch detection, Unpivot column
   reshaping, dynamic-schema → unknown). Pure dispatch, no DB. Committed.
+
+### Visual SQL builder translation (+19 tests)
+- `tests/test_sql_builder_extra.py`: `services/sql/builder.py` (was 64%). The filter-operator
+  branches (IS NULL / IS NOT NULL / IN-from-csv / IN-from-list / LIKE / ILIKE / comparisons /
+  empty-value skip / unknown-op), the `_literal` type wrapping (bool/int/float/string), and
+  build-side validation + aggregate/group-by/order/limit rendering. Pure sqlglot, no DB.
+  Committed.
