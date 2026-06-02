@@ -6,6 +6,44 @@ on top of ROADMAP head Phase 188. One local commit per phase, full `pytest` gree
 
 Baseline: `4131 passed, 14 skipped, 10 deselected` (243s).
 
+---
+
+## ⭐ For Florian's review (morning summary)
+
+Everything below is **committed locally, not pushed** — review and `git push` when happy.
+Tree is clean apart from the untracked scratch `.jpg`s (left alone deliberately).
+
+**What landed (all four focus areas):**
+- **Test coverage** — ~290 new tests across previously-thin pure-logic / mockable modules;
+  full suite 4131 → ~4410, still green. Each batch was coverage-map-guided (two `--cov`
+  passes) to hit genuine gaps, not duplicate existing tests. Modules covered: output_rendering,
+  aws_sigv4, lineage (graph-builder / pruner / row-edge store), conformance, pql (time-travel /
+  merge / aggregate / pql_read / embedders), sql-statements retention, external-write scanner,
+  UC mixins (models / catalogs / metadata), agent-run stats, social target-resolver, Cedar
+  policy CRUD, contract-test CRUD, audit-sink decoders + soyuz reader, canvas block modules
+  (columns / reshape), visual SQL builder, editor-chat factory.
+- **Refactor** — `services/dp_canvas/_blocks.py` (1546 lines, the largest non-alembic file)
+  split into a `_blocks/` package (`_base` + 5 category modules, largest 454); public surface
+  unchanged, ruff/pyright(strict)/pydoclint clean.
+- **Type-debt** — `db.py` engine listeners re-typed with `DBAPIConnection` (9 → 2 ignores,
+  a precision gain, not `Any`-erasure).
+- **A11y** — global `prefers-reduced-motion` catch-all (WCAG 2.3.3).
+
+**Needs a human eye (best-effort calls I made):**
+- **`dependencies.py` split → reverted.** Splitting a test-monkeypatched module changes
+  patch-target semantics (27 tests went red). Reverted cleanly. Only pure-logic, non-patched
+  modules are split-safe.
+- **`citations.py` split → not taken.** Verified monkeypatch-safe, but its good split needs a
+  central-list→per-module-registration conversion (fiddly, real transcription risk) for modest
+  marginal value vs. `_blocks`. Left as a clean candidate for a supervised pass.
+- **Broad-except audit + broader type-debt → assessed as low-yield** (codebase already
+  disciplined + ruff-clean; remaining ignores are justified third-party-stub boundaries with no
+  stale-ignore tooling to harvest). No churn manufactured.
+- The Phase-0 commit bundled your in-progress **canvas run-dock** work (it was coherent and
+  already documented in ROADMAP/CHANGELOG).
+
+Per-phase detail follows below.
+
 Adaptation (recorded up front): the Explore scoping heuristic over-counted "untested"
 services — e.g. `dp_canvas` is already saturated (~95 tests). So **Group A is run
 coverage-guided**: each test phase does a real gap analysis (`pytest --cov` on the target
@@ -254,3 +292,9 @@ genuinely-remaining gaps instead of the stale baseline.
 - `tests/test_audit_soyuz.py` (+6): `services/audit/_soyuz.py` (was 46%) — `fetch_for_run`
   best-effort branches (200-list, 404, non-200, transport error, non-JSON, non-list → `[]`)
   via a fake UC-client httpx seam. Committed.
+
+### Editor-chat agent factory (+5 tests)
+- `tests/test_editor_chat_agent_factory.py`: `services/editor_chat/_agent_factory.py` (was 38%).
+  Pure `check_llm_configured` (no-keys / with-key), and `build_agent`'s pre-import logic — the
+  no-LLM `ValidationError` guard and the sql/notebook surface env-var routing — covered by
+  isolating `os.environ` and faking the lazily-imported `run_agent` module. Committed.
