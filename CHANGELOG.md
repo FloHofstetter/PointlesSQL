@@ -15,6 +15,25 @@ contributors who need finer commit-level granularity.
 <!-- Future commits land here until the next cluster boundary is
 defined in ``scripts/clusters.json``. -->
 
+### Refactor
+
+- Canvas editor modularised into single-concern bundles — the 3.7k-line
+  `dp_canvas_editor.js` Alpine factory is now a ~180-line composition root
+  that spreads 21 method bundles under `frontend/js/dp_canvas/editor/`
+  (lifecycle, drawflow-sync, node-render, node-ops, edges, edge-routing,
+  edge-toolbar, connect, context-menu, output-plus, viewport, clipboard,
+  preview, run, versions, navigation, annotations, history, config-form,
+  ghost-review). Block metadata is unified into a single `_block_catalog.js`,
+  and node creation across all nine flows funnels through one `_spawnNode`
+  helper. Behaviour-preserving — verified by a method-equivalence harness
+  plus per-bundle browser replay, 0 console errors on all three Drawflow
+  surfaces (editor, mesh, diff).
+- Canvas backend modularised — the shared Kahn topo-sort moved to `_graph.py`,
+  soyuz table lookups consolidated into `_uc_lookup.py`, block compile/infer
+  folded onto `BlockSpec` behind a single `register_block`, and the 830-line
+  `data_products_routes/canvas.py` split into a `canvas/` package by concern
+  (schemas, helpers, crud, validate, versions, materialize, picker).
+
 ### Features
 
 - The home page is now the activity feed (rc257) — the static overview

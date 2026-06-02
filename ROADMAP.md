@@ -3128,6 +3128,32 @@ PointlesSQL
 │   │   den Hub-Vertrag umgeschrieben; navigation_ia.md + contextual-panels
 │   │   Walkthrough aktualisiert.  rc255 → rc256.  ALL LOCAL.
 │   │
+├── Canvas Code Modularization Refactor — split the editor + backend monoliths  ✅ shipped (local, 2026-06-02)
+│   │
+│   │   Aus User-Auftrag ("den Canvas-Code refaktorieren, modularisieren,
+│   │   wartbar für LLMs").  Two disjoint tracks, one commit per wave, no
+│   │   push (left for review alongside the in-flight feed work):
+│   │   • Frontend: the 3.7k-line ``dp_canvas_editor.js`` Alpine factory is
+│   │     now a ~180-line composition root that spreads 21 single-concern
+│   │     method bundles under ``frontend/js/dp_canvas/editor/`` (lifecycle,
+│   │     drawflow_sync, node_render, node_ops, edges, edge_routing,
+│   │     edge_toolbar, connect, context_menu, output_plus, viewport,
+│   │     clipboard, preview, run, versions, navigation, annotations,
+│   │     history, config_form, ghost_review).  Block metadata unified into a
+│   │     single ``_block_catalog.js``; node creation across all nine flows
+│   │     funnels through one ``_spawnNode`` helper.
+│   │   • Backend: shared Kahn topo-sort → ``_graph.py``; soyuz table lookups
+│   │     → ``_uc_lookup.py``; block compile/infer folded onto ``BlockSpec``
+│   │     behind one ``register_block``; the 830-line ``canvas.py`` route
+│   │     module split into a ``canvas/`` package by concern.
+│   │   Behaviour-preserving throughout — a method-equivalence harness held
+│   │   144 method bodies byte-identical across the split, and every bundle
+│   │   was browser-replayed (0 console errors on editor/mesh/diff).  Per-
+│   │   block Pydantic config (the planned B4) was deliberately NOT done: no
+│   │   consumer exists and it would add a no-op validation layer against the
+│   │   simplify goal — revisit when an agent-facing config-validation surface
+│   │   needs it.  13 commits ``1d3e33bc``..``10c1edb8``.  ALL LOCAL.
+│   │
 ├── Overnight Hardening Cluster — coverage + refactor + types + a11y  ✅ shipped (local, 2026-06-02)
 │   │
 │   │   Autonomous overnight run hardening the existing codebase — no new
