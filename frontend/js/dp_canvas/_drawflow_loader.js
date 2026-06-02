@@ -8,66 +8,7 @@
  * dance the editor already owns.
  */
 
-const PIN_NAMES_IN = ['in', 'left', 'right'];
-
-const BLOCK_LABELS = {
-  InputPort: { label: 'Input port', icon: 'bi-box-arrow-in-right', inputs: 0, outputs: 1 },
-  DataProduct: { label: 'Data product ◫', icon: 'bi-box-seam', inputs: 0, outputs: 1 },
-  Filter: { label: 'Filter', icon: 'bi-funnel', inputs: 1, outputs: 1 },
-  Project: { label: 'Project', icon: 'bi-columns-gap', inputs: 1, outputs: 1 },
-  Join: { label: 'Join', icon: 'bi-link-45deg', inputs: 2, outputs: 1 },
-  GroupBy: { label: 'Group by', icon: 'bi-stack', inputs: 1, outputs: 1 },
-  Limit: { label: 'Limit', icon: 'bi-arrow-down-square', inputs: 1, outputs: 1 },
-  SQL: { label: 'Raw SQL', icon: 'bi-braces-asterisk', inputs: 1, outputs: 1 },
-  Window: { label: 'Window', icon: 'bi-graph-up', inputs: 1, outputs: 1 },
-  Pivot: { label: 'Pivot', icon: 'bi-arrow-90deg-right', inputs: 1, outputs: 1 },
-  Unpivot: { label: 'Unpivot', icon: 'bi-arrow-90deg-down', inputs: 1, outputs: 1 },
-  Union: { label: 'Union', icon: 'bi-share', inputs: 2, outputs: 1 },
-  Distinct: { label: 'Distinct', icon: 'bi-filter-square', inputs: 1, outputs: 1 },
-  Sort: { label: 'Sort', icon: 'bi-sort-down', inputs: 1, outputs: 1 },
-  Sample: { label: 'Sample', icon: 'bi-droplet-half', inputs: 1, outputs: 1 },
-  Cast: { label: 'Cast', icon: 'bi-arrow-repeat', inputs: 1, outputs: 1 },
-  Rename: { label: 'Rename', icon: 'bi-tag', inputs: 1, outputs: 1 },
-  CalcColumn: { label: 'Calc column', icon: 'bi-calculator', inputs: 1, outputs: 1 },
-  OutputPort: { label: 'Output port', icon: 'bi-box-arrow-up-right', inputs: 1, outputs: 0 },
-};
-
-function nodeHtml(blockType, nodeId, mode = 'full') {
-  const def = BLOCK_LABELS[blockType] || { label: blockType, icon: 'bi-question-square' };
-  if (mode === 'compact') {
-    // Compact reads as a single horizontal strip — header only with the
-    // block type as a side-note.  Used by the diff page so a side-by-
-    // side comparison fits more blocks per panel without each one
-    // pulling its full schema body.
-    return `
-      <div data-pql-node-id="${nodeId}">
-        <div class="pql-node-header">
-          <i class="bi ${def.icon}"></i>
-          <span>${def.label}</span>
-          <span class="text-muted small ms-auto">${blockType}</span>
-        </div>
-      </div>
-    `;
-  }
-  return `
-    <div data-pql-node-id="${nodeId}">
-      <div class="pql-node-header">
-        <i class="bi ${def.icon}"></i>
-        <span>${def.label}</span>
-      </div>
-      <div class="pql-node-body">
-        <span class="text-muted small">${blockType}</span>
-      </div>
-    </div>
-  `;
-}
-
-function pinIndex(blockType, pinName, direction) {
-  if (direction === 'in' && (blockType === 'Join' || blockType === 'Union')) {
-    return pinName === 'right' ? 1 : 0;
-  }
-  return 0;
-}
+import { BLOCK_DEFS, nodeHtml, pinIndexFor } from './_block_catalog.js';
 
 // Minimum horizontal stub a wire keeps before it starts to curve, so a
 // connection always leaves the output and enters the input horizontally
@@ -177,7 +118,7 @@ export function loadCanvasIntoDrawflow(df, doc, opts = {}) {
   df.clear();
   const drawflowIds = {};
   for (const node of doc.nodes || []) {
-    const def = BLOCK_LABELS[node.block_type];
+    const def = BLOCK_DEFS[node.block_type];
     if (!def) continue;
     const pos = node.position || { x: 100, y: 100 };
     const dfId = df.addNode(
@@ -198,7 +139,7 @@ export function loadCanvasIntoDrawflow(df, doc, opts = {}) {
     const targetDf = drawflowIds[edge.target_node_id];
     if (!sourceDf || !targetDf) continue;
     const targetNode = (doc.nodes || []).find((n) => n.id === edge.target_node_id);
-    const targetIdx = pinIndex(targetNode ? targetNode.block_type : '', edge.target_pin, 'in');
+    const targetIdx = pinIndexFor(targetNode ? targetNode.block_type : '', edge.target_pin, 'in');
     try {
       df.addConnection(sourceDf, targetDf, 'output_1', `input_${targetIdx + 1}`);
     } catch (_e) {
@@ -207,5 +148,3 @@ export function loadCanvasIntoDrawflow(df, doc, opts = {}) {
   }
   return drawflowIds;
 }
-
-export { BLOCK_LABELS, nodeHtml, PIN_NAMES_IN, pinIndex };

@@ -17,329 +17,18 @@
 
 import { findNonOverlappingPosition, installZoomObserver } from '../dp_canvas/_canvas_helpers.js';
 import { installSmoothCurvature } from '../dp_canvas/_drawflow_loader.js';
-
-const BLOCK_DEFS = {
-  InputPort: {
-    label: 'Input port',
-    icon: 'bi-box-arrow-in-right',
-    help: "Read a Unity Catalog table as the canvas's upstream source.",
-    inputs: 0,
-    outputs: 1,
-    group: 'sources',
-    defaultConfig: () => ({ table_fqn: '' }),
-  },
-  DataProduct: {
-    label: 'Data product ◫',
-    icon: 'bi-box-seam',
-    help: 'Read the materialised table of an upstream data product output port (drill in via double-click).',
-    inputs: 0,
-    outputs: 1,
-    group: 'sources',
-    defaultConfig: () => ({ dp_id: 0, port_name: '', materialized_table: '' }),
-  },
-  Filter: {
-    label: 'Filter',
-    icon: 'bi-funnel',
-    help: 'Keep rows matching a SQL boolean predicate.',
-    inputs: 1,
-    outputs: 1,
-    group: 'transforms',
-    defaultConfig: () => ({ predicate: '' }),
-  },
-  Project: {
-    label: 'Project',
-    icon: 'bi-columns-gap',
-    help: 'Select a subset of columns to keep.',
-    inputs: 1,
-    outputs: 1,
-    group: 'transforms',
-    defaultConfig: () => ({ columns: [] }),
-  },
-  Join: {
-    label: 'Join',
-    icon: 'bi-link-45deg',
-    help: 'Combine two upstream tables on shared keys.',
-    inputs: 2,
-    outputs: 1,
-    group: 'transforms',
-    defaultConfig: () => ({ how: 'inner', keys: [] }),
-  },
-  GroupBy: {
-    label: 'Group by',
-    icon: 'bi-stack',
-    help: 'Aggregate rows grouped by one or more keys.',
-    inputs: 1,
-    outputs: 1,
-    group: 'transforms',
-    defaultConfig: () => ({ keys: [], aggregations: [] }),
-  },
-  Limit: {
-    label: 'Limit',
-    icon: 'bi-arrow-down-square',
-    help: 'Keep at most N rows.',
-    inputs: 1,
-    outputs: 1,
-    group: 'transforms',
-    defaultConfig: () => ({ n: 100 }),
-  },
-  SQL: {
-    label: 'Raw SQL',
-    icon: 'bi-braces-asterisk',
-    help: 'Free-form DuckDB SQL with a {{in}} placeholder for the input.',
-    inputs: 1,
-    outputs: 1,
-    group: 'transforms',
-    defaultConfig: () => ({ query: 'SELECT * FROM {{in}}' }),
-  },
-  Window: {
-    label: 'Window',
-    icon: 'bi-graph-up',
-    help: 'Add a windowed aggregation column over a PARTITION/ORDER spec.',
-    inputs: 1,
-    outputs: 1,
-    group: 'transforms',
-    defaultConfig: () => ({
-      function: 'row_number',
-      target_alias: 'rn',
-      partition_by: [],
-      order_by: [],
-      args: [],
-    }),
-  },
-  Pivot: {
-    label: 'Pivot',
-    icon: 'bi-arrow-90deg-right',
-    help: 'DuckDB PIVOT — turn distinct values of a column into new columns.',
-    inputs: 1,
-    outputs: 1,
-    group: 'transforms',
-    defaultConfig: () => ({ on_column: '', value_column: '', aggregate: 'sum' }),
-  },
-  Unpivot: {
-    label: 'Unpivot',
-    icon: 'bi-arrow-90deg-down',
-    help: 'DuckDB UNPIVOT — collapse multiple columns into name/value rows.',
-    inputs: 1,
-    outputs: 1,
-    group: 'transforms',
-    defaultConfig: () => ({ value_columns: [], name_label: 'name', value_label: 'value' }),
-  },
-  Union: {
-    label: 'Union',
-    icon: 'bi-share',
-    help: 'Stack two upstream tables row-wise (UNION ALL when `all`).',
-    inputs: 2,
-    outputs: 1,
-    group: 'transforms',
-    defaultConfig: () => ({ all: true }),
-  },
-  Distinct: {
-    label: 'Distinct',
-    icon: 'bi-filter-square',
-    help: 'Keep distinct rows (optionally on a subset of columns).',
-    inputs: 1,
-    outputs: 1,
-    group: 'transforms',
-    defaultConfig: () => ({ columns: [] }),
-  },
-  Sort: {
-    label: 'Sort',
-    icon: 'bi-sort-down',
-    help: 'ORDER BY multi-key with ASC/DESC per column.',
-    inputs: 1,
-    outputs: 1,
-    group: 'transforms',
-    defaultConfig: () => ({ order_by: [] }),
-  },
-  Sample: {
-    label: 'Sample',
-    icon: 'bi-droplet-half',
-    help: 'TABLESAMPLE — pick a percentage or row count at random.',
-    inputs: 1,
-    outputs: 1,
-    group: 'transforms',
-    defaultConfig: () => ({ kind: 'percent', value: 10 }),
-  },
-  Cast: {
-    label: 'Cast',
-    icon: 'bi-arrow-repeat',
-    help: 'Per-column DuckDB type cast.',
-    inputs: 1,
-    outputs: 1,
-    group: 'transforms',
-    defaultConfig: () => ({ casts: [] }),
-  },
-  Rename: {
-    label: 'Rename',
-    icon: 'bi-tag',
-    help: 'Per-column rename map.',
-    inputs: 1,
-    outputs: 1,
-    group: 'transforms',
-    defaultConfig: () => ({ renames: {} }),
-  },
-  CalcColumn: {
-    label: 'Calc column',
-    icon: 'bi-calculator',
-    help: 'Compute a new column from a DuckDB expression.',
-    inputs: 1,
-    outputs: 1,
-    group: 'transforms',
-    defaultConfig: () => ({ expression: '', target_alias: 'calc' }),
-  },
-  OutputPort: {
-    label: 'Output port',
-    icon: 'bi-box-arrow-up-right',
-    help: 'Materialize the upstream rows to a Delta target table.',
-    inputs: 1,
-    outputs: 0,
-    group: 'sinks',
-    defaultConfig: () => ({
-      port_name: 'default',
-      materialized_table: '',
-      mode: 'overwrite',
-      merge_on: [],
-    }),
-  },
-};
-
-const PIN_NAMES_IN = ['in', 'left', 'right'];
-const PIN_NAMES_OUT = ['out'];
-
-function nodeHtml(blockType, nodeId) {
-  const def = BLOCK_DEFS[blockType] || { label: blockType, icon: 'bi-question-square' };
-  return `
-    <div data-pql-node-id="${nodeId}">
-      <div class="pql-node-header">
-        <i class="bi ${def.icon}"></i>
-        <span>${def.label}</span>
-        <span class="pql-node-badge badge bg-danger" style="display:none"
-              data-pql-node-error-badge></span>
-      </div>
-      <div class="pql-node-cols" data-pql-node-cols></div>
-      <div class="pql-node-body" data-pql-node-body>
-        <span class="text-muted">${def.label}</span>
-      </div>
-      <div class="pql-node-footer" data-pql-node-footer></div>
-    </div>
-  `;
-}
-
-const TYPE_ICON_MAP = [
-  [
-    /^(INT|BIGINT|SMALLINT|TINYINT|INTEGER|HUGEINT|UBIGINT|UINTEGER|USMALLINT|UTINYINT)/i,
-    'bi-hash',
-  ],
-  [/^(DOUBLE|FLOAT|REAL|DECIMAL|NUMERIC)/i, 'bi-calculator'],
-  [/^(VARCHAR|TEXT|CHAR|STRING|BLOB|BIT)/i, 'bi-text-paragraph'],
-  [/^(DATE|TIMESTAMP|TIME|INTERVAL)/i, 'bi-calendar3'],
-  [/^(BOOL|BOOLEAN)/i, 'bi-check2-square'],
-  [/^(STRUCT|LIST|MAP|UNION|ARRAY|JSON)/i, 'bi-diagram-3'],
-];
-
-function typeIcon(typeName) {
-  const t = String(typeName || '').toUpperCase();
-  for (const [re, icon] of TYPE_ICON_MAP) {
-    if (re.test(t)) return icon;
-  }
-  return 'bi-circle';
-}
-
-function renderColsHtml(columns) {
-  if (!columns || columns.length === 0) return '';
-  const max = 3;
-  const shown = columns.slice(0, max);
-  const extra = columns.length - shown.length;
-  const rows = shown
-    .map(
-      (c) =>
-        `<span><i class="bi ${typeIcon(c.duckdb_type)}"></i> ${escapeHtml(c.name)} <span class="text-muted">${escapeHtml(c.duckdb_type || '')}</span></span>`
-    )
-    .join('');
-  const more = extra > 0 ? `<span class="text-muted">+${extra} more</span>` : '';
-  return rows + more;
-}
-
-function renderFooterHtml(rowCount, status) {
-  const badge =
-    rowCount != null
-      ? `<span class="badge bg-secondary" title="rows from last preview">${escapeHtml(formatRowCount(rowCount))}</span>`
-      : '';
-  let statusIcon = '';
-  if (status === 'error') {
-    statusIcon = '<i class="bi bi-x-circle-fill text-danger" title="validation error"></i>';
-  } else if (status === 'ok') {
-    statusIcon = '<i class="bi bi-check-circle-fill text-success" title="validated"></i>';
-  } else {
-    statusIcon = '<i class="bi bi-circle text-muted" title="not yet validated"></i>';
-  }
-  return `${badge}${statusIcon}`;
-}
-
-function formatRowCount(n) {
-  if (n == null) return '';
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M rows`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k rows`;
-  return `${n} rows`;
-}
-
-function escapeHtml(s) {
-  return String(s == null ? '' : s)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
-
-function generateNodeId() {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return 'n-' + crypto.randomUUID().slice(0, 12);
-  }
-  return 'n-' + Math.random().toString(36).slice(2, 14);
-}
-
-function inputPinName(blockType, idx) {
-  if (blockType === 'Join' || blockType === 'Union') return ['left', 'right'][idx] || 'in';
-  return PIN_NAMES_IN[0];
-}
-
-function outputPinName(_blockType, _idx) {
-  return PIN_NAMES_OUT[0];
-}
-
-function describeConfig(blockType, cfg) {
-  if (!cfg) return '';
-  switch (blockType) {
-    case 'InputPort':
-      return cfg.table_fqn
-        ? `<code>${cfg.table_fqn}</code>`
-        : '<em class="text-muted">no table</em>';
-    case 'Filter':
-      return cfg.predicate
-        ? `<code>${cfg.predicate.slice(0, 40)}</code>`
-        : '<em class="text-muted">no predicate</em>';
-    case 'Project':
-      return cfg.columns && cfg.columns.length > 0
-        ? `${cfg.columns.length} col${cfg.columns.length === 1 ? '' : 's'}`
-        : '<em class="text-muted">no columns</em>';
-    case 'Join':
-      return `${cfg.how || 'inner'} on ${(cfg.keys || []).join(', ') || '—'}`;
-    case 'GroupBy':
-      return `by ${(cfg.keys || []).join(', ') || '—'}, ${(cfg.aggregations || []).length} agg`;
-    case 'Limit':
-      return `n = ${cfg.n}`;
-    case 'SQL':
-      return cfg.query
-        ? `<code>${(cfg.query || '').slice(0, 36)}…</code>`
-        : '<em class="text-muted">no query</em>';
-    case 'OutputPort':
-      return cfg.materialized_table
-        ? `→ <code>${cfg.materialized_table}</code> (${cfg.mode || 'overwrite'})`
-        : '<em class="text-muted">no target</em>';
-    default:
-      return '';
-  }
-}
+import {
+  BLOCK_DEFS,
+  nodeHtml,
+  paletteGroupsFromCatalog,
+  pinIndexFor,
+} from '../dp_canvas/_block_catalog.js';
+import {
+  describeConfig,
+  generateNodeId,
+  renderColsHtml,
+  renderFooterHtml,
+} from '../dp_canvas/_render_helpers.js';
 
 export function dpCanvasEditor(product, ctx) {
   const ctxSafe = ctx || {};
@@ -377,28 +66,7 @@ export function dpCanvasEditor(product, ctx) {
     edges: {},
     selectedNodeId: null,
 
-    paletteGroups: {
-      sources: ['InputPort', 'DataProduct'],
-      transforms: [
-        'Filter',
-        'Project',
-        'Join',
-        'GroupBy',
-        'Limit',
-        'SQL',
-        'Window',
-        'Pivot',
-        'Unpivot',
-        'Union',
-        'Distinct',
-        'Sort',
-        'Sample',
-        'Cast',
-        'Rename',
-        'CalcColumn',
-      ],
-      sinks: ['OutputPort'],
-    },
+    paletteGroups: paletteGroupsFromCatalog(),
 
     projectInput: '',
     joinKeyInput: '',
@@ -947,7 +615,7 @@ export function dpCanvasEditor(product, ctx) {
         if (!sourceDf || !targetDf) continue;
         const targetNode = (doc.nodes || []).find((n) => n.id === edge.target_node_id);
         const sourceIdx = 1; // Single-output blocks only.
-        const targetIdx = this._pinIndex(
+        const targetIdx = pinIndexFor(
           targetNode ? targetNode.block_type : '',
           edge.target_pin,
           'in'
@@ -970,13 +638,6 @@ export function dpCanvasEditor(product, ctx) {
         for (const dfId of Object.values(this._drawflowNodes)) this._observeNode(dfId);
         this._scheduleConnNodeUpdate();
       });
-    },
-
-    _pinIndex(blockType, pinName, direction) {
-      if (direction === 'in' && (blockType === 'Join' || blockType === 'Union')) {
-        return pinName === 'right' ? 1 : 0;
-      }
-      return 0;
     },
 
     // Position-only handler: coalesced via requestAnimationFrame so a 60Hz
@@ -1827,7 +1488,7 @@ export function dpCanvasEditor(product, ctx) {
             const sd = this._drawflowNodes[e.source_node_id];
             const td = this._drawflowNodes[e.target_node_id];
             if (sd == null || td == null) continue;
-            const targetIdx = this._pinIndex(
+            const targetIdx = pinIndexFor(
               this.nodes[e.target_node_id]?.block_type,
               e.target_pin,
               'in'
@@ -1924,7 +1585,7 @@ export function dpCanvasEditor(product, ctx) {
         const srcDf = this._drawflowNodes[srcNew];
         const tgtDf = this._drawflowNodes[tgtNew];
         if (!srcDf || !tgtDf) continue;
-        const targetIdx = this._pinIndex(this.nodes[tgtNew].block_type, e.target_pin, 'in');
+        const targetIdx = pinIndexFor(this.nodes[tgtNew].block_type, e.target_pin, 'in');
         try {
           df.addConnection(srcDf, tgtDf, 'output_1', `input_${targetIdx + 1}`);
         } catch (_e) {
@@ -2570,7 +2231,7 @@ export function dpCanvasEditor(product, ctx) {
       const srcDf = this._drawflowNodes[edge.source_node_id];
       const tgtDf = this._drawflowNodes[edge.target_node_id];
       if (srcDf == null || tgtDf == null) return;
-      const targetIdx = this._pinIndex(
+      const targetIdx = pinIndexFor(
         this.nodes[edge.target_node_id]?.block_type,
         edge.target_pin,
         'in'
@@ -2662,7 +2323,7 @@ export function dpCanvasEditor(product, ctx) {
         const srcDf = this._drawflowNodes[insertCtx.srcPqlId];
         const tgtDf = this._drawflowNodes[insertCtx.tgtPqlId];
         if (srcDf == null || tgtDf == null) return;
-        const tgtIdx = this._pinIndex(
+        const tgtIdx = pinIndexFor(
           this.nodes[insertCtx.tgtPqlId]?.block_type,
           insertCtx.targetPin,
           'in'
@@ -3119,7 +2780,7 @@ export function dpCanvasEditor(product, ctx) {
               const sd = this._drawflowNodes[e.source_node_id];
               const td = this._drawflowNodes[e.target_node_id];
               if (sd == null || td == null) continue;
-              const targetIdx = this._pinIndex(
+              const targetIdx = pinIndexFor(
                 this.nodes[e.target_node_id]?.block_type,
                 e.target_pin,
                 'in'
