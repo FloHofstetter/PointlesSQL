@@ -9,7 +9,7 @@
  * Methods are plain (never arrow) so `this` binds to the Alpine proxy.
  */
 
-import { BLOCK_DEFS, nodeHtml, pinIndexFor } from '../_block_catalog.js';
+import { BLOCK_DEFS, pinIndexFor } from '../_block_catalog.js';
 import { generateNodeId } from '../_render_helpers.js';
 
 export const clipboardMethods = {
@@ -73,19 +73,7 @@ export const clipboardMethods = {
         for (const n of removedNodes) {
           const def = BLOCK_DEFS[n.block_type];
           if (!def) continue;
-          const dfId = this._drawflow.addNode(
-            n.block_type,
-            def.inputs || 0,
-            def.outputs || 0,
-            n.position.x,
-            n.position.y,
-            n.block_type,
-            { pql_node_id: n.id, block_type: n.block_type },
-            nodeHtml(n.block_type, n.id),
-            false
-          );
-          this._drawflowNodes[n.id] = dfId;
-          this.nodes[n.id] = { ...n };
+          this._spawnNode(n.block_type, n.position, n.config, n.id);
         }
         for (const e of removedEdges) {
           const sd = this._drawflowNodes[e.source_node_id];
@@ -160,24 +148,7 @@ export const clipboardMethods = {
         x: (n.position && n.position.x ? n.position.x : 100) + 40,
         y: (n.position && n.position.y ? n.position.y : 100) + 40,
       };
-      const dfId = df.addNode(
-        n.block_type,
-        def.inputs || 0,
-        def.outputs || 0,
-        pos.x,
-        pos.y,
-        n.block_type,
-        { pql_node_id: newId, block_type: n.block_type },
-        nodeHtml(n.block_type, newId),
-        false
-      );
-      this._drawflowNodes[newId] = dfId;
-      this.nodes[newId] = {
-        id: newId,
-        block_type: n.block_type,
-        config: JSON.parse(JSON.stringify(n.config || {})),
-        position: pos,
-      };
+      this._spawnNode(n.block_type, pos, JSON.parse(JSON.stringify(n.config || {})), newId);
     }
     for (const e of payload.edges || []) {
       const srcNew = idMap[e.source_node_id];

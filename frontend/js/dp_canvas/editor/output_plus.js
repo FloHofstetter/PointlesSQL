@@ -9,7 +9,7 @@
  * Methods are plain (never arrow) so `this` binds to the Alpine proxy.
  */
 
-import { BLOCK_DEFS, nodeHtml, pinIndexFor } from '../_block_catalog.js';
+import { BLOCK_DEFS, pinIndexFor } from '../_block_catalog.js';
 import { generateNodeId } from '../_render_helpers.js';
 
 export const outputPlusMethods = {
@@ -55,24 +55,7 @@ export const outputPlusMethods = {
       }
       const newPqlId = generateNodeId();
       const pos = insertCtx.dropPos || { x: 200, y: 200 };
-      const newDf = this._drawflow.addNode(
-        kind,
-        def.inputs || 0,
-        def.outputs || 0,
-        pos.x,
-        pos.y,
-        kind,
-        { pql_node_id: newPqlId, block_type: kind },
-        nodeHtml(kind, newPqlId),
-        false
-      );
-      this._drawflowNodes[newPqlId] = newDf;
-      this.nodes[newPqlId] = {
-        id: newPqlId,
-        block_type: kind,
-        config: def.defaultConfig(),
-        position: pos,
-      };
+      const newDf = this._spawnNode(kind, pos, def.defaultConfig(), newPqlId);
       try {
         this._drawflow.addConnection(srcDf, newDf, 'output_1', 'input_1');
       } catch (_e) {
@@ -102,24 +85,7 @@ export const outputPlusMethods = {
       this._ctxDropPos = null;
       if (!dropPos) return;
       const newPqlId = generateNodeId();
-      const newDf = this._drawflow.addNode(
-        kind,
-        def.inputs || 0,
-        def.outputs || 0,
-        dropPos.x,
-        dropPos.y,
-        kind,
-        { pql_node_id: newPqlId, block_type: kind },
-        nodeHtml(kind, newPqlId),
-        false
-      );
-      this._drawflowNodes[newPqlId] = newDf;
-      this.nodes[newPqlId] = {
-        id: newPqlId,
-        block_type: kind,
-        config: def.defaultConfig(),
-        position: dropPos,
-      };
+      this._spawnNode(kind, dropPos, def.defaultConfig(), newPqlId);
       this._refreshNodeBody(newPqlId);
       this._renderOutputPlus(newPqlId);
       this.selectedNodeId = newPqlId;
@@ -139,24 +105,7 @@ export const outputPlusMethods = {
       y: src.position?.y || 100,
     };
     const newPqlId = generateNodeId();
-    const newDf = this._drawflow.addNode(
-      kind,
-      def.inputs || 0,
-      def.outputs || 0,
-      pos.x,
-      pos.y,
-      kind,
-      { pql_node_id: newPqlId, block_type: kind },
-      nodeHtml(kind, newPqlId),
-      false
-    );
-    this._drawflowNodes[newPqlId] = newDf;
-    this.nodes[newPqlId] = {
-      id: newPqlId,
-      block_type: kind,
-      config: def.defaultConfig(),
-      position: pos,
-    };
+    const newDf = this._spawnNode(kind, pos, def.defaultConfig(), newPqlId);
     if ((def.inputs || 0) > 0) {
       try {
         this._drawflow.addConnection(srcDf, newDf, 'output_1', 'input_1');

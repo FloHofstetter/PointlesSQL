@@ -10,7 +10,7 @@
  * Methods are plain (never arrow) so `this` binds to the Alpine proxy.
  */
 
-import { BLOCK_DEFS, nodeHtml, pinIndexFor } from '../_block_catalog.js';
+import { BLOCK_DEFS, pinIndexFor } from '../_block_catalog.js';
 import { generateNodeId } from '../_render_helpers.js';
 
 export const nodeOpsMethods = {
@@ -30,24 +30,7 @@ export const nodeOpsMethods = {
     const rect = event.currentTarget.getBoundingClientRect();
     const pos = { x: event.clientX - rect.left - 60, y: event.clientY - rect.top - 30 };
     const pqlId = generateNodeId();
-    const dfId = this._drawflow.addNode(
-      kind,
-      def.inputs,
-      def.outputs,
-      pos.x,
-      pos.y,
-      kind,
-      { pql_node_id: pqlId, block_type: kind },
-      nodeHtml(kind, pqlId),
-      false
-    );
-    this._drawflowNodes[pqlId] = dfId;
-    this.nodes[pqlId] = {
-      id: pqlId,
-      block_type: kind,
-      config: def.defaultConfig(),
-      position: pos,
-    };
+    this._spawnNode(kind, pos, def.defaultConfig(), pqlId);
     this._refreshNodeBody(pqlId);
     this._renderOutputPlus(pqlId);
     this._scheduleAutosave();
@@ -58,24 +41,7 @@ export const nodeOpsMethods = {
         // recursively from the snapshot.  For simplicity the redo just no-ops
         // when the node already exists.
         if (this.nodes[pqlId]) return;
-        const dfId2 = this._drawflow.addNode(
-          kind,
-          def.inputs,
-          def.outputs,
-          pos.x,
-          pos.y,
-          kind,
-          { pql_node_id: pqlId, block_type: kind },
-          nodeHtml(kind, pqlId),
-          false
-        );
-        this._drawflowNodes[pqlId] = dfId2;
-        this.nodes[pqlId] = {
-          id: pqlId,
-          block_type: kind,
-          config: def.defaultConfig(),
-          position: pos,
-        };
+        this._spawnNode(kind, pos, def.defaultConfig(), pqlId);
       },
       undo: () => {
         const cur = this._drawflowNodes[pqlId];
@@ -120,19 +86,12 @@ export const nodeOpsMethods = {
           const def = BLOCK_DEFS[snapshotNode.block_type];
           if (!def) return;
           this._suppressAutosave = true;
-          const nDf = this._drawflow.addNode(
+          this._spawnNode(
             snapshotNode.block_type,
-            def.inputs || 0,
-            def.outputs || 0,
-            snapshotNode.position.x,
-            snapshotNode.position.y,
-            snapshotNode.block_type,
-            { pql_node_id: pqlId, block_type: snapshotNode.block_type },
-            nodeHtml(snapshotNode.block_type, pqlId),
-            false
+            snapshotNode.position,
+            snapshotNode.config,
+            pqlId
           );
-          this._drawflowNodes[pqlId] = nDf;
-          this.nodes[pqlId] = { ...snapshotNode };
           for (const e of snapshotEdges) {
             const sd = this._drawflowNodes[e.source_node_id];
             const td = this._drawflowNodes[e.target_node_id];
@@ -166,24 +125,7 @@ export const nodeOpsMethods = {
       x: (src.position?.x || 100) + 40,
       y: (src.position?.y || 100) + 40,
     };
-    const dfId = this._drawflow.addNode(
-      src.block_type,
-      def.inputs,
-      def.outputs,
-      pos.x,
-      pos.y,
-      src.block_type,
-      { pql_node_id: newPqlId, block_type: src.block_type },
-      nodeHtml(src.block_type, newPqlId),
-      false
-    );
-    this._drawflowNodes[newPqlId] = dfId;
-    this.nodes[newPqlId] = {
-      id: newPqlId,
-      block_type: src.block_type,
-      config: JSON.parse(JSON.stringify(src.config || {})),
-      position: pos,
-    };
+    this._spawnNode(src.block_type, pos, JSON.parse(JSON.stringify(src.config || {})), newPqlId);
     this._refreshNodeBody(newPqlId);
     this.selectedNodeId = newPqlId;
     this._scheduleAutosave();

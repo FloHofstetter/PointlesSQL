@@ -13,6 +13,33 @@
 import { BLOCK_DEFS, nodeHtml, pinIndexFor } from '../_block_catalog.js';
 
 export const drawflowSyncMethods = {
+  // Single source of truth for spawning a block: add it to Drawflow, register
+  // the df-id <-> pql-id mapping, and seed the reactive node entry.  The nine
+  // creation flows (palette drop, output-plus, insert-on-edge, paste,
+  // duplicate, and the delete/bulk-delete undo paths) differ only in the
+  // config they pass and where they wire afterwards — they all funnel through
+  // here.  Returns the Drawflow node id, or null when the block type is
+  // unknown.  (_loadIntoDrawflow keeps its own addNode call: it places the
+  // Drawflow node at ``pos || 100`` while storing the raw position, an
+  // asymmetry this helper deliberately does not carry.)
+  _spawnNode(blockType, pos, config, pqlId) {
+    const def = BLOCK_DEFS[blockType];
+    if (!def) return null;
+    const dfId = this._drawflow.addNode(
+      blockType,
+      def.inputs || 0,
+      def.outputs || 0,
+      pos.x,
+      pos.y,
+      blockType,
+      { pql_node_id: pqlId, block_type: blockType },
+      nodeHtml(blockType, pqlId),
+      false
+    );
+    this._drawflowNodes[pqlId] = dfId;
+    this.nodes[pqlId] = { id: pqlId, block_type: blockType, config, position: pos };
+    return dfId;
+  },
   _loadIntoDrawflow(doc) {
     const df = this._drawflow;
     df.clear();
