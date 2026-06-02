@@ -49,35 +49,20 @@ if (typeof htmx !== 'undefined') {
 // blank Preview tab on table-detail. Trust Alpine's observer; do not
 // call ``initTree``.
 
-// Sync the icon-rail's ``.active`` class after every HTMX-boosted
+// Sync the primary rail's ``.active`` class after every HTMX-boosted
 // navigation. ``hx-target="#main-content"`` keeps the rail (which
 // lives outside main) frozen at whatever the first page render
-// produced; this listener reads ``data-active-section`` from the new
-// ``<main>`` and applies the matching ``.active`` class to the rail
-// link with the same ``data-section``. Same for the offcanvas
-// ``nav_links`` rail on mobile if it ever grows the attribute.
+// produced; this listener reads ``data-active-hub`` from the new
+// ``<main>`` and applies the matching ``.active`` class to the hub
+// link with the same ``data-section`` (each hub's ``data-section``
+// carries its hub key). The context panel's spoke highlight is
+// rendered server-side via the OOB swap, so it needs no JS sync.
 function syncActiveSection() {
   const main = document.getElementById('main-content');
   if (!main) return;
-  const section = main.dataset.activeSection || '';
-  const page = main.dataset.activePage || '';
+  const hub = main.dataset.activeHub || '';
   document.querySelectorAll('.pql-icon-rail__link[data-section]').forEach((link) => {
-    // Page-specific entries (ML Models, Agents) opt out of section
-    // matching with ``data-active-page``; they highlight only when
-    // the page matches.
-    const matchPage = link.dataset.activePage || '';
-    let active;
-    if (matchPage) {
-      active = page === matchPage;
-    } else {
-      // Section-matching entries (Catalog, People) can ALSO exclude
-      // specific pages via ``data-exclude-active-page`` so they do
-      // not double-light when a page-specific sibling is the real
-      // target.
-      const exclude = link.dataset.excludeActivePage || '';
-      active = link.dataset.section === section && (!exclude || page !== exclude);
-    }
-    link.classList.toggle('active', active);
+    link.classList.toggle('active', link.dataset.section === hub);
   });
 }
 document.body.addEventListener('htmx:afterSwap', syncActiveSection);

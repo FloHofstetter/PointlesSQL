@@ -1,16 +1,16 @@
-"""primary navigation rail acceptance tests.
+"""Primary navigation rail acceptance tests.
 
-Asserts the IA contract from ``docs/internal/navigation_ia.md`` is
-honoured by the rendered HTML:
+Asserts the hub-and-spoke IA contract from
+``docs/internal/navigation_ia.md`` is honoured by the rendered HTML:
 
-* every IA entry (24 links across 6 groups + admin footer) is
-  emitted as an anchor pointing at the right URL
-* group headers (``Home``, ``Watch``, ``Build``, ``Data``,
-  ``Community``, ``Workspace``) are rendered for desktop
+* the rail collapses to six destination hubs (Home, Watch, Build,
+  Data, Community) plus the admin footer entry
+* each hub's spoke list (its sub-features) renders in the context
+  panel when that hub's landing page is requested
 * the expand/collapse toggle button is present
-* active-section highlighting flips with ``active_page`` per
-  page (smoke-checked on three section landings)
-* mobile offcanvas nav (``nav_links.html``) mirrors the same IA
+* the active hub highlight flips with ``active_hub`` per page
+* the mobile offcanvas nav (``nav_links.html``) still carries the
+  flat IA with its group headers
 """
 
 from __future__ import annotations
@@ -73,42 +73,52 @@ def _seed_user(factory) -> str:
     return token
 
 
-# (href, label-or-title-substring).
-# Matches the rail tree in primary_rail.html.
-RAIL_ENTRIES: list[tuple[str, str]] = [
-    # HOME
-    ("/", "Today"),
-    ("/feed", "Feed"),
-    # WATCH
-    ("/runs", "Agent runs"),
-    ("/audit/inbox", "Audit"),
-    ("/alerts", "Alerts"),
-    # BUILD
-    ("/sql", "SQL editor"),
-    ("/lens", "Lens"),
-    ("/notebooks/workspace", "Notebooks"),
-    ("/dashboards", "Dashboards"),
-    ("/jobs", "Scheduled jobs"),
-    ("/dbt", "dbt"),
-    # DATA
-    ("/data-products", "Data products"),
-    ("/models", "ML models"),
-    ("/ml", "MLflow"),
-    ("/branches", "Delta branches"),
-    ("/lineage", "Lineage"),
-    # COMMUNITY
-    ("/topics", "Topics"),
-    ("/issues", "Issues"),
-    ("/users", "People"),
-    ("/agents", "Agents"),
+# The six rail hubs: (href, label, data-section key).
+RAIL_HUBS: list[tuple[str, str, str]] = [
+    ("/", "Home", "home"),
+    ("/runs", "Watch", "watch"),
+    ("/sql", "Build", "build"),
+    ("/data-products", "Data", "data"),
+    ("/topics", "Community", "community"),
+]
+
+# Each hub's landing URL -> the spoke labels its context panel must
+# carry.  Every one of the legacy flat rail entries lives in exactly
+# one hub's spoke list, so nothing is dropped — it just moves one
+# level down into the second sidebar.
+HUB_SPOKES: list[tuple[str, list[str]]] = [
+    ("/", ["Today", "Feed"]),
+    ("/runs", ["Agent runs", "Audit", "Alerts"]),
+    (
+        "/sql",
+        ["SQL editor", "Lens", "Notebooks", "Dashboards", "Scheduled jobs", "dbt"],
+    ),
+    (
+        "/data-products",
+        [
+            "Catalog",
+            "Data products",
+            "Domains",
+            "Glossary",
+            "Mesh",
+            "Ingest",
+            "Views",
+            "Canvas",
+            "ML models",
+            "MLflow",
+            "Delta branches",
+            "Lineage",
+        ],
+    ),
+    ("/topics", ["Topics", "Issues", "People", "Agents"]),
 ]
 
 
-class TestRailEntries:
-    """Every IA entry is reachable from the rendered rail."""
+class TestRailHubs:
+    """The rail renders six hubs; each hub's spokes are reachable."""
 
     @pytest.mark.asyncio
-    async def test_every_ia_entry_renders(self):
+    async def test_every_hub_renders(self):
         factory = app.state.session_factory
         token = _seed_user(factory)
         async with httpx.AsyncClient(
@@ -120,15 +130,34 @@ class TestRailEntries:
         assert resp.status_code == 200
         body = resp.text
 
-        for href, label in RAIL_ENTRIES:
-            # The rail emits the href on the rail link AND the mobile
-            # nav uses the same href, so a single assertion is enough.
-            assert f'href="{href}"' in body, f"missing rail entry: {href}"
-            assert label in body, f"missing label: {label!r}"
+        for href, label, section in RAIL_HUBS:
+            assert f'href="{href}"' in body, f"missing hub href: {href}"
+            assert f'data-section="{section}"' in body, f"missing hub section: {section}"
+            assert f">{label}</span>" in body, f"missing hub label: {label!r}"
+        # The admin footer hub renders for everyone (locked stub for
+        # non-admins) so the label is always present.
+        assert ">Admin</span>" in body
 
     @pytest.mark.asyncio
-    async def test_group_headers_render(self):
-        """All five intent-groups plus Workspace group surface."""
+    @pytest.mark.parametrize("url,spokes", HUB_SPOKES)
+    async def test_hub_landing_renders_its_spokes(self, url, spokes):
+        factory = app.state.session_factory
+        token = _seed_user(factory)
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app),
+            base_url="http://test",
+            cookies={auth.COOKIE_NAME: token},
+        ) as client:
+            resp = await client.get(url)
+        if resp.status_code != 200:
+            pytest.skip(f"{url} returned {resp.status_code}; out of nav-rail scope")
+        body = resp.text
+        for spoke in spokes:
+            assert spoke in body, f"{url} missing spoke {spoke!r} in context panel"
+
+    @pytest.mark.asyncio
+    async def test_mobile_group_headers_render(self):
+        """The mobile offcanvas nav keeps the flat grouped IA."""
         factory = app.state.session_factory
         token = _seed_user(factory)
         async with httpx.AsyncClient(
@@ -139,14 +168,7 @@ class TestRailEntries:
             resp = await client.get("/")
         assert resp.status_code == 200
         body = resp.text
-
-        # Group <li> elements carry the pql-icon-rail__group class
-        # on the desktop rail.  Each group label must appear at least
-        # twice (desktop rail + mobile nav_links).
         for group in ["Home", "Watch", "Build", "Data", "Community"]:
-            assert f'class="pql-icon-rail__group">{group}<' in body, (
-                f"missing rail group header: {group}"
-            )
             assert f'class="pql-mobile-nav__group">{group}<' in body, (
                 f"missing mobile group header: {group}"
             )
@@ -168,11 +190,11 @@ class TestRailEntries:
         assert 'aria-label="Toggle primary navigation"' in body
 
 
-class TestActiveSection:
-    """Active-section highlighting flips with active_page."""
+class TestActiveHub:
+    """The active hub highlight flips with the page's hub."""
 
     @pytest.mark.asyncio
-    async def test_home_page_marks_home_active(self):
+    async def test_home_page_marks_home_hub_active(self):
         factory = app.state.session_factory
         token = _seed_user(factory)
         async with httpx.AsyncClient(
@@ -182,13 +204,11 @@ class TestActiveSection:
         ) as client:
             resp = await client.get("/")
         body = resp.text
-        # The home page may flag federation OR home depending on
-        # Phase 80.3 wiring.  Either way, the rail must have at least
-        # one active class.
         assert "pql-icon-rail__link active" in body
+        assert 'data-active-hub="home"' in body
 
     @pytest.mark.asyncio
-    async def test_runs_page_marks_runs_active(self):
+    async def test_runs_page_marks_watch_hub_active(self):
         factory = app.state.session_factory
         token = _seed_user(factory)
         async with httpx.AsyncClient(
@@ -200,11 +220,7 @@ class TestActiveSection:
         if resp.status_code != 200:
             pytest.skip(f"/runs returned {resp.status_code}; not under nav-rail test scope")
         body = resp.text
-        # Look for the Agent-runs link with the active class.  Both
-        # data-section="runs" and class="...active" must appear on
-        # the same anchor.
-        assert 'data-section="runs"' in body
-        # At least one link with section=runs is active.
+        assert 'data-active-hub="watch"' in body
         assert 'class="pql-icon-rail__link active"' in body, "active class missing on rail"
 
 

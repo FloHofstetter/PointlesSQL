@@ -1,0 +1,45 @@
+{#
+ Watch hub spoke list.
+
+ Top section of the context panel for Watch-hub pages: the three
+ supervision surfaces that were the rail's WATCH group.  Each keeps
+ its own unread/firing badge here (the rail now shows a single summed
+ badge on the Watch hub).  The active sub-section's contextual partial
+ (runs list, audit cockpit links, alerts list) renders below.
+#}
+{% set _badges = nav_badges if nav_badges is defined and nav_badges else {} %}
+<div class="pql-context-panel__header">Watch</div>
+<div class="pql-context-panel__body">
+ <ul class="pql-context-panel__list">
+ <li>
+ <a href="/runs"
+ class="pql-context-panel__link{% if active_section == 'runs' %} active{% endif %}">
+ <i class="bi bi-activity"></i>
+ <span>Agent runs</span>
+ {% if _badges.runs_pending and _badges.runs_pending > 0 %}
+ <span class="badge rounded-pill text-bg-danger ms-auto">{{ _badges.runs_pending }}</span>
+ {% endif %}
+ </a>
+ </li>
+ <li>
+ <a href="/audit/inbox"
+ class="pql-context-panel__link{% if active_section == 'audit' %} active{% endif %}">
+ <i class="bi bi-shield-check"></i>
+ <span>Audit</span>
+ {% if _badges.audit_unread and _badges.audit_unread > 0 %}
+ <span class="badge rounded-pill text-bg-danger ms-auto">{{ _badges.audit_unread }}</span>
+ {% endif %}
+ </a>
+ </li>
+ <li>
+ <a href="/alerts"
+ class="pql-context-panel__link{% if active_section == 'alerts' %} active{% endif %}">
+ <i class="bi bi-bell"></i>
+ <span>Alerts</span>
+ {% if _badges.alerts_firing and _badges.alerts_firing > 0 %}
+ <span class="badge rounded-pill text-bg-danger ms-auto">{{ _badges.alerts_firing }}</span>
+ {% endif %}
+ </a>
+ </li>
+ </ul>
+</div>

@@ -40,6 +40,22 @@
     else if (mode === 'expand') setCollapsed(false);
     else setCollapsed(!root.hasAttribute('data-pql-panel-collapsed'));
   });
+  // Each rail hub's spoke list (its sub-features) renders only in the
+  // context panel. So when a hub is clicked while the panel is
+  // collapsed, re-open it so those spokes are reachable at the
+  // destination — unless focus-mode is deliberately on (canvas
+  // surfaces want the full viewport).
+  document.addEventListener('click', (ev) => {
+    const hub = ev.target.closest('.pql-icon-rail__link[data-section]');
+    if (!hub) return;
+    let focusMode = false;
+    try {
+      focusMode = localStorage.getItem('pql.focus-mode') === '1';
+    } catch (e) {
+      /* disabled */
+    }
+    if (!focusMode) setCollapsed(false);
+  });
 })();
 
 (() => {

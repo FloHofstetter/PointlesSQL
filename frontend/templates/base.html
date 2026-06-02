@@ -182,6 +182,42 @@
     'new': 'new',
 } %}
 {% set active_section = _section_map.get(active_page if active_page is defined else None, 'federation') %}
+{# Hub layer sits one level above section.  The primary rail collapses
+   to six destination hubs; each hub owns a spoke list of the sections
+   it groups.  ``active_hub`` drives the rail highlight, while
+   ``active_section`` continues to drive the context-panel partial and
+   the in-panel spoke highlight unchanged.  Default is ``data`` to
+   match the ``federation`` section fallback for catalog deep-pages
+   (table / schema / volume detail) that never thread active_page. #}
+{% set _hub_map = {
+    'home': 'home',
+    'feed': 'home',
+    'workspace_home': 'home',
+    'me': 'home',
+    'new': 'home',
+    'runs': 'watch',
+    'audit': 'watch',
+    'alerts': 'watch',
+    'sql': 'build',
+    'workspace': 'build',
+    'dashboards': 'build',
+    'jobs': 'build',
+    'dbt': 'build',
+    'lens': 'build',
+    'federation': 'data',
+    'data_products': 'data',
+    'domains': 'data',
+    'glossary': 'data',
+    'mesh': 'data',
+    'mlflow': 'data',
+    'branches': 'data',
+    'lineage': 'data',
+    'topics': 'community',
+    'issues': 'community',
+    'people': 'community',
+    'admin': 'admin',
+} %}
+{% set active_hub = _hub_map.get(active_section, 'data') %}
 <body hx-boost="true"
       hx-target="#main-content"
       hx-select="#main-content"
@@ -402,6 +438,7 @@
         <main class="pql-content {% block content_class %}{% endblock %}"
               id="main-content"
               data-active-section="{{ active_section }}"
+              data-active-hub="{{ active_hub }}"
               data-active-page="{{ active_page if active_page is defined else '' }}">
             {# the panel-toggle (data-pql-panel-toggle)
                and rail-toggle (data-pql-rail-toggle) chevron buttons

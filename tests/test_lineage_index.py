@@ -92,5 +92,7 @@ class TestLineageIndex:
         ) as client:
             resp = await client.get("/lineage")
         body = resp.text
-        assert 'data-section="lineage"' in body
+        # Lineage is now a spoke under the Data hub; the rail lights the
+        # Data hub and the Lineage spoke renders active in the panel.
+        assert 'data-active-hub="data"' in body
         assert 'class="pql-icon-rail__link active"' in body

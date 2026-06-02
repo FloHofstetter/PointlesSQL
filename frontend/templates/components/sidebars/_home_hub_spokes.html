@@ -1,0 +1,37 @@
+{#
+ Home hub spoke list.
+
+ Top section of the context panel for Home-hub pages.  Today and Feed
+ were the rail's HOME group; Workspace home folds in here (it was its
+ own rail group) and only renders when a workspace is in scope.  Each
+ sub-section's contextual partial (home dashboard sidebar, feed
+ filters, workspace pins) renders below this list.
+#}
+<div class="pql-context-panel__header">Home</div>
+<div class="pql-context-panel__body">
+ <ul class="pql-context-panel__list">
+ <li>
+ <a href="/"
+ class="pql-context-panel__link{% if active_section == 'home' %} active{% endif %}">
+ <i class="bi bi-house-door"></i>
+ <span>Today</span>
+ </a>
+ </li>
+ <li>
+ <a href="/feed"
+ class="pql-context-panel__link{% if active_section == 'feed' %} active{% endif %}">
+ <i class="bi bi-rss"></i>
+ <span>Feed</span>
+ </a>
+ </li>
+ {% if current_workspace and current_workspace.slug %}
+ <li>
+ <a href="/workspaces/{{ current_workspace.slug }}"
+ class="pql-context-panel__link{% if active_section == 'workspace_home' %} active{% endif %}">
+ <i class="bi bi-folder2-open"></i>
+ <span>Workspace home</span>
+ </a>
+ </li>
+ {% endif %}
+ </ul>
+</div>

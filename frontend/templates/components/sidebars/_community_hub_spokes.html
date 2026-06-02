@@ -1,0 +1,45 @@
+{#
+ Community hub spoke list.
+
+ Top section of the context panel for every Community-hub page: the
+ four social surfaces that used to be flat entries in the rail's
+ COMMUNITY group.  Each sub-section renders its own contextual partial
+ (topic hubs, issue filters, people roles) below this list.
+
+ People and Agents share the ``people`` section but split on
+ active_page, mirroring the old rail logic.
+#}
+{% set _ap = active_page if active_page is defined else '' %}
+<div class="pql-context-panel__header">Community</div>
+<div class="pql-context-panel__body">
+ <ul class="pql-context-panel__list">
+ <li>
+ <a href="/topics"
+ class="pql-context-panel__link{% if active_section == 'topics' %} active{% endif %}">
+ <i class="bi bi-hash"></i>
+ <span>Topics</span>
+ </a>
+ </li>
+ <li>
+ <a href="/issues"
+ class="pql-context-panel__link{% if active_section == 'issues' %} active{% endif %}">
+ <i class="bi bi-bug"></i>
+ <span>Issues</span>
+ </a>
+ </li>
+ <li>
+ <a href="/users"
+ class="pql-context-panel__link{% if active_section == 'people' and _ap != 'agents' %} active{% endif %}">
+ <i class="bi bi-people"></i>
+ <span>People</span>
+ </a>
+ </li>
+ <li>
+ <a href="/agents"
+ class="pql-context-panel__link{% if _ap == 'agents' %} active{% endif %}">
+ <i class="bi bi-cpu-fill"></i>
+ <span>Agents</span>
+ </a>
+ </li>
+ </ul>
+</div>

@@ -1,0 +1,113 @@
+{#
+ Data hub spoke list.
+
+ Top section of the context panel for every Data-hub page.  Carries
+ the twelve data surfaces that used to sit as flat entries in the
+ primary rail's DATA group; the rail now shows a single "Data" hub,
+ so this list is the only place these destinations are reachable.
+
+ The catalog tree (components/sidebar.html) renders below this list
+ as the hub's contextual content.
+
+ Active-state mirrors the old rail logic exactly: section-keyed where
+ a section exists, active_page-keyed for the surfaces that fall
+ through to the federation section (Ingest, Views, Canvas, ML models).
+ Branches is admin-only and rendered via permission_link so non-admins
+ see a lock affordance instead of a 403 on click.
+#}
+{% from "_macros/permission_link.html" import permission_link %}
+{% set _ap = active_page if active_page is defined else '' %}
+{% set _data_path = request.url.path if request else '' %}
+<div class="pql-context-panel__header">Data</div>
+<div class="pql-context-panel__body">
+ <ul class="pql-context-panel__list">
+ <li>
+ <a href="/"
+ class="pql-context-panel__link{% if active_section == 'federation' and _ap not in ['models', 'ingest', 'views', 'canvas'] %} active{% endif %}">
+ <i class="bi bi-database"></i>
+ <span>Catalog</span>
+ </a>
+ </li>
+ <li>
+ <a href="/data-products"
+ class="pql-context-panel__link{% if active_section == 'data_products' %} active{% endif %}">
+ <i class="bi bi-collection"></i>
+ <span>Data products</span>
+ </a>
+ </li>
+ <li>
+ <a href="/domains"
+ class="pql-context-panel__link{% if active_section == 'domains' %} active{% endif %}">
+ <i class="bi bi-diagram-2"></i>
+ <span>Domains</span>
+ </a>
+ </li>
+ <li>
+ <a href="/glossary"
+ class="pql-context-panel__link{% if active_section == 'glossary' %} active{% endif %}">
+ <i class="bi bi-book"></i>
+ <span>Glossary</span>
+ </a>
+ </li>
+ <li>
+ <a href="/mesh"
+ class="pql-context-panel__link{% if active_section == 'mesh' or _ap == 'mesh' %} active{% endif %}">
+ <i class="bi bi-diagram-3"></i>
+ <span>Mesh</span>
+ </a>
+ </li>
+ <li>
+ <a href="/ingest/sources"
+ class="pql-context-panel__link{% if _ap == 'ingest' %} active{% endif %}">
+ <i class="bi bi-plug-fill"></i>
+ <span>Ingest</span>
+ </a>
+ </li>
+ <li>
+ <a href="/views"
+ class="pql-context-panel__link{% if _ap == 'views' %} active{% endif %}">
+ <i class="bi bi-eye-fill"></i>
+ <span>Views</span>
+ </a>
+ </li>
+ <li>
+ <a href="/canvas"
+ class="pql-context-panel__link{% if _ap == 'canvas' %} active{% endif %}">
+ <i class="bi bi-bounding-box"></i>
+ <span>Canvas</span>
+ </a>
+ </li>
+ <li>
+ <a href="/models"
+ class="pql-context-panel__link{% if _ap == 'models' %} active{% endif %}">
+ <i class="bi bi-cpu"></i>
+ <span>ML models</span>
+ </a>
+ </li>
+ <li>
+ <a href="/ml"
+ class="pql-context-panel__link{% if active_section == 'mlflow' %} active{% endif %}">
+ <i class="bi bi-robot"></i>
+ <span>MLflow</span>
+ </a>
+ </li>
+ <li>
+ {{ permission_link(
+      href="/branches",
+      icon="bi-signpost-split",
+      label="Delta branches",
+      granted=(current_user is defined and current_user and current_user.is_admin),
+      required_role="admin",
+      css_class="pql-context-panel__link",
+      active=_data_path.startswith("/branches")
+ ) }}
+ </li>
+ <li>
+ <a href="/lineage"
+ class="pql-context-panel__link{% if active_section == 'lineage' %} active{% endif %}">
+ <i class="bi bi-share"></i>
+ <span>Lineage</span>
+ </a>
+ </li>
+ </ul>
+</div>

@@ -17,6 +17,21 @@
 <aside class="pql-context-panel" aria-label="Section navigation"
  id="pql-context-panel"
  hx-swap-oob="true">
+ {# Hub spoke-nav — the sub-features of the active rail hub, rendered
+    above whatever contextual content the section provides.  The Admin
+    hub has no spoke partial: its existing section block below already
+    IS the full spoke list. #}
+ {% if active_hub == 'home' %}
+ {% include "components/sidebars/_home_hub_spokes.html" %}
+ {% elif active_hub == 'watch' %}
+ {% include "components/sidebars/_watch_hub_spokes.html" %}
+ {% elif active_hub == 'build' %}
+ {% include "components/sidebars/_build_hub_spokes.html" %}
+ {% elif active_hub == 'data' %}
+ {% include "components/sidebars/_data_hub_spokes.html" %}
+ {% elif active_hub == 'community' %}
+ {% include "components/sidebars/_community_hub_spokes.html" %}
+ {% endif %}
  {% if active_section == 'federation' %}
  {% include "components/sidebar.html" %}
  {% elif active_section == 'dashboards' %}

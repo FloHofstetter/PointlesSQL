@@ -1,0 +1,60 @@
+{#
+ Build hub spoke list.
+
+ Top section of the context panel for every Build-hub page: the six
+ authoring surfaces that used to be flat entries in the rail's BUILD
+ group.  Whichever build sub-section is active also renders its own
+ contextual partial below this list (e.g. the SQL editor's
+ editor/history/saved links, the jobs list, the dashboards tree).
+
+ Active-state is section-keyed; Notebooks lives in the ``workspace``
+ section.
+#}
+{% set _ap = active_page if active_page is defined else '' %}
+<div class="pql-context-panel__header">Build</div>
+<div class="pql-context-panel__body">
+ <ul class="pql-context-panel__list">
+ <li>
+ <a href="/sql"
+ class="pql-context-panel__link{% if active_section == 'sql' %} active{% endif %}">
+ <i class="bi bi-code-square"></i>
+ <span>SQL editor</span>
+ </a>
+ </li>
+ <li>
+ <a href="/lens"
+ class="pql-context-panel__link{% if active_section == 'lens' %} active{% endif %}">
+ <i class="bi bi-eye"></i>
+ <span>Lens</span>
+ </a>
+ </li>
+ <li>
+ <a href="/notebooks/workspace"
+ class="pql-context-panel__link{% if active_section == 'workspace' %} active{% endif %}">
+ <i class="bi bi-journal-code"></i>
+ <span>Notebooks</span>
+ </a>
+ </li>
+ <li>
+ <a href="/dashboards"
+ class="pql-context-panel__link{% if active_section == 'dashboards' %} active{% endif %}">
+ <i class="bi bi-speedometer2"></i>
+ <span>Dashboards</span>
+ </a>
+ </li>
+ <li>
+ <a href="/jobs"
+ class="pql-context-panel__link{% if active_section == 'jobs' %} active{% endif %}">
+ <i class="bi bi-clock-history"></i>
+ <span>Scheduled jobs</span>
+ </a>
+ </li>
+ <li>
+ <a href="/dbt"
+ class="pql-context-panel__link{% if active_section == 'dbt' %} active{% endif %}">
+ <i class="bi bi-bezier2"></i>
+ <span>dbt</span>
+ </a>
+ </li>
+ </ul>
+</div>
