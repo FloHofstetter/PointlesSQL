@@ -181,3 +181,9 @@ phase (rather than 20+ per-phase edits); this log is the per-phase record in the
   no-op guards (empty / length-mismatched id lists), a successful aligned-pair insert
   (workspace resolved from a seeded op), the predecessor / descendant lookups, and the
   per-op edge counter (incl. empty-input). Committed.
+
+### Social target resolver (+6 tests)
+- `tests/test_social_target_resolver.py`: `services/social/_target_resolver.py` (was 62%).
+  `get_or_create_target` kind/parity validation (unknown kind, dp↔data_product_id parity),
+  create + get-or-create idempotency, and `resolve_dp_target` LookupError on a missing DP.
+  Committed.
