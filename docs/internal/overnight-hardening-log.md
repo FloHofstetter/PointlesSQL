@@ -298,3 +298,8 @@ genuinely-remaining gaps instead of the stale baseline.
   Pure `check_llm_configured` (no-keys / with-key), and `build_agent`'s pre-import logic — the
   no-LLM `ValidationError` guard and the sql/notebook surface env-var routing — covered by
   isolating `os.environ` and faking the lazily-imported `run_agent` module. Committed.
+
+### Agent-review dispatcher helpers (+10 tests)
+- `tests/test_review_dispatcher_helpers.py`: `services/review_dispatcher.py` (was 62%) pure
+  helpers — `build_envelope` (CloudEvents 1.0 shape, auto event-id/time), `_hash_url` (stable
+  prefixed digest), `_decode_workspace_filter` (fail-open routing). Committed.
