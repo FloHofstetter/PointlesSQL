@@ -230,6 +230,11 @@ defined in ``scripts/clusters.json``. -->
 
 ### Fixes
 
+- Reduced motion is now honoured globally (rc255). The app only neutralised
+  two named animations under ``prefers-reduced-motion``; a global catch-all now
+  near-instantly resolves every transition and animation for users who ask
+  their system to minimise motion (WCAG 2.3.3).
+
 - Canvas materialise no longer double-bumps the graph version, and a failed
   run no longer strands the editor a version behind (rc254). The route used to
   save the document (one version bump) before executing, while the executor

@@ -3066,6 +3066,28 @@ PointlesSQL
 │   │   (174).  Each phase one commit; rc222→rc232.  ALL LOCAL
 │   │   until single final push.
 │   │
+├── Overnight Hardening Cluster — coverage + refactor + types + a11y  ✅ shipped (local, 2026-06-02)
+│   │
+│   │   Autonomous overnight run hardening the existing codebase — no new
+│   │   product features.  Four threads, one commit per phase, full pytest
+│   │   green gate before each, no push (left for review):
+│   │   • Test coverage: ~163 new tests across previously-thin pure-logic /
+│   │     mockable modules — output_rendering, aws_sigv4, lineage
+│   │     graph-builder + pruner, conformance checks, pql time-travel,
+│   │     sql-statements retention, external-write scanner, pql merge +
+│   │     aggregate, UC model/catalog/metadata mixins, agent-run stats.
+│   │     Suite 4131 → 4286.
+│   │   • Refactor: the 1546-line dp_canvas ``_blocks.py`` split into a
+│   │     ``_blocks/`` package (``_base`` + 5 category modules, largest
+│   │     454); public surface unchanged.  A ``dependencies.py`` split was
+│   │     attempted and reverted — splitting a test-monkeypatched module
+│   │     changes patch-target semantics.
+│   │   • Type-debt: db.py engine listeners typed with ``DBAPIConnection``
+│   │     (9 → 2 ignores, precision gain not ``Any`` erasure).
+│   │   • A11y: global ``prefers-reduced-motion`` catch-all (WCAG 2.3.3).
+│   │   Per-phase record in docs/internal/overnight-hardening-log.md.
+│   │   ALL LOCAL.
+│   │
 ├── Canvas Run UX — inline run dock + materialise version fixes  ✅ shipped (local, 2026-06-02)
 │   │
 │   │   Aus User-Feedback ("Warum sollte da ein neues Popup aufgehen?
