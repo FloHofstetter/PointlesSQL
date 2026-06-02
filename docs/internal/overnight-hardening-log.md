@@ -232,3 +232,10 @@ genuinely-remaining gaps instead of the stale baseline.
   Cast / Rename / CalcColumn compile error branches (missing input, empty/invalid config) and
   schema-inference paths, driven through the public `compile_block` / `infer_block` dispatch.
   Committed.
+
+### Canvas reshape blocks (+24 tests)
+- `tests/test_dp_canvas_reshape_blocks.py`: the refactored `_blocks/_reshape.py` (was 62%)
+  Window / Pivot / Unpivot / Union / Distinct / Sort / Sample — compile error branches
+  (missing input, bad function/aggregate/kind, missing required config, non-numeric value)
+  and inference paths (Window alias typing, Union column-mismatch detection, Unpivot column
+  reshaping, dynamic-schema → unknown). Pure dispatch, no DB. Committed.
