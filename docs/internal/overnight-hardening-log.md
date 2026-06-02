@@ -165,3 +165,13 @@ phase (rather than 20+ per-phase edits); this log is the per-phase record in the
 - Assessed but left alone: 5 `outline:none/0` sites — they may pair with custom focus styling,
   so blind removal could regress; not safe to change unattended without browser verification.
   `:focus-visible` rules already exist in base/list_table/canvas_shared.
+
+## Group A (continued) — more coverage
+
+### UC catalog + metadata wrappers (+20 tests)
+- `tests/test_unitycatalog_catalogs.py` (+10) and `tests/test_unitycatalog_metadata.py` (+10):
+  `services/unitycatalog/_catalogs.py` (was 54%) and `_metadata.py` (was 53%). The conftest
+  mocks the whole `UnityCatalogClient`, so these wrappers' real logic (type guards, `.to_dict()`
+  projection, empty-body fallbacks, request-body construction, securable-type enum coercion,
+  force/full-name forwarding) was unexercised. Same proven pattern as the models mixin: host the
+  mixin on a stub, monkeypatch each generated endpoint's `.asyncio`. Committed.
