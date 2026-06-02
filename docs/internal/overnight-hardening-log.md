@@ -246,3 +246,11 @@ genuinely-remaining gaps instead of the stale baseline.
   empty-value skip / unknown-op), the `_literal` type wrapping (bool/int/float/string), and
   build-side validation + aggregate/group-by/order/limit rendering. Pure sqlglot, no DB.
   Committed.
+
+### Sentence-transformers embedder + soyuz audit reader (+11 tests)
+- `tests/test_sentence_transformers_embedder.py` (+5): `pql/embedders/_sentence_transformers.py`
+  (was 48%) — default/custom model, dim-from-model, float-list embed, per-model cache, all via
+  a mocked `_load` (no `[vector]` dependency pulled).
+- `tests/test_audit_soyuz.py` (+6): `services/audit/_soyuz.py` (was 46%) — `fetch_for_run`
+  best-effort branches (200-list, 404, non-200, transport error, non-JSON, non-list → `[]`)
+  via a fake UC-client httpx seam. Committed.
