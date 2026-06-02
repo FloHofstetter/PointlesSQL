@@ -199,3 +199,22 @@ phase (rather than 20+ per-phase edits); this log is the per-phase record in the
   `declare_contract_test` validation (unknown assertion-kind / severity, blank name), its
   idempotent create-then-update, dict-spec serialisation, and the list/delete helpers.
   Committed.
+
+### Audit-sink config/filter decoders (+14 tests)
+- `tests/test_audit_sinks_decode.py`: `services/audit/sinks.py` (was 48%) decode helpers.
+  `_decode_config` fail-loud (bad JSON / non-object raises); `_decode_event_filter` and
+  `_decode_workspace_filter` fail-open (None / empty / malformed / non-list → None,
+  int-coercion with bad-entry skipping). Network dispatchers (webhook/s3/cloudtrail) left
+  to their existing integration tests. Committed.
+
+### Refactor candidates assessed, not taken
+- `services/social/citations.py` (593 lines): a per-kind registry, structurally like
+  `_blocks`, and verified **monkeypatch-safe** (tests use only the public `resolve_citations`
+  / registry API). Deprioritised unattended: unlike `_blocks` (registration already
+  per-block), citations registers all 12 kinds in one central list literal, so a clean
+  per-kind split needs that list converted to per-module `register_citation_kind` calls —
+  fiddly per-kind extraction with real transcription risk for a *second* refactor of modest
+  marginal value. `_blocks` (the largest file, 1546 lines) already represents the refactor
+  thread. Left as a clean, safe candidate for a supervised pass.
+- `api/dependencies.py` / auth / route modules: NOT split-safe — heavily test-monkeypatched
+  (see the reverted Phase 12 above). Only pure-logic, non-patched modules qualify.
