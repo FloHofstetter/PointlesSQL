@@ -14,9 +14,10 @@ Everything below is **committed locally, not pushed** — review and `git push` 
 Tree is clean apart from the untracked scratch `.jpg`s (left alone deliberately).
 
 **What landed (all four focus areas):**
-- **Test coverage** — ~290 new tests across previously-thin pure-logic / mockable modules;
-  full suite 4131 → ~4410, still green. Each batch was coverage-map-guided (two `--cov`
-  passes) to hit genuine gaps, not duplicate existing tests. Modules covered: output_rendering,
+- **Test coverage** — ~300 new tests (29 files, +304 net) across previously-thin pure-logic /
+  mockable modules; full suite 4131 → 4435, still green. Each batch was coverage-map-guided
+  (two `--cov` passes) to hit genuine gaps, not duplicate existing tests. Modules covered:
+  output_rendering,
   aws_sigv4, lineage (graph-builder / pruner / row-edge store), conformance, pql (time-travel /
   merge / aggregate / pql_read / embedders), sql-statements retention, external-write scanner,
   UC mixins (models / catalogs / metadata), agent-run stats, social target-resolver, Cedar
@@ -41,6 +42,15 @@ Tree is clean apart from the untracked scratch `.jpg`s (left alone deliberately)
   stale-ignore tooling to harvest). No churn manufactured.
 - The Phase-0 commit bundled your in-progress **canvas run-dock** work (it was coherent and
   already documented in ROADMAP/CHANGELOG).
+
+**Where coverage stopped (and what's left for a supervised pass):** the clean pure-logic /
+mockable gaps are harvested. The remaining sub-65% modules are async-subprocess / connector /
+Postgres-bound — `mlflow_subprocess`, `dbt/_subprocess`, `event_port/_cdf_reader`,
+`notebook/coedit_bus` (PG LISTEN/NOTIFY), `audit_fts/_postgres`, `pg_sync`,
+`notebook/kernel_session`, the `pull_mapping` connector path, and the `alert_check` executor.
+Those need real subprocess/httpx/PG mocking for modest, brittleness-prone gains — better suited
+to a supervised session than an unattended one, so I stopped here rather than pad. Pushing,
+the supervised `citations` split, and those heavy-integration tests are the obvious next moves.
 
 Per-phase detail follows below.
 
