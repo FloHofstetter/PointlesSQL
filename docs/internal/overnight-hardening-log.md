@@ -175,3 +175,9 @@ phase (rather than 20+ per-phase edits); this log is the per-phase record in the
   projection, empty-body fallbacks, request-body construction, securable-type enum coercion,
   force/full-name forwarding) was unexercised. Same proven pattern as the models mixin: host the
   mixin on a stub, monkeypatch each generated endpoint's `.asyncio`. Committed.
+
+### Row-level lineage edge store (+7 tests)
+- `tests/test_lineage_rows.py`: `services/lineage/rows.py` (was 60%). Covers `record_edges`
+  no-op guards (empty / length-mismatched id lists), a successful aligned-pair insert
+  (workspace resolved from a seeded op), the predecessor / descendant lookups, and the
+  per-op edge counter (incl. empty-input). Committed.
