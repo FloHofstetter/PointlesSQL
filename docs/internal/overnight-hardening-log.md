@@ -218,3 +218,17 @@ phase (rather than 20+ per-phase edits); this log is the per-phase record in the
   thread. Left as a clean, safe candidate for a supervised pass.
 - `api/dependencies.py` / auth / route modules: NOT split-safe — heavily test-monkeypatched
   (see the reverted Phase 12 above). Only pure-logic, non-patched modules qualify.
+
+## Group A (continued) — fresh-coverage-map-guided batches
+
+Regenerated a fresh `--cov` map (`/tmp/pql-cov2.json`) after the first ~200 tests to target the
+genuinely-remaining gaps instead of the stale baseline.
+
+### OpenAI embedder + canvas column blocks (+20 tests)
+- `tests/test_openai_embedder.py` (+6): `pql/embedders/_openai.py` (was 47%). Unknown-model
+  validation, missing-`OPENAI_API_KEY` guard, default/large dims, and the `embed()` batch
+  (empty-string substitution + one vector per input) via a faked client.
+- `tests/test_dp_canvas_column_blocks.py` (+14): the refactored `_blocks/_columns.py` (was 62%)
+  Cast / Rename / CalcColumn compile error branches (missing input, empty/invalid config) and
+  schema-inference paths, driven through the public `compile_block` / `infer_block` dispatch.
+  Committed.
