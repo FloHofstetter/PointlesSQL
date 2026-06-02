@@ -56,7 +56,7 @@ export const previewMethods = {
   },
   async mountPredicateCm(host, nodeId, field) {
     if (!host) return;
-    const { mountPredicateEditor } = await import('../dp_canvas/codemirror_predicate.js');
+    const { mountPredicateEditor } = await import('../codemirror_predicate.js');
     const node = this.nodes[nodeId];
     if (!node) return;
     await mountPredicateEditor(host, {
@@ -73,7 +73,7 @@ export const previewMethods = {
   },
   async mountSqlCm(host, nodeId, field) {
     if (!host) return;
-    const { mountSqlEditor } = await import('../dp_canvas/codemirror_predicate.js');
+    const { mountSqlEditor } = await import('../codemirror_predicate.js');
     const node = this.nodes[nodeId];
     if (!node) return;
     await mountSqlEditor(host, {
