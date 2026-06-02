@@ -23,16 +23,9 @@ from __future__ import annotations
 import datetime
 from typing import Any
 
-import httpx
 from fastapi import APIRouter, Request
 from pydantic import BaseModel, ConfigDict, Field
 from soyuz_catalog_client import Client as SoyuzClient
-from soyuz_catalog_client.api.tables import (
-    get_table_api_2_1_unity_catalog_tables_full_name_get as _get_table,
-)
-from soyuz_catalog_client.errors import UnexpectedStatus
-from soyuz_catalog_client.models.table_info import TableInfo
-from soyuz_catalog_client.types import Unset
 from sqlalchemy import select
 
 from pointlessql.api.dependencies import (
@@ -43,19 +36,21 @@ from pointlessql.api.dependencies import (
 )
 from pointlessql.exceptions import (
     AuthorizationError,
+    CatalogUnavailableError,
     ResourceNotFoundError,
     ValidationError,
 )
 from pointlessql.models import DataProduct, DataProductCanvasGraph, DataProductOutputPort
 from pointlessql.services.dp_canvas import (
     CanvasDoc,
-    ColumnSpec,
     CompileError,
     MultiExecuteResult,
     PinSchema,
     execute_canvas,
+    fetch_table_info,
     load_latest_graph,
     save_graph,
+    table_info_to_pin_schema,
     validate_schema_flow,
 )
 from pointlessql.services.dp_canvas._diff import CanvasDiff, diff_docs
@@ -106,26 +101,6 @@ def _raw_soyuz_client(request: Request) -> SoyuzClient:
     """
     uc = get_uc_client(request)
     return uc._client  # pyright: ignore[reportPrivateUsage]
-
-
-def _table_info_to_pin_schema(info: TableInfo) -> PinSchema:
-    """Project a soyuz ``TableInfo`` onto the canvas's ``PinSchema``."""
-    raw_columns = info.columns if not isinstance(info.columns, Unset) else None
-    specs: list[ColumnSpec] = []
-    for col in raw_columns or []:
-        name = col.name if not isinstance(col.name, Unset) else None
-        if not name:
-            continue
-        type_text = col.type_text if not isinstance(col.type_text, Unset) else None
-        if not type_text:
-            type_name = col.type_name if not isinstance(col.type_name, Unset) else None
-            type_text = type_name or "VARCHAR"
-        nullable_raw = col.nullable if not isinstance(col.nullable, Unset) else None
-        nullable = True if nullable_raw is None else bool(nullable_raw)
-        specs.append(
-            ColumnSpec(name=str(name), duckdb_type=str(type_text), nullable=nullable)
-        )
-    return PinSchema(kind="table", columns=specs, unknown=False)
 
 
 def _resolve_dp_refs(request: Request, doc: CanvasDoc) -> CanvasDoc:
@@ -199,8 +174,8 @@ def _seed_schemas_for_doc(
         if not fqn:
             continue
         try:
-            response = _get_table.sync(client=client, full_name=fqn)
-        except httpx.ConnectError:
+            info = fetch_table_info(client, fqn)
+        except CatalogUnavailableError:
             errors.append(
                 CompileError(
                     kind="bad_config",
@@ -210,19 +185,7 @@ def _seed_schemas_for_doc(
                 )
             )
             continue
-        except UnexpectedStatus as exc:
-            if exc.status_code == 404:
-                errors.append(
-                    CompileError(
-                        kind="bad_config",
-                        node_id=node.id,
-                        pin="out",
-                        message=f"table {fqn!r} not registered in UC",
-                    )
-                )
-                continue
-            raise
-        if not isinstance(response, TableInfo):
+        if info is None:
             errors.append(
                 CompileError(
                     kind="bad_config",
@@ -232,7 +195,7 @@ def _seed_schemas_for_doc(
                 )
             )
             continue
-        seeds[node.id] = _table_info_to_pin_schema(response)
+        seeds[node.id] = table_info_to_pin_schema(info)
     return seeds, errors
 
 

@@ -39,6 +39,7 @@ from pointlessql.services.dp_canvas import (
 from tests.dp_canvas._helpers import edge, linear_doc, node
 
 _EXECUTOR_MOD = "pointlessql.services.dp_canvas._executor"
+_UC_LOOKUP_MOD = "pointlessql.services.dp_canvas._uc_lookup"
 
 
 @pytest.fixture
@@ -110,7 +111,7 @@ def _install_soyuz_patches(monkeypatch, *, source_paths: dict[str, str], target_
     get_schema.sync.side_effect = _schema_sync
     create_table.sync.return_value = TableInfo(name="created")
 
-    monkeypatch.setattr(f"{_EXECUTOR_MOD}._get_table", get_table)
+    monkeypatch.setattr(f"{_UC_LOOKUP_MOD}._get_table", get_table)
     monkeypatch.setattr(f"{_EXECUTOR_MOD}._get_schema", get_schema)
     monkeypatch.setattr(f"{_EXECUTOR_MOD}._create_table", create_table)
     return get_table, get_schema, create_table

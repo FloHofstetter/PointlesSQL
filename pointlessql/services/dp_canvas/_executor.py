@@ -41,13 +41,8 @@ from soyuz_catalog_client.api.schemas import (
 from soyuz_catalog_client.api.tables import (
     create_table_api_2_1_unity_catalog_tables_post as _create_table,
 )
-from soyuz_catalog_client.api.tables import (
-    get_table_api_2_1_unity_catalog_tables_full_name_get as _get_table,
-)
-from soyuz_catalog_client.errors import UnexpectedStatus
 from soyuz_catalog_client.models.create_table import CreateTable
 from soyuz_catalog_client.models.schema_info import SchemaInfo
-from soyuz_catalog_client.models.table_info import TableInfo
 from soyuz_catalog_client.types import Unset
 
 from pointlessql.exceptions import (
@@ -68,6 +63,10 @@ from pointlessql.services.dp_canvas._types import (
     SinkResult,
     SinkSpec,
 )
+from pointlessql.services.dp_canvas._uc_lookup import (
+    fetch_table_info,
+    resolve_storage_location,
+)
 from pointlessql.types import OpName, RunId
 
 if TYPE_CHECKING:
@@ -82,32 +81,6 @@ _CATALOG_UNREACHABLE_MSG = (
     "data product.  Check that the catalog service is running and try "
     "again."
 )
-
-
-def _resolve_storage_location(client: Client, fqn: str) -> str:
-    """Read the Delta storage location of *fqn* off soyuz UC.
-
-    Raises:
-        ValidationError: When the table is unknown to UC.
-        CatalogUnavailableError: When soyuz is unreachable.
-    """
-    try:
-        response = _get_table.sync(client=client, full_name=fqn)
-    except httpx.ConnectError as exc:
-        raise CatalogUnavailableError(_CATALOG_UNREACHABLE_MSG) from exc
-    except UnexpectedStatus as exc:
-        if exc.status_code == 404:
-            msg = f"InputPort references table {fqn!r} which is not registered in UC."
-            raise ValidationError(msg) from exc
-        raise
-    if not isinstance(response, TableInfo):
-        msg = f"InputPort references table {fqn!r} which is not registered in UC."
-        raise ValidationError(msg)
-    location = response.storage_location
-    if isinstance(location, Unset) or not location:
-        msg = f"Table {fqn!r} has no storage_location in UC; cannot register as a view."
-        raise ValidationError(msg)
-    return location
 
 
 def _derive_target_location(client: Client, catalog: str, schema: str, table: str) -> str:
@@ -139,16 +112,8 @@ def _register_target_if_new(
     call needs to fire after the Delta write) from re-runs against an
     existing table.
     """
-    try:
-        existing = _get_table.sync(client=client, full_name=target_fqn)
-    except httpx.ConnectError as exc:
-        raise CatalogUnavailableError(_CATALOG_UNREACHABLE_MSG) from exc
-    except UnexpectedStatus as exc:
-        if exc.status_code != 404:
-            raise
-        existing = None
-
-    if isinstance(existing, TableInfo):
+    existing = fetch_table_info(client, target_fqn)
+    if existing is not None:
         loc = existing.storage_location
         if not isinstance(loc, Unset) and loc:
             return loc, False
@@ -309,7 +274,7 @@ def execute_canvas(
     # behind.
     approved_tables: dict[str, str] = {}
     for fqn in fragment.referenced_tables:
-        approved_tables[fqn] = _resolve_storage_location(soyuz_client, fqn)
+        approved_tables[fqn] = resolve_storage_location(soyuz_client, fqn, required=True)
 
     prepared_sinks: list[_PreparedSink] = []
     for sink in fragment.sinks:

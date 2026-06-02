@@ -35,6 +35,12 @@ from pointlessql.services.dp_canvas._types import (
     SinkSpec,
     SQLFragment,
 )
+from pointlessql.services.dp_canvas._uc_lookup import (
+    fetch_table_info,
+    resolve_storage_location,
+    resolve_table_schema,
+    table_info_to_pin_schema,
+)
 
 __all__ = [
     "BLOCK_REGISTRY",
@@ -53,8 +59,12 @@ __all__ = [
     "SinkSpec",
     "compile_canvas",
     "execute_canvas",
+    "fetch_table_info",
     "load_latest_graph",
     "render_sql",
+    "resolve_storage_location",
+    "resolve_table_schema",
     "save_graph",
+    "table_info_to_pin_schema",
     "validate_schema_flow",
 ]

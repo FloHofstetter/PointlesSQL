@@ -18,18 +18,10 @@ from __future__ import annotations
 from collections import deque
 from typing import TYPE_CHECKING, Any
 
-import httpx
 from pydantic import BaseModel, ConfigDict, Field
 from soyuz_catalog_client import Client
-from soyuz_catalog_client.api.tables import (
-    get_table_api_2_1_unity_catalog_tables_full_name_get as _get_table,
-)
-from soyuz_catalog_client.errors import UnexpectedStatus
-from soyuz_catalog_client.models.table_info import TableInfo
-from soyuz_catalog_client.types import Unset
 
 from pointlessql.exceptions import (
-    CatalogUnavailableError,
     ResourceNotFoundError,
     ValidationError,
 )
@@ -44,6 +36,7 @@ from pointlessql.services.dp_canvas._types import (
     CompileError,
     PinSchema,
 )
+from pointlessql.services.dp_canvas._uc_lookup import resolve_storage_location
 
 if TYPE_CHECKING:
     pass
@@ -52,9 +45,6 @@ if TYPE_CHECKING:
 _PREVIEW_SINK_ID = "__preview_sink__"
 _PREVIEW_SINK_PORT = "preview"
 _PREVIEW_SINK_TABLE = "preview.preview.preview"
-_CATALOG_UNREACHABLE_MSG = (
-    "soyuz-catalog could not be reached while previewing a canvas node."
-)
 _MAX_PREVIEW_LIMIT = 1000
 
 
@@ -153,24 +143,6 @@ def _build_preview_doc(
     )
 
 
-def _resolve_storage_location(client: Client, fqn: str) -> str | None:
-    """Look up the Delta storage location of *fqn* via soyuz; return None on miss."""
-    try:
-        response = _get_table.sync(client=client, full_name=fqn)
-    except httpx.ConnectError as exc:
-        raise CatalogUnavailableError(_CATALOG_UNREACHABLE_MSG) from exc
-    except UnexpectedStatus as exc:
-        if exc.status_code == 404:
-            return None
-        raise
-    if not isinstance(response, TableInfo):
-        return None
-    location = response.storage_location
-    if isinstance(location, Unset) or not location:
-        return None
-    return location
-
-
 def _coerce_cell(value: Any) -> Any:
     """JSON-safe coercion of one DuckDB cell value."""
     if value is None or isinstance(value, bool | int | float | str):
@@ -261,7 +233,7 @@ def preview_until(
 
     approved: dict[str, str] = {}
     for fqn in fragment.referenced_tables:
-        location = _resolve_storage_location(soyuz_client, fqn)
+        location = resolve_storage_location(soyuz_client, fqn, required=False)
         if location is None:
             return PreviewResult(
                 sql=wrapped_sql,

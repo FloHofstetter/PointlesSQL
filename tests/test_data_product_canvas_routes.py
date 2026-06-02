@@ -30,6 +30,7 @@ from tests.dp_canvas._helpers import edge, linear_doc, node
 
 _EXECUTOR_MOD = "pointlessql.services.dp_canvas._executor"
 _PREVIEW_MOD = "pointlessql.services.dp_canvas._preview"
+_UC_LOOKUP_MOD = "pointlessql.services.dp_canvas._uc_lookup"
 
 
 def _seed_dp(
@@ -252,11 +253,9 @@ async def test_roundtrip_complex_doc(admin_client: httpx.AsyncClient) -> None:
 
 
 def _stub_uc_client(monkeypatch, *, columns_by_fqn: dict[str, list[ColumnInfo]]):
-    """Swap ``app.state.uc_client._client`` for a stub whose ``_get_table.sync``
+    """Swap the shared UC lookup's ``_get_table.sync`` for a stub that
     returns the supplied columns per FQN.
     """
-    import pointlessql.api.data_products_routes.canvas as canvas_module
-
     fake_get_table = MagicMock()
 
     def _table_sync(*, client: Any, full_name: str) -> Any:
@@ -265,7 +264,7 @@ def _stub_uc_client(monkeypatch, *, columns_by_fqn: dict[str, list[ColumnInfo]])
         raise UnexpectedStatus(404, b"Not Found")
 
     fake_get_table.sync.side_effect = _table_sync
-    monkeypatch.setattr(canvas_module, "_get_table", fake_get_table)
+    monkeypatch.setattr(f"{_UC_LOOKUP_MOD}._get_table", fake_get_table)
 
 
 @pytest.mark.asyncio
@@ -348,7 +347,7 @@ def _install_executor_patches(
     get_schema.sync.side_effect = _schema_sync
     create_table.sync.return_value = TableInfo(name="created")
 
-    monkeypatch.setattr(f"{_EXECUTOR_MOD}._get_table", get_table)
+    monkeypatch.setattr(f"{_UC_LOOKUP_MOD}._get_table", get_table)
     monkeypatch.setattr(f"{_EXECUTOR_MOD}._get_schema", get_schema)
     monkeypatch.setattr(f"{_EXECUTOR_MOD}._create_table", create_table)
 
@@ -636,33 +635,25 @@ def _install_preview_patches(
     """Patch both seeding (canvas route) and storage-resolve (preview helper).
 
     ``source_paths_to_columns`` maps each FQN to ``(delta_path, columns)``.
-    The seed-side returns ``ColumnInfo`` lists so the editor's schema-flow
-    has real types; the preview-side returns ``storage_location`` so
-    DuckDB can attach a Delta view.
+    Seeding (schema-flow) and storage-resolve (preview) now share one UC
+    lookup, so a single stub returns a ``TableInfo`` carrying both the
+    ``ColumnInfo`` list (real types for schema-flow) and the
+    ``storage_location`` (so DuckDB can attach a Delta view).
     """
-    import pointlessql.api.data_products_routes.canvas as canvas_module
+    get_table = MagicMock()
 
-    seed_table = MagicMock()
-    preview_table = MagicMock()
-
-    def _seed_sync(*, client: Any, full_name: str) -> Any:
+    def _table_sync(*, client: Any, full_name: str) -> Any:
         if full_name in source_paths_to_columns:
-            _, columns = source_paths_to_columns[full_name]
-            return TableInfo(name=full_name.split(".")[-1], columns=columns)
-        raise UnexpectedStatus(404, b"Not Found")
-
-    def _preview_sync(*, client: Any, full_name: str) -> Any:
-        if full_name in source_paths_to_columns:
-            location, _ = source_paths_to_columns[full_name]
+            location, columns = source_paths_to_columns[full_name]
             return TableInfo(
-                name=full_name.split(".")[-1], storage_location=location
+                name=full_name.split(".")[-1],
+                columns=columns,
+                storage_location=location,
             )
         raise UnexpectedStatus(404, b"Not Found")
 
-    seed_table.sync.side_effect = _seed_sync
-    preview_table.sync.side_effect = _preview_sync
-    monkeypatch.setattr(canvas_module, "_get_table", seed_table)
-    monkeypatch.setattr(f"{_PREVIEW_MOD}._get_table", preview_table)
+    get_table.sync.side_effect = _table_sync
+    monkeypatch.setattr(f"{_UC_LOOKUP_MOD}._get_table", get_table)
 
 
 @pytest.mark.asyncio
