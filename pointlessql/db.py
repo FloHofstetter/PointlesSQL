@@ -10,6 +10,7 @@ from alembic.config import Config as AlembicConfig
 from sqlalchemy import create_engine as sa_create_engine
 from sqlalchemy import event
 from sqlalchemy.engine import Engine
+from sqlalchemy.engine.interfaces import DBAPIConnection
 from sqlalchemy.orm import Session, sessionmaker
 
 logger = logging.getLogger(__name__)
@@ -105,23 +106,23 @@ def init_db(url: str) -> Engine:
 
         @event.listens_for(_engine, "connect")
         def _set_sqlite_pragmas(  # pyright: ignore[reportUnusedFunction]
-            dbapi_conn: object, _rec: object
+            dbapi_conn: DBAPIConnection, _rec: object
         ) -> None:
-            cursor = dbapi_conn.cursor()  # type: ignore[union-attr]
-            cursor.execute("PRAGMA journal_mode=WAL")  # type: ignore[union-attr]
-            cursor.execute("PRAGMA foreign_keys=ON")  # type: ignore[union-attr]
-            cursor.close()  # type: ignore[union-attr]
+            cursor = dbapi_conn.cursor()
+            cursor.execute("PRAGMA journal_mode=WAL")
+            cursor.execute("PRAGMA foreign_keys=ON")
+            cursor.close()
 
     if is_postgres and db_settings.statement_timeout_ms > 0:
         timeout_ms = int(db_settings.statement_timeout_ms)
 
         @event.listens_for(_engine, "connect")
         def _set_pg_statement_timeout(  # pyright: ignore[reportUnusedFunction]
-            dbapi_conn: object, _rec: object
+            dbapi_conn: DBAPIConnection, _rec: object
         ) -> None:
-            cursor = dbapi_conn.cursor()  # type: ignore[union-attr]
-            cursor.execute(f"SET statement_timeout = {timeout_ms}")  # type: ignore[union-attr]
-            cursor.close()  # type: ignore[union-attr]
+            cursor = dbapi_conn.cursor()
+            cursor.execute(f"SET statement_timeout = {timeout_ms}")
+            cursor.close()
 
     _run_migrations(url)
 
