@@ -187,3 +187,9 @@ phase (rather than 20+ per-phase edits); this log is the per-phase record in the
   `get_or_create_target` kind/parity validation (unknown kind, dp↔data_product_id parity),
   create + get-or-create idempotency, and `resolve_dp_target` LookupError on a missing DP.
   Committed.
+
+### Cedar policy-module CRUD (+10 tests)
+- `tests/test_policy_as_code_crud.py`: `services/policy_as_code/_crud.py` (was 49%). Create
+  validation (blank name/source, duplicate-name conflict), get/list reads (+ disabled
+  filter), in-place update (version bumps only on source change), enable toggle (no version
+  bump), and delete (found/missing). Committed.
