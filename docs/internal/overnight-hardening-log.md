@@ -124,3 +124,44 @@ phase (rather than 20+ per-phase edits); this log is the per-phase record in the
   fixed a stale `BlockSpec` docstring (documented `compile`/`infer_output` attrs that the
   dataclass never had — pydoclint DOC602/603) and dropped a phase-ref from the docstring.
   Full suite 4266 (unchanged — pure refactor). Committed.
+
+### Phase 12 (dependencies.py split) — ATTEMPTED, REVERTED
+- Split `api/dependencies.py` (872) into a `dependencies/` package (`_pagination` /
+  `_principal` / `_roles` / `_workspace` / `_http`), re-exporting all 22 public names.
+  ruff/pyright(0 err)/pydoclint clean, app built, all names importable.
+- BUT the full gate went red (tests that `monkeypatch.setattr("pointlessql.api.dependencies.
+  <name>", …)`): splitting a module moves each cross-reference into the submodule's own
+  namespace, so patching the package re-export no longer affects the caller. `dependencies`
+  is monkeypatched by the suite, so the split changes patch-target semantics. Reverted
+  cleanly (best-effort posture) rather than rewrite test patch targets unattended.
+- **Lesson recorded:** only pure-logic modules (no test monkeypatching of their internals)
+  are safe to split. `_blocks` qualified; `dependencies` / auth / route modules do not.
+
+## Group C — type-debt (assessed low-yield in this mature codebase; precise-typing wins only)
+
+### Phase 15 — db.py precise DBAPI typing (9 → 2 ignores)
+- `db.py` engine-init event listeners typed `dbapi_conn: object` and carried 7
+  `# type: ignore[union-attr]` on the `.cursor()` calls. Re-typed to
+  `sqlalchemy.engine.interfaces.DBAPIConnection` (a Protocol that types `.cursor()`),
+  removing all 7 ignores — a genuine precision gain, not an `Any`-erasure. Only the 2
+  `reportUnusedFunction` ignores (inherent to the `@event.listens_for` decorator pattern)
+  remain. Annotation-only (zero runtime change). ruff/pyright clean.
+- Broader type-debt assessed and largely left alone: the remaining ignores cluster at
+  third-party stub boundaries (FastAPI internals, pycrdt C-ext) where removal needs `Any`
+  (no precision gain), and the project enables no stale-ignore tooling
+  (`reportUnnecessaryTypeIgnore` / `RUF100` off), so there is no automated dead-suppression
+  to harvest. Consistent with the known "third-party stubs are the bottleneck" finding.
+
+## Group D — a11y / UX
+
+### Phase 18 — global reduced-motion catch-all
+- `frontend/css/base.css` only honoured `prefers-reduced-motion` for two named animations
+  (badge pulse, root view-transition); the dozens of `transition:` / `animation:`
+  declarations across the component stylesheets ignored it. Added the WCAG 2.3.3 standard
+  global catch-all (`*,*::before,*::after { animation/transition-duration: 0.01ms !important }`
+  under the reduce query) so every motion in the app is neutralised for users who request it,
+  without each component repeating the media query. Pure CSS, asset version bumped
+  rc254→rc255. (No `x-data`/Alpine/modal markup touched, so no browser replay gate required.)
+- Assessed but left alone: 5 `outline:none/0` sites — they may pair with custom focus styling,
+  so blind removal could regress; not safe to change unattended without browser verification.
+  `:focus-visible` rules already exist in base/list_table/canvas_shared.

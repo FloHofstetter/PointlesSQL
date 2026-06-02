@@ -253,6 +253,23 @@ a:not(.btn):not(.nav-link):not(.dropdown-item):not(.page-link) {
  }
 }
 
+/* Global reduced-motion catch-all.  The scoped rules above neutralise the
+ * specific animations that opt in by name; this honours the same OS
+ * preference for every other transition / animation across the component
+ * stylesheets without each one having to repeat the media query.  Users
+ * who ask their system to minimise motion get near-instant state changes
+ * everywhere (WCAG 2.3.3 Animation from Interactions). */
+@media (prefers-reduced-motion: reduce) {
+ *,
+ *::before,
+ *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+ }
+}
+
 /* checkbox column on multi-select list/table views.
  * Holds the per-row selector tight against the left edge so titles
  * and metadata still get the visual weight. */
