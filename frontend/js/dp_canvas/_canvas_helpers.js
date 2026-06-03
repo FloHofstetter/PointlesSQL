@@ -105,3 +105,63 @@ export function findNonOverlappingPosition(desired, size, others, opts = {}) {
   }
   return { x: desired.x, y: desired.y, bestEffort: true };
 }
+
+/**
+ * Frame a Drawflow graph in its container — fit-to-view zoom plus centring,
+ * reading node boxes straight from the rendered DOM so it is agnostic to the
+ * surface's model shape.  The zoom is floored (so node bodies stay legible on
+ * a wide graph) and a graph too wide to fit at that floor anchors to its
+ * top-left rather than centring and clipping both ends — the same behaviour
+ * the DP editor's ``fitToView`` applies, so the mesh and editor surfaces frame
+ * their graphs consistently.
+ *
+ * @param {object} df - a started Drawflow instance.
+ * @param {object} [opts]
+ * @param {number} [opts.pad=60] - viewport padding in px around the graph.
+ * @param {number} [opts.minZoom=0.5] - lower bound on the fit zoom.
+ */
+export function fitDrawflowToView(df, opts = {}) {
+  if (!df || !df.container) return;
+  const nodeEls = df.container.querySelectorAll('.drawflow-node');
+  if (nodeEls.length === 0) return;
+  const PAD = opts.pad ?? 60;
+  const MIN_ZOOM = opts.minZoom ?? 0.5;
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  for (const el of nodeEls) {
+    const x0 = el.offsetLeft;
+    const y0 = el.offsetTop;
+    if (x0 < minX) minX = x0;
+    if (y0 < minY) minY = y0;
+    if (x0 + el.offsetWidth > maxX) maxX = x0 + el.offsetWidth;
+    if (y0 + el.offsetHeight > maxY) maxY = y0 + el.offsetHeight;
+  }
+  const spanX = Math.max(maxX - minX, 1);
+  const spanY = Math.max(maxY - minY, 1);
+  const rect = df.container.getBoundingClientRect();
+  const fitW = Math.max(rect.width - PAD * 2, 100);
+  const fitH = Math.max(rect.height - PAD * 2, 100);
+  const rawZoom = Math.min(fitW / spanX, fitH / spanY, 1);
+  const zoom = Math.max(rawZoom, MIN_ZOOM);
+  df.zoom = zoom;
+  if (zoom > rawZoom + 1e-6) {
+    df.canvas_x = PAD - minX * zoom;
+    df.canvas_y = PAD - minY * zoom;
+  } else {
+    df.canvas_x = (rect.width - spanX * zoom) / 2 - minX * zoom;
+    df.canvas_y = (rect.height - spanY * zoom) / 2 - minY * zoom;
+  }
+  if (df.precanvas) {
+    df.precanvas.style.transform = `translate(${df.canvas_x}px, ${df.canvas_y}px) scale(${zoom})`;
+  }
+  // Drawflow computes connection endpoints in a zoom-dependent basis, so a
+  // zoom change without a recompute leaves wires pinned to their pre-fit
+  // coordinates.  Sweep every node's connections after reframing.
+  const home = df.drawflow && df.drawflow.drawflow && df.drawflow.drawflow.Home;
+  const data = (home && home.data) || {};
+  if (typeof df.updateConnectionNodes === 'function') {
+    for (const id of Object.keys(data)) df.updateConnectionNodes(`node-${id}`);
+  }
+}

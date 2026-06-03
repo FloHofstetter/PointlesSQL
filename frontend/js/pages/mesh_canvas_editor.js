@@ -1,4 +1,4 @@
-import { installZoomObserver } from '../dp_canvas/_canvas_helpers.js';
+import { fitDrawflowToView, installZoomObserver } from '../dp_canvas/_canvas_helpers.js';
 import { installSmoothCurvature } from '../dp_canvas/_drawflow_loader.js';
 import { installFocusModeShortcut } from '../dp_canvas/_focus_mode.js';
 
@@ -209,7 +209,9 @@ export function meshCanvasEditor() {
         target_node_id: 'dp_' + e.target_dp_id,
       }));
       if (nodes.length === 0) return;
-      const targets = computeLayout(nodes, edges, { rankdir: 'TB' });
+      // Left-to-right (source → consumer), matching the DP editor's flow so the
+      // two canvases read the same way.
+      const targets = computeLayout(nodes, edges, { rankdir: 'LR' });
       // Map back to drawflow ids; current positions read from drawflow state.
       const raw = this._drawflow.export();
       const dfData = (raw && raw.drawflow && raw.drawflow.Home && raw.drawflow.Home.data) || {};
@@ -261,6 +263,24 @@ export function meshCanvasEditor() {
       this.saveState = 'saved';
       this.lastSavedAt = new Date().toISOString();
       this._scheduleValidate();
+      // Node positions aren't persisted for the mesh (``_hydrate`` lays out a
+      // fresh grid each time), so arrange and frame the graph on first load:
+      // a tidy Dagre layout when available, then fit-to-view so the top row
+      // isn't clipped under the topbar.  Deferred a frame so the freshly added
+      // node DOM has measurable boxes.
+      this.$nextTick(() => this._arrangeAndFit());
+    },
+
+    async _arrangeAndFit() {
+      if (window.dagre && (this.document.nodes || []).length > 0) {
+        await this.autoLayout();
+      }
+      this._fitToView();
+    },
+
+    _fitToView() {
+      fitDrawflowToView(this._drawflow);
+      this._scheduleDecorate();
     },
 
     _scheduleDecorate() {
