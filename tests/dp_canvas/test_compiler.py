@@ -54,6 +54,74 @@ def test_multiple_output_ports_compile() -> None:
     assert fragment.referenced_tables == ["c.s.t"]
 
 
+def test_file_output_counts_as_a_sink() -> None:
+    """A canvas with only a FileOutput (no OutputPort) is a valid sink graph."""
+    doc = CanvasDoc(
+        nodes=[
+            node("inp", "InputPort", {"table_fqn": "c.s.t"}),
+            node("fo", "FileOutput", {"path": "exports/a.parquet", "format": "parquet"}),
+        ],
+        edges=[edge("e", "inp", "out", "fo", "in")],
+    )
+    fragment, errors = compile_canvas(doc)
+    assert errors == []
+    assert fragment is not None
+    assert len(fragment.sinks) == 1
+    sink = fragment.sinks[0]
+    assert sink.sink_kind == "file"
+    assert sink.file_path == "exports/a.parquet"
+    assert sink.file_format == "parquet"
+    assert sink.target_fqn == "exports/a.parquet"
+
+
+def test_mixed_delta_and_file_sinks() -> None:
+    doc = CanvasDoc(
+        nodes=[
+            node("inp", "InputPort", {"table_fqn": "c.s.t"}),
+            node(
+                "o1",
+                "OutputPort",
+                {"port_name": "a", "materialized_table": "c.s.x", "mode": "overwrite"},
+            ),
+            node("fo", "FileOutput", {"path": "exports/a.csv", "format": "csv"}),
+        ],
+        edges=[edge("e1", "inp", "out", "o1", "in"), edge("e2", "inp", "out", "fo", "in")],
+    )
+    fragment, errors = compile_canvas(doc)
+    assert errors == []
+    assert fragment is not None
+    kinds = sorted(s.sink_kind for s in fragment.sinks)
+    assert kinds == ["delta", "file"]
+
+
+def test_duplicate_file_path_errors() -> None:
+    doc = CanvasDoc(
+        nodes=[
+            node("inp", "InputPort", {"table_fqn": "c.s.t"}),
+            node("f1", "FileOutput", {"path": "exports/dup.parquet"}),
+            node("f2", "FileOutput", {"path": "exports/dup.parquet"}),
+        ],
+        edges=[edge("e1", "inp", "out", "f1", "in"), edge("e2", "inp", "out", "f2", "in")],
+    )
+    _, errors = compile_canvas(doc)
+    assert any(e.kind == "duplicate_sink" for e in errors)
+
+
+def test_file_input_path_not_a_referenced_base_table() -> None:
+    """A FileInput's path must never be resolved as a UC base table."""
+    doc = CanvasDoc(
+        nodes=[
+            node("fi", "FileInput", {"path": "bronze/events.csv", "format": "csv"}),
+            node("fo", "FileOutput", {"path": "exports/out.parquet"}),
+        ],
+        edges=[edge("e", "fi", "out", "fo", "in")],
+    )
+    fragment, errors = compile_canvas(doc)
+    assert errors == []
+    assert fragment is not None
+    assert fragment.referenced_tables == []
+
+
 def test_duplicate_sink_target_errors() -> None:
     doc = CanvasDoc(
         nodes=[

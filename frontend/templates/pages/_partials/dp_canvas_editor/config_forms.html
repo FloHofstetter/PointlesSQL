@@ -445,3 +445,52 @@
         </template>
     </div>
 </template>
+
+{# FileInput: read a sandboxed CSV / Parquet / JSON file. #}
+<template x-if="selectedNode.block_type === 'FileInput'">
+    <div class="pql-form-group">
+        {{ field_label('File path (relative to sandbox)') }}
+        <input type="text" class="form-control form-control-sm mb-2"
+               :class="fieldHasError('path') && 'is-invalid'"
+               x-model="selectedNode.config.path"
+               @input.debounce.300ms="onConfigChanged()"
+               :disabled="!canWrite"
+               placeholder="bronze/events.csv"
+               spellcheck="false">
+        {{ field_label('Format') }}
+        <select class="form-select form-select-sm" x-model="selectedNode.config.format"
+                @change="onConfigChanged()" :disabled="!canWrite">
+            <template x-for="f in ['auto', 'csv', 'parquet', 'json']" :key="f">
+                <option :value="f" x-text="f"></option>
+            </template>
+        </select>
+        <div class="form-text small">
+            Resolved under the server's canvas file-IO sandbox; paths outside it are rejected.
+        </div>
+    </div>
+</template>
+
+{# FileOutput: write rows to a sandboxed file (outside UC governance). #}
+<template x-if="selectedNode.block_type === 'FileOutput'">
+    <div class="pql-form-group">
+        {{ field_label('File path (relative to sandbox)') }}
+        <input type="text" class="form-control form-control-sm mb-2"
+               :class="fieldHasError('path') && 'is-invalid'"
+               x-model="selectedNode.config.path"
+               @input.debounce.300ms="onConfigChanged()"
+               :disabled="!canWrite"
+               placeholder="exports/events.parquet"
+               spellcheck="false">
+        {{ field_label('Format') }}
+        <select class="form-select form-select-sm mb-2" x-model="selectedNode.config.format"
+                @change="onConfigChanged()" :disabled="!canWrite">
+            <template x-for="f in ['parquet', 'csv']" :key="f">
+                <option :value="f" x-text="f"></option>
+            </template>
+        </select>
+        <div class="alert alert-warning small mb-0">
+            Writes to a plain file outside Unity Catalog — no lineage, ownership
+            or access control. Disabled by default; an admin must enable file output.
+        </div>
+    </div>
+</template>

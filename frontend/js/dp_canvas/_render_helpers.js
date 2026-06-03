@@ -150,6 +150,14 @@ export function describeConfig(blockType, cfg) {
       return 'left ∩ right';
     case 'Unnest':
       return cfg.column ? `<code>${cfg.column}</code>` : '<em class="text-muted">no column</em>';
+    case 'FileInput':
+      return cfg.path
+        ? `<code>${cfg.path}</code> (${cfg.format || 'auto'})`
+        : '<em class="text-muted">no path</em>';
+    case 'FileOutput':
+      return cfg.path
+        ? `→ <code>${cfg.path}</code> (${cfg.format || 'parquet'})`
+        : '<em class="text-muted">no path</em>';
     case 'GroupBy':
       return `by ${(cfg.keys || []).join(', ') || '—'}, ${(cfg.aggregations || []).length} agg`;
     case 'Limit':

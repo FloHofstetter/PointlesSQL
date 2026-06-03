@@ -51,6 +51,18 @@ export const BLOCK_DEFS = {
     group: 'sources',
     defaultConfig: () => ({ dp_id: 0, port_name: '', materialized_table: '' }),
   },
+  FileInput: {
+    type: 'FileInput',
+    label: 'File input',
+    icon: 'bi-file-earmark-arrow-down',
+    help: 'Read a CSV / Parquet / JSON file from the sandbox directory.',
+    inputs: 0,
+    outputs: 1,
+    inPins: [],
+    outPins: ['out'],
+    group: 'sources',
+    defaultConfig: () => ({ path: '', format: 'auto' }),
+  },
   Filter: {
     type: 'Filter',
     label: 'Filter',
@@ -325,6 +337,18 @@ export const BLOCK_DEFS = {
       mode: 'overwrite',
       merge_on: [],
     }),
+  },
+  FileOutput: {
+    type: 'FileOutput',
+    label: 'File output',
+    icon: 'bi-file-earmark-arrow-up',
+    help: 'Write rows to a sandbox file (CSV / Parquet) — bypasses UC governance.',
+    inputs: 1,
+    outputs: 0,
+    inPins: ['in'],
+    outPins: [],
+    group: 'sinks',
+    defaultConfig: () => ({ path: '', format: 'parquet' }),
   },
 };
 

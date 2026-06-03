@@ -29,6 +29,7 @@ from pointlessql.pql.engine import register_delta_view
 from pointlessql.pql.sql_parser._prepare import prepare_sql
 from pointlessql.services.dp_canvas._blocks import BLOCK_REGISTRY
 from pointlessql.services.dp_canvas._compiler import compile_canvas, render_sql
+from pointlessql.services.dp_canvas._file_sandbox import rewrite_file_sentinels
 from pointlessql.services.dp_canvas._types import (
     CanvasDoc,
     CanvasEdge,
@@ -250,7 +251,14 @@ def preview_until(
             )
         approved[fqn] = location
 
-    prepared = prepare_sql(wrapped_sql)
+    try:
+        sandboxed_sql = rewrite_file_sentinels(wrapped_sql)
+    except ValidationError as exc:
+        return PreviewResult(
+            sql=wrapped_sql,
+            errors=[CompileError(kind="bad_config", node_id=None, pin=None, message=str(exc))],
+        )
+    prepared = prepare_sql(sandboxed_sql)
 
     import duckdb
 

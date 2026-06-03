@@ -523,6 +523,7 @@ def test_registry_has_full_block_set() -> None:
     assert set(BLOCK_REGISTRY) == {
         "InputPort",
         "DataProduct",
+        "FileInput",
         "Filter",
         "Project",
         "Join",
@@ -545,4 +546,104 @@ def test_registry_has_full_block_set() -> None:
         "CalcColumn",
         "Unnest",
         "OutputPort",
+        "FileOutput",
     }
+
+
+class TestFileBlocks:
+    def test_file_input_emits_sentinel_and_reader(self) -> None:
+        errors: list = []
+        out = compile_block(
+            block_type="FileInput",
+            node_id="fi",
+            inputs={},
+            output_schema=_seed_schema(),
+            cfg={"path": "bronze/events.csv", "format": "csv"},
+            errors=errors,
+        )
+        assert out is not None and errors == []
+        assert out.sql == "SELECT * FROM read_csv_auto('@@CANVAS_FILE:bronze/events.csv@@')"
+
+    def test_file_input_auto_format_picks_reader_by_extension(self) -> None:
+        errors: list = []
+        out = compile_block(
+            block_type="FileInput",
+            node_id="fi",
+            inputs={},
+            output_schema=_seed_schema(),
+            cfg={"path": "a/b.parquet", "format": "auto"},
+            errors=errors,
+        )
+        assert "read_parquet(" in out.sql
+
+    def test_file_input_infer_is_unknown_at_edit_time(self) -> None:
+        errors: list = []
+        inferred = infer_block(
+            block_type="FileInput",
+            node_id="fi",
+            input_schemas={},
+            cfg={"path": "ok/file.csv", "format": "csv"},
+            errors=errors,
+        )
+        assert inferred.unknown and errors == []
+
+    def test_file_output_passthrough_and_missing_input(self) -> None:
+        errors: list = []
+        out = compile_block(
+            block_type="FileOutput",
+            node_id="fo",
+            inputs={"in": "src"},
+            output_schema=_seed_schema(),
+            cfg={"path": "exports/o.parquet", "format": "parquet"},
+            errors=errors,
+        )
+        assert out is not None and out.sql == "SELECT * FROM src"
+
+        errors2: list = []
+        missing = compile_block(
+            block_type="FileOutput",
+            node_id="fo",
+            inputs={},
+            output_schema=_seed_schema(),
+            cfg={"path": "exports/o.parquet"},
+            errors=errors2,
+        )
+        assert missing is None
+        assert any(e.kind == "missing_input" and e.pin == "in" for e in errors2)
+
+    def test_file_output_rejects_bad_format(self) -> None:
+        errors: list = []
+        out = compile_block(
+            block_type="FileOutput",
+            node_id="fo",
+            inputs={"in": "src"},
+            output_schema=_seed_schema(),
+            cfg={"path": "exports/o.txt", "format": "txt"},
+            errors=errors,
+        )
+        assert out is None
+        assert any("FileOutput.format" in e.message for e in errors)
+
+    def test_safe_relative_path_rejects_traversal_and_injection(self) -> None:
+        from pointlessql.services.dp_canvas._blocks._files import _safe_relative_path
+
+        for bad in [
+            "/etc/passwd",
+            "../../etc/passwd",
+            "a/../../x",
+            "a/./b",
+            "a//b",
+            "x'y.csv",
+            "a b.csv",
+            "a\\b.csv",
+            "",
+            ".",
+            "..",
+        ]:
+            errs: list = []
+            assert _safe_relative_path("n", bad, errs) is None, bad
+            assert errs and errs[0].column == "path"
+        for ok in ["bronze/events.csv", "a.parquet", "sub/dir/f-1_2.json"]:
+            errs2: list = []
+            assert _safe_relative_path("n", ok, errs2) == ok
+            assert errs2 == []

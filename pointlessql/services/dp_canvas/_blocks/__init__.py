@@ -18,6 +18,7 @@ from __future__ import annotations
 # dispatch tables on import); base must be imported first, above.
 from pointlessql.services.dp_canvas._blocks import (  # noqa: E402
     _columns,  # noqa: F401
+    _files,  # noqa: F401
     _io,  # noqa: F401
     _relational,  # noqa: F401
     _reshape,  # noqa: F401

@@ -67,6 +67,12 @@ def _rewrite_select(root: Expression) -> PreparedSQL:
     for table in root.find_all(exp.Table):
         if table.name in cte_aliases and not table.args.get("db"):
             continue
+        # Table-valued functions (DuckDB ``read_csv_auto`` / ``read_parquet`` /
+        # ``range`` / …) are valid FROM targets but are not catalog tables —
+        # their primary expression is a function node, not an identifier — so
+        # they are left untouched rather than forced into a 3-part name.
+        if not isinstance(table.this, exp.Identifier):
+            continue
         catalog = table.args.get("catalog")
         schema = table.args.get("db")
         name = table.args.get("this")

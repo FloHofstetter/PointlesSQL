@@ -489,3 +489,116 @@ def test_save_and_load_graph_round_trip(factory) -> None:
 def test_load_latest_graph_returns_none_when_empty(factory) -> None:
     dp_id = _seed_data_product(factory, schema_name="ex_storage_empty")
     assert load_latest_graph(factory, data_product_id=dp_id) is None
+
+
+# ---------------------------------------------------------- file blocks
+
+
+@pytest.fixture
+def file_sandbox(tmp_path, monkeypatch):
+    """Enable the canvas file-IO sandbox at a temp root for one test."""
+    from pointlessql.config import get_settings
+
+    root = tmp_path / "sandbox"
+    root.mkdir()
+    monkeypatch.setenv("POINTLESSQL_CANVAS_FILE_ROOT", str(root))
+    monkeypatch.setenv("POINTLESSQL_CANVAS_FILE_ALLOW_OUTPUT", "true")
+    get_settings.cache_clear()
+    yield root
+    get_settings.cache_clear()
+
+
+def test_file_output_writes_sandboxed_file(tmp_path, factory, monkeypatch, file_sandbox) -> None:
+    import duckdb
+
+    dp_id = _seed_data_product(factory, schema_name="ex_fileout")
+    src_path = _seed_source_delta(
+        tmp_path, name="src_fo", rows=pd.DataFrame({"id": [1, 2, 3], "amt": [10, 20, 30]})
+    )
+    _, _, create_table = _install_soyuz_patches(
+        monkeypatch,
+        source_paths={"main.ex_fileout.src": src_path},
+        target_schema_root=str(tmp_path / "r"),
+    )
+    doc = CanvasDoc(
+        nodes=[
+            node("inp", "InputPort", {"table_fqn": "main.ex_fileout.src"}),
+            node("fo", "FileOutput", {"path": "exports/out.parquet", "format": "parquet"}),
+        ],
+        edges=[edge("e", "inp", "out", "fo", "in")],
+    )
+    result = execute_canvas(factory, doc=doc, data_product_id=dp_id, soyuz_client=MagicMock())
+
+    assert len(result.sinks) == 1
+    sink = result.sinks[0]
+    assert sink.status == "ok"
+    assert sink.rows_written == 3
+    # A file sink never registers a UC table or an output port.
+    assert sink.output_port_id is None
+    assert create_table.sync.call_count == 0
+
+    written = file_sandbox / "exports" / "out.parquet"
+    assert written.exists()
+    count = duckdb.connect().execute(f"SELECT count(*) FROM read_parquet('{written}')").fetchone()
+    assert count is not None and count[0] == 3
+
+    with factory() as session:
+        assert (
+            session.query(DataProductOutputPort).filter_by(data_product_id=dp_id).count() == 0
+        )
+
+
+def test_file_input_reads_csv_end_to_end(tmp_path, factory, monkeypatch, file_sandbox) -> None:
+    dp_id = _seed_data_product(factory, schema_name="ex_filein")
+    (file_sandbox / "bronze").mkdir()
+    (file_sandbox / "bronze" / "events.csv").write_text("id,amt\n1,10\n2,20\n")
+    target_root = str(tmp_path / "fi_root")
+    _install_soyuz_patches(monkeypatch, source_paths={}, target_schema_root=target_root)
+
+    doc = CanvasDoc(
+        nodes=[
+            node("fi", "FileInput", {"path": "bronze/events.csv", "format": "csv"}),
+            node(
+                "out",
+                "OutputPort",
+                {
+                    "port_name": "p",
+                    "materialized_table": "main.ex_filein.tgt",
+                    "mode": "overwrite",
+                },
+            ),
+        ],
+        edges=[edge("e", "fi", "out", "out", "in")],
+    )
+    result = execute_canvas(factory, doc=doc, data_product_id=dp_id, soyuz_client=MagicMock())
+    assert result.sinks[0].status == "ok"
+    assert result.sinks[0].rows_written == 2
+    written = deltalake.DeltaTable(f"{target_root}/tgt").to_pandas()
+    assert sorted(written["id"].tolist()) == [1, 2]
+
+
+def test_file_output_rejected_when_sandbox_disabled(tmp_path, factory, monkeypatch) -> None:
+    from pointlessql.config import get_settings
+
+    # No file_sandbox fixture → POINTLESSQL_CANVAS_FILE_ROOT is unset.
+    monkeypatch.delenv("POINTLESSQL_CANVAS_FILE_ROOT", raising=False)
+    get_settings.cache_clear()
+    dp_id = _seed_data_product(factory, schema_name="ex_filedisabled")
+    src_path = _seed_source_delta(tmp_path, name="src_fd", rows=pd.DataFrame({"id": [1]}))
+    _install_soyuz_patches(
+        monkeypatch,
+        source_paths={"main.ex_filedisabled.src": src_path},
+        target_schema_root=str(tmp_path / "r"),
+    )
+    doc = CanvasDoc(
+        nodes=[
+            node("inp", "InputPort", {"table_fqn": "main.ex_filedisabled.src"}),
+            node("fo", "FileOutput", {"path": "exports/x.parquet"}),
+        ],
+        edges=[edge("e", "inp", "out", "fo", "in")],
+    )
+    try:
+        with pytest.raises(ValidationError, match="disabled"):
+            execute_canvas(factory, doc=doc, data_product_id=dp_id, soyuz_client=MagicMock())
+    finally:
+        get_settings.cache_clear()

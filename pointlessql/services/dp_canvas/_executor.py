@@ -31,6 +31,7 @@ one on ``request.app.state.soyuz_client``).
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 
 import httpx
@@ -55,6 +56,10 @@ from pointlessql.pql.engine import register_delta_view
 from pointlessql.pql.sql_parser._prepare import prepare_sql
 from pointlessql.services.agent_runs import operation_context
 from pointlessql.services.dp_canvas._compiler import compile_canvas, render_sql
+from pointlessql.services.dp_canvas._file_sandbox import (
+    resolve_sandbox_path,
+    rewrite_file_sentinels,
+)
 from pointlessql.services.dp_canvas._storage import save_graph
 from pointlessql.services.dp_canvas._types import (
     CanvasDoc,
@@ -278,14 +283,21 @@ def execute_canvas(
 
     prepared_sinks: list[_PreparedSink] = []
     for sink in fragment.sinks:
-        if not sink.port_name or not sink.target_fqn:
-            msg = "OutputPort.port_name and OutputPort.materialized_table are required."
-            raise ValidationError(msg)
-        target_location, target_was_new = _register_target_if_new(
-            client=soyuz_client,
-            target_fqn=sink.target_fqn,
-        )
-        prepared = prepare_sql(render_sql(fragment, sink))
+        # FileInput sources are encoded as @@CANVAS_FILE:…@@ sentinels in the
+        # shared CTE chain; resolve them against the sandbox before DuckDB
+        # sees the SQL (raises if the path escapes or file input is disabled).
+        prepared = prepare_sql(rewrite_file_sentinels(render_sql(fragment, sink)))
+        if sink.sink_kind == "file":
+            target_location = resolve_sandbox_path(sink.file_path or "", for_write=True)
+            target_was_new = False
+        else:
+            if not sink.port_name or not sink.target_fqn:
+                msg = "OutputPort.port_name and OutputPort.materialized_table are required."
+                raise ValidationError(msg)
+            target_location, target_was_new = _register_target_if_new(
+                client=soyuz_client,
+                target_fqn=sink.target_fqn,
+            )
         prepared_sinks.append(
             _PreparedSink(
                 sink=sink,
@@ -330,18 +342,30 @@ def execute_canvas(
                 )
                 raise ValidationError(msg) from exc
         for ps in prepared_sinks:
-            sink_results.append(
-                _materialise_sink(
-                    ps,
-                    conn=conn,
-                    factory=factory,
-                    data_product_id=data_product_id,
-                    soyuz_client=soyuz_client,
-                    actor_user_id=actor_user_id,
-                    effective_run_id=effective_run_id,
-                    referenced_tables=list(fragment.referenced_tables),
+            if ps.sink.sink_kind == "file":
+                sink_results.append(
+                    _materialise_file_sink(
+                        ps,
+                        conn=conn,
+                        factory=factory,
+                        data_product_id=data_product_id,
+                        effective_run_id=effective_run_id,
+                        referenced_tables=list(fragment.referenced_tables),
+                    )
                 )
-            )
+            else:
+                sink_results.append(
+                    _materialise_sink(
+                        ps,
+                        conn=conn,
+                        factory=factory,
+                        data_product_id=data_product_id,
+                        soyuz_client=soyuz_client,
+                        actor_user_id=actor_user_id,
+                        effective_run_id=effective_run_id,
+                        referenced_tables=list(fragment.referenced_tables),
+                    )
+                )
     finally:
         conn.close()
 
@@ -497,6 +521,66 @@ def _materialise_sink(
         target_fqn=sink.target_fqn,
         rows_written=rows_written,
         output_port_id=output_port_id,
+        status="ok",
+    )
+
+
+def _materialise_file_sink(
+    ps: _PreparedSink,
+    *,
+    conn: Any,
+    factory: sessionmaker[Session],
+    data_product_id: int,
+    effective_run_id: str | None,
+    referenced_tables: list[str],
+) -> SinkResult:
+    """Write one file sink via a DuckDB ``COPY``; never raises.
+
+    This bypasses Unity Catalog entirely — no Delta write, no UC table, no
+    ``DataProductOutputPort`` row (so ``output_port_id`` is always ``None``).
+    The rows leave the lakehouse with no lineage or ACL, which is exactly why
+    FileOutput is gated behind the default-off ``allow_output`` setting; the
+    sandbox path was already resolved + contained before we got here.  A
+    runtime failure is captured into a ``status="failed"`` result so the
+    other sinks of the run still execute.
+    """
+    sink = ps.sink
+    fmt = (sink.file_format or "parquet").upper()
+    op_params: dict[str, Any] = {
+        "data_product_id": data_product_id,
+        "port_name": sink.port_name,
+        "file_path": sink.file_path,
+        "file_format": sink.file_format,
+        "referenced_tables": referenced_tables,
+    }
+    try:
+        Path(ps.target_location).parent.mkdir(parents=True, exist_ok=True)
+        with operation_context(
+            factory if effective_run_id else None,
+            agent_run_id=cast(RunId | None, effective_run_id),
+            op_name=OpName.CANVAS_MATERIALIZE,
+            params=op_params,
+            target_table=sink.target_fqn,
+        ) as recorder:
+            copy_sql = f"COPY ({ps.rewritten_sql}) TO '{ps.target_location}' (FORMAT {fmt})"
+            row = conn.execute(copy_sql).fetchone()
+            rows_written = int(row[0]) if row else 0
+            recorder.rows_affected = rows_written
+    except Exception as exc:  # noqa: BLE001 — best-effort per sink
+        logger.exception(
+            "canvas file sink %r → %r failed to materialise", sink.port_name, sink.file_path
+        )
+        return SinkResult(
+            port_name=sink.port_name,
+            target_fqn=sink.target_fqn,
+            status="failed",
+            error=str(exc),
+        )
+    return SinkResult(
+        port_name=sink.port_name,
+        target_fqn=sink.target_fqn,
+        rows_written=rows_written,
+        output_port_id=None,
         status="ok",
     )
 

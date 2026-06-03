@@ -267,11 +267,42 @@ def compile_canvas(
                 CompileError(
                     kind="bad_config",
                     node_id=output_node.id,
-                    message="OutputPort failed to compile — no CTE recorded.",
+                    message="Sink block failed to compile — no CTE recorded.",
                 )
             )
             continue
         cfg = output_node.config
+        if output_node.block_type == "FileOutput":
+            rel = str(cfg.get("path") or "").strip()
+            if rel in seen_targets:
+                errors.append(
+                    CompileError(
+                        kind="duplicate_sink",
+                        node_id=output_node.id,
+                        message=(
+                            f"Two FileOutput blocks write the same path {rel!r}; "
+                            "each sink needs a distinct path."
+                        ),
+                    )
+                )
+                continue
+            seen_targets[rel] = output_node.id
+            sinks.append(
+                SinkSpec(
+                    output_node_id=output_node.id,
+                    # File sinks have no UC port; the file name keeps the
+                    # per-sink label short and human-readable.
+                    port_name=(rel.rsplit("/", 1)[-1] or output_node.id),
+                    target_fqn=rel,
+                    mode="overwrite",
+                    final_cte=final_cte,
+                    output_schema=output_schemas[output_node.id],
+                    sink_kind="file",
+                    file_path=rel,
+                    file_format=str(cfg.get("format") or "parquet").strip().lower(),
+                )
+            )
+            continue
         port_name = str(cfg.get("port_name") or "").strip()
         target_fqn = str(cfg.get("materialized_table") or "").strip()
         if target_fqn in seen_targets:
