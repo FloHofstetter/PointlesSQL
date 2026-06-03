@@ -155,6 +155,89 @@ export function dataProductDetail(product, ctx) {
       if (snip) navigator.clipboard.writeText(snip);
     },
 
+    // consumer "Data" tab — meaning-first column view + sample rows.
+
+    // Per-table preview payloads, lazily fetched from the shared
+    // catalog-preview endpoint (which masks classified columns
+    // server-side, so what shows here already honours governance).
+    samples: {},
+    sampleOpen: {},
+    sampleLoading: {},
+
+    /**
+     * Map a contract column type to a plain-language label a
+     * non-technical consumer understands. The raw type stays on the
+     * row's ``title`` for the engineer reading the same column.
+     *
+     * @param {string} type - one of the contract primitive types.
+     * @returns {string} a human-friendly type name.
+     */
+    friendlyType(type) {
+      const map = {
+        string: 'Text',
+        integer: 'Whole number',
+        long: 'Whole number',
+        double: 'Decimal number',
+        decimal: 'Decimal number',
+        boolean: 'Yes / no',
+        timestamp: 'Date & time',
+        date: 'Date',
+        binary: 'Binary',
+        array: 'List',
+        struct: 'Nested record',
+      };
+      if (map[type]) return map[type];
+      const t = String(type || '');
+      return t ? t.charAt(0).toUpperCase() + t.slice(1) : 'Value';
+    },
+
+    /**
+     * Render a column's nullability as a consumer-facing word.
+     *
+     * @param {boolean} nullable - the contract nullable flag.
+     * @returns {string} "optional" when nullable, else "required".
+     */
+    friendlyNullable(nullable) {
+      return nullable ? 'optional' : 'required';
+    },
+
+    /**
+     * Toggle the inline sample-data panel for one contract table,
+     * fetching the first rows from the shared catalog-preview endpoint
+     * on first open. Objects are reassigned (not mutated in place) so
+     * Alpine's reactivity picks up the per-table keys.
+     *
+     * @param {string} name - the contract table name.
+     */
+    async toggleSample(name) {
+      const open = !this.sampleOpen[name];
+      this.sampleOpen = { ...this.sampleOpen, [name]: open };
+      if (!open || this.samples[name]) return;
+      this.sampleLoading = { ...this.sampleLoading, [name]: true };
+      const fallback = {
+        error: 'preview_unavailable',
+        detail: 'Sample data could not be loaded.',
+      };
+      try {
+        const res = await fetch(
+          '/api/catalogs/' +
+            encodeURIComponent(this.product.catalog) +
+            '/schemas/' +
+            encodeURIComponent(this.product.schema) +
+            '/tables/' +
+            encodeURIComponent(name) +
+            '/preview'
+        );
+        const data = res.ok ? await res.json() : fallback;
+        this.samples = { ...this.samples, [name]: data };
+      } catch (e) {
+        console.error('sample preview failed', e);
+        this.samples = { ...this.samples, [name]: fallback };
+      } finally {
+        this.sampleLoading = { ...this.sampleLoading, [name]: false };
+      }
+    },
+
     // forks (active branches off this DP's schema).
 
     forks: [],

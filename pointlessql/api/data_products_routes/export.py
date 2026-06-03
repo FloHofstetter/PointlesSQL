@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import asyncio
 import io
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import StreamingResponse
@@ -74,15 +74,60 @@ def _frame_to_parquet(frame: Any) -> bytes:
     raise BadRequestError("data product table could not be serialised to Parquet")
 
 
+def _frame_to_csv(frame: Any) -> bytes:
+    """Serialise an engine frame to CSV bytes.
+
+    Mirrors :func:`_frame_to_parquet` for the ``format=csv`` download a
+    business consumer reaches for — CSV opens directly in a spreadsheet,
+    whereas Parquet needs tooling.  pandas / polars expose a CSV writer
+    directly; pyarrow tables and duckdb relations route through
+    pyarrow's CSV writer as the common target.
+
+    Args:
+        frame: The engine-native frame returned by ``pql.table``.
+
+    Returns:
+        The CSV file payload as UTF-8 bytes.
+
+    Raises:
+        BadRequestError: When the frame type can't be serialised.
+    """
+    # pandas ``to_csv`` returns the text when no path is given.
+    if hasattr(frame, "to_csv"):
+        text = frame.to_csv(index=False)
+        return text.encode("utf-8") if isinstance(text, str) else bytes(text)
+    # polars exposes ``write_csv`` (no ``to_csv``).
+    if hasattr(frame, "write_csv"):
+        buffer = io.BytesIO()
+        frame.write_csv(buffer)
+        return buffer.getvalue()
+    try:
+        import pyarrow as pa  # noqa: PLC0415 — lazy, engine-optional
+        import pyarrow.csv as pacsv  # noqa: PLC0415
+
+        sink = io.BytesIO()
+        if isinstance(frame, pa.Table):
+            pacsv.write_csv(frame, sink)
+            return sink.getvalue()
+        # duckdb relation → arrow → csv.
+        if hasattr(frame, "to_arrow_table"):
+            pacsv.write_csv(frame.to_arrow_table(), sink)
+            return sink.getvalue()
+    except ImportError:  # pragma: no cover — pyarrow ships with deltalake
+        pass
+    raise BadRequestError("data product table could not be serialised to CSV")
+
+
 @router.get("/api/data-products/{catalog}/{schema}/export")
 async def export_table(
     catalog: str,
     schema: str,
     request: Request,
     table: str,
+    format: Literal["parquet", "csv"] = "parquet",
     authoring_product_id: int | None = Depends(get_authoring_product),
 ) -> StreamingResponse:
-    """Stream one declared product table as a Parquet download.
+    """Stream one declared product table as a Parquet or CSV download.
 
     Args:
         catalog: UC catalog segment.
@@ -90,14 +135,16 @@ async def export_table(
         request: Incoming FastAPI request.
         table: The table to export — must be declared in the product
             contract.
+        format: ``"parquet"`` (default, for tooling) or ``"csv"`` (for
+            spreadsheet consumers who just want the rows).
         authoring_product_id: Resolved by
             :func:`get_authoring_product` — the consumer product the
-            export is happening "in the context of"; drives the D2
+            export is happening "in the context of"; drives the
             consumption-enforcement hook.  ``None`` when the request
             isn't bound to a product (free-form export).
 
     Returns:
-        A ``StreamingResponse`` carrying the Parquet payload with a
+        A ``StreamingResponse`` carrying the serialised payload with a
         ``Content-Disposition: attachment`` header.
 
     Raises:
@@ -148,14 +195,21 @@ async def export_table(
     }
     secret = None if unmask else get_or_create_pii_hash_secret(factory)
 
+    fmt = format.lower()
     settings: Settings = request.app.state.settings
     payload = await asyncio.to_thread(
-        _export_blocking, settings, principal, full_name, strategies, unmask, secret
+        _export_blocking, settings, principal, full_name, strategies, unmask, secret, fmt
     )
-    headers = {"Content-Disposition": f'attachment; filename="{catalog}.{schema}.{table}.parquet"'}
+    if fmt == "csv":
+        media_type = "text/csv; charset=utf-8"
+        ext = "csv"
+    else:
+        media_type = "application/vnd.apache.parquet"
+        ext = "parquet"
+    headers = {"Content-Disposition": f'attachment; filename="{catalog}.{schema}.{table}.{ext}"'}
     return StreamingResponse(
         io.BytesIO(payload),
-        media_type="application/vnd.apache.parquet",
+        media_type=media_type,
         headers=headers,
     )
 
@@ -167,11 +221,26 @@ def _export_blocking(
     strategies: dict[str, str],
     unmask: bool,
     secret: str | None,
+    fmt: str,
 ) -> bytes:
     """Read *full_name* via PQL, mask classified columns, serialise (blocking).
 
     The masking sidecar runs here, at the output port — a non-privileged
-    consumer never receives cleartext for a classified column.
+    consumer never receives cleartext for a classified column — so both
+    serialisation formats inherit the same redaction.
+
+    Args:
+        settings: Process settings carrying the soyuz + engine config.
+        principal: The acting principal email, for a scoped UC client.
+        full_name: The ``catalog.schema.table`` to read.
+        strategies: Per-column masking strategy from the classification
+            index.
+        unmask: ``True`` when the viewer is allowed to see cleartext.
+        secret: PII hash secret when masking, ``None`` when unmasked.
+        fmt: ``"csv"`` or ``"parquet"`` — selects the serialiser.
+
+    Returns:
+        The serialised, masked table payload as bytes.
     """
     from pointlessql.pql import PQL
 
@@ -181,4 +250,6 @@ def _export_blocking(
     pql = PQL(client=client, settings=settings)
     frame = pql.table(full_name)
     frame = governance_service.mask_dataframe(frame, strategies, unmask=unmask, secret=secret)
+    if fmt == "csv":
+        return _frame_to_csv(frame)
     return _frame_to_parquet(frame)

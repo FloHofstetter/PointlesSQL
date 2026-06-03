@@ -319,6 +319,48 @@ async def test_export_rejects_undeclared_table() -> None:
     assert res.status_code == 400
 
 
+def test_frame_to_csv_serialises_pandas_with_header() -> None:
+    """``_frame_to_csv`` emits a header row + values as UTF-8 bytes.
+
+    The serialiser runs *after* ``mask_dataframe`` in the export path,
+    so exercising it on a plain frame covers the new ``format=csv``
+    output without standing up Delta storage; the redaction step is
+    shared with the already-covered Parquet path.
+    """
+    from pointlessql.api.data_products_routes.export import _frame_to_csv
+
+    frame = pd.DataFrame({"id": [1, 2], "name": ["a", "b"]})
+    payload = _frame_to_csv(frame)
+    assert isinstance(payload, bytes)
+    lines = payload.decode("utf-8").splitlines()
+    assert lines[0] == "id,name"  # header present, pandas index suppressed
+    assert lines[1] == "1,a"
+    assert len(lines) == 3  # header + 2 data rows
+
+
+async def test_export_csv_format_param_accepted() -> None:
+    """The ``format`` query param is wired through the export route.
+
+    The undeclared-table guard still fires (400) with ``format=csv``
+    set, proving the route accepts it; an unsupported value is rejected
+    by the ``Literal`` validator (422) before any read happens.
+    """
+    _seed_dp("main", "exp_csv_dp", tables=[{"name": "declared", "columns": []}])
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app),
+        base_url="http://test",
+        cookies=app.state._test_auth_cookie,
+    ) as client:
+        ok = await client.get(
+            "/api/data-products/main/exp_csv_dp/export?table=undeclared&format=csv"
+        )
+        bad = await client.get(
+            "/api/data-products/main/exp_csv_dp/export?table=undeclared&format=xml"
+        )
+    assert ok.status_code == 400
+    assert bad.status_code == 422
+
+
 async def test_glossary_admin_crud_and_browse() -> None:
     async with httpx.AsyncClient(
         transport=httpx.ASGITransport(app=app),

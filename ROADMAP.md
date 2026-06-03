@@ -3002,6 +3002,17 @@ PointlesSQL
    browser users use. 8 commits, rc204→rc212, ALL LOCAL until
    final push.
 │
+├── Consumer Data View — DP detail page made readable for business domains  ✅ shipped (local, 2026-06-03)
+│   │   The former Contract tab is now a meaning-first "Data" view for
+│   │   domain consumers who don't know the platform: each column leads
+│   │   with its plain-language description + a friendly type label (raw
+│   │   type on hover), bound glossary-term badges, a trust strip
+│   │   (freshness / refresh SLA / owning domain / owner contact mailto),
+│   │   per-table CSV + Parquet download, and an inline governance-masked
+│   │   sample-rows panel that degrades gracefully when storage is gone.
+│   │   Backend: ``GET …/export`` gains ``format=csv`` (shared masking).
+│   │   Frontend + 1 route + 2 pytest, full suite 4559/0.  ALL LOCAL.
+│
 ├── Mega-Cluster 155-164 — Visual DP Editor + Platform Polish  ✅ shipped (local, 2026-05-31)
 │   │   10 improvement phases on top of the Mega-Cluster 147-154
 │   │   surface and on adjacent platform surfaces (audit log,

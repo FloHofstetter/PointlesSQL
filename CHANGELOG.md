@@ -15,6 +15,22 @@ contributors who need finer commit-level granularity.
 <!-- Future commits land here until the next cluster boundary is
 defined in ``scripts/clusters.json``. -->
 
+### Added
+
+- Consumer-friendly **Data** view on the data-product detail page — the
+  former Contract tab is reworked for business-domain consumers who don't
+  know the platform. Each column now leads with its plain-language
+  description and a friendly type label (e.g. "Whole number · optional"),
+  with the raw type kept on hover; bound business-glossary terms badge the
+  column; a header trust strip shows freshness, the refresh SLA, the owning
+  domain, and an owner contact (mailto); every table offers one-click CSV /
+  Parquet download; and an inline "Show sample data" panel previews
+  governance-masked rows, degrading gracefully when storage is unavailable.
+- `format=csv` option on
+  `GET /api/data-products/{catalog}/{schema}/export` (alongside the default
+  `parquet`) so spreadsheet consumers can download a declared table
+  directly; both formats share the same column-masking sidecar.
+
 ### Refactor
 
 - Canvas editor modularised into single-concern bundles — the 3.7k-line

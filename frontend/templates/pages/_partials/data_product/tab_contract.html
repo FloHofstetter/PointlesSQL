@@ -1,6 +1,6 @@
         <div class="tab-pane fade" id="tab-contract" role="tabpanel">
             <template x-if="!detail">
-                <div class="text-muted small p-3">Loading contract…</div>
+                <div class="text-muted small p-3">Loading data…</div>
             </template>
             <template x-if="detail && detail.tables.length === 0">
                 <div class="alert alert-secondary pql-contract-empty">
@@ -13,53 +13,151 @@
                 </div>
             </template>
             <template x-if="detail && detail.tables.length > 0">
-                <div>
+                <div class="pql-dp-data">
+
+                    <!-- Owner & trust strip: who to ask + how fresh / reliable. -->
+                    <div class="card mb-3 pql-dp-data-trust">
+                        <div class="card-body py-2 d-flex flex-wrap align-items-center gap-2">
+                            <span class="badge"
+                                  :class="{
+                                    'bg-success': healthBand.status === 'green',
+                                    'bg-warning text-dark': healthBand.status === 'yellow',
+                                    'bg-danger': healthBand.status === 'red',
+                                    'bg-secondary': healthBand.status === 'unknown'
+                                  }"
+                                  x-text="healthBand.label"></span>
+                            <span class="text-muted small"
+                                  x-show="healthBand.freshness_pct !== null && healthBand.freshness_pct !== undefined">
+                                <i class="bi bi-clock-history me-1"></i>Up to date
+                                <strong x-text="Math.round(healthBand.freshness_pct) + '%'"></strong>
+                                of the last 30 days
+                            </span>
+                            <span class="text-muted small" x-show="healthBand.sla_minutes">
+                                <i class="bi bi-stopwatch me-1"></i>Refreshed within
+                                <strong x-text="healthBand.sla_minutes + ' min'"></strong>
+                            </span>
+                            <template x-if="detail.product && detail.product.domain">
+                                <span class="badge text-bg-light border">
+                                    <i class="bi bi-diagram-2 me-1"></i><span x-text="detail.product.domain.name"></span>
+                                </span>
+                            </template>
+                            <span class="text-muted small ms-auto pql-dp-data-owner">
+                                <i class="bi bi-person-circle me-1"></i>Questions about this data?
+                                {% if product.steward_email %}
+                                Contact <a href="mailto:{{ product.steward_email }}">{{ product.steward_display_name or product.steward_email }}</a>
+                                {% elif product.steward_display_name %}
+                                Contact <strong>{{ product.steward_display_name }}</strong>
+                                {% else %}
+                                No owner is listed yet.
+                                {% endif %}
+                            </span>
+                        </div>
+                    </div>
+
                     <template x-for="t in detail.tables" :key="t.name">
-                        <div class="card mb-3">
+                        <div class="card mb-3 pql-dp-data-table">
                             <div class="card-body">
-                                <h5 class="card-title">
-                                    <i class="bi bi-table me-1"></i>
-                                    <span x-text="t.name"></span>
-                                    <template x-if="t.primary_key.length > 0">
-                                        <span class="badge bg-info ms-2"
-                                              x-text="'PK: ' + t.primary_key.join(', ')"></span>
+                                <div class="d-flex align-items-center flex-wrap gap-2 mb-2">
+                                    <h5 class="card-title mb-0 me-auto">
+                                        <i class="bi bi-table me-1"></i>
+                                        <span x-text="t.name"></span>
+                                        <template x-if="t.primary_key.length > 0">
+                                            <span class="badge bg-info ms-2"
+                                                  x-text="'Identified by: ' + t.primary_key.join(', ')"></span>
+                                        </template>
+                                    </h5>
+                                    <div class="dropdown">
+                                        <button class="btn btn-sm btn-outline-primary dropdown-toggle"
+                                                type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                            <i class="bi bi-download me-1"></i>Download
+                                        </button>
+                                        <ul class="dropdown-menu dropdown-menu-end">
+                                            <li>
+                                                <a class="dropdown-item"
+                                                   :href="'/api/data-products/' + product.catalog + '/' + product.schema + '/export?format=csv&table=' + encodeURIComponent(t.name)">
+                                                    <i class="bi bi-filetype-csv me-1"></i>CSV (for spreadsheets)
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a class="dropdown-item"
+                                                   :href="'/api/data-products/' + product.catalog + '/' + product.schema + '/export?format=parquet&table=' + encodeURIComponent(t.name)">
+                                                    <i class="bi bi-file-earmark-binary me-1"></i>Parquet (for tools)
+                                                </a>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </div>
+
+                                <!-- Meaning-first column list: description leads, type is secondary. -->
+                                <ul class="list-group list-group-flush pql-dp-data-cols">
+                                    <template x-for="c in t.columns" :key="c.name">
+                                        <li class="list-group-item px-0">
+                                            <div class="d-flex align-items-baseline flex-wrap gap-2">
+                                                <strong x-text="c.name"></strong>
+                                                <template x-for="term in (c.glossary_terms || [])" :key="term">
+                                                    <span class="badge text-bg-light border" title="Business glossary term">
+                                                        <i class="bi bi-book"></i> <span x-text="term"></span>
+                                                    </span>
+                                                </template>
+                                                <span class="text-muted small ms-auto"
+                                                      :title="c.type"
+                                                      x-text="friendlyType(c.type) + ' · ' + friendlyNullable(c.nullable)"></span>
+                                            </div>
+                                            <div class="small mt-1"
+                                                 :class="c.description ? 'text-body' : 'text-muted fst-italic'"
+                                                 x-text="c.description || 'No description yet.'"></div>
+                                        </li>
                                     </template>
-                                </h5>
-                                <div class="table-responsive">
-                                    <table class="table table-sm mb-0">
-                                        <thead>
-                                            <tr>
-                                                <th>Column</th>
-                                                <th>Type</th>
-                                                <th>Nullable</th>
-                                                <th>Description</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <template x-for="c in t.columns" :key="c.name">
-                                                <tr>
-                                                    <td>
-                                                        <code x-text="c.name"></code>
-                                                        <template x-for="term in (c.glossary_terms || [])" :key="term">
-                                                            <span class="badge text-bg-light border ms-1" title="Glossary term">
-                                                                <i class="bi bi-book"></i> <span x-text="term"></span>
-                                                            </span>
-                                                        </template>
-                                                    </td>
-                                                    <td><span class="badge bg-secondary" x-text="c.type"></span></td>
-                                                    <td>
-                                                        <template x-if="c.nullable">
-                                                            <span class="text-muted small">nullable</span>
-                                                        </template>
-                                                        <template x-if="!c.nullable">
-                                                            <span class="badge bg-warning text-dark">NOT NULL</span>
-                                                        </template>
-                                                    </td>
-                                                    <td class="small text-muted" x-text="c.description || ''"></td>
-                                                </tr>
+                                </ul>
+
+                                <!-- Inline sample data, lazily fetched + governance-masked. -->
+                                <div class="mt-3">
+                                    <button class="btn btn-sm btn-link px-0 text-decoration-none"
+                                            @click="toggleSample(t.name)">
+                                        <i class="bi" :class="sampleOpen[t.name] ? 'bi-chevron-down' : 'bi-chevron-right'"></i>
+                                        <span x-text="sampleOpen[t.name] ? 'Hide sample data' : 'Show sample data'"></span>
+                                    </button>
+                                    <template x-if="sampleOpen[t.name]">
+                                        <div class="mt-2">
+                                            <div class="text-muted small" x-show="sampleLoading[t.name]">
+                                                <span class="spinner-border spinner-border-sm me-1"></span>Loading sample rows…
+                                            </div>
+                                            <template x-if="samples[t.name] && samples[t.name].error">
+                                                <div class="alert alert-light border small mb-0">
+                                                    <i class="bi bi-info-circle me-1"></i>
+                                                    <span x-text="samples[t.name].detail || 'Sample data is not available for this table.'"></span>
+                                                </div>
                                             </template>
-                                        </tbody>
-                                    </table>
+                                            <template x-if="samples[t.name] && !samples[t.name].error">
+                                                <div>
+                                                    <div class="table-responsive">
+                                                        <table class="table table-sm table-striped pql-dp-data-sample mb-1">
+                                                            <thead>
+                                                                <tr>
+                                                                    <template x-for="col in samples[t.name].columns" :key="col">
+                                                                        <th x-text="col"></th>
+                                                                    </template>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody>
+                                                                <template x-for="(row, ri) in samples[t.name].rows" :key="ri">
+                                                                    <tr>
+                                                                        <template x-for="(cell, ci) in row" :key="ci">
+                                                                            <td x-text="cell === null ? '—' : cell"></td>
+                                                                        </template>
+                                                                    </tr>
+                                                                </template>
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                    <div class="text-muted small">
+                                                        <i class="bi bi-shield-lock me-1"></i>Sample rows; sensitive columns are masked where required.
+                                                        <span x-show="samples[t.name].truncated">Showing the first rows only.</span>
+                                                    </div>
+                                                </div>
+                                            </template>
+                                        </div>
+                                    </template>
                                 </div>
                             </div>
                         </div>

@@ -9,6 +9,16 @@
 ] %}
 {% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
 
+{% block extra_css %}
+<style>
+.pql-dp-data-trust { background: var(--bs-secondary-bg-subtle); }
+.pql-dp-data-cols .list-group-item { padding-top: .4rem; padding-bottom: .4rem; }
+.pql-dp-data-cols .list-group-item:first-child { padding-top: 0; }
+.pql-dp-data-sample { font-size: .82rem; }
+.pql-dp-data-sample td { max-width: 18rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+</style>
+{% endblock %}
+
 {% block content %}
 <div x-data='dataProductDetail({{ product | tojson }}, {
         current_user_id: {{ current_user_id | tojson }},
@@ -112,7 +122,7 @@
         <li class="nav-item" role="presentation">
             <button class="nav-link" id="tab-contract-btn" data-bs-toggle="tab"
                     data-bs-target="#tab-contract" type="button" role="tab"
-                    data-pql-tab-key="contract">Contract</button>
+                    data-pql-tab-key="contract">Data</button>
         </li>
         <li class="nav-item" role="presentation">
             <button class="nav-link" id="tab-diff-btn" data-bs-toggle="tab"
