@@ -60,6 +60,29 @@
   overflow-y: auto;
 }
 
+/* Settings-form rhythm: each per-block form is wrapped in a
+   ``.pql-form-group`` so related fields read as one block with uniform
+   spacing, and labels sit tight against their inputs. */
+.pql-dp-canvas-drawer .form-label.small {
+  margin-bottom: 0.2rem;
+}
+.pql-dp-canvas-drawer .pql-form-group {
+  margin-bottom: 0.9rem;
+}
+.pql-dp-canvas-drawer .pql-form-group:last-child {
+  margin-bottom: 0;
+}
+.pql-dp-canvas-drawer .pql-drawer-help {
+  line-height: 1.3;
+}
+.pql-dp-canvas-drawer .pql-drawer-error {
+  font-size: 0.8rem;
+}
+.pql-dp-canvas-drawer .pql-col-suggest .btn-link {
+  font-size: 0.8rem;
+  vertical-align: baseline;
+}
+
 /* Block-skin (header / body / cols / footer / badge / compact toggle)
    was promoted to ``canvas_shared.css`` under ``.pql-canvas`` so every
    Drawflow surface inherits the same node anatomy without copying the
