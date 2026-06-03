@@ -43,13 +43,27 @@ export const viewportMethods = {
     const rect = df.container.getBoundingClientRect();
     const fitW = Math.max(rect.width - PAD * 2, 100);
     const fitH = Math.max(rect.height - PAD * 2, 100);
-    const zoom = Math.min(fitW / spanX, fitH / spanY, 1);
+    // Keep node bodies legible: a wide linear pipeline would otherwise fit at
+    // a zoom so small (~0.4) that the schema/row-count text is unreadable and
+    // most of the stage is empty.  Floor the fit zoom and let the user pan /
+    // use the minimap for the overflow.
+    const MIN_FIT_ZOOM = 0.5;
+    const rawZoom = Math.min(fitW / spanX, fitH / spanY, 1);
+    const zoom = Math.max(rawZoom, MIN_FIT_ZOOM);
     df.zoom = zoom;
-    // Centre the graph's bounding box in the viewport rather than pinning it
-    // to the top-left corner — a small DAG should sit in the middle of the
-    // canvas, not hug the palette edge.
-    df.canvas_x = (rect.width - spanX * zoom) / 2 - minX * zoom;
-    df.canvas_y = (rect.height - spanY * zoom) / 2 - minY * zoom;
+    if (zoom > rawZoom + 1e-6) {
+      // The floor kicked in, so the graph is too big to fit at a legible
+      // zoom.  Anchor to its top-left (with padding) instead of centring —
+      // centring a graph larger than the viewport clips both ends, whereas
+      // top-left keeps the pipeline's source nodes in view to pan from.
+      df.canvas_x = PAD - minX * zoom;
+      df.canvas_y = PAD - minY * zoom;
+    } else {
+      // Small DAG: centre its bounding box so it sits in the middle of the
+      // canvas rather than hugging the palette edge.
+      df.canvas_x = (rect.width - spanX * zoom) / 2 - minX * zoom;
+      df.canvas_y = (rect.height - spanY * zoom) / 2 - minY * zoom;
+    }
     const precanvas = df.precanvas;
     if (precanvas) {
       precanvas.style.transform = `translate(${df.canvas_x}px, ${df.canvas_y}px) scale(${zoom})`;
