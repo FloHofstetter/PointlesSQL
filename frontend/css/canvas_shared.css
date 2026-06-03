@@ -367,31 +367,33 @@
   box-shadow: 0 0 0 2px rgba(var(--bs-danger-rgb), 0.45);
 }
 
-/* Inline run-status dock — floats over the bottom of the canvas stage
-   instead of opening a modal, so running / results / errors stay in the
-   same view as the graph. */
+/* Inline run-status dock — docked along the bottom edge of the canvas
+   stage (full width) rather than a centred floating card, so running /
+   results / errors read like an IDE output panel and never sit on top of
+   the graph head or the palette.  Grows upward from the bottom, capped so
+   it never eats more than the lower portion of the stage, with its own
+   scroll for many sinks. */
 .pql-canvas-run-dock {
   position: absolute;
-  left: 50%;
-  top: 1rem;
-  transform: translateX(-50%);
+  left: 0;
+  right: 0;
+  bottom: 0;
   z-index: 20;
-  width: min(640px, calc(100% - 2rem));
-  max-height: calc(100% - 2rem);
+  max-height: 45%;
   display: flex;
   flex-direction: column;
   background: var(--bs-body-bg);
-  border: 1px solid var(--bs-border-color);
-  border-radius: var(--bs-border-radius);
-  box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.3);
+  border-top: 2px solid var(--bs-border-color);
+  border-radius: var(--bs-border-radius) var(--bs-border-radius) 0 0;
+  box-shadow: 0 -0.5rem 1.5rem rgba(0, 0, 0, 0.18);
 }
 
 .pql-canvas-run-dock.pql-run-dock-error {
-  border-color: var(--bs-danger);
+  border-top-color: var(--bs-danger);
 }
 
 .pql-canvas-run-dock.pql-run-dock-warn {
-  border-color: var(--bs-warning);
+  border-top-color: var(--bs-warning);
 }
 
 .pql-canvas-run-dock-body {
