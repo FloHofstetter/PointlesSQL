@@ -3183,6 +3183,37 @@ PointlesSQL
 │   │   Browser-verified on /dp/1/canvas (0 console errors on realistic flows),
 │   │   full pytest 4555/0 green.  10 commits ``0a4f3251``..``87f2eea4``.  ALL LOCAL.
 │   │
+├── Canvas Full-Feature Pipeline Demo + UX Audit  ✅ shipped (local, 2026-06-03)
+│   │
+│   │   From user-Auftrag: build full-feature pipelines, screenshot the UX,
+│   │   run them with real data so the data flow is confirmed, then improve
+│   │   the UX.  Drove the Drawflow editor on /dp/1/canvas to build AND
+│   │   materialise five pipelines against a fresh ``demo.canvas_demo`` schema
+│   │   (order-summary join+agg+sort; set-ops + semi/anti-join two-sink
+│   │   fan-out; HR window + cast/rename/calc reshape; pivot/unpivot/union/SQL/
+│   │   unnest; and a three-sink parquet+Delta+CSV file round-trip + compound-DP
+│   │   ref) — every block type exercised, each node previewed AND the canvas
+│   │   materialised with real ``rows_written`` read back from the written
+│   │   Delta tables / files.  Running real data surfaced two shipped bugs,
+│   │   fixed at source:
+│   │   • SemiJoin / AntiJoin / Except / Intersect mirrored both incoming edges
+│   │     onto a single ``in`` pin (only Join / Union were special-cased) → a
+│   │     duplicate-pin compile error the preview showed only as "0 rows".  The
+│   │     target pin name now reads off the block's ``inPins`` (shared
+│   │     ``inputPinName`` helper used by both ``_syncFromDrawflow`` and the
+│   │     drop-target highlighter).  Every use of the four new blocks was broken.
+│   │   • Cast / Rename appended a duplicate column instead of editing in place
+│   │     (``col`` + phantom ``col_1``; ``old`` kept beside ``new``),
+│   │     contradicting their own schema inference → now compile through DuckDB
+│   │     ``* REPLACE`` / ``* RENAME``.
+│   │   Plus three UX fixes from the screenshot audit: the run-results panel
+│   │   docks along the bottom edge of the stage (was a centred card over the
+│   │   graph head + palette; from a user question); fit-to-view floors at 0.5
+│   │   zoom and left-anchors a too-wide graph (was an illegible ~0.4); and the
+│   │   preview modal titles by block label with the run target column renamed
+│   │   neutrally for file sinks.  The drawer forms themselves audited clean.
+│   │   Full pytest 4557/0 green.  5 commits ``b563585a``..``f9b060bd``.  ALL LOCAL.
+│   │
 ├── Overnight Hardening Cluster — coverage + refactor + types + a11y  ✅ shipped (local, 2026-06-02)
 │   │
 │   │   Autonomous overnight run hardening the existing codebase — no new

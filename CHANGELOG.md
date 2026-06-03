@@ -309,6 +309,33 @@ defined in ``scripts/clusters.json``. -->
 
 ### Fixes
 
+- Two-input canvas blocks (SemiJoin, AntiJoin, Except, Intersect) now wire
+  correctly. The editor mirrored both incoming edges onto a single ``in`` pin —
+  only ``Join`` / ``Union`` were special-cased — so these set-operation /
+  exists-join blocks compiled to a duplicate-pin error that the preview
+  surfaced only as "0 rows". The target pin name is now read from each block's
+  ``inPins``, so any current or future multi-input block stays correct.
+  Confirmed end-to-end on demo data: SemiJoin 15 / AntiJoin 5 /
+  Except 5 / Intersect 15.
+
+- Canvas Cast and Rename modify columns in place. ``Cast(col → type)`` left the
+  original column and appended a disambiguated ``col_1``; ``Rename(old → new)``
+  kept ``old`` and added ``new`` — both contradicting their own schema
+  inference. They now compile through DuckDB ``* REPLACE`` / ``* RENAME``.
+
+- The canvas run-results panel docks along the bottom edge of the stage (full
+  width, like an IDE output panel, capped at 45% height with its own scroll)
+  instead of a centred card that floated over the pipeline head and palette.
+
+- Canvas fit-to-view no longer shrinks a wide pipeline to an illegible (~0.4)
+  zoom: the fit zoom is floored at 0.5, and a graph too wide to fit at that
+  zoom anchors to its top-left (source nodes in view) rather than centring and
+  clipping both ends.
+
+- The canvas preview modal titles by block label rather than the internal node
+  id, and the run-results target column is named neutrally so it reads
+  correctly for both Delta-table and file sinks.
+
 - Reduced motion is now honoured globally (rc255). The app only neutralised
   two named animations under ``prefers-reduced-motion``; a global catch-all now
   near-instantly resolves every transition and animation for users who ask
