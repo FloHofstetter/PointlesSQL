@@ -3212,7 +3212,12 @@ PointlesSQL
 │   │   zoom and left-anchors a too-wide graph (was an illegible ~0.4); and the
 │   │   preview modal titles by block label with the run target column renamed
 │   │   neutrally for file sinks.  The drawer forms themselves audited clean.
-│   │   Full pytest 4557/0 green.  5 commits ``b563585a``..``f9b060bd``.  ALL LOCAL.
+│   │   A later look at the mesh canvas (user report) found its nodes dropped in
+│   │   a raw top-left grid with no fit/layout — top row clipped under the
+│   │   topbar, less tidy than the editor; it now Dagre-arranges left-to-right
+│   │   and fits-to-view on load via a shared ``fitDrawflowToView`` helper.
+│   │   Full pytest 4557/0 green.  Pushed.  Canvas-audit commits
+│   │   ``b563585a``..``6b279427`` on ``origin/refactor/canvas-modularization``.
 │   │
 ├── Overnight Hardening Cluster — coverage + refactor + types + a11y  ✅ shipped (local, 2026-06-02)
 │   │

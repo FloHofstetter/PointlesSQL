@@ -336,6 +336,14 @@ defined in ``scripts/clusters.json``. -->
   id, and the run-results target column is named neutrally so it reads
   correctly for both Delta-table and file sinks.
 
+- The mesh canvas arranges and frames its graph on load. It previously dropped
+  the data-product nodes into a raw top-left grid with no fit or layout, so the
+  top row sat clipped under the topbar (headers cut off) and the arrangement
+  was less tidy than the DP editor's. It now runs a left-to-right Dagre layout
+  (matching the editor's source → consumer flow) and fits-to-view through a
+  shared ``fitDrawflowToView`` helper, so the mesh and editor surfaces frame
+  their graphs consistently.
+
 - Reduced motion is now honoured globally (rc255). The app only neutralised
   two named animations under ``prefers-reduced-motion``; a global catch-all now
   near-instantly resolves every transition and animation for users who ask
