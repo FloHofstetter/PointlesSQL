@@ -3154,6 +3154,35 @@ PointlesSQL
 │   │   simplify goal — revisit when an agent-facing config-validation surface
 │   │   needs it.  13 commits ``1d3e33bc``..``10c1edb8``.  ALL LOCAL.
 │   │
+├── Canvas Settings-Panel Overhaul + Broad New Block Set  ✅ shipped (local, 2026-06-03)
+│   │
+│   │   Aus User-Auftrag ("die rechten side-panel einstellungen verbessern,
+│   │   Catalog als Freitextfeld … sind alle Blocks vollständig und sinvoll,
+│   │   auch die Anzahl der Ein- und Ausgänge").  Two tracks on the
+│   │   modularization branch, one commit per wave, no push:
+│   │   • Settings panel (existing 19 blocks): the right drawer now shows each
+│   │     block's one-line help plus its own validation errors inline; UC table
+│   │     names are entered as three catalog / schema / table fields; the
+│   │     Sort / Cast / Rename JSON textareas became structured row editors;
+│   │     one-click upstream-column suggestions appear on every list field; and
+│   │     the Sample / Window / CalcColumn affordances were clarified.  All
+│   │     forms route through a new Alpine-bound macro library (chip_list,
+│   │     comma_list, row_editor, available_columns, fqn_fields, cm_field) so
+│   │     the 19+ per-block forms stop drifting.  Pin counts of the 19 audited —
+│   │     all correct, unchanged.
+│   │   • Seven new blocks: Except, Intersect, SemiJoin, AntiJoin (set / EXISTS
+│   │     ops over two inputs), Unnest (explode a LIST column), and sandboxed
+│   │     FileInput / FileOutput (CSV · Parquet · JSON under a configured
+│   │     ``POINTLESSQL_CANVAS_FILE_ROOT``).  File paths are fenced by a layered
+│   │     defence — a pure shape check in the block, then ``resolve()`` +
+│   │     ``is_relative_to(root)`` containment at the executor / preview
+│   │     boundary — and FileOutput is gated behind the default-off
+│   │     ``allow_output`` because it writes outside UC governance.  ``SinkSpec``
+│   │     gained a ``sink_kind``; ``prepare_sql`` now tolerates table-valued
+│   │     functions.
+│   │   Browser-verified on /dp/1/canvas (0 console errors on realistic flows),
+│   │   full pytest 4555/0 green.  10 commits ``0a4f3251``..``87f2eea4``.  ALL LOCAL.
+│   │
 ├── Overnight Hardening Cluster — coverage + refactor + types + a11y  ✅ shipped (local, 2026-06-02)
 │   │
 │   │   Autonomous overnight run hardening the existing codebase — no new

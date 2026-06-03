@@ -33,8 +33,29 @@ defined in ``scripts/clusters.json``. -->
   folded onto `BlockSpec` behind a single `register_block`, and the 830-line
   `data_products_routes/canvas.py` split into a `canvas/` package by concern
   (schemas, helpers, crud, validate, versions, materialize, picker).
+- Canvas drawer forms consolidated onto a small Alpine-bound macro library
+  (chip-list, comma-list, structured row editor, column-suggestion and
+  UC-name-field macros) so the 19+ per-block forms stop drifting; sink
+  handling generalised with a `sink_kind` so non-Delta (file) outputs share
+  the executor path; and `prepare_sql` now leaves DuckDB table-valued
+  functions (`read_csv_auto` / `read_parquet` / `range` / …) untouched
+  instead of demanding a three-part name for them.
 
 ### Features
+
+- Visual canvas settings panel overhauled — the right-rail per-block form now
+  surfaces each block's one-line help and its own validation errors inline (so
+  the user no longer deselects to find out what is wrong), enters UC table
+  names as three catalog / schema / table fields, replaces the raw-JSON
+  Sort / Cast / Rename editors with structured row editors, offers one-click
+  upstream-column suggestions on every list field, and clarifies the
+  Sample / Window / CalcColumn affordances.
+- Seven new canvas blocks — Except, Intersect, Semi join and Anti join
+  (set / existence operations over two inputs), Unnest (explode a LIST column
+  into one row per element), and sandboxed FileInput / FileOutput (read / write
+  CSV · Parquet · JSON files confined to an admin-configured directory).
+  FileOutput writes outside Unity Catalog governance, so it is gated behind the
+  default-off `POINTLESSQL_CANVAS_FILE_ALLOW_OUTPUT` setting.
 
 - The home page is now the activity feed (rc257) — the static overview
   dashboard at `/` (job sparkline, latest-runs table, "Today" digest) was
