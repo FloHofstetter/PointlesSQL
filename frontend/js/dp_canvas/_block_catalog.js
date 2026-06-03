@@ -401,6 +401,26 @@ export function pinIndexFor(type, pinName, direction) {
 }
 
 /**
+ * Resolve the named input pin at a left-to-right index for a block type.
+ *
+ * The inverse of {@link pinIndexFor}: Drawflow identifies a connection's
+ * target by its `input_N` slot, but the model and the compiler speak pin
+ * names (`left` / `right` for two-input blocks such as joins and set
+ * operations, `in` otherwise). Reading the name back off `inPins` keeps
+ * every multi-input block correct without per-type branches that silently
+ * miss blocks added later.
+ *
+ * @param {string} type Block type id.
+ * @param {number} index Zero-based pin index (`input_N` → `N - 1`).
+ * @returns {string} The pin name, or `'in'` when the index is unmapped.
+ */
+export function inputPinName(type, index) {
+  const def = BLOCK_DEFS[type];
+  const pins = (def && def.inPins) || [];
+  return pins[index] || 'in';
+}
+
+/**
  * Group block types into palette sections, derived from each block's
  * `group` field so there is no second hand-maintained list to drift.
  *

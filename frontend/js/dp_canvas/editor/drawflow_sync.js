@@ -10,7 +10,7 @@
  * Methods are plain (never arrow) so `this` binds to the Alpine proxy.
  */
 
-import { BLOCK_DEFS, nodeHtml, pinIndexFor } from '../_block_catalog.js';
+import { BLOCK_DEFS, inputPinName, nodeHtml, pinIndexFor } from '../_block_catalog.js';
 
 export const drawflowSyncMethods = {
   // Single source of truth for spawning a block: add it to Drawflow, register
@@ -177,12 +177,7 @@ export const drawflowSyncMethods = {
           const sourcePin = 'out';
           const targetIdx = parseInt((conn.output || '').replace('input_', ''), 10) - 1;
           const targetBlock = newNodes[pqlTargetId] ? newNodes[pqlTargetId].block_type : '';
-          const targetPin =
-            targetBlock === 'Join' || targetBlock === 'Union'
-              ? targetIdx === 1
-                ? 'right'
-                : 'left'
-              : 'in';
+          const targetPin = inputPinName(targetBlock, targetIdx);
           const sourceOutputIdx = parseInt((outputName || '').replace('output_', ''), 10);
           if (!Number.isFinite(sourceOutputIdx)) continue;
           const edgeId = `e-${pqlSourceId}:${sourcePin}->${pqlTargetId}:${targetPin}`;

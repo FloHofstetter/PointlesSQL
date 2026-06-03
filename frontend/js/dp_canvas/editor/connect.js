@@ -10,7 +10,7 @@
  * Methods are plain (never arrow) so `this` binds to the Alpine proxy.
  */
 
-import { BLOCK_DEFS } from '../_block_catalog.js';
+import { inputPinName } from '../_block_catalog.js';
 
 export const connectMethods = {
   // ---------------------------------------------------------------------
@@ -82,19 +82,9 @@ export const connectMethods = {
     for (const [pql, dfId] of Object.entries(this._drawflowNodes)) {
       const nodeEl = df.container.querySelector(`#node-${dfId}`);
       if (!nodeEl) continue;
-      const def = BLOCK_DEFS[this.nodes[pql]?.block_type];
       const inputs = nodeEl.querySelectorAll('.inputs .input');
       inputs.forEach((pin, idx) => {
-        const pinName =
-          def && (def.block_type === 'Join' || this.nodes[pql]?.block_type === 'Join')
-            ? idx === 1
-              ? 'right'
-              : 'left'
-            : this.nodes[pql]?.block_type === 'Union'
-              ? idx === 1
-                ? 'right'
-                : 'left'
-              : 'in';
+        const pinName = inputPinName(this.nodes[pql]?.block_type, idx);
         const ok =
           pql !== srcPql && this._isInputPinFree(pql, pinName) && !this._wouldCycle(srcPql, pql);
         pin.classList.add(ok ? 'pql-pin-ok' : 'pql-pin-no');
