@@ -113,15 +113,20 @@ class CanvasDoc(BaseModel):
 
 
 class SinkSpec(BaseModel):
-    """One materialisation target the compiler resolved from an OutputPort.
+    """One materialisation target the compiler resolved from a sink block.
 
-    A canvas may carry several ``OutputPort`` blocks — each publishes a
-    distinct Delta table from the *same* shared CTE chain.  ``final_cte``
-    names this sink's terminal CTE; the executor renders
-    ``WITH <shared ctes> SELECT * FROM <final_cte>`` per sink and writes
-    each result to its own ``target_fqn``.  ``port_name`` / ``mode`` /
-    ``merge_on`` are lifted from the OutputPort's ``config`` at compile
-    time so the executor never has to re-walk the document per sink.
+    A canvas may carry several sink blocks — each publishes a distinct
+    target from the *same* shared CTE chain.  ``final_cte`` names this
+    sink's terminal CTE; the executor renders ``WITH <shared ctes> SELECT
+    * FROM <final_cte>`` per sink.  ``port_name`` / ``mode`` / ``merge_on``
+    are lifted from the block's ``config`` at compile time so the executor
+    never has to re-walk the document per sink.
+
+    Most sinks are ``OutputPort`` blocks that write a Delta table
+    (``sink_kind="delta"``, the default).  A ``FileOutput`` block produces
+    a ``sink_kind="file"`` spec instead: it writes ``file_path`` in
+    ``file_format`` and bypasses Unity Catalog entirely, so it carries no
+    real ``target_fqn`` (the path is mirrored there for dedup/display).
     """
 
     model_config = ConfigDict(frozen=True)
@@ -133,6 +138,9 @@ class SinkSpec(BaseModel):
     merge_on: list[str] = Field(default_factory=list)
     final_cte: str = Field(min_length=1, max_length=128)
     output_schema: PinSchema
+    sink_kind: Literal["delta", "file"] = "delta"
+    file_path: str | None = Field(default=None, max_length=1024)
+    file_format: str | None = None
 
 
 class SQLFragment(BaseModel):

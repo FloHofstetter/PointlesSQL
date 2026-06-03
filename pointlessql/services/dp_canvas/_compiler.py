@@ -119,21 +119,21 @@ def _check_block_types(nodes: Iterable[CanvasNode], errors: list[CompileError]) 
 def _collect_output_nodes(
     nodes: Iterable[CanvasNode], errors: list[CompileError]
 ) -> list[CanvasNode]:
-    """Return every ``OutputPort`` node; error when the canvas has none.
+    """Return every sink node (OutputPort or FileOutput); error when none exist.
 
-    A canvas may publish several sinks — one Delta table per OutputPort
-    block — so the only hard requirement here is that at least one sink
-    exists.  Per-sink config validity (port name, target FQN, mode) is
-    checked downstream by each block's own ``compile_block``; cross-sink
-    collisions (duplicate target / port name) are caught in
+    A canvas may publish several sinks — a Delta table per OutputPort or a
+    file per FileOutput — so the only hard requirement here is that at least
+    one sink exists.  Per-sink config validity (port name, target FQN, mode,
+    path) is checked downstream by each block's own ``compile_block``;
+    cross-sink collisions (duplicate target / port name) are caught in
     :func:`compile_canvas`.
     """
-    outputs = [n for n in nodes if n.block_type == "OutputPort"]
+    outputs = [n for n in nodes if n.block_type in ("OutputPort", "FileOutput")]
     if not outputs:
         errors.append(
             CompileError(
                 kind="output_port_count",
-                message="Canvas must contain at least one OutputPort block.",
+                message="Canvas must contain at least one output (OutputPort or FileOutput).",
             )
         )
     return outputs
