@@ -387,3 +387,65 @@
         </template>
     </div>
 </template>
+
+{# Semi join: keep left rows that have a match in right. #}
+<template x-if="selectedNode.block_type === 'SemiJoin'">
+    <div class="pql-form-group">
+        {{ chip_list('keys', 'semiJoinKeyInput', 'Match keys', suggest=False) }}
+        {{ available_columns('left', "addColumnTo('keys', col)", '(selectedNode.config.keys || [])', label='From left:') }}
+        {{ available_columns('right', "addColumnTo('keys', col)", '(selectedNode.config.keys || [])', label='From right:') }}
+        <div class="form-text small">Keeps left rows with a key-match in right; output is the left columns.</div>
+    </div>
+</template>
+
+{# Anti join: keep left rows that have NO match in right. #}
+<template x-if="selectedNode.block_type === 'AntiJoin'">
+    <div class="pql-form-group">
+        {{ chip_list('keys', 'antiJoinKeyInput', 'Match keys', suggest=False) }}
+        {{ available_columns('left', "addColumnTo('keys', col)", '(selectedNode.config.keys || [])', label='From left:') }}
+        {{ available_columns('right', "addColumnTo('keys', col)", '(selectedNode.config.keys || [])', label='From right:') }}
+        <div class="form-text small">Keeps left rows with no key-match in right; output is the left columns.</div>
+    </div>
+</template>
+
+{# Except / Intersect: set operations on two matching inputs. #}
+<template x-if="selectedNode.block_type === 'Except' || selectedNode.block_type === 'Intersect'">
+    <div class="pql-form-group">
+        <div class="form-text small mb-0">
+            Wire two upstream tables (left + right pins). Both must expose the
+            same columns in the same order.
+        </div>
+    </div>
+</template>
+
+{# Unnest: explode a LIST column into one row per element. #}
+<template x-if="selectedNode.block_type === 'Unnest'">
+    <div class="pql-form-group">
+        {{ field_label('LIST column to expand') }}
+        <input type="text" class="form-control form-control-sm mb-1"
+               :class="fieldHasError('column') && 'is-invalid'"
+               x-model="selectedNode.config.column"
+               @input.debounce.300ms="onConfigChanged()"
+               :disabled="!canWrite"
+               placeholder="tags"
+               spellcheck="false">
+        {{ available_columns('in', "selectedNode.config.column = col; onConfigChanged()", '[selectedNode.config.column]') }}
+        <div class="form-check mt-2">
+            <input class="form-check-input" type="checkbox" id="unnest-ordinality"
+                   x-model="selectedNode.config.with_ordinality"
+                   @change="onConfigChanged()"
+                   :disabled="!canWrite">
+            <label class="form-check-label small" for="unnest-ordinality">Add an ordinality (1-based index) column</label>
+        </div>
+        <template x-if="selectedNode.config.with_ordinality">
+            <div class="mt-2">
+                {{ field_label('Ordinality column name') }}
+                <input type="text" class="form-control form-control-sm"
+                       x-model="selectedNode.config.ordinality_alias"
+                       @input.debounce.300ms="onConfigChanged()"
+                       :disabled="!canWrite"
+                       placeholder="ordinality">
+            </div>
+        </template>
+    </div>
+</template>

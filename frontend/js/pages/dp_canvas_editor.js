@@ -118,6 +118,8 @@ export function dpCanvasEditor(product, ctx) {
 
     projectInput: '',
     joinKeyInput: '',
+    semiJoinKeyInput: '',
+    antiJoinKeyInput: '',
     groupKeyInput: '',
     mergeOnInput: '',
 

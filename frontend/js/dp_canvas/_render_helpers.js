@@ -141,6 +141,15 @@ export function describeConfig(blockType, cfg) {
         : '<em class="text-muted">no columns</em>';
     case 'Join':
       return `${cfg.how || 'inner'} on ${(cfg.keys || []).join(', ') || '—'}`;
+    case 'SemiJoin':
+    case 'AntiJoin':
+      return `on ${(cfg.keys || []).join(', ') || '—'}`;
+    case 'Except':
+      return 'left ∖ right';
+    case 'Intersect':
+      return 'left ∩ right';
+    case 'Unnest':
+      return cfg.column ? `<code>${cfg.column}</code>` : '<em class="text-muted">no column</em>';
     case 'GroupBy':
       return `by ${(cfg.keys || []).join(', ') || '—'}, ${(cfg.aggregations || []).length} agg`;
     case 'Limit':

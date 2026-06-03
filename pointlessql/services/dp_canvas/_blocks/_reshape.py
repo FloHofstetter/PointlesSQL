@@ -241,15 +241,20 @@ def _compile_union(
     )
 
 
-def _infer_union(
+def _infer_set_op(
     node_id: str,
     input_schemas: dict[str, PinSchema],
-    cfg: dict[str, Any],
     errors: list[CompileError],
     *,
-    seed: PinSchema | None,
+    label: str,
 ) -> PinSchema:
-    del seed, cfg
+    """Infer a set operation's output — the shared left==right column rule.
+
+    UNION / EXCEPT / INTERSECT all require the two inputs to expose the same
+    ordered column-name list and yield that list; a mismatch is surfaced on the
+    ``right`` pin and degrades the downstream schema to unknown so dependent
+    blocks do not validate against a column set that will never materialise.
+    """
     left = input_schemas.get("left")
     right = input_schemas.get("right")
     if left is None or right is None:
@@ -263,7 +268,7 @@ def _infer_union(
                 node_id=node_id,
                 pin="right",
                 message=(
-                    "Union upstream column lists differ: "
+                    f"{label} upstream column lists differ: "
                     f"left={left_names!r} right={right_names!r}"
                 ),
             )
@@ -272,12 +277,217 @@ def _infer_union(
     return left
 
 
+def _infer_union(
+    node_id: str,
+    input_schemas: dict[str, PinSchema],
+    cfg: dict[str, Any],
+    errors: list[CompileError],
+    *,
+    seed: PinSchema | None,
+) -> PinSchema:
+    del seed, cfg
+    return _infer_set_op(node_id, input_schemas, errors, label="Union")
+
+
 register_block(
     type_name="Union",
     input_pins=(("left", "table"), ("right", "table")),
     output_pins=(("out", "table"),),
     compile_fn=_compile_union,
     infer_fn=_infer_union,
+)
+
+
+# --------------------------------------------------------------------- Except / Intersect
+
+
+def _compile_except(
+    node_id: str,
+    inputs: dict[str, str],
+    output_schema: PinSchema,
+    cfg: dict[str, Any],
+    errors: list[CompileError],
+) -> CompiledBlock | None:
+    del cfg
+    left = inputs.get("left")
+    right = inputs.get("right")
+    if not left or not right:
+        errors.append(_bad_config(node_id, "Except requires both 'left' and 'right' inputs."))
+        return None
+    return CompiledBlock(
+        sql=f"SELECT * FROM {left} EXCEPT SELECT * FROM {right}",
+        output_schema=output_schema,
+    )
+
+
+def _infer_except(
+    node_id: str,
+    input_schemas: dict[str, PinSchema],
+    cfg: dict[str, Any],
+    errors: list[CompileError],
+    *,
+    seed: PinSchema | None,
+) -> PinSchema:
+    del seed, cfg
+    return _infer_set_op(node_id, input_schemas, errors, label="Except")
+
+
+def _compile_intersect(
+    node_id: str,
+    inputs: dict[str, str],
+    output_schema: PinSchema,
+    cfg: dict[str, Any],
+    errors: list[CompileError],
+) -> CompiledBlock | None:
+    del cfg
+    left = inputs.get("left")
+    right = inputs.get("right")
+    if not left or not right:
+        errors.append(_bad_config(node_id, "Intersect requires both 'left' and 'right' inputs."))
+        return None
+    return CompiledBlock(
+        sql=f"SELECT * FROM {left} INTERSECT SELECT * FROM {right}",
+        output_schema=output_schema,
+    )
+
+
+def _infer_intersect(
+    node_id: str,
+    input_schemas: dict[str, PinSchema],
+    cfg: dict[str, Any],
+    errors: list[CompileError],
+    *,
+    seed: PinSchema | None,
+) -> PinSchema:
+    del seed, cfg
+    return _infer_set_op(node_id, input_schemas, errors, label="Intersect")
+
+
+register_block(
+    type_name="Except",
+    input_pins=(("left", "table"), ("right", "table")),
+    output_pins=(("out", "table"),),
+    compile_fn=_compile_except,
+    infer_fn=_infer_except,
+)
+
+
+register_block(
+    type_name="Intersect",
+    input_pins=(("left", "table"), ("right", "table")),
+    output_pins=(("out", "table"),),
+    compile_fn=_compile_intersect,
+    infer_fn=_infer_intersect,
+)
+
+
+# --------------------------------------------------------------------- Unnest
+
+
+def _list_element_type(duckdb_type: str) -> str | None:
+    """Return the element type of a DuckDB list type, or None if not a list.
+
+    DuckDB spells list types two ways — ``INTEGER[]`` and ``LIST(INTEGER)`` —
+    so Unnest strips either wrapper to learn what the exploded column holds; a
+    non-list (or unparseable) type yields None so the caller can fall back to
+    an unknown output schema rather than guessing.
+    """
+    t = (duckdb_type or "").strip()
+    if t.endswith("[]"):
+        return t[:-2].strip() or None
+    if t.upper().startswith("LIST(") and t.endswith(")"):
+        return t[5:-1].strip() or None
+    return None
+
+
+def _compile_unnest(
+    node_id: str,
+    inputs: dict[str, str],
+    output_schema: PinSchema,
+    cfg: dict[str, Any],
+    errors: list[CompileError],
+) -> CompiledBlock | None:
+    src = inputs.get("in")
+    if not src:
+        errors.append(_bad_config(node_id, "Unnest requires an upstream input."))
+        return None
+    column = _coerce_str(cfg.get("column")).strip()
+    if not column:
+        errors.append(_bad_config(node_id, "Unnest.column is required."))
+        return None
+    if bool(cfg.get("with_ordinality")):
+        ordinality_alias = (
+            _coerce_str(cfg.get("ordinality_alias"), default="ordinality").strip() or "ordinality"
+        )
+        return CompiledBlock(
+            sql=(
+                f'SELECT * EXCLUDE ("{column}"), '
+                f'UNNEST("{column}") AS "{column}", '
+                f'generate_subscripts("{column}", 1) AS "{ordinality_alias}" '
+                f"FROM {src}"
+            ),
+            output_schema=output_schema,
+        )
+    return CompiledBlock(
+        sql=f'SELECT * EXCLUDE ("{column}"), UNNEST("{column}") AS "{column}" FROM {src}',
+        output_schema=output_schema,
+    )
+
+
+def _infer_unnest(
+    node_id: str,
+    input_schemas: dict[str, PinSchema],
+    cfg: dict[str, Any],
+    errors: list[CompileError],
+    *,
+    seed: PinSchema | None,
+) -> PinSchema:
+    del seed
+    upstream = input_schemas.get("in")
+    if upstream is None or upstream.unknown:
+        return _unknown_schema()
+    column = _coerce_str(cfg.get("column")).strip()
+    if not column:
+        return _unknown_schema()
+    cols = {c.name: c for c in upstream.columns}
+    if column not in cols:
+        errors.append(
+            CompileError(
+                kind="type_mismatch",
+                node_id=node_id,
+                pin="in",
+                column=column,
+                message=f"Unnest column {column!r} not in upstream schema.",
+            )
+        )
+        return _unknown_schema()
+    elem = _list_element_type(cols[column].duckdb_type)
+    unknown = False
+    new_cols: list[ColumnSpec] = []
+    for col in upstream.columns:
+        if col.name != column:
+            new_cols.append(col)
+        elif elem is not None:
+            new_cols.append(ColumnSpec(name=column, duckdb_type=elem, nullable=True))
+        else:
+            # Column is not a parseable list type — keep it but flag the output
+            # unknown so downstream blocks do not over-trust the element type.
+            new_cols.append(col)
+            unknown = True
+    if bool(cfg.get("with_ordinality")):
+        ordinality_alias = (
+            _coerce_str(cfg.get("ordinality_alias"), default="ordinality").strip() or "ordinality"
+        )
+        new_cols.append(ColumnSpec(name=ordinality_alias, duckdb_type="BIGINT", nullable=False))
+    return PinSchema(kind="table", columns=new_cols, unknown=unknown)
+
+
+register_block(
+    type_name="Unnest",
+    input_pins=(("in", "table"),),
+    output_pins=(("out", "table"),),
+    compile_fn=_compile_unnest,
+    infer_fn=_infer_unnest,
 )
 
 

@@ -447,6 +447,78 @@ class TestCastRenameCalc:
         assert '(amt * 1.1) AS "amt_x"' in out.sql
 
 
+class TestSemiAntiJoin:
+    def test_semi_join_compiles_exists(self) -> None:
+        errors: list = []
+        out = compile_block(
+            block_type="SemiJoin",
+            node_id="s1",
+            inputs={"left": "l", "right": "r"},
+            output_schema=_seed_schema(),
+            cfg={"keys": ["id", "region"]},
+            errors=errors,
+        )
+        assert out is not None and errors == []
+        assert out.sql == (
+            'SELECT l.* FROM l l WHERE EXISTS '
+            '(SELECT 1 FROM r r WHERE l."id" = r."id" AND l."region" = r."region")'
+        )
+
+    def test_anti_join_compiles_not_exists(self) -> None:
+        errors: list = []
+        out = compile_block(
+            block_type="AntiJoin",
+            node_id="a1",
+            inputs={"left": "l", "right": "r"},
+            output_schema=_seed_schema(),
+            cfg={"keys": ["id"]},
+            errors=errors,
+        )
+        assert out is not None
+        assert "WHERE NOT EXISTS" in out.sql
+
+    def test_semi_join_missing_input(self) -> None:
+        errors: list = []
+        out = compile_block(
+            block_type="SemiJoin",
+            node_id="s1",
+            inputs={"left": "l"},
+            output_schema=_seed_schema(),
+            cfg={"keys": ["id"]},
+            errors=errors,
+        )
+        assert out is None
+        assert any(e.kind == "missing_input" and e.pin == "right" for e in errors)
+
+    def test_semi_join_requires_keys(self) -> None:
+        errors: list = []
+        out = compile_block(
+            block_type="SemiJoin",
+            node_id="s1",
+            inputs={"left": "l", "right": "r"},
+            output_schema=_seed_schema(),
+            cfg={"keys": []},
+            errors=errors,
+        )
+        assert out is None
+        assert any("keys is required" in e.message for e in errors)
+
+    def test_semi_join_infer_returns_left_and_flags_missing_key(self) -> None:
+        errors: list = []
+        inferred = infer_block(
+            block_type="SemiJoin",
+            node_id="s1",
+            input_schemas={
+                "left": _seed_schema(("id", "BIGINT"), ("name", "VARCHAR")),
+                "right": _seed_schema(("other", "BIGINT")),
+            },
+            cfg={"keys": ["id"]},
+            errors=errors,
+        )
+        assert [c.name for c in inferred.columns] == ["id", "name"]
+        assert any(e.kind == "type_mismatch" and e.pin == "right" for e in errors)
+
+
 def test_registry_has_full_block_set() -> None:
     assert set(BLOCK_REGISTRY) == {
         "InputPort",
@@ -454,6 +526,8 @@ def test_registry_has_full_block_set() -> None:
         "Filter",
         "Project",
         "Join",
+        "SemiJoin",
+        "AntiJoin",
         "GroupBy",
         "Limit",
         "SQL",
@@ -461,11 +535,14 @@ def test_registry_has_full_block_set() -> None:
         "Pivot",
         "Unpivot",
         "Union",
+        "Except",
+        "Intersect",
         "Distinct",
         "Sort",
         "Sample",
         "Cast",
         "Rename",
         "CalcColumn",
+        "Unnest",
         "OutputPort",
     }

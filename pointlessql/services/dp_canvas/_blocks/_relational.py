@@ -445,3 +445,158 @@ register_block(
     compile_fn=_compile_limit,
     infer_fn=_infer_limit,
 )
+
+
+# --------------------------------------------------------------------- SemiJoin / AntiJoin
+
+
+def _compile_exists_join(
+    node_id: str,
+    inputs: dict[str, str],
+    output_schema: PinSchema,
+    cfg: dict[str, Any],
+    errors: list[CompileError],
+    *,
+    label: str,
+    negate: bool,
+) -> CompiledBlock | None:
+    """Compile a semi- or anti-join — filter ``left`` rows by a match in ``right``.
+
+    Neither widens the row: the result is exactly ``left``'s columns, kept
+    (semi, ``EXISTS``) or dropped (anti, ``NOT EXISTS``) according to whether a
+    key-matched ``right`` row exists.  This is the cheap way to express "rows
+    of A that (do not) appear in B" without the duplicate-blowup of a join.
+    """
+    left = inputs.get("left")
+    right = inputs.get("right")
+    if not left or not right:
+        errors.append(
+            CompileError(
+                kind="missing_input",
+                node_id=node_id,
+                pin="left" if not left else "right",
+                message=f"{label} requires both 'left' and 'right' inputs.",
+            )
+        )
+        return None
+    keys = _coerce_str_list(cfg.get("keys"))
+    if not keys:
+        errors.append(_bad_config(node_id, f"{label}.keys is required (non-empty list)."))
+        return None
+    cond = " AND ".join(f'l."{key}" = r."{key}"' for key in keys)
+    exists_kw = "NOT EXISTS" if negate else "EXISTS"
+    return CompiledBlock(
+        sql=(
+            f"SELECT l.* FROM {left} l "
+            f"WHERE {exists_kw} (SELECT 1 FROM {right} r WHERE {cond})"
+        ),
+        output_schema=output_schema,
+    )
+
+
+def _infer_exists_join(
+    node_id: str,
+    input_schemas: dict[str, PinSchema],
+    cfg: dict[str, Any],
+    errors: list[CompileError],
+    *,
+    label: str,
+) -> PinSchema:
+    left = input_schemas.get("left")
+    right = input_schemas.get("right")
+    if left is None or right is None:
+        return _unknown_schema()
+    keys = _coerce_str_list(cfg.get("keys"))
+    if not keys:
+        return _unknown_schema()
+    if not left.unknown and not right.unknown:
+        left_cols = _schema_columns(left)
+        right_cols = _schema_columns(right)
+        for key in keys:
+            if key not in left_cols:
+                errors.append(
+                    CompileError(
+                        kind="type_mismatch",
+                        node_id=node_id,
+                        pin="left",
+                        column=key,
+                        message=f"{label} key {key!r} not in left schema.",
+                    )
+                )
+            if key not in right_cols:
+                errors.append(
+                    CompileError(
+                        kind="type_mismatch",
+                        node_id=node_id,
+                        pin="right",
+                        column=key,
+                        message=f"{label} key {key!r} not in right schema.",
+                    )
+                )
+    return left
+
+
+def _compile_semi_join(
+    node_id: str,
+    inputs: dict[str, str],
+    output_schema: PinSchema,
+    cfg: dict[str, Any],
+    errors: list[CompileError],
+) -> CompiledBlock | None:
+    return _compile_exists_join(
+        node_id, inputs, output_schema, cfg, errors, label="SemiJoin", negate=False
+    )
+
+
+def _infer_semi_join(
+    node_id: str,
+    input_schemas: dict[str, PinSchema],
+    cfg: dict[str, Any],
+    errors: list[CompileError],
+    *,
+    seed: PinSchema | None,
+) -> PinSchema:
+    del seed
+    return _infer_exists_join(node_id, input_schemas, cfg, errors, label="SemiJoin")
+
+
+def _compile_anti_join(
+    node_id: str,
+    inputs: dict[str, str],
+    output_schema: PinSchema,
+    cfg: dict[str, Any],
+    errors: list[CompileError],
+) -> CompiledBlock | None:
+    return _compile_exists_join(
+        node_id, inputs, output_schema, cfg, errors, label="AntiJoin", negate=True
+    )
+
+
+def _infer_anti_join(
+    node_id: str,
+    input_schemas: dict[str, PinSchema],
+    cfg: dict[str, Any],
+    errors: list[CompileError],
+    *,
+    seed: PinSchema | None,
+) -> PinSchema:
+    del seed
+    return _infer_exists_join(node_id, input_schemas, cfg, errors, label="AntiJoin")
+
+
+register_block(
+    type_name="SemiJoin",
+    input_pins=(("left", "table"), ("right", "table")),
+    output_pins=(("out", "table"),),
+    compile_fn=_compile_semi_join,
+    infer_fn=_infer_semi_join,
+)
+
+
+register_block(
+    type_name="AntiJoin",
+    input_pins=(("left", "table"), ("right", "table")),
+    output_pins=(("out", "table"),),
+    compile_fn=_compile_anti_join,
+    infer_fn=_infer_anti_join,
+)

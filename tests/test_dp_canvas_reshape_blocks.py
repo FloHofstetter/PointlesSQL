@@ -204,3 +204,114 @@ def test_sample_percent_and_rows() -> None:
     rows, _ = _compile("Sample", {"in": "c0"}, {"kind": "rows", "value": 100})
     assert "SAMPLE 10.0 PERCENT" in pct.sql
     assert "SAMPLE 100 ROWS" in rows.sql
+
+
+# --- Except / Intersect ---------------------------------------------------
+
+
+def test_except_missing_input() -> None:
+    result, errors = _compile("Except", {"left": "c0"}, {})
+    assert result is None
+    assert any("both" in e.message for e in errors)
+
+
+def test_except_compiles() -> None:
+    result, errors = _compile("Except", {"left": "c0", "right": "c1"}, {})
+    assert errors == [] and result is not None
+    assert result.sql == "SELECT * FROM c0 EXCEPT SELECT * FROM c1"
+
+
+def test_intersect_compiles() -> None:
+    result, errors = _compile("Intersect", {"left": "c0", "right": "c1"}, {})
+    assert errors == [] and result is not None
+    assert result.sql == "SELECT * FROM c0 INTERSECT SELECT * FROM c1"
+
+
+def test_except_infer_column_mismatch_errors() -> None:
+    out, errors = _infer("Except", {"left": _schema("a"), "right": _schema("b")}, {})
+    assert out.unknown
+    assert any(e.kind == "type_mismatch" and e.pin == "right" for e in errors)
+    assert any("Except" in e.message for e in errors)
+
+
+def test_intersect_infer_match_returns_left() -> None:
+    out, errors = _infer("Intersect", {"left": _schema("a"), "right": _schema("a")}, {})
+    assert errors == []
+    assert [c.name for c in out.columns] == ["a"]
+
+
+# --- Unnest ---------------------------------------------------------------
+
+
+def _list_schema(col: str, duckdb_type: str) -> PinSchema:
+    return PinSchema(
+        kind="table",
+        columns=[ColumnSpec(name=col, duckdb_type=duckdb_type, nullable=True)],
+    )
+
+
+def test_unnest_missing_input() -> None:
+    result, errors = _compile("Unnest", {}, {"column": "tags"})
+    assert result is None
+    assert any("upstream" in e.message for e in errors)
+
+
+def test_unnest_missing_column() -> None:
+    result, errors = _compile("Unnest", {"in": "c0"}, {})
+    assert result is None
+    assert any("column is required" in e.message for e in errors)
+
+
+def test_unnest_compiles_plain() -> None:
+    result, errors = _compile("Unnest", {"in": "c0"}, {"column": "tags"})
+    assert errors == [] and result is not None
+    assert result.sql == 'SELECT * EXCLUDE ("tags"), UNNEST("tags") AS "tags" FROM c0'
+
+
+def test_unnest_compiles_with_ordinality() -> None:
+    result, _ = _compile(
+        "Unnest",
+        {"in": "c0"},
+        {"column": "tags", "with_ordinality": True, "ordinality_alias": "pos"},
+    )
+    assert 'generate_subscripts("tags", 1) AS "pos"' in result.sql
+
+
+def test_unnest_infer_unwraps_list_element() -> None:
+    out, errors = _infer("Unnest", {"in": _list_schema("tags", "INTEGER[]")}, {"column": "tags"})
+    assert errors == []
+    assert not out.unknown
+    assert [(c.name, c.duckdb_type) for c in out.columns] == [("tags", "INTEGER")]
+
+
+def test_unnest_infer_missing_column_errors() -> None:
+    out, errors = _infer("Unnest", {"in": _schema("a")}, {"column": "tags"})
+    assert out.unknown
+    assert any(e.kind == "type_mismatch" and e.column == "tags" for e in errors)
+
+
+def test_unnest_infer_non_list_marks_unknown() -> None:
+    out, _ = _infer("Unnest", {"in": _list_schema("tags", "VARCHAR")}, {"column": "tags"})
+    assert out.unknown
+
+
+def test_unnest_infer_appends_ordinality_column() -> None:
+    out, _ = _infer(
+        "Unnest",
+        {"in": _list_schema("tags", "LIST(BIGINT)")},
+        {"column": "tags", "with_ordinality": True, "ordinality_alias": "pos"},
+    )
+    names = [c.name for c in out.columns]
+    assert names == ["tags", "pos"]
+    assert out.columns[0].duckdb_type == "BIGINT"
+    assert out.columns[1].duckdb_type == "BIGINT"
+
+
+def test_list_element_type_parses_both_spellings() -> None:
+    from pointlessql.services.dp_canvas._blocks._reshape import _list_element_type
+
+    assert _list_element_type("INTEGER[]") == "INTEGER"
+    assert _list_element_type("LIST(BIGINT)") == "BIGINT"
+    assert _list_element_type("list(varchar)") == "varchar"
+    assert _list_element_type("VARCHAR") is None
+    assert _list_element_type("") is None
