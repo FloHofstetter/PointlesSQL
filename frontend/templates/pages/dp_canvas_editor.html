@@ -329,15 +329,17 @@
             </div>
 
             <div class="pql-dp-canvas-empty position-absolute top-50 start-50 translate-middle text-center text-muted"
-                 x-show="!loading && nodeCount === 0">
+                 x-show="!loading && nodeCount === 0" x-cloak>
                 <i class="bi bi-diagram-3 fs-1 d-block opacity-50"></i>
                 <div class="mt-2 small">Drop a block from the palette to start.</div>
             </div>
 
-            <div class="pql-dp-canvas-loading position-absolute top-50 start-50 translate-middle text-muted"
-                 x-show="loading">
-                <div class="spinner-border spinner-border-sm me-2"></div>
-                Loading…
+            <div class="pql-dp-canvas-loading position-absolute top-50 start-50 translate-middle text-center text-muted"
+                 x-show="loading" x-cloak>
+                <div class="spinner-border d-block mx-auto" role="status">
+                    <span class="visually-hidden">Loading…</span>
+                </div>
+                <div class="mt-2 small">Loading…</div>
             </div>
 
             <div class="pql-minimap position-absolute"
