@@ -16,6 +16,7 @@ from pointlessql.services.glossary._crud import (
     list_terms,
     terms_for_column,
     terms_for_schema,
+    terms_for_schemas,
     unbind_column,
 )
 from pointlessql.services.glossary._relations import (
@@ -38,5 +39,6 @@ __all__ = [
     "term_graph",
     "terms_for_column",
     "terms_for_schema",
+    "terms_for_schemas",
     "unbind_column",
 ]

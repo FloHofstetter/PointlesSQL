@@ -12,7 +12,7 @@ import datetime
 import re
 from typing import Any, Protocol
 
-from sqlalchemy import select
+from sqlalchemy import select, tuple_
 
 from pointlessql.models import GlossaryTerm, GlossaryTermColumn
 
@@ -293,6 +293,55 @@ def terms_for_schema(
         )
     for table_name, column_name, term in rows:
         out.setdefault(f"{table_name}.{column_name}", []).append(term)
+    return out
+
+
+def terms_for_schemas(
+    session_factory: _SessionFactory,
+    *,
+    workspace_id: int,
+    pairs: list[tuple[str, str]],
+) -> dict[tuple[str, str], list[str]]:
+    """Return a ``(catalog, schema) -> [term, ...]`` map for many schemas.
+
+    The bulk sibling of :func:`terms_for_schema`, powering the
+    marketplace listing's glossary-aware search: every product on the
+    page gets the set of business terms bound to any of its columns in
+    one round-trip rather than a per-product lookup.
+
+    Args:
+        session_factory: Sessionmaker callable.
+        workspace_id: Active workspace (terms are workspace-scoped).
+        pairs: ``(catalog, schema)`` tuples identifying the products.
+
+    Returns:
+        Dict keyed by ``(catalog, schema)`` mapping to the sorted,
+        de-duplicated list of bound term labels.  Pairs with no bound
+        term are absent from the map.
+    """
+    if not pairs:
+        return {}
+    out: dict[tuple[str, str], list[str]] = {}
+    with session_factory() as session:
+        rows = list(
+            session.execute(
+                select(
+                    GlossaryTermColumn.catalog,
+                    GlossaryTermColumn.schema_name,
+                    GlossaryTerm.term,
+                )
+                .join(GlossaryTerm, GlossaryTerm.id == GlossaryTermColumn.glossary_term_id)
+                .where(
+                    GlossaryTerm.workspace_id == workspace_id,
+                    tuple_(GlossaryTermColumn.catalog, GlossaryTermColumn.schema_name).in_(pairs),
+                )
+                .order_by(GlossaryTerm.term.asc())
+            ).all()
+        )
+    for catalog, schema_name, term in rows:
+        bucket = out.setdefault((catalog, schema_name), [])
+        if term not in bucket:
+            bucket.append(term)
     return out
 
 

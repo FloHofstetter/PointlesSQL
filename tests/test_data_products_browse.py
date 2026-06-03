@@ -19,6 +19,7 @@ from sqlalchemy import select
 from pointlessql.api.main import app
 from pointlessql.data_products import load_contract
 from pointlessql.models.catalog._data_products import DataProduct
+from pointlessql.services import glossary as glossary_service
 
 VALID_YAML = """\
 data_product:
@@ -174,3 +175,65 @@ async def test_browse_page_renders_new_table_and_chips(
     assert "pql-dp-filter-chips" in page.text
     assert "pql-dp-table" in page.text
     assert "pql-dp-view-toggle" in page.text
+    # marketplace discovery view fingerprint
+    assert "pql-dp-marketplace" in page.text
+    assert 'data-view="marketplace"' in page.text
+
+
+# ---------------------------------------------------------------------------
+# Marketplace discovery enrichment (endorsements + glossary terms)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_listing_carries_endorsements_and_glossary_terms(
+    tmp_path: Path, admin_client: httpx.AsyncClient
+) -> None:
+    """Every product carries the ``endorsements`` + ``glossary_terms`` lists."""
+    _seed_product(tmp_path)
+    product = (await admin_client.get("/api/data-products")).json()["data_products"][0]
+    assert product["endorsements"] == []
+    assert product["glossary_terms"] == []
+
+
+@pytest.mark.asyncio
+async def test_active_endorsement_surfaces_in_listing(
+    tmp_path: Path, admin_client: httpx.AsyncClient
+) -> None:
+    """An applied endorsement shows on the listing; removing it drops it."""
+    _seed_product(tmp_path)
+    applied = await admin_client.post(
+        "/api/data-products/main/sales_gold/endorsements",
+        json={"endorsement_type": "production-ready"},
+    )
+    endorsement_id = applied.json()["id"]
+    product = (await admin_client.get("/api/data-products")).json()["data_products"][0]
+    assert [e["type"] for e in product["endorsements"]] == ["production-ready"]
+
+    await admin_client.delete(
+        f"/api/data-products/main/sales_gold/endorsements/{endorsement_id}"
+    )
+    product2 = (await admin_client.get("/api/data-products")).json()["data_products"][0]
+    assert product2["endorsements"] == []
+
+
+@pytest.mark.asyncio
+async def test_bound_glossary_term_surfaces_in_listing(
+    tmp_path: Path, admin_client: httpx.AsyncClient
+) -> None:
+    """A glossary term bound to a product column appears in ``glossary_terms``."""
+    _seed_product(tmp_path)
+    factory = app.state.session_factory
+    term = glossary_service.create_term(
+        factory, workspace_id=1, slug="order-key", term="Order key"
+    )
+    glossary_service.bind_column(
+        factory,
+        term_id=term.id,
+        catalog="main",
+        schema="sales_gold",
+        table="orders",
+        column="order_id",
+    )
+    product = (await admin_client.get("/api/data-products")).json()["data_products"][0]
+    assert product["glossary_terms"] == ["Order key"]

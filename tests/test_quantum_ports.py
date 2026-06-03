@@ -169,6 +169,30 @@ def test_glossary_term_binding_and_reverse_lookup() -> None:
     assert by_schema == {"ledger.net": ["Net Revenue"]}
 
 
+def test_glossary_terms_for_schemas_bulk() -> None:
+    """The bulk sibling keys bound term labels by ``(catalog, schema)``."""
+    rev = glossary_service.create_term(
+        _factory(), workspace_id=1, slug="bulk-rev", term="Revenue"
+    )
+    cust = glossary_service.create_term(
+        _factory(), workspace_id=1, slug="bulk-cust", term="Customer"
+    )
+    glossary_service.bind_column(
+        _factory(), term_id=rev.id, catalog="main", schema="sales", table="orders", column="amt"
+    )
+    glossary_service.bind_column(
+        _factory(), term_id=cust.id, catalog="main", schema="sales", table="orders", column="cid"
+    )
+    by_pair = glossary_service.terms_for_schemas(
+        _factory(),
+        workspace_id=1,
+        pairs=[("main", "sales"), ("main", "absent")],
+    )
+    assert by_pair == {("main", "sales"): ["Customer", "Revenue"]}
+    # An empty request short-circuits to an empty map.
+    assert glossary_service.terms_for_schemas(_factory(), workspace_id=1, pairs=[]) == {}
+
+
 def test_glossary_rejects_duplicate_slug() -> None:
     glossary_service.create_term(_factory(), workspace_id=1, slug="dup", term="Dup")
     with pytest.raises(ValueError, match="already exists"):

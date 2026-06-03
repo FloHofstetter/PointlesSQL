@@ -17,6 +17,15 @@ defined in ``scripts/clusters.json``. -->
 
 ### Added
 
+- **Marketplace discovery view** on the `/data-products` list — a new
+  card-grid view (now the default) for business users browsing for data.
+  Cards surface the owning domain, endorsement / certification badges, a
+  freshness chip, and the business-glossary terms the product speaks.
+  Discovery facets filter by domain, lifecycle, and "certified only", and
+  the search box now matches a product's description, domain, and bound
+  glossary terms — not just its name. Table and card views remain as
+  toggles. The `GET /api/data-products` listing now carries each product's
+  active `endorsements` and bound `glossary_terms`.
 - Consumer-friendly **Data** view on the data-product detail page — the
   former Contract tab is reworked for business-domain consumers who don't
   know the platform. Each column now leads with its plain-language

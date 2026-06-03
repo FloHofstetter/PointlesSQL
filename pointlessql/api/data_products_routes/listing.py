@@ -18,7 +18,8 @@ from pointlessql.models.catalog._domains import Domain
 from pointlessql.models.social._entity_readme import EntityReadme
 from pointlessql.models.social._social_follow import SocialFollow
 from pointlessql.models.social._social_target import SocialTarget
-from pointlessql.services.data_products import compute_badges_bulk
+from pointlessql.services.data_products import compute_badges_bulk, endorsements_for_products
+from pointlessql.services.glossary import terms_for_schemas
 
 router = APIRouter(tags=["data-products"])
 
@@ -51,10 +52,14 @@ def _freshness_status(
 async def list_data_products(request: Request, q: str | None = None) -> dict[str, Any]:
     """Return every cached data product in the active workspace.
 
-    Each row is enriched with the Phase-71.2 ``avg_stars`` +
-    ``review_count`` aggregate so the browse-page cards (and the
-    Phase-71.6 sortable table) can render the star badge without
-    a follow-up call per product.
+    Each row is enriched, in bulk, with everything the browse + the
+    marketplace discovery view need to render without a per-product
+    follow-up call: the ``avg_stars`` + ``review_count`` aggregate for
+    the star badge, follow / comment / readme signals, the auto-computed
+    health badges, the product's active ``endorsements`` (so a
+    "certified" badge can show), and the business ``glossary_terms``
+    bound to any of its columns (so discovery search can match by
+    meaning, not just by name).
 
     Args:
         request: Incoming FastAPI request.
@@ -108,6 +113,8 @@ async def list_data_products(request: Request, q: str | None = None) -> dict[str
         follow_agg: dict[int, int] = {}
         comment_7d_agg: dict[int, int] = {}
         has_readme_set: set[int] = set()
+        endorsement_map: dict[int, list[dict[str, Any]]] = {}
+        glossary_map: dict[tuple[str, str], list[str]] = {}
         now = datetime.datetime.now(datetime.UTC)
         seven_days_ago = now - datetime.timedelta(days=7)
 
@@ -181,6 +188,21 @@ async def list_data_products(request: Request, q: str | None = None) -> dict[str
                 dps=list(rows),
                 now=now,
             )
+
+            # active endorsements (bulk) — drives the "certified" badge.
+            endorsement_map = endorsements_for_products(
+                session,
+                workspace_id=workspace_id,
+                dp_ids=dp_ids,
+            )
+
+            # business-glossary terms bound to any column (bulk) — lets
+            # discovery search match by meaning, keyed on (catalog, schema).
+            glossary_map = terms_for_schemas(
+                factory,
+                workspace_id=workspace_id,
+                pairs=[(r.catalog_name, r.schema_name) for r in rows],
+            )
         else:
             badges_by_id: dict[int, dict[str, Any]] = {}
 
@@ -213,6 +235,10 @@ async def list_data_products(request: Request, q: str | None = None) -> dict[str
                     "last_rollback_passed": None,
                     "freshness_on_time_30d_pct": 100.0,
                 },
+            )
+            payload["endorsements"] = endorsement_map.get(row.id, [])
+            payload["glossary_terms"] = glossary_map.get(
+                (row.catalog_name, row.schema_name), []
             )
             items.append(payload)
 

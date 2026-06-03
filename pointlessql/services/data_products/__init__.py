@@ -23,6 +23,7 @@ from pointlessql.services.data_products.cooccurrence import (
     fetch_related,
     refresh_cooccurrence,
 )
+from pointlessql.services.data_products.endorsements import endorsements_for_products
 from pointlessql.services.data_products.passport import (
     refresh_passport_for_dp,
     refresh_stale_passports,
@@ -46,6 +47,7 @@ __all__ = [
     "candidate_row_count",
     "compute_badges_bulk",
     "compute_badges_for_dp",
+    "endorsements_for_products",
     "fetch_activity_for_dp",
     "fetch_recommendations_for_user",
     "fetch_related",

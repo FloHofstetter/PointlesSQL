@@ -3013,6 +3013,18 @@ PointlesSQL
 │   │   Backend: ``GET …/export`` gains ``format=csv`` (shared masking).
 │   │   Frontend + 1 route + 2 pytest, full suite 4559/0.  ALL LOCAL.
 │
+├── Marketplace Discovery View — product-centric "find a data product"  ✅ shipped (local, 2026-06-03)
+│   │   The flat ``/data-products`` list gains a card-grid marketplace
+│   │   view (new default) for business users: cards show the owning
+│   │   domain, endorsement / certification badges, a freshness chip, and
+│   │   the business-glossary terms a product speaks.  Discovery facets
+│   │   filter by domain / lifecycle / "certified only", and search now
+│   │   matches description + domain + bound glossary terms, not just the
+│   │   name.  Table + card views stay as toggles.  Backend: ``GET
+│   │   /api/data-products`` carries each product's active ``endorsements``
+│   │   + ``glossary_terms`` via two bulk loaders; +4 pytest, 4563/0.
+│   │   ALL LOCAL.
+│
 ├── Mega-Cluster 155-164 — Visual DP Editor + Platform Polish  ✅ shipped (local, 2026-05-31)
 │   │   10 improvement phases on top of the Mega-Cluster 147-154
 │   │   surface and on adjacent platform surfaces (audit log,

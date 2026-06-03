@@ -20,10 +20,10 @@
             <div class="row gx-2 align-items-center">
                 <div class="col-md-5">
                     <input type="text" class="form-control form-control-sm pql-dp-filter-input"
-                           placeholder="Filter by name, catalog or schema…"
+                           placeholder="Search products, domains or business terms…"
                            x-model="filter">
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-4" x-show="viewMode !== 'marketplace'">
                     <div class="d-flex flex-wrap gap-1 pql-dp-filter-chips">
                         <button class="btn btn-sm"
                                 :class="activeChip === 'all' ? 'btn-primary' : 'btn-outline-secondary'"
@@ -47,16 +47,26 @@
                     <div class="btn-group btn-group-sm pql-dp-view-toggle" role="group">
                         <button type="button"
                                 class="btn"
+                                :class="viewMode === 'marketplace' ? 'btn-secondary' : 'btn-outline-secondary'"
+                                @click="setView('marketplace')"
+                                data-view="marketplace"
+                                title="Marketplace">
+                            <i class="bi bi-shop"></i>
+                        </button>
+                        <button type="button"
+                                class="btn"
                                 :class="viewMode === 'table' ? 'btn-secondary' : 'btn-outline-secondary'"
                                 @click="setView('table')"
-                                data-view="table">
+                                data-view="table"
+                                title="Table">
                             <i class="bi bi-table"></i>
                         </button>
                         <button type="button"
                                 class="btn"
                                 :class="viewMode === 'cards' ? 'btn-secondary' : 'btn-outline-secondary'"
                                 @click="setView('cards')"
-                                data-view="cards">
+                                data-view="cards"
+                                title="Cards">
                             <i class="bi bi-grid"></i>
                         </button>
                     </div>
@@ -70,6 +80,47 @@
                         <i class="bi bi-arrow-clockwise"></i>
                     </button>
                 </div>
+            </div>
+
+            <!-- Marketplace discovery facets -->
+            <div x-show="viewMode === 'marketplace'">
+              <div class="d-flex flex-wrap align-items-center gap-3 mt-2 pql-dp-facets">
+                <div class="d-flex flex-wrap align-items-center gap-1" x-show="domainList.length > 0">
+                    <span class="small text-muted me-1"><i class="bi bi-diagram-3 me-1"></i>Domain</span>
+                    <button class="btn btn-sm py-0"
+                            :class="mktDomain === 'all' ? 'btn-secondary' : 'btn-outline-secondary'"
+                            @click="mktDomain = 'all'"
+                            data-facet-domain="all">All</button>
+                    <template x-for="d in domainList" :key="d.slug">
+                        <button class="btn btn-sm py-0"
+                                :class="mktDomain === d.slug ? 'btn-secondary' : 'btn-outline-secondary'"
+                                @click="mktDomain = d.slug"
+                                :data-facet-domain="d.slug"
+                                x-text="d.name"></button>
+                    </template>
+                </div>
+                <div class="d-flex flex-wrap align-items-center gap-1" x-show="lifecycleList.length > 1">
+                    <span class="small text-muted me-1"><i class="bi bi-life-preserver me-1"></i>Lifecycle</span>
+                    <button class="btn btn-sm py-0"
+                            :class="mktLifecycle === 'all' ? 'btn-secondary' : 'btn-outline-secondary'"
+                            @click="mktLifecycle = 'all'"
+                            data-facet-lifecycle="all">All</button>
+                    <template x-for="s in lifecycleList" :key="s">
+                        <button class="btn btn-sm py-0 text-capitalize"
+                                :class="mktLifecycle === s ? 'btn-secondary' : 'btn-outline-secondary'"
+                                @click="mktLifecycle = s"
+                                :data-facet-lifecycle="s"
+                                x-text="s"></button>
+                    </template>
+                </div>
+                <div class="form-check form-switch mb-0">
+                    <input class="form-check-input" type="checkbox" role="switch"
+                           id="pql-dp-certified-toggle" x-model="mktCertified">
+                    <label class="form-check-label small" for="pql-dp-certified-toggle">
+                        <i class="bi bi-patch-check me-1"></i>Certified only
+                    </label>
+                </div>
+              </div>
             </div>
         </div>
     </div>
@@ -106,6 +157,90 @@
         <div class="alert alert-secondary pql-dp-empty">
             <i class="bi bi-info-circle me-1"></i>
             No data products match.
+        </div>
+    </template>
+
+    <!-- Marketplace view (discovery) -->
+    <template x-if="!loading && !error && filtered.length > 0 && viewMode === 'marketplace'">
+        <div class="row g-3 pql-dp-marketplace">
+            <template x-for="p in filtered" :key="'mkt-' + p.id">
+                <div class="col-md-6 col-lg-4">
+                    <div class="card h-100 pql-hover-lift pql-dp-mkt-card">
+                        <div class="card-body d-flex flex-column">
+                            <div class="d-flex align-items-start justify-content-between gap-2">
+                                <h5 class="card-title mb-1">
+                                    <a :href="'/data-products/' + p.catalog + '/' + p.schema"
+                                       class="text-decoration-none">
+                                        <i class="bi bi-collection me-1"></i>
+                                        <span x-text="p.ref"></span>
+                                    </a>
+                                </h5>
+                                <span class="badge bg-secondary flex-shrink-0" x-text="'v' + p.version"></span>
+                            </div>
+
+                            <!-- Trust + classification badges -->
+                            <div class="d-flex flex-wrap gap-1 mb-2">
+                                <template x-if="p.domain">
+                                    <a :href="'/domains/' + p.domain.slug"
+                                       class="badge bg-primary-subtle text-primary-emphasis border border-primary-subtle text-decoration-none">
+                                        <i class="bi bi-diagram-3 me-1"></i><span x-text="p.domain.name"></span>
+                                    </a>
+                                </template>
+                                <template x-for="e in (p.endorsements || [])" :key="e.type">
+                                    <span class="badge"
+                                          :class="'bg-' + endorsementBadge(e.type).variant + '-subtle text-' + endorsementBadge(e.type).variant + '-emphasis border border-' + endorsementBadge(e.type).variant + '-subtle'">
+                                        <i class="bi me-1" :class="'bi-' + endorsementBadge(e.type).icon"></i>
+                                        <span x-text="endorsementBadge(e.type).label"></span>
+                                    </span>
+                                </template>
+                                <span class="badge"
+                                      :class="p.freshness_status === 'stale' ? 'bg-danger-subtle text-danger-emphasis border border-danger-subtle' : (p.freshness_status === 'on_time' ? 'bg-success-subtle text-success-emphasis border border-success-subtle' : 'bg-light text-dark border')"
+                                      x-show="p.freshness_status !== 'no_sla'">
+                                    <i class="bi bi-clock-history me-1"></i>
+                                    <span x-text="p.freshness_status === 'stale' ? 'Stale' : 'Fresh'"></span>
+                                </span>
+                            </div>
+
+                            <p class="card-text small text-muted flex-grow-1"
+                               x-text="(p.description || '').substring(0, 150) || 'No description yet.'"></p>
+
+                            <!-- Business terms this product speaks -->
+                            <template x-if="(p.glossary_terms || []).length > 0">
+                                <div class="d-flex flex-wrap gap-1 mb-2 pql-dp-mkt-terms">
+                                    <template x-for="t in (p.glossary_terms || []).slice(0, 5)" :key="t">
+                                        <span class="badge bg-light text-dark border" x-text="t"></span>
+                                    </template>
+                                    <template x-if="(p.glossary_terms || []).length > 5">
+                                        <span class="badge bg-light text-muted border"
+                                              x-text="'+' + ((p.glossary_terms || []).length - 5)"></span>
+                                    </template>
+                                </div>
+                            </template>
+
+                            <div class="d-flex flex-wrap gap-2 small text-muted border-top pt-2">
+                                <template x-if="p.steward.email">
+                                    <span>
+                                        <i class="bi bi-person"></i>
+                                        <span x-text="p.steward.display_name || p.steward.email"></span>
+                                    </span>
+                                </template>
+                                <template x-if="!p.steward.email">
+                                    <span class="fst-italic"><i class="bi bi-person-x"></i> No steward</span>
+                                </template>
+                                <template x-if="p.follow_count > 0">
+                                    <span><i class="bi bi-bookmark-star"></i> <span x-text="p.follow_count"></span></span>
+                                </template>
+                                <template x-if="p.review_count > 0">
+                                    <span class="text-warning-emphasis">
+                                        <i class="bi bi-star-fill"></i>
+                                        <span x-text="(p.avg_stars ? p.avg_stars.toFixed(1) : '') + ' (' + p.review_count + ')'"></span>
+                                    </span>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </template>
         </div>
     </template>
 
