@@ -219,7 +219,10 @@ export const outputPlusMethods = {
   },
   _scheduleAllOutputPlusReposition() {
     if (this._outputPlusRaf) return;
-    this._outputPlusRaf = window.setTimeout(() => {
+    // requestAnimationFrame (not setTimeout) so the reposition lands on the
+    // same frame the browser paints the dragged node — keeps the handle glued
+    // to the pin during a drag instead of trailing a macrotask behind it.
+    this._outputPlusRaf = window.requestAnimationFrame(() => {
       this._outputPlusRaf = null;
       const df = this._drawflow;
       if (!df) return;

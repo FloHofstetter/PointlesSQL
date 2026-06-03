@@ -171,6 +171,16 @@ export const lifecycleMethods = {
     // connectionCreated stays the source of truth for the actual wire.
     df.container.addEventListener('pointerdown', (ev) => this._onOutputPointerDown(ev));
 
+    // Drawflow emits `nodeMoved` only once, on drop — never during the drag.
+    // The "+" handles live in stage screen-coords (outside the node's
+    // transform), so without a live update they sit still through the whole
+    // drag and only snap to the node on release.  Canvas pan already tracks
+    // via the precanvas transform observer; node drag is the gap, so
+    // reposition every pointermove while a node drag is in flight.
+    df.container.addEventListener('pointermove', () => {
+      if (df.drag) this._scheduleAllOutputPlusReposition();
+    });
+
     // Keyboard accessibility: Enter / Space on a focused node opens its
     // config; arrow keys pan the canvas when focus is on the canvas chrome
     // (not inside a node or a form field).
