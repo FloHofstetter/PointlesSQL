@@ -53,7 +53,9 @@ def test_cast_missing_input_errors() -> None:
 
 
 def test_cast_no_valid_pairs_errors() -> None:
-    result, errors = _compile("Cast", {"in": "cte0"}, {"casts": [{"column": "", "target_type": ""}]})
+    result, errors = _compile(
+        "Cast", {"in": "cte0"}, {"casts": [{"column": "", "target_type": ""}]}
+    )
     assert result is None
     assert any("at least one" in e.message for e in errors)
 
@@ -72,6 +74,18 @@ def test_cast_infer_applies_target_type() -> None:
     by = {c.name: c.duckdb_type for c in out.columns}
     assert by["a"] == "BIGINT"
     assert by["b"] == "VARCHAR"
+
+
+def test_cast_compile_replaces_in_place() -> None:
+    result, errors = _compile(
+        "Cast", {"in": "cte0"}, {"casts": [{"column": "a", "target_type": "BIGINT"}]}
+    )
+    assert errors == []
+    assert result is not None
+    # ``* REPLACE`` swaps the column in place; a plain ``SELECT *,`` would leave
+    # the original column and append a disambiguated ``a_1`` duplicate.
+    assert 'REPLACE ("a"::BIGINT AS "a")' in result.sql
+    assert "SELECT *," not in result.sql
 
 
 # --- Rename ---------------------------------------------------------------
@@ -98,6 +112,16 @@ def test_rename_blank_pairs_error() -> None:
 def test_rename_infer_renames_columns() -> None:
     out = _infer("Rename", {"in": _schema(("a", "INT"))}, {"renames": {"a": "alpha"}})
     assert [c.name for c in out.columns] == ["alpha"]
+
+
+def test_rename_compile_renames_in_place() -> None:
+    result, errors = _compile("Rename", {"in": "cte0"}, {"renames": {"a": "alpha"}})
+    assert errors == []
+    assert result is not None
+    # ``* RENAME`` relabels in place; a plain ``SELECT *,`` would keep ``a`` and
+    # add ``alpha`` alongside it.
+    assert 'RENAME ("a" AS "alpha")' in result.sql
+    assert "SELECT *," not in result.sql
 
 
 def test_rename_infer_unknown_upstream() -> None:
@@ -130,7 +154,9 @@ def test_calc_compiles_expression() -> None:
 
 def test_calc_infer_appends_column() -> None:
     out = _infer(
-        "CalcColumn", {"in": _schema(("a", "INT"))}, {"expression": "a+1", "target_alias": "doubled"}
+        "CalcColumn",
+        {"in": _schema(("a", "INT"))},
+        {"expression": "a+1", "target_alias": "doubled"},
     )
     assert [c.name for c in out.columns] == ["a", "doubled"]
 

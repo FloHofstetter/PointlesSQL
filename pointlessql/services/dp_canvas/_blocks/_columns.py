@@ -85,9 +85,14 @@ def _compile_cast(
             _bad_config(node_id, "Cast.casts must declare at least one column-to-type pair.")
         )
         return None
+    # ``* REPLACE`` swaps each column's expression in place, preserving name and
+    # position. A plain ``SELECT *, col::T AS col`` would instead leave the
+    # original column and append a DuckDB-disambiguated ``col_1``, which both
+    # contradicts ``_infer_cast`` (it reports the type changing in place) and
+    # leaves a stray duplicate column downstream.
     projections = ", ".join(f'"{col}"::{tt} AS "{col}"' for col, tt in by_column.items())
     return CompiledBlock(
-        sql=f"SELECT *, {projections} FROM {src}",
+        sql=f"SELECT * REPLACE ({projections}) FROM {src}",
         output_schema=output_schema,
     )
 
@@ -143,12 +148,16 @@ def _compile_rename(
     if not isinstance(renames, dict) or not renames:
         errors.append(_bad_config(node_id, "Rename.renames must be a non-empty {old: new} dict."))
         return None
+    # ``* RENAME`` relabels each column in place, preserving position. A plain
+    # ``SELECT *, old AS new`` would keep the original ``old`` column and append
+    # ``new`` alongside it, contradicting ``_infer_rename`` (which reports the
+    # column relabelled, not duplicated).
     parts = [f'"{old}" AS "{new}"' for old, new in renames.items() if old and new]
     if not parts:
         errors.append(_bad_config(node_id, "Rename.renames empty after cleaning."))
         return None
     return CompiledBlock(
-        sql=f"SELECT *, {', '.join(parts)} FROM {src}",
+        sql=f"SELECT * RENAME ({', '.join(parts)}) FROM {src}",
         output_schema=output_schema,
     )
 
