@@ -32,6 +32,7 @@ import { paletteGroupsFromCatalog } from '../dp_canvas/_block_catalog.js';
 import { annotationMethods } from '../dp_canvas/editor/annotations.js';
 import { clipboardMethods } from '../dp_canvas/editor/clipboard.js';
 import { configFormMethods } from '../dp_canvas/editor/config_form.js';
+import { configFormStructuredMethods } from '../dp_canvas/editor/config_form_structured.js';
 import { connectMethods } from '../dp_canvas/editor/connect.js';
 import { contextMenuMethods } from '../dp_canvas/editor/context_menu.js';
 import { drawflowSyncMethods } from '../dp_canvas/editor/drawflow_sync.js';
@@ -59,6 +60,7 @@ export function dpCanvasEditor(product, ctx) {
     // would snapshot a getter's value, breaking reactivity).
     ...historyMethods,
     ...configFormMethods,
+    ...configFormStructuredMethods,
     ...annotationMethods,
     ...viewportMethods,
     ...clipboardMethods,

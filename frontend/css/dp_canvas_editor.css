@@ -100,6 +100,15 @@
    ``canvas_shared.css`` so mesh + diff inherit the same visual
    language by adding the ``.pql-canvas`` base class. */
 
+/* Chip-list editors in the per-block config drawer.  The close button is
+   shrunk to read as part of the chip rather than a full-size control. */
+.pql-dp-canvas-drawer .pql-chip {
+  font-size: 0.75rem;
+}
+.pql-dp-canvas-drawer .pql-chip .btn-close {
+  font-size: 0.5rem;
+}
+
 /* CodeMirror mount slots inside the per-block config drawer. */
 .pql-canvas-cm-host {
   min-height: 38px;

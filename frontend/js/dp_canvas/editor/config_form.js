@@ -2,10 +2,11 @@
  * Right-drawer config-form helpers for the canvas editor.
  *
  * Block label/icon/help lookups (from the shared block catalog), the
- * inline per-node error surface, plus the small add/remove mutators the
- * per-block config forms bind to for their chip-list editors (columns,
- * join/group keys, aggregations, merge keys).  Each mutator routes through
- * `this.onConfigChanged()` (defined on the component) so autosave +
+ * inline per-node error surface, plus the GroupBy aggregation-row mutators.
+ * Generic array-field editing (chips, comma lists) lives in
+ * `config_form_structured.js`; this file keeps only the lookups, the error
+ * helpers and the one row editor that predates them.  Each mutator routes
+ * through `this.onConfigChanged()` (defined on the component) so autosave +
  * revalidate fire uniformly.
  *
  * Methods are plain (never arrow) so `this` binds to the Alpine proxy.
@@ -76,49 +77,6 @@ export const configFormMethods = {
     return this.nodeErrors().some((e) => this.errorFieldFor(e) === field);
   },
 
-  addProjectColumn(col) {
-    const node = this.selectedNode;
-    if (!node || !col) return;
-    const trimmed = String(col).trim();
-    if (!trimmed) return;
-    if (node.config.columns.includes(trimmed)) return;
-    node.config.columns.push(trimmed);
-    this.onConfigChanged();
-  },
-  removeProjectColumn(idx) {
-    const node = this.selectedNode;
-    if (!node) return;
-    node.config.columns.splice(idx, 1);
-    this.onConfigChanged();
-  },
-  addJoinKey(col) {
-    const node = this.selectedNode;
-    if (!node || !col) return;
-    const trimmed = String(col).trim();
-    if (!trimmed || node.config.keys.includes(trimmed)) return;
-    node.config.keys.push(trimmed);
-    this.onConfigChanged();
-  },
-  removeJoinKey(idx) {
-    const node = this.selectedNode;
-    if (!node) return;
-    node.config.keys.splice(idx, 1);
-    this.onConfigChanged();
-  },
-  addGroupKey(col) {
-    const node = this.selectedNode;
-    if (!node || !col) return;
-    const trimmed = String(col).trim();
-    if (!trimmed || node.config.keys.includes(trimmed)) return;
-    node.config.keys.push(trimmed);
-    this.onConfigChanged();
-  },
-  removeGroupKey(idx) {
-    const node = this.selectedNode;
-    if (!node) return;
-    node.config.keys.splice(idx, 1);
-    this.onConfigChanged();
-  },
   addAggregation() {
     const node = this.selectedNode;
     if (!node) return;
@@ -129,23 +87,6 @@ export const configFormMethods = {
     const node = this.selectedNode;
     if (!node) return;
     node.config.aggregations.splice(idx, 1);
-    this.onConfigChanged();
-  },
-  addMergeOn(col) {
-    const node = this.selectedNode;
-    if (!node || !col) return;
-    const trimmed = String(col).trim();
-    if (!trimmed) return;
-    if (!Array.isArray(node.config.merge_on)) node.config.merge_on = [];
-    if (node.config.merge_on.includes(trimmed)) return;
-    node.config.merge_on.push(trimmed);
-    this.onConfigChanged();
-  },
-  removeMergeOn(idx) {
-    const node = this.selectedNode;
-    if (!node) return;
-    if (!Array.isArray(node.config.merge_on)) return;
-    node.config.merge_on.splice(idx, 1);
     this.onConfigChanged();
   },
 };

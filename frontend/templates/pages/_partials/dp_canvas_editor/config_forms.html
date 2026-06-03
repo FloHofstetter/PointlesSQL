@@ -5,6 +5,8 @@
    ``selectedNode.config`` which Alpine watches to trigger debounced
    save + validate.
 #}
+{% from "pages/_partials/dp_canvas_editor/_form_macros.html" import
+    field_label, available_columns, chip_list, comma_list, cm_field %}
 
 {# InputPort: single UC three-part name. #}
 <template x-if="selectedNode.block_type === 'InputPort'">
@@ -81,48 +83,15 @@
 
 {# Project: column chip-list. #}
 <template x-if="selectedNode.block_type === 'Project'">
-    <div>
-        <label class="form-label small">Columns to keep</label>
-        <div class="d-flex flex-wrap gap-1 mb-2">
-            <template x-for="(col, idx) in selectedNode.config.columns" :key="idx + ':' + col">
-                <span class="badge bg-secondary d-inline-flex align-items-center">
-                    <span x-text="col"></span>
-                    <button class="btn-close btn-close-white ms-1"
-                            style="font-size: 0.55rem;"
-                            @click="removeProjectColumn(idx)"
-                            :disabled="!canWrite"></button>
-                </span>
-            </template>
-        </div>
-        <div class="input-group input-group-sm">
-            <input type="text"
-                   class="form-control"
-                   x-model="projectInput"
-                   @keydown.enter.prevent="addProjectColumn(projectInput); projectInput = ''"
-                   :disabled="!canWrite"
-                   placeholder="column name + Enter">
-            <button class="btn btn-outline-secondary"
-                    @click="addProjectColumn(projectInput); projectInput = ''"
-                    :disabled="!canWrite">Add</button>
-        </div>
-        <template x-if="upstreamColumns(selectedNode.id, 'in').length > 0">
-            <div class="form-text small">
-                <span class="text-muted">Available:</span>
-                <template x-for="col in upstreamColumns(selectedNode.id, 'in')" :key="'avail:' + col">
-                    <button class="btn btn-link btn-sm p-0 me-2"
-                            @click="addProjectColumn(col)"
-                            :disabled="!canWrite || selectedNode.config.columns.includes(col)"
-                            x-text="col"></button>
-                </template>
-            </div>
-        </template>
+    <div class="pql-form-group">
+        {{ chip_list('columns', 'projectInput', 'Columns to keep', pin='in') }}
     </div>
 </template>
 
-{# Join: how + keys. #}
+{# Join: how + keys (shared columns; suggestions from both inputs). #}
 <template x-if="selectedNode.block_type === 'Join'">
-    <div>
-        <label class="form-label small">Join strategy</label>
+    <div class="pql-form-group">
+        {{ field_label('Join strategy') }}
         <select class="form-select form-select-sm mb-3"
                 x-model="selectedNode.config.how"
                 @change="onConfigChanged()"
@@ -133,60 +102,20 @@
             <option value="full">full</option>
         </select>
 
-        <label class="form-label small">Join keys (shared columns)</label>
-        <div class="d-flex flex-wrap gap-1 mb-2">
-            <template x-for="(col, idx) in selectedNode.config.keys" :key="idx + ':' + col">
-                <span class="badge bg-secondary d-inline-flex align-items-center">
-                    <span x-text="col"></span>
-                    <button class="btn-close btn-close-white ms-1"
-                            style="font-size: 0.55rem;"
-                            @click="removeJoinKey(idx)"
-                            :disabled="!canWrite"></button>
-                </span>
-            </template>
-        </div>
-        <div class="input-group input-group-sm">
-            <input type="text"
-                   class="form-control"
-                   x-model="joinKeyInput"
-                   @keydown.enter.prevent="addJoinKey(joinKeyInput); joinKeyInput = ''"
-                   :disabled="!canWrite"
-                   placeholder="column name + Enter">
-            <button class="btn btn-outline-secondary"
-                    @click="addJoinKey(joinKeyInput); joinKeyInput = ''"
-                    :disabled="!canWrite">Add</button>
-        </div>
+        {{ chip_list('keys', 'joinKeyInput', 'Join keys (shared columns)', suggest=False) }}
+        {{ available_columns('left', "addColumnTo('keys', col)", '(selectedNode.config.keys || [])', label='From left:') }}
+        {{ available_columns('right', "addColumnTo('keys', col)", '(selectedNode.config.keys || [])', label='From right:') }}
+        <div class="form-text small">Keys must exist on both inputs.</div>
     </div>
 </template>
 
 {# GroupBy: keys + aggregations. #}
 <template x-if="selectedNode.block_type === 'GroupBy'">
-    <div>
-        <label class="form-label small">Group-by columns</label>
-        <div class="d-flex flex-wrap gap-1 mb-2">
-            <template x-for="(col, idx) in selectedNode.config.keys" :key="idx + ':' + col">
-                <span class="badge bg-secondary d-inline-flex align-items-center">
-                    <span x-text="col"></span>
-                    <button class="btn-close btn-close-white ms-1"
-                            style="font-size: 0.55rem;"
-                            @click="removeGroupKey(idx)"
-                            :disabled="!canWrite"></button>
-                </span>
-            </template>
-        </div>
-        <div class="input-group input-group-sm mb-3">
-            <input type="text"
-                   class="form-control"
-                   x-model="groupKeyInput"
-                   @keydown.enter.prevent="addGroupKey(groupKeyInput); groupKeyInput = ''"
-                   :disabled="!canWrite"
-                   placeholder="column name + Enter">
-            <button class="btn btn-outline-secondary"
-                    @click="addGroupKey(groupKeyInput); groupKeyInput = ''"
-                    :disabled="!canWrite">Add</button>
-        </div>
-
-        <label class="form-label small">Aggregations</label>
+    <div class="pql-form-group">
+        {{ chip_list('keys', 'groupKeyInput', 'Group-by columns', pin='in') }}
+        <div class="form-text small mb-2">Output keeps the group keys plus one column per aggregation.</div>
+        <hr class="my-3">
+        {{ field_label('Aggregations') }}
         <template x-for="(agg, idx) in selectedNode.config.aggregations" :key="idx">
             <div class="d-flex gap-1 mb-1">
                 <input type="text" class="form-control form-control-sm"
@@ -254,8 +183,8 @@
 
 {# Window: function + alias + partition/order column lists. #}
 <template x-if="selectedNode.block_type === 'Window'">
-    <div>
-        <label class="form-label small">Function</label>
+    <div class="pql-form-group">
+        {{ field_label('Function') }}
         <select class="form-select form-select-sm mb-2"
                 x-model="selectedNode.config.function"
                 @change="onConfigChanged()"
@@ -264,29 +193,14 @@
                 <option :value="fn" x-text="fn"></option>
             </template>
         </select>
-        <label class="form-label small">Alias</label>
+        {{ field_label('Alias') }}
         <input type="text" class="form-control form-control-sm mb-2"
                x-model="selectedNode.config.target_alias"
                @input.debounce.300ms="onConfigChanged()"
                :disabled="!canWrite">
-        <label class="form-label small">Args (comma-separated)</label>
-        <input type="text" class="form-control form-control-sm mb-2"
-               :value="(selectedNode.config.args || []).join(', ')"
-               @input.debounce.300ms="selectedNode.config.args = $event.target.value.split(',').map(s => s.trim()).filter(Boolean); onConfigChanged()"
-               :disabled="!canWrite"
-               placeholder="amount">
-        <label class="form-label small">PARTITION BY (comma-separated)</label>
-        <input type="text" class="form-control form-control-sm mb-2"
-               :value="(selectedNode.config.partition_by || []).join(', ')"
-               @input.debounce.300ms="selectedNode.config.partition_by = $event.target.value.split(',').map(s => s.trim()).filter(Boolean); onConfigChanged()"
-               :disabled="!canWrite"
-               placeholder="country">
-        <label class="form-label small">ORDER BY (comma-separated)</label>
-        <input type="text" class="form-control form-control-sm mb-2"
-               :value="(selectedNode.config.order_by || []).join(', ')"
-               @input.debounce.300ms="selectedNode.config.order_by = $event.target.value.split(',').map(s => s.trim()).filter(Boolean); onConfigChanged()"
-               :disabled="!canWrite"
-               placeholder="ts">
+        {{ comma_list('args', 'Args (comma-separated)', placeholder='amount', pin='in') }}
+        {{ comma_list('partition_by', 'PARTITION BY (comma-separated)', placeholder='country', pin='in') }}
+        {{ comma_list('order_by', 'ORDER BY (comma-separated)', placeholder='ts', pin='in') }}
     </div>
 </template>
 
@@ -315,19 +229,14 @@
 
 {# Unpivot: value-columns + name/value labels. #}
 <template x-if="selectedNode.block_type === 'Unpivot'">
-    <div>
-        <label class="form-label small">Columns to unpivot (comma-separated)</label>
-        <input type="text" class="form-control form-control-sm mb-2"
-               :value="(selectedNode.config.value_columns || []).join(', ')"
-               @input.debounce.300ms="selectedNode.config.value_columns = $event.target.value.split(',').map(s => s.trim()).filter(Boolean); onConfigChanged()"
-               :disabled="!canWrite"
-               placeholder="jan, feb, mar">
-        <label class="form-label small">NAME column label</label>
+    <div class="pql-form-group">
+        {{ comma_list('value_columns', 'Columns to unpivot (comma-separated)', placeholder='jan, feb, mar', pin='in') }}
+        {{ field_label('NAME column label') }}
         <input type="text" class="form-control form-control-sm mb-2"
                x-model="selectedNode.config.name_label"
                @input.debounce.300ms="onConfigChanged()"
                :disabled="!canWrite">
-        <label class="form-label small">VALUE column label</label>
+        {{ field_label('VALUE column label') }}
         <input type="text" class="form-control form-control-sm"
                x-model="selectedNode.config.value_label"
                @input.debounce.300ms="onConfigChanged()"
@@ -353,13 +262,8 @@
 
 {# Distinct: optional subset of columns. #}
 <template x-if="selectedNode.block_type === 'Distinct'">
-    <div>
-        <label class="form-label small">Columns (empty = all)</label>
-        <input type="text" class="form-control form-control-sm"
-               :value="(selectedNode.config.columns || []).join(', ')"
-               @input.debounce.300ms="selectedNode.config.columns = $event.target.value.split(',').map(s => s.trim()).filter(Boolean); onConfigChanged()"
-               :disabled="!canWrite"
-               placeholder="email, signup_date">
+    <div class="pql-form-group">
+        {{ comma_list('columns', 'Columns (empty = all)', placeholder='email, signup_date', pin='in') }}
     </div>
 </template>
 
@@ -478,29 +382,7 @@
 
         <template x-if="selectedNode.config.mode === 'merge'">
             <div>
-                <label class="form-label small">Merge-on columns</label>
-                <div class="d-flex flex-wrap gap-1 mb-2">
-                    <template x-for="(col, idx) in (selectedNode.config.merge_on || [])" :key="idx + ':' + col">
-                        <span class="badge bg-secondary d-inline-flex align-items-center">
-                            <span x-text="col"></span>
-                            <button class="btn-close btn-close-white ms-1"
-                                    style="font-size: 0.55rem;"
-                                    @click="removeMergeOn(idx)"
-                                    :disabled="!canWrite"></button>
-                        </span>
-                    </template>
-                </div>
-                <div class="input-group input-group-sm">
-                    <input type="text"
-                           class="form-control"
-                           x-model="mergeOnInput"
-                           @keydown.enter.prevent="addMergeOn(mergeOnInput); mergeOnInput = ''"
-                           :disabled="!canWrite"
-                           placeholder="column name + Enter">
-                    <button class="btn btn-outline-secondary"
-                            @click="addMergeOn(mergeOnInput); mergeOnInput = ''"
-                            :disabled="!canWrite">Add</button>
-                </div>
+                {{ chip_list('merge_on', 'mergeOnInput', 'Merge-on columns', pin='in') }}
             </div>
         </template>
     </div>

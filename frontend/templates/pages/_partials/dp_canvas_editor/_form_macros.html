@@ -1,0 +1,87 @@
+{# Alpine-bound form macros for the canvas settings drawer.
+
+   These are distinct from the server-rendered ``_macros/`` library: they
+   emit the live ``x-model`` / ``@event`` / ``:disabled`` bindings the
+   per-block config forms need, and assume the editor component's helpers
+   are in scope (``onConfigChanged``, ``addColumnTo``, ``removeColumnFrom``,
+   ``commaValue``, ``setCommaList``, ``upstreamColumns``, ``fieldHasError``).
+   ``selectedNode`` is the block currently being edited.
+
+   Keeping them here — beside the forms that use them — lets the chip /
+   column-suggestion / labelled-field patterns live once instead of being
+   hand-copied per block, which is how the 19 forms drifted apart before. #}
+
+{% macro field_label(text) -%}
+<label class="form-label small fw-bold mb-1">{{ text }}</label>
+{%- endmacro %}
+
+{# Clickable strip of upstream column names feeding ``pin``.  ``on_click`` is
+   an Alpine expression run with ``col`` in scope; ``exclude_expr`` greys out
+   columns already chosen so the same one is not added twice. #}
+{% macro available_columns(pin, on_click, exclude_expr='[]', label='Available:') -%}
+<template x-if="upstreamColumns(selectedNode.id, '{{ pin }}').length > 0">
+    <div class="form-text small pql-col-suggest">
+        <span class="text-muted">{{ label }}</span>
+        <template x-for="col in upstreamColumns(selectedNode.id, '{{ pin }}')" :key="'{{ pin }}:' + col">
+            <button type="button" class="btn btn-link btn-sm p-0 me-2"
+                    @click="{{ on_click }}"
+                    :disabled="!canWrite || ({{ exclude_expr }}).includes(col)"
+                    x-text="col"></button>
+        </template>
+    </div>
+</template>
+{%- endmacro %}
+
+{# Badge chip-list editor over an array config field.  ``input_model`` is the
+   transient typing buffer (declared on the component); when ``pin`` is set the
+   strip of upstream columns is offered as one-click additions. #}
+{% macro chip_list(field, input_model, label, placeholder='column name + Enter', pin=None, suggest=True) -%}
+{{ field_label(label) }}
+<div class="d-flex flex-wrap gap-1 mb-2">
+    <template x-for="(col, idx) in (selectedNode.config.{{ field }} || [])" :key="idx + ':' + col">
+        <span class="badge pql-chip bg-secondary d-inline-flex align-items-center">
+            <span x-text="col"></span>
+            <button type="button" class="btn-close btn-close-white ms-1"
+                    @click="removeColumnFrom('{{ field }}', idx)"
+                    :disabled="!canWrite"></button>
+        </span>
+    </template>
+</div>
+<div class="input-group input-group-sm">
+    <input type="text" class="form-control"
+           :class="fieldHasError('{{ field }}') && 'is-invalid'"
+           x-model="{{ input_model }}"
+           @keydown.enter.prevent="addColumnTo('{{ field }}', {{ input_model }}); {{ input_model }} = ''"
+           :disabled="!canWrite"
+           placeholder="{{ placeholder }}">
+    <button type="button" class="btn btn-outline-secondary"
+            @click="addColumnTo('{{ field }}', {{ input_model }}); {{ input_model }} = ''"
+            :disabled="!canWrite">Add</button>
+</div>
+{% if pin and suggest %}{{ available_columns(pin, "addColumnTo('" ~ field ~ "', col)", "(selectedNode.config." ~ field ~ " || [])") }}{% endif %}
+{%- endmacro %}
+
+{# Comma-separated text input over an array config field.  Order is preserved
+   (unlike chips), so it suits ORDER BY / PARTITION BY / column-set fields where
+   sequence matters or values are pasted in bulk. #}
+{% macro comma_list(field, label, placeholder='', pin=None, suggest=True, hint=None) -%}
+{{ field_label(label) }}
+<input type="text" class="form-control form-control-sm mb-1"
+       :class="fieldHasError('{{ field }}') && 'is-invalid'"
+       :value="commaValue('{{ field }}')"
+       @input.debounce.300ms="setCommaList('{{ field }}', $event.target.value)"
+       :disabled="!canWrite"
+       placeholder="{{ placeholder }}"
+       spellcheck="false">
+{% if hint %}<div class="form-text small">{{ hint }}</div>{% endif %}
+{% if pin and suggest %}{{ available_columns(pin, "addColumnTo('" ~ field ~ "', col)", "(selectedNode.config." ~ field ~ " || [])") }}{% endif %}
+{%- endmacro %}
+
+{# CodeMirror DuckDB-grammar host (single-line predicate or multi-line SQL). #}
+{% macro cm_field(label, ref, field, multi=False, hint=None) -%}
+{{ field_label(label) }}
+<div x-ref="{{ ref }}"
+     x-init="{{ 'mountSqlCm' if multi else 'mountPredicateCm' }}($refs.{{ ref }}, selectedNode.id, '{{ field }}')"
+     class="pql-canvas-cm-host{% if multi %} pql-canvas-cm-host-multi{% endif %} border rounded"></div>
+{% if hint %}<div class="form-text small">{{ hint }}</div>{% endif %}
+{%- endmacro %}
