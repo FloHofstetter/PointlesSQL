@@ -55,13 +55,18 @@ from pointlessql.config._settings._infra import (
 )
 from pointlessql.config._settings._integrations import (
     DBTSettings,
+    HermesSettings,
     JupyterSettings,
     MLflowSettings,
     SoyuzSettings,
     WorkspaceReposSettings,
 )
 from pointlessql.config._settings._privileges import PrivilegeSettings
-from pointlessql.config._settings._storage import DatabaseSettings, DeltaSettings
+from pointlessql.config._settings._storage import (
+    CanvasFileIoSettings,
+    DatabaseSettings,
+    DeltaSettings,
+)
 
 
 class Settings(BaseSettings):
@@ -86,6 +91,7 @@ class Settings(BaseSettings):
     scheduler: SchedulerSettings = Field(default_factory=SchedulerSettings)
     audit: AuditSettings = Field(default_factory=AuditSettings)
     delta: DeltaSettings = Field(default_factory=DeltaSettings)
+    canvas_file_io: CanvasFileIoSettings = Field(default_factory=CanvasFileIoSettings)
     sql: SQLSettings = Field(default_factory=SQLSettings)
     sql_execution_api: SqlExecutionApiSettings = Field(default_factory=SqlExecutionApiSettings)
     api_key_lifecycle: ApiKeyLifecycleSettings = Field(default_factory=ApiKeyLifecycleSettings)
@@ -104,6 +110,7 @@ class Settings(BaseSettings):
     workspace_repos: WorkspaceReposSettings = Field(default_factory=WorkspaceReposSettings)
     mlflow: MLflowSettings = Field(default_factory=MLflowSettings)
     dbt: DBTSettings = Field(default_factory=DBTSettings)
+    hermes: HermesSettings = Field(default_factory=HermesSettings)
     lens: LensSettings = Field(default_factory=LensSettings)
     coedit: CoeditSettings = Field(default_factory=CoeditSettings)
     privilege: PrivilegeSettings = Field(default_factory=PrivilegeSettings)
@@ -119,6 +126,7 @@ __all__ = [
     "BitemporalSettings",
     "BranchSettings",
     "CDFTailSettings",
+    "CanvasFileIoSettings",
     "CoeditSettings",
     "ConventionsSettings",
     "DBTSettings",
@@ -129,6 +137,7 @@ __all__ = [
     "EventPortSettings",
     "ExternalWritesSettings",
     "GroupMapping",
+    "HermesSettings",
     "JupyterSettings",
     "LensSettings",
     "LineageRetentionSettings",

@@ -9,6 +9,8 @@ CLAUDE.md.
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from pointlessql.config._settings._paths import PROJECT_ROOT
@@ -58,3 +60,28 @@ class DeltaSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="POINTLESSQL_DELTA_")
 
     engine: str = "pandas"
+
+
+class CanvasFileIoSettings(BaseSettings):
+    """Sandbox for the canvas FileInput / FileOutput blocks.
+
+    These blocks let a data-product pipeline read and write plain files
+    (CSV / Parquet) on the server's filesystem, which sits *outside* Unity
+    Catalog governance — a deliberate escape hatch, and a filesystem-reach
+    surface that has to be fenced off.  All file paths are resolved
+    relative to ``root`` and rejected if they escape it, so the blocks can
+    only ever touch a directory an administrator has opted into.
+
+    The feature is dormant by default: with ``root`` unset, both file
+    blocks are disabled.  Reads are allowed once a root is configured;
+    writes stay denied until ``allow_output`` is explicitly turned on,
+    because exporting data out of the lakehouse is the riskier direction.
+    """
+
+    model_config = SettingsConfigDict(env_prefix="POINTLESSQL_CANVAS_FILE_")
+
+    # Sandbox root.  ``None`` (the default) disables the file blocks
+    # entirely; set it to a directory to opt in.
+    root: Path | None = None
+    allow_input: bool = True
+    allow_output: bool = False
