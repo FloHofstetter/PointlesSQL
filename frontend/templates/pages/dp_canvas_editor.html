@@ -629,7 +629,7 @@
                     <template x-if="!running && runResult">
                         <table class="table table-sm small mb-0 align-middle">
                             <thead>
-                                <tr><th>Port</th><th>Target table</th><th>Rows</th><th>Status</th></tr>
+                                <tr><th>Port</th><th>Target</th><th>Rows</th><th>Status</th></tr>
                             </thead>
                             <tbody>
                                 <template x-for="s in runResult.sinks" :key="s.target_fqn">
@@ -750,7 +750,7 @@
                     <h5 class="modal-title">
                         <i class="bi bi-table"></i>
                         Preview <span class="text-muted small fw-normal"
-                            x-text="previewNodeId ? ('node ' + previewNodeId) : ''"></span>
+                            x-text="previewNodeId && nodes[previewNodeId] ? blockLabel(nodes[previewNodeId].block_type) : ''"></span>
                     </h5>
                     <button type="button" class="btn-close"
                             @click="closePreviewModal()"></button>
