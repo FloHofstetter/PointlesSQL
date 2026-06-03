@@ -716,6 +716,24 @@
                         </button>
                     </div>
 
+                    {# One-line description of the selected block, from the catalog. #}
+                    <p class="text-muted small mb-3 pql-drawer-help"
+                       x-show="blockHelp(selectedNode.block_type)"
+                       x-text="blockHelp(selectedNode.block_type)"></p>
+
+                    {# This block's own validation errors, surfaced inline so the
+                       user never has to deselect to find out what is wrong. #}
+                    <template x-if="nodeErrors().length > 0">
+                        <div class="alert alert-danger py-2 px-2 small mb-3 pql-drawer-error">
+                            <template x-for="(err, ei) in nodeErrors()" :key="ei + ':' + err.message">
+                                <div class="d-flex gap-1 align-items-start">
+                                    <i class="bi bi-exclamation-triangle-fill flex-shrink-0 mt-1"></i>
+                                    <span x-text="formatNodeError(err)"></span>
+                                </div>
+                            </template>
+                        </div>
+                    </template>
+
                     {% include "pages/_partials/dp_canvas_editor/config_forms.html" %}
                 </div>
             </template>

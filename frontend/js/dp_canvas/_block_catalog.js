@@ -127,7 +127,7 @@ export const BLOCK_DEFS = {
     type: 'Window',
     label: 'Window',
     icon: 'bi-graph-up',
-    help: 'Add a windowed aggregation column over a PARTITION/ORDER spec.',
+    help: 'Windowed column over PARTITION BY / ORDER BY. Args depend on the function.',
     inputs: 1,
     outputs: 1,
     inPins: ['in'],
@@ -145,7 +145,7 @@ export const BLOCK_DEFS = {
     type: 'Pivot',
     label: 'Pivot',
     icon: 'bi-arrow-90deg-right',
-    help: 'DuckDB PIVOT — turn distinct values of a column into new columns.',
+    help: 'PIVOT: spread distinct values of the ON column into new columns, aggregating VALUE.',
     inputs: 1,
     outputs: 1,
     inPins: ['in'],
@@ -157,7 +157,7 @@ export const BLOCK_DEFS = {
     type: 'Unpivot',
     label: 'Unpivot',
     icon: 'bi-arrow-90deg-down',
-    help: 'DuckDB UNPIVOT — collapse multiple columns into name/value rows.',
+    help: 'UNPIVOT: fold the chosen columns into two name/value columns.',
     inputs: 1,
     outputs: 1,
     inPins: ['in'],
@@ -205,7 +205,7 @@ export const BLOCK_DEFS = {
     type: 'Sample',
     label: 'Sample',
     icon: 'bi-droplet-half',
-    help: 'TABLESAMPLE — pick a percentage or row count at random.',
+    help: 'Random sample — a percentage (0–100) or a fixed row count.',
     inputs: 1,
     outputs: 1,
     inPins: ['in'],
@@ -217,7 +217,7 @@ export const BLOCK_DEFS = {
     type: 'Cast',
     label: 'Cast',
     icon: 'bi-arrow-repeat',
-    help: 'Per-column DuckDB type cast.',
+    help: 'Per-column type cast (e.g. amount → DECIMAL(10,2)); other columns pass through.',
     inputs: 1,
     outputs: 1,
     inPins: ['in'],
@@ -229,7 +229,7 @@ export const BLOCK_DEFS = {
     type: 'Rename',
     label: 'Rename',
     icon: 'bi-tag',
-    help: 'Per-column rename map.',
+    help: 'Rename columns via old→new pairs; unlisted columns keep their names.',
     inputs: 1,
     outputs: 1,
     inPins: ['in'],
@@ -241,7 +241,7 @@ export const BLOCK_DEFS = {
     type: 'CalcColumn',
     label: 'Calc column',
     icon: 'bi-calculator',
-    help: 'Compute a new column from a DuckDB expression.',
+    help: 'Add a computed column from a DuckDB expression (e.g. price * qty).',
     inputs: 1,
     outputs: 1,
     inPins: ['in'],
@@ -327,7 +327,8 @@ export function paletteGroupsFromCatalog() {
   const groups = {};
   for (const section of PALETTE_ORDER) groups[section] = [];
   for (const def of Object.values(BLOCK_DEFS)) {
-    (groups[def.group] = groups[def.group] || []).push(def.type);
+    if (!groups[def.group]) groups[def.group] = [];
+    groups[def.group].push(def.type);
   }
   return groups;
 }

@@ -123,8 +123,28 @@ def _coerce_str_list(value: Any) -> list[str]:
     return []
 
 
-def _bad_config(node_id: str, message: str) -> CompileError:
-    return CompileError(kind="bad_config", node_id=node_id, pin=None, message=message)
+def _bad_config(
+    node_id: str,
+    message: str,
+    *,
+    column: str | None = None,
+    suggestion: str | None = None,
+) -> CompileError:
+    """Build a ``bad_config`` error, optionally tagged for the editor drawer.
+
+    ``column`` and ``suggestion`` let the per-block settings panel associate
+    the error with the specific input field it implicates (and highlight it),
+    rather than only listing the message — they are the structured hooks the
+    drawer reads, so a bare message still works for callers that omit them.
+    """
+    return CompileError(
+        kind="bad_config",
+        node_id=node_id,
+        pin=None,
+        message=message,
+        column=column,
+        suggestion=suggestion,
+    )
 
 
 def _schema_columns(schema: PinSchema) -> dict[str, ColumnSpec]:

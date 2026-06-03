@@ -36,7 +36,14 @@ def _compile_input_port(
     del inputs  # InputPort has no upstream pins to consume
     fqn = _coerce_str(cfg.get("table_fqn"))
     if not _FQN_RE.match(fqn):
-        errors.append(_bad_config(node_id, "table_fqn must be a UC three-part name"))
+        errors.append(
+            _bad_config(
+                node_id,
+                "Table name must be a three-part catalog.schema.table name.",
+                column="table_fqn",
+                suggestion="INVALID_FQN",
+            )
+        )
         return None
     return CompiledBlock(
         sql=f"SELECT * FROM {fqn}",
@@ -55,7 +62,14 @@ def _infer_input_port(
     del input_schemas
     fqn = _coerce_str(cfg.get("table_fqn"))
     if not _FQN_RE.match(fqn):
-        errors.append(_bad_config(node_id, "table_fqn must be a UC three-part name"))
+        errors.append(
+            _bad_config(
+                node_id,
+                "Table name must be a three-part catalog.schema.table name.",
+                column="table_fqn",
+                suggestion="INVALID_FQN",
+            )
+        )
         return _unknown_schema()
     if seed is not None:
         return seed
@@ -96,6 +110,8 @@ def _compile_data_product(
                 node_id,
                 "DataProduct.materialized_table must be a UC three-part name "
                 "(resolved on save from the referenced output-port).",
+                column="materialized_table",
+                suggestion="INVALID_FQN",
             )
         )
         return None
@@ -121,6 +137,8 @@ def _infer_data_product(
                 node_id,
                 "DataProduct.materialized_table must be a UC three-part name "
                 "(resolved on save from the referenced output-port).",
+                column="materialized_table",
+                suggestion="INVALID_FQN",
             )
         )
         return _unknown_schema()
@@ -167,7 +185,12 @@ def _compile_output_port(
     target = _coerce_str(cfg.get("materialized_table"))
     if not _FQN_RE.match(target):
         errors.append(
-            _bad_config(node_id, "OutputPort.materialized_table must be a UC three-part name.")
+            _bad_config(
+                node_id,
+                "OutputPort.materialized_table must be a UC three-part name.",
+                column="materialized_table",
+                suggestion="INVALID_FQN",
+            )
         )
         return None
     mode = _coerce_str(cfg.get("mode"), default="overwrite").lower()
