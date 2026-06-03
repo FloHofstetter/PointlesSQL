@@ -6,7 +6,7 @@
    save + validate.
 #}
 {% from "pages/_partials/dp_canvas_editor/_form_macros.html" import
-    field_label, available_columns, chip_list, comma_list, cm_field %}
+    field_label, available_columns, chip_list, comma_list, row_editor, cm_field %}
 
 {# InputPort: single UC three-part name. #}
 <template x-if="selectedNode.block_type === 'InputPort'">
@@ -46,19 +46,19 @@
                 @change="onDataProductPicked(selectedNode)"
                 :disabled="!canWrite || !selectedNode.config.dp_id">
             <option value="">— pick a port —</option>
-            <template x-for="port in dpPortsFor(selectedNode.config.dp_id)" :key="port.name">
+            <template x-for="port in dpPortsFor(selectedNode?.config?.dp_id)" :key="port.name">
                 <option :value="port.name"
                         x-text="port.name + ' (' + port.kind + ')' + (port.location ? ' → ' + port.location : '')"></option>
             </template>
         </select>
 
-        <template x-if="selectedNode.config.materialized_table">
+        <template x-if="selectedNode?.config?.materialized_table">
             <div class="form-text small">
                 Resolved to <code x-text="selectedNode.config.materialized_table"></code>.
                 Double-click this block on the canvas to drill into the upstream DP's editor.
             </div>
         </template>
-        <template x-if="!selectedNode.config.materialized_table && selectedNode.config.dp_id">
+        <template x-if="!selectedNode?.config?.materialized_table && selectedNode?.config?.dp_id">
             <div class="alert alert-warning small mt-2 mb-0">
                 The chosen port has no <code>location</code> set — materialise the
                 upstream DP first so its output table is registered.
@@ -116,7 +116,7 @@
         <div class="form-text small mb-2">Output keeps the group keys plus one column per aggregation.</div>
         <hr class="my-3">
         {{ field_label('Aggregations') }}
-        <template x-for="(agg, idx) in selectedNode.config.aggregations" :key="idx">
+        <template x-for="(agg, idx) in (selectedNode?.config?.aggregations || [])" :key="idx">
             <div class="d-flex gap-1 mb-1">
                 <input type="text" class="form-control form-control-sm"
                        x-model="agg.column"
@@ -267,18 +267,14 @@
     </div>
 </template>
 
-{# Sort: order_by entries as JSON. #}
+{# Sort: ORDER BY rows of {column, direction}. #}
 <template x-if="selectedNode.block_type === 'Sort'">
-    <div>
-        <label class="form-label small">ORDER BY (JSON list of {column, direction})</label>
-        <textarea class="form-control form-control-sm font-monospace" rows="4"
-                  :value="JSON.stringify(selectedNode.config.order_by || [], null, 2)"
-                  @input.debounce.300ms="try { selectedNode.config.order_by = JSON.parse($event.target.value || '[]'); onConfigChanged(); } catch (e) {}"
-                  :disabled="!canWrite"
-                  spellcheck="false"></textarea>
-        <div class="form-text small">
-            Example: <code>[{"column":"amt","direction":"desc"}, "ts"]</code>
-        </div>
+    <div class="pql-form-group" x-init="initSortRows()">
+        {{ field_label('ORDER BY') }}
+        {{ row_editor('selectedNode?.config?.order_by', 'addSortKey', 'removeSortKey', 'Add sort column',
+            [{'kind': 'text', 'field': 'column', 'placeholder': 'column', 'flex': 2},
+             {'kind': 'select', 'field': 'direction', 'options': ['asc', 'desc'], 'flex': 1}]) }}
+        {{ available_columns('in', "addSortColumn(col)") }}
     </div>
 </template>
 
@@ -299,33 +295,39 @@
     </div>
 </template>
 
-{# Cast: list of {column, target_type}. #}
+{# Cast: rows of {column, target_type}. #}
 <template x-if="selectedNode.block_type === 'Cast'">
-    <div>
-        <label class="form-label small">Casts (JSON list of {column, target_type})</label>
-        <textarea class="form-control form-control-sm font-monospace" rows="6"
-                  :value="JSON.stringify(selectedNode.config.casts || [], null, 2)"
-                  @input.debounce.300ms="try { selectedNode.config.casts = JSON.parse($event.target.value || '[]'); onConfigChanged(); } catch (e) {}"
-                  :disabled="!canWrite"
-                  spellcheck="false"></textarea>
-        <div class="form-text small">
-            Example: <code>[{"column":"amt","target_type":"DECIMAL(10,2)"}]</code>
-        </div>
+    <div class="pql-form-group">
+        {{ field_label('Per-column type casts') }}
+        {{ row_editor('selectedNode?.config?.casts', 'addCast', 'removeCast', 'Add cast',
+            [{'kind': 'text', 'field': 'column', 'placeholder': 'column', 'flex': 2},
+             {'kind': 'text', 'field': 'target_type', 'placeholder': 'DECIMAL(10,2)', 'flex': 2, 'list': 'pql-duckdb-types'}]) }}
+        <datalist id="pql-duckdb-types">
+            <option value="VARCHAR"></option>
+            <option value="BIGINT"></option>
+            <option value="INTEGER"></option>
+            <option value="DOUBLE"></option>
+            <option value="DECIMAL(10,2)"></option>
+            <option value="BOOLEAN"></option>
+            <option value="DATE"></option>
+            <option value="TIMESTAMP"></option>
+            <option value="TIME"></option>
+            <option value="BLOB"></option>
+        </datalist>
+        {{ available_columns('in', "addCastColumn(col)") }}
     </div>
 </template>
 
-{# Rename: {old: new} map. #}
+{# Rename: old→new pairs (edited through a transient buffer, saved as a map). #}
 <template x-if="selectedNode.block_type === 'Rename'">
-    <div>
-        <label class="form-label small">Renames (JSON {old: new} map)</label>
-        <textarea class="form-control form-control-sm font-monospace" rows="6"
-                  :value="JSON.stringify(selectedNode.config.renames || {}, null, 2)"
-                  @input.debounce.300ms="try { selectedNode.config.renames = JSON.parse($event.target.value || '{}'); onConfigChanged(); } catch (e) {}"
-                  :disabled="!canWrite"
-                  spellcheck="false"></textarea>
-        <div class="form-text small">
-            Example: <code>{"customer_id": "cust_id"}</code>
-        </div>
+    <div class="pql-form-group" x-init="initRenameRows()">
+        {{ field_label('Rename columns (old → new)') }}
+        {{ row_editor('renameRowsBuf', 'addRename', 'removeRename', 'Add rename',
+            [{'kind': 'text', 'field': 'from', 'placeholder': 'old name', 'flex': 2},
+             {'kind': 'static', 'text': '→'},
+             {'kind': 'text', 'field': 'to', 'placeholder': 'new name', 'flex': 2}],
+            on_change='syncRenames()') }}
+        {{ available_columns('in', "addRename(); renameRowsBuf[renameRowsBuf.length - 1].from = col; syncRenames()") }}
     </div>
 </template>
 
@@ -380,7 +382,7 @@
             </template>
         </div>
 
-        <template x-if="selectedNode.config.mode === 'merge'">
+        <template x-if="selectedNode?.config?.mode === 'merge'">
             <div>
                 {{ chip_list('merge_on', 'mergeOnInput', 'Merge-on columns', pin='in') }}
             </div>
@@ -437,7 +439,7 @@
                    :disabled="!canWrite">
             <label class="form-check-label small" for="unnest-ordinality">Add an ordinality (1-based index) column</label>
         </div>
-        <template x-if="selectedNode.config.with_ordinality">
+        <template x-if="selectedNode?.config?.with_ordinality">
             <div class="mt-2">
                 {{ field_label('Ordinality column name') }}
                 <input type="text" class="form-control form-control-sm"

@@ -19,10 +19,10 @@
    an Alpine expression run with ``col`` in scope; ``exclude_expr`` greys out
    columns already chosen so the same one is not added twice. #}
 {% macro available_columns(pin, on_click, exclude_expr='[]', label='Available:') -%}
-<template x-if="upstreamColumns(selectedNode.id, '{{ pin }}').length > 0">
+<template x-if="upstreamColumns(selectedNode?.id, '{{ pin }}').length > 0">
     <div class="form-text small pql-col-suggest">
         <span class="text-muted">{{ label }}</span>
-        <template x-for="col in upstreamColumns(selectedNode.id, '{{ pin }}')" :key="'{{ pin }}:' + col">
+        <template x-for="col in upstreamColumns(selectedNode?.id, '{{ pin }}')" :key="'{{ pin }}:' + col">
             <button type="button" class="btn btn-link btn-sm p-0 me-2"
                     @click="{{ on_click }}"
                     :disabled="!canWrite || ({{ exclude_expr }}).includes(col)"
@@ -38,7 +38,7 @@
 {% macro chip_list(field, input_model, label, placeholder='column name + Enter', pin=None, suggest=True) -%}
 {{ field_label(label) }}
 <div class="d-flex flex-wrap gap-1 mb-2">
-    <template x-for="(col, idx) in (selectedNode.config.{{ field }} || [])" :key="idx + ':' + col">
+    <template x-for="(col, idx) in (selectedNode?.config?.{{ field }} || [])" :key="idx + ':' + col">
         <span class="badge pql-chip bg-secondary d-inline-flex align-items-center">
             <span x-text="col"></span>
             <button type="button" class="btn-close btn-close-white ms-1"
@@ -75,6 +75,42 @@
        spellcheck="false">
 {% if hint %}<div class="form-text small">{{ hint }}</div>{% endif %}
 {% if pin and suggest %}{{ available_columns(pin, "addColumnTo('" ~ field ~ "', col)", "(selectedNode.config." ~ field ~ " || [])") }}{% endif %}
+{%- endmacro %}
+
+{# Structured multi-row editor over a list of objects — the GroupBy-aggregation
+   pattern generalised.  ``cells`` describes each column: {kind:'text', field,
+   placeholder?, flex?, list?} or {kind:'select', field, options, flex?} or
+   {kind:'static', text}.  ``on_change`` is the Alpine expression run after any
+   edit (defaults to onConfigChanged; Rename passes syncRenames since its rows
+   are a transient buffer that rebuilds the {old:new} map). #}
+{% macro row_editor(rows_expr, add_method, remove_method, add_label, cells, on_change='onConfigChanged()') -%}
+<template x-for="(row, idx) in ({{ rows_expr }} || [])" :key="idx">
+    <div class="d-flex gap-1 mb-1 align-items-center">
+        {% for cell in cells -%}
+        {% if cell.kind == 'select' -%}
+        <select class="form-select form-select-sm" x-model="row.{{ cell.field }}"
+                @change="{{ on_change }}" :disabled="!canWrite" style="flex: {{ cell.flex | default(1) }};">
+            {% for opt in cell.options %}<option value="{{ opt }}">{{ opt }}</option>{% endfor %}
+        </select>
+        {%- elif cell.kind == 'static' -%}
+        <span class="text-muted small px-1">{{ cell.text }}</span>
+        {%- else -%}
+        <input type="text" class="form-control form-control-sm" x-model="row.{{ cell.field }}"
+               @input.debounce.300ms="{{ on_change }}" :disabled="!canWrite"
+               placeholder="{{ cell.placeholder | default('') }}"
+               {% if cell.list %}list="{{ cell.list }}" {% endif %}style="flex: {{ cell.flex | default(1) }};"
+               spellcheck="false">
+        {%- endif %}
+        {%- endfor %}
+        <button type="button" class="btn btn-sm btn-outline-danger" @click="{{ remove_method }}(idx)"
+                :disabled="!canWrite" title="Remove row">
+            <i class="bi bi-x"></i>
+        </button>
+    </div>
+</template>
+<button type="button" class="btn btn-sm btn-outline-secondary mt-1" @click="{{ add_method }}()" :disabled="!canWrite">
+    <i class="bi bi-plus"></i> {{ add_label }}
+</button>
 {%- endmacro %}
 
 {# CodeMirror DuckDB-grammar host (single-line predicate or multi-line SQL). #}

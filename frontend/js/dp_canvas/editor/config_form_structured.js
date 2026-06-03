@@ -44,4 +44,96 @@ export const configFormStructuredMethods = {
       .filter(Boolean);
     this.onConfigChanged();
   },
+
+  // --- Sort: rows of {column, direction} --------------------------------
+
+  initSortRows() {
+    const node = this.selectedNode;
+    if (!node) return;
+    if (!Array.isArray(node.config.order_by)) node.config.order_by = [];
+    // Older docs may hold bare-string entries; normalise to objects so the
+    // row editor can bind both cells (the backend accepts either shape).
+    node.config.order_by = node.config.order_by.map((e) =>
+      typeof e === 'string' ? { column: e, direction: 'asc' } : e
+    );
+  },
+  addSortKey() {
+    const node = this.selectedNode;
+    if (!node) return;
+    if (!Array.isArray(node.config.order_by)) node.config.order_by = [];
+    node.config.order_by.push({ column: '', direction: 'asc' });
+    this.onConfigChanged();
+  },
+  addSortColumn(col) {
+    const node = this.selectedNode;
+    const name = String(col == null ? '' : col).trim();
+    if (!node || !name) return;
+    if (!Array.isArray(node.config.order_by)) node.config.order_by = [];
+    node.config.order_by.push({ column: name, direction: 'asc' });
+    this.onConfigChanged();
+  },
+  removeSortKey(idx) {
+    const node = this.selectedNode;
+    if (!node || !Array.isArray(node.config.order_by)) return;
+    node.config.order_by.splice(idx, 1);
+    this.onConfigChanged();
+  },
+
+  // --- Cast: rows of {column, target_type} ------------------------------
+
+  addCast() {
+    const node = this.selectedNode;
+    if (!node) return;
+    if (!Array.isArray(node.config.casts)) node.config.casts = [];
+    node.config.casts.push({ column: '', target_type: '' });
+    this.onConfigChanged();
+  },
+  addCastColumn(col) {
+    const node = this.selectedNode;
+    const name = String(col == null ? '' : col).trim();
+    if (!node || !name) return;
+    if (!Array.isArray(node.config.casts)) node.config.casts = [];
+    node.config.casts.push({ column: name, target_type: '' });
+    this.onConfigChanged();
+  },
+  removeCast(idx) {
+    const node = this.selectedNode;
+    if (!node || !Array.isArray(node.config.casts)) return;
+    node.config.casts.splice(idx, 1);
+    this.onConfigChanged();
+  },
+
+  // --- Rename: a {old: new} MAP edited through a transient row buffer ----
+  // The buffer (renameRowsBuf, a component field) is the editing surface;
+  // syncRenames() rebuilds config.renames from it on every change.  The
+  // buffer never persists — the save document carries only node.config.
+
+  initRenameRows() {
+    const node = this.selectedNode;
+    this.renameRowsBuf = node
+      ? Object.entries(node.config.renames || {}).map(([from, to]) => ({
+          from,
+          to: String(to),
+        }))
+      : [];
+  },
+  addRename() {
+    this.renameRowsBuf.push({ from: '', to: '' });
+    this.syncRenames();
+  },
+  removeRename(idx) {
+    this.renameRowsBuf.splice(idx, 1);
+    this.syncRenames();
+  },
+  syncRenames() {
+    const node = this.selectedNode;
+    if (!node) return;
+    const map = {};
+    for (const r of this.renameRowsBuf) {
+      const from = String(r.from || '').trim();
+      if (from) map[from] = String(r.to || '');
+    }
+    node.config.renames = map;
+    this.onConfigChanged();
+  },
 };

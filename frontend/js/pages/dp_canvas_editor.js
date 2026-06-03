@@ -122,6 +122,7 @@ export function dpCanvasEditor(product, ctx) {
     antiJoinKeyInput: '',
     groupKeyInput: '',
     mergeOnInput: '',
+    renameRowsBuf: [],
 
     // Run feedback lives in an inline dock anchored to the canvas
     // (not a modal): `running` while the POST is in flight, then either
