@@ -67,14 +67,20 @@ async def get_data_product(
         ]
 
     tables_payload = serialise_table_contracts(contract)
-    # Attach glossary term labels per column so the Contract tab can
-    # badge each column with the shared vocabulary bound to it.
+    # Attach glossary terms per column so the Data tab can badge each
+    # column with the shared vocabulary bound to it — both the bare
+    # labels (back-compat) and slug-carrying links to /glossary/{slug}.
     term_map = glossary_service.terms_for_schema(
+        factory, workspace_id=workspace_id, catalog=catalog, schema=schema
+    )
+    link_map = glossary_service.terms_for_schema_with_slugs(
         factory, workspace_id=workspace_id, catalog=catalog, schema=schema
     )
     for table in tables_payload:
         for column in table["columns"]:
-            column["glossary_terms"] = term_map.get(f"{table['name']}.{column['name']}", [])
+            key = f"{table['name']}.{column['name']}"
+            column["glossary_terms"] = term_map.get(key, [])
+            column["glossary_links"] = link_map.get(key, [])
 
     return {
         "product": serialise_product(

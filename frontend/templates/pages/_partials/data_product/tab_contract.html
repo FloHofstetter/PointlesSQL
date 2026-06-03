@@ -54,6 +54,58 @@
                         </div>
                     </div>
 
+                    <!-- Self-service access: request / pending banner + steward decisions. -->
+                    <template x-if="accessStatus && !accessStatus.can_select && !accessStatus.has_pending">
+                        <div class="card mb-3 pql-dp-access-request">
+                            <div class="card-body py-2 d-flex flex-wrap align-items-center gap-2">
+                                <span class="small">
+                                    <i class="bi bi-shield-lock me-1"></i>You don't have read access to this data product yet.
+                                </span>
+                                <input type="text" class="form-control form-control-sm pql-dp-access-note"
+                                       style="max-width: 18rem" placeholder="Why do you need it? (optional)"
+                                       x-model="accessNote">
+                                <button class="btn btn-sm btn-primary ms-auto" :disabled="accessBusy"
+                                        @click="requestAccess()">
+                                    <i class="bi bi-key me-1"></i>Request access
+                                </button>
+                            </div>
+                        </div>
+                    </template>
+                    <template x-if="accessStatus && accessStatus.has_pending">
+                        <div class="alert alert-info py-2 pql-dp-access-pending">
+                            <i class="bi bi-hourglass-split me-1"></i>Your access request is pending a steward's decision.
+                        </div>
+                    </template>
+                    <template x-if="accessStatus && accessStatus.is_steward && accessRequests.length > 0">
+                        <div class="card mb-3 pql-dp-access-inbox">
+                            <div class="card-body py-2">
+                                <h6 class="mb-2">
+                                    <i class="bi bi-inbox me-1"></i>Pending access requests
+                                </h6>
+                                <template x-for="r in accessRequests" :key="r.id">
+                                    <div class="d-flex align-items-center flex-wrap gap-2 border-top pt-2">
+                                        <span class="small">
+                                            <strong x-text="(r.requester && (r.requester.display_name || r.requester.email)) || 'A user'"></strong>
+                                            <template x-if="r.request_note">
+                                                <span class="text-muted" x-text="' — ' + r.request_note"></span>
+                                            </template>
+                                        </span>
+                                        <span class="ms-auto d-flex gap-1">
+                                            <button class="btn btn-sm btn-success" :disabled="accessBusy"
+                                                    @click="approveAccess(r.id)">
+                                                <i class="bi bi-check2 me-1"></i>Approve &amp; grant
+                                            </button>
+                                            <button class="btn btn-sm btn-outline-danger" :disabled="accessBusy"
+                                                    @click="denyAccess(r.id)">
+                                                <i class="bi bi-x-lg me-1"></i>Deny
+                                            </button>
+                                        </span>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </template>
+
                     <template x-for="t in detail.tables" :key="t.name">
                         <div class="card mb-3 pql-dp-data-table">
                             <div class="card-body">
@@ -94,10 +146,12 @@
                                         <li class="list-group-item px-0">
                                             <div class="d-flex align-items-baseline flex-wrap gap-2">
                                                 <strong x-text="c.name"></strong>
-                                                <template x-for="term in (c.glossary_terms || [])" :key="term">
-                                                    <span class="badge text-bg-light border" title="Business glossary term">
-                                                        <i class="bi bi-book"></i> <span x-text="term"></span>
-                                                    </span>
+                                                <template x-for="g in (c.glossary_links || [])" :key="g.slug">
+                                                    <a :href="'/glossary/' + g.slug"
+                                                       class="badge text-bg-light border text-decoration-none pql-dp-glossary-link"
+                                                       title="Business glossary term — open its definition">
+                                                        <i class="bi bi-book"></i> <span x-text="g.term"></span>
+                                                    </a>
                                                 </template>
                                                 <span class="text-muted small ms-auto"
                                                       :title="c.type"

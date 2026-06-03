@@ -296,6 +296,53 @@ def terms_for_schema(
     return out
 
 
+def terms_for_schema_with_slugs(
+    session_factory: _SessionFactory,
+    *,
+    workspace_id: int,
+    catalog: str,
+    schema: str,
+) -> dict[str, list[dict[str, str]]]:
+    """Return a ``"table.column" -> [{term, slug}, ...]`` map for one schema.
+
+    The slug-carrying sibling of :func:`terms_for_schema`, so the
+    Data-tab glossary badges can deep-link to ``/glossary/{slug}``
+    instead of rendering a bare label.
+
+    Args:
+        session_factory: Sessionmaker callable.
+        workspace_id: Active workspace (terms are workspace-scoped).
+        catalog: UC catalog segment.
+        schema: UC schema segment.
+
+    Returns:
+        Dict keyed by ``"<table>.<column>"`` mapping to a list of
+        ``{"term", "slug"}`` dicts, sorted by term.
+    """
+    out: dict[str, list[dict[str, str]]] = {}
+    with session_factory() as session:
+        rows = list(
+            session.execute(
+                select(
+                    GlossaryTermColumn.table_name,
+                    GlossaryTermColumn.column_name,
+                    GlossaryTerm.term,
+                    GlossaryTerm.slug,
+                )
+                .join(GlossaryTerm, GlossaryTerm.id == GlossaryTermColumn.glossary_term_id)
+                .where(
+                    GlossaryTerm.workspace_id == workspace_id,
+                    GlossaryTermColumn.catalog == catalog,
+                    GlossaryTermColumn.schema_name == schema,
+                )
+                .order_by(GlossaryTerm.term.asc())
+            ).all()
+        )
+    for table_name, column_name, term, slug in rows:
+        out.setdefault(f"{table_name}.{column_name}", []).append({"term": term, "slug": slug})
+    return out
+
+
 def terms_for_schemas(
     session_factory: _SessionFactory,
     *,

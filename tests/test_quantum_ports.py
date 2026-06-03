@@ -193,6 +193,20 @@ def test_glossary_terms_for_schemas_bulk() -> None:
     assert glossary_service.terms_for_schemas(_factory(), workspace_id=1, pairs=[]) == {}
 
 
+def test_glossary_terms_for_schema_with_slugs() -> None:
+    """The slug-carrying variant keys ``{term, slug}`` by table.column."""
+    term = glossary_service.create_term(
+        _factory(), workspace_id=1, slug="slug-rev", term="Net Revenue"
+    )
+    glossary_service.bind_column(
+        _factory(), term_id=term.id, catalog="main", schema="slugfin", table="ledger", column="net"
+    )
+    by_col = glossary_service.terms_for_schema_with_slugs(
+        _factory(), workspace_id=1, catalog="main", schema="slugfin"
+    )
+    assert by_col == {"ledger.net": [{"term": "Net Revenue", "slug": "slug-rev"}]}
+
+
 def test_glossary_rejects_duplicate_slug() -> None:
     glossary_service.create_term(_factory(), workspace_id=1, slug="dup", term="Dup")
     with pytest.raises(ValueError, match="already exists"):

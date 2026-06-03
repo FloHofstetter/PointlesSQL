@@ -17,6 +17,16 @@ defined in ``scripts/clusters.json``. -->
 
 ### Added
 
+- **Self-service access** for data products — a consumer who lacks
+  `SELECT` can request access from the **Data** tab; the product steward
+  (or an admin) approves it from a pending-requests panel on the same
+  page, at which point the app issues a **real UC `SELECT` grant**
+  through the soyuz client (best-effort per table — a rejected table is
+  reported, the rest still grant). Requests live in an own-metadata
+  `data_product_access_requests` ledger; both the new request (to
+  steward + admins) and the decision (to the requester) fan a
+  notification out. Glossary badges on the Data tab now deep-link to
+  `/glossary/{slug}` (the detail payload carries term slugs).
 - **"Ask this data product"** — a natural-language panel on the
   data-product detail page (new **Ask** tab) for business consumers. It
   opens a Lens chat session pre-seeded with the product's tables,

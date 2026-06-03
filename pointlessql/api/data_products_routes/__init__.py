@@ -18,6 +18,9 @@ from pointlessql.api.data_products_routes._shared import (
     load_one,
     serialise_product,
 )
+from pointlessql.api.data_products_routes.access_requests import (
+    router as _access_requests_router,
+)
 from pointlessql.api.data_products_routes.active_reviewer import (
     router as _active_reviewer_router,
 )
@@ -140,6 +143,7 @@ router.include_router(_schema_versions_router)
 router.include_router(_entity_candidates_router)
 router.include_router(_canvas_router)
 router.include_router(_ask_router)
+router.include_router(_access_requests_router)
 
 
 # Backwards-compatible aliases — ``_load_one`` was the original

@@ -3002,6 +3002,19 @@ PointlesSQL
    browser users use. 8 commits, rc204→rc212, ALL LOCAL until
    final push.
 │
+├── Self-Service Access & Export — request → grant for consumers  ✅ shipped (local, 2026-06-03)
+│   │   A consumer who lacks SELECT requests access from the Data tab;
+│   │   the steward / admin approves from a pending-requests panel on
+│   │   the same page, and the app issues a real UC SELECT grant through
+│   │   the soyuz client (best-effort per table — a rejected table is
+│   │   reported, the rest still grant; PointlesSQL never writes
+│   │   lakehouse permissions directly).  Requests live in an
+│   │   own-metadata ``data_product_access_requests`` ledger (alembic
+│   │   ``t8h0j2l4n6p8``); the new request notifies steward + admins, the
+│   │   decision notifies the requester, both via the existing fanout.
+│   │   Glossary badges on the Data tab now deep-link to
+│   │   ``/glossary/{slug}``.  New routes + model + 7 pytest.  ALL LOCAL.
+│
 ├── Ask this Data Product — DP-scoped NL→data panel for consumers  ✅ shipped (local, 2026-06-03)
 │   │   A new "Ask" tab on the DP detail page opens a Lens chat session
 │   │   pre-seeded with this product's tables / columns / business
