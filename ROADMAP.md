@@ -3002,6 +3002,21 @@ PointlesSQL
    browser users use. 8 commits, rc204→rc212, ALL LOCAL until
    final push.
 │
+├── Ask this Data Product — DP-scoped NL→data panel for consumers  ✅ shipped (local, 2026-06-03)
+│   │   A new "Ask" tab on the DP detail page opens a Lens chat session
+│   │   pre-seeded with this product's tables / columns / business
+│   │   concepts, so a non-technical user can ask in plain language and
+│   │   get real figures back.  The previously-stubbed Lens ``query``
+│   │   tool now genuinely executes: it reads each referenced Delta
+│   │   table from its resolved location, masks classified columns at
+│   │   the source (so masking survives joins / aggregations), registers
+│   │   the masked frame into in-process DuckDB, runs the gated SELECT,
+│   │   and returns rows — after a per-table SELECT-privilege check; the
+│   │   chat loop wires a principal-scoped UC client, unmask is
+│   │   admin-only.  Gated ``require_user`` (the SELECT gate protects the
+│   │   data, not the scope).  New ask routes + tab + 7 pytest, 4570/0.
+│   │   ALL LOCAL.
+│
 ├── Consumer Data View — DP detail page made readable for business domains  ✅ shipped (local, 2026-06-03)
 │   │   The former Contract tab is now a meaning-first "Data" view for
 │   │   domain consumers who don't know the platform: each column leads

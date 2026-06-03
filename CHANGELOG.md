@@ -17,6 +17,23 @@ defined in ``scripts/clusters.json``. -->
 
 ### Added
 
+- **"Ask this data product"** — a natural-language panel on the
+  data-product detail page (new **Ask** tab) for business consumers. It
+  opens a Lens chat session pre-seeded with the product's tables,
+  columns, and business concepts, so the assistant answers grounded in
+  that product and can run governed read-only SELECTs to return real
+  figures.  Gated by `require_user` (not analyst scope) so Fachbereiche
+  can use it; the per-table SELECT check keeps a consumer to data they
+  may read, and a clean empty-state shows when no LLM provider is
+  configured.
+- The Lens `query` tool now **actually executes** SELECTs.  Previously
+  stubbed (gated SQL + empty rows), it now reads each referenced Delta
+  table from its resolved storage location, **masks classified columns
+  at the source** (so masking survives joins / aggregations), registers
+  the masked frame into an in-process DuckDB, runs the gated SQL, and
+  returns rows — after a per-table SELECT-privilege check.  The chat
+  loop wires a principal-scoped UC client so the tool resolves +
+  authorises tables; `unmask` is admin-only.
 - **Marketplace discovery view** on the `/data-products` list — a new
   card-grid view (now the default) for business users browsing for data.
   Cards surface the owning domain, endorsement / certification badges, a

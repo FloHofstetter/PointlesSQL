@@ -125,6 +125,11 @@
                     data-pql-tab-key="contract">Data</button>
         </li>
         <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-ask-btn" data-bs-toggle="tab"
+                    data-bs-target="#tab-ask" type="button" role="tab"
+                    data-pql-tab-key="ask"><i class="bi bi-stars me-1"></i>Ask</button>
+        </li>
+        <li class="nav-item" role="presentation">
             <button class="nav-link" id="tab-diff-btn" data-bs-toggle="tab"
                     data-bs-target="#tab-diff" type="button" role="tab"
                     data-pql-tab-key="diff">Diff</button>
@@ -181,6 +186,8 @@
         {% include "pages/_partials/data_product/tab_overview.html" %}
 
         {% include "pages/_partials/data_product/tab_contract.html" %}
+
+        {% include "pages/_partials/data_product/tab_ask.html" %}
 
         {% include "pages/_partials/data_product/tab_diff.html" %}
 

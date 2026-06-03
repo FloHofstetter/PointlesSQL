@@ -61,6 +61,32 @@ class LensProviderNotConfiguredError(ValidationError):
     error_code: ErrorCode = ErrorCode.LENS_PROVIDER_NOT_CONFIGURED
 
 
+def _principal_uc_client(
+    factory: sessionmaker[Session],
+    settings: Settings,
+    owner_id: int,
+) -> Any:
+    """Build a principal-scoped UC facade for the analyst, or ``None``.
+
+    The ``query`` tool needs a live UC client to resolve + SELECT-gate
+    the tables a generated SELECT touches; the catalog / describe tools
+    use it too.  Returns ``None`` when the owner can't be resolved to an
+    email, so detached callers keep the no-runtime tool behaviour.
+    Mirrors the per-request construction in ``get_uc_client`` — no
+    explicit close, the underlying HTTP client is GC-managed exactly as
+    on the route path.
+    """
+    from pointlessql.models import User
+    from pointlessql.services.unitycatalog import UnityCatalogClient
+
+    with factory() as session:
+        user = session.get(User, owner_id)
+        email = user.email if user else None
+    if not email:
+        return None
+    return UnityCatalogClient.for_principal(settings, email)
+
+
 async def run_chat_turn(
     *,
     factory: sessionmaker[Session],
@@ -124,7 +150,7 @@ async def run_chat_turn(
         lens_session_id=session_id,
         factory=factory,
         settings=settings,
-        uc_client=None,
+        uc_client=_principal_uc_client(factory, settings, owner_id),
     )
 
     transcript = list_session_messages(factory, session_id=session_id)

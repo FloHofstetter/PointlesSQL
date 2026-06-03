@@ -23,6 +23,7 @@ from pointlessql.api.data_products_routes.active_reviewer import (
 )
 from pointlessql.api.data_products_routes.activity import router as _activity_router
 from pointlessql.api.data_products_routes.apply import router as _apply_router
+from pointlessql.api.data_products_routes.ask import router as _ask_router
 from pointlessql.api.data_products_routes.bitemporal_policy import (
     router as _bitemporal_policy_router,
 )
@@ -138,6 +139,7 @@ router.include_router(_apply_router)
 router.include_router(_schema_versions_router)
 router.include_router(_entity_candidates_router)
 router.include_router(_canvas_router)
+router.include_router(_ask_router)
 
 
 # Backwards-compatible aliases — ``_load_one`` was the original

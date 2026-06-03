@@ -1,0 +1,83 @@
+{# Ask-this-data-product panel — a DP-scoped natural-language chat over
+   the Lens engine.  State + handlers live on the dataProductDetail
+   factory (askOpened / askMessages / sendAsk / openAsk); the tab is
+   lazy-opened on first show via wireLazyTabs. #}
+<div class="tab-pane fade" id="tab-ask" role="tabpanel" aria-labelledby="tab-ask-btn">
+    <div class="pql-dp-ask">
+        <template x-if="askLoading">
+            <div class="text-muted small p-3">
+                <span class="spinner-border spinner-border-sm me-1"></span>Starting the assistant…
+            </div>
+        </template>
+
+        <template x-if="askError">
+            <div class="alert alert-danger pql-dp-ask-error" x-text="askError"></div>
+        </template>
+
+        <template x-if="askOpened && !askConfigured">
+            <div class="alert alert-warning pql-dp-ask-unconfigured">
+                <i class="bi bi-info-circle me-1"></i>
+                The AI assistant isn't set up for this workspace yet — an administrator can add
+                an LLM provider key under Admin → Lens providers. In the meantime, the
+                <strong>Data</strong> tab describes every table and column in plain language.
+            </div>
+        </template>
+
+        <div class="pql-dp-ask-thread mb-3" x-show="askOpened">
+            <template x-for="(m, i) in askMessages" :key="i">
+                <div class="pql-dp-ask-msg mb-2" :class="m.role === 'user' ? 'text-end' : ''">
+                    <div class="d-inline-block px-3 py-2 rounded pql-dp-ask-bubble"
+                         :class="m.role === 'user'
+                            ? 'bg-primary text-white'
+                            : (m.error ? 'bg-danger-subtle text-danger-emphasis' : 'bg-body-secondary')">
+                        <span x-text="m.content"></span>
+                        <template x-if="m.rows && m.rows.length">
+                            <div class="table-responsive mt-2">
+                                <table class="table table-sm table-bordered mb-0 pql-dp-ask-table">
+                                    <thead>
+                                        <tr>
+                                            <template x-for="c in m.columns" :key="c">
+                                                <th x-text="c"></th>
+                                            </template>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <template x-for="(r, ri) in m.rows" :key="ri">
+                                            <tr>
+                                                <template x-for="(cell, ci) in r" :key="ci">
+                                                    <td x-text="cell === null ? '∅' : cell"></td>
+                                                </template>
+                                            </tr>
+                                        </template>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </template>
+            <template x-if="askThinking">
+                <div class="text-muted small">
+                    <span class="spinner-border spinner-border-sm me-1"></span>Thinking…
+                </div>
+            </template>
+        </div>
+
+        <div x-show="askOpened && askConfigured">
+            <form @submit.prevent="sendAsk()" class="d-flex gap-2">
+                <input type="text" class="form-control pql-dp-ask-input"
+                       placeholder="Ask about this data product…"
+                       x-model="askInput" :disabled="askThinking">
+                <button type="submit" class="btn btn-primary"
+                        :disabled="askThinking || !askInput.trim()">
+                    <i class="bi bi-send"></i>
+                </button>
+            </form>
+            <p class="text-muted small mt-2 mb-0">
+                <i class="bi bi-shield-lock me-1"></i>
+                Answers run read-only queries limited to what you're allowed to see; sensitive
+                columns stay masked.
+            </p>
+        </div>
+    </div>
+</div>
