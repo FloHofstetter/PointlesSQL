@@ -37,6 +37,23 @@ export const configFormStructuredMethods = {
     this.onConfigChanged();
   },
 
+  // --- Window function arity hints --------------------------------------
+  // Window's args mean different things per function, so the form hides the
+  // Args field for the ranking functions (which take none) and labels what
+  // the args are for the rest.
+
+  windowTakesArgs() {
+    const fn =
+      (this.selectedNode && this.selectedNode.config && this.selectedNode.config.function) || '';
+    return !['row_number', 'rank', 'dense_rank'].includes(fn);
+  },
+  windowArgsHint() {
+    const fn =
+      (this.selectedNode && this.selectedNode.config && this.selectedNode.config.function) || '';
+    if (['lag', 'lead'].includes(fn)) return 'Args: column, then offset (e.g. amount, 1).';
+    return 'Args: the column to aggregate (e.g. amount).';
+  },
+
   // --- Array (chip / comma) list fields ----------------------------------
 
   addColumnTo(field, col, opts) {

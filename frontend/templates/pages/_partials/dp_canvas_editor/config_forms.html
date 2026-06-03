@@ -191,7 +191,12 @@
                x-model="selectedNode.config.target_alias"
                @input.debounce.300ms="onConfigChanged()"
                :disabled="!canWrite">
-        {{ comma_list('args', 'Args (comma-separated)', placeholder='amount', pin='in') }}
+        <template x-if="windowTakesArgs()">
+            <div>
+                {{ comma_list('args', 'Args (comma-separated)', placeholder='amount', pin='in') }}
+                <div class="form-text small" x-text="windowArgsHint()"></div>
+            </div>
+        </template>
         {{ comma_list('partition_by', 'PARTITION BY (comma-separated)', placeholder='country', pin='in') }}
         {{ comma_list('order_by', 'ORDER BY (comma-separated)', placeholder='ts', pin='in') }}
     </div>
@@ -271,20 +276,24 @@
     </div>
 </template>
 
-{# Sample: kind + value. #}
+{# Sample: kind + value (a percentage of the table, or a fixed row count). #}
 <template x-if="selectedNode.block_type === 'Sample'">
-    <div>
-        <label class="form-label small">Kind</label>
+    <div class="pql-form-group">
+        {{ field_label('Kind') }}
         <select class="form-select form-select-sm mb-2" x-model="selectedNode.config.kind"
                 @change="onConfigChanged()" :disabled="!canWrite">
             <option value="percent">percent</option>
             <option value="rows">rows</option>
         </select>
-        <label class="form-label small">Value</label>
-        <input type="number" min="0" class="form-control form-control-sm"
+        <label class="form-label small fw-bold mb-1"
+               x-text="selectedNode.config.kind === 'rows' ? 'Row count' : 'Percent (0–100)'"></label>
+        <input type="number" min="0"
+               :max="selectedNode.config.kind === 'rows' ? null : 100"
+               class="form-control form-control-sm"
                x-model.number="selectedNode.config.value"
                @input.debounce.300ms="onConfigChanged()"
                :disabled="!canWrite">
+        <div class="form-text small">Picks rows at random — a percentage of the table or a fixed count.</div>
     </div>
 </template>
 
@@ -324,19 +333,17 @@
     </div>
 </template>
 
-{# CalcColumn: CodeMirror predicate + alias. #}
+{# CalcColumn: DuckDB expression + the name of the new column. #}
 <template x-if="selectedNode.block_type === 'CalcColumn'">
-    <div>
-        <label class="form-label small">Expression (DuckDB)</label>
-        <div x-ref="cmCalcExpr"
-             x-init="mountPredicateCm($refs.cmCalcExpr, selectedNode.id, 'expression')"
-             class="pql-canvas-cm-host border rounded mb-2"></div>
-        <label class="form-label small">Target alias</label>
+    <div class="pql-form-group">
+        {{ cm_field('Expression (DuckDB)', 'cmCalcExpr', 'expression',
+            hint='Reference upstream columns, e.g. price * qty.') }}
+        {{ field_label('New column name') }}
         <input type="text" class="form-control form-control-sm"
                x-model="selectedNode.config.target_alias"
                @input.debounce.300ms="onConfigChanged()"
                :disabled="!canWrite"
-               placeholder="amount_x_1_1">
+               placeholder="total_amount">
     </div>
 </template>
 
