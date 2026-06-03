@@ -57,6 +57,11 @@ from pointlessql.services.dbt import (
     DBTSubprocess,
     dbt_duckdb_available,
 )
+from pointlessql.services.hermes import (
+    HermesInstanceManager,
+    HermesStartupError,
+    hermes_available,
+)
 from pointlessql.services.mlflow_subprocess import (
     MLflowStartupError,
     MLflowSubprocess,
@@ -414,6 +419,37 @@ def make_lifespan(
                     dbt_proc.manifest_path,
                 )
 
+        # Hermes agent dashboard.  The manager always exists (so the
+        # ``/hermes`` proxy can answer), but it only spawns a child
+        # process in managed mode.  A managed launch needs the
+        # ``hermes`` CLI on PATH; when it is missing or the spawn
+        # fails we log a warning and leave the manager with no running
+        # instance so the Agent tab degrades to a clear message instead
+        # of bringing the whole start-up down.  External mode reaches a
+        # Hermes someone else runs and never spawns anything here.
+        app.state.hermes_manager = None
+        if settings.hermes.enabled:
+            hermes_manager = HermesInstanceManager(settings.hermes)
+            app.state.hermes_manager = hermes_manager
+            if (
+                hermes_manager.is_managed
+                and not fast_test_lifespan
+                and hermes_available(settings.hermes.command)
+            ):
+                try:
+                    await hermes_manager.start_shared()
+                except HermesStartupError as exc:
+                    logger.warning(
+                        "Hermes dashboard failed to start; /agent tab unavailable: %s",
+                        exc,
+                    )
+            elif hermes_manager.is_managed and not fast_test_lifespan:
+                logger.warning(
+                    "Hermes managed mode enabled but the %r launcher is not on PATH; "
+                    "/agent tab unavailable until it is installed or external mode is set",
+                    settings.hermes.command,
+                )
+
         # Browser notebook editor.  Build a process-global
         # :class:`KernelRegistry` keyed by ``(user_id, notebook_path)``
         # and attach it to ``app.state`` so the WebSocket handler in
@@ -498,6 +534,8 @@ def make_lifespan(
                 await app.state.mlflow_subprocess.stop()
             if app.state.dbt_subprocess is not None:
                 await app.state.dbt_subprocess.stop()
+            if getattr(app.state, "hermes_manager", None) is not None:
+                await app.state.hermes_manager.stop_all()
             await _cancel_task(audit_task)
             await _cancel_task(api_key_lifecycle_task)
             await _cancel_task(api_key_usage_flush_task)

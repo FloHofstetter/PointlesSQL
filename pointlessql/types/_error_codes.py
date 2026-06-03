@@ -83,10 +83,11 @@ class ErrorCode(StrEnum):
     # Model registry / promotion.
     PROMOTION_ERROR = "promotion_error"
 
-    # Subprocess plumbing (dbt, mlflow).
+    # Subprocess plumbing (dbt, mlflow, hermes).
     DBT_STARTUP_ERROR = "dbt_startup_error"
     DBT_EXECUTION_ERROR = "dbt_execution_error"
     MLFLOW_STARTUP_ERROR = "mlflow_startup_error"
+    HERMES_STARTUP_ERROR = "hermes_startup_error"
 
     # Data products.
     DATA_PRODUCT_ERROR = "data_product_error"

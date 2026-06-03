@@ -180,6 +180,7 @@
     'workspace_home': 'workspace_home',
     'workspaces': 'workspace_home',
     'new': 'new',
+    'agent': 'agent',
 } %}
 {% set active_section = _section_map.get(active_page if active_page is defined else None, 'federation') %}
 {# Hub layer sits one level above section.  The primary rail collapses
@@ -215,6 +216,7 @@
     'topics': 'community',
     'issues': 'community',
     'people': 'community',
+    'agent': 'agent',
     'admin': 'admin',
 } %}
 {% set active_hub = _hub_map.get(active_section, 'data') %}

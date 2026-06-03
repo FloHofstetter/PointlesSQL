@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Agent · PointlesSQL{% endblock %}
+
+{% block content %}
+<div x-data="agentHermes()" x-init="init()">
+    <div class="d-flex align-items-center gap-2 mb-3">
+        <i class="bi bi-robot fs-4"></i>
+        <h1 class="h4 mb-0">Agent</h1>
+        <span class="text-muted small">Hermes dashboard, embedded</span>
+
+        <span class="ms-auto d-flex align-items-center gap-2">
+            <span class="badge"
+                  :class="statusClass"
+                  x-text="statusLabel"
+                  aria-live="polite"></span>
+            <button type="button"
+                    class="btn btn-outline-secondary btn-sm"
+                    :disabled="!!busy"
+                    @click="restart()">
+                <span class="spinner-border spinner-border-sm" x-show="!!busy" aria-hidden="true"></span>
+                <i class="bi bi-arrow-clockwise" x-show="!busy"></i>
+                <span x-text="busy ? 'Restarting…' : 'Restart'"></span>
+            </button>
+        </span>
+    </div>
+
+    <template x-if="!loaded || status.healthy">
+        <div class="card">
+            <div class="card-body p-0">
+                <iframe src="/hermes/"
+                        class="w-100"
+                        style="height: calc(100vh - 12rem); min-height: 540px; border: 0;"
+                        title="Hermes agent dashboard"></iframe>
+            </div>
+        </div>
+    </template>
+
+    <template x-if="loaded && !status.healthy">
+        <div class="card">
+            <div class="card-body text-center text-muted py-5">
+                <i class="bi bi-robot fs-1 d-block mb-3"></i>
+                <p class="mb-1">The Hermes dashboard is not reachable.</p>
+                <p class="small mb-3"
+                   x-text="status.enabled
+                       ? (status.managed
+                           ? 'The managed instance is not running. Try Restart, or check the server logs.'
+                           : 'The external Hermes instance did not answer. Check its URL and that it is up.')
+                       : 'Hermes is disabled. Set POINTLESSQL_HERMES_ENABLED=1 to enable the Agent tab.'"></p>
+                <button type="button"
+                        class="btn btn-primary btn-sm"
+                        :disabled="!!busy"
+                        @click="restart()"
+                        x-show="status.enabled && status.managed">
+                    <i class="bi bi-play-fill"></i> Start Hermes
+                </button>
+            </div>
+        </div>
+    </template>
+</div>
+{% endblock %}

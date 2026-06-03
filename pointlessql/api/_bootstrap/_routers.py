@@ -59,6 +59,7 @@ def register_routers(app: FastAPI) -> None:
     from pointlessql.api.governance_routes import router as governance_router
     from pointlessql.api.health_routes import router as health_router
     from pointlessql.api.help_routes import router as help_router
+    from pointlessql.api.hermes_routes import router as hermes_router
     from pointlessql.api.home_routes import router as home_router
     from pointlessql.api.ingest_html_routes import router as ingest_html_router
     from pointlessql.api.ingest_routes import router as ingest_router
@@ -167,6 +168,7 @@ def register_routers(app: FastAPI) -> None:
     app.include_router(ml_router)
     app.include_router(mlflow_html_router)
     app.include_router(mlflow_proxy_router)
+    app.include_router(hermes_router)
     app.include_router(dbt_router)
     app.include_router(models_router)
     app.include_router(models_html_router)

@@ -1,15 +1,17 @@
 """Third-party integration settings.
 
-Five sub-models pointing at external services or co-resident
+Six sub-models pointing at external services or co-resident
 subprocesses: soyuz-catalog (the UC backend), Jupyter, dbt-docs,
-MLflow Tracking, and the workspace-repo cloner.  Each one carries
-its own connection / spawn config; nothing is shared, but they all
-describe "PointlesSQL plus another process."
+MLflow Tracking, the workspace-repo cloner, and the Hermes agent
+dashboard.  Each one carries its own connection / spawn config;
+nothing is shared, but they all describe "PointlesSQL plus another
+process."
 """
 
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Literal
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -173,3 +175,60 @@ class MLflowSettings(BaseSettings):
     backend_store_uri: str | None = None
     artifact_root: str | None = None
     registry_uri: str | None = None
+
+
+class HermesSettings(BaseSettings):
+    """Embedded Hermes agent dashboard + reverse-proxy configuration.
+
+    Reads ``POINTLESSQL_HERMES_*`` environment variables.  When
+    ``enabled=True`` PointlesSQL surfaces an "Agent" hub whose
+    ``/hermes/...`` path reverse-proxies the Hermes web dashboard
+    (its React SPA + the in-browser chat WebSocket) through
+    PointlesSQL's own auth layer, so the agent is operated from
+    inside the control-room rather than a separate app.
+
+    Two process models share one proxy:
+
+    - ``mode="managed"`` — PointlesSQL spawns ``hermes dashboard`` as
+      a child process (zero-config local dev, mirroring the MLflow
+      subprocess).  ``command`` is the launcher on ``PATH``; the
+      dashboard binds ``host`` starting at ``port_base``.
+    - ``mode="external"`` — the operator runs Hermes elsewhere (a
+      Docker service or a remote host) and PointlesSQL only proxies
+      to ``dashboard_url``.
+
+    ``isolation`` controls whether every operator shares one Hermes
+    identity (``"shared"``) or gets a private managed instance with
+    its own home directory (``"per_user"``).  The latter is the only
+    way to truly isolate sessions because a single Hermes process
+    owns one home directory; ``home_root`` is the parent that holds
+    the per-user homes, ``max_instances`` caps concurrent processes
+    and ``idle_ttl_seconds`` reaps ones nobody is using.
+
+    ``session_token`` pins the dashboard's pre-shared token so the
+    proxy can inject it on every forwarded request; left ``None`` a
+    fresh token is minted per managed instance.  ``chat_enabled``
+    launches the POSIX-only chat PTY, and ``acp_enabled`` turns on
+    the agent-client-protocol supervision bridge that mirrors Hermes
+    permission gates into the home-feed action lane.
+    """
+
+    model_config = SettingsConfigDict(env_prefix="POINTLESSQL_HERMES_")
+
+    enabled: bool = False
+    mode: Literal["managed", "external"] = "managed"
+    isolation: Literal["shared", "per_user"] = "shared"
+    dashboard_url: str = "http://127.0.0.1:9119"
+    command: str = "hermes"
+    host: str = "127.0.0.1"
+    port_base: int = 9119
+    home_root: Path | None = None
+    session_token: str | None = None
+    chat_enabled: bool = True
+    acp_enabled: bool = False
+    # The very first managed launch builds the Hermes web bundle, which
+    # can take roughly a minute; later launches reuse the cached build
+    # and come up in a few seconds.
+    startup_timeout_seconds: int = 150
+    max_instances: int = 8
+    idle_ttl_seconds: int = 1800

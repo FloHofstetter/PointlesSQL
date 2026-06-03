@@ -93,6 +93,20 @@
     <ul class="pql-icon-rail__list pql-icon-rail__list--footer">
         <li class="pql-icon-rail__item">
             {{ permission_link(
+                 href="/agent",
+                 icon="bi-robot",
+                 label="Agent",
+                 granted=(current_user is defined and current_user and current_user.is_admin),
+                 required_role="admin",
+                 css_class="pql-icon-rail__link",
+                 active=(active_hub == "agent"),
+                 title="Agent — operate the embedded Hermes dashboard",
+                 data_section="agent",
+                 label_class="pql-icon-rail__label"
+            ) }}
+        </li>
+        <li class="pql-icon-rail__item">
+            {{ permission_link(
                  href="/admin",
                  icon="bi-tools",
                  label="Admin",
