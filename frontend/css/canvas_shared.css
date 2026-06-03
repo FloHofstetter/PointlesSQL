@@ -261,18 +261,6 @@
   pointer-events: auto;
 }
 
-.pql-output-plus::before {
-  content: '';
-  position: absolute;
-  right: 22px;
-  top: 50%;
-  margin-top: -1px;
-  width: 30px;
-  height: 1.5px;
-  background: var(--bs-secondary);
-  opacity: 0.55;
-}
-
 .pql-canvas .drawflow-node:hover .pql-output-plus,
 .pql-output-plus:hover {
   opacity: 1;
@@ -284,11 +272,6 @@
   color: var(--bs-primary);
   transform: scale(1.08);
   box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.15);
-}
-
-.pql-output-plus:hover::before {
-  background: var(--bs-primary);
-  opacity: 1;
 }
 
 /* Output-plus block-picker popover. */

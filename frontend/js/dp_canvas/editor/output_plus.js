@@ -173,8 +173,9 @@ export const outputPlusMethods = {
   _positionOutputPlus(handle, pinEl, stage) {
     const pinRect = pinEl.getBoundingClientRect();
     const stageRect = stage.getBoundingClientRect();
-    // Anchor the handle 42 px to the right of the pin centre.
-    const x = pinRect.right - stageRect.left + 36;
+    // Anchor the handle snug to the right of the pin so it reads as part of
+    // the node rather than a detached affordance floating out in the canvas.
+    const x = pinRect.right - stageRect.left + 6;
     const y = pinRect.top - stageRect.top + pinRect.height / 2 - 11;
     handle.style.left = `${x}px`;
     handle.style.top = `${y}px`;
