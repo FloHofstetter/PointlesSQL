@@ -34,8 +34,16 @@ export const connectMethods = {
     }
     if (!srcPql) return;
     this._highlightDropTargets(srcPql);
+    // Mute the always-on "+" handles for the duration of the drag.  Each
+    // handle is mounted just right of its output pin and stacks above the
+    // sockets, so when the wire is released over a nearby downstream input
+    // pin the mouseup would otherwise land on the overlapping handle instead
+    // of the pin — Drawflow reads the drop target from the event element and
+    // would silently discard the connection.  Restored on release.
+    this._setOutputPlusInteractive(false);
     const end = () => {
       this._clearDropTargets();
+      this._setOutputPlusInteractive(true);
       window.removeEventListener('pointerup', end);
       window.removeEventListener('pointercancel', end);
     };

@@ -207,6 +207,16 @@ export const outputPlusMethods = {
       this._positionOutputPlus(handle, pinEl, stage);
     }
   },
+  _setOutputPlusInteractive(interactive) {
+    // Toggle pointer-events on every mounted "+" handle.  Disabled while a
+    // wire is being dragged so a handle that overlaps a target input pin
+    // cannot intercept the drop; re-enabled on release.  Inline style wins
+    // over the stylesheet's ``pointer-events: auto``; clearing it falls back
+    // to that default.
+    for (const handle of this._outputPlusElements.values()) {
+      handle.style.pointerEvents = interactive ? '' : 'none';
+    }
+  },
   _scheduleAllOutputPlusReposition() {
     if (this._outputPlusRaf) return;
     this._outputPlusRaf = window.setTimeout(() => {
