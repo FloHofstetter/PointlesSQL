@@ -11,6 +11,32 @@
  */
 
 export const configFormStructuredMethods = {
+  // --- UC table name split into catalog / schema / table ----------------
+  // The block keeps a single dotted ``catalog.schema.table`` config key
+  // (table_fqn / materialized_table) so the backend FQN contract is
+  // unchanged; the drawer just presents it as three fields, derived from
+  // the stored value on every render and reassembled on edit.
+
+  fqnParts(node, key) {
+    const raw = String((node && node.config && node.config[key]) || '');
+    const parts = raw.split('.');
+    return {
+      catalog: parts[0] || '',
+      schema: parts[1] || '',
+      // Keep any stray dots with the table segment rather than dropping them.
+      table: parts.slice(2).join('.') || '',
+    };
+  },
+  setFqnPart(node, key, part, value) {
+    if (!node) return;
+    const cur = this.fqnParts(node, key);
+    cur[part] = String(value == null ? '' : value).trim();
+    // A half-filled name reassembles to e.g. "main.." which _FQN_RE rejects,
+    // so the inline error panel flags it instead of silently accepting it.
+    node.config[key] = [cur.catalog, cur.schema, cur.table].join('.');
+    this.onConfigChanged();
+  },
+
   // --- Array (chip / comma) list fields ----------------------------------
 
   addColumnTo(field, col, opts) {

@@ -6,19 +6,12 @@
    save + validate.
 #}
 {% from "pages/_partials/dp_canvas_editor/_form_macros.html" import
-    field_label, available_columns, chip_list, comma_list, row_editor, cm_field %}
+    field_label, available_columns, chip_list, comma_list, row_editor, fqn_fields, cm_field %}
 
-{# InputPort: single UC three-part name. #}
+{# InputPort: UC table name, entered as catalog / schema / table. #}
 <template x-if="selectedNode.block_type === 'InputPort'">
-    <div>
-        <label class="form-label small">UC table (catalog.schema.table)</label>
-        <input type="text"
-               class="form-control form-control-sm"
-               x-model="selectedNode.config.table_fqn"
-               @input.debounce.300ms="onConfigChanged()"
-               :disabled="!canWrite"
-               placeholder="main.bronze.events"
-               spellcheck="false">
+    <div class="pql-form-group">
+        {{ fqn_fields('table_fqn', 'UC table') }}
         <div class="form-text small">
             Resolved on save against soyuz-catalog. The block's output schema
             is derived from this table.
@@ -349,8 +342,8 @@
 
 {# OutputPort: target FQN + mode + merge keys. #}
 <template x-if="selectedNode.block_type === 'OutputPort'">
-    <div>
-        <label class="form-label small">Output-port name</label>
+    <div class="pql-form-group">
+        {{ field_label('Output-port name') }}
         <input type="text"
                class="form-control form-control-sm mb-3"
                x-model="selectedNode.config.port_name"
@@ -358,16 +351,10 @@
                :disabled="!canWrite"
                placeholder="default">
 
-        <label class="form-label small">Target table (catalog.schema.table)</label>
-        <input type="text"
-               class="form-control form-control-sm mb-3"
-               x-model="selectedNode.config.materialized_table"
-               @input.debounce.300ms="onConfigChanged()"
-               :disabled="!canWrite"
-               placeholder="main.silver.events_clean"
-               spellcheck="false">
+        {{ fqn_fields('materialized_table', 'Target table') }}
+        <div class="form-text small mb-3">The Delta table the upstream rows are written to.</div>
 
-        <label class="form-label small">Write mode</label>
+        {{ field_label('Write mode') }}
         <div class="d-flex gap-3 mb-2">
             <template x-for="m in ['overwrite', 'append', 'merge']" :key="m">
                 <div class="form-check">

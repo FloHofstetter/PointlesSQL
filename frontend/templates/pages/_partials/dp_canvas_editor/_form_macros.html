@@ -77,6 +77,34 @@
 {% if pin and suggest %}{{ available_columns(pin, "addColumnTo('" ~ field ~ "', col)", "(selectedNode.config." ~ field ~ " || [])") }}{% endif %}
 {%- endmacro %}
 
+{# Three free-text fields (catalog . schema . table) over a single dotted FQN
+   config key.  fqnParts derives the three parts from the stored value and
+   setFqnPart reassembles them, so the backend keeps storing one ``key`` and
+   its FQN validation is untouched.  fqnParts tolerates a null selectedNode,
+   so the bindings are safe through Alpine's deselect teardown. #}
+{% macro fqn_fields(key, label) -%}
+{{ field_label(label) }}
+<div class="input-group input-group-sm mb-1">
+    <input type="text" class="form-control" placeholder="catalog" aria-label="catalog"
+           :class="fieldHasError('{{ key }}') && 'is-invalid'"
+           :value="fqnParts(selectedNode, '{{ key }}').catalog"
+           @input.debounce.300ms="setFqnPart(selectedNode, '{{ key }}', 'catalog', $event.target.value)"
+           :disabled="!canWrite" spellcheck="false">
+    <span class="input-group-text">.</span>
+    <input type="text" class="form-control" placeholder="schema" aria-label="schema"
+           :class="fieldHasError('{{ key }}') && 'is-invalid'"
+           :value="fqnParts(selectedNode, '{{ key }}').schema"
+           @input.debounce.300ms="setFqnPart(selectedNode, '{{ key }}', 'schema', $event.target.value)"
+           :disabled="!canWrite" spellcheck="false">
+    <span class="input-group-text">.</span>
+    <input type="text" class="form-control" placeholder="table" aria-label="table"
+           :class="fieldHasError('{{ key }}') && 'is-invalid'"
+           :value="fqnParts(selectedNode, '{{ key }}').table"
+           @input.debounce.300ms="setFqnPart(selectedNode, '{{ key }}', 'table', $event.target.value)"
+           :disabled="!canWrite" spellcheck="false">
+</div>
+{%- endmacro %}
+
 {# Structured multi-row editor over a list of objects — the GroupBy-aggregation
    pattern generalised.  ``cells`` describes each column: {kind:'text', field,
    placeholder?, flex?, list?} or {kind:'select', field, options, flex?} or
