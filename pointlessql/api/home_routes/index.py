@@ -12,7 +12,8 @@ from __future__ import annotations
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 
-from pointlessql.api.dependencies import get_templates, get_user
+from pointlessql.api.dependencies import current_workspace_id, get_templates, get_user
+from pointlessql.api.feed_routes._serializers import composer_target_refs
 
 router = APIRouter(tags=["home"])
 
@@ -23,8 +24,15 @@ async def home_index(request: Request) -> HTMLResponse | RedirectResponse:
     user = get_user(request)
     if user["id"] == 0:
         return RedirectResponse(url="/auth/login?next=/", status_code=303)
+    workspace_id = current_workspace_id(request)
+    with request.app.state.session_factory() as session:
+        composer_targets = composer_target_refs(session, workspace_id)
     return get_templates(request).TemplateResponse(
         request,
         "pages/feed.html",
-        {"active_page": "feed", "is_admin": user["is_admin"]},
+        {
+            "active_page": "feed",
+            "is_admin": user["is_admin"],
+            "composer_targets": composer_targets,
+        },
     )

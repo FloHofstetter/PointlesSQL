@@ -17,10 +17,11 @@ from pointlessql.api.dependencies import (
     require_user,
 )
 from pointlessql.api.social_routes._polymorphic_handlers._reactions_entity import (
+    aggregate_reactions,
+    reactor_names,
     validate_emoji_field,
 )
 from pointlessql.api.social_routes._polymorphic_handlers._shared import (
-    ALLOWED_EMOJI,
     resolve_target_id,
 )
 from pointlessql.exceptions import ResourceNotFoundError
@@ -218,6 +219,7 @@ async def list_polymorphic_comment_reactions(
     workspace_id, target_id = resolve_target_id(request, kind, ref)
     factory = request.app.state.session_factory
 
+    with_names = bool(request.query_params.get("with_names"))
     with factory() as session:
         load_comment_on_target(session, comment_id, workspace_id=workspace_id, target_id=target_id)
         rows = session.execute(
@@ -226,23 +228,9 @@ async def list_polymorphic_comment_reactions(
                 DataProductCommentReaction.user_id,
             ).where(DataProductCommentReaction.comment_id == comment_id)
         ).all()
-
-    counts: dict[str, int] = {e: 0 for e in ALLOWED_EMOJI}
-    mine: set[str] = set()
-    for emoji_row, uid in rows:
-        if emoji_row in counts:
-            counts[emoji_row] += 1
-        if uid == user["id"]:
-            mine.add(emoji_row)
+        names = reactor_names(session, {int(uid) for _, uid in rows}) if with_names else None
 
     return {
         "comment_id": comment_id,
-        "reactions": [
-            {
-                "emoji": e,
-                "count": counts[e],
-                "has_current_user_reacted": e in mine,
-            }
-            for e in ALLOWED_EMOJI
-        ],
+        "reactions": aggregate_reactions(rows, user["id"], names),
     }

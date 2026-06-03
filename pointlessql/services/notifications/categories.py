@@ -34,6 +34,18 @@ CATEGORIES: tuple[str, ...] = ("approval", "health", "social", "pipeline", "gove
 DEFAULT_CATEGORY = "social"
 DEFAULT_SEVERITY = "info"
 
+# Attention tiers — a second axis orthogonal to category. Where
+# ``category`` says *which lane* a row belongs to, ``attention`` says
+# *how much it wants from the reader*: ``act`` rows are unresolved work
+# (approvals / open signals), ``for_you`` rows are explicitly addressed
+# to the reader (an @mention, a directed terminal fact), and ``ambient``
+# rows are awareness-only (activity on followed entities). The feed
+# drains ``act`` + ``for_you`` to a finishable "needs you" inbox and
+# lets ``ambient`` flow on forever behind a seen-cursor.
+ATTENTION_ACT = "act"
+ATTENTION_FOR_YOU = "for_you"
+ATTENTION_AMBIENT = "ambient"
+
 # Ordered (event_type_prefix, category, severity) rules. First match
 # wins, so put exact/longer prefixes before their broader siblings.
 _EVENT_RULES: tuple[tuple[str, str, str], ...] = (
@@ -92,6 +104,28 @@ def classify_category(event_type: str | None) -> tuple[str, str]:
         if event_type == prefix or event_type.startswith(prefix):
             return (category, severity)
     return (DEFAULT_CATEGORY, DEFAULT_SEVERITY)
+
+
+def attention_for_event(event_type: str | None) -> str:
+    """Return the attention tier a fanned-out notification falls into.
+
+    Used both as the legacy fallback when ``user_notifications.attention``
+    is ``NULL`` (rows written before the column existed) and as the JS
+    mirror's reference behaviour. An @mention is always ``for_you``;
+    everything else delivered through the fan-out defaults to
+    ``ambient`` since, absent the stored stamp, we can't tell a directed
+    delivery from a follower delivery.
+
+    Args:
+        event_type: ``pointlessql.<scope>.<verb>`` identifier, or
+            ``None``.
+
+    Returns:
+        ``'for_you'`` for mentions, otherwise ``'ambient'``.
+    """
+    if event_type and "mention" in event_type:
+        return ATTENTION_FOR_YOU
+    return ATTENTION_AMBIENT
 
 
 def classify_signal(signal_kind: str | None) -> tuple[str, str]:

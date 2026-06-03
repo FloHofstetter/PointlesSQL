@@ -11,7 +11,7 @@ import datetime
 from typing import Any
 
 from fastapi import APIRouter, Request
-from sqlalchemy import select, update
+from sqlalchemy import and_, or_, select, update
 
 from pointlessql.api.dependencies import (
     current_workspace_id,
@@ -20,17 +20,23 @@ from pointlessql.api.dependencies import (
 )
 from pointlessql.exceptions import ResourceNotFoundError
 from pointlessql.models.notifications import UserNotification
+from pointlessql.services.notifications.categories import ATTENTION_FOR_YOU
 
 router = APIRouter(tags=["feed"])
 
 
 @router.post("/api/notifications/mark-all-read")
 async def mark_all_read(request: Request) -> dict[str, Any]:
-    """Mark every unread notification for the caller as read.
+    """Mark the caller's unread *for-you* notifications as read.
 
-    the feed's top-level "Mark all read" button posts
-    here; the per-item endpoint covers the granular case.  Returns
-    the count touched so the UI can confirm.
+    The feed's top-level "Mark all read" button posts here to drain the
+    "needs you" inbox; the per-item endpoint covers the granular case.
+    Scoped to the ``for_you`` attention tier — directed deliveries like
+    @mentions and routed facts — so it never silences ambient stream
+    rows, whose "newness" is tracked by the seen-cursor rather than a
+    read flag.  Legacy rows with no stamped tier are treated as
+    ``for_you`` only when their event type is a mention, mirroring the
+    feed's count query.
 
     Args:
         request: Incoming FastAPI request.
@@ -51,6 +57,13 @@ async def mark_all_read(request: Request) -> dict[str, Any]:
                 UserNotification.recipient_user_id == caller["id"],
                 UserNotification.workspace_id == workspace_id,
                 UserNotification.read_at.is_(None),
+                or_(
+                    UserNotification.attention == ATTENTION_FOR_YOU,
+                    and_(
+                        UserNotification.attention.is_(None),
+                        UserNotification.event_type.like("%mention%"),
+                    ),
+                ),
             )
             .values(read_at=now)
         )

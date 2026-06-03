@@ -86,6 +86,9 @@ from pointlessql.models.catalog._data_product_proposal import (
     PROPOSAL_STATUSES,
     DataProductSchemaProposal,
 )
+from pointlessql.models.catalog._data_product_review_reaction import (
+    DataProductReviewReaction,
+)
 from pointlessql.models.catalog._data_product_reviews import DataProductReview
 from pointlessql.models.catalog._data_product_trending import DataProductTrending
 from pointlessql.models.catalog._data_product_yaml_draft import (
@@ -261,6 +264,7 @@ __all__ = [
     "DataProductPromotionCandidate",
     "DataProductQueryPerfSample",
     "DataProductReview",
+    "DataProductReviewReaction",
     "DataProductSLO",
     "DataProductSchemaProposal",
     "DataProductSemanticConcept",

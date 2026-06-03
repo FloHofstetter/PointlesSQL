@@ -3154,6 +3154,106 @@ PointlesSQL
 │   │   Nicht-Admin-Owner; consecutive-similar Roll-up (Ledger-Dedup deckt
 │   │   den Storm-Fall bereits).
 │   │
+├── Feed Social-Quality Polish — von „holprig" zu X/LinkedIn-Niveau  ✅ shipped (local, 2026-06-02)
+│   │
+│   │   Aus User-Feedback nach Screenshot-Review ("der Feed muss wirklich
+│   │   die Qualität von X / Facebook / LinkedIn haben … momentan sieht das
+│   │   noch sehr holprig aus").  Scope: Craft + full social.
+│   │   • Visual craft — neues geteiltes ``frontend/js/avatars.js``
+│   │     (``initials``/``avatarColor``/``avatarFor``; coedit_awareness +
+│   │     coedit_core importieren es jetzt, Dup gelöscht): farbige Initial-
+│   │     Avatare pro Person vs. lane-getönte Glyphen für System-Events.
+│   │     Satz-Grammatik (System-Zeilen „DATA HEALTH · demo.hr" mit Eyebrow
+│   │     statt Fake-Name); Run-UUIDs → ``run a13200…``, opake Refs versteckt;
+│   │     Inline-Markdown gerendert (neues ``inline_md.js``, escape-first);
+│   │     „view logs/details/run" zu leisem muted Deep-Link degradiert; Chrome
+│   │     beruhigt (Audience-Filter → kompaktes Dropdown); Welcome-Karte in den
+│   │     Empty-State gefaltet.  Approval-Card löst Principal-E-Mail → Name auf;
+│   │     Trending-Rail mit menschlichen Labels.
+│   │   • Engagement — ``frontend/js/feed_social.js``: Emoji-Reaktionen (lazy-
+│   │     load, Chips mit Counts, optimistischer Toggle), Inline-Reply, Composer
+│   │     („share an update" → postet Kommentar an ausgewähltes Data Product,
+│   │     optimistic-prepend, Pills serverseitig gerendert), Follow-from-Card —
+│   │     alles gegen die bestehenden polymorphen ``/api/social/{kind}/{ref}/…``
+│   │     Endpoints (kein neues Backend).
+│   │   • Gotchas: Alpine 3.14 ``<template x-for>`` verliert seinen Anchor in
+│   │     ``<select>``/``<ul>`` UND in einem getoggelten ``x-if``/initial-
+│   │     hidden ``x-show`` Subtree → Composer-Pills serverseitig (Jinja) statt
+│   │     x-for.  8 neue pytest, Full-Suite grün.  rc257 → rc258.  ALL LOCAL.
+│   │   Deferred: „who reacted"-Popover mit Namen (kein Reactor-Identity-
+│   │   Endpoint; Count-Chips bleiben); JS-Unit-Tests (kein JS-Test-Runner im
+│   │   Repo — renderInlineMd nur browser-verifiziert).
+│   │
+├── Feed Cards — „phenomenale UX" Karten-Pass (20 Phasen)  ✅ shipped (local, 2026-06-02)
+│   │
+│   │   Aus User-Feedback („schau dir speziell die Karten im Feed an, ich will
+│   │   eine fenomenale UX … plane es als ~20 Phasen mit je 10 Todos").  Scope:
+│   │   Karten + leichter Chrome-Pass; Backend-Bits erlaubt (nur PointlesSQL).
+│   │   • Craft (frontend-only, P1–9/11–15): neuer ``--pql-feed-*`` Token-Layer
+│   │     (Spacing-Rhythmus, 40px-Avatare, Rail, 3 Dichten aus einer Stelle);
+│   │     Severity-Badges auf gemeinsamer Baseline als Icon+Label Status-Chip;
+│   │     Pipeline/Health-Detail im inset, kopierbaren Code-Panel; Run-id +
+│   │     Notebook-Pfad als Monospace-„ref"-Pills; Kommentar-Body als eine
+│   │     Quote-Bubble (kein Doppel-Rand mehr); Unread/Mention von Karten-Wash
+│   │     → Rail+Dot; „Show more/less" für lange Bodies; Reaktions-Palette als
+│   │     elevated, keyboard-navigierbares Popover mit Caret; Mikro-Motion
+│   │     (Chip-Pop, Resolve-Collapse, Fresh-Slide; reduced-motion-safe);
+│   │     Card-Skeletons beim ersten Paint; per-Karte ``aria-label`` +
+│   │     focus-visible Ringe.  User-Korrektur mittendrin: die „👍❤️ N"-Summary
+│   │     über den Chips war redundant → entfernt, „wer reagiert" wandert in
+│   │     Chip-Hover-Tooltip.
+│   │   • Backend (3 Features, no soyuz): **Review-Reaktionen** — neue Tabelle
+│   │     ``data_product_review_reactions`` (key = ``review_id``, alembic
+│   │     ``q5e7g9i1k3m5``) + Handler/Routes gespiegelt vom Comment-Pfad, damit
+│   │     Schwester-Reviews eines Produkts unabhängige Counts behalten;
+│   │     **who-reacted-by-name** via opt-in ``?with_names=1`` auf der
+│   │     Reaction-List (geteilte ``aggregate_reactions``/``reactor_names``);
+│   │     **reply_count + Inline-Thread** („View N replies", gebatchte Count-
+│   │     Query, Replies als sichere HTML-Strings statt x-for).
+│   │   • Gotcha-Disziplin: jeder neue hidden-at-init Listen-Render meidet
+│   │     ``<template x-for>`` (Reactor-Tooltip + Thread als JS-String, Skeleton
+│   │     serverseitig).  6 neue pytest (Review-Reaktionen inkl. Sibling-
+│   │     Independence + with_names).  Full-Suite 4483 → 4489 grün.  Browser-
+│   │     verifiziert light + dark, 0 Konsolenfehler.  rc258 → rc259.  ALL LOCAL.
+│   │
+├── Feed-Triage — „abarbeiten" ohne den Stream zu verlieren (9 Phasen)  ✅ shipped (local, 2026-06-02)
+│   │
+│   │   Aus User-Frage („wie kann jemand den Feed *abarbeiten*, aber trotzdem
+│   │   alte Sachen sehen — soll man fertig werden können oder geht er unendlich
+│   │   weiter?").  Antwort: **beides** — ein endlicher Inbox-Teil + eine
+│   │   unendliche Historie, die schon getrennt in den Daten liegen.  Gewählt:
+│   │   ein Stream + Focus-Modus; „fertig" = Handeln + Für-dich.
+│   │   • Attention-Achse (P1): nullable ``user_notifications.attention`` (alembic
+│   │     ``r6f8h0j2l4n6``), am Fan-out gestempelt — ``for_you`` für gerichtete
+│   │     Empfänger (``extra_recipients``: Mentions / geroutete Fakten), sonst
+│   │     ``ambient``.  Drei Tiers: ``act`` (Approvals/Signals), ``for_you``,
+│   │     ``ambient``.  Legacy-NULL fällt per Event-Typ zurück.
+│   │   • Seen-Cursor (P2): neue ``feed_read_markers``-Tabelle (alembic
+│   │     ``s7g9i1k3m5o7``) + ``POST /api/feed/seen`` (forward-only, future-clamp);
+│   │     ``/api/feed`` stempelt ``is_new`` pro Row + ``unseen_count`` +
+│   │     ``caught_up`` + ``needs_action_count`` + ``unread_for_you_count``.
+│   │   • „Needs you"-Zone (P3): gepinnte Sektion (act + ungelesen-for_you), draint
+│   │     live; Stream zeigt den Rest.  Karte als shared ``_card.html``-Partial,
+│   │     in Zone + Stream wiederverwendet (kein Duplikat).  Kopf als leichter
+│   │     Separator im Stil der Datums-Header (kein umrahmtes Panel — User:
+│   │     „wird zu wuchtig"), accent-getönt + Count rechts.
+│   │   • Caught-up-Divider + Endstate (P4): ``display:contents``-Cell rendert den
+│   │     Divider zwischen neu/gesehen; „Mark all as seen"-Bar; celebratory
+│   │     „You're all caught up"-Panel.
+│   │   • Auto-Advance (P5): Scroll-Scan (DOM-frisch, forward-only, tab-focused)
+│   │     schiebt den Cursor auf die neueste gesehene Row; SSE-Rows sind
+│   │     ``is_new``.
+│   │   • Focus-Modus (P6): Toggle (localStorage) blendet den Stream aus → reine
+│   │     Inbox; Kategorie-Chips werden gedimmt (nicht display:none — x-for-Anchor).
+│   │   • Für-dich-Inbox (P7): ``mark-all-read`` auf den for_you-Tier begrenzt;
+│   │     Unread-Dot nur noch für for_you (Ambient-Neuheit = Cursor, nicht read_at).
+│   │   • Globale Badges (P8): ``audit_unread`` = for_you-Inbox überall;
+│   │     Home-Hub-Rail-Badge + live ``(N)``-Browser-Tab-Titel.
+│   │   • 15 neue pytest (attention + seen-cursor + scoping); ruff/pyright/biome/
+│   │     phase-ref clean; einzelner Alembic-Head ``s7g9i1k3m5o7``.  Browser-
+│   │     verifiziert light + dark, 0 Konsolenfehler (Zone, „Mark all as seen" →
+│   │     Divider, Focus-Modus, ``(8)``-Titel).  rc259 → rc261.  ALL LOCAL.
+│   │
 ├── Sidebar Hub-and-Spoke Redesign — declutter the primary rail  ✅ shipped (local, 2026-06-02)
 │   │
 │   │   Aus User-Feedback ("die linke Seitenleiste ist etwas überlaufen,

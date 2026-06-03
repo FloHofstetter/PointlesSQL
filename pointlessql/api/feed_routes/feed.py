@@ -17,7 +17,7 @@ import json
 from typing import Any
 
 from fastapi import APIRouter, Request
-from sqlalchemy import func, select
+from sqlalchemy import and_, func, or_, select
 
 from pointlessql.api.dependencies import (
     current_workspace_id,
@@ -41,16 +41,49 @@ from pointlessql.models.agent._runs import STATUS_NEEDS_APPROVAL, AgentRun
 from pointlessql.models.auth import User
 from pointlessql.models.catalog._data_product_comments import DataProductComment
 from pointlessql.models.catalog._data_product_reviews import DataProductReview
-from pointlessql.models.notifications import UserNotification
+from pointlessql.models.notifications import FeedReadMarker, UserNotification
 from pointlessql.models.social._social_target import SocialTarget
 from pointlessql.models.social._user_follow import UserFollow
-from pointlessql.services.notifications.categories import count_by_category
+from pointlessql.services.notifications.categories import (
+    ATTENTION_ACT,
+    ATTENTION_FOR_YOU,
+    count_by_category,
+)
 from pointlessql.services.social import entity_registry
 
 router = APIRouter(tags=["feed"])
 
 _TRENDING_WINDOW = datetime.timedelta(hours=24)
 _PEOPLE_WINDOW = datetime.timedelta(days=7)
+
+
+def _parse_row_dt(value: object) -> datetime.datetime | None:
+    """Parse a serialized row's ``created_at`` back to a datetime.
+
+    Row timestamps are ISO-8601 strings produced by ``.isoformat()`` on
+    timezone-aware UTC datetimes.  Returns ``None`` for empty / malformed
+    values (e.g. a pending run with no ``started_at``) so the caller can
+    treat the row as not-new rather than crash on the seen-cursor
+    comparison.
+
+    Args:
+        value: The row's ``created_at`` field.
+
+    Returns:
+        A timezone-aware datetime, or ``None`` when unparseable.
+    """
+    if not isinstance(value, str) or not value:
+        return None
+    try:
+        parsed = datetime.datetime.fromisoformat(value)
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=datetime.UTC)
+    return parsed
+# Entity kinds whose ``entity_ref`` is an internal id with no standalone
+# display value — excluded from the Trending rail.
+_TRENDING_SKIP_KINDS = frozenset({"user", "review", "badge"})
 
 
 @router.get("/api/feed")
@@ -175,8 +208,31 @@ async def get_feed(
             list(inbox) + [c for c, _ in comments_rows] + [r for r, _ in reviews_rows],
         )
 
+        # One grouped SELECT for the reply count under every surfaced
+        # comment, so each card can show "View N replies" without a
+        # per-row query.
+        reply_counts: dict[int, int] = {}
+        comment_ids = [int(c.id) for c, _ in comments_rows]
+        if comment_ids:
+            reply_counts = {
+                int(pid): int(n)
+                for pid, n in session.execute(
+                    select(DataProductComment.parent_comment_id, func.count())
+                    .where(
+                        DataProductComment.parent_comment_id.in_(comment_ids),
+                        DataProductComment.workspace_id == workspace_id,
+                        DataProductComment.deleted_at.is_(None),
+                    )
+                    .group_by(DataProductComment.parent_comment_id)
+                ).all()
+                if pid is not None
+            }
+
         rows.extend(row_from_notification(n, fqn_map, actor_names) for n in inbox)
-        rows.extend(row_from_comment(c, fqn_map, actor_names, t) for c, t in comments_rows)
+        rows.extend(
+            row_from_comment(c, fqn_map, actor_names, t, reply_counts.get(int(c.id), 0))
+            for c, t in comments_rows
+        )
         rows.extend(row_from_review(r, fqn_map, actor_names, t) for r, t in reviews_rows)
 
         # Action-required lane (live): agent runs in ``needs_approval``
@@ -198,7 +254,21 @@ async def get_feed(
                 .scalars()
                 .all()
             )
-            rows.extend(row_from_pending_run(r) for r in pending_runs)
+            # Resolve each run's principal email to a display name + id in
+            # one round-trip so the approval card reads as a person, not a
+            # raw email, and the avatar gets a stable per-user colour.
+            principal_emails = {r.principal for r in pending_runs if r.principal}
+            principals: dict[str, tuple[int, str]] = {}
+            if principal_emails:
+                principals = {
+                    str(email): (int(uid), str(name))
+                    for uid, email, name in session.execute(
+                        select(User.id, User.email, User.display_name).where(
+                            User.email.in_(principal_emails)
+                        )
+                    ).all()
+                }
+            rows.extend(row_from_pending_run(r, principals) for r in pending_runs)
 
             # Data-health / pipeline lane (live): open actionable
             # signals are read straight from the ledger, so a card
@@ -218,6 +288,68 @@ async def get_feed(
                 .all()
             )
             rows.extend(row_from_signal(s) for s in open_signals)
+
+        # Attention-tier counts power the "needs you" badge + zone
+        # header.  They are counted independently of the row slice so a
+        # capped fetch never under-reports what is waiting.  The ``act``
+        # work (approvals + open signals) is admin-gated like the cards;
+        # the ``for_you`` count is per-recipient and covers every caller.
+        # Legacy rows written before the ``attention`` column existed are
+        # treated as ``for_you`` only when their event type is a mention,
+        # mirroring :func:`attention_for_event`.
+        needs_action_count = 0
+        if caller.get("is_admin"):
+            pending_count = session.execute(
+                select(func.count())
+                .select_from(AgentRun)
+                .where(
+                    AgentRun.status == STATUS_NEEDS_APPROVAL,
+                    AgentRun.workspace_id == workspace_id,
+                )
+            ).scalar()
+            signal_count = session.execute(
+                select(func.count())
+                .select_from(ActionableSignal)
+                .where(
+                    ActionableSignal.status == STATUS_OPEN,
+                    ActionableSignal.workspace_id == workspace_id,
+                )
+            ).scalar()
+            needs_action_count = int(pending_count or 0) + int(signal_count or 0)
+        # Seen-cursor — the per-(user, workspace) high-water mark that
+        # splits "new" ambient rows from already-seen history.  ``None``
+        # (no marker yet) means the reader has seen nothing, so every
+        # row reads as new until they catch up.
+        seen_at = session.execute(
+            select(FeedReadMarker.seen_at).where(
+                FeedReadMarker.user_id == caller["id"],
+                FeedReadMarker.workspace_id == workspace_id,
+            )
+        ).scalar_one_or_none()
+        # SQLite drops the offset on a ``DateTime(timezone=True)`` column,
+        # so a cursor read back here is naive; normalise to UTC before any
+        # comparison against the (UTC-aware) parsed row timestamps.
+        if seen_at is not None and seen_at.tzinfo is None:
+            seen_at = seen_at.replace(tzinfo=datetime.UTC)
+        unread_for_you_count = int(
+            session.execute(
+                select(func.count())
+                .select_from(UserNotification)
+                .where(
+                    UserNotification.recipient_user_id == caller["id"],
+                    UserNotification.workspace_id == workspace_id,
+                    UserNotification.read_at.is_(None),
+                    or_(
+                        UserNotification.attention == ATTENTION_FOR_YOU,
+                        and_(
+                            UserNotification.attention.is_(None),
+                            UserNotification.event_type.like("%mention%"),
+                        ),
+                    ),
+                )
+            ).scalar()
+            or 0
+        )
 
         # Mentions filter — resolve to the user's id and check
         # ``mentioned_user_ids_json``.  Authored ``my`` filter
@@ -333,12 +465,37 @@ async def get_feed(
     if category and category != "all":
         unique = [r for r in unique if r.get("category") == category]
 
+    result_rows = unique[:limit]
+
+    # Stamp each row "new" relative to the seen-cursor, and tally how
+    # many *stream* rows are still unseen — i.e. rows that flow below the
+    # caught-up divider, not the act / unread-for-you rows the client
+    # pins into the "needs you" zone.  ``caught_up`` is the composite
+    # "nothing waiting + nothing unseen" state that drives the
+    # celebratory end-of-feed marker.
+    unseen_count = 0
+    for row in result_rows:
+        row_dt = _parse_row_dt(row.get("created_at"))
+        is_new = seen_at is None or (row_dt is not None and row_dt > seen_at)
+        row["is_new"] = is_new
+        in_zone = row.get("attention") == ATTENTION_ACT or (
+            row.get("attention") == ATTENTION_FOR_YOU and not row.get("read_at")
+        )
+        if is_new and not in_zone:
+            unseen_count += 1
+    caught_up = needs_action_count == 0 and unread_for_you_count == 0 and unseen_count == 0
+
     return {
         "filter": filter,
         "kind": kind,
         "category": category,
-        "rows": unique[:limit],
+        "rows": result_rows,
         "category_counts": category_counts,
+        "needs_action_count": needs_action_count,
+        "unread_for_you_count": unread_for_you_count,
+        "unseen_count": unseen_count,
+        "caught_up": caught_up,
+        "seen_at": seen_at.isoformat() if seen_at else None,
     }
 
 
@@ -399,11 +556,20 @@ async def get_trending(request: Request, limit: int = 5) -> dict[str, Any]:
     for kind, ref, count in rows:
         if not kind or not ref:
             continue
+        # Internal-id kinds (a user PK, an agent-review id) carry no
+        # human-readable label on their own and don't belong in a
+        # "trending entities" list — skip them rather than surface a bare
+        # "1" / "w23" to the rail.
+        if str(kind) in _TRENDING_SKIP_KINDS:
+            continue
+        # Run refs are opaque UUIDs — show a short handle instead of the
+        # full 36-char id; every other kind's ref already reads as an FQN.
+        label = f"run {str(ref)[:8]}" if str(kind) == "run" else str(ref)
         out.append(
             {
                 "entity_kind": str(kind),
                 "entity_ref": str(ref),
-                "label": str(ref),  # ref already reads as the FQN
+                "label": label,
                 "source_url": entity_registry.url_for(str(kind), str(ref)),
                 "count": int(count),
             }

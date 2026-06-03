@@ -42,6 +42,11 @@ from pointlessql.api.social_routes._polymorphic_handlers._reactions_entity impor
     list_polymorphic_reactions,
     remove_polymorphic_reaction,
 )
+from pointlessql.api.social_routes._polymorphic_handlers._reactions_review import (
+    apply_polymorphic_review_reaction,
+    list_polymorphic_review_reactions,
+    remove_polymorphic_review_reaction,
+)
 from pointlessql.api.social_routes._polymorphic_handlers._readme import (
     get_polymorphic_readme,
     put_polymorphic_readme,
@@ -79,13 +84,16 @@ __all__ = [
     "list_polymorphic_endorsements",
     "list_polymorphic_followers",
     "list_polymorphic_reactions",
+    "list_polymorphic_review_reactions",
     "list_polymorphic_reviews",
     "list_user_stars",
     "post_polymorphic_comment",
     "put_polymorphic_readme",
+    "apply_polymorphic_review_reaction",
     "remove_polymorphic_comment_reaction",
     "remove_polymorphic_endorsement",
     "remove_polymorphic_reaction",
+    "remove_polymorphic_review_reaction",
     "star_polymorphic_entity",
     "unfollow_polymorphic_entity",
     "unstar_polymorphic_entity",

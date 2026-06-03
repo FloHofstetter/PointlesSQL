@@ -1,16 +1,166 @@
 /* ---------------------------------------------------------------
  * Feed page.
  *
- * The /feed page used to render a flat list-group of one-line
- * activity rows.  81.K rebuilds it as a card-based, day-grouped,
- * three-column layout (xl+) with a sticky filter bar.  Rules here
- * cover the chrome that surrounds the feed; per-kind item rendering
- * lives in the macros and only needs structural classes from this
- * file.
+ * The feed is a card-based, day-grouped single-column stream with a
+ * sticky filter bar and a teleported right rail.  Rules here cover the
+ * card shell and the chrome that surrounds the feed; per-kind item
+ * rendering lives in the template and only needs structural classes
+ * from this file.
  *
  * Selectors all carry the ``pql-feed-*`` namespace so they cannot
  * leak into the rest of the app via accidental cascade.
  * ------------------------------------------------------------- */
+
+/* Feed card design tokens — one knob per visual dimension so the
+ * three densities and any later tuning touch a single place instead
+ * of scattered literals.  Density modes (below) re-assign a subset of
+ * these rather than overriding individual properties. */
+:root {
+    --pql-feed-card-gap: var(--pql-space-3);
+    --pql-feed-stack: var(--pql-space-2);
+    --pql-feed-avatar-size: 2.5rem;
+    --pql-feed-avatar-ring: 2px;
+    --pql-feed-rail-width: 3px;
+    --pql-feed-chip-radius: var(--pql-radius-pill);
+    --pql-feed-snippet-lines: 4;
+}
+
+/* Vertical stack between feed cards — one shared gap so the column
+ * reads as a steady feed rather than a ragged list. */
+.pql-feed-rows__stack {
+    display: flex;
+    flex-direction: column;
+    gap: var(--pql-feed-card-gap);
+}
+
+/* "Needs you" inbox — the finite, drainable half of the feed, pinned
+ * above the ambient stream.  Rendered as a labelled separator (the same
+ * sticky chip the day headers use) rather than a boxed panel, so the
+ * inbox rows read as part of the one feed column instead of a heavy
+ * card-within-a-card.  The whole section collapses (x-show) the moment
+ * nothing is waiting. */
+.pql-feed-needsyou {
+    margin-bottom: var(--pql-space-4);
+}
+/* Layers onto ``.pql-feed-day-header``: same sticky separator shape,
+ * but flex (icon + label + trailing count) and an accent tint so it
+ * reads as the priority lane next to the muted date separators. */
+.pql-feed-needsyou__header {
+    display: flex;
+    align-items: center;
+    gap: var(--pql-space-2);
+    letter-spacing: 0.04em;
+    color: var(--pql-color-accent);
+}
+.pql-feed-needsyou__count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.35rem;
+    height: 1.35rem;
+    margin-left: auto;
+    padding-inline: var(--pql-space-1);
+    border-radius: var(--pql-radius-pill);
+    background-color: var(--pql-color-accent);
+    color: var(--pql-color-accent-fg);
+    font-size: var(--pql-text-xs);
+    font-weight: var(--pql-weight-semibold);
+    line-height: 1;
+}
+
+/* In focus mode the category-lane chips don't apply (the stream they
+ * slice is hidden), so dim them and take them out of the tab order
+ * rather than removing the node — an x-for inside a <ul> that goes
+ * display:none at init loses its Alpine anchor. */
+.pql-feed-categories--muted {
+    opacity: 0.4;
+    pointer-events: none;
+}
+
+/* Each stream iteration is a transparent cell (``display: contents``)
+ * so the optional caught-up divider and the card both become direct
+ * flex children of the stack — the divider sits between two cards
+ * without an extra box throwing off the column gap. */
+.pql-feed-stream-cell {
+    display: contents;
+}
+
+/* Caught-up divider — the "new since you were here" boundary, drawn as
+ * a centred label on a hairline rule.  Calm, never shouts. */
+.pql-feed-divider {
+    display: flex;
+    align-items: center;
+    gap: var(--pql-space-3);
+    margin: var(--pql-space-1) 0;
+    color: var(--bs-secondary-color);
+    font-size: var(--pql-text-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+.pql-feed-divider::before,
+.pql-feed-divider::after {
+    content: "";
+    flex: 1 1 auto;
+    height: 1px;
+    background-color: var(--bs-border-color-translucent);
+}
+.pql-feed-divider__label {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--pql-space-1);
+    font-weight: var(--pql-weight-semibold);
+}
+
+/* "New since you were here" bar — a slim one-click way to advance the
+ * seen-cursor for the whole stream. */
+.pql-feed-catchup-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--pql-space-2);
+    margin-bottom: var(--pql-space-3);
+    padding: var(--pql-space-2) var(--pql-space-3);
+    border: 1px solid var(--bs-border-color-translucent);
+    border-radius: var(--pql-radius-pill);
+    background-color: color-mix(in srgb, var(--pql-color-accent) 8%, transparent);
+    font-size: var(--pql-text-sm);
+}
+.pql-feed-catchup-bar__count {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--pql-space-1);
+    color: var(--bs-secondary-color);
+}
+.pql-feed-catchup-bar__btn {
+    margin-left: auto;
+    padding: 0;
+    font-weight: var(--pql-weight-semibold);
+}
+
+/* Caught-up celebration — the "you finished" panel, shown above the
+ * (already-seen) history when nothing is waiting. */
+.pql-feed-caughtup {
+    text-align: center;
+    padding: var(--pql-space-5) var(--pql-space-3);
+    margin-bottom: var(--pql-space-4);
+    border: 1px dashed var(--bs-border-color);
+    border-radius: var(--pql-radius-lg);
+    color: var(--bs-secondary-color);
+}
+.pql-feed-caughtup__icon {
+    font-size: 2rem;
+    color: var(--bs-success);
+    display: block;
+    margin-bottom: var(--pql-space-2);
+}
+.pql-feed-caughtup__title {
+    font-weight: var(--pql-weight-semibold);
+    color: var(--bs-body-color);
+}
+.pql-feed-caughtup__sub {
+    font-size: var(--pql-text-sm);
+    margin: var(--pql-space-1) 0 0;
+}
 
 /* Sticky filter bar — sits below the topbar.  The blur effect lets
  * the page content show through subtly while keeping the bar
@@ -25,7 +175,7 @@
     border-bottom: 1px solid var(--bs-border-color-translucent);
     margin-left: -1rem;
     margin-right: -1rem;
-    padding: 0.6rem 1rem;
+    padding: var(--pql-space-2) var(--pql-space-4);
 }
 
 /* Day-separator header.  Stacks under the filter bar via a second
@@ -62,13 +212,23 @@
      * (img-overlay, ribbons) on feed items, so the override is
      * safe. */
     position: static !important;
-    border-left: 3px solid var(--bs-border-color);
+    border-left: var(--pql-feed-rail-width) solid var(--bs-border-color);
+    border-radius: var(--pql-radius-md);
     color: inherit;
     text-decoration: none;
 }
 .pql-feed-item:hover {
     text-decoration: none;
     color: inherit;
+}
+/* Generous, consistent body padding — Bootstrap's default card body is
+ * cramped for a social card.  Density modes tighten this below. */
+.pql-feed-item .card-body {
+    padding: var(--pql-space-4);
+}
+/* Avatar gutter ↔ body gap. */
+.pql-feed-item__row {
+    gap: var(--pql-space-3);
 }
 
 /* Per-render-kind stripes — visible at rest, regardless of read state. */
@@ -112,12 +272,23 @@
     border-left-color: var(--bs-danger);
 }
 
-/* Acted-on cards collapse to a muted, greyed slot until the next
- * reload prunes them — the reaction stays visible (LinkedIn/X), the
- * inline action row is hidden. */
+/* Acted-on cards ease to a muted, greyed slot until the next reload
+ * prunes them — the reaction stays visible (LinkedIn/X), the inline
+ * action row is hidden. */
 .pql-feed-item--resolved {
     border-left-color: var(--bs-secondary);
     opacity: 0.7;
+    transition: opacity var(--pql-duration-normal) var(--pql-ease);
+}
+
+/* Reaction chip pop — a brief scale bump when a reaction is added. */
+@keyframes pql-feed-react-pop {
+    0% { transform: scale(1); }
+    40% { transform: scale(1.25); }
+    100% { transform: scale(1); }
+}
+.pql-feed-react-pop {
+    animation: pql-feed-react-pop 180ms var(--pql-ease);
 }
 .pql-feed-item--resolved .pql-feed-item__actions {
     display: none;
@@ -127,8 +298,89 @@
 .pql-feed-item__actions {
     display: flex;
     flex-wrap: wrap;
+    align-items: center;
     gap: 0.5rem;
     margin-top: 0.5rem;
+}
+
+/* Inset code panel for raw error output / tracebacks — a contained,
+ * scrollable mono block instead of bare monospace bleeding into the card. */
+.pql-feed-code-panel {
+    background-color: var(--bs-tertiary-bg);
+    border: 1px solid var(--bs-border-color-translucent);
+    border-radius: var(--pql-radius-sm);
+    overflow: hidden;
+}
+.pql-feed-code-panel__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.15rem var(--pql-space-2);
+    font-size: var(--pql-text-xs);
+    color: var(--bs-secondary-color);
+    border-bottom: 1px solid var(--bs-border-color-translucent);
+}
+.pql-feed-code-panel__copy {
+    border: 0;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+    padding: 0 0.25rem;
+}
+.pql-feed-code-panel__copy:hover {
+    color: var(--bs-body-color);
+}
+.pql-feed-code-panel__body {
+    margin: 0;
+    padding: var(--pql-space-2);
+    max-height: 9rem;
+    overflow: auto;
+    font-family: var(--pql-font-mono);
+    font-size: var(--pql-text-xs);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    color: var(--bs-body-color);
+}
+.pql-feed--headlines .pql-feed-code-panel {
+    display: none;
+}
+.pql-feed--compact .pql-feed-code-panel__body {
+    max-height: 3rem;
+}
+
+/* Identifier pill — a run id / notebook path reads as a code token, not
+ * a stray link. */
+.pql-feed-item__ref {
+    font-family: var(--pql-font-mono);
+    font-size: 0.85em;
+    padding: 0.05rem 0.4rem;
+    border-radius: var(--pql-radius-sm);
+    background-color: var(--bs-tertiary-bg);
+    color: var(--bs-body-color);
+    text-decoration: none;
+    white-space: nowrap;
+}
+a.pql-feed-item__ref:hover {
+    background-color: var(--bs-secondary-bg);
+    text-decoration: none;
+}
+
+/* Quiet deep-link ("View run / details / logs") — secondary to the real
+ * action buttons, so it's a muted text link pushed to the far right of
+ * the action row rather than another button competing for attention. */
+.pql-feed-viewlink {
+    margin-left: auto;
+    font-size: var(--pql-text-xs);
+    color: var(--bs-secondary-color);
+    text-decoration: none;
+    white-space: nowrap;
+}
+.pql-feed-viewlink:hover {
+    color: var(--bs-body-color);
+    text-decoration: underline;
+}
+.pql-feed-viewlink .bi {
+    vertical-align: -0.1em;
 }
 .pql-feed--compact .pql-feed-item__actions,
 .pql-feed--headlines .pql-feed-item__actions {
@@ -148,21 +400,35 @@
     z-index: 1080;
 }
 
-/* Read-state overrides — drawn on top of the per-kind stripe. */
+/* Read-state overrides — drawn on top of the per-kind stripe.  The
+ * signal is the rail colour + a small dot, never a whole-card wash:
+ * a tinted background reads as dated and drowns the content. */
 .pql-feed-item--unread {
     border-left-color: var(--pql-color-accent);
-    background-color: var(--bs-success-bg-subtle);
+}
+.pql-feed-item--unread:hover {
+    background-color: color-mix(in srgb, var(--pql-color-accent) 4%, transparent);
 }
 .pql-feed-item--mention {
     border-left-color: var(--bs-warning);
-    background-color: var(--bs-warning-bg-subtle);
+}
+
+/* Unread dot — a small accent disc by the card controls, the single
+ * "look at this one" cue now that the background wash is gone. */
+.pql-feed-item__unread-dot {
+    flex: 0 0 auto;
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 50%;
+    background-color: var(--pql-color-accent);
+    align-self: center;
 }
 
 /* Layout slots inside a feed item card body. */
 .pql-feed-item__avatar {
-    flex: 0 0 2.25rem;
-    width: 2.25rem;
-    height: 2.25rem;
+    flex: 0 0 var(--pql-feed-avatar-size);
+    width: var(--pql-feed-avatar-size);
+    height: var(--pql-feed-avatar-size);
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -170,20 +436,299 @@
     background-color: var(--bs-secondary-bg);
     color: var(--bs-secondary-color);
     font-size: 1.2rem;
+    line-height: 1;
+    overflow: hidden;
 }
+/* People get a solid coloured disc with white initials (inline-styled
+ * background from a deterministic per-identity hue).  A faint inset ring
+ * keeps the disc defined against tinted card backgrounds. */
+.pql-feed-item__avatar--initials {
+    color: #fff;
+    font-size: var(--pql-text-sm);
+    font-weight: var(--pql-weight-semibold);
+    letter-spacing: 0.02em;
+    box-shadow: inset 0 0 0 1px rgb(0 0 0 / 8%);
+}
+/* System events get a ringed, lane-tinted glyph (inline-styled colour +
+ * border-colour) on a faintly-tinted disc — visually distinct from people
+ * so the stream never collapses into identical grey circles. */
+.pql-feed-item__avatar--glyph {
+    background-color: color-mix(in srgb, currentcolor 8%, transparent);
+    border: var(--pql-feed-avatar-ring) solid currentcolor;
+    font-size: 1.15rem;
+}
+
+/* Header line — name / verb / object / kind / time share one baseline.
+ * The name carries the row; the object is a quiet link; the kind only
+ * whispers; the timestamp never wraps under the name. */
+.pql-feed-item__name {
+    font-size: var(--pql-text-sm);
+    font-weight: var(--pql-weight-semibold);
+}
+.pql-feed-item__object {
+    display: inline-block;
+    max-width: 22rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    vertical-align: bottom;
+    font-weight: 500;
+    color: var(--bs-link-color);
+    text-decoration: none;
+}
+.pql-feed-item__object:hover {
+    text-decoration: underline;
+}
+.pql-feed-item__kind {
+    font-size: var(--pql-text-xs);
+    color: var(--bs-secondary-color);
+}
+
+/* Lane eyebrow — the small uppercase tag that owns a system-led headline
+ * in place of a person's name. */
+.pql-feed-item__eyebrow {
+    font-size: var(--pql-text-xs);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--bs-secondary-color);
+}
+
+/* Status row — a leading status chip sharing a baseline with the
+ * summary text, so the chip never floats mis-aligned above wrapped
+ * lines.  The chip holds its width; the summary wraps beneath it. */
+.pql-feed-status-row {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: var(--pql-space-2);
+}
+.pql-feed-status-row__text {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+.pql-feed-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--pql-space-1);
+    flex-shrink: 0;
+    padding: 0.1rem 0.5rem;
+    border-radius: var(--pql-radius-sm);
+    font-size: var(--pql-text-xs);
+    font-weight: var(--pql-weight-semibold);
+    line-height: 1.4;
+    white-space: nowrap;
+}
+.pql-feed-chip .bi {
+    font-size: 0.85em;
+}
+
+/* Composer — the "share an update" box at the top of the stream. */
+.pql-feed-composer__me {
+    flex: 0 0 2.25rem;
+    background-color: var(--bs-secondary);
+}
+.pql-feed-composer__prompt {
+    cursor: text;
+    border-radius: var(--pql-radius-pill);
+    background-color: var(--bs-tertiary-bg);
+}
+.pql-feed-composer__prompt:hover {
+    background-color: var(--bs-secondary-bg);
+}
+
+/* Badge / achievement — a warm celebratory pill, distinct from the
+ * severity chips so an award never reads like a warning. */
+.pql-feed-celebrate {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--pql-space-2);
+    padding: var(--pql-space-1) var(--pql-space-3);
+    border-radius: var(--pql-radius-pill);
+    background-color: var(--pql-color-warning-bg, var(--bs-warning-bg-subtle));
+    color: var(--pql-color-warning-fg, var(--bs-warning-text-emphasis));
+}
+.pql-feed-celebrate .bi {
+    font-size: 1.1rem;
+}
+
+/* Quoted comment / mention body — a soft bubble that reads as content,
+ * not a nested rail.  The card's own left stripe is the single vertical
+ * accent; this bubble must not draw a second one. */
+.pql-feed-item__quote {
+    background-color: var(--bs-tertiary-bg);
+    border-radius: var(--pql-radius-sm);
+    padding: var(--pql-space-2) var(--pql-space-3);
+    font-size: var(--pql-text-sm);
+    overflow-wrap: anywhere;
+    min-width: 0;
+}
+
+/* Threaded replies under a comment — indented quoted lines. */
+.pql-feed-thread {
+    margin-top: var(--pql-space-2);
+    padding-left: var(--pql-space-3);
+    border-left: 2px solid var(--bs-border-color-translucent);
+    display: flex;
+    flex-direction: column;
+    gap: var(--pql-space-1);
+}
+.pql-feed-thread-item {
+    font-size: var(--pql-text-sm);
+    overflow-wrap: anywhere;
+}
+.pql-feed-thread-item__who {
+    font-weight: var(--pql-weight-semibold);
+}
+
+/* Inline reply composer under a comment card — a quiet indent rail, kept
+ * subtle so it doesn't read as a second border beneath the quote bubble. */
+.pql-feed-reply {
+    padding-left: var(--pql-space-3);
+    border-left: 2px solid var(--bs-border-color-translucent);
+}
+
+/* Engagement footer — a distinct zone under the body, separated by a
+ * hairline so reactions + reply read as their own band (LinkedIn/X). */
+.pql-feed-item__engagement {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem;
+    padding-top: var(--pql-space-2);
+    border-top: 1px solid var(--bs-border-color-translucent);
+}
+/* Reply button — same chip shell, but it carries an action (not a count),
+ * so it sits a touch apart from the reaction chips. */
+.pql-feed-reply-btn {
+    margin-left: 0.15rem;
+}
+/* The footer collapses in the denser modes — comfortable stays rich. */
+.pql-feed--compact .pql-feed-item__engagement {
+    display: none;
+}
+.pql-feed-react-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.05rem 0.5rem;
+    border: 1px solid var(--bs-border-color);
+    border-radius: var(--pql-feed-chip-radius);
+    background: transparent;
+    font-size: var(--pql-text-xs);
+    line-height: 1.6;
+    color: var(--bs-body-color);
+    cursor: pointer;
+    transition: background-color var(--pql-duration-fast) var(--pql-ease),
+        border-color var(--pql-duration-fast) var(--pql-ease);
+}
+.pql-feed-react-chip:hover {
+    background-color: var(--bs-secondary-bg);
+}
+/* Keyboard focus rings on the card's interactive affordances. */
+.pql-feed-react-chip:focus-visible,
+.pql-feed-viewlink:focus-visible,
+.pql-feed-item__more:focus-visible,
+.pql-feed-item__object:focus-visible {
+    outline: 2px solid var(--pql-color-accent);
+    outline-offset: 1px;
+}
+.pql-feed-react-chip--mine {
+    border-color: var(--pql-color-accent);
+    background-color: color-mix(in srgb, var(--pql-color-accent) 12%, transparent);
+    color: var(--pql-color-accent);
+    font-weight: var(--pql-weight-semibold);
+}
+.pql-feed-react-add {
+    color: var(--bs-secondary-color);
+}
+/* Reaction palette popover — an elevated card floating above the
+ * add-reaction button, with a small caret pointing at it. */
+.pql-feed-react-popover {
+    position: absolute;
+    z-index: 1080;
+    bottom: 100%;
+    left: 0;
+    margin-bottom: 0.4rem;
+    padding: 0.25rem;
+    background-color: var(--bs-body-bg);
+    border: 1px solid var(--bs-border-color-translucent);
+    border-radius: var(--pql-radius-md);
+    box-shadow: var(--pql-elev-2);
+}
+/* Caret — a rotated square straddling the popover's bottom edge. */
+.pql-feed-react-popover::after {
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: 0.9rem;
+    width: 0.5rem;
+    height: 0.5rem;
+    margin-top: -0.28rem;
+    background-color: var(--bs-body-bg);
+    border-right: 1px solid var(--bs-border-color-translucent);
+    border-bottom: 1px solid var(--bs-border-color-translucent);
+    transform: rotate(45deg);
+}
+.pql-feed-react-palette {
+    display: inline-flex;
+    gap: 0.1rem;
+}
+.pql-feed-react-palette button {
+    border: 0;
+    background: transparent;
+    font-size: 1.15rem;
+    line-height: 1;
+    width: 2rem;
+    height: 2rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--pql-radius-sm);
+    cursor: pointer;
+    transition: transform var(--pql-duration-fast) var(--pql-ease),
+        background-color var(--pql-duration-fast) var(--pql-ease);
+}
+.pql-feed-react-palette button:hover,
+.pql-feed-react-palette button:focus-visible {
+    background-color: var(--bs-secondary-bg);
+    transform: scale(1.2);
+    outline: none;
+}
+/* Emoji the user already reacted with carries a subtle accent ring. */
+.pql-feed-react-palette button.is-active {
+    background-color: color-mix(in srgb, var(--pql-color-accent) 14%, transparent);
+    box-shadow: inset 0 0 0 1.5px var(--pql-color-accent);
+}
+@media (prefers-reduced-motion: reduce) {
+    .pql-feed-react-palette button {
+        transition: none;
+    }
+    .pql-feed-react-palette button:hover,
+    .pql-feed-react-palette button:focus-visible {
+        transform: none;
+    }
+}
+/* Card-internal vertical rhythm — header / body / engagement footer are
+ * the flex children, spaced by one shared stack token so every kind
+ * lines up identically. */
 .pql-feed-item__body {
     flex: 1 1 auto;
     min-width: 0;
+    display: flex;
+    flex-direction: column;
+    row-gap: var(--pql-feed-stack);
 }
 .pql-feed-item__meta {
     font-size: var(--pql-text-xs);
     color: var(--bs-secondary-color);
+    white-space: nowrap;
 }
 
 /* Truncated comment / review body — multi-line clamp. */
 .pql-feed-item__snippet {
     display: -webkit-box;
-    -webkit-line-clamp: 4;
+    -webkit-line-clamp: var(--pql-feed-snippet-lines);
     -webkit-box-orient: vertical;
     overflow: hidden;
     color: var(--bs-body-color);
@@ -206,6 +751,24 @@
     text-decoration: underline;
 }
 
+/* Card-shaped loading skeletons — mirror the real card grid so the feed
+ * doesn't reflow when content lands. */
+.pql-feed-skeleton-card__avatar {
+    flex: 0 0 var(--pql-feed-avatar-size);
+    width: var(--pql-feed-avatar-size);
+    height: var(--pql-feed-avatar-size);
+    border-radius: var(--pql-radius-pill);
+}
+.pql-feed-skeleton-card__chip {
+    display: inline-block;
+    width: 3rem;
+    height: 1.1rem;
+    border-radius: var(--pql-feed-chip-radius);
+}
+.pql-feed-skeleton-card .placeholder {
+    border-radius: var(--pql-radius-sm);
+}
+
 /* The "X new since you opened this page" banner — sticky pulse. */
 .pql-feed-new-banner {
     position: sticky;
@@ -225,37 +788,39 @@
  * by feed.js when an SSE event lands; class is removed after the
  * animation completes so subsequent re-renders don't re-trigger. */
 @keyframes pql-feed-item-fresh {
-    0%   { background-color: var(--pql-color-success-bg); }
-    100% { background-color: transparent; }
+    0%   { background-color: var(--pql-color-success-bg); transform: translateY(-6px); opacity: 0.55; }
+    100% { background-color: transparent; transform: translateY(0); opacity: 1; }
 }
 .pql-feed-item--fresh {
     animation: pql-feed-item-fresh 1.4s ease-out 1;
 }
 
-/* Keyboard-nav focus indicator (C7 will set this from feed.js). */
+/* Keyboard-nav focus indicator — feed.js toggles this class as j/k move. */
 .pql-feed-item--focused {
     box-shadow: 0 0 0 2px var(--pql-color-accent);
 }
 
-/* Density modes (C7 toggles a class on the feed root). */
-.pql-feed--compact .pql-feed-item__snippet {
-    -webkit-line-clamp: 1;
+/* Density modes — a class on the feed root re-assigns the card tokens
+ * rather than overriding individual properties, so one knob drives the
+ * whole card.  Comfortable is the default token set above. */
+.pql-feed--compact {
+    --pql-feed-snippet-lines: 1;
+    --pql-feed-avatar-size: 2rem;
+    --pql-feed-stack: var(--pql-space-1);
 }
-.pql-feed--compact .pql-feed-item__reactions {
-    display: none;
+.pql-feed--headlines {
+    --pql-feed-avatar-size: 1.5rem;
+    --pql-feed-stack: var(--pql-space-1);
 }
 .pql-feed--headlines .pql-feed-item__snippet,
-.pql-feed--headlines .pql-feed-item__reactions {
+.pql-feed--headlines .pql-feed-item__engagement {
     display: none;
 }
 .pql-feed--headlines .pql-feed-item__avatar {
-    width: 1.5rem;
-    height: 1.5rem;
-    flex-basis: 1.5rem;
     font-size: 0.9rem;
 }
 .pql-feed--headlines .card-body {
-    padding: 0.45rem 0.75rem;
+    padding: var(--pql-space-2) var(--pql-space-3);
 }
 
 /* Connection-state dot in the filter bar. */
@@ -276,7 +841,11 @@
 /* Reduced-motion overrides — disable lift, fresh-fade and any
  * incidental transitions. */
 @media (prefers-reduced-motion: reduce) {
-    .pql-feed-item--fresh {
+    .pql-feed-item--fresh,
+    .pql-feed-react-pop {
         animation: none;
+    }
+    .pql-feed-item--resolved {
+        transition: none;
     }
 }

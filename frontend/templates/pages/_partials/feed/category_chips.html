@@ -8,7 +8,9 @@
  response's ``category_counts`` (tallied across every lane before the
  slice) so they don't collapse when a lane is selected.
 #}
-<div class="pql-feed-categories mb-2">
+<div class="pql-feed-categories mb-2"
+     :class="focusMode ? 'pql-feed-categories--muted' : ''"
+     :aria-hidden="focusMode ? 'true' : 'false'">
     <ul class="nav nav-pills nav-pills-sm" role="tablist" aria-label="Feed categories">
         <template x-for="c in categories" :key="c.key">
             <li class="nav-item" role="presentation">

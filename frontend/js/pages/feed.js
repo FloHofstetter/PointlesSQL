@@ -1,7 +1,7 @@
 /**
  * Feed page Alpine factory.
  *
- * Activity stream + Discover panes for the home feed. Owns the SSE
+ * The home activity stream. Owns the SSE
  * connection lifecycle, the day-binning getter that groups rows into
  * Today / Yesterday / dated headers, keyboard navigation (j/k/o/e/m/r/?),
  * saved-search bookmarks, and the first-run welcome card.
@@ -11,6 +11,10 @@
  * ``bootstrap.js`` re-attaches the factory to ``window.feedPage`` so
  * the template's ``x-data="feedPage()"`` keeps resolving.
  */
+
+import { avatarFor } from '../avatars.js';
+import { installFeedSocial } from '../feed_social.js';
+import { renderInlineMd } from '../inline_md.js';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -86,9 +90,25 @@ const KIND_LABELS = {
 // surface, so the header line skips the link label and lets the
 // kind badge carry the affordance.
 const HIDE_ENTITY_REF_KINDS = new Set(['notebook_revision', 'notebook_cell_output']);
+// Entity kinds whose ``entity_ref`` is an internal id (a user PK, an
+// agent-review id, …) that means nothing on its own — the summary line
+// already names the thing, so the object link is suppressed.
+const OPAQUE_REF_KINDS = new Set(['user', 'review']);
+// Short uppercase lane labels for system-led rows (rows with no human
+// actor). Reads as "DATA HEALTH · demo.hr" instead of a fake bold name.
+const LANE_EYEBROWS = {
+  data_health: 'Data health',
+  pipeline: 'Pipeline',
+  approval: 'Approval',
+  agent_run: 'Agent run',
+  badge_award: 'Achievement',
+  issue: 'Issue',
+  branch: 'Governance',
+  fact: 'Pinned',
+};
 
 export function feedPage(isAdmin = false) {
-  return {
+  const obj = {
     isAdmin: !!isAdmin,
     loaded: false,
     filter: 'all',
@@ -102,7 +122,17 @@ export function feedPage(isAdmin = false) {
     trending: [],
     people: [],
     savedSearches: [],
-    welcomeVisible: false,
+
+    // Triage state — the "needs you" inbox + the ambient seen-cursor.
+    // ``focusMode`` collapses the stream so the inbox can be drained to
+    // zero; the counts + ``caughtUp`` come from the /api/feed response
+    // and drive the zone header, the caught-up divider, and the badge.
+    focusMode: false,
+    needsActionCount: 0,
+    unreadForYouCount: 0,
+    unseenCount: 0,
+    caughtUp: false,
+    seenAt: null,
 
     // Coarse lane slice over the unified stream. Sits above the
     // social ``filters`` axis below; the two compose (category narrows
@@ -161,16 +191,17 @@ export function feedPage(isAdmin = false) {
         if (c && this.categories.some((cat) => cat.key === c)) {
           this.category = c;
         }
+        this.focusMode = window.localStorage?.getItem('pql.feed.focus') === '1';
       } catch (e) {
         /* ignore storage errors */
       }
       this._restoreSavedSearches();
-      this._evaluateWelcome();
       await this.reload();
       this.loadTrending();
       this.loadPeople();
       this.connectSse();
       this._installHotkeys();
+      this._installSeenAutoAdvance();
       // Tear down on page leave so the server-side queue gets released
       // promptly (htmx:beforeRequest fires on boost navs even though the
       // feed root unmounts).
@@ -259,6 +290,9 @@ export function feedPage(isAdmin = false) {
         render_kind: payload.render_kind || this._classifyEvent(payload.event_type || ''),
         category: payload.category || derived[0],
         severity: payload.severity || derived[1],
+        attention: isSignal
+          ? 'act'
+          : payload.attention || this._classifyAttention(payload.event_type || ''),
         event_type: payload.event_type,
         signal_kind: payload.signal_kind,
         summary_md: payload.summary_md,
@@ -271,6 +305,7 @@ export function feedPage(isAdmin = false) {
         actor_display_name: payload.actor_display_name || null,
         created_at: payload.created_at || new Date().toISOString(),
         read_at: null,
+        is_new: true,
         _fresh: true,
       };
       this.bufferedRows.unshift(row);
@@ -289,6 +324,14 @@ export function feedPage(isAdmin = false) {
       if (eventType.startsWith('pointlessql.branch.')) return 'branch';
       if (eventType === 'notebook_revision_pinned') return 'fact';
       return 'notification';
+    },
+
+    // Mirror of services/notifications/categories.py:attention_for_event
+    // — the legacy fallback for an SSE row that didn't carry a stamped
+    // ``attention``. A mention is always addressed to you; anything else
+    // arriving through the fan-out is ambient awareness.
+    _classifyAttention(eventType) {
+      return eventType && eventType.indexOf('mention') !== -1 ? 'for_you' : 'ambient';
     },
 
     // Mirror of services/notifications/categories.py:classify_category
@@ -437,6 +480,13 @@ export function feedPage(isAdmin = false) {
         const data = await res.json();
         this.rows = data.rows || [];
         this.categoryCounts = data.category_counts || {};
+        this.needsActionCount = data.needs_action_count || 0;
+        this.unreadForYouCount = data.unread_for_you_count || 0;
+        this.unseenCount = data.unseen_count || 0;
+        this.caughtUp = !!data.caught_up;
+        this.seenAt = data.seen_at || null;
+        // Lazy-load reaction summaries for the social rows just rendered.
+        this._loadReactionsFor(this.rows);
       } catch (e) {
         console.error('feed load failed', e);
         window.pqlToast?.error?.('Failed to load feed: ' + (e.message || 'unknown'));
@@ -550,6 +600,16 @@ export function feedPage(isAdmin = false) {
       }
     },
 
+    async copyText(text) {
+      try {
+        await navigator.clipboard.writeText(String(text || ''));
+        window.pqlToast?.success?.('Copied to clipboard.');
+      } catch (e) {
+        console.error('copy failed', e);
+        window.pqlToast?.error?.('Could not copy.');
+      }
+    },
+
     async markAllRead() {
       try {
         const res = await fetch('/api/notifications/mark-all-read', {
@@ -557,12 +617,15 @@ export function feedPage(isAdmin = false) {
           headers: { 'Content-Type': 'application/json' },
         });
         if (!res.ok && res.status !== 404) throw new Error('HTTP ' + res.status);
-        // Clear local unread stripes optimistically.
-        this.rows = this.rows.map((r) => ({
-          ...r,
-          read_at: r.read_at || new Date().toISOString(),
-        }));
-        window.pqlToast?.success?.('All notifications marked read.');
+        // Clear the for-you inbox optimistically; this drains those rows
+        // out of the "needs you" zone.  Ambient rows are left alone —
+        // their newness is the seen-cursor's job, not a read flag.
+        const now = new Date().toISOString();
+        this.rows.forEach((r) => {
+          if (r.attention === 'for_you' && !r.read_at) r.read_at = now;
+        });
+        this.unreadForYouCount = 0;
+        window.pqlToast?.success?.('Inbox cleared.');
       } catch (e) {
         console.error('mark-all-read failed', e);
         window.pqlToast?.error?.('Could not mark all read.');
@@ -577,6 +640,10 @@ export function feedPage(isAdmin = false) {
       this.rows = this.bufferedRows.concat(this.rows);
       this.bufferedRows = [];
       this.newCount = 0;
+      this._loadReactionsFor(this.rows);
+      // Drained arrivals are unseen ambient activity until scrolled past
+      // (Needs-you rows count via their own tiers, not the stream tally).
+      this._recomputeUnseen();
       window.scrollTo({ top: 0, behavior: 'smooth' });
       // Drop the fresh-flag after the CSS animation completes (matches
       // the 1.4s ``pql-feed-item-fresh`` keyframe).
@@ -620,6 +687,30 @@ export function feedPage(isAdmin = false) {
       };
     },
 
+    // A row is "person-led" when a human/agent name owns the headline
+    // (comments, reviews, mentions, branch promotions, agent runs, and
+    // approvals once the principal resolves to a display name). System-led
+    // rows (data-health, pipeline, badges, bare notifications) carry no
+    // actor and render as a lane eyebrow + object instead of a fake name.
+    isPersonLed(r) {
+      return !!r.actor_display_name;
+    },
+
+    // Avatar descriptor for the header — a coloured-initials disc for
+    // people, a lane-tinted glyph for system events. Consumed by the
+    // template's ``rowAvatar`` binding.
+    rowAvatar(r) {
+      if (this.isPersonLed(r)) {
+        return avatarFor({ name: r.actor_display_name, id: r.actor_user_id });
+      }
+      return avatarFor({
+        kind: r.render_kind || r.kind,
+        severity: r.severity,
+        icon: this.avatarIcon(r),
+      });
+    },
+
+    // Bootstrap icon for a system row's glyph avatar.
     avatarIcon(r) {
       const rk = r.render_kind || r.kind;
       if (rk === 'agent_run') return 'bi-robot';
@@ -629,23 +720,21 @@ export function feedPage(isAdmin = false) {
       if (rk === 'badge_award') return 'bi-award-fill';
       if (rk === 'issue') return 'bi-bug';
       if (rk === 'branch') return 'bi-bezier2';
-      if (r.actor_user_id) return 'bi-person-circle';
       return this.iconForKind(r.entity_kind || r.kind);
     },
 
-    actorLabel(r) {
-      if (r.actor_display_name) return r.actor_display_name;
-      const rk = r.render_kind || r.kind;
-      if (rk === 'agent_run') return 'Agent run';
-      if (rk === 'approval') return 'Agent run';
-      if (rk === 'data_health') return 'Data health';
-      if (rk === 'pipeline') return 'Pipeline';
-      if (rk === 'badge_award') return 'System';
-      if (rk === 'issue') return 'Issue';
-      if (rk === 'branch') return 'Branch';
-      return 'Activity';
+    // Short lane label shown before the object on system-led rows.
+    laneEyebrow(r) {
+      return LANE_EYEBROWS[r.render_kind || r.kind] || 'Update';
     },
 
+    // Concise screen-reader label for the whole card — "who verb object".
+    cardAria(r) {
+      const who = r.actor_display_name || this.laneEyebrow(r);
+      return [who, this.verbLabel(r), this.entityLinkLabel(r)].filter(Boolean).join(' ');
+    },
+
+    // Verb connecting a person to the object on person-led rows.
     verbLabel(r) {
       const rk = r.render_kind || r.kind;
       if (rk === 'comment') return 'commented on';
@@ -655,24 +744,48 @@ export function feedPage(isAdmin = false) {
         return r.event_type && r.event_type.endsWith('.failed') ? 'failed on' : 'completed on';
       }
       if (rk === 'approval') return 'needs your approval on';
-      if (rk === 'data_health') return '';
-      if (rk === 'pipeline') return '';
-      if (rk === 'badge_award') return 'earned a badge for';
-      if (rk === 'issue') return 'on';
-      if (rk === 'branch') return 'on';
+      if (rk === 'branch') return this.branchVerb(r.event_type).toLowerCase();
+      if (rk === 'issue') return this.issueBadgeLabel(r.event_type).toLowerCase();
+      if (rk === 'badge_award') return 'earned';
       if (rk === 'fact') return 'pinned';
       return '';
     },
 
+    // Human-friendly object label — shortens opaque run UUIDs and hides
+    // internal-id refs (user PK, review id) that mean nothing alone.
     entityLinkLabel(r) {
-      if (r.entity_kind && HIDE_ENTITY_REF_KINDS.has(r.entity_kind)) {
-        // UUID-only refs (e.g. pin fact_uuid) — skip the link label; the
-        // kind badge + summary carry the affordance.
-        return '';
-      }
-      if (r.entity_ref) return r.entity_ref;
-      if (r.entity_kind) return this.kindLabel(r.entity_kind);
-      return 'open';
+      const kind = r.entity_kind;
+      const ref = r.entity_ref;
+      if (kind && HIDE_ENTITY_REF_KINDS.has(kind)) return '';
+      if (!ref) return kind ? this.kindLabel(kind) : '';
+      if (kind === 'run') return 'run ' + String(ref).slice(0, 8);
+      if (OPAQUE_REF_KINDS.has(kind)) return '';
+      return String(ref);
+    },
+
+    // Whether to render the object link at all (suppressed for opaque
+    // refs the friendly-label step blanks out).
+    showObjectLink(r) {
+      return !!this.entityLinkLabel(r);
+    },
+
+    // Inline-markdown → safe HTML for summary / body strings, so
+    // ``**bold**`` and ``[links](…)`` render instead of showing markers.
+    mdInline(s) {
+      return renderInlineMd(s || '');
+    },
+
+    // Expand / collapse a clamped comment or review snippet.
+    toggleSnippet(r) {
+      r._expanded = !r._expanded;
+    },
+
+    // Icon for a severity-bearing status chip — paired with colour so
+    // severity is glanceable, not communicated by colour alone.
+    sevIcon(severity) {
+      if (severity === 'error') return 'bi-x-octagon';
+      if (severity === 'warn') return 'bi-exclamation-triangle';
+      return 'bi-check-circle';
     },
 
     issueBadgeClass(eventType) {
@@ -785,31 +898,6 @@ export function feedPage(isAdmin = false) {
       this._persistSavedSearches();
     },
 
-    // First-run welcome card — dismiss persists in localStorage.
-    // Server-side gating on user.created_at <7d + social_follow count == 0
-    // would require an extra round-trip; local-only is simpler and the
-    // dismiss is sticky-per-browser.
-    _evaluateWelcome() {
-      try {
-        if (window.localStorage?.getItem('pql.feed.welcomeDismissed') === '1') {
-          this.welcomeVisible = false;
-          return;
-        }
-      } catch (e) {
-        /* ignore */
-      }
-      this.welcomeVisible = true;
-    },
-
-    dismissWelcome() {
-      this.welcomeVisible = false;
-      try {
-        window.localStorage?.setItem('pql.feed.welcomeDismissed', '1');
-      } catch (e) {
-        /* ignore */
-      }
-    },
-
     // Keyboard navigation — j/k/o/e/m/r/?.
     _focusedIndex: -1,
     _hotkeysAttached: false,
@@ -887,9 +975,13 @@ export function feedPage(isAdmin = false) {
     },
 
     _flatRows() {
-      const out = [];
-      for (const day of this.groupedDays) {
-        for (const r of day.rows) out.push(r);
+      // Match rendered DOM order: the pinned "needs you" zone first,
+      // then the day-grouped stream (hidden in focus mode).
+      const out = [...this.needsYouRows];
+      if (!this.focusMode) {
+        for (const day of this.groupedDays) {
+          for (const r of day.rows) out.push(r);
+        }
       }
       return out;
     },
@@ -909,10 +1001,195 @@ export function feedPage(isAdmin = false) {
       }
     },
 
+    // Is this row part of the finite "needs you" inbox?  Unresolved
+    // act work (approvals / open signals) always is; a for_you
+    // notification is until it's read.  The resolved/read transition is
+    // what drains the zone live.
+    _inNeedsYou(r) {
+      if (r._resolved) return false;
+      if (r.attention === 'act') return true;
+      return r.attention === 'for_you' && !r.read_at;
+    },
+
+    // The pinned inbox zone — act rows first (by severity), then
+    // for_you (newest first).  A row appears here OR in the stream,
+    // never both.
+    get needsYouRows() {
+      const sevRank = { error: 0, warn: 1, info: 2 };
+      return this.rows
+        .filter((r) => this._inNeedsYou(r))
+        .slice()
+        .sort((a, b) => {
+          const aAct = a.attention === 'act' ? 0 : 1;
+          const bAct = b.attention === 'act' ? 0 : 1;
+          if (aAct !== bAct) return aAct - bAct;
+          if (aAct === 0) {
+            const sa = sevRank[a.severity] ?? 3;
+            const sb = sevRank[b.severity] ?? 3;
+            if (sa !== sb) return sa - sb;
+          }
+          return String(b.created_at).localeCompare(String(a.created_at));
+        });
+    },
+
+    // The infinite ambient stream — everything not pinned into the
+    // inbox zone above.
+    get streamRows() {
+      return this.rows.filter((r) => !this._inNeedsYou(r));
+    },
+
+    // Composite stream key, shared by the x-for :key and the caught-up
+    // boundary lookup so the two never drift.
+    _rowKey(r) {
+      return (
+        r.kind +
+        ':' +
+        r.created_at +
+        ':' +
+        r.event_type +
+        ':' +
+        (r.entity_ref || '') +
+        ':' +
+        (r.comment_id || '')
+      );
+    },
+
+    // Key of the first already-seen stream row — where the "you're all
+    // caught up" divider sits.  Null when every stream row is still new
+    // (nothing seen yet to divide against).
+    get _streamBoundaryKey() {
+      const seen = this.streamRows.find((r) => !r.is_new);
+      return seen ? this._rowKey(seen) : null;
+    },
+
+    // True for the single row the caught-up divider renders above.
+    isCaughtUpBoundary(r) {
+      const key = this._streamBoundaryKey;
+      return key !== null && this._rowKey(r) === key;
+    },
+
+    // Re-derive the unseen tally from the current rows after a local
+    // mutation (drain / scroll-advance), and refresh ``caughtUp``.
+    _recomputeUnseen() {
+      this.unseenCount = this.streamRows.filter((r) => !!r.is_new).length;
+      this.caughtUp =
+        this.unseenCount === 0 && this.needsActionCount === 0 && this.unreadForYouCount === 0;
+    },
+
+    // Scroll-driven seen-cursor: as the reader scrolls past new stream
+    // rows they become "seen", so advance the cursor to the newest row
+    // that has crossed the read line.  Reads the DOM fresh on each scan
+    // so it survives Alpine re-renders, and only ever moves forward.
+    _installSeenAutoAdvance() {
+      if (this._seenAutoAttached) return;
+      this._seenAutoAttached = true;
+      window.addEventListener('scroll', () => this._scheduleSeenScan(), { passive: true });
+    },
+
+    _scheduleSeenScan() {
+      if (this._seenScanPending) return;
+      this._seenScanPending = true;
+      window.setTimeout(() => {
+        this._seenScanPending = false;
+        this._scanSeen();
+      }, 500);
+    },
+
+    _scanSeen() {
+      if (!this.loaded || this.focusMode || this.unseenCount === 0) return;
+      // Only count what the reader could actually have looked at.
+      if (document.hidden || (document.hasFocus && !document.hasFocus())) return;
+      const cards = document.querySelectorAll('.pql-feed-rows .pql-feed-item[data-feed-ts]');
+      let maxTs = null;
+      cards.forEach((el) => {
+        // A card whose top has scrolled to/above the comfortable read
+        // line counts as seen.
+        if (el.getBoundingClientRect().top < 120) {
+          const ts = el.getAttribute('data-feed-ts');
+          if (ts && (maxTs === null || ts > maxTs)) maxTs = ts;
+        }
+      });
+      if (maxTs) this._advanceSeenTo(maxTs);
+    },
+
+    async _advanceSeenTo(ts) {
+      // Forward-only: a stale scan can never rewind the cursor.
+      if (this.seenAt && String(ts) <= String(this.seenAt)) return;
+      let changed = false;
+      this.rows.forEach((r) => {
+        if (r.is_new && String(r.created_at) <= String(ts)) {
+          r.is_new = false;
+          changed = true;
+        }
+      });
+      if (!changed) return;
+      this.seenAt = ts;
+      this._recomputeUnseen();
+      try {
+        await fetch('/api/feed/seen', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ at: ts }),
+        });
+      } catch (e) {
+        /* best-effort — the cursor re-syncs on the next reload */
+      }
+    },
+
+    // Advance the seen-cursor to now and optimistically collapse the
+    // stream to "caught up": every rendered row is marked seen and the
+    // unseen tally zeroed, so the divider jumps to the top without a
+    // reload.
+    async markCaughtUp() {
+      try {
+        const res = await fetch('/api/feed/seen', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({}),
+        });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const data = await res.json();
+        this.seenAt = data.seen_at || this.seenAt;
+      } catch (e) {
+        console.error('markCaughtUp failed', e);
+        window.pqlToast?.error?.('Could not update your place.');
+        return;
+      }
+      this.rows.forEach((r) => {
+        r.is_new = false;
+      });
+      this.unseenCount = 0;
+      this.caughtUp = this.needsActionCount === 0 && this.unreadForYouCount === 0;
+    },
+
+    toggleFocusMode() {
+      this.focusMode = !this.focusMode;
+      try {
+        window.localStorage?.setItem('pql.feed.focus', this.focusMode ? '1' : '0');
+      } catch (e) {
+        /* ignore */
+      }
+    },
+
+    // Reflect the live "needs you" total in the browser-tab title so a
+    // pending count is visible even when the feed is scrolled away or in
+    // a background tab.  Driven by x-effect, so it tracks the zone
+    // draining without a manual call.  htmx restores the plain title
+    // from the next page's <title> on navigation.
+    updateTitle() {
+      const n = (this.needsActionCount || 0) + (this.unreadForYouCount || 0);
+      const base = 'Home · PointlesSQL';
+      try {
+        document.title = n > 0 ? `(${n}) ${base}` : base;
+      } catch (e) {
+        /* ignore */
+      }
+    },
+
     get groupedDays() {
       const todayStart = _todayStart();
       const groups = new Map();
-      for (const r of this.rows) {
+      for (const r of this.streamRows) {
         const rowDate = new Date(r.created_at);
         if (Number.isNaN(rowDate.getTime())) continue;
         const iso = _dayIso(rowDate, todayStart);
@@ -935,4 +1212,8 @@ export function feedPage(isAdmin = false) {
       return ordered;
     },
   };
+
+  // Mixin: emoji reactions + reply, wired to the polymorphic social API.
+  installFeedSocial(obj);
+  return obj;
 }

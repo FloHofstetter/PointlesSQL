@@ -14,6 +14,8 @@ Sub-modules:
   ``user_notifications`` rows.
 * :mod:`.muting` — mute / mute-author / snooze / unmute endpoints
   plus the shared upsert helper.
+* :mod:`.seen` — the feed seen-cursor (``POST /api/feed/seen``) that
+  drives the "you're all caught up" state on the ambient stream.
 * :mod:`._serializers` — row-builders, mute-key resolver, FQN
   cache.  Internal, but kept here (not in services) because the
   shape is route-specific.
@@ -26,12 +28,14 @@ from fastapi import APIRouter
 from pointlessql.api.feed_routes.feed import router as _feed_router
 from pointlessql.api.feed_routes.muting import router as _muting_router
 from pointlessql.api.feed_routes.notifications import router as _notifications_router
+from pointlessql.api.feed_routes.seen import router as _seen_router
 from pointlessql.api.feed_routes.signals import router as _signals_router
 
 router = APIRouter(tags=["feed"])
 router.include_router(_feed_router)
 router.include_router(_notifications_router)
 router.include_router(_muting_router)
+router.include_router(_seen_router)
 router.include_router(_signals_router)
 
 __all__ = ["router"]

@@ -22,7 +22,7 @@
  */
 
 import { Awareness } from 'y-protocols/awareness';
-
+import { avatarColor as _userColor } from '../avatars.js';
 import { createCoeditClient } from './coedit_client.js';
 
 /**
@@ -51,22 +51,6 @@ import { createCoeditClient } from './coedit_client.js';
  * @property {() => string} coeditPillClass
  * @property {() => string} coeditTooltip
  */
-
-// FNV-1a-32 over the user-id string → HSL hue (0..359).  Deterministic
-// across reloads + tabs so the same user always gets the same colour.
-// Duplicated in coedit_awareness.js for the peer-rail render path —
-// 10-LOC stable function, two file-private copies beat a cross-module
-// export here.
-function _userColor(userId) {
-  const text = String(userId || 'anon');
-  let h = 0x811c9dc5;
-  for (let i = 0; i < text.length; i += 1) {
-    h ^= text.charCodeAt(i);
-    h = (h + ((h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24))) >>> 0;
-  }
-  const hue = h % 360;
-  return `hsl(${hue}, 65%, 45%)`;
-}
 
 /**
  * Install the co-edit lifecycle slots + methods onto an Alpine x-data

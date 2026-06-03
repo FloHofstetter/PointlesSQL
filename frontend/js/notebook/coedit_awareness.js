@@ -20,31 +20,10 @@
 
 import { encodeAwarenessUpdate } from 'y-protocols/awareness';
 
+import { initials as _initials, avatarColor as _userColor } from '../avatars.js';
+
 const REMOTE_ORIGIN = 'pql-coedit-remote';
 const PEER_RAIL_RENDER_THROTTLE_MS = 100;
-
-// FNV-1a-32 over the user-id string → HSL hue (0..359).  Deterministic
-// across reloads + tabs so the same user always gets the same colour.
-// Duplicated in coedit_core.js for the seed-state path; see comment
-// there.
-function _userColor(userId) {
-  const text = String(userId || 'anon');
-  let h = 0x811c9dc5;
-  for (let i = 0; i < text.length; i += 1) {
-    h ^= text.charCodeAt(i);
-    h = (h + ((h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24))) >>> 0;
-  }
-  const hue = h % 360;
-  return `hsl(${hue}, 65%, 45%)`;
-}
-
-function _initials(name) {
-  const trimmed = String(name || '').trim();
-  if (!trimmed) return '?';
-  const parts = trimmed.split(/\s+/).filter(Boolean);
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-}
 
 export function installCoeditAwareness(state) {
   state._coeditPeerRefresh = null;

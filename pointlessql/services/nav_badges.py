@@ -4,7 +4,11 @@ Computes the three counts shown as red unread pills next to the
 WATCH-section entries in the primary rail:
 
 * ``runs_pending``  — agent runs awaiting approval in this workspace.
-* ``audit_unread``  — user's unread notification count.
+* ``audit_unread``  — user's unread *for-you* inbox count (mentions /
+  directed deliveries).  Ambient stream activity is excluded — its
+  newness is tracked by the feed seen-cursor, not a read flag — so this
+  badge clears when the inbox is read rather than drifting up with
+  every followed-entity event.
 * ``alerts_firing`` — active alerts in this workspace.
 
 Each query is best-effort: any failure returns ``0`` for that key
@@ -18,7 +22,7 @@ from __future__ import annotations
 import logging
 from typing import Any, TypedDict
 
-from sqlalchemy import func, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import sessionmaker
 
 logger = logging.getLogger(__name__)
@@ -69,6 +73,7 @@ def compute_nav_badges(
             AgentRun as AgentRunModel,
         )
         from pointlessql.models.notifications import UserNotification
+        from pointlessql.services.notifications.categories import ATTENTION_FOR_YOU
 
         with factory() as session:
             if workspace_id:
@@ -94,6 +99,15 @@ def compute_nav_badges(
                     .select_from(UserNotification)
                     .where(UserNotification.recipient_user_id == user_id)
                     .where(UserNotification.read_at.is_(None))
+                    .where(
+                        or_(
+                            UserNotification.attention == ATTENTION_FOR_YOU,
+                            and_(
+                                UserNotification.attention.is_(None),
+                                UserNotification.event_type.like("%mention%"),
+                            ),
+                        )
+                    )
                 )
                 out["audit_unread"] = int(session.scalar(inbox_stmt) or 0)
     except Exception:  # noqa: BLE001 — nav badges are best-effort

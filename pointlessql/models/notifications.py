@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Index, Integer, String, Text
+from sqlalchemy import DateTime, ForeignKey, Index, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from pointlessql.models.base import Base
@@ -54,6 +54,15 @@ class UserNotification(Base):
         actor_user_id: Optional FK on ``users.id`` — who triggered
             the event (``None`` for system-emitted events like
             schema-change).
+        attention: Which attention tier this row belongs to —
+            ``'for_you'`` when the recipient was explicitly addressed
+            (an @mention, a directed approval/terminal fact) or
+            ``'ambient'`` when it arrived only because the recipient
+            follows the entity.  Stamped at fan-out time so the feed
+            can split a finite "needs you" inbox from the infinite
+            ambient stream without re-deriving intent from the event
+            type.  ``None`` on rows written before the column existed;
+            the feed falls back to the event type for those.
         read_at: ``None`` while unread, wall-clock once flipped.
         created_at: Wall-clock at fan-out time.
     """
@@ -111,10 +120,62 @@ class UserNotification(Base):
         ForeignKey("users.id", ondelete="SET NULL"),
         nullable=True,
     )
+    attention: Mapped[str | None] = mapped_column(
+        String(16),
+        nullable=True,
+    )
     read_at: Mapped[datetime.datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
     created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class FeedReadMarker(Base):
+    """Per-user "seen up to here" cursor for the ambient feed stream.
+
+    The feed is two things at once: a finite inbox of work addressed to
+    the reader, and an infinite stream of ambient activity.  The inbox
+    drains by acting / reading; the stream can never be "finished", so
+    instead of marking every ambient row read it carries a single
+    per-(user, workspace) high-water timestamp.  Rows created after
+    ``seen_at`` are "new"; advancing the cursor to now is what makes the
+    stream read as "you're all caught up" without destroying any
+    history below the line.
+
+    Attributes:
+        id: Auto-incremented primary key.
+        user_id: FK on ``users.id``; ``ondelete='CASCADE'`` so a removed
+            user leaves no orphan cursor.
+        workspace_id: Tenant scope — the cursor is per workspace so the
+            same user catching up in one workspace doesn't silence
+            another.
+        seen_at: Wall-clock high-water mark; rows newer than this are
+            surfaced as unseen.
+    """
+
+    __tablename__ = "feed_read_markers"
+
+    __table_args__ = (
+        UniqueConstraint(
+            "user_id",
+            "workspace_id",
+            name="uq_feed_read_marker_user_ws",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    workspace_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("workspaces.id"),
+        nullable=False,
+        server_default="1",
+    )
+    seen_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
 class UserWebhookSubscription(Base):

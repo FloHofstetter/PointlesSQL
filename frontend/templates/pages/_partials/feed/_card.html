@@ -1,0 +1,454 @@
+{# One feed card.  Rendered inside an ``x-for`` that binds ``r`` — used by
+   both the "Needs you" zone and the day-grouped stream so the two never
+   drift.  Every helper it calls (``rowAvatar``, ``itemClasses``, the
+   social mixin, …) lives on the shared ``feedPage()`` scope. #}
+<article class="card pql-feed-item pql-hover-lift"
+         role="article"
+         :aria-label="cardAria(r)"
+         :data-feed-ts="r.created_at"
+         :class="itemClasses(r)">
+    <div class="card-body pql-feed-item__row d-flex align-items-start">
+
+        {# Avatar — coloured-initials disc for people, a lane-tinted
+           glyph for system events.  ``rowAvatar`` returns the mode +
+           colour so the two never collapse into identical grey discs. #}
+        <span class="pql-feed-item__avatar"
+              role="img"
+              :class="rowAvatar(r).mode === 'initials' ? 'pql-feed-item__avatar--initials' : 'pql-feed-item__avatar--glyph'"
+              :style="rowAvatar(r).mode === 'initials' ? ('background-color:' + rowAvatar(r).color) : ('color:' + rowAvatar(r).color + '; border-color:' + rowAvatar(r).color)"
+              :title="r.actor_display_name || laneEyebrow(r)"
+              :aria-label="r.actor_display_name || laneEyebrow(r)">
+            <template x-if="rowAvatar(r).mode === 'initials'">
+                <span x-text="rowAvatar(r).text"></span>
+            </template>
+            <template x-if="rowAvatar(r).mode === 'glyph'">
+                <i class="bi" :class="rowAvatar(r).icon"></i>
+            </template>
+        </span>
+
+        <div class="pql-feed-item__body">
+
+            {# Header line.  Person-led rows read "Name verb object";
+               system-led rows read "LANE · object" with no fake name. #}
+            <div class="d-flex flex-wrap align-items-center gap-1">
+                <template x-if="isPersonLed(r)">
+                    <span class="d-inline-flex flex-wrap align-items-baseline gap-1">
+                        <strong class="pql-feed-item__name" x-text="r.actor_display_name"></strong>
+                        <span class="text-muted small" x-show="verbLabel(r)" x-text="verbLabel(r)"></span>
+                        <a class="pql-feed-item__object"
+                           :class="r.entity_kind === 'run' ? 'pql-feed-item__ref' : ''"
+                           x-show="showObjectLink(r)"
+                           :href="r.source_url || '#'" x-text="entityLinkLabel(r)"></a>
+                    </span>
+                </template>
+                <template x-if="!isPersonLed(r)">
+                    <span class="d-inline-flex flex-wrap align-items-baseline gap-1">
+                        <span class="pql-feed-item__eyebrow" x-text="laneEyebrow(r)"></span>
+                        <a class="pql-feed-item__object"
+                           :class="r.entity_kind === 'run' ? 'pql-feed-item__ref' : ''"
+                           x-show="showObjectLink(r)"
+                           :href="r.source_url || '#'" x-text="entityLinkLabel(r)"></a>
+                    </span>
+                </template>
+                {# Kind as a quiet middot token rather than a pill — the object
+                   already names the thing, so the kind only needs to whisper. #}
+                <span class="pql-feed-item__kind"
+                      x-show="r.entity_kind && !['run', 'user', 'review'].includes(r.entity_kind)">·
+                    <span x-text="kindLabel(r.entity_kind)"></span>
+                </span>
+                <span class="text-muted small ms-auto pql-feed-item__meta"
+                      x-text="pqlRelativeTime(r.created_at)"
+                      :title="pqlAbsTime(r.created_at)"></span>
+
+                {# Unread dot — the "look at this" cue for an unread
+                   for-you item (a mention / directed delivery).  Ambient
+                   stream rows don't get a dot; their newness is conveyed
+                   by the caught-up divider, not a per-row flag. #}
+                <span class="pql-feed-item__unread-dot"
+                      x-show="r.kind === 'notification' && !r.read_at && r.attention === 'for_you'"
+                      role="status" aria-label="Unread"></span>
+
+                {# 3-dot action menu — read / mute / snooze / copy link. #}
+                <div class="dropdown">
+                    <button type="button"
+                            class="btn btn-sm btn-link text-muted px-1 py-0"
+                            data-bs-toggle="dropdown"
+                            data-bs-container="body"
+                            data-bs-display="static"
+                            data-bs-boundary="viewport"
+                            aria-haspopup="menu"
+                            aria-label="Item actions">
+                        <i class="bi bi-three-dots-vertical"></i>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end pql-feed-item__menu">
+                        <li x-show="r.kind === 'notification'">
+                            <button type="button" class="dropdown-item"
+                                    @click="toggleRead(r)">
+                                <i class="bi me-1"
+                                   :class="r.read_at ? 'bi-envelope' : 'bi-envelope-open'"></i>
+                                <span x-text="r.read_at ? 'Mark as unread' : 'Mark as read'"></span>
+                            </button>
+                        </li>
+                        <li><button type="button" class="dropdown-item"
+                                    @click="muteThread(r)">
+                            <i class="bi bi-bell-slash me-1"></i>Mute this thread
+                        </button></li>
+                        <li x-show="r.actor_user_id">
+                            <button type="button" class="dropdown-item"
+                                    @click="muteAuthor(r)">
+                                <i class="bi bi-person-x me-1"></i>
+                                Mute <span x-text="r.actor_display_name || 'author'"></span>
+                            </button>
+                        </li>
+                        <li x-show="canFollowEntity(r)">
+                            <button type="button" class="dropdown-item"
+                                    @click="followEntity(r)">
+                                <i class="bi bi-bookmark-plus me-1"></i>
+                                Follow <span x-text="entityLinkLabel(r)"></span>
+                            </button>
+                        </li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><h6 class="dropdown-header py-1">Snooze</h6></li>
+                        <li><button type="button" class="dropdown-item"
+                                    @click="snooze(r, '1h')">1 hour</button></li>
+                        <li><button type="button" class="dropdown-item"
+                                    @click="snooze(r, '8h')">8 hours</button></li>
+                        <li><button type="button" class="dropdown-item"
+                                    @click="snooze(r, '1d')">1 day</button></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><button type="button" class="dropdown-item"
+                                    @click="copyItemLink(r)">
+                            <i class="bi bi-link-45deg me-1"></i>Copy link
+                        </button></li>
+                    </ul>
+                </div>
+            </div>
+
+            {# Review — star row + body snippet. #}
+            <template x-if="r.render_kind === 'review'">
+                <div>
+                    <div class="mb-1"
+                         :aria-label="(r.stars || 0) + ' of 5 stars'">
+                        <template x-for="i in 5" :key="i">
+                            <i class="bi"
+                               :class="i <= (r.stars || 0) ? 'bi-star-fill text-warning' : 'bi-star text-muted'"></i>
+                        </template>
+                    </div>
+                    <div class="pql-feed-item__snippet"
+                         :class="r._expanded ? 'pql-feed-item__snippet--expanded' : ''"
+                         x-init="$nextTick(() => { r._clamped = $el.scrollHeight > ($el.clientHeight + 2) })"
+                         x-html="mdInline(r.body_md)"></div>
+                    <button type="button" class="pql-feed-item__more"
+                            x-show="!!r._clamped"
+                            @click="toggleSnippet(r)"
+                            x-text="r._expanded ? 'Show less' : 'Show more'"></button>
+                </div>
+            </template>
+
+            {# Comment / mention — a quoted bubble (no own border, so it
+               doesn't compete with the card's left rail).  Long bodies
+               clamp to a few lines with a Show more / less toggle. #}
+            <template x-if="r.render_kind === 'comment' || r.render_kind === 'mention'">
+                <div>
+                    <div class="pql-feed-item__quote pql-feed-item__snippet"
+                         :class="r._expanded ? 'pql-feed-item__snippet--expanded' : ''"
+                         x-init="$nextTick(() => { r._clamped = $el.scrollHeight > ($el.clientHeight + 2) })"
+                         x-html="mdInline(r.body_md || r.summary_md)"></div>
+                    <button type="button" class="pql-feed-item__more"
+                            x-show="!!r._clamped"
+                            @click="toggleSnippet(r)"
+                            x-text="r._expanded ? 'Show less' : 'Show more'"></button>
+                </div>
+            </template>
+
+            {# Agent run — status chip + summary on one baseline. #}
+            <template x-if="r.render_kind === 'agent_run'">
+                <div class="pql-feed-status-row">
+                    <span class="pql-feed-chip"
+                          :class="r.event_type && r.event_type.endsWith('.failed') ? 'text-bg-danger' : 'text-bg-success'">
+                        <i class="bi" :class="r.event_type && r.event_type.endsWith('.failed') ? 'bi-x-octagon' : 'bi-check-circle'"></i>
+                        <span x-text="r.event_type && r.event_type.endsWith('.failed') ? 'Failed' : 'Completed'"></span>
+                    </span>
+                    <span class="text-muted small pql-feed-status-row__text"
+                          x-html="mdInline(r.summary_md)"></span>
+                </div>
+            </template>
+
+            {# Approval — inline Approve / Deny (admin), resolves in place.
+               The header already carries "<principal> needs your approval on
+               run …", so the body only adds the notebook path. #}
+            <template x-if="r.render_kind === 'approval'">
+                <div>
+                    <template x-if="r.notebook_path">
+                        <div class="small text-muted d-flex align-items-center gap-1">
+                            <i class="bi bi-journal-code"></i><span class="pql-feed-item__ref" x-text="r.notebook_path"></span>
+                        </div>
+                    </template>
+
+                    {# Resolved confirmation — replaces the action row in place. #}
+                    <template x-if="r._resolved">
+                        <div class="text-muted small mt-1" aria-live="polite">
+                            <i class="bi"
+                               :class="r._resolved === 'approved' ? 'bi-check-circle text-success' : 'bi-x-circle text-danger'"></i>
+                            <span x-text="(r._resolved === 'approved' ? 'Approved' : 'Denied') + ' by you'"></span>
+                        </div>
+                    </template>
+
+                    {# Action row — admin only, hidden once resolved. #}
+                    <template x-if="isAdmin && !r._resolved">
+                        <div class="pql-feed-item__actions">
+                            <button type="button" class="btn btn-sm btn-success"
+                                    :disabled="!!r._busy" @click="approveRun(r)">
+                                <span class="spinner-border spinner-border-sm me-1" x-show="!!r._busy" aria-hidden="true"></span>
+                                <i class="bi bi-check2 me-1" x-show="!r._busy"></i>Approve
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-danger"
+                                    :disabled="!!r._busy" @click="toggleDenyForm(r)">
+                                <i class="bi bi-x-lg me-1"></i>Deny
+                            </button>
+                            <a class="pql-feed-viewlink" :href="r.source_url">View run <i class="bi bi-arrow-right-short"></i></a>
+                        </div>
+                    </template>
+
+                    {# Inline deny reason. #}
+                    <template x-if="isAdmin && r._showDeny && !r._resolved">
+                        <div class="mt-2 d-flex gap-2">
+                            <input type="text" class="form-control form-control-sm"
+                                   placeholder="Reason (optional)" x-model="r._denyReason"
+                                   @keydown.enter="denyRun(r)">
+                            <button type="button" class="btn btn-sm btn-danger"
+                                    :disabled="!!r._busy" @click="denyRun(r)">Confirm deny</button>
+                        </div>
+                    </template>
+                </div>
+            </template>
+
+            {# Data-health — severity chip + detail + acknowledge. #}
+            <template x-if="r.render_kind === 'data_health'">
+                <div>
+                    <div class="pql-feed-status-row">
+                        <span class="pql-feed-chip"
+                              :class="r.severity === 'error' ? 'text-bg-danger' : 'text-bg-warning'">
+                            <i class="bi" :class="sevIcon(r.severity)"></i>
+                            <span x-text="r.severity === 'error' ? 'Error' : 'Warn'"></span>
+                        </span>
+                        <span class="pql-feed-status-row__text" x-html="mdInline(r.summary_md)"></span>
+                    </div>
+                    <template x-if="r.body_md && r.body_md !== r.summary_md">
+                        <div class="pql-feed-code-panel mt-2">
+                            <div class="pql-feed-code-panel__head">
+                                <span>Detail</span>
+                                <button type="button" class="pql-feed-code-panel__copy"
+                                        @click="copyText(r.body_md)"
+                                        title="Copy detail" aria-label="Copy detail">
+                                    <i class="bi bi-clipboard"></i>
+                                </button>
+                            </div>
+                            <pre class="pql-feed-code-panel__body" x-text="r.body_md"></pre>
+                        </div>
+                    </template>
+                    <template x-if="r._resolved">
+                        <div class="text-muted small mt-1" aria-live="polite">
+                            <i class="bi bi-check-circle text-success"></i>
+                            <span>Acknowledged</span>
+                        </div>
+                    </template>
+                    <template x-if="!r._resolved">
+                        <div class="pql-feed-item__actions">
+                            <template x-if="isAdmin">
+                                <button type="button" class="btn btn-sm btn-outline-secondary"
+                                        :disabled="!!r._busy" @click="acknowledgeHealth(r)">
+                                    <span class="spinner-border spinner-border-sm me-1" x-show="!!r._busy" aria-hidden="true"></span>
+                                    <i class="bi bi-check2 me-1" x-show="!r._busy"></i>Acknowledge
+                                </button>
+                            </template>
+                            <button type="button" class="btn btn-sm btn-outline-secondary"
+                                    @click="snooze(r, '8h')" title="Snooze 8 hours">
+                                <i class="bi bi-alarm me-1"></i>Snooze
+                            </button>
+                            <a class="pql-feed-viewlink" :href="r.source_url">View details <i class="bi bi-arrow-right-short"></i></a>
+                        </div>
+                    </template>
+                </div>
+            </template>
+
+            {# Pipeline failure — error chip + detail + retry. #}
+            <template x-if="r.render_kind === 'pipeline'">
+                <div>
+                    <div class="pql-feed-status-row">
+                        <span class="pql-feed-chip text-bg-danger">
+                            <i class="bi bi-x-octagon"></i>Failed
+                        </span>
+                        <span class="pql-feed-status-row__text" x-html="mdInline(r.summary_md)"></span>
+                    </div>
+                    <template x-if="r.body_md && r.body_md !== r.summary_md">
+                        <div class="pql-feed-code-panel mt-2">
+                            <div class="pql-feed-code-panel__head">
+                                <span>Error detail</span>
+                                <button type="button" class="pql-feed-code-panel__copy"
+                                        @click="copyText(r.body_md)"
+                                        title="Copy error detail" aria-label="Copy error detail">
+                                    <i class="bi bi-clipboard"></i>
+                                </button>
+                            </div>
+                            <pre class="pql-feed-code-panel__body" x-text="r.body_md"></pre>
+                        </div>
+                    </template>
+                    <template x-if="r._resolved">
+                        <div class="text-muted small mt-1" aria-live="polite">
+                            <i class="bi bi-arrow-repeat text-info"></i>
+                            <span>Retry queued</span>
+                        </div>
+                    </template>
+                    <template x-if="!r._resolved">
+                        <div class="pql-feed-item__actions">
+                            <template x-if="isAdmin && r.payload && r.payload.retry_url">
+                                <button type="button" class="btn btn-sm btn-outline-primary"
+                                        :disabled="!!r._busy" @click="retryPipeline(r)">
+                                    <span class="spinner-border spinner-border-sm me-1" x-show="!!r._busy" aria-hidden="true"></span>
+                                    <i class="bi bi-arrow-repeat me-1" x-show="!r._busy"></i>Retry
+                                </button>
+                            </template>
+                            <a class="pql-feed-viewlink" :href="r.source_url">View logs <i class="bi bi-arrow-right-short"></i></a>
+                        </div>
+                    </template>
+                </div>
+            </template>
+
+            {# Badge award — a warm celebratory pill, not an error-shaped chip. #}
+            <template x-if="r.render_kind === 'badge_award'">
+                <div class="pql-feed-celebrate">
+                    <i class="bi bi-award-fill"></i>
+                    <span x-html="mdInline(r.summary_md || 'New badge earned')"></span>
+                </div>
+            </template>
+
+            {# Issue lifecycle — status chip + title. #}
+            <template x-if="r.render_kind === 'issue'">
+                <div class="pql-feed-status-row">
+                    <span class="pql-feed-chip"
+                          :class="issueBadgeClass(r.event_type)">
+                        <i class="bi bi-bug"></i>
+                        <span x-text="issueBadgeLabel(r.event_type)"></span>
+                    </span>
+                    <span class="pql-feed-status-row__text"
+                          x-html="mdInline(r.summary_md)"></span>
+                </div>
+            </template>
+
+            {# Branch lifecycle — verb chip + summary. #}
+            <template x-if="r.render_kind === 'branch'">
+                <div class="pql-feed-status-row">
+                    <span class="pql-feed-chip text-bg-info">
+                        <i class="bi bi-bezier2"></i>
+                        <span x-text="branchVerb(r.event_type)"></span>
+                    </span>
+                    <span class="pql-feed-status-row__text"
+                          x-html="mdInline(r.summary_md)"></span>
+                </div>
+            </template>
+
+            {# Pinned fact — 📌 icon + summary, click follows source_url. #}
+            <template x-if="r.render_kind === 'fact'">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-pin-angle-fill text-warning"></i>
+                    <span x-html="mdInline(r.summary_md || 'Pinned a fact')"></span>
+                </div>
+            </template>
+
+            {# Generic notification fallback — only when there's something
+               to say, so a bare event leaves no empty body gap. #}
+            <template x-if="(r.render_kind === 'notification' || !r.render_kind) && (r.summary_md || r.event_type)">
+                <div class="pql-feed-item__snippet"
+                     x-html="mdInline(r.summary_md || r.event_type)"></div>
+            </template>
+
+            {# Engagement footer — emoji reactions + reply, for social
+               rows (comments / reviews).  Summaries lazy-load after the
+               first paint, so the row appears instantly and the chips
+               fill in. #}
+            <template x-if="canReact(r)">
+                <div>
+                    <div class="pql-feed-item__engagement">
+                        {# Reaction chips — count per emoji; hovering one reveals who
+                           reacted with it (loaded on demand into the native title). #}
+                        <template x-for="rx in activeReactions(r)" :key="rx.emoji">
+                            <button type="button"
+                                    class="pql-feed-react-chip"
+                                    :class="{ 'pql-feed-react-chip--mine': rx.mine, 'pql-feed-react-pop': r._poppedEmoji === rx.emoji }"
+                                    @mouseenter="loadReactors(r)" @focus="loadReactors(r)"
+                                    :title="chipReactors(r, rx.emoji)"
+                                    @click="toggleReaction(r, rx.emoji)">
+                                <span x-text="rx.emoji"></span>
+                                <span x-text="rx.count"></span>
+                            </button>
+                        </template>
+
+                        {# Add-reaction — opens the six-emoji palette. #}
+                        <div class="position-relative">
+                            <button type="button"
+                                    class="pql-feed-react-chip pql-feed-react-add"
+                                    @click="toggleReactPicker(r)"
+                                    aria-haspopup="true"
+                                    :aria-expanded="!!r._reactPickerOpen"
+                                    title="React" aria-label="React">
+                                <i class="bi bi-emoji-smile"></i>
+                            </button>
+                            <div class="pql-feed-react-popover"
+                                 x-show="!!r._reactPickerOpen" x-cloak
+                                 x-transition.opacity.scale.origin.bottom
+                                 @click.outside="r._reactPickerOpen = false"
+                                 @keydown.escape="r._reactPickerOpen = false">
+                                <div class="pql-feed-react-palette" role="menu" aria-label="Pick a reaction">
+                                    <template x-for="e in reactionPalette" :key="e">
+                                        <button type="button"
+                                                role="menuitem"
+                                                :aria-label="emojiLabel(e)"
+                                                :class="hasReacted(r, e) ? 'is-active' : ''"
+                                                @click="toggleReaction(r, e)"
+                                                x-text="e"></button>
+                                    </template>
+                                </div>
+                            </div>
+                        </div>
+
+                        {# Reply — inline composer (only comment rows reach this footer). #}
+                        <button type="button" class="pql-feed-react-chip pql-feed-reply-btn"
+                                x-show="canReply(r)" @click="toggleReply(r)">
+                            <i class="bi bi-reply"></i><span>Reply</span>
+                        </button>
+
+                        {# View / hide threaded replies. #}
+                        <button type="button" class="pql-feed-react-chip pql-feed-reply-btn"
+                                x-show="hasReplies(r)" @click="toggleThread(r)">
+                            <i class="bi bi-chat"></i><span x-text="replyLabel(r)"></span>
+                        </button>
+                    </div>
+
+                    {# Threaded replies — rendered as a safe HTML string (no x-for) so
+                       the collapsed-at-init thread can populate without losing an anchor. #}
+                    <div class="pql-feed-thread" x-show="!!r._threadOpen" x-cloak
+                         x-html="threadHtml(r)"></div>
+
+                    {# Inline reply composer — posts a threaded reply. #}
+                    <template x-if="!!r._replyOpen">
+                        <div class="pql-feed-reply mt-2">
+                            <textarea class="form-control form-control-sm mb-1" rows="2"
+                                      x-model="r._replyDraft"
+                                      placeholder="Write a reply…"
+                                      @keydown.meta.enter="postReply(r)"></textarea>
+                            <div class="d-flex gap-2 justify-content-end">
+                                <button type="button" class="btn btn-sm btn-link text-muted"
+                                        @click="r._replyOpen = false">Cancel</button>
+                                <button type="button" class="btn btn-sm btn-primary"
+                                        :disabled="!(r._replyDraft || '').trim() || !!r._replyBusy"
+                                        @click="postReply(r)">Reply</button>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </template>
+
+        </div>
+    </div>
+</article>

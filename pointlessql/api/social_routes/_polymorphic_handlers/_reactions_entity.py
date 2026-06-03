@@ -36,6 +36,70 @@ def validate_emoji_field(emoji: str | None) -> str:
     return emoji
 
 
+def reactor_names(session: Any, user_ids: set[int]) -> dict[int, str]:
+    """Resolve ``{user_id: display_name}`` for a set of reactor ids."""
+    from pointlessql.models.auth import User
+
+    if not user_ids:
+        return {}
+    pairs = session.execute(
+        select(User.id, User.display_name).where(User.id.in_(user_ids))
+    ).all()
+    return {int(uid): str(name) for uid, name in pairs}
+
+
+def aggregate_reactions(
+    rows: list[tuple[str, int]],
+    current_user_id: int,
+    names_map: dict[int, str] | None = None,
+) -> list[dict[str, Any]]:
+    """Roll up ``(emoji, user_id)`` rows into per-emoji summaries.
+
+    When *names_map* is provided each summary also carries a ``users``
+    list of ``{id, display_name}`` (current user first) so the client
+    can show who reacted; without it the response stays count-only.
+
+    Args:
+        rows: ``(emoji, user_id)`` pairs from the reaction table.
+        current_user_id: The caller — used for ``has_current_user_reacted``
+            and to sort the caller to the front of each ``users`` list.
+        names_map: Optional ``{user_id: display_name}``; its presence
+            opts the response into per-emoji reactor identities.
+
+    Returns:
+        One dict per canonical emoji.
+    """
+    counts: dict[str, int] = {e: 0 for e in ALLOWED_EMOJI}
+    mine: set[str] = set()
+    users: dict[str, list[dict[str, Any]]] = {e: [] for e in ALLOWED_EMOJI}
+    for emoji_row, uid in rows:
+        if emoji_row not in counts:
+            continue
+        counts[emoji_row] += 1
+        is_me = uid == current_user_id
+        if is_me:
+            mine.add(emoji_row)
+        if names_map is not None:
+            entry = {"id": int(uid), "display_name": names_map.get(int(uid), "Someone")}
+            # Caller first so "You and N others" reads naturally.
+            if is_me:
+                users[emoji_row].insert(0, entry)
+            else:
+                users[emoji_row].append(entry)
+
+    out: list[dict[str, Any]] = []
+    for e in ALLOWED_EMOJI:
+        summary: dict[str, Any] = {
+            "emoji": e,
+            "count": counts[e],
+            "has_current_user_reacted": e in mine,
+        }
+        if names_map is not None:
+            summary["users"] = users[e]
+        out.append(summary)
+    return out
+
+
 async def list_polymorphic_reactions(kind: str, ref: str, request: Request) -> dict[str, Any]:
     """Return aggregated entity-level reactions for a polymorphic entity.
 

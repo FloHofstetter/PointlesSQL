@@ -133,6 +133,67 @@ defined in ``scripts/clusters.json``. -->
   self-heals: the condition clears, the signal resolves, the card drops from
   the feed. Alert-check, job-run telemetry, and ingest emit/resolve signals on
   state transitions.
+- Feed reworked to social-network quality (rc258) — every card type was
+  redesigned so the stream reads like LinkedIn / X rather than a notification
+  list: **coloured-initials avatars** per person (a shared `avatars.js` helper,
+  also adopted by the co-edit peer rail) versus lane-tinted glyphs for system
+  events; sentence-grammar headlines (system rows read "DATA HEALTH · demo.hr"
+  with a lane eyebrow instead of a fake bold name); raw run UUIDs shortened to
+  `run a13200…` and internal-id refs hidden; light **markdown** rendered in card
+  bodies instead of showing `**` markers; the "view logs/details/run" buttons
+  demoted to a quiet muted deep-link beside the real action buttons; the
+  three-row control chrome collapsed (the audience filter became a compact
+  dropdown); and the dismissible first-run welcome card retired into the empty
+  state. The feed now also *feels* social: **emoji reactions** (👍 ❤️ 🎉 😄 😕
+  👀) with live counts and optimistic toggles, **inline reply**, a top
+  **composer** ("share an update" → posts to a chosen data product and
+  optimistically prepends it), and **follow-from-card** — all wired to the
+  existing polymorphic `/api/social/{kind}/{ref}/…` endpoints (no new backend).
+  The approval card resolves its principal email to a display name, and the
+  Trending rail drops opaque ids and shows human labels.
+
+- Feed cards refined to phenomenal-UX quality (rc259) — a focused pass over the
+  card surface itself on top of the social-quality rework. A small
+  `--pql-feed-*` design-token layer drives spacing rhythm, 40px avatars, the
+  left rail and the three densities from one place; severity badges
+  (`Failed` / `Error`) now sit on a shared baseline with their summary as an
+  icon+label **status chip**; pipeline / data-health error detail renders in an
+  inset, copyable **code panel** instead of bare monospace; run ids and notebook
+  paths read as monospace **identifier pills**; the comment body became a single
+  quoted bubble (no more double left-border); unread / mention switched from a
+  whole-card wash to a rail + dot; long comment and review bodies clamp with a
+  **Show more / less** toggle; the reaction palette became an elevated,
+  keyboard-navigable popover with a caret; reactions, resolves and fresh rows
+  gained subtle, reduced-motion-safe micro-motion; first-paint shows
+  **card-shaped skeletons**; and the card carries a per-row `aria-label`,
+  focus-visible rings, and icon-plus-text severity (not colour alone). Three
+  features needed in-house backend (no soyuz changes): **reviews can now be
+  reacted to** (a per-`review_id` reaction table + endpoints, so sibling reviews
+  of one product keep independent counts), **who-reacted-by-name** (an opt-in
+  `?with_names=1` on the reaction list, surfaced as a chip-hover tooltip), and
+  **reply counts + an inline thread** ("View N replies", a batched reply-count
+  query, replies rendered as a safe HTML string). Full suite 4489 green;
+  browser-verified light + dark with zero console errors.
+
+- Feed you can finish *and* never run out of (rc260–rc261) — the stream now
+  answers "can I be done?" with **both**: a finite inbox you drain to zero, and
+  an infinite history you keep. Every row carries an **attention tier** — `act`
+  (unresolved approvals / open signals), `for_you` (mentions and other directed
+  deliveries, stamped at fan-out time), or `ambient` (activity on things you
+  follow). A pinned **"Needs you"** separator (rendered like the day-date
+  dividers, not a boxed panel) collects the `act` + unread-`for_you`
+  rows and shrinks to nothing as you act / read; the ambient stream flows on
+  below it behind a per-user **seen-cursor** (`feed_read_markers` +
+  `POST /api/feed/seen`). Rows newer than the cursor are flagged new; scrolling
+  past them (or **Mark all as seen**) advances it, dropping a **"You're all
+  caught up"** divider between new and history and — when nothing is waiting —
+  a celebratory end state. A **Focus** toggle collapses the feed to just the
+  inbox so it reads as a drainable to-do list, then back to the full stream. The
+  browser-tab title shows a live `(N)` pending count, and the Home rail hub
+  badges your unread for-you inbox (the badge clears on "mark all read" because
+  "unread" now means the for-you tier, not every followed-entity event). No
+  soyuz changes. Full suite green; browser-verified light + dark, zero console
+  errors.
 
 - Left navigation redesigned as hub-and-spoke (rc256) — the primary rail
   collapsed from 27 flat links to **six destination hubs** (Home, Watch, Build,

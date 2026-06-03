@@ -35,7 +35,13 @@ from pointlessql.models.catalog._data_products import DataProduct
 from pointlessql.models.notifications import UserNotification
 from pointlessql.models.social._feed_mute import FeedMute
 from pointlessql.models.social._social_target import SocialTarget
-from pointlessql.services.notifications.categories import classify_category, classify_signal
+from pointlessql.services.notifications.categories import (
+    ATTENTION_ACT,
+    ATTENTION_AMBIENT,
+    attention_for_event,
+    classify_category,
+    classify_signal,
+)
 from pointlessql.services.social import entity_registry
 
 DEFAULT_LIMIT = 50
@@ -130,6 +136,7 @@ def row_from_notification(
         "render_kind": render_kind,
         "category": category,
         "severity": severity,
+        "attention": row.attention or attention_for_event(row.event_type),
         "event_type": row.event_type,
         "summary_md": row.summary_md,
         "body_md": row.summary_md,
@@ -151,6 +158,7 @@ def row_from_comment(
     fqn_map: dict[int, str],
     actor_names: dict[int, str],
     target: SocialTarget | None = None,
+    reply_count: int = 0,
 ) -> dict[str, Any]:
     """Normalise a comment to the feed row shape.
 
@@ -164,6 +172,8 @@ def row_from_comment(
         fqn_map: ``{dp_id: 'cat.sch'}`` cache for the DP fallback.
         actor_names: ``{user_id: display_name}`` cache.
         target: Optional joined ``social_targets`` row.
+        reply_count: Number of threaded replies under this comment, so
+            the card can offer "View N replies" without a per-row query.
 
     Returns:
         Feed-row dict (kind / event_type / summary / source_url /
@@ -183,10 +193,12 @@ def row_from_comment(
         "render_kind": "comment",
         "category": "social",
         "severity": "info",
+        "attention": ATTENTION_AMBIENT,
         "event_type": "pointlessql.data_product.commented",
         "summary_md": comment.body_md[:160],
         "body_md": comment.body_md,
         "comment_id": comment.id,
+        "reply_count": int(reply_count),
         "source_url": source_url,
         "data_product_id": dp_id,
         "entity_kind": entity_kind,
@@ -234,10 +246,12 @@ def row_from_review(
         "render_kind": "review",
         "category": "social",
         "severity": "info",
+        "attention": ATTENTION_AMBIENT,
         "event_type": "pointlessql.data_product.reviewed",
         "summary_md": f"{'★' * review.stars} — {review.body_md[:120]}",
         "body_md": review.body_md,
         "stars": int(review.stars),
+        "review_id": int(review.id),
         "source_url": source_url,
         "data_product_id": dp_id,
         "entity_kind": entity_kind,
@@ -249,7 +263,10 @@ def row_from_review(
     }
 
 
-def row_from_pending_run(run: AgentRun) -> dict[str, Any]:
+def row_from_pending_run(
+    run: AgentRun,
+    principals: dict[str, tuple[int, str]] | None = None,
+) -> dict[str, Any]:
     """Normalise an approval-pending agent run to the feed row shape.
 
     This is a *live* row — it is read straight from ``agent_runs``
@@ -259,19 +276,31 @@ def row_from_pending_run(run: AgentRun) -> dict[str, Any]:
     never go stale.  The row carries the ``run_id`` + ``principal``
     the inline Approve / Deny buttons need.
 
+    The principal is resolved to a human display name (+ user id, so the
+    avatar picks a stable colour) when the run acted on behalf of a known
+    user, so the card reads "Mara Lindqvist needs your approval" rather
+    than leading with a raw email.
+
     Args:
         run: The agent-run row in ``needs_approval``.
+        principals: Optional ``{email: (user_id, display_name)}`` map the
+            feed handler pre-resolves for every pending run's principal.
 
     Returns:
         Feed-row dict with ``render_kind = 'approval'``.
     """
     short = run.id[:8]
-    actor = run.principal or run.agent_id or "an agent"
+    resolved = (principals or {}).get(run.principal or "")
+    if resolved is not None:
+        actor_user_id, actor_display_name = resolved[0], resolved[1]
+    else:
+        actor_user_id, actor_display_name = None, (run.principal or run.agent_id or "an agent")
     return {
         "kind": "approval",
         "render_kind": "approval",
         "category": "approval",
         "severity": "warn",
+        "attention": ATTENTION_ACT,
         "event_type": "pointlessql.agent_run.needs_approval",
         "run_id": run.id,
         "principal": run.principal,
@@ -282,8 +311,8 @@ def row_from_pending_run(run: AgentRun) -> dict[str, Any]:
         "data_product_id": None,
         "entity_kind": "run",
         "entity_ref": run.id,
-        "actor_user_id": None,
-        "actor_display_name": actor,
+        "actor_user_id": actor_user_id,
+        "actor_display_name": actor_display_name,
         "created_at": run.started_at.isoformat() if run.started_at else "",
         "read_at": None,
     }
@@ -313,7 +342,7 @@ def row_from_signal(signal: ActionableSignal) -> dict[str, Any]:
             loaded: Any = json.loads(signal.payload_json)
             if isinstance(loaded, dict):
                 payload = cast("dict[str, Any]", loaded)
-        except (ValueError, TypeError):
+        except ValueError, TypeError:
             payload = {}
     source_url = payload.get("source_url") or entity_registry.url_for(
         signal.entity_kind, signal.entity_ref
@@ -323,6 +352,7 @@ def row_from_signal(signal: ActionableSignal) -> dict[str, Any]:
         "render_kind": render_kind,
         "category": category,
         "severity": signal.severity or severity,
+        "attention": ATTENTION_ACT,
         "event_type": f"pointlessql.signal.{signal.signal_kind}",
         "signal_id": signal.id,
         "signal_kind": signal.signal_kind,
@@ -397,6 +427,29 @@ def build_actor_names(session: Any, rows_iter: Any) -> dict[int, str]:
         return {}
     pairs = session.execute(select(User.id, User.display_name).where(User.id.in_(ids))).all()
     return {int(uid): str(name) for uid, name in pairs}
+
+
+def composer_target_refs(session: Any, workspace_id: int) -> list[str]:
+    """Return every ``catalog.schema`` data-product ref in the workspace.
+
+    Powers the feed composer's "post to" picker.  The pills are rendered
+    server-side from this list (a ``<template x-for>`` inside the composer's
+    toggled editor loses its DOM anchor in Alpine 3.14), so the route hands
+    the template a plain ordered list of FQNs.
+
+    Args:
+        session: SQLAlchemy session.
+        workspace_id: Workspace scope.
+
+    Returns:
+        Sorted list of ``catalog.schema`` strings.
+    """
+    rows = session.execute(
+        select(DataProduct.catalog_name, DataProduct.schema_name)
+        .where(DataProduct.workspace_id == workspace_id)
+        .order_by(DataProduct.catalog_name, DataProduct.schema_name)
+    ).all()
+    return [f"{cat}.{sch}" for cat, sch in rows]
 
 
 def build_fqn_map(session: Any, workspace_id: int) -> dict[int, str]:

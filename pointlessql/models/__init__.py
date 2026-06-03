@@ -210,6 +210,7 @@ from pointlessql.models.notebook import (
     NotebookWidget,
 )
 from pointlessql.models.notifications import (
+    FeedReadMarker,
     UserNotification,
     UserWebhookSubscription,
 )
@@ -431,6 +432,7 @@ __all__ = [
     "UnattributedWrite",
     "Topic",
     "DataProductTopic",
+    "FeedReadMarker",
     "User",
     "UserBadge",
     "UserFollow",

@@ -12,7 +12,9 @@
 {% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
 
 {% block content %}
-<div x-data="feedPage({{ is_admin | default(false) | tojson }})" :class="density === 'comfortable' ? '' : ('pql-feed--' + density)">
+<div x-data="feedPage({{ is_admin | default(false) | tojson }})"
+     x-effect="updateTitle()"
+     :class="density === 'comfortable' ? '' : ('pql-feed--' + density)">
 
     {# Heading row — page actions live here now that the feed is a
        single uninterrupted stream.  The "X new" pulse-pill rides next
@@ -38,6 +40,67 @@
                title="Notification settings">
                 <i class="bi bi-gear"></i>
             </a>
+        </div>
+    </div>
+
+    {# Composer — a "share an update" box at the top of the stream.
+       Collapsed it's a single prompt; expanded it posts a comment to a
+       chosen data product and optimistically prepends it to the feed. #}
+    {# Collapsed prompt + expanded editor are each x-if (not x-show): the
+       expanded editor hosts an x-for over the product pills, and an x-for
+       inside an initially display:none x-show subtree loses its DOM anchor
+       when the list loads.  x-if mounts the whole editor fresh when opened,
+       so the loop renders in a live, visible subtree. #}
+    <div class="card pql-feed-composer mb-3"
+         x-init='composerTargetRef = composerTargetRef || {{ (composer_targets[0] if composer_targets else "")|tojson }}'>
+        <div class="card-body py-2">
+            <template x-if="!composerOpen">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="pql-feed-item__avatar pql-feed-item__avatar--initials pql-feed-composer__me">YO</span>
+                    <button type="button"
+                            class="form-control text-start text-muted pql-feed-composer__prompt"
+                            @click="openComposer()">
+                        Share an update or ask a question…
+                    </button>
+                </div>
+            </template>
+            <template x-if="composerOpen">
+                <div>
+                    <textarea class="form-control mb-2" rows="3" x-model="composerDraft"
+                              placeholder="Share an update or ask a question…  Markdown supported."></textarea>
+                    <div class="d-flex flex-wrap align-items-center gap-2">
+                        <label class="small text-muted mb-0">Post to</label>
+                        {# Pills rendered server-side: a <template x-for> nested
+                           in the composer's toggled editor loses its anchor in
+                           Alpine 3.14, so the route hands us the product list. #}
+                        {% if composer_targets %}
+                        <div class="d-flex flex-wrap gap-1">
+                            {# ``| tojson`` (in single-quoted attributes) renders each ref as a
+                               properly-escaped JS string literal, so a catalog/schema name with a
+                               quote can't break out of the Alpine expression. #}
+                            {% for t in composer_targets %}
+                            <button type="button"
+                                    class="btn btn-sm"
+                                    :class='composerTargetRef === {{ t | tojson }} ? "btn-primary" : "btn-outline-secondary"'
+                                    @click='composerTargetRef = {{ t | tojson }}'>{{ t }}</button>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <span class="small text-muted fst-italic">
+                            No data products yet — <a href="/data-products">create one</a> to post.
+                        </span>
+                        {% endif %}
+                        <div class="ms-auto d-flex gap-2">
+                            <button type="button" class="btn btn-sm btn-link text-muted" @click="closeComposer()">Cancel</button>
+                            <button type="button" class="btn btn-sm btn-primary"
+                                    :disabled="!composerDraft.trim() || !composerTargetRef || !!composerPosting"
+                                    @click="postComposer()">
+                                <span x-text="composerPosting ? 'Posting…' : 'Post'"></span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </template>
         </div>
     </div>
 

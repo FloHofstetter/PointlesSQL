@@ -42,9 +42,12 @@
             <a href="/"
                data-section="home"
                class="pql-icon-rail__link{% if active_hub == 'home' %} active{% endif %}"
-               title="Home — today, feed, workspace">
+               title="Home — feed, inbox, workspace">
                 <i class="bi bi-house-door"></i>
                 <span class="pql-icon-rail__label">Home</span>
+                {% if (_badges.audit_unread | default(0)) > 0 %}
+                <span class="pql-icon-rail__badge" aria-label="{{ _badges.audit_unread }} inbox items need you">{{ _badges.audit_unread }}</span>
+                {% endif %}
             </a>
         </li>
         <li class="pql-icon-rail__item">

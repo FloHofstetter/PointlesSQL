@@ -74,8 +74,7 @@ def resolve_workspace_admin_ids(session: Any) -> list[int]:
         List of admin user ids (possibly empty).
     """
     return [
-        int(uid)
-        for (uid,) in session.execute(select(User.id).where(User.is_admin.is_(True))).all()
+        int(uid) for (uid,) in session.execute(select(User.id).where(User.is_admin.is_(True))).all()
     ]
 
 
@@ -169,7 +168,14 @@ def fanout_event(
                         )
                     ).all()
                 }
-            recipients = follower_ids | set(extra_recipients or [])
+            # Directed recipients (mentions, terminal facts routed to a
+            # principal) come in via ``extra_recipients``; pure followers
+            # come via the entity join.  The distinction is the whole
+            # basis of the "needs you" vs "ambient" split, so capture it
+            # here and stamp each row's ``attention`` from it — once the
+            # rows are merged into one set the source is lost.
+            extra_set = {int(uid) for uid in (extra_recipients or [])}
+            recipients = follower_ids | extra_set
             if actor_user_id is not None:
                 recipients.discard(int(actor_user_id))
             if not recipients:
@@ -198,6 +204,7 @@ def fanout_event(
                         source_url=source_url,
                         summary_md=summary_md,
                         actor_user_id=actor_user_id,
+                        attention="for_you" if rid in extra_set else "ambient",
                         created_at=now,
                     )
                     for rid in opted_in
@@ -224,7 +231,13 @@ def fanout_event(
                     "created_at": now.isoformat(),
                 }
                 for rid in opted_in:
-                    publish_notification(rid, payload)
+                    # ``attention`` is per-recipient (a mentioned follower
+                    # is ``for_you``, a plain follower is ``ambient``), so
+                    # merge it in per push rather than on the shared payload.
+                    publish_notification(
+                        rid,
+                        {**payload, "attention": "for_you" if rid in extra_set else "ambient"},
+                    )
             except Exception:  # noqa: BLE001 — SSE delivery is best-effort
                 logger.exception("SSE fan-out failed for event %s", event_type)
             return len(opted_in)
