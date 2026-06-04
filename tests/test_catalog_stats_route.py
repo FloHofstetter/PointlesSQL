@@ -72,7 +72,7 @@ def _patch_permissions(monkeypatch: pytest.MonkeyPatch) -> None:
         return None
 
     monkeypatch.setattr(
-        "pointlessql.api.catalog_routes.check_privilege_from_effective",
+        "pointlessql.api.catalog_routes.preview.check_privilege_from_effective",
         fake_check,
     )
 

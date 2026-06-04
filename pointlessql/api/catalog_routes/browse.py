@@ -1,0 +1,321 @@
+"""Catalog tree browse endpoints — /api/tree, /api/catalogs, schemas, tables.
+
+The JSON surface the sidebar + breadcrumb navigation hits to walk the
+catalog -> schema -> table tree, plus recents bookkeeping.  Schema/table
+listing uses the hierarchical ``check_privilege`` (USE_CATALOG, USE_SCHEMA).
+"""
+
+from __future__ import annotations
+
+import logging
+
+from fastapi import APIRouter, Request
+
+from pointlessql.api.dependencies import (
+    effective_principal,
+    get_uc_client,
+    get_user,
+)
+from pointlessql.services.authorization import (
+    USE_CATALOG,
+    USE_SCHEMA,
+    check_privilege,
+)
+
+logger = logging.getLogger(__name__)
+
+router = APIRouter(tags=["catalog"])
+
+
+@router.get("/api/tree")
+async def api_tree(
+    request: Request,
+    primary_only: bool = False,
+) -> list[dict[str, object]]:
+    """Return the full catalog/schema/table tree for the sidebar.
+
+    When *primary_only* is ``True``, the result is filtered to the
+    catalogs the active workspace has pinned (any pin mode counts).
+    ``False`` (the default) keeps the legacy behaviour of returning
+    every catalog visible to the UC client, so single-tenant installs
+    see no behaviour change.
+
+    The pin filter is purely cosmetic: queries against unpinned
+    catalogs still work end-to-end via the SQL editor and pql
+    primitives — this only shapes the sidebar tree's initial
+    expansion.
+    """
+    client = get_uc_client(request)
+    tree = await client.get_tree()
+    if not primary_only:
+        return tree
+    factory = getattr(request.app.state, "session_factory", None)
+    if factory is None:
+        return tree
+    workspace_id = int(getattr(request.state, "workspace_id", 1))
+    from sqlalchemy import select
+
+    from pointlessql.models import WorkspaceCatalogPin
+
+    with factory() as session:
+        pinned = {
+            row.catalog_name
+            for row in session.scalars(
+                select(WorkspaceCatalogPin).where(WorkspaceCatalogPin.workspace_id == workspace_id)
+            ).all()
+        }
+    if not pinned:
+        return tree
+    return [c for c in tree if isinstance(c, dict) and c.get("name") in pinned]
+
+
+@router.get("/api/tree/search")
+async def api_tree_search(request: Request, q: str, limit: int = 50) -> dict[str, object]:
+    """Server-side substring search across the catalog tree.
+
+    Returns the catalog/schema/table FQNs whose components match
+    *q* case-insensitively.  Walks the tree once via the existing
+    :meth:`UnityCatalogClient.get_tree` and filters in-memory; for
+    >1000-table tenants this is significantly cheaper than shipping
+    the entire payload to the browser and filtering with JS.
+
+    The cap is hardcoded at *limit* to keep payloads bounded; if a
+    user types something so generic that it matches >limit tables
+    they should refine the query.
+
+    Args:
+        request: Incoming FastAPI request.
+        q: Substring (case-insensitive).  Must be ≥ 2 chars.
+        limit: Max matches (default 50, capped at 200).
+
+    Returns:
+        ``{matches: [{kind: catalog|schema|table, full_name, ...}]}``.
+
+    Raises:
+        ValidationError: When *q* is shorter than 2 chars.
+    """
+    from pointlessql.exceptions import ValidationError
+
+    needle = q.strip().lower()
+    if len(needle) < 2:
+        raise ValidationError("query must be at least 2 characters")
+    capped = min(max(1, limit), 200)
+
+    client = get_uc_client(request)
+    tree = await client.get_tree()
+
+    matches: list[dict[str, object]] = []
+
+    def _maybe_add(entry: dict[str, object]) -> bool:
+        matches.append(entry)
+        return len(matches) >= capped
+
+    for catalog in tree:
+        if not isinstance(catalog, dict):
+            continue
+        catalog_name = str(catalog.get("name") or "")
+        if not catalog_name:
+            continue
+        if needle in catalog_name.lower():
+            if _maybe_add({"kind": "catalog", "full_name": catalog_name}):
+                break
+        schemas_obj = catalog.get("schemas")
+        if not isinstance(schemas_obj, list):
+            continue
+        for schema in schemas_obj:
+            if not isinstance(schema, dict):
+                continue
+            schema_name = str(schema.get("name") or "")
+            if not schema_name:
+                continue
+            schema_fqn = f"{catalog_name}.{schema_name}"
+            if needle in schema_name.lower() and _maybe_add(
+                {"kind": "schema", "full_name": schema_fqn}
+            ):
+                break
+            tables_obj = schema.get("tables")
+            if isinstance(tables_obj, list):
+                for table in tables_obj:
+                    if not isinstance(table, dict):
+                        continue
+                    table_name = str(table.get("name") or "")
+                    if not table_name:
+                        continue
+                    if needle in table_name.lower():
+                        if _maybe_add(
+                            {
+                                "kind": "table",
+                                "full_name": f"{schema_fqn}.{table_name}",
+                                "catalog": catalog_name,
+                                "schema": schema_name,
+                                "table": table_name,
+                            }
+                        ):
+                            break
+                if len(matches) >= capped:
+                    break
+            volumes_obj = schema.get("volumes")
+            if isinstance(volumes_obj, list):
+                for volume in volumes_obj:
+                    if not isinstance(volume, dict):
+                        continue
+                    volume_name = str(volume.get("name") or "")
+                    if not volume_name:
+                        continue
+                    if needle in volume_name.lower():
+                        if _maybe_add(
+                            {
+                                "kind": "volume",
+                                "full_name": f"{schema_fqn}.{volume_name}",
+                                "catalog": catalog_name,
+                                "schema": schema_name,
+                                "volume": volume_name,
+                            }
+                        ):
+                            break
+                if len(matches) >= capped:
+                    break
+            models_obj = schema.get("models")
+            if isinstance(models_obj, list):
+                for model in models_obj:
+                    if not isinstance(model, dict):
+                        continue
+                    model_name = str(model.get("name") or "")
+                    if not model_name:
+                        continue
+                    if needle in model_name.lower():
+                        if _maybe_add(
+                            {
+                                "kind": "model",
+                                "full_name": f"{schema_fqn}.{model_name}",
+                                "catalog": catalog_name,
+                                "schema": schema_name,
+                                "model": model_name,
+                            }
+                        ):
+                            break
+            if len(matches) >= capped:
+                break
+        if len(matches) >= capped:
+            break
+
+    return {"matches": matches, "truncated": len(matches) >= capped}
+
+
+@router.get("/api/recents")
+async def api_recents(request: Request) -> dict[str, object]:
+    """Return the current user's most-recent table visits."""
+    from pointlessql.services import recents as recents_service
+
+    user = get_user(request)
+    user_id = int(user.get("id", 0) or 0)
+    factory = request.app.state.session_factory
+    rows = recents_service.top_recent_tables(factory, user_id)
+    return {"recents": rows}
+
+
+@router.delete("/api/recents")
+async def api_clear_recents(request: Request) -> dict[str, bool]:
+    """Wipe the current user's recents block."""
+    from sqlalchemy import delete
+
+    from pointlessql.models import RecentTable
+
+    user = get_user(request)
+    user_id = int(user.get("id", 0) or 0)
+    if user_id <= 0:
+        return {"ok": True}
+    factory = request.app.state.session_factory
+    with factory() as session:
+        session.execute(delete(RecentTable).where(RecentTable.user_id == user_id))
+        session.commit()
+    return {"ok": True}
+
+
+@router.get("/api/catalogs")
+async def api_catalogs(request: Request) -> list[dict[str, object]]:
+    """Return all catalogs as JSON."""
+    client = get_uc_client(request)
+    return await client.list_catalogs()
+
+
+@router.get("/api/catalogs/{catalog_name}/schemas")
+async def api_schemas(request: Request, catalog_name: str) -> list[dict[str, object]]:
+    """Return schemas inside a catalog as JSON."""
+    client = get_uc_client(request)
+    user = get_user(request)
+    # Align the privilege check with get_uc_client — both must
+    # respect ``X-Principal`` so a Hermes plugin call on behalf of
+    # a real user is gated against that user's UC grants instead
+    # of the api_key:<name> synthetic principal.
+    principal = effective_principal(request) or user.get("email", "")
+    await check_privilege(
+        client,
+        principal,
+        user.get("is_admin", False),
+        "catalog",
+        catalog_name,
+        USE_CATALOG,
+    )
+    return await client.list_schemas(catalog_name)
+
+
+@router.get("/api/catalogs/{catalog_name}/schemas/{schema_name}/tables")
+async def api_tables(
+    request: Request,
+    catalog_name: str,
+    schema_name: str,
+) -> list[dict[str, object]]:
+    """Return tables inside a schema as JSON."""
+    client = get_uc_client(request)
+    user = get_user(request)
+    principal = effective_principal(request) or user.get("email", "")
+    await check_privilege(
+        client,
+        principal,
+        user.get("is_admin", False),
+        "schema",
+        f"{catalog_name}.{schema_name}",
+        USE_SCHEMA,
+    )
+    return await client.list_tables(catalog_name, schema_name)
+
+
+@router.get("/api/catalogs/{catalog_name}/schemas/{schema_name}/tables/{table_name}")
+async def api_get_table(
+    request: Request,
+    catalog_name: str,
+    schema_name: str,
+    table_name: str,
+) -> dict[str, object]:
+    """Return one table's full metadata (columns + tags) as JSON.
+
+    The ``hermes-plugin-pointlessql`` ``pql_get_table`` tool calls
+    this endpoint to pull column types + UC tags + comment without
+    scraping the HTML catalog browser. The shape is whatever
+    soyuz-catalog returns for ``GET /tables/{full_name}``; the gate
+    matches the schema-list route (USE_SCHEMA on the parent schema)
+    since visibility of an individual table follows visibility of
+    its schema.
+
+    Args:
+        request: Incoming FastAPI request.
+        catalog_name: First part of the three-part name.
+        schema_name: Second part.
+        table_name: Third part.
+
+    Returns:
+        Soyuz-shaped table info dict.
+    """
+    client = get_uc_client(request)
+    user = get_user(request)
+    principal = effective_principal(request) or user.get("email", "")
+    await check_privilege(
+        client,
+        principal,
+        user.get("is_admin", False),
+        "schema",
+        f"{catalog_name}.{schema_name}",
+        USE_SCHEMA,
+    )
+    return await client.get_table(catalog_name, schema_name, table_name)
