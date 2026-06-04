@@ -288,7 +288,7 @@ show_missing = true
 skip_covered = false
 
 [tool.uv.sources]
-soyuz-catalog-client = { git = "https://github.com/FloHofstetter/soyuz-catalog", rev = "71a333fc2fb03baf279bb6e301e3885e25acbdd0", subdirectory = "soyuz-catalog-client" }
+soyuz-catalog-client = { git = "https://github.com/FloHofstetter/soyuz-catalog", rev = "71a333fc2fb03baf279bb6e301e3885e25acbdd0", subdirectory = "soyuz-catalog-client" }  # pragma: allowlist secret  (rev is a git SHA, not a credential)
 
 [tool.uv]
 # Override the mashumaro upper bound that dbt-core <=1.11 declares
