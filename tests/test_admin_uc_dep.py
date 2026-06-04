@@ -80,7 +80,7 @@ def test_admin_uc_forwards_principal_via_get_uc_client(
             captured["principal"] = principal
             return f"forwarded:{principal}"
 
-    monkeypatch.setattr("pointlessql.api.dependencies.UnityCatalogClient", _UCStub)
+    monkeypatch.setattr("pointlessql.api.dependencies._principal.UnityCatalogClient", _UCStub)
     result = admin_uc(request)
     assert result == "forwarded:principal@example.com"
     assert captured["principal"] == "principal@example.com"

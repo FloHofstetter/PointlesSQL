@@ -261,7 +261,7 @@ def test_build_model_lineage_graph_skips_self_referential_loop(auth_cookies) -> 
 @pytest.fixture
 def uc_for_inference(monkeypatch: pytest.MonkeyPatch) -> AsyncMock:
     monkeypatch.setattr(
-        "pointlessql.api.dependencies.effective_principal",
+        "pointlessql.api.dependencies._principal.effective_principal",
         lambda request: None,
     )
     mock = AsyncMock()

@@ -34,13 +34,13 @@ from sqlalchemy import update
 from sqlglot.errors import ParseError
 
 from pointlessql.api._dbx_error_wrapper import (
-    _dbx_error_response as _dbx_error_response,
+    DbxApiError as DbxApiError,
 )
 from pointlessql.api._dbx_error_wrapper import (
-    _DbxApiError as _DbxApiError,
+    dbx_error_response as dbx_error_response,
 )
 from pointlessql.api._dbx_error_wrapper import (
-    _wrap_dbx as _wrap_dbx,
+    wrap_dbx as wrap_dbx,
 )
 from pointlessql.api.dependencies import effective_principal, require_sql_execute
 from pointlessql.models import SqlStatement
@@ -78,7 +78,7 @@ def _parse_wait_timeout(raw: Any, default_s: int, max_s: int) -> int:
         Seconds in ``[0, max_s]``.  ``0`` means "always async".
 
     Raises:
-        _DbxApiError: With status 400 when the format is unparseable.
+        DbxApiError: With status 400 when the format is unparseable.
     """
     if raw is None or (isinstance(raw, str) and not raw.strip()):
         return default_s
@@ -87,7 +87,7 @@ def _parse_wait_timeout(raw: Any, default_s: int, max_s: int) -> int:
     elif isinstance(raw, str):
         match = _TIMEOUT_RE.match(raw)
         if not match:
-            raise _DbxApiError(
+            raise DbxApiError(
                 400,
                 {
                     "error_code": "INVALID_PARAMETER_VALUE",
@@ -101,7 +101,7 @@ def _parse_wait_timeout(raw: Any, default_s: int, max_s: int) -> int:
         unit = (match.group(2) or "s").lower()
         seconds = value if unit == "s" else value // 1000
     else:
-        raise _DbxApiError(
+        raise DbxApiError(
             400,
             {
                 "error_code": "INVALID_PARAMETER_VALUE",
@@ -119,7 +119,7 @@ def _require_enabled(request: Request) -> None:
     """Reject every call with 503 when the API is disabled by settings."""
     settings = request.app.state.settings
     if not settings.sql_execution_api.enabled:
-        raise _DbxApiError(
+        raise DbxApiError(
             503,
             {
                 "error_code": "WORKSPACE_TEMPORARILY_UNAVAILABLE",
@@ -140,7 +140,7 @@ def _enforce_rate_limit(request: Request) -> None:
         request: Incoming FastAPI request.
 
     Raises:
-        _DbxApiError: With status 429 when the per-key bucket is full.
+        DbxApiError: With status 429 when the per-key bucket is full.
     """
     settings = request.app.state.settings
     rate_cfg = getattr(settings, "rate_limit", None)
@@ -160,7 +160,7 @@ def _enforce_rate_limit(request: Request) -> None:
     bucket = rate_limit_service.bucket_for("sql_statements", "apikey", str(api_key_id))
     allowed, retry_after = rate_limit_service.check_and_record(factory, bucket, count, window)
     if not allowed:
-        raise _DbxApiError(
+        raise DbxApiError(
             429,
             {
                 "error_code": "REQUEST_LIMIT_EXCEEDED",
@@ -209,7 +209,7 @@ def _persist_pending(
 def _normalise_body(body: dict[str, Any] | None) -> dict[str, Any]:
     """Return a defensive copy + replace ``None`` with sane defaults."""
     if not isinstance(body, dict):
-        raise _DbxApiError(
+        raise DbxApiError(
             400,
             {
                 "error_code": "INVALID_PARAMETER_VALUE",
@@ -220,7 +220,7 @@ def _normalise_body(body: dict[str, Any] | None) -> dict[str, Any]:
 
 
 @router.post("/api/2.0/sql/statements")
-@_wrap_dbx
+@wrap_dbx
 async def submit_statement(
     request: Request,
     body: dict[str, Any] = Body(...),
@@ -252,7 +252,7 @@ async def submit_statement(
         DBX-shape :class:`JSONResponse`.
 
     Raises:
-        _DbxApiError: For body validation errors (400), unsupported
+        DbxApiError: For body validation errors (400), unsupported
             options (400), rate-limit (429), or disabled-API (503).
     """
     _require_enabled(request)
@@ -261,7 +261,7 @@ async def submit_statement(
 
     statement_text = payload.get("statement")
     if not isinstance(statement_text, str) or not statement_text.strip():
-        raise _DbxApiError(
+        raise DbxApiError(
             400,
             {
                 "error_code": "INVALID_PARAMETER_VALUE",
@@ -271,7 +271,7 @@ async def submit_statement(
 
     fmt = (payload.get("format") or "JSON_ARRAY").upper()
     if fmt != "JSON_ARRAY":
-        raise _DbxApiError(
+        raise DbxApiError(
             400,
             {
                 "error_code": "INVALID_PARAMETER_VALUE",
@@ -280,7 +280,7 @@ async def submit_statement(
         )
     disposition = (payload.get("disposition") or "INLINE").upper()
     if disposition != "INLINE":
-        raise _DbxApiError(
+        raise DbxApiError(
             400,
             {
                 "error_code": "INVALID_PARAMETER_VALUE",
@@ -302,7 +302,7 @@ async def submit_statement(
     try:
         row_limit = max(1, min(int(raw_row_limit), int(sql_cfg.max_row_limit)))
     except TypeError, ValueError:
-        raise _DbxApiError(
+        raise DbxApiError(
             400,
             {
                 "error_code": "INVALID_PARAMETER_VALUE",
@@ -312,7 +312,7 @@ async def submit_statement(
 
     parameters = payload.get("parameters") or []
     if not isinstance(parameters, list):
-        raise _DbxApiError(
+        raise DbxApiError(
             400,
             {
                 "error_code": "INVALID_PARAMETER_VALUE",
@@ -327,7 +327,7 @@ async def submit_statement(
     )
     on_wait_timeout = (payload.get("on_wait_timeout") or "CONTINUE").upper()
     if on_wait_timeout not in ("CONTINUE", "CANCEL"):
-        raise _DbxApiError(
+        raise DbxApiError(
             400,
             {
                 "error_code": "INVALID_PARAMETER_VALUE",
@@ -503,7 +503,7 @@ def _row_to_envelope(row: SqlStatement) -> dict[str, Any]:
 
 
 @router.get("/api/2.0/sql/statements/{statement_id}")
-@_wrap_dbx
+@wrap_dbx
 async def poll_statement(
     request: Request,
     statement_id: str,
@@ -522,14 +522,14 @@ async def poll_statement(
         DBX-shape :class:`JSONResponse`.
 
     Raises:
-        _DbxApiError: With status 404 when no row exists, 503 when
+        DbxApiError: With status 404 when no row exists, 503 when
             the API is disabled.
     """
     _require_enabled(request)
     factory = request.app.state.session_factory
     row = fetch_statement(factory, statement_id)
     if row is None:
-        raise _DbxApiError(
+        raise DbxApiError(
             404,
             {
                 "error_code": "RESOURCE_NOT_FOUND",
@@ -540,7 +540,7 @@ async def poll_statement(
 
 
 @router.get("/api/2.0/sql/statements/{statement_id}/result/chunks/{chunk_index}")
-@_wrap_dbx
+@wrap_dbx
 async def fetch_chunk(
     request: Request,
     statement_id: str,
@@ -561,7 +561,7 @@ async def fetch_chunk(
         DBX-shape chunk payload as :class:`JSONResponse`.
 
     Raises:
-        _DbxApiError: 404 when the statement is missing or the
+        DbxApiError: 404 when the statement is missing or the
             chunk_index is out of range, 409 when the statement
             has not SUCCEEDED, 503 when the API is disabled.
     """
@@ -569,7 +569,7 @@ async def fetch_chunk(
     factory = request.app.state.session_factory
     row = fetch_statement(factory, statement_id)
     if row is None:
-        raise _DbxApiError(
+        raise DbxApiError(
             404,
             {
                 "error_code": "RESOURCE_NOT_FOUND",
@@ -577,7 +577,7 @@ async def fetch_chunk(
             },
         )
     if row.status != "SUCCEEDED" or not row.result_payload:
-        raise _DbxApiError(
+        raise DbxApiError(
             409,
             {
                 "error_code": "INVALID_PARAMETER_VALUE",
@@ -588,7 +588,7 @@ async def fetch_chunk(
             },
         )
     if chunk_index != 0:
-        raise _DbxApiError(
+        raise DbxApiError(
             404,
             {
                 "error_code": "RESOURCE_NOT_FOUND",
@@ -602,7 +602,7 @@ async def fetch_chunk(
 
 
 @router.post("/api/2.0/sql/statements/{statement_id}/cancel")
-@_wrap_dbx
+@wrap_dbx
 async def cancel_statement_route(
     request: Request,
     statement_id: str,
@@ -623,14 +623,14 @@ async def cancel_statement_route(
         the statement was already terminal).
 
     Raises:
-        _DbxApiError: 404 when no row exists for this id, 503 when
+        DbxApiError: 404 when no row exists for this id, 503 when
             the API is disabled.
     """
     _require_enabled(request)
     factory = request.app.state.session_factory
     row = fetch_statement(factory, statement_id)
     if row is None:
-        raise _DbxApiError(
+        raise DbxApiError(
             404,
             {
                 "error_code": "RESOURCE_NOT_FOUND",

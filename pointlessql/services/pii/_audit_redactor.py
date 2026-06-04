@@ -28,8 +28,6 @@ from __future__ import annotations
 
 from typing import Any
 
-from sqlalchemy.orm import Session, sessionmaker
-
 from pointlessql.services.pii._redactor import (
     REDACTED_PLACEHOLDER,
     get_or_create_pii_hash_secret,
@@ -37,13 +35,14 @@ from pointlessql.services.pii._redactor import (
     is_pii_by_name,
     redact_value,
 )
+from pointlessql.types import SessionFactory
 
 
 def redact_audit_detail(
     detail: str | dict[str, Any] | None,
     *,
     mode: str = "redact_with_audit_log",
-    session_factory: sessionmaker[Session] | None = None,
+    session_factory: SessionFactory | None = None,
 ) -> str | dict[str, Any] | None:
     """Recursively redact PII-keyed values in *detail*.
 

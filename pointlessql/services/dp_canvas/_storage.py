@@ -14,6 +14,7 @@ from sqlalchemy import select
 
 from pointlessql.models import DataProductCanvasGraph
 from pointlessql.services.dp_canvas._types import CanvasDoc
+from pointlessql.types import SessionFactory
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session, sessionmaker
@@ -63,7 +64,7 @@ def save_graph(
 
 
 def load_latest_graph(
-    factory: sessionmaker[Session],
+    factory: SessionFactory,
     *,
     data_product_id: int,
 ) -> tuple[CanvasDoc, int] | None:

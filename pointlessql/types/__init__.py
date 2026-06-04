@@ -18,6 +18,8 @@ Layout (private modules, do not import directly):
                       identifier.
 * ``_error_codes``  — :class:`ErrorCode` enum referenced by
                       every domain exception.
+* ``_session``      — :class:`SessionFactory` structural protocol
+                      for ``sessionmaker``-shaped callables.
 """
 
 from __future__ import annotations
@@ -40,6 +42,7 @@ from pointlessql.types._identifiers import (
     RunId,
     WorkspaceId,
 )
+from pointlessql.types._session import SessionFactory
 from pointlessql.types._table_fqn import TableFqn
 from pointlessql.types._user_types import UserInfo
 
@@ -57,6 +60,7 @@ __all__ = [
     "ReviewSeverity",
     "RunId",
     "RunStatus",
+    "SessionFactory",
     "TableFqn",
     "UserInfo",
     "WorkspaceId",

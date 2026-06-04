@@ -21,7 +21,7 @@ def uc_with_models(monkeypatch: pytest.MonkeyPatch) -> AsyncMock:
     # Force ``get_uc_client`` to fall through to ``app.state.uc_client``
     # by suppressing the per-request principal client construction.
     monkeypatch.setattr(
-        "pointlessql.api.dependencies.effective_principal",
+        "pointlessql.api.dependencies._principal.effective_principal",
         lambda request: None,
     )
     mock = AsyncMock()

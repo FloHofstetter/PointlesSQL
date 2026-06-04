@@ -132,7 +132,7 @@ _LINK_MARKER = json.dumps(
 @pytest.fixture
 def uc_for_lineage(monkeypatch: pytest.MonkeyPatch) -> AsyncMock:
     monkeypatch.setattr(
-        "pointlessql.api.dependencies.effective_principal",
+        "pointlessql.api.dependencies._principal.effective_principal",
         lambda request: None,
     )
     mock = AsyncMock()

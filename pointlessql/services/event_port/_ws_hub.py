@@ -42,7 +42,7 @@ class EventHub:
     """
 
     key: tuple[str, str]
-    subscribers: list[Any]
+    subscribers: list[_SendableWebSocket]
     lock: asyncio.Lock
 
 
@@ -73,13 +73,13 @@ async def get_or_create_hub(product_full_name: str, table: str) -> EventHub:
         return hub
 
 
-async def register(hub: EventHub, websocket: Any) -> None:
+async def register(hub: EventHub, websocket: _SendableWebSocket) -> None:
     """Add *websocket* to the hub's subscriber list."""
     async with hub.lock:
         hub.subscribers.append(websocket)
 
 
-async def deregister(hub: EventHub, websocket: Any) -> None:
+async def deregister(hub: EventHub, websocket: _SendableWebSocket) -> None:
     """Remove *websocket* if present.  No-op when absent."""
     async with hub.lock:
         try:
@@ -111,7 +111,7 @@ async def broadcast(hub: EventHub, frame: dict[str, Any]) -> int:
     delivered = 0
     async with hub.lock:
         targets = list(hub.subscribers)
-    failed: list[Any] = []
+    failed: list[_SendableWebSocket] = []
     for ws in targets:
         try:
             await ws.send_text(payload)

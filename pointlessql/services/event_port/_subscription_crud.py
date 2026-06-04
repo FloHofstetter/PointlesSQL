@@ -23,7 +23,7 @@ class _SessionFactory(Protocol):
         ...
 
 
-def _decode_position(payload: str | None) -> dict[str, int]:
+def decode_position(payload: str | None) -> dict[str, int]:
     if not payload:
         return {"version": 0, "row_offset": 0}
     try:
@@ -44,7 +44,7 @@ def _serialise(row: DataProductEventSubscription) -> dict[str, Any]:
         "table_name": row.table_name,
         "consumer_label": row.consumer_label,
         "status": row.status,
-        "position": _decode_position(row.position_marker_json),
+        "position": decode_position(row.position_marker_json),
         "last_delivered_at": (
             row.last_delivered_at.isoformat() if row.last_delivered_at else None
         ),
@@ -219,7 +219,7 @@ def advance_position(
         row = session.get(DataProductEventSubscription, subscription_id)
         if row is None:
             return None
-        current = _decode_position(row.position_marker_json)
+        current = decode_position(row.position_marker_json)
         if to_version < current["version"]:
             raise ValueError(
                 f"refusing to move cursor backwards "

@@ -35,7 +35,7 @@ from pointlessql.models.social._social_target import SocialTarget
 def _stub_model_client(monkeypatch: pytest.MonkeyPatch) -> AsyncMock:
     """Inject a UC client stub for the model_detail HTML route."""
     monkeypatch.setattr(
-        "pointlessql.api.dependencies.effective_principal",
+        "pointlessql.api.dependencies._principal.effective_principal",
         lambda request: None,
     )
     mock = AsyncMock()

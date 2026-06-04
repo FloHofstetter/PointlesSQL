@@ -49,7 +49,7 @@ from sqlalchemy import select
 from pointlessql.models.system_keys import SystemKey
 
 if TYPE_CHECKING:
-    from sqlalchemy.orm import Session, sessionmaker
+    from pointlessql.types import SessionFactory
 
 logger = logging.getLogger(__name__)
 
@@ -111,7 +111,7 @@ def _generate_secret_bytes() -> str:
     return secrets.token_urlsafe(32)
 
 
-def get_or_create_pii_hash_secret(session_factory: sessionmaker[Session]) -> str:
+def get_or_create_pii_hash_secret(session_factory: SessionFactory) -> str:
     """Return the install's PII hash secret, generating one on first call.
 
     The secret lives under ``system_keys.name='pii_hash'``.  When the

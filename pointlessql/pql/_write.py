@@ -188,6 +188,7 @@ def write_table(
         # stamps the recorder for the post-commit event or raises a
         # ``DataProductContractViolation`` *before* any Delta IO so
         # the bad write never lands.
+        enforcement = None
         if agent_run_id is not None and factory is not None:
             from pointlessql.data_products import check_contract_for_write
 
@@ -235,9 +236,7 @@ def write_table(
                 df,
                 factory=factory,
                 data_product_id=(
-                    enforcement.data_product_id
-                    if agent_run_id is not None and factory is not None
-                    else None
+                    enforcement.data_product_id if enforcement is not None else None
                 ),
             )
             engine.write(df, location, mode)

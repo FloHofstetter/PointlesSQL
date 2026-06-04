@@ -124,9 +124,9 @@ async def pump_subscription(
             "consumer_label": row.consumer_label,
             "position_marker_json": row.position_marker_json,
         }
-    from pointlessql.services.event_port._subscription_crud import _decode_position
+    from pointlessql.services.event_port._subscription_crud import decode_position
 
-    position = _decode_position(subscription["position_marker_json"])
+    position = decode_position(subscription["position_marker_json"])
     since = int(position["version"])
 
     if reader is None:

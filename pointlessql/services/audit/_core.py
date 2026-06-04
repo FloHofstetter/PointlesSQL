@@ -39,11 +39,10 @@ from contextvars import ContextVar
 from typing import Any
 
 from sqlalchemy import event, select
-from sqlalchemy.orm import Session, sessionmaker
 
 from pointlessql.exceptions import PointlessSQLError
 from pointlessql.models import AuditLog
-from pointlessql.types import ErrorCode
+from pointlessql.types import ErrorCode, SessionFactory
 
 logger = logging.getLogger(__name__)
 
@@ -146,7 +145,7 @@ def _encode_detail(detail: str | dict[str, Any] | None) -> str | None:
 
 
 def log_action(
-    factory: sessionmaker[Session],
+    factory: SessionFactory,
     user_id: int,
     user_email: str,
     action: str,
@@ -221,7 +220,7 @@ def log_action(
 
 
 def cleanup_old_entries(
-    factory: sessionmaker[Session],
+    factory: SessionFactory,
     retention_days: int,
 ) -> int:
     """Delete audit rows older than ``retention_days``.

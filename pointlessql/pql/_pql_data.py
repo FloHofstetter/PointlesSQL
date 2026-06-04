@@ -1,4 +1,7 @@
-# pyright: reportUnusedClass=false
+# pyright: reportUnusedClass=false, reportPrivateUsage=false
+# This module's whole job is to compose the per-concern private
+# ``_*Mixin`` classes back into one ``_DataOpsMixin`` — importing those
+# package-private mixins across module boundaries is intentional here.
 """Composite data-ops mixin for the :class:`PQL` façade.
 
 Item C split the 678-LOC monolith into per-concern
@@ -36,7 +39,7 @@ from pointlessql.pql._pql_widgets import _WidgetsMixin
 from pointlessql.pql._pql_write import _WriteMixin
 
 
-class _DataOpsMixin(  # pyright: ignore[reportPrivateUsage]
+class _DataOpsMixin(
     _ReadMixin,
     _WriteMixin,
     _SqlMixin,

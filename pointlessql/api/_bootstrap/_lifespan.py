@@ -534,8 +534,9 @@ def make_lifespan(
                 await app.state.mlflow_subprocess.stop()
             if app.state.dbt_subprocess is not None:
                 await app.state.dbt_subprocess.stop()
-            if getattr(app.state, "hermes_manager", None) is not None:
-                await app.state.hermes_manager.stop_all()
+            hermes_manager = getattr(app.state, "hermes_manager", None)
+            if hermes_manager is not None:
+                await hermes_manager.stop_all()
             await _cancel_task(audit_task)
             await _cancel_task(api_key_lifecycle_task)
             await _cancel_task(api_key_usage_flush_task)

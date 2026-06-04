@@ -29,7 +29,7 @@ import logging
 from typing import Any
 
 from fastapi import APIRouter, Body, Depends, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, Response
 
 from pointlessql.api._audit_helpers import audit
 from pointlessql.api.dependencies import admin_uc, render_page_with_fallback
@@ -267,7 +267,7 @@ async def api_delete_credential(
 async def connections_index(
     request: Request,
     client: UnityCatalogClient = Depends(admin_uc),
-) -> HTMLResponse:
+) -> Response:
     """List all connections (admin-only)."""
     return await render_page_with_fallback(
         request,
@@ -283,7 +283,7 @@ async def connection_detail(
     request: Request,
     name: str,
     client: UnityCatalogClient = Depends(admin_uc),
-) -> HTMLResponse:
+) -> Response:
     """Show a single connection (admin-only)."""
     return await render_page_with_fallback(
         request,
@@ -298,7 +298,7 @@ async def connection_detail(
 async def external_locations_index(
     request: Request,
     client: UnityCatalogClient = Depends(admin_uc),
-) -> HTMLResponse:
+) -> Response:
     """List all external locations (admin-only)."""
     return await render_page_with_fallback(
         request,
@@ -314,7 +314,7 @@ async def external_location_detail(
     request: Request,
     name: str,
     client: UnityCatalogClient = Depends(admin_uc),
-) -> HTMLResponse:
+) -> Response:
     """Show a single external location (admin-only)."""
     return await render_page_with_fallback(
         request,
@@ -329,7 +329,7 @@ async def external_location_detail(
 async def credentials_index(
     request: Request,
     client: UnityCatalogClient = Depends(admin_uc),
-) -> HTMLResponse:
+) -> Response:
     """List all credentials (admin-only)."""
     return await render_page_with_fallback(
         request,
@@ -345,7 +345,7 @@ async def credential_detail(
     request: Request,
     name: str,
     client: UnityCatalogClient = Depends(admin_uc),
-) -> HTMLResponse:
+) -> Response:
     """Show a single credential (admin-only)."""
     return await render_page_with_fallback(
         request,

@@ -154,7 +154,7 @@ def test_build_event_omits_previous_champion_when_none() -> None:
 def uc_for_promotion(monkeypatch: pytest.MonkeyPatch) -> AsyncMock:
     """Mock UC client + force ``effective_principal`` to ``None``."""
     monkeypatch.setattr(
-        "pointlessql.api.dependencies.effective_principal",
+        "pointlessql.api.dependencies._principal.effective_principal",
         lambda request: None,
     )
     mock = AsyncMock()

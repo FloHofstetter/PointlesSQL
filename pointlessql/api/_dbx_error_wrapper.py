@@ -24,13 +24,13 @@ from typing import Any
 from fastapi.responses import JSONResponse
 
 
-class _DbxApiError(Exception):
+class DbxApiError(Exception):
     """Raised inside route helpers to short-circuit with a DBX-shape JSON.
 
     The global FastAPI exception handler stringifies
     :class:`starlette.exceptions.HTTPException`'s ``detail`` field,
     which would mangle a dict-typed JSON envelope.  Routes catch
-    this locally via :func:`_wrap_dbx` and turn it into a
+    this locally via :func:`wrap_dbx` and turn it into a
     :class:`JSONResponse` with the headers preserved.
 
     Args:
@@ -54,8 +54,8 @@ class _DbxApiError(Exception):
         self.headers = headers or {}
 
 
-def _dbx_error_response(exc: _DbxApiError) -> JSONResponse:
-    """Convert a :class:`_DbxApiError` into a Databricks-shape JSONResponse.
+def dbx_error_response(exc: DbxApiError) -> JSONResponse:
+    """Convert a :class:`DbxApiError` into a Databricks-shape JSONResponse.
 
     Args:
         exc: Short-circuit exception raised inside a route handler.
@@ -71,12 +71,12 @@ def _dbx_error_response(exc: _DbxApiError) -> JSONResponse:
     )
 
 
-def _wrap_dbx(  # pyright: ignore[reportUnusedFunction] — re-exported via external_sql_routes
+def wrap_dbx(
     handler: Callable[..., Awaitable[JSONResponse]],
 ) -> Callable[..., Awaitable[JSONResponse]]:
-    """Decorate a route handler so ``_DbxApiError`` ships JSON directly.
+    """Decorate a route handler so ``DbxApiError`` ships JSON directly.
 
-    Without this wrapper, raising :class:`_DbxApiError` from a route
+    Without this wrapper, raising :class:`DbxApiError` from a route
     would land in the global FastAPI exception handler, which would
     coerce the dict body to a string and break the wire contract.
 
@@ -84,15 +84,15 @@ def _wrap_dbx(  # pyright: ignore[reportUnusedFunction] — re-exported via exte
         handler: Async route function returning :class:`JSONResponse`.
 
     Returns:
-        Wrapped coroutine that catches :class:`_DbxApiError` and
-        converts it via :func:`_dbx_error_response`.
+        Wrapped coroutine that catches :class:`DbxApiError` and
+        converts it via :func:`dbx_error_response`.
     """
 
     @wraps(handler)
     async def _wrapped(*args: Any, **kwargs: Any) -> JSONResponse:
         try:
             return await handler(*args, **kwargs)
-        except _DbxApiError as exc:
-            return _dbx_error_response(exc)
+        except DbxApiError as exc:
+            return dbx_error_response(exc)
 
     return _wrapped
