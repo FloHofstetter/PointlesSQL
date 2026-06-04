@@ -27,7 +27,12 @@ _OUT = _schema("a")
 def _compile(block_type: str, inputs: dict[str, str], cfg: dict[str, Any]):
     errors: list[Any] = []
     result = compile_block(
-        block_type=block_type, node_id="n1", inputs=inputs, output_schema=_OUT, cfg=cfg, errors=errors
+        block_type=block_type,
+        node_id="n1",
+        inputs=inputs,
+        output_schema=_OUT,
+        cfg=cfg,
+        errors=errors,
     )
     return result, errors
 

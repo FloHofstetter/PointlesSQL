@@ -21,6 +21,7 @@ from pointlessql.services.policy_as_code._crud import (
     update_module,
 )
 
+
 def _factory():
     return app.state.session_factory
 
@@ -41,7 +42,11 @@ def test_create_blank_name_raises() -> None:
 def test_create_blank_source_raises() -> None:
     with pytest.raises(ValueError, match="cedar_source is required"):
         create_module(
-            _factory(), workspace_id=1, name="pm-blank-src", cedar_source="", created_by_user_id=None
+            _factory(),
+            workspace_id=1,
+            name="pm-blank-src",
+            cedar_source="",
+            created_by_user_id=None,
         )
 
 

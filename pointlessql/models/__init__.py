@@ -1,10 +1,14 @@
 """SQLAlchemy ORM models for PointlesSQL's own metadata database.
 
-The ORM is split into per-domain sub-modules.  Import order in this
-file is **load-bearing**: SQLAlchemy resolves ``ForeignKey("table.col")``
-strings at mapper-configuration time, so referenced tables must
-already be registered when the referrers are imported.  The sequence
-below
+The ORM is split into per-domain sub-modules, all re-exported here so
+that ``from pointlessql.models import Base`` (used by the Alembic
+env.py) and every ``from pointlessql.models import <Model>`` call site
+keep resolving unchanged.
+
+SQLAlchemy resolves ``ForeignKey("table.col")`` strings lazily at
+mapper-configuration time — once this module has imported every
+sub-module — so import order does not affect FK resolution.  The
+per-domain grouping below documents the cross-module FK relationships:
 
 * ``base`` (Base class)
 * ``auth`` (User — referenced by Job, Dashboard, SavedQuery, Alert)
@@ -26,20 +30,14 @@ below
   AgentRunEvent, AgentRunToolCall, AgentReview, ReviewDestination,
   RewriteAttempt — internal FKs to AgentRun)
 * ``workspace`` package (Workspace, WorkspaceMember,
-  WorkspaceCatalogPin, WorkspaceRepo, WorkspaceRepoSecret, ApiKey
-  — governance container; ``users.default_workspace_id`` and
-  ``api_keys.workspace_id`` FKs are added in the same migration so
-  this module imports last)
-
-honours every cross-module FK without resorting to circular imports.
-The Alembic env.py keeps doing ``from pointlessql.models import Base``
-unchanged, and every existing call site that imported a specific model
-from ``pointlessql.models`` continues to resolve via the re-exports
-below.
+  WorkspaceCatalogPin, WorkspaceRepo, WorkspaceRepoSecret, ApiKey —
+  governance container; ``users.default_workspace_id`` and
+  ``api_keys.workspace_id`` FKs land in the same migration)
 """
 
 from __future__ import annotations
 
+from pointlessql.models.actionable_signals import ActionableSignal
 from pointlessql.models.agent import (
     AVATAR_KINDS,
     REVIEW_SEVERITIES,
@@ -255,12 +253,6 @@ from pointlessql.models.workspace import (
     WorkspaceRepoSecret,
 )
 
-# Imported after ``workspace`` so the ``workspaces.id`` FK target is
-# registered before this referrer.
-from pointlessql.models.actionable_signals import (  # noqa: E402
-    ActionableSignal,
-)
-
 __all__ = [
     "ActionableSignal",
     "AgentReview",
@@ -320,6 +312,7 @@ __all__ = [
     "CdfTailEvent",
     "CdfTailSubscription",
     "DataProduct",
+    "DataProductAvailabilityProbe",
     "DataProductBitemporalPolicy",
     "DataProductCanvasGraph",
     "DataProductColumnClassification",
@@ -342,6 +335,7 @@ __all__ = [
     "DataProductOutputPort",
     "DataProductPolicy",
     "DataProductQueryCost",
+    "DataProductQueryPerfSample",
     "DataProductRelease",
     "DataProductReview",
     "DataProductSemanticConcept",

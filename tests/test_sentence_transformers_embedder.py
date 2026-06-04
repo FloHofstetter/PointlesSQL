@@ -13,9 +13,9 @@ from typing import Any
 import pytest
 
 from pointlessql.pql.embedders._sentence_transformers import (
+    _MODEL_CACHE,
     DEFAULT_MODEL,
     SentenceTransformersEmbedder,
-    _MODEL_CACHE,
 )
 
 

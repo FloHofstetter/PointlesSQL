@@ -52,7 +52,9 @@ def test_filters_rows_at_or_before_when() -> None:
 def test_missing_event_column_raises() -> None:
     frame = pd.DataFrame({"id": [1], "other": [2]})
     with pytest.raises(ValidationError, match="event-time column"):
-        _Stub(frame).table_as_of_event_time("c.s.t", when=_dt.datetime(2026, 1, 1), event_column="ts")
+        _Stub(frame).table_as_of_event_time(
+            "c.s.t", when=_dt.datetime(2026, 1, 1), event_column="ts"
+        )
 
 
 def test_non_frame_result_raises() -> None:
@@ -63,6 +65,8 @@ def test_non_frame_result_raises() -> None:
 
 
 def test_default_event_column_from_settings() -> None:
-    frame = pd.DataFrame({"id": [1, 2], _DEFAULT_COL: [_dt.datetime(2026, 1, 1), _dt.datetime(2026, 9, 1)]})
+    frame = pd.DataFrame(
+        {"id": [1, 2], _DEFAULT_COL: [_dt.datetime(2026, 1, 1), _dt.datetime(2026, 9, 1)]}
+    )
     out = _Stub(frame).table_as_of_event_time("c.s.t", when=_dt.datetime(2026, 6, 1))
     assert list(out["id"]) == [1]

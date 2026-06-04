@@ -136,7 +136,9 @@ def test_group_by_present_yields_identity_edge() -> None:
 
 def test_group_by_missing_yields_unknown_origin() -> None:
     edges = _edges(
-        source_df=pd.DataFrame({"amount": [2]}), group_by=["missing"], aggs={"total": ("amount", "sum")}
+        source_df=pd.DataFrame({"amount": [2]}),
+        group_by=["missing"],
+        aggs={"total": ("amount", "sum")},
     )
     miss = [e for e in edges if e.target_column == "missing"]
     assert miss and miss[0].transform_kind == "unknown_origin"

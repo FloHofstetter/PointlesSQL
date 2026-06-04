@@ -15,7 +15,6 @@ import pyarrow as pa
 from pointlessql.pql._merge._stats import _merge_rows_affected, _stats_for_audit
 from pointlessql.pql._merge._strategies import _augment_for_scd2, _do_scd2, _do_upsert
 
-
 # --- _merge_rows_affected (pure) -----------------------------------------
 
 

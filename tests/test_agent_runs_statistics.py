@@ -16,7 +16,6 @@ from sqlalchemy import select
 
 from pointlessql.api.main import app
 from pointlessql.models.catalog._data_products import DataProductStatistics
-from pointlessql.services.agent_runs.operations import _statistics as stats_mod
 from pointlessql.services.agent_runs.operations._statistics import (
     _shape_from_cache,
     record_statistics_after_commit,
