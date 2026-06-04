@@ -15,6 +15,7 @@ resolver tags every field with its winning source so the UI can render
 from __future__ import annotations
 
 import datetime
+import json
 from typing import Any
 
 from sqlalchemy import select
@@ -44,7 +45,20 @@ def _row_values(row: Any) -> dict[str, Any]:
     """Return the policy field values of *row*, or all-``None`` when missing."""
     if row is None:
         return {field: None for field in POLICY_FIELDS}
-    return {field: getattr(row, field) for field in POLICY_FIELDS}
+    values: dict[str, Any] = {field: getattr(row, field) for field in POLICY_FIELDS}
+    # ``linked_policy_module_ids`` is persisted as a JSON-encoded string
+    # (the policy-as-code CRUD and the data-product applier both
+    # ``json.dumps`` the list before writing).  Decode it back to the
+    # ``list[int]`` shape that ``PolicySpec``, the planner diff, and the
+    # effective-policy consumers expect, so an export / plan round-trip of a
+    # product with linked policy modules does not choke on the raw string.
+    raw = values.get("linked_policy_module_ids")
+    if isinstance(raw, str):
+        try:
+            values["linked_policy_module_ids"] = json.loads(raw)
+        except (ValueError, TypeError):
+            values["linked_policy_module_ids"] = None
+    return values
 
 
 def get_workspace_policy(
