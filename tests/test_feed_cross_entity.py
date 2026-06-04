@@ -163,7 +163,13 @@ def test_feed_html_carries_kind_filter_dropdown() -> None:
     newly-registered kinds light up without code change.
     """
     activity = (_TEMPLATES_ROOT / "pages/_partials/feed/activity_pane.html").read_text()
-    scripts = (_FRONTEND_ROOT / "js/pages/feed.js").read_text()
+    # The feedPage factory is split into mixin installers under
+    # ``js/pages/feed/`` (kindOptions lives in the state mixin); read the
+    # whole package so the kind-registration check survives re-grouping.
+    feed_dir = _FRONTEND_ROOT / "js/pages/feed"
+    scripts = (_FRONTEND_ROOT / "js/pages/feed.js").read_text() + "".join(
+        p.read_text() for p in sorted(feed_dir.glob("*.js"))
+    )
     assert "pql-feed-kind-menu" in activity
     assert "kindFilter" in activity
     for kind in ("'dp'", "'table'", "'model'", "'notebook'", "'saved_query'"):
