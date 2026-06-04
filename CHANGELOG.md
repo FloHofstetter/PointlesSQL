@@ -92,6 +92,32 @@ defined in ``scripts/clusters.json``. -->
   the executor path; and `prepare_sql` now leaves DuckDB table-valued
   functions (`read_csv_auto` / `read_parquet` / `range` / …) untouched
   instead of demanding a three-part name for them.
+- Codebase quality + reorganization pass. Restored the three CI gates to
+  green (ruff, the file-size budget, and the pyright budget — errors back
+  to zero, warning budget re-baselined to its irreducible third-party-stub
+  floor with a single de-rotted rationale) and emptied the now-vestigial
+  file-size allowlist. Deduplicated broad copy-paste: the 56 identical
+  `_SessionFactory` protocol copies collapse onto one canonical
+  `pointlessql.types.SessionFactory`, the slug helper onto a shared
+  `services/_slug.py`, and the ISO-8601 parser onto the audit module's.
+- Several at-budget modules split behind re-export facades so the public
+  import paths are unchanged: `api/dependencies.py` → a `dependencies/`
+  package; the `api_keys` service `__init__` → `_cache` / `_verify` /
+  `_crud`; `api/_bootstrap/_loops.py` → a per-domain `_loops/` package;
+  and `pql/_autoload.py` → an `_autoload/` package by concern.
+- Frontend mega-components split into mixin installers, mirroring the
+  canvas-editor pattern: the 1219-line `pages/feed.js` and 1143-line
+  `pages/data_product.js` Alpine factories are now ~130-line composition
+  roots that compose focused mixins under `pages/feed/` and
+  `pages/data_product/`. Behaviour-preserving — verified by a structural-
+  equivalence harness comparing every property's kind and normalized body.
+- Flat mega-route modules migrated to per-axis packages behind one
+  combined router (the `api/data_products_routes/` template):
+  `admin/api_keys.py` → keys / grants / usage, `catalog_routes.py` →
+  browse / preview, `volumes_routes.py` → files / convert / pages,
+  `external_sql_routes.py` → submit / lifecycle; and the pure YAML-diff
+  engine extracted out of `data_products_routes/proposals.py`. Handler
+  bodies are unchanged and every prior import path still resolves.
 
 ### Features
 

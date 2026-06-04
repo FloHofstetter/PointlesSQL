@@ -3279,6 +3279,44 @@ PointlesSQL
 │   │   den Hub-Vertrag umgeschrieben; navigation_ia.md + contextual-panels
 │   │   Walkthrough aktualisiert.  rc255 → rc256.  ALL LOCAL.
 │   │
+├── Code-Quality + Reorganization Pass — gates green, dedup, splits  ✅ shipped (local, 2026-06-04)
+│   │
+│   │   Aus User-Auftrag ("die Code-Basis auf Qualitätsverbesserungen und
+│   │   Reorganisation ansehen, planen, implementieren").  One commit per
+│   │   logical chunk, full gate green at each boundary, no push:
+│   │   • CI baseline restored: ruff back to clean, the file-size budget
+│   │     green (vestigial allowlist emptied), pyright errors → 0 and the
+│   │     warning budget honestly re-baselined to its irreducible third-
+│   │     party-stub floor (a true 0 needs multi-week .pyi authoring for
+│   │     pyarrow/pandas/deltalake — out of scope) with one de-rotted note.
+│   │   • Dedup: 56 identical ``_SessionFactory`` protocol copies → one
+│   │     canonical ``pointlessql.types.SessionFactory``; slug helper →
+│   │     ``services/_slug.py``; ISO-8601 parser → the audit module's.
+│   │   • Backend splits behind re-export facades (import paths unchanged):
+│   │     ``api/dependencies.py`` → a ``dependencies/`` package (the split
+│   │     the overnight run had reverted — done here by also retargeting
+│   │     the 9 monkeypatch test sites); ``api_keys`` service ``__init__``
+│   │     → _cache/_verify/_crud; ``_bootstrap/_loops.py`` → a per-domain
+│   │     ``_loops/`` package; ``pql/_autoload.py`` → an ``_autoload/``
+│   │     package.
+│   │   • Frontend mega-components → mixin installers (canvas-editor
+│   │     pattern): the 1219-line ``pages/feed.js`` and 1143-line
+│   │     ``pages/data_product.js`` factories are now ~130-line composition
+│   │     roots over focused mixins (``pages/feed/`` + ``pages/data_product/``).
+│   │     Structural-equivalence harness held every property's kind +
+│   │     normalized body identical across the split.
+│   │   • Flat mega-routes → per-axis packages (the data_products_routes
+│   │     template): ``admin/api_keys.py`` → keys/grants/usage,
+│   │     ``catalog_routes.py`` → browse/preview, ``volumes_routes.py`` →
+│   │     files/convert/pages, ``external_sql_routes.py`` → submit/lifecycle;
+│   │     plus the pure YAML-diff engine lifted out of
+│   │     ``data_products_routes/proposals.py``.  Handler bodies unchanged;
+│   │     every prior import path still resolves.
+│   │   Excluded by design (verification disproved or against-grain): the
+│   │   151-file api↔session decouple (the "never write directly" rule is
+│   │   about soyuz tables, not our own metadata DB), a phantom BLE001 noqa
+│   │   finding, and a 458-file test reorg.  ALL LOCAL.
+│   │
 ├── Canvas Code Modularization Refactor — split the editor + backend monoliths  ✅ shipped (local, 2026-06-02)
 │   │
 │   │   Aus User-Auftrag ("den Canvas-Code refaktorieren, modularisieren,
