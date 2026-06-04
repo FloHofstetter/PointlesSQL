@@ -1,117 +1,36 @@
 #!/usr/bin/env bash
-# Phase 35 Sprint 35.8 — File-size budget for pointlessql/**.py.
+# File-size budget for pointlessql/**.py.
 #
-# After Sprint 35.1-35.3 (and the eventual 35.4 run_view extraction),
-# the project no longer has any single source-of-truth file >800 LOC
-# that mixes multiple concerns.  This gate prevents new mixed-concerns
-# files from sneaking in: any pointlessql/**.py whose line count
-# exceeds 800 fails CI unless it appears in the explicit allow-list
-# below.
+# The project keeps single source-of-truth modules small: no
+# pointlessql/**.py that mixes multiple concerns should exceed 800
+# LOC.  This gate prevents new mixed-concerns files from sneaking in:
+# any pointlessql/**.py whose line count exceeds 800 fails CI unless
+# it appears in the explicit allow-list below.
 #
-# Files in the allow-list are big-by-design — usually a public API
-# surface (pql.py 788), a coherent settings tree (settings.py 721),
-# or a frozen alembic migration (initial_schema.py 713).  Splitting
-# them would create false seams.  When something legitimately new
-# crosses the budget, ADD IT to the allow-list with a short comment
-# explaining why — don't bump the budget number.
+# Files in the allow-list are big-by-design — a public API surface or
+# a coherent module/tree where splitting would create false seams.
+# When something legitimately new crosses the budget, ADD IT to the
+# allow-list with a short comment explaining why — don't bump the
+# budget number.
+#
+# The allow-list is currently empty: the modularization passes split
+# every previously-oversized module (api/dependencies.py was the last)
+# into focused packages, so no pointlessql/**.py is big-by-design
+# over budget today.
 
 set -euo pipefail
 
 BUDGET=800
 
-# Files explicitly allowed above the budget, with the reason.
-ALLOWLIST=(
-    # Public PQL primitives — single coherent API surface.
-    "pointlessql/pql/pql.py"
-    # FastAPI app boot + middleware wiring; coherent module.
-    "pointlessql/api/main.py"
-    # Pydantic settings tree; splitting hurts discoverability.
-    # Path was ``pointlessql/settings.py``; refactored to a package
-    # ``pointlessql/config/_settings.py`` in a later sprint.  The
-    # cohesive-tree rationale carries across the rename.
-    "pointlessql/config/_settings.py"
-    # Frozen alembic squash from Sprint 33-era housekeeping.
-    "pointlessql/alembic/versions/b55f1020b8a4_initial_schema.py"
-    # Cohesive scheduler core — Phase 21 ML registry adds.
-    "pointlessql/services/scheduler/runs.py"
-    # Cohesive jobs route surface; refused split in Phase 26 audit.
-    "pointlessql/api/jobs_routes.py"
-    # SQL editor route layer; cohesive query-handling concerns.
-    # Path was ``pointlessql/api/sql_routes.py``; refactored into a
-    # ``pointlessql/api/sql/`` package, but the two largest files
-    # (``editor.py`` and ``_dispatcher.py``) still share the
-    # dispatcher state machine.  Each is big-by-design; splitting
-    # them would create cross-handler state-passing seams.
-    "pointlessql/api/sql/editor.py"
-    "pointlessql/api/sql/_dispatcher.py"
-    # PQL merge primitive; cohesive write-path concerns.
-    "pointlessql/pql/_merge.py"
-    # Audit cockpit metrics + inbox routes; share filter / aggregator
-    # service layer.  Sprint 35 audit deemed split a false seam.
-    # Path was ``pointlessql/api/audit_routes.py``; refactored into a
-    # ``pointlessql/api/audit/`` package; the bulk lives in
-    # ``_legacy.py`` (the original module preserved through the
-    # package split).
-    "pointlessql/api/audit/_legacy.py"
-    # Cohesive SQL aggregation layer; one shared filter / bin / metric
-    # path used by summary / timeseries / anomalies endpoints.
-    "pointlessql/services/audit_aggregator.py"
-    # Operation recorder + lineage post-commit hooks tightly coupled
-    # via the operation_context contract.
-    "pointlessql/services/agent_runs/operations.py"
-    # Cohesive dbt orchestration surface — Phase 36 (subprocess CLI
-    # invocation + manifest read-only accessors + audit emit +
-    # severity enforcement + auto-rollback).  Manifest projection
-    # already lives in services/dbt_bridge.py; what remains here is
-    # one file's worth of route handlers that share the
-    # ``_run_or_test`` pipeline state.
-    # Path was ``pointlessql/api/dbt_routes.py``; refactored into a
-    # ``pointlessql/api/dbt/`` package later.  Same coherent-surface
-    # rationale carries across the rename.
-    "pointlessql/api/dbt/routes.py"
-    # Admin console — cohesive admin-level dashboard + audit-export
-    # + sink + review-destination + api-key + system-info pages.
-    # Phase 75.1 added the tamper-evidence ``.tar.gz`` variant which
-    # pushed the file past 800 LOC; the surface stays coherent
-    # (one router, one auth gate, one filter helper-set).
-    "pointlessql/api/admin/console.py"
-    # Data-product discussion route surface — GET/POST/DELETE plus
-    # accept-answer plus mention resolution (email + display-name)
-    # plus reaction aggregator plus agent-author payload.  Phase 76
-    # lifted threading 2→5, added the category enum + accept-answer +
-    # reactions + agent-author discriminator; splitting now would
-    # create cross-handler seams (mention + reaction + agent payload
-    # all flow through ``_serialise_comment``).  Allowlisted at the
-    # close-out of Phase 76 alongside the helper-extraction refactor.
-    "pointlessql/api/data_products_routes/comments.py"
-    # Polymorphic social handlers (Phase 77.1.5) — 12 handlers
-    # across 4 axes (comments / endorsements / followers / readme)
-    # built on a shared serializer + capability-check layer.  Split
-    # candidates would force a 5th ``_shared.py`` and duplicate the
-    # docstring / capability checks across files.  Phase 77.11
-    # plans to unify these with the DP handlers into a single
-    # service layer; splitting now would create churn that gets
-    # undone weeks later.  Allowlisted at 77.1.5 close-out.
-    "pointlessql/api/social_routes/_polymorphic_handlers.py"
-    # Home digest aggregator + Cmd+K search index — Phase 80.6
-    # ("index every entity kind") expanded ``api_search`` to span all
-    # 14 entity kinds, which pushed the file past 800 LOC.  The two
-    # concerns (``build_home_summary`` digest and ``api_search``
-    # Cmd+K index) are separable; tracked for a future split into
-    # ``home_routes.py`` (digest) + ``search_routes.py`` (Cmd+K).
-    "pointlessql/api/home_routes.py"
-    # Feed JSON + HTML + mute/snooze + trending/people surface — Phase
-    # 81.K.4/K.5 added the trending, people, mark-all-read, mute,
-    # snooze, unmute endpoints plus the bulk actor-name + active-mute
-    # helpers, which pushed the file past 800 LOC.  Split candidates
-    # exist (``feed_routes`` JSON read + ``feed_mute_routes`` write +
-    # ``feed_discover_routes`` trending/people), tracked for a future
-    # Phase 81.K+ modularization pass.
-    "pointlessql/api/feed_routes.py"
-)
+# Files explicitly allowed above the budget, with the reason. Empty
+# today — see the header note above.
+ALLOWLIST=()
 
 is_allowed() {
     local path="$1"
+    if [ "${#ALLOWLIST[@]}" -eq 0 ]; then
+        return 1
+    fi
     for allowed in "${ALLOWLIST[@]}"; do
         if [ "$path" = "$allowed" ]; then
             return 0
@@ -129,7 +48,7 @@ while IFS= read -r path; do
             continue
         fi
         echo "ERROR: $path is $line_count LOC (>${BUDGET})" >&2
-        echo "  Either split the file (Phase 35 modularization pattern)" >&2
+        echo "  Either split the file (project modularization pattern)" >&2
         echo "  or add it to ALLOWLIST in scripts/check-file-size-budget.sh" >&2
         echo "  with a short comment explaining why it is big-by-design." >&2
         failed=1
