@@ -143,6 +143,39 @@ class TestDetectRejects:
         assert cleaned.num_rows == 3
         assert rejects == []
 
+    def test_cleaned_preserves_schema_and_exact_surviving_rows(self) -> None:
+        """The cleaned source keeps the input schema and exactly the
+        non-rejected rows in source order.
+
+        Guards the row-mask plumbing end to end: a stray index column
+        leaking out of ``reset_index`` / ``from_pandas`` would change
+        the schema, and any slip in the keep/null/dup masks would change
+        which ``_lineage_row_id`` values survive.
+        """
+        df = pd.DataFrame(
+            {
+                "order_id": [1, None, 2, 2, 3],
+                "qty": [10, 20, 30, 40, 50],
+                "_lineage_row_id": ["a", "b", "c", "d", "e"],
+            }
+        )
+        arrow = pa.Table.from_pandas(df, preserve_index=False)
+        cleaned, rejects = _detect_rejects(arrow, ["order_id"])
+
+        # No spurious index column may leak into the merged-into table.
+        assert cleaned.column_names == ["order_id", "qty", "_lineage_row_id"]
+
+        # "b" is dropped for a null key, "d" as the second occurrence of
+        # key 2; "a", "c", "e" survive untouched and in order.
+        cleaned_pdf = cleaned.to_pandas()
+        assert list(cleaned_pdf["_lineage_row_id"]) == ["a", "c", "e"]
+        assert list(cleaned_pdf["qty"]) == [10, 30, 50]
+
+        assert {(row_id, reason) for row_id, reason, _ in rejects} == {
+            ("b", "on_key_null"),
+            ("d", "duplicate_in_source"),
+        }
+
 
 class TestRecordRejects:
     """Persistence into ``lineage_row_rejects``."""
