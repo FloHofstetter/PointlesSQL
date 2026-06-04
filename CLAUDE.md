@@ -258,6 +258,25 @@ not sufficient for the in-session tool surface.
   schema is for session / preference / audit rows only
 - **Update `ROADMAP.md` and `CHANGELOG.md`** for every sprint
   landing — same discipline as soyuz-catalog
+- **Modularize before the hard 800-LOC budget bites.** The
+  `check-file-size-budget.sh` gate hard-fails at 800 LOC, but the
+  practical seam is earlier: a flat route module past ~450 LOC, or
+  an Alpine factory / service module past ~700, should split. The
+  project's house style is **package-with-re-export-facade** — turn
+  `foo.py` into a `foo/` package whose `__init__.py` re-exports every
+  public name (and any symbol other modules import by path), so
+  `from … import foo` callers never change. For routes, give each
+  sub-module its own `APIRouter` and combine them in `__init__`
+  (`api/data_products_routes/` is the template); shared helpers go in
+  a `_shared.py` and are made public if imported across sub-modules.
+  For Alpine factories, compose `installX(state)` mixin installers
+  (`feed.js` / `data_product.js` / `dp_canvas_editor.js`). Keep splits
+  behaviour-preserving: move bodies verbatim and, where there are no
+  runtime tests (JS), verify with a structural-equivalence harness.
+  Do **not** split a cohesive single-surface module just to chase a
+  number — a false seam is worse than a long-but-coherent file.
+  Caveat: splitting a module that tests monkeypatch **by string**
+  moves the patch target — retarget those tests in the same commit.
 - **Fix bugs at the source, never work around them.** Both
   PointlesSQL and soyuz-catalog (including `soyuz-catalog-client`)
   are our repos. When a bug surfaces in a dependency we own, fix
