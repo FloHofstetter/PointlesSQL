@@ -40,7 +40,6 @@ POLICY_FIELDS: tuple[str, ...] = (
 )
 
 
-
 def _row_values(row: Any) -> dict[str, Any]:
     """Return the policy field values of *row*, or all-``None`` when missing."""
     if row is None:
@@ -56,14 +55,12 @@ def _row_values(row: Any) -> dict[str, Any]:
     if isinstance(raw, str):
         try:
             values["linked_policy_module_ids"] = json.loads(raw)
-        except (ValueError, TypeError):
+        except ValueError:
             values["linked_policy_module_ids"] = None
     return values
 
 
-def get_workspace_policy(
-    session_factory: SessionFactory, *, workspace_id: int
-) -> dict[str, Any]:
+def get_workspace_policy(session_factory: SessionFactory, *, workspace_id: int) -> dict[str, Any]:
     """Return the workspace default policy field values (all-``None`` if unset)."""
     with session_factory() as session:
         row = session.scalar(
@@ -74,15 +71,11 @@ def get_workspace_policy(
         return _row_values(row)
 
 
-def get_product_policy(
-    session_factory: SessionFactory, *, data_product_id: int
-) -> dict[str, Any]:
+def get_product_policy(session_factory: SessionFactory, *, data_product_id: int) -> dict[str, Any]:
     """Return the product's override field values (all-``None`` if unset)."""
     with session_factory() as session:
         row = session.scalar(
-            select(DataProductPolicy).where(
-                DataProductPolicy.data_product_id == data_product_id
-            )
+            select(DataProductPolicy).where(DataProductPolicy.data_product_id == data_product_id)
         )
         return _row_values(row)
 
@@ -142,6 +135,13 @@ def set_product_policy(
     Only keys present in *fields* are written; pass an explicit
     ``None`` to clear a field back to "inherit".
 
+    Args:
+        session_factory: Sessionmaker callable.
+        data_product_id: Product whose override row to upsert.
+        fields: Policy field values to write; only known
+            :data:`POLICY_FIELDS` keys are applied.
+        updated_by_user_id: User id recorded as the editor, or ``None``.
+
     Returns:
         The product override field values after the write.
     """
@@ -149,9 +149,7 @@ def set_product_policy(
     now = datetime.datetime.now(datetime.UTC)
     with session_factory() as session:
         row = session.scalar(
-            select(DataProductPolicy).where(
-                DataProductPolicy.data_product_id == data_product_id
-            )
+            select(DataProductPolicy).where(DataProductPolicy.data_product_id == data_product_id)
         )
         if row is None:
             row = DataProductPolicy(
@@ -176,6 +174,13 @@ def set_workspace_policy(
     updated_by_user_id: int | None = None,
 ) -> dict[str, Any]:
     """Upsert the workspace default policy row.
+
+    Args:
+        session_factory: Sessionmaker callable.
+        workspace_id: Workspace whose default policy row to upsert.
+        fields: Policy field values to write; only known
+            :data:`POLICY_FIELDS` keys are applied.
+        updated_by_user_id: User id recorded as the editor, or ``None``.
 
     Returns:
         The workspace default field values after the write.
