@@ -21,21 +21,23 @@ web UI and a thin orchestration layer on top of existing components:
 - **Apache Spark** (`~/git/spark`) — optional query runtime; only
   used if/when PointlesSQL grows beyond metadata browsing.
 
-## Phase 1 MVP (complete)
-
-A "mini-Databricks" where the user can:
-
-1. **Browse UC metadata** in a web UI (catalogs → schemas → tables
-   → columns), edit comments and properties inline
-2. **Read and write Delta tables** as pandas DataFrames via the
-   `PQL` helper library, which resolves table names through
-   soyuz-catalog
-3. **Work in a notebook** via an embedded JupyterLab tab with
-   sidebar navigation
+## What it is today
 
 The UI is a FastAPI + Jinja2 application that talks to soyuz-catalog
-over HTTP using the generated typed client that ships with
-soyuz-catalog (Sprint 20 / ADR-0007 in that repo).
+over HTTP through the generated typed client. The Phase 1 MVP — a
+"mini-Databricks" to (1) browse UC metadata (catalogs → schemas →
+tables → columns) with inline comment/property edits, (2) read and
+write Delta tables as pandas DataFrames via the `PQL` library, and
+(3) work in a notebook — shipped long ago.
+
+The product has since grown well beyond that into a broad lakehouse
+surface: an audit cockpit with per-cell lineage, data products /
+data mesh, dbt, an ML registry, agent runs, real-time co-edited
+notebooks (CRDT), Lakehouse Federation, governance / policy-as-code,
+and an admin console. **`ROADMAP.md` is the single source of truth**
+for what is done, in progress, and next — read it before assuming a
+feature does or does not exist. `pointlessql/services/` (~80 modules)
+and `pointlessql/api/` are the fastest way to see the real surface.
 
 ## Stack
 
@@ -44,7 +46,12 @@ soyuz-catalog (Sprint 20 / ADR-0007 in that repo).
   `frontend/`
 - Bootstrap 5.3 + HTMX + Alpine.js for the frontend
 - `deltalake>=0.24` + `pandas>=2.2` — the PQL DataFrame bridge
-- `jupyterlab>=4.0` — embedded notebook server
+  (`duckdb` + `polars` + `pyarrow` + `sqlglot` back the SQL paths)
+- `jupytext` + `papermill` + `nbconvert` + `jupyter_client` /
+  `ipykernel` — the native notebook editor and scheduled execution;
+  `pycrdt` drives real-time co-edit (a CRDT whose wire format is
+  byte-compatible with Y.js). The Phase 1 embedded-JupyterLab tab is
+  gone
 - SQLAlchemy 2.0 + Alembic — for *our own* metadata only (user
   sessions, UI preferences, saved queries). soyuz-catalog owns the
   lakehouse metadata; PointlesSQL never writes to it directly
@@ -60,21 +67,83 @@ soyuz-catalog (Sprint 20 / ADR-0007 in that repo).
 
 ## Layout
 
-- `pointlessql/api/main.py` — FastAPI entrypoint, `cli()` runs uvicorn
-- `pointlessql/services/` — business logic:
+- `pointlessql/api/` — FastAPI app. `main.py` builds the `app` and
+  exposes `cli()` (runs uvicorn with a project-scoped reload watcher);
+  the rest is route modules, one package/file per surface (`audit/`,
+  `lineage/`, `runs_routes/`, `data_products_routes/`, `mesh_*`,
+  `notebook_*`, `*_ws.py` WebSocket handlers, …)
+- `pointlessql/services/` — business logic (~80 modules). Entry points:
   - `soyuz_client.py` — factory for a configured
     `soyuz_catalog_client.Client`
-  - `unitycatalog.py` — async facade over the generated client
-  - `jupyter.py` — JupyterLab subprocess lifecycle manager
-- `pointlessql/pql/` — sync bridge between UC metadata and Delta
-  Lake DataFrames (`PQL` class, column mapping, name parsing)
-- `pointlessql/settings.py` — pydantic-settings (soyuz URL, Jupyter
-  config)
-- `pointlessql/alembic/` — migrations for our own metadata DB
-- `frontend/templates|css|js` — force-included into the wheel on build
+  - `unitycatalog/` — async facade package over the generated client.
+    **All UC calls route through it** — direct `soyuz_catalog_client.api`
+    imports from `api/` are banned by a ruff `flake8-tidy-imports` rule
+- `pointlessql/pql/` — the sync `PQL` bridge between UC metadata and
+  Delta Lake DataFrames (name parsing, column mapping, SQL/merge
+  translation, time-travel, branches, vector search)
+- `pointlessql/config/` — pydantic-settings (`Settings` + nested
+  per-subsystem `BaseSettings`) and logging; `get_settings()` is the
+  cached accessor. (This is the old `settings.py`.)
+- `pointlessql/models/` + `pointlessql/db.py` — SQLAlchemy ORM and
+  engine/session wiring for *our own* metadata DB
+- `pointlessql/alembic/` — migrations for that DB
+- Other top-level packages: `cli/` (admin CLIs), `conventions/`,
+  `data_products/`, `git/` (provider abstraction), `types/`, `web/`,
+  `data/notebook_templates/`
+- `frontend/templates|css|js|fonts` — force-included into the wheel
+  on build (Jinja templates, Bootstrap/HTMX/Alpine JS, biome-linted)
 - `notebooks/` — starter notebooks shipped with the project
 - `tests/` — pytest suite (`@pytest.mark.integration` for live-server
-  tests)
+  tests). `e2e/` (sibling, not under `tests/`) holds the Playwright
+  browser tests; see the markers in `pyproject.toml`
+
+## Commands
+
+`uv` drives everything; there is no Makefile. Setup and running the
+app live under ["Wiring soyuz-catalog"](#wiring-soyuz-catalog)
+(`uv sync`, then `uv run pointlessql`). The local gates below mirror
+CI exactly ([`.github/workflows/test.yml`](.github/workflows/test.yml)) —
+run them before opening a PR.
+
+```bash
+# Tests — the default run excludes integration/e2e/postgres markers
+# (pyproject addopts) and only collects tests/ (not the e2e/ sibling)
+uv run pytest                                   # full unit suite
+uv run pytest -n auto                           # parallel (pytest-xdist)
+uv run pytest tests/test_pql_aggregate.py            # one file
+uv run pytest tests/test_pql_aggregate.py::test_name # one test
+uv run pytest -k pattern                         # by name substring
+uv run pytest -m integration                     # needs a live soyuz-catalog
+uv run pytest e2e/ -m e2e                        # Playwright; `playwright install chromium` first
+
+# Lint / format / types / docstrings
+uv run ruff check .                              # add --fix to autofix
+uv run ruff format .                             # --check in CI
+uv run pyright                                   # strict; errors must stay at 0
+uv run pydoclint --style=google pointlessql/
+biome check frontend/js/                         # --write to fix; config in biome.json
+
+# Drift + budget gates (pure shell, no venv needed)
+bash scripts/check-file-size-budget.sh           # 800-LOC/file cap + allowlist
+bash scripts/check-pyright-budget.sh             # frozen pyright warning floor
+bash scripts/check-no-phase-refs.sh              # phase/sprint/BUG markers in frontend/
+
+# Our own metadata DB (SQLite locally; a Postgres lane runs in CI)
+uv run alembic upgrade head
+uv run alembic check                             # autogen-drift gate (ORM ↔ migrations)
+uv run alembic revision --autogenerate -m "..."
+
+# Docs site (uses the `docs` dependency group only)
+uv run --group docs --no-default-groups mkdocs build   # --strict in CI
+
+# Arm the hooks (runs most of the above on each commit)
+uv run pre-commit install
+uv run pre-commit install --hook-type commit-msg       # Conventional-Commits gate
+```
+
+The Postgres dialect lane needs `TEST_DATABASE_URL` (and
+`POINTLESSQL_DB_URL`) pointed at a live Postgres; CI runs it as its
+own job so SQLite-only DDL drift surfaces before deploy.
 
 ## Wiring soyuz-catalog
 
