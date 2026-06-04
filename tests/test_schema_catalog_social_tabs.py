@@ -23,7 +23,7 @@ from __future__ import annotations
 
 import pathlib
 
-_TEMPLATES_ROOT = pathlib.Path("/home/flo/git/PointlesSQL/frontend/templates")
+_TEMPLATES_ROOT = pathlib.Path(__file__).resolve().parents[1] / "frontend" / "templates"
 
 
 def test_schemas_html_has_five_tab_nav_strip() -> None:

@@ -33,8 +33,8 @@ from pointlessql.models.catalog._data_product_comments import DataProductComment
 from pointlessql.models.catalog._data_product_reviews import DataProductReview
 from pointlessql.models.social._social_target import SocialTarget
 
-_TEMPLATES_ROOT = pathlib.Path("/home/flo/git/PointlesSQL/frontend/templates")
-_FRONTEND_ROOT = pathlib.Path("/home/flo/git/PointlesSQL/frontend")
+_TEMPLATES_ROOT = pathlib.Path(__file__).resolve().parents[1] / "frontend" / "templates"
+_FRONTEND_ROOT = pathlib.Path(__file__).resolve().parents[1] / "frontend"
 
 
 def test_row_from_comment_uses_target_when_supplied() -> None:

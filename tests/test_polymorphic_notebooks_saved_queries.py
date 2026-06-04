@@ -33,7 +33,7 @@ from pointlessql.models.notebook import Notebook
 from pointlessql.services.social import entity_registry
 from pointlessql.services.social.citations import resolve_citations
 
-_TEMPLATES_ROOT = pathlib.Path("/home/flo/git/PointlesSQL/frontend/templates")
+_TEMPLATES_ROOT = pathlib.Path(__file__).resolve().parents[1] / "frontend" / "templates"
 
 
 def test_notebooks_table_present_after_migration() -> None:
