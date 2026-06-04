@@ -17,21 +17,14 @@ returned set without changing edge direction.
 from __future__ import annotations
 
 from collections import deque
-from typing import Any, Protocol
+from typing import Any
 
 from pointlessql.services.mesh._graph import build_mesh_graph
-
-
-class _SessionFactory(Protocol):
-    """Structural protocol matching ``sessionmaker``'s ``__call__``."""
-
-    def __call__(self) -> Any:
-        """Return a new SQLAlchemy session."""
-        ...
+from pointlessql.types import SessionFactory
 
 
 def _build_adjacency(
-    factory: _SessionFactory, *, workspace_id: int
+    factory: SessionFactory, *, workspace_id: int
 ) -> tuple[dict[str, dict[str, Any]], dict[str, list[str]], dict[str, list[str]]]:
     """Materialise ``(nodes_by_ref, upstream_adj, downstream_adj)``.
 
@@ -98,7 +91,7 @@ def _bfs_directed(
 
 
 def find_upstream(
-    factory: _SessionFactory,
+    factory: SessionFactory,
     *,
     workspace_id: int,
     product_ref: str,
@@ -140,7 +133,7 @@ def find_upstream(
 
 
 def find_downstream(
-    factory: _SessionFactory,
+    factory: SessionFactory,
     *,
     workspace_id: int,
     product_ref: str,
@@ -165,7 +158,7 @@ def find_downstream(
 
 
 def find_shortest_path(
-    factory: _SessionFactory,
+    factory: SessionFactory,
     *,
     workspace_id: int,
     source_ref: str,
@@ -207,7 +200,7 @@ def find_shortest_path(
 
 
 def cluster_by_domain(
-    factory: _SessionFactory,
+    factory: SessionFactory,
     *,
     workspace_id: int,
 ) -> dict[str, list[dict[str, Any]]]:

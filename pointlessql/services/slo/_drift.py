@@ -11,22 +11,16 @@ from __future__ import annotations
 
 import json
 import math
-from typing import Any, Protocol
+from typing import Any
 
 from sqlalchemy import select
 
 from pointlessql.models import DataProductStatistics
+from pointlessql.types import SessionFactory
 
 #: Default history depth used for the baseline (excludes the latest).
 DEFAULT_BASELINE_DEPTH = 10
 
-
-class _SessionFactory(Protocol):
-    """Structural protocol matching ``sessionmaker``'s ``__call__``."""
-
-    def __call__(self) -> Any:
-        """Return a new SQLAlchemy session."""
-        ...
 
 
 def _z_score(observed: float, baseline: list[float]) -> tuple[float, float, float]:
@@ -64,7 +58,7 @@ def _null_ratios(shape_json: str, row_count: int | None) -> dict[str, float]:
 
 
 def compute_drift(
-    session_factory: _SessionFactory,
+    session_factory: SessionFactory,
     *,
     data_product_id: int,
     table_name: str,

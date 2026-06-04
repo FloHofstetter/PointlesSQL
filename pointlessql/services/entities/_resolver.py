@@ -10,20 +10,13 @@ from __future__ import annotations
 
 import dataclasses
 from collections import deque
-from typing import Any, Protocol
+from typing import Any
 
 from sqlalchemy import select
 
 from pointlessql.models import DataProduct
 from pointlessql.models.catalog._entity import DataProductEntity, EntityLink
-
-
-class _SessionFactory(Protocol):
-    """Structural protocol matching ``sessionmaker``'s ``__call__``."""
-
-    def __call__(self) -> Any:
-        """Return a new SQLAlchemy session."""
-        ...
+from pointlessql.types import SessionFactory
 
 
 @dataclasses.dataclass(frozen=True)
@@ -43,7 +36,7 @@ class EntityIdentity:
 
 
 def resolve_same_as_graph(
-    factory: _SessionFactory,
+    factory: SessionFactory,
     *,
     entity_id: int,
 ) -> EntityIdentity:
@@ -106,7 +99,7 @@ def resolve_same_as_graph(
 
 
 def resolve_entity_by_pk(
-    factory: _SessionFactory,
+    factory: SessionFactory,
     *,
     catalog: str,
     schema: str,

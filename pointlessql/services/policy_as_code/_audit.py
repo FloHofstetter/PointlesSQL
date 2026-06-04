@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import datetime
 import json
-from typing import Any, Protocol
 
 from pointlessql.models import PolicyModuleDecision
 from pointlessql.services.audit._core import log_action
@@ -19,18 +18,11 @@ from pointlessql.services.policy_as_code._engine import (
     CEDAR_DEFAULT_DENY_REASON,
     Decision,
 )
-
-
-class _SessionFactory(Protocol):
-    """Sessionmaker-shaped callable protocol."""
-
-    def __call__(self) -> Any:
-        """Return a SQLAlchemy session."""
-        ...
+from pointlessql.types import SessionFactory
 
 
 def persist_decision(
-    session_factory: _SessionFactory,
+    session_factory: SessionFactory,
     *,
     policy_module_id: int,
     workspace_id: int,

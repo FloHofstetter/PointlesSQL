@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import datetime
 import re
-from typing import Any, Protocol
 
 from sqlalchemy import select
 
@@ -19,16 +18,10 @@ from pointlessql.models import (
     MeshEntity,
     MeshEntityBinding,
 )
+from pointlessql.types import SessionFactory
 
 _SLUG_RE = re.compile(r"[^a-z0-9]+")
 
-
-class _SessionFactory(Protocol):
-    """Structural protocol matching ``sessionmaker``'s ``__call__``."""
-
-    def __call__(self) -> Any:
-        """Return a new SQLAlchemy session."""
-        ...
 
 
 def slugify(value: str) -> str:
@@ -49,7 +42,7 @@ def slugify(value: str) -> str:
     return slug
 
 
-def list_entities(session_factory: _SessionFactory, *, workspace_id: int) -> list[MeshEntity]:
+def list_entities(session_factory: SessionFactory, *, workspace_id: int) -> list[MeshEntity]:
     """Return every mesh entity in a workspace ordered by name."""
     with session_factory() as session:
         rows = list(
@@ -65,7 +58,7 @@ def list_entities(session_factory: _SessionFactory, *, workspace_id: int) -> lis
 
 
 def create_entity(
-    session_factory: _SessionFactory,
+    session_factory: SessionFactory,
     *,
     workspace_id: int,
     name: str,
@@ -121,7 +114,7 @@ def create_entity(
 
 
 def delete_entity(
-    session_factory: _SessionFactory, *, workspace_id: int, entity_id: int
+    session_factory: SessionFactory, *, workspace_id: int, entity_id: int
 ) -> bool:
     """Delete an entity (and its bindings, via CASCADE).
 
@@ -143,7 +136,7 @@ def delete_entity(
 
 
 def list_bindings(
-    session_factory: _SessionFactory,
+    session_factory: SessionFactory,
     *,
     mesh_entity_id: int | None = None,
     data_product_id: int | None = None,
@@ -169,7 +162,7 @@ def list_bindings(
 
 
 def add_binding(
-    session_factory: _SessionFactory,
+    session_factory: SessionFactory,
     *,
     mesh_entity_id: int,
     data_product_id: int,
@@ -241,7 +234,7 @@ def add_binding(
 
 
 def delete_binding(
-    session_factory: _SessionFactory, *, binding_id: int
+    session_factory: SessionFactory, *, binding_id: int
 ) -> bool:
     """Remove an entity-column binding.
 
@@ -258,7 +251,7 @@ def delete_binding(
 
 
 def entities_for_schema(
-    session_factory: _SessionFactory, *, catalog: str, schema: str
+    session_factory: SessionFactory, *, catalog: str, schema: str
 ) -> dict[tuple[str, str], list[str]]:
     """Return ``{(table, column): [entity_slug, ...]}`` for a schema.
 

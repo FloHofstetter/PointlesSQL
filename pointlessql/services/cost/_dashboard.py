@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import datetime
 from decimal import Decimal
-from typing import Any, Protocol
+from typing import Any
 
 from sqlalchemy import select
 
@@ -13,18 +13,11 @@ from pointlessql.models import (
     DataProductCostBucketHourly,
     DataProductSLO,
 )
-
-
-class _SessionFactory(Protocol):
-    """Sessionmaker-shaped callable protocol."""
-
-    def __call__(self) -> Any:
-        """Return a SQLAlchemy session."""
-        ...
+from pointlessql.types import SessionFactory
 
 
 def cost_by_product(
-    session_factory: _SessionFactory,
+    session_factory: SessionFactory,
     *,
     workspace_id: int = 1,
     since: datetime.datetime | None = None,
@@ -77,7 +70,7 @@ def cost_by_product(
 
 
 def cost_by_consumer(
-    session_factory: _SessionFactory,
+    session_factory: SessionFactory,
     *,
     workspace_id: int = 1,
     since: datetime.datetime | None = None,
@@ -122,7 +115,7 @@ def cost_by_consumer(
 
 
 def mesh_health_full(
-    session_factory: _SessionFactory,
+    session_factory: SessionFactory,
     *,
     workspace_id: int = 1,
     sigma: float = 2.0,
@@ -147,7 +140,7 @@ def mesh_health_full(
 
 
 def _aggregate_per_domain(
-    session_factory: _SessionFactory,
+    session_factory: SessionFactory,
     workspace_id: int,
     base: dict[str, Any],
 ) -> dict[str, dict[str, Any]]:

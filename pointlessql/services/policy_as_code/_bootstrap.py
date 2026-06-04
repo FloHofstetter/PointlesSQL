@@ -10,7 +10,7 @@ state.
 from __future__ import annotations
 
 import datetime
-from typing import Any, Protocol
+from typing import Any
 
 from pointlessql.exceptions import PermissionDeniedError
 from pointlessql.pql._hooks import (
@@ -31,20 +31,12 @@ from pointlessql.services.policy_as_code._translator import (
     cedar_action,
     principal_uid,
 )
-
-
-class _SessionFactory(Protocol):
-    """Sessionmaker-shaped callable protocol."""
-
-    def __call__(self) -> Any:
-        """Return a SQLAlchemy session."""
-        ...
-
+from pointlessql.types import SessionFactory
 
 _registered: bool = False
 
 
-def register_cedar_hooks(session_factory: _SessionFactory) -> None:
+def register_cedar_hooks(session_factory: SessionFactory) -> None:
     """Register Cedar before-read + before-write hooks (idempotent)."""
     global _registered
     if _registered:
@@ -71,7 +63,7 @@ def reset_for_tests() -> None:
 
 
 def _make_evaluator(
-    session_factory: _SessionFactory, *, action: str
+    session_factory: SessionFactory, *, action: str
 ) -> Any:
     """Build a closure that evaluates Cedar for one action verb."""
     def hook(ctx: dict[str, Any]) -> None:
@@ -125,7 +117,7 @@ def _make_evaluator(
 
 
 def evaluate_via_modules_for_test(
-    session_factory: _SessionFactory,
+    session_factory: SessionFactory,
     *,
     workspace_id: int,
     principal: dict[str, Any],

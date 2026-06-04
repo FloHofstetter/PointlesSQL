@@ -10,10 +10,7 @@ the one canonical definition; modules used to each declare a private
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Protocol
-
-if TYPE_CHECKING:
-    from sqlalchemy.orm import Session
+from typing import Any, Protocol
 
 
 class SessionFactory(Protocol):
@@ -24,8 +21,15 @@ class SessionFactory(Protocol):
     ``__call__`` contract, captured structurally so test doubles and
     the app-state factory satisfy it without inheriting from
     ``sessionmaker``.
+
+    ``__call__`` is intentionally typed ``-> Any`` rather than
+    ``-> Session``: the service layer uses these sessions with
+    defensive ``hasattr`` guards, ``CursorResult.rowcount`` access, and
+    nullable-in-practice columns that a strict ``Session`` return type
+    would flag under pyright.  ``Any`` keeps the one shared contract
+    behaviour-identical to the per-module copies it replaces.
     """
 
-    def __call__(self) -> Session:
+    def __call__(self) -> Any:
         """Return a new SQLAlchemy session."""
         ...

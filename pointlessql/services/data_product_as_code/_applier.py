@@ -15,7 +15,6 @@ from __future__ import annotations
 import dataclasses
 import datetime
 import json
-from typing import Any, Protocol
 
 from sqlalchemy import select
 
@@ -37,14 +36,7 @@ from pointlessql.services.data_product_ports._crud import (
 )
 from pointlessql.services.governance._policy import set_product_policy
 from pointlessql.services.slo._crud import declare_slo, delete_slo
-
-
-class _SessionFactory(Protocol):
-    """Sessionmaker-shaped callable protocol."""
-
-    def __call__(self) -> Any:
-        """Return a SQLAlchemy session."""
-        ...
+from pointlessql.types import SessionFactory
 
 
 @dataclasses.dataclass(slots=True, frozen=True)
@@ -67,7 +59,7 @@ class ApplyOutcome:
 
 
 def apply_plan(
-    session_factory: _SessionFactory,
+    session_factory: SessionFactory,
     *,
     spec: DataProductSpec,
     plan: Plan,
@@ -119,7 +111,7 @@ def apply_plan(
 
 
 def _ensure_product(
-    session_factory: _SessionFactory,
+    session_factory: SessionFactory,
     *,
     spec: DataProductSpec,
     workspace_id: int,
@@ -165,7 +157,7 @@ def _ensure_product(
 
 
 def _dispatch_op(
-    session_factory: _SessionFactory,
+    session_factory: SessionFactory,
     *,
     op: Op,
     product_id: int,
@@ -191,7 +183,7 @@ def _dispatch_op(
 
 
 def _apply_output_port(
-    session_factory: _SessionFactory,
+    session_factory: SessionFactory,
     op: Op,
     product_id: int,
     user_id: int | None,
@@ -260,7 +252,7 @@ def _apply_output_port(
 
 
 def _apply_input_port(
-    session_factory: _SessionFactory,
+    session_factory: SessionFactory,
     op: Op,
     product_id: int,
     user_id: int | None,
@@ -311,7 +303,7 @@ def _apply_input_port(
 
 
 def _apply_slo(
-    session_factory: _SessionFactory,
+    session_factory: SessionFactory,
     op: Op,
     product_id: int,
     user_id: int | None,
@@ -347,7 +339,7 @@ def _apply_slo(
 
 
 def _apply_entity(
-    session_factory: _SessionFactory,
+    session_factory: SessionFactory,
     op: Op,
     product_id: int,
     user_id: int | None,
@@ -377,7 +369,7 @@ def _apply_entity(
 
 
 def _apply_contract_test(
-    session_factory: _SessionFactory,
+    session_factory: SessionFactory,
     op: Op,
     product_id: int,
     user_id: int | None,
@@ -408,7 +400,7 @@ def _apply_contract_test(
 
 
 def _apply_fixture(
-    session_factory: _SessionFactory,
+    session_factory: SessionFactory,
     op: Op,
     product_id: int,
     user_id: int | None,
@@ -437,7 +429,7 @@ def _apply_fixture(
 
 
 def _apply_policies(
-    session_factory: _SessionFactory,
+    session_factory: SessionFactory,
     op: Op,
     product_id: int,
     user_id: int | None,

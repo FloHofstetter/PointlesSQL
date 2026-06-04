@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import datetime
 import json
-from typing import Any, Protocol
+from typing import Any
 
 from sqlalchemy import select
 
@@ -14,18 +14,11 @@ from pointlessql.services.schema_versioning._diff import (
     SchemaDiff,
     compute_diff,
 )
-
-
-class _SessionFactory(Protocol):
-    """Sessionmaker-shaped callable protocol."""
-
-    def __call__(self) -> Any:
-        """Return a SQLAlchemy session."""
-        ...
+from pointlessql.types import SessionFactory
 
 
 def list_versions(
-    session_factory: _SessionFactory, *, output_port_id: int
+    session_factory: SessionFactory, *, output_port_id: int
 ) -> list[dict[str, Any]]:
     """Return every history row for one port, newest first."""
     with session_factory() as session:
@@ -38,14 +31,14 @@ def list_versions(
 
 
 def get_version_history(
-    session_factory: _SessionFactory, *, output_port_id: int
+    session_factory: SessionFactory, *, output_port_id: int
 ) -> list[dict[str, Any]]:
     """Alias for :func:`list_versions` (matches plan vocabulary)."""
     return list_versions(session_factory, output_port_id=output_port_id)
 
 
 def current_schema(
-    session_factory: _SessionFactory, *, output_port_id: int
+    session_factory: SessionFactory, *, output_port_id: int
 ) -> dict[str, Any] | None:
     """Return the most recent ``schema_json`` decoded as a dict."""
     with session_factory() as session:
@@ -65,7 +58,7 @@ def current_schema(
 
 
 def bump_port_version(
-    session_factory: _SessionFactory,
+    session_factory: SessionFactory,
     *,
     output_port_id: int,
     new_schema: dict[str, Any],

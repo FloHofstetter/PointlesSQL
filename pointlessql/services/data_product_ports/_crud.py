@@ -12,7 +12,6 @@ rows so callers can serialise them after the session closes (matching
 from __future__ import annotations
 
 import datetime
-from typing import Any, Protocol
 
 from sqlalchemy import select
 
@@ -23,14 +22,7 @@ from pointlessql.models import (
     DataProductInputPort,
     DataProductOutputPort,
 )
-
-
-class _SessionFactory(Protocol):
-    """Structural protocol matching ``sessionmaker``'s ``__call__``."""
-
-    def __call__(self) -> Any:
-        """Return a new SQLAlchemy session."""
-        ...
+from pointlessql.types import SessionFactory
 
 
 def _clean_name(name: str) -> str:
@@ -42,7 +34,7 @@ def _clean_name(name: str) -> str:
 
 
 def create_output_port(
-    session_factory: _SessionFactory,
+    session_factory: SessionFactory,
     *,
     data_product_id: int,
     name: str,
@@ -104,7 +96,7 @@ def create_output_port(
 
 
 def delete_output_port(
-    session_factory: _SessionFactory, *, data_product_id: int, port_id: int
+    session_factory: SessionFactory, *, data_product_id: int, port_id: int
 ) -> bool:
     """Remove an output port from a product.
 
@@ -127,7 +119,7 @@ def delete_output_port(
 
 
 def list_output_ports(
-    session_factory: _SessionFactory, *, data_product_id: int
+    session_factory: SessionFactory, *, data_product_id: int
 ) -> list[DataProductOutputPort]:
     """Return every output port on *data_product_id* ordered by name."""
     with session_factory() as session:
@@ -144,7 +136,7 @@ def list_output_ports(
 
 
 def create_input_port(
-    session_factory: _SessionFactory,
+    session_factory: SessionFactory,
     *,
     data_product_id: int,
     name: str,
@@ -209,7 +201,7 @@ def create_input_port(
 
 
 def delete_input_port(
-    session_factory: _SessionFactory, *, data_product_id: int, port_id: int
+    session_factory: SessionFactory, *, data_product_id: int, port_id: int
 ) -> bool:
     """Remove an input port from a product.
 
@@ -232,7 +224,7 @@ def delete_input_port(
 
 
 def list_input_ports(
-    session_factory: _SessionFactory, *, data_product_id: int
+    session_factory: SessionFactory, *, data_product_id: int
 ) -> list[DataProductInputPort]:
     """Return every input port on *data_product_id* ordered by name."""
     with session_factory() as session:

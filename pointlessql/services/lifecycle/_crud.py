@@ -18,7 +18,6 @@ from __future__ import annotations
 import dataclasses
 import datetime
 import json
-from typing import Any, Protocol
 
 from sqlalchemy import select
 
@@ -27,6 +26,7 @@ from pointlessql.services.lifecycle._transitions import (
     LifecycleTransitionError,
     assert_transition,
 )
+from pointlessql.types import SessionFactory
 
 #: Audit-log ``action`` written by :func:`transition` on every state change.
 LIFECYCLE_CHANGED_ACTION = "data_product.lifecycle_changed"
@@ -35,13 +35,6 @@ LIFECYCLE_CHANGED_ACTION = "data_product.lifecycle_changed"
 #: agent proposes a transition that a steward must approve.
 LIFECYCLE_PROPOSED_ACTION = "data_product.lifecycle_proposed"
 
-
-class _SessionFactory(Protocol):
-    """Structural protocol matching ``sessionmaker``'s ``__call__``."""
-
-    def __call__(self) -> Any:
-        """Return a new SQLAlchemy session."""
-        ...
 
 
 @dataclasses.dataclass(frozen=True)
@@ -74,7 +67,7 @@ class LifecycleHistoryEntry:
     created_at: datetime.datetime
 
 
-def read_state(factory: _SessionFactory, *, data_product_id: int) -> str | None:
+def read_state(factory: SessionFactory, *, data_product_id: int) -> str | None:
     """Return the product's current ``lifecycle_state``, or ``None`` if missing."""
     with factory() as session:
         product = session.get(DataProduct, data_product_id)
@@ -84,7 +77,7 @@ def read_state(factory: _SessionFactory, *, data_product_id: int) -> str | None:
 
 
 def transition(
-    factory: _SessionFactory,
+    factory: SessionFactory,
     *,
     data_product_id: int,
     target: str,
@@ -152,7 +145,7 @@ def transition(
 
 
 def propose_transition(
-    factory: _SessionFactory,
+    factory: SessionFactory,
     *,
     data_product_id: int,
     target: str,
@@ -196,7 +189,7 @@ def propose_transition(
 
 
 def list_history(
-    factory: _SessionFactory,
+    factory: SessionFactory,
     *,
     workspace_id: int,
     catalog: str,

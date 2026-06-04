@@ -15,11 +15,12 @@ resolver tags every field with its winning source so the UI can render
 from __future__ import annotations
 
 import datetime
-from typing import Any, Protocol
+from typing import Any
 
 from sqlalchemy import select
 
 from pointlessql.models import DataProductPolicy, WorkspaceGovernancePolicy
+from pointlessql.types import SessionFactory
 
 #: Policy fields that participate in the product ⇐ workspace inheritance.
 POLICY_FIELDS: tuple[str, ...] = (
@@ -38,13 +39,6 @@ POLICY_FIELDS: tuple[str, ...] = (
 )
 
 
-class _SessionFactory(Protocol):
-    """Structural protocol matching ``sessionmaker``'s ``__call__``."""
-
-    def __call__(self) -> Any:
-        """Return a new SQLAlchemy session."""
-        ...
-
 
 def _row_values(row: Any) -> dict[str, Any]:
     """Return the policy field values of *row*, or all-``None`` when missing."""
@@ -54,7 +48,7 @@ def _row_values(row: Any) -> dict[str, Any]:
 
 
 def get_workspace_policy(
-    session_factory: _SessionFactory, *, workspace_id: int
+    session_factory: SessionFactory, *, workspace_id: int
 ) -> dict[str, Any]:
     """Return the workspace default policy field values (all-``None`` if unset)."""
     with session_factory() as session:
@@ -67,7 +61,7 @@ def get_workspace_policy(
 
 
 def get_product_policy(
-    session_factory: _SessionFactory, *, data_product_id: int
+    session_factory: SessionFactory, *, data_product_id: int
 ) -> dict[str, Any]:
     """Return the product's override field values (all-``None`` if unset)."""
     with session_factory() as session:
@@ -80,7 +74,7 @@ def get_product_policy(
 
 
 def get_effective_policy(
-    session_factory: _SessionFactory,
+    session_factory: SessionFactory,
     *,
     data_product_id: int,
     workspace_id: int,
@@ -123,7 +117,7 @@ def _coerce_fields(fields: dict[str, Any]) -> dict[str, Any]:
 
 
 def set_product_policy(
-    session_factory: _SessionFactory,
+    session_factory: SessionFactory,
     *,
     data_product_id: int,
     fields: dict[str, Any],
@@ -161,7 +155,7 @@ def set_product_policy(
 
 
 def set_workspace_policy(
-    session_factory: _SessionFactory,
+    session_factory: SessionFactory,
     *,
     workspace_id: int,
     fields: dict[str, Any],

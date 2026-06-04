@@ -13,27 +13,19 @@ in tests and migration paths.
 
 from __future__ import annotations
 
-from typing import Any, Protocol
+from typing import Any
 
 from pointlessql.pql._hooks import register_before_write
 from pointlessql.services.governance._policy import get_effective_policy
 from pointlessql.services.schema_versioning._enforcer import (
     assert_schema_compatibility,
 )
-
-
-class _SessionFactory(Protocol):
-    """Sessionmaker-shaped callable protocol."""
-
-    def __call__(self) -> Any:
-        """Return a SQLAlchemy session."""
-        ...
-
+from pointlessql.types import SessionFactory
 
 _registered: bool = False
 
 
-def register_schema_versioning_hooks(session_factory: _SessionFactory) -> None:
+def register_schema_versioning_hooks(session_factory: SessionFactory) -> None:
     """Register the breaking-change before-write hook (idempotent)."""
     global _registered
     if _registered:

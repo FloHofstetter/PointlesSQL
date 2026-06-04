@@ -9,7 +9,6 @@ detached rows.
 from __future__ import annotations
 
 import datetime
-from typing import Any, Protocol
 
 from sqlalchemy import select
 
@@ -20,17 +19,10 @@ from pointlessql.models import (
     DataProductSLO,
 )
 from pointlessql.services.slo._kinds import KIND_META
+from pointlessql.types import SessionFactory
 
 
-class _SessionFactory(Protocol):
-    """Structural protocol matching ``sessionmaker``'s ``__call__``."""
-
-    def __call__(self) -> Any:
-        """Return a new SQLAlchemy session."""
-        ...
-
-
-def list_slos(session_factory: _SessionFactory, *, data_product_id: int) -> list[DataProductSLO]:
+def list_slos(session_factory: SessionFactory, *, data_product_id: int) -> list[DataProductSLO]:
     """Return every SLO declared on a product ordered by table/kind."""
     with session_factory() as session:
         rows = list(
@@ -49,7 +41,7 @@ def list_slos(session_factory: _SessionFactory, *, data_product_id: int) -> list
 
 
 def declare_slo(
-    session_factory: _SessionFactory,
+    session_factory: SessionFactory,
     *,
     data_product_id: int,
     slo_kind: str,
@@ -122,7 +114,7 @@ def declare_slo(
         return row
 
 
-def delete_slo(session_factory: _SessionFactory, *, data_product_id: int, slo_id: int) -> bool:
+def delete_slo(session_factory: SessionFactory, *, data_product_id: int, slo_id: int) -> bool:
     """Remove an SLO from a product.
 
     Returns:

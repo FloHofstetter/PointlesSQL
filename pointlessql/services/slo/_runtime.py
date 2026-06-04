@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import datetime
 import json
-from typing import Any, Protocol
+from typing import Any
 
 from sqlalchemy import select
 
@@ -31,14 +31,7 @@ from pointlessql.models import (
     DataProductQueryPerfSample,
     DataProductStatistics,
 )
-
-
-class _SessionFactory(Protocol):
-    """Structural protocol matching ``sessionmaker``'s ``__call__``."""
-
-    def __call__(self) -> Any:
-        """Return a new SQLAlchemy session."""
-        ...
+from pointlessql.types import SessionFactory
 
 
 def _percentile_sorted(values: list[float], q: float) -> float:
@@ -54,7 +47,7 @@ def _percentile_sorted(values: list[float], q: float) -> float:
 
 
 def measure_timeliness(
-    factory: _SessionFactory,
+    factory: SessionFactory,
     *,
     data_product_id: int,
     event_time_col: str | None,
@@ -87,7 +80,7 @@ def measure_timeliness(
 
 
 def measure_precision_accuracy(
-    factory: _SessionFactory,
+    factory: SessionFactory,
     *,
     data_product_id: int,
     table_name: str | None,
@@ -126,7 +119,7 @@ def measure_precision_accuracy(
 
 
 def measure_availability(
-    factory: _SessionFactory,
+    factory: SessionFactory,
     *,
     data_product_id: int,
     target_value: float,
@@ -162,7 +155,7 @@ def measure_availability(
 
 
 def measure_performance(
-    factory: _SessionFactory,
+    factory: SessionFactory,
     *,
     data_product_id: int,
     target_value: float,
@@ -205,7 +198,7 @@ _DISPATCH = {
 
 
 def measure_runtime_kind(
-    factory: _SessionFactory,
+    factory: SessionFactory,
     *,
     kind: str,
     data_product_id: int,

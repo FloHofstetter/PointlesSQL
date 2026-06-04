@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import datetime
 import re
-from typing import Any, Protocol
 
 from sqlalchemy import select
 
@@ -30,16 +29,10 @@ from pointlessql.models import (
     DomainMember,
     Notebook,
 )
+from pointlessql.types import SessionFactory
 
 _SLUG_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,62}[a-z0-9]$|^[a-z0-9]$")
 
-
-class _SessionFactory(Protocol):
-    """Structural protocol matching ``sessionmaker``'s ``__call__``."""
-
-    def __call__(self) -> Any:
-        """Return a new SQLAlchemy session."""
-        ...
 
 
 def _validate_slug(slug: str) -> str:
@@ -71,7 +64,7 @@ def _validate_slug(slug: str) -> str:
 
 
 def create_domain(
-    session_factory: _SessionFactory,
+    session_factory: SessionFactory,
     *,
     workspace_id: int,
     slug: str,
@@ -145,7 +138,7 @@ def create_domain(
 
 
 def list_domains(
-    session_factory: _SessionFactory,
+    session_factory: SessionFactory,
     *,
     workspace_id: int,
     include_archived: bool = False,
@@ -170,7 +163,7 @@ def list_domains(
         return rows
 
 
-def get_domain(session_factory: _SessionFactory, *, domain_id: int) -> Domain | None:
+def get_domain(session_factory: SessionFactory, *, domain_id: int) -> Domain | None:
     """Return the domain with *domain_id* or ``None``."""
     with session_factory() as session:
         row = session.get(Domain, domain_id)
@@ -180,7 +173,7 @@ def get_domain(session_factory: _SessionFactory, *, domain_id: int) -> Domain | 
 
 
 def get_domain_by_slug(
-    session_factory: _SessionFactory, *, workspace_id: int, slug: str
+    session_factory: SessionFactory, *, workspace_id: int, slug: str
 ) -> Domain | None:
     """Return the workspace domain with *slug* or ``None``."""
     cleaned = slug.strip().lower()
@@ -197,7 +190,7 @@ def get_domain_by_slug(
 
 
 def add_member(
-    session_factory: _SessionFactory,
+    session_factory: SessionFactory,
     *,
     domain_id: int,
     user_id: int,
@@ -250,7 +243,7 @@ def add_member(
         return row
 
 
-def remove_member(session_factory: _SessionFactory, *, domain_id: int, user_id: int) -> bool:
+def remove_member(session_factory: SessionFactory, *, domain_id: int, user_id: int) -> bool:
     """Remove a user from a domain.
 
     Returns:
@@ -271,7 +264,7 @@ def remove_member(session_factory: _SessionFactory, *, domain_id: int, user_id: 
         return True
 
 
-def list_members(session_factory: _SessionFactory, *, domain_id: int) -> list[DomainMember]:
+def list_members(session_factory: SessionFactory, *, domain_id: int) -> list[DomainMember]:
     """Return every member of *domain_id* ordered by role then id."""
     with session_factory() as session:
         rows = list(
@@ -287,7 +280,7 @@ def list_members(session_factory: _SessionFactory, *, domain_id: int) -> list[Do
 
 
 def assign_product_domain(
-    session_factory: _SessionFactory,
+    session_factory: SessionFactory,
     *,
     workspace_id: int,
     data_product_id: int,
@@ -339,7 +332,7 @@ def assign_product_domain(
 
 
 def list_products_for_domain(
-    session_factory: _SessionFactory, *, domain_id: int
+    session_factory: SessionFactory, *, domain_id: int
 ) -> list[DataProduct]:
     """Return every data product assigned to *domain_id*."""
     with session_factory() as session:
@@ -356,7 +349,7 @@ def list_products_for_domain(
 
 
 def bind_transformation(
-    session_factory: _SessionFactory,
+    session_factory: SessionFactory,
     *,
     data_product_id: int,
     kind: str,
@@ -431,7 +424,7 @@ def bind_transformation(
 
 
 def unbind_transformation(
-    session_factory: _SessionFactory, *, data_product_id: int, transformation_id: int
+    session_factory: SessionFactory, *, data_product_id: int, transformation_id: int
 ) -> bool:
     """Remove a transformation binding from a product.
 
@@ -454,7 +447,7 @@ def unbind_transformation(
 
 
 def list_transformations(
-    session_factory: _SessionFactory, *, data_product_id: int
+    session_factory: SessionFactory, *, data_product_id: int
 ) -> list[DataProductTransformation]:
     """Return every transformation bound to *data_product_id*."""
     with session_factory() as session:

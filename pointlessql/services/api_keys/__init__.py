@@ -34,7 +34,7 @@ import os
 import time
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-from typing import Any, Literal, Protocol
+from typing import Any, Literal
 
 from sqlalchemy import select, update
 
@@ -44,6 +44,7 @@ from pointlessql.services.api_keys._token_format import (
     generate_v1_token,
     parse_v1_token,
 )
+from pointlessql.types import SessionFactory
 
 logger = logging.getLogger(__name__)
 
@@ -74,13 +75,6 @@ class KeyEntry:
 # ---------------------------------------------------------------------------
 
 
-class _SessionFactory(Protocol):
-    """Structural protocol matching ``sessionmaker``'s ``__call__``."""
-
-    def __call__(self) -> Any:
-        """Return a new SQLAlchemy session."""
-        ...
-
 
 _CACHE_TTL_SECONDS = 60.0
 _resolve_cache: dict[str, tuple[KeyEntry, float]] = {}
@@ -108,7 +102,7 @@ def _as_aware_utc(value: datetime | None) -> datetime | None:
 
 
 def _emit_auth_denied_audit(
-    session_factory: _SessionFactory,
+    session_factory: SessionFactory,
     row: ApiKey,
     action: str,
     detail: dict[str, Any],
@@ -132,7 +126,7 @@ def _emit_auth_denied_audit(
     from pointlessql.services.audit import _core as audit_core
 
     try:
-        # _SessionFactory is a runtime-compatible Protocol over
+        # SessionFactory is a runtime-compatible Protocol over
         # ``sessionmaker[Session]`` (both produce a session when
         # called).  Pyright treats them as distinct nominal types;
         # ``cast`` is the boundary annotation, not a runtime change.
@@ -255,7 +249,7 @@ def parse_keys(raw: str | None) -> dict[str, tuple[str, bool, bool, bool, bool, 
     return out
 
 
-def bootstrap_from_env(session_factory: _SessionFactory, env: dict[str, str] | None = None) -> int:
+def bootstrap_from_env(session_factory: SessionFactory, env: dict[str, str] | None = None) -> int:
     """Idempotently spill ``POINTLESSQL_API_KEYS`` pairs into the DB.
 
     Called once at server startup.  For each parsed pair, if no row
@@ -332,7 +326,7 @@ def bootstrap_from_env(session_factory: _SessionFactory, env: dict[str, str] | N
 
 
 def create_api_key(
-    session_factory: _SessionFactory,
+    session_factory: SessionFactory,
     *,
     name: str,
     supervisor: bool = False,
@@ -432,7 +426,7 @@ def create_api_key(
     return row, plaintext
 
 
-def revoke_api_key(session_factory: _SessionFactory, *, name: str) -> bool:
+def revoke_api_key(session_factory: SessionFactory, *, name: str) -> bool:
     """Mark *name* as revoked.  Returns ``True`` when a row was updated."""
     with session_factory() as session:
         row = session.scalar(select(ApiKey).where(ApiKey.name == name))
@@ -445,7 +439,7 @@ def revoke_api_key(session_factory: _SessionFactory, *, name: str) -> bool:
 
 
 def list_api_keys(
-    session_factory: _SessionFactory, *, include_revoked: bool = False
+    session_factory: SessionFactory, *, include_revoked: bool = False
 ) -> list[ApiKey]:
     """Return all keys (newest first) for the admin listing page.
 
@@ -472,7 +466,7 @@ def list_api_keys(
 
 
 def rotate_api_key(
-    session_factory: _SessionFactory,
+    session_factory: SessionFactory,
     *,
     name: str,
     successor_name: str | None = None,
@@ -539,7 +533,7 @@ def rotate_api_key(
     return successor, plaintext
 
 
-def quarantine_api_key(session_factory: _SessionFactory, *, name: str, reason: str) -> bool:
+def quarantine_api_key(session_factory: SessionFactory, *, name: str, reason: str) -> bool:
     """Soft-disable a key.  Returns ``True`` when applied.
 
     Quarantined keys return 401 + ``api_key.auth_denied.quarantined``
@@ -576,7 +570,7 @@ def quarantine_api_key(session_factory: _SessionFactory, *, name: str, reason: s
     return True
 
 
-def unquarantine_api_key(session_factory: _SessionFactory, *, name: str) -> bool:
+def unquarantine_api_key(session_factory: SessionFactory, *, name: str) -> bool:
     """Clear quarantine on *name*.  Returns ``True`` when applied."""
     with session_factory() as session:
         row = session.scalar(select(ApiKey).where(ApiKey.name == name))
@@ -590,7 +584,7 @@ def unquarantine_api_key(session_factory: _SessionFactory, *, name: str) -> bool
 
 
 def update_api_key_ttl(
-    session_factory: _SessionFactory,
+    session_factory: SessionFactory,
     *,
     name: str,
     expires_at: datetime | None,
@@ -616,7 +610,7 @@ def update_api_key_ttl(
 
 def verify_bearer(
     authorization_header: str | None,
-    session_factory: _SessionFactory | None,
+    session_factory: SessionFactory | None,
 ) -> KeyEntry | None:
     """Match an ``Authorization: Bearer <secret>`` header against the store.
 
@@ -745,7 +739,7 @@ def verify_bearer(
     return entry
 
 
-def is_supervisor(session_factory: _SessionFactory, *, name: str) -> bool:
+def is_supervisor(session_factory: SessionFactory, *, name: str) -> bool:
     """Return ``True`` when the named key carries the supervisor scope.
 
     Used by :func:`pointlessql.api.dependencies.require_supervisor`
@@ -765,7 +759,7 @@ def is_supervisor(session_factory: _SessionFactory, *, name: str) -> bool:
         return bool(row and row.supervisor)
 
 
-def is_auditor(session_factory: _SessionFactory, *, name: str) -> bool:
+def is_auditor(session_factory: SessionFactory, *, name: str) -> bool:
     """Return ``True`` when the named key carries the auditor scope.
 
      sibling to :func:`is_supervisor`.  Defensive recheck

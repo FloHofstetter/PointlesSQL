@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import dataclasses
 import json
-from typing import Any, Protocol
+from typing import Any
 
 from sqlalchemy import select
 
@@ -35,14 +35,7 @@ from pointlessql.services.governance._policy import (
     POLICY_FIELDS,
     get_product_policy,
 )
-
-
-class _SessionFactory(Protocol):
-    """Sessionmaker-shaped callable protocol."""
-
-    def __call__(self) -> Any:
-        """Return a SQLAlchemy session."""
-        ...
+from pointlessql.types import SessionFactory
 
 
 @dataclasses.dataclass(slots=True, frozen=True)
@@ -95,7 +88,7 @@ class Plan:
 
 
 def plan_spec(
-    session_factory: _SessionFactory,
+    session_factory: SessionFactory,
     *,
     spec: DataProductSpec,
     workspace_id: int = 1,
@@ -596,7 +589,7 @@ def _diff_fixtures(
 
 
 def _diff_policies(
-    session_factory: _SessionFactory,
+    session_factory: SessionFactory,
     spec: DataProductSpec,
     product_id: int,
     modifications: list[Op],

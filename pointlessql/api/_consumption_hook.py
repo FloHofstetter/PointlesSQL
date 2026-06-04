@@ -15,26 +15,16 @@ This module centralises that shape so every read route looks identical.
 
 from __future__ import annotations
 
-from typing import Any, Protocol
-
 from fastapi import Request
 
 from pointlessql.services import governance as governance_service
-from pointlessql.types import UserInfo
-
-
-class _SessionFactory(Protocol):
-    """Structural protocol matching ``sessionmaker``'s ``__call__``."""
-
-    def __call__(self) -> Any:
-        """Return a new SQLAlchemy session."""
-        ...
+from pointlessql.types import SessionFactory, UserInfo
 
 
 def enforce_consumption_for_read(
     request: Request,
     *,
-    factory: _SessionFactory,
+    factory: SessionFactory,
     workspace_id: int,
     user: UserInfo,
     authoring_product_id: int | None,

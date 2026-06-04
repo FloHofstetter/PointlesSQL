@@ -3,23 +3,16 @@
 from __future__ import annotations
 
 import datetime
-from typing import Any, Protocol
+from typing import Any
 
 from sqlalchemy import func, select
 
 from pointlessql.models import DataProductRating
-
-
-class _SessionFactory(Protocol):
-    """Structural protocol matching ``sessionmaker``'s ``__call__``."""
-
-    def __call__(self) -> Any:
-        """Return a new SQLAlchemy session."""
-        ...
+from pointlessql.types import SessionFactory
 
 
 def upsert_rating(
-    factory: _SessionFactory,
+    factory: SessionFactory,
     *,
     data_product_id: int,
     user_id: int,
@@ -70,7 +63,7 @@ def upsert_rating(
 
 
 def list_rating_summary(
-    factory: _SessionFactory, *, data_product_id: int
+    factory: SessionFactory, *, data_product_id: int
 ) -> dict[str, Any]:
     """Return ``{avg, count}`` aggregate for one product."""
     with factory() as session:

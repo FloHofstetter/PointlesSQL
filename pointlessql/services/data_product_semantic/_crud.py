@@ -9,23 +9,15 @@ after the session closes.
 from __future__ import annotations
 
 import datetime
-from typing import Any, Protocol
 
 from sqlalchemy import select
 
 from pointlessql.models import DataProduct, DataProductSemanticConcept
-
-
-class _SessionFactory(Protocol):
-    """Structural protocol matching ``sessionmaker``'s ``__call__``."""
-
-    def __call__(self) -> Any:
-        """Return a new SQLAlchemy session."""
-        ...
+from pointlessql.types import SessionFactory
 
 
 def add_concept(
-    session_factory: _SessionFactory,
+    session_factory: SessionFactory,
     *,
     data_product_id: int,
     concept: str,
@@ -79,7 +71,7 @@ def add_concept(
 
 
 def delete_concept(
-    session_factory: _SessionFactory, *, data_product_id: int, concept_id: int
+    session_factory: SessionFactory, *, data_product_id: int, concept_id: int
 ) -> bool:
     """Remove a semantic concept from a product.
 
@@ -102,7 +94,7 @@ def delete_concept(
 
 
 def list_concepts(
-    session_factory: _SessionFactory, *, data_product_id: int
+    session_factory: SessionFactory, *, data_product_id: int
 ) -> list[DataProductSemanticConcept]:
     """Return every concept on *data_product_id* ordered by concept."""
     with session_factory() as session:
@@ -119,7 +111,7 @@ def list_concepts(
 
 
 def set_sample_sql(
-    session_factory: _SessionFactory,
+    session_factory: SessionFactory,
     *,
     data_product_id: int,
     sql: str | None,

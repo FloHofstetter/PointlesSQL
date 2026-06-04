@@ -6,17 +6,9 @@ import dataclasses
 import datetime
 import json
 from decimal import Decimal
-from typing import Any, Protocol
 
 from pointlessql.models import DataProductQueryCost
-
-
-class _SessionFactory(Protocol):
-    """Sessionmaker-shaped callable protocol."""
-
-    def __call__(self) -> Any:
-        """Return a SQLAlchemy session."""
-        ...
+from pointlessql.types import SessionFactory
 
 
 @dataclasses.dataclass(slots=True, frozen=True)
@@ -55,7 +47,7 @@ class MeterContext:
 
 
 def record_query_cost(
-    session_factory: _SessionFactory, ctx: MeterContext
+    session_factory: SessionFactory, ctx: MeterContext
 ) -> int:
     """Insert one :class:`DataProductQueryCost` row and return its id."""
     cost_value = (

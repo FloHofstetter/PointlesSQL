@@ -14,11 +14,12 @@ from __future__ import annotations
 import dataclasses
 import datetime
 from collections.abc import Sequence
-from typing import Any, Protocol
+from typing import Any
 
 from sqlalchemy import select
 
 from pointlessql.models import DataProductContractEvent
+from pointlessql.types import SessionFactory
 
 #: Default window of recent write events to base the metric on.
 DEFAULT_WINDOW_WRITES: int = 50
@@ -32,13 +33,6 @@ WRITE_OUTCOMES: tuple[str, ...] = (
     "no_contract",
 )
 
-
-class _SessionFactory(Protocol):
-    """Structural protocol matching ``sessionmaker``'s ``__call__``."""
-
-    def __call__(self) -> Any:
-        """Return a new SQLAlchemy session."""
-        ...
 
 
 @dataclasses.dataclass(frozen=True)
@@ -73,7 +67,7 @@ def _percentile_sorted(values: Sequence[float], q: float) -> float:
 
 
 def measure_interval_of_change(
-    factory: _SessionFactory,
+    factory: SessionFactory,
     *,
     data_product_id: int,
     window: int = DEFAULT_WINDOW_WRITES,

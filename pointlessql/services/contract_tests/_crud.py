@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import datetime
 import json
-from typing import Any, Protocol
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -16,14 +16,7 @@ from pointlessql.models import (
     DataProductContractTestResult,
     DataProductFixture,
 )
-
-
-class _SessionFactory(Protocol):
-    """Sessionmaker-shaped callable protocol."""
-
-    def __call__(self) -> Any:
-        """Return a SQLAlchemy session."""
-        ...
+from pointlessql.types import SessionFactory
 
 
 def _serialise_test(row: DataProductContractTest) -> dict[str, Any]:
@@ -70,7 +63,7 @@ def _serialise_result(row: DataProductContractTestResult) -> dict[str, Any]:
 
 
 def declare_contract_test(
-    session_factory: _SessionFactory,
+    session_factory: SessionFactory,
     *,
     data_product_id: int,
     name: str,
@@ -126,7 +119,7 @@ def declare_contract_test(
 
 
 def list_contract_tests(
-    session_factory: _SessionFactory,
+    session_factory: SessionFactory,
     *,
     data_product_id: int,
     include_disabled: bool = True,
@@ -145,7 +138,7 @@ def list_contract_tests(
 
 
 def delete_contract_test(
-    session_factory: _SessionFactory, *, contract_test_id: int
+    session_factory: SessionFactory, *, contract_test_id: int
 ) -> bool:
     """Remove one contract test row; returns True if a row was deleted."""
     with session_factory() as session:
@@ -158,7 +151,7 @@ def delete_contract_test(
 
 
 def declare_fixture(
-    session_factory: _SessionFactory,
+    session_factory: SessionFactory,
     *,
     data_product_id: int,
     table_name: str,
@@ -205,7 +198,7 @@ def declare_fixture(
 
 
 def list_fixtures(
-    session_factory: _SessionFactory, *, data_product_id: int
+    session_factory: SessionFactory, *, data_product_id: int
 ) -> list[dict[str, Any]]:
     """Return every fixture row for a product."""
     with session_factory() as session:
@@ -218,7 +211,7 @@ def list_fixtures(
 
 
 def delete_fixture(
-    session_factory: _SessionFactory, *, fixture_id: int
+    session_factory: SessionFactory, *, fixture_id: int
 ) -> bool:
     """Remove one fixture row; returns True if a row was deleted."""
     with session_factory() as session:
@@ -231,7 +224,7 @@ def delete_fixture(
 
 
 def list_results(
-    session_factory: _SessionFactory,
+    session_factory: SessionFactory,
     *,
     contract_test_id: int,
     limit: int = 100,

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import datetime
 import json
-from typing import Any, Protocol
+from typing import Any
 
 from sqlalchemy import select
 
@@ -13,14 +13,7 @@ from pointlessql.models import (
     DataProductEventSubscription,
     DataProductOutputPort,
 )
-
-
-class _SessionFactory(Protocol):
-    """Structural protocol matching ``sessionmaker``'s ``__call__``."""
-
-    def __call__(self) -> Any:
-        """Return a new SQLAlchemy session."""
-        ...
+from pointlessql.types import SessionFactory
 
 
 def decode_position(payload: str | None) -> dict[str, int]:
@@ -54,7 +47,7 @@ def _serialise(row: DataProductEventSubscription) -> dict[str, Any]:
 
 
 def create_subscription(
-    factory: _SessionFactory,
+    factory: SessionFactory,
     *,
     data_product_id: int,
     output_port_id: int,
@@ -119,7 +112,7 @@ def create_subscription(
 
 
 def list_subscriptions(
-    factory: _SessionFactory,
+    factory: SessionFactory,
     *,
     data_product_id: int | None = None,
     output_port_id: int | None = None,
@@ -143,7 +136,7 @@ def list_subscriptions(
     return [_serialise(r) for r in rows]
 
 
-def delete_subscription(factory: _SessionFactory, *, subscription_id: int) -> bool:
+def delete_subscription(factory: SessionFactory, *, subscription_id: int) -> bool:
     """Hard-delete one subscription.  Returns True when a row was removed."""
     with factory() as session:
         row = session.get(DataProductEventSubscription, subscription_id)
@@ -155,21 +148,21 @@ def delete_subscription(factory: _SessionFactory, *, subscription_id: int) -> bo
 
 
 def pause_subscription(
-    factory: _SessionFactory, *, subscription_id: int
+    factory: SessionFactory, *, subscription_id: int
 ) -> dict[str, Any] | None:
     """Set ``status='paused'``; return the serialised row or ``None``."""
     return _set_status(factory, subscription_id, "paused")
 
 
 def resume_subscription(
-    factory: _SessionFactory, *, subscription_id: int
+    factory: SessionFactory, *, subscription_id: int
 ) -> dict[str, Any] | None:
     """Set ``status='active'``; return the serialised row or ``None``."""
     return _set_status(factory, subscription_id, "active")
 
 
 def _set_status(
-    factory: _SessionFactory, subscription_id: int, status: str
+    factory: SessionFactory, subscription_id: int, status: str
 ) -> dict[str, Any] | None:
     if status not in ("active", "paused", "closed"):
         raise ValueError(f"status {status!r} invalid")
@@ -184,7 +177,7 @@ def _set_status(
 
 
 def rewind_subscription(
-    factory: _SessionFactory, *, subscription_id: int, to_version: int
+    factory: SessionFactory, *, subscription_id: int, to_version: int
 ) -> dict[str, Any] | None:
     """Move the cursor back to *to_version* with row offset 0."""
     if to_version < 0:
@@ -202,7 +195,7 @@ def rewind_subscription(
 
 
 def advance_position(
-    factory: _SessionFactory,
+    factory: SessionFactory,
     *,
     subscription_id: int,
     to_version: int,
@@ -235,7 +228,7 @@ def advance_position(
 
 
 def record_delivery(
-    factory: _SessionFactory,
+    factory: SessionFactory,
     *,
     subscription_id: int,
     version_from: int,

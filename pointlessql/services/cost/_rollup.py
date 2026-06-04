@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import datetime
 from decimal import Decimal
-from typing import Any, Protocol
+from typing import Any
 
 from sqlalchemy import select
 
@@ -12,18 +12,11 @@ from pointlessql.models import (
     DataProductCostBucketHourly,
     DataProductQueryCost,
 )
-
-
-class _SessionFactory(Protocol):
-    """Sessionmaker-shaped callable protocol."""
-
-    def __call__(self) -> Any:
-        """Return a SQLAlchemy session."""
-        ...
+from pointlessql.types import SessionFactory
 
 
 def roll_up_hourly_buckets(
-    session_factory: _SessionFactory,
+    session_factory: SessionFactory,
     *,
     since: datetime.datetime | None = None,
     until: datetime.datetime | None = None,

@@ -16,7 +16,7 @@ import dataclasses
 import datetime
 import json
 import time
-from typing import Any, Protocol
+from typing import Any
 
 import pyarrow as pa
 from sqlalchemy import select
@@ -35,15 +35,7 @@ from pointlessql.services.contract_tests._assertions import (
 from pointlessql.services.contract_tests._generator import (
     generate_arrow_table,
 )
-
-
-class _SessionFactory(Protocol):
-    """Sessionmaker-shaped callable protocol."""
-
-    def __call__(self) -> Any:
-        """Return a SQLAlchemy session."""
-        ...
-
+from pointlessql.types import SessionFactory
 
 #: Supported run modes.  ``synthetic`` evaluates against generated
 #: fixture data; ``live`` (best-effort) loads the storage table.
@@ -72,7 +64,7 @@ class RunOutcome:
 
 
 def run_contract_tests(
-    session_factory: _SessionFactory,
+    session_factory: SessionFactory,
     *,
     data_product_id: int,
     mode: str = "synthetic",
@@ -167,7 +159,7 @@ def run_contract_tests(
 
 
 def _run_single_test(
-    session_factory: _SessionFactory,
+    session_factory: SessionFactory,
     *,
     test: DataProductContractTest,
     mode: str,

@@ -11,7 +11,6 @@ a product's schema in one query.
 from __future__ import annotations
 
 import datetime
-from typing import Any, Protocol
 
 from sqlalchemy import select
 
@@ -21,6 +20,7 @@ from pointlessql.models import (
     DataProduct,
     DataProductColumnClassification,
 )
+from pointlessql.types import SessionFactory
 
 #: Default masking strategy applied when a classification row leaves
 #: ``masking_strategy`` NULL.  Least → most aggressive: public/internal
@@ -33,13 +33,6 @@ DEFAULT_STRATEGY_BY_CLASS: dict[str, str] = {
     "phi": "full",
 }
 
-
-class _SessionFactory(Protocol):
-    """Structural protocol matching ``sessionmaker``'s ``__call__``."""
-
-    def __call__(self) -> Any:
-        """Return a new SQLAlchemy session."""
-        ...
 
 
 def effective_strategy(classification: str, override: str | None) -> str:
@@ -59,7 +52,7 @@ def effective_strategy(classification: str, override: str | None) -> str:
 
 
 def list_classifications(
-    session_factory: _SessionFactory, *, data_product_id: int
+    session_factory: SessionFactory, *, data_product_id: int
 ) -> list[DataProductColumnClassification]:
     """Return every classification on a product ordered by table/column."""
     with session_factory() as session:
@@ -79,7 +72,7 @@ def list_classifications(
 
 
 def add_classification(
-    session_factory: _SessionFactory,
+    session_factory: SessionFactory,
     *,
     data_product_id: int,
     catalog: str,
@@ -156,7 +149,7 @@ def add_classification(
 
 
 def delete_classification(
-    session_factory: _SessionFactory, *, data_product_id: int, classification_id: int
+    session_factory: SessionFactory, *, data_product_id: int, classification_id: int
 ) -> bool:
     """Remove a classification from a product.
 
@@ -178,7 +171,7 @@ def delete_classification(
 
 
 def classifications_for_schema(
-    session_factory: _SessionFactory, *, catalog: str, schema: str
+    session_factory: SessionFactory, *, catalog: str, schema: str
 ) -> dict[tuple[str, str], tuple[str, str]]:
     """Return ``{(table, column): (classification, strategy)}`` for a schema.
 

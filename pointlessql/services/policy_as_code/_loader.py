@@ -16,7 +16,6 @@ re-check ``enabled``.
 from __future__ import annotations
 
 import json
-from typing import Any, Protocol
 
 from sqlalchemy import select
 
@@ -25,14 +24,7 @@ from pointlessql.models import (
     PolicyModule,
     WorkspaceGovernancePolicy,
 )
-
-
-class _SessionFactory(Protocol):
-    """Sessionmaker-shaped callable protocol."""
-
-    def __call__(self) -> Any:
-        """Return a SQLAlchemy session."""
-        ...
+from pointlessql.types import SessionFactory
 
 
 def _parse_link_list(raw: str | None) -> list[int]:
@@ -55,7 +47,7 @@ def _parse_link_list(raw: str | None) -> list[int]:
 
 
 def load_active_modules_for_workspace(
-    session_factory: _SessionFactory, *, workspace_id: int
+    session_factory: SessionFactory, *, workspace_id: int
 ) -> list[PolicyModule]:
     """Return every enabled :class:`PolicyModule` in the workspace."""
     with session_factory() as session:
@@ -69,7 +61,7 @@ def load_active_modules_for_workspace(
 
 
 def load_linked_modules_for_product(
-    session_factory: _SessionFactory,
+    session_factory: SessionFactory,
     *,
     data_product_id: int,
     workspace_id: int,

@@ -11,7 +11,7 @@ from __future__ import annotations
 import datetime
 import json
 from collections.abc import Iterable
-from typing import Any, Protocol
+from typing import Any
 
 from sqlalchemy import select
 
@@ -20,14 +20,7 @@ from pointlessql.models.catalog._entity import (
     DataProductEntity,
     EntityLink,
 )
-
-
-class _SessionFactory(Protocol):
-    """Structural protocol matching ``sessionmaker``'s ``__call__``."""
-
-    def __call__(self) -> Any:
-        """Return a new SQLAlchemy session."""
-        ...
+from pointlessql.types import SessionFactory
 
 
 def _now() -> datetime.datetime:
@@ -50,7 +43,7 @@ def _decode_pk(raw: str) -> list[str]:
 
 
 def declare_entity(
-    factory: _SessionFactory,
+    factory: SessionFactory,
     *,
     data_product_id: int,
     entity_name: str,
@@ -125,7 +118,7 @@ def declare_entity(
 
 
 def list_entities(
-    factory: _SessionFactory,
+    factory: SessionFactory,
     *,
     data_product_id: int,
 ) -> list[dict[str, Any]]:
@@ -152,7 +145,7 @@ def list_entities(
 
 
 def delete_entity(
-    factory: _SessionFactory,
+    factory: SessionFactory,
     *,
     entity_id: int,
 ) -> bool:
@@ -167,7 +160,7 @@ def delete_entity(
 
 
 def link_entities(
-    factory: _SessionFactory,
+    factory: SessionFactory,
     *,
     source_entity_id: int,
     target_entity_id: int,
@@ -229,7 +222,7 @@ def link_entities(
 
 
 def unlink_entities(
-    factory: _SessionFactory,
+    factory: SessionFactory,
     *,
     link_id: int,
 ) -> bool:
@@ -244,7 +237,7 @@ def unlink_entities(
 
 
 def list_links(
-    factory: _SessionFactory,
+    factory: SessionFactory,
     *,
     entity_id: int,
     direction: str = "both",

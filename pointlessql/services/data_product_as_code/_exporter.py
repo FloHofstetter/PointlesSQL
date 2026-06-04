@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-from typing import Any, Protocol
 
 from sqlalchemy import select
 
@@ -30,18 +29,11 @@ from pointlessql.services.governance._policy import (
     POLICY_FIELDS,
     get_product_policy,
 )
-
-
-class _SessionFactory(Protocol):
-    """Sessionmaker-shaped callable protocol."""
-
-    def __call__(self) -> Any:
-        """Return a SQLAlchemy session."""
-        ...
+from pointlessql.types import SessionFactory
 
 
 def export_data_product(
-    session_factory: _SessionFactory,
+    session_factory: SessionFactory,
     *,
     catalog: str,
     schema: str,

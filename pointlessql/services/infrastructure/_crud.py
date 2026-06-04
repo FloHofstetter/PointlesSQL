@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import datetime
 import json
-from typing import Any, Protocol
+from typing import Any
 
 from sqlalchemy import select
 
@@ -12,14 +12,7 @@ from pointlessql.models import (
     INFRASTRUCTURE_STORAGE_CLASSES,
     DataProductInfrastructure,
 )
-
-
-class _SessionFactory(Protocol):
-    """Structural protocol matching ``sessionmaker``'s ``__call__``."""
-
-    def __call__(self) -> Any:
-        """Return a new SQLAlchemy session."""
-        ...
+from pointlessql.types import SessionFactory
 
 
 def _row_to_dict(row: DataProductInfrastructure | None) -> dict[str, Any]:
@@ -47,7 +40,7 @@ def _row_to_dict(row: DataProductInfrastructure | None) -> dict[str, Any]:
 
 
 def get_infrastructure(
-    factory: _SessionFactory, *, data_product_id: int
+    factory: SessionFactory, *, data_product_id: int
 ) -> dict[str, Any]:
     """Return the product's infrastructure declaration, or all-``None`` row."""
     with factory() as session:
@@ -60,7 +53,7 @@ def get_infrastructure(
 
 
 def set_infrastructure(
-    factory: _SessionFactory,
+    factory: SessionFactory,
     *,
     data_product_id: int,
     fields: dict[str, Any],

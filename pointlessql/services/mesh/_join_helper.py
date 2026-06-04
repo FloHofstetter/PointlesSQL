@@ -8,7 +8,7 @@ combine products across domain boundaries without guessing keys.
 
 from __future__ import annotations
 
-from typing import Any, Protocol
+from typing import Any
 
 from sqlalchemy import select
 
@@ -17,14 +17,7 @@ from pointlessql.models import (
     MeshEntity,
     MeshEntityBinding,
 )
-
-
-class _SessionFactory(Protocol):
-    """Structural protocol matching ``sessionmaker``'s ``__call__``."""
-
-    def __call__(self) -> Any:
-        """Return a new SQLAlchemy session."""
-        ...
+from pointlessql.types import SessionFactory
 
 
 def _bindings_by_entity(session: Any, data_product_id: int) -> dict[int, MeshEntityBinding]:
@@ -41,7 +34,7 @@ def _bindings_by_entity(session: Any, data_product_id: int) -> dict[int, MeshEnt
 
 
 def joinable_columns(
-    session_factory: _SessionFactory,
+    session_factory: SessionFactory,
     *,
     left_product_id: int,
     right_product_id: int,

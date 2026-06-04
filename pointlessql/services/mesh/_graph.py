@@ -14,7 +14,7 @@ to *hops* away) for the product-detail Interop tab.
 
 from __future__ import annotations
 
-from typing import Any, Protocol
+from typing import Any
 
 from sqlalchemy import select
 
@@ -23,14 +23,7 @@ from pointlessql.models import (
     DataProductInputPort,
     Domain,
 )
-
-
-class _SessionFactory(Protocol):
-    """Structural protocol matching ``sessionmaker``'s ``__call__``."""
-
-    def __call__(self) -> Any:
-        """Return a new SQLAlchemy session."""
-        ...
+from pointlessql.types import SessionFactory
 
 
 def _node(row: DataProduct, *, slug: str, domain: dict[str, Any] | None) -> dict[str, Any]:
@@ -122,7 +115,7 @@ def _workspace_slug(session: Any, workspace_id: int) -> str:
 
 
 def build_mesh_graph(
-    session_factory: _SessionFactory, *, workspace_id: int
+    session_factory: SessionFactory, *, workspace_id: int
 ) -> dict[str, Any]:
     """Return the whole workspace's emergent mesh graph.
 
@@ -141,7 +134,7 @@ def build_mesh_graph(
 
 
 def build_local_mesh(
-    session_factory: _SessionFactory,
+    session_factory: SessionFactory,
     *,
     workspace_id: int,
     data_product_id: int,

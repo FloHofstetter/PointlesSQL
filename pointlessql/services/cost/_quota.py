@@ -13,21 +13,14 @@ from __future__ import annotations
 import dataclasses
 import datetime
 from decimal import Decimal
-from typing import Any, Protocol
+from typing import Any
 
 from sqlalchemy import select
 
 from pointlessql.exceptions import QuotaExceededError
 from pointlessql.models import DataProductCostBucketHourly
 from pointlessql.services.governance._policy import get_effective_policy
-
-
-class _SessionFactory(Protocol):
-    """Sessionmaker-shaped callable protocol."""
-
-    def __call__(self) -> Any:
-        """Return a SQLAlchemy session."""
-        ...
+from pointlessql.types import SessionFactory
 
 
 @dataclasses.dataclass(slots=True, frozen=True)
@@ -54,7 +47,7 @@ class QuotaCheck:
 
 
 def resolve_quota_mode(
-    session_factory: _SessionFactory,
+    session_factory: SessionFactory,
     *,
     data_product_id: int,
     workspace_id: int = 1,
@@ -76,7 +69,7 @@ def resolve_quota_mode(
 
 
 def check_quota(
-    session_factory: _SessionFactory,
+    session_factory: SessionFactory,
     *,
     consumer_user_id: int | None,
     data_product_id: int,

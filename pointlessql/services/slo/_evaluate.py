@@ -17,7 +17,7 @@ ports, so evaluation is cheap and unit-testable.
 from __future__ import annotations
 
 import datetime
-from typing import Any, Protocol
+from typing import Any
 
 from sqlalchemy import select
 
@@ -29,14 +29,7 @@ from pointlessql.services.data_product_stats import read_latest_statistics
 from pointlessql.services.slo._crud import list_slos
 from pointlessql.services.slo._drift import compute_drift, max_drift_sigma
 from pointlessql.services.slo._kinds import KIND_META
-
-
-class _SessionFactory(Protocol):
-    """Structural protocol matching ``sessionmaker``'s ``__call__``."""
-
-    def __call__(self) -> Any:
-        """Return a new SQLAlchemy session."""
-        ...
+from pointlessql.types import SessionFactory
 
 
 def _verdict(observed: float | None, target: float | None, comparator: str) -> str:
@@ -74,7 +67,7 @@ def _stats_for(stats: list[dict[str, Any]], table_name: str | None) -> list[dict
 
 
 def _observe_measurable(
-    session_factory: _SessionFactory,
+    session_factory: SessionFactory,
     *,
     data_product_id: int,
     slo_kind: str,
@@ -126,7 +119,7 @@ def _observe_measurable(
 
 
 def evaluate_product(
-    session_factory: _SessionFactory,
+    session_factory: SessionFactory,
     *,
     data_product_id: int,
     now: datetime.datetime | None = None,

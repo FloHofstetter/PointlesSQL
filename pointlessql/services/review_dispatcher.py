@@ -26,7 +26,7 @@ import datetime
 import hashlib
 import json
 import logging
-from typing import Any, Protocol
+from typing import Any
 from uuid import uuid4
 
 from sqlalchemy import select
@@ -34,7 +34,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from pointlessql.models.agent._reviews import AgentReview, ReviewDestination
 from pointlessql.services.alert_dispatcher import dispatch_webhook
-from pointlessql.types import ReviewSeverity
+from pointlessql.types import ReviewSeverity, SessionFactory
 
 logger = logging.getLogger(__name__)
 
@@ -48,11 +48,6 @@ _SEVERITY_RANK: dict[str, int] = {
     ReviewSeverity.CRITICAL: 2,
 }
 
-
-class _SessionFactory(Protocol):
-    """Minimal sessionmaker contract — narrows the Sphinx dep graph."""
-
-    def __call__(self) -> Session: ...
 
 
 def build_envelope(
@@ -179,7 +174,7 @@ def _select_destinations(
 
 
 async def dispatch_review(
-    session_factory: _SessionFactory | sessionmaker[Session],
+    session_factory: SessionFactory | sessionmaker[Session],
     review_id: int,
 ) -> list[dict[str, Any]]:
     """Fan a posted review out to every active webhook destination.

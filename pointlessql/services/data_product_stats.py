@@ -15,19 +15,12 @@ from __future__ import annotations
 
 import datetime
 import json
-from typing import Any, Protocol
+from typing import Any
 
 from sqlalchemy import select
 
 from pointlessql.models import DataProductStatistics
-
-
-class _SessionFactory(Protocol):
-    """Structural protocol matching ``sessionmaker``'s ``__call__``."""
-
-    def __call__(self) -> Any:
-        """Return a new SQLAlchemy session."""
-        ...
+from pointlessql.types import SessionFactory
 
 
 def light_shape(df: Any) -> dict[str, Any]:
@@ -93,7 +86,7 @@ def light_shape(df: Any) -> dict[str, Any]:
 
 
 def read_latest_statistics(
-    session_factory: _SessionFactory,
+    session_factory: SessionFactory,
     *,
     data_product_id: int,
     table_name: str | None = None,

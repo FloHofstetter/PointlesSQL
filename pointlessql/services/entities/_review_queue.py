@@ -13,24 +13,17 @@ from __future__ import annotations
 
 import datetime
 import json
-from typing import Any, Protocol
+from typing import Any
 
 from sqlalchemy import select
 
 from pointlessql.models import EntityLinkCandidate
 from pointlessql.services.entities._crud import link_entities
-
-
-class _SessionFactory(Protocol):
-    """Sessionmaker-shaped callable protocol."""
-
-    def __call__(self) -> Any:
-        """Return a SQLAlchemy session."""
-        ...
+from pointlessql.types import SessionFactory
 
 
 def list_pending_candidates(
-    session_factory: _SessionFactory,
+    session_factory: SessionFactory,
     *,
     limit: int = 100,
     offset: int = 0,
@@ -45,7 +38,7 @@ def list_pending_candidates(
 
 
 def list_candidates_by_decision(
-    session_factory: _SessionFactory,
+    session_factory: SessionFactory,
     *,
     decision: str,
     limit: int = 100,
@@ -61,7 +54,7 @@ def list_candidates_by_decision(
 
 
 def accept_candidate(
-    session_factory: _SessionFactory,
+    session_factory: SessionFactory,
     *,
     candidate_id: int,
     reviewed_by_user_id: int | None,
@@ -106,7 +99,7 @@ def accept_candidate(
 
 
 def reject_candidate(
-    session_factory: _SessionFactory,
+    session_factory: SessionFactory,
     *,
     candidate_id: int,
     reviewed_by_user_id: int | None,
@@ -121,7 +114,7 @@ def reject_candidate(
 
 
 def defer_candidate(
-    session_factory: _SessionFactory,
+    session_factory: SessionFactory,
     *,
     candidate_id: int,
     reviewed_by_user_id: int | None,
@@ -136,7 +129,7 @@ def defer_candidate(
 
 
 def _set_decision(
-    session_factory: _SessionFactory,
+    session_factory: SessionFactory,
     *,
     candidate_id: int,
     decision: str,
@@ -161,7 +154,7 @@ def _set_decision(
 
 
 def _list_candidates(
-    session_factory: _SessionFactory,
+    session_factory: SessionFactory,
     *,
     decision_filter: str | None,
     limit: int,

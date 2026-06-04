@@ -8,20 +8,13 @@ works off the self-generated statistics, so no Delta IO.
 
 from __future__ import annotations
 
-from typing import Any, Protocol
+from typing import Any
 
 from sqlalchemy import select
 
 from pointlessql.models import DataProduct
 from pointlessql.services import slo as slo_service
-
-
-class _SessionFactory(Protocol):
-    """Structural protocol matching ``sessionmaker``'s ``__call__``."""
-
-    def __call__(self) -> Any:
-        """Return a new SQLAlchemy session."""
-        ...
+from pointlessql.types import SessionFactory
 
 
 def _band(passed: int, failed: int) -> str:
@@ -38,7 +31,7 @@ def _band(passed: int, failed: int) -> str:
 
 
 def mesh_health(
-    session_factory: _SessionFactory,
+    session_factory: SessionFactory,
     *,
     workspace_id: int,
     sigma: float = 2.0,

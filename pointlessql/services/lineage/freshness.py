@@ -19,22 +19,16 @@ import datetime
 import logging
 import uuid
 from collections.abc import Iterable
-from typing import Any, Protocol
+from typing import Any
 
 from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
 from pointlessql.models import ExpectedLineageInbound, LineageColumnMap
+from pointlessql.types import SessionFactory
 
 logger = logging.getLogger(__name__)
 
-
-class _SessionFactory(Protocol):
-    """Structural protocol matching ``sessionmaker``'s ``__call__``."""
-
-    def __call__(self) -> Any:
-        """Return a new SQLAlchemy session."""
-        ...
 
 
 # Status enum surfaced on freshness rows.
@@ -246,7 +240,7 @@ def select_alert_candidates(
 
 
 def stamp_alerted(
-    session_factory: _SessionFactory,
+    session_factory: SessionFactory,
     *,
     expectation_ids: Iterable[int],
     fired_at: datetime.datetime,

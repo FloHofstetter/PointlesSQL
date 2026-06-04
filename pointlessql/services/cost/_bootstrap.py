@@ -9,24 +9,16 @@ state.
 
 from __future__ import annotations
 
-from typing import Any, Protocol
+from typing import Any
 
 from pointlessql.pql._hooks import register_before_read
 from pointlessql.services.cost._quota import check_quota
-
-
-class _SessionFactory(Protocol):
-    """Sessionmaker-shaped callable protocol."""
-
-    def __call__(self) -> Any:
-        """Return a SQLAlchemy session."""
-        ...
-
+from pointlessql.types import SessionFactory
 
 _registered: bool = False
 
 
-def register_cost_hooks(session_factory: _SessionFactory) -> None:
+def register_cost_hooks(session_factory: SessionFactory) -> None:
     """Register the quota before-read hook (idempotent)."""
     global _registered
     if _registered:

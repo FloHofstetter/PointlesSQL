@@ -13,20 +13,13 @@ from __future__ import annotations
 
 import dataclasses
 import datetime
-from typing import Any, Protocol
+from typing import Any
 
 from sqlalchemy import select
 
 from pointlessql.config import BitemporalSettings
 from pointlessql.models import DataProductBitemporalPolicy
-
-
-class _SessionFactory(Protocol):
-    """Structural protocol matching ``sessionmaker``'s ``__call__``."""
-
-    def __call__(self) -> Any:
-        """Return a new SQLAlchemy session."""
-        ...
+from pointlessql.types import SessionFactory
 
 
 @dataclasses.dataclass(frozen=True)
@@ -56,7 +49,7 @@ class EffectiveBitemporal:
 
 
 def _read_override(
-    factory: _SessionFactory, data_product_id: int | None
+    factory: SessionFactory, data_product_id: int | None
 ) -> DataProductBitemporalPolicy | None:
     if data_product_id is None:
         return None
@@ -69,7 +62,7 @@ def _read_override(
 
 
 def effective_policy(
-    factory: _SessionFactory,
+    factory: SessionFactory,
     *,
     settings: BitemporalSettings,
     data_product_id: int | None,
@@ -128,7 +121,7 @@ def effective_policy(
 
 
 def set_product_policy(
-    factory: _SessionFactory,
+    factory: SessionFactory,
     *,
     data_product_id: int,
     fields: dict[str, Any],

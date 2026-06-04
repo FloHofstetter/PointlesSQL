@@ -15,23 +15,17 @@ import asyncio
 import datetime
 import json
 import logging
-from typing import Any, Protocol
+from typing import Any
 
 from sqlalchemy import select
 
 from pointlessql.data_products import DataProductContract
 from pointlessql.models import DataProduct
 from pointlessql.services.unitycatalog import UnityCatalogClient
+from pointlessql.types import SessionFactory
 
 logger = logging.getLogger(__name__)
 
-
-class _SessionFactory(Protocol):
-    """Structural protocol matching ``sessionmaker``'s ``__call__``."""
-
-    def __call__(self) -> Any:
-        """Return a new SQLAlchemy session."""
-        ...
 
 
 def _version_and_count_at(storage_location: str, when: datetime.datetime) -> dict[str, Any]:
@@ -71,7 +65,7 @@ def _declared_tables(contract_json: str) -> list[str]:
 
 
 async def resolve_as_of(
-    session_factory: _SessionFactory,
+    session_factory: SessionFactory,
     uc: UnityCatalogClient,
     *,
     workspace_id: int,

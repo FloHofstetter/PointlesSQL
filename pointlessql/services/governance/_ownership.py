@@ -11,7 +11,7 @@ the domain explicitly.
 from __future__ import annotations
 
 from collections import Counter
-from typing import Any, Protocol
+from typing import Any
 
 from sqlalchemy import select
 
@@ -20,18 +20,11 @@ from pointlessql.models import (
     DataProductInputPort,
     Domain,
 )
-
-
-class _SessionFactory(Protocol):
-    """Structural protocol matching ``sessionmaker``'s ``__call__``."""
-
-    def __call__(self) -> Any:
-        """Return a new SQLAlchemy session."""
-        ...
+from pointlessql.types import SessionFactory
 
 
 def suggest_domain_for_aggregate(
-    session_factory: _SessionFactory,
+    session_factory: SessionFactory,
     *,
     data_product_id: int,
     workspace_id: int,

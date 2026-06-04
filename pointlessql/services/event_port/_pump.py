@@ -18,7 +18,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from collections.abc import Awaitable, Callable
-from typing import Any, Protocol
+from typing import Any
 
 from pointlessql.models import DataProduct, DataProductEventSubscription
 from pointlessql.services.event_port import _ws_hub
@@ -27,16 +27,10 @@ from pointlessql.services.event_port._subscription_crud import (
     advance_position,
     record_delivery,
 )
+from pointlessql.types import SessionFactory
 
 _LOG = logging.getLogger(__name__)
 
-
-class _SessionFactory(Protocol):
-    """Structural protocol matching ``sessionmaker``'s ``__call__``."""
-
-    def __call__(self) -> Any:
-        """Return a new SQLAlchemy session."""
-        ...
 
 
 ReaderFn = Callable[[str, int, int], list[ChangeRow]]
@@ -48,7 +42,7 @@ def _default_reader(location: str, since_version: int, max_versions: int) -> lis
 
 
 def _resolve_location(
-    factory: _SessionFactory, *, subscription: dict[str, Any]
+    factory: SessionFactory, *, subscription: dict[str, Any]
 ) -> str | None:
     """Look up the Delta storage location for the subscription's source.
 
@@ -90,7 +84,7 @@ def _resolve_location(
 
 
 async def pump_subscription(
-    factory: _SessionFactory,
+    factory: SessionFactory,
     *,
     subscription_id: int,
     max_versions: int,
@@ -199,7 +193,7 @@ async def pump_subscription(
 
 
 async def _product_full_name(
-    factory: _SessionFactory, data_product_id: int
+    factory: SessionFactory, data_product_id: int
 ) -> str | None:
     """Return ``catalog.schema`` of the data product, or ``None``."""
     with factory() as session:
@@ -210,7 +204,7 @@ async def _product_full_name(
 
 
 async def pump_all_active(
-    factory: _SessionFactory,
+    factory: SessionFactory,
     *,
     max_versions: int,
     reader: ReaderFn | None = None,

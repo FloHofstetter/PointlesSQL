@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import datetime
 import json
-from typing import Any, Protocol
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -21,14 +21,7 @@ from pointlessql.models import (
     WorkspaceGovernancePolicy,
 )
 from pointlessql.services.policy_as_code._engine import invalidate_cache
-
-
-class _SessionFactory(Protocol):
-    """Sessionmaker-shaped callable protocol."""
-
-    def __call__(self) -> Any:
-        """Return a SQLAlchemy session."""
-        ...
+from pointlessql.types import SessionFactory
 
 
 def _serialise_module(row: PolicyModule) -> dict[str, Any]:
@@ -51,7 +44,7 @@ def _serialise_module(row: PolicyModule) -> dict[str, Any]:
 
 
 def list_modules(
-    session_factory: _SessionFactory,
+    session_factory: SessionFactory,
     *,
     workspace_id: int,
     include_disabled: bool = True,
@@ -68,7 +61,7 @@ def list_modules(
 
 
 def get_module(
-    session_factory: _SessionFactory,
+    session_factory: SessionFactory,
     *,
     module_id: int,
 ) -> dict[str, Any] | None:
@@ -79,7 +72,7 @@ def get_module(
 
 
 def create_module(
-    session_factory: _SessionFactory,
+    session_factory: SessionFactory,
     *,
     workspace_id: int,
     name: str,
@@ -123,7 +116,7 @@ def create_module(
 
 
 def update_module(
-    session_factory: _SessionFactory,
+    session_factory: SessionFactory,
     *,
     module_id: int,
     cedar_source: str | None = None,
@@ -159,7 +152,7 @@ def update_module(
 
 
 def delete_module(
-    session_factory: _SessionFactory,
+    session_factory: SessionFactory,
     *,
     module_id: int,
 ) -> bool:
@@ -175,7 +168,7 @@ def delete_module(
 
 
 def set_module_enabled(
-    session_factory: _SessionFactory,
+    session_factory: SessionFactory,
     *,
     module_id: int,
     enabled: bool,
@@ -187,7 +180,7 @@ def set_module_enabled(
 
 
 def list_decisions(
-    session_factory: _SessionFactory,
+    session_factory: SessionFactory,
     *,
     module_id: int,
     limit: int = 100,
@@ -229,7 +222,7 @@ def list_decisions(
 
 
 def link_modules_to_product(
-    session_factory: _SessionFactory,
+    session_factory: SessionFactory,
     *,
     data_product_id: int,
     module_ids: list[int],
@@ -260,7 +253,7 @@ def link_modules_to_product(
 
 
 def link_modules_to_workspace(
-    session_factory: _SessionFactory,
+    session_factory: SessionFactory,
     *,
     workspace_id: int,
     module_ids: list[int],

@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import datetime
 from collections import deque
-from typing import Any, Protocol
+from typing import Any
 
 from sqlalchemy import select
 
@@ -18,14 +18,7 @@ from pointlessql.models.catalog._glossary import (
     GlossaryTerm,
     GlossaryTermRelation,
 )
-
-
-class _SessionFactory(Protocol):
-    """Structural protocol matching ``sessionmaker``'s ``__call__``."""
-
-    def __call__(self) -> Any:
-        """Return a new SQLAlchemy session."""
-        ...
+from pointlessql.types import SessionFactory
 
 
 def _now() -> datetime.datetime:
@@ -34,7 +27,7 @@ def _now() -> datetime.datetime:
 
 
 def add_relation(
-    factory: _SessionFactory,
+    factory: SessionFactory,
     *,
     source_term_id: int,
     target_term_id: int,
@@ -90,7 +83,7 @@ def add_relation(
 
 
 def delete_relation(
-    factory: _SessionFactory,
+    factory: SessionFactory,
     *,
     relation_id: int,
 ) -> bool:
@@ -105,7 +98,7 @@ def delete_relation(
 
 
 def list_relations(
-    factory: _SessionFactory,
+    factory: SessionFactory,
     *,
     term_id: int,
     direction: str = "both",
@@ -145,7 +138,7 @@ def list_relations(
 
 
 def term_graph(
-    factory: _SessionFactory,
+    factory: SessionFactory,
     *,
     root_term_id: int,
     depth: int = 2,

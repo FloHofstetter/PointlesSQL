@@ -19,12 +19,13 @@ from __future__ import annotations
 
 import dataclasses
 import enum
-from typing import Any, Protocol
+from typing import Any
 
 from sqlalchemy import select
 
 from pointlessql.exceptions import PermissionDeniedError
 from pointlessql.models import DataProductInputPort
+from pointlessql.types import SessionFactory
 
 #: Audit-log action emitted when an ``advisory`` verdict allows an
 #: undeclared read.  Picked up by the Governance tab's "Recent
@@ -91,13 +92,6 @@ class ConsumptionViolation(PermissionDeniedError):
         }
 
 
-class _SessionFactory(Protocol):
-    """Structural protocol matching ``sessionmaker``'s ``__call__``."""
-
-    def __call__(self) -> Any:
-        """Return a new SQLAlchemy session."""
-        ...
-
 
 def _normalise_source(source_fqn: str) -> tuple[str, str, str | None]:
     """Split ``catalog.schema[.table]`` into a tuple.
@@ -115,7 +109,7 @@ def _normalise_source(source_fqn: str) -> tuple[str, str, str | None]:
 
 
 def _is_declared_upstream(
-    factory: _SessionFactory,
+    factory: SessionFactory,
     *,
     consumer_product_id: int,
     source_catalog: str,
@@ -138,7 +132,7 @@ def _is_declared_upstream(
 
 
 def evaluate_consumption(
-    factory: _SessionFactory,
+    factory: SessionFactory,
     *,
     mode: str,
     consumer_product_id: int,
@@ -198,7 +192,7 @@ def evaluate_consumption(
 
 
 def assert_declared_consumption(
-    factory: _SessionFactory,
+    factory: SessionFactory,
     *,
     mode: str,
     consumer_product_id: int,
@@ -225,7 +219,7 @@ def assert_declared_consumption(
 
 
 def emit_consumption_audit(
-    factory: _SessionFactory,
+    factory: SessionFactory,
     *,
     decision: ConsumptionDecision,
     user_id: int,

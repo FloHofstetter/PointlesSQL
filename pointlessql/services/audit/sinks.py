@@ -27,7 +27,7 @@ from __future__ import annotations
 import datetime
 import json
 import logging
-from typing import Any, Protocol
+from typing import Any
 
 import httpx
 from sqlalchemy import select
@@ -36,17 +36,12 @@ from sqlalchemy.orm import Session, sessionmaker
 from pointlessql.models.audit._sinks import AuditSink
 from pointlessql.services.alert_dispatcher import dispatch_webhook
 from pointlessql.services.aws_sigv4 import sign_request
-from pointlessql.types import AuditSinkType
+from pointlessql.types import AuditSinkType, SessionFactory
 
 logger = logging.getLogger(__name__)
 
 _DEFAULT_TIMEOUT = httpx.Timeout(connect=5.0, read=10.0, write=10.0, pool=10.0)
 
-
-class _SessionFactory(Protocol):
-    """Minimal sessionmaker contract for narrow dependency typing."""
-
-    def __call__(self) -> Session: ...
 
 
 def _decode_config(sink: AuditSink) -> dict[str, Any]:
@@ -508,7 +503,7 @@ def _select_active_sinks(
 
 
 async def dispatch_to_sinks(
-    session_factory: _SessionFactory | sessionmaker[Session],
+    session_factory: SessionFactory | sessionmaker[Session],
     envelope: dict[str, Any],
     *,
     workspace_id: int | None = None,

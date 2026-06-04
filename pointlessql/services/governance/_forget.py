@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import datetime
 import json
-from typing import Any, Protocol
+from typing import Any
 
 from sqlalchemy import select
 
@@ -25,14 +25,7 @@ from pointlessql.services.pii._redactor import (
     get_or_create_pii_hash_secret,
     hash_value,
 )
-
-
-class _SessionFactory(Protocol):
-    """Structural protocol matching ``sessionmaker``'s ``__call__``."""
-
-    def __call__(self) -> Any:
-        """Return a new SQLAlchemy session."""
-        ...
+from pointlessql.types import SessionFactory
 
 
 def hash_subject(session_factory: Any, value: str) -> str:
@@ -50,7 +43,7 @@ def hash_subject(session_factory: Any, value: str) -> str:
 
 
 def propose_forget(
-    session_factory: _SessionFactory,
+    session_factory: SessionFactory,
     *,
     data_product_id: int,
     subject_column: str,
@@ -89,7 +82,7 @@ def propose_forget(
 
 
 def execute_forget(
-    session_factory: _SessionFactory,
+    session_factory: SessionFactory,
     settings: Any,
     *,
     data_product_id: int,
@@ -205,7 +198,7 @@ def execute_forget(
 
 
 def list_forget_requests(
-    session_factory: _SessionFactory, *, data_product_id: int
+    session_factory: SessionFactory, *, data_product_id: int
 ) -> list[DataProductForgetRequest]:
     """Return a product's forget ledger, newest first."""
     with session_factory() as session:

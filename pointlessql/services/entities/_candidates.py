@@ -23,7 +23,7 @@ from __future__ import annotations
 import dataclasses
 import datetime
 import json
-from typing import Any, Protocol
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -33,15 +33,7 @@ from pointlessql.models import (
     EntityLink,
     EntityLinkCandidate,
 )
-
-
-class _SessionFactory(Protocol):
-    """Sessionmaker-shaped callable protocol."""
-
-    def __call__(self) -> Any:
-        """Return a SQLAlchemy session."""
-        ...
-
+from pointlessql.types import SessionFactory
 
 #: Default minimum combined score for a pair to be persisted.
 DEFAULT_CONFIDENCE_THRESHOLD: float = 0.7
@@ -109,7 +101,7 @@ def score_combined(
 
 
 def discover_candidates(
-    session_factory: _SessionFactory,
+    session_factory: SessionFactory,
     *,
     workspace_id: int = 1,
     threshold: float = DEFAULT_CONFIDENCE_THRESHOLD,

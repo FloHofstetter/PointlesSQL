@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import dataclasses
 import json
-from typing import Any, Protocol
+from typing import Any
 
 from sqlalchemy import select
 
@@ -26,14 +26,7 @@ from pointlessql.services.schema_versioning._diff import (
     SchemaDiff,
     compute_diff,
 )
-
-
-class _SessionFactory(Protocol):
-    """Sessionmaker-shaped callable protocol."""
-
-    def __call__(self) -> Any:
-        """Return a SQLAlchemy session."""
-        ...
+from pointlessql.types import SessionFactory
 
 
 class SchemaBreakingChangeError(PermissionDeniedError):
@@ -74,7 +67,7 @@ class EnforcementOutcome:
 
 
 def assert_schema_compatibility(
-    session_factory: _SessionFactory,
+    session_factory: SessionFactory,
     *,
     data_product_id: int,
     table_name: str | None,

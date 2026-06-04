@@ -33,7 +33,6 @@ from __future__ import annotations
 import datetime
 import logging
 import re
-from typing import Any, Protocol
 
 from sqlalchemy import select
 
@@ -45,6 +44,7 @@ from pointlessql.models import (
     WorkspaceCatalogPin,
     WorkspaceMember,
 )
+from pointlessql.types import SessionFactory
 
 logger = logging.getLogger(__name__)
 
@@ -57,13 +57,6 @@ DEFAULT_WORKSPACE_SLUG: str = "default"
 
 _SLUG_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,62}[a-z0-9]$|^[a-z0-9]$")
 
-
-class _SessionFactory(Protocol):
-    """Structural protocol matching ``sessionmaker``'s ``__call__``."""
-
-    def __call__(self) -> Any:
-        """Return a new SQLAlchemy session."""
-        ...
 
 
 def _validate_slug(slug: str) -> str:
@@ -96,7 +89,7 @@ def _validate_slug(slug: str) -> str:
 
 
 def create_workspace(
-    session_factory: _SessionFactory,
+    session_factory: SessionFactory,
     *,
     slug: str,
     name: str,
@@ -160,7 +153,7 @@ def create_workspace(
 
 
 def add_member(
-    session_factory: _SessionFactory,
+    session_factory: SessionFactory,
     *,
     workspace_id: int,
     user_id: int,
@@ -218,7 +211,7 @@ def add_member(
 
 
 def list_workspaces_for_user(
-    session_factory: _SessionFactory,
+    session_factory: SessionFactory,
     *,
     user_id: int,
     include_archived: bool = False,
@@ -255,7 +248,7 @@ def list_workspaces_for_user(
         return rows
 
 
-def get_workspace_by_slug(session_factory: _SessionFactory, *, slug: str) -> Workspace | None:
+def get_workspace_by_slug(session_factory: SessionFactory, *, slug: str) -> Workspace | None:
     """Return the workspace with *slug* or ``None`` when no such row exists.
 
     Args:
@@ -273,7 +266,7 @@ def get_workspace_by_slug(session_factory: _SessionFactory, *, slug: str) -> Wor
         return row
 
 
-def get_workspace(session_factory: _SessionFactory, *, workspace_id: int) -> Workspace | None:
+def get_workspace(session_factory: SessionFactory, *, workspace_id: int) -> Workspace | None:
     """Return the workspace with *workspace_id* or ``None``."""
     with session_factory() as session:
         row = session.get(Workspace, workspace_id)
@@ -282,7 +275,7 @@ def get_workspace(session_factory: _SessionFactory, *, workspace_id: int) -> Wor
         return row
 
 
-def is_member(session_factory: _SessionFactory, *, workspace_id: int, user_id: int) -> bool:
+def is_member(session_factory: SessionFactory, *, workspace_id: int, user_id: int) -> bool:
     """Return ``True`` when the user is a member of the workspace."""
     with session_factory() as session:
         row = session.scalar(
@@ -295,7 +288,7 @@ def is_member(session_factory: _SessionFactory, *, workspace_id: int, user_id: i
 
 
 def get_membership_role(
-    session_factory: _SessionFactory, *, workspace_id: int, user_id: int
+    session_factory: SessionFactory, *, workspace_id: int, user_id: int
 ) -> str | None:
     """Return the user's role in the workspace, or ``None`` when not a member."""
     with session_factory() as session:
@@ -309,7 +302,7 @@ def get_membership_role(
 
 
 def resolve_workspace_id(
-    session_factory: _SessionFactory | None,
+    session_factory: SessionFactory | None,
     *,
     user_id: int | None,
     header_value: str | None = None,

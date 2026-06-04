@@ -10,21 +10,14 @@ from __future__ import annotations
 
 import datetime
 import re
-from typing import Any, Protocol
 
 from sqlalchemy import select, tuple_
 
 from pointlessql.models import GlossaryTerm, GlossaryTermColumn
+from pointlessql.types import SessionFactory
 
 _SLUG_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,62}[a-z0-9]$|^[a-z0-9]$")
 
-
-class _SessionFactory(Protocol):
-    """Structural protocol matching ``sessionmaker``'s ``__call__``."""
-
-    def __call__(self) -> Any:
-        """Return a new SQLAlchemy session."""
-        ...
 
 
 def _validate_slug(slug: str) -> str:
@@ -55,7 +48,7 @@ def _validate_slug(slug: str) -> str:
 
 
 def create_term(
-    session_factory: _SessionFactory,
+    session_factory: SessionFactory,
     *,
     workspace_id: int,
     slug: str,
@@ -109,7 +102,7 @@ def create_term(
         return row
 
 
-def list_terms(session_factory: _SessionFactory, *, workspace_id: int) -> list[GlossaryTerm]:
+def list_terms(session_factory: SessionFactory, *, workspace_id: int) -> list[GlossaryTerm]:
     """Return the workspace's glossary terms ordered by term."""
     with session_factory() as session:
         rows = list(
@@ -125,7 +118,7 @@ def list_terms(session_factory: _SessionFactory, *, workspace_id: int) -> list[G
 
 
 def get_term_by_slug(
-    session_factory: _SessionFactory, *, workspace_id: int, slug: str
+    session_factory: SessionFactory, *, workspace_id: int, slug: str
 ) -> GlossaryTerm | None:
     """Return the workspace glossary term with *slug* or ``None``."""
     cleaned = slug.strip().lower()
@@ -141,7 +134,7 @@ def get_term_by_slug(
         return row
 
 
-def delete_term(session_factory: _SessionFactory, *, term_id: int) -> bool:
+def delete_term(session_factory: SessionFactory, *, term_id: int) -> bool:
     """Delete a glossary term (and, via CASCADE, its column bindings).
 
     Returns:
@@ -157,7 +150,7 @@ def delete_term(session_factory: _SessionFactory, *, term_id: int) -> bool:
 
 
 def bind_column(
-    session_factory: _SessionFactory,
+    session_factory: SessionFactory,
     *,
     term_id: int,
     catalog: str,
@@ -219,7 +212,7 @@ def bind_column(
         return row
 
 
-def unbind_column(session_factory: _SessionFactory, *, binding_id: int) -> bool:
+def unbind_column(session_factory: SessionFactory, *, binding_id: int) -> bool:
     """Remove a term-to-column binding.
 
     Returns:
@@ -235,7 +228,7 @@ def unbind_column(session_factory: _SessionFactory, *, binding_id: int) -> bool:
 
 
 def list_bindings(
-    session_factory: _SessionFactory, *, term_id: int
+    session_factory: SessionFactory, *, term_id: int
 ) -> list[GlossaryTermColumn]:
     """Return every column binding for *term_id*."""
     with session_factory() as session:
@@ -252,7 +245,7 @@ def list_bindings(
 
 
 def terms_for_schema(
-    session_factory: _SessionFactory,
+    session_factory: SessionFactory,
     *,
     workspace_id: int,
     catalog: str,
@@ -297,7 +290,7 @@ def terms_for_schema(
 
 
 def terms_for_schema_with_slugs(
-    session_factory: _SessionFactory,
+    session_factory: SessionFactory,
     *,
     workspace_id: int,
     catalog: str,
@@ -344,7 +337,7 @@ def terms_for_schema_with_slugs(
 
 
 def terms_for_schemas(
-    session_factory: _SessionFactory,
+    session_factory: SessionFactory,
     *,
     workspace_id: int,
     pairs: list[tuple[str, str]],
@@ -393,7 +386,7 @@ def terms_for_schemas(
 
 
 def terms_for_column(
-    session_factory: _SessionFactory,
+    session_factory: SessionFactory,
     *,
     workspace_id: int,
     catalog: str,

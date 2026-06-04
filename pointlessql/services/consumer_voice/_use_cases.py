@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import datetime
-from typing import Any, Protocol
+from typing import Any
 
 from sqlalchemy import func, select
 
@@ -11,14 +11,7 @@ from pointlessql.models import (
     DataProductUseCase,
     DataProductUseCaseVote,
 )
-
-
-class _SessionFactory(Protocol):
-    """Structural protocol matching ``sessionmaker``'s ``__call__``."""
-
-    def __call__(self) -> Any:
-        """Return a new SQLAlchemy session."""
-        ...
+from pointlessql.types import SessionFactory
 
 
 def _serialise(uc: DataProductUseCase) -> dict[str, Any]:
@@ -34,7 +27,7 @@ def _serialise(uc: DataProductUseCase) -> dict[str, Any]:
 
 
 def add_use_case(
-    factory: _SessionFactory,
+    factory: SessionFactory,
     *,
     data_product_id: int,
     title: str,
@@ -67,7 +60,7 @@ def add_use_case(
 
 
 def list_use_cases(
-    factory: _SessionFactory, *, data_product_id: int, limit: int | None = None
+    factory: SessionFactory, *, data_product_id: int, limit: int | None = None
 ) -> list[dict[str, Any]]:
     """Return the product's use cases ordered by ``votes`` then newest."""
     with factory() as session:
@@ -83,7 +76,7 @@ def list_use_cases(
 
 
 def delete_use_case(
-    factory: _SessionFactory, *, data_product_id: int, use_case_id: int
+    factory: SessionFactory, *, data_product_id: int, use_case_id: int
 ) -> bool:
     """Delete one use case.  Returns True when a row was removed."""
     with factory() as session:
@@ -101,7 +94,7 @@ def delete_use_case(
 
 
 def vote_use_case(
-    factory: _SessionFactory,
+    factory: SessionFactory,
     *,
     use_case_id: int,
     user_id: int,
