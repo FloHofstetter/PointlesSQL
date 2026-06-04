@@ -7,13 +7,13 @@ search page that calls the JSON endpoint via fetch().
 
 from __future__ import annotations
 
-import datetime
 import logging
 from typing import Any
 
 from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import HTMLResponse
 
+from pointlessql.api.audit._helpers import parse_iso8601
 from pointlessql.api.dependencies import (
     PaginationParams,
     get_templates,
@@ -26,30 +26,6 @@ from pointlessql.services import audit_fts
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["audit"])
-
-
-def _parse_iso8601(name: str, value: str | None) -> datetime.datetime | None:
-    """Parse an ISO-8601 query-string param; coerce naive → UTC.
-
-    Args:
-        name: Parameter name for the error message.
-        value: Raw query value.
-
-    Returns:
-        Parsed ``datetime`` or ``None`` when unset.
-
-    Raises:
-        ValidationError: Non-empty ``value`` failed to parse.
-    """
-    if value is None or not value.strip():
-        return None
-    try:
-        parsed = datetime.datetime.fromisoformat(value.strip())
-    except ValueError as exc:
-        raise ValidationError(f"{name} must be ISO-8601") from exc
-    if parsed.tzinfo is None:
-        parsed = parsed.replace(tzinfo=datetime.UTC)
-    return parsed
 
 
 @router.get("/api/audit/search")
@@ -102,8 +78,8 @@ async def api_audit_search(
     require_auditor(request)
     if axis not in audit_fts.VALID_AXES:
         raise ValidationError(f"axis must be one of {sorted(audit_fts.VALID_AXES)}")
-    since_dt = _parse_iso8601("since", since)
-    until_dt = _parse_iso8601("until", until)
+    since_dt = parse_iso8601("since", since)
+    until_dt = parse_iso8601("until", until)
     workspace_id = int(getattr(request.state, "workspace_id", 1))
     return audit_fts.search(
         request.app.state.session_factory,

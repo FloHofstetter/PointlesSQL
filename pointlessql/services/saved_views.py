@@ -13,46 +13,21 @@ import datetime
 import json
 import logging
 import re
-import secrets
 from typing import TYPE_CHECKING, Any, cast
 
 from sqlalchemy import desc, or_, select
 
 from pointlessql.exceptions import ValidationError
 from pointlessql.models import SAVED_VIEW_PARAM_TYPES, SavedView
+from pointlessql.services._slug import make_slug
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session, sessionmaker
 
 logger = logging.getLogger(__name__)
 
-_SLUG_SANITIZER = re.compile(r"[^a-z0-9-]+")
 _PARAM_PLACEHOLDER_RE = re.compile(r"\$\{([a-zA-Z_][a-zA-Z0-9_]*)\}")
 _PARAM_NAME_RE = re.compile(r"^[a-zA-Z_][a-zA-Z0-9_]*$")
-
-
-def make_slug(title: str) -> str:
-    """Return a URL-safe slug with a random suffix for collision-avoidance.
-
-    Same shape as
-    :func:`pointlessql.services.saved_queries.make_slug` — title
-    lowercased + non-alphanumerics collapsed + a 6-char random
-    hex tail.
-
-    Args:
-        title: The user-entered title.
-
-    Returns:
-        A slug ending in ``-<6 hex chars>``.
-    """
-    base = (title or "view").strip().lower()
-    base = _SLUG_SANITIZER.sub("-", base).strip("-")
-    if not base:
-        base = "view"
-    max_base = 200 - 7
-    if len(base) > max_base:
-        base = base[:max_base].rstrip("-")
-    return f"{base}-{secrets.token_hex(3)}"
 
 
 def normalize_parameters(raw: Any) -> list[dict[str, Any]]:
@@ -341,7 +316,7 @@ def create_saved_view(
         row = SavedView(
             workspace_id=workspace_id,
             owner_id=owner_id,
-            slug=make_slug(title),
+            slug=make_slug(title, fallback="view"),
             title=title,
             description=description if isinstance(description, str) else None,
             sql_text=sql_text,

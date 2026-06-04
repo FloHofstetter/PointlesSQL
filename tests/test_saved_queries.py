@@ -31,7 +31,7 @@ def test_make_slug_is_url_safe_and_unique() -> None:
 
 
 def test_make_slug_falls_back_on_empty_title() -> None:
-    s = sq.make_slug("")
+    s = sq.make_slug("", fallback="query")
     assert s.startswith("query-")
 
 

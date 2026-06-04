@@ -71,7 +71,7 @@ _SLUG_SANITIZER = re.compile(r"[^a-z0-9-]+")
 def make_slug(title: str) -> str:
     """Derive a URL-safe slug from *title* with a 6-char random suffix.
 
-    Mirrors :func:`pointlessql.services.saved_queries.make_slug` so
+    Mirrors :func:`pointlessql.services._slug.make_slug` so
     the two surfaces look + behave identically; copying instead of
     importing keeps the surfaces decoupled — different visibility
     rules, different retention.

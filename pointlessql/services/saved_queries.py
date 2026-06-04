@@ -17,47 +17,16 @@ unit-test.
 from __future__ import annotations
 
 import datetime
-import re
-import secrets
 from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import desc, or_, select
 
 from pointlessql.exceptions import ValidationError
 from pointlessql.models import SavedQuery
+from pointlessql.services._slug import make_slug
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session, sessionmaker
-
-
-_SLUG_SANITIZER = re.compile(r"[^a-z0-9-]+")
-
-
-def make_slug(title: str) -> str:
-    """Derive a URL-safe slug from *title* with random suffix.
-
-    ``slugify`` is a pure function: trim → lowercase → replace
-    non-alphanumeric runs with hyphens → trim trailing hyphens.
-    A 6-char hex random suffix then guarantees uniqueness even
-    when two users happen to save queries with the same title
-    ("daily-orders").  200-char ceiling matches the
-    :class:`~pointlessql.models.SavedQuery.slug` column width.
-
-    Args:
-        title: The user-entered title.
-
-    Returns:
-        A URL-safe slug ending in a random 6-char token.
-    """
-    base = (title or "query").strip().lower()
-    base = _SLUG_SANITIZER.sub("-", base).strip("-")
-    if not base:
-        base = "query"
-    # Reserve 7 chars for the suffix + hyphen.
-    max_base = 200 - 7
-    if len(base) > max_base:
-        base = base[:max_base].rstrip("-")
-    return f"{base}-{secrets.token_hex(3)}"
 
 
 def _can_view(row: SavedQuery, user_id: int, is_admin: bool) -> bool:
@@ -151,7 +120,7 @@ def create_saved_query(
     with factory() as session:
         row = SavedQuery(
             workspace_id=workspace_id,
-            slug=make_slug(clean_title),
+            slug=make_slug(clean_title, fallback="query"),
             title=clean_title[:200],
             description=clean_description,
             sql_text=clean_sql,

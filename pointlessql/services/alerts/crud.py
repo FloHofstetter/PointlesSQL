@@ -14,40 +14,19 @@ from __future__ import annotations
 
 import datetime
 import json
-import re
-import secrets
 from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import delete, desc, select
 
 from pointlessql.exceptions import ValidationError
 from pointlessql.models import Alert, AlertDestination, AlertEvent, Job
+from pointlessql.services._slug import make_slug
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session, sessionmaker
 
 
-_SLUG_SANITIZER = re.compile(r"[^a-z0-9-]+")
 VALID_OPS = {"gt", "lt", "eq", "ne"}
-
-
-def make_slug(title: str) -> str:
-    """Derive a URL-safe slug from *title* with a random suffix.
-
-    Args:
-        title: The user-entered title.
-
-    Returns:
-        A slug matching ``[a-z0-9-]+-[0-9a-f]{6}`` capped at 200 chars.
-    """
-    base = (title or "alert").strip().lower()
-    base = _SLUG_SANITIZER.sub("-", base).strip("-")
-    if not base:
-        base = "alert"
-    max_base = 200 - 7
-    if len(base) > max_base:
-        base = base[:max_base].rstrip("-")
-    return f"{base}-{secrets.token_hex(3)}"
 
 
 def can_mutate(row: Alert, user_id: int, is_admin: bool) -> bool:
@@ -200,7 +179,7 @@ def create_alert(
     now = datetime.datetime.now(datetime.UTC)
     with factory() as session:
         alert = Alert(
-            slug=make_slug(clean_title),
+            slug=make_slug(clean_title, fallback="alert"),
             title=clean_title[:200],
             saved_query_id=saved_query_id,
             owner_id=owner_id,
