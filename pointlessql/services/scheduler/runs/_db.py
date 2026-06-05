@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from pointlessql.exceptions import ValidationError
 from pointlessql.models import Job, JobLog, JobRun, User
+from pointlessql.services.scheduler.runs._logic import ensure_utc
 from pointlessql.types import UserInfo
 
 logger = logging.getLogger(__name__)
@@ -83,10 +84,9 @@ def _is_due(
     # hint only. Normalise any naive timestamp read back from the DB to
     # UTC-aware so ``croniter`` and the comparison below work uniformly
     # across SQLite and Postgres.
-    if last_started is not None and last_started.tzinfo is None:
-        last_started = last_started.replace(tzinfo=datetime.UTC)
-    if now.tzinfo is None:
-        now = now.replace(tzinfo=datetime.UTC)
+    if last_started is not None:
+        last_started = ensure_utc(last_started)
+    now = ensure_utc(now)
     try:
         anchor = last_started or (now - datetime.timedelta(days=1))
         itr = croniter(cron_expr, anchor)
@@ -96,9 +96,7 @@ def _is_due(
     # croniter returns a naive or aware datetime matching the anchor's
     # tz awareness. Our anchors are always UTC-aware so next_fire is too.
     if isinstance(next_fire, datetime.datetime):
-        if next_fire.tzinfo is None:
-            next_fire = next_fire.replace(tzinfo=datetime.UTC)
-        return next_fire <= now
+        return ensure_utc(next_fire) <= now
     return False  # pragma: no cover — croniter always returns datetime
 
 

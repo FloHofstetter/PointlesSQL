@@ -4,9 +4,7 @@
 from __future__ import annotations
 
 import datetime
-import json
 import logging
-from typing import Any
 
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -23,6 +21,14 @@ from pointlessql.services.scheduler.runs._db import (
     _utcnow,
     _workspace_id_for_job_run,
     log_job,
+)
+from pointlessql.services.scheduler.runs._logic import (
+    compose_task_fail_message,
+    detect_upstream_failures,
+    parse_config_json,
+    retry_delay_seconds,
+    select_max_attempts,
+    upstream_skip_messages,
 )
 from pointlessql.services.unitycatalog import UnityCatalogClient
 from pointlessql.types import UserInfo
@@ -108,10 +114,9 @@ async def _run_one_task(
     """
     task_token = task_id_var.set(str(task.id))
     try:
-        try:
-            config: dict[str, Any] = json.loads(task.config or "{}")
-        except json.JSONDecodeError as exc:
-            detail = f"invalid task config JSON: {exc}"
+        config, parse_err = parse_config_json(task.config)
+        if parse_err is not None:
+            detail = f"invalid task config JSON: {parse_err}"
             log_job(factory, job_run_id, task.id, "ERROR", detail)
             with factory() as session:
                 _update_task_run(
@@ -140,7 +145,7 @@ async def _run_one_task(
                 )
             return False, detail
 
-        max_attempts = max(1, task.max_retries + 1)
+        max_attempts = select_max_attempts(task.max_retries)
         last_error: str | None = None
         started = _utcnow()
         log_job(
@@ -200,7 +205,7 @@ async def _run_one_task(
                     error=last_error,
                 )
             if attempt < max_attempts:
-                delay = float(attempt * task.retry_backoff_seconds)
+                delay = retry_delay_seconds(attempt, task.retry_backoff_seconds)
                 if delay > 0:
                     # Look up via the runs package so tests that
                     # monkey-patch ``scheduler.runs._sleep`` are
@@ -270,9 +275,9 @@ async def _run_dag(
 
     for t in ordered:
         deps = _parse_depends_on(t.depends_on)
-        upstream_failed = [d for d in deps if results.get(d) in {"failed", "skipped"}]
+        upstream_failed = detect_upstream_failures(deps, results)
         if upstream_failed:
-            detail = f"task {t.name!r} skipped: upstream {upstream_failed} did not succeed"
+            detail, task_error = upstream_skip_messages(t.name, upstream_failed)
             log_job(factory, job_run_id, t.id, "INFO", detail)
             with factory() as session:
                 _update_task_run(
@@ -280,7 +285,7 @@ async def _run_dag(
                     task_run_ids[t.id],
                     status="skipped",
                     finished_at=_utcnow(),
-                    error=f"upstream {upstream_failed} failed",
+                    error=task_error,
                 )
             results[t.id] = "skipped"
             run_ok = False
@@ -302,6 +307,6 @@ async def _run_dag(
             results[t.id] = "failed"
             run_ok = False
             if run_error is None:
-                run_error = f"task {t.name!r} failed: {err}" if err else f"task {t.name!r} failed"
+                run_error = compose_task_fail_message(t.name, err)
 
     return run_ok, run_error
