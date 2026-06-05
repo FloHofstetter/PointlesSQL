@@ -255,6 +255,7 @@ not_in_nav: |
 # `docs/internal/doc-site-ia.md` for the contract.
 exclude_docs: |
   internal/*
+  e2e-walkthroughs/*
 
 strict: true  # every cross-link in the walkthroughs resolves
               # either to a docs page or to the canonical GitHub

@@ -23,6 +23,7 @@ set -euo pipefail
 THRESHOLD="${DOC_ORPHAN_THRESHOLD:-18}"
 
 python3 - "$THRESHOLD" <<'PY'
+import fnmatch
 import pathlib
 import re
 import sys
@@ -47,15 +48,17 @@ INLINE_BLOCK_RE = re.compile(
 )
 
 
-def _block_paths(text: str, key: str) -> set[str]:
-    """Return the set of docs-relative paths declared in a YAML block-scalar.
+def _block_patterns(text: str, key: str) -> set[str]:
+    """Return the docs-relative path patterns declared in a YAML block-scalar.
 
-    Strips a single leading ``/`` so ``/internal/foo.md`` (the form
-    mkdocs documents for not_in_nav) and ``internal/foo.md`` (the form
-    mkdocs documents for exclude_docs) both compare cleanly against
-    the docs-relative paths we get from ``rglob``.
+    Honors the same glob patterns mkdocs itself accepts — ``internal/*``,
+    ``e2e-walkthroughs/*`` — as well as explicit ``foo.md`` entries, so a
+    whole maintainer-only tree can be declared with one line instead of
+    listing every file.  Strips a single leading ``/`` so ``/internal/foo.md``
+    (the not_in_nav form) and ``internal/*`` (the exclude_docs form) both
+    compare cleanly against the docs-relative paths we get from ``rglob``.
     """
-    paths: set[str] = set()
+    patterns: set[str] = set()
     for m in INLINE_BLOCK_RE.finditer(text):
         if m.group(1) != key:
             continue
@@ -63,26 +66,26 @@ def _block_paths(text: str, key: str) -> set[str]:
             line = raw.strip()
             if not line:
                 continue
-            if line.endswith('.md'):
-                paths.add(line.lstrip('/'))
-    return paths
+            patterns.add(line.lstrip('/'))
+    return patterns
 
 
 text = MKDOCS.read_text(encoding='utf-8')
+# Exact `.md` paths mentioned anywhere in mkdocs.yml — this is how real
+# `nav:` entries get collected.
 nav_paths = {m.group(0) for m in NAV_PATH_RE.finditer(text)}
-not_in_nav = _block_paths(text, 'not_in_nav')
-excluded = _block_paths(text, 'exclude_docs')
-
-# `not_in_nav` and `exclude_docs` entries may have leading slashes
-# stripped above; nav entries we collect via the more permissive
-# inline regex.  Normalise everything before comparing.
-declared = nav_paths | {p.lstrip('/') for p in not_in_nav | excluded}
+# Glob (or exact) patterns from the two opt-out blocks; matched with
+# fnmatch so they honor the same wildcard semantics mkdocs applies.
+opt_out_patterns = _block_patterns(text, 'not_in_nav') | _block_patterns(text, 'exclude_docs')
 
 orphans: list[str] = []
 for md in sorted(ROOT.rglob('*.md')):
     relative = str(md.relative_to(ROOT))
-    if relative not in declared:
-        orphans.append(relative)
+    if relative in nav_paths:
+        continue
+    if any(fnmatch.fnmatch(relative, pattern) for pattern in opt_out_patterns):
+        continue
+    orphans.append(relative)
 
 count = len(orphans)
 if count > threshold:
