@@ -11,7 +11,13 @@ from typing import Any
 
 from sqlalchemy import select
 
-from pointlessql.exceptions import ValidationError
+from pointlessql.services.scheduler.executors._alert_check_logic import (
+    active_webhook_destinations,
+    build_alert_summary_md,
+    parse_table_ref,
+    valid_storage_location,
+    validate_alert_config,
+)
 from pointlessql.services.unitycatalog import UnityCatalogClient
 from pointlessql.types import UserInfo
 
@@ -45,16 +51,13 @@ async def _alert_check_executor(
         job_run_id: Current run id (unused; the alert's own
             ``AlertEvent`` row carries the history).
         user_info: The run-as user's :class:`UserInfo`.
-        config: Must carry ``alert_id``.
+        config: Must carry an integer ``alert_id``; the check is
+            delegated to :func:`validate_alert_config`, which raises
+            ``ValidationError`` when it is absent.
         uc_client: Principal-forwarded facade.
-
-    Raises:
-        ValidationError: When ``alert_id`` is missing from config.
     """
     del job_run_id  # unused; the AlertEvent row carries the history
-    alert_id = config.get("alert_id")
-    if not isinstance(alert_id, int):
-        raise ValidationError("alert_check job config missing integer 'alert_id'")
+    alert_id = validate_alert_config(config)
 
     from uuid import uuid4
 
@@ -92,8 +95,8 @@ async def _alert_check_executor(
 
     approved: dict[str, str] = {}
     for full_name in prepared.refs:
-        parts = full_name.split(".")
-        if len(parts) != 3:
+        parts = parse_table_ref(full_name)
+        if parts is None:
             logger.warning("alert %s: unexpected ref shape %r", alert_slug, full_name)
             return
         table_info = await uc_client.get_table(parts[0], parts[1], parts[2])
@@ -104,8 +107,8 @@ async def _alert_check_executor(
                 full_name,
             )
             return
-        storage_location = table_info.get("storage_location")
-        if not isinstance(storage_location, str) or not storage_location:
+        storage_location = valid_storage_location(table_info.get("storage_location"))
+        if storage_location is None:
             logger.warning(
                 "alert %s: table %s has no storage_location",
                 alert_slug,
@@ -182,9 +185,7 @@ async def _alert_check_executor(
         workspace_id=workspace_id,
         entity_kind="alert",
         entity_ref=str(alert_id),
-        summary_md=(
-            f"Alert '{alert_slug}' fired — {result.row_count} rows {condition_op} {threshold}"
-        ),
+        summary_md=build_alert_summary_md(alert_slug, result.row_count, condition_op, threshold),
         source_url=f"/alerts/{alert_slug}",
     )
 
@@ -199,11 +200,9 @@ async def _alert_check_executor(
             ).all()
         )
     delivery_failed = False
-    for dest in dests:
-        if dest.kind != "webhook" or not dest.webhook_url:
-            continue
+    for dest, webhook_url in active_webhook_destinations(dests):
         ok = await dispatch_webhook(
-            dest.webhook_url,
+            webhook_url,
             envelope,
             hmac_secret=dest.hmac_secret,
         )
