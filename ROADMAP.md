@@ -3461,6 +3461,72 @@ PointlesSQL
 │   │   läuft grün mit "2 of 2 sink(s) succeeded", Fehlerfall zeigt klare
 │   │   Meldung, Retry ohne Konflikt.  rc252→rc254.  ALL LOCAL.
 │   │
+├── Quality-Consolidation Cluster — Phasen 189–191  🔜 next (geplant 2026-06-05)
+│   │   Die Juni-1–5-Welle (Mutation-Killing + Pure-Seam-Extraktion)
+│   │   war Einmal-Aufwand ohne Schutz.  Dieser Cluster *verstetigt*
+│   │   sie: aus „ist der Code korrekt" wird „bleibt der Code korrekt".
+│   │   Drei Ratschen — Mutation-Gate (189), E2E-in-CI (190),
+│   │   Pyright-Floor-Senkung (191).  Tiefe statt Breite; keine neue
+│   │   Oberfläche.  Volle Specs in den per-Phase-Sidecars.
+│   │
+├── Phase 189 — Mutation-Testing-Gate (mutmut committen + CI-Ratsche)  🔜 next
+│   │   Detail: [`docs/internal/phase-189.md`](docs/internal/phase-189.md).
+│   │   - mutmut-Harness committen: `setup.cfg [mutmut]` +
+│   │     `scripts/mutation/run_mutmut.py` (kapselt Trampoline-Patch +
+│   │     die 4 Setup-Blocker) + README.  pyproject bleibt sauber.
+│   │   - Baseline einfrieren (`baseline.json`) + Äquivalent-Mutant-
+│   │     Allowlist (`equivalent.txt`, analog file-size-budget).
+│   │   - CI-Gate: PR-inkrementell auf geänderte `pql/`+`services/`-
+│   │     Module (failt bei *neuem* Survivor), Nightly-Full (~2 h,
+│   │     non-blocking, Artifact).  Kein pre-commit (zu langsam).
+│   │   - Restliche killbare Orchestrator-Hotspots schließen (Pure-Seam
+│   │     extrahieren + integration-covern; Memory-Frontier abarbeiten).
+│   │
+├── Phase 190 — E2E-CI-Automatisierung (Top-Journeys aus den Playbooks)  🔜 next
+│   │   Detail: [`docs/internal/phase-190.md`](docs/internal/phase-190.md).
+│   │   - Heute: 188 Phasen UI hinter genau 2 Playwright-Tests; 92
+│   │     deterministische Playbooks nur manuell replaybar.
+│   │   - Entscheidung vorab: soyuz-catalog als CI-Service booten
+│   │     (empfohlen, hinter `requires_soyuz`-Marker) → Katalog-/
+│   │     Lineage-Journeys erreichbar.
+│   │   - Seed-Fixture (`seed-e2e.py`) + `e2e/pages/`-Page-Objects +
+│   │     `_journeys.py`-Registry (Test → Quell-Playbook).
+│   │   - Tier-1 (~8: catalog/sql-editor/writes/audit/branches/rollback/
+│   │     dp-canvas/data-products) + Tier-2 (~6: lineage/federation/
+│   │     policy/non-admin-403/error-envelope).
+│   │   - CI-Verdrahtung + Flake-Kontrollen (rerun×1, screenshot-on-fail)
+│   │     + Coverage-Ledger (welche Playbooks noch nicht automatisiert).
+│   │   - Non-Scope: Journeys mit Jupyter/MLflow/dbt (Subprozesse im
+│   │     e2e-Job aus); Visual-Regression.
+│   │
+├── Phase 191 — Pyright-Warning-Floor-Sweep (962 → Ratsche)  🔜 next
+│   │   Detail: [`docs/internal/phase-191.md`](docs/internal/phase-191.md).
+│   │   - Ist (2026-06-05): 0 errors, 962 warnings (Budget am Anschlag).
+│   │     ~894 sind `reportUnknown*`; 55 `reportUnnecessaryIsInstance`
+│   │     bewusst (out of scope).
+│   │   - Methode: typisierte Grenzen an den Unknown-Quellen
+│   │     (TypedDict/pydantic an json/yaml/OpenLineage-Nähten; typed
+│   │     Wrapper an pyarrow/duckdb-Seams) — bewiesenes Muster.
+│   │   - Wellen nach Hotspot: W1 Lineage/OpenLineage (inbound_parser 31
+│   │     + _merge/_lineage 24), W2 contract_tests/_assertions 47 +
+│   │     DP-as-Code-YAML, W3 notebook-io/coedit-remap, W4 lens/query +
+│   │     catalog/browse + Tail.  BUDGET je Welle senken (inline notiert).
+│   │   - Ziel ~650–700 Rest-Floor (irreduzible Third-Party-Stubs);
+│   │     keine pauschalen `# type: ignore`, keine stillen Caps.
+│   │
+├── Phase 192 — Differentiator-Tiefe (Lineage-Korrektheit + Agent/MCP-Surface)  ⏳ planned (vorgemerkt)
+│   │   Vorgemerkt für *nach* dem Quality-Cluster — Tiefe statt Breite
+│   │   auf den DBX-Differenzierern, keine 16. Oberfläche.  Spec landet
+│   │   in einem eigenen `docs/internal/phase-192.md` bevor sie startet.
+│   │   - DBX-Moat härten: Value-/Column-Level-Lineage, Delta-Branching,
+│   │     agent-native Provenance + MCP-Reflexive-Tools, Audit-Cockpit.
+│   │   - Konkreter Aufhänger: der Lineage-Wiring-Audit (Phase 15.8) fand
+│   │     einen echten Korrektheits-Bug (silver SELECT droppt
+│   │     `_lineage_row_id`).  End-to-End-Lineage-Korrektheit über *alle*
+│   │     PQL-Pfade ist verifizierbar + hochwertig.
+│   │   - Strategische Wette: die Agent/MCP-Oberfläche (passt zum
+│   │     Agent-first-Pivot, Phase 12.12).
+│   │
 ├── Phase 188 — Echte Write-Modes (merge / append)  ✅ shipped (local, 2026-06-01)
 │   │
 │   │   Schließt den latenten Bug, dass der Executor ``mode='merge'`` still
