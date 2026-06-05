@@ -78,9 +78,11 @@ def test_parse_ref_accepts_well_formed_composite() -> None:
     [
         "abc",
         "abc:def",
-        f"{uuid.uuid4()}:short",
-        f"short:{uuid.uuid4()}",
-        f"{uuid.uuid4()}",  # missing colon entirely
+        # Fixed UUID-format constants (not uuid4()) so parametrize ids are stable
+        # across processes; otherwise pytest-xdist workers collect divergent ids.
+        "11111111-1111-4111-8111-111111111111:short",
+        "short:22222222-2222-4222-8222-222222222222",
+        "33333333-3333-4333-8333-333333333333",  # missing colon entirely
     ],
 )
 def test_parse_ref_rejects_malformed(bad_ref: str) -> None:
