@@ -26,6 +26,16 @@ import logging
 from typing import TYPE_CHECKING, Any
 
 from pointlessql.exceptions import PointlessSQLError, ValidationError
+from pointlessql.services.lens._chat_logic import (
+    assistant_tool_call_message,
+    classify_tool_exception,
+    completion_response,
+    loop_cap_message,
+    observed_tool_call_record,
+    should_persist_loop_cap,
+    to_provider_history,
+    tool_result_message,
+)
 from pointlessql.services.lens._messages import (
     append_message,
     list_session_messages,
@@ -44,7 +54,6 @@ if TYPE_CHECKING:
     from sqlalchemy.orm import Session, sessionmaker
 
     from pointlessql.config import Settings
-    from pointlessql.models import LensMessage
 
 logger = logging.getLogger(__name__)
 
@@ -154,7 +163,7 @@ async def run_chat_turn(
     )
 
     transcript = list_session_messages(factory, session_id=session_id)
-    provider_messages = _to_provider_history(provider.name, transcript)
+    provider_messages = to_provider_history(provider.name, transcript)
 
     total_tokens_in = 0
     total_tokens_out = 0
@@ -194,7 +203,7 @@ async def run_chat_turn(
 
         # Execute each tool, persist tool-rows, and append the
         # provider-specific tool_result blocks for the next turn.
-        provider_messages.append(_assistant_tool_call_message(provider.name, completion))
+        provider_messages.append(assistant_tool_call_message(provider.name, completion))
         for call in completion.tool_calls:
             try:
                 result = await execute_tool_with_audit(
@@ -203,36 +212,23 @@ async def run_chat_turn(
                     raw_args=call.args,
                 )
                 observed_tool_calls.append(
-                    {
-                        "name": call.name,
-                        "args": call.args,
-                        "result": result,
-                        "status": "ok",
-                    }
+                    observed_tool_call_record(call.name, call.args, result, "ok")
                 )
             except (LensToolError, PointlessSQLError) as exc:
                 logger.info("Lens tool %s failed: %s", call.name, exc)
                 result = {"error": str(exc)}
-                status = exc.status if isinstance(exc, LensToolError) else "error"
                 observed_tool_calls.append(
-                    {
-                        "name": call.name,
-                        "args": call.args,
-                        "result": result,
-                        "status": status,
-                    }
+                    observed_tool_call_record(
+                        call.name, call.args, result, classify_tool_exception(exc)
+                    )
                 )
-            provider_messages.append(_tool_result_message(provider.name, call.id, result))
+            provider_messages.append(tool_result_message(provider.name, call.id, result))
 
     # If the loop ran out of iterations without a clean assistant
     # message, persist a synthetic stop note so the transcript stays
     # complete.
-    if iteration >= MAX_TOOL_ITERATIONS and not final_text:
-        final_text = (
-            "The assistant exceeded the per-turn tool-call iteration cap "
-            f"({MAX_TOOL_ITERATIONS}).  Open a new session if you need a "
-            "deeper exploration."
-        )
+    if should_persist_loop_cap(iteration, final_text, MAX_TOOL_ITERATIONS):
+        final_text = loop_cap_message(MAX_TOOL_ITERATIONS)
         append_message(
             factory,
             session_id=session_id,
@@ -240,111 +236,10 @@ async def run_chat_turn(
             content=final_text,
         )
 
-    return {
-        "assistant": final_text,
-        "tool_calls": observed_tool_calls,
-        "tokens_in": total_tokens_in,
-        "tokens_out": total_tokens_out,
-        "cost": total_cost,
-    }
-
-
-def _to_provider_history(provider_name: str, transcript: list[LensMessage]) -> list[dict[str, Any]]:
-    """Render the persisted transcript in the provider's wire shape.
-
-    Tool-rows are intentionally NOT replayed (we only re-feed
-    user/assistant text); the next turn's tool-calls are issued
-    fresh by the LLM and the prior tool results live in
-    ``lens_messages`` for the audit trail but do not pollute the
-    next prompt.
-    """
-    out: list[dict[str, Any]] = []
-    for msg in transcript:
-        if msg.role == "user" and msg.content:
-            if provider_name == "anthropic":
-                out.append(
-                    {
-                        "role": "user",
-                        "content": [{"type": "text", "text": msg.content}],
-                    }
-                )
-            else:  # openai
-                out.append({"role": "user", "content": msg.content})
-        elif msg.role == "assistant" and msg.content:
-            if provider_name == "anthropic":
-                out.append(
-                    {
-                        "role": "assistant",
-                        "content": [{"type": "text", "text": msg.content}],
-                    }
-                )
-            else:  # openai
-                out.append({"role": "assistant", "content": msg.content})
-    return out
-
-
-def _assistant_tool_call_message(provider_name: str, completion: Any) -> dict[str, Any]:
-    """Echo the model's tool_use blocks back into the conversation."""
-    if provider_name == "openai":
-        return {
-            "role": "assistant",
-            "content": completion.text or None,
-            "tool_calls": [
-                {
-                    "id": tc.id,
-                    "type": "function",
-                    "function": {
-                        "name": tc.name,
-                        "arguments": _json_or_empty(tc.args),
-                    },
-                }
-                for tc in completion.tool_calls
-            ],
-        }
-    # anthropic: assistant message echoes the tool_use blocks
-    blocks: list[dict[str, Any]] = []
-    if completion.text:
-        blocks.append({"type": "text", "text": completion.text})
-    for tc in completion.tool_calls:
-        blocks.append(
-            {
-                "type": "tool_use",
-                "id": tc.id,
-                "name": tc.name,
-                "input": tc.args,
-            }
-        )
-    return {"role": "assistant", "content": blocks}
-
-
-def _tool_result_message(
-    provider_name: str, call_id: str, result: dict[str, Any]
-) -> dict[str, Any]:
-    """Wrap a tool-result for the provider's next-turn prompt."""
-    if provider_name == "openai":
-        return {
-            "role": "tool",
-            "tool_call_id": call_id,
-            "content": _json_or_empty(result),
-        }
-    # anthropic: tool_result lives in a user-role content block
-    return {
-        "role": "user",
-        "content": [
-            {
-                "type": "tool_result",
-                "tool_use_id": call_id,
-                "content": _json_or_empty(result),
-            }
-        ],
-    }
-
-
-def _json_or_empty(payload: Any) -> str:
-    """Coerce *payload* to a JSON string; return ``"{}"`` on failure."""
-    import json
-
-    try:
-        return json.dumps(payload, default=str)
-    except TypeError, ValueError:
-        return "{}"
+    return completion_response(
+        assistant=final_text,
+        tool_calls=observed_tool_calls,
+        tokens_in=total_tokens_in,
+        tokens_out=total_tokens_out,
+        cost=total_cost,
+    )
