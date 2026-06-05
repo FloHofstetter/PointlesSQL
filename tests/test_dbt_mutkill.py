@@ -36,6 +36,7 @@ from pointlessql.services.dbt import (
 )
 from pointlessql.services.dbt._executor import (  # noqa: PLC2701  # private helpers
     _MAX_OUTPUT_BYTES,
+    DBTExecutionError,
     _truncate,
 )
 
@@ -412,3 +413,278 @@ async def test_compile_without_models_has_no_select(
     result = await ex.compile()
     assert "compile" in result.command
     assert "--select" not in result.command
+
+
+# ---------------------------------------------------------------------------
+# run() verb + --select composition
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_run_keeps_run_verb_lowercase(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """run() composes the exact lowercase ``run`` verb into the argv.
+
+    Pins the ``["run"]`` literal: an upper-casing or token-rename
+    mutation would put ``"RUN"`` / ``"XXrunXX"`` into the command and
+    drop the plain ``run`` token.
+    """
+    _patch_spawn(monkeypatch)
+    ex = DBTExecutor(DBTSettings(), cwd=tmp_path)
+    result = await ex.run()
+    assert "run" in result.command
+    assert "RUN" not in result.command
+
+
+@pytest.mark.asyncio
+async def test_run_appends_select_keeping_run_verb(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """run(models=...) appends ``--select`` without dropping ``run``.
+
+    Pins ``args += [...]`` (accumulate) vs ``args = [...]`` (replace):
+    the replace mutation would wipe the ``run`` verb out of the argv.
+    """
+    _patch_spawn(monkeypatch)
+    ex = DBTExecutor(DBTSettings(), cwd=tmp_path)
+    result = await ex.run(models=["bronze", "silver"])
+    cmd = result.command
+    assert "run" in cmd
+    assert cmd[cmd.index("--select") + 1] == "bronze silver"
+
+
+@pytest.mark.asyncio
+async def test_run_select_joins_models_with_single_space(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """run() joins model names with a single space, not a literal token.
+
+    Pins the ``" ".join(models)`` separator: a mutated separator would
+    surface as ``bronzeXX XXsilver`` in the ``--select`` value.
+    """
+    _patch_spawn(monkeypatch)
+    ex = DBTExecutor(DBTSettings(), cwd=tmp_path)
+    result = await ex.run(models=["bronze", "silver"])
+    cmd = result.command
+    assert cmd[cmd.index("--select") + 1] == "bronze silver"
+
+
+# ---------------------------------------------------------------------------
+# DBTRunResult field wiring — truncation flags + duration
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_run_copies_truncated_stdout_flag(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """An oversized stdout sets ``truncated_stdout`` True on the result.
+
+    Pins ``truncated_stdout=out_trunc``: dropping that kwarg would fall
+    back to the dataclass default ``False`` even for clipped output.
+    """
+    big = b"x" * (_MAX_OUTPUT_BYTES + 1)
+    _patch_spawn(monkeypatch, stdout=big, stderr=b"short")
+    ex = DBTExecutor(DBTSettings(), cwd=tmp_path)
+    result = await ex.run()
+    assert result.truncated_stdout is True
+    assert result.truncated_stderr is False
+
+
+@pytest.mark.asyncio
+async def test_run_copies_truncated_stderr_flag(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """An oversized stderr sets ``truncated_stderr`` True on the result.
+
+    Pins ``truncated_stderr=err_trunc``: dropping that kwarg would fall
+    back to the dataclass default ``False`` even for clipped output.
+    """
+    big = b"y" * (_MAX_OUTPUT_BYTES + 1)
+    _patch_spawn(monkeypatch, stdout=b"short", stderr=big)
+    ex = DBTExecutor(DBTSettings(), cwd=tmp_path)
+    result = await ex.run()
+    assert result.truncated_stderr is True
+    assert result.truncated_stdout is False
+
+
+class _SlowProc:
+    """Stub process whose ``communicate`` takes a measurable interval."""
+
+    def __init__(self, returncode: int, stdout: bytes, stderr: bytes) -> None:
+        self.returncode = returncode
+        self._stdout = stdout
+        self._stderr = stderr
+
+    async def communicate(self) -> tuple[bytes, bytes]:
+        await asyncio.sleep(0.02)
+        return self._stdout, self._stderr
+
+
+@pytest.mark.asyncio
+async def test_run_records_positive_duration(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A measurable subprocess interval lands on ``duration_seconds``.
+
+    Pins both ``duration = loop.time() - start`` (a ``+ start`` mutation
+    yields a huge near-2x-monotonic value) and the
+    ``duration_seconds=duration`` copy (dropping it leaves the 0.0
+    default despite a non-trivial run).
+    """
+
+    async def _spawn(*_args: Any, **_kwargs: Any) -> _SlowProc:
+        return _SlowProc(0, b"out", b"err")
+
+    monkeypatch.setattr(asyncio, "create_subprocess_exec", _spawn)
+    ex = DBTExecutor(DBTSettings(), cwd=tmp_path)
+    result = await ex.run()
+    # A real sleep makes the duration strictly positive (kills the
+    # dropped-kwarg default of 0.0) while still well under a second
+    # (kills the ``+ start`` mutation, which would be a large monotonic
+    # sum).
+    assert result.duration_seconds > 0.0
+    assert result.duration_seconds < 60.0
+
+
+# ---------------------------------------------------------------------------
+# spawn-failure + timeout error paths
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_run_missing_binary_raises_with_install_hint(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A missing dbt binary raises with the install-hint message intact.
+
+    Pins the ``FileNotFoundError`` branch message: a blanked-out string
+    would lose the ``pip install pointlessql[dbt]`` hint users rely on.
+    """
+
+    async def _spawn(*_args: Any, **_kwargs: Any) -> Any:
+        raise FileNotFoundError("no dbt")
+
+    monkeypatch.setattr(asyncio, "create_subprocess_exec", _spawn)
+    ex = DBTExecutor(DBTSettings(), cwd=tmp_path)
+    with pytest.raises(DBTExecutionError) as excinfo:
+        await ex.run()
+    assert "dbt CLI not found" in str(excinfo.value)
+    assert "pip install pointlessql[dbt]" in str(excinfo.value)
+
+
+@pytest.mark.asyncio
+async def test_run_spawn_oserror_includes_underlying_message(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A spawn OSError surfaces a non-None message naming the failure.
+
+    Pins ``DBTExecutionError(f"failed to spawn dbt: {exc}")``: a
+    ``DBTExecutionError(None)`` mutation would drop the message body.
+    """
+
+    async def _spawn(*_args: Any, **_kwargs: Any) -> Any:
+        raise OSError("permission denied")
+
+    monkeypatch.setattr(asyncio, "create_subprocess_exec", _spawn)
+    ex = DBTExecutor(DBTSettings(), cwd=tmp_path)
+    with pytest.raises(DBTExecutionError) as excinfo:
+        await ex.run()
+    assert "failed to spawn dbt" in str(excinfo.value)
+    assert "permission denied" in str(excinfo.value)
+
+
+class _HangingProc:
+    """Stub process whose ``communicate`` never returns on its own."""
+
+    def __init__(self) -> None:
+        self.returncode: int | None = None
+        self.killed = False
+
+    async def communicate(self) -> tuple[bytes, bytes]:
+        await asyncio.sleep(3600)
+        return b"", b""  # pragma: no cover - never reached
+
+    def kill(self) -> None:
+        self.killed = True
+
+    async def wait(self) -> int:
+        self.returncode = -9
+        return -9
+
+
+def _patch_hanging_spawn(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Install a stub spawn returning a process that never completes."""
+
+    async def _spawn(*_args: Any, **_kwargs: Any) -> _HangingProc:
+        return _HangingProc()
+
+    monkeypatch.setattr(asyncio, "create_subprocess_exec", _spawn)
+
+
+@pytest.mark.asyncio
+async def test_run_honours_configured_timeout(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A hung subprocess is aborted using the configured timeout.
+
+    Pins ``timeout=self.settings.timeout_seconds``: a ``timeout=None``
+    mutation disables the wait_for deadline so the call would hang
+    forever.  An outer wait_for proves the executor itself raised
+    promptly rather than blocking.
+    """
+    _patch_hanging_spawn(monkeypatch)
+    ex = DBTExecutor(DBTSettings(timeout_seconds=0), cwd=tmp_path)
+    with pytest.raises(DBTExecutionError):
+        # If the inner timeout were disabled (None), communicate would
+        # block and this outer guard would raise TimeoutError instead.
+        await asyncio.wait_for(ex.run(), timeout=5.0)
+
+
+@pytest.mark.asyncio
+async def test_run_timeout_message_names_subcommand(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The timeout error message names the first subcommand argument.
+
+    Pins the ``args[0]`` index + the f-string body of the timeout
+    branch: an ``args[1]`` index or a ``DBTExecutionError(None)``
+    mutation changes which token (or whether any) appears in the
+    message.  ``_run`` is driven directly so ``args[0]`` is ``run``.
+    """
+    _patch_hanging_spawn(monkeypatch)
+    ex = DBTExecutor(DBTSettings(timeout_seconds=0), cwd=tmp_path)
+    with pytest.raises(DBTExecutionError) as excinfo:
+        await asyncio.wait_for(ex._run("run", "--select", "bronze"), timeout=5.0)
+    msg = str(excinfo.value)
+    assert "dbt run exceeded" in msg
+    assert "timeout" in msg
+
+
+@pytest.mark.asyncio
+async def test_run_timeout_message_empty_args_placeholder(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """With no subcommand args the timeout message uses an empty verb.
+
+    Pins the ``args[0] if args else ''`` placeholder: a mutated
+    placeholder would inject stray characters between ``dbt`` and
+    ``exceeded`` when ``_run`` is invoked with no positional args.
+    """
+    _patch_hanging_spawn(monkeypatch)
+    ex = DBTExecutor(DBTSettings(timeout_seconds=0), cwd=tmp_path)
+    with pytest.raises(DBTExecutionError) as excinfo:
+        await asyncio.wait_for(ex._run(), timeout=5.0)
+    assert "dbt  exceeded" in str(excinfo.value)
