@@ -41,6 +41,17 @@ from sqlalchemy import select
 from pointlessql.models.notebook import NotebookReplay
 from pointlessql.services.notebook import replay as replay_service
 from pointlessql.services.notebook import revisions as revisions_service
+from pointlessql.services.notebook._replay_logic import (
+    build_error_frame,
+    build_output_frame,
+    frame_has_error,
+    is_idle_status,
+    is_output_message,
+    message_matches_parent,
+    prepare_kernel_env,
+    serialise_content,
+    should_execute_cell,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -84,19 +95,13 @@ async def _execute_one_replay(
                 replay_uuid=replay_row.replay_uuid,
                 status=replay_service.REPLAY_STATUS_ERROR,
                 outputs=[
-                    {
-                        "content_hash": "__no_revision__",
-                        "kernel_session_id": "worker",
-                        "output_index": 0,
-                        "msg_type": "error",
-                        "content": {
-                            "ename": "ReplayError",
-                            "evalue": "base revision missing",
-                            "traceback": [],
-                        },
-                        "metadata": None,
-                        "created_at": datetime.datetime.now(datetime.UTC).isoformat(),
-                    }
+                    build_error_frame(
+                        content_hash="__no_revision__",
+                        kernel_session_id="worker",
+                        ename="ReplayError",
+                        evalue="base revision missing",
+                        created_at=datetime.datetime.now(datetime.UTC).isoformat(),
+                    )
                 ],
             )
             session.commit()
@@ -106,10 +111,7 @@ async def _execute_one_replay(
     # Spin up an isolated kernel.  ``cwd`` is a fresh tempdir so the
     # replay doesn't pollute the notebooks_dir; ``POINTLESSQL_BRANCH``
     # routes writes through the bound branch when set.
-    env = os.environ.copy()
-    if branch_name:
-        env["POINTLESSQL_BRANCH"] = branch_name
-    env.setdefault("POINTLESSQL_PRINCIPAL", "replay-worker@pointlessql.local")
+    env = prepare_kernel_env(os.environ, branch_name)
     cwd = Path(tempfile.mkdtemp(prefix="replay-")) if not notebooks_dir.exists() else notebooks_dir
     km: AsyncKernelManager | None = None
     kc = None
@@ -129,7 +131,7 @@ async def _execute_one_replay(
             cell_type = cell.get("cell_type") or "code"
             content_hash = cell.get("content_hash") or ""
             source = cell.get("source") or ""
-            if cell_type == "markdown" or not source.strip():
+            if not should_execute_cell(cell_type, source):
                 continue
             try:
                 frames = await _execute_one_cell(
@@ -141,46 +143,32 @@ async def _execute_one_replay(
                 )
             except TimeoutError:
                 frames = [
-                    {
-                        "content_hash": content_hash,
-                        "kernel_session_id": session_id,
-                        "output_index": 0,
-                        "msg_type": "error",
-                        "content": {
-                            "ename": "TimeoutError",
-                            "evalue": (
-                                f"cell {index + 1} exceeded {DEFAULT_CELL_TIMEOUT_SECONDS}s"
-                            ),
-                            "traceback": [],
-                        },
-                        "metadata": None,
-                        "created_at": datetime.datetime.now(datetime.UTC).isoformat(),
-                    }
+                    build_error_frame(
+                        content_hash=content_hash,
+                        kernel_session_id=session_id,
+                        ename="TimeoutError",
+                        evalue=f"cell {index + 1} exceeded {DEFAULT_CELL_TIMEOUT_SECONDS}s",
+                        created_at=datetime.datetime.now(datetime.UTC).isoformat(),
+                    )
                 ]
                 final_status = replay_service.REPLAY_STATUS_ERROR
             collected.extend(frames)
             # Short-circuit on the first error so the user sees
             # the failure cause without waiting for downstream
             # cells to also fail.
-            if any(f["msg_type"] == "error" for f in frames):
+            if frame_has_error(frames):
                 final_status = replay_service.REPLAY_STATUS_ERROR
                 break
     except Exception as exc:  # noqa: BLE001
         logger.exception("replay worker failure")
         collected.append(
-            {
-                "content_hash": "__worker__",
-                "kernel_session_id": session_id,
-                "output_index": 0,
-                "msg_type": "error",
-                "content": {
-                    "ename": exc.__class__.__name__,
-                    "evalue": str(exc),
-                    "traceback": [],
-                },
-                "metadata": None,
-                "created_at": datetime.datetime.now(datetime.UTC).isoformat(),
-            }
+            build_error_frame(
+                content_hash="__worker__",
+                kernel_session_id=session_id,
+                ename=exc.__class__.__name__,
+                evalue=str(exc),
+                created_at=datetime.datetime.now(datetime.UTC).isoformat(),
+            )
         )
         final_status = replay_service.REPLAY_STATUS_ERROR
     finally:
@@ -247,52 +235,26 @@ async def _execute_one_cell(
             msg = await asyncio.wait_for(kc.get_iopub_msg(), timeout=remaining)
         except TimeoutError as e:
             raise TimeoutError("cell timed out") from e
-        parent = (msg.get("parent_header") or {}).get("msg_id")
-        if parent != msg_id:
+        if not message_matches_parent(msg, msg_id):
             continue
         msg_type = msg.get("msg_type") or ""
         content = msg.get("content") or {}
-        if msg_type == "status" and content.get("execution_state") == "idle":
+        if is_idle_status(msg_type, content):
             break
-        if msg_type in {"stream", "execute_result", "display_data", "error"}:
+        if is_output_message(msg_type):
             frames.append(
-                {
-                    "content_hash": content_hash,
-                    "kernel_session_id": session_id,
-                    "output_index": output_index,
-                    "msg_type": msg_type,
-                    "content": _serialise_content(msg_type, content),
-                    "metadata": content.get("metadata"),
-                    "created_at": datetime.datetime.now(datetime.UTC).isoformat(),
-                }
+                build_output_frame(
+                    content_hash=content_hash,
+                    kernel_session_id=session_id,
+                    output_index=output_index,
+                    msg_type=msg_type,
+                    content=serialise_content(msg_type, content),
+                    metadata=content.get("metadata"),
+                    created_at=datetime.datetime.now(datetime.UTC).isoformat(),
+                )
             )
             output_index += 1
     return frames
-
-
-def _serialise_content(msg_type: str, content: dict[str, Any]) -> dict[str, Any]:
-    """Pick the JSON-friendly subset of a kernel iopub content frame.
-
-    Args:
-        msg_type: Kernel message type.
-        content: Raw ``content`` dict.
-
-    Returns:
-        Trimmed dict matching the load-shape stored in ``notebook_outputs``.
-    """
-    if msg_type == "stream":
-        return {"name": content.get("name") or "stdout", "text": content.get("text") or ""}
-    if msg_type == "error":
-        return {
-            "ename": content.get("ename"),
-            "evalue": content.get("evalue"),
-            "traceback": content.get("traceback") or [],
-        }
-    # execute_result / display_data — pass through the mime bundle.
-    return {
-        "data": content.get("data") or {},
-        "execution_count": content.get("execution_count"),
-    }
 
 
 async def run_pending_replays(

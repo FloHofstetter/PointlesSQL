@@ -32,7 +32,9 @@
 #
 # 966 -> 965: extracting the papermill output-frame transform into a
 # typed pure helper dropped one partially-unknown nbformat seam.
-BUDGET=965
+# 965 -> 962: extracting the replay-worker frame builders into typed
+# pure helpers dropped three more untyped-dict seams.
+BUDGET=962
 
 # Run pyright and capture the trailing summary line, e.g.
 #   "0 errors, 522 warnings, 0 informations"
