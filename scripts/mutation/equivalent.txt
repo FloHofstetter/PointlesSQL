@@ -1,0 +1,17 @@
+# Known-equivalent mutants — survivors that NO test can kill because the
+# mutation cannot change observable behaviour. The PR mutation gate
+# (scripts/check-mutation-budget.sh) treats these as accepted, so a
+# changed module surviving only these does not fail the build.
+#
+# One mutant name per line; blank lines and #-comments are ignored.
+# Add an entry only after confirming the survivor is genuinely
+# equivalent (typing.cast no-ops, cosmetic error-string content,
+# timing arithmetic, log-message wording, …) — never to silence a real
+# blind spot. Put a one-line reason as a trailing comment.
+#
+# Caveat: mutmut names mutants positionally (`…__mutmut_<n>`), so an
+# entry can drift if the surrounding source is edited and the mutation
+# index shifts. The nightly full run surfaces drift; re-confirm an
+# entry when its module changes.
+#
+# Populated from the first full baseline run (Phase 189 W2).

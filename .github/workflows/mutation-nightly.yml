@@ -1,0 +1,60 @@
+name: mutation-nightly
+
+# Full mutation sweep over pql/ + services/.  Informational, never
+# blocking: it uploads the survivor list + a diff against the committed
+# baseline so regressions in mutation score surface without gating merges
+# (the PR job is the blocking, scoped gate).
+#
+# NOTE: a standard 2-vCPU runner makes the full sweep slow — mutmut forks
+# `cores - 2` workers.  If the run gets close to the timeout, move it to a
+# larger runner or shard pql/ vs services/ into a matrix (see
+# docs/internal/phase-189.md).
+
+on:
+  schedule:
+    - cron: "0 3 * * *" # 03:00 UTC daily
+  workflow_dispatch:
+
+jobs:
+  full-mutation:
+    name: full mutation sweep (pql/ + services/)
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - name: Set up Python
+        run: uv python install 3.14
+      - name: Install dependencies
+        run: uv sync --all-extras
+      - name: Full mutation run
+        # `|| true`: survivors make mutmut exit non-zero, but this job is
+        # informational — the artifact + diff are the deliverable.
+        run: uv run --with mutmut==3.5.0 python scripts/mutation/run_mutmut.py run || true
+      - name: Dump results
+        run: |
+          uv run --with mutmut==3.5.0 python scripts/mutation/run_mutmut.py results \
+            > mutation-results.txt || true
+      - name: Diff against committed baseline
+        run: |
+          if [ -f scripts/mutation/baseline.json ]; then
+            python scripts/mutation/snapshot_baseline.py --diff scripts/mutation/baseline.json \
+              < mutation-results.txt | tee mutation-diff.txt || true
+          else
+            echo "No baseline.json committed yet — recording the current run as the first baseline." \
+              | tee mutation-diff.txt
+            python scripts/mutation/snapshot_baseline.py --write scripts/mutation/baseline.json \
+              < mutation-results.txt || true
+          fi
+      - name: Upload mutation artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mutation-nightly
+          path: |
+            mutation-results.txt
+            mutation-diff.txt
+            scripts/mutation/baseline.json

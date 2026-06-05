@@ -1,0 +1,41 @@
+name: mutation-pr
+
+# PR-incremental mutation gate: runs mutmut only on the pql/ + services/
+# modules the PR touches and fails on a new, non-equivalent surviving
+# mutant.  Only fires when those packages change, so unrelated PRs pay
+# nothing.  The full sweep is the nightly job.
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "pointlessql/pql/**"
+      - "pointlessql/services/**"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  mutation-budget:
+    name: mutation budget (changed pql/ + services/ modules)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Need the PR base commit present so the changed-file diff and
+          # the merge-base resolve.
+          fetch-depth: 0
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - name: Set up Python
+        run: uv python install 3.14
+      - name: Install dependencies
+        run: uv sync --all-extras
+      - name: Mutation budget on changed modules
+        env:
+          MUTATION_BASE_REF: ${{ github.event.pull_request.base.sha }}
+        run: bash scripts/check-mutation-budget.sh
