@@ -13,7 +13,6 @@ are module-level so tests can monkeypatch them via
 
 from __future__ import annotations
 
-import datetime
 import logging
 from collections.abc import Callable
 from typing import Any
@@ -23,6 +22,11 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from pointlessql.models import Job, JobRun
 from pointlessql.services import metrics as metrics_service
+from pointlessql.services.scheduler.runs._logic import (
+    build_failure_webhook_payload,
+    duration_seconds,
+    should_emit_failure_webhook,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -55,13 +59,7 @@ def _duration_seconds(run: JobRun) -> float | None:
     """
     if run.finished_at is None:
         return None
-    started = run.started_at
-    finished = run.finished_at
-    if started.tzinfo is None:
-        started = started.replace(tzinfo=datetime.UTC)
-    if finished.tzinfo is None:
-        finished = finished.replace(tzinfo=datetime.UTC)
-    return (finished - started).total_seconds()
+    return duration_seconds(run.started_at, run.finished_at)
 
 
 def _load_job_name_and_webhook(
@@ -186,16 +184,17 @@ async def _emit_run_telemetry(
 
     _sync_run_health_signal(factory, job_id, job_name, run)
 
-    if run.status != "failed" or not on_failure_url:
+    if not should_emit_failure_webhook(run.status, on_failure_url):
         return
+    assert on_failure_url is not None  # narrowed by the guard above
 
-    payload: dict[str, Any] = {
-        "job_id": job_id,
-        "job_name": job_name,
-        "run_id": run.id,
-        "status": run.status,
-        "error": run.error,
-        "started_at": run.started_at.isoformat() if run.started_at else None,
-        "finished_at": run.finished_at.isoformat() if run.finished_at else None,
-    }
+    payload = build_failure_webhook_payload(
+        job_id=job_id,
+        job_name=job_name,
+        run_id=run.id,
+        status=run.status,
+        error=run.error,
+        started_at=run.started_at,
+        finished_at=run.finished_at,
+    )
     await _post_failure_webhook(on_failure_url, payload)

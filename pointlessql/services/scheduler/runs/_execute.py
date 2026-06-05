@@ -3,7 +3,6 @@
 
 from __future__ import annotations
 
-import json
 import logging
 from typing import Any
 
@@ -25,6 +24,7 @@ from pointlessql.services.scheduler.runs._db import (
     _start_run,
     log_job,
 )
+from pointlessql.services.scheduler.runs._logic import dag_run_status, parse_config_json
 from pointlessql.services.scheduler.runs._tasks import _run_dag
 from pointlessql.services.scheduler.runs._telemetry import _emit_run_telemetry
 from pointlessql.services.unitycatalog import UnityCatalogClient
@@ -117,16 +117,15 @@ async def _execute_run_core(
     config: dict[str, Any] = {}
 
     if not is_dag:
-        try:
-            config = json.loads(config_json or "{}")
-        except json.JSONDecodeError as exc:
+        config, parse_err = parse_config_json(config_json)
+        if parse_err is not None:
             with factory() as session:
                 run = _start_run(session, job_id, trigger)
                 _finish_run(
                     session,
                     run.id,
                     "failed",
-                    f"invalid job config JSON: {exc}",
+                    f"invalid job config JSON: {parse_err}",
                 )
                 final = session.get(JobRun, run.id)
                 assert final is not None
@@ -178,12 +177,8 @@ async def _execute_run_core(
                     _finish_run(session, run_id, "failed", exc.detail)
                 return _detached_run(factory, run_id)
             with factory() as session:
-                _finish_run(
-                    session,
-                    run_id,
-                    "succeeded" if ok else "failed",
-                    None if ok else err,
-                )
+                status, final_err = dag_run_status(ok, err)
+                _finish_run(session, run_id, status, final_err)
             return _detached_run(factory, run_id)
 
         # Single-task shortcut.
