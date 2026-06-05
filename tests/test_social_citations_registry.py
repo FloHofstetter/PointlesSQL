@@ -22,12 +22,32 @@ import pytest
 from sqlalchemy.orm import Session
 
 from pointlessql.api.main import app
+from pointlessql.services.social import citations
 from pointlessql.services.social.citations import (
     CitationKind,
     register_citation_kind,
     registered_citation_kinds,
     resolve_citations,
 )
+
+
+@pytest.fixture(autouse=True)
+def _restore_citation_registry() -> object:
+    """Isolate the process-wide citation-kind registry per test.
+
+    ``register_citation_kind`` appends to a module-level list that
+    lives for the whole interpreter session.  A test that registers a
+    kind without undoing it leaks into any later run of the same test
+    in the same process — for example when the suite is executed twice
+    back-to-back — turning the second registration into a spurious
+    ``already registered`` failure.  Snapshotting and restoring the
+    list in place keeps each test self-contained.
+    """
+    snapshot = list(citations._CITATION_KINDS)
+    try:
+        yield
+    finally:
+        citations._CITATION_KINDS[:] = snapshot
 
 
 def test_existing_four_kinds_are_registered() -> None:
