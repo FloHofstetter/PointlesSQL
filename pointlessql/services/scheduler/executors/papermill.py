@@ -21,6 +21,14 @@ from typing import Any
 
 from pointlessql.config import get_settings
 from pointlessql.exceptions import EngineError, ValidationError
+from pointlessql.services.scheduler.executors._papermill_logic import (
+    is_code_cell,
+    papermill_error_message,
+    papermill_input_temp_path,
+    papermill_output_path,
+    transform_output_frame,
+    validate_papermill_config,
+)
 from pointlessql.services.unitycatalog import UnityCatalogClient
 from pointlessql.types import UserInfo
 
@@ -200,10 +208,11 @@ def _run_papermill_blocking(
                     progress_bar=False,
                 )
             except PapermillExecutionError as exc:
-                raise EngineError(
-                    f"papermill execution failed in cell {exc.exec_count}: "
-                    f"{exc.ename}: {exc.evalue}"
-                ) from exc
+                # papermill is untyped; pin the attrs to concrete types
+                # before handing them to the typed message builder.
+                ename: str = exc.ename
+                evalue: str = exc.evalue
+                raise EngineError(papermill_error_message(exc.exec_count, ename, evalue)) from exc
         finally:
             if previous is None:
                 os.environ.pop("POINTLESSQL_PRINCIPAL", None)
@@ -262,31 +271,19 @@ async def _papermill_executor(
         EngineError: When the notebook raises during execution, when
             the execution exceeds the timeout, or when papermill
             itself errors out.
-    """
+    """  # noqa: DOC503 — ValidationError re-raised from validate_papermill_config / resolve_notebook_path
     del uc_client  # kernel subprocess builds its own PQL client
 
-    notebook_path = config.get("notebook_path")
-    if not isinstance(notebook_path, str):
-        raise ValidationError("papermill job config is missing required key 'notebook_path'")
-
-    parameters = config.get("parameters", {})
-    if not isinstance(parameters, dict):
-        raise ValidationError("papermill job config 'parameters' must be an object")
-
     settings = get_settings()
-    timeout_cfg = config.get("timeout_seconds")
-    if timeout_cfg is None:
-        timeout_seconds = settings.jupyter.execute_timeout_seconds
-    elif isinstance(timeout_cfg, int) and timeout_cfg > 0:
-        timeout_seconds = timeout_cfg
-    else:
-        raise ValidationError("papermill job config 'timeout_seconds' must be a positive int")
+    notebook_path, parameters, timeout_seconds = validate_papermill_config(
+        config, settings.jupyter.execute_timeout_seconds
+    )
 
     notebooks_dir = Path(settings.jupyter.notebooks_dir).resolve()
     input_path = resolve_notebook_path(notebooks_dir, notebook_path)
     runs_dir = Path(settings.jupyter.runs_dir).resolve()
     runs_dir.mkdir(parents=True, exist_ok=True)
-    output_path = runs_dir / f"{job_run_id}.ipynb"
+    output_path = papermill_output_path(runs_dir, job_run_id)
 
     # If the user scheduled a ``.py`` notebook (jupytext percent
     # format), convert it to a sibling ``.ipynb`` inside the runs
@@ -295,7 +292,7 @@ async def _papermill_executor(
     papermill_input = input_path
     converted_temp: Path | None = None
     if input_path.suffix == ".py":
-        converted_temp = runs_dir / f"{job_run_id}.input.ipynb"
+        converted_temp = papermill_input_temp_path(runs_dir, job_run_id)
         await asyncio.to_thread(_jupytext_py_to_ipynb, input_path, converted_temp)
         papermill_input = converted_temp
         logger.info(
@@ -412,22 +409,14 @@ def _persist_papermill_outputs(
     notebook = nbformat.read(str(output_ipynb), as_version=4)
     cell_index = 0
     for raw_cell in notebook.cells:
-        if getattr(raw_cell, "cell_type", "code") != "code":
+        if not is_code_cell(raw_cell):
             cell_index += 1
             continue
         source = raw_cell.source or ""
         content_hash = _doc_module.compute_content_hash(source)
-        outputs = getattr(raw_cell, "outputs", []) or []
+        outputs: list[Any] = getattr(raw_cell, "outputs", []) or []
         for output_index, out in enumerate(outputs):
-            out_dict: dict[str, Any] = dict(out)
-            msg_type = str(out_dict.get("output_type") or "execute_result")
-            # nbformat output dict already carries the iopub message
-            # shape (data/metadata for execute_result+display_data,
-            # text for stream, ename/evalue/traceback for error).
-            content_payload: dict[str, Any] = {
-                k: v for k, v in out_dict.items() if k != "output_type"
-            }
-            metadata = content_payload.pop("metadata", None)
+            msg_type, content_payload, metadata = transform_output_frame(out)
             try:
                 _outputs.append_output(
                     factory,
@@ -437,7 +426,7 @@ def _persist_papermill_outputs(
                     output_index=output_index,
                     msg_type=msg_type,
                     content=content_payload,
-                    metadata=metadata if isinstance(metadata, dict) else None,
+                    metadata=metadata,
                 )
             except Exception:  # noqa: BLE001
                 logger.exception(

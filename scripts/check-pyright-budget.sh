@@ -29,7 +29,10 @@
 # changes.  When a deliberate change legitimately adds warnings, bump
 # BUDGET here with a one-line note; when refactoring removes the
 # underlying third-party seam, lower it.
-BUDGET=966
+#
+# 966 -> 965: extracting the papermill output-frame transform into a
+# typed pure helper dropped one partially-unknown nbformat seam.
+BUDGET=965
 
 # Run pyright and capture the trailing summary line, e.g.
 #   "0 errors, 522 warnings, 0 informations"
