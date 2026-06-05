@@ -276,3 +276,241 @@ def test_no_audit_row_when_run_id_unset(
     assert result == "frame"
     with factory() as s:
         assert list(s.scalars(select(QueryHistory)).all()) == []
+
+
+# ------------------------------------------------------------------
+# The get-table call must forward BOTH the real client and full_name
+# ------------------------------------------------------------------
+
+
+def _patch_table_capturing(
+    monkeypatch: pytest.MonkeyPatch, storage_location: Any
+) -> dict[str, Any]:
+    """Patch ``_get_table.sync`` and capture the kwargs it was called with."""
+    from soyuz_catalog_client.models.table_info import TableInfo
+
+    captured: dict[str, Any] = {}
+
+    def _sync(**kwargs: Any) -> TableInfo:
+        captured.update(kwargs)
+        return TableInfo(storage_location=storage_location, name="tbl")
+
+    fake = MagicMock()
+    fake.sync.side_effect = _sync
+    monkeypatch.setattr(_read, "_get_table", fake)
+    return captured
+
+
+def test_get_table_is_called_with_the_real_client_and_name(
+    factory: sessionmaker,  # type: ignore[type-arg]
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """``_get_table.sync`` receives the caller's client and the FQN.
+
+    This pins the catalog lookup call site: dropping or nulling either
+    ``client=`` or ``full_name=`` would change the kwargs handed to the
+    generated client. We pass a sentinel client object and assert it is
+    forwarded verbatim, and that ``full_name`` is the requested name
+    (not ``None`` and not dropped).
+    """
+    captured = _patch_table_capturing(monkeypatch, "/data/x")
+    client = object()
+
+    _read.read_table(
+        client=client,  # type: ignore[arg-type]
+        engine=_StubEngine("frame"),  # type: ignore[arg-type]
+        full_name="cat.sch.tbl",
+        unreachable_msg="nope",
+    )
+
+    assert captured["client"] is client
+    assert captured["full_name"] == "cat.sch.tbl"
+
+
+# ------------------------------------------------------------------
+# Timestamps must be timezone-aware UTC, not naive local time
+# ------------------------------------------------------------------
+
+
+def _spy_record(monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
+    """Replace ``_read._record`` with a spy capturing its kwargs.
+
+    The persisted ``finished_at`` loses its tzinfo when SQLite stores
+    it as a naive datetime, so to observe the UTC-vs-naive choice we
+    must look at the value *before* persistence — i.e. the argument
+    handed to ``_record``.
+    """
+    captured: dict[str, Any] = {}
+
+    def _spy(**kwargs: Any) -> None:
+        captured.update(kwargs)
+
+    monkeypatch.setattr(_read, "_record", _spy)
+    return captured
+
+
+def test_success_finished_at_is_utc_aware(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The success-path ``finished_at`` carries UTC tzinfo.
+
+    ``datetime.datetime.now(datetime.UTC)`` yields an aware UTC stamp;
+    ``now(None)`` would yield a naive local one. Asserting ``tzinfo``
+    is UTC on the value forwarded to ``_record`` distinguishes the two.
+    """
+    _patch_table(monkeypatch, "/data/x")
+    captured = _spy_record(monkeypatch)
+    _read.read_table(
+        client=MagicMock(),
+        engine=_StubEngine("frame"),  # type: ignore[arg-type]
+        full_name="cat.sch.tbl",
+        unreachable_msg="nope",
+    )
+    assert captured["finished_at"].tzinfo == datetime.UTC
+
+
+def test_failure_finished_at_is_utc_aware(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The failure-path ``finished_at`` also carries UTC tzinfo.
+
+    Mirror of the success case for the except branch's
+    ``now(datetime.UTC)`` call.
+    """
+    _patch_table(monkeypatch, "/data/boom")
+    captured = _spy_record(monkeypatch)
+    boom = RuntimeError("engine exploded")
+    with pytest.raises(RuntimeError, match="engine exploded"):
+        _read.read_table(
+            client=MagicMock(),
+            engine=_StubEngine(None, raises=boom),  # type: ignore[arg-type]
+            full_name="cat.sch.tbl",
+            unreachable_msg="nope",
+        )
+    assert captured["finished_at"].tzinfo == datetime.UTC
+
+
+# ------------------------------------------------------------------
+# duration_ms computation: (now - start) * 1000, with controlled clock
+# ------------------------------------------------------------------
+
+
+def _patch_perf_counter(monkeypatch: pytest.MonkeyPatch, values: list[float]) -> None:
+    """Make ``time.perf_counter`` yield a fixed sequence in ``_read``."""
+    seq = iter(values)
+    monkeypatch.setattr(_read.time, "perf_counter", lambda: next(seq))
+
+
+def test_success_duration_ms_is_elapsed_seconds_times_1000(
+    wired: sessionmaker,  # type: ignore[type-arg]
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """``duration_ms`` is ``int((finish - start) * 1000)`` on success.
+
+    With a controlled clock (start=10.0, finish=10.5) the elapsed
+    0.5 s must become exactly 500 ms. ``/1000`` would give 0,
+    ``+`` would give ``20500``, and ``*1001`` would give ``500``
+    only at zero elapsed — here it gives ``500`` vs ``500.5 -> 500``,
+    so a larger gap is used below to separate ``*1000`` from ``*1001``.
+    """
+    _patch_table(monkeypatch, "/data/x")
+    # perf_counter() is called once for perf_start, once for duration.
+    _patch_perf_counter(monkeypatch, [10.0, 10.5])
+    _read.read_table(
+        client=MagicMock(),
+        engine=_StubEngine("frame"),  # type: ignore[arg-type]
+        full_name="cat.sch.tbl",
+        unreachable_msg="nope",
+    )
+    row = _row(wired)
+    assert row.duration_ms == 500
+
+
+def test_success_duration_ms_uses_1000_not_1001_multiplier(
+    wired: sessionmaker,  # type: ignore[type-arg]
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A large elapsed pins the ``*1000`` constant against ``*1001``.
+
+    Elapsed 10.0 s -> ``10000`` ms with ``*1000`` but ``10010`` with
+    ``*1001``; ``/1000`` -> ``0`` and ``+`` (start=10) -> ``30000``.
+    """
+    _patch_table(monkeypatch, "/data/x")
+    _patch_perf_counter(monkeypatch, [10.0, 20.0])
+    _read.read_table(
+        client=MagicMock(),
+        engine=_StubEngine("frame"),  # type: ignore[arg-type]
+        full_name="cat.sch.tbl",
+        unreachable_msg="nope",
+    )
+    row = _row(wired)
+    assert row.duration_ms == 10000
+
+
+def test_failure_duration_ms_is_elapsed_seconds_times_1000(
+    wired: sessionmaker,  # type: ignore[type-arg]
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The except branch computes ``duration_ms`` the same way.
+
+    Controlled clock start=3.0, finish=13.0 -> elapsed 10.0 s ->
+    ``10000`` ms (``*1000``), separating it from ``/1000`` (0),
+    ``+`` (16000), and ``*1001`` (10010).
+    """
+    _patch_table(monkeypatch, "/data/boom")
+    _patch_perf_counter(monkeypatch, [3.0, 13.0])
+    boom = RuntimeError("kaboom")
+    with pytest.raises(RuntimeError, match="kaboom"):
+        _read.read_table(
+            client=MagicMock(),
+            engine=_StubEngine(None, raises=boom),  # type: ignore[arg-type]
+            full_name="cat.sch.tbl",
+            unreachable_msg="nope",
+        )
+    row = _row(wired)
+    assert row.duration_ms == 10000
+
+
+# ------------------------------------------------------------------
+# _record: factory falls back to None (not "") when lazy-init fails
+# ------------------------------------------------------------------
+
+
+def test_record_passes_none_factory_when_session_factory_raises(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A failed ``get_session_factory`` makes ``_record`` forward ``None``.
+
+    When the lazy DB lookup raises, ``factory`` must become ``None`` so
+    ``record_read`` short-circuits cleanly. If it became a falsy-but-not
+    -None value (e.g. ``""``), ``record_read`` would be handed a bogus
+    factory. We spy on ``record_read`` and assert it received exactly
+    ``None`` as its positional factory.
+    """
+    monkeypatch.setenv("POINTLESSQL_AGENT_RUN_ID", _RUN_ID)
+    import pointlessql.db as db
+
+    def _boom() -> Any:
+        raise RuntimeError("DB not initialised")
+
+    monkeypatch.setattr(db, "get_session_factory", _boom)
+
+    captured: dict[str, Any] = {}
+
+    def _spy(factory: Any, **_kwargs: Any) -> None:
+        captured["factory"] = factory
+
+    monkeypatch.setattr(_read, "record_read", _spy)
+
+    _read._record(
+        full_name="cat.sch.tbl",
+        started_at=datetime.datetime.now(datetime.UTC),
+        finished_at=datetime.datetime.now(datetime.UTC),
+        status=QueryStatus.SUCCEEDED,
+        row_count=None,
+        duration_ms=1,
+        error_message=None,
+    )
+
+    assert "factory" in captured
+    assert captured["factory"] is None

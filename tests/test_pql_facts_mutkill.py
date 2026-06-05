@@ -366,6 +366,26 @@ def test_pin_unknown_agent_run_raises(
         facts_facade.pin(rev_uuid, title="x", session_factory=factory)
 
 
+def test_pin_unknown_agent_run_message_names_the_missing_run(
+    factory: sessionmaker,  # type: ignore[type-arg]
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The unknown-run ValidationError carries the precise diagnostic text.
+
+    ``_agent_context`` raises ``"pql.facts: agent_run <id!r> is not
+    registered"`` when the env-bridge run UUID is not in the registry.
+    Asserting the full message (with the repr-quoted run id embedded)
+    pins the error literal down so a mutant that blanks it to ``None``
+    is caught.
+    """
+    run_id = "deadbeef-0000-0000-0000-000000000000"
+    _, rev_uuid = _seed_notebook_and_revision(factory, workspace_id=1)
+    monkeypatch.setenv("POINTLESSQL_AGENT_RUN_ID", run_id)
+    with pytest.raises(ValidationError) as exc:
+        facts_facade.pin(rev_uuid, title="x", session_factory=factory)
+    assert str(exc.value) == f"pql.facts: agent_run {run_id!r} is not registered"
+
+
 def test_pin_explicit_kwargs_record_no_operation(
     factory: sessionmaker,  # type: ignore[type-arg]
     monkeypatch: pytest.MonkeyPatch,

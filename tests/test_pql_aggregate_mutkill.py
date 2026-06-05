@@ -618,3 +618,522 @@ def test_agg_derivation_chain_uses_agg_label_not_constant() -> None:
     )
     (e,) = _by_target(edges)["peak"]
     assert e.transform_detail == "via 'rev' → max('rev')"
+
+
+# --------------------------------------------------------------------------
+# ``_build_aggregate_column_edges`` — loop-control (continue, not break)
+# --------------------------------------------------------------------------
+
+
+def test_group_by_derivation_does_not_short_circuit_remaining_keys() -> None:
+    """A derived group-by key must not stop later group-by keys being emitted.
+
+    The per-key loop ``continue``s after handling a derivation; a
+    ``break`` here would silently drop every group-by column after the
+    first derived one.
+    """
+    src = pd.DataFrame({"raw": [1], "plain": [2], "amount": [3]})
+    edges = agg._build_aggregate_column_edges(
+        source_df=src,
+        source_table_fqn="main.silver.src",
+        target="main.gold.t",
+        # first key is a derivation (hits the ``continue``); second key
+        # must still produce its own identity edge afterwards.
+        group_by=["day", "plain"],
+        aggs={"total": ("amount", "sum")},
+        derivations={"day": ["raw"]},
+    )
+    by = _by_target(edges)
+    # both the derived key and the trailing identity key are present.
+    assert "day" in by
+    (plain,) = by["plain"]
+    assert plain.target_column == "plain"
+    assert plain.transform_kind == "identity"
+
+
+def test_agg_derivation_does_not_short_circuit_remaining_aggs() -> None:
+    """A derived agg output must not stop later agg outputs being emitted.
+
+    The aggregation loop ``continue``s after handling a derivation; a
+    ``break`` would drop every aggregation declared after the first
+    derived one.
+    """
+    src = pd.DataFrame({"k": ["a"], "rev": [2.0], "amount": [3]})
+    edges = agg._build_aggregate_column_edges(
+        source_df=src,
+        source_table_fqn="main.silver.src",
+        target="main.gold.t",
+        group_by=["k"],
+        # first agg is a derivation (hits the ``continue``); the second
+        # plain aggregate must still be emitted afterwards.
+        aggs={"revenue": ("rev", "sum"), "total": ("amount", "sum")},
+        derivations={"rev": ["amount"]},
+    )
+    by = _by_target(edges)
+    assert "revenue" in by
+    (total,) = by["total"]
+    assert total.target_column == "total"
+    assert total.transform_kind == "aggregate"
+    assert total.transform_detail == "sum"
+
+
+# --------------------------------------------------------------------------
+# ``_build_aggregate_frame`` — grouped row order is insertion order
+# --------------------------------------------------------------------------
+
+
+def test_frame_preserves_insertion_order_not_sorted() -> None:
+    """Grouped rows follow first-appearance order (``sort=False``), not key sort.
+
+    ``b`` appears before ``a`` in the source, so the output frame must
+    list ``b`` first; a ``sort=True`` flip would re-order it to ``a, b``.
+    """
+    df = pd.DataFrame({"k": ["b", "b", "a"], "amount": [1, 2, 3], _LRID: ["s1", "s2", "s3"]})
+    grouped, per_group = agg._build_aggregate_frame(
+        source_df=df, target="c.s.t", group_by=["k"], aggs={"total": ("amount", "sum")}
+    )
+    assert list(grouped["k"]) == ["b", "a"]
+    # source-id grouping order tracks the same (left-merge) row order.
+    assert [tuple(sorted(s)) for _tid, s in per_group] == [("s1", "s2"), ("s3",)]
+
+
+def test_frame_no_lineage_preserves_insertion_order() -> None:
+    """The no-lineage branch also keeps first-appearance group order."""
+    df = pd.DataFrame({"k": ["b", "b", "a"], "amount": [1, 2, 3]})
+    grouped, _ = agg._build_aggregate_frame(
+        source_df=df, target="c.s.t", group_by=["k"], aggs={"total": ("amount", "sum")}
+    )
+    assert list(grouped["k"]) == ["b", "a"]
+
+
+# --------------------------------------------------------------------------
+# ``_resolve_or_plan_target`` — direct unit coverage
+# --------------------------------------------------------------------------
+
+
+def _patch_resolve(
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    get_returns: Any = None,
+    get_raises: BaseException | None = None,
+) -> list[Any]:
+    """Stub ``_get_table`` + ``derive_storage_location`` for resolve tests.
+
+    Returns the list that records the positional args every
+    ``derive_storage_location`` call received.
+    """
+    derive_args: list[Any] = []
+
+    class _FakeGet:
+        @staticmethod
+        def sync(*, client: Any, full_name: str) -> Any:
+            if get_raises is not None:
+                raise get_raises
+            return get_returns
+
+    def _derive(*args: Any, **kwargs: Any) -> str:
+        derive_args.append((args, kwargs))
+        return "file:///tmp/derived"
+
+    monkeypatch.setattr(agg, "_get_table", _FakeGet)
+    monkeypatch.setattr(agg, "derive_storage_location", _derive)
+    return derive_args
+
+
+def test_resolve_existing_requires_real_storage_location() -> None:
+    """An empty ``storage_location`` must NOT count the table as existing.
+
+    The guard is ``not isinstance(loc, Unset) and loc`` — an ``or``
+    flip would treat an empty-string location as a live table.
+    """
+    monkeypatch = pytest.MonkeyPatch()
+    try:
+        derive_args = _patch_resolve(monkeypatch, get_returns=_table_info_with_loc(""))
+        location, table_exists = agg._resolve_or_plan_target(
+            client=object(), target="c.s.t", unreachable_msg="down"
+        )
+        # empty loc → falls through to derive, table treated as new.
+        assert table_exists is False
+        assert location == "file:///tmp/derived"
+        assert len(derive_args) == 1
+    finally:
+        monkeypatch.undo()
+
+
+def test_resolve_existing_with_real_location_skips_derive() -> None:
+    """A real ``storage_location`` marks the table existing and skips derive."""
+    monkeypatch = pytest.MonkeyPatch()
+    try:
+        derive_args = _patch_resolve(
+            monkeypatch, get_returns=_table_info_with_loc("file:///tmp/real")
+        )
+        location, table_exists = agg._resolve_or_plan_target(
+            client=object(), target="c.s.t", unreachable_msg="down"
+        )
+        assert table_exists is True
+        assert location == "file:///tmp/real"
+        assert derive_args == []
+    finally:
+        monkeypatch.undo()
+
+
+def test_resolve_404_is_swallowed_other_status_reraises() -> None:
+    """A 404 from get-table means 'not found' (derive); other codes re-raise."""
+    from soyuz_catalog_client.errors import UnexpectedStatus
+
+    # 404 → swallowed, table treated as new.
+    monkeypatch = pytest.MonkeyPatch()
+    try:
+        derive_args = _patch_resolve(
+            monkeypatch,
+            get_raises=UnexpectedStatus(404, b"missing"),
+        )
+        location, table_exists = agg._resolve_or_plan_target(
+            client=object(), target="c.s.t", unreachable_msg="down"
+        )
+        assert table_exists is False
+        assert location == "file:///tmp/derived"
+        assert len(derive_args) == 1
+    finally:
+        monkeypatch.undo()
+
+    # 500 → must propagate (the != 404 guard re-raises non-404).
+    monkeypatch2 = pytest.MonkeyPatch()
+    try:
+        _patch_resolve(monkeypatch2, get_raises=UnexpectedStatus(500, b"boom"))
+        with pytest.raises(UnexpectedStatus):
+            agg._resolve_or_plan_target(client=object(), target="c.s.t", unreachable_msg="down")
+    finally:
+        monkeypatch2.undo()
+
+
+def test_resolve_derive_gets_exact_parsed_name_args(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """``derive_storage_location`` receives ``(client, catalog, schema, table)``.
+
+    Pins every positional argument so a dropped or None-substituted
+    argument to the derive call is observable.
+    """
+    sentinel_client = object()
+    derive_args = _patch_resolve(monkeypatch, get_returns=None)
+    agg._resolve_or_plan_target(
+        client=sentinel_client, target="cat.sch.tbl", unreachable_msg="down"
+    )
+    assert len(derive_args) == 1
+    args, kwargs = derive_args[0]
+    assert kwargs == {}
+    assert args == (sentinel_client, "cat", "sch", "tbl")
+
+
+def test_resolve_connect_error_carries_unreachable_message(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A connect error surfaces as ``CatalogUnavailableError(unreachable_msg)``."""
+    import httpx
+
+    from pointlessql.exceptions import CatalogUnavailableError
+
+    _patch_resolve(monkeypatch, get_raises=httpx.ConnectError("no route"))
+    with pytest.raises(CatalogUnavailableError) as ei:
+        agg._resolve_or_plan_target(
+            client=object(), target="c.s.t", unreachable_msg="catalog is down"
+        )
+    assert str(ei.value) == "catalog is down"
+
+
+def _table_info_with_loc(loc: str) -> Any:
+    info = agg.TableInfo()
+    info.storage_location = loc
+    return info
+
+
+# --------------------------------------------------------------------------
+# ``aggregate_table`` — argument-forwarding + recorder side effects
+# --------------------------------------------------------------------------
+
+
+def _drive_capture(
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    source_df: pd.DataFrame,
+    table_exists: bool,
+    agent_run_id: str | None = "run-1",
+    derivations: Any = None,
+    write_raises: BaseException | None = None,
+    create_raises: BaseException | None = None,
+    sha_raises: BaseException | None = None,
+) -> dict[str, Any]:
+    """Run ``aggregate_table`` capturing forwarded args + recorder fields.
+
+    Unlike ``_drive`` this records the exact ``client`` objects handed
+    to the catalog hops, the ``operation_context`` positional/keyword
+    args, and stubs ``safe_delta_version`` so its argument and result
+    are observable.  Returns a bag of everything captured.
+    """
+    from pointlessql.types import OpName
+
+    bag: dict[str, Any] = {
+        "recorder": OperationRecorder(),
+        "get_clients": [],
+        "get_full_names": [],
+        "create_clients": [],
+        "create_bodies": [],
+        "ctx_factory": "unset",
+        "ctx_agent_run_id": "unset",
+        "ctx_op_name": "unset",
+        "delta_version_calls": [],
+        "real_client": object(),
+    }
+    engine = _FakeEngine()
+    orig_write = engine.write
+
+    def _write(frame: Any, location: str, mode: str) -> None:
+        if write_raises is not None:
+            raise write_raises
+        orig_write(frame, location, mode)
+
+    engine.write = _write  # type: ignore[method-assign]
+
+    class _FakeGet:
+        @staticmethod
+        def sync(*, client: Any, full_name: str) -> Any:
+            bag["get_clients"].append(client)
+            bag["get_full_names"].append(full_name)
+            if table_exists:
+                info = agg.TableInfo()
+                info.storage_location = "file:///tmp/existing-loc"
+                return info
+            return None
+
+    class _FakeCreate:
+        @staticmethod
+        def sync(*, client: Any, body: Any) -> Any:
+            bag["create_clients"].append(client)
+            bag["create_bodies"].append(body)
+            if create_raises is not None:
+                raise create_raises
+            return body
+
+    monkeypatch.setattr(agg, "_get_table", _FakeGet)
+    monkeypatch.setattr(agg, "_create_table", _FakeCreate)
+    monkeypatch.setattr(agg, "derive_storage_location", lambda *a, **k: "file:///tmp/new-loc")
+
+    def _safe_ver(location: Any) -> Any:
+        bag["delta_version_calls"].append(location)
+        # distinct, non-None sentinels keyed on the argument so both the
+        # call and its argument are observable.
+        return f"ver::{location}"
+
+    monkeypatch.setattr(agg, "safe_delta_version", _safe_ver)
+
+    if sha_raises is not None:
+
+        def _sha(_frame: Any) -> str:
+            raise sha_raises
+
+        monkeypatch.setattr(agg, "arrow_ipc_sha256", _sha)
+
+    @contextlib.contextmanager
+    def _fake_ctx(
+        factory: Any,
+        *,
+        agent_run_id: Any,
+        op_name: Any,
+        params: dict[str, Any],
+        target_table: str | None = None,
+    ) -> Iterator[OperationRecorder]:
+        bag["ctx_factory"] = factory
+        bag["ctx_agent_run_id"] = agent_run_id
+        bag["ctx_op_name"] = op_name
+        yield bag["recorder"]
+
+    monkeypatch.setattr(agg, "operation_context", _fake_ctx)
+    monkeypatch.setattr("pointlessql.db.get_session_factory", lambda: object(), raising=False)
+
+    bag["result"] = agg.aggregate_table(
+        client=bag["real_client"],
+        engine=engine,
+        source_df=source_df,
+        target="main.gold.t",
+        group_by=["k"],
+        aggs={"total": ("amount", "sum")},
+        source_table_fqn="main.silver.src",
+        unreachable_msg="catalog down",
+        derivations=derivations,
+        agent_run_id=agent_run_id,
+    )
+    bag["expected_op_name"] = OpName.AGGREGATE
+    return bag
+
+
+def test_catalog_hops_receive_real_client_and_target() -> None:
+    """The configured client + target flow into get/create unchanged.
+
+    Pins ``client=`` on both ``_get_table`` and ``_create_table`` and
+    ``full_name=`` on the get, so a None-substituted client or target
+    is caught.
+    """
+    monkeypatch = pytest.MonkeyPatch()
+    try:
+        df = pd.DataFrame({"k": ["a"], "amount": [1], _LRID: ["s1"]})
+        bag = _drive_capture(monkeypatch, source_df=df, table_exists=False)
+    finally:
+        monkeypatch.undo()
+    assert bag["get_clients"] == [bag["real_client"]]
+    assert bag["get_full_names"] == ["main.gold.t"]
+    assert bag["create_clients"] == [bag["real_client"]]
+
+
+def test_operation_context_receives_factory_run_id_and_op_name() -> None:
+    """factory, agent_run_id and op_name are forwarded into the audit context."""
+    monkeypatch = pytest.MonkeyPatch()
+    try:
+        df = pd.DataFrame({"k": ["a"], "amount": [1]})
+        bag = _drive_capture(monkeypatch, source_df=df, table_exists=True)
+    finally:
+        monkeypatch.undo()
+    # factory is the session factory (not None) because agent_run_id is set.
+    assert bag["ctx_factory"] is not None
+    assert bag["ctx_agent_run_id"] == "run-1"
+    assert bag["ctx_op_name"] == bag["expected_op_name"]
+
+
+def test_factory_is_none_when_no_agent_run() -> None:
+    """Interactive runs pass a ``None`` factory to the audit context."""
+    monkeypatch = pytest.MonkeyPatch()
+    try:
+        df = pd.DataFrame({"k": ["a"], "amount": [1]})
+        bag = _drive_capture(monkeypatch, source_df=df, table_exists=True, agent_run_id=None)
+    finally:
+        monkeypatch.undo()
+    assert bag["ctx_factory"] is None
+    assert bag["ctx_agent_run_id"] is None
+
+
+def test_delta_versions_capture_location_for_existing_table() -> None:
+    """before+after delta versions are read against the *write* location.
+
+    Pins both ``safe_delta_version`` calls (argument == location, result
+    stored on the recorder) so a None argument or a ``= None`` overwrite
+    is observable.
+    """
+    monkeypatch = pytest.MonkeyPatch()
+    try:
+        df = pd.DataFrame({"k": ["a"], "amount": [1]})
+        bag = _drive_capture(monkeypatch, source_df=df, table_exists=True)
+    finally:
+        monkeypatch.undo()
+    rec = bag["recorder"]
+    loc = "file:///tmp/existing-loc"
+    # before (table exists) and after both read the same location.
+    assert rec.delta_version_before == f"ver::{loc}"
+    assert rec.delta_version_after == f"ver::{loc}"
+    assert bag["delta_version_calls"] == [loc, loc]
+
+
+def test_delta_version_after_set_only_for_agent_runs() -> None:
+    """The post-write version is recorded only when an agent run is active."""
+    monkeypatch = pytest.MonkeyPatch()
+    try:
+        df = pd.DataFrame({"k": ["a"], "amount": [1]})
+        bag = _drive_capture(monkeypatch, source_df=df, table_exists=True, agent_run_id=None)
+    finally:
+        monkeypatch.undo()
+    # No agent run → no version probe at all, recorder stays clean.
+    assert bag["recorder"].delta_version_after is None
+    assert bag["delta_version_calls"] == []
+
+
+def test_input_sha_is_recorded_from_grouped_frame() -> None:
+    """The recorder's input SHA is the real digest, not a cleared ``None``."""
+    monkeypatch = pytest.MonkeyPatch()
+    try:
+        df = pd.DataFrame({"k": ["a"], "amount": [1]})
+        bag = _drive_capture(monkeypatch, source_df=df, table_exists=True)
+    finally:
+        monkeypatch.undo()
+    sha = bag["recorder"].input_sha
+    assert isinstance(sha, str)
+    assert len(sha) == 64
+
+
+def test_input_sha_cleared_to_none_on_type_error() -> None:
+    """A hashing ``TypeError`` clears the SHA to ``None`` (not an empty string)."""
+    monkeypatch = pytest.MonkeyPatch()
+    try:
+        df = pd.DataFrame({"k": ["a"], "amount": [1]})
+        bag = _drive_capture(
+            monkeypatch, source_df=df, table_exists=True, sha_raises=TypeError("nope")
+        )
+    finally:
+        monkeypatch.undo()
+    assert bag["recorder"].input_sha is None
+
+
+def test_create_table_body_carries_real_columns() -> None:
+    """A new table's CreateTable body carries engine-derived columns, not None."""
+    monkeypatch = pytest.MonkeyPatch()
+    try:
+        df = pd.DataFrame({"k": ["a"], "amount": [1]})
+        bag = _drive_capture(monkeypatch, source_df=df, table_exists=False)
+    finally:
+        monkeypatch.undo()
+    (body,) = bag["create_bodies"]
+    assert body.columns is not None
+    # k, total, _lineage_row_id → three columns derived from the frame.
+    assert len(list(body.columns)) == 3
+
+
+def test_column_edges_forward_source_target_and_derivations() -> None:
+    """source_table_fqn, target, and derivations flow into the column edges.
+
+    A None-substituted ``source_table_fqn``/``target`` or a dropped
+    ``derivations`` would change the recorded column edges.
+    """
+    monkeypatch = pytest.MonkeyPatch()
+    try:
+        # 'day' is a group-by derived from 'raw' — only honoured if the
+        # derivations mapping is actually forwarded to the edge builder.
+        df = pd.DataFrame({"k": ["a"], "raw": [1], "amount": [2], _LRID: ["s1"]})
+        # derivation keyed on the agg *source* column ('amount'), so the
+        # 'total' output becomes a derived edge from 'raw'.
+        bag = _drive_capture(
+            monkeypatch,
+            source_df=df,
+            table_exists=True,
+            derivations={"amount": ["raw"]},
+        )
+    finally:
+        monkeypatch.undo()
+    edges = bag["recorder"].pending_column_edges
+    assert edges is not None
+    by = {e.target_column: e for e in edges if e.transform_kind != "unknown_origin"}
+    # identity edge for the group-by key carries the real source table+target.
+    ident = by["k"]
+    assert ident.source_table == "main.silver.src"
+    assert ident.target_table == "main.gold.t"
+    # derivation forwarded → 'total' becomes a derived edge from 'raw'.
+    derived = [e for e in edges if e.target_column == "total"]
+    assert any(e.transform_kind == "derived" and e.source_column == "raw" for e in derived)
+
+
+def test_write_connect_error_raises_unreachable_message() -> None:
+    """A connect error during the write surfaces the unreachable message."""
+    import httpx
+
+    from pointlessql.exceptions import CatalogUnavailableError
+
+    monkeypatch = pytest.MonkeyPatch()
+    try:
+        df = pd.DataFrame({"k": ["a"], "amount": [1]})
+        with pytest.raises(CatalogUnavailableError) as ei:
+            _drive_capture(
+                monkeypatch,
+                source_df=df,
+                table_exists=True,
+                write_raises=httpx.ConnectError("no route"),
+            )
+        assert str(ei.value) == "catalog down"
+    finally:
+        monkeypatch.undo()

@@ -468,3 +468,59 @@ def test_record_uses_exact_env_var_name(
     calls = _patch_record_read(monkeypatch)
     _time_travel._record(**_make_record_kwargs())
     assert calls == []
+
+
+def test_record_forwards_the_real_session_factory(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # When the DB IS initialised, get_session_factory() returns a live
+    # factory and that exact object must be forwarded to record_read.
+    # Pins `factory = get_session_factory()` (not `factory = None`) and
+    # `record_read(factory, ...)` (not `record_read(None, ...)`): with a
+    # successful lookup the except branch never runs, so a None on either
+    # line is only visible when the factory is a non-None sentinel.
+    monkeypatch.setenv("POINTLESSQL_AGENT_RUN_ID", "run-123")
+    sentinel_factory = object()
+
+    import pointlessql.db as db
+
+    monkeypatch.setattr(db, "get_session_factory", lambda: sentinel_factory)
+    calls = _patch_record_read(monkeypatch)
+
+    _time_travel._record(**_make_record_kwargs())
+
+    assert len(calls) == 1
+    assert calls[0]["factory"] is sentinel_factory
+
+
+# --- read_table_at_timestamp failure path: full_name forwarding ----------
+
+
+def test_read_at_timestamp_failure_row_keeps_full_name(
+    monkeypatch: pytest.MonkeyPatch,
+    fake_delta: type[_FakeDeltaTable],
+    fixed_perf: None,
+) -> None:
+    # On the failure path the audit row must still carry the real
+    # full_name. Kills both full_name=None and a dropped full_name=
+    # kwarg in the except-branch _record call (the latter leaves the
+    # key absent, so the lookup raises KeyError on the mutant).
+    _patch_get_table(monkeypatch, TableInfo(storage_location=_LOCATION))
+    calls = _capture_record(monkeypatch)
+    when = datetime.datetime(2026, 3, 4, 5, 6, 7, tzinfo=datetime.UTC)
+
+    def _boom(self: Any, version: Any) -> None:
+        raise RuntimeError("kaboom-ts")
+
+    monkeypatch.setattr(_FakeDeltaTable, "load_as_version", _boom)
+
+    with pytest.raises(RuntimeError, match="kaboom-ts"):
+        _time_travel.read_table_at_timestamp(
+            client=object(),
+            full_name="c.s.t",
+            when=when,
+            unreachable_msg=_UNREACHABLE,
+        )
+
+    assert len(calls) == 1
+    assert calls[0]["full_name"] == "c.s.t"

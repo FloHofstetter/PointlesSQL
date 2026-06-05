@@ -379,3 +379,93 @@ def test_workspace_no_matches_returns_defaults(
     result = load_conventions_for_workspace(object(), workspace_id=2, settings=settings)
 
     assert result is DEFAULT_CONVENTIONS
+
+
+# --------------------------------------------------------------------------
+# getattr-default behaviour for the workspace_repos lookups
+#
+# The loader reads ``base_dir`` / ``yaml_search_globs`` off
+# ``settings.workspace_repos`` with an explicit ``getattr`` *default* so a
+# settings object that does not carry those attributes degrades gracefully
+# (``None`` base_dir -> defaults; ``()`` globs -> empty scan) instead of
+# raising ``AttributeError``.  These tests feed a stand-in settings whose
+# ``workspace_repos`` is missing the attribute, so the getattr default is the
+# only thing keeping the call alive.
+# --------------------------------------------------------------------------
+
+
+class _Conventions:
+    """Minimal stand-in for ``settings.conventions`` (env path unset)."""
+
+    path: Path | None = None
+
+
+def _fake_settings(workspace_repos: Any) -> Any:
+    """Build a duck-typed settings object with a custom ``workspace_repos``.
+
+    Only the two attributes the workspace loader touches —
+    ``conventions.path`` and ``workspace_repos`` — are provided, so the
+    ``workspace_repos`` stub can deliberately omit ``base_dir`` /
+    ``yaml_search_globs`` to exercise the ``getattr`` defaults.
+    """
+
+    class _Settings:
+        conventions = _Conventions()
+
+    obj = _Settings()
+    obj.workspace_repos = workspace_repos  # type: ignore[attr-defined]
+    return obj
+
+
+def test_workspace_repos_missing_base_dir_falls_back_to_none(
+    patched_discover: dict[str, Any],
+) -> None:
+    """A ``workspace_repos`` with no ``base_dir`` attribute must resolve to
+    ``None`` (the getattr default) and return the defaults without scanning.
+
+    Dropping the ``getattr(..., "base_dir", None)`` default turns the lookup
+    into an ``AttributeError``; the original swallows the absence via the
+    default and short-circuits to ``DEFAULT_CONVENTIONS``.
+    """
+
+    class _NoBaseDir:
+        # deliberately no base_dir / yaml_search_globs attributes
+        pass
+
+    settings = _fake_settings(_NoBaseDir())
+
+    result = load_conventions_for_workspace(object(), workspace_id=7, settings=settings)
+
+    assert result is DEFAULT_CONVENTIONS
+    # base_dir resolved to None -> repo scan never invoked
+    assert patched_discover["calls"] == []
+
+
+def test_workspace_repos_missing_globs_passes_empty_tuple(
+    tmp_path: Path, patched_discover: dict[str, Any]
+) -> None:
+    """A ``workspace_repos`` with ``base_dir`` set but no
+    ``yaml_search_globs`` must pass ``()`` (the getattr default) to the
+    discovery call rather than ``None`` or raising.
+
+    The original getattr default is ``()`` -> ``tuple(())`` == ``()``.  A
+    mutant default of ``None`` makes ``tuple(None)`` raise ``TypeError``, and
+    dropping the default makes the missing attribute raise ``AttributeError``;
+    either way the call no longer reaches ``discover_repo_yaml_files`` and
+    cannot return the defaults from an empty match list.
+    """
+
+    class _NoGlobs:
+        base_dir = tmp_path
+        # deliberately no yaml_search_globs attribute
+
+    patched_discover["matches"] = []
+    settings = _fake_settings(_NoGlobs())
+
+    result = load_conventions_for_workspace(object(), workspace_id=8, settings=settings)
+
+    assert result is DEFAULT_CONVENTIONS
+    assert len(patched_discover["calls"]) == 1
+    # The getattr default flows through to the discovery call as an empty tuple.
+    assert patched_discover["calls"][0]["globs"] == ()
+    assert patched_discover["calls"][0]["base_dir"] == tmp_path
