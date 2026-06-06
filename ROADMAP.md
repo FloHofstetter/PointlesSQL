@@ -3563,9 +3563,23 @@ PointlesSQL
 │   │   │     synthetische OutputPort koppelte `canvas_df` sonst zurück an
 │   │   │     `dp_canvas`); `_preview_cache` bleibt in `dp_canvas` (kein
 │   │   │     `canvas_df`-Consumer).
-│   │   │   - PR3 (geplant): `dp_canvas` zum dünnen Consumer verschlanken +
-│   │   │     Frontend-Editor-Shell `frontend/js/canvas/` mit
-│   │   │     `assembleCanvasEditor(adapter)`.  Schließt Phase 193.
+│   │   │   - PR3 ⏳ (Frontend-Editor-Shell, in progress): neues
+│   │   │     `frontend/js/canvas/`-Shell-Verzeichnis angelegt; 12
+│   │   │     consumer-agnostische Module verschoben — 7 generische
+│   │   │     Bundles (viewport/history/annotations/context_menu/
+│   │   │     edge_routing/edge_toolbar/config_form_structured) + 5
+│   │   │     Helfer (_canvas_helpers/_auto_layout/_focus_mode/
+│   │   │     _sql_format/_codemirror_snippets).  Alle Importer
+│   │   │     (inkl. mesh-Editor + Diff-Seite) umgebogen; gegen den
+│   │   │     laufenden Stack verifiziert (alle 3 Canvas-Factories
+│   │   │     komponieren, 0 Konsolen-Fehler), biome 2.4.15-rein.
+│   │   │     Offen (heikler Rest): Katalog-Entglobalisierung der
+│   │   │     katalog-gekoppelten Kern-Bundles (drawflow_sync/node_ops/
+│   │   │     node_render/clipboard/output_plus/connect/edges +
+│   │   │     _render_helpers/_drawflow_loader) auf einen injizierten
+│   │   │     Adapter, `assembleCanvasEditor(adapter)` als Compose-Naht,
+│   │   │     DP-Seite → dünner Adapter-Shim, voller dp-canvas-builder
+│   │   │     e2e-Replay (6 Wellen).  Schließt Phase 193.
 │   │   │
 │   ├── Phase 194 — Scheduler-Task-Chain-Visual-Editor  ⏳ planned
 │   │   │   Diff-Save gegen `JobTask` (kein neues Graph-Table), `task-{id}`
