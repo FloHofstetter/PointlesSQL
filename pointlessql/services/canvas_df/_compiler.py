@@ -18,6 +18,8 @@ from __future__ import annotations
 import re
 from collections.abc import Iterable
 
+from pydantic import BaseModel, ConfigDict, Field
+
 from pointlessql.services.canvas_core import topo_sort
 from pointlessql.services.canvas_core._validate import (
     validate_envelope as _validate_envelope,
@@ -92,67 +94,67 @@ def _extract_base_tables(sql: str) -> list[str]:
     return _BASE_TABLE_RE.findall(sql)
 
 
-def compile_canvas(
-    doc: CanvasDoc,
-    *,
-    upstream_schemas: dict[str, PinSchema] | None = None,
-) -> tuple[SQLFragment | None, list[CompileError]]:
-    """Compile *doc* to a CTE-chain :class:`SQLFragment`.
-
-    Args:
-        doc: The canvas document to compile.
-        upstream_schemas: Optional ``{input_port_node_id: PinSchema}``
-            seeding so the InputPort blocks know what their output
-            shape is.  The executor passes a fully-resolved map after
-            asking soyuz for the schema of every ``table_fqn``; tests
-            may seed by hand.
-
-    Returns:
-        ``(fragment, [])`` on success, ``(None, [errors])`` on
-        failure.  ``errors`` is a *list*, never raised — the editor
-        wants to render every problem at once.
-    """
-    errors: list[CompileError] = []
-    if not _validate_envelope(doc, errors):
-        return None, errors
-    _check_block_types(doc.nodes, errors)
-    if errors:
-        return None, errors
-    output_nodes = _collect_output_nodes(doc.nodes, errors)
-    if not output_nodes:
-        return None, errors
-
-    ordered_nodes = topo_sort(list(doc.nodes), list(doc.edges), errors)
-    if ordered_nodes is None:
-        return None, errors
-
-    # Index edges by (target_node_id, target_pin) so each block can look
-    # up which upstream CTE feeds each of its input pins.  An input pin
-    # accepts exactly one connection — two edges landing on the same pin
-    # would silently overwrite here (last-edge-wins), so flag it instead
-    # of quietly dropping a wire.
-    edges_in: dict[tuple[str, str], tuple[str, str]] = {}
+def _collect_ancestors(doc: CanvasDoc, upto_node_id: str) -> set[str]:
+    """Return the node ids that flow into *upto_node_id* (inclusive)."""
+    incoming: dict[str, list[str]] = {}
     for edge in doc.edges:
-        key = (edge.target_node_id, edge.target_pin)
+        incoming.setdefault(edge.target_node_id, []).append(edge.source_node_id)
+    keep: set[str] = {upto_node_id}
+    stack = [upto_node_id]
+    while stack:
+        current = stack.pop()
+        for upstream in incoming.get(current, []):
+            if upstream not in keep:
+                keep.add(upstream)
+                stack.append(upstream)
+    return keep
+
+
+def _build_edges_in(
+    edges: Iterable[object], errors: list[CompileError]
+) -> dict[tuple[str, str], tuple[str, str]]:
+    """Index edges by ``(target_node_id, target_pin)`` → ``(source, pin)``.
+
+    An input pin accepts exactly one connection — two edges landing on the
+    same pin would silently overwrite (last-edge-wins), so flag it instead of
+    quietly dropping a wire.
+    """
+    edges_in: dict[tuple[str, str], tuple[str, str]] = {}
+    for edge in edges:
+        key = (edge.target_node_id, edge.target_pin)  # type: ignore[attr-defined]
         if key in edges_in:
             errors.append(
                 CompileError(
                     kind="duplicate_pin",
-                    node_id=edge.target_node_id,
-                    pin=edge.target_pin,
+                    node_id=edge.target_node_id,  # type: ignore[attr-defined]
+                    pin=edge.target_pin,  # type: ignore[attr-defined]
                     message=(
-                        f"Input pin {edge.target_pin!r} on node "
-                        f"{edge.target_node_id!r} is wired by more than one edge; "
+                        f"Input pin {edge.target_pin!r} on node "  # type: ignore[attr-defined]
+                        f"{edge.target_node_id!r} is wired by more than one edge; "  # type: ignore[attr-defined]
                         "an input pin accepts a single connection."
                     ),
                 )
             )
             continue
-        edges_in[key] = (edge.source_node_id, edge.source_pin)
-    if errors:
-        return None, errors
+        edges_in[key] = (edge.source_node_id, edge.source_pin)  # type: ignore[attr-defined]
+    return edges_in
 
-    seeds = upstream_schemas or {}
+
+def _build_cte_chain(
+    ordered_nodes: list[CanvasNode],
+    edges_in: dict[tuple[str, str], tuple[str, str]],
+    seeds: dict[str, PinSchema],
+    errors: list[CompileError],
+) -> tuple[dict[str, str], dict[str, PinSchema], list[tuple[str, str]]]:
+    """Compile each ordered node into a CTE, threading input schemas + CTEs.
+
+    Shared by :func:`compile_canvas` (which then builds sinks) and
+    :func:`compile_to_select` (which renders a terminal SELECT).  CTE names
+    are deterministic on topo index so both paths produce identical SQL for
+    the same slice.
+
+    Returns ``(cte_names, output_schemas, ctes)`` keyed by node id.
+    """
     cte_names: dict[str, str] = {}
     output_schemas: dict[str, PinSchema] = {}
     ctes: list[tuple[str, str]] = []
@@ -196,6 +198,64 @@ def compile_canvas(
         output_schemas[node.id] = inferred
         ctes.append((name, compiled.sql))
 
+    return cte_names, output_schemas, ctes
+
+
+def _base_tables_from_ctes(ctes: list[tuple[str, str]]) -> list[str]:
+    """Distinct base-table FQNs referenced across a CTE chain, in first-seen order."""
+    base_tables: list[str] = []
+    seen_tables: set[str] = set()
+    for _name, sql in ctes:
+        for fqn in _extract_base_tables(sql):
+            if fqn in seen_tables:
+                continue
+            seen_tables.add(fqn)
+            base_tables.append(fqn)
+    return base_tables
+
+
+def compile_canvas(
+    doc: CanvasDoc,
+    *,
+    upstream_schemas: dict[str, PinSchema] | None = None,
+) -> tuple[SQLFragment | None, list[CompileError]]:
+    """Compile *doc* to a CTE-chain :class:`SQLFragment`.
+
+    Args:
+        doc: The canvas document to compile.
+        upstream_schemas: Optional ``{input_port_node_id: PinSchema}``
+            seeding so the InputPort blocks know what their output
+            shape is.  The executor passes a fully-resolved map after
+            asking soyuz for the schema of every ``table_fqn``; tests
+            may seed by hand.
+
+    Returns:
+        ``(fragment, [])`` on success, ``(None, [errors])`` on
+        failure.  ``errors`` is a *list*, never raised — the editor
+        wants to render every problem at once.
+    """
+    errors: list[CompileError] = []
+    if not _validate_envelope(doc, errors):
+        return None, errors
+    _check_block_types(doc.nodes, errors)
+    if errors:
+        return None, errors
+    output_nodes = _collect_output_nodes(doc.nodes, errors)
+    if not output_nodes:
+        return None, errors
+
+    ordered_nodes = topo_sort(list(doc.nodes), list(doc.edges), errors)
+    if ordered_nodes is None:
+        return None, errors
+
+    edges_in = _build_edges_in(doc.edges, errors)
+    if errors:
+        return None, errors
+
+    seeds = upstream_schemas or {}
+    cte_names, output_schemas, ctes = _build_cte_chain(
+        ordered_nodes, edges_in, seeds, errors
+    )
     if errors:
         return None, errors
 
@@ -288,21 +348,20 @@ def compile_canvas(
     if errors:
         return None, errors
 
-    base_tables: list[str] = []
-    seen_tables: set[str] = set()
-    for _name, sql in ctes:
-        for fqn in _extract_base_tables(sql):
-            if fqn in seen_tables:
-                continue
-            seen_tables.add(fqn)
-            base_tables.append(fqn)
-
     fragment = SQLFragment(
         ctes=ctes,
         sinks=sinks,
-        referenced_tables=base_tables,
+        referenced_tables=_base_tables_from_ctes(ctes),
     )
     return fragment, []
+
+
+def _render_select(ctes: list[tuple[str, str]], terminal_cte: str) -> str:
+    """Render a ``WITH … SELECT * FROM <terminal_cte>`` over *ctes*."""
+    if not ctes:
+        return f"SELECT * FROM {terminal_cte}"
+    cte_clauses = ",\n".join(f"{name} AS (\n{body}\n)" for name, body in ctes)
+    return f"WITH {cte_clauses}\nSELECT * FROM {terminal_cte}"
 
 
 def render_sql(fragment: SQLFragment, sink: SinkSpec) -> str:
@@ -312,10 +371,107 @@ def render_sql(fragment: SQLFragment, sink: SinkSpec) -> str:
     ``SELECT * FROM <final_cte>`` differs.  The executor calls this once
     per sink against the same DuckDB connection.
     """
-    if not fragment.ctes:
-        return f"SELECT * FROM {sink.final_cte}"
-    cte_clauses = ",\n".join(f"{name} AS (\n{body}\n)" for name, body in fragment.ctes)
-    return f"WITH {cte_clauses}\nSELECT * FROM {sink.final_cte}"
+    return _render_select(fragment.ctes, sink.final_cte)
 
 
-__all__ = ["compile_canvas", "render_sql"]
+class CompiledSelect(BaseModel):
+    """A sink-free SELECT compiled to a chosen terminal node.
+
+    The shape the DataFrame Studio (and any future sink-free consumer)
+    needs: governed SQL for the slice ending at ``terminal_node_id``, the
+    output column schema, and the base tables the SQL reads so the caller
+    can resolve + register them before running.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    sql: str
+    output_schema: PinSchema
+    referenced_tables: list[str] = Field(default_factory=lambda: [])
+    terminal_node_id: str
+
+
+def compile_to_select(
+    doc: CanvasDoc,
+    *,
+    terminal_node_id: str,
+    upstream_schemas: dict[str, PinSchema] | None = None,
+) -> tuple[CompiledSelect | None, list[CompileError]]:
+    """Compile the slice of *doc* ending at *terminal_node_id* to a SELECT.
+
+    Unlike :func:`compile_canvas` this needs no sink: it slices the DAG to
+    the ancestors of the terminal node, builds the same deterministic CTE
+    chain, and renders ``WITH … SELECT * FROM <terminal_cte>``.  This is the
+    primitive the DataFrame Studio compiles + previews + emits through, and
+    keeps ``canvas_df`` free of any sink (OutputPort) coupling to
+    ``dp_canvas``.
+
+    Args:
+        doc: The canvas document.
+        terminal_node_id: The node whose output defines the SELECT's tip.
+        upstream_schemas: Optional ``{node_id: PinSchema}`` seeding for
+            source blocks (same contract as :func:`compile_canvas`).
+
+    Returns:
+        ``(CompiledSelect, [])`` on success; ``(None, [errors])`` otherwise.
+    """
+    errors: list[CompileError] = []
+    if not _validate_envelope(doc, errors):
+        return None, errors
+    if terminal_node_id not in {n.id for n in doc.nodes}:
+        errors.append(
+            CompileError(
+                kind="missing_input",
+                node_id=terminal_node_id,
+                message=f"terminal node {terminal_node_id!r} not found in canvas.",
+            )
+        )
+        return None, errors
+
+    keep = _collect_ancestors(doc, terminal_node_id)
+    kept_nodes = [n for n in doc.nodes if n.id in keep]
+    kept_edges = [
+        e for e in doc.edges if e.source_node_id in keep and e.target_node_id in keep
+    ]
+    _check_block_types(kept_nodes, errors)
+    if errors:
+        return None, errors
+
+    ordered_nodes = topo_sort(kept_nodes, kept_edges, errors)
+    if ordered_nodes is None:
+        return None, errors
+
+    edges_in = _build_edges_in(kept_edges, errors)
+    if errors:
+        return None, errors
+
+    seeds = upstream_schemas or {}
+    cte_names, output_schemas, ctes = _build_cte_chain(
+        ordered_nodes, edges_in, seeds, errors
+    )
+    if errors:
+        return None, errors
+
+    terminal_cte = cte_names.get(terminal_node_id)
+    if terminal_cte is None:
+        errors.append(
+            CompileError(
+                kind="bad_config",
+                node_id=terminal_node_id,
+                message="terminal node failed to compile — no CTE recorded.",
+            )
+        )
+        return None, errors
+
+    return (
+        CompiledSelect(
+            sql=_render_select(ctes, terminal_cte),
+            output_schema=output_schemas[terminal_node_id],
+            referenced_tables=_base_tables_from_ctes(ctes),
+            terminal_node_id=terminal_node_id,
+        ),
+        [],
+    )
+
+
+__all__ = ["CompiledSelect", "compile_canvas", "compile_to_select", "render_sql"]

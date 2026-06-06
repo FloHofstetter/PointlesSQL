@@ -23,7 +23,12 @@ from pointlessql.services.canvas_df._blocks import (
     infer_block,
     register_block,
 )
-from pointlessql.services.canvas_df._compiler import compile_canvas, render_sql
+from pointlessql.services.canvas_df._compiler import (
+    CompiledSelect,
+    compile_canvas,
+    compile_to_select,
+    render_sql,
+)
 from pointlessql.services.canvas_df._edge_types import (
     EdgeCategory,
     categorize_columns,
@@ -51,6 +56,7 @@ __all__ = [
     "ColumnSpec",
     "CompileError",
     "CompiledBlock",
+    "CompiledSelect",
     "EdgeCategory",
     "PinSchema",
     "SQLFragment",
@@ -59,6 +65,7 @@ __all__ = [
     "categorize_pin_schema",
     "compile_block",
     "compile_canvas",
+    "compile_to_select",
     "infer_block",
     "register_block",
     "render_sql",
