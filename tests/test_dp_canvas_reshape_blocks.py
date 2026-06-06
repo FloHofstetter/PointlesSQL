@@ -313,7 +313,7 @@ def test_unnest_infer_appends_ordinality_column() -> None:
 
 
 def test_list_element_type_parses_both_spellings() -> None:
-    from pointlessql.services.dp_canvas._blocks._reshape import _list_element_type
+    from pointlessql.services.canvas_df._blocks._reshape import _list_element_type
 
     assert _list_element_type("INTEGER[]") == "INTEGER"
     assert _list_element_type("LIST(BIGINT)") == "BIGINT"

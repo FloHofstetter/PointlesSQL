@@ -1,36 +1,40 @@
 # pyright: reportUnusedImport=false
-"""Block-type registry for the visual data-product canvas.
+"""Data-product block catalog: the shared dataframe blocks plus DP sources/sinks.
 
-The registry was a single 1.5k-line module; it is now a package whose
-:mod:`._base` holds the shared dataclasses, the ``BLOCK_REGISTRY``, and
-the public :func:`compile_block` / :func:`infer_block` entry points.
-Each block's pure ``_compile_*`` / ``_infer_*`` helpers live in a
-per-category sibling module (``_io`` / ``_relational`` / ``_reshape`` /
-``_columns`` / ``_sql``) that calls :func:`._base.register_block` to add
-its types — pins plus the two functions — to the registry at import
-time.  Importing those modules here is what wires the registry, so the
-public import surface is unchanged for callers.
+The consumer-agnostic transform blocks (``Filter`` / ``Join`` / ``GroupBy``
+/ raw ``SQL`` …) and the registry machinery itself live in the reusable
+:mod:`pointlessql.services.canvas_df._blocks` layer; importing that package
+both wires those transforms into the shared ``BLOCK_REGISTRY`` and gives us
+the public :func:`compile_block` / :func:`infer_block` entry points to
+re-export.
+
+This package adds the *data-product-specific* blocks on top: ``InputPort``
+/ ``DataProduct`` sources that read a Unity Catalog table, and the
+``OutputPort`` / ``FileOutput`` / ``FileInput`` blocks that bridge Delta and
+the local file sandbox.  Their ``_io`` / ``_files`` modules call
+:func:`register_block` at import time, adding their types to the *same*
+shared registry, so a compile sees every block a data-product canvas can
+contain.  The public import surface is unchanged for existing callers.
 """
 
 from __future__ import annotations
 
-# Imported for the registration side effects (each module populates the
-# dispatch tables on import); base must be imported first, above.
-from pointlessql.services.dp_canvas._blocks import (  # noqa: E402
-    _columns,  # noqa: F401
-    _files,  # noqa: F401
-    _io,  # noqa: F401
-    _relational,  # noqa: F401
-    _reshape,  # noqa: F401
-    _sql,  # noqa: F401
-)
-from pointlessql.services.dp_canvas._blocks._base import (
+# Importing the dataframe layer wires the shared transform blocks into
+# BLOCK_REGISTRY and exposes the registry machinery we re-export below.
+from pointlessql.services.canvas_df._blocks import (
     BLOCK_REGISTRY,
     OUTPUT_MODES,
     BlockSpec,
     CompiledBlock,
     compile_block,
     infer_block,
+)
+
+# Imported for the registration side effects — each module adds its
+# data-product-specific block types to the shared registry on import.
+from pointlessql.services.dp_canvas._blocks import (  # noqa: E402
+    _files,  # noqa: F401
+    _io,  # noqa: F401
 )
 
 __all__ = [

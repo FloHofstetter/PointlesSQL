@@ -3,7 +3,7 @@
 
 Compile + schema-inference helpers split out of the former single-file
 block registry.  Shared infrastructure and the public dispatch live in
-:mod:`pointlessql.services.dp_canvas._blocks._base`; this module
+:mod:`pointlessql.services.canvas_df._blocks._base`; this module
 registers its block types into the dispatch tables at import time.
 """
 
@@ -12,7 +12,7 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from pointlessql.services.dp_canvas._blocks._base import (
+from pointlessql.services.canvas_df._blocks._base import (
     CompiledBlock,
     _bad_config,
     _coerce_str,
@@ -21,7 +21,7 @@ from pointlessql.services.dp_canvas._blocks._base import (
     _unknown_schema,
     register_block,
 )
-from pointlessql.services.dp_canvas._types import ColumnSpec, CompileError, PinSchema
+from pointlessql.services.canvas_df._types import ColumnSpec, CompileError, PinSchema
 
 # --------------------------------------------------------------------- Filter
 

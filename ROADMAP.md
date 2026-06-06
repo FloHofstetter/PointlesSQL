@@ -3547,9 +3547,22 @@ PointlesSQL
 │   │   │     numerische Tie-Breaks bit-identisch erhalten.  Paritäts-Test
 │   │   │     deckt die int-vs-lexikal-Sortierfalle ab.  Full pytest
 │   │   │     5967/0/10.
-│   │   │   - PR2 (geplant): `canvas_df` (reine Blocks, Compiler,
-│   │   │     schema_flow, preview-cache, edge_types); `DATAFRAME_REGISTRY`
-│   │   │     auf der NodeKindRegistry; öffentliches `compile_to_select`.
+│   │   │   - PR2 ✅ (local): `canvas_df`-Schicht — reine Blocks
+│   │   │     (`_base`/`_relational`/`_reshape`/`_columns`/`_sql`), Compiler,
+│   │   │     schema_flow, edge_types verschoben; `_types` gesplittet
+│   │   │     (ColumnSpec/PinSchema/SinkSpec/SQLFragment → `canvas_df`,
+│   │   │     SinkResult/MultiExecuteResult bleiben in `dp_canvas`).  Die
+│   │   │     DP-Source/Sink-Blocks (`_io`/`_files`) registrieren in die
+│   │   │     *geteilte* `BLOCK_REGISTRY`.  `dp_canvas` re-exportiert via
+│   │   │     Shims — kein Aufrufer ändert sich (1 sanktionierte Test-Import-
+│   │   │     Pfadänderung).  `canvas_df` ist soyuz-/config-/storage-rein.
+│   │   │     Full pytest 5967/0/10, pyright 0 Fehler.  Verschoben: die
+│   │   │     `NodeKindRegistry`-Generalisierung (Registry bleibt vorerst ein
+│   │   │     geteiltes `BLOCK_REGISTRY`-Dict) und `compile_to_select` →
+│   │   │     PR7, weil ein sink-freier Compile-Pfad nötig ist (der
+│   │   │     synthetische OutputPort koppelte `canvas_df` sonst zurück an
+│   │   │     `dp_canvas`); `_preview_cache` bleibt in `dp_canvas` (kein
+│   │   │     `canvas_df`-Consumer).
 │   │   │   - PR3 (geplant): `dp_canvas` zum dünnen Consumer verschlanken +
 │   │   │     Frontend-Editor-Shell `frontend/js/canvas/` mit
 │   │   │     `assembleCanvasEditor(adapter)`.  Schließt Phase 193.

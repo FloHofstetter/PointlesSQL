@@ -30,7 +30,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any, Literal
 
-from pointlessql.services.dp_canvas._types import (
+from pointlessql.services.canvas_df._types import (
     ColumnSpec,
     CompileError,
     PinSchema,

@@ -24,14 +24,14 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from pointlessql.services.dp_canvas._blocks._base import (
+from pointlessql.services.canvas_df._blocks._base import (
     CompiledBlock,
     _bad_config,
     _coerce_str,
     _unknown_schema,
     register_block,
 )
-from pointlessql.services.dp_canvas._types import CompileError, PinSchema
+from pointlessql.services.canvas_df._types import CompileError, PinSchema
 
 # Allow-list for a sandbox-relative path: letters, digits and the handful of
 # punctuation real filenames need.  It deliberately excludes quotes,
