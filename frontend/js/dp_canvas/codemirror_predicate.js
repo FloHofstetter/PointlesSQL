@@ -22,8 +22,8 @@
  * a notebook in this session.
  */
 
-import { buildSqlSnippetCompletions } from './_codemirror_snippets.js';
-import { formatSql } from './_sql_format.js';
+import { buildSqlSnippetCompletions } from '../canvas/_codemirror_snippets.js';
+import { formatSql } from '../canvas/_sql_format.js';
 
 let _cmCache = null;
 

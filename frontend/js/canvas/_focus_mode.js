@@ -27,11 +27,7 @@ export function installFocusModeShortcut(host, opts = {}) {
     host.focusMode = false;
   }
   const handler = (ev) => {
-    if (
-      ev.shiftKey &&
-      (ev.key === 'F' || ev.key === 'f') &&
-      !ev.target.closest(formSelector)
-    ) {
+    if (ev.shiftKey && (ev.key === 'F' || ev.key === 'f') && !ev.target.closest(formSelector)) {
       ev.preventDefault();
       if (typeof window.pqlToggleFocusMode === 'function') {
         host.focusMode = window.pqlToggleFocusMode();

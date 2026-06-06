@@ -190,7 +190,7 @@ export const nodeOpsMethods = {
   async autoTidy() {
     const df = this._drawflow;
     if (!df) return;
-    const { computeLayout, animateTo } = await import('../_auto_layout.js');
+    const { computeLayout, animateTo } = await import('../../canvas/_auto_layout.js');
     const nodes = Object.values(this.nodes);
     const edges = Object.values(this.edges);
     if (nodes.length === 0) return;

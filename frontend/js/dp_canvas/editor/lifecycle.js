@@ -12,9 +12,9 @@
  * inner event callbacks stay arrows so they capture it.
  */
 
-import { installZoomObserver } from '../_canvas_helpers.js';
+import { installZoomObserver } from '../../canvas/_canvas_helpers.js';
+import { installFocusModeShortcut } from '../../canvas/_focus_mode.js';
 import { installSmoothCurvature } from '../_drawflow_loader.js';
-import { installFocusModeShortcut } from '../_focus_mode.js';
 
 export const lifecycleMethods = {
   async init() {

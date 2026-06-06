@@ -16,8 +16,8 @@
  * persists per-tab via the same Alpine state.
  */
 
+import { installFocusModeShortcut } from '../canvas/_focus_mode.js';
 import { installSmoothCurvature, loadCanvasIntoDrawflow } from '../dp_canvas/_drawflow_loader.js';
-import { installFocusModeShortcut } from '../dp_canvas/_focus_mode.js';
 
 function _readQuery(name) {
   const u = new URL(window.location.href);

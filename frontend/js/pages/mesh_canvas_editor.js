@@ -1,6 +1,6 @@
-import { fitDrawflowToView, installZoomObserver } from '../dp_canvas/_canvas_helpers.js';
+import { fitDrawflowToView, installZoomObserver } from '../canvas/_canvas_helpers.js';
+import { installFocusModeShortcut } from '../canvas/_focus_mode.js';
 import { installSmoothCurvature } from '../dp_canvas/_drawflow_loader.js';
-import { installFocusModeShortcut } from '../dp_canvas/_focus_mode.js';
 
 /*
  * Mesh-canvas editor — Alpine factory.
@@ -202,7 +202,7 @@ export function meshCanvasEditor() {
       this.ctxMenuOpen = false;
       if (!this._drawflow) return;
       if (!window.dagre) return;
-      const { computeLayout, animateTo } = await import('../dp_canvas/_auto_layout.js');
+      const { computeLayout, animateTo } = await import('../canvas/_auto_layout.js');
       const nodes = (this.document.nodes || []).map((n) => ({ id: 'dp_' + n.dp_id }));
       const edges = (this.document.edges || []).map((e) => ({
         source_node_id: 'dp_' + e.source_dp_id,
