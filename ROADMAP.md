@@ -3527,7 +3527,7 @@ PointlesSQL
 │   │   - Strategische Wette: die Agent/MCP-Oberfläche (passt zum
 │   │     Agent-first-Pivot, Phase 12.12).
 │   │
-├── Mega-Cluster 193–196 — Reusable Canvas Core + Two New Consumers  ⏳ planned (geplant 2026-06-06)
+├── Mega-Cluster 193–196 — Reusable Canvas Core + Two New Consumers  ⏳ in progress (193 ✅, 2026-06-06)
 │   │   Der Canvas-Editor war an Data Products gekettet.  Extrahiere den
 │   │   Kern in drei Schichten — ein consumer-agnostischer Graph-Kernel
 │   │   (`canvas_core`) → die DataFrame/SQL-Schicht (`canvas_df`) →
@@ -3537,7 +3537,7 @@ PointlesSQL
 │   │   Scheduler-topo-sort wird auf den geteilten Kern vereinheitlicht;
 │   │   der tote lineare `services/canvas/`-Prototyp wird stillgelegt.
 │   │
-│   ├── Phase 193 — Canvas-Core-Extraktion (canvas_core + canvas_df)  ⏳ in progress
+│   ├── Phase 193 — Canvas-Core-Extraktion (canvas_core + canvas_df)  ✅ shipped (local, 2026-06-06)
 │   │   │   - PR1 ✅ (local): `canvas_core`-Kernel — Envelope (CanvasDoc/
 │   │   │     Node/Edge/CompileError), `topo_sort` mit pluggbarem
 │   │   │     `sort_key`, Struktur-Validierung, struktureller Diff,
@@ -3563,23 +3563,38 @@ PointlesSQL
 │   │   │     synthetische OutputPort koppelte `canvas_df` sonst zurück an
 │   │   │     `dp_canvas`); `_preview_cache` bleibt in `dp_canvas` (kein
 │   │   │     `canvas_df`-Consumer).
-│   │   │   - PR3 ⏳ (Frontend-Editor-Shell, in progress): neues
-│   │   │     `frontend/js/canvas/`-Shell-Verzeichnis angelegt; 12
-│   │   │     consumer-agnostische Module verschoben — 7 generische
-│   │   │     Bundles (viewport/history/annotations/context_menu/
-│   │   │     edge_routing/edge_toolbar/config_form_structured) + 5
-│   │   │     Helfer (_canvas_helpers/_auto_layout/_focus_mode/
-│   │   │     _sql_format/_codemirror_snippets).  Alle Importer
-│   │   │     (inkl. mesh-Editor + Diff-Seite) umgebogen; gegen den
-│   │   │     laufenden Stack verifiziert (alle 3 Canvas-Factories
-│   │   │     komponieren, 0 Konsolen-Fehler), biome 2.4.15-rein.
-│   │   │     Offen (heikler Rest): Katalog-Entglobalisierung der
-│   │   │     katalog-gekoppelten Kern-Bundles (drawflow_sync/node_ops/
-│   │   │     node_render/clipboard/output_plus/connect/edges +
-│   │   │     _render_helpers/_drawflow_loader) auf einen injizierten
-│   │   │     Adapter, `assembleCanvasEditor(adapter)` als Compose-Naht,
-│   │   │     DP-Seite → dünner Adapter-Shim, voller dp-canvas-builder
-│   │   │     e2e-Replay (6 Wellen).  Schließt Phase 193.
+│   │   │   - PR3a/PR3b ✅ (local): `frontend/js/canvas/`-Shell-Verzeichnis;
+│   │   │     12 consumer-agnostische Module per `git mv` verschoben — 7
+│   │   │     generische Bundles (viewport/history/annotations/context_menu/
+│   │   │     edge_routing/edge_toolbar/config_form_structured) + 5 Helfer
+│   │   │     (_canvas_helpers/_auto_layout/_focus_mode/_sql_format/
+│   │   │     _codemirror_snippets).  Alle Importer (inkl. mesh-Editor +
+│   │   │     Diff-Seite) umgebogen.
+│   │   │   - PR3c ✅ (local): Katalog-Entglobalisierung — die 7
+│   │   │     katalog-gekoppelten Kern-Bundles (drawflow_sync/node_render/
+│   │   │     node_ops/clipboard/output_plus/connect/edges) + der geteilte
+│   │   │     `_drawflow_loader` + die generischen `_render_helpers` lesen
+│   │   │     jeden Block-Shape-Lookup (BLOCK_DEFS/blockDef/pinIndexFor/
+│   │   │     inputPinName/nodeHtml/describeConfig) jetzt über ein
+│   │   │     injiziertes `this.catalog` statt `dp_canvas/_block_catalog` zu
+│   │   │     importieren; alle nach `frontend/js/canvas/` verschoben.
+│   │   │     `assembleCanvasEditor(adapter, ctx)` (canvas/compose.js) ist
+│   │   │     die Compose-Naht: sie besitzt die geteilten Bundles + die 3
+│   │   │     abgeleiteten Graph-Getter; der Consumer-Adapter liefert
+│   │   │     Katalog + eigene Bundles + State.  Die DP-Seite schrumpft von
+│   │   │     einem 190-Zeilen-Kompositionsroot auf einen dünnen Adapter
+│   │   │     (DP_CATALOG + 8 DP-Bundles + dpEditorState).  Gegen den
+│   │   │     laufenden Editor verifiziert: identisches State-Feld-Set,
+│   │   │     233 Keys / 161 Methoden, alle Bundles gemerged, Getter als
+│   │   │     Live-Accessoren, der de-globalisierte Katalog-Pfad
+│   │   │     (nodeHtml/describeConfig/_spawnNode) löst über `this.catalog`
+│   │   │     auf, 0 Konsolen-Fehler beim eager Bootstrap-Import, biome
+│   │   │     2.4.15-rein.  Schließt Phase 193.  Aufgeschoben (eine
+│   │   │     Verifikation): der volle interaktive dp-canvas-builder-Replay
+│   │   │     (6 Wellen) braucht ein frisch geseedetes Canvas-Datenprodukt —
+│   │   │     wird beim nächsten Seed (PR6/PR8-e2e) mitgenommen; das
+│   │   │     Komponenten-Äquivalenz-Proof deckt das Relokations-/
+│   │   │     Entglobalisierungs-Risiko ab.
 │   │   │
 │   ├── Phase 194 — Scheduler-Task-Chain-Visual-Editor  ⏳ planned
 │   │   │   Diff-Save gegen `JobTask` (kein neues Graph-Table), `task-{id}`
@@ -3595,6 +3610,101 @@ PointlesSQL
 │       │   `/canvas` → 308 auf `/dataframe-studio`; Entfernung des
 │       │   linearen `services/canvas/`-Prototyps + Route + Page + JS +
 │       │   Template + Test.
+│   │
+├── Differentiator-Tiefe-Cluster — Phasen 197–206  ⏳ planned (geplant 2026-06-06)
+│   │   Zehn lang laufende Tiefen-Phasen *nach* dem Quality-Cluster
+│   │   (189–191) und dem Canvas-Mega-Cluster (193–196).  Bewusst auf
+│   │   *autonome Remote-Ausführung* zugeschnitten: objektive Abnahme,
+│   │   stark dekomponierbar in Wellen, intern (kein externes Publizieren,
+│   │   keine ständigen Produktentscheidungen) — damit ein Remote-Confirm
+│   │   pro Phase reicht.  Tiefe statt Breite auf den DBX-Differenzierern +
+│   │   Produktreife (Korrektheit, Test-Infra, Betrieb, Sicherheit,
+│   │   Agent-Surface, Reichweite); keine 16. Oberfläche.  Volle Specs in
+│   │   den per-Phase-Sidecars.  Reihenfolge ist Vorschlag, nicht
+│   │   Abhängigkeit — 197/202/203 sind die Differenzierer-Kerne, 198/199
+│   │   die Infra-Hebel, auf denen mehrere andere aufsitzen.
+│   │
+│   ├── Phase 197 — Lineage-Korrektheits-Verifikations-Engine  ⏳ planned
+│   │   │   Detail: [`docs/internal/phase-197.md`](docs/internal/phase-197.md).
+│   │   │   Property-based (Hypothesis) + Golden-Corpus-Verifikation von
+│   │   │   Row-/Column-/Value-Lineage über *alle* PQL-Pfade.  Aufhänger:
+│   │   │   der echte 15.8-Bug (silver SELECT droppt `_lineage_row_id`).
+│   │   │   Invarianten formalisieren → reine Checker → Operator-Wellen
+│   │   │   (sql/merge/aggregate/update/autoload/branch/federation) →
+│   │   │   Golden-Corpus + OpenLineage-Differential → CI-Marker.
+│   │   │
+│   ├── Phase 198 — E2E-in-CI Vollabdeckung  ⏳ planned
+│   │   │   Detail: [`docs/internal/phase-198.md`](docs/internal/phase-198.md).
+│   │   │   Fortsetzung von Phase 190 (Tier-1/2 ≈14): alle 92
+│   │   │   deterministischen Playbooks → Playwright-in-CI mit
+│   │   │   Coverage-Ledger bis 100 %.  soyuz-catalog als CI-Service +
+│   │   │   `requires_soyuz`-Marker, Page-Objects, Browser-/Hybrid-/curl-/
+│   │   │   Hermes-Wellen, Gate scharf (kein `continue-on-error`).
+│   │   │
+│   ├── Phase 199 — Performance- & Skalierungs-Härtung  ⏳ planned
+│   │   │   Detail: [`docs/internal/phase-199.md`](docs/internal/phase-199.md).
+│   │   │   Per-Route-Latenz + Query-Dauer instrumentieren → Benchmark-
+│   │   │   Harness (1M-Audit, 10k-Lineage-DAG) → Latenz-Budget-Gate
+│   │   │   (`check-perf-budget.sh`, Floor-Ratsche wie file-size/pyright) →
+│   │   │   Hot-Path-Optimierung (FTS/Lineage/Query-History) unter der
+│   │   │   software-composited-UI-Regel (kein backdrop-filter/Animation).
+│   │   │
+│   ├── Phase 200 — Observability- & SLO-Vollständigkeit  ⏳ planned
+│   │   │   Detail: [`docs/internal/phase-200.md`](docs/internal/phase-200.md).
+│   │   │   OpenTelemetry-Tracing (Bridge zu vorhandenen Correlation-IDs,
+│   │   │   default-off) + RED/USE-Metriken (teilt 199) + SLO-Burn-Rate /
+│   │   │   Error-Budget auf dem `slo/`-Kern + synthetische Probes scharf
+│   │   │   (Tabellen existieren) + RED/SLO-Grafana-Dashboards + Burn-Rate-
+│   │   │   Alerts über `alert_dispatcher`.
+│   │   │
+│   ├── Phase 201 — Disaster-Recovery & Daten-Lebenszyklus  ⏳ planned
+│   │   │   Detail: [`docs/internal/phase-201.md`](docs/internal/phase-201.md).
+│   │   │   Konsistentes Backup/Restore der eigenen Metadaten-DB (SQLite +
+│   │   │   PG) + Schema-Kompat-Gate + Cross-Domain-Konsistenz (DB ↔ Delta ↔
+│   │   │   Branches) + vereinheitlichter `retention_sweep` + Restore-
+│   │   │   Game-Day als CI-Job + DR-Runbook.
+│   │   │
+│   ├── Phase 202 — Authz-Matrix & Security-Härtung  ⏳ planned
+│   │   │   Detail: [`docs/internal/phase-202.md`](docs/internal/phase-202.md).
+│   │   │   Generiertes Authz-Inventar (~800 Endpoints × 11 `require_*`) →
+│   │   │   parametrisierte Matrix-Tests (Route × Persona × Status) →
+│   │   │   CSP + Security-Header (Report-Only → enforce) → SAST/Secret/
+│   │   │   Dep-Scanning in CI (bandit/detect-secrets/pip-audit als Gate) →
+│   │   │   Secrets-Key-Rotation-CLI → STRIDE-Threat-Model.
+│   │   │
+│   ├── Phase 203 — Vollständige MCP-Agent-Oberfläche  ⏳ planned
+│   │   │   Detail: [`docs/internal/phase-203.md`](docs/internal/phase-203.md).
+│   │   │   Strategische Wette (Agent-first-Pivot).  Heute: 7 read-only
+│   │   │   Lens-Tools über FastMCP-Wrapper.  Ausbau zu read **+ governtem
+│   │   │   Schreiben** über dieselbe Hook-/Provenance-Kette wie Menschen
+│   │   │   (keine MCP-Mutation ohne `AgentRunOperation` + CloudEvent),
+│   │   │   versionierte Tool-Coverage-Matrix + Conformance-Suite (stdio +
+│   │   │   SSE).  Eng mit 202 (Scopes/Authz).
+│   │   │
+│   ├── Phase 204 — Data-Quality- & Expectations-Tiefe  ⏳ planned
+│   │   │   Detail: [`docs/internal/phase-204.md`](docs/internal/phase-204.md).
+│   │   │   Aus verstreuten Checks (Phase 36 Contract-Tests, Drift, Mesh-
+│   │   │   Health) ein Bild: reichere Profilierung + erweitertes
+│   │   │   Expectation-Vokabular + Anomalie als Signal + per-Product
+│   │   │   Quality-Scorecard (neuer Tab) + Quality-Gate vor dem Write
+│   │   │   (off/warn/block, wie schema-versioning `_enforcer`).
+│   │   │
+│   ├── Phase 205 — Accessibility (WCAG-AA) Compliance  ⏳ planned
+│   │   │   Detail: [`docs/internal/phase-205.md`](docs/internal/phase-205.md).
+│   │   │   axe-core auf der Playwright-Infra (Violations-Floor-Ratsche) +
+│   │   │   globale Primitive (Landmarks/Skip-Link/Fokus nach HTMX-Swap) +
+│   │   │   Formulare/Modals/Popover + Tastatur-Nav + Risiko-Widgets
+│   │   │   (cytoscape-DAG/Canvas/CodeMirror mit Text-Alternative) +
+│   │   │   Biome-a11y/Kontrast.  `prefers-reduced-motion` (Phase 184) als
+│   │   │   Vorlage.  0 critical/serious.
+│   │   │
+│   └── Phase 206 — Cost/FinOps- & Kapazitäts-Tiefe  ⏳ planned
+│       │   Detail: [`docs/internal/phase-206.md`](docs/internal/phase-206.md).
+│       │   Auf Phase 146 (Attribution/Quotas) aufbauend: Chargeback-Reports
+│       │   (Pivot über consumer/product/workspace) + Budgets mit Burn-
+│       │   Vorwarnung (warn 80 % / block 100 %, Signals) + Forecast/
+│       │   Kapazität („Budget erreicht in N Tagen") + Cost am Agent-Run +
+│       │   FinOps-Grafana-Panels.  estimated_cost = Schätzung, kein $.
 │   │
 ├── Phase 188 — Echte Write-Modes (merge / append)  ✅ shipped (local, 2026-06-01)
 │   │
