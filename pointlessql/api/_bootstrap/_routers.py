@@ -35,7 +35,6 @@ def register_routers(app: FastAPI) -> None:
     from pointlessql.api.audit import router as audit_router
     from pointlessql.api.auth_routes import router as auth_router
     from pointlessql.api.branches_routes import router as branches_router
-    from pointlessql.api.canvas_routes import router as canvas_router
     from pointlessql.api.catalog_html_routes import router as catalog_html_router
     from pointlessql.api.catalog_routes import router as catalog_router
     from pointlessql.api.conventions_routes import router as conventions_router
@@ -149,7 +148,6 @@ def register_routers(app: FastAPI) -> None:
     app.include_router(audit_router)
     app.include_router(saved_audit_queries_router)
     app.include_router(saved_views_router)
-    app.include_router(canvas_router)
     app.include_router(volumes_router)
     app.include_router(lineage_router)
     app.include_router(lineage_query_router)

@@ -3527,7 +3527,7 @@ PointlesSQL
 │   │   - Strategische Wette: die Agent/MCP-Oberfläche (passt zum
 │   │     Agent-first-Pivot, Phase 12.12).
 │   │
-├── Mega-Cluster 193–196 — Reusable Canvas Core + Two New Consumers  ⏳ in progress (193 ✅, 2026-06-06)
+├── Mega-Cluster 193–196 — Reusable Canvas Core + Two New Consumers  ✅ shipped (local, 2026-06-06)
 │   │   Der Canvas-Editor war an Data Products gekettet.  Extrahiere den
 │   │   Kern in drei Schichten — ein consumer-agnostischer Graph-Kernel
 │   │   (`canvas_core`) → die DataFrame/SQL-Schicht (`canvas_df`) →
@@ -3652,10 +3652,16 @@ PointlesSQL
 │   │   │     Studio-Graph-Persistenz via Notebook-Zell-Metadaten ist
 │   │   │     bewusst client-seitig (kein neues Schema/Migration).
 │   │   │
-│   └── Phase 196 — Legacy-Linear-Canvas-Retirement  ⏳ planned
-│       │   `/canvas` → 308 auf `/dataframe-studio`; Entfernung des
-│       │   linearen `services/canvas/`-Prototyps + Route + Page + JS +
-│       │   Template + Test.
+│   └── Phase 196 — Legacy-Linear-Canvas-Retirement  ✅ shipped (local, 2026-06-06)
+│       │   - PR9 ✅ (local): der tote lineare `/canvas`-Prototyp
+│       │     stillgelegt — `GET /canvas` → 308 auf `/dataframe-studio`;
+│       │     gelöscht: `services/canvas/` (compile_nodes/SUPPORTED_NODE_
+│       │     KINDS), `api/canvas_routes.py` (+ Router-Include),
+│       │     `pages/canvas.js` (+ bootstrap-Import/`window.canvasEditor`),
+│       │     `templates/pages/canvas.html`, `tests/test_canvas_compiler.py`.
+│       │     Sidebar-Link → `/dataframe-studio`.  Grep-sauber; App
+│       │     importiert (817 Routen), pytest sammelt 5996 ohne
+│       │     Import-Fehler.  Schließt Phase 196 + den 193–196-Cluster.
 │   │
 ├── Differentiator-Tiefe-Cluster — Phasen 197–206  ⏳ planned (geplant 2026-06-06)
 │   │   Zehn lang laufende Tiefen-Phasen *nach* dem Quality-Cluster

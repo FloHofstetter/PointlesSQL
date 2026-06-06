@@ -231,7 +231,6 @@ import { alertDetail } from './pages/alert_detail.js';
 // per-page boilerplate.
 import { alertsPage } from './pages/alerts.js';
 import { branchDiscussion } from './pages/branch_detail.js';
-import { canvasEditor } from './pages/canvas.js';
 import { catalogTree, pathFromUrl } from './pages/catalog_tree.js';
 import { dataProductDetail } from './pages/data_product.js';
 import { dataProductCanvasTab } from './pages/data_product_canvas_tab.js';
@@ -378,7 +377,6 @@ window.auditSinkRow = auditSinkRow;
 window.auditSinkCreate = auditSinkCreate;
 window.reviewDestRow = reviewDestRow;
 window.reviewDestCreate = reviewDestCreate;
-window.canvasEditor = canvasEditor;
 window.dpCanvasEditor = dpCanvasEditor;
 window.dpCanvasDiff = dpCanvasDiff;
 window.meshCanvasEditor = meshCanvasEditor;

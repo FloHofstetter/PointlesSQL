@@ -1,10 +1,8 @@
 """Compile a :class:`CanvasDoc` to a DuckDB :class:`SQLFragment`.
 
-Pattern reference (not reused — different shape): the linear-only
-``compile_nodes`` in :mod:`pointlessql.services.canvas._compiler`.
-That sibling translates an *ordered list* into a PQL script; this
-one translates a *DAG* into a ``WITH … SELECT …`` CTE chain DuckDB
-runs natively.
+This translates a *DAG* of typed blocks into a ``WITH … SELECT …`` CTE
+chain DuckDB runs natively (the retired linear-canvas prototype instead
+translated an *ordered list* into a PQL script).
 
 Topological sort uses Kahn's algorithm so a cycle surfaces as a
 structured :class:`CompileError` instead of an infinite loop.  CTE

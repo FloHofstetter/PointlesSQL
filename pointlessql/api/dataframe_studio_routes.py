@@ -47,6 +47,17 @@ router = APIRouter(prefix="/api/dataframe-studio", tags=["dataframe-studio"])
 html_router = APIRouter(tags=["dataframe-studio-html"])
 
 
+@html_router.get("/canvas", response_model=None)
+def legacy_canvas_redirect() -> RedirectResponse:
+    """Permanent redirect from the retired linear canvas to the Studio.
+
+    The standalone linear ``/canvas`` prototype was superseded by the
+    DataFrame Studio (the same governed-SQL builder on the reusable canvas
+    core).  A 308 keeps old bookmarks + the request method working.
+    """
+    return RedirectResponse(url="/dataframe-studio", status_code=308)
+
+
 @html_router.get("/dataframe-studio", response_class=HTMLResponse, response_model=None)
 def dataframe_studio_page(request: Request) -> HTMLResponse | RedirectResponse:
     """Render the standalone DataFrame Studio editor page."""
