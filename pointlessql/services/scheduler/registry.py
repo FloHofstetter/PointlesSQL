@@ -68,6 +68,16 @@ class KindRegistry:
             raise ValidationError(f"Unknown job kind: {kind!r}")
         return executor
 
+    def kinds(self) -> tuple[str, ...]:
+        """Return the registered kind identifiers in registration order.
+
+        The visual task-chain editor reads this to paint its block
+        palette and to flag a node whose ``block_type`` is not a
+        runnable kind, so the palette never drifts from what the
+        scheduler can actually execute.
+        """
+        return tuple(self._executors)
+
 
 def build_default_registry() -> KindRegistry:
     """Return a :class:`KindRegistry` with the built-in executors wired up.
