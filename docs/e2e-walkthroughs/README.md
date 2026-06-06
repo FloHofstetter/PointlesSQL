@@ -116,6 +116,7 @@ prelude completes. Replay needs both contexts.
 | [`data-product-infrastructure.md`](data-product-infrastructure.md) | B8 declarative deployment block (playwright-only) | |
 | [`data-product-consumer-voice.md`](data-product-consumer-voice.md) | C consumer-side use cases + ratings (playwright-only) | |
 | [`dp-canvas-builder.md`](dp-canvas-builder.md) | Visual block-and-wire DP editor at `/dp/{id}/canvas` | |
+| [`scheduler-dag-editor.md`](scheduler-dag-editor.md) | Visual task-chain editor at `/jobs/{id}/dag` (shared canvas shell) | |
 | [`library-facts.md`](library-facts.md) | `/library/facts` browse + per-fact detail | |
 | [`vector-search.md`](vector-search.md) | HNSW vector index + `pql.vector_search` + REST + UI tab | |
 

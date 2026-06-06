@@ -3596,10 +3596,33 @@ PointlesSQL
 │   │   │     Komponenten-Äquivalenz-Proof deckt das Relokations-/
 │   │   │     Entglobalisierungs-Risiko ab.
 │   │   │
-│   ├── Phase 194 — Scheduler-Task-Chain-Visual-Editor  ⏳ planned
-│   │   │   Diff-Save gegen `JobTask` (kein neues Graph-Table), `task-{id}`
-│   │   │   Id-Mapping, `validate_dag`-Gate vor Commit, Lösch-Guard für
-│   │   │   Tasks mit laufendem `TaskRun`, Run-Status-Overlay je Knoten.
+│   ├── Phase 194 — Scheduler-Task-Chain-Visual-Editor  ✅ shipped (local, 2026-06-06)
+│   │   │   - PR4 ✅ (local): JobTask ⇄ CanvasDoc-Bridge
+│   │   │     (`services/scheduler/_canvas.py`) + Read-Routes unter
+│   │   │     `/api/jobs/{id}/canvas` — build_job_dag_doc (node
+│   │   │     `task-{pk}`, block_type=Kind, config={name,params,
+│   │   │     max_retries,retry_backoff_seconds}, Kante A→B ⇒ B hängt von
+│   │   │     A ab), validate (Envelope+Cycle+Kind+Name), run-status-
+│   │   │     Overlay, `/_kinds`-Palette aus `KindRegistry.kinds()`.
+│   │   │     12 Service-Tests, keine Schema-Änderung.
+│   │   │   - PR5 ✅ (local): Diff-Save (`apply_job_dag_doc` + POST
+│   │   │     `/canvas`) — `task-{pk}`-Update vs. neue Knoten (Editor-Id →
+│   │   │     `task-{pk}`-Remap), depends_on aus Kanten neu berechnet,
+│   │   │     Lösch-Guard für Tasks mit laufendem `TaskRun`,
+│   │   │     `validate_dag`-Gate vor Commit (Zyklus → Rollback).
+│   │   │     8 Tests inkl. Guard + Cycle-Rollback + validate_dag-Parität.
+│   │   │   - PR6 ✅ (local): Frontend-Editor `/jobs/{id}/dag` als dünner
+│   │   │     Adapter auf `assembleCanvasEditor` — eigener Katalog
+│   │   │     (`makeCatalog` aus den `/_kinds`), eigene Bundles
+│   │   │     (lifecycle/persistence/config_form/run_status), die
+│   │   │     geteilten Graph-Bundles unverändert wiederverwendet.
+│   │   │     „Edit DAG"-Button im Job-Detail.  Generischer
+│   │   │     `canvas/catalog_factory.js` (auch für Studio nutzbar).
+│   │   │     Gegen den laufenden Stack mit einem geseedeten 3-Task-Job
+│   │   │     verifiziert: 3 Knoten + 2 Kanten gerendert, 13-Kind-Palette,
+│   │   │     Save-Round-Trip, neuer Knoten → `task-4`-Remap, validate
+│   │   │     (clean + unknown-kind), 0 Konsolen-Fehler.  e2e-Walkthrough
+│   │   │     `scheduler-dag-editor.md` (6 Wellen).  Schließt Phase 194.
 │   │   │
 │   ├── Phase 195 — Notebook-DataFrame-Studio  ⏳ planned
 │   │   │   Visueller Query-Builder auf `canvas_df`; kompiliert zu SQL,

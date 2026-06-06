@@ -148,3 +148,30 @@ async def job_detail(request: Request, job_id: int) -> HTMLResponse:
             "active_table": None,
         },
     )
+
+
+@router.get("/jobs/{job_id}/dag", response_class=HTMLResponse)
+async def job_dag_editor_page(request: Request, job_id: int) -> HTMLResponse:
+    """Render the visual task-chain (DAG) editor for a job.
+
+    Visibility goes through :func:`load_job_or_404`; the editor itself
+    round-trips the graph through ``/api/jobs/{id}/canvas`` and only enables
+    mutation when the caller owns the job (or is an admin).  The standalone
+    page reuses the shared Drawflow canvas shell.
+    """
+    job = load_job_or_404(request, job_id)
+    user = get_user(request)
+    can_manage = user.get("is_admin", False) or job.run_as_user_id == user.get("id")
+    return get_templates(request).TemplateResponse(
+        request,
+        "pages/job_dag_editor.html",
+        {
+            "job": serialize_job(job),
+            "can_manage": can_manage,
+            "is_admin": user.get("is_admin", False),
+            "active_page": "jobs",
+            "active_catalog": None,
+            "active_schema": None,
+            "active_table": None,
+        },
+    )

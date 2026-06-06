@@ -1,0 +1,200 @@
+{% extends "base.html" %}
+{% block title %}Edit DAG · {{ job.name }} · PointlesSQL{% endblock %}
+
+{% set breadcrumbs = [
+    {"label": "Home", "href": "/"},
+    {"label": "Jobs", "href": "/jobs"},
+    {"label": job.name, "href": "/jobs/" ~ job.id},
+    {"label": "DAG"}
+] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block extra_css %}
+{{ super() }}
+<link rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/drawflow@0.0.59/dist/drawflow.min.css">
+<link rel="stylesheet" href="/static/css/canvas_shared.css?v={{ asset_version }}">
+<link rel="stylesheet" href="/static/css/dp_canvas_editor.css?v={{ asset_version }}">
+<link rel="stylesheet" href="/static/css/scheduler_canvas.css?v={{ asset_version }}">
+{% endblock %}
+
+{% block body_data_attrs %}data-pql-shell-locked="1"{% endblock %}
+
+{% block content %}
+<div class="pql-dp-canvas-shell"
+     x-data='jobDagEditor({{ job.id }}, {{ job.name | tojson }}, {
+        "can_manage": {{ can_manage | tojson }},
+        "is_admin": {{ is_admin | tojson }}
+     })'
+     x-init="init()">
+
+    <div class="pql-dp-canvas-topbar d-flex align-items-center gap-2 px-3 py-2 border-bottom bg-body-tertiary">
+        <a class="btn btn-sm btn-outline-secondary" href="/jobs/{{ job.id }}"
+           title="Back to job detail">
+            <i class="bi bi-arrow-left"></i>
+        </a>
+        <div class="d-flex flex-column lh-sm">
+            <strong class="small">{{ job.name }} — task chain</strong>
+            <span class="text-muted" style="font-size: 0.75rem;">
+                <span x-text="nodeCount"></span> tasks
+                · <span x-text="edgeCount"></span> dependencies
+            </span>
+        </div>
+        <span class="ms-3 small"
+              :class="saveStateClass()"
+              :title="saveStateTooltip()"
+              x-text="saveStateLabel()"></span>
+        <div class="ms-auto d-flex align-items-center gap-2">
+            <select class="form-select form-select-sm" style="width: auto;"
+                    @change="showRunStatus($event.target.value)"
+                    title="Overlay a run's per-task status">
+                <option value="">No run overlay</option>
+                <template x-for="r in runsList" :key="r.id">
+                    <option :value="r.id"
+                            x-text="'run #' + r.id + ' (' + r.status + ')'"></option>
+                </template>
+            </select>
+            <span class="badge"
+                  :class="issues.length === 0 ? 'bg-success-subtle text-success-emphasis' : 'bg-warning-subtle text-warning-emphasis'"
+                  x-text="issues.length === 0
+                      ? 'valid'
+                      : (issues.length + ' issue' + (issues.length === 1 ? '' : 's'))">
+            </span>
+            <button class="btn btn-sm btn-outline-secondary"
+                    @click="focusMode = window.pqlToggleFocusMode()"
+                    :class="{ active: focusMode }"
+                    title="Focus mode (Shift+F)">
+                <i class="bi bi-window-fullscreen"></i>
+            </button>
+            <button class="btn btn-sm btn-outline-secondary"
+                    @click="autoTidy()" title="Auto-layout (Ctrl+L)">
+                <i class="bi bi-diagram-3"></i>
+            </button>
+            <button class="btn btn-sm btn-primary"
+                    @click="save()" :disabled="saving || !canWrite">
+                <i class="bi bi-save"></i> Save
+            </button>
+        </div>
+    </div>
+
+    <div class="pql-dp-canvas-body d-flex">
+
+        {# Left palette — one draggable chip per runnable task kind. #}
+        <aside class="pql-dp-canvas-palette border-end p-2"
+               style="width: 200px; overflow-y: auto;"
+               x-show="canWrite">
+            <div class="text-uppercase text-muted small fw-semibold px-1 mb-1">Task kinds</div>
+            <template x-for="kind in paletteGroups.tasks" :key="kind">
+                <div class="pql-palette-item d-flex align-items-center gap-2 px-2 py-1 rounded mb-1"
+                     draggable="true"
+                     @dragstart="onPaletteDragStart($event, kind)"
+                     :title="blockHelp(kind)">
+                    <i class="bi" :class="blockIcon(kind)"></i>
+                    <span class="small" x-text="blockLabel(kind)"></span>
+                </div>
+            </template>
+        </aside>
+
+        <main class="pql-dp-canvas-stage flex-grow-1 position-relative"
+              @dragover.prevent
+              @drop.prevent="onCanvasDrop($event)">
+            <div x-ref="canvas" id="job-dag-drawflow" class="pql-canvas pql-dp-canvas-drawflow"></div>
+
+            <svg width="0" height="0" style="position: absolute;" aria-hidden="true">
+                <defs>
+                    <marker id="pql-arrow-end" viewBox="0 0 10 10"
+                            refX="8" refY="5" markerWidth="3.4" markerHeight="3.4"
+                            orient="auto-start-reverse">
+                        <path d="M2,2.6 L9,5 L2,7.4 z" fill="context-stroke"
+                              stroke="context-stroke" stroke-width="0.8"
+                              stroke-linejoin="round"/>
+                    </marker>
+                </defs>
+            </svg>
+
+            <div class="pql-dp-canvas-empty position-absolute top-50 start-50 translate-middle text-center text-muted"
+                 x-show="!loading && nodeCount === 0" x-cloak>
+                <i class="bi bi-diagram-3 fs-1 d-block opacity-50"></i>
+                <div class="mt-2 small">No tasks yet. Drag a task kind from the left to start.</div>
+            </div>
+            <div class="pql-dp-canvas-loading position-absolute top-50 start-50 translate-middle text-muted"
+                 x-show="loading">
+                <div class="spinner-border spinner-border-sm me-2"></div> Loading…
+            </div>
+
+            <div class="pql-canvas-minimap position-absolute" x-ref="minimap"
+                 x-show="minimapVisible" style="bottom: 12px; right: 12px;"></div>
+
+            {# Issue list — floats bottom-left when validation finds problems. #}
+            <div class="card shadow-sm small position-absolute"
+                 x-show="issues.length > 0" x-cloak
+                 style="bottom: 12px; left: 12px; max-width: 360px; z-index: 4;">
+                <div class="card-header py-1 px-2 d-flex align-items-center gap-2 bg-warning-subtle">
+                    <i class="bi bi-exclamation-triangle text-warning-emphasis"></i>
+                    <strong class="text-uppercase">Issues</strong>
+                    <span class="badge bg-warning-subtle text-warning-emphasis ms-auto"
+                          x-text="issues.length"></span>
+                </div>
+                <ul class="list-unstyled mb-0 px-2 py-1" style="max-height: 240px; overflow-y: auto;">
+                    <template x-for="msg in issues" :key="msg">
+                        <li class="border-start border-warning ps-2 mb-1" x-text="msg"></li>
+                    </template>
+                </ul>
+            </div>
+        </main>
+
+        {# Right drawer — config form for the selected task. #}
+        <aside class="pql-dp-canvas-drawer border-start p-3"
+               style="width: 320px; overflow-y: auto;"
+               x-show="selectedNode" x-cloak>
+            <template x-if="selectedNode">
+                <div>
+                    <div class="d-flex align-items-center gap-2 mb-3">
+                        <i class="bi fs-5" :class="blockIcon(selectedNode.block_type)"></i>
+                        <strong x-text="blockLabel(selectedNode.block_type)"></strong>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Task name</label>
+                        <input class="form-control form-control-sm" type="text"
+                               x-model="selectedNode.config.name"
+                               :disabled="!canWrite"
+                               placeholder="unique within the job">
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col">
+                            <label class="form-label small fw-semibold">Max retries</label>
+                            <input class="form-control form-control-sm" type="number" min="0"
+                                   x-model.number="selectedNode.config.max_retries"
+                                   :disabled="!canWrite">
+                        </div>
+                        <div class="col">
+                            <label class="form-label small fw-semibold">Backoff (s)</label>
+                            <input class="form-control form-control-sm" type="number" min="0"
+                                   x-model.number="selectedNode.config.retry_backoff_seconds"
+                                   :disabled="!canWrite">
+                        </div>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small fw-semibold">Parameters (JSON)</label>
+                        <textarea class="form-control form-control-sm font-monospace"
+                                  rows="8" :value="paramsText()"
+                                  @input="updateParams($event.target.value)"
+                                  :disabled="!canWrite"></textarea>
+                        <div class="form-text text-danger" x-show="paramsError" x-text="paramsError"></div>
+                    </div>
+                    <button class="btn btn-sm btn-outline-danger w-100"
+                            @click="deleteSelectedNode()" x-show="canWrite">
+                        <i class="bi bi-trash"></i> Delete task
+                    </button>
+                </div>
+            </template>
+        </aside>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{{ super() }}
+<script src="https://cdn.jsdelivr.net/npm/drawflow@0.0.59/dist/drawflow.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dagre@0.8.5/dist/dagre.min.js"></script>
+{% endblock %}

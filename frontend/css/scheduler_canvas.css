@@ -1,0 +1,44 @@
+/*
+ * Scheduler task-chain editor — incremental styles over the shared canvas.
+ *
+ * Only the bits the data-product editor does not already carry: the
+ * draggable kind-palette chip and the per-task run-status tint a node box
+ * takes when a run overlay is active.  Static colours only (this surface is
+ * software-composited — no filters or transitions).
+ */
+
+.pql-palette-item {
+  cursor: grab;
+  border: 1px solid var(--bs-border-color);
+  background: var(--bs-body-bg);
+  user-select: none;
+}
+
+.pql-palette-item:hover {
+  background: var(--bs-tertiary-bg);
+}
+
+/* Per-task run status — a left accent + subtle fill on the node box. */
+.drawflow-node.pql-task-status-pending {
+  box-shadow: inset 3px 0 0 var(--bs-secondary);
+}
+
+.drawflow-node.pql-task-status-running {
+  box-shadow: inset 3px 0 0 var(--bs-info);
+  background: var(--bs-info-bg-subtle);
+}
+
+.drawflow-node.pql-task-status-succeeded {
+  box-shadow: inset 3px 0 0 var(--bs-success);
+  background: var(--bs-success-bg-subtle);
+}
+
+.drawflow-node.pql-task-status-failed {
+  box-shadow: inset 3px 0 0 var(--bs-danger);
+  background: var(--bs-danger-bg-subtle);
+}
+
+.drawflow-node.pql-task-status-skipped {
+  box-shadow: inset 3px 0 0 var(--bs-warning);
+  background: var(--bs-warning-bg-subtle);
+}
