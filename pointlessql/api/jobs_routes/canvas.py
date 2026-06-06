@@ -24,9 +24,15 @@ from fastapi import APIRouter, Request
 from pydantic import BaseModel, ConfigDict
 
 from pointlessql.api.dependencies import require_user
-from pointlessql.api.jobs_routes._access import JOB_REGISTRY, load_job_or_404
+from pointlessql.api.jobs_routes._access import (
+    JOB_REGISTRY,
+    load_job_or_404,
+    require_job_owner_or_admin,
+)
 from pointlessql.services.canvas_core import CanvasDoc
 from pointlessql.services.scheduler._canvas import (
+    JobDagSaveSummary,
+    apply_job_dag_doc,
     build_job_dag_doc,
     build_run_status,
     validate_job_dag_doc,
@@ -38,6 +44,25 @@ router = APIRouter(tags=["jobs-canvas"])
 class JobCanvasLoadResponse(BaseModel):
     """Response for ``GET /api/jobs/{id}/canvas``."""
 
+    document: CanvasDoc
+
+
+class JobCanvasSaveRequest(BaseModel):
+    """Body for ``POST /api/jobs/{id}/canvas``."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    document: CanvasDoc
+
+
+class JobCanvasSaveResponse(BaseModel):
+    """Response for ``POST /api/jobs/{id}/canvas``.
+
+    Returns the freshly-rebuilt document so the editor can rewrite the
+    optimistic ids it minted for new nodes (also surfaced as ``id_remap``).
+    """
+
+    summary: JobDagSaveSummary
     document: CanvasDoc
 
 
@@ -89,6 +114,30 @@ def get_job_canvas(job_id: int, request: Request) -> JobCanvasLoadResponse:
     return JobCanvasLoadResponse(document=doc)
 
 
+@router.post("/api/jobs/{job_id}/canvas", response_model=JobCanvasSaveResponse)
+def save_job_canvas(
+    job_id: int, body: JobCanvasSaveRequest, request: Request
+) -> JobCanvasSaveResponse:
+    """Diff *body.document* against the job's tasks and apply the delta.
+
+    Requires job-owner / admin rights.  The whole save is one transaction
+    gated by ``validate_dag`` before commit, so a cyclic edit rolls back; a
+    task with an in-flight run cannot be deleted.
+    """
+    require_user(request)
+    job = load_job_or_404(request, job_id)
+    require_job_owner_or_admin(request, job)
+    factory = request.app.state.session_factory
+    summary = apply_job_dag_doc(
+        factory,
+        job_id=job_id,
+        doc=body.document,
+        known_kinds=set(JOB_REGISTRY.kinds()),
+    )
+    fresh = build_job_dag_doc(factory, job_id=job_id)
+    return JobCanvasSaveResponse(summary=summary, document=fresh)
+
+
 @router.post(
     "/api/jobs/{job_id}/canvas/validate",
     response_model=JobCanvasValidateResponse,
@@ -134,6 +183,8 @@ def job_canvas_kinds(job_id: int, request: Request) -> JobKindsResponse:
 __all__ = [
     "JobCanvasLoadResponse",
     "JobCanvasRunStatusResponse",
+    "JobCanvasSaveRequest",
+    "JobCanvasSaveResponse",
     "JobCanvasValidateRequest",
     "JobCanvasValidateResponse",
     "JobKindsResponse",

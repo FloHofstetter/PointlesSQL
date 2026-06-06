@@ -28,11 +28,13 @@ graph out on load.
 from __future__ import annotations
 
 import json
-from typing import Any
+from typing import Any, cast
 
+from pydantic import BaseModel
 from sqlalchemy import select
 
-from pointlessql.models import JobRun, JobTask, TaskRun
+from pointlessql.exceptions import ResourceNotFoundError, ValidationError
+from pointlessql.models import Job, JobRun, JobTask, TaskRun
 from pointlessql.services.canvas_core import (
     CanvasDoc,
     CanvasEdge,
@@ -41,6 +43,11 @@ from pointlessql.services.canvas_core import (
     topo_sort,
     validate_envelope,
 )
+from pointlessql.services.scheduler.dag import validate_dag
+
+# Run states that pin a task in place — a task with a TaskRun in one of
+# these states cannot be deleted from under the live loop.
+_LIVE_RUN_STATUSES = ("running", "pending")
 
 _NODE_PREFIX = "task-"
 SOURCE_PIN = "out"
@@ -205,3 +212,183 @@ def build_run_status(factory: Any, *, job_id: int, run_id: int) -> dict[str, str
         for tr in rows:
             statuses[node_id_for_task(tr.task_id)] = str(tr.status)
     return statuses
+
+
+class JobDagSaveSummary(BaseModel):
+    """Outcome of a task-chain diff-save."""
+
+    created: int
+    updated: int
+    deleted: int
+    # client-minted node id → its persisted ``task-{pk}`` id, so the editor
+    # can rewrite the optimistic nodes it drew before the save returned.
+    id_remap: dict[str, str]
+
+
+def _tasks_with_live_runs(
+    session: Any, job_id: int, task_ids: list[int]
+) -> list[int]:
+    """Return the subset of *task_ids* pinned by an in-flight run.
+
+    A task is pinned when it has a ``TaskRun`` whose parent ``JobRun`` is
+    still ``running`` and the task itself is ``pending`` or ``running`` —
+    deleting it would desync the live loop mid-execution.
+    """
+    if not task_ids:
+        return []
+    live_run_ids = list(
+        session.scalars(
+            select(JobRun.id).where(
+                JobRun.job_id == job_id, JobRun.status == "running"
+            )
+        )
+    )
+    if not live_run_ids:
+        return []
+    rows = session.scalars(
+        select(TaskRun.task_id).where(
+            TaskRun.job_run_id.in_(live_run_ids),
+            TaskRun.task_id.in_(task_ids),
+            TaskRun.status.in_(_LIVE_RUN_STATUSES),
+        )
+    )
+    return sorted({int(tid) for tid in rows})
+
+
+def _node_fields(node: CanvasNode) -> tuple[str, str, str, int, int]:
+    """Extract the JobTask columns carried in a canvas node's config."""
+    cfg = node.config or {}
+    name = str(cfg.get("name", "")).strip()
+    raw_params = cfg.get("params")
+    params = cast("dict[str, Any]", raw_params if isinstance(raw_params, dict) else {})
+    max_retries = int(cfg.get("max_retries") or 0)
+    backoff = int(cfg.get("retry_backoff_seconds") or 0)
+    return name, str(node.block_type), json.dumps(params), max_retries, backoff
+
+
+def apply_job_dag_doc(
+    factory: Any,
+    *,
+    job_id: int,
+    doc: CanvasDoc,
+    known_kinds: set[str] | None = None,
+) -> JobDagSaveSummary:
+    """Diff *doc* against a job's ``JobTask`` rows and apply the delta.
+
+    A node whose id is ``task-{pk}`` updates that task; any other id (an
+    editor-minted new node) creates one.  Tasks absent from the doc are
+    deleted — unless pinned by an in-flight run.  ``depends_on`` is recomputed
+    from the edges (``B depends on A`` for an ``A → B`` edge).  The whole
+    delta runs in one transaction and is gated by ``validate_dag`` *before*
+    commit, so a cyclic edit rolls back and never reaches the live loop.
+
+    Args:
+        factory: Session factory for the own-metadata DB.
+        job_id: The job whose task graph to overwrite.
+        doc: The edited canvas document.
+        known_kinds: Runnable kinds for the pre-flight check; when given an
+            unknown ``block_type`` is rejected before any write.
+
+    Returns:
+        A :class:`JobDagSaveSummary` with create/update/delete counts and the
+        new-node id remap.
+
+    Raises:
+        ResourceNotFoundError: When *job_id* does not exist.
+        ValidationError: On a pre-flight shape/kind/name failure, an attempt
+            to delete a task with a live run, or a cyclic resulting graph.
+    """
+    issues = validate_job_dag_doc(doc, known_kinds=known_kinds)
+    if issues:
+        raise ValidationError("; ".join(issues))
+
+    created = updated = deleted = 0
+    id_remap: dict[str, str] = {}
+
+    with factory() as session:
+        job = session.get(Job, job_id)
+        if job is None:
+            raise ResourceNotFoundError(f"Job {job_id} not found")
+        existing = {
+            t.id: t
+            for t in session.scalars(
+                select(JobTask).where(JobTask.job_id == job_id)
+            )
+        }
+
+        node_to_task: dict[str, JobTask] = {}
+        seen_ids: set[int] = set()
+        for order, node in enumerate(doc.nodes):
+            name, kind, params_json, max_retries, backoff = _node_fields(node)
+            tid = task_id_from_node_id(node.id)
+            if tid is not None and tid in existing:
+                task = existing[tid]
+                task.name = name
+                task.kind = kind
+                task.config = params_json
+                task.max_retries = max_retries
+                task.retry_backoff_seconds = backoff
+                task.order = order
+                seen_ids.add(tid)
+                updated += 1
+            else:
+                task = JobTask(
+                    workspace_id=job.workspace_id or 1,
+                    job_id=job_id,
+                    name=name,
+                    order=order,
+                    kind=kind,
+                    config=params_json,
+                    depends_on="[]",
+                    max_retries=max_retries,
+                    retry_backoff_seconds=backoff,
+                )
+                session.add(task)
+                session.flush()
+                id_remap[node.id] = node_id_for_task(task.id)
+                created += 1
+            node_to_task[node.id] = task
+
+        # Delete tasks the doc dropped — guarded against in-flight runs.
+        to_delete = [t for tid, t in existing.items() if tid not in seen_ids]
+        pinned = _tasks_with_live_runs(
+            session, job_id, [t.id for t in to_delete]
+        )
+        if pinned:
+            names = sorted(
+                existing[tid].name for tid in pinned if tid in existing
+            )
+            raise ValidationError(
+                f"cannot delete task(s) with an in-flight run: {names}"
+            )
+        for task in to_delete:
+            session.delete(task)
+            deleted += 1
+
+        # Recompute depends_on from the edges (A → B ⇒ B depends on A).
+        deps_by_task: dict[int, list[int]] = {
+            t.id: [] for t in node_to_task.values()
+        }
+        for edge in doc.edges:
+            src = node_to_task.get(edge.source_node_id)
+            tgt = node_to_task.get(edge.target_node_id)
+            if src is None or tgt is None:
+                continue
+            bucket = deps_by_task.setdefault(tgt.id, [])
+            if src.id not in bucket:
+                bucket.append(src.id)
+        for task in node_to_task.values():
+            task.depends_on = json.dumps(deps_by_task.get(task.id, []))
+
+        session.flush()
+        remaining = list(
+            session.scalars(select(JobTask).where(JobTask.job_id == job_id))
+        )
+        # Final gate on the persisted rows — rolls back the whole save on a
+        # cycle (the context manager exits without commit on the raise).
+        validate_dag(remaining)
+        session.commit()
+
+    return JobDagSaveSummary(
+        created=created, updated=updated, deleted=deleted, id_remap=id_remap
+    )

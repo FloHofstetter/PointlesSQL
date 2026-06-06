@@ -18,6 +18,7 @@ import pytest
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import sessionmaker
 
+from pointlessql.exceptions import ValidationError
 from pointlessql.models import (
     Base,
     Job,
@@ -26,8 +27,9 @@ from pointlessql.models import (
     TaskRun,
     User,
 )
-from pointlessql.services.scheduler import build_default_registry
+from pointlessql.services.scheduler import build_default_registry, validate_dag
 from pointlessql.services.scheduler._canvas import (
+    apply_job_dag_doc,
     build_job_dag_doc,
     build_run_status,
     node_id_for_task,
@@ -41,9 +43,7 @@ _SEED_COUNTER = itertools.count()
 @pytest.fixture
 def canvas_factory() -> Any:
     """In-memory session factory seeded with one runner user."""
-    engine = create_engine(
-        "sqlite:///:memory:", connect_args={"check_same_thread": False}
-    )
+    engine = create_engine("sqlite:///:memory:", connect_args={"check_same_thread": False})
     Base.metadata.create_all(engine)
     factory = sessionmaker(bind=engine)
     with factory() as session:
@@ -178,9 +178,7 @@ def test_validate_clean_doc(canvas_factory: Any) -> None:
 
 
 def test_validate_unknown_kind(canvas_factory: Any) -> None:
-    job_id, _ = _seed_job_with_tasks(
-        canvas_factory, [{"name": "a", "kind": "python"}]
-    )
+    job_id, _ = _seed_job_with_tasks(canvas_factory, [{"name": "a", "kind": "python"}])
     doc = build_job_dag_doc(canvas_factory, job_id=job_id)
     doc.nodes[0].block_type = "not_a_real_kind"
     issues = validate_job_dag_doc(doc, known_kinds=_kinds())
@@ -254,9 +252,7 @@ def test_run_status_overlay(canvas_factory: Any) -> None:
     )
     now = datetime.datetime(2026, 4, 1, tzinfo=datetime.UTC)
     with canvas_factory() as session:
-        run = JobRun(
-            job_id=job_id, started_at=now, status="running", trigger="manual"
-        )
+        run = JobRun(job_id=job_id, started_at=now, status="running", trigger="manual")
         session.add(run)
         session.flush()
         session.add(
@@ -288,9 +284,7 @@ def test_run_status_cross_job_is_empty(canvas_factory: Any) -> None:
     job_b, ids_b = _seed_job_with_tasks(canvas_factory, [{"name": "b"}])
     now = datetime.datetime(2026, 4, 1, tzinfo=datetime.UTC)
     with canvas_factory() as session:
-        run = JobRun(
-            job_id=job_b, started_at=now, status="running", trigger="manual"
-        )
+        run = JobRun(job_id=job_b, started_at=now, status="running", trigger="manual")
         session.add(run)
         session.flush()
         run_id = run.id
@@ -307,3 +301,179 @@ def test_registry_kinds_nonempty() -> None:
     assert "python" in kinds
     assert "papermill" in kinds
     assert len(kinds) == len(set(kinds))
+
+
+# --- apply_job_dag_doc (diff-save) -----------------------------------------
+
+
+def _node(node_id: str, name: str, kind: str = "python", **params: Any) -> Any:
+    from pointlessql.services.canvas_core import CanvasNode
+
+    return CanvasNode(id=node_id, block_type=kind, config={"name": name, "params": params})
+
+
+def _edge(src: str, tgt: str) -> Any:
+    from pointlessql.services.canvas_core import CanvasEdge
+
+    return CanvasEdge(
+        id=f"e-{src}-{tgt}",
+        source_node_id=src,
+        source_pin="out",
+        target_node_id=tgt,
+        target_pin="deps",
+    )
+
+
+def _job_tasks(factory: Any, job_id: int) -> list[JobTask]:
+    with factory() as session:
+        return list(session.scalars(select(JobTask).where(JobTask.job_id == job_id)))
+
+
+def test_apply_creates_new_tasks_and_remaps_ids(canvas_factory: Any) -> None:
+    from pointlessql.services.canvas_core import CanvasDoc
+
+    job_id, _ = _seed_job_with_tasks(canvas_factory, [])
+    doc = CanvasDoc(
+        nodes=[_node("n-aaa", "extract"), _node("n-bbb", "load")],
+        edges=[_edge("n-aaa", "n-bbb")],
+    )
+    summary = apply_job_dag_doc(canvas_factory, job_id=job_id, doc=doc, known_kinds=_kinds())
+    assert summary.created == 2
+    assert summary.updated == 0
+    assert summary.deleted == 0
+    # both client ids remapped to task-{pk}
+    assert set(summary.id_remap) == {"n-aaa", "n-bbb"}
+    assert all(v.startswith("task-") for v in summary.id_remap.values())
+
+    tasks = {t.name: t for t in _job_tasks(canvas_factory, job_id)}
+    assert set(tasks) == {"extract", "load"}
+    # load depends on extract
+    load_deps = json.loads(tasks["load"].depends_on)
+    assert load_deps == [tasks["extract"].id]
+    assert json.loads(tasks["extract"].depends_on) == []
+
+
+def test_apply_updates_existing_task(canvas_factory: Any) -> None:
+    from pointlessql.services.canvas_core import CanvasDoc
+
+    job_id, ids = _seed_job_with_tasks(
+        canvas_factory, [{"name": "a", "kind": "python", "config": {"x": 1}}]
+    )
+    node = _node(node_id_for_task(ids["a"]), "a", kind="pg_sync", y=2)
+    doc = CanvasDoc(nodes=[node], edges=[])
+    summary = apply_job_dag_doc(canvas_factory, job_id=job_id, doc=doc, known_kinds=_kinds())
+    assert summary.updated == 1 and summary.created == 0
+    tasks = _job_tasks(canvas_factory, job_id)
+    assert len(tasks) == 1
+    assert tasks[0].id == ids["a"]  # same row, not a recreate
+    assert tasks[0].kind == "pg_sync"
+    assert json.loads(tasks[0].config) == {"y": 2}
+
+
+def test_apply_deletes_dropped_task(canvas_factory: Any) -> None:
+    from pointlessql.services.canvas_core import CanvasDoc
+
+    job_id, ids = _seed_job_with_tasks(
+        canvas_factory,
+        [
+            {"name": "a", "kind": "python"},
+            {"name": "b", "kind": "python", "depends_on": ["a"]},
+        ],
+    )
+    # Keep only 'a'.
+    doc = CanvasDoc(nodes=[_node(node_id_for_task(ids["a"]), "a")], edges=[])
+    summary = apply_job_dag_doc(canvas_factory, job_id=job_id, doc=doc, known_kinds=_kinds())
+    assert summary.deleted == 1
+    names = {t.name for t in _job_tasks(canvas_factory, job_id)}
+    assert names == {"a"}
+
+
+def test_apply_round_trips_through_build(canvas_factory: Any) -> None:
+    """Saving the doc build_job_dag_doc produced is a no-op delta."""
+    job_id, _ = _seed_job_with_tasks(
+        canvas_factory,
+        [
+            {"name": "a", "kind": "python"},
+            {"name": "b", "kind": "pg_sync", "depends_on": ["a"]},
+        ],
+    )
+    doc = build_job_dag_doc(canvas_factory, job_id=job_id)
+    summary = apply_job_dag_doc(canvas_factory, job_id=job_id, doc=doc, known_kinds=_kinds())
+    assert summary.created == 0 and summary.deleted == 0
+    assert summary.updated == 2
+    # depends_on representation preserved (parity with crud.py create).
+    after = build_job_dag_doc(canvas_factory, job_id=job_id)
+    assert len(after.edges) == 1
+    assert after.edges[0].source_pin == "out"
+    assert after.edges[0].target_pin == "deps"
+
+
+def test_apply_rejects_cycle_and_rolls_back(canvas_factory: Any) -> None:
+    from pointlessql.services.canvas_core import CanvasDoc
+
+    job_id, ids = _seed_job_with_tasks(canvas_factory, [{"name": "a", "kind": "python"}])
+    # a -> b and b -> a (cycle) using one existing + one new node.
+    doc = CanvasDoc(
+        nodes=[_node(node_id_for_task(ids["a"]), "a"), _node("n-new", "b")],
+        edges=[
+            _edge(node_id_for_task(ids["a"]), "n-new"),
+            _edge("n-new", node_id_for_task(ids["a"])),
+        ],
+    )
+    with pytest.raises(ValidationError):
+        apply_job_dag_doc(canvas_factory, job_id=job_id, doc=doc, known_kinds=_kinds())
+    # rolled back: the new task 'b' must NOT have landed.
+    names = {t.name for t in _job_tasks(canvas_factory, job_id)}
+    assert names == {"a"}
+
+
+def test_apply_unknown_kind_rejected_before_write(canvas_factory: Any) -> None:
+    from pointlessql.services.canvas_core import CanvasDoc
+
+    job_id, _ = _seed_job_with_tasks(canvas_factory, [])
+    doc = CanvasDoc(nodes=[_node("n-x", "x", kind="bogus_kind")], edges=[])
+    with pytest.raises(ValidationError):
+        apply_job_dag_doc(canvas_factory, job_id=job_id, doc=doc, known_kinds=_kinds())
+    assert _job_tasks(canvas_factory, job_id) == []
+
+
+def test_apply_delete_guard_blocks_running_task(canvas_factory: Any) -> None:
+    from pointlessql.services.canvas_core import CanvasDoc
+
+    job_id, ids = _seed_job_with_tasks(
+        canvas_factory,
+        [{"name": "a", "kind": "python"}, {"name": "b", "kind": "python"}],
+    )
+    now = datetime.datetime(2026, 4, 1, tzinfo=datetime.UTC)
+    with canvas_factory() as session:
+        run = JobRun(job_id=job_id, started_at=now, status="running", trigger="manual")
+        session.add(run)
+        session.flush()
+        session.add(
+            TaskRun(
+                job_run_id=run.id,
+                task_id=ids["b"],
+                status="running",
+                started_at=now,
+            )
+        )
+        session.commit()
+    # Try to drop 'b' while it has a running TaskRun → refused, nothing changes.
+    doc = CanvasDoc(nodes=[_node(node_id_for_task(ids["a"]), "a")], edges=[])
+    with pytest.raises(ValidationError):
+        apply_job_dag_doc(canvas_factory, job_id=job_id, doc=doc, known_kinds=_kinds())
+    names = {t.name for t in _job_tasks(canvas_factory, job_id)}
+    assert names == {"a", "b"}
+
+
+def test_apply_result_passes_validate_dag(canvas_factory: Any) -> None:
+    """The rows a successful save leaves behind satisfy validate_dag."""
+    from pointlessql.services.canvas_core import CanvasDoc
+
+    job_id, _ = _seed_job_with_tasks(canvas_factory, [])
+    doc = CanvasDoc(
+        nodes=[_node("n1", "a"), _node("n2", "b"), _node("n3", "c")],
+        edges=[_edge("n1", "n2"), _edge("n2", "n3")],
+    )
+    apply_job_dag_doc(canvas_factory, job_id=job_id, doc=doc, known_kinds=_kinds())
+    validate_dag(_job_tasks(canvas_factory, job_id))  # no raise == acyclic + resolvable
