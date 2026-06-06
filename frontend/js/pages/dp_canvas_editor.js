@@ -6,17 +6,15 @@
  * and renders block-specific config forms in the right drawer.
  *
  * Structure:
- *   This file is intentionally thin — it holds only the reactive state, the
- *   three derived getters, and the composition of the behaviour bundles under
- *   ``dp_canvas/editor/`` (one concern per file: lifecycle, drawflow_sync,
- *   node_render, node_ops, edges, edge_routing, edge_toolbar, connect,
- *   context_menu, output_plus, viewport, clipboard, preview, run, versions,
- *   navigation, annotations, history, config_form, ghost_review).  Each
- *   bundle is a plain object of ``this``-based methods spread into the
- *   returned component; ``this`` resolves to the Alpine proxy at call time, so
- *   methods in different bundles call each other freely through ``this``.
- *   State + getters MUST stay inline here — object spread snapshots a getter's
- *   value, which would break reactivity.
+ *   The editor machinery is consumer-agnostic and lives under ``canvas/``;
+ *   this file is the data-product *adapter* — it declares only what differs
+ *   from any other canvas consumer: the block catalog to inject, the
+ *   DP-only behaviour bundles (lifecycle, persistence, preview, run,
+ *   versions, navigation, config_form, ghost_review), and the reactive
+ *   state.  ``assembleCanvasEditor`` merges those onto the shared bundles
+ *   and defines the derived getters.  Each bundle is a plain object of
+ *   ``this``-based methods, so methods across bundles call each other
+ *   through ``this`` at run time.
  *
  * Library choice:
  *   Drawflow (single-file UMD, no framework dependency) was picked over
@@ -28,20 +26,7 @@
  *   are registered by the CDN bundle loaded from ``dp_canvas_editor.html``.
  */
 
-import { annotationMethods } from '../canvas/annotations.js';
-import { clipboardMethods } from '../canvas/clipboard.js';
-import { configFormStructuredMethods } from '../canvas/config_form_structured.js';
-import { connectMethods } from '../canvas/connect.js';
-import { contextMenuMethods } from '../canvas/context_menu.js';
-import { drawflowSyncMethods } from '../canvas/drawflow_sync.js';
-import { edgeRoutingMethods } from '../canvas/edge_routing.js';
-import { edgeToolbarMethods } from '../canvas/edge_toolbar.js';
-import { edgesMethods } from '../canvas/edges.js';
-import { historyMethods } from '../canvas/history.js';
-import { nodeOpsMethods } from '../canvas/node_ops.js';
-import { nodeRenderMethods } from '../canvas/node_render.js';
-import { outputPlusMethods } from '../canvas/output_plus.js';
-import { viewportMethods } from '../canvas/viewport.js';
+import { assembleCanvasEditor, genericEditorState } from '../canvas/compose.js';
 import { DP_CATALOG, paletteGroupsFromCatalog } from '../dp_canvas/_block_catalog.js';
 import { configFormMethods } from '../dp_canvas/editor/config_form.js';
 import { ghostReviewMethods } from '../dp_canvas/editor/ghost_review.js';
@@ -52,72 +37,37 @@ import { previewMethods } from '../dp_canvas/editor/preview.js';
 import { runMethods } from '../dp_canvas/editor/run.js';
 import { versionsMethods } from '../dp_canvas/editor/versions.js';
 
-export function dpCanvasEditor(product, ctx) {
+// Data-product-only behaviour bundles, merged after the shared canvas core.
+const DP_BUNDLES = [
+  configFormMethods,
+  persistenceMethods,
+  previewMethods,
+  runMethods,
+  versionsMethods,
+  navigationMethods,
+  ghostReviewMethods,
+  lifecycleMethods,
+];
+
+/**
+ * Fresh reactive state for a data-product canvas editor.
+ *
+ * Spreads the shared graph/editor state and layers the DP-specific fields:
+ * the config-form input buffers, the preview / run docks, the data-product
+ * picker + drill-in breadcrumb, and the version-history + ghost-review
+ * panels.
+ *
+ * @param {Object} product
+ * @param {Object} [ctx]
+ * @returns {Object}
+ */
+function dpEditorState(product, ctx) {
   const ctxSafe = ctx || {};
   return {
-    // Behaviour bundles — plain `this`-based method objects composed onto
-    // the component.  State + getters stay inline below (object spread
-    // would snapshot a getter's value, breaking reactivity).
-    ...historyMethods,
-    ...configFormMethods,
-    ...configFormStructuredMethods,
-    ...annotationMethods,
-    ...viewportMethods,
-    ...clipboardMethods,
-    ...drawflowSyncMethods,
-    ...nodeRenderMethods,
-    ...nodeOpsMethods,
-    ...persistenceMethods,
-    ...previewMethods,
-    ...runMethods,
-    ...versionsMethods,
-    ...navigationMethods,
-    ...connectMethods,
-    ...edgeRoutingMethods,
-    ...edgesMethods,
-    ...edgeToolbarMethods,
-    ...contextMenuMethods,
-    ...outputPlusMethods,
-    ...ghostReviewMethods,
-    ...lifecycleMethods,
+    ...genericEditorState(),
 
     product,
     canWrite: !!(ctxSafe.is_admin || ctxSafe.is_steward),
-
-    // Injected block taxonomy.  The shared canvas bundles read every
-    // block-shape lookup off `this.catalog`, so this is the single seam
-    // that binds the consumer-agnostic editor to the data-product blocks.
-    catalog: DP_CATALOG,
-
-    loading: true,
-    saving: false,
-    version: null,
-    saveState: 'idle',
-    saveError: null,
-    lastSavedAt: null,
-
-    errors: [],
-    pinSchemas: {},
-    validating: false,
-    previewRowCountByNode: {},
-    compactBodies: false,
-    edgeCategories: {},
-    orthogonalEdges: false,
-    multiSelectedNodeIds: [],
-    annotations: [],
-    _undoStack: [],
-    _redoStack: [],
-    _UNDO_DEPTH: 50,
-    searchOpen: false,
-    searchQuery: '',
-    searchCursor: 0,
-    minimapVisible: true,
-    zoomPct: 100,
-    focusMode: false,
-
-    nodes: {},
-    edges: {},
-    selectedNodeId: null,
 
     paletteGroups: paletteGroupsFromCatalog(),
 
@@ -151,15 +101,6 @@ export function dpCanvasEditor(product, ctx) {
     versionsList: [],
     pinnedVersion: null,
 
-    _drawflow: null,
-    _drawflowNodes: {},
-    _saveTimer: null,
-    _validateTimer: null,
-    _suppressAutosave: false,
-
-    edgeToolbar: { visible: false, x: 0, y: 0, edgeId: null },
-    outputPlusPicker: { open: false, x: 0, y: 0, sourcePqlId: null },
-    ctxMenu: { open: false, x: 0, y: 0, kind: 'canvas', nodeId: null, edgeId: null },
     inlinePeek: { open: false, x: 0, y: 0, nodeId: null, loading: false, columns: [], rows: [] },
     ghost: {
       open: false,
@@ -170,22 +111,16 @@ export function dpCanvasEditor(product, ctx) {
       proposed: null,
       accept: {},
     },
-    _selectedEdgeId: null,
-    _edgeToolbarHideTimer: null,
-    _edgeToolbarRaf: null,
-    _runningEdgeIds: new Set(),
-    _outputPlusElements: new Map(),
-    _decoratedSvgs: new WeakSet(),
-
-    get nodeCount() {
-      return Object.keys(this.nodes).length;
-    },
-    get edgeCount() {
-      return Object.keys(this.edges).length;
-    },
-    get selectedNode() {
-      if (!this.selectedNodeId) return null;
-      return this.nodes[this.selectedNodeId] || null;
-    },
   };
+}
+
+export function dpCanvasEditor(product, ctx) {
+  return assembleCanvasEditor(
+    {
+      catalog: DP_CATALOG,
+      bundles: DP_BUNDLES,
+      state: (c) => dpEditorState(product, c),
+    },
+    ctx
+  );
 }
