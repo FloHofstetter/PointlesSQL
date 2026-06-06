@@ -1,0 +1,253 @@
+{% extends "base.html" %}
+{% block title %}DataFrame Studio · PointlesSQL{% endblock %}
+
+{% set breadcrumbs = [
+    {"label": "Home", "href": "/"},
+    {"label": "DataFrame Studio"}
+] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block extra_css %}
+{{ super() }}
+<link rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/drawflow@0.0.59/dist/drawflow.min.css">
+<link rel="stylesheet" href="/static/css/canvas_shared.css?v={{ asset_version }}">
+<link rel="stylesheet" href="/static/css/dp_canvas_editor.css?v={{ asset_version }}">
+{% endblock %}
+
+{% block body_data_attrs %}data-pql-shell-locked="1"{% endblock %}
+
+{% block content %}
+<div class="pql-dp-canvas-shell"
+     x-data="dataframeStudio({})"
+     x-init="init()">
+
+    <div class="pql-dp-canvas-topbar d-flex align-items-center gap-2 px-3 py-2 border-bottom bg-body-tertiary">
+        <a class="btn btn-sm btn-outline-secondary" href="/" title="Back home">
+            <i class="bi bi-arrow-left"></i>
+        </a>
+        <div class="d-flex flex-column lh-sm">
+            <strong class="small">DataFrame Studio</strong>
+            <span class="text-muted" style="font-size: 0.75rem;">
+                <span x-text="nodeCount"></span> blocks
+                · <span x-text="edgeCount"></span> wires
+            </span>
+        </div>
+        <span class="badge ms-2"
+              :class="errors.length === 0 ? 'bg-success-subtle text-success-emphasis' : 'bg-warning-subtle text-warning-emphasis'"
+              x-text="errors.length === 0 ? 'valid' : (errors.length + ' issue' + (errors.length === 1 ? '' : 's'))">
+        </span>
+        <div class="ms-auto d-flex align-items-center gap-2">
+            <button class="btn btn-sm btn-outline-secondary"
+                    @click="focusMode = window.pqlToggleFocusMode()"
+                    :class="{ active: focusMode }" title="Focus mode (Shift+F)">
+                <i class="bi bi-window-fullscreen"></i>
+            </button>
+            <button class="btn btn-sm btn-outline-secondary" @click="autoTidy()"
+                    title="Auto-layout (Ctrl+L)">
+                <i class="bi bi-diagram-3"></i>
+            </button>
+            <button class="btn btn-sm btn-outline-primary" @click="runPreview()"
+                    :disabled="previewBusy || nodeCount === 0">
+                <i class="bi bi-table"></i> Preview
+            </button>
+            <button class="btn btn-sm btn-primary" @click="compileStudio()"
+                    :disabled="nodeCount === 0">
+                <i class="bi bi-braces"></i> Compile SQL
+            </button>
+        </div>
+    </div>
+
+    <div class="pql-dp-canvas-body d-flex">
+
+        {# Palette — sources + transforms (no sinks in the Studio). #}
+        <aside class="pql-dp-canvas-palette border-end bg-body p-2">
+            <template x-for="(blockKinds, group) in paletteGroups" :key="group">
+                <div>
+                    <div class="small text-uppercase text-muted fw-semibold mb-1 mt-2"
+                         x-text="group"></div>
+                    <template x-for="kind in blockKinds" :key="kind">
+                        <div class="pql-dp-canvas-palette-item d-flex align-items-center gap-2 p-2 mb-1 border rounded"
+                             draggable="true"
+                             @dragstart="onPaletteDragStart($event, kind)"
+                             :title="blockHelp(kind)">
+                            <i class="bi" :class="blockIcon(kind)"></i>
+                            <span class="small" x-text="blockLabel(kind)"></span>
+                        </div>
+                    </template>
+                </div>
+            </template>
+            <div class="small text-muted mt-4 px-1">
+                Drag a block onto the canvas, wire the pins, then
+                <strong>Compile SQL</strong> or <strong>Preview</strong> the
+                node you select. Send the SQL to a notebook to run it under
+                governance.
+            </div>
+        </aside>
+
+        {# Canvas (centre) #}
+        <main class="pql-dp-canvas-stage flex-grow-1 position-relative"
+              @dragover.prevent
+              @drop.prevent="onCanvasDrop($event)">
+            <div x-ref="canvas" id="studio-drawflow" class="pql-canvas pql-dp-canvas-drawflow"
+                 role="application" tabindex="0"
+                 aria-label="DataFrame Studio canvas"></div>
+
+            <svg width="0" height="0" style="position: absolute;" aria-hidden="true">
+                <defs>
+                    <marker id="pql-arrow-end" viewBox="0 0 10 10"
+                            refX="8" refY="5" markerWidth="3.4" markerHeight="3.4"
+                            orient="auto-start-reverse">
+                        <path d="M2,2.6 L9,5 L2,7.4 z" fill="context-stroke"
+                              stroke="context-stroke" stroke-width="0.8"
+                              stroke-linejoin="round"/>
+                    </marker>
+                </defs>
+            </svg>
+
+            <div class="pql-dp-canvas-empty position-absolute top-50 start-50 translate-middle text-center text-muted"
+                 x-show="!loading && nodeCount === 0" x-cloak>
+                <i class="bi bi-braces-asterisk fs-1 d-block opacity-50"></i>
+                <div class="mt-2 small">Drag an Input port from the left to start a pipeline.</div>
+            </div>
+
+            <div class="pql-canvas-minimap position-absolute" x-ref="minimap"
+                 x-show="minimapVisible" style="bottom: 12px; right: 12px;"></div>
+
+            {# Compiled-SQL dock — bottom of the stage. #}
+            <div class="card shadow-sm small position-absolute"
+                 x-show="compiledSql || compileError" x-cloak
+                 style="bottom: 12px; left: 12px; right: 12px; max-height: 40%; z-index: 5;">
+                <div class="card-header py-1 px-2 d-flex align-items-center gap-2">
+                    <i class="bi bi-braces"></i>
+                    <strong class="text-uppercase">Compiled SQL</strong>
+                    <div class="ms-auto d-flex gap-1">
+                        <button class="btn btn-sm btn-outline-secondary py-0"
+                                @click="copySql()" x-text="copyState === 'copied' ? 'Copied!' : 'Copy SQL'"></button>
+                        <button class="btn btn-sm btn-outline-secondary py-0"
+                                @click="copyPqlCall()">Copy pql.sql(…)</button>
+                        <button class="btn-close" @click="compiledSql=''; compileError=null"></button>
+                    </div>
+                </div>
+                <div class="card-body p-2" style="overflow:auto;">
+                    <div class="text-danger" x-show="compileError" x-text="compileError"></div>
+                    <pre class="mb-0 small"><code x-text="compiledSql"></code></pre>
+                </div>
+            </div>
+
+            {# Preview dock. #}
+            <div class="card shadow-sm small position-absolute"
+                 x-show="previewOpen" x-cloak
+                 style="top: 12px; left: 12px; right: 12px; max-height: 50%; z-index: 6;">
+                <div class="card-header py-1 px-2 d-flex align-items-center gap-2">
+                    <i class="bi bi-table"></i>
+                    <strong class="text-uppercase">Preview</strong>
+                    <span class="text-muted ms-2"
+                          x-show="previewResult"
+                          x-text="(previewResult ? previewResult.row_count : 0) + ' rows' + (previewResult && previewResult.truncated ? ' (truncated)' : '')"></span>
+                    <button class="btn-close ms-auto" @click="previewOpen=false"></button>
+                </div>
+                <div class="card-body p-0" style="overflow:auto;">
+                    <div class="p-2 text-muted" x-show="previewBusy">Running…</div>
+                    <div class="p-2 text-danger" x-show="previewError" x-text="previewError"></div>
+                    <table class="table table-sm table-striped mb-0" x-show="previewResult">
+                        <thead>
+                            <tr>
+                                <template x-for="c in (previewResult ? previewResult.columns : [])" :key="c">
+                                    <th class="small" x-text="c"></th>
+                                </template>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template x-for="(row, ri) in (previewResult ? previewResult.rows : [])" :key="ri">
+                                <tr>
+                                    <template x-for="(cell, ci) in row" :key="ci">
+                                        <td class="small" x-text="cell === null ? '∅' : cell"></td>
+                                    </template>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+
+        {# Config drawer (right rail) — reuses the data-product config forms. #}
+        <aside class="pql-dp-canvas-drawer border-start bg-body p-3">
+            <template x-if="selectedNode === null">
+                <div>
+                    <div class="small text-uppercase text-muted fw-semibold mb-2">Overview</div>
+                    <dl class="row mb-0 small">
+                        <dt class="col-6">Blocks</dt>
+                        <dd class="col-6 mb-0" x-text="nodeCount"></dd>
+                        <dt class="col-6">Wires</dt>
+                        <dd class="col-6 mb-0" x-text="edgeCount"></dd>
+                    </dl>
+                    <div class="text-muted small mt-3">Click a block to configure it.</div>
+                    <template x-if="errors.length > 0">
+                        <div class="mt-3">
+                            <div class="small text-uppercase text-danger-emphasis fw-semibold mb-1">Errors</div>
+                            <ul class="list-unstyled small mb-0">
+                                <template x-for="err in errors" :key="err.node_id + ':' + err.pin + ':' + err.message">
+                                    <li class="border-start border-danger ps-2 mb-1">
+                                        <a href="#" class="text-decoration-none" @click.prevent="focusNode(err.node_id)">
+                                            <span class="badge bg-danger-subtle text-danger-emphasis me-1" x-text="err.kind"></span>
+                                            <span x-text="err.message"></span>
+                                        </a>
+                                    </li>
+                                </template>
+                            </ul>
+                        </div>
+                    </template>
+                </div>
+            </template>
+
+            <template x-if="selectedNode !== null">
+                <div>
+                    <div class="d-flex align-items-center gap-2 mb-3">
+                        <i class="bi" :class="blockIcon(selectedNode.block_type)"></i>
+                        <strong x-text="blockLabel(selectedNode.block_type)"></strong>
+                        <button class="btn btn-sm btn-outline-primary ms-auto"
+                                @click="openPreviewForSelected()"
+                                :disabled="errors.length > 0"
+                                title="Preview rows up to this block">
+                            <i class="bi bi-table"></i> Preview
+                        </button>
+                        <button class="btn btn-sm btn-outline-secondary"
+                                @click="duplicateSelectedNode()" title="Duplicate (Ctrl+D)">
+                            <i class="bi bi-files"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger"
+                                @click="deleteSelectedNode()" title="Delete block">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+
+                    <p class="text-muted small mb-3 pql-drawer-help"
+                       x-show="blockHelp(selectedNode.block_type)"
+                       x-text="blockHelp(selectedNode.block_type)"></p>
+
+                    <template x-if="nodeErrors().length > 0">
+                        <div class="alert alert-danger py-2 px-2 small mb-3 pql-drawer-error">
+                            <template x-for="(err, ei) in nodeErrors()" :key="ei + ':' + err.message">
+                                <div class="d-flex gap-1 align-items-start">
+                                    <i class="bi bi-exclamation-triangle-fill flex-shrink-0 mt-1"></i>
+                                    <span x-text="formatNodeError(err)"></span>
+                                </div>
+                            </template>
+                        </div>
+                    </template>
+
+                    {% include "pages/_partials/dp_canvas_editor/config_forms.html" %}
+                </div>
+            </template>
+        </aside>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{{ super() }}
+<script src="https://cdn.jsdelivr.net/npm/drawflow@0.0.59/dist/drawflow.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dagre@0.8.5/dist/dagre.min.js"></script>
+{% endblock %}

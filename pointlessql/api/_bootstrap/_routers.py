@@ -45,6 +45,9 @@ def register_routers(app: FastAPI) -> None:
     )
     from pointlessql.api.data_products_routes import router as data_products_router
     from pointlessql.api.dataframe_studio_routes import (
+        html_router as dataframe_studio_html_router,
+    )
+    from pointlessql.api.dataframe_studio_routes import (
         router as dataframe_studio_router,
     )
     from pointlessql.api.dbt import router as dbt_router
@@ -186,6 +189,7 @@ def register_routers(app: FastAPI) -> None:
     app.include_router(mesh_canvas_router)
     app.include_router(mesh_canvas_html_router)
     app.include_router(dataframe_studio_router)
+    app.include_router(dataframe_studio_html_router)
     app.include_router(social_router)
     app.include_router(issues_html_router)
     app.include_router(notifications_router)

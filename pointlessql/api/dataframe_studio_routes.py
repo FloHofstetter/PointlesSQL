@@ -21,13 +21,14 @@ is no Studio graph table.
 from __future__ import annotations
 
 from fastapi import APIRouter, Request
+from fastapi.responses import HTMLResponse, RedirectResponse
 from pydantic import BaseModel, ConfigDict, Field
 
 from pointlessql.api.data_products_routes.canvas._helpers import (
     raw_soyuz_client,
     seed_schemas_for_doc,
 )
-from pointlessql.api.dependencies import require_user
+from pointlessql.api.dependencies import get_user, require_user
 from pointlessql.services.canvas_df import (
     CanvasDoc,
     ColumnSpec,
@@ -43,6 +44,25 @@ from pointlessql.services.dataframe_studio import (
 from pointlessql.services.dp_canvas._preview import preview_until
 
 router = APIRouter(prefix="/api/dataframe-studio", tags=["dataframe-studio"])
+html_router = APIRouter(tags=["dataframe-studio-html"])
+
+
+@html_router.get("/dataframe-studio", response_class=HTMLResponse, response_model=None)
+def dataframe_studio_page(request: Request) -> HTMLResponse | RedirectResponse:
+    """Render the standalone DataFrame Studio editor page."""
+    user = get_user(request)
+    if user["id"] == 0:
+        return RedirectResponse(url="/auth/login?next=/dataframe-studio", status_code=303)
+    templates = request.app.state.templates
+    return templates.TemplateResponse(
+        request,
+        "pages/dataframe_studio.html",
+        {
+            "current_user_id": int(user.get("id") or 0),
+            "is_admin": bool(user.get("is_admin")),
+            "active_page": "dataframe-studio",
+        },
+    )
 
 
 class StudioCompileRequest(BaseModel):
@@ -181,5 +201,6 @@ __all__ = [
     "StudioPreviewResponse",
     "StudioValidateRequest",
     "StudioValidateResponse",
+    "html_router",
     "router",
 ]

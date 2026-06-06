@@ -3624,10 +3624,33 @@ PointlesSQL
 │   │   │     (clean + unknown-kind), 0 Konsolen-Fehler.  e2e-Walkthrough
 │   │   │     `scheduler-dag-editor.md` (6 Wellen).  Schließt Phase 194.
 │   │   │
-│   ├── Phase 195 — Notebook-DataFrame-Studio  ⏳ planned
-│   │   │   Visueller Query-Builder auf `canvas_df`; kompiliert zu SQL,
-│   │   │   Inline-Preview, „Send to notebook" emittiert eine governed
-│   │   │   `[sql]`-Zelle (kein UC-Materialize, kein Version-Ledger).
+│   ├── Phase 195 — Notebook-DataFrame-Studio  ✅ shipped (local, 2026-06-06)
+│   │   │   - PR7 ✅ (local): Studio-Backend auf einem sink-freien
+│   │   │     `canvas_df.compile_to_select(doc, terminal_node_id)` (die aus
+│   │   │     der canvas_df-Extraktion vertagte Primitive) — schneidet den
+│   │   │     DAG bis zum Zielknoten und rendert `WITH … SELECT * FROM
+│   │   │     <terminal_cte>` ohne OutputPort-Sink; die CTE-Ketten-/Edge-/
+│   │   │     Base-Table-Logik in geteilte Helfer gehoben, `compile_canvas`
+│   │   │     verhaltensgleich (109 Canvas-Acceptance-Tests grün).
+│   │   │     `services/dataframe_studio` (Disallowed-Block-Guard +
+│   │   │     compile-Wrapper) + Routen `/api/dataframe-studio/{compile,
+│   │   │     preview,validate}`, die die DP-Canvas-Helfer (soyuz-Client,
+│   │   │     Schema-Seeding) + `preview_until` wiederverwenden.  Live:
+│   │   │     validate+compile flaggen einen Sink sauber.  10 Tests.
+│   │   │   - PR8 ✅ (local): Seite `/dataframe-studio` als dünner Adapter
+│   │   │     auf `assembleCanvasEditor` — Katalog = DP-Katalog ohne Sinks
+│   │   │     (`buildStudioCatalog`), die DP-Config-Form-Bundles + Partials
+│   │   │     unverändert wiederverwendet, Studio-Persistenz
+│   │   │     (compile/preview/validate + Copy SQL / Copy `pql.sql(…)`).
+│   │   │     Gegen den laufenden Stack verifiziert: 23-Block-Palette ohne
+│   │   │     Sinks, Drop+Wire, Config-Formen + CodeMirror-Predicate mounten,
+│   │   │     compile/preview/validate verdrahtet mit sauberer
+│   │   │     Fehlerbehandlung, 0 Konsolen-Fehler.  e2e-Walkthrough
+│   │   │     `dataframe-studio.md`.  Schließt Phase 195.  Aufgeschoben:
+│   │   │     der volle „Send to notebook"-Round-Trip (Notebook-Picker +
+│   │   │     Zell-Insert) — Copy-SQL/Copy-pql sind die Emit-Aktionen;
+│   │   │     Studio-Graph-Persistenz via Notebook-Zell-Metadaten ist
+│   │   │     bewusst client-seitig (kein neues Schema/Migration).
 │   │   │
 │   └── Phase 196 — Legacy-Linear-Canvas-Retirement  ⏳ planned
 │       │   `/canvas` → 308 auf `/dataframe-studio`; Entfernung des

@@ -166,6 +166,7 @@ nav:
               - Notebook cell social: e2e-walkthroughs/notebook-cell-social.md
               - Jobs DAG: e2e-walkthroughs/jobs-dag.md
               - Scheduler DAG editor: e2e-walkthroughs/scheduler-dag-editor.md
+              - DataFrame Studio: e2e-walkthroughs/dataframe-studio.md
           - Audit + lineage:
               - Admin audit: e2e-walkthroughs/admin-audit.md
               - Agent review detail: e2e-walkthroughs/agent-review-detail.md
