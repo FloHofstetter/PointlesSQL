@@ -10,8 +10,7 @@
  * Methods are plain (never arrow) so `this` binds to the Alpine proxy.
  */
 
-import { BLOCK_DEFS } from '../_block_catalog.js';
-import { describeConfig, renderColsHtml, renderFooterHtml } from '../_render_helpers.js';
+import { renderColsHtml, renderFooterHtml } from './_render_helpers.js';
 
 export const nodeRenderMethods = {
   _refreshNodeBody(nodeId) {
@@ -22,7 +21,7 @@ export const nodeRenderMethods = {
     const el = df.container.querySelector(`#node-${dfId} [data-pql-node-body]`);
     if (el) {
       const node = this.nodes[nodeId];
-      if (node) el.innerHTML = describeConfig(node.block_type, node.config);
+      if (node) el.innerHTML = this.catalog.describeConfig(node.block_type, node.config);
     }
   },
   _outputSchemaFor(nodeId) {
@@ -78,7 +77,7 @@ export const nodeRenderMethods = {
       const wrap = df.container.querySelector(`#node-${dfId}`);
       if (!wrap) continue;
       const node = this.nodes[pqlId];
-      const def = node && BLOCK_DEFS[node.block_type];
+      const def = node && this.catalog.BLOCK_DEFS[node.block_type];
       const label = `${(def && def.label) || (node && node.block_type) || 'Block'} block`;
       wrap.setAttribute('role', 'group');
       wrap.setAttribute('aria-label', label);

@@ -6,9 +6,12 @@
  * read-only side-by-side surfaces.  Extracted here so the diff page
  * does not need to inline a second copy of the node-add / connect
  * dance the editor already owns.
+ *
+ * Catalog-agnostic: ``loadCanvasIntoDrawflow`` reads its block-shape
+ * lookups off the ``opts.catalog`` passed by the caller, so any consumer
+ * (data products, scheduler, DataFrame Studio) reuses the same loader
+ * with its own block taxonomy.
  */
-
-import { BLOCK_DEFS, nodeHtml, pinIndexFor } from './_block_catalog.js';
 
 // Minimum horizontal stub a wire keeps before it starts to curve, so a
 // connection always leaves the output and enters the input horizontally
@@ -112,13 +115,21 @@ export function installSmoothCurvature(Drawflow) {
  * Render `doc` into a Drawflow editor instance.  Returns a map of
  * `{pqlNodeId: drawflowId}` so callers can layer per-node CSS overlays
  * after the load completes.
+ *
+ * @param {Object} df    Drawflow editor instance.
+ * @param {Object} doc   CanvasDoc (`nodes` + `edges`).
+ * @param {Object} [opts]
+ * @param {string} [opts.mode]    Node render mode (`full` / `compact`).
+ * @param {Object} opts.catalog   Injected block catalog (`BLOCK_DEFS`,
+ *   `nodeHtml`, `pinIndexFor`) — the consumer's block taxonomy.
  */
 export function loadCanvasIntoDrawflow(df, doc, opts = {}) {
   const mode = opts.mode || 'full';
+  const catalog = opts.catalog;
   df.clear();
   const drawflowIds = {};
   for (const node of doc.nodes || []) {
-    const def = BLOCK_DEFS[node.block_type];
+    const def = catalog.BLOCK_DEFS[node.block_type];
     if (!def) continue;
     const pos = node.position || { x: 100, y: 100 };
     const dfId = df.addNode(
@@ -129,7 +140,7 @@ export function loadCanvasIntoDrawflow(df, doc, opts = {}) {
       pos.y || 100,
       node.block_type,
       { pql_node_id: node.id, block_type: node.block_type },
-      nodeHtml(node.block_type, node.id, mode),
+      catalog.nodeHtml(node.block_type, node.id, mode),
       false
     );
     drawflowIds[node.id] = dfId;
@@ -139,7 +150,11 @@ export function loadCanvasIntoDrawflow(df, doc, opts = {}) {
     const targetDf = drawflowIds[edge.target_node_id];
     if (!sourceDf || !targetDf) continue;
     const targetNode = (doc.nodes || []).find((n) => n.id === edge.target_node_id);
-    const targetIdx = pinIndexFor(targetNode ? targetNode.block_type : '', edge.target_pin, 'in');
+    const targetIdx = catalog.pinIndexFor(
+      targetNode ? targetNode.block_type : '',
+      edge.target_pin,
+      'in'
+    );
     try {
       df.addConnection(sourceDf, targetDf, 'output_1', `input_${targetIdx + 1}`);
     } catch (_e) {

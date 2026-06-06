@@ -10,8 +10,6 @@
  * Methods are plain (never arrow) so `this` binds to the Alpine proxy.
  */
 
-import { inputPinName } from '../_block_catalog.js';
-
 export const connectMethods = {
   // ---------------------------------------------------------------------
   // Live drag-to-connect validation.  Parallel to Drawflow's own wire
@@ -84,7 +82,7 @@ export const connectMethods = {
       if (!nodeEl) continue;
       const inputs = nodeEl.querySelectorAll('.inputs .input');
       inputs.forEach((pin, idx) => {
-        const pinName = inputPinName(this.nodes[pql]?.block_type, idx);
+        const pinName = this.catalog.inputPinName(this.nodes[pql]?.block_type, idx);
         const ok =
           pql !== srcPql && this._isInputPinFree(pql, pinName) && !this._wouldCycle(srcPql, pql);
         pin.classList.add(ok ? 'pql-pin-ok' : 'pql-pin-no');

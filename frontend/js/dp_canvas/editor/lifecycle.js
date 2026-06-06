@@ -13,8 +13,8 @@
  */
 
 import { installZoomObserver } from '../../canvas/_canvas_helpers.js';
+import { installSmoothCurvature } from '../../canvas/_drawflow_loader.js';
 import { installFocusModeShortcut } from '../../canvas/_focus_mode.js';
-import { installSmoothCurvature } from '../_drawflow_loader.js';
 
 export const lifecycleMethods = {
   async init() {

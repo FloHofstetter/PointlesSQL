@@ -1,11 +1,10 @@
 /*
  * Pure DOM-string helpers for canvas node bodies.
  *
- * Stateless formatters the editor uses to paint a node's schema-column
- * strip, footer badge and config summary.  Kept separate from the block
- * catalog so the catalog stays data-only and these stay logic-only; both
- * are imported by the editor and could be imported by any future canvas
- * surface that renders node internals.
+ * Stateless, catalog-agnostic formatters the editor uses to paint a node's
+ * schema-column strip, footer badge, type icons and fresh node ids.  They
+ * carry no block-taxonomy knowledge (the per-type config summary lives with
+ * the injected catalog), so any consumer's editor reuses them unchanged.
  */
 
 const TYPE_ICON_MAP = [
@@ -115,62 +114,4 @@ export function generateNodeId() {
     return 'n-' + crypto.randomUUID().slice(0, 12);
   }
   return 'n-' + Math.random().toString(36).slice(2, 14);
-}
-
-/**
- * One-line summary of a block's config, shown in the node body.
- *
- * @param {string} blockType
- * @param {Object} cfg
- * @returns {string}
- */
-export function describeConfig(blockType, cfg) {
-  if (!cfg) return '';
-  switch (blockType) {
-    case 'InputPort':
-      return cfg.table_fqn
-        ? `<code>${cfg.table_fqn}</code>`
-        : '<em class="text-muted">no table</em>';
-    case 'Filter':
-      return cfg.predicate
-        ? `<code>${cfg.predicate.slice(0, 40)}</code>`
-        : '<em class="text-muted">no predicate</em>';
-    case 'Project':
-      return cfg.columns && cfg.columns.length > 0
-        ? `${cfg.columns.length} col${cfg.columns.length === 1 ? '' : 's'}`
-        : '<em class="text-muted">no columns</em>';
-    case 'Join':
-      return `${cfg.how || 'inner'} on ${(cfg.keys || []).join(', ') || '—'}`;
-    case 'SemiJoin':
-    case 'AntiJoin':
-      return `on ${(cfg.keys || []).join(', ') || '—'}`;
-    case 'Except':
-      return 'left ∖ right';
-    case 'Intersect':
-      return 'left ∩ right';
-    case 'Unnest':
-      return cfg.column ? `<code>${cfg.column}</code>` : '<em class="text-muted">no column</em>';
-    case 'FileInput':
-      return cfg.path
-        ? `<code>${cfg.path}</code> (${cfg.format || 'auto'})`
-        : '<em class="text-muted">no path</em>';
-    case 'FileOutput':
-      return cfg.path
-        ? `→ <code>${cfg.path}</code> (${cfg.format || 'parquet'})`
-        : '<em class="text-muted">no path</em>';
-    case 'GroupBy':
-      return `by ${(cfg.keys || []).join(', ') || '—'}, ${(cfg.aggregations || []).length} agg`;
-    case 'Limit':
-      return `n = ${cfg.n}`;
-    case 'SQL':
-      return cfg.query
-        ? `<code>${(cfg.query || '').slice(0, 36)}…</code>`
-        : '<em class="text-muted">no query</em>';
-    case 'OutputPort':
-      return cfg.materialized_table
-        ? `→ <code>${cfg.materialized_table}</code> (${cfg.mode || 'overwrite'})`
-        : '<em class="text-muted">no target</em>';
-    default:
-      return '';
-  }
 }

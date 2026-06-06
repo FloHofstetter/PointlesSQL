@@ -29,24 +29,24 @@
  */
 
 import { annotationMethods } from '../canvas/annotations.js';
+import { clipboardMethods } from '../canvas/clipboard.js';
 import { configFormStructuredMethods } from '../canvas/config_form_structured.js';
+import { connectMethods } from '../canvas/connect.js';
 import { contextMenuMethods } from '../canvas/context_menu.js';
+import { drawflowSyncMethods } from '../canvas/drawflow_sync.js';
 import { edgeRoutingMethods } from '../canvas/edge_routing.js';
 import { edgeToolbarMethods } from '../canvas/edge_toolbar.js';
+import { edgesMethods } from '../canvas/edges.js';
 import { historyMethods } from '../canvas/history.js';
+import { nodeOpsMethods } from '../canvas/node_ops.js';
+import { nodeRenderMethods } from '../canvas/node_render.js';
+import { outputPlusMethods } from '../canvas/output_plus.js';
 import { viewportMethods } from '../canvas/viewport.js';
-import { paletteGroupsFromCatalog } from '../dp_canvas/_block_catalog.js';
-import { clipboardMethods } from '../dp_canvas/editor/clipboard.js';
+import { DP_CATALOG, paletteGroupsFromCatalog } from '../dp_canvas/_block_catalog.js';
 import { configFormMethods } from '../dp_canvas/editor/config_form.js';
-import { connectMethods } from '../dp_canvas/editor/connect.js';
-import { drawflowSyncMethods } from '../dp_canvas/editor/drawflow_sync.js';
-import { edgesMethods } from '../dp_canvas/editor/edges.js';
 import { ghostReviewMethods } from '../dp_canvas/editor/ghost_review.js';
 import { lifecycleMethods } from '../dp_canvas/editor/lifecycle.js';
 import { navigationMethods } from '../dp_canvas/editor/navigation.js';
-import { nodeOpsMethods } from '../dp_canvas/editor/node_ops.js';
-import { nodeRenderMethods } from '../dp_canvas/editor/node_render.js';
-import { outputPlusMethods } from '../dp_canvas/editor/output_plus.js';
 import { persistenceMethods } from '../dp_canvas/editor/persistence.js';
 import { previewMethods } from '../dp_canvas/editor/preview.js';
 import { runMethods } from '../dp_canvas/editor/run.js';
@@ -83,6 +83,11 @@ export function dpCanvasEditor(product, ctx) {
 
     product,
     canWrite: !!(ctxSafe.is_admin || ctxSafe.is_steward),
+
+    // Injected block taxonomy.  The shared canvas bundles read every
+    // block-shape lookup off `this.catalog`, so this is the single seam
+    // that binds the consumer-agnostic editor to the data-product blocks.
+    catalog: DP_CATALOG,
 
     loading: true,
     saving: false,

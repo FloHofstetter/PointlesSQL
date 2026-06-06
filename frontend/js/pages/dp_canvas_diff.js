@@ -16,8 +16,9 @@
  * persists per-tab via the same Alpine state.
  */
 
+import { installSmoothCurvature, loadCanvasIntoDrawflow } from '../canvas/_drawflow_loader.js';
 import { installFocusModeShortcut } from '../canvas/_focus_mode.js';
-import { installSmoothCurvature, loadCanvasIntoDrawflow } from '../dp_canvas/_drawflow_loader.js';
+import { DP_CATALOG } from '../dp_canvas/_block_catalog.js';
 
 function _readQuery(name) {
   const u = new URL(window.location.href);
@@ -168,8 +169,14 @@ export function dpCanvasDiff(product) {
         this._dfAfter.start();
         this._dfAfter.curvature = 0.5;
       }
-      const beforeIds = loadCanvasIntoDrawflow(this._dfBefore, beforeDoc, { mode: 'compact' });
-      const afterIds = loadCanvasIntoDrawflow(this._dfAfter, afterDoc, { mode: 'compact' });
+      const beforeIds = loadCanvasIntoDrawflow(this._dfBefore, beforeDoc, {
+        mode: 'compact',
+        catalog: DP_CATALOG,
+      });
+      const afterIds = loadCanvasIntoDrawflow(this._dfAfter, afterDoc, {
+        mode: 'compact',
+        catalog: DP_CATALOG,
+      });
       this._applyNodeOverlays(beforeHost, beforeIds, 'before');
       this._applyNodeOverlays(afterHost, afterIds, 'after');
       this._applyEdgeOverlays(beforeHost, beforeDoc, 'before');

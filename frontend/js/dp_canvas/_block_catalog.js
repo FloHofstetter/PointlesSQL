@@ -497,3 +497,96 @@ export function nodeHtml(blockType, nodeId, mode = 'editor') {
     </div>
   `;
 }
+
+/**
+ * One-line summary of a block's config, shown in the node body.
+ *
+ * Lives with the catalog because the per-type branches encode the same
+ * block-taxonomy knowledge the rest of this module owns; the editor reads
+ * it through the injected catalog rather than importing it directly, so a
+ * different consumer can describe its own block kinds.
+ *
+ * @param {string} blockType
+ * @param {Object} cfg
+ * @returns {string}
+ */
+export function describeConfig(blockType, cfg) {
+  if (!cfg) return '';
+  switch (blockType) {
+    case 'InputPort':
+      return cfg.table_fqn
+        ? `<code>${cfg.table_fqn}</code>`
+        : '<em class="text-muted">no table</em>';
+    case 'Filter':
+      return cfg.predicate
+        ? `<code>${cfg.predicate.slice(0, 40)}</code>`
+        : '<em class="text-muted">no predicate</em>';
+    case 'Project':
+      return cfg.columns && cfg.columns.length > 0
+        ? `${cfg.columns.length} col${cfg.columns.length === 1 ? '' : 's'}`
+        : '<em class="text-muted">no columns</em>';
+    case 'Join':
+      return `${cfg.how || 'inner'} on ${(cfg.keys || []).join(', ') || '—'}`;
+    case 'SemiJoin':
+    case 'AntiJoin':
+      return `on ${(cfg.keys || []).join(', ') || '—'}`;
+    case 'Except':
+      return 'left ∖ right';
+    case 'Intersect':
+      return 'left ∩ right';
+    case 'Unnest':
+      return cfg.column ? `<code>${cfg.column}</code>` : '<em class="text-muted">no column</em>';
+    case 'FileInput':
+      return cfg.path
+        ? `<code>${cfg.path}</code> (${cfg.format || 'auto'})`
+        : '<em class="text-muted">no path</em>';
+    case 'FileOutput':
+      return cfg.path
+        ? `→ <code>${cfg.path}</code> (${cfg.format || 'parquet'})`
+        : '<em class="text-muted">no path</em>';
+    case 'GroupBy':
+      return `by ${(cfg.keys || []).join(', ') || '—'}, ${(cfg.aggregations || []).length} agg`;
+    case 'Limit':
+      return `n = ${cfg.n}`;
+    case 'SQL':
+      return cfg.query
+        ? `<code>${(cfg.query || '').slice(0, 36)}…</code>`
+        : '<em class="text-muted">no query</em>';
+    case 'OutputPort':
+      return cfg.materialized_table
+        ? `→ <code>${cfg.materialized_table}</code> (${cfg.mode || 'overwrite'})`
+        : '<em class="text-muted">no target</em>';
+    default:
+      return '';
+  }
+}
+
+/**
+ * The data-product block taxonomy bundled as a single injectable catalog.
+ *
+ * The shared canvas editor bundles read every block-shape lookup off
+ * ``this.catalog`` instead of importing this module, so the same editor
+ * machinery drives any consumer that supplies a catalog of this shape
+ * (scheduler task kinds, the DataFrame Studio block set, …).
+ *
+ * @type {{
+ *   BLOCK_DEFS: Record<string, BlockDef>,
+ *   blockDef: (type: string) => BlockDef,
+ *   pinIndexFor: (type: string, pinName: string, direction: string) => number,
+ *   inputPinName: (type: string, index: number) => string,
+ *   nodeHtml: (blockType: string, nodeId: string, mode?: string) => string,
+ *   describeConfig: (blockType: string, cfg: Object) => string,
+ *   paletteGroups: Record<string, string[]>,
+ *   paletteOrder: string[],
+ * }}
+ */
+export const DP_CATALOG = {
+  BLOCK_DEFS,
+  blockDef,
+  pinIndexFor,
+  inputPinName,
+  nodeHtml,
+  describeConfig,
+  paletteGroups: paletteGroupsFromCatalog(),
+  paletteOrder: PALETTE_ORDER,
+};

@@ -9,8 +9,7 @@
  * Methods are plain (never arrow) so `this` binds to the Alpine proxy.
  */
 
-import { BLOCK_DEFS, pinIndexFor } from '../_block_catalog.js';
-import { generateNodeId } from '../_render_helpers.js';
+import { generateNodeId } from './_render_helpers.js';
 
 export const clipboardMethods = {
   _clearMultiSelection() {
@@ -71,7 +70,7 @@ export const clipboardMethods = {
         // Re-create nodes + re-wire edges that were within the deleted set.
         this._suppressAutosave = true;
         for (const n of removedNodes) {
-          const def = BLOCK_DEFS[n.block_type];
+          const def = this.catalog.BLOCK_DEFS[n.block_type];
           if (!def) continue;
           this._spawnNode(n.block_type, n.position, n.config, n.id);
         }
@@ -79,7 +78,7 @@ export const clipboardMethods = {
           const sd = this._drawflowNodes[e.source_node_id];
           const td = this._drawflowNodes[e.target_node_id];
           if (sd == null || td == null) continue;
-          const targetIdx = pinIndexFor(
+          const targetIdx = this.catalog.pinIndexFor(
             this.nodes[e.target_node_id]?.block_type,
             e.target_pin,
             'in'
@@ -140,7 +139,7 @@ export const clipboardMethods = {
     const idMap = {};
     this._suppressAutosave = true;
     for (const n of payload.nodes) {
-      const def = BLOCK_DEFS[n.block_type];
+      const def = this.catalog.BLOCK_DEFS[n.block_type];
       if (!def) continue;
       const newId = generateNodeId();
       idMap[n.id] = newId;
@@ -157,7 +156,7 @@ export const clipboardMethods = {
       const srcDf = this._drawflowNodes[srcNew];
       const tgtDf = this._drawflowNodes[tgtNew];
       if (!srcDf || !tgtDf) continue;
-      const targetIdx = pinIndexFor(this.nodes[tgtNew].block_type, e.target_pin, 'in');
+      const targetIdx = this.catalog.pinIndexFor(this.nodes[tgtNew].block_type, e.target_pin, 'in');
       try {
         df.addConnection(srcDf, tgtDf, 'output_1', `input_${targetIdx + 1}`);
       } catch (_e) {

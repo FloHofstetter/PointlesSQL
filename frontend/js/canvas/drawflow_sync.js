@@ -10,8 +10,6 @@
  * Methods are plain (never arrow) so `this` binds to the Alpine proxy.
  */
 
-import { BLOCK_DEFS, inputPinName, nodeHtml, pinIndexFor } from '../_block_catalog.js';
-
 export const drawflowSyncMethods = {
   // Single source of truth for spawning a block: add it to Drawflow, register
   // the df-id <-> pql-id mapping, and seed the reactive node entry.  The nine
@@ -23,7 +21,7 @@ export const drawflowSyncMethods = {
   // Drawflow node at ``pos || 100`` while storing the raw position, an
   // asymmetry this helper deliberately does not carry.)
   _spawnNode(blockType, pos, config, pqlId) {
-    const def = BLOCK_DEFS[blockType];
+    const def = this.catalog.BLOCK_DEFS[blockType];
     if (!def) return null;
     const dfId = this._drawflow.addNode(
       blockType,
@@ -33,7 +31,7 @@ export const drawflowSyncMethods = {
       pos.y,
       blockType,
       { pql_node_id: pqlId, block_type: blockType },
-      nodeHtml(blockType, pqlId),
+      this.catalog.nodeHtml(blockType, pqlId),
       false
     );
     this._drawflowNodes[pqlId] = dfId;
@@ -51,7 +49,7 @@ export const drawflowSyncMethods = {
     }));
     // First pass: add nodes.
     for (const node of doc.nodes || []) {
-      const def = BLOCK_DEFS[node.block_type];
+      const def = this.catalog.BLOCK_DEFS[node.block_type];
       if (!def) continue;
       const pos = node.position || { x: 100, y: 100 };
       const dfId = df.addNode(
@@ -62,7 +60,7 @@ export const drawflowSyncMethods = {
         pos.y || 100,
         node.block_type,
         { pql_node_id: node.id, block_type: node.block_type },
-        nodeHtml(node.block_type, node.id),
+        this.catalog.nodeHtml(node.block_type, node.id),
         false
       );
       this._drawflowNodes[node.id] = dfId;
@@ -81,7 +79,11 @@ export const drawflowSyncMethods = {
       if (!sourceDf || !targetDf) continue;
       const targetNode = (doc.nodes || []).find((n) => n.id === edge.target_node_id);
       const sourceIdx = 1; // Single-output blocks only.
-      const targetIdx = pinIndexFor(targetNode ? targetNode.block_type : '', edge.target_pin, 'in');
+      const targetIdx = this.catalog.pinIndexFor(
+        targetNode ? targetNode.block_type : '',
+        edge.target_pin,
+        'in'
+      );
       try {
         df.addConnection(sourceDf, targetDf, `output_${sourceIdx}`, `input_${targetIdx + 1}`);
       } catch (e) {
@@ -155,7 +157,9 @@ export const drawflowSyncMethods = {
         block_type: data.block_type,
         config: existing
           ? existing.config
-          : (BLOCK_DEFS[data.block_type] || { defaultConfig: () => ({}) }).defaultConfig(),
+          : (
+              this.catalog.BLOCK_DEFS[data.block_type] || { defaultConfig: () => ({}) }
+            ).defaultConfig(),
         position: { x: dfNode.pos_x, y: dfNode.pos_y },
       };
     }
@@ -177,7 +181,7 @@ export const drawflowSyncMethods = {
           const sourcePin = 'out';
           const targetIdx = parseInt((conn.output || '').replace('input_', ''), 10) - 1;
           const targetBlock = newNodes[pqlTargetId] ? newNodes[pqlTargetId].block_type : '';
-          const targetPin = inputPinName(targetBlock, targetIdx);
+          const targetPin = this.catalog.inputPinName(targetBlock, targetIdx);
           const sourceOutputIdx = parseInt((outputName || '').replace('output_', ''), 10);
           if (!Number.isFinite(sourceOutputIdx)) continue;
           const edgeId = `e-${pqlSourceId}:${sourcePin}->${pqlTargetId}:${targetPin}`;

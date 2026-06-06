@@ -10,8 +10,7 @@
  * Methods are plain (never arrow) so `this` binds to the Alpine proxy.
  */
 
-import { BLOCK_DEFS, pinIndexFor } from '../_block_catalog.js';
-import { generateNodeId } from '../_render_helpers.js';
+import { generateNodeId } from './_render_helpers.js';
 
 export const nodeOpsMethods = {
   onPaletteDragStart(event, kind) {
@@ -25,8 +24,8 @@ export const nodeOpsMethods = {
   onCanvasDrop(event) {
     if (!this.canWrite) return;
     const kind = event.dataTransfer.getData('text/plain');
-    if (!kind || !BLOCK_DEFS[kind]) return;
-    const def = BLOCK_DEFS[kind];
+    if (!kind || !this.catalog.BLOCK_DEFS[kind]) return;
+    const def = this.catalog.BLOCK_DEFS[kind];
     const rect = event.currentTarget.getBoundingClientRect();
     const pos = { x: event.clientX - rect.left - 60, y: event.clientY - rect.top - 30 };
     const pqlId = generateNodeId();
@@ -83,7 +82,7 @@ export const nodeOpsMethods = {
           this._syncFromDrawflow();
         },
         undo: () => {
-          const def = BLOCK_DEFS[snapshotNode.block_type];
+          const def = this.catalog.BLOCK_DEFS[snapshotNode.block_type];
           if (!def) return;
           this._suppressAutosave = true;
           this._spawnNode(
@@ -96,7 +95,7 @@ export const nodeOpsMethods = {
             const sd = this._drawflowNodes[e.source_node_id];
             const td = this._drawflowNodes[e.target_node_id];
             if (sd == null || td == null) continue;
-            const targetIdx = pinIndexFor(
+            const targetIdx = this.catalog.pinIndexFor(
               this.nodes[e.target_node_id]?.block_type,
               e.target_pin,
               'in'
@@ -118,7 +117,7 @@ export const nodeOpsMethods = {
     if (!this.selectedNodeId || !this.canWrite) return;
     const src = this.nodes[this.selectedNodeId];
     if (!src) return;
-    const def = BLOCK_DEFS[src.block_type];
+    const def = this.catalog.BLOCK_DEFS[src.block_type];
     if (!def) return;
     const newPqlId = generateNodeId();
     const pos = {
@@ -190,7 +189,7 @@ export const nodeOpsMethods = {
   async autoTidy() {
     const df = this._drawflow;
     if (!df) return;
-    const { computeLayout, animateTo } = await import('../../canvas/_auto_layout.js');
+    const { computeLayout, animateTo } = await import('./_auto_layout.js');
     const nodes = Object.values(this.nodes);
     const edges = Object.values(this.edges);
     if (nodes.length === 0) return;

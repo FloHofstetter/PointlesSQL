@@ -9,8 +9,6 @@
  * Methods are plain (never arrow) so `this` binds to the Alpine proxy.
  */
 
-import { pinIndexFor } from '../_block_catalog.js';
-
 export const edgesMethods = {
   _refreshEdgeCategoryStyles() {
     const df = this._drawflow;
@@ -234,7 +232,7 @@ export const edgesMethods = {
     const srcDf = this._drawflowNodes[edge.source_node_id];
     const tgtDf = this._drawflowNodes[edge.target_node_id];
     if (srcDf == null || tgtDf == null) return;
-    const targetIdx = pinIndexFor(
+    const targetIdx = this.catalog.pinIndexFor(
       this.nodes[edge.target_node_id]?.block_type,
       edge.target_pin,
       'in'

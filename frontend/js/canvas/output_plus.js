@@ -9,8 +9,7 @@
  * Methods are plain (never arrow) so `this` binds to the Alpine proxy.
  */
 
-import { BLOCK_DEFS, pinIndexFor } from '../_block_catalog.js';
-import { generateNodeId } from '../_render_helpers.js';
+import { generateNodeId } from './_render_helpers.js';
 
 export const outputPlusMethods = {
   _openOutputPlusPicker(sourcePqlId, anchorEl) {
@@ -28,7 +27,7 @@ export const outputPlusMethods = {
     this._insertOnEdgeContext = null;
   },
   _pickOutputPlusBlock(kind) {
-    const def = BLOCK_DEFS[kind];
+    const def = this.catalog.BLOCK_DEFS[kind];
     if (!def) return;
     const insertCtx = this._insertOnEdgeContext;
     const sourcePqlId = this.outputPlusPicker.sourcePqlId;
@@ -42,7 +41,7 @@ export const outputPlusMethods = {
       const srcDf = this._drawflowNodes[insertCtx.srcPqlId];
       const tgtDf = this._drawflowNodes[insertCtx.tgtPqlId];
       if (srcDf == null || tgtDf == null) return;
-      const tgtIdx = pinIndexFor(
+      const tgtIdx = this.catalog.pinIndexFor(
         this.nodes[insertCtx.tgtPqlId]?.block_type,
         insertCtx.targetPin,
         'in'
@@ -63,7 +62,7 @@ export const outputPlusMethods = {
       }
       if (
         (def.outputs || 0) > 0 &&
-        (BLOCK_DEFS[this.nodes[insertCtx.tgtPqlId]?.block_type]?.inputs || 0) > 0
+        (this.catalog.BLOCK_DEFS[this.nodes[insertCtx.tgtPqlId]?.block_type]?.inputs || 0) > 0
       ) {
         try {
           this._drawflow.addConnection(newDf, tgtDf, 'output_1', origIn);
@@ -134,7 +133,7 @@ export const outputPlusMethods = {
     if (dfId == null) return;
     const node = this.nodes[pqlId];
     if (!node) return;
-    const def = BLOCK_DEFS[node.block_type];
+    const def = this.catalog.BLOCK_DEFS[node.block_type];
     if (!def || (def.outputs || 0) === 0) return;
     const stage = this.$refs.canvas.parentElement;
     if (!stage) return;
@@ -195,7 +194,7 @@ export const outputPlusMethods = {
     if (!stage) return;
     const dfNodeEl = df.container.querySelector(`#node-${dfId}`);
     if (!dfNodeEl) return;
-    const def = BLOCK_DEFS[this.nodes[pqlId]?.block_type];
+    const def = this.catalog.BLOCK_DEFS[this.nodes[pqlId]?.block_type];
     if (!def) return;
     for (let i = 1; i <= (def.outputs || 0); i++) {
       const key = `${pqlId}:${i}`;
