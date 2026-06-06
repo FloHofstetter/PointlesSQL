@@ -13,6 +13,12 @@ from collections.abc import Iterable
 
 from pointlessql.exceptions import ValidationError
 from pointlessql.models import JobTask
+from pointlessql.services.canvas_core import (
+    CanvasEdge,
+    CanvasNode,
+    CompileError,
+    topo_sort,
+)
 
 
 def _parse_depends_on(raw: str) -> list[int]:
@@ -95,11 +101,14 @@ def validate_dag(tasks: Iterable[JobTask]) -> None:
 def _topological_order(tasks: list[JobTask]) -> list[JobTask]:
     """Return *tasks* in a deterministic topological order.
 
-    Kahn's algorithm walks the graph breadth-first: start with every
-    node that has no unsatisfied dependencies, emit it, decrement the
-    remaining-count of its dependents, and repeat. Within each "round"
-    we sort by ``id`` so the order is stable across runs — tests rely
-    on this for round-by-round assertions.
+    Delegates the Kahn's-algorithm walk to the shared
+    :func:`pointlessql.services.canvas_core.topo_sort` so the whole
+    codebase carries one graph ordering, then maps the ordered canvas
+    nodes back to their :class:`JobTask` rows.  Node ids are the tasks'
+    integer primary keys stringified; the sort is told to break ties
+    numerically (``sort_key=int``) so ``"10"`` orders after ``"2"`` — the
+    stable per-round ordering callers rely on, identical to the bespoke
+    integer-sorted Kahn walk this used to carry.
 
     Args:
         tasks: All :class:`JobTask` rows for one job.
@@ -113,25 +122,21 @@ def _topological_order(tasks: list[JobTask]) -> list[JobTask]:
             been caught at DAG-validation time, but we guard here too).
     """
     by_id: dict[int, JobTask] = {t.id: t for t in tasks}
-    deps: dict[int, list[int]] = {t.id: _parse_depends_on(t.depends_on) for t in tasks}
-    remaining: dict[int, int] = {tid: len(d) for tid, d in deps.items()}
-    # Reverse map: dep_id → list of tasks that depend on it.
-    dependents: dict[int, list[int]] = {tid: [] for tid in by_id}
-    for tid, d in deps.items():
-        for dep_id in d:
-            dependents[dep_id].append(tid)
-
-    ready = sorted(tid for tid, n in remaining.items() if n == 0)
-    output: list[JobTask] = []
-    while ready:
-        tid = ready.pop(0)
-        output.append(by_id[tid])
-        for child in sorted(dependents[tid]):
-            remaining[child] -= 1
-            if remaining[child] == 0:
-                # Insert in sorted position so the stable order holds.
-                ready.append(child)
-                ready.sort()
-    if len(output) != len(tasks):
+    nodes = [CanvasNode(id=str(t.id), block_type="task") for t in tasks]
+    edges: list[CanvasEdge] = []
+    for t in tasks:
+        for dep_id in _parse_depends_on(t.depends_on):
+            edges.append(
+                CanvasEdge(
+                    id=f"{dep_id}->{t.id}",
+                    source_node_id=str(dep_id),
+                    source_pin="out",
+                    target_node_id=str(t.id),
+                    target_pin="deps",
+                )
+            )
+    errors: list[CompileError] = []
+    ordered = topo_sort(nodes, edges, errors, sort_key=int)
+    if ordered is None:
         raise ValidationError("cycle detected in task graph during toposort")
-    return output
+    return [by_id[int(n.id)] for n in ordered]

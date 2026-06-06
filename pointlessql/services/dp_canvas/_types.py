@@ -1,22 +1,31 @@
-"""Pydantic envelopes for the visual data-product canvas.
+"""Pydantic types for the visual data-product canvas.
 
-These types are the *contract* between the editor frontend, the
-compiler, the schema-flow validator, and the executor.  Document
-shape is intentionally minimal: nodes carry an opaque ``config``
-dict that each block's ``BlockSpec`` unpacks via its own per-block
-schema — that keeps the envelope stable even as block types accrete.
+The graph envelope (:class:`CanvasDoc` / :class:`CanvasNode` /
+:class:`CanvasEdge`) and the shared :class:`CompileError` now live in the
+consumer-agnostic :mod:`pointlessql.services.canvas_core` kernel; they are
+re-exported here so every existing ``from pointlessql.services.dp_canvas
+import …`` (and ``from …dp_canvas._types import …``) keeps resolving
+unchanged.
 
-Pin types are scoped to v1 — only ``TableRef`` (schemaful rowsets).
-Later waves can add ``ScalarValue`` / ``ModelRef`` / ``VectorIndex``
-without rewriting the envelope.
+What stays here is the *dataframe-flavoured* half of the contract — pin
+schemas, the SQL compiler's fragment/sink shapes, and the executor's
+per-sink results.  These are scoped to the data-product pipeline: a pin
+is a rowset with a column list, a sink materialises a Delta table.
 """
 
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Any, Literal
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
+
+from pointlessql.services.canvas_core._types import (
+    CanvasDoc,
+    CanvasEdge,
+    CanvasNode,
+    CompileError,
+)
 
 
 class ColumnSpec(BaseModel):
@@ -56,60 +65,6 @@ class PinSchema(BaseModel):
     kind: Literal["table"] = "table"
     columns: list[ColumnSpec] = Field(default_factory=list)
     unknown: bool = False
-
-
-class CanvasNode(BaseModel):
-    """One block on the canvas.
-
-    Attributes:
-        id: Stable identifier the editor mints (UUID v4 string) so
-            edges + executor results can reference the node across
-            re-saves.
-        block_type: Registry key in :data:`BLOCK_REGISTRY`.
-        config: Block-specific configuration.  Each ``BlockSpec``
-            parses this dict through its own Pydantic config schema —
-            invalid configs become :class:`CompileError` rows at
-            compile time, not pydantic ``ValidationError`` here, so
-            the editor can keep the document open with the error
-            surfaced in-place.
-        position: Optional ``{"x": float, "y": float}`` for the editor
-            layout.  Ignored by every backend pipeline.
-    """
-
-    model_config = ConfigDict(extra="ignore")
-
-    id: str = Field(min_length=1, max_length=64)
-    block_type: str = Field(min_length=1, max_length=64)
-    config: dict[str, Any] = Field(default_factory=dict)
-    position: dict[str, float] | None = None
-
-
-class CanvasEdge(BaseModel):
-    """A wire between an upstream output-pin and a downstream input-pin."""
-
-    model_config = ConfigDict(extra="ignore")
-
-    id: str = Field(min_length=1, max_length=64)
-    source_node_id: str = Field(min_length=1, max_length=64)
-    source_pin: str = Field(min_length=1, max_length=64)
-    target_node_id: str = Field(min_length=1, max_length=64)
-    target_pin: str = Field(min_length=1, max_length=64)
-
-
-class CanvasDoc(BaseModel):
-    """The serialised canvas document persisted in ``data_product_canvas_graph``.
-
-    Top-level envelope is deliberately tiny — every interesting decision
-    lives inside the per-node ``config`` dicts so adding a new block
-    type never bumps ``schema_version``.
-    """
-
-    model_config = ConfigDict(extra="ignore")
-
-    nodes: list[CanvasNode] = Field(default_factory=list)
-    edges: list[CanvasEdge] = Field(default_factory=list)
-    schema_version: Literal[1] = 1
-    metadata: dict[str, Any] = Field(default_factory=dict)
 
 
 class SinkSpec(BaseModel):
@@ -159,46 +114,6 @@ class SQLFragment(BaseModel):
     ctes: list[tuple[str, str]] = Field(default_factory=list)
     sinks: list[SinkSpec] = Field(min_length=1)
     referenced_tables: list[str] = Field(default_factory=list)
-
-
-class CompileError(BaseModel):
-    """A single problem the compiler or validator surfaced.
-
-    Errors are accumulated and returned as a list rather than raised
-    so the editor can render every problem at once instead of
-    one-at-a-time round-trips.  ``node_id`` and ``pin`` are populated
-    when the error has a graph location; ``message`` is the
-    human-readable summary the UI shows next to the offending pin.
-
-    Optional diagnostic fields (``expected_type`` / ``actual_type``
-    / ``column`` / ``suggestion``) carry just-enough structure for
-    the editor to render hover-tooltips with concrete next-steps —
-    e.g. surface "Expected INT, got VARCHAR on column foo" and
-    offer to wire in a Cast block automatically.
-    """
-
-    model_config = ConfigDict(frozen=True)
-
-    kind: Literal[
-        "empty_doc",
-        "cycle",
-        "missing_input",
-        "unknown_block",
-        "bad_config",
-        "output_port_count",
-        "duplicate_sink",
-        "type_mismatch",
-        "duplicate_pin",
-        "duplicate_node_id",
-        "edge_target_missing",
-    ]
-    node_id: str | None = None
-    pin: str | None = None
-    message: str
-    expected_type: str | None = None
-    actual_type: str | None = None
-    column: str | None = None
-    suggestion: str | None = None
 
 
 class SinkResult(BaseModel):
@@ -251,3 +166,17 @@ class MultiExecuteResult(BaseModel):
     sinks: list[SinkResult] = Field(default_factory=list)
     graph_version: int
     compile_errors: Sequence[CompileError] = Field(default_factory=list)
+
+
+__all__ = [
+    "CanvasDoc",
+    "CanvasEdge",
+    "CanvasNode",
+    "ColumnSpec",
+    "CompileError",
+    "MultiExecuteResult",
+    "PinSchema",
+    "SQLFragment",
+    "SinkResult",
+    "SinkSpec",
+]

@@ -18,12 +18,15 @@ from __future__ import annotations
 import re
 from collections.abc import Iterable
 
+from pointlessql.services.canvas_core import topo_sort
+from pointlessql.services.canvas_core._validate import (
+    validate_envelope as _validate_envelope,
+)
 from pointlessql.services.dp_canvas._blocks import (
     BLOCK_REGISTRY,
     compile_block,
     infer_block,
 )
-from pointlessql.services.dp_canvas._graph import topo_sort
 from pointlessql.services.dp_canvas._types import (
     CanvasDoc,
     CanvasNode,
@@ -41,67 +44,6 @@ _BASE_TABLE_RE = re.compile(
 
 def _cte_name(idx: int, block_type: str) -> str:
     return f"n{idx}_{block_type.lower()}"
-
-
-def _validate_envelope(doc: CanvasDoc, errors: list[CompileError]) -> bool:
-    """Surface envelope problems before topo-sort.
-
-    Returns True when the document is well-formed enough for topo-sort
-    to proceed; any envelope error blocks compilation early.
-    """
-    if not doc.nodes:
-        errors.append(CompileError(kind="empty_doc", message="Canvas is empty."))
-        return False
-    seen: set[str] = set()
-    for node in doc.nodes:
-        if node.id in seen:
-            errors.append(
-                CompileError(
-                    kind="duplicate_node_id",
-                    node_id=node.id,
-                    message=f"Duplicate node id {node.id!r}.",
-                )
-            )
-        seen.add(node.id)
-    node_ids = {n.id for n in doc.nodes}
-    edge_ids: set[str] = set()
-    for edge in doc.edges:
-        if edge.id in edge_ids:
-            errors.append(
-                CompileError(
-                    kind="duplicate_node_id",
-                    node_id=edge.id,
-                    message=f"Duplicate edge id {edge.id!r}.",
-                )
-            )
-        edge_ids.add(edge.id)
-        if edge.source_node_id not in node_ids:
-            errors.append(
-                CompileError(
-                    kind="edge_target_missing",
-                    node_id=edge.source_node_id,
-                    pin=edge.source_pin,
-                    message=f"Edge {edge.id!r} source node {edge.source_node_id!r} missing.",
-                )
-            )
-        if edge.target_node_id not in node_ids:
-            errors.append(
-                CompileError(
-                    kind="edge_target_missing",
-                    node_id=edge.target_node_id,
-                    pin=edge.target_pin,
-                    message=f"Edge {edge.id!r} target node {edge.target_node_id!r} missing.",
-                )
-            )
-        if edge.source_node_id == edge.target_node_id:
-            errors.append(
-                CompileError(
-                    kind="cycle",
-                    node_id=edge.source_node_id,
-                    message=f"Edge {edge.id!r} forms a self-loop on {edge.source_node_id!r}.",
-                )
-            )
-    return not errors
 
 
 def _check_block_types(nodes: Iterable[CanvasNode], errors: list[CompileError]) -> None:

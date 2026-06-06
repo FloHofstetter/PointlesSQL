@@ -3527,6 +3527,48 @@ PointlesSQL
 │   │   - Strategische Wette: die Agent/MCP-Oberfläche (passt zum
 │   │     Agent-first-Pivot, Phase 12.12).
 │   │
+├── Mega-Cluster 193–196 — Reusable Canvas Core + Two New Consumers  ⏳ planned (geplant 2026-06-06)
+│   │   Der Canvas-Editor war an Data Products gekettet.  Extrahiere den
+│   │   Kern in drei Schichten — ein consumer-agnostischer Graph-Kernel
+│   │   (`canvas_core`) → die DataFrame/SQL-Schicht (`canvas_df`) →
+│   │   per-Consumer-Layer — und baue zwei neue Consumer darauf: einen
+│   │   visuellen Scheduler-Task-Chain-Editor und einen Notebook-
+│   │   DataFrame-Builder.  Data Products bleiben verhaltensgleich; die
+│   │   Scheduler-topo-sort wird auf den geteilten Kern vereinheitlicht;
+│   │   der tote lineare `services/canvas/`-Prototyp wird stillgelegt.
+│   │
+│   ├── Phase 193 — Canvas-Core-Extraktion (canvas_core + canvas_df)  ⏳ in progress
+│   │   │   - PR1 ✅ (local): `canvas_core`-Kernel — Envelope (CanvasDoc/
+│   │   │     Node/Edge/CompileError), `topo_sort` mit pluggbarem
+│   │   │     `sort_key`, Struktur-Validierung, struktureller Diff,
+│   │   │     `NodeKindRegistry`.  `dp_canvas` re-exportiert via Shims, kein
+│   │   │     Aufrufer ändert sich.  Scheduler `_topological_order` auf den
+│   │   │     geteilten `topo_sort(sort_key=int)` vereinheitlicht —
+│   │   │     numerische Tie-Breaks bit-identisch erhalten.  Paritäts-Test
+│   │   │     deckt die int-vs-lexikal-Sortierfalle ab.  Full pytest
+│   │   │     5967/0/10.
+│   │   │   - PR2 (geplant): `canvas_df` (reine Blocks, Compiler,
+│   │   │     schema_flow, preview-cache, edge_types); `DATAFRAME_REGISTRY`
+│   │   │     auf der NodeKindRegistry; öffentliches `compile_to_select`.
+│   │   │   - PR3 (geplant): `dp_canvas` zum dünnen Consumer verschlanken +
+│   │   │     Frontend-Editor-Shell `frontend/js/canvas/` mit
+│   │   │     `assembleCanvasEditor(adapter)`.  Schließt Phase 193.
+│   │   │
+│   ├── Phase 194 — Scheduler-Task-Chain-Visual-Editor  ⏳ planned
+│   │   │   Diff-Save gegen `JobTask` (kein neues Graph-Table), `task-{id}`
+│   │   │   Id-Mapping, `validate_dag`-Gate vor Commit, Lösch-Guard für
+│   │   │   Tasks mit laufendem `TaskRun`, Run-Status-Overlay je Knoten.
+│   │   │
+│   ├── Phase 195 — Notebook-DataFrame-Studio  ⏳ planned
+│   │   │   Visueller Query-Builder auf `canvas_df`; kompiliert zu SQL,
+│   │   │   Inline-Preview, „Send to notebook" emittiert eine governed
+│   │   │   `[sql]`-Zelle (kein UC-Materialize, kein Version-Ledger).
+│   │   │
+│   └── Phase 196 — Legacy-Linear-Canvas-Retirement  ⏳ planned
+│       │   `/canvas` → 308 auf `/dataframe-studio`; Entfernung des
+│       │   linearen `services/canvas/`-Prototyps + Route + Page + JS +
+│       │   Template + Test.
+│   │
 ├── Phase 188 — Echte Write-Modes (merge / append)  ✅ shipped (local, 2026-06-01)
 │   │
 │   │   Schließt den latenten Bug, dass der Executor ``mode='merge'`` still
