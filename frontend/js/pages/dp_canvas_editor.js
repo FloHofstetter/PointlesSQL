@@ -28,19 +28,20 @@
  *   are registered by the CDN bundle loaded from ``dp_canvas_editor.html``.
  */
 
+import { annotationMethods } from '../canvas/annotations.js';
+import { configFormStructuredMethods } from '../canvas/config_form_structured.js';
+import { contextMenuMethods } from '../canvas/context_menu.js';
+import { edgeRoutingMethods } from '../canvas/edge_routing.js';
+import { edgeToolbarMethods } from '../canvas/edge_toolbar.js';
+import { historyMethods } from '../canvas/history.js';
+import { viewportMethods } from '../canvas/viewport.js';
 import { paletteGroupsFromCatalog } from '../dp_canvas/_block_catalog.js';
-import { annotationMethods } from '../dp_canvas/editor/annotations.js';
 import { clipboardMethods } from '../dp_canvas/editor/clipboard.js';
 import { configFormMethods } from '../dp_canvas/editor/config_form.js';
-import { configFormStructuredMethods } from '../dp_canvas/editor/config_form_structured.js';
 import { connectMethods } from '../dp_canvas/editor/connect.js';
-import { contextMenuMethods } from '../dp_canvas/editor/context_menu.js';
 import { drawflowSyncMethods } from '../dp_canvas/editor/drawflow_sync.js';
-import { edgeRoutingMethods } from '../dp_canvas/editor/edge_routing.js';
-import { edgeToolbarMethods } from '../dp_canvas/editor/edge_toolbar.js';
 import { edgesMethods } from '../dp_canvas/editor/edges.js';
 import { ghostReviewMethods } from '../dp_canvas/editor/ghost_review.js';
-import { historyMethods } from '../dp_canvas/editor/history.js';
 import { lifecycleMethods } from '../dp_canvas/editor/lifecycle.js';
 import { navigationMethods } from '../dp_canvas/editor/navigation.js';
 import { nodeOpsMethods } from '../dp_canvas/editor/node_ops.js';
@@ -50,7 +51,6 @@ import { persistenceMethods } from '../dp_canvas/editor/persistence.js';
 import { previewMethods } from '../dp_canvas/editor/preview.js';
 import { runMethods } from '../dp_canvas/editor/run.js';
 import { versionsMethods } from '../dp_canvas/editor/versions.js';
-import { viewportMethods } from '../dp_canvas/editor/viewport.js';
 
 export function dpCanvasEditor(product, ctx) {
   const ctxSafe = ctx || {};

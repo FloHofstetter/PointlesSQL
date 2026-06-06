@@ -9,7 +9,7 @@
  * the inner drag / undo callbacks stay arrows so they capture it.
  */
 
-import { findNonOverlappingPosition } from '../_canvas_helpers.js';
+import { findNonOverlappingPosition } from '../dp_canvas/_canvas_helpers.js';
 
 export const annotationMethods = {
   addStickyNote() {
