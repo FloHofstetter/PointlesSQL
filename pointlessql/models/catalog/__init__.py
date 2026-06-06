@@ -58,6 +58,9 @@ from pointlessql.models.catalog._cost import (
     DataProductCostBucketHourly,
     DataProductQueryCost,
 )
+from pointlessql.models.catalog._data_product_access_request import (
+    DataProductAccessRequest,
+)
 from pointlessql.models.catalog._data_product_active_reviewer_config import (
     ACTIVE_REVIEWER_PROVIDERS,
     ACTIVE_REVIEWER_RUNNERS,
@@ -234,6 +237,7 @@ __all__ = [
     "AutoloadCheckpoint",
     "Dashboard",
     "DataProduct",
+    "DataProductAccessRequest",
     "DataProductActiveReviewerConfig",
     "DataProductBitemporalPolicy",
     "DataProductCanvasGraph",

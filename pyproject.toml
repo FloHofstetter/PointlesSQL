@@ -100,18 +100,25 @@ dev = [
     "ruff>=0.15",
     "pyright>=1.1",
     "hatchling>=1.29.0",
-    "pydoclint>=0.8",
-    # Phase 74.CI.1 — explicit dep on the fork so the post-install
-    # state is deterministic.  pydoclint 0.8.3 imports
-    # ``DocstringYields`` from ``docstring_parser.common``; the
-    # symbol only ships in the fork variant.  anthropic>=0.40 pulls
-    # the upstream ``docstring-parser`` transitively, and both
-    # packages install into ``site-packages/docstring_parser/`` —
-    # whichever wheel writes last wins.  Pinning the fork
-    # explicitly + listing it AFTER pydoclint ensures uv records
-    # both in the resolved env and the fork's files land last on
-    # CI's clean install.
-    "docstring-parser-fork>=0.0.14",
+    # Capped below 0.8: pydoclint 0.8.0 expanded the rule set with
+    # class-attribute checks (DOC601/603 — which flag every pydantic
+    # ``model_config`` sentinel as an undocumented attribute) and a
+    # stricter transitive-``Raises`` check (DOC50x).  The project's
+    # docstring policy was established under the 0.7 family and does
+    # not adopt those; a 0.8 bump turns the whole tree red without a
+    # corresponding policy change.  Re-pin to 0.7.x until/unless the
+    # docstrings are deliberately reconciled to the 0.8 ruleset.
+    "pydoclint>=0.7,<0.8",
+    # Explicit dep on the fork so the post-install state is
+    # deterministic.  pydoclint imports ``DocstringYields`` from
+    # ``docstring_parser.common``; the symbol only ships in the fork
+    # variant.  anthropic>=0.40 pulls the upstream ``docstring-parser``
+    # transitively, and both packages install into
+    # ``site-packages/docstring_parser/`` — whichever wheel writes
+    # last wins.  Pinning the fork explicitly + listing it AFTER
+    # pydoclint ensures uv records both in the resolved env and the
+    # fork's files land last on CI's clean install.
+    "docstring-parser-fork>=0.0.12",
     "pip-audit>=2.10.0",
     "pre-commit>=4.0",
     "detect-secrets>=1.5",
