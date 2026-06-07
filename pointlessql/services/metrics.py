@@ -148,6 +148,79 @@ def observe_tick_lag(lag_seconds: float) -> None:
     scheduler_tick_lag_seconds.set(lag_seconds)
 
 
+# Bucket selection for interactive request + query latencies.
+#
+# These cover the sub-millisecond to half-minute range that HTTP
+# handlers and backend queries actually occupy — finer at the low end
+# than the job buckets above (a metadata GET should land in single-digit
+# milliseconds) while still capturing the slow tail (a cold lineage-DAG
+# build or a large FTS scan).
+_LATENCY_BUCKETS: tuple[float, ...] = (
+    0.005,
+    0.01,
+    0.025,
+    0.05,
+    0.1,
+    0.25,
+    0.5,
+    1.0,
+    2.5,
+    5.0,
+    10.0,
+    30.0,
+)
+
+
+http_request_duration_seconds: Histogram = Histogram(
+    "pointlessql_http_request_duration_seconds",
+    "End-to-end HTTP request latency in seconds, by route template / method / status.",
+    labelnames=("route", "method", "status"),
+    buckets=_LATENCY_BUCKETS,
+    registry=REGISTRY,
+)
+
+db_query_duration_seconds: Histogram = Histogram(
+    "pointlessql_db_query_duration_seconds",
+    "Backend query latency in seconds, by logical operation and backend engine.",
+    labelnames=("operation", "backend"),
+    buckets=_LATENCY_BUCKETS,
+    registry=REGISTRY,
+)
+
+
+def record_http_latency(
+    route: str, method: str, status: int | str, duration_seconds: float
+) -> None:
+    """Observe one HTTP request's end-to-end latency.
+
+    The *route* must be the low-cardinality route **template**
+    (``/api/audit/{id}``), never the concrete path with IDs or query
+    params baked in — otherwise the metric's label set grows unbounded.
+
+    Args:
+        route: The matched route template, or ``"unmatched"``.
+        method: The HTTP method (``GET`` / ``POST`` / …).
+        status: The HTTP status code (int or its string form).
+        duration_seconds: Wall-clock handler latency in seconds.
+    """
+    http_request_duration_seconds.labels(route=route, method=method, status=str(status)).observe(
+        duration_seconds
+    )
+
+
+def record_db_query(operation: str, backend: str, duration_seconds: float) -> None:
+    """Observe one backend query's latency.
+
+    Args:
+        operation: A stable logical name for the query
+            (``audit_fts_search``, ``lineage_graph_build``, …).
+        backend: The engine that ran it (``sqlite`` / ``postgres`` /
+            ``duckdb``).
+        duration_seconds: Wall-clock query latency in seconds.
+    """
+    db_query_duration_seconds.labels(operation=operation, backend=backend).observe(duration_seconds)
+
+
 # Silence unused-import warnings from tools that can't see the re-export
 # used by ``render_metrics``.
 _ = _DEFAULT_REGISTRY
@@ -155,9 +228,13 @@ _ = _DEFAULT_REGISTRY
 
 __all__ = [
     "REGISTRY",
+    "db_query_duration_seconds",
+    "http_request_duration_seconds",
     "job_run_duration_seconds",
     "job_runs_total",
     "observe_tick_lag",
+    "record_db_query",
+    "record_http_latency",
     "record_run",
     "render_metrics",
     "scheduler_tick_lag_seconds",

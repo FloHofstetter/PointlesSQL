@@ -1,0 +1,12 @@
+{
+  "_comment": "p95 latency budgets in milliseconds, per named performance scenario. The perf harness (tests/perf/, run nightly, not in the PR gate) writes measured p95s to .bench/perf-latest.json with shape {\"results_ms\": {\"<name>\": {\"p95\": <number>}}}. check-perf-budget.sh compares each measured p95 against its budget here and fails when a budget is exceeded. Budgets start generous (CI-runner variance is real) and ratchet DOWN as hot paths are optimized -- mirror the file-size / pyright budget discipline: when a deliberate change moves a number, edit it here with a one-line reason in bump_history.",
+  "budgets_ms": {
+    "audit_fts_search_1m": 500,
+    "lineage_graph_build_10k": 800,
+    "table_stats_profile_10k_distinct": 1000,
+    "query_history_list_200": 250
+  },
+  "bump_history": [
+    "initial budgets seeded from the phase plan; unverified until the perf harness has run on a stable runner."
+  ]
+}

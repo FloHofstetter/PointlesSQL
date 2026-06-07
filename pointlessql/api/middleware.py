@@ -420,17 +420,23 @@ async def request_id_middleware(request: Request, call_next: Any) -> Response:
 
 
 def register_middleware(app: FastAPI) -> None:
-    """Stack all four middleware on *app* in the canonical order.
+    """Stack the middleware on *app* in the canonical order.
 
     See module docstring for the LIFO reasoning behind the call
     sequence below.  Calling this once during app construction
     replaces the scattered ``@app.middleware("http")`` decorators
     that previously lived in ``api/main.py``.
 
+    The latency middleware is registered last so it runs outermost and
+    times the full request — every inner middleware plus the handler.
+
     Args:
         app: The FastAPI app to attach middleware to.
     """
+    from pointlessql.api.latency_middleware import latency_middleware
+
     app.middleware("http")(auth_middleware)
     app.middleware("http")(_rate_limit_middleware)
     app.middleware("http")(_csrf_middleware)
     app.middleware("http")(request_id_middleware)
+    app.middleware("http")(latency_middleware)
