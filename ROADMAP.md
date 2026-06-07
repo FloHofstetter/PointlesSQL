@@ -3723,8 +3723,16 @@ PointlesSQL
 │   │   │     update/delete ausgenommen).  delete/autoload/branch-governance/
 │   │   │     federation werden im Coverage-Ledger (W5) explizit geführt
 │   │   │     (keine stillen Lücken).
-│   │   │     Offen: W4 (Golden-Corpus + OpenLineage-Differential), W5
-│   │   │     (CI-Marker + Coverage-Ledger).
+│   │   │   - W4 ✅ (local): OpenLineage-Differential — fängt das emittierte
+│   │   │     Event ab (ohne Live-Server) und beweist, dass columnLineage- +
+│   │   │     valueChange-Facets exakt den lokalen Lineage-Tabellen
+│   │   │     entsprechen (kein Drift interne Wahrheit ↔ exportierter Graph).
+│   │   │     Golden-Corpus (`tests/lineage_verify/corpus/*.json`):
+│   │   │     deterministische Pipelines (Unicode-Spalten, NULL-/Dup-Merge-
+│   │   │     Keys, Multi-Column-Group-By) mit eingefrorenen, sortiert-
+│   │   │     diffbaren Edge-/Column-/Value-Snapshots; Regen via
+│   │   │     `LINEAGE_CORPUS_UPDATE=1`.
+│   │   │     Offen: W5 (CI-Marker + Coverage-Ledger).
 │   │   │
 │   ├── Phase 198 — E2E-in-CI Vollabdeckung  ⏳ planned
 │   │   │   Detail: [`docs/internal/phase-198.md`](docs/internal/phase-198.md).

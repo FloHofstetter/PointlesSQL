@@ -1,0 +1,60 @@
+{
+  "aggregate": false,
+  "column_map": [
+    [
+      "lv.bronze.unicode_src",
+      "_lineage_row_id",
+      "_lineage_row_id",
+      "derived",
+      "synth_target_row_id"
+    ],
+    [
+      "lv.bronze.unicode_src",
+      "café",
+      "café",
+      "identity",
+      null
+    ],
+    [
+      "lv.bronze.unicode_src",
+      "naïve_x",
+      "naïve_x",
+      "identity",
+      null
+    ],
+    [
+      "lv.bronze.unicode_src",
+      "日本語",
+      "日本語",
+      "identity",
+      null
+    ]
+  ],
+  "edges": [
+    [
+      "bronze-1",
+      "2ac74a9dca9b9cdcb899d459636c2e6d5bc0629d30049b2a3d1761aae379ebcc"
+    ],
+    [
+      "bronze-2",
+      "37980ef790b1f2743e642f7e2b274d88e40ad859dbd221c2b946ce1ffdce66b4"
+    ]
+  ],
+  "output_columns": [
+    "_lineage_row_id",
+    "café",
+    "naïve_x",
+    "日本語"
+  ],
+  "output_row_ids": [
+    "2ac74a9dca9b9cdcb899d459636c2e6d5bc0629d30049b2a3d1761aae379ebcc",
+    "37980ef790b1f2743e642f7e2b274d88e40ad859dbd221c2b946ce1ffdce66b4"
+  ],
+  "rejects": [],
+  "source_row_ids": [
+    "bronze-1",
+    "bronze-2"
+  ],
+  "target_table": "lv.silver.unicode_cols",
+  "value_changes": []
+}

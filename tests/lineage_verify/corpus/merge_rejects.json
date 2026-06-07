@@ -1,0 +1,88 @@
+{
+  "aggregate": false,
+  "column_map": [
+    [
+      "lv.bronze.merge_src",
+      "_lineage_row_id",
+      "_lineage_row_id",
+      "derived",
+      "synth_target_row_id"
+    ],
+    [
+      "lv.bronze.merge_src",
+      "k",
+      "k",
+      "identity",
+      null
+    ],
+    [
+      "lv.bronze.merge_src",
+      "v",
+      "v",
+      "identity",
+      null
+    ]
+  ],
+  "edges": [
+    [
+      "r1",
+      "bdea7d2fe700d12a131f1bf60405f45e8a63824eecfe0fa2bd684e63b771ed78"
+    ],
+    [
+      "r2",
+      "22c1506253735fa88fddc981129dfc4c22f982f8d424a4b20afc2212372b3206"
+    ],
+    [
+      "r3",
+      "2082e994dfcd226a1ef2d0c523ddf01510e779b5916cb4bddba7d0479ee0fcc7"
+    ]
+  ],
+  "output_columns": [
+    "_lineage_row_id",
+    "k",
+    "v"
+  ],
+  "output_row_ids": [
+    "2082e994dfcd226a1ef2d0c523ddf01510e779b5916cb4bddba7d0479ee0fcc7",
+    "22c1506253735fa88fddc981129dfc4c22f982f8d424a4b20afc2212372b3206",
+    "bdea7d2fe700d12a131f1bf60405f45e8a63824eecfe0fa2bd684e63b771ed78"
+  ],
+  "rejects": [
+    [
+      "reject-dup",
+      "duplicate_in_source"
+    ],
+    [
+      "reject-null",
+      "on_key_null"
+    ]
+  ],
+  "source_row_ids": [
+    "r1",
+    "r2",
+    "r3",
+    "reject-dup",
+    "reject-null"
+  ],
+  "target_table": "lv.silver.merge_rejects",
+  "value_changes": [
+    [
+      "2082e994dfcd226a1ef2d0c523ddf01510e779b5916cb4bddba7d0479ee0fcc7",
+      "v",
+      "3",
+      "30"
+    ],
+    [
+      "22c1506253735fa88fddc981129dfc4c22f982f8d424a4b20afc2212372b3206",
+      "v",
+      "2",
+      "20"
+    ],
+    [
+      "bdea7d2fe700d12a131f1bf60405f45e8a63824eecfe0fa2bd684e63b771ed78",
+      "v",
+      "1",
+      "10"
+    ]
+  ]
+}

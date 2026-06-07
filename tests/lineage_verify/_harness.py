@@ -68,6 +68,25 @@ def _bound_factory(factory: Any):
 
 
 @contextmanager
+def capture_openlineage():
+    """Intercept emitted OpenLineage events instead of POSTing them to soyuz.
+
+    Yields a list that collects each ``OpenLineageEvent`` body the post-commit
+    hook would have sent, so a differential check can compare its facets to
+    the locally recorded lineage tables without a live server.
+    """
+    events: list[Any] = []
+
+    def _capture(*, client: Any, body: Any) -> None:
+        events.append(body)
+        return None
+
+    with patch("pointlessql.services.soyuz_lineage._ingest") as ingest:
+        ingest.sync.side_effect = _capture
+        yield events
+
+
+@contextmanager
 def _patched_soyuz_write(
     storage_root: str, *, pre_existing: bool, target_storage: str | None = None
 ):
