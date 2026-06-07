@@ -235,6 +235,14 @@ def merge_table(
                     "target_row_ids": target_row_ids,
                     "source_model_uri": source_model_uri,
                 }
+            elif source_table_fqn and not rejects:
+                # a declared source whose frame carries no
+                # ``_lineage_row_id`` (and nothing was rejected) records
+                # zero edges — make that explicit on the op row.
+                recorder.extra_params = {
+                    **recorder.extra_params,
+                    "lineage_row_id_absent_at_write": True,
+                }
             if rejects and source_table_fqn:
                 recorder.pending_rejects = {
                     "source_table": source_table_fqn,

@@ -338,24 +338,24 @@ def test_remerge_with_track_value_changes_emits_value_changes(
 # ---------- 15.8.2 INFO-log diagnostic ----------
 
 
-def test_pql_sql_logs_when_lineage_row_id_dropped_at_select(
+def test_pql_sql_autoprojects_lineage_row_id_when_dropped_at_select(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
     auth_cookies: dict[str, str],
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    """Stripping ``_lineage_row_id`` from a lineage-bearing source logs INFO.
+    """A row-preserving SELECT that omits ``_lineage_row_id`` carries it forward.
 
-    Pins diagnostic: when the agent's SELECT references
-    a table whose schema carries ``_lineage_row_id`` but the projection
-    omits it, ``run_sql`` flags the op via INFO log and stamps
-    ``lineage_row_id_dropped_at_select=True`` on ``params_json``.  This
-    is what surfaces the seed-demo's silver bug at run-detail level.
+    When the agent's SELECT references a single lineage-bearing source but
+    its projection omits ``_lineage_row_id``, ``run_sql`` auto-projects the
+    column so the downstream write keeps its row-edges, stamps
+    ``lineage_row_id_autoprojected=True`` on the op, and does not fire the
+    drop diagnostic.
     """
     factory = app.state.session_factory
     _bind_get_session_factory(monkeypatch, factory)
 
-    run_id = "phase158-sql-diag"
+    run_id = "phase158-sql-autoproject"
     _seed_run(factory, run_id)
 
     bronze_path = tmp_path / "bronze"
@@ -375,6 +375,55 @@ def test_pql_sql_logs_when_lineage_row_id_dropped_at_select(
         result = PQL.sql(
             "SELECT house_id, size_sqft FROM phase158.bronze.houses",
             approved_tables=approved,
+        )
+
+    assert "_lineage_row_id" in {c["name"] for c in result.columns}
+    assert not any("projects no _lineage_row_id" in rec.getMessage() for rec in caplog.records)
+
+    with factory() as session:
+        op = session.query(AgentRunOperation).filter(AgentRunOperation.agent_run_id == run_id).one()
+    params = op.params_json or ""
+    assert '"lineage_row_id_autoprojected": true' in params
+    assert "lineage_row_id_dropped_at_select" not in params
+
+
+def test_pql_sql_opt_out_still_flags_lineage_row_id_drop(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    auth_cookies: dict[str, str],
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """``preserve_lineage_row_id=False`` keeps the explicit drop diagnostic.
+
+    Opting out of auto-projection returns exactly the projected columns and
+    still flags the lineage-bearing drop (INFO log +
+    ``lineage_row_id_dropped_at_select``) so a deliberate drop is never
+    silent.
+    """
+    factory = app.state.session_factory
+    _bind_get_session_factory(monkeypatch, factory)
+
+    run_id = "phase158-sql-optout"
+    _seed_run(factory, run_id)
+
+    bronze_path = tmp_path / "bronze"
+    bronze_arrow = pd.DataFrame(
+        {
+            "house_id": [1, 2, 3],
+            "size_sqft": [1000, 1100, 1200],
+            "_lineage_row_id": ["bronze-1", "bronze-2", "bronze-3"],
+        }
+    )
+    deltalake.write_deltalake(str(bronze_path), bronze_arrow)
+
+    approved = {"phase158.bronze.houses": str(bronze_path)}
+
+    monkeypatch.setenv("POINTLESSQL_AGENT_RUN_ID", run_id)
+    with caplog.at_level(logging.INFO, logger="pointlessql.pql._sql"):
+        result = PQL.sql(
+            "SELECT house_id, size_sqft FROM phase158.bronze.houses",
+            approved_tables=approved,
+            preserve_lineage_row_id=False,
         )
 
     assert "_lineage_row_id" not in {c["name"] for c in result.columns}

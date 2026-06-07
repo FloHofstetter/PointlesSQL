@@ -35,6 +35,20 @@ class WritePipeline:
     table_name: str
 
 
+@dataclass(frozen=True)
+class SqlPipeline:
+    """A bronze -> SELECT(subset) -> silver-write pipeline to verify.
+
+    The SELECT deliberately omits ``_lineage_row_id`` from its projection
+    (the 15.8 shape); auto-projection should carry it forward so the silver
+    write still records row-edges.
+    """
+
+    bronze_frame: pd.DataFrame
+    select_columns: list[str]
+    table_name: str
+
+
 def _column_values(draw: Any, kind: str, n: int) -> list[Any]:
     if kind == "int":
         return draw(st.lists(st.integers(-1_000_000, 1_000_000), min_size=n, max_size=n))
@@ -67,4 +81,19 @@ def write_pipelines(draw: Any) -> WritePipeline:
         frame=frame,
         source_fqn=f"lv.bronze.{draw(_identifiers)}",
         table_name=draw(_identifiers),
+    )
+
+
+@st.composite
+def sql_pipelines(draw: Any) -> SqlPipeline:
+    """Draw a bronze frame + a non-empty business-column projection subset."""
+    base = draw(write_pipelines())
+    business = [c for c in base.frame.columns if c != LINEAGE_ROW_ID_COLUMN]
+    select_columns = draw(
+        st.lists(st.sampled_from(business), min_size=1, max_size=len(business), unique=True)
+    )
+    return SqlPipeline(
+        bronze_frame=base.frame,
+        select_columns=select_columns,
+        table_name=base.table_name,
     )

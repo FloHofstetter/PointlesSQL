@@ -67,6 +67,18 @@ defined in ``scripts/clusters.json``. -->
   `parquet`) so spreadsheet consumers can download a declared table
   directly; both formats share the same column-masking sidecar.
 
+### Fixed
+
+- **Row lineage no longer drops silently at `pql.sql`.** In an agent run, a
+  row-preserving `SELECT` that reads a single lineage-bearing source but
+  forgets `_lineage_row_id` now has the column carried forward
+  automatically, so the downstream `write_table` / `merge` keeps its
+  row-edges instead of recording none.  Collapsing SELECTs (GROUP BY /
+  DISTINCT / aggregate) are intentional row boundaries and are left
+  untouched but flagged explicitly; pass `preserve_lineage_row_id=False`
+  to opt out.  A new property-based suite (Hypothesis) proves the fix and
+  fails — not just logs — if the drop is ever re-introduced.
+
 ### Refactor
 
 - Canvas editor modularised into single-concern bundles — the 3.7k-line
@@ -3227,4 +3239,3 @@ defined in ``scripts/clusters.json``. -->
 - Add Sprint 21 — DAG engine: observability + docs (e97c105)
 - Add Sprint 22 — Playwright MCP walkthrough harness + 5 data-surface playbooks (7b837db)
 - Add Sprint 23 — Playwright MCP orchestration + operational playbooks; close Phase 7 (72a50bc)
-

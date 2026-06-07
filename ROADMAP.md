@@ -3676,7 +3676,7 @@ PointlesSQL
 │   │   Abhängigkeit — 197/202/203 sind die Differenzierer-Kerne, 198/199
 │   │   die Infra-Hebel, auf denen mehrere andere aufsitzen.
 │   │
-│   ├── Phase 197 — Lineage-Korrektheits-Verifikations-Engine  ⏳ in progress (W1–W2 ✅, 2026-06-07)
+│   ├── Phase 197 — Lineage-Korrektheits-Verifikations-Engine  ⏳ in progress (W1–W2 ✅, W3 läuft, 2026-06-07)
 │   │   │   Detail: [`docs/internal/phase-197.md`](docs/internal/phase-197.md).
 │   │   │   Property-based (Hypothesis) + Golden-Corpus-Verifikation von
 │   │   │   Row-/Column-/Value-Lineage über *alle* PQL-Pfade.  Aufhänger:
@@ -3701,8 +3701,21 @@ PointlesSQL
 │   │   │     4 Lineage-Tabellen per `op_id` zurückliest; Property-Test, der
 │   │   │     beliebige gültige `write_table`-Pipelines erzeugt und
 │   │   │     `verify_operation` grün beweist (ci/dev/nightly-Profile).
-│   │   │     Offen: W3 (Operator-Wellen mit Source-Fixes), W4 (Golden-Corpus
-│   │   │     + OpenLineage-Differential), W5 (CI-Marker + Coverage-Ledger).
+│   │   │   - W3a ✅ (local): Der echte 15.8-Source-Fix.  `PQL.sql`
+│   │   │     auto-projiziert `_lineage_row_id` auf zeilenerhaltenden
+│   │   │     Single-Source-SELECTs (kein GROUP BY/DISTINCT/Aggregat/Set-Op)
+│   │   │     via sqlglot-AST (`sql_parser/_lineage_project.py`), damit der
+│   │   │     nachgelagerte Write seine Row-Edges behält; kollabierende
+│   │   │     SELECTs bleiben bewusste Grenzen + werden explizit geflaggt
+│   │   │     (`preserve_lineage_row_id=False` als Opt-out).  Write/Merge
+│   │   │     stempeln `lineage_row_id_absent_at_write`, wenn eine deklarierte
+│   │   │     Quelle ohne Id-Spalte 0 Edges erzeugt — nie mehr still.
+│   │   │     Property-Test fährt bronze→SELECT→silver und beweist, dass das
+│   │   │     absichtlich abgeschaltete Auto-Project als INV-1-Drop *die Suite*
+│   │   │     rot macht.  Negativ-Test retargetet.
+│   │   │     Offen: W3b (merge/aggregate/update/autoload/governance-Wellen),
+│   │   │     W4 (Golden-Corpus + OpenLineage-Differential), W5 (CI-Marker +
+│   │   │     Coverage-Ledger).
 │   │   │
 │   ├── Phase 198 — E2E-in-CI Vollabdeckung  ⏳ planned
 │   │   │   Detail: [`docs/internal/phase-198.md`](docs/internal/phase-198.md).

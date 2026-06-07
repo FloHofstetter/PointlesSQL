@@ -21,6 +21,7 @@ class _SqlMixin(_PQLBase):
         max_rows: int = 10_000,
         conn: Any = None,
         explain: bool = False,
+        preserve_lineage_row_id: bool = True,
     ) -> SQLResult:
         """Run a single SELECT against DuckDB with UC-backed views.
 
@@ -28,16 +29,16 @@ class _SqlMixin(_PQLBase):
         helper handles parsing, the approved-tables guard, view
         registration, execution, row-cap slicing, and result framing.
 
-        Lineage propagation: when a referenced source
-        table carries ``_lineage_row_id`` and the agent will feed the
-        result frame into :meth:`write_table` or :meth:`merge` with
-        row-edges expected, the SELECT must explicitly project the
-        column (``SELECT t._lineage_row_id AS _lineage_row_id, …``).
-        Without it, the downstream audit hook short-circuits — no
-        source IDs to correlate on, so ``lineage_row_edges`` records
-        nothing and every further table inherits the gap.  An INFO
-        log + ``lineage_row_id_dropped_at_select`` flag on the op's
-        ``params_json`` surfaces the omission for run-detail review.
+        Lineage propagation: in an agent context, a row-preserving
+        SELECT that reads a single lineage-bearing source but omits
+        ``_lineage_row_id`` has the column carried forward automatically,
+        so the downstream :meth:`write_table` / :meth:`merge` keeps its
+        row-edges.  Collapsing SELECTs (GROUP BY / DISTINCT / aggregate /
+        CTE / multi-source) are intentional row boundaries — they are
+        left untouched and flagged ``lineage_row_id_dropped_at_select``
+        on the op's ``params_json`` for run-detail review.  Pass
+        ``preserve_lineage_row_id=False`` to return exactly the projected
+        columns.
 
         Args:
             query: The user-entered SQL.  Must be a single SELECT.
@@ -46,6 +47,9 @@ class _SqlMixin(_PQLBase):
             max_rows: Post-execution row cap.
             conn: Optional pre-created DuckDB connection.
             explain: When ``True``, return the EXPLAIN ANALYZE output.
+            preserve_lineage_row_id: When ``True`` (the default),
+                auto-project ``_lineage_row_id`` onto safe row-preserving
+                SELECTs so lineage survives into the downstream write.
 
         Returns:
             A :class:`SQLResult` with columns, rows, and metrics.
@@ -56,4 +60,5 @@ class _SqlMixin(_PQLBase):
             max_rows=max_rows,
             conn=conn,
             explain=explain,
+            preserve_lineage_row_id=preserve_lineage_row_id,
         )

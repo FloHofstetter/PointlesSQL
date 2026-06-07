@@ -147,6 +147,15 @@ def write_table(
                         "target_row_ids": target_ids,
                         "source_model_uri": source_model_uri,
                     }
+                else:
+                    # the caller declared a source (a 1:1 provenance claim)
+                    # but the frame carries no ``_lineage_row_id`` — record
+                    # zero edges *explicitly* so the gap is visible on the
+                    # op row rather than a silent absence.
+                    recorder.extra_params = {
+                        **recorder.extra_params,
+                        "lineage_row_id_absent_at_write": True,
+                    }
 
                 column_names = _frame_column_names(df)
                 if column_names:
@@ -235,9 +244,7 @@ def write_table(
             df = _maybe_validate_and_stamp_bitemporal(
                 df,
                 factory=factory,
-                data_product_id=(
-                    enforcement.data_product_id if enforcement is not None else None
-                ),
+                data_product_id=(enforcement.data_product_id if enforcement is not None else None),
             )
             engine.write(df, location, mode)
 
@@ -335,8 +342,11 @@ def _maybe_validate_and_stamp_bitemporal(
         do_inject = (
             True
             if bitemporal_settings.enforcement == "required"
-            else (False if bitemporal_settings.enforcement == "off"
-                  else bool(bitemporal_settings.inject_processing_time))
+            else (
+                False
+                if bitemporal_settings.enforcement == "off"
+                else bool(bitemporal_settings.inject_processing_time)
+            )
         )
         effective = EffectiveBitemporal(
             enforcement=bitemporal_settings.enforcement,

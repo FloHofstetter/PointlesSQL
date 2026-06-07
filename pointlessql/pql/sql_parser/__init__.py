@@ -46,6 +46,7 @@ from __future__ import annotations
 
 from pointlessql.pql.sql_parser._column_lineage import extract_column_lineage
 from pointlessql.pql.sql_parser._limit import inject_limit
+from pointlessql.pql.sql_parser._lineage_project import project_lineage_row_id
 from pointlessql.pql.sql_parser._parse import (
     classify,
     parse_and_classify,
@@ -71,4 +72,5 @@ __all__ = [
     "parse_and_classify",
     "parse_batch",
     "prepare_sql",
+    "project_lineage_row_id",
 ]

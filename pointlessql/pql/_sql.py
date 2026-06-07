@@ -21,7 +21,12 @@ from pointlessql.exceptions import (
 )
 from pointlessql.pql._types import SQLResult
 from pointlessql.pql.engine import register_delta_view
-from pointlessql.pql.sql_parser import SQLParseError, extract_column_lineage, prepare_sql
+from pointlessql.pql.sql_parser import (
+    SQLParseError,
+    extract_column_lineage,
+    prepare_sql,
+    project_lineage_row_id,
+)
 from pointlessql.services.agent_runs import operation_context
 from pointlessql.types import OpName, RunId
 
@@ -38,6 +43,7 @@ def run_sql(
     conn: Any = None,
     explain: bool = False,
     agent_run_id: str | None = None,
+    preserve_lineage_row_id: bool = True,
 ) -> SQLResult:
     """Run a single SELECT against DuckDB with UC-backed views.
 
@@ -64,6 +70,13 @@ def run_sql(
             one ``agent_run_operations`` row.  The query text is
             truncated to 1024 chars in ``params_json``; the full
             text lives on the query-history row.
+        preserve_lineage_row_id: When ``True`` (the default) and the
+            call runs in an agent context, a row-preserving SELECT that
+            reads a single lineage-bearing source but omits
+            ``_lineage_row_id`` has the column auto-projected so the
+            downstream write keeps its row-edges.  Aggregating /
+            collapsing SELECTs are left untouched.  Pass ``False`` to
+            opt out and return exactly the projected columns.
 
     Returns:
         A :class:`SQLResult` with columns, rows, and metrics.
@@ -118,6 +131,29 @@ def run_sql(
             for ref in prepared.refs:
                 register_delta_view(conn, ref, approved_tables[ref])
 
+            # carry ``_lineage_row_id`` forward when a row-preserving
+            # SELECT reads a lineage-bearing source but omits it, so the
+            # downstream ``write_table`` / ``merge`` hook keeps its
+            # row-edges instead of silently recording none.  Only in an
+            # agent context (where the result is part of a tracked
+            # pipeline); interactive queries are returned verbatim.
+            query_sql = prepared.rewritten_sql
+            lineage_sources: set[str] = set()
+            schema_dict: dict[str, dict[str, dict[str, dict[str, str]]]] = {}
+            if effective_run_id is not None:
+                schema_dict = _build_schema_dict(prepared.refs, conn)
+                lineage_sources = set(_refs_with_lineage_row_id(prepared.refs, schema_dict))
+                if preserve_lineage_row_id:
+                    projected = project_lineage_row_id(
+                        prepared.rewritten_sql, lineage_refs=lineage_sources
+                    )
+                    if projected is not None:
+                        query_sql = projected
+                        recorder.extra_params = {
+                            **recorder.extra_params,
+                            "lineage_row_id_autoprojected": True,
+                        }
+
             if explain:
                 # switch DuckDB into JSON profiling mode so
                 # ``EXPLAIN ANALYZE`` returns a structured tree the
@@ -127,9 +163,7 @@ def run_sql(
                 # the JSON, formats it back to a readable text blob).
                 conn.execute("PRAGMA enable_profiling='json'")
 
-            final_sql = (
-                f"EXPLAIN ANALYZE {prepared.rewritten_sql}" if explain else prepared.rewritten_sql
-            )
+            final_sql = f"EXPLAIN ANALYZE {query_sql}" if explain else query_sql
             start = time.perf_counter()
             try:
                 arrow_result = conn.execute(final_sql).to_arrow_table()
@@ -154,22 +188,17 @@ def run_sql(
 
             if effective_run_id is not None:
                 recorder.rows_affected = len(rows)
-                schema_dict = _build_schema_dict(prepared.refs, conn)
                 recorder.pending_column_edges = extract_column_lineage(
                     sql=query,
                     schema=schema_dict,
                     output_columns=col_names,
                 )
-                # flag SELECTs that strip ``_lineage_row_id``
-                # from a lineage-bearing source.  The downstream
-                # ``write_table → record_row_edges`` hook needs the
-                # column on the result frame to correlate target rows
-                # back to the source; without it the audit trail
-                # silently drops row-edges for that op (and every
-                # downstream table inherits the gap).  An INFO log here
-                # is the cheapest signal that the agent's projection is
-                # the cause.
-                lineage_sources = _refs_with_lineage_row_id(prepared.refs, schema_dict)
+                # a lineage-bearing source whose column did not survive even
+                # after auto-projection is a collapsing SELECT (GROUP BY /
+                # DISTINCT / aggregate / CTE / multi-source) — an intentional
+                # row boundary, not the accidental 15.8 drop.  Flag it
+                # explicitly so a downstream 1:1 write that declares the
+                # source is never a *silent* zero-edge gap.
                 if lineage_sources and LINEAGE_ROW_ID_COLUMN not in col_names:
                     logger.info(
                         "PQL.sql: query projects no %s from %s; "
