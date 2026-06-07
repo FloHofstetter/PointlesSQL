@@ -49,6 +49,7 @@ from pointlessql.config._settings._infra import (
     CDFTailSettings,
     ExternalWritesSettings,
     LoggingSettings,
+    ObservabilitySettings,
     RateLimitSettings,
     SchedulerSettings,
     ServerSettings,
@@ -86,6 +87,7 @@ class Settings(BaseSettings):
     auth: AuthSettings = Field(default_factory=AuthSettings)
     oidc: OIDCSettings = Field(default_factory=OIDCSettings)
     logging: LoggingSettings = Field(default_factory=LoggingSettings)
+    observability: ObservabilitySettings = Field(default_factory=ObservabilitySettings)
     rate_limit: RateLimitSettings = Field(default_factory=RateLimitSettings)
     jupyter: JupyterSettings = Field(default_factory=JupyterSettings)
     scheduler: SchedulerSettings = Field(default_factory=SchedulerSettings)
@@ -126,6 +128,7 @@ __all__ = [
     "BitemporalSettings",
     "BranchSettings",
     "CDFTailSettings",
+    "ObservabilitySettings",
     "CanvasFileIoSettings",
     "CoeditSettings",
     "ConventionsSettings",

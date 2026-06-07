@@ -86,6 +86,13 @@ dbt = [
 vector = [
     "sentence-transformers >= 2.7, < 4.0",
 ]
+# OpenTelemetry tracing.  Off by default (POINTLESSQL_OBSERVABILITY_ENABLED);
+# the tracing bridge lazily imports these only when enabled, so a default
+# install carries no OTel dependency and needs no collector.
+observability = [
+    "opentelemetry-sdk >= 1.20",
+    "opentelemetry-exporter-otlp-proto-grpc >= 1.20",
+]
 # Note: ``dbt-expectations`` and ``dbt-utils`` are dbt *packages*
 # (Jinja macros), not Python wheels.  They are declared in the user's
 # ``packages.yml`` and installed via ``dbt deps``, not via pip.

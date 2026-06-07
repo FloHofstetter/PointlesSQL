@@ -8,6 +8,7 @@ private sub-modules.
 
 from __future__ import annotations
 
+from pointlessql.services.slo._burn_rate import BurnRateResult, calculate_burn_rate
 from pointlessql.services.slo._crud import (
     declare_slo,
     delete_slo,
@@ -23,6 +24,8 @@ __all__ = [
     "MEASURABLE_SLO_KINDS",
     "SLO_KINDS",
     "SLO_VIOLATION_ACTION",
+    "BurnRateResult",
+    "calculate_burn_rate",
     "compute_drift",
     "declare_slo",
     "delete_slo",

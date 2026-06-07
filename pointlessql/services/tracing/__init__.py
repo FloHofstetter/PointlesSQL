@@ -13,9 +13,17 @@ from pointlessql.services.tracing._context import (
     current_request_id,
     set_correlation_id,
 )
+from pointlessql.services.tracing._otel import (
+    init_tracing,
+    is_enabled,
+    traced,
+)
 
 __all__ = [
     "current_correlation_id",
     "current_request_id",
+    "init_tracing",
+    "is_enabled",
     "set_correlation_id",
+    "traced",
 ]

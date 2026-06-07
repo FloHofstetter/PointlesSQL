@@ -187,11 +187,22 @@ db_query_duration_seconds: Histogram = Histogram(
     registry=REGISTRY,
 )
 
+http_requests_total: Counter = Counter(
+    "pointlessql_http_requests_total",
+    "Total HTTP requests, by route template / method / status — the RED rate + error signal.",
+    labelnames=("route", "method", "status"),
+    registry=REGISTRY,
+)
+
 
 def record_http_latency(
     route: str, method: str, status: int | str, duration_seconds: float
 ) -> None:
-    """Observe one HTTP request's end-to-end latency.
+    """Observe one HTTP request's latency and count it (full RED signal).
+
+    Records both the duration histogram and the request counter so a
+    single middleware call yields the rate, error-rate (by status label),
+    and latency distribution of a route.
 
     The *route* must be the low-cardinality route **template**
     (``/api/audit/{id}``), never the concrete path with IDs or query
@@ -203,9 +214,11 @@ def record_http_latency(
         status: The HTTP status code (int or its string form).
         duration_seconds: Wall-clock handler latency in seconds.
     """
-    http_request_duration_seconds.labels(route=route, method=method, status=str(status)).observe(
-        duration_seconds
-    )
+    status_label = str(status)
+    http_request_duration_seconds.labels(
+        route=route, method=method, status=status_label
+    ).observe(duration_seconds)
+    http_requests_total.labels(route=route, method=method, status=status_label).inc()
 
 
 def record_db_query(operation: str, backend: str, duration_seconds: float) -> None:
@@ -230,6 +243,7 @@ __all__ = [
     "REGISTRY",
     "db_query_duration_seconds",
     "http_request_duration_seconds",
+    "http_requests_total",
     "job_run_duration_seconds",
     "job_runs_total",
     "observe_tick_lag",

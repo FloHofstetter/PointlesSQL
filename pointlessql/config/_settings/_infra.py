@@ -138,3 +138,28 @@ class CDFTailSettings(BaseSettings):
 
     interval_seconds: int = 0
     history_limit: int = 200
+
+
+class ObservabilitySettings(BaseSettings):
+    """OpenTelemetry tracing configuration (opt-in, default off).
+
+    Reads ``POINTLESSQL_OBSERVABILITY_*`` environment variables.  When
+    ``enabled`` is ``False`` (the default) the runtime never imports the
+    OpenTelemetry SDK and emits no spans — a clean ``uv run pointlessql``
+    has zero observability dependencies and needs no collector.
+
+    When ``enabled`` is ``True``, spans are exported over OTLP to
+    ``tracing_endpoint`` (e.g. an OpenTelemetry Collector on
+    ``http://127.0.0.1:4317``), tagged with ``service_name`` and carrying
+    the request/correlation IDs already threaded through the logging
+    context so traces and structured logs share the same identifiers.
+    ``sample_ratio`` is the head-based sampling probability (``1.0`` keeps
+    every trace; lower it under high load).
+    """
+
+    model_config = SettingsConfigDict(env_prefix="POINTLESSQL_OBSERVABILITY_")
+
+    enabled: bool = False
+    tracing_endpoint: str | None = None
+    service_name: str = "pointlessql"
+    sample_ratio: float = 1.0
