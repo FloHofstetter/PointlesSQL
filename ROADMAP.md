@@ -3676,7 +3676,7 @@ PointlesSQL
 │   │   Abhängigkeit — 197/202/203 sind die Differenzierer-Kerne, 198/199
 │   │   die Infra-Hebel, auf denen mehrere andere aufsitzen.
 │   │
-│   ├── Phase 197 — Lineage-Korrektheits-Verifikations-Engine  ⏳ planned
+│   ├── Phase 197 — Lineage-Korrektheits-Verifikations-Engine  ⏳ in progress (W1 ✅, 2026-06-06)
 │   │   │   Detail: [`docs/internal/phase-197.md`](docs/internal/phase-197.md).
 │   │   │   Property-based (Hypothesis) + Golden-Corpus-Verifikation von
 │   │   │   Row-/Column-/Value-Lineage über *alle* PQL-Pfade.  Aufhänger:
@@ -3684,6 +3684,18 @@ PointlesSQL
 │   │   │   Invarianten formalisieren → reine Checker → Operator-Wellen
 │   │   │   (sql/merge/aggregate/update/autoload/branch/federation) →
 │   │   │   Golden-Corpus + OpenLineage-Differential → CI-Marker.
+│   │   │   - W1 ✅ (local): Die 6 harten Invarianten formalisiert
+│   │   │     (`docs/internal/lineage-invariants.md`) + als reine Checker
+│   │   │     `(OperationFacts) -> list[Violation]` ohne I/O implementiert
+│   │   │     (`services/lineage/verify/_invariants.py`): Row-Edge-Closure
+│   │   │     (inkl. 15.8 dropped-`_lineage_row_id`), Target-Id-Determinismus
+│   │   │     (`synth_target_row_id`), Edge-Endpunkte, Column-Map-Coverage,
+│   │   │     Value-Changes-real, Reject-Reason-Gültigkeit.  16 Unit-Tests
+│   │   │     inkl. der absichtlich wieder eingebauten 15.8-Regression, die
+│   │   │     jetzt die *Suite* (nicht nur den INFO-Log) rot macht.
+│   │   │     Offen: W2 (Hypothesis-Generatoren), W3 (Operator-Wellen mit
+│   │   │     Source-Fixes), W4 (Golden-Corpus + OpenLineage-Differential),
+│   │   │     W5 (CI-Marker + Coverage-Ledger).
 │   │   │
 │   ├── Phase 198 — E2E-in-CI Vollabdeckung  ⏳ planned
 │   │   │   Detail: [`docs/internal/phase-198.md`](docs/internal/phase-198.md).
