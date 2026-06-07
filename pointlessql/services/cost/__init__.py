@@ -16,10 +16,26 @@ from __future__ import annotations
 from pointlessql.services.cost._bootstrap import (
     register_cost_hooks,
 )
+from pointlessql.services.cost._budget import (
+    BudgetEvaluation,
+    evaluate_budget,
+)
+from pointlessql.services.cost._chargeback import (
+    ChargebackRow,
+    CostRecord,
+    pivot_by_consumer,
+    pivot_by_product,
+    pivot_by_workspace,
+    to_csv,
+)
 from pointlessql.services.cost._dashboard import (
     cost_by_consumer,
     cost_by_product,
     mesh_health_full,
+)
+from pointlessql.services.cost._forecast import (
+    CostForecast,
+    forecast_breach,
 )
 from pointlessql.services.cost._meter import (
     MeterContext,
@@ -35,14 +51,24 @@ from pointlessql.services.cost._rollup import (
 )
 
 __all__ = [
+    "BudgetEvaluation",
+    "ChargebackRow",
+    "CostForecast",
+    "CostRecord",
     "MeterContext",
     "QuotaCheck",
     "check_quota",
     "cost_by_consumer",
     "cost_by_product",
+    "evaluate_budget",
+    "forecast_breach",
     "mesh_health_full",
+    "pivot_by_consumer",
+    "pivot_by_product",
+    "pivot_by_workspace",
     "record_query_cost",
     "register_cost_hooks",
     "resolve_quota_mode",
     "roll_up_hourly_buckets",
+    "to_csv",
 ]
