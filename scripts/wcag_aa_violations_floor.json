@@ -1,0 +1,7 @@
+{
+  "_comment": "WCAG-AA axe-core violations floor. The a11y e2e test (e2e/test_a11y_violations_floor.py) runs axe-core over key surfaces and fails when violations exceed these caps. critical/serious are held at 0 from the start; moderate/minor start generous (third-party widgets: Bootstrap, CodeMirror, cytoscape) and RATCHET DOWN as the frontend a11y waves land. Lower a number here when a fix removes violations; never raise one without a reason.",
+  "critical": 0,
+  "serious": 0,
+  "moderate": 50,
+  "minor": 100
+}
