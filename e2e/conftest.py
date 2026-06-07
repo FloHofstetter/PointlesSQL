@@ -183,6 +183,15 @@ def live_server_url(tmp_path_factory: pytest.TempPathFactory) -> Iterator[str]:
         # Pin notebook directory to a tempfile location so created
         # notebooks do not collide with the dev tree.
         "POINTLESSQL_JUPYTER_NOTEBOOKS_DIR": str(notebooks_dir),
+        # Forward the soyuz-catalog URL to the booted server so
+        # ``requires_soyuz`` journeys reach a live catalog.  Honour an
+        # ambient override (CI service / a non-default local port) and fall
+        # back to the documented localhost default.  When soyuz is *down*
+        # the ``requires_soyuz`` marker skips those journeys (see the
+        # ``soyuz_available`` probe below), so the default is harmless.
+        "POINTLESSQL_SOYUZ_CATALOG_URL": os.environ.get(
+            "POINTLESSQL_SOYUZ_CATALOG_URL", "http://127.0.0.1:8080"
+        ),
     }
     saved_env: dict[str, str | None] = {k: os.environ.get(k) for k in env_overrides}
     for key, value in env_overrides.items():
@@ -313,3 +322,110 @@ def playwright_context(
         yield context
     finally:
         context.close()
+
+
+@pytest.fixture
+def mobile_context(
+    playwright_browser: Any,
+    admin_session_cookies: dict[str, str],
+    live_server_url: str,
+) -> Iterator[Any]:
+    """Fresh BrowserContext per test at a phone viewport (375x812).
+
+    Same auth-cookie injection as :func:`playwright_context` but with a
+    portrait phone viewport so the responsive-layout journeys assert the
+    mobile breakpoint rather than the desktop one.
+    """
+    parsed = httpx.URL(live_server_url)
+    cookies_payload = [
+        {"name": name, "value": value, "domain": parsed.host, "path": "/"}
+        for name, value in admin_session_cookies.items()
+    ]
+    context = playwright_browser.new_context(
+        viewport={"width": 375, "height": 812},
+        is_mobile=True,
+    )
+    context.add_cookies(cookies_payload)
+    try:
+        yield context
+    finally:
+        context.close()
+
+
+def _soyuz_base_url() -> str:
+    """Return the soyuz-catalog base URL the journeys probe / target."""
+    return os.environ.get("POINTLESSQL_SOYUZ_CATALOG_URL", "http://127.0.0.1:8080").rstrip("/")
+
+
+@pytest.fixture(scope="session")
+def soyuz_available() -> bool:
+    """Probe soyuz-catalog ``/healthz`` once per session.
+
+    Returns ``True`` when a live soyuz answers 200 within a short timeout,
+    ``False`` otherwise.  Journeys carrying the ``requires_soyuz`` marker
+    auto-skip when this is ``False`` (see :func:`_skip_when_soyuz_required`),
+    so the pure-UI suite stays green on a host with no catalog running.
+    """
+    url = f"{_soyuz_base_url()}/healthz"
+    try:
+        response = httpx.get(url, timeout=1.0)
+    except httpx.ConnectError, httpx.ReadError, httpx.ReadTimeout, httpx.ConnectTimeout:
+        return False
+    return response.status_code == 200
+
+
+@pytest.fixture(autouse=True)
+def _skip_when_soyuz_required(request: pytest.FixtureRequest) -> None:
+    """Skip ``requires_soyuz`` journeys when no live soyuz-catalog is reachable.
+
+    Autouse so individual journeys never have to remember the guard: a test
+    marked ``@pytest.mark.requires_soyuz`` is skipped (not failed) when the
+    session-scoped :func:`soyuz_available` probe reports the catalog down.
+    """
+    if request.node.get_closest_marker("requires_soyuz") is None:
+        return
+    if not request.getfixturevalue("soyuz_available"):
+        pytest.skip(f"soyuz-catalog not reachable at {_soyuz_base_url()}")
+
+
+def _artifact_dir() -> Path:
+    """Return (creating) the directory failure artifacts are written to."""
+    target = Path(os.environ.get("E2E_ARTIFACT_DIR", str(_REPO_ROOT / "test-artifacts" / "e2e")))
+    target.mkdir(parents=True, exist_ok=True)
+    return target
+
+
+def _safe_node_name(nodeid: str) -> str:
+    """Turn a pytest node id into a filesystem-safe artifact stem."""
+    return "".join(ch if ch.isalnum() or ch in "-_." else "_" for ch in nodeid)
+
+
+@pytest.hookimpl(hookwrapper=True)
+def pytest_runtest_makereport(item: pytest.Item, call: pytest.CallInfo[Any]) -> Any:
+    """Capture a screenshot + HTML dump for every open page on test failure.
+
+    Wraps report creation: when the ``call`` phase fails and the test pulled
+    in a ``playwright_context`` (or ``mobile_context``) fixture, every open
+    page in that context is screenshotted and its HTML dumped under
+    ``$E2E_ARTIFACT_DIR`` (default ``test-artifacts/e2e``).  Diagnostics only
+    — failures swallowed so artifact capture never masks the real error.
+    """
+    outcome = yield
+    report = outcome.get_result()
+    if report.when != "call" or not report.failed:
+        return
+    funcargs = getattr(item, "funcargs", {})
+    contexts = [
+        funcargs[name] for name in ("playwright_context", "mobile_context") if name in funcargs
+    ]
+    if not contexts:
+        return
+    stem = _safe_node_name(item.nodeid)
+    out = _artifact_dir()
+    for ctx in contexts:
+        for index, page in enumerate(getattr(ctx, "pages", []) or []):
+            try:
+                page.screenshot(path=str(out / f"{stem}-{index}.png"), full_page=True)
+                (out / f"{stem}-{index}.html").write_text(page.content(), encoding="utf-8")
+            except Exception:  # noqa: BLE001 - diagnostics must never mask the failure
+                continue

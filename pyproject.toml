@@ -283,6 +283,7 @@ markers = [
     "integration: requires a live Unity Catalog server",
     "postgres: requires a live PostgreSQL server (set TEST_DATABASE_URL)",
     "e2e: requires a headless browser via Playwright; lives under e2e/",
+    "requires_soyuz: e2e journey needs a live soyuz-catalog (catalog/lineage/federation data); auto-skips when soyuz is unreachable",
     "lineage_verify: property-based + golden-corpus lineage correctness (Hypothesis)",
 ]
 
