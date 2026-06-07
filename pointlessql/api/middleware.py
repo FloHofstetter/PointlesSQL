@@ -96,6 +96,9 @@ PUBLIC_PREFIXES: tuple[str, ...] = (
     # so external doc embeds can frame it like Phase-92.2's
     # /embed/semantic_search/{fqn}.
     "/embed/notebook_share/",
+    # browser-posted CSP violation reports.  Credential-less by
+    # design — the browser sends these without cookies or an API key.
+    "/api/csp-report",
 )
 
 
@@ -434,9 +437,11 @@ def register_middleware(app: FastAPI) -> None:
         app: The FastAPI app to attach middleware to.
     """
     from pointlessql.api.latency_middleware import latency_middleware
+    from pointlessql.api.security_headers_middleware import security_headers_middleware
 
     app.middleware("http")(auth_middleware)
     app.middleware("http")(_rate_limit_middleware)
     app.middleware("http")(_csrf_middleware)
     app.middleware("http")(request_id_middleware)
+    app.middleware("http")(security_headers_middleware)
     app.middleware("http")(latency_middleware)

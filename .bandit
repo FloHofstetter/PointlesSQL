@@ -1,0 +1,12 @@
+[bandit]
+# Static security analysis config for `bandit -r pointlessql --ini .bandit`.
+# Run at high severity in CI (see .github/workflows/security-sast.yml).
+exclude = /tests,/e2e,/mutants,/.venv,/build
+# B101  assert_used            — asserts are fine outside production hot paths.
+# B404  import subprocess      — the backup module legitimately shells out.
+# B603  subprocess_without_shell_equivalent
+# B607  start_process_with_partial_path
+#        — pg_dump / pg_restore are invoked by name on a trusted PATH with a
+#          fixed argv (never shell=True, never user-interpolated), so the
+#          subprocess findings are false positives here.
+skips = B101,B404,B603,B607
