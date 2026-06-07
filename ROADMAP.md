@@ -3676,6 +3676,47 @@ PointlesSQL
 │   │   Abhängigkeit — 197/202/203 sind die Differenzierer-Kerne, 198/199
 │   │   die Infra-Hebel, auf denen mehrere andere aufsitzen.
 │   │
+│   │   **Backbone-Landung 2026-06-07 (lokal, code-only, halbfertig).**
+│   │   Phasen 198–206 in einem autonomen Durchgang als halbfertige
+│   │   Backbones gelandet: der wiederverwendbare Kern-Code jeder Phase ist
+│   │   da und import-/ruff-sauber, während Test-Ausführung, DB-Migrationen,
+│   │   App-Startup-Verdrahtung und sämtliche Frontend-Arbeit bewusst
+│   │   aufgeschoben wurden (kein Test-Run / keine speicherintensiven Ops im
+│   │   Durchgang — auf Anweisung).  Je Phase (Commit · gelandet · Hauptauf-
+│   │   schub):
+│   │   - 198 e2e (`58b0541f`): Page-Objects + Journey-Registry + 93-Playbook-
+│   │     Coverage-Ledger-Ratsche + conftest soyuz/mobile/screenshot.
+│   │     Aufgeschoben: die Browser-Journey-Module (brauchen Playwright-Runs).
+│   │   - 199 Perf (`4a47dfaf`): per-Route-Latenz-Middleware + DB-query_span +
+│   │     Metriken + check-perf-budget.sh.  Aufgeschoben: Perf-Harness +
+│   │     Fixtures + Nightly.
+│   │   - 200 Observability (`2f56be60`): opt-in OTel-Bridge + RED-Counter +
+│   │     SLO-Burn-Rate + RED-Dashboard.  Aufgeschoben: Verdict-History-
+│   │     Tabelle, synthetische Probes, Lifespan-Wiring, USE/SLO-Dashboards.
+│   │   - 201 DR (`37a75fb6`): Backup/Restore-Service + Manifest-Schema-Guard
+│   │     + CLI + DR-Runbook.  Aufgeschoben: Scheduler-Executors, Snapshot-
+│   │     Tabelle, S3, dr-gameday-CI.
+│   │   - 202 Security (`4a666e7b`): Security-Header + report-only-CSP +
+│   │     Collector + Authz-Matrix-Generator + bandit/SAST + STRIDE.  Die
+│   │     Matrix flaggte **111 /admin-Routen ohne erkannte Rollen-Gate** (zu
+│   │     prüfen).  Aufgeschoben: Matrix-Tests, CSP-enforce, Secrets-Rotation-
+│   │     CLI.
+│   │   - 203 MCP (`d851abfe`): Tool-Spec + Scope-Enforcement + provenance-
+│   │     gegateter Write-Base + 4 Write-Tool-Skelette + Tool-Matrix +
+│   │     Conformance.  Aufgeschoben: ApiKey-Scope-Spalten/Migration,
+│   │     Registry+Server-Wiring, echte Write-Executors.
+│   │   - 204 Data-Quality (`2e2270ef`): 6 neue Expectations + gewichtete
+│   │     Scorecard + off/warn/block-Pre-Write-Gate (pure compute).
+│   │     Aufgeschoben: Tabellen/Migration, Dispatcher+Hook-Wiring,
+│   │     Anomalie-Emission, UI-Tab.
+│   │   - 205 a11y (`5d8c8ac5`): axe-core-e2e-Harness + Violations-Floor-
+│   │     Ratsche.  Aufgeschoben: alle W2–W6-Frontend-Fixes (WIP-Kollision).
+│   │   - 206 FinOps (`2596fcad`): Chargeback-Pivots + Budget-Schwellen +
+│   │     Cost-Forecast (pure compute).  Aufgeschoben: Budget/Forecast-
+│   │     Tabellen, Routes, Quota-Hook, FinOps-Dashboard.
+│   │   Vollständige Fertigstellung (Tests, Migrationen, Wiring, Frontend) je
+│   │   Phase ist der nächste Schritt, sobald Test-Runs wieder erlaubt sind.
+│   │
 │   ├── Phase 197 — Lineage-Korrektheits-Verifikations-Engine  ✅ shipped (local, 2026-06-07)
 │   │   │   Detail: [`docs/internal/phase-197.md`](docs/internal/phase-197.md).
 │   │   │   Property-based (Hypothesis) + Golden-Corpus-Verifikation von
@@ -3740,7 +3781,7 @@ PointlesSQL
 │   │   │     neuer Operator ohne Lineage-Coverage-Entscheidung erscheint —
 │   │   │     keine stillen Lücken.  Schließt Phase 197.
 │   │   │
-│   ├── Phase 198 — E2E-in-CI Vollabdeckung  ⏳ planned
+│   ├── Phase 198 — E2E-in-CI Vollabdeckung  🟦 backbone (local, 2026-06-07; tests deferred)
 │   │   │   Detail: [`docs/internal/phase-198.md`](docs/internal/phase-198.md).
 │   │   │   Fortsetzung von Phase 190 (Tier-1/2 ≈14): alle 92
 │   │   │   deterministischen Playbooks → Playwright-in-CI mit
@@ -3748,7 +3789,7 @@ PointlesSQL
 │   │   │   `requires_soyuz`-Marker, Page-Objects, Browser-/Hybrid-/curl-/
 │   │   │   Hermes-Wellen, Gate scharf (kein `continue-on-error`).
 │   │   │
-│   ├── Phase 199 — Performance- & Skalierungs-Härtung  ⏳ planned
+│   ├── Phase 199 — Performance- & Skalierungs-Härtung  🟦 backbone (local, 2026-06-07; harness deferred)
 │   │   │   Detail: [`docs/internal/phase-199.md`](docs/internal/phase-199.md).
 │   │   │   Per-Route-Latenz + Query-Dauer instrumentieren → Benchmark-
 │   │   │   Harness (1M-Audit, 10k-Lineage-DAG) → Latenz-Budget-Gate
@@ -3756,7 +3797,7 @@ PointlesSQL
 │   │   │   Hot-Path-Optimierung (FTS/Lineage/Query-History) unter der
 │   │   │   software-composited-UI-Regel (kein backdrop-filter/Animation).
 │   │   │
-│   ├── Phase 200 — Observability- & SLO-Vollständigkeit  ⏳ planned
+│   ├── Phase 200 — Observability- & SLO-Vollständigkeit  🟦 backbone (local, 2026-06-07; wiring deferred)
 │   │   │   Detail: [`docs/internal/phase-200.md`](docs/internal/phase-200.md).
 │   │   │   OpenTelemetry-Tracing (Bridge zu vorhandenen Correlation-IDs,
 │   │   │   default-off) + RED/USE-Metriken (teilt 199) + SLO-Burn-Rate /
@@ -3764,14 +3805,14 @@ PointlesSQL
 │   │   │   (Tabellen existieren) + RED/SLO-Grafana-Dashboards + Burn-Rate-
 │   │   │   Alerts über `alert_dispatcher`.
 │   │   │
-│   ├── Phase 201 — Disaster-Recovery & Daten-Lebenszyklus  ⏳ planned
+│   ├── Phase 201 — Disaster-Recovery & Daten-Lebenszyklus  🟦 backbone (local, 2026-06-07; executors deferred)
 │   │   │   Detail: [`docs/internal/phase-201.md`](docs/internal/phase-201.md).
 │   │   │   Konsistentes Backup/Restore der eigenen Metadaten-DB (SQLite +
 │   │   │   PG) + Schema-Kompat-Gate + Cross-Domain-Konsistenz (DB ↔ Delta ↔
 │   │   │   Branches) + vereinheitlichter `retention_sweep` + Restore-
 │   │   │   Game-Day als CI-Job + DR-Runbook.
 │   │   │
-│   ├── Phase 202 — Authz-Matrix & Security-Härtung  ⏳ planned
+│   ├── Phase 202 — Authz-Matrix & Security-Härtung  🟦 backbone (local, 2026-06-07; matrix-tests deferred)
 │   │   │   Detail: [`docs/internal/phase-202.md`](docs/internal/phase-202.md).
 │   │   │   Generiertes Authz-Inventar (~800 Endpoints × 11 `require_*`) →
 │   │   │   parametrisierte Matrix-Tests (Route × Persona × Status) →
@@ -3779,7 +3820,7 @@ PointlesSQL
 │   │   │   Dep-Scanning in CI (bandit/detect-secrets/pip-audit als Gate) →
 │   │   │   Secrets-Key-Rotation-CLI → STRIDE-Threat-Model.
 │   │   │
-│   ├── Phase 203 — Vollständige MCP-Agent-Oberfläche  ⏳ planned
+│   ├── Phase 203 — Vollständige MCP-Agent-Oberfläche  🟦 backbone (local, 2026-06-07; executors+wiring deferred)
 │   │   │   Detail: [`docs/internal/phase-203.md`](docs/internal/phase-203.md).
 │   │   │   Strategische Wette (Agent-first-Pivot).  Heute: 7 read-only
 │   │   │   Lens-Tools über FastMCP-Wrapper.  Ausbau zu read **+ governtem
@@ -3788,7 +3829,7 @@ PointlesSQL
 │   │   │   versionierte Tool-Coverage-Matrix + Conformance-Suite (stdio +
 │   │   │   SSE).  Eng mit 202 (Scopes/Authz).
 │   │   │
-│   ├── Phase 204 — Data-Quality- & Expectations-Tiefe  ⏳ planned
+│   ├── Phase 204 — Data-Quality- & Expectations-Tiefe  🟦 backbone (local, 2026-06-07; wiring deferred)
 │   │   │   Detail: [`docs/internal/phase-204.md`](docs/internal/phase-204.md).
 │   │   │   Aus verstreuten Checks (Phase 36 Contract-Tests, Drift, Mesh-
 │   │   │   Health) ein Bild: reichere Profilierung + erweitertes
@@ -3796,7 +3837,7 @@ PointlesSQL
 │   │   │   Quality-Scorecard (neuer Tab) + Quality-Gate vor dem Write
 │   │   │   (off/warn/block, wie schema-versioning `_enforcer`).
 │   │   │
-│   ├── Phase 205 — Accessibility (WCAG-AA) Compliance  ⏳ planned
+│   ├── Phase 205 — Accessibility (WCAG-AA) Compliance  🟦 backbone (local, 2026-06-07; frontend fixes deferred)
 │   │   │   Detail: [`docs/internal/phase-205.md`](docs/internal/phase-205.md).
 │   │   │   axe-core auf der Playwright-Infra (Violations-Floor-Ratsche) +
 │   │   │   globale Primitive (Landmarks/Skip-Link/Fokus nach HTMX-Swap) +
@@ -3805,7 +3846,7 @@ PointlesSQL
 │   │   │   Biome-a11y/Kontrast.  `prefers-reduced-motion` (Phase 184) als
 │   │   │   Vorlage.  0 critical/serious.
 │   │   │
-│   └── Phase 206 — Cost/FinOps- & Kapazitäts-Tiefe  ⏳ planned
+│   └── Phase 206 — Cost/FinOps- & Kapazitäts-Tiefe  🟦 backbone (local, 2026-06-07; tables+dashboard deferred)
 │       │   Detail: [`docs/internal/phase-206.md`](docs/internal/phase-206.md).
 │       │   Auf Phase 146 (Attribution/Quotas) aufbauend: Chargeback-Reports
 │       │   (Pivot über consumer/product/workspace) + Budgets mit Burn-

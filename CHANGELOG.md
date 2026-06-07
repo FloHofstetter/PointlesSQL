@@ -17,6 +17,36 @@ defined in ``scripts/clusters.json``. -->
 
 ### Added
 
+- **Differentiator-depth phases 198–206 — backbones (code-only, local).**
+  Nine long-running depth phases landed as half-complete backbones in one
+  autonomous pass; the reusable core of each is in place and lint-clean,
+  with test execution, DB migrations, app-startup wiring, and frontend work
+  deliberately deferred (see `ROADMAP.md` for the per-phase deferral list):
+  - **198 e2e** — page-object layer, journey registry, and a 93-playbook
+    coverage-ledger ratchet that fails when a playbook ships unclassified;
+    conftest gains a soyuz probe/skip, a mobile viewport, and a
+    screenshot-on-failure hook.
+  - **199 performance** — per-route latency middleware + a `query_span`
+    backend-timing primitive (RED-style metrics) and a `check-perf-budget.sh`
+    p95 floor gate.
+  - **200 observability** — an opt-in (default-off) OpenTelemetry tracing
+    bridge, an HTTP request counter completing the RED signal, a pure
+    multi-window SLO error-budget burn-rate, and a RED Grafana dashboard.
+  - **201 disaster recovery** — dialect-aware metadata-DB backup/restore
+    with a hash + schema-compat manifest guard, a standalone backup CLI, and
+    a DR runbook.
+  - **202 security** — security response headers + a report-only CSP and its
+    collector, a generated route-authorization matrix, a bandit SAST job,
+    and a STRIDE threat model.
+  - **203 MCP** — a governed write-tool framework (capability specs, scope
+    enforcement, a "no mutation without an audited agent-run" provenance
+    wrapper), a versioned tool-coverage matrix, and a conformance scaffold.
+  - **204 data quality** — six new expectation kinds, a weighted per-product
+    quality scorecard, and an off/warn/block pre-write quality gate.
+  - **205 accessibility** — an axe-core e2e harness and a WCAG-AA
+    violations-floor ratchet.
+  - **206 cost/FinOps** — chargeback pivots, budget warn/block thresholds,
+    and a budget-exhaustion forecast.
 - **Self-service access** for data products — a consumer who lacks
   `SELECT` can request access from the **Data** tab; the product steward
   (or an admin) approves it from a pending-requests panel on the same
