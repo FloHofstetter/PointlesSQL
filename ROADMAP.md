@@ -3676,7 +3676,7 @@ PointlesSQL
 │   │   Abhängigkeit — 197/202/203 sind die Differenzierer-Kerne, 198/199
 │   │   die Infra-Hebel, auf denen mehrere andere aufsitzen.
 │   │
-│   ├── Phase 197 — Lineage-Korrektheits-Verifikations-Engine  ⏳ in progress (W1–W2 ✅, W3 läuft, 2026-06-07)
+│   ├── Phase 197 — Lineage-Korrektheits-Verifikations-Engine  ✅ shipped (local, 2026-06-07)
 │   │   │   Detail: [`docs/internal/phase-197.md`](docs/internal/phase-197.md).
 │   │   │   Property-based (Hypothesis) + Golden-Corpus-Verifikation von
 │   │   │   Row-/Column-/Value-Lineage über *alle* PQL-Pfade.  Aufhänger:
@@ -3732,7 +3732,13 @@ PointlesSQL
 │   │   │     Keys, Multi-Column-Group-By) mit eingefrorenen, sortiert-
 │   │   │     diffbaren Edge-/Column-/Value-Snapshots; Regen via
 │   │   │     `LINEAGE_CORPUS_UPDATE=1`.
-│   │   │     Offen: W5 (CI-Marker + Coverage-Ledger).
+│   │   │   - W5 ✅ (local): CI-Verdrahtung — der `lineage_verify`-Marker läuft
+│   │   │     im PR-Gate (lean `ci`-Profil) und in einem neuen
+│   │   │     `nightly.yml`-Cron-Job mit großem `nightly`-Budget.
+│   │   │     Coverage-Ledger (`test_coverage_ledger.py`): klassifiziert jeden
+│   │   │     PQL-Operator (property/deferred/n-a) und schlägt fehl, wenn ein
+│   │   │     neuer Operator ohne Lineage-Coverage-Entscheidung erscheint —
+│   │   │     keine stillen Lücken.  Schließt Phase 197.
 │   │   │
 │   ├── Phase 198 — E2E-in-CI Vollabdeckung  ⏳ planned
 │   │   │   Detail: [`docs/internal/phase-198.md`](docs/internal/phase-198.md).

@@ -66,6 +66,16 @@ defined in ``scripts/clusters.json``. -->
   `GET /api/data-products/{catalog}/{schema}/export` (alongside the default
   `parquet`) so spreadsheet consumers can download a declared table
   directly; both formats share the same column-masking sidecar.
+- **Lineage-correctness verification engine.** Six row/column/value lineage
+  invariants are formalised as pure checkers and exercised by a
+  property-based suite (Hypothesis) that runs real PQL pipelines — write,
+  `sql`, merge, aggregate, update — and proves the recorded edges, rejects,
+  column-map, and value-changes hold for arbitrary inputs. A golden corpus
+  freezes edge cases (Unicode columns, NULL/duplicate keys, multi-column
+  group-by) as reviewable JSON snapshots, an OpenLineage differential
+  proves the exported facets never drift from the local lineage tables, and
+  a coverage ledger fails CI if a new operator ships without a lineage
+  decision. Runs in the PR gate (lean budget) and a nightly deep run.
 
 ### Fixed
 

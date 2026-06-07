@@ -1,0 +1,35 @@
+name: nightly
+
+# Deep property-based lineage verification.  The PR `test` workflow runs the
+# `lineage_verify` suite with the lean `ci` Hypothesis profile; this nightly
+# job re-runs it with the `nightly` profile (a much larger `max_examples`
+# budget) so rare counter-examples surface without slowing every PR.
+
+on:
+  schedule:
+    # 03:17 UTC daily — off the top-of-hour rush.
+    - cron: "17 3 * * *"
+  workflow_dispatch: {}
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: true
+
+jobs:
+  lineage-verify:
+    name: lineage property suite (deep)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - name: Set up Python
+        run: uv python install 3.14
+      - name: Install dependencies
+        run: uv sync --all-extras
+      - name: Lineage verification — deep Hypothesis budget
+        env:
+          HYPOTHESIS_PROFILE: nightly
+        run: uv run pytest -m lineage_verify -q
