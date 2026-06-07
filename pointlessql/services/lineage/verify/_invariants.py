@@ -207,16 +207,14 @@ def check_edge_endpoints(facts: OperationFacts) -> list[Violation]:
             out.append(
                 Violation(
                     "INV-3",
-                    f"edge source {edge.source_row_id!r} is not one of the "
-                    "operation's input rows",
+                    f"edge source {edge.source_row_id!r} is not one of the operation's input rows",
                 )
             )
         if edge.target_row_id not in tgt:
             out.append(
                 Violation(
                     "INV-3",
-                    f"edge target {edge.target_row_id!r} is not one of the "
-                    "operation's output rows",
+                    f"edge target {edge.target_row_id!r} is not one of the operation's output rows",
                 )
             )
     return out
@@ -233,9 +231,7 @@ def check_column_map_coverage(facts: OperationFacts) -> list[Violation]:
             continue
         entries = by_target.get(col, [])
         if not entries:
-            out.append(
-                Violation("INV-4", f"output column {col!r} has no column-map entry")
-            )
+            out.append(Violation("INV-4", f"output column {col!r} has no column-map entry"))
             continue
         traceable = any(e.transform_kind != "unknown_origin" for e in entries)
         exempt = any(
@@ -282,9 +278,7 @@ def check_reject_reasons(facts: OperationFacts) -> list[Violation]:
     edge_sources = {e.source_row_id for e in facts.edges}
     for reject in facts.rejects:
         if reject.reason not in _REJECT_REASONS:
-            out.append(
-                Violation("INV-6", f"reject reason {reject.reason!r} is not allowed")
-            )
+            out.append(Violation("INV-6", f"reject reason {reject.reason!r} is not allowed"))
         if reject.source_row_id in edge_sources:
             out.append(
                 Violation(

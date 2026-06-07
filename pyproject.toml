@@ -130,6 +130,7 @@ dev = [
     # browsers are not used.  Only the new ``e2e/`` tests import it;
     # the rest of the suite never touches Playwright.
     "playwright>=1.50",
+    "hypothesis>=6",
 ]
 docs = [
     "mkdocs>=1.6",
@@ -282,6 +283,7 @@ markers = [
     "integration: requires a live Unity Catalog server",
     "postgres: requires a live PostgreSQL server (set TEST_DATABASE_URL)",
     "e2e: requires a headless browser via Playwright; lives under e2e/",
+    "lineage_verify: property-based + golden-corpus lineage correctness (Hypothesis)",
 ]
 
 [tool.coverage.run]

@@ -13,6 +13,7 @@ This is the core the rest of the engine feeds: generators + corpus build
 
 from __future__ import annotations
 
+from pointlessql.services.lineage.verify._adapter import facts_from_rows
 from pointlessql.services.lineage.verify._invariants import (
     ColumnMapFact,
     OperationFacts,
@@ -42,5 +43,6 @@ __all__ = [
     "check_row_edge_closure",
     "check_target_id_synthesis",
     "check_value_changes_real",
+    "facts_from_rows",
     "verify_operation",
 ]

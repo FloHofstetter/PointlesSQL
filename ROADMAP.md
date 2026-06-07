@@ -3676,7 +3676,7 @@ PointlesSQL
 │   │   Abhängigkeit — 197/202/203 sind die Differenzierer-Kerne, 198/199
 │   │   die Infra-Hebel, auf denen mehrere andere aufsitzen.
 │   │
-│   ├── Phase 197 — Lineage-Korrektheits-Verifikations-Engine  ⏳ in progress (W1 ✅, 2026-06-06)
+│   ├── Phase 197 — Lineage-Korrektheits-Verifikations-Engine  ⏳ in progress (W1–W2 ✅, 2026-06-07)
 │   │   │   Detail: [`docs/internal/phase-197.md`](docs/internal/phase-197.md).
 │   │   │   Property-based (Hypothesis) + Golden-Corpus-Verifikation von
 │   │   │   Row-/Column-/Value-Lineage über *alle* PQL-Pfade.  Aufhänger:
@@ -3693,9 +3693,16 @@ PointlesSQL
 │   │   │     Value-Changes-real, Reject-Reason-Gültigkeit.  16 Unit-Tests
 │   │   │     inkl. der absichtlich wieder eingebauten 15.8-Regression, die
 │   │   │     jetzt die *Suite* (nicht nur den INFO-Log) rot macht.
-│   │   │     Offen: W2 (Hypothesis-Generatoren), W3 (Operator-Wellen mit
-│   │   │     Source-Fixes), W4 (Golden-Corpus + OpenLineage-Differential),
-│   │   │     W5 (CI-Marker + Coverage-Ledger).
+│   │   │   - W2 ✅ (local): Hypothesis (dev-group) + `lineage_verify`-Marker;
+│   │   │     reiner `facts_from_rows`-Adapter (`verify/_adapter.py`, ORM-
+│   │   │     geformte Zeilen → `OperationFacts`); Offline-Harness
+│   │   │     (`tests/lineage_verify/`) das echte PQL-Primitive gegen einen
+│   │   │     Wegwerf-Delta-Root mit gemockten soyuz-Syncs laufen lässt + die
+│   │   │     4 Lineage-Tabellen per `op_id` zurückliest; Property-Test, der
+│   │   │     beliebige gültige `write_table`-Pipelines erzeugt und
+│   │   │     `verify_operation` grün beweist (ci/dev/nightly-Profile).
+│   │   │     Offen: W3 (Operator-Wellen mit Source-Fixes), W4 (Golden-Corpus
+│   │   │     + OpenLineage-Differential), W5 (CI-Marker + Coverage-Ledger).
 │   │   │
 │   ├── Phase 198 — E2E-in-CI Vollabdeckung  ⏳ planned
 │   │   │   Detail: [`docs/internal/phase-198.md`](docs/internal/phase-198.md).
