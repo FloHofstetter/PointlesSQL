@@ -221,8 +221,15 @@ def check_edge_endpoints(facts: OperationFacts) -> list[Violation]:
 
 
 def check_column_map_coverage(facts: OperationFacts) -> list[Violation]:
-    """INV-4: every non-constant output column is traceable in the column map."""
+    """INV-4: every non-constant output column is traceable in the column map.
+
+    Only column-establishing operations owe coverage: an op that records no
+    column map and carries no source lineage (an in-place ``update`` /
+    ``delete``) does not re-derive its columns, so it is exempt.
+    """
     out: list[Violation] = []
+    if not facts.column_map and not facts.lineage_bearing:
+        return out
     by_target: dict[str, list[ColumnMapFact]] = {}
     for entry in facts.column_map:
         by_target.setdefault(entry.target_column, []).append(entry)

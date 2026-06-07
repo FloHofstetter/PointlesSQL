@@ -14,11 +14,23 @@ import pytest
 from hypothesis import given
 
 from pointlessql.services.lineage.verify import verify_operation
-from tests.lineage_verify._harness import run_sql_then_write_op, run_write_op
+from tests.lineage_verify._harness import (
+    run_aggregate_op,
+    run_merge_op,
+    run_sql_then_write_op,
+    run_update_op,
+    run_write_op,
+)
 from tests.lineage_verify.strategies import (
+    AggregatePipeline,
+    MergePipeline,
     SqlPipeline,
+    UpdatePipeline,
     WritePipeline,
+    aggregate_pipelines,
+    merge_pipelines,
     sql_pipelines,
+    update_pipelines,
     write_pipelines,
 )
 
@@ -33,6 +45,61 @@ def test_write_table_lineage_holds_all_invariants(pipeline: WritePipeline) -> No
     )
     violations = verify_operation(facts)
     assert violations == [], [f"{v.invariant}: {v.message}" for v in violations]
+
+
+@pytest.mark.lineage_verify
+@given(pipeline=merge_pipelines())
+def test_merge_lineage_holds_all_invariants(pipeline: MergePipeline) -> None:
+    """An upsert merge edges every matched row, rejects null/dup keys, and the
+
+    recorded value-changes are real — all invariants hold (INV-1/2/3/5/6).
+    """
+    facts = run_merge_op(
+        base_frame=pipeline.base_frame,
+        merge_frame=pipeline.merge_frame,
+        on=pipeline.on,
+        table_name=pipeline.table_name,
+    )
+    violations = verify_operation(facts)
+    assert violations == [], [f"{v.invariant}: {v.message}" for v in violations]
+
+
+@pytest.mark.lineage_verify
+@given(pipeline=aggregate_pipelines())
+def test_aggregate_fanin_lineage_holds_all_invariants(pipeline: AggregatePipeline) -> None:
+    """A group-aggregate fans every source row into its group target.
+
+    Each source row edges to its group's synthesised target id (N:1), every
+    group target has at least one edge, and the 1:1 determinism check (INV-2)
+    is correctly skipped for the aggregate boundary.
+    """
+    facts = run_aggregate_op(
+        source_frame=pipeline.source_frame,
+        group_by=pipeline.group_by,
+        aggs=pipeline.aggs,
+        table_name=pipeline.table_name,
+    )
+    violations = verify_operation(facts)
+    assert violations == [], [f"{v.invariant}: {v.message}" for v in violations]
+
+
+@pytest.mark.lineage_verify
+@given(pipeline=update_pipelines())
+def test_update_value_changes_are_real(pipeline: UpdatePipeline) -> None:
+    """An in-place UPDATE records value-changes that are real, on real rows.
+
+    The update is not cross-table lineage (no row-edges or column-map owed),
+    so only INV-5 applies; every captured change must have old != new and
+    target a row in the output.
+    """
+    facts = run_update_op(
+        base_frame=pipeline.base_frame,
+        set_clause=pipeline.set_clause,
+        table_name=pipeline.table_name,
+    )
+    violations = verify_operation(facts)
+    assert violations == [], [f"{v.invariant}: {v.message}" for v in violations]
+    assert facts.value_changes, "expected the UPDATE to capture value-changes via CDF"
 
 
 @pytest.mark.lineage_verify

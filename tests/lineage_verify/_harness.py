@@ -129,6 +129,182 @@ def run_write_op(
         )
 
 
+def run_update_op(
+    *,
+    base_frame: pd.DataFrame,
+    set_clause: dict[str, str],
+    table_name: str,
+) -> OperationFacts:
+    """Bootstrap a target, run an in-place UPDATE with CDF capture, and snapshot it.
+
+    Args:
+        base_frame: Rows written to bootstrap the target; carry ``_lineage_row_id``.
+        set_clause: ``column -> SQL-expression`` update assignments.
+        table_name: Bare table name (also the storage subdirectory).
+
+    Returns:
+        The update recorded as a pure :class:`OperationFacts` (no source
+        lineage; value-changes only).
+    """
+    factory = app.state.session_factory
+    bronze_fqn = f"{_CATALOG}.bronze.update_src"
+    with tempfile.TemporaryDirectory() as root:
+        warehouse = f"{root}/warehouse"
+        target_fqn = f"{_CATALOG}.silver.{table_name}"
+        target_path = f"{warehouse}/{table_name}"
+
+        boot_run = fresh_run_id()
+        _seed_run(factory, boot_run)
+        with _bound_factory(factory), _patched_soyuz_write(warehouse, pre_existing=False):
+            pql = PQL(client=MagicMock(), agent_run_id=boot_run, engine=PandasEngine())
+            pql.write_table(base_frame, target_fqn, source_table_fqn=bronze_fqn)
+
+        upd_run = fresh_run_id()
+        _seed_run(factory, upd_run)
+        with (
+            _bound_factory(factory),
+            patch("pointlessql.pql._update_delete._get_table") as mget,
+        ):
+            mget.sync.return_value = TableInfo(storage_location=target_path, name=table_name)
+            pql = PQL(client=MagicMock(), agent_run_id=upd_run, engine=PandasEngine())
+            pql.update(target_fqn, set_clause=set_clause, track_value_changes=True)
+        op_id = latest_op_id(factory, upd_run)
+        return facts_for_op(
+            factory,
+            op_id=op_id,
+            target_table=target_fqn,
+            source_row_ids=[],
+            output_path=target_path,
+        )
+
+
+@contextmanager
+def _patched_soyuz_aggregate(storage_root: str):
+    """Mock the soyuz syncs ``pql.aggregate`` resolves for a fresh gold target."""
+    with ExitStack() as stack:
+        mget = stack.enter_context(patch("pointlessql.pql._aggregate._get_table"))
+        mcreate = stack.enter_context(patch("pointlessql.pql._aggregate._create_table"))
+        mschema = stack.enter_context(patch("pointlessql.pql._write._get_schema"))
+        mget.sync.side_effect = UnexpectedStatus(404, b"Not Found")
+        mschema.sync.return_value = SchemaInfo(storage_root=storage_root, name="gold")
+        mcreate.sync.return_value = TableInfo(name="t")
+        yield
+
+
+def run_aggregate_op(
+    *,
+    source_frame: pd.DataFrame,
+    group_by: Sequence[str],
+    aggs: dict[str, tuple[str, str]],
+    table_name: str,
+) -> OperationFacts:
+    """Group-aggregate a source into a fresh gold table and snapshot the fan-in.
+
+    Args:
+        source_frame: Silver-grain rows; carry ``_lineage_row_id``.
+        group_by: Group-key columns.
+        aggs: ``output_col -> (source_col, agg_fn)`` named aggregations.
+        table_name: Bare gold table name (also the storage subdirectory).
+
+    Returns:
+        The aggregate recorded as a pure :class:`OperationFacts` (``aggregate=True``).
+    """
+    factory = app.state.session_factory
+    source_ids = [str(v) for v in source_frame[LINEAGE_ROW_ID_COLUMN].tolist()]
+    bronze_fqn = f"{_CATALOG}.silver.agg_src"
+    with tempfile.TemporaryDirectory() as root:
+        warehouse = f"{root}/warehouse"
+        target_fqn = f"{_CATALOG}.gold.{table_name}"
+        output_path = f"{warehouse}/{table_name}"
+        run_id = fresh_run_id()
+        _seed_run(factory, run_id)
+        with _bound_factory(factory), _patched_soyuz_aggregate(warehouse):
+            pql = PQL(client=MagicMock(), agent_run_id=run_id, engine=PandasEngine())
+            pql.aggregate(
+                source_frame,
+                target_fqn,
+                group_by=list(group_by),
+                aggs=aggs,
+                source_table_fqn=bronze_fqn,
+            )
+        op_id = latest_op_id(factory, run_id)
+        return facts_for_op(
+            factory,
+            op_id=op_id,
+            target_table=target_fqn,
+            source_row_ids=source_ids,
+            output_path=output_path,
+            aggregate=True,
+        )
+
+
+def run_merge_op(
+    *,
+    base_frame: pd.DataFrame,
+    merge_frame: pd.DataFrame,
+    on: Sequence[str],
+    table_name: str,
+    track_rejects: bool = True,
+    track_value_changes: bool = True,
+) -> OperationFacts:
+    """Bootstrap a target via write, upsert-merge into it, and snapshot the merge.
+
+    The merge frame matches every base key (so the post-merge table is exactly
+    the merge's output population) and may carry null-key / duplicate-key rows
+    that land in the reject ledger.
+
+    Args:
+        base_frame: Rows written to bootstrap the target; carry ``_lineage_row_id``.
+        merge_frame: Upsert source; matched keys + optional reject rows.
+        on: Merge-key columns.
+        table_name: Bare target table name (also the storage subdirectory).
+        track_rejects: Forwarded to ``pql.merge``.
+        track_value_changes: Forwarded to ``pql.merge`` (CDF value capture).
+
+    Returns:
+        The merge recorded as a pure :class:`OperationFacts`.
+    """
+    factory = app.state.session_factory
+    merge_ids = [str(v) for v in merge_frame[LINEAGE_ROW_ID_COLUMN].tolist()]
+    bronze_fqn = f"{_CATALOG}.bronze.merge_src"
+    with tempfile.TemporaryDirectory() as root:
+        warehouse = f"{root}/warehouse"
+        target_fqn = f"{_CATALOG}.silver.{table_name}"
+        target_path = f"{warehouse}/{table_name}"
+
+        boot_run = fresh_run_id()
+        _seed_run(factory, boot_run)
+        with _bound_factory(factory), _patched_soyuz_write(warehouse, pre_existing=False):
+            pql = PQL(client=MagicMock(), agent_run_id=boot_run, engine=PandasEngine())
+            pql.write_table(base_frame, target_fqn, source_table_fqn=bronze_fqn)
+
+        merge_run = fresh_run_id()
+        _seed_run(factory, merge_run)
+        with (
+            _bound_factory(factory),
+            patch("pointlessql.pql._merge._resolve._get_table") as mget,
+        ):
+            mget.sync.return_value = TableInfo(storage_location=target_path, name=table_name)
+            pql = PQL(client=MagicMock(), agent_run_id=merge_run, engine=PandasEngine())
+            pql.merge(
+                source=merge_frame,
+                target=target_fqn,
+                on=list(on),
+                strategy="upsert",
+                source_table_fqn=bronze_fqn,
+                track_rejects=track_rejects,
+                track_value_changes=track_value_changes,
+            )
+        op_id = latest_op_id(factory, merge_run)
+        return facts_for_op(
+            factory,
+            op_id=op_id,
+            target_table=target_fqn,
+            source_row_ids=merge_ids,
+            output_path=target_path,
+        )
+
+
 def _result_to_frame(result: SQLResult) -> pd.DataFrame:
     """Rebuild a DataFrame from a SQLResult's columns + rows."""
     names = [c["name"] for c in result.columns]

@@ -3713,9 +3713,18 @@ PointlesSQL
 │   │   │     Property-Test fährt bronze→SELECT→silver und beweist, dass das
 │   │   │     absichtlich abgeschaltete Auto-Project als INV-1-Drop *die Suite*
 │   │   │     rot macht.  Negativ-Test retargetet.
-│   │   │     Offen: W3b (merge/aggregate/update/autoload/governance-Wellen),
-│   │   │     W4 (Golden-Corpus + OpenLineage-Differential), W5 (CI-Marker +
-│   │   │     Coverage-Ledger).
+│   │   │   - W3b ✅ (local): Operator-Wellen merge (Upsert-Edges + Rejects
+│   │   │     on_key_null/duplicate_in_source + CDF-Value-Changes), aggregate
+│   │   │     (N:1-Group-Key-Synthese, INV-2 korrekt übersprungen) und
+│   │   │     update (In-Place-Value-Changes, INV-5) als Hypothesis-
+│   │   │     Property-Klassen — jede fährt echte PQL-Primitive + prüft
+│   │   │     `verify_operation` grün.  INV-4 verfeinert: nur
+│   │   │     spalten-etablierende Ops schulden Column-Map-Coverage (In-Place-
+│   │   │     update/delete ausgenommen).  delete/autoload/branch-governance/
+│   │   │     federation werden im Coverage-Ledger (W5) explizit geführt
+│   │   │     (keine stillen Lücken).
+│   │   │     Offen: W4 (Golden-Corpus + OpenLineage-Differential), W5
+│   │   │     (CI-Marker + Coverage-Ledger).
 │   │   │
 │   ├── Phase 198 — E2E-in-CI Vollabdeckung  ⏳ planned
 │   │   │   Detail: [`docs/internal/phase-198.md`](docs/internal/phase-198.md).
