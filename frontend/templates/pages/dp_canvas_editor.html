@@ -169,7 +169,7 @@
                         aria-label="Reset zoom to 100 percent"
                         x-text="zoomPct + '%'"></button>
                 <button class="btn btn-outline-secondary"
-                        @click="focusMode = window.pqlToggleFocusMode()"
+                        @click="toggleFocusMode()"
                         :class="{ active: focusMode }"
                         title="Focus mode — hide side navigation (Shift+F)"
                         aria-label="Focus mode">
@@ -215,42 +215,68 @@
 
         {# Palette (left rail) #}
         <aside class="pql-dp-canvas-palette border-end bg-body p-2">
-            <div class="small text-uppercase text-muted fw-semibold mb-1">Sources</div>
+            <input type="search"
+                   class="form-control form-control-sm mb-2"
+                   placeholder="Filter blocks…"
+                   aria-label="Filter palette blocks"
+                   x-model="paletteQuery">
+
+            <div class="small text-uppercase text-muted fw-semibold mb-1"
+                 x-show="paletteGroupHasMatch('sources')">Sources</div>
             <template x-for="kind in paletteGroups.sources" :key="kind">
-                <div class="pql-dp-canvas-palette-item d-flex align-items-center gap-2 p-2 mb-1 border rounded"
+                <div class="pql-dp-canvas-palette-item p-2 mb-1 border rounded"
+                     x-show="paletteMatches(kind)"
                      draggable="true"
+                     tabindex="0" role="button"
                      @dragstart="onPaletteDragStart($event, kind)"
+                     @dblclick="paletteAddBlock(kind)"
+                     @keydown.enter.prevent="paletteAddBlock(kind)"
                      :title="blockHelp(kind)">
                     <i class="bi" :class="blockIcon(kind)"></i>
                     <span class="small" x-text="blockLabel(kind)"></span>
                 </div>
             </template>
 
-            <div class="small text-uppercase text-muted fw-semibold mb-1 mt-3">Transforms</div>
+            <div class="small text-uppercase text-muted fw-semibold mb-1 mt-3"
+                 x-show="paletteGroupHasMatch('transforms')">Transforms</div>
             <template x-for="kind in paletteGroups.transforms" :key="kind">
-                <div class="pql-dp-canvas-palette-item d-flex align-items-center gap-2 p-2 mb-1 border rounded"
+                <div class="pql-dp-canvas-palette-item p-2 mb-1 border rounded"
+                     x-show="paletteMatches(kind)"
                      draggable="true"
+                     tabindex="0" role="button"
                      @dragstart="onPaletteDragStart($event, kind)"
+                     @dblclick="paletteAddBlock(kind)"
+                     @keydown.enter.prevent="paletteAddBlock(kind)"
                      :title="blockHelp(kind)">
                     <i class="bi" :class="blockIcon(kind)"></i>
                     <span class="small" x-text="blockLabel(kind)"></span>
                 </div>
             </template>
 
-            <div class="small text-uppercase text-muted fw-semibold mb-1 mt-3">Sinks</div>
+            <div class="small text-uppercase text-muted fw-semibold mb-1 mt-3"
+                 x-show="paletteGroupHasMatch('sinks')">Sinks</div>
             <template x-for="kind in paletteGroups.sinks" :key="kind">
-                <div class="pql-dp-canvas-palette-item d-flex align-items-center gap-2 p-2 mb-1 border rounded"
+                <div class="pql-dp-canvas-palette-item p-2 mb-1 border rounded"
+                     x-show="paletteMatches(kind)"
                      draggable="true"
+                     tabindex="0" role="button"
                      @dragstart="onPaletteDragStart($event, kind)"
+                     @dblclick="paletteAddBlock(kind)"
+                     @keydown.enter.prevent="paletteAddBlock(kind)"
                      :title="blockHelp(kind)">
                     <i class="bi" :class="blockIcon(kind)"></i>
                     <span class="small" x-text="blockLabel(kind)"></span>
                 </div>
             </template>
+
+            <div class="small text-muted mt-2 px-1" x-show="!paletteHasAnyMatch()" x-cloak>
+                No blocks match "<span x-text="paletteQuery"></span>".
+            </div>
 
             <div class="small text-muted mt-4 px-1">
-                Drag a block onto the canvas. Wire output pins to input pins by dragging
-                between them. Click a block to edit its configuration in the right panel.
+                Drag a block onto the canvas — or double-click it to drop it at the
+                centre. Wire output pins to input pins by dragging between them.
+                Click a block to edit its configuration in the right panel.
             </div>
         </aside>
 
@@ -313,6 +339,14 @@
                  @click.outside="_closeOutputPlusPicker()"
                  @keydown.escape.window="_closeOutputPlusPicker()"
                  x-cloak>
+                <div class="pql-output-plus-picker-head">
+                    <span x-text="outputPlusPicker.sourcePqlId ? 'Add connected block' : 'Add block'"></span>
+                    <button type="button" class="btn btn-sm btn-link p-0 text-muted lh-1"
+                            aria-label="Close block picker"
+                            @click="_closeOutputPlusPicker()">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                </div>
                 <template x-for="(blockKinds, group) in paletteGroups" :key="group">
                     <div>
                         <div class="pql-output-plus-picker-group" x-text="group"></div>
@@ -331,7 +365,31 @@
             <div class="pql-dp-canvas-empty position-absolute top-50 start-50 translate-middle text-center text-muted"
                  x-show="!loading && nodeCount === 0" x-cloak>
                 <i class="bi bi-diagram-3 fs-1 d-block opacity-50"></i>
-                <div class="mt-2 small">Drop a block from the palette to start.</div>
+                <div class="mt-2 small">
+                    Drop a block from the palette to start — or double-click a
+                    palette entry to add it here.
+                </div>
+                <button type="button" class="btn btn-sm btn-outline-primary mt-3"
+                        x-show="canWrite"
+                        @click="paletteAddBlock('InputPort')">
+                    <i class="bi bi-plus-lg"></i> Add an input port
+                </button>
+            </div>
+
+            {# One-time hint that focus mode reclaims the stage width eaten
+               by the app navigation — shown only on narrow stages and
+               dismissable forever. #}
+            <div class="pql-canvas-focus-hint position-absolute top-0 start-50 translate-middle-x mt-3 px-3 py-2 shadow-sm rounded border bg-body"
+                 x-show="focusHintVisible" x-cloak style="z-index: 9;">
+                <i class="bi bi-window-fullscreen"></i>
+                <span class="small">Tight on space? Focus mode hides the side navigation (Shift+F).</span>
+                <button type="button" class="btn btn-sm btn-primary"
+                        @click="enableFocusFromHint()">Enable</button>
+                <button type="button" class="btn btn-sm btn-link p-0 text-muted"
+                        aria-label="Dismiss focus-mode hint"
+                        @click="dismissFocusHint()">
+                    <i class="bi bi-x-lg"></i>
+                </button>
             </div>
 
             <div class="pql-dp-canvas-loading position-absolute top-50 start-50 translate-middle text-center text-muted"
@@ -743,6 +801,7 @@
     {# Preview-rows modal #}
     <div class="modal fade" :class="{ 'show d-block': previewOpen }"
          tabindex="-1" :style="previewOpen ? 'background: rgba(0,0,0,0.5);' : ''"
+         @keydown.escape.window="closePreviewModal()"
          @click.self="closePreviewModal()">
         <div class="modal-dialog modal-xl modal-dialog-centered">
             <div class="modal-content">

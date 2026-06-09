@@ -92,6 +92,7 @@ export function genericEditorState() {
     searchOpen: false,
     searchQuery: '',
     searchCursor: 0,
+    paletteQuery: '',
     minimapVisible: true,
     zoomPct: 100,
     focusMode: false,

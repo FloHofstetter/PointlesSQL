@@ -3854,6 +3854,50 @@ PointlesSQL
 │       │   Kapazität („Budget erreicht in N Tagen") + Cost am Agent-Run +
 │       │   FinOps-Grafana-Panels.  estimated_cost = Schätzung, kein $.
 │   │
+├── Phase 207 — DP-Canvas Replay-Polish (Playwright-Sweep)  ✅ shipped (local, 2026-06-09)
+│   │
+│   │   Live-Replay des dp-canvas-builder-Playbooks (Playwright/Firefox,
+│   │   headful) mit gezielter Fehlersuche; ein Commit, nur Frontend.
+│   │
+│   ├── Fixes
+│   │       Minimap-Klick-Pan war tot (`pointer-events: none` am Host
+│   │       blockte den pointerdown-Handler).  Ctrl+S war im Save-Tooltip
+│   │       beworben, aber nie gebunden (öffnete den Browser-Dialog).
+│   │       Preview-Modal schloss nicht auf Escape.  Palette-Drop
+│   │       ignorierte Pan/Zoom — der Block landete abseits des Cursors.
+│   │       Verwaiste "+"-Handles nach Node-Delete (Prune-Pass im Sync).
+│   │       Kontextmenü ballonte per shrink-to-fit auf Restbreite und
+│   │       lief unter den Config-Drawer (width: max-content + Clamp an
+│   │       den Stage-Rand); Tastatur-Kontextmenü (clientX/Y 0,0) ankert
+│   │       jetzt am Element statt an der Fensterecke.  Canvas-Popovers
+│   │       (Kontextmenü / Quick-Peek / Block-Picker) sind wechselseitig
+│   │       exklusiv; der Picker hat eine Titelzeile + Close-Button und
+│   │       liest sich nicht mehr als "doppelte Palette".
+│   │
+│   ├── Robustheit
+│   │       CodeMirror-Mounts im Config-Drawer zeigen einen Lade-
+│   │       Platzhalter und degradieren bei CDN-Ausfall zu einem nativen
+│   │       Eingabefeld (Block bleibt konfigurierbar).  `sql_viewer.js`
+│   │       importiert CodeMirror jetzt lazy — die vorherigen Top-Level-
+│   │       Imports saßen im statischen Importgraph von `bootstrap.js`,
+│   │       sodass ein esm.sh-Ausfall den kompletten Frontend-Bootstrap
+│   │       jeder Seite abriss.  Offene Flanke (separater Sweep): die
+│   │       Notebook-Coedit-Kette (`coedit_client` / `coedit_awareness`)
+│   │       importiert yjs weiterhin top-level.
+│   │
+│   └── UX
+│           Palette-Filterfeld (Label/Hilfe-Suche über 26 Blöcke);
+│           Doppelklick oder Enter auf ein Palette-Item setzt den Block
+│           kaskadierend in die Bühnenmitte (Undo-fähig, Items sind
+│           fokussierbar); Empty-State mit "Add an input port"-Quick-
+│           Action; einmaliger, dismissbarer Fokusmodus-Hinweis auf
+│           schmalen Bühnen (536 px → 932 px Stage-Gewinn bei 1600 px
+│           Viewport); Fokus-Toggle refittet den Viewport.  Gelernte
+│           Falle dokumentiert: Bootstraps `d-flex` (`!important`)
+│           schlägt Alpines `x-show`-inline-`display:none` — gefilterte
+│           Items/Hinweis tragen ihr Flex-Layout jetzt per eigener
+│           CSS-Klasse ohne `!important`.
+│
 ├── Phase 188 — Echte Write-Modes (merge / append)  ✅ shipped (local, 2026-06-01)
 │   │
 │   │   Schließt den latenten Bug, dass der Executor ``mode='merge'`` still

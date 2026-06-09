@@ -96,6 +96,7 @@ function dpEditorState(product, ctx) {
 
     dpPicker: { loaded: false, products: [] },
     breadcrumbTrail: [],
+    focusHintVisible: false,
 
     versionsOpen: false,
     versionsList: [],

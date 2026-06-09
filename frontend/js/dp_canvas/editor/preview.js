@@ -18,6 +18,9 @@ export const previewMethods = {
 
   async openInlinePeek(nodeId, anchorEl) {
     if (!nodeId) return;
+    // Mutually exclusive with the other canvas popovers.
+    this.closeContextMenu();
+    this._closeOutputPlusPicker();
     const stage = this.$refs.canvas.parentElement;
     const sr = stage.getBoundingClientRect();
     const ar = (anchorEl || this.$refs.canvas).getBoundingClientRect();
@@ -55,38 +58,54 @@ export const previewMethods = {
     this.inlinePeek = { ...this.inlinePeek, open: false };
   },
   async mountPredicateCm(host, nodeId, field) {
-    if (!host) return;
-    const { mountPredicateEditor } = await import('../codemirror_predicate.js');
-    const node = this.nodes[nodeId];
-    if (!node) return;
-    await mountPredicateEditor(host, {
-      initialValue: String((node.config && node.config[field]) || ''),
-      onChange: (value) => {
-        const live = this.nodes[nodeId];
-        if (!live) return;
-        if ((live.config[field] || '') === value) return;
-        live.config[field] = value;
-        this.onConfigChanged();
-      },
-      getColumns: () => this.upstreamColumns(nodeId, 'in'),
-    });
+    await this._mountCmEditor(host, nodeId, field, false);
   },
   async mountSqlCm(host, nodeId, field) {
+    await this._mountCmEditor(host, nodeId, field, true);
+  },
+  // CodeMirror loads from the CDN import map, which can take seconds on a
+  // cold cache and fails outright on an offline / CDN-blocked host.  Both
+  // cases used to leave a silent empty box where the predicate / SQL field
+  // should be — show a loading placeholder while the import is in flight
+  // and degrade to a plain editable field when it never arrives, so the
+  // block stays configurable no matter what.
+  async _mountCmEditor(host, nodeId, field, multiLine) {
     if (!host) return;
-    const { mountSqlEditor } = await import('../codemirror_predicate.js');
     const node = this.nodes[nodeId];
     if (!node) return;
-    await mountSqlEditor(host, {
-      initialValue: String((node.config && node.config[field]) || ''),
-      onChange: (value) => {
-        const live = this.nodes[nodeId];
-        if (!live) return;
-        if ((live.config[field] || '') === value) return;
-        live.config[field] = value;
-        this.onConfigChanged();
-      },
-      getColumns: () => this.upstreamColumns(nodeId, 'in'),
-    });
+    const onChange = (value) => {
+      const live = this.nodes[nodeId];
+      if (!live) return;
+      if ((live.config[field] || '') === value) return;
+      live.config[field] = value;
+      this.onConfigChanged();
+    };
+    const placeholder = document.createElement('div');
+    placeholder.className = 'pql-canvas-cm-loading text-muted small';
+    placeholder.textContent = 'Loading editor…';
+    host.appendChild(placeholder);
+    try {
+      const { mountPredicateEditor, mountSqlEditor } = await import('../codemirror_predicate.js');
+      const mount = multiLine ? mountSqlEditor : mountPredicateEditor;
+      await mount(host, {
+        initialValue: String((node.config && node.config[field]) || ''),
+        onChange,
+        getColumns: () => this.upstreamColumns(nodeId, 'in'),
+      });
+    } catch (_e) {
+      const fallback = document.createElement(multiLine ? 'textarea' : 'input');
+      fallback.className = 'form-control form-control-sm font-monospace';
+      if (multiLine) fallback.rows = 6;
+      fallback.value = String((node.config && node.config[field]) || '');
+      fallback.addEventListener('input', () => onChange(fallback.value));
+      host.appendChild(fallback);
+      const note = document.createElement('div');
+      note.className = 'form-text small text-warning-emphasis';
+      note.textContent = 'Rich editor unavailable — using a plain field.';
+      host.appendChild(note);
+    } finally {
+      placeholder.remove();
+    }
   },
   upstreamColumns(nodeId, pinName) {
     // Walk reverse edges to find the upstream node feeding *pinName*,

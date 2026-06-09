@@ -77,6 +77,14 @@ export const viewportMethods = {
     this._scheduleMinimapRender();
     this._scheduleRerouteOrthogonal();
   },
+  toggleFocusMode() {
+    if (typeof window.pqlToggleFocusMode !== 'function') return;
+    this.focusMode = window.pqlToggleFocusMode();
+    // The shell collapse roughly doubles the stage width; refit once the
+    // layout has settled so the graph uses the reclaimed space instead of
+    // keeping the old, narrower zoom.
+    window.setTimeout(() => this.fitToView(), 250);
+  },
   zoomReset100() {
     // Reset to 1:1 zoom, keeping the current viewport centre fixed.
     const df = this._drawflow;

@@ -18,6 +18,9 @@ export const contextMenuMethods = {
     const nodeEl = ev.target.closest('.drawflow-node');
     const connEl = ev.target.closest('.connection');
     ev.preventDefault();
+    // Mutually exclusive with the other canvas popovers.
+    this._closeOutputPlusPicker();
+    if (typeof this.closeInlinePeek === 'function') this.closeInlinePeek();
     let kind = 'canvas';
     let nodeId = null;
     let edgeId = null;
@@ -36,14 +39,29 @@ export const contextMenuMethods = {
       kind = 'edge';
       edgeId = this._edgeIdForSvg(connEl);
     }
-    // Stash the drop position (canvas-local) for "add block here".
     const df = this._drawflow;
     const rect = df.container.getBoundingClientRect();
+    // Keyboard-invoked context menus (Menu key / Shift+F10) carry
+    // clientX/clientY 0,0, which would pin the menu to the window corner —
+    // anchor those to the right-clicked element (or the stage) instead.
+    let cx = ev.clientX;
+    let cy = ev.clientY;
+    if (!cx && !cy) {
+      const anchor = (nodeEl || df.container).getBoundingClientRect();
+      cx = anchor.left + Math.min(anchor.width / 2, 160);
+      cy = anchor.top + Math.min(anchor.height / 2, 120);
+    }
+    // Keep the menu on the stage — a right-click near the drawer or the
+    // bottom edge would otherwise open it half-hidden (or under the
+    // drawer, which then swallows the clicks).
+    cx = Math.min(cx, rect.right - 210);
+    cy = Math.min(cy, rect.bottom - 150);
+    // Stash the drop position (canvas-local) for "add block here".
     this._ctxDropPos = {
-      x: (ev.clientX - rect.left - (df.canvas_x || 0)) / (df.zoom || 1),
-      y: (ev.clientY - rect.top - (df.canvas_y || 0)) / (df.zoom || 1),
+      x: (cx - rect.left - (df.canvas_x || 0)) / (df.zoom || 1),
+      y: (cy - rect.top - (df.canvas_y || 0)) / (df.zoom || 1),
     };
-    this.ctxMenu = { open: true, x: ev.clientX, y: ev.clientY, kind, nodeId, edgeId };
+    this.ctxMenu = { open: true, x: cx, y: cy, kind, nodeId, edgeId };
   },
   closeContextMenu() {
     this.ctxMenu = { ...this.ctxMenu, open: false };

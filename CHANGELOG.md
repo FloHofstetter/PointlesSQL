@@ -17,6 +17,28 @@ defined in ``scripts/clusters.json``. -->
 
 ### Added
 
+- **DP-canvas editor ergonomics (phase 207).** Palette filter box; double-click
+  (or Enter on a focused palette item) drops a block at the stage centre,
+  cascading and undoable; empty state gains an "Add an input port" quick
+  action; a one-time dismissible hint points narrow stages at focus mode, and
+  toggling focus mode now refits the viewport; the output-plus block picker
+  gained a title row + close button. CodeMirror config-editor mounts show a
+  loading placeholder and degrade to a plain input when the CDN is
+  unreachable.
+
+### Fixed
+
+- **DP-canvas editor replay fixes (phase 207).** Minimap click-pan was dead
+  (`pointer-events: none` swallowed the handler); Ctrl+S was advertised but
+  unbound (browser save dialog); the preview modal ignored Escape; palette
+  drag-and-drop ignored pan/zoom so blocks landed away from the cursor;
+  deleting a node orphaned its "+" handle; the context menu ballooned to the
+  leftover viewport width, could open under the config drawer, and pinned to
+  the window corner when keyboard-invoked; canvas popovers (context menu /
+  quick peek / block picker) are now mutually exclusive. `sql_viewer.js` now
+  imports CodeMirror lazily — its top-level imports previously welded every
+  page's bootstrap to esm.sh availability.
+
 - **Differentiator-depth phases 198–206 — backbones (code-only, local).**
   Nine long-running depth phases landed as half-complete backbones in one
   autonomous pass; the reusable core of each is in place and lint-clean,

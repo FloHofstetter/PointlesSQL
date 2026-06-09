@@ -119,6 +119,22 @@ the resulting Delta materialise through the registered output port.
 | Close the modal, navigate to the DP detail page → **Lineage** tab | The target table appears as a downstream node fed by the source |
 | Reload the editor page | The full graph reloads from version N; positions, configs, and edges are preserved |
 
+## Palette + popover ergonomics (Phase 207)
+
+| Step | Expect |
+|---|---|
+| Type `join` into the palette's **Filter blocks…** box | Only Join / Semi join / Anti join stay visible; the Sources and Sinks group headers disappear; clearing the box restores all 26 blocks |
+| Double-click **Limit** in the palette (or Tab to it and press Enter) | Block lands at the centre of the visible stage and is selected; repeated adds cascade by 24 px; Ctrl+Z removes it |
+| On an empty canvas, click **Add an input port** in the empty-state | An InputPort block appears at the stage centre, selected |
+| Open the editor on a narrow stage (app nav expanded) | A dismissible hint offers focus mode; **Enable** collapses the navigation, refits the graph, and the hint never returns (persisted) |
+| Press <kbd>Ctrl+S</kbd> (also while a config field has focus) | The canvas saves (topbar flips Saving… → Saved); the browser save dialog does **not** open |
+| Open **Preview** on a block and press <kbd>Escape</kbd> | The modal closes |
+| Click the minimap | The viewport pans to the clicked spot; dragging pans continuously |
+| Click a free output pin's **+** handle | The block picker opens with an "Add connected block" title row and a ✕ close button; opening it closes any quick peek / context menu (and vice versa — the three popovers are mutually exclusive) |
+| Delete an unwired block | Its "+" handle disappears with it (no orphaned handle left on the stage) |
+| Right-click near the config drawer or invoke the context menu from the keyboard | The menu stays compact (max 260 px), clamps to the stage, and keyboard invocation anchors at the node instead of the window corner |
+| Block `esm.sh` (offline simulation) and select a Filter | The predicate field shows "Loading editor…" then degrades to a plain input with a "Rich editor unavailable" note; typing still updates the config and autosaves |
+
 ## Agent flow
 
 ```python

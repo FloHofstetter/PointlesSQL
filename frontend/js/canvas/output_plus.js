@@ -14,6 +14,10 @@ import { generateNodeId } from './_render_helpers.js';
 export const outputPlusMethods = {
   _openOutputPlusPicker(sourcePqlId, anchorEl) {
     if (!this.canWrite) return;
+    // Only one canvas popover at a time — a picker stacked on a peek or a
+    // context menu reads as UI debris, not as an intentional surface.
+    this.closeContextMenu();
+    if (typeof this.closeInlinePeek === 'function') this.closeInlinePeek();
     this._insertOnEdgeContext = null;
     const stage = this.$refs.canvas.parentElement;
     const stageRect = stage.getBoundingClientRect();
@@ -205,6 +209,19 @@ export const outputPlusMethods = {
         dfNodeEl.querySelector(`.outputs .output:nth-child(${i})`);
       if (!pinEl) continue;
       this._positionOutputPlus(handle, pinEl, stage);
+    }
+  },
+  _pruneOrphanOutputPlus() {
+    // Drop handles whose node no longer exists.  Without this sweep a
+    // deleted node leaves its "+" floating at the old position until the
+    // next zoom / drag pass happens to clean it up — clickable, but
+    // anchored to a dead node.
+    for (const [key, handle] of this._outputPlusElements) {
+      const pqlId = key.split(':')[0];
+      if (!this.nodes[pqlId]) {
+        handle.remove();
+        this._outputPlusElements.delete(key);
+      }
     }
   },
   _setOutputPlusInteractive(interactive) {

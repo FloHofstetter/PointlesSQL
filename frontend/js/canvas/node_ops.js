@@ -25,9 +25,60 @@ export const nodeOpsMethods = {
     if (!this.canWrite) return;
     const kind = event.dataTransfer.getData('text/plain');
     if (!kind || !this.catalog.BLOCK_DEFS[kind]) return;
-    const def = this.catalog.BLOCK_DEFS[kind];
     const rect = event.currentTarget.getBoundingClientRect();
-    const pos = { x: event.clientX - rect.left - 60, y: event.clientY - rect.top - 30 };
+    const df = this._drawflow;
+    const zoom = (df && df.zoom) || 1;
+    // Map the screen drop point into canvas-local coordinates (the same
+    // basis node positions are stored in), compensating pan + zoom.
+    const pos = {
+      x: (event.clientX - rect.left - ((df && df.canvas_x) || 0)) / zoom - 60,
+      y: (event.clientY - rect.top - ((df && df.canvas_y) || 0)) / zoom - 30,
+    };
+    this._addBlockAt(kind, pos);
+  },
+  paletteAddBlock(kind) {
+    // Click-free alternative to drag-and-drop: double-click (or Enter on a
+    // focused palette item) drops the block at the centre of the visible
+    // stage and selects it for immediate configuration.  Repeated adds
+    // cascade so blocks never stack exactly on top of each other.
+    if (!this.canWrite) return;
+    if (!this.catalog.BLOCK_DEFS[kind]) return;
+    const df = this._drawflow;
+    if (!df) return;
+    const rect = df.container.getBoundingClientRect();
+    const zoom = df.zoom || 1;
+    this._paletteAddCount = ((this._paletteAddCount || 0) + 1) % 8;
+    const step = this._paletteAddCount * 24;
+    const pos = {
+      x: (rect.width / 2 - (df.canvas_x || 0)) / zoom - 90 + step,
+      y: (rect.height / 2 - (df.canvas_y || 0)) / zoom - 50 + step,
+    };
+    const pqlId = this._addBlockAt(kind, pos);
+    if (pqlId) this.selectedNodeId = pqlId;
+  },
+  paletteMatches(kind) {
+    const q = (this.paletteQuery || '').trim().toLowerCase();
+    if (!q) return true;
+    const def = this.catalog.BLOCK_DEFS[kind] || {};
+    return (
+      kind.toLowerCase().includes(q) ||
+      String(def.label || '')
+        .toLowerCase()
+        .includes(q) ||
+      String(def.help || '')
+        .toLowerCase()
+        .includes(q)
+    );
+  },
+  paletteGroupHasMatch(group) {
+    return ((this.paletteGroups || {})[group] || []).some((k) => this.paletteMatches(k));
+  },
+  paletteHasAnyMatch() {
+    return Object.keys(this.paletteGroups || {}).some((g) => this.paletteGroupHasMatch(g));
+  },
+  _addBlockAt(kind, pos) {
+    const def = this.catalog.BLOCK_DEFS[kind];
+    if (!def) return null;
     const pqlId = generateNodeId();
     this._spawnNode(kind, pos, def.defaultConfig(), pqlId);
     this._refreshNodeBody(pqlId);
@@ -51,6 +102,7 @@ export const nodeOpsMethods = {
       },
     });
     this._scheduleMinimapRender();
+    return pqlId;
   },
   deleteSelectedNode() {
     if (!this.selectedNodeId || !this.canWrite) return;

@@ -138,7 +138,9 @@
    Declared BEFORE hover/selected/running so the state rules win
    without needing !important — same specificity, last-rule-wins. */
 .pql-canvas .drawflow .connection.pql-edge-numeric .main-path {
-  stroke: var(--bs-primary);
+  /* Explicit blue — must stay distinct from the green text-edge below
+     (the brand primary is green, so it can't double as the numeric hue). */
+  stroke: #4a90e2;
 }
 .pql-canvas .drawflow .connection.pql-edge-text .main-path {
   stroke: var(--bs-success);
@@ -286,6 +288,28 @@
   border-radius: 6px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
   padding: 0.35rem;
+}
+
+/* Fixed-position shrink-to-fit lets the menu balloon to the leftover
+   viewport width instead of its content width; pin it to max-content so
+   it reads as a compact menu and never runs under the config drawer. */
+.pql-canvas-ctxmenu {
+  width: max-content;
+  max-width: 260px;
+}
+
+/* Title row so the picker reads as "add a block here", not as a stray
+   duplicate of the left palette. */
+.pql-output-plus-picker-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.3rem 0.5rem 0.35rem;
+  margin-bottom: 0.15rem;
+  border-bottom: 1px solid var(--bs-border-color);
+  font-size: 0.78rem;
+  font-weight: 600;
 }
 
 .pql-output-plus-picker-item {

@@ -213,11 +213,19 @@ export const lifecycleMethods = {
     const canvasEl = this.$refs.canvas;
     canvasEl.addEventListener('dblclick', (ev) => this._onCanvasDoubleClick(ev));
 
-    // Keyboard shortcuts: Ctrl+D dupes the single-selected node;
-    // Ctrl+C / Ctrl+V copy / paste honour the multi-select set if any
+    // Keyboard shortcuts: Ctrl+S saves; Ctrl+D dupes the single-selected
+    // node; Ctrl+C / Ctrl+V copy / paste honour the multi-select set if any
     // (otherwise fall back to the single selection); Delete / Backspace
     // bulk-removes the multi-selected set with a confirm prompt.
     document.addEventListener('keydown', (ev) => {
+      // Ctrl+S must win even while a form field or CodeMirror editor has
+      // focus — otherwise the browser's save-page dialog hijacks the most
+      // natural moment to save (right after typing a config value).
+      if ((ev.ctrlKey || ev.metaKey) && (ev.key === 's' || ev.key === 'S')) {
+        ev.preventDefault();
+        this.save();
+        return;
+      }
       if (this._isFormFocused(ev.target)) return;
       if ((ev.ctrlKey || ev.metaKey) && (ev.key === 'd' || ev.key === 'D')) {
         if (!this.selectedNodeId) return;
@@ -309,6 +317,18 @@ export const lifecycleMethods = {
     await this.loadLatest();
     await this._refreshVersionsList();
 
+    // The app shell leaves the stage quite narrow on common viewports and
+    // focus mode (Shift+F) nearly doubles it, but nothing pointed users at
+    // it.  Offer it once when the stage is tight; "dismiss" persists.
+    try {
+      const dismissed = localStorage.getItem('pql.canvas.focus-hint-dismissed') === '1';
+      if (!dismissed && !this.focusMode && node.getBoundingClientRect().width < 700) {
+        this.focusHintVisible = true;
+      }
+    } catch (_e) {
+      // localStorage unavailable — skip the hint rather than nag every load.
+    }
+
     // Conditional co-edit attach — opt-in via ?coedit=1 so the
     // single-user editor pays no Y.js download cost by default.
     try {
@@ -316,7 +336,7 @@ export const lifecycleMethods = {
       if (isCoeditEnabled()) {
         this._coeditController = await attachCanvasCoedit(this, this.product.id);
       }
-    } catch (e) {
+    } catch (_e) {
       // Coedit is best-effort; never block the single-user editor.
     }
   },
@@ -326,5 +346,17 @@ export const lifecycleMethods = {
       target.matches('input, textarea, select, [contenteditable], [contenteditable=""]') ||
       target.closest('.cm-editor') != null
     );
+  },
+  enableFocusFromHint() {
+    if (!this.focusMode) this.toggleFocusMode();
+    this.dismissFocusHint();
+  },
+  dismissFocusHint() {
+    this.focusHintVisible = false;
+    try {
+      localStorage.setItem('pql.canvas.focus-hint-dismissed', '1');
+    } catch (_e) {
+      // localStorage unavailable — the hint stays per-session only.
+    }
   },
 };

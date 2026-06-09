@@ -29,7 +29,13 @@
   overflow-y: auto;
 }
 
+/* Flex layout lives here (not Bootstrap's d-flex utility) on purpose:
+   d-flex carries !important, which beats the inline display:none that
+   Alpine's x-show writes — palette filtering could never hide an item. */
 .pql-dp-canvas-palette-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   background: var(--bs-body-bg);
   cursor: grab;
   user-select: none;
@@ -88,6 +94,9 @@
    Drawflow surface inherits the same node anatomy without copying the
    ruleset across files. */
 
+/* pointer-events must stay interactive: the host carries the
+   pointerdown click/drag-pan handler.  The viewport rectangle inside
+   the SVG opts out individually so it never swallows the pan target. */
 .pql-minimap {
   bottom: 12px;
   right: 12px;
@@ -96,7 +105,7 @@
   background: var(--bs-tertiary-bg);
   border: 1px solid var(--bs-border-color);
   border-radius: 4px;
-  pointer-events: none;
+  cursor: crosshair;
   z-index: 5;
 }
 
@@ -108,6 +117,14 @@
   background: var(--bs-body-bg);
   max-height: 50vh;
   overflow-y: auto;
+}
+
+/* Same d-flex/!important pitfall as the palette items: this element is
+   shown/hidden via x-show, so the flex layout must not be !important. */
+.pql-canvas-focus-hint {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .pql-mesh-ctxmenu {
@@ -138,6 +155,23 @@
   background: var(--bs-body-bg);
   overflow: hidden;
 }
+.pql-canvas-cm-host .pql-canvas-cm-loading {
+  padding: 0.4rem 0.5rem;
+  animation: pql-cm-loading-pulse 1.2s ease-in-out infinite alternate;
+}
+@keyframes pql-cm-loading-pulse {
+  from {
+    opacity: 0.45;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pql-canvas-cm-host .pql-canvas-cm-loading {
+    animation: none;
+  }
+}
 .pql-canvas-cm-host-multi {
   min-height: 180px;
   max-height: 320px;
@@ -153,4 +187,3 @@
   outline: 2px solid var(--bs-primary);
   outline-offset: -2px;
 }
-

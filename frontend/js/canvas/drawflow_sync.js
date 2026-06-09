@@ -217,7 +217,9 @@ export const drawflowSyncMethods = {
     // every source node after the edge dict settles so a freshly
     // connected pin hides its plus and a freshly disconnected one
     // un-hides.  Cheap idempotent loop — _renderOutputPlus reuses
-    // the existing handle and only updates style.display.
+    // the existing handle and only updates style.display.  The prune
+    // pass first removes handles orphaned by node deletion.
+    this._pruneOrphanOutputPlus();
     for (const pqlId of Object.keys(newNodes)) this._renderOutputPlus(pqlId);
     if (!this._suppressAutosave) {
       this._scheduleAutosave();

@@ -16,13 +16,35 @@
  * embedded quotes / newlines round-trip cleanly.
  */
 
-import { sql } from '@codemirror/lang-sql';
-import { bracketMatching, defaultHighlightStyle, syntaxHighlighting } from '@codemirror/language';
-import { EditorState } from '@codemirror/state';
-import { oneDark } from '@codemirror/theme-one-dark';
-import { EditorView, lineNumbers } from '@codemirror/view';
+// CodeMirror resolves through the esm.sh import map.  These imports were
+// top-level once, which welded *every* page's bootstrap (this module sits
+// in bootstrap.js's static import graph) to CDN availability — an offline
+// or CDN-blocked host lost the whole frontend, not just SQL highlighting.
+// Load lazily on first use instead, and only on pages that carry a viewer.
+let _cmModsPromise = null;
+function _loadCm() {
+  if (!_cmModsPromise) {
+    _cmModsPromise = Promise.all([
+      import('@codemirror/lang-sql'),
+      import('@codemirror/language'),
+      import('@codemirror/state'),
+      import('@codemirror/theme-one-dark'),
+      import('@codemirror/view'),
+    ]).then(([sqlMod, languageMod, stateMod, themeMod, viewMod]) => ({
+      sql: sqlMod.sql,
+      bracketMatching: languageMod.bracketMatching,
+      defaultHighlightStyle: languageMod.defaultHighlightStyle,
+      syntaxHighlighting: languageMod.syntaxHighlighting,
+      EditorState: stateMod.EditorState,
+      oneDark: themeMod.oneDark,
+      EditorView: viewMod.EditorView,
+      lineNumbers: viewMod.lineNumbers,
+    }));
+  }
+  return _cmModsPromise;
+}
 
-function mount(host) {
+async function mount(host) {
   if (host.dataset.pqlMounted === '1') return;
   host.dataset.pqlMounted = '1';
   let doc = '';
@@ -31,21 +53,32 @@ function mount(host) {
   } catch {
     doc = host.dataset.sql || '';
   }
+  let cm;
+  try {
+    cm = await _loadCm();
+  } catch (_e) {
+    // CDN unreachable — degrade to unhighlighted but readable text.
+    const pre = document.createElement('pre');
+    pre.className = 'border bg-body-tertiary p-2 small mb-0';
+    pre.textContent = doc;
+    host.appendChild(pre);
+    return;
+  }
   const isDark = document.documentElement.dataset.bsTheme === 'dark';
-  new EditorView({
-    state: EditorState.create({
+  new cm.EditorView({
+    state: cm.EditorState.create({
       doc,
       extensions: [
-        EditorState.readOnly.of(true),
-        EditorView.editable.of(false),
-        lineNumbers(),
-        bracketMatching(),
+        cm.EditorState.readOnly.of(true),
+        cm.EditorView.editable.of(false),
+        cm.lineNumbers(),
+        cm.bracketMatching(),
         // ``defaultHighlightStyle`` is the light-theme palette;
         // ``oneDark`` ships its own highlight style.  Apply only one
         // so dark-mode keywords don't render in light-theme dark
         // colors against the dark editor background (invisible).
-        ...(isDark ? [oneDark] : [syntaxHighlighting(defaultHighlightStyle)]),
-        sql(),
+        ...(isDark ? [cm.oneDark] : [cm.syntaxHighlighting(cm.defaultHighlightStyle)]),
+        cm.sql(),
       ],
     }),
     parent: host,
