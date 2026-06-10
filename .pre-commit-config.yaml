@@ -95,6 +95,12 @@ repos:
         language: system
         pass_filenames: false
         files: ^frontend/templates/.*\.html$
+      - id: sync-bridge
+        name: api layer routes blocking work through run_sync
+        entry: bash scripts/check-sync-bridge.sh
+        language: system
+        pass_filenames: false
+        files: ^pointlessql/api/.*\.py$
       - id: doc-orphans
         name: doc-tree orphan guard (mkdocs nav vs filesystem)
         entry: bash scripts/check-doc-orphans.sh

@@ -38,6 +38,12 @@ jobs:
         # exceeding 800 LOC.  Files that are big-by-design are listed
         # explicitly in scripts/check-file-size-budget.sh's allowlist.
         run: bash scripts/check-file-size-budget.sh
+      - name: Sync-bridge drift gate
+        # Request-path code must dispatch blocking work through the
+        # app-owned executor (services/_executor.run_sync), never
+        # asyncio.to_thread / raw run_in_executor.  Background loops
+        # under api/_bootstrap/_loops/ are allowlisted by the script.
+        run: bash scripts/check-sync-bridge.sh
       - name: Pydoclint (Google style)
         # Phase 74.CI.1 — force-reinstall docstring-parser-fork
         # immediately before pydoclint runs.  pydoclint imports
