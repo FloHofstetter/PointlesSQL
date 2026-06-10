@@ -115,6 +115,10 @@ jobs:
         # factories land as frontend/js/entries/ modules behind
         # {% block page_entry %}, not as another global.
         run: bash scripts/check-frontend-bootstrap-budget.sh
+      - name: Frontend — raw-fetch budget
+        # Ratchet on raw fetch( call sites: new code uses
+        # window.pqlApi.fetch (CSRF + X-Workspace + uniform errors).
+        run: bash scripts/check-frontend-raw-fetch-budget.sh
       - name: Frontend — Form-label A11y drift guard
         # W8 drift-guard.  Counts <input>/<select>/<textarea> in
         # frontend/templates/ that lack any of: aria-label,

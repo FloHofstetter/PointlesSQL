@@ -43,24 +43,26 @@ export function dataProductLifecyclePanel(catalog, schema, canManage) {
 
     async reload() {
       this.error = '';
-      try {
-        const res = await fetch(dpBase(this.catalog, this.schema) + '/lifecycle');
-        if (!res.ok) {
-          this.error = 'Failed to load lifecycle (HTTP ' + res.status + ')';
-          return;
-        }
-        const data = await res.json();
-        this.state = data.state || 'active';
-        this.changedAt = data.changed_at || '';
-        this.replacement = data.replacement_uri || null;
-        const reachable = data.reachable_targets || data.allowed_targets || [];
-        this.targets = reachable
-          .filter((t) => t !== this.state)
-          .map((t) => _stateToSlug(this.state, t));
-        this.history = data.history || [];
-      } catch (e) {
-        this.error = 'Lifecycle load failed: ' + e.message;
+      const res = await window.pqlApi.fetch(dpBase(this.catalog, this.schema) + '/lifecycle', {
+        silent: true,
+      });
+      if (res.status === 0) {
+        this.error = 'Lifecycle load failed: ' + res.error;
+        return;
       }
+      if (!res.ok) {
+        this.error = 'Failed to load lifecycle (HTTP ' + res.status + ')';
+        return;
+      }
+      const data = res.data || {};
+      this.state = data.state || 'active';
+      this.changedAt = data.changed_at || '';
+      this.replacement = data.replacement_uri || null;
+      const reachable = data.reachable_targets || data.allowed_targets || [];
+      this.targets = reachable
+        .filter((t) => t !== this.state)
+        .map((t) => _stateToSlug(this.state, t));
+      this.history = data.history || [];
     },
 
     badgeClass() {
@@ -80,19 +82,19 @@ export function dataProductLifecyclePanel(catalog, schema, canManage) {
 
     async transition(target) {
       this.error = '';
-      try {
-        const res = await fetch(
-          dpBase(this.catalog, this.schema) + '/lifecycle/' + encodeURIComponent(target),
-          { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }
-        );
-        if (!res.ok) {
-          this.error = 'Transition failed (HTTP ' + res.status + ')';
-          return;
-        }
-        await this.reload();
-      } catch (e) {
-        this.error = 'Transition failed: ' + e.message;
+      const res = await window.pqlApi.fetch(
+        dpBase(this.catalog, this.schema) + '/lifecycle/' + encodeURIComponent(target),
+        { method: 'POST', body: {}, silent: true }
+      );
+      if (res.status === 0) {
+        this.error = 'Transition failed: ' + res.error;
+        return;
       }
+      if (!res.ok) {
+        this.error = 'Transition failed (HTTP ' + res.status + ')';
+        return;
+      }
+      await this.reload();
     },
   };
 }
@@ -113,18 +115,20 @@ export function dataProductBitemporalPanel(catalog, schema) {
 
     async reload() {
       this.error = '';
-      try {
-        const res = await fetch(dpBase(this.catalog, this.schema) + '/discovery');
-        if (!res.ok) return;
-        const env = await res.json();
-        const bt = env.bitemporal || {};
-        this.enforcement = bt.enforcement || 'off';
-        this.requireEventTime = !!bt.require_event_time;
-        this.eventCol = bt.event_time_column || '_event_time';
-        this.procCol = bt.processing_time_column || '_processing_time';
-      } catch (e) {
-        this.error = 'Bitemporal load failed: ' + e.message;
+      const res = await window.pqlApi.fetch(dpBase(this.catalog, this.schema) + '/discovery', {
+        silent: true,
+      });
+      if (res.status === 0) {
+        this.error = 'Bitemporal load failed: ' + res.error;
+        return;
       }
+      if (!res.ok) return;
+      const env = res.data || {};
+      const bt = env.bitemporal || {};
+      this.enforcement = bt.enforcement || 'off';
+      this.requireEventTime = !!bt.require_event_time;
+      this.eventCol = bt.event_time_column || '_event_time';
+      this.procCol = bt.processing_time_column || '_processing_time';
     },
   };
 }
@@ -151,19 +155,21 @@ export function dataProductInfrastructurePanel(catalog, schema, canManage) {
 
     async reload() {
       this.error = '';
-      try {
-        const res = await fetch(dpBase(this.catalog, this.schema) + '/infrastructure');
-        if (res.ok) {
-          const data = await res.json();
-          this.record = data.infrastructure || {};
-          this.draft.storage_class = this.record.storage_class || '';
-          this.draft.compute_runtime = this.record.compute_runtime || '';
-          this.draft.access_methods_csv = (this.record.access_methods || []).join(',');
-          this.draft.region = this.record.region || '';
-          this.draft.notes = this.record.notes || '';
-        }
-      } catch (e) {
-        this.error = 'Infrastructure load failed: ' + e.message;
+      const res = await window.pqlApi.fetch(dpBase(this.catalog, this.schema) + '/infrastructure', {
+        silent: true,
+      });
+      if (res.status === 0) {
+        this.error = 'Infrastructure load failed: ' + res.error;
+        return;
+      }
+      if (res.ok) {
+        const data = res.data || {};
+        this.record = data.infrastructure || {};
+        this.draft.storage_class = this.record.storage_class || '';
+        this.draft.compute_runtime = this.record.compute_runtime || '';
+        this.draft.access_methods_csv = (this.record.access_methods || []).join(',');
+        this.draft.region = this.record.region || '';
+        this.draft.notes = this.record.notes || '';
       }
     },
 
@@ -173,27 +179,27 @@ export function dataProductInfrastructurePanel(catalog, schema, canManage) {
         .split(',')
         .map((s) => s.trim())
         .filter(Boolean);
-      try {
-        const res = await fetch(dpBase(this.catalog, this.schema) + '/infrastructure', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            storage_class: this.draft.storage_class || null,
-            compute_runtime: this.draft.compute_runtime || null,
-            access_methods: methods,
-            region: this.draft.region || null,
-            notes: this.draft.notes || null,
-          }),
-        });
-        if (!res.ok) {
-          this.error = 'Save failed (HTTP ' + res.status + ')';
-          return;
-        }
-        this.editing = false;
-        await this.reload();
-      } catch (e) {
-        this.error = 'Save failed: ' + e.message;
+      const res = await window.pqlApi.fetch(dpBase(this.catalog, this.schema) + '/infrastructure', {
+        method: 'PUT',
+        body: {
+          storage_class: this.draft.storage_class || null,
+          compute_runtime: this.draft.compute_runtime || null,
+          access_methods: methods,
+          region: this.draft.region || null,
+          notes: this.draft.notes || null,
+        },
+        silent: true,
+      });
+      if (res.status === 0) {
+        this.error = 'Save failed: ' + res.error;
+        return;
       }
+      if (!res.ok) {
+        this.error = 'Save failed (HTTP ' + res.status + ')';
+        return;
+      }
+      this.editing = false;
+      await this.reload();
     },
   };
 }
@@ -213,43 +219,46 @@ export function dataProductUseCasesPanel(catalog, schema, currentUserId) {
 
     async reload() {
       this.error = '';
-      try {
-        const res = await fetch(dpBase(this.catalog, this.schema) + '/use-cases');
-        if (res.ok) this.useCases = (await res.json()).use_cases || [];
-      } catch (e) {
-        this.error = 'Use cases load failed: ' + e.message;
+      const res = await window.pqlApi.fetch(dpBase(this.catalog, this.schema) + '/use-cases', {
+        silent: true,
+      });
+      if (res.status === 0) {
+        this.error = 'Use cases load failed: ' + res.error;
+        return;
       }
+      if (res.ok) this.useCases = (res.data && res.data.use_cases) || [];
     },
 
     async add() {
       this.error = '';
-      try {
-        const res = await fetch(dpBase(this.catalog, this.schema) + '/use-cases', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ title: this.draft.title, body: this.draft.body }),
-        });
-        if (!res.ok) {
-          this.error = 'Share failed (HTTP ' + res.status + ')';
-          return;
-        }
-        this.draft.title = '';
-        this.draft.body = '';
-        await this.reload();
-      } catch (e) {
-        this.error = 'Share failed: ' + e.message;
+      const res = await window.pqlApi.fetch(dpBase(this.catalog, this.schema) + '/use-cases', {
+        method: 'POST',
+        body: { title: this.draft.title, body: this.draft.body },
+        silent: true,
+      });
+      if (res.status === 0) {
+        this.error = 'Share failed: ' + res.error;
+        return;
       }
+      if (!res.ok) {
+        this.error = 'Share failed (HTTP ' + res.status + ')';
+        return;
+      }
+      this.draft.title = '';
+      this.draft.body = '';
+      await this.reload();
     },
 
     async vote(id) {
-      try {
-        await fetch(dpBase(this.catalog, this.schema) + '/use-cases/' + id + '/vote', {
-          method: 'POST',
-        });
-        await this.reload();
-      } catch (e) {
-        this.error = 'Vote failed: ' + e.message;
+      const res = await window.pqlApi.fetch(
+        dpBase(this.catalog, this.schema) + '/use-cases/' + id + '/vote',
+        { method: 'POST', silent: true }
+      );
+      if (res.status === 0) {
+        this.error = 'Vote failed: ' + res.error;
+        return;
       }
+      await this.reload();
     },
   };
 }
@@ -270,37 +279,39 @@ export function dataProductRatingWidget(catalog, schema, currentUserId) {
 
     async reload() {
       this.error = '';
-      try {
-        const res = await fetch(dpBase(this.catalog, this.schema) + '/rating');
-        if (res.ok) {
-          const data = await res.json();
-          this.summary = { avg: data.avg ?? null, count: data.count || 0 };
-          if (data.own) {
-            this.myScore = data.own.score || 0;
-            this.myComment = data.own.comment || '';
-          }
+      const res = await window.pqlApi.fetch(dpBase(this.catalog, this.schema) + '/rating', {
+        silent: true,
+      });
+      if (res.status === 0) {
+        this.error = 'Rating load failed: ' + res.error;
+        return;
+      }
+      if (res.ok) {
+        const data = res.data || {};
+        this.summary = { avg: data.avg ?? null, count: data.count || 0 };
+        if (data.own) {
+          this.myScore = data.own.score || 0;
+          this.myComment = data.own.comment || '';
         }
-      } catch (e) {
-        this.error = 'Rating load failed: ' + e.message;
       }
     },
 
     async save() {
       this.error = '';
-      try {
-        const res = await fetch(dpBase(this.catalog, this.schema) + '/rating', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ score: this.myScore, comment: this.myComment }),
-        });
-        if (!res.ok) {
-          this.error = 'Rating save failed (HTTP ' + res.status + ')';
-          return;
-        }
-        await this.reload();
-      } catch (e) {
-        this.error = 'Rating save failed: ' + e.message;
+      const res = await window.pqlApi.fetch(dpBase(this.catalog, this.schema) + '/rating', {
+        method: 'PUT',
+        body: { score: this.myScore, comment: this.myComment },
+        silent: true,
+      });
+      if (res.status === 0) {
+        this.error = 'Rating save failed: ' + res.error;
+        return;
       }
+      if (!res.ok) {
+        this.error = 'Rating save failed (HTTP ' + res.status + ')';
+        return;
+      }
+      await this.reload();
     },
   };
 }
@@ -321,33 +332,41 @@ export function dataProductConsumptionPanel(catalog, schema, canManage) {
 
     async reload() {
       this.error = '';
-      try {
-        const res = await fetch(dpBase(this.catalog, this.schema) + '/discovery');
-        if (res.ok) {
-          const env = await res.json();
-          const policy = (env.policies && env.policies.consumption_enforcement) || {};
-          this.mode = policy.value || 'advisory';
-          this.modeSource = policy.source || '';
-        }
-        const audit = await fetch(
-          dpBase(this.catalog, this.schema) + '/consumption-acknowledgements?status=open'
-        );
-        if (audit.ok) this.recent = (await audit.json()).items || [];
-      } catch (e) {
-        this.error = 'Consumption load failed: ' + e.message;
+      const res = await window.pqlApi.fetch(dpBase(this.catalog, this.schema) + '/discovery', {
+        silent: true,
+      });
+      if (res.status === 0) {
+        this.error = 'Consumption load failed: ' + res.error;
+        return;
       }
+      if (res.ok) {
+        const env = res.data || {};
+        const policy = (env.policies && env.policies.consumption_enforcement) || {};
+        this.mode = policy.value || 'advisory';
+        this.modeSource = policy.source || '';
+      }
+      const audit = await window.pqlApi.fetch(
+        dpBase(this.catalog, this.schema) + '/consumption-acknowledgements?status=open',
+        { silent: true }
+      );
+      if (audit.status === 0) {
+        this.error = 'Consumption load failed: ' + audit.error;
+        return;
+      }
+      if (audit.ok) this.recent = (audit.data && audit.data.items) || [];
     },
 
     async ack(id) {
       this.error = '';
-      try {
-        await fetch(dpBase(this.catalog, this.schema) + '/consumption-acknowledgements/' + id, {
-          method: 'POST',
-        });
-        await this.reload();
-      } catch (e) {
-        this.error = 'Ack failed: ' + e.message;
+      const res = await window.pqlApi.fetch(
+        dpBase(this.catalog, this.schema) + '/consumption-acknowledgements/' + id,
+        { method: 'POST', silent: true }
+      );
+      if (res.status === 0) {
+        this.error = 'Ack failed: ' + res.error;
+        return;
       }
+      await this.reload();
     },
   };
 }
@@ -369,24 +388,33 @@ export function dataProductEventPortPanel(catalog, schema, canManage) {
 
     async reload() {
       this.error = '';
-      try {
-        const res = await fetch(dpBase(this.catalog, this.schema) + '/output-ports');
-        if (res.ok) {
-          const data = await res.json();
-          const event = (data.output_ports || []).find((p) => p.kind === 'event');
-          if (event) {
-            this.hasPort = true;
-            this.port = { name: event.name, format: event.format || 'ndjson' };
-          } else {
-            this.hasPort = false;
-          }
+      const res = await window.pqlApi.fetch(dpBase(this.catalog, this.schema) + '/output-ports', {
+        silent: true,
+      });
+      if (res.status === 0) {
+        this.error = 'Event port load failed: ' + res.error;
+        return;
+      }
+      if (res.ok) {
+        const data = res.data || {};
+        const event = (data.output_ports || []).find((p) => p.kind === 'event');
+        if (event) {
+          this.hasPort = true;
+          this.port = { name: event.name, format: event.format || 'ndjson' };
+        } else {
+          this.hasPort = false;
         }
-        if (this.hasPort) {
-          const subs = await fetch(dpBase(this.catalog, this.schema) + '/event-subscriptions');
-          if (subs.ok) this.subscriptions = (await subs.json()).items || [];
+      }
+      if (this.hasPort) {
+        const subs = await window.pqlApi.fetch(
+          dpBase(this.catalog, this.schema) + '/event-subscriptions',
+          { silent: true }
+        );
+        if (subs.status === 0) {
+          this.error = 'Event port load failed: ' + subs.error;
+          return;
         }
-      } catch (e) {
-        this.error = 'Event port load failed: ' + e.message;
+        if (subs.ok) this.subscriptions = (subs.data && subs.data.items) || [];
       }
     },
 
@@ -416,38 +444,43 @@ export function dataProductEventPortPanel(catalog, schema, canManage) {
 
     async subscribe() {
       this.error = '';
-      try {
-        const res = await fetch(dpBase(this.catalog, this.schema) + '/event-subscriptions', {
+      const res = await window.pqlApi.fetch(
+        dpBase(this.catalog, this.schema) + '/event-subscriptions',
+        {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
+          body: {
             table: this.draft.table,
             consumer_label: this.draft.consumer_label,
-          }),
-        });
-        if (!res.ok) {
-          this.error = 'Subscribe failed (HTTP ' + res.status + ')';
-          return;
+          },
+          silent: true,
         }
-        this.draft.table = '';
-        this.draft.consumer_label = '';
-        await this.reload();
-      } catch (e) {
-        this.error = 'Subscribe failed: ' + e.message;
+      );
+      if (res.status === 0) {
+        this.error = 'Subscribe failed: ' + res.error;
+        return;
       }
+      if (!res.ok) {
+        this.error = 'Subscribe failed (HTTP ' + res.status + ')';
+        return;
+      }
+      this.draft.table = '';
+      this.draft.consumer_label = '';
+      await this.reload();
     },
 
     async pause(id) {
-      await fetch(dpBase(this.catalog, this.schema) + '/event-subscriptions/' + id + '/pause', {
-        method: 'POST',
-      });
+      await window.pqlApi.fetch(
+        dpBase(this.catalog, this.schema) + '/event-subscriptions/' + id + '/pause',
+        { method: 'POST', silent: true }
+      );
       await this.reload();
     },
 
     async resume(id) {
-      await fetch(dpBase(this.catalog, this.schema) + '/event-subscriptions/' + id + '/resume', {
-        method: 'POST',
-      });
+      await window.pqlApi.fetch(
+        dpBase(this.catalog, this.schema) + '/event-subscriptions/' + id + '/resume',
+        { method: 'POST', silent: true }
+      );
       await this.reload();
     },
   };

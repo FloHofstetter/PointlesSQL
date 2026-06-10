@@ -11,152 +11,145 @@ export function installDpContent(state) {
   Object.assign(state, {
     async loadProposals() {
       this.proposalsLoaded = false;
-      try {
-        const res = await fetch(
-          '/api/data-products/' + this.product.catalog + '/' + this.product.schema + '/proposals'
-        );
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        const data = await res.json();
-        this.proposals = data.proposals || [];
-      } catch (e) {
-        console.error('proposals load failed', e);
+      const res = await window.pqlApi.fetch(
+        '/api/data-products/' + this.product.catalog + '/' + this.product.schema + '/proposals',
+        { silent: true }
+      );
+      if (!res.ok) {
+        console.error('proposals load failed', new Error('HTTP ' + res.status));
         this.proposals = [];
-      } finally {
         this.proposalsLoaded = true;
+        return;
       }
+      this.proposals = (res.data && res.data.proposals) || [];
+      this.proposalsLoaded = true;
     },
 
     async resolveProposal(p, kind) {
-      try {
-        const res = await fetch(
-          '/api/data-products/' +
-            this.product.catalog +
-            '/' +
-            this.product.schema +
-            '/proposals/' +
-            p.id +
-            '/approve',
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ kind: kind }),
-          }
-        );
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        await this.loadProposals();
-      } catch (e) {
-        console.error('approve failed', e);
+      const res = await window.pqlApi.fetch(
+        '/api/data-products/' +
+          this.product.catalog +
+          '/' +
+          this.product.schema +
+          '/proposals/' +
+          p.id +
+          '/approve',
+        {
+          method: 'POST',
+          body: { kind: kind },
+          silent: true,
+        }
+      );
+      if (!res.ok) {
+        console.error('approve failed', new Error('HTTP ' + res.status));
+        return;
       }
+      await this.loadProposals();
     },
 
     async rejectProposal(p) {
-      try {
-        const res = await fetch(
-          '/api/data-products/' +
-            this.product.catalog +
-            '/' +
-            this.product.schema +
-            '/proposals/' +
-            p.id +
-            '/reject',
-          {
-            method: 'POST',
-          }
-        );
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        await this.loadProposals();
-      } catch (e) {
-        console.error('reject failed', e);
+      const res = await window.pqlApi.fetch(
+        '/api/data-products/' +
+          this.product.catalog +
+          '/' +
+          this.product.schema +
+          '/proposals/' +
+          p.id +
+          '/reject',
+        { method: 'POST', silent: true }
+      );
+      if (!res.ok) {
+        console.error('reject failed', new Error('HTTP ' + res.status));
+        return;
       }
+      await this.loadProposals();
     },
 
     async loadRelated() {
       this.relatedLoaded = false;
-      try {
-        const res = await fetch(
-          '/api/data-products/' +
-            this.product.catalog +
-            '/' +
-            this.product.schema +
-            '/related?limit=5'
-        );
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        const data = await res.json();
-        this.related = data.related || [];
-      } catch (e) {
-        console.error('related load failed', e);
+      const res = await window.pqlApi.fetch(
+        '/api/data-products/' +
+          this.product.catalog +
+          '/' +
+          this.product.schema +
+          '/related?limit=5',
+        { silent: true }
+      );
+      if (!res.ok) {
+        console.error('related load failed', new Error('HTTP ' + res.status));
         this.related = [];
-      } finally {
         this.relatedLoaded = true;
+        return;
       }
+      this.related = (res.data && res.data.related) || [];
+      this.relatedLoaded = true;
     },
 
     async loadReadme() {
       this.readmeLoaded = false;
-      try {
-        const res = await fetch(
-          '/api/data-products/' + this.product.catalog + '/' + this.product.schema + '/readme'
-        );
-        if (res.status === 404) {
-          this.readme = null;
-        } else if (!res.ok) {
-          throw new Error('HTTP ' + res.status);
-        } else {
-          this.readme = await res.json();
-        }
-        const histRes = await fetch(
-          '/api/data-products/' +
-            this.product.catalog +
-            '/' +
-            this.product.schema +
-            '/readme/history'
-        );
-        if (histRes.ok) {
-          const data = await histRes.json();
-          this.readmeHistory = data.versions || [];
-        }
-        await this.loadPassport();
-      } catch (e) {
-        console.error('readme load failed', e);
-      } finally {
+      const res = await window.pqlApi.fetch(
+        '/api/data-products/' + this.product.catalog + '/' + this.product.schema + '/readme',
+        { silent: true }
+      );
+      if (res.status === 404) {
+        this.readme = null;
+      } else if (!res.ok) {
+        console.error('readme load failed', new Error('HTTP ' + res.status));
         this.readmeLoaded = true;
+        return;
+      } else {
+        this.readme = res.data;
       }
+      const histRes = await window.pqlApi.fetch(
+        '/api/data-products/' +
+          this.product.catalog +
+          '/' +
+          this.product.schema +
+          '/readme/history',
+        { silent: true }
+      );
+      if (histRes.status === 0) {
+        console.error('readme load failed', new Error('HTTP ' + histRes.status));
+        this.readmeLoaded = true;
+        return;
+      }
+      if (histRes.ok) {
+        this.readmeHistory = (histRes.data && histRes.data.versions) || [];
+      }
+      await this.loadPassport();
+      this.readmeLoaded = true;
     },
 
     async loadPassport() {
       this.passportLoaded = false;
-      try {
-        const res = await fetch(
-          '/api/data-products/' + this.product.catalog + '/' + this.product.schema + '/passport'
-        );
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        const data = await res.json();
-        this.passport = data.latest || null;
-      } catch (e) {
-        console.error('passport load failed', e);
+      const res = await window.pqlApi.fetch(
+        '/api/data-products/' + this.product.catalog + '/' + this.product.schema + '/passport',
+        { silent: true }
+      );
+      if (!res.ok) {
+        console.error('passport load failed', new Error('HTTP ' + res.status));
         this.passport = null;
-      } finally {
         this.passportLoaded = true;
+        return;
       }
+      this.passport = (res.data && res.data.latest) || null;
+      this.passportLoaded = true;
     },
 
     async refreshPassport() {
-      try {
-        const res = await fetch(
-          '/api/data-products/' +
-            this.product.catalog +
-            '/' +
-            this.product.schema +
-            '/passport/refresh',
-          {
-            method: 'POST',
-          }
-        );
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        await this.loadPassport();
-      } catch (e) {
-        console.error('passport refresh failed', e);
+      const res = await window.pqlApi.fetch(
+        '/api/data-products/' +
+          this.product.catalog +
+          '/' +
+          this.product.schema +
+          '/passport/refresh',
+        { method: 'POST', silent: true }
+      );
+      if (!res.ok) {
+        console.error('passport refresh failed', new Error('HTTP ' + res.status));
+        return;
       }
+      await this.loadPassport();
     },
 
     startReadmeEdit() {
@@ -170,22 +163,21 @@ export function installDpContent(state) {
     },
 
     async saveReadme() {
-      try {
-        const res = await fetch(
-          '/api/data-products/' + this.product.catalog + '/' + this.product.schema + '/readme',
-          {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ body_md: this.readmeDraft }),
-          }
-        );
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        this.editingReadme = false;
-        this.readmeDraft = '';
-        await this.loadReadme();
-      } catch (e) {
-        console.error('readme save failed', e);
+      const res = await window.pqlApi.fetch(
+        '/api/data-products/' + this.product.catalog + '/' + this.product.schema + '/readme',
+        {
+          method: 'PUT',
+          body: { body_md: this.readmeDraft },
+          silent: true,
+        }
+      );
+      if (!res.ok) {
+        console.error('readme save failed', new Error('HTTP ' + res.status));
+        return;
       }
+      this.editingReadme = false;
+      this.readmeDraft = '';
+      await this.loadReadme();
     },
 
     toggleHistory() {
