@@ -13,19 +13,9 @@ import pytest
 
 from pointlessql.api.main import app
 from pointlessql.services import table_stats as ts
-from pointlessql.services.unitycatalog import UnityCatalogClient
 
 # ---------------------------------------------------------------------------
 # Fixtures
-
-
-@pytest.fixture(autouse=True)
-def _patch_for_principal(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(
-        UnityCatalogClient,
-        "for_principal",
-        classmethod(lambda cls, s, p: app.state.uc_client),  # type: ignore[arg-type]
-    )
 
 
 @pytest.fixture
@@ -42,9 +32,9 @@ def orders_delta(tmp_path: Path) -> str:
     return loc
 
 
-def _make_uc_mock(storage_location: str) -> MagicMock:
-    client = MagicMock(spec=UnityCatalogClient)
-    client.get_table = AsyncMock(
+def _stub_orders_table(stub: MagicMock, storage_location: str) -> None:
+    """Configure the shared ``uc_client_stub`` to serve the orders table."""
+    stub.get_table = AsyncMock(
         return_value={
             "name": "orders",
             "catalog_name": "main",
@@ -57,8 +47,7 @@ def _make_uc_mock(storage_location: str) -> MagicMock:
             ],
         }
     )
-    client.get_effective_permissions = AsyncMock(return_value=[])
-    return client
+    stub.get_effective_permissions = AsyncMock(return_value=[])
 
 
 # ---------------------------------------------------------------------------
@@ -170,13 +159,19 @@ def test_read_delta_log_version_reads_a_real_table(orders_delta: str) -> None:
 
 # ---------------------------------------------------------------------------
 # HTTP surface
+#
+# These consume the shared ``uc_client_stub`` seam from conftest.py —
+# one stub behind both ``app.state.uc_client`` and
+# ``UnityCatalogClient.for_principal`` — instead of the per-file
+# classmethod patch + raw ``app.state`` assignment this file used to
+# carry.
 
 
 @pytest.mark.asyncio
 async def test_profile_and_stats_round_trip_for_admin(
-    orders_delta: str, admin_client: httpx.AsyncClient
+    orders_delta: str, admin_client: httpx.AsyncClient, uc_client_stub: MagicMock
 ) -> None:
-    app.state.uc_client = _make_uc_mock(orders_delta)
+    _stub_orders_table(uc_client_stub, orders_delta)
     full_name = "main.sales.orders"
     profile = await admin_client.post(f"/api/tables/{full_name}/profile")
     assert profile.status_code == 200
@@ -200,9 +195,12 @@ async def test_profile_and_stats_round_trip_for_admin(
 
 @pytest.mark.asyncio
 async def test_delete_stats_requires_admin(
-    orders_delta: str, admin_client: httpx.AsyncClient, non_admin_client: httpx.AsyncClient
+    orders_delta: str,
+    admin_client: httpx.AsyncClient,
+    non_admin_client: httpx.AsyncClient,
+    uc_client_stub: MagicMock,
 ) -> None:
-    app.state.uc_client = _make_uc_mock(orders_delta)
+    _stub_orders_table(uc_client_stub, orders_delta)
     full_name = "main.sales.orders"
     # Admin populates + clears.
     await admin_client.post(f"/api/tables/{full_name}/profile")
@@ -215,10 +213,13 @@ async def test_delete_stats_requires_admin(
 
 @pytest.mark.asyncio
 async def test_profile_enforces_select(
-    orders_delta: str, monkeypatch: pytest.MonkeyPatch, non_admin_client: httpx.AsyncClient
+    orders_delta: str,
+    monkeypatch: pytest.MonkeyPatch,
+    non_admin_client: httpx.AsyncClient,
+    uc_client_stub: MagicMock,
 ) -> None:
     """A caller without SELECT on the table is refused at enforcement."""
-    app.state.uc_client = _make_uc_mock(orders_delta)
+    _stub_orders_table(uc_client_stub, orders_delta)
 
     async def deny(
         client: Any,
@@ -249,10 +250,10 @@ async def test_profile_enforces_select(
 
 
 @pytest.mark.asyncio
-async def test_profile_404_when_table_missing(admin_client: httpx.AsyncClient) -> None:
-    client_mock = MagicMock(spec=UnityCatalogClient)
-    client_mock.get_table = AsyncMock(return_value=None)
-    client_mock.get_effective_permissions = AsyncMock(return_value=[])
-    app.state.uc_client = client_mock
+async def test_profile_404_when_table_missing(
+    admin_client: httpx.AsyncClient, uc_client_stub: MagicMock
+) -> None:
+    uc_client_stub.get_table = AsyncMock(return_value=None)
+    uc_client_stub.get_effective_permissions = AsyncMock(return_value=[])
     res = await admin_client.post("/api/tables/no.such.table/profile")
     assert res.status_code == 404
