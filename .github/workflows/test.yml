@@ -110,36 +110,24 @@ jobs:
         # excluded by pyproject's addopts).  The --cov-fail-under
         # threshold is set to 55% — three points below the
         # 2026-04-26 baseline (60%) to absorb noise without inviting
-        # silent regressions.  Twelve tests are deselected below;
-        # they were already failing on main when this gate was
-        # introduced and need separate investigation (full list in
-        # docs/internal/quality_final.md).  Once a deselected test is fixed,
-        # delete its line — the gate must regress visibly if a
-        # previously-green test starts failing.
-        # Phase 31.4 — ``-n auto`` parallelises across the runner's
-        # vCPUs (free-tier Linux runners report 4); xdist is already
-        # in the dev dependency group and Phase 31.2's session-scope
-        # schema fixture is per-worker, so workers don't share DB
-        # state.
+        # silent regressions.  The deselect list that used to live
+        # here is retired: every entry was either fixed in-place or
+        # deleted alongside its removed feature, so the gate now runs
+        # the suite unfiltered.  If a test must ever be parked again,
+        # add a --deselect line with a comment naming the owner and
+        # delete it the moment the test is fixed — the gate must
+        # regress visibly if a previously-green test starts failing.
+        # ``-n auto`` parallelises across the runner's vCPUs
+        # (free-tier Linux runners report 4); xdist is already in the
+        # dev dependency group and the session-scope schema fixture
+        # is per-worker, so workers don't share DB state.
         run: |
           uv run pytest -q \
             -n auto \
             --cov=pointlessql \
             --cov-report=term \
             --cov-report=xml \
-            --cov-fail-under=55 \
-            --deselect tests/test_api_notebook_workspace.py::test_upload_happy_path \
-            --deselect tests/test_api_notebook_workspace.py::test_upload_rejects_non_ipynb_extension \
-            --deselect tests/test_api_notebook_workspace.py::test_upload_rejects_invalid_json \
-            --deselect tests/test_api_notebook_workspace.py::test_upload_rejects_traversal \
-            --deselect tests/test_api_notebook_workspace.py::test_upload_rejects_existing_without_overwrite \
-            --deselect tests/test_api_notebook_workspace.py::test_upload_overwrite_replaces_existing \
-            --deselect tests/test_api_notebook_workspace.py::test_upload_non_admin_forbidden \
-            --deselect tests/test_scheduler_papermill.py::test_executor_writes_output_and_forwards_principal \
-            --deselect tests/test_scheduler_papermill.py::test_render_route_serves_nbconvert_html \
-            --deselect tests/test_scheduler_papermill.py::test_download_ipynb_serves_raw_file \
-            --deselect tests/test_scheduler_papermill.py::test_download_html_triggers_render \
-            --deselect tests/test_table_stats.py::test_profile_enforces_select
+            --cov-fail-under=55
       - name: Upload coverage XML
         if: always()
         uses: actions/upload-artifact@v4
@@ -244,29 +232,16 @@ jobs:
               -c "CREATE DATABASE pointlessql_${worker};"
           done
       - name: Pytest against Postgres
-        # Same deselects as the SQLite lane so we don't introduce a
-        # silent regression — tests that were skipped on SQLite stay
-        # skipped here.  Coverage reporting is dropped (the SQLite lane
-        # already publishes the artifact) to keep the PG run fast.
-        # Sprint H.6 — Phase-31.4's single-worker carve-out lifted.
+        # Runs unfiltered, mirroring the SQLite lane (whose deselect
+        # list is retired — see the comment there).  Coverage
+        # reporting is dropped (the SQLite lane already publishes the
+        # artifact) to keep the PG run fast.
         # Per-worker DBs (above) plus the ``PYTEST_XDIST_WORKER``
         # branch in ``tests/conftest.py`` keep TRUNCATEs isolated.
         # ``--dist loadfile`` keeps tests in the same file on the
         # same worker so module-scope fixtures don't get split.
         run: |
-          uv run pytest -q -n 4 --dist loadfile \
-            --deselect tests/test_api_notebook_workspace.py::test_upload_happy_path \
-            --deselect tests/test_api_notebook_workspace.py::test_upload_rejects_non_ipynb_extension \
-            --deselect tests/test_api_notebook_workspace.py::test_upload_rejects_invalid_json \
-            --deselect tests/test_api_notebook_workspace.py::test_upload_rejects_traversal \
-            --deselect tests/test_api_notebook_workspace.py::test_upload_rejects_existing_without_overwrite \
-            --deselect tests/test_api_notebook_workspace.py::test_upload_overwrite_replaces_existing \
-            --deselect tests/test_api_notebook_workspace.py::test_upload_non_admin_forbidden \
-            --deselect tests/test_scheduler_papermill.py::test_executor_writes_output_and_forwards_principal \
-            --deselect tests/test_scheduler_papermill.py::test_render_route_serves_nbconvert_html \
-            --deselect tests/test_scheduler_papermill.py::test_download_ipynb_serves_raw_file \
-            --deselect tests/test_scheduler_papermill.py::test_download_html_triggers_render \
-            --deselect tests/test_table_stats.py::test_profile_enforces_select
+          uv run pytest -q -n 4 --dist loadfile
 
   security-audit:
     name: dependency CVE scan (pip-audit)
