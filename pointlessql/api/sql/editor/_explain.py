@@ -49,8 +49,8 @@ async def api_sql_explain(request: Request, sql: str = "") -> dict[str, Any]:
     referenced table.
 
     Args:
-        request: Incoming FastAPI request.  Reads
-            ``request.state.user`` (auth middleware) and
+        request: Incoming FastAPI request.  Reads the auth
+            middleware's resolved user and
             ``request.app.state.settings``.
         sql: The SELECT statement to analyse (passed as a query-
             string parameter for convenient ``curl`` usage).

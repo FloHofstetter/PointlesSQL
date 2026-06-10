@@ -28,6 +28,7 @@ from fastapi.responses import JSONResponse
 
 from pointlessql.api.dependencies import (
     PaginationParams,
+    get_optional_user,
     pagination,
     require_user,
 )
@@ -128,11 +129,8 @@ async def api_create_revision(
         request.app.state.session_factory, relative
     )
     factory = request.app.state.session_factory
-    actor_email = None
-    try:
-        actor_email = request.state.user.get("email") if request.state.user else None
-    except AttributeError:
-        actor_email = None
+    actor = get_optional_user(request)
+    actor_email = actor.get("email") if actor else None
     with factory() as session:
         existing_uuids = {
             r["revision_uuid"]
@@ -218,12 +216,12 @@ async def api_set_revision_signature(
         ValidationError: On bad input shape or unknown revision.
     """
     require_user(request)
-    user = getattr(request.state, "user", None) or {}
-    if not bool(user.get("is_admin")):
+    user = get_optional_user(request)
+    if not (user is not None and bool(user.get("is_admin"))):
         from pointlessql.exceptions import AuthorizationError
 
         raise AuthorizationError(
-            principal=str(user.get("email") or "(anonymous)"),
+            principal=str(user.get("email") or "(anonymous)") if user else "(anonymous)",
             privilege="sign",
             securable_type="notebook_revision",
             full_name=revision_uuid,

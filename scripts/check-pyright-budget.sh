@@ -38,7 +38,10 @@
 # backbones landed new PyArrow + pandas + subprocess seams (54 of the
 # 67 sit in quality/_expectations.py alone); driving them back down
 # needs the .pyi stub-authoring pass described above.
-BUDGET=1029
+# 1029 -> 1013: routing raw ``request.state.user`` reads through the
+# typed principal accessors removed sixteen partially-unknown dict
+# seams in the route layer.
+BUDGET=1013
 
 # Run pyright and capture the trailing summary line, e.g.
 #   "0 errors, 522 warnings, 0 informations"

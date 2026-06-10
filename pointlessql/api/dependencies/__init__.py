@@ -19,6 +19,7 @@ from ._pagination import PaginationParams, pagination
 from ._principal import (
     client_ip,
     effective_principal,
+    get_optional_user,
     get_uc_client,
     get_user,
 )
@@ -56,6 +57,7 @@ __all__ = [
     "current_workspace_id",
     "effective_principal",
     "get_authoring_product",
+    "get_optional_user",
     "get_templates",
     "get_uc_client",
     "get_user",

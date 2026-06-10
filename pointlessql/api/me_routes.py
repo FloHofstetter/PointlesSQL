@@ -188,7 +188,7 @@ async def get_me_settings(request: Request) -> dict[str, Any]:
     with factory() as session:
         row = session.get(User, user["id"])
     if row is None:
-        # Middleware should have populated request.state.user already,
+        # Middleware should have resolved the request user already,
         # but if the DB row was deleted out from under the session we
         # surface that as 404 rather than a 500.
         raise ResourceNotFoundError("user not found.")

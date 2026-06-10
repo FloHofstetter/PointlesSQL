@@ -20,7 +20,7 @@ from typing import Any
 from fastapi import APIRouter, Body, Request
 from fastapi.responses import JSONResponse
 
-from pointlessql.api.dependencies import require_user
+from pointlessql.api.dependencies import get_optional_user, require_user
 from pointlessql.exceptions import ResourceNotFoundError, ValidationError
 from pointlessql.models import EditorChatSession
 from pointlessql.services.notebook import (
@@ -132,11 +132,8 @@ async def api_get_sequence(request: Request, proposal_id: str) -> JSONResponse:
 async def api_accept_sequence(request: Request, proposal_id: str) -> JSONResponse:
     """Flip a sequence proposal to ``accepted``."""
     require_user(request)
-    actor_id: int | None = None
-    try:
-        actor_id = request.state.user.get("id") if request.state.user else None
-    except AttributeError:
-        actor_id = None
+    actor = get_optional_user(request)
+    actor_id: int | None = actor.get("id") if actor else None
     factory = request.app.state.session_factory
     with factory() as session:
         cell_sequence_proposals_service.accept_sequence(

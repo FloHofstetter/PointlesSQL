@@ -10,6 +10,7 @@ from fastapi.responses import JSONResponse
 
 from pointlessql.api.dependencies import (
     PaginationParams,
+    get_optional_user,
     pagination,
     require_user,
 )
@@ -62,7 +63,7 @@ async def api_bind_branch(request: Request, body: dict[str, Any] = Body(...)) ->
     Body keys:
         path: Relative notebook path.
         branch_name: Delta-branch name (validated).
-        base_revision_uuid: Optional Phase-97 revision uuid.
+        base_revision_uuid: Optional notebook-revision uuid.
     """
     require_user(request)
     if not isinstance(body, dict):
@@ -75,11 +76,8 @@ async def api_bind_branch(request: Request, body: dict[str, Any] = Body(...)) ->
     if base_rev is not None and not isinstance(base_rev, str):
         raise ValidationError("body.base_revision_uuid must be a string or null")
     notebook_id = _resolve_notebook_uuid(request, path)
-    actor_id: int | None = None
-    try:
-        actor_id = request.state.user.get("id") if request.state.user else None
-    except AttributeError:
-        actor_id = None
+    actor = get_optional_user(request)
+    actor_id: int | None = actor.get("id") if actor else None
     factory = request.app.state.session_factory
     with factory() as session:
         row = notebook_branch_bindings_service.bind_branch(
@@ -108,15 +106,9 @@ async def api_promote_branch(request: Request, body: dict[str, Any] = Body(...))
     if not isinstance(path, str):
         raise ValidationError("body.path must be a string")
     notebook_id = _resolve_notebook_uuid(request, path)
-    actor_id: int | None = None
-    actor_email: str | None = None
-    try:
-        if request.state.user:
-            actor_id = request.state.user.get("id")
-            actor_email = request.state.user.get("email")
-    except AttributeError:
-        actor_id = None
-        actor_email = None
+    actor = get_optional_user(request)
+    actor_id: int | None = actor.get("id") if actor else None
+    actor_email: str | None = actor.get("email") if actor else None
     factory = request.app.state.session_factory
     with factory() as session:
         row = notebook_branch_bindings_service.promote_binding(

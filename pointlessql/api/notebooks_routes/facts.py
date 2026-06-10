@@ -29,6 +29,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from pointlessql.api.dependencies import (
     PaginationParams,
     current_workspace_id,
+    get_optional_user,
     pagination,
     require_user,
 )
@@ -79,8 +80,8 @@ async def api_pin_fact(
     """
     require_user(request)
     workspace_id = current_workspace_id(request)
-    user = getattr(request.state, "user", None) or {}
-    user_id_raw = user.get("id") if isinstance(user, dict) else None
+    user = get_optional_user(request)
+    user_id_raw = user.get("id") if user is not None else None
     pinned_by_user_id = int(user_id_raw) if user_id_raw is not None else None
 
     revision_uuid = body.get("revision_uuid") if isinstance(body, dict) else None

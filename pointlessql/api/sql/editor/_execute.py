@@ -62,8 +62,8 @@ async def api_sql_execute(request: Request, body: dict[str, Any] = Body(...)) ->
     ``storage_location``).
 
     Args:
-        request: The incoming FastAPI request.  Needs ``request.state.user``
-            (auth middleware) and ``request.app.state.settings``.
+        request: The incoming FastAPI request.  Needs the auth
+            middleware's resolved user and ``request.app.state.settings``.
         body: JSON body with a single ``sql`` key.
 
     Returns:

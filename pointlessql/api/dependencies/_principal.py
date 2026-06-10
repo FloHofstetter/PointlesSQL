@@ -75,7 +75,7 @@ def get_user(request: Request) -> UserInfo:
         The :class:`UserInfo` set by :func:`auth_middleware`, or a
         zero-id placeholder when the request is anonymous.
     """
-    user: UserInfo | None = getattr(request.state, "user", None)
+    user = get_optional_user(request)
     if user is None:
         return UserInfo(
             id=0,
@@ -85,6 +85,25 @@ def get_user(request: Request) -> UserInfo:
             is_supervisor=False,
             is_auditor=False,
         )
+    return user
+
+
+def get_optional_user(request: Request) -> UserInfo | None:
+    """Return the current user, or ``None`` for anonymous requests.
+
+    The ``None``-preserving sibling of :func:`get_user` for call sites
+    that branch on anonymity or feed nullable ``actor_id`` /
+    ``actor_email`` columns — :func:`get_user`'s zero-id placeholder
+    would silently turn "anonymous" into "user 0" there.
+
+    Args:
+        request: Incoming FastAPI request.
+
+    Returns:
+        The :class:`UserInfo` set by the auth middleware, or ``None``
+        when the request carries no authenticated user.
+    """
+    user: UserInfo | None = getattr(request.state, "user", None)
     return user
 
 

@@ -11,7 +11,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import select
 
 from pointlessql.api import notebook_coedit_ws
-from pointlessql.api.dependencies import current_workspace_id, require_user
+from pointlessql.api.dependencies import current_workspace_id, get_optional_user, require_user
 from pointlessql.api.notebooks_routes._shared import get_or_create_notebook_uuid
 from pointlessql.config import Settings
 from pointlessql.exceptions import AuthorizationError, ValidationError
@@ -36,17 +36,17 @@ def _enforce_notebook_role(request: Request, *, notebook_id: str, required: str)
     matches the existing test-suite expectations).
 
     Args:
-        request: Incoming request; ``request.state.user`` must be set
-            by the auth middleware.
+        request: Incoming request; the auth middleware must have
+            resolved its user.
         notebook_id: Stable notebook UUID.
         required: One of ``view`` / ``run`` / ``edit``.
 
     Raises:
         AuthorizationError: When the user lacks the role.
     """
-    user = getattr(request.state, "user", None) or {}
-    user_id = int(user.get("id") or 0)
-    is_admin = bool(user.get("is_admin"))
+    user = get_optional_user(request)
+    user_id = int(user.get("id") or 0) if user is not None else 0
+    is_admin = bool(user.get("is_admin")) if user is not None else False
     factory = request.app.state.session_factory
     with factory() as session:
         allowed = notebook_permissions_service.actor_has_role(
@@ -58,7 +58,7 @@ def _enforce_notebook_role(request: Request, *, notebook_id: str, required: str)
         )
     if not allowed:
         raise AuthorizationError(
-            principal=str(user.get("email") or "(anonymous)"),
+            principal=str(user.get("email") or "(anonymous)") if user else "(anonymous)",
             privilege=required,
             securable_type="notebook",
             full_name=notebook_id,
@@ -293,11 +293,8 @@ async def api_save_notebook(
         # cell so the editor's cell-header chip can render "minted by
         # X • last edited by Y".  The reconciler returned a UUID per
         # input cell; pair them with the saver's identity here.
-        actor_email = ""
-        try:
-            actor_email = str(request.state.user.get("email") or "") if request.state.user else ""
-        except AttributeError:
-            actor_email = ""
+        actor = get_optional_user(request)
+        actor_email = str(actor.get("email") or "") if actor else ""
         if actor_email:
             for res in results:
                 try:

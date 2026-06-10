@@ -27,7 +27,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, Response
 from fastapi.templating import Jinja2Templates
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from pointlessql.api.dependencies import is_htmx_partial, wants_json
+from pointlessql.api.dependencies import get_optional_user, is_htmx_partial, wants_json
 from pointlessql.exceptions import PointlessSQLError
 from pointlessql.types import ErrorCode
 
@@ -265,7 +265,7 @@ def _render_error_page(
         "error_code": error_code,
         "message": message,
         "request_id": request_id,
-        "current_user": getattr(request.state, "user", None),
+        "current_user": get_optional_user(request),
         "hide_sidebar": False,
     }
     if extra:

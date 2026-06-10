@@ -10,6 +10,7 @@ from fastapi.responses import JSONResponse
 
 from pointlessql.api.dependencies import (
     PaginationParams,
+    get_optional_user,
     pagination,
     require_user,
 )
@@ -53,11 +54,8 @@ async def api_start_replay(request: Request, body: dict[str, Any] = Body(...)) -
     if branch_name is not None and not isinstance(branch_name, str):
         raise ValidationError("body.branch_name must be a string or null")
     notebook_id = _resolve_notebook_uuid(request, path)
-    actor_id: int | None = None
-    try:
-        actor_id = request.state.user.get("id") if request.state.user else None
-    except AttributeError:
-        actor_id = None
+    actor = get_optional_user(request)
+    actor_id: int | None = actor.get("id") if actor else None
     factory = request.app.state.session_factory
     with factory() as session:
         row = notebook_replay_service.start_replay(

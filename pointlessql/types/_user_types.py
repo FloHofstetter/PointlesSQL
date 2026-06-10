@@ -9,7 +9,7 @@ class UserInfo(TypedDict):
     """Authenticated user metadata flowing through middleware and routes.
 
     Built by :func:`pointlessql.services.auth.get_current_user` and
-    attached to ``request.state.user`` by the auth middleware.
+    attached to the request state by the auth middleware.
 
     ``is_supervisor`` and ``is_auditor`` let OIDC group → scope
     mappings flow into ``require_supervisor`` / ``require_auditor``

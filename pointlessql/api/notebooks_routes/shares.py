@@ -24,7 +24,7 @@ from fastapi import APIRouter, Body, Query, Request
 from fastapi.responses import JSONResponse, Response
 from fastapi.templating import Jinja2Templates
 
-from pointlessql.api.dependencies import require_user
+from pointlessql.api.dependencies import get_optional_user, require_user
 from pointlessql.api.notebooks_routes._shared import get_or_create_notebook_uuid
 from pointlessql.config import Settings
 from pointlessql.exceptions import ValidationError
@@ -92,11 +92,8 @@ async def api_create_share(request: Request, body: dict[str, Any] = Body(...)) -
     absolute = notebook_doc_service.resolve_py_notebook_path(notebooks_dir, path, must_exist=True)
     relative = str(absolute.relative_to(notebooks_dir))
     notebook_id = get_or_create_notebook_uuid(request, relative)
-    actor_id: int | None = None
-    try:
-        actor_id = request.state.user.get("id") if request.state.user else None
-    except AttributeError:
-        actor_id = None
+    actor = get_optional_user(request)
+    actor_id: int | None = actor.get("id") if actor else None
 
     revision_uuid: str | None = None
     factory = request.app.state.session_factory

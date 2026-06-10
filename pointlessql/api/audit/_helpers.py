@@ -27,7 +27,7 @@ from typing import Any
 
 from fastapi import Request
 
-from pointlessql.api.dependencies import get_user
+from pointlessql.api.dependencies import get_optional_user, get_user
 from pointlessql.exceptions import PermissionDeniedError, ValidationError
 from pointlessql.services.query_history import record_query
 from pointlessql.types import QueryStatus, ReadKind
@@ -71,7 +71,7 @@ def resolve_workspace_lens(request: Request, override: str | None) -> tuple[int 
     if not cleaned:
         return current_id, "current"
 
-    user = getattr(request.state, "user", None)
+    user = get_optional_user(request)
     is_admin = bool(user and user.get("is_admin"))
 
     if cleaned.lower() == "all":

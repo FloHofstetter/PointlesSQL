@@ -29,7 +29,7 @@ from fastapi.responses import HTMLResponse
 from sqlalchemy import select
 
 from pointlessql.api._audit_helpers import audit
-from pointlessql.api.dependencies import get_templates, require_admin
+from pointlessql.api.dependencies import get_optional_user, get_templates, require_admin
 from pointlessql.exceptions import CatalogNotFoundError, ValidationError
 from pointlessql.models import (
     WORKSPACE_ROLES,
@@ -138,7 +138,7 @@ async def api_admin_create_workspace(
     if not isinstance(name_raw, str) or not name_raw.strip():
         raise ValidationError("name must be a non-empty string")
     description = body.get("description")
-    user = getattr(request.state, "user", None)
+    user = get_optional_user(request)
     creator_id: int | None = None
     if user and isinstance(user.get("id"), int) and user["id"] > 0:
         creator_id = int(user["id"])

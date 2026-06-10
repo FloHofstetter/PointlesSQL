@@ -9,7 +9,7 @@ import httpx
 from fastapi import APIRouter, Form, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 
-from pointlessql.api.dependencies import get_templates
+from pointlessql.api.dependencies import get_optional_user, get_templates
 from pointlessql.api.middleware import WORKSPACE_COOKIE_NAME
 from pointlessql.config import Settings
 from pointlessql.services import auth, csrf
@@ -177,7 +177,7 @@ async def logout(request: Request):
 @router.get("/me")
 async def current_user(request: Request):
     """Return the current authenticated user as JSON."""
-    user = getattr(request.state, "user", None)
+    user = get_optional_user(request)
     if user is None:
         return JSONResponse({"error": "Not authenticated"}, status_code=401)
     return JSONResponse(user)
@@ -203,7 +203,7 @@ async def switch_workspace(request: Request, slug: str = Form()):
         new workspace context, or a 401/403/404 ``JSONResponse`` on
         auth failures.
     """
-    user = getattr(request.state, "user", None)
+    user = get_optional_user(request)
     if user is None:
         return JSONResponse({"error": "Not authenticated"}, status_code=401)
 

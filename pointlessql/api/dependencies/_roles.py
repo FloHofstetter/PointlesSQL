@@ -28,7 +28,7 @@ def require_admin(request: Request) -> None:
         request: Incoming FastAPI request.
 
     Raises:
-        AuthorizationError: When ``request.state.user`` is missing
+        AuthorizationError: When the middleware-resolved user is missing
             or its ``is_admin`` flag is false.
     """
     user = get_user(request)
@@ -186,7 +186,7 @@ def require_user(request: Request) -> None:
         request: Incoming FastAPI request.
 
     Raises:
-        AuthorizationError: When ``request.state.user`` is the
+        AuthorizationError: When the middleware-resolved user is the
             zero-id placeholder returned by :func:`get_user` for
             anonymous requests.
     """

@@ -8,7 +8,7 @@ from typing import Any
 from fastapi import APIRouter, Body, Query, Request
 from fastapi.responses import JSONResponse
 
-from pointlessql.api.dependencies import require_user
+from pointlessql.api.dependencies import get_optional_user, require_user
 from pointlessql.config import Settings
 from pointlessql.exceptions import BadRequestError, ValidationError
 from pointlessql.services.notebook import _workspace as notebook_workspace_service
@@ -48,10 +48,11 @@ async def api_create_notebook(
     notebooks_dir = settings.jupyter.notebooks_dir.resolve()
     resolved = notebook_workspace_service.create_empty_notebook(notebooks_dir, raw_path)
     relative = str(resolved.relative_to(notebooks_dir))
+    actor = get_optional_user(request)
     logger.info(
         "created notebook %s (%s)",
         relative,
-        request.state.user.get("email") if hasattr(request.state, "user") else "?",
+        actor.get("email") if actor else "?",
     )
     return JSONResponse({"path": relative}, status_code=201)
 

@@ -1,6 +1,6 @@
 """Per-request context injection for the shared TemplateResponse wrapper.
 
-* ``current_user`` from ``request.state.user``.
+* ``current_user`` from the auth middleware's resolved user.
 * ``current_workspace`` / ``available_workspaces`` /
   ``current_workspace_primary_catalog`` from a single per-request DB
   hit, with try/except so a transient DB failure during template
@@ -22,6 +22,8 @@ from fastapi import Request
 from fastapi.responses import Response
 from fastapi.templating import Jinja2Templates
 
+from pointlessql.api.dependencies import get_optional_user
+
 logger = logging.getLogger(__name__)
 
 
@@ -38,7 +40,7 @@ def _resolve_workspace_context(request: Request) -> dict[str, Any]:
     """
     factory = getattr(request.app.state, "session_factory", None)
     workspace_id = getattr(request.state, "workspace_id", None)
-    user = getattr(request.state, "user", None)
+    user = get_optional_user(request)
     if factory is None or workspace_id is None:
         return {
             "current_workspace": None,
@@ -106,7 +108,7 @@ def _resolve_nav_badges(request: Request) -> dict[str, int]:
         are filtered template-side via ``and value > 0``.
     """
     factory = getattr(request.app.state, "session_factory", None)
-    user = getattr(request.state, "user", None)
+    user = get_optional_user(request)
     workspace_id = int(getattr(request.state, "workspace_id", 0) or 0)
     user_id = int((user or {}).get("id") or 0)
     from pointlessql.services.nav_badges import compute_nav_badges
@@ -138,7 +140,7 @@ def install_template_wrapper(templates: Jinja2Templates) -> None:
         # Starlette 0.37+ signature: TemplateResponse(request, name, context={}, ...)
         workspace_ctx = _resolve_workspace_context(request)
         nav_badges = _resolve_nav_badges(request)
-        user = getattr(request.state, "user", None)
+        user = get_optional_user(request)
         if "context" in kwargs:
             ctx = kwargs["context"]
             ctx.setdefault("current_user", user)
