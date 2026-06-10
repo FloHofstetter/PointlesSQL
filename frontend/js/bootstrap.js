@@ -31,6 +31,10 @@ window.pqlApi = pqlApi;
 // document-level click listener that handles every ``.pql-copy-btn``
 // rendered by ``_macros/copy_button.html``.
 import './copy_button.js';
+// Per-page entry loader — activates ``data-pql-entry`` modules on
+// full loads, hx-boost swaps, and history restores.  Imported here so
+// it exists before Alpine starts and survives boosted navigation.
+import './page_entry_loader.js';
 
 // base.html inline-script exodus — five side-effect modules that
 // install per-page wiring (htmx bridge, theme toggle, panel toggles,
@@ -210,19 +214,7 @@ import { notebookDiscussion, notebookReadme } from './notebook/discussion.js';
 import { apiKeyGrants, apiKeyUsageChart } from './pages/admin_api_key_detail.js';
 import { apiKeyCreate, apiKeyCreatedModal, apiKeyRow } from './pages/admin_api_keys.js';
 import { auditSinkCreate, auditSinkRow } from './pages/admin_audit_sinks.js';
-import { adminDataProductApply } from './pages/admin_data_product_apply.js';
-import { adminDomains, domainArchiveButton, domainMembers } from './pages/admin_domains.js';
-import { adminEntityDiscovery } from './pages/admin_entity_discovery.js';
-import { adminGlossary } from './pages/admin_glossary.js';
-import { adminGovernance } from './pages/admin_governance.js';
-import { adminMeshDashboard } from './pages/admin_mesh_dashboard.js';
-import { adminMeshEntities } from './pages/admin_mesh_entities.js';
-import { adminPolicyModules } from './pages/admin_policy_modules.js';
 import { reviewDestCreate, reviewDestRow } from './pages/admin_review_destinations.js';
-import { adminSourcesList } from './pages/admin_sources.js';
-import { adminWorkspaces, archiveButton } from './pages/admin_workspaces.js';
-import { agentHermes } from './pages/agent_hermes.js';
-import { agentProfile } from './pages/agent_profile.js';
 import { alertDetail } from './pages/alert_detail.js';
 // Page-template factories.  Each was previously an inline
 // ``<script>`` IIFE inside its pages/*.html file; lifting them here
@@ -402,11 +394,6 @@ window.lineageExplorerForm = lineageExplorerForm;
 window.issueDetail = issueDetail;
 window.workspaceLanding = workspaceLanding;
 window.footerBar = footerBar;
-window.adminWorkspaces = adminWorkspaces;
-window.archiveButton = archiveButton;
-window.adminDomains = adminDomains;
-window.domainArchiveButton = domainArchiveButton;
-window.domainMembers = domainMembers;
 window.domainsBrowse = domainsBrowse;
 window.domainDetail = domainDetail;
 window.dataProductDomainPanel = dataProductDomainPanel;
@@ -429,13 +416,6 @@ window.dataProductEventPortPanel = dataProductEventPortPanel;
 window.meshGraph = meshGraph;
 window.meshHealth = meshHealth;
 window.meshEntities = meshEntities;
-window.adminMeshEntities = adminMeshEntities;
-window.adminGlossary = adminGlossary;
-window.adminGovernance = adminGovernance;
-window.adminPolicyModules = adminPolicyModules;
-window.adminMeshDashboard = adminMeshDashboard;
-window.adminEntityDiscovery = adminEntityDiscovery;
-window.adminDataProductApply = adminDataProductApply;
 window.glossaryBrowse = glossaryBrowse;
 window.glossaryDetail = glossaryDetail;
 window.savedViewDetail = savedViewDetail;
@@ -448,12 +428,9 @@ window.ingestStatusBand = ingestStatusBand;
 window.dpReleasesCard = dpReleasesCard;
 window.notificationBell = notificationBell;
 window.notificationSettings = notificationSettings;
-window.adminSourcesList = adminSourcesList;
 window.meSettingsForm = meSettingsForm;
 window.dataProductsFollowed = dataProductsFollowed;
 window.dataProductsTrending = dataProductsTrending;
-window.agentProfile = agentProfile;
-window.agentHermes = agentHermes;
 window.dashboardTree = dashboardTree;
 window.chatPanel = chatPanel;
 window.notebookChatPanel = notebookChatPanel;

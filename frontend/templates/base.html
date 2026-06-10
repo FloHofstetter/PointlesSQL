@@ -345,11 +345,22 @@
             </div>
         </div>
         {% endif %}
+        {#- Per-page entry module.  Pages declare
+            ``{% block page_entry %}foo.js{% endblock %}`` to have
+            frontend/js/entries/foo.js dynamically imported (it
+            registers that page's Alpine factories on window).  The
+            server renders ``x-ignore`` so Alpine skips the subtree
+            until page_entry_loader.js has loaded the module — then it
+            lifts the attribute and initializes.  Works on full loads,
+            hx-boost swaps, and history restores alike. -#}
+        {% set _page_entry_raw %}{% block page_entry %}{% endblock %}{% endset %}
+        {% set _page_entry = _page_entry_raw|trim %}
         <main class="pql-content {% block content_class %}{% endblock %}"
               id="main-content"
               data-active-section="{{ active_section }}"
               data-active-hub="{{ active_hub }}"
-              data-active-page="{{ active_page if active_page is defined else '' }}">
+              data-active-page="{{ active_page if active_page is defined else '' }}"
+              {% if _page_entry %}data-pql-entry="{{ _page_entry }}?v={{ asset_version }}" x-ignore{% endif %}>
             {# the panel-toggle (data-pql-panel-toggle)
                and rail-toggle (data-pql-rail-toggle) chevron buttons
                moved into the topbar; the document-level click handler

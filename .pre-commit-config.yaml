@@ -101,6 +101,12 @@ repos:
         language: system
         pass_filenames: false
         files: ^(frontend/templates/(base.*\.html|_layouts/.*\.html)|frontend/js/theme_boot\.js)$
+      - id: frontend-bootstrap-budget
+        name: bootstrap.js window-global budget
+        entry: bash scripts/check-frontend-bootstrap-budget.sh
+        language: system
+        pass_filenames: false
+        files: ^frontend/js/(bootstrap\.js|entries/.*)$
       - id: sync-bridge
         name: api layer routes blocking work through run_sync
         entry: bash scripts/check-sync-bridge.sh

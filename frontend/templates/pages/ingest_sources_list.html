@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% block title %}Ingest sources · PointlesSQL{% endblock %}
+{% block page_entry %}ingest_sources_list.js{% endblock %}
 
 {% set breadcrumbs = [
     {"label": "Home", "href": "/"},
@@ -96,20 +97,4 @@
     </template>
 </div>
 
-<script>
-function ingestSourcesList() {
-    return {
-        loading: true,
-        sources: [],
-        async load() {
-            this.loading = true;
-            const res = await window.pqlApi.fetch('/api/ingest/sources');
-            if (res.ok && res.data) {
-                this.sources = res.data.sources || [];
-            }
-            this.loading = false;
-        }
-    };
-}
-</script>
 {% endblock %}

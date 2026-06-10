@@ -13,11 +13,26 @@ For layout discipline (where files belong, when to split) see
 
 ## How a new factory module lands here
 
-1. Write the file as `export function myFactory(args) { ... }` (no
-   IIFE wrapping, no top-level `window.X = ...`).
+**Page-scoped factory (the default for anything one page uses):**
+
+1. Write the file as `export function myFactory(args) { ... }` under
+   `js/pages/` (no IIFE wrapping, no top-level `window.X = ...`).
+2. Create `js/entries/<page>.js` that imports it and attaches
+   `window.myFactory = myFactory;`.
+3. Declare `{% block page_entry %}<page>.js{% endblock %}` in the page
+   template.  `page_entry_loader.js` dynamically imports the entry and
+   activates the (server-rendered `x-ignore`) `<main>` subtree on full
+   loads, hx-boost swaps, and history restores alike.  The template's
+   `x-data="myFactory({...})"` string never changes.
+
+**Cross-page chrome (sidebars, inline editors, time formatters, …):**
+
+1. Write the export as above.
 2. Add an import to `bootstrap.js` and the matching
-   `window.myFactory = myFactory;` line.
-3. The template's `x-data="myFactory({...})"` works as before.
+   `window.myFactory = myFactory;` line — and expect
+   `scripts/check-frontend-bootstrap-budget.sh` to push back: the
+   window-global count is a frozen ratchet, so only genuinely
+   cross-page factories belong there (bump the budget with a note).
 
 ## Naming conventions
 

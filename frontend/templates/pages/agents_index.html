@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% block title %}Agents · PointlesSQL{% endblock %}
+{% block page_entry %}agents_index.js{% endblock %}
 
 {% set breadcrumbs = [
     {"label": "Home", "href": "/"},
@@ -41,22 +42,4 @@
     </ul>
 </div>
 
-<script>
-window.agentsIndex = function (ctx) {
-    return {
-        isAdmin: !!ctx.is_admin,
-        loaded: false,
-        agents: [],
-        async init() { await this.load(); },
-        async load() {
-            try {
-                const res = await fetch('/api/agents');
-                if (!res.ok) throw new Error('HTTP ' + res.status);
-                this.agents = (await res.json()).agents || [];
-            } catch (e) { console.error('agents load failed', e); }
-            finally { this.loaded = true; }
-        },
-    };
-};
-</script>
 {% endblock %}

@@ -110,6 +110,11 @@ jobs:
         # layout so data-bs-theme is set before CSS parses (no theme
         # flash on first paint).
         run: bash scripts/check-theme-boot-order.sh
+      - name: Frontend — bootstrap window-global budget
+        # Ratchet on bootstrap.js window registrations: new page
+        # factories land as frontend/js/entries/ modules behind
+        # {% block page_entry %}, not as another global.
+        run: bash scripts/check-frontend-bootstrap-budget.sh
       - name: Frontend — Form-label A11y drift guard
         # W8 drift-guard.  Counts <input>/<select>/<textarea> in
         # frontend/templates/ that lack any of: aria-label,

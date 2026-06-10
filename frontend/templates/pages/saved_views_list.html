@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% block title %}Saved views · PointlesSQL{% endblock %}
+{% block page_entry %}saved_views_list.js{% endblock %}
 
 {% set breadcrumbs = [
     {"label": "Home", "href": "/"},
@@ -106,20 +107,4 @@
     </template>
 </div>
 
-<script>
-function savedViewsList() {
-    return {
-        loading: true,
-        views: [],
-        async load() {
-            this.loading = true;
-            const res = await window.pqlApi.fetch('/api/views');
-            if (res.ok && res.data) {
-                this.views = res.data.views || [];
-            }
-            this.loading = false;
-        }
-    };
-}
-</script>
 {% endblock %}
