@@ -14,6 +14,8 @@ actually observes.
 
 from __future__ import annotations
 
+import importlib.util
+
 import pytest
 
 from pointlessql.pql.embedders import EmbedderUnavailableError
@@ -112,6 +114,12 @@ def test_st_init_loads_the_requested_model(seeded_st) -> None:
     assert emb.dim == 3
 
 
+@pytest.mark.skipif(
+    importlib.util.find_spec("sentence_transformers") is not None,
+    reason="exercises the lazy-import FAILURE path; with the vector extra "
+    "installed the import succeeds and the uncached name goes to the "
+    "real model loader instead",
+)
 def test_st_init_missing_model_raises_unavailable(seeded_st) -> None:
     # A model name not in the cache triggers the lazy import, which fails
     # because sentence-transformers isn't installed -> the documented
