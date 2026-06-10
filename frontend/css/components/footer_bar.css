@@ -29,8 +29,11 @@
         display: flex;
     }
     /* Reserve room at the bottom of main content so the fixed
-       footer doesn't eclipse the last line of text. */
-    body {
+       footer doesn't eclipse the last line of text. The chromeless
+       auth shell carries no footer bar, so it must not reserve the
+       space — otherwise the reserved strip overflows its single
+       viewport and adds a spurious scrollbar. */
+    body:not(.pql-chromeless) {
         padding-bottom: 28px;
     }
 }

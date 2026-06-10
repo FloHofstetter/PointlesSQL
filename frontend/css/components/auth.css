@@ -1,0 +1,212 @@
+/* ---------------------------------------------------------------
+ * Auth surfaces (login + register) — the "centered glass card on a
+ * static mesh gradient" treatment.
+ *
+ * Loaded only by ``_layouts/auth_chromeless.html`` (a dedicated
+ * <link>, not the global @import chain) so these decorative rules
+ * never ship on the authenticated app.  Everything is scoped under
+ * ``body.pql-chromeless`` and reuses the design tokens from base.css
+ * (accent, radius, elevation, spacing, motion).  No JavaScript: the
+ * whole effect is native CSS layered behind native Bootstrap form
+ * controls.  Theme-aware — blob and glass colours swap under
+ * ``[data-bs-theme="light"]``.  The mesh is static (no animation, no
+ * blur filter) so it costs nothing per frame and never adds scroll
+ * overflow.
+ * ------------------------------------------------------------- */
+
+body.pql-chromeless {
+ /* Mesh-gradient palette — dark-mode default. Brand green leads,
+    teal + indigo fill out the spectrum for depth. */
+ --auth-blob-1: rgba(118, 185, 0, 0.50); /* brand green */
+ --auth-blob-2: rgba(0, 190, 165, 0.42); /* teal        */
+ --auth-blob-3: rgba(86, 110, 255, 0.40); /* indigo      */
+ --auth-bg-base: #060a06;
+ --auth-glass-bg: rgba(18, 24, 18, 0.74);
+ --auth-glass-border: rgba(255, 255, 255, 0.12);
+ --auth-input-bg: rgba(255, 255, 255, 0.04);
+ --auth-glow: rgba(118, 185, 0, 0.35);
+
+ background: var(--auth-bg-base);
+ overflow-x: hidden;
+}
+
+:root[data-bs-theme="light"] body.pql-chromeless {
+ --auth-blob-1: rgba(118, 185, 0, 0.34);
+ --auth-blob-2: rgba(0, 190, 165, 0.24);
+ --auth-blob-3: rgba(120, 150, 255, 0.26);
+ --auth-bg-base: #eef3ea;
+ --auth-glass-bg: rgba(255, 255, 255, 0.86);
+ --auth-glass-border: rgba(0, 0, 0, 0.08);
+ --auth-input-bg: rgba(255, 255, 255, 0.70);
+ --auth-glow: rgba(118, 185, 0, 0.28);
+}
+
+/* ---------------------------------------------------------------
+ * Static mesh background.
+ *
+ * One decorative, aria-hidden layer fixed to the viewport behind the
+ * content. The soft "aurora" comes entirely from large, overlapping
+ * radial gradients that fade to transparent — no blur filter and no
+ * animation, so there is zero per-frame work. A blur filter on a layer
+ * this size forces a slow CPU raster path (and tanks frame rate even
+ * when paused), and an animated transform on a viewport-spanning fixed
+ * layer adds spurious scroll overflow; both are avoided here.
+ * ``inset: 0`` + ``overflow: hidden`` keep the layer exactly the
+ * viewport so it can never create a scrollbar.
+ * ------------------------------------------------------------- */
+.pql-auth-aurora {
+ position: fixed;
+ inset: 0;
+ z-index: 0;
+ pointer-events: none;
+ overflow: hidden;
+ background:
+  radial-gradient(58% 52% at 16% 20%, var(--auth-blob-1), transparent 72%),
+  radial-gradient(62% 56% at 86% 18%, var(--auth-blob-3), transparent 72%),
+  radial-gradient(68% 64% at 64% 92%, var(--auth-blob-2), transparent 74%),
+  radial-gradient(46% 46% at 48% 50%, var(--auth-blob-3), transparent 82%);
+}
+
+/* A second static layer of softer blobs adds depth at no cost — it is
+   painted once and never animated. */
+.pql-auth-aurora::after {
+ content: "";
+ position: absolute;
+ inset: 0;
+ background:
+  radial-gradient(40% 40% at 70% 55%, var(--auth-blob-1), transparent 68%),
+  radial-gradient(46% 46% at 22% 76%, var(--auth-blob-2), transparent 70%);
+ opacity: 0.85;
+}
+
+/* Lift the real content above the aurora layer. */
+.pql-chromeless__main {
+ position: relative;
+ z-index: 1;
+}
+
+/* ---------------------------------------------------------------
+ * Brand mark — glowing icon chip + gradient wordmark.
+ * ------------------------------------------------------------- */
+.pql-auth-brand {
+ gap: var(--pql-space-3) !important;
+}
+.pql-auth-brand i.bi {
+ display: inline-flex;
+ align-items: center;
+ justify-content: center;
+ width: 2.5rem;
+ height: 2.5rem;
+ border-radius: var(--pql-radius-md);
+ color: var(--pql-color-accent-fg);
+ background: linear-gradient(135deg, #8fd000, #5a9000);
+ box-shadow:
+  0 0 0 1px rgba(255, 255, 255, 0.12) inset,
+  0 6px 18px var(--auth-glow);
+ font-size: 1.35rem !important;
+}
+.pql-auth-brand span {
+ background: linear-gradient(120deg, #aee36b, #76b900 55%, #36e0c0);
+ -webkit-background-clip: text;
+ background-clip: text;
+ -webkit-text-fill-color: transparent;
+ letter-spacing: -0.01em;
+}
+/* Solid-colour fallback where background-clip:text is unsupported. */
+@supports not ((-webkit-background-clip: text) or (background-clip: text)) {
+ .pql-auth-brand span {
+  -webkit-text-fill-color: currentcolor;
+  color: var(--pql-color-accent);
+ }
+}
+
+/* ---------------------------------------------------------------
+ * Card — the floating translucent panel that holds the form.
+ *
+ * Deliberately NO backdrop-filter. The mesh behind it is a smooth
+ * gradient with no fine detail to frost, so a slightly opaque
+ * translucent fill reads the same as frosted glass — while a live
+ * blur here would re-run every time a form field repaints, making
+ * typing lag badly. The opaque-ish fill also keeps the labels and
+ * text crisp in light mode.
+ * ------------------------------------------------------------- */
+.pql-auth-card {
+ width: 100%;
+ max-width: 25rem;
+ padding: var(--pql-space-6);
+ border-radius: var(--pql-radius-lg);
+ background: var(--auth-glass-bg);
+ border: 1px solid var(--auth-glass-border);
+ box-shadow:
+  var(--pql-elev-3),
+  0 0 0 1px rgba(255, 255, 255, 0.04) inset,
+  0 8px 40px -12px var(--auth-glow);
+ animation: pql-auth-card-in var(--pql-duration-slow) var(--pql-ease) both;
+}
+
+@keyframes pql-auth-card-in {
+ 0% { opacity: 0; transform: translateY(12px) scale(0.98); }
+ 100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ---------------------------------------------------------------
+ * Form fields — native Bootstrap floating labels, dressed up with a
+ * translucent fill and a green focus glow that reads against glass.
+ * ------------------------------------------------------------- */
+.pql-auth-card .form-control {
+ background: var(--auth-input-bg);
+ border-color: var(--auth-glass-border);
+}
+.pql-auth-card .form-floating > label {
+ color: var(--bs-secondary-color);
+}
+.pql-auth-card .form-control:focus {
+ background: var(--auth-input-bg);
+ border-color: var(--pql-color-accent);
+ box-shadow:
+  0 0 0 var(--bs-focus-ring-width) var(--bs-focus-ring-color),
+  0 0 18px -2px var(--auth-glow);
+}
+
+/* ---------------------------------------------------------------
+ * Submit button — brand-green gradient, scoped to auth so the global
+ * blue ``btn-primary`` elsewhere in the app is untouched.
+ * ------------------------------------------------------------- */
+.pql-chromeless .btn-primary {
+ --bs-btn-bg: transparent;
+ --bs-btn-border-color: transparent;
+ --bs-btn-hover-border-color: transparent;
+ --bs-btn-active-border-color: transparent;
+ background: linear-gradient(135deg, #8fd000, #5a9000);
+ color: var(--pql-color-accent-fg);
+ border: none;
+ font-weight: var(--pql-weight-semibold);
+ box-shadow: 0 6px 20px -6px var(--auth-glow);
+ transition:
+  transform var(--pql-duration-fast) var(--pql-ease),
+  box-shadow var(--pql-duration-normal) var(--pql-ease),
+  filter var(--pql-duration-fast) var(--pql-ease);
+}
+.pql-chromeless .btn-primary:hover {
+ color: var(--pql-color-accent-fg);
+ transform: translateY(-1px);
+ filter: brightness(1.06);
+ box-shadow: 0 10px 28px -6px var(--auth-glow);
+}
+.pql-chromeless .btn-primary:active {
+ transform: translateY(0);
+}
+
+/* SSO / secondary action — stay neutral, translucent to match the card. */
+.pql-chromeless .btn-outline-secondary {
+ background: var(--auth-input-bg);
+ border-color: var(--auth-glass-border);
+}
+
+/* ---------------------------------------------------------------
+ * Footer — quiet it down so the card stays the hero.
+ * ------------------------------------------------------------- */
+.pql-chromeless__main > footer {
+ position: relative;
+ z-index: 1;
+}

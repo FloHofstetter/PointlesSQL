@@ -96,6 +96,23 @@
  --pql-color-info-fg: #7fb1ff;
  --pql-color-neutral-bg: rgba(255, 255, 255, 0.08);
  --pql-color-neutral-fg: var(--bs-body-color);
+
+ /* Aurora background + translucent surfaces — dark-mode values.
+    The aurora is a single static, soft radial-gradient layer behind
+    the whole app; panels sit on top as translucent fills so the
+    colour glows through. Deliberately NO backdrop-filter anywhere —
+    a smooth gradient needs no frosting, and a live blur re-runs on
+    every repaint and wrecks typing / scroll performance. Chrome
+    (topbar, rails, footer) stays fairly opaque so it reads over
+    scrolling content; cards are airier since they float on the
+    aurora. */
+ --pql-aurora-bg-base: #0a0e0b;
+ --pql-aurora-blob-1: rgba(118, 185, 0, 0.20);
+ --pql-aurora-blob-2: rgba(0, 190, 165, 0.16);
+ --pql-aurora-blob-3: rgba(86, 110, 255, 0.16);
+ --pql-surface-card: rgba(24, 30, 24, 0.72);
+ --pql-surface-chrome: rgba(15, 19, 15, 0.86);
+ --pql-surface-border: rgba(255, 255, 255, 0.10);
 }
 
 :root[data-pql-rail-state="collapsed"] {
@@ -117,6 +134,17 @@
  --pql-elev-1: 0 1px 2px rgba(0, 0, 0, 0.08);
  --pql-elev-2: 0 4px 12px rgba(0, 0, 0, 0.12);
  --pql-elev-3: 0 10px 28px rgba(0, 0, 0, 0.18);
+
+ /* Aurora + translucent surfaces — light-mode values. Soft pastel
+    blobs on a light base; panels stay opaque enough to keep dense
+    data crisp. */
+ --pql-aurora-bg-base: #eef1f6;
+ --pql-aurora-blob-1: rgba(126, 196, 40, 0.26);
+ --pql-aurora-blob-2: rgba(24, 202, 186, 0.26);
+ --pql-aurora-blob-3: rgba(126, 144, 248, 0.34);
+ --pql-surface-card: rgba(255, 255, 255, 0.80);
+ --pql-surface-chrome: rgba(255, 255, 255, 0.80);
+ --pql-surface-border: rgba(0, 0, 0, 0.08);
 }
 
 /* ---------------------------------------------------------------
@@ -164,10 +192,30 @@ body {
 :root {
  --bs-focus-ring-color: rgba(118, 185, 0, 0.40);
  --bs-focus-ring-width: 0.2rem;
+
+ /* Make Bootstrap's "primary" the brand green everywhere. Bootstrap
+    5.3 derives .btn-primary / .bg-primary / .text-primary / link
+    colours from these custom properties, so every surface picks up
+    the brand instead of the default blue with no per-template edits. */
+ --bs-primary: #76b900;
+ --bs-primary-rgb: 118, 185, 0;
+ --bs-primary-bg-subtle: rgba(118, 185, 0, 0.12);
+ --bs-primary-border-subtle: rgba(118, 185, 0, 0.35);
+ --bs-primary-text-emphasis: #9fd554;
+ --bs-link-color: #76b900;
+ --bs-link-color-rgb: 118, 185, 0;
+ --bs-link-hover-color: #5a9000;
+ --bs-link-hover-color-rgb: 90, 144, 0;
 }
 
 [data-bs-theme="dark"] {
  --bs-focus-ring-color: rgba(118, 185, 0, 0.55);
+}
+
+[data-bs-theme="light"] {
+ --bs-primary-text-emphasis: #3d6b00;
+ --bs-link-hover-color: #4a7500;
+ --bs-link-hover-color-rgb: 74, 117, 0;
 }
 
 a:not(.btn):not(.nav-link):not(.dropdown-item):not(.page-link) {

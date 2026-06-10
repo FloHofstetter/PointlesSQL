@@ -41,4 +41,5 @@
 /* notebook.css is loaded lazily by pages/notebook_editor.html via
  * {% block extra_css %} — keeping ~300 LOC of editor-only rules
  * out of every non-notebook page-load. */
+@import url("./components/surfaces.css?v=ASSET_VERSION");        /* static aurora background, translucent panels, brand-green primary */
 @import url("./responsive.css?v=ASSET_VERSION");                /* mobile breakpoints, reduced-motion */

@@ -1,0 +1,140 @@
+/* ---------------------------------------------------------------
+ * Aurora surfaces — the app-wide premium background.
+ *
+ * One static, soft radial-gradient "aurora" is fixed behind the whole
+ * shell; the panels above it are translucent fills so the colour
+ * glows through.  There is deliberately NO backdrop-filter anywhere:
+ * the aurora is a smooth gradient that needs no frosting, and a live
+ * blur would re-run on every repaint (each keystroke, each scroll
+ * frame) and make the app feel sluggish.  Design tokens live in
+ * base.css; this file wires them onto the shell.
+ *
+ * Loaded late in the @import chain (just before responsive.css) so
+ * these translucent backgrounds win over the component skins' opaque
+ * ``var(--bs-tertiary-bg)`` declarations without needing !important.
+ * ------------------------------------------------------------- */
+
+/* The base colour paints on <html>; <body> and the content cell go
+   transparent so the fixed aurora shows through everywhere. */
+html {
+    background: var(--pql-aurora-bg-base);
+}
+body {
+    background: transparent;
+}
+
+/* The aurora: one fixed, decorative, non-interactive layer behind all
+   content.  z-index:-1 drops it behind everything in the body
+   stacking context with no per-panel z-fighting.  Soft, overlapping
+   radial gradients — no filter, no animation, zero per-frame cost. */
+.pql-aurora {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    overflow: hidden;
+    background:
+        radial-gradient(50% 48% at 14% 12%, var(--pql-aurora-blob-1), transparent 70%),
+        radial-gradient(52% 50% at 88% 16%, var(--pql-aurora-blob-3), transparent 72%),
+        radial-gradient(58% 56% at 74% 96%, var(--pql-aurora-blob-2), transparent 74%),
+        radial-gradient(44% 44% at 30% 88%, var(--pql-aurora-blob-1), transparent 72%);
+}
+
+/* Content cell transparent so the aurora reads behind the cards. */
+.pql-content {
+    background: transparent;
+}
+
+/* ---------------------------------------------------------------
+ * Translucent chrome — fairly opaque so labels and values stay
+ * legible over both the aurora and any content scrolling beneath the
+ * sticky panels.
+ * ------------------------------------------------------------- */
+.pql-topbar,
+.pql-icon-rail,
+.pql-meta-panel,
+.pql-footer-bar {
+    background: var(--pql-surface-chrome);
+}
+@media (min-width: 768px) {
+    .pql-sidebar-shell {
+        background: var(--pql-surface-chrome);
+    }
+}
+
+/* ---------------------------------------------------------------
+ * Translucent cards — airier, floating on the aurora.  Dense-data
+ * interiors (SQL editor host, results table, notebook cells, the
+ * canvas stage) keep their own opaque backgrounds from their
+ * component stylesheets, so they stay crisp inside the glassy frame.
+ * ------------------------------------------------------------- */
+.pql-card,
+.card {
+    background: var(--pql-surface-card);
+}
+
+/* ---------------------------------------------------------------
+ * Brand-green primary button — a subtle gradient, applied app-wide
+ * (the brand-colour token override in base.css already turns flat
+ * primaries green; this gives the main call-to-action a bit more
+ * life).  Hover swaps to a brighter gradient rather than a CSS
+ * filter, keeping with the no-filter rule.
+ * ------------------------------------------------------------- */
+.btn-primary {
+    --bs-btn-bg: transparent;
+    --bs-btn-border-color: transparent;
+    --bs-btn-hover-bg: transparent;
+    --bs-btn-hover-border-color: transparent;
+    --bs-btn-active-bg: transparent;
+    --bs-btn-active-border-color: transparent;
+    background-image: linear-gradient(135deg, #8fd000, #5a9000);
+    color: var(--pql-color-accent-fg);
+    border: none;
+    font-weight: var(--pql-weight-semibold);
+}
+.btn-primary:hover,
+.btn-primary:focus-visible,
+.btn-primary:active {
+    color: var(--pql-color-accent-fg);
+    background-image: linear-gradient(135deg, #9bdc1a, #66a300);
+}
+
+/* ---------------------------------------------------------------
+ * Topbar wordmark — gradient text matching the auth brand.
+ * background-clip:text is a cheap paint (not a filter).
+ * ------------------------------------------------------------- */
+.pql-topbar .navbar-brand span {
+    background: linear-gradient(120deg, #aee36b, #76b900 55%, #36e0c0);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: -0.01em;
+}
+@supports not ((-webkit-background-clip: text) or (background-clip: text)) {
+    .pql-topbar .navbar-brand span {
+        -webkit-text-fill-color: currentcolor;
+        color: var(--pql-color-accent);
+    }
+}
+
+/* ---------------------------------------------------------------
+ * Accessibility — honour the OS "reduce transparency" preference by
+ * dropping the aurora and painting every surface opaque.
+ * ------------------------------------------------------------- */
+@media (prefers-reduced-transparency: reduce) {
+    .pql-aurora {
+        display: none;
+    }
+    html {
+        background: var(--bs-body-bg);
+    }
+    .pql-topbar,
+    .pql-icon-rail,
+    .pql-meta-panel,
+    .pql-footer-bar,
+    .pql-sidebar-shell,
+    .pql-card,
+    .card {
+        background: var(--bs-tertiary-bg);
+    }
+}

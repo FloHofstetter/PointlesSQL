@@ -3,7 +3,7 @@
 {% block title %}Login — PointlesSQL{% endblock %}
 
 {% block content %}
-<div class="pql-card" style="max-width: 420px; width: 100%;">
+<div class="pql-auth-card">
     <div class="pql-stack">
 
         {% if error %}
@@ -22,17 +22,17 @@
 
         <form method="post" action="/auth/login" hx-boost="false" class="pql-stack">
             {{ csrf_input() }}
-            <div>
-                <label for="email" class="form-label">Email</label>
+            <div class="form-floating">
                 <input type="email" class="form-control" id="email" name="email"
                        required autofocus placeholder="you@example.com">
+                <label for="email">Email</label>
             </div>
-            <div>
-                <label for="password" class="form-label">Password</label>
+            <div class="form-floating">
                 <input type="password" class="form-control" id="password" name="password"
-                       required>
+                       required placeholder="Password">
+                <label for="password">Password</label>
             </div>
-            <button type="submit" class="btn btn-primary w-100">Sign in</button>
+            <button type="submit" class="btn btn-primary btn-lg w-100">Sign in</button>
         </form>
 
         {% if oidc_enabled %}

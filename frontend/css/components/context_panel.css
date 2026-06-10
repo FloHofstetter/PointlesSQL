@@ -42,8 +42,19 @@
     font-weight: 600;
 }
 
+/* Align the first section header with the icon rail's taller "New"
+   button block in the adjacent column: give it the same block height
+   and vertically centre the label so the two columns' divider edges —
+   and the first nav items just below them — line up. Only the first
+   header grows; mid-panel sub-headers stay compact. */
+.pql-context-panel > .pql-context-panel__header:first-child {
+    display: flex;
+    align-items: center;
+    min-height: 3.5rem;
+}
+
 .pql-context-panel__body {
-    padding: 0.5rem 0;
+    padding: 0.25rem 0 0.5rem;
 }
 
 .pql-context-panel__list {
@@ -56,7 +67,11 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    padding: 0.45rem 1rem;
+    /* Match the primary rail's nav-row height (.pql-icon-rail__link):
+       same vertical padding + a tight line-height so the two columns'
+       entries are the same height. */
+    padding: 0.5rem 1rem;
+    line-height: 1.2;
     color: var(--bs-body-color);
     text-decoration: none;
     font-size: 0.875rem;

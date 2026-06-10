@@ -227,7 +227,8 @@
       hx-swap="outerHTML show:window:top"
       {% block body_data_attrs %}{% endblock %}
       {% if list_page is defined and list_page %}data-pql-refresh="1"{% endif %}>
-    <nav class="navbar navbar-expand bg-body-tertiary border-bottom px-3 pql-topbar">
+    <div class="pql-aurora" aria-hidden="true"></div>
+    <nav class="navbar navbar-expand border-bottom px-3 pql-topbar">
         {% if not hide_sidebar %}
         <button class="btn btn-link text-body p-0 me-2 d-md-none pql-sidebar-toggle"
                 type="button"
