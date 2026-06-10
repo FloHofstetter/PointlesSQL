@@ -5,7 +5,7 @@ from __future__ import annotations
 import datetime
 import os
 import shutil
-from collections.abc import AsyncIterator, Iterator
+from collections.abc import AsyncIterator, Callable, Iterator
 from pathlib import Path
 from typing import Any, NamedTuple
 from unittest.mock import MagicMock
@@ -398,6 +398,114 @@ def auth_cookies() -> dict[str, str]:
 def non_admin_cookies() -> dict[str, str]:
     """Return a dict with the auth cookie for the non-admin test user."""
     return app.state._test_non_admin_cookie
+
+
+# ---------------------------------------------------------------------------
+# Seam fixtures
+#
+# Replace the per-file copies of the suite's highest-traffic mock
+# patterns: raw ``app.state.uc_client = MagicMock(...)`` assignments
+# (~180 sites), the copy-pasted ``_patch_for_principal`` classmethod
+# patch (~50 sites), dotted settings patches, and the LLM-configured
+# string patches.  New tests should consume these fixtures; existing
+# files migrate opportunistically when touched.
+
+
+@pytest.fixture
+def uc_client_stub(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
+    """Install one UC stub behind BOTH client-resolution paths.
+
+    Routes obtain the Unity Catalog facade either from
+    ``app.state.uc_client`` (no principal bound) or by calling
+    ``UnityCatalogClient.for_principal`` (cookie user / X-Principal
+    header).  This fixture pins both paths to the same ``MagicMock``
+    and lets ``monkeypatch`` restore them on teardown, so a test
+    configures one stub no matter which path the route under test
+    takes.
+    """
+    from pointlessql.services.unitycatalog import UnityCatalogClient
+
+    stub = MagicMock(spec=UnityCatalogClient)
+    monkeypatch.setattr(app.state, "uc_client", stub, raising=False)
+    monkeypatch.setattr(
+        UnityCatalogClient,
+        "for_principal",
+        classmethod(lambda cls, settings, principal: stub),  # noqa: ARG005
+    )
+    return stub
+
+
+@pytest.fixture
+def settings_override(monkeypatch: pytest.MonkeyPatch) -> Callable[[str, object], None]:
+    """Patch one dotted settings path on BOTH live settings objects.
+
+    Two settings instances are alive during a test: the cached
+    ``get_settings()`` singleton (read by services and executors that
+    build their own settings) and the long-lived ``app.state.settings``
+    installed by ``_auth_db`` (read by routes).  Calling
+    ``settings_override("jupyter.runs_dir", tmp)`` patches the same
+    leaf on both so every consumer sees the override.
+
+    Run any ``monkeypatch.setenv`` + ``reset_settings_cache()`` dance
+    *before* calling this — resetting the cache afterwards discards
+    the instance patch on the cached object.
+    """
+    from pointlessql.config import get_settings
+
+    def _set(dotted: str, value: object) -> None:
+        for root in (app.state.settings, get_settings()):
+            obj: object = root
+            *parents, leaf = dotted.split(".")
+            for name in parents:
+                obj = getattr(obj, name)
+            monkeypatch.setattr(obj, leaf, value)
+
+    return _set
+
+
+@pytest.fixture
+def jupyter_workspace(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    settings_override: Callable[[str, object], None],
+) -> Path:
+    """Isolated notebooks/ + runs/ tree wired through env AND settings.
+
+    The papermill executor builds a fresh ``Settings()`` from the
+    environment while routes read ``app.state.settings`` — this
+    fixture covers both with one tmp tree and returns the notebooks
+    root.
+    """
+    root = tmp_path / "notebooks"
+    runs = root / "runs"
+    runs.mkdir(parents=True)
+    monkeypatch.setenv("POINTLESSQL_JUPYTER_NOTEBOOKS_DIR", str(root))
+    monkeypatch.setenv("POINTLESSQL_JUPYTER_RUNS_DIR", str(runs))
+    settings_override("jupyter.notebooks_dir", root)
+    settings_override("jupyter.runs_dir", runs)
+    return root
+
+
+@pytest.fixture
+def llm_stub(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
+    """Report the LLM as configured and stub the editor-chat agent.
+
+    Centralizes the ``check_llm_configured`` patches for both chat
+    WebSocket surfaces plus the agent factory, so a future move of
+    those symbols is a one-fixture retarget instead of a per-file
+    hunt.  Returns the agent mock handed out by the stubbed factory.
+    """
+    agent = MagicMock()
+    monkeypatch.setattr(
+        "pointlessql.services.editor_chat._agent_factory.build_agent",
+        lambda *args, **kwargs: agent,  # noqa: ARG005
+    )
+    for site in (
+        "pointlessql.api.sql_chat_ws.check_llm_configured",
+        "pointlessql.api.notebook_chat_ws.check_llm_configured",
+    ):
+        monkeypatch.setattr(site, lambda *args, **kwargs: True)  # noqa: ARG005
+    return agent
 
 
 # ---------------------------------------------------------------------------
