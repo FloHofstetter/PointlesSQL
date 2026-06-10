@@ -83,6 +83,17 @@ jobs:
           version: 2.4.15
       - name: Run biome check
         run: biome check --diagnostic-level=error frontend/js/
+      - name: Frontend — JS unit tests (node:test)
+        # Zero-dependency harness: colocated *.test.js files under
+        # frontend/js/ run on Node's built-in test runner.  The scoped
+        # frontend/js/package.json carries only {"type": "module"} so
+        # Node parses the production ESM files; there is deliberately
+        # no root package.json, lockfile, or npm install.
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Run JS unit tests
+        run: node --test "frontend/js/**/*.test.js"
       - name: Frontend — Form-label A11y drift guard
         # W8 drift-guard.  Counts <input>/<select>/<textarea> in
         # frontend/templates/ that lack any of: aria-label,
