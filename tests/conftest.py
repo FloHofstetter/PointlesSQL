@@ -340,18 +340,17 @@ def _auth_db(  # pyright: ignore[reportUnusedFunction]
 
     app.state.session_factory = factory
 
-    # Sprint 13.x onwards (UC mutations / lineage / external-write
-    # cross-refs) read ``app.state.uc_client`` from
-    # ``runs_routes._loaders``, ``soyuz_audit``, and friends.  Tests
-    # that need real UC behaviour overwrite this with their own
-    # ``MagicMock(spec=UnityCatalogClient)`` (see e.g.
-    # ``test_error_handlers``); a default MagicMock here keeps the
-    # render path crash-free for the majority of tests that don't
-    # touch UC at all.  The ``soyuz_audit.fetch_for_run`` swallow-
-    # all-exceptions block neutralises any unexpected awaitable
-    # mismatches.
-    if not hasattr(app.state, "uc_client") or app.state.uc_client is None:
-        app.state.uc_client = MagicMock()
+    # UC mutations / lineage / external-write cross-refs read
+    # ``app.state.uc_client`` from ``runs_routes._loaders``,
+    # ``soyuz_audit``, and friends.  Tests that need real UC behaviour
+    # take the ``uc_client_stub`` fixture (or overwrite this with
+    # their own ``MagicMock(spec=UnityCatalogClient)``); a FRESH
+    # default MagicMock per test keeps the render path crash-free for
+    # the majority of tests that don't touch UC at all, and stops a
+    # test-body assignment from leaking into later tests.  The
+    # ``soyuz_audit.fetch_for_run`` swallow-all-exceptions block
+    # neutralises any unexpected awaitable mismatches.
+    app.state.uc_client = MagicMock()
 
     # Ensure templates are always available (set in lifespan normally).
     from pointlessql.api.main import _TEMPLATES
