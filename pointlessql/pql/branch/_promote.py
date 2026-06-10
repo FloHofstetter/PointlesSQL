@@ -140,9 +140,10 @@ def promote_branch_schema(
     haven't moved either.
 
     Refuses to promote when the parent has moved between branch
-    creation and now (:class:`BranchPromotionConflictError`).  The
-    caller's recovery is to discard and re-branch — Diff+Replay
-    promotion is explicitly out of scope for v1.
+    creation and now — :class:`BranchPromotionConflictError`
+    propagates from the conflict-check helper.  The caller's
+    recovery is to discard and re-branch — Diff+Replay promotion is
+    explicitly out of scope for v1.
 
     Args:
         client: Configured soyuz client.
@@ -158,10 +159,10 @@ def promote_branch_schema(
         BranchNotFoundError: ``branch_schema_fqn`` not found or has
             no ``pointlessql.branch.*`` tags.
         BranchInUseError: Branch status is not ``active``.
-        BranchPromotionConflictError: Parent table moved since
-            branch was created.
         CatalogUnavailableError: soyuz unreachable.
-    """  # noqa: DOC502,DOC503 — Catalog* / Branch* propagate from helpers
+        Exception: Re-raised rename failure after the best-effort
+            revert of the parent → backup rename.
+    """
     import datetime
 
     catalog, branch_name = split_two_part(branch_schema_fqn, "branch_schema")

@@ -41,9 +41,9 @@ async def reload_data_products(request: Request) -> dict[str, Any]:
         contracts UPSERTed and the resolved yaml paths.
 
     Raises:
-        HTTPException: When ``yaml_search_paths`` is empty
-            (admins must configure the search roots before calling
-            this endpoint).
+        BadRequestError: When no contracts were discovered and
+            ``yaml_search_paths`` is empty (admins must configure the
+            search roots or sync a repo before calling this endpoint).
     """
     require_admin(request)
     workspace_id = current_workspace_id(request)

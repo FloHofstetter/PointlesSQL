@@ -60,7 +60,12 @@ async def execute_insert(
     Returns:
         :class:`ExecutionResult` with ``kind='dml'`` and
         ``rows_affected`` from the materialised frame's row count.
-    """  # noqa: DOC501,DOC503 — primitive failures propagate after agent_run finalisation
+
+    Raises:
+        Exception: Any failure from the materialise/write primitive,
+            re-raised verbatim after the agent_run is finalised as
+            failed.
+    """
     target_fqn = extract_write_target(ctx.ast, ctx.stype)
     source_sql = extract_source_select_sql(ctx.ast, ctx.stype)
     source_refs = extract_source_refs(ctx.ast, ctx.stype)
@@ -121,7 +126,11 @@ async def execute_update(ctx: DispatchContext) -> ExecutionResult:
     Returns:
         :class:`ExecutionResult` with ``kind='dml'`` and
         ``rows_affected`` from deltalake's ``num_updated_rows``.
-    """  # noqa: DOC501,DOC503 — primitive failures propagate after agent_run finalisation
+
+    Raises:
+        Exception: Any failure from the update primitive, re-raised
+            verbatim after the agent_run is finalised as failed.
+    """
     target_fqn = extract_write_target(ctx.ast, ctx.stype)
     source_refs = extract_source_refs(ctx.ast, ctx.stype)
     set_clause, where = extract_update_args(ctx.ast)
@@ -168,7 +177,11 @@ async def execute_delete(ctx: DispatchContext) -> ExecutionResult:
     Returns:
         :class:`ExecutionResult` with ``kind='dml'`` and the
         deltalake delete metrics.
-    """  # noqa: DOC501,DOC503 — primitive failures propagate after agent_run finalisation
+
+    Raises:
+        Exception: Any failure from the delete primitive, re-raised
+            verbatim after the agent_run is finalised as failed.
+    """
     target_fqn = extract_write_target(ctx.ast, ctx.stype)
     source_refs = extract_source_refs(ctx.ast, ctx.stype)
     where = extract_where_sql(ctx.ast)
@@ -221,7 +234,14 @@ async def execute_merge(ctx: DispatchContext) -> ExecutionResult:
     Returns:
         :class:`ExecutionResult` with ``kind='dml'`` and the
         merge stats (insert / update counts).
-    """  # noqa: DOC501,DOC503 — translator + primitive failures propagate after agent_run finalisation
+
+    Raises:
+        SQLExecutionError: When the dispatcher routed a non-MERGE
+            AST here (defensive internal-error guard).
+        Exception: Any translator or merge-primitive failure,
+            re-raised verbatim after the agent_run is finalised as
+            failed.
+    """
     from pointlessql.pql import translate_merge_ast
 
     if not isinstance(ctx.ast, exp.Merge):  # defensive

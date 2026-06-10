@@ -43,11 +43,15 @@ class PortIdentityViolation(PermissionDeniedError):
     """Strict-mode signal: caller does not satisfy identity-requirements.
 
     Surfaces via the central error-handler as HTTP 403 with the
-    failing constraint name in ``detail``.
+    failing constraint name in ``detail``.  Carries the failing
+    constraint + observed value.
+
+    Args:
+        constraint: Name of the identity requirement that failed.
+        observed: Value the caller actually presented for it.
     """
 
     def __init__(self, constraint: str, observed: Any) -> None:
-        """Carry the failing constraint + observed value."""
         super().__init__(f"port identity constraint failed: {constraint}")
         self.constraint = constraint
         self.observed = observed

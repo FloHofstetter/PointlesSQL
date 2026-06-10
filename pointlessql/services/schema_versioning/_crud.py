@@ -65,6 +65,17 @@ def bump_port_version(
 ) -> tuple[dict[str, Any], SchemaDiff]:
     """Compute + persist the next semver for *output_port_id*.
 
+    Args:
+        session_factory: Sessionmaker callable for the metadata DB.
+        output_port_id: PK of the output port whose schema is being
+            presented.
+        new_schema: The presented schema document; persisted as
+            sorted JSON on the new history row.
+        change_summary: Optional free-text note stored on the
+            history row.
+        bumped_by_user_id: Acting user recorded on the history row,
+            when known.
+
     Returns:
         ``(history_row_dict, diff)`` — the persisted row and the diff
         between previous and presented schema.  When the diff is a

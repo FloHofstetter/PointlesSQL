@@ -50,6 +50,8 @@ async def enforce_table_profile_access(
 
     Admin short-circuits SELECT enforcement; every other caller must
     hold SELECT on the table before they can trigger a profile run.
+    Propagates :class:`AuthorizationError` raised by
+    :func:`check_privilege` when the caller lacks SELECT on the table.
 
     Args:
         request: Incoming request.
@@ -61,8 +63,7 @@ async def enforce_table_profile_access(
     Raises:
         CatalogNotFoundError: When the table is missing or has no
             ``storage_location``.
-        AuthorizationError: When the caller lacks SELECT on the table.
-    """  # noqa: DOC502,DOC503 — raised via await below
+    """
     from pointlessql.exceptions import CatalogNotFoundError
 
     client = get_uc_client(request)

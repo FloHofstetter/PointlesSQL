@@ -245,6 +245,11 @@ def add_member(
 def remove_member(session_factory: SessionFactory, *, domain_id: int, user_id: int) -> bool:
     """Remove a user from a domain.
 
+    Args:
+        session_factory: Session factory for the metadata DB.
+        domain_id: Domain whose membership is being edited.
+        user_id: User to remove from the domain.
+
     Returns:
         ``True`` when a membership row was deleted, ``False`` when
         none existed.
@@ -426,6 +431,13 @@ def unbind_transformation(
     session_factory: SessionFactory, *, data_product_id: int, transformation_id: int
 ) -> bool:
     """Remove a transformation binding from a product.
+
+    Args:
+        session_factory: Session factory for the metadata DB.
+        data_product_id: Product the binding must belong to — a
+            transformation id that exists under a different product
+            is treated as not found.
+        transformation_id: Id of the binding row to delete.
 
     Returns:
         ``True`` when a row was deleted, ``False`` when no matching

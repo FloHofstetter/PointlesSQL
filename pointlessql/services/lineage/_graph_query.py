@@ -163,6 +163,19 @@ def find_shortest_path(
     Walks the downstream-adjacency from *source_ref* via BFS until
     *target_ref* is hit, then unwinds the predecessor chain.
 
+    Args:
+        factory: Session factory used to load the product graph.
+        workspace_id: Workspace whose product graph is walked.
+        source_ref: Ref of the producing product where the path
+            starts.
+        target_ref: Ref of the consuming product where the path
+            ends.
+
+    Returns:
+        The ordered list of product refs from *source_ref* to
+        *target_ref* inclusive, or ``None`` when no directed path
+        exists.
+
     Raises:
         LookupError: When either endpoint is not in the workspace.
     """

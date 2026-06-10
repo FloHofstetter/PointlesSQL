@@ -117,6 +117,12 @@ def declare_slo(
 def delete_slo(session_factory: SessionFactory, *, data_product_id: int, slo_id: int) -> bool:
     """Remove an SLO from a product.
 
+    Args:
+        session_factory: SQLAlchemy sessionmaker for the metadata DB.
+        data_product_id: Product the SLO must belong to; guards
+            against deleting another product's SLO by id alone.
+        slo_id: Primary key of the SLO row to delete.
+
     Returns:
         ``True`` when a row was deleted, ``False`` when none matched.
     """

@@ -44,6 +44,10 @@ async def api_sql_explain(request: Request, sql: str = "") -> dict[str, Any]:
     here — the agent or run-detail UI decides what to do with the
     flag.
 
+    Propagates :class:`AuthorizationError` from
+    :func:`check_privilege` when the user lacks ``SELECT`` on a
+    referenced table.
+
     Args:
         request: Incoming FastAPI request.  Reads
             ``request.state.user`` (auth middleware) and
@@ -63,11 +67,9 @@ async def api_sql_explain(request: Request, sql: str = "") -> dict[str, Any]:
     Raises:
         SQLExecutionError: SQL editor disabled, malformed SQL, or
             DuckDB rejected the EXPLAIN.
-        AuthorizationError: User lacks ``SELECT`` on a referenced
-            table (raised by :func:`check_privilege`).
         CatalogNotFoundError: Referenced table unknown to
             soyuz-catalog or has no ``storage_location``.
-    """  # noqa: DOC502,DOC503 — AuthorizationError is raised inside check_privilege
+    """
     from pointlessql.exceptions import CatalogNotFoundError, SQLExecutionError
     from pointlessql.pql import SQLParseError, prepare_sql
     from pointlessql.services.agent_runs import operation_context

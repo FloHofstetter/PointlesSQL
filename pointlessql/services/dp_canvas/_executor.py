@@ -236,6 +236,12 @@ def execute_canvas(
 ) -> MultiExecuteResult:
     """Compile, execute, materialise, register, and persist a canvas.
 
+    Every base-table location and sink target is resolved against UC
+    up front, before any write — :class:`CatalogUnavailableError` /
+    :class:`CatalogNotFoundError` propagate from those lookups so a
+    misconfigured sink can never leave a partially materialised
+    canvas behind.
+
     Args:
         factory: SQLAlchemy session factory for PointlesSQL's own
             metadata DB.
@@ -263,8 +269,6 @@ def execute_canvas(
         ValidationError: On compile failure or sink misconfig
             (the error details carry the per-node
             :class:`CompileError` list).
-        CatalogUnavailableError / CatalogNotFoundError: When soyuz
-            refuses an UC lookup while validating sinks up front.
     """
     fragment, errors = compile_canvas(doc, upstream_schemas=upstream_schemas)
     if errors or fragment is None:

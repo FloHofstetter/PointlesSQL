@@ -34,8 +34,8 @@ def _parse_op_name(value: str | None) -> OpName | None:
         Enum member, or ``None`` when the input is unset.
 
     Raises:
-        HTTPException: 400 when *value* is non-empty but not a
-            recognised :class:`OpName` member.
+        BadRequestError: When *value* is non-empty but not a
+            recognised :class:`OpName` member (rendered as a 400).
     """
     if value is None or value == "":
         return None
@@ -56,8 +56,8 @@ def _parse_iso_datetime(value: str | None, *, field: str) -> datetime.datetime |
         Parsed datetime, or ``None`` when *value* is unset.
 
     Raises:
-        HTTPException: 400 when *value* is non-empty but
-            unparseable.
+        BadRequestError: When *value* is non-empty but
+            unparseable (rendered as a 400).
     """
     if value is None or value == "":
         return None
@@ -95,7 +95,8 @@ async def recall_endpoint(
         ``{"agent_id": str, "operations": [...], "count": int}``.
 
     Raises:
-        HTTPException: 400 when a query parameter is malformed.
+        BadRequestError: When a query parameter is malformed
+            (rendered as a 400).
     """
     require_user(request)
     factory = request.app.state.session_factory

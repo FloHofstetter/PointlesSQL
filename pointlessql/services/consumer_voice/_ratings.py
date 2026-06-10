@@ -21,6 +21,19 @@ def upsert_rating(
 ) -> dict[str, Any]:
     """Insert or update a (product, user) rating.
 
+    Args:
+        factory: SQLAlchemy sessionmaker for the metadata DB.
+        data_product_id: Product the rating targets.
+        user_id: Author of the rating; one row per (product, user)
+            pair — a repeat call overwrites the previous rating.
+        score: Star rating, 1..5 inclusive.
+        comment: Optional free-text remark; blank / whitespace-only
+            values are stored as ``None``.
+
+    Returns:
+        The persisted rating serialised as a dict (product, user,
+        score, comment, ISO-formatted ``updated_at``).
+
     Raises:
         ValueError: When *score* is outside 1..5.
     """

@@ -69,6 +69,13 @@ def _pick_provider(factory: Any, workspace_id: int, settings: Any) -> tuple[str,
     then surfaces a clean "provider not configured" error the panel can
     render as a hint).
 
+    Args:
+        factory: Session factory used to look up the workspace's stored
+            provider credentials.
+        workspace_id: Workspace whose provider credentials are consulted.
+        settings: Application settings supplying the per-provider default
+            model names when the credential does not pin one.
+
     Returns:
         ``(provider, model, configured)``.
     """

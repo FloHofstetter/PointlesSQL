@@ -52,6 +52,9 @@ if TYPE_CHECKING:
 def _resolve_storage_location(client: Client, full_name: str, unreachable_msg: str) -> str:
     """Return the storage location for *full_name* via the generated client.
 
+    Propagates :class:`ValidationError` from :func:`parse_full_name`
+    when *full_name* is not three parts.
+
     Args:
         client: A configured ``soyuz_catalog_client.Client``.
         full_name: Three-part name.
@@ -62,11 +65,10 @@ def _resolve_storage_location(client: Client, full_name: str, unreachable_msg: s
         Storage location URI.
 
     Raises:
-        ValidationError: If *full_name* is not three parts.
         CatalogNotFoundError: If the table does not exist or has no
             ``storage_location``.
         CatalogUnavailableError: If soyuz-catalog is unreachable.
-    """  # noqa: DOC503
+    """
     parse_full_name(full_name)
     try:
         response = _get_table.sync(client=client, full_name=full_name)
@@ -89,6 +91,11 @@ def read_table_at_version(
 ) -> Any:
     """Read *full_name* as it was at Delta version *N*.
 
+    Propagates :class:`ValidationError` (malformed name),
+    :class:`CatalogNotFoundError` (unknown table) and
+    :class:`CatalogUnavailableError` (soyuz-catalog unreachable)
+    from :func:`_resolve_storage_location`.
+
     Args:
         client: A configured ``soyuz_catalog_client.Client``.
         full_name: Three-part name.
@@ -103,10 +110,10 @@ def read_table_at_version(
         ``load_as_version`` would surface mostly identical code.
 
     Raises:
-        ValidationError: If *full_name* is not three parts.
-        CatalogNotFoundError: If the table does not exist.
-        CatalogUnavailableError: If soyuz-catalog is unreachable.
-    """  # noqa: DOC503
+        Exception: Whatever the underlying Delta read raised —
+            re-raised unchanged after the failure is recorded in
+            ``query_history``.
+    """
     location = _resolve_storage_location(client, full_name, unreachable_msg)
 
     started_at = datetime.datetime.now(datetime.UTC)
@@ -155,7 +162,11 @@ def read_table_at_timestamp(
 
     Resolves to a Delta version via
     :class:`deltalake.DeltaTable.load_as_version` (the public API
-    accepts a datetime alongside int).
+    accepts a datetime alongside int).  Propagates
+    :class:`ValidationError` (malformed name),
+    :class:`CatalogNotFoundError` (unknown table) and
+    :class:`CatalogUnavailableError` (soyuz-catalog unreachable)
+    from :func:`_resolve_storage_location`.
 
     Args:
         client: A configured ``soyuz_catalog_client.Client``.
@@ -167,11 +178,11 @@ def read_table_at_timestamp(
         A pandas DataFrame.
 
     Raises:
-        ValidationError: If *full_name* is not three parts or the
-            timestamp is naive.
-        CatalogNotFoundError: If the table does not exist.
-        CatalogUnavailableError: If soyuz-catalog is unreachable.
-    """  # noqa: DOC503
+        Exception: Whatever the underlying Delta read raised —
+            re-raised unchanged after the failure is recorded in
+            ``query_history``.
+        ValidationError: If *when* is timezone-naive.
+    """
     if when.tzinfo is None:
         from pointlessql.exceptions import ValidationError
 

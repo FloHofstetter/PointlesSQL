@@ -149,6 +149,10 @@ def render_sql_with_params(
     The output ``rewritten`` string is safe to pass to
     :meth:`duckdb.DuckDBPyConnection.execute` with the positional
     ``params`` list — no string interpolation of caller data.
+    Propagates :class:`ValidationError` from the substitution
+    callback when a placeholder is undeclared, a required parameter
+    is missing, or a supplied value cannot be coerced to its
+    declared type.
 
     Args:
         sql: The view's SQL text (may contain ``${name}`` markers).
@@ -157,11 +161,7 @@ def render_sql_with_params(
 
     Returns:
         ``(rewritten_sql, positional_values)``.
-
-    Raises:
-        ValidationError: If a required parameter is missing, or a
-            supplied value cannot be coerced to its declared type.
-    """  # noqa: DOC502 — raised via the inner _replace callback
+    """
     by_name = {p["name"]: p for p in parameters}
     binds: list[Any] = []
 

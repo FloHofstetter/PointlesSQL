@@ -100,7 +100,9 @@ def extract_table_refs(sql: str) -> list[str]:
 
     Convenience shim around :func:`prepare_sql` for callers that only
     need the reference list (e.g. :func:`services.query_history.record_query`
-    parsing a historical SQL string).
+    parsing a historical SQL string).  Propagates
+    :class:`SQLParseError` from :func:`prepare_sql` when a table
+    reference is not fully qualified.
 
     Args:
         sql: The SQL string to inspect.
@@ -108,8 +110,5 @@ def extract_table_refs(sql: str) -> list[str]:
     Returns:
         A list of fully-qualified ``"catalog.schema.table"`` strings
         in the order they first appear in the parse tree.
-
-    Raises:
-        SQLParseError: Same conditions as :func:`prepare_sql`.
-    """  # noqa: DOC502 — propagates from prepare_sql
+    """
     return prepare_sql(sql).refs

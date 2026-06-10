@@ -158,11 +158,15 @@ async def open_proposal(
         schema: UC schema segment.
         request: Incoming FastAPI request.
 
+    A malformed ``diff`` body is rejected by :func:`validate_diff`
+    (propagates :class:`BadRequestError`).
+
     Returns:
         Serialised proposal row.
 
     Raises:
-        HTTPException: 400 when the diff is malformed.
+        BadRequestError: When neither a session user nor an
+            ``X-Agent-Run-Id`` header identifies the proposer.
     """
     require_user(request)
     user = get_user(request)
@@ -243,7 +247,9 @@ def _load_proposal_for_resolve(
         The :class:`DataProductSchemaProposal` row.
 
     Raises:
-        HTTPException: 404 when missing, 400 when already resolved.
+        ResourceNotFoundError.not_found: When no proposal with that
+            id exists in the workspace.
+        BadRequestError: When the proposal is already resolved.
     """
     proposal = session.execute(
         select(DataProductSchemaProposal).where(
@@ -279,8 +285,11 @@ async def approve_proposal(
         "draft_id": int | None}``.
 
     Raises:
-        HTTPException: 400 on unsafe inplace diff or missing
-            target yaml; 404 when the proposal doesn't exist.
+        BadRequestError: When ``kind`` is invalid, the proposal is
+            already resolved, the diff contains ops unsafe for
+            in-place apply, or no yaml file resolves for the product.
+        ResourceNotFoundError.not_found: When the proposal id does
+            not exist in the workspace.
     """
     require_user(request)
     user = get_user(request)

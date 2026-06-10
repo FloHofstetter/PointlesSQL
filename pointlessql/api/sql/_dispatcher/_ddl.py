@@ -34,7 +34,11 @@ async def execute_drop_table(ctx: DispatchContext) -> ExecutionResult:
     Returns:
         :class:`ExecutionResult` with ``kind='ddl'``,
         ``target=<full_name>``, and ``stats={'deleted': True}``.
-    """  # noqa: DOC501,DOC503 — soyuz failures propagate after agent_run finalisation
+
+    Raises:
+        Exception: Re-raised soyuz facade failure, after the agent
+            run is finalised as ``failed``.
+    """
     target_fqn = extract_write_target(ctx.ast, ctx.stype)
     await enforce_modify_target(ctx, target_fqn, must_exist=True)
 
@@ -80,7 +84,11 @@ async def execute_create_schema(ctx: DispatchContext) -> ExecutionResult:
     Returns:
         :class:`ExecutionResult` with ``kind='ddl'``,
         ``target='catalog.schema'``.
-    """  # noqa: DOC501,DOC503 — soyuz failures propagate after agent_run finalisation
+
+    Raises:
+        Exception: Re-raised soyuz facade failure, after the agent
+            run is finalised as ``failed``.
+    """
     require_admin(ctx.request)
     target_fqn = extract_write_target(ctx.ast, ctx.stype)
     catalog, schema_name = target_fqn.split(".", 1)
@@ -122,7 +130,11 @@ async def execute_drop_schema(ctx: DispatchContext) -> ExecutionResult:
     Returns:
         :class:`ExecutionResult` with ``kind='ddl'``,
         ``target='catalog.schema'``.
-    """  # noqa: DOC501,DOC503 — soyuz failures propagate after agent_run finalisation
+
+    Raises:
+        Exception: Re-raised soyuz facade failure, after the agent
+            run is finalised as ``failed``.
+    """
     require_admin(ctx.request)
     target_fqn = extract_write_target(ctx.ast, ctx.stype)
     catalog, schema_name = target_fqn.split(".", 1)

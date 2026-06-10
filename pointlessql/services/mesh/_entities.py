@@ -115,6 +115,12 @@ def create_entity(
 def delete_entity(session_factory: SessionFactory, *, workspace_id: int, entity_id: int) -> bool:
     """Delete an entity (and its bindings, via CASCADE).
 
+    Args:
+        session_factory: Sessionmaker callable.
+        workspace_id: Workspace the entity must belong to — guards
+            against cross-tenant deletes by id.
+        entity_id: PK of the entity row to delete.
+
     Returns:
         ``True`` when a row was deleted, ``False`` when none matched.
     """
@@ -232,6 +238,10 @@ def add_binding(
 
 def delete_binding(session_factory: SessionFactory, *, binding_id: int) -> bool:
     """Remove an entity-column binding.
+
+    Args:
+        session_factory: Sessionmaker callable.
+        binding_id: PK of the binding row to remove.
 
     Returns:
         ``True`` when a row was deleted, ``False`` when none matched.

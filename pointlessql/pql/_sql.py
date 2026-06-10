@@ -69,7 +69,10 @@ def run_sql(
             ``pql.sql`` call from agent-authored ``.py``) emits
             one ``agent_run_operations`` row.  The query text is
             truncated to 1024 chars in ``params_json``; the full
-            text lives on the query-history row.
+            text lives on the query-history row.  If the trail
+            row cannot be persisted,
+            :class:`AuditUnavailableError` propagates from
+            :func:`operation_context`.
         preserve_lineage_row_id: When ``True`` (the default) and the
             call runs in an agent context, a row-preserving SELECT that
             reads a single lineage-bearing source but omits
@@ -88,10 +91,7 @@ def run_sql(
         ValidationError: If a referenced table is not present in
             *approved_tables* (defence-in-depth against a route
             that forgot to enforce).
-        AuditUnavailableError: If *agent_run_id* (or env var)
-            resolved non-empty and the trail row cannot be
-            persisted.
-    """  # noqa: DOC503 — AuditUnavailableError propagates from operation_context
+    """
     import duckdb
 
     effective_run_id = agent_run_id or os.environ.get("POINTLESSQL_AGENT_RUN_ID")

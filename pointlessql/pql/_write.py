@@ -52,6 +52,15 @@ def write_table(
 ) -> None:
     """Write a frame to a Delta table and register it in the catalog.
 
+    Propagates :class:`ValidationError` raised by
+    :func:`parse_full_name` when *full_name* does not have exactly
+    three parts; :class:`CatalogNotFoundError` raised by
+    :func:`derive_storage_location` when the parent schema has no
+    storage root and the table does not already exist; and
+    :class:`AuditUnavailableError` raised inside
+    :func:`operation_context` when *agent_run_id* is set and the
+    ``agent_run_operations`` row cannot be persisted.
+
     Args:
         client: Configured ``soyuz_catalog_client.Client``.
         engine: Engine to write *df* with.
@@ -85,13 +94,14 @@ def write_table(
             needs a source to point at).
 
     Raises:
-        ValidationError: If *full_name* does not have exactly three parts.
-        CatalogNotFoundError: If the parent schema has no storage root
-            and the table does not already exist.
         CatalogUnavailableError: If soyuz-catalog is unreachable.
-        AuditUnavailableError: If *agent_run_id* is set and the
-            ``agent_run_operations`` row cannot be persisted.
-    """  # noqa: DOC503
+        UnexpectedStatus: Re-raised when the catalog's table lookup
+            fails with any status other than 404.
+        enforcement.violation: The contract-enforcement check's
+            ``DataProductContractViolation`` when the frame breaks
+            the product contract — raised before any Delta IO so the
+            bad write never lands.
+    """
     catalog, schema, table = parse_full_name(full_name)
 
     from pointlessql.db import get_session_factory
@@ -298,8 +308,9 @@ def _maybe_validate_and_stamp_bitemporal(
 
     * When the resolved policy requires an event-time column, the
       frame is checked for column presence + temporal dtype.  Missing
-      or wrong-typed columns raise
-      :class:`BitemporalRequirementError`.
+      or wrong-typed columns propagate
+      :class:`BitemporalRequirementError` raised inside
+      :func:`validate_event_time_column`.
     * When the resolved policy enables processing-time injection
       (``required`` enforcement, or ``opt_in`` with the workspace
       setting on), the column is stamped on the frame.
@@ -317,11 +328,6 @@ def _maybe_validate_and_stamp_bitemporal(
 
     Returns:
         The (possibly stamped) frame.
-
-    Raises:
-        BitemporalRequirementError: When the resolved policy requires
-            an event-time column and the frame is missing or
-            wrong-typed.
     """
     from pointlessql.config import get_settings
     from pointlessql.services.bitemporal import (

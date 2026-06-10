@@ -97,6 +97,11 @@ async def dispatch(
     branch handles its own privilege check, primitive call, and
     operation/lineage emission via
     :func:`pointlessql.services.agent_runs.operation_context`.
+    The per-statement helpers propagate
+    :class:`AuthorizationError` when the caller lacks the required
+    privilege on a referenced table, and
+    :class:`CatalogNotFoundError` when a referenced table is
+    unknown.
 
     Args:
         request: Incoming FastAPI request.
@@ -113,10 +118,7 @@ async def dispatch(
 
     Raises:
         SQLExecutionError: Parse / dispatch / primitive failures.
-        AuthorizationError: When the caller lacks the required
-            privilege on a referenced table.
-        CatalogNotFoundError: When a referenced table is unknown.
-    """  # noqa: DOC502,DOC503 — exceptions propagate from helpers
+    """
     user = get_user(request)
     actor_email = effective_principal(request) or user.get("email", "")
     is_admin = bool(user.get("is_admin", False))

@@ -60,9 +60,10 @@ async def receive_repo_webhook(
         Sync work runs in the background; the caller never blocks.
 
     Raises:
-        HTTPException: 404 when the repo is unknown, 401 when the
-            signature did not verify or the provider does not
-            implement a signature scheme.
+        HTTPException: 401 when the signature did not verify or the
+            provider does not implement a signature scheme.
+        ResourceNotFoundError.not_found: 404 when no
+            :class:`WorkspaceRepo` row exists for *repo_id*.
     """
     factory = request.app.state.session_factory
     settings = request.app.state.settings

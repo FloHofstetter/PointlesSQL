@@ -36,6 +36,17 @@ def add_use_case(
 ) -> dict[str, Any]:
     """Insert one use-case row.
 
+    Args:
+        factory: Sessionmaker callable.
+        data_product_id: Product the use case is posted on.
+        title: Short headline; stripped and capped at 200 chars.
+        body: Free-form Markdown elaboration; may be empty.
+        author_user_id: Posting user's PK, or ``None`` when the
+            caller is anonymous.
+
+    Returns:
+        The serialised use-case row with its initial zero vote count.
+
     Raises:
         ValueError: When *title* is empty or longer than 200 chars.
     """

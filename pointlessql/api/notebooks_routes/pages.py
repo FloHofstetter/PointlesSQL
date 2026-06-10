@@ -29,6 +29,9 @@ async def notebook_editor_page(request: Request, path: str) -> HTMLResponse:
     The path is validated against the workspace root before render so
     a bad path 422s before a stale editor frame paints.  The editor
     boots itself from ``GET /api/notebooks/load`` after Alpine mounts.
+    Propagates :class:`ValidationError` raised by
+    :func:`resolve_py_notebook_path` when the path is missing, outside
+    the workspace, has the wrong suffix, or does not exist.
 
     Args:
         request: Incoming FastAPI request; any authenticated user.
@@ -37,12 +40,7 @@ async def notebook_editor_page(request: Request, path: str) -> HTMLResponse:
 
     Returns:
         The rendered ``pages/notebook_editor.html`` template.
-
-    Raises:
-        ValidationError: When the path is missing / outside the
-            workspace / wrong suffix / does not exist.  Surfaces
-            via :func:`resolve_py_notebook_path`.
-    """  # noqa: DOC502
+    """
     require_user(request)
     settings: Settings = request.app.state.settings
     notebooks_dir = settings.jupyter.notebooks_dir.resolve()

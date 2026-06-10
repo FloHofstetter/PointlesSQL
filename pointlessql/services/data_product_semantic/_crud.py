@@ -75,6 +75,12 @@ def delete_concept(
 ) -> bool:
     """Remove a semantic concept from a product.
 
+    Args:
+        session_factory: Sessionmaker callable.
+        data_product_id: Product the concept must be declared on —
+            guards against deleting another product's concept by id.
+        concept_id: PK of the concept row to remove.
+
     Returns:
         ``True`` when a row was deleted, ``False`` when no matching
         concept existed for the product.

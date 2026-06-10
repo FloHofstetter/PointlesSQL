@@ -93,6 +93,10 @@ def aggregate_table(
     deterministic IDs and N→1 edges (one per source row per group)
     are stashed on the recorder for the post-commit hook to persist.
 
+    Propagates :class:`AuditUnavailableError` from the operation
+    recorder when *agent_run_id* is set and the
+    ``agent_run_operations`` row cannot be persisted.
+
     Args:
         client: Configured ``soyuz_catalog_client.Client``.
         engine: Engine used to write the resulting frame.  The
@@ -137,9 +141,7 @@ def aggregate_table(
             missing, ``source_table_fqn`` is empty, or the input
             frame is not a pandas DataFrame.
         CatalogUnavailableError: When soyuz-catalog is unreachable.
-        AuditUnavailableError: If *agent_run_id* is set and the
-            ``agent_run_operations`` row cannot be persisted.
-    """  # noqa: DOC503 — Catalog* propagate from helpers below
+    """
     if not group_by:
         raise ValidationError("aggregate requires at least one column in 'group_by'")
     if not source_table_fqn:
@@ -339,6 +341,9 @@ def _resolve_or_plan_target(
     Looks the table up in soyuz-catalog; if missing, derives a
     storage location from the parent schema's ``storage_root`` so
     the engine can write before the catalog row is created.
+    Propagates :class:`CatalogNotFoundError` from
+    :func:`derive_storage_location` when the parent schema lacks a
+    storage root.
 
     Args:
         client: Configured catalog client.
@@ -354,10 +359,9 @@ def _resolve_or_plan_target(
 
     Raises:
         CatalogUnavailableError: When soyuz-catalog is unreachable.
-        CatalogNotFoundError: When the parent schema lacks a
-            storage root (propagates from
-            :func:`derive_storage_location`).
-    """  # noqa: DOC502,DOC503 — Catalog* + UnexpectedStatus propagate from helpers
+        UnexpectedStatus: For any non-404 soyuz-catalog response to
+            the table lookup.
+    """
     table_exists = False
     location: str | None = None
 

@@ -106,6 +106,26 @@ class WorkspaceGovernancePolicy(Base):
             declaration only.
         consent_required: Whether consumption requires recorded consent.
         consent_basis: Free-form legal basis note (nullable).
+        consumption_enforcement: One of
+            :data:`CONSUMPTION_ENFORCEMENT_MODES` — whether
+            port-consumption violations are ignored, warned about,
+            or blocked.  Defaults to ``advisory``.
+        iso8601_enforcement: ``off`` / ``warn`` / ``strict`` mode for
+            the ISO-8601 timestamp validator on write payloads;
+            ``strict`` blocks the write.  Defaults to ``warn``.
+        linked_policy_module_ids: JSON-encoded list of
+            ``policy_modules`` ids (Cedar) attached workspace-wide;
+            ``None`` when no modules are linked.
+        breaking_change_policy: ``warn`` or ``block`` for writes whose
+            schema is incompatible with the product's recorded schema
+            version.  Defaults to ``warn``.
+        max_cost_per_day: Daily estimated-cost ceiling the read-path
+            quota check compares against; ``None`` means no cost cap.
+        max_queries_per_hour: Hourly query-count ceiling for the same
+            quota check; ``None`` means no rate cap.
+        quota_enforcement: ``off`` / ``warn`` / ``strict`` mode for
+            the cost/rate quota check; ``strict`` blocks the read.
+            Defaults to ``off``.
         updated_by_user_id: Nullable FK on ``users.id``.
         created_at: Wall-clock the row was first inserted.
         updated_at: Wall-clock of the last edit.
@@ -182,6 +202,20 @@ class DataProductPolicy(Base):
         consent_required: Override consent requirement; ``None`` here
             inherits the workspace value.
         consent_basis: Override legal-basis note.
+        consumption_enforcement: Override consumption-enforcement mode
+            (:data:`CONSUMPTION_ENFORCEMENT_MODES`).
+        iso8601_enforcement: Override ISO-8601 validator mode
+            (``off`` / ``warn`` / ``strict``).
+        linked_policy_module_ids: Override JSON-encoded list of
+            ``policy_modules`` ids (Cedar) attached to this product.
+        breaking_change_policy: Override schema-compatibility mode
+            (``warn`` or ``block``).
+        max_cost_per_day: Override daily estimated-cost ceiling for
+            the read-path quota check.
+        max_queries_per_hour: Override hourly query-count ceiling for
+            the same quota check.
+        quota_enforcement: Override quota-enforcement mode
+            (``off`` / ``warn`` / ``strict``).
         updated_by_user_id: Nullable FK on ``users.id``.
         created_at: Wall-clock the row was first inserted.
         updated_at: Wall-clock of the last edit.

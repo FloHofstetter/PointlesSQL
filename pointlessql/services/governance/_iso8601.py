@@ -55,10 +55,14 @@ class Iso8601Violation(PermissionDeniedError):
 
     Surfaces via the central error-handler as HTTP 403 with the
     findings list in ``detail``.
+
+    Args:
+        findings: Violations collected up to and including the first
+            offending value; carried on the instance so the central
+            error map can render them.
     """
 
     def __init__(self, findings: list[Iso8601Finding]) -> None:
-        """Carry findings so the central error map can render them."""
         super().__init__("ISO-8601 violation in write payload")
         self.findings = findings
 

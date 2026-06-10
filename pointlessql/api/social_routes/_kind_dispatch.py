@@ -28,9 +28,10 @@ def parse_dp_ref(kind: str, ref: str) -> tuple[str, str]:
         ``(catalog_name, schema_name)`` tuple.
 
     Raises:
-        HTTPException: 501 when *kind* is registered but not yet
-            wired through this router; 400 when *kind* is unknown
-            or *ref* is malformed.
+        BadRequestError: When *kind* is unknown or a ``dp`` *ref*
+            does not have the ``catalog.schema`` shape.
+        HTTPException: 501 when *kind* is registered but is not the
+            ``dp`` kind this delegator handles.
     """
     if kind not in entity_registry.all_kinds():
         known = sorted(entity_registry.all_kinds())
@@ -71,8 +72,10 @@ def parse_ref(kind: str, ref: str) -> str:
         callers store it as opaque text on ``social_targets.entity_ref``).
 
     Raises:
-        HTTPException: 400 when *kind* is unknown or *ref* is
-            malformed; 501 when *kind* is registered with soyuz
+        BadRequestError: When *kind* is unknown, is the ``dp`` kind
+            (handled by the DP delegator instead), or *ref* fails
+            the kind's validator.
+        HTTPException: 501 when *kind* is registered with the soyuz
             entity_registry but no :class:`RefKind` is wired
             through yet.
     """

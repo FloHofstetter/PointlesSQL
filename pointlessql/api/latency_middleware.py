@@ -57,6 +57,10 @@ async def latency_middleware(request: Request, call_next: Any) -> Response:
 
     Returns:
         The downstream response, unmodified.
+
+    Raises:
+        Exception: Whatever the downstream handler raised, re-raised
+            unchanged after the timing observation is recorded.
     """
     start = time.perf_counter()
     try:

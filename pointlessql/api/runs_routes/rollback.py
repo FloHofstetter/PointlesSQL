@@ -207,7 +207,8 @@ async def api_rollback_preview(
 
     The route is admin-only — rollback itself is admin-only and the
     preview leaks no information beyond what the admin can already
-    see in ``/runs/{id}``.
+    see in ``/runs/{id}``.  Propagates :class:`AuthorizationError`
+    raised by ``require_admin`` for non-admin callers.
 
     Args:
         request: Incoming FastAPI request.
@@ -227,8 +228,7 @@ async def api_rollback_preview(
         ValidationError: The targeted op is a creation
             (``delta_version_before is None``) and rollback would
             mean dropping the table (out of v1 scope).
-        AuthorizationError: Non-admin caller.
-    """  # noqa: DOC503 — AuthorizationError is raised by require_admin
+    """
     require_admin(request)
     factory = request.app.state.session_factory
 
@@ -402,6 +402,9 @@ async def api_run_rollback(
     success; the same event family the rest of agent-run lifecycle
     uses.
 
+    Propagates :class:`AuthorizationError` raised by
+    ``require_admin`` for non-admin callers.
+
     Args:
         request: Incoming FastAPI request.
         run_id: ``agent_runs.id`` whose write should be undone.
@@ -416,12 +419,19 @@ async def api_run_rollback(
         "rolled_back_run_id", "target", "allow_force"}``.
 
     Raises:
-        ValidationError: Body shape problem, or the targeted op was
-            a creation (drop is out of v1 scope).
-        CatalogNotFoundError: No matching op found, or the target
-            isn't registered with soyuz.
-        AuthorizationError: Non-admin caller.
-    """  # noqa: DOC502,DOC503 — refusal exceptions handled via _rollback_refusal_response
+        ValidationError: Body shape problem (missing ``target``,
+            non-integer ``op_ordinal``).
+        RollbackTargetNotFound: The run never wrote to ``target``,
+            or the target isn't registered with soyuz.
+        RollbackAmbiguous: The run touched the target more than
+            once and no ``op_ordinal`` disambiguates.
+        RollbackInvalid: The targeted op was a creation (drop is
+            out of scope for rollback).
+        RollbackStale: The table moved past the targeted op and
+            ``allow_force`` was not set.
+        Exception: Any unexpected primitive failure is re-raised
+            after the spawned rollback run is marked ``failed``.
+    """
     require_admin(request)
 
     target = body.get("target")

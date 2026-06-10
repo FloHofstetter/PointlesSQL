@@ -48,7 +48,10 @@ def upsert_provider_creds(
 
     The cleartext *api_key* is Fernet-encrypted before persistence;
     the row is detached + returned without the cleartext (callers
-    should not echo it back).
+    should not echo it back).  Propagates
+    :class:`UnknownLensProviderError` raised by the provider
+    validation helper when *provider* is not in
+    :data:`LENS_PROVIDERS`.
 
     Args:
         factory: SQLAlchemy sessionmaker.
@@ -64,10 +67,8 @@ def upsert_provider_creds(
         The detached :class:`LensProviderCreds` row (no cleartext).
 
     Raises:
-        UnknownLensProviderError: When *provider* is not in
-            :data:`LENS_PROVIDERS`.
         ValueError: When *api_key* is empty or whitespace-only.
-    """  # noqa: DOC502,DOC503 — UnknownLensProviderError via _validate_provider
+    """
     _validate_provider(provider)
     if not api_key or not api_key.strip():
         raise ValueError("Lens provider api_key must be a non-empty string")
@@ -111,6 +112,10 @@ def get_provider_creds(
 ) -> LensProviderCreds | None:
     """Return the stored credential row for ``(workspace, provider)``.
 
+    Propagates :class:`UnknownLensProviderError` raised by the
+    provider validation helper when *provider* is not in
+    :data:`LENS_PROVIDERS`.
+
     Args:
         factory: SQLAlchemy sessionmaker.
         workspace_id: Workspace filter.
@@ -119,11 +124,7 @@ def get_provider_creds(
     Returns:
         Detached :class:`LensProviderCreds` row or ``None`` when no
         credential is stored.
-
-    Raises:
-        UnknownLensProviderError: When *provider* is not in
-            :data:`LENS_PROVIDERS`.
-    """  # noqa: DOC502 — UnknownLensProviderError raised by _validate_provider
+    """
     _validate_provider(provider)
     with factory() as session:
         row = session.scalar(
@@ -173,6 +174,10 @@ def delete_provider_creds(
 ) -> bool:
     """Drop the credential row for ``(workspace, provider)``.
 
+    Propagates :class:`UnknownLensProviderError` raised by the
+    provider validation helper when *provider* is not in
+    :data:`LENS_PROVIDERS`.
+
     Args:
         factory: SQLAlchemy sessionmaker.
         workspace_id: Workspace filter.
@@ -180,11 +185,7 @@ def delete_provider_creds(
 
     Returns:
         ``True`` when a row was deleted.
-
-    Raises:
-        UnknownLensProviderError: When *provider* is not in
-            :data:`LENS_PROVIDERS`.
-    """  # noqa: DOC502 — UnknownLensProviderError raised by _validate_provider
+    """
     _validate_provider(provider)
     with factory() as session:
         result = session.execute(
@@ -209,6 +210,12 @@ def decrypt_provider_key(
     disabled.  Callers should hold the cleartext only for the
     duration of one LLM round-trip and discard.
 
+    Propagates :class:`UnknownLensProviderError` raised by the
+    provider validation helper when *provider* is not in
+    :data:`LENS_PROVIDERS`, and ``SecretDecryptError`` raised by
+    :func:`decrypt_value` when the ciphertext fails authentication
+    (master key rotated without re-encrypting dependents).
+
     Args:
         factory: SQLAlchemy sessionmaker.
         workspace_id: Workspace filter.
@@ -216,13 +223,7 @@ def decrypt_provider_key(
 
     Returns:
         Cleartext API key, or ``None`` when missing / disabled.
-
-    Raises:
-        UnknownLensProviderError: When *provider* is not in
-            :data:`LENS_PROVIDERS`.
-        SecretDecryptError: When the ciphertext fails authentication
-            (master key rotated without re-encrypting dependents).
-    """  # noqa: DOC502 — both errors bubble from helpers
+    """
     row = get_provider_creds(factory, workspace_id=workspace_id, provider=provider)
     if row is None or not row.enabled:
         return None

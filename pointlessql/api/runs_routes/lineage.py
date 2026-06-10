@@ -30,7 +30,10 @@ async def api_run_graph(
 
     The route follows the auditor / supervisor scope ladder used by
     the per-run audit-axis JSON endpoints — same data already
-    visible on the run-detail Lineage tab, just rearranged.
+    visible on the run-detail Lineage tab, just rearranged.  A caller
+    without the supervisor or auditor scope propagates the
+    :class:`pointlessql.exceptions.AuthorizationError` raised by
+    :func:`require_supervisor`.
 
     Args:
         request: Incoming FastAPI request.
@@ -44,10 +47,8 @@ async def api_run_graph(
         for the full per-element shape.
 
     Raises:
-        AuthorizationError: Caller lacks the supervisor or auditor
-            scope.
         CatalogNotFoundError: No run with that id.
-    """  # noqa: DOC503 — AuthorizationError is raised by require_supervisor
+    """
     require_supervisor(request)
     factory = request.app.state.session_factory
     with factory() as session:

@@ -53,8 +53,9 @@ async def follow_user(
         ``{"followed_user_id": int, "added": bool}``.
 
     Raises:
-        HTTPException: 400 on self-follow attempt; 404 when the
-            target user does not exist.
+        BadRequestError: On a self-follow attempt.
+        ResourceNotFoundError.not_found: When the target user does
+            not exist.
     """
     require_user(request)
     caller = get_user(request)

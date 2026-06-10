@@ -133,7 +133,8 @@ async def post_refresh_passport(
         ``{"version_int": int}`` for the new passport row.
 
     Raises:
-        HTTPException: 404 when the DP doesn't exist.
+        ResourceNotFoundError: When the refresh reports no matching
+            data product (a version of ``0``).
     """
     require_user(request)
     user = get_user(request)

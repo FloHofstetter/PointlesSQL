@@ -34,6 +34,13 @@ def save_graph(
     same number never lands twice even under concurrent saves; the
     second writer to commit raises ``IntegrityError`` and should retry.
 
+    Args:
+        factory: SQLAlchemy session factory for the metadata DB.
+        data_product_id: Product the graph belongs to.
+        doc: Canvas document to serialise and persist.
+        author_user_id: User who saved the graph; ``None`` for
+            system-originated saves.
+
     Returns:
         The newly-minted ``version`` integer.
     """

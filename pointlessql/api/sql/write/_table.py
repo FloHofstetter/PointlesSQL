@@ -42,6 +42,11 @@ async def api_pql_write_table(request: Request, body: dict[str, Any] = Body(...)
     pipeline (parse, UC SELECT enforcement, DuckDB execute) and only
     then hands the resulting frame to the write primitive.
 
+    Propagates :class:`AuthorizationError` from the privilege gates
+    when the principal lacks ``SELECT`` on a referenced table or
+    ``MODIFY`` / ``USE SCHEMA`` on the target, and
+    :class:`CatalogNotFoundError` when a referenced table is unknown.
+
     Args:
         request: Incoming FastAPI request.
         body: JSON body with ``sql`` (the source SELECT), ``target``
@@ -60,12 +65,8 @@ async def api_pql_write_table(request: Request, body: dict[str, Any] = Body(...)
 
     Raises:
         ValidationError: When required fields are missing or malformed.
-        AuthorizationError: When the principal lacks ``SELECT`` on a
-            referenced table or ``MODIFY`` / ``USE SCHEMA`` on the
-            target.
-        CatalogNotFoundError: When a referenced table is unknown.
-        SQLExecutionError: When DuckDB rejects the SELECT.
-    """  # noqa: DOC502,DOC503 — exceptions bubble up to the centralised handler
+        SQLExecutionError: When the source SELECT does not parse.
+    """
     from pointlessql.exceptions import SQLExecutionError
     from pointlessql.pql import SQLParseError, prepare_sql
 
@@ -161,6 +162,11 @@ async def api_pql_merge(request: Request, body: dict[str, Any] = Body(...)) -> d
     (append-only history with ``_valid_from`` / ``_valid_to`` /
     ``_is_current``).
 
+    Propagates :class:`AuthorizationError` from the privilege gates
+    when the principal lacks ``SELECT`` on a referenced table or
+    ``MODIFY`` on the target, and :class:`CatalogNotFoundError` when
+    the target or a referenced table is unknown.
+
     Args:
         request: Incoming FastAPI request.
         body: JSON body with ``sql`` (source SELECT), ``target`` (3-part
@@ -178,12 +184,8 @@ async def api_pql_merge(request: Request, body: dict[str, Any] = Body(...)) -> d
 
     Raises:
         ValidationError: When required fields are missing or malformed.
-        AuthorizationError: When the principal lacks ``SELECT`` on a
-            referenced table or ``MODIFY`` on the target.
-        CatalogNotFoundError: When the target or a referenced table is
-            unknown.
-        SQLExecutionError: When DuckDB rejects the source SELECT.
-    """  # noqa: DOC502,DOC503 — exceptions bubble up to the centralised handler
+        SQLExecutionError: When the source SELECT does not parse.
+    """
     from pointlessql.exceptions import SQLExecutionError
     from pointlessql.pql import SQLParseError, prepare_sql
 

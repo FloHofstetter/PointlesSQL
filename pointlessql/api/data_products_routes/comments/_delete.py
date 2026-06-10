@@ -43,8 +43,8 @@ async def delete_data_product_comment(
     Raises:
         AuthorizationError: When the caller is neither author nor
             steward nor admin.
-        HTTPException: 404 when the comment is missing or scoped to
-            a different product.
+        ResourceNotFoundError.not_found: When the comment is missing
+            or scoped to a different product (rendered as 404).
     """
     require_user(request)
     user = get_user(request)

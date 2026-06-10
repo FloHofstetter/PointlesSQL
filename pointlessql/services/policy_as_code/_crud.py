@@ -78,9 +78,28 @@ def create_module(
 ) -> dict[str, Any]:
     """Create a new policy module.
 
+    Args:
+        session_factory: SQLAlchemy session factory for the
+            metadata DB.
+        workspace_id: Workspace the module belongs to; the
+            name-uniqueness constraint is scoped to it.
+        name: Module name, unique within the workspace; stripped
+            before persisting.
+        cedar_source: Cedar policy text the module evaluates;
+            stored verbatim at version 1.
+        created_by_user_id: Id of the creating user, or ``None``
+            for system-created modules.
+        enabled: Whether the module participates in policy
+            evaluation immediately.
+
+    Returns:
+        The persisted module serialised as a discovery-shaped dict
+        (id, workspace_id, name, cedar_source, version, enabled,
+        creator, timestamps).
+
     Raises:
-        ValueError: When *name* is blank or already used in the
-            workspace.
+        ValueError: When *name* or *cedar_source* is blank, or
+            *name* is already used in the workspace.
     """
     if not name or not name.strip():
         raise ValueError("name is required")

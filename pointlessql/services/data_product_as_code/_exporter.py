@@ -41,6 +41,17 @@ def export_data_product(
 ) -> DataProductSpec:
     """Return a :class:`DataProductSpec` for the named product.
 
+    Args:
+        session_factory: SQLAlchemy session factory for the metadata DB.
+        catalog: UC catalog name the product is anchored on.
+        schema: UC schema name the product is anchored on.
+        workspace_id: Workspace scope to look the product up in.
+
+    Returns:
+        A spec snapshotting the product's ports, SLOs, policies,
+        contract tests, fixtures, entities, and (when a canvas graph
+        exists) its pipeline.
+
     Raises:
         LookupError: When the product does not exist.
     """

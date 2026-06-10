@@ -30,6 +30,12 @@ logger = logging.getLogger(__name__)
 def _version_and_count_at(storage_location: str, when: datetime.datetime) -> dict[str, Any]:
     """Resolve the as-of version + best-effort row count of a Delta table.
 
+    Args:
+        storage_location: Filesystem / object-store path of the Delta
+            table's root (where its ``_delta_log`` lives).
+        when: Timezone-aware wall-clock instant to resolve the table's
+            version at.
+
     Returns:
         ``{"as_of_version": int|None, "row_count": int|None}`` — both
         ``None`` when the table is unreadable at *when*.

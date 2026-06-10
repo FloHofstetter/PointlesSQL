@@ -444,6 +444,10 @@ async def api_update_saved_query(
 ) -> dict[str, Any]:
     """Update a saved query.  Only owner + admin may mutate.
 
+    Propagates :class:`ValidationError` raised by
+    :func:`saved_queries_service.update_by_slug` when a non-``None``
+    title / sql is empty.
+
     Args:
         request: The incoming request.
         slug: The slug of the row to update.
@@ -458,8 +462,7 @@ async def api_update_saved_query(
         CatalogNotFoundError: If the row is missing or the user
             is not the owner / admin.  (We do not differentiate
             so unauthorised clients cannot probe for existence.)
-        ValidationError: If a non-``None`` title / sql is empty.
-    """  # noqa: DOC502,DOC503 — raised by saved_queries.update_by_slug
+    """
     from pointlessql.exceptions import CatalogNotFoundError
 
     factory = getattr(request.app.state, "session_factory", None)

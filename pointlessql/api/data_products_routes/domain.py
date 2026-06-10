@@ -63,8 +63,21 @@ async def assign_domain(
     Body ``{"domain_id": int}`` assigns; ``{"domain_id": null}``
     unassigns.  The domain must live in the same workspace.
 
+    Args:
+        catalog: UC catalog segment of the product.
+        schema: UC schema segment of the product.
+        request: Incoming FastAPI request — supplies the session
+            user, active workspace, and app state.
+        body: JSON body carrying the ``domain_id`` key (an integer
+            to assign, ``null`` to unassign).
+
     Returns:
         ``{"data_product_id": int, "domain_id": int | None}``.
+
+    Raises:
+        BadRequestError: When ``domain_id`` is missing or neither an
+            integer nor ``null``, or the domain service rejects the
+            assignment (e.g. the domain lives in another workspace).
     """
     require_user(request)
     user = get_user(request)

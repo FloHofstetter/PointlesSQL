@@ -74,8 +74,9 @@ class IngestSource(Base):
 
     Attributes:
         id: Auto-incremented primary key.
-        workspace_id: FK to ``workspaces.id``.  Workspace-scoped per
-            FK to ``users.id``.  The creator; pulls run
+        workspace_id: FK to ``workspaces.id``.  Scopes the source to
+            one workspace like the rest of the metadata DB.
+        owner_user_id: FK to ``users.id``.  The creator; pulls run
             under their principal so soyuz authorization applies.
         name: Human-readable name, unique within the workspace.
         kind: One of :data:`INGEST_SOURCE_KINDS`.

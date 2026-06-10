@@ -24,6 +24,9 @@ class CanvasNode(BaseModel):
     """One block on the canvas.
 
     Attributes:
+        model_config: Pydantic configuration; ``extra="ignore"`` drops
+            unknown keys instead of failing so older documents survive
+            envelope additions.
         id: Stable identifier the editor mints (a UUID v4 string for most
             consumers) so edges and downstream results can reference the
             node across re-saves.

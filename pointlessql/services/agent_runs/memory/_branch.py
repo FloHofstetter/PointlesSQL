@@ -143,6 +143,11 @@ def branch_from_run(
     ``intent`` field stamped into the operation params and the
     branch tag set.
 
+    Propagates :class:`BranchAlreadyExistsError` (when the
+    auto-derived or caller-supplied branch name already exists in
+    UC) and :class:`CatalogUnavailableError` (when soyuz-catalog is
+    unreachable) from :func:`create_branch_schema`.
+
     Args:
         client: Configured soyuz-catalog client.
         session_factory: SQLAlchemy session factory.
@@ -171,10 +176,7 @@ def branch_from_run(
         ValidationError: When the source run is unknown, has no
             recorded operations with a target_table, or carries a
             different agent_id than the caller supplied.
-        BranchAlreadyExistsError: When the auto-derived (or
-            caller-supplied) branch name already exists in UC.
-        CatalogUnavailableError: When soyuz-catalog is unreachable.
-    """  # noqa: DOC502,DOC503 — Branch* / Catalog* propagate from create_branch_schema
+    """
     with session_factory() as session:
         run = session.get(AgentRun, str(from_run_id))
     if run is None:

@@ -108,11 +108,10 @@ class _VectorMixin(_PQLBase):
             Dict with ``hits`` (list of ``{score, pk, snippet}``)
             plus the index's ``model``, ``embedder``, ``metric``, and
             ``delta_version_indexed`` so callers can report
-            freshness.
-
-        Raises:
-            FileNotFoundError: No index exists for the column.
-        """  # noqa: DOC502 — bubble up from pql._vector.search
+            freshness.  Propagates :class:`FileNotFoundError` raised
+            by :func:`pointlessql.pql._vector.search` when no index
+            exists for the column.
+        """
         from pointlessql.pql._vector import search
 
         return search(

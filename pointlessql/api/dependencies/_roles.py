@@ -47,17 +47,15 @@ def admin_uc(request: Request) -> UnityCatalogClient:
     collapses the ``require_admin(request);
     client = get_uc_client(request)`` couplet repeated at the top of every
     admin-only UC route into a single :func:`Depends` injection.
+    Propagates :class:`AuthorizationError` raised by
+    :func:`require_admin` when the caller is not an admin.
 
     Args:
         request: Incoming FastAPI request.
 
     Returns:
         The per-request :class:`UnityCatalogClient` facade.
-
-    Raises:
-        AuthorizationError: When the caller is not an admin (via
-            :func:`require_admin`).
-    """  # noqa: DOC502
+    """
     require_admin(request)
     return get_uc_client(request)
 

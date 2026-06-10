@@ -45,6 +45,10 @@ async def api_agent_run_audit_lineage(
     :func:`runs_routes.load_lineage_summary_for_run` so the SQL
     stays in one place.
 
+    Propagates :class:`AuthorizationError` when the caller lacks the
+    supervisor or auditor scope, and :class:`CatalogNotFoundError`
+    (from :func:`ensure_run_visible`) when no run with that id exists.
+
     Args:
         request: Incoming FastAPI request.
         run_id: UUID of the run.
@@ -55,12 +59,7 @@ async def api_agent_run_audit_lineage(
         ``{"run_id", "op_id", "total_edges", "rows": [...]}`` (rows
         carry ``ordinal``/``op_name``/``source_table``/``target_table``/
         ``edge_count``).
-
-    Raises:
-        AuthorizationError: When the caller lacks the supervisor or
-            auditor scope.
-        CatalogNotFoundError: When no run with that id exists.
-    """  # noqa: DOC502,DOC503 — Raises section reflects callee-raised errors
+    """
     require_supervisor(request)
     started_at = datetime.now(UTC)
     factory = request.app.state.session_factory
@@ -90,6 +89,10 @@ async def api_agent_run_audit_rejects(
     are stored verbatim in the DB; PII handling is the caller's
     problem (PointlesSQL doesn't mask rejects today).
 
+    Propagates :class:`AuthorizationError` when the caller lacks the
+    supervisor or auditor scope, and :class:`CatalogNotFoundError`
+    (from :func:`ensure_run_visible`) when no run with that id exists.
+
     Args:
         request: Incoming FastAPI request.
         run_id: UUID of the run.
@@ -99,12 +102,7 @@ async def api_agent_run_audit_rejects(
         ``{"run_id", "op_id", "row_count", "rows": [...]}`` (rows
         carry ``op_id``/``source_table``/``source_row_id``/``reason``/
         ``detail``/``created_at``).
-
-    Raises:
-        AuthorizationError: When the caller lacks the supervisor or
-            auditor scope.
-        CatalogNotFoundError: When no run with that id exists.
-    """  # noqa: DOC502,DOC503 — Raises section reflects callee-raised errors
+    """
     require_supervisor(request)
     started_at = datetime.now(UTC)
     factory = request.app.state.session_factory
@@ -154,6 +152,10 @@ async def api_agent_run_audit_value_changes(
     keeps an auditor-key bound Hermes flow from inadvertently
     echoing reversible cleartext into a webhook.
 
+    Propagates :class:`AuthorizationError` when the caller lacks the
+    supervisor or auditor scope, and :class:`CatalogNotFoundError`
+    (from :func:`ensure_run_visible`) when no run with that id exists.
+
     Args:
         request: Incoming FastAPI request.
         run_id: UUID of the run.
@@ -170,12 +172,7 @@ async def api_agent_run_audit_value_changes(
     Returns:
         ``{"run_id", "table", "op_id", "row_count", "masked": bool,
         "rows": [...]}``.
-
-    Raises:
-        AuthorizationError: When the caller lacks the supervisor or
-            auditor scope.
-        CatalogNotFoundError: When no run with that id exists.
-    """  # noqa: DOC502,DOC503 — Raises section reflects callee-raised errors
+    """
     require_supervisor(request)
     started_at = datetime.now(UTC)
     factory = request.app.state.session_factory
@@ -235,18 +232,17 @@ async def api_agent_run_audit_external_writes(
     ``AgentRun.tables_touched`` JSON) and to unacknowledged rows
     so the response mirrors the run-detail "External writes" tab.
 
+    Propagates :class:`AuthorizationError` when the caller lacks the
+    supervisor or auditor scope, and :class:`CatalogNotFoundError`
+    (from :func:`ensure_run_visible`) when no run with that id exists.
+
     Args:
         request: Incoming FastAPI request.
         run_id: UUID of the run.
 
     Returns:
         ``{"run_id", "tables_touched", "row_count", "rows": [...]}``.
-
-    Raises:
-        AuthorizationError: When the caller lacks the supervisor or
-            auditor scope.
-        CatalogNotFoundError: When no run with that id exists.
-    """  # noqa: DOC502,DOC503 — Raises section reflects callee-raised errors
+    """
     require_supervisor(request)
     started_at = datetime.now(UTC)
     factory = request.app.state.session_factory
@@ -295,6 +291,10 @@ async def api_agent_run_audit_column_lineage(
     Hermes tool and is the backing surface the run-detail
     column-trace links also call.
 
+    Propagates :class:`AuthorizationError` when the caller lacks the
+    supervisor or auditor scope, and :class:`CatalogNotFoundError`
+    (from :func:`ensure_run_visible`) when no run with that id exists.
+
     Args:
         request: Incoming FastAPI request.
         run_id: UUID of the run.
@@ -306,12 +306,7 @@ async def api_agent_run_audit_column_lineage(
         with rows shaped ``{"op_id", "source_table", "source_column",
         "target_table", "target_column", "transform_kind",
         "transform_detail"}``.
-
-    Raises:
-        AuthorizationError: When the caller lacks the supervisor or
-            auditor scope.
-        CatalogNotFoundError: When no run with that id exists.
-    """  # noqa: DOC502,DOC503 — Raises section reflects callee-raised errors
+    """
     require_supervisor(request)
     started_at = datetime.now(UTC)
     factory = request.app.state.session_factory

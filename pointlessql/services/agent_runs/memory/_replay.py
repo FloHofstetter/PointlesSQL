@@ -382,8 +382,12 @@ def replay_run_on_branch(
 ) -> ReplayResult:
     """Replay a source run's operations onto a branch schema.
 
+    Propagates :class:`ValidationError` from the source-run
+    loading helpers when the source run is unknown or has no
+    operations to replay.
+
     Args:
-        client: Configured soyuz-catalog client.  Phase-90-unused
+        client: Configured soyuz-catalog client.  Currently unused
             but kept in the signature so the follow-up real-
             execution implementation doesn't break callers.
         engine: Engine the future real-execution path will use.
@@ -402,11 +406,9 @@ def replay_run_on_branch(
         :class:`ReplaySkip` entries describing every skipped op.
 
     Raises:
-        ValidationError: When the source run is unknown or has no
-            operations to replay.
         ReplayUnsafeOpError: When ``policy=STRICT`` and an unsafe
             op is encountered.
-    """  # noqa: DOC503 — ValidationError propagates from helpers
+    """
     branch_catalog, branch_schema = _split_branch_fqn(branch_schema_fqn)
     source = _load_source_run(session_factory, source_run_id)
     operations = _load_source_operations(session_factory, source_run_id)

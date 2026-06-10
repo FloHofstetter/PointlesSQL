@@ -91,7 +91,9 @@ async def update_notification_prefs(request: Request) -> dict[str, Any]:
         The full updated prefs payload (same shape as ``GET``).
 
     Raises:
-        HTTPException: 400 when the body is not an object.
+        BadRequestError: 400 when the body is not a JSON object.
+        ResourceNotFoundError: 404 when the caller's user row no
+            longer exists.
     """
     require_user(request)
     caller = get_user(request)

@@ -56,7 +56,7 @@ async def topic_detail(slug: str, request: Request) -> dict[str, Any]:
         "followers": int, "viewer_follows": bool}``.
 
     Raises:
-        HTTPException: 404 when the slug does not resolve.
+        ResourceNotFoundError: When the slug does not resolve.
     """
     require_user(request)
     caller = get_user(request)
@@ -129,6 +129,9 @@ async def set_dp_topics(
 ) -> dict[str, Any]:
     """Replace the DP's topic assignment with the supplied list.
 
+    A missing DP propagates the 404-shaped not-found error raised
+    inside :func:`load_one`.
+
     Args:
         catalog: UC catalog segment.
         schema: UC schema segment.
@@ -139,8 +142,8 @@ async def set_dp_topics(
 
     Raises:
         AuthorizationError: When the caller is not steward / admin.
-        HTTPException: 400 if an unknown slug is supplied;
-            404 if the DP is missing.
+        BadRequestError: When ``topics`` is not a list or an unknown
+            slug is supplied.
     """
     require_user(request)
     caller = get_user(request)

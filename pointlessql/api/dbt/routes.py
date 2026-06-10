@@ -241,8 +241,9 @@ async def api_dbt_test_failures(
 
     Supervisor or auditor scope required: per-run audit-axis routes
     follow the same asymmetric ladder as the rest of
-    ``/api/agent-runs/{id}/audit/*`` (see :func:`require_supervisor`
-    docstring).
+    ``/api/agent-runs/{id}/audit/*``.  Callers lacking that scope
+    get the :class:`HTTPException` (403) propagated from
+    :func:`require_supervisor`.
 
     Args:
         request: Incoming FastAPI request.
@@ -253,11 +254,7 @@ async def api_dbt_test_failures(
 
     Returns:
         ``{"agent_run_id": str | None, "row_count": int, "rows": [...]}``.
-
-    Raises:
-        HTTPException: When the caller lacks supervisor / auditor scope
-            (raised by :func:`require_supervisor`).
-    """  # noqa: DOC502 — HTTPException raised inside require_supervisor
+    """
     require_supervisor(request)
     factory = request.app.state.session_factory
     rows: list[dict[str, Any]] = []

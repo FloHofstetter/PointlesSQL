@@ -16,6 +16,9 @@ router = APIRouter(tags=["admin-api-keys"])
 async def api_admin_get_usage(request: Request, name: str, days: int = 30) -> dict[str, Any]:
     """Return the last *days* days of usage for *name*.
 
+    Propagates :class:`CatalogNotFoundError` raised by
+    :func:`api_key_by_name` when the key is missing or revoked.
+
     Args:
         request: Incoming FastAPI request.
         name: API-key name.
@@ -25,10 +28,7 @@ async def api_admin_get_usage(request: Request, name: str, days: int = 30) -> di
     Returns:
         ``{"name": ..., "days": [{"date": "YYYY-MM-DD", "count":
         int}, ...], "top_ips": [{"ip": str, "count": int}, ...]}``.
-
-    Raises:
-        CatalogNotFoundError: Key missing or revoked.
-    """  # noqa: DOC502 — raised by api_key_by_name helper
+    """
     from pointlessql.services.api_keys._usage import get_usage_summary
 
     require_admin(request)

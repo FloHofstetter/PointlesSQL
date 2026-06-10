@@ -135,8 +135,9 @@ async def create_topic(request: Request) -> dict[str, Any]:
         Serialised topic row.
 
     Raises:
-        HTTPException: 400 on empty display name; 403 if the
-            caller is not steward / install-admin.
+        BadRequestError: When ``display_name`` is empty.
+        PermissionDeniedError: When the caller is not steward+
+            (supervisor or install-admin).
     """
     require_user(request)
     caller = get_user(request)

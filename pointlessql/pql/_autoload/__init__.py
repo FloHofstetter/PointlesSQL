@@ -87,6 +87,16 @@ def autoload_files(
 ) -> dict[str, Any]:
     """Ingest matching files under *source_path* into the target Delta table.
 
+    All failure modes propagate from the helper layers:
+    :class:`ValidationError` when *target* is malformed or
+    *file_format* cannot be inferred for a file,
+    :class:`CatalogNotFoundError` when *target*'s parent schema has
+    no storage root and the table doesn't exist yet,
+    :class:`CatalogUnavailableError` when soyuz-catalog is
+    unreachable, and :class:`AuditUnavailableError` when
+    *agent_run_id* is set but the ``agent_run_operations`` row
+    cannot be persisted.
+
     Args:
         client: Configured ``soyuz_catalog_client.Client``.
         engine: PQL engine — used only for column-info on the
@@ -115,21 +125,12 @@ def autoload_files(
             Volume on the OpenLineage event.  Today the value is
             stashed but the lineage emission still uses no inputs
             (autoload sources are filesystem paths, not UC
-            securables); see  for context.
+            securables).
 
     Returns:
         ``{"target", "files_scanned", "files_ingested", "files_skipped",
         "rows_ingested"}``.
-
-    Raises:
-        ValidationError: When *target* is malformed or *file_format*
-            cannot be inferred for a file.
-        CatalogNotFoundError: When *target*'s parent schema has no
-            storage root and the table doesn't exist yet.
-        CatalogUnavailableError: When soyuz-catalog is unreachable.
-        AuditUnavailableError: If *agent_run_id* is set and the
-            ``agent_run_operations`` row cannot be persisted.
-    """  # noqa: DOC502,DOC503 — every Raises entry propagates from helpers
+    """
     catalog, schema, table = parse_full_name(target)
     resolved_conventions = conventions or load_conventions()
     audit_columns = _resolve_audit_columns(resolved_conventions)

@@ -44,6 +44,9 @@ from pointlessql.services.workspace.governance import (
 async def list_polymorphic_reviews(kind: str, ref: str, request: Request) -> dict[str, Any]:
     """Return every review on a polymorphic entity + summary.
 
+    Propagates the 501 :class:`HTTPException` raised by
+    :func:`reviews_supported` when *kind* has reviews disabled.
+
     Args:
         kind: Entity kind (must have ``supports_reviews=True``).
         ref: Entity reference.
@@ -52,10 +55,7 @@ async def list_polymorphic_reviews(kind: str, ref: str, request: Request) -> dic
     Returns:
         ``{"social_target_id": int, "summary": {avg_stars, count},
         "my_review": {...} | None, "reviews": [...]}``.
-
-    Raises:
-        HTTPException: 501 when *kind* has reviews disabled.
-    """  # noqa: DOC502 — raised by reviews_supported helper
+    """
     require_user(request)
     reviews_supported(kind)
     user = get_user(request)
@@ -129,6 +129,9 @@ async def upsert_polymorphic_review(kind: str, ref: str, request: Request) -> di
 
     Body: ``{"stars": int (1..5), "body_md": str?}``.
 
+    Propagates the 501 :class:`HTTPException` raised by
+    :func:`reviews_supported` when *kind* has reviews disabled.
+
     Args:
         kind: Entity kind (must have ``supports_reviews=True``).
         ref: Entity reference.
@@ -139,8 +142,7 @@ async def upsert_polymorphic_review(kind: str, ref: str, request: Request) -> di
 
     Raises:
         BadRequestError: On invalid stars or missing payload.
-        HTTPException: 501 when *kind* has reviews disabled.
-    """  # noqa: DOC502 — raised by reviews_supported helper
+    """
     require_user(request)
     reviews_supported(kind)
     user = get_user(request)
@@ -254,7 +256,9 @@ async def delete_polymorphic_review(kind: str, ref: str, request: Request) -> di
     """Remove the caller's review on a polymorphic entity.
 
     Self only — there is no per-entity moderator role for reviews.
-    Idempotent on a missing row.
+    Idempotent on a missing row.  Propagates the 501
+    :class:`HTTPException` raised by :func:`reviews_supported` when
+    *kind* has reviews disabled.
 
     Args:
         kind: Entity kind (must have ``supports_reviews=True``).
@@ -263,10 +267,7 @@ async def delete_polymorphic_review(kind: str, ref: str, request: Request) -> di
 
     Returns:
         ``{"deleted": bool}``.
-
-    Raises:
-        HTTPException: 501 when *kind* has reviews disabled.
-    """  # noqa: DOC502 — raised by reviews_supported helper
+    """
     require_user(request)
     reviews_supported(kind)
     user = get_user(request)

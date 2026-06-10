@@ -136,6 +136,10 @@ def get_term_by_slug(
 def delete_term(session_factory: SessionFactory, *, term_id: int) -> bool:
     """Delete a glossary term (and, via CASCADE, its column bindings).
 
+    Args:
+        session_factory: Sessionmaker callable for the metadata DB.
+        term_id: PK of the :class:`GlossaryTerm` to delete.
+
     Returns:
         ``True`` when a row was deleted, ``False`` when none existed.
     """
@@ -213,6 +217,11 @@ def bind_column(
 
 def unbind_column(session_factory: SessionFactory, *, binding_id: int) -> bool:
     """Remove a term-to-column binding.
+
+    Args:
+        session_factory: Sessionmaker callable for the metadata DB.
+        binding_id: PK of the :class:`GlossaryTermColumn` row to
+            remove.
 
     Returns:
         ``True`` when a row was deleted, ``False`` when none existed.

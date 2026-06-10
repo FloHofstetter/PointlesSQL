@@ -103,8 +103,11 @@ async def create_agent(request: Request) -> dict[str, Any]:
 
     Raises:
         AuthorizationError: When the caller is not install-admin.
-        HTTPException: 400 on missing fields, unknown avatar_kind,
-            slug collision; 404 if principal_user_id is unknown.
+        BadRequestError: When ``display_name`` or
+            ``principal_user_id`` is missing, or ``avatar_kind`` is
+            not one of the supported kinds.
+        ResourceNotFoundError.not_found: When ``principal_user_id``
+            does not match any existing user.
     """
     require_user(request)
     caller = get_user(request)
@@ -193,7 +196,8 @@ async def verify_agent(slug: str, request: Request) -> dict[str, Any]:
 
     Raises:
         AuthorizationError: Admin-only.
-        HTTPException: 404 when slug is unknown.
+        ResourceNotFoundError: When the slug does not match any
+            agent in the workspace.
     """
     require_user(request)
     caller = get_user(request)

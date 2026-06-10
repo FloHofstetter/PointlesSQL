@@ -91,6 +91,14 @@ def create_or_rebuild_index(
 ) -> dict[str, Any]:
     """Create (or fully rebuild) a vector index over *table.column*.
 
+    Propagates :class:`CatalogNotFoundError` when the target table
+    is not in soyuz-catalog or has no ``storage_location``,
+    :class:`CatalogUnavailableError` when soyuz-catalog is
+    unreachable (both from the storage-location lookup), and
+    :class:`EmbedderUnavailableError` from :func:`resolve_embedder`
+    when the backing embedder library is not installed or its API
+    is not reachable.
+
     Args:
         client: Configured catalog client.
         table: Three-part UC FQN.
@@ -121,14 +129,11 @@ def create_or_rebuild_index(
         ``rows_indexed``, ``delta_version_indexed``, etc.
 
     Raises:
-        CatalogNotFoundError: Target table not in soyuz-catalog or
-            has no ``storage_location``.
-        CatalogUnavailableError: soyuz-catalog is unreachable.
-        ValidationError: ``column`` not present on *table* or the
-            column is not a string type.
-        EmbedderUnavailableError: Backing embedder library not
-            installed / API not reachable.
-    """  # noqa: DOC502,DOC503 — bubble up from helpers
+        ValidationError: An explicit ``dim`` disagrees with the
+            resolved embedder's dimensionality; also propagated
+            when ``column`` is not present on *table* or is not a
+            string type.
+    """
     from pointlessql.services.agent_runs import operation_context
 
     catalog, schema, table_name = parse_full_name(table)
@@ -272,6 +277,10 @@ def search(
 ) -> dict[str, Any]:
     """Run a top-K vector search against an existing index.
 
+    Propagates :class:`CatalogNotFoundError` from the
+    storage-location lookup when the target table is not in the
+    catalog.
+
     Args:
         client: Configured catalog client.
         table: Three-part UC FQN.
@@ -291,10 +300,11 @@ def search(
         ``score``, ``pk``, ``snippet``).
 
     Raises:
-        CatalogNotFoundError: Target table not in catalog.
         FileNotFoundError: No index file exists for the column.
-        EmbedderUnavailableError: Embedder cannot be resolved.
-    """  # noqa: DOC502,DOC503 — bubble up from helpers
+        EmbedderUnavailableError: The resolved embedder's
+            dimensionality does not match the index (model drift);
+            also propagated when the embedder cannot be resolved.
+    """
     storage_location = _resolve_storage_location(client, table, unreachable_msg)
     index_path = _index_file_path(storage_location, column)
     if not index_path.exists():

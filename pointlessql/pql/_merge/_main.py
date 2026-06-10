@@ -55,6 +55,14 @@ def merge_table(
     ``storage_location``; the primitive does not bootstrap a
     table — that is the autoload primitive's job.
 
+    Propagates :class:`CatalogNotFoundError` (when *target* is
+    unknown to soyuz-catalog or has no ``storage_location``) and
+    :class:`CatalogUnavailableError` (when soyuz-catalog is
+    unreachable) from the target/source resolution helpers, and
+    :class:`AuditUnavailableError` from the operation recorder when
+    *agent_run_id* is set and the ``agent_run_operations`` row
+    cannot be persisted.
+
     Args:
         client: Configured ``soyuz_catalog_client.Client``.
         engine: Engine to read *source* with when it is a UC
@@ -120,12 +128,11 @@ def merge_table(
     Raises:
         ValidationError: When ``on`` is empty, ``strategy`` is
             unknown, or a key column is missing from the source.
-        CatalogNotFoundError: When *target* is unknown to
-            soyuz-catalog or has no ``storage_location``.
-        CatalogUnavailableError: When soyuz-catalog is unreachable.
-        AuditUnavailableError: If *agent_run_id* is set and the
-            ``agent_run_operations`` row cannot be persisted.
-    """  # noqa: DOC503 — Catalog* errors propagate from helpers below
+        enforcement.violation: The ``DataProductContractViolation``
+            built by the pre-merge contract check when the source
+            schema breaks the target's data-product contract — raised
+            before the merge runs so the bad write never lands.
+    """
     if not on:
         raise ValidationError("merge requires at least one column in 'on'")
     if strategy not in ("upsert", "scd2"):

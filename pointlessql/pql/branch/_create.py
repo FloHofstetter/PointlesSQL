@@ -235,6 +235,13 @@ def create_branch_schema(
        UC, stamp the ``pointlessql.branch.*`` tag set on the branch
        schema, and emit the ``pointlessql.branch.created.v1`` CloudEvent.
 
+    Propagates :class:`BranchCloudUnsupportedError` raised by the
+    strategy picker (cloud parent + ``cloud_strategy='error'``, the
+    default, with no per-call override) and
+    :class:`CatalogNotFoundError` raised by the source-schema
+    resolution helpers (parent schema unknown / has no
+    ``storage_root``).
+
     Args:
         client: Configured soyuz client.
         source_schema_fqn: ``catalog.schema`` of the parent.
@@ -255,12 +262,9 @@ def create_branch_schema(
         BranchAlreadyExistsError: ``branch_name`` already exists.
         BranchOfBranchError: *source_schema_fqn* itself carries
             ``pointlessql.branch.*`` tags.
-        BranchCloudUnsupportedError: Cloud parent + ``cloud_strategy='error'``
-            (the default) and no per-call override.
-        CatalogNotFoundError: Parent schema unknown / has no storage_root.
         CatalogUnavailableError: soyuz unreachable.
-        ValueError: Unknown URI scheme on the parent's storage_root.
-    """  # noqa: DOC502,DOC503 — Catalog* / Branch* propagate from helpers
+        ValueError: *branch_name* is empty or contains a dot.
+    """
     catalog, source_schema = split_two_part(source_schema_fqn, "source_schema")
     if "." in branch_name or not branch_name:
         msg = f"branch_name {branch_name!r} must be a single name (no dots, non-empty)"

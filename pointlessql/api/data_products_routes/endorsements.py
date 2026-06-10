@@ -194,12 +194,13 @@ async def apply_endorsement(
         When ``?as_agent=`` is supplied the caller must be the
         agent's ``principal_user_id`` or admin; otherwise the
         helper raises :class:`AuthorizationError` (rendered as a
-        403 by middleware).
+        403 by middleware).  An unknown ``?as_agent=`` slug
+        propagates :class:`ResourceNotFoundError` (404) from
+        :func:`resolve_agent_for_principal`.
 
     Raises:
-        HTTPException: 400 when ``endorsement_type`` is missing or
-            outside the typed allow-list; 404 on unknown
-            ``?as_agent=`` slug.
+        BadRequestError: 400 when ``endorsement_type`` is missing
+            or outside the typed allow-list.
     """
     require_user(request)
     user = get_user(request)
@@ -329,8 +330,8 @@ async def remove_endorsement(
         ``removed_at`` unchanged).
 
     Raises:
-        HTTPException: 404 when the endorsement is missing or
-            scoped to a different product.
+        ResourceNotFoundError.not_found: 404 when the endorsement
+            is missing or scoped to a different product.
     """
     require_user(request)
     user = get_user(request)

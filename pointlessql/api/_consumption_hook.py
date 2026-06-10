@@ -46,8 +46,8 @@ def enforce_consumption_for_read(
         source_fqn: The source being read, ``catalog.schema.table``.
 
     Raises:
-        ConsumptionViolation: When the effective policy is
-            ``strict`` and the source is undeclared.
+        governance_service.ConsumptionViolation: When the effective
+            policy is ``strict`` and the source is undeclared.
     """
     if authoring_product_id is None:
         return

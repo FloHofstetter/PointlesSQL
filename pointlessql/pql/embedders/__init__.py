@@ -68,6 +68,10 @@ class Embedder(Protocol):
     def embed(self, texts: Sequence[str]) -> list[list[float]]:
         """Embed a batch of strings to vectors of length :attr:`dim`.
 
+        Implementations raise :class:`EmbedderUnavailableError` when
+        their backing library is not installed or the remote API is
+        unreachable.
+
         Args:
             texts: Strings to embed.  Empty strings are allowed; the
                 implementation decides how to handle them
@@ -76,16 +80,16 @@ class Embedder(Protocol):
         Returns:
             One ``list[float]`` of length :attr:`dim` per input
             string, in the same order.
-
-        Raises:
-            EmbedderUnavailableError: Backing library not installed
-                or remote API unreachable.
-        """  # noqa: DOC502 — implementations may raise
+        """
         ...
 
 
 def resolve_embedder(spec: str | Embedder, *, model: str | None = None) -> Embedder:
     """Construct (or return) an :class:`Embedder` from a string spec.
+
+    Propagates :class:`EmbedderUnavailableError` from the embedder
+    constructor when the requested provider's library (or remote
+    endpoint) is not available.
 
     Args:
         spec: Either a registry key (``"sentence_transformers"``,
@@ -100,10 +104,8 @@ def resolve_embedder(spec: str | Embedder, *, model: str | None = None) -> Embed
         A live :class:`Embedder` instance.
 
     Raises:
-        EmbedderUnavailableError: The requested provider's library
-            (or remote endpoint) is not available.
         ValueError: The spec is not a known registry key.
-    """  # noqa: DOC502,DOC503 — bubble up from the embedder ctor
+    """
     if not isinstance(spec, str):
         return spec
     try:

@@ -78,7 +78,8 @@ async def get_user_profile(
         , "recent_activity": [...]}``.
 
     Raises:
-        HTTPException: 404 when the target user does not exist.
+        ResourceNotFoundError.not_found: 404 when the target user
+            does not exist.
     """
     require_user(request)
     factory = request.app.state.session_factory
@@ -228,8 +229,10 @@ async def update_user_profile(
     Raises:
         AuthorizationError: When the caller is not the owner and
             not install-admin.
-        HTTPException: 400 on oversized bio / too many link rows;
-            404 when the target user does not exist.
+        BadRequestError: 400 on oversized bio or malformed / too
+            many link rows.
+        ResourceNotFoundError.not_found: 404 when the target user
+            does not exist.
     """
     require_user(request)
     caller = get_user(request)

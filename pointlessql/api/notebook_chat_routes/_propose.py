@@ -165,6 +165,12 @@ async def api_propose_cell(
 ) -> dict[str, Any]:
     """Draft a new cell to insert into the open notebook.
 
+    Propagates :class:`PermissionDeniedError` (403) on an
+    ``X-Agent-Run-Id`` mismatch and :class:`ResourceNotFoundError`
+    (404) on an unknown session, both raised inside
+    :func:`_resolve_session`.  Body validation errors surface as 422
+    via FastAPI.
+
     Args:
         request: Incoming request — must carry an
             ``X-Agent-Run-Id`` matching the session's agent run.
@@ -173,12 +179,7 @@ async def api_propose_cell(
 
     Returns:
         ``{"proposal_id": str, "action": "propose"}``.
-
-    Raises:
-        HTTPException: 403 on X-Agent-Run-Id mismatch; 404 on
-            unknown session.  Body validation errors surface as 422
-            via FastAPI.
-    """  # noqa: DOC502 — HTTPException is what we raise
+    """
     chat_session, agent_run_id, workspace_id = _resolve_session(request, editor_session_id)
 
     proposal_id = str(uuid.uuid4())
@@ -229,6 +230,12 @@ async def api_fix_cell(
 ) -> dict[str, Any]:
     """Draft a source replacement for an existing notebook cell.
 
+    Propagates :class:`PermissionDeniedError` (403) on an
+    ``X-Agent-Run-Id`` mismatch and :class:`ResourceNotFoundError`
+    (404) on an unknown session, both raised inside
+    :func:`_resolve_session`.  Body validation errors surface as 422
+    via FastAPI.
+
     Args:
         request: Incoming request — must carry an
             ``X-Agent-Run-Id`` matching the session's agent run.
@@ -240,12 +247,7 @@ async def api_fix_cell(
         "idempotent_match": bool}``.  ``idempotent_match=True`` when
         an identical pending fix existed in the last 60 seconds and
         its ``proposal_id`` is returned instead of writing a new row.
-
-    Raises:
-        HTTPException: 403 on X-Agent-Run-Id mismatch; 404 on
-            unknown session.  Body validation errors surface as 422
-            via FastAPI.
-    """  # noqa: DOC502 — HTTPException bubbles up from _resolve_session
+    """
     chat_session, agent_run_id, workspace_id = _resolve_session(request, editor_session_id)
 
     factory = request.app.state.session_factory
@@ -320,6 +322,12 @@ async def api_explain_cell(
     conversation resets and the revision-history UI can render
     them per cell.
 
+    Propagates :class:`PermissionDeniedError` (403) on an
+    ``X-Agent-Run-Id`` mismatch and :class:`ResourceNotFoundError`
+    (404) on an unknown session, both raised inside
+    :func:`_resolve_session`.  Body validation errors surface as 422
+    via FastAPI.
+
     Args:
         request: Incoming request — must carry an
             ``X-Agent-Run-Id`` matching the session's agent run.
@@ -329,12 +337,7 @@ async def api_explain_cell(
     Returns:
         ``{"proposal_id": str, "action": "explain",
         "status": "accepted"}``.
-
-    Raises:
-        HTTPException: 403 on X-Agent-Run-Id mismatch; 404 on
-            unknown session.  Body validation errors surface as 422
-            via FastAPI.
-    """  # noqa: DOC502 — HTTPException bubbles up from _resolve_session
+    """
     chat_session, agent_run_id, workspace_id = _resolve_session(request, editor_session_id)
 
     factory = request.app.state.session_factory

@@ -60,7 +60,9 @@ async def execute_tool_with_audit(
 
     On any failure (unknown tool, validation error, executor raise)
     the audit row is still written with ``tool_status='error'`` so
-    the transcript stays complete.
+    the transcript stays complete.  Propagates
+    :class:`UnknownLensToolError` raised by the registry-lookup
+    helper when *tool_name* is not registered.
 
     Args:
         tool_name: Registered tool name.
@@ -71,9 +73,8 @@ async def execute_tool_with_audit(
         The tool's output as a JSON-serialisable dict.
 
     Raises:
-        UnknownLensToolError: When *tool_name* is not in the registry.
         LensToolError: When validation or execution fails.
-    """  # noqa: DOC502,DOC503 — UnknownLensToolError raised by helper
+    """
     tool = _resolve_tool_or_audit(tool_name, ctx, raw_args)
     args_obj = _validate_or_audit(tool, ctx, raw_args)
     start = time.monotonic()

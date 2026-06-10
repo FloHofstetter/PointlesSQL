@@ -18,16 +18,16 @@ router = APIRouter(tags=["admin-api-keys"])
 async def api_admin_list_grants(request: Request, name: str) -> dict[str, Any]:
     """List a key's catalog + IP grants.
 
+    Propagates :class:`CatalogNotFoundError` raised by
+    :func:`api_key_by_name` when the key is missing or revoked.
+
     Args:
         request: Incoming FastAPI request.
         name: API-key name.
 
     Returns:
         ``{"catalog_grants": [...], "ip_grants": [...]}``.
-
-    Raises:
-        CatalogNotFoundError: Key missing or revoked.
-    """  # noqa: DOC502 — raised by api_key_by_name helper
+    """
     from sqlalchemy import select
 
     from pointlessql.models import ApiKeyCatalogGrant, ApiKeyIpGrant
@@ -68,6 +68,9 @@ async def api_admin_add_catalog_grant(
 ) -> dict[str, Any]:
     """Add a catalog/schema grant to a key.
 
+    Propagates :class:`CatalogNotFoundError` raised by
+    :func:`api_key_by_name` when the key is missing or revoked.
+
     Args:
         request: Incoming FastAPI request.
         name: API-key name.
@@ -80,8 +83,7 @@ async def api_admin_add_catalog_grant(
     Raises:
         ValidationError: ``catalog_name`` missing or empty, or grant
             already exists.
-        CatalogNotFoundError: Key missing or revoked.
-    """  # noqa: DOC502 DOC503 — CatalogNotFoundError raised by helper
+    """
     from datetime import UTC, datetime
 
     from pointlessql.models import ApiKeyCatalogGrant
@@ -180,6 +182,9 @@ async def api_admin_add_ip_grant(
 ) -> dict[str, Any]:
     """Add an IP/CIDR grant to a key.
 
+    Propagates :class:`CatalogNotFoundError` raised by
+    :func:`api_key_by_name` when the key is missing or revoked.
+
     Args:
         request: Incoming FastAPI request.
         name: API-key name.
@@ -191,8 +196,7 @@ async def api_admin_add_ip_grant(
 
     Raises:
         ValidationError: ``cidr`` missing / unparseable, or duplicate.
-        CatalogNotFoundError: Key missing or revoked.
-    """  # noqa: DOC502 DOC503 — CatalogNotFoundError raised by helper
+    """
     from datetime import UTC, datetime
 
     from pointlessql.models import ApiKeyIpGrant

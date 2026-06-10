@@ -30,7 +30,8 @@ def validate_diff(diff: Any) -> dict[str, Any]:
         Validated diff dict.
 
     Raises:
-        HTTPException: 400 on unsupported diff op keys.
+        BadRequestError: When ``diff`` is not an object or contains
+            an unsupported diff op key.
     """
     if not isinstance(diff, dict):
         raise BadRequestError("diff must be an object")

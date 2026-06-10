@@ -69,7 +69,7 @@ class DataProductComment(Base):
             this reply as the answer to a ``question`` thread.
             Atomicity is enforced in the accept-answer route —
             at most one reply per thread carries the flag.
-            Wall-clock at POST time.
+        created_at: Wall-clock at POST time.
         deleted_at: Wall-clock when soft-deleted; NULL while live.
             Filters in list queries.
     """

@@ -21,6 +21,10 @@ from pointlessql.services.authorization import MODIFY, SELECT, USE_SCHEMA, check
 async def enforce_select_per_table(ctx: DispatchContext, refs: list[str]) -> dict[str, str]:
     """Run ``SELECT`` enforcement on every ref and return storage map.
 
+    Propagates :class:`AuthorizationError` raised by
+    :func:`check_privilege` when the caller lacks ``SELECT`` on a
+    referenced table.
+
     Args:
         ctx: Dispatcher context.
         refs: 3-part table names to enforce.
@@ -31,8 +35,7 @@ async def enforce_select_per_table(ctx: DispatchContext, refs: list[str]) -> dic
     Raises:
         SQLExecutionError: When a ref is not 3-part qualified.
         CatalogNotFoundError: When a ref is unknown.
-        AuthorizationError: When the caller lacks ``SELECT``.
-    """  # noqa: DOC502,DOC503
+    """
     uc_client = get_uc_client(ctx.request)
     approved: dict[str, str] = {}
     for full_name in refs:
@@ -59,6 +62,10 @@ async def enforce_modify_target(ctx: DispatchContext, target: str, *, must_exist
 
     Mirrors :func:`pointlessql.api.pql_write_routes._check_write_target`
     so editor and Hermes-plugin write paths agree on the gate.
+    Propagates :class:`AuthorizationError` raised by
+    :func:`check_privilege` when the caller lacks the required gate
+    (``MODIFY`` on an existing target, ``USE_SCHEMA`` on the parent
+    of a new one).
 
     Args:
         ctx: Dispatcher context.
@@ -71,8 +78,7 @@ async def enforce_modify_target(ctx: DispatchContext, target: str, *, must_exist
     Raises:
         ValidationError: When *target* is not 3-part.
         CatalogNotFoundError: When ``must_exist=True`` and target absent.
-        AuthorizationError: When the caller lacks the required gate.
-    """  # noqa: DOC502,DOC503
+    """
     parts = target.split(".")
     if len(parts) != 3:
         raise ValidationError(

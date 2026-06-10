@@ -176,6 +176,9 @@ async def api_admin_update_domain(
 ) -> dict[str, Any]:
     """Rename a domain, edit its description, or change its archetype.
 
+    Propagates :class:`CatalogNotFoundError` raised by
+    ``_ensure_domain`` when no domain in the workspace has that id.
+
     Args:
         request: Incoming FastAPI request.
         domain_id: ``Domain.id``.
@@ -188,7 +191,6 @@ async def api_admin_update_domain(
 
     Raises:
         ValidationError: When the body is empty or a field is invalid.
-        CatalogNotFoundError: When no domain has that id.
     """
     require_admin(request)
     factory = request.app.state.session_factory
@@ -418,6 +420,11 @@ async def api_admin_update_member_role(
 @router.delete("/api/admin/domains/{domain_id}/members/{user_id}")
 async def api_admin_remove_member(request: Request, domain_id: int, user_id: int) -> dict[str, Any]:
     """Remove a user from a domain.
+
+    Args:
+        request: Incoming FastAPI request.
+        domain_id: ``Domain.id`` the membership belongs to.
+        user_id: ``User.id`` of the member to remove.
 
     Returns:
         ``{"deleted": bool}`` — ``False`` when no membership existed.

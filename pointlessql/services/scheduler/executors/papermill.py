@@ -252,6 +252,11 @@ async def _papermill_executor(
     principal forwarding the scheduler applies to its own
     ``uc_client``.
 
+    Propagates :class:`ValidationError` from config validation /
+    path resolution — when ``notebook_path`` is missing, not a
+    string, escapes ``notebooks_dir``, or does not exist, or when
+    ``parameters`` / ``timeout_seconds`` have the wrong type.
+
     Args:
         job_run_id: Current run id — used as the output filename.
         user_info: The run-as user's :class:`UserInfo` — ``email`` is
@@ -264,14 +269,10 @@ async def _papermill_executor(
             built-in kinds.
 
     Raises:
-        ValidationError: When ``notebook_path`` is missing, not a
-            string, escapes ``notebooks_dir``, or does not exist; or
-            when ``parameters`` / ``timeout_seconds`` have the wrong
-            type.
         EngineError: When the notebook raises during execution, when
             the execution exceeds the timeout, or when papermill
             itself errors out.
-    """  # noqa: DOC503 — ValidationError re-raised from validate_papermill_config / resolve_notebook_path
+    """
     del uc_client  # kernel subprocess builds its own PQL client
 
     settings = get_settings()

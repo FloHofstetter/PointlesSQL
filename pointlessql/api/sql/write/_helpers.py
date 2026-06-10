@@ -43,15 +43,15 @@ async def _approve_select_refs(request: Request, refs: list[str]) -> dict[str, s
 
     Returns:
         Mapping ``full_name → storage_location`` for every ref the
-        caller is allowed to read.
+        caller is allowed to read.  Propagates
+        :class:`AuthorizationError` raised by :func:`check_privilege`
+        when the principal lacks ``SELECT`` on a ref.
 
     Raises:
         ValidationError: When a ref is not a 3-part name.
         CatalogNotFoundError: When a ref is unknown to soyuz-catalog
             or has no ``storage_location``.
-        AuthorizationError: When the principal lacks ``SELECT`` on a
-            ref (raised by :func:`check_privilege`).
-    """  # noqa: DOC502,DOC503 — AuthorizationError raised inside check_privilege
+    """
     uc_client = get_uc_client(request)
     user = get_user(request)
     email = effective_principal(request) or user.get("email", "")
@@ -89,6 +89,11 @@ async def _check_write_target(request: Request, target: str, *, must_exist: bool
     it does not we require ``USE SCHEMA`` on the parent so the agent
     can land bytes underneath.
 
+    Propagates :class:`ValidationError` raised by
+    :meth:`TableFqn.parse` when *target* is malformed, and
+    :class:`AuthorizationError` raised by :func:`check_privilege`
+    when the principal lacks the required privilege.
+
     Args:
         request: Incoming FastAPI request.
         target: 3-part UC name that the operation will write to.
@@ -98,12 +103,9 @@ async def _check_write_target(request: Request, target: str, *, must_exist: bool
         ``True`` if the target already exists, ``False`` otherwise.
 
     Raises:
-        ValidationError: When *target* is malformed.
         CatalogNotFoundError: When *target* is missing and
             ``must_exist`` is ``True``.
-        AuthorizationError: When the principal lacks the required
-            privilege.
-    """  # noqa: DOC502,DOC503 — ValidationError + AuthorizationError raised inside helpers
+    """
     catalog, schema_name, table_name = TableFqn.parse(target).parts()
     uc_client = get_uc_client(request)
     user = get_user(request)

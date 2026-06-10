@@ -91,16 +91,16 @@ def _serialise_pin(pin: WorkspacePinnedEntity, target: SocialTarget) -> dict[str
 async def workspace_landing_page(request: Request, slug: str) -> HTMLResponse:
     """Render the workspace landing page.
 
+    Propagates :class:`ResourceNotFoundError` raised by
+    ``_resolve_workspace`` when the workspace slug doesn't exist.
+
     Args:
         request: Incoming FastAPI request.
         slug: Workspace slug from the URL.
 
     Returns:
         The rendered ``pages/workspace_landing.html`` template.
-
-    Raises:
-        HTTPException: 404 when the workspace slug doesn't exist.
-    """  # noqa: DOC502 — raised by _resolve_workspace helper
+    """
     require_user(request)
     user = get_user(request)
     factory = request.app.state.session_factory

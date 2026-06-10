@@ -41,6 +41,9 @@ def read_table(
     when a session factory is available and never raises into the
     read path.
 
+    Propagates :class:`ValidationError` from :func:`parse_full_name`
+    when *full_name* does not have exactly three parts.
+
     Args:
         client: A configured ``soyuz_catalog_client.Client`` instance.
         engine: The engine to materialise the Delta scan with.
@@ -54,11 +57,12 @@ def read_table(
         (e.g. pandas DataFrame, DuckDB relation).
 
     Raises:
-        ValidationError: If *full_name* does not have exactly three parts.
         CatalogNotFoundError: If the table is not found or has no
             ``storage_location``.
         CatalogUnavailableError: If soyuz-catalog is unreachable.
-    """  # noqa: DOC503
+        Exception: Re-raises whatever the engine read raised, after
+            recording the failed read in the audit history.
+    """
     parse_full_name(full_name)  # validates format
     try:
         response = _get_table.sync(client=client, full_name=full_name)

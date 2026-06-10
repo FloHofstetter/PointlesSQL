@@ -100,6 +100,11 @@ def delete_output_port(
 ) -> bool:
     """Remove an output port from a product.
 
+    Args:
+        session_factory: Sessionmaker callable.
+        data_product_id: Product the port must belong to.
+        port_id: Primary key of the output port to delete.
+
     Returns:
         ``True`` when a row was deleted, ``False`` when no matching
         port existed for the product.
@@ -204,6 +209,11 @@ def delete_input_port(
     session_factory: SessionFactory, *, data_product_id: int, port_id: int
 ) -> bool:
     """Remove an input port from a product.
+
+    Args:
+        session_factory: Sessionmaker callable.
+        data_product_id: Product the port must belong to.
+        port_id: Primary key of the input port to delete.
 
     Returns:
         ``True`` when a row was deleted, ``False`` when no matching

@@ -376,6 +376,10 @@ def execute(
     to 1000 to keep cockpit responses snappy; export endpoints
     pass a higher cap.
 
+    Propagates :class:`ValidationError` from :func:`validate_sql`
+    when a starter row has been edited externally to break the
+    allow-list.
+
     Args:
         factory: SQLAlchemy session factory pointed at the
             metadata DB.
@@ -388,12 +392,7 @@ def execute(
         ``rows`` is a list of dicts keyed by column name; ``columns``
         preserves the SELECT order so an export honours it.
         ``None`` when the slug is unknown.
-
-    Raises:
-        ValidationError: Propagated from :func:`validate_sql` when
-            a starter row has been edited externally to break the
-            allow-list.
-    """  # noqa: DOC502 — propagates ValidationError from validate_sql
+    """
     saved = get_by_slug(factory, slug)
     if saved is None:
         return None

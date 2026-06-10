@@ -67,9 +67,12 @@ async def replay_endpoint(
         run's detail page in one round-trip.
 
     Raises:
-        HTTPException: 400 on validation / unknown policy, 422
-            when STRICT policy hits an unsafe op, 503 when soyuz
-            is unreachable.
+        BadRequestError: When ``body.policy`` is not a known
+            :class:`ReplayPolicy` value.
+        CatalogUnavailableError: When soyuz-catalog is unreachable
+            (re-raised for the central problem+json handler).
+        ValidationError: When the strict policy hits an unsafe op,
+            or replay-input validation fails.
     """
     require_user(request)
     try:

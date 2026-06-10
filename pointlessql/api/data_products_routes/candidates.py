@@ -151,8 +151,8 @@ async def dismiss_candidate(
         ``{"id": int, "status": "dismissed"}``.
 
     Raises:
-        HTTPException: 404 when the row does not exist for the
-            active workspace.
+        ResourceNotFoundError.not_found: When the row does not exist
+            for the active workspace.
     """
     user = _require_steward_or_admin(request)
     workspace_id = current_workspace_id(request)
@@ -222,8 +222,8 @@ async def generate_candidate_draft(
         ``{"draft_id": int, "draft_path": str, "yaml_preview": str}``.
 
     Raises:
-        HTTPException: 404 when the row does not exist for the
-            active workspace.
+        ResourceNotFoundError.not_found: When the row does not exist
+            for the active workspace.
     """
     user = _require_steward_or_admin(request)
     workspace_id = current_workspace_id(request)

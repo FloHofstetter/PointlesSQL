@@ -32,6 +32,9 @@ class ColumnSpec(BaseModel):
     """One column in a pin's table schema.
 
     Attributes:
+        model_config: Pydantic model config — instances are frozen so
+            a column spec can be hashed and shared across compile
+            passes without defensive copies.
         name: Lowercase column identifier as it appears in the DuckDB
             view bound to the upstream Delta table.
         duckdb_type: DuckDB-flavoured type string (``"VARCHAR"``,

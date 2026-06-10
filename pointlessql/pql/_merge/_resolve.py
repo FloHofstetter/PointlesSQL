@@ -57,6 +57,11 @@ def _resolve_target_location(client: Client, full_name: str, unreachable_msg: st
 def _resolve_source_frame(client: Client, engine: Engine, source: Any, unreachable_msg: str) -> Any:
     """Return *source* as a frame, resolving UC references through the engine.
 
+    Propagates :class:`CatalogNotFoundError` from :func:`read_table`
+    when *source* is a UC reference that cannot be resolved, and
+    :class:`CatalogUnavailableError` when soyuz-catalog is
+    unreachable.
+
     Args:
         client: Configured catalog client (only used when *source* is a string).
         engine: Engine used to materialise UC references.
@@ -65,12 +70,7 @@ def _resolve_source_frame(client: Client, engine: Engine, source: Any, unreachab
 
     Returns:
         The source frame in the engine's native type.
-
-    Raises:
-        CatalogNotFoundError: When *source* is a UC reference that
-            cannot be resolved.
-        CatalogUnavailableError: When soyuz-catalog is unreachable.
-    """  # noqa: DOC502 — both errors propagate from read_table
+    """
     if isinstance(source, str):
         return read_table(
             client=client,

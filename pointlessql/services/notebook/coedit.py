@@ -140,7 +140,9 @@ def apply_update(
     new authoritative blob.  Returns the new blob so the caller (WS
     hub) can opportunistically rebroadcast the freshly-merged state
     to other subscribers, though the typical fanout pattern just
-    rebroadcasts the original update bytes.
+    rebroadcasts the original update bytes.  An unknown notebook
+    propagates the :class:`pointlessql.exceptions.ValidationError`
+    raised inside :func:`get_or_init_ydoc`.
 
     Args:
         session: A SQLAlchemy session.
@@ -149,10 +151,7 @@ def apply_update(
 
     Returns:
         The new full-state blob after merge.
-
-    Raises:
-        ValidationError: When the notebook is unknown.
-    """  # noqa: DOC502 — delegate raises via get_or_init_ydoc
+    """
     doc = get_or_init_ydoc(session, notebook_id=notebook_id)
     doc.apply_update(update_bytes)
     blob = doc.get_update()
@@ -191,7 +190,9 @@ def compact(session: Session, *, notebook_id: str) -> bytes:
     pycrdt's wire format is append-friendly — every apply_update +
     re-get_update cycle keeps the size monotonic-ish.  Compaction
     rebuilds the blob from the loaded Doc's current state vector so
-    storage doesn't grow unbounded.
+    storage doesn't grow unbounded.  An unknown notebook propagates
+    the :class:`pointlessql.exceptions.ValidationError` raised
+    inside :func:`get_or_init_ydoc`.
 
     Args:
         session: A SQLAlchemy session.
@@ -199,10 +200,7 @@ def compact(session: Session, *, notebook_id: str) -> bytes:
 
     Returns:
         The compacted blob.
-
-    Raises:
-        ValidationError: When the notebook is unknown.
-    """  # noqa: DOC502 — delegate raises via get_or_init_ydoc
+    """
     doc = get_or_init_ydoc(session, notebook_id=notebook_id)
     blob = doc.get_update()
     _upsert_state(

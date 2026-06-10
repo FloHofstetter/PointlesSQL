@@ -80,6 +80,10 @@ async def get_polymorphic_readme(kind: str, ref: str, request: Request) -> dict[
 async def put_polymorphic_readme(kind: str, ref: str, request: Request) -> dict[str, Any]:
     """Save a new README version for the polymorphic entity.
 
+    Propagates :class:`ResourceNotFoundError` raised by
+    :func:`readme_supported` when the registry says READMEs aren't
+    supported for this kind.
+
     Args:
         kind: Entity kind discriminator.
         ref: Opaque entity reference within *kind*.
@@ -96,8 +100,6 @@ async def put_polymorphic_readme(kind: str, ref: str, request: Request) -> dict[
             so only install-admins can edit READMEs in this
             iteration.
         BadRequestError: When ``body_md`` isn't a string.
-        ResourceNotFoundError: When the registry says READMEs
-            aren't supported for this kind.
     """
     require_user(request)
     user = get_user(request)

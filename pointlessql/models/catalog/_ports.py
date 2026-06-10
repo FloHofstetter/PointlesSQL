@@ -76,6 +76,13 @@ class DataProductOutputPort(Base):
             when not applicable.
         location: Optional address — a download path, a topic name,
             or a URI; ``None`` when the platform derives it.
+        identity_requirements: Optional JSON text describing the
+            identity checks a consumer must satisfy to use the port
+            (parsed by the governance port-identity enforcer);
+            ``None`` when the port is open to any consumer.
+        version_semver: Current ``MAJOR.MINOR.PATCH`` of the port's
+            schema contract; bumped by the schema-versioning service
+            and defaults to ``0.1.0`` for newly declared ports.
         created_by_user_id: Nullable FK on ``users.id`` recording who
             declared the port.
         created_at: Wall-clock the port was declared.

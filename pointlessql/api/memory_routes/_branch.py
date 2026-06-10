@@ -66,9 +66,11 @@ async def branch_endpoint(
         "pinned_delta_version": ..., "intent": ...}``.
 
     Raises:
-        HTTPException: 400 on validation failures, 422 on
-            soyuz-side schema conflicts, 503 when soyuz-catalog
-            is unreachable.
+        BadRequestError: 400 — caller-supplied validation failures
+            surfaced by the memory primitive.
+        CatalogNotFoundError: 404 — the source run's schema is
+            unknown to soyuz-catalog.
+        CatalogUnavailableError: 502 — soyuz-catalog is unreachable.
     """
     require_user(request)
     settings = request.app.state.settings

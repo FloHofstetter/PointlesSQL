@@ -100,6 +100,8 @@ async def resolve_approved_tables(
     Mirrors :func:`pointlessql.api.sql._dispatcher._enforce_select_per_table`
     but takes its dependencies as plain arguments so the WebSocket
     handler can reuse it without constructing a ``DispatchContext``.
+    Propagates :class:`AuthorizationError` from
+    :func:`check_privilege` when the actor lacks SELECT on a ref.
 
     Args:
         sql_source: Raw SQL the user typed.  Must parse via
@@ -117,12 +119,10 @@ async def resolve_approved_tables(
 
     Raises:
         SQLParseError: When ``sql_source`` does not parse as a
-            single SELECT.
+            single SELECT, or a parsed ref is not 3-part-qualified.
         CatalogNotFoundError: When a referenced table is unknown
             or has no storage_location on soyuz-catalog.
-        AuthorizationError: When the actor lacks SELECT on a ref.
-            Surfaces from :func:`check_privilege`.
-    """  # noqa: DOC503
+    """
     from pointlessql.services.authorization import SELECT, check_privilege
 
     prepared = prepare_sql(sql_source)

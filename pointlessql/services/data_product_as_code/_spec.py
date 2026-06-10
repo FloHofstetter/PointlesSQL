@@ -153,6 +153,9 @@ def parse_spec(source: str | dict[str, Any]) -> DataProductSpec:
     Args:
         source: YAML text or a pre-decoded dict.
 
+    Returns:
+        The spec parsed and validated from *source*.
+
     Raises:
         ValueError: On YAML parse error or pydantic validation error.
     """

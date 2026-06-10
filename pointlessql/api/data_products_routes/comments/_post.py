@@ -84,9 +84,10 @@ async def post_data_product_comment(
         middleware turns it into a 403).
 
     Raises:
-        HTTPException: 400 on empty body, missing parent, unknown
-            category, or over-deep nesting; 404 on unknown
-            ``?as_agent=`` slug.
+        BadRequestError: On empty body, missing parent, unknown
+            category, or over-deep nesting (the middleware turns
+            it into a 400). An unknown ``?as_agent=`` slug
+            propagates the helper's not-found error as a 404.
     """
     require_user(request)
     user = get_user(request)

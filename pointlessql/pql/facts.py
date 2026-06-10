@@ -219,13 +219,13 @@ def unpin(
 ) -> None:
     """Soft-delete a fact by stamping ``unpinned_at``.
 
+    Propagates :class:`ValidationError` raised by the facts service
+    when the UUID is unknown or already unpinned.
+
     Args:
         fact_uuid: 36-char fact UUID.
         session_factory: Optional override.  Agent callers leave empty.
-
-    Raises:
-        ValidationError: When the UUID is unknown or already unpinned.
-    """  # noqa: DOC502 — delegate raises
+    """
     factory = _resolve_session_factory(session_factory)
     with factory() as session:
         facts_service.unpin_fact(session, fact_uuid=fact_uuid)

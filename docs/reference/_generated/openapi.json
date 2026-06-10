@@ -721,7 +721,7 @@
         "type": "object"
       },
       "CanvasNode": {
-        "description": "One block on the canvas.\n\nAttributes:\n    id: Stable identifier the editor mints (a UUID v4 string for most\n        consumers) so edges and downstream results can reference the\n        node across re-saves.\n    block_type: Registry key the consuming layer resolves through its\n        own node-kind registry.\n    config: Block-specific configuration.  Each consumer parses this\n        dict through its own schema \u2014 invalid configs become\n        structured errors at compile/validate time, not pydantic\n        ``ValidationError`` here, so the editor can keep the document\n        open with the error surfaced in-place.\n    position: Optional ``{\"x\": float, \"y\": float}`` for the editor\n        layout.  Ignored by every backend pipeline.",
+        "description": "One block on the canvas.\n\nAttributes:\n    model_config: Pydantic configuration; ``extra=\"ignore\"`` drops\n        unknown keys instead of failing so older documents survive\n        envelope additions.\n    id: Stable identifier the editor mints (a UUID v4 string for most\n        consumers) so edges and downstream results can reference the\n        node across re-saves.\n    block_type: Registry key the consuming layer resolves through its\n        own node-kind registry.\n    config: Block-specific configuration.  Each consumer parses this\n        dict through its own schema \u2014 invalid configs become\n        structured errors at compile/validate time, not pydantic\n        ``ValidationError`` here, so the editor can keep the document\n        open with the error surfaced in-place.\n    position: Optional ``{\"x\": float, \"y\": float}`` for the editor\n        layout.  Ignored by every backend pipeline.",
         "properties": {
           "block_type": {
             "maxLength": 64,
@@ -1045,7 +1045,7 @@
         "type": "object"
       },
       "ColumnSpec": {
-        "description": "One column in a pin's table schema.\n\nAttributes:\n    name: Lowercase column identifier as it appears in the DuckDB\n        view bound to the upstream Delta table.\n    duckdb_type: DuckDB-flavoured type string (``\"VARCHAR\"``,\n        ``\"BIGINT\"``, ``\"DECIMAL(10,2)\"``, \u2026).  Not validated\n        beyond non-emptiness \u2014 DuckDB will surface a clearer error\n        at compile time than a bespoke parser would.\n    nullable: Whether the underlying Delta column allows nulls.",
+        "description": "One column in a pin's table schema.\n\nAttributes:\n    model_config: Pydantic model config \u2014 instances are frozen so\n        a column spec can be hashed and shared across compile\n        passes without defensive copies.\n    name: Lowercase column identifier as it appears in the DuckDB\n        view bound to the upstream Delta table.\n    duckdb_type: DuckDB-flavoured type string (``\"VARCHAR\"``,\n        ``\"BIGINT\"``, ``\"DECIMAL(10,2)\"``, \u2026).  Not validated\n        beyond non-emptiness \u2014 DuckDB will surface a clearer error\n        at compile time than a bespoke parser would.\n    nullable: Whether the underlying Delta column allows nulls.",
         "properties": {
           "duckdb_type": {
             "maxLength": 128,
@@ -5202,7 +5202,7 @@
     },
     "/api/admin/api-keys/{name}/grants": {
       "get": {
-        "description": "List a key's catalog + IP grants.\n\nArgs:\n    request: Incoming FastAPI request.\n    name: API-key name.\n\nReturns:\n    ``{\"catalog_grants\": [...], \"ip_grants\": [...]}``.\n\nRaises:\n    CatalogNotFoundError: Key missing or revoked.",
+        "description": "List a key's catalog + IP grants.\n\nPropagates :class:`CatalogNotFoundError` raised by\n:func:`api_key_by_name` when the key is missing or revoked.\n\nArgs:\n    request: Incoming FastAPI request.\n    name: API-key name.\n\nReturns:\n    ``{\"catalog_grants\": [...], \"ip_grants\": [...]}``.",
         "operationId": "api_admin_list_grants_api_admin_api_keys__name__grants_get",
         "parameters": [
           {
@@ -5248,7 +5248,7 @@
     },
     "/api/admin/api-keys/{name}/grants/catalog": {
       "post": {
-        "description": "Add a catalog/schema grant to a key.\n\nArgs:\n    request: Incoming FastAPI request.\n    name: API-key name.\n    body: JSON ``{catalog_name: str, schema_name?: str | null}``.\n        ``schema_name`` omitted or ``null`` grants the whole catalog.\n\nReturns:\n    ``{\"id\": int, \"catalog_name\": ..., \"schema_name\": ...}``.\n\nRaises:\n    ValidationError: ``catalog_name`` missing or empty, or grant\n        already exists.\n    CatalogNotFoundError: Key missing or revoked.",
+        "description": "Add a catalog/schema grant to a key.\n\nPropagates :class:`CatalogNotFoundError` raised by\n:func:`api_key_by_name` when the key is missing or revoked.\n\nArgs:\n    request: Incoming FastAPI request.\n    name: API-key name.\n    body: JSON ``{catalog_name: str, schema_name?: str | null}``.\n        ``schema_name`` omitted or ``null`` grants the whole catalog.\n\nReturns:\n    ``{\"id\": int, \"catalog_name\": ..., \"schema_name\": ...}``.\n\nRaises:\n    ValidationError: ``catalog_name`` missing or empty, or grant\n        already exists.",
         "operationId": "api_admin_add_catalog_grant_api_admin_api_keys__name__grants_catalog_post",
         "parameters": [
           {
@@ -5361,7 +5361,7 @@
     },
     "/api/admin/api-keys/{name}/grants/ip": {
       "post": {
-        "description": "Add an IP/CIDR grant to a key.\n\nArgs:\n    request: Incoming FastAPI request.\n    name: API-key name.\n    body: JSON ``{cidr: str, label?: str}``.  ``cidr`` validated\n        via ``ipaddress.ip_network`` and stored in canonical form.\n\nReturns:\n    ``{\"id\": int, \"cidr\": ..., \"label\": ...}``.\n\nRaises:\n    ValidationError: ``cidr`` missing / unparseable, or duplicate.\n    CatalogNotFoundError: Key missing or revoked.",
+        "description": "Add an IP/CIDR grant to a key.\n\nPropagates :class:`CatalogNotFoundError` raised by\n:func:`api_key_by_name` when the key is missing or revoked.\n\nArgs:\n    request: Incoming FastAPI request.\n    name: API-key name.\n    body: JSON ``{cidr: str, label?: str}``.  ``cidr`` validated\n        via ``ipaddress.ip_network`` and stored in canonical form.\n\nReturns:\n    ``{\"id\": int, \"cidr\": ..., \"label\": ...}``.\n\nRaises:\n    ValidationError: ``cidr`` missing / unparseable, or duplicate.",
         "operationId": "api_admin_add_ip_grant_api_admin_api_keys__name__grants_ip_post",
         "parameters": [
           {
@@ -5688,7 +5688,7 @@
     },
     "/api/admin/api-keys/{name}/usage": {
       "get": {
-        "description": "Return the last *days* days of usage for *name*.\n\nArgs:\n    request: Incoming FastAPI request.\n    name: API-key name.\n    days: Window size in days.  Defaults to 30; clamped to\n        ``[1, 365]``.\n\nReturns:\n    ``{\"name\": ..., \"days\": [{\"date\": \"YYYY-MM-DD\", \"count\":\n    int}, ...], \"top_ips\": [{\"ip\": str, \"count\": int}, ...]}``.\n\nRaises:\n    CatalogNotFoundError: Key missing or revoked.",
+        "description": "Return the last *days* days of usage for *name*.\n\nPropagates :class:`CatalogNotFoundError` raised by\n:func:`api_key_by_name` when the key is missing or revoked.\n\nArgs:\n    request: Incoming FastAPI request.\n    name: API-key name.\n    days: Window size in days.  Defaults to 30; clamped to\n        ``[1, 365]``.\n\nReturns:\n    ``{\"name\": ..., \"days\": [{\"date\": \"YYYY-MM-DD\", \"count\":\n    int}, ...], \"top_ips\": [{\"ip\": str, \"count\": int}, ...]}``.",
         "operationId": "api_admin_get_usage_api_admin_api_keys__name__usage_get",
         "parameters": [
           {
@@ -6305,7 +6305,7 @@
     },
     "/api/admin/domains/{domain_id}": {
       "patch": {
-        "description": "Rename a domain, edit its description, or change its archetype.\n\nArgs:\n    request: Incoming FastAPI request.\n    domain_id: ``Domain.id``.\n    body: ``{\"name\"?: str, \"description\"?: str | None,\n        \"archetype\"?: str}``.  At least one field required; slug\n        is intentionally immutable (audit + URLs reference it).\n\nReturns:\n    The updated domain row.\n\nRaises:\n    ValidationError: When the body is empty or a field is invalid.\n    CatalogNotFoundError: When no domain has that id.",
+        "description": "Rename a domain, edit its description, or change its archetype.\n\nPropagates :class:`CatalogNotFoundError` raised by\n``_ensure_domain`` when no domain in the workspace has that id.\n\nArgs:\n    request: Incoming FastAPI request.\n    domain_id: ``Domain.id``.\n    body: ``{\"name\"?: str, \"description\"?: str | None,\n        \"archetype\"?: str}``.  At least one field required; slug\n        is intentionally immutable (audit + URLs reference it).\n\nReturns:\n    The updated domain row.\n\nRaises:\n    ValidationError: When the body is empty or a field is invalid.",
         "operationId": "api_admin_update_domain_api_admin_domains__domain_id__patch",
         "parameters": [
           {
@@ -6507,7 +6507,7 @@
     },
     "/api/admin/domains/{domain_id}/members/{user_id}": {
       "delete": {
-        "description": "Remove a user from a domain.\n\nReturns:\n    ``{\"deleted\": bool}`` \u2014 ``False`` when no membership existed.",
+        "description": "Remove a user from a domain.\n\nArgs:\n    request: Incoming FastAPI request.\n    domain_id: ``Domain.id`` the membership belongs to.\n    user_id: ``User.id`` of the member to remove.\n\nReturns:\n    ``{\"deleted\": bool}`` \u2014 ``False`` when no membership existed.",
         "operationId": "api_admin_remove_member_api_admin_domains__domain_id__members__user_id__delete",
         "parameters": [
           {
@@ -9704,7 +9704,7 @@
     },
     "/api/agent-runs/{run_id}/audit/column-lineage": {
       "get": {
-        "description": "Return :class:`LineageColumnMap` rows for one run.\n\nColumn-axis JSON view.  Powers the ``pql_query_column_lineage``\nHermes tool and is the backing surface the run-detail\ncolumn-trace links also call.\n\nArgs:\n    request: Incoming FastAPI request.\n    run_id: UUID of the run.\n    table: Optional target-table filter (three-part UC name).\n    op_id: Optional op filter.\n\nReturns:\n    ``{\"run_id\", \"table\", \"op_id\", \"row_count\", \"rows\": [...]}``\n    with rows shaped ``{\"op_id\", \"source_table\", \"source_column\",\n    \"target_table\", \"target_column\", \"transform_kind\",\n    \"transform_detail\"}``.\n\nRaises:\n    AuthorizationError: When the caller lacks the supervisor or\n        auditor scope.\n    CatalogNotFoundError: When no run with that id exists.",
+        "description": "Return :class:`LineageColumnMap` rows for one run.\n\nColumn-axis JSON view.  Powers the ``pql_query_column_lineage``\nHermes tool and is the backing surface the run-detail\ncolumn-trace links also call.\n\nPropagates :class:`AuthorizationError` when the caller lacks the\nsupervisor or auditor scope, and :class:`CatalogNotFoundError`\n(from :func:`ensure_run_visible`) when no run with that id exists.\n\nArgs:\n    request: Incoming FastAPI request.\n    run_id: UUID of the run.\n    table: Optional target-table filter (three-part UC name).\n    op_id: Optional op filter.\n\nReturns:\n    ``{\"run_id\", \"table\", \"op_id\", \"row_count\", \"rows\": [...]}``\n    with rows shaped ``{\"op_id\", \"source_table\", \"source_column\",\n    \"target_table\", \"target_column\", \"transform_kind\",\n    \"transform_detail\"}``.",
         "operationId": "api_agent_run_audit_column_lineage_api_agent_runs__run_id__audit_column_lineage_get",
         "parameters": [
           {
@@ -9785,7 +9785,7 @@
     },
     "/api/agent-runs/{run_id}/audit/external-writes": {
       "get": {
-        "description": "Return ``unattributed_writes`` rows touching this run's tables.\n\nJSON over the existing :func:`runs_routes.load_unattributed_for_run`\nhelper.  Filters to the tables the run actually touched (via\n``AgentRun.tables_touched`` JSON) and to unacknowledged rows\nso the response mirrors the run-detail \"External writes\" tab.\n\nArgs:\n    request: Incoming FastAPI request.\n    run_id: UUID of the run.\n\nReturns:\n    ``{\"run_id\", \"tables_touched\", \"row_count\", \"rows\": [...]}``.\n\nRaises:\n    AuthorizationError: When the caller lacks the supervisor or\n        auditor scope.\n    CatalogNotFoundError: When no run with that id exists.",
+        "description": "Return ``unattributed_writes`` rows touching this run's tables.\n\nJSON over the existing :func:`runs_routes.load_unattributed_for_run`\nhelper.  Filters to the tables the run actually touched (via\n``AgentRun.tables_touched`` JSON) and to unacknowledged rows\nso the response mirrors the run-detail \"External writes\" tab.\n\nPropagates :class:`AuthorizationError` when the caller lacks the\nsupervisor or auditor scope, and :class:`CatalogNotFoundError`\n(from :func:`ensure_run_visible`) when no run with that id exists.\n\nArgs:\n    request: Incoming FastAPI request.\n    run_id: UUID of the run.\n\nReturns:\n    ``{\"run_id\", \"tables_touched\", \"row_count\", \"rows\": [...]}``.",
         "operationId": "api_agent_run_audit_external_writes_api_agent_runs__run_id__audit_external_writes_get",
         "parameters": [
           {
@@ -9830,7 +9830,7 @@
     },
     "/api/agent-runs/{run_id}/audit/lineage": {
       "get": {
-        "description": "Return :class:`LineageRowEdge` aggregates per op for one run.\n\nJSON sibling to the run-detail Lineage tab, consumed by the\n``pql_query_row_lineage``-style Hermes tools.  Calls into\n:func:`runs_routes.load_lineage_summary_for_run` so the SQL\nstays in one place.\n\nArgs:\n    request: Incoming FastAPI request.\n    run_id: UUID of the run.\n    op_id: Optional cross-axis filter \u2014 restrict aggregate to a\n        single op.  Stale ids fall back to \"no rows\".\n\nReturns:\n    ``{\"run_id\", \"op_id\", \"total_edges\", \"rows\": [...]}`` (rows\n    carry ``ordinal``/``op_name``/``source_table``/``target_table``/\n    ``edge_count``).\n\nRaises:\n    AuthorizationError: When the caller lacks the supervisor or\n        auditor scope.\n    CatalogNotFoundError: When no run with that id exists.",
+        "description": "Return :class:`LineageRowEdge` aggregates per op for one run.\n\nJSON sibling to the run-detail Lineage tab, consumed by the\n``pql_query_row_lineage``-style Hermes tools.  Calls into\n:func:`runs_routes.load_lineage_summary_for_run` so the SQL\nstays in one place.\n\nPropagates :class:`AuthorizationError` when the caller lacks the\nsupervisor or auditor scope, and :class:`CatalogNotFoundError`\n(from :func:`ensure_run_visible`) when no run with that id exists.\n\nArgs:\n    request: Incoming FastAPI request.\n    run_id: UUID of the run.\n    op_id: Optional cross-axis filter \u2014 restrict aggregate to a\n        single op.  Stale ids fall back to \"no rows\".\n\nReturns:\n    ``{\"run_id\", \"op_id\", \"total_edges\", \"rows\": [...]}`` (rows\n    carry ``ordinal``/``op_name``/``source_table``/``target_table``/\n    ``edge_count``).",
         "operationId": "api_agent_run_audit_lineage_api_agent_runs__run_id__audit_lineage_get",
         "parameters": [
           {
@@ -9893,7 +9893,7 @@
     },
     "/api/agent-runs/{run_id}/audit/rejects": {
       "get": {
-        "description": "Return :class:`LineageRowReject` rows for one run as JSON.\n\nWraps :func:`runs_routes.load_rejects_for_run`.  Reject reasons\nare stored verbatim in the DB; PII handling is the caller's\nproblem (PointlesSQL doesn't mask rejects today).\n\nArgs:\n    request: Incoming FastAPI request.\n    run_id: UUID of the run.\n    op_id: Optional filter \u2014 restrict to a single op.\n\nReturns:\n    ``{\"run_id\", \"op_id\", \"row_count\", \"rows\": [...]}`` (rows\n    carry ``op_id``/``source_table``/``source_row_id``/``reason``/\n    ``detail``/``created_at``).\n\nRaises:\n    AuthorizationError: When the caller lacks the supervisor or\n        auditor scope.\n    CatalogNotFoundError: When no run with that id exists.",
+        "description": "Return :class:`LineageRowReject` rows for one run as JSON.\n\nWraps :func:`runs_routes.load_rejects_for_run`.  Reject reasons\nare stored verbatim in the DB; PII handling is the caller's\nproblem (PointlesSQL doesn't mask rejects today).\n\nPropagates :class:`AuthorizationError` when the caller lacks the\nsupervisor or auditor scope, and :class:`CatalogNotFoundError`\n(from :func:`ensure_run_visible`) when no run with that id exists.\n\nArgs:\n    request: Incoming FastAPI request.\n    run_id: UUID of the run.\n    op_id: Optional filter \u2014 restrict to a single op.\n\nReturns:\n    ``{\"run_id\", \"op_id\", \"row_count\", \"rows\": [...]}`` (rows\n    carry ``op_id``/``source_table``/``source_row_id``/``reason``/\n    ``detail``/``created_at``).",
         "operationId": "api_agent_run_audit_rejects_api_agent_runs__run_id__audit_rejects_get",
         "parameters": [
           {
@@ -9956,7 +9956,7 @@
     },
     "/api/agent-runs/{run_id}/audit/value-changes": {
       "get": {
-        "description": "Return :class:`LineageValueChange` rows for one run.\n\nValue-axis JSON view.  By default all ``old_value`` /\n``new_value`` cells are masked at the API boundary; un-masking\nstill requires admin via :func:`api_audit_pii_reveal`.  This\nkeeps an auditor-key bound Hermes flow from inadvertently\nechoing reversible cleartext into a webhook.\n\nArgs:\n    request: Incoming FastAPI request.\n    run_id: UUID of the run.\n    table: Optional target-table filter (three-part UC name).\n    op_id: Optional op filter.\n    limit: Hard row cap (1\u20131000).\n    mask: When ``True`` (default), ``old_value`` / ``new_value``\n        are replaced with ``\"***\"`` placeholders.  When\n        ``False``, the API still strips both values to ``None``\n        and surfaces only the row-level metadata \u2014 auditor scope\n        does not authorise cleartext, period.  ``mask=false``\n        is honoured only for the cookie-authenticated admin.\n\nReturns:\n    ``{\"run_id\", \"table\", \"op_id\", \"row_count\", \"masked\": bool,\n    \"rows\": [...]}``.\n\nRaises:\n    AuthorizationError: When the caller lacks the supervisor or\n        auditor scope.\n    CatalogNotFoundError: When no run with that id exists.",
+        "description": "Return :class:`LineageValueChange` rows for one run.\n\nValue-axis JSON view.  By default all ``old_value`` /\n``new_value`` cells are masked at the API boundary; un-masking\nstill requires admin via :func:`api_audit_pii_reveal`.  This\nkeeps an auditor-key bound Hermes flow from inadvertently\nechoing reversible cleartext into a webhook.\n\nPropagates :class:`AuthorizationError` when the caller lacks the\nsupervisor or auditor scope, and :class:`CatalogNotFoundError`\n(from :func:`ensure_run_visible`) when no run with that id exists.\n\nArgs:\n    request: Incoming FastAPI request.\n    run_id: UUID of the run.\n    table: Optional target-table filter (three-part UC name).\n    op_id: Optional op filter.\n    limit: Hard row cap (1\u20131000).\n    mask: When ``True`` (default), ``old_value`` / ``new_value``\n        are replaced with ``\"***\"`` placeholders.  When\n        ``False``, the API still strips both values to ``None``\n        and surfaces only the row-level metadata \u2014 auditor scope\n        does not authorise cleartext, period.  ``mask=false``\n        is honoured only for the cookie-authenticated admin.\n\nReturns:\n    ``{\"run_id\", \"table\", \"op_id\", \"row_count\", \"masked\": bool,\n    \"rows\": [...]}``.",
         "operationId": "api_agent_run_audit_value_changes_api_agent_runs__run_id__audit_value_changes_get",
         "parameters": [
           {
@@ -10430,7 +10430,7 @@
         ]
       },
       "post": {
-        "description": "Register a new agent identity.\n\nBody keys: ``display_name`` (required), ``principal_user_id``\n(required), ``avatar_kind``, ``avatar_url``, ``home_url``,\n``bio_md``.\n\nArgs:\n    request: Incoming FastAPI request.\n\nReturns:\n    Serialised agent row.\n\nRaises:\n    AuthorizationError: When the caller is not install-admin.\n    HTTPException: 400 on missing fields, unknown avatar_kind,\n        slug collision; 404 if principal_user_id is unknown.",
+        "description": "Register a new agent identity.\n\nBody keys: ``display_name`` (required), ``principal_user_id``\n(required), ``avatar_kind``, ``avatar_url``, ``home_url``,\n``bio_md``.\n\nArgs:\n    request: Incoming FastAPI request.\n\nReturns:\n    Serialised agent row.\n\nRaises:\n    AuthorizationError: When the caller is not install-admin.\n    BadRequestError: When ``display_name`` or\n        ``principal_user_id`` is missing, or ``avatar_kind`` is\n        not one of the supported kinds.\n    ResourceNotFoundError.not_found: When ``principal_user_id``\n        does not match any existing user.",
         "operationId": "create_agent_api_agents_post",
         "responses": {
           "200": {
@@ -10524,7 +10524,7 @@
     },
     "/api/agents/{slug}/profile": {
       "get": {
-        "description": "Return an agent's profile + recent activity + run-stats.\n\nArgs:\n    slug: Agent identifier.\n    request: Incoming FastAPI request.\n\nReturns:\n    ``{\"agent\": {...}, \"recent_comments\": [...], \"run_stats\":\n    {count}}``.\n\nRaises:\n    HTTPException: 404 when slug is unknown.",
+        "description": "Return an agent's profile + recent activity + run-stats.\n\nArgs:\n    slug: Agent identifier.\n    request: Incoming FastAPI request.\n\nReturns:\n    ``{\"agent\": {...}, \"recent_comments\": [...], \"run_stats\":\n    {count}}``.\n\nRaises:\n    ResourceNotFoundError: When no agent in the workspace has\n        that slug.",
         "operationId": "agent_profile_api_agents__slug__profile_get",
         "parameters": [
           {
@@ -10570,7 +10570,7 @@
     },
     "/api/agents/{slug}/verify": {
       "post": {
-        "description": "Flip the verified flag on an agent.\n\nArgs:\n    slug: Agent identifier.\n    request: Incoming FastAPI request.\n\nReturns:\n    Serialised updated agent.\n\nRaises:\n    AuthorizationError: Admin-only.\n    HTTPException: 404 when slug is unknown.",
+        "description": "Flip the verified flag on an agent.\n\nArgs:\n    slug: Agent identifier.\n    request: Incoming FastAPI request.\n\nReturns:\n    Serialised updated agent.\n\nRaises:\n    AuthorizationError: Admin-only.\n    ResourceNotFoundError: When the slug does not match any\n        agent in the workspace.",
         "operationId": "verify_agent_api_agents__slug__verify_post",
         "parameters": [
           {
@@ -13842,7 +13842,7 @@
     },
     "/api/contracts/drafts/{draft_id}/discard": {
       "post": {
-        "description": "Soft-delete a draft (stamps ``discarded_at``).\n\nArgs:\n    draft_id: PK of the row.\n    request: Incoming FastAPI request.\n\nReturns:\n    ``{\"discarded\": bool}``.\n\nRaises:\n    HTTPException: 404 when the draft doesn't exist.",
+        "description": "Soft-delete a draft (stamps ``discarded_at``).\n\nArgs:\n    draft_id: PK of the row.\n    request: Incoming FastAPI request.\n\nReturns:\n    ``{\"discarded\": bool}``.\n\nRaises:\n    ResourceNotFoundError.not_found: When no draft with that id\n        exists in the workspace.",
         "operationId": "discard_draft_api_contracts_drafts__draft_id__discard_post",
         "parameters": [
           {
@@ -13888,7 +13888,7 @@
     },
     "/api/contracts/drafts/{draft_id}/promote": {
       "post": {
-        "description": "Copy a draft into the active search path and run the loader.\n\nArgs:\n    draft_id: PK of the :class:`DataProductYamlDraft` row.\n    request: Incoming FastAPI request.\n\nReturns:\n    ``{\"promoted_to_data_product_id\": int | None,\n    \"destination_path\": str}``.\n\nRaises:\n    HTTPException: 404 when the draft doesn't exist, 400\n        when no writable ``yaml_search_paths`` entry is\n        configured or the draft was already promoted.",
+        "description": "Copy a draft into the active search path and run the loader.\n\nArgs:\n    draft_id: PK of the :class:`DataProductYamlDraft` row.\n    request: Incoming FastAPI request.\n\nReturns:\n    ``{\"promoted_to_data_product_id\": int | None,\n    \"destination_path\": str}``.\n\nRaises:\n    BadRequestError: When no writable ``yaml_search_paths``\n        directory is configured, or the draft file is missing\n        on disk.\n    ConflictError: When the draft was already promoted or has\n        been discarded.\n    ResourceNotFoundError.not_found: When no draft with that id\n        exists in the workspace.",
         "operationId": "promote_draft_api_contracts_drafts__draft_id__promote_post",
         "parameters": [
           {
@@ -14716,7 +14716,7 @@
     },
     "/api/data-products/candidates/{candidate_id}/dismiss": {
       "post": {
-        "description": "Soft-dismiss a candidate so the scanner skips it next tick.\n\nArgs:\n    candidate_id: PK of the candidate row.\n    request: Incoming FastAPI request.\n\nReturns:\n    ``{\"id\": int, \"status\": \"dismissed\"}``.\n\nRaises:\n    HTTPException: 404 when the row does not exist for the\n        active workspace.",
+        "description": "Soft-dismiss a candidate so the scanner skips it next tick.\n\nArgs:\n    candidate_id: PK of the candidate row.\n    request: Incoming FastAPI request.\n\nReturns:\n    ``{\"id\": int, \"status\": \"dismissed\"}``.\n\nRaises:\n    ResourceNotFoundError.not_found: When the row does not exist\n        for the active workspace.",
         "operationId": "dismiss_candidate_api_data_products_candidates__candidate_id__dismiss_post",
         "parameters": [
           {
@@ -14762,7 +14762,7 @@
     },
     "/api/data-products/candidates/{candidate_id}/generate-draft": {
       "post": {
-        "description": "Build a draft yaml from a candidate's live schema and persist it.\n\nArgs:\n    candidate_id: PK of the candidate row.\n    request: Incoming FastAPI request.\n\nReturns:\n    ``{\"draft_id\": int, \"draft_path\": str, \"yaml_preview\": str}``.\n\nRaises:\n    HTTPException: 404 when the row does not exist for the\n        active workspace.",
+        "description": "Build a draft yaml from a candidate's live schema and persist it.\n\nArgs:\n    candidate_id: PK of the candidate row.\n    request: Incoming FastAPI request.\n\nReturns:\n    ``{\"draft_id\": int, \"draft_path\": str, \"yaml_preview\": str}``.\n\nRaises:\n    ResourceNotFoundError.not_found: When the row does not exist\n        for the active workspace.",
         "operationId": "generate_candidate_draft_api_data_products_candidates__candidate_id__generate_draft_post",
         "parameters": [
           {
@@ -14903,7 +14903,7 @@
     },
     "/api/data-products/reload": {
       "post": {
-        "description": "Reload every yaml under ``Settings.data_products.yaml_search_paths``.\n\nAdmin-gated.  Re-runs :func:`load_contracts_from_paths` for the\ncurrent workspace; failures on individual yamls propagate as\n``DataProductYamlInvalid`` and surface as a 400 response.\n\nArgs:\n    request: Incoming FastAPI request.\n\nReturns:\n    ``{\"loaded\": int, \"paths\": [...]}`` with the count of\n    contracts UPSERTed and the resolved yaml paths.\n\nRaises:\n    HTTPException: When ``yaml_search_paths`` is empty\n        (admins must configure the search roots before calling\n        this endpoint).",
+        "description": "Reload every yaml under ``Settings.data_products.yaml_search_paths``.\n\nAdmin-gated.  Re-runs :func:`load_contracts_from_paths` for the\ncurrent workspace; failures on individual yamls propagate as\n``DataProductYamlInvalid`` and surface as a 400 response.\n\nArgs:\n    request: Incoming FastAPI request.\n\nReturns:\n    ``{\"loaded\": int, \"paths\": [...]}`` with the count of\n    contracts UPSERTed and the resolved yaml paths.\n\nRaises:\n    BadRequestError: When no contracts were discovered and\n        ``yaml_search_paths`` is empty (admins must configure the\n        search roots or sync a repo before calling this endpoint).",
         "operationId": "reload_data_products_api_data_products_reload_post",
         "responses": {
           "200": {
@@ -16036,7 +16036,7 @@
         ]
       },
       "post": {
-        "description": "Create a comment on the product.\n\nBody: ``{\"body_md\": str, \"parent_comment_id\": int | None,\n\"category\": str | None}``.\n\nThreading capped at depth 5.  The\nhandler walks the parent's ``parent_comment_id`` chain and\nrejects a POST that would push depth past 5.  Replies inherit\ntheir parent's category \u2014 the caller's ``category`` is only\nhonoured on top-level comments.\n\nArgs:\n    catalog: UC catalog segment.\n    schema: UC schema segment.\n    request: Incoming FastAPI request.\n    as_agent: Optional agent slug \u2014 when set, the comment is\n        posted *by* the agent on behalf of the caller (who\n        must be the agent's ``principal_user_id``, or admin).\n        The ``author_user_id`` column still records the\n        principal so the audit chain stays intact.\n\nReturns:\n    Serialised comment row.  When ``?as_agent=`` is supplied\n    the caller must be the agent's ``principal_user_id`` or\n    install-admin; otherwise the helper raises an\n    :class:`pointlessql.exceptions.AuthorizationError` (the\n    middleware turns it into a 403).\n\nRaises:\n    HTTPException: 400 on empty body, missing parent, unknown\n        category, or over-deep nesting; 404 on unknown\n        ``?as_agent=`` slug.",
+        "description": "Create a comment on the product.\n\nBody: ``{\"body_md\": str, \"parent_comment_id\": int | None,\n\"category\": str | None}``.\n\nThreading capped at depth 5.  The\nhandler walks the parent's ``parent_comment_id`` chain and\nrejects a POST that would push depth past 5.  Replies inherit\ntheir parent's category \u2014 the caller's ``category`` is only\nhonoured on top-level comments.\n\nArgs:\n    catalog: UC catalog segment.\n    schema: UC schema segment.\n    request: Incoming FastAPI request.\n    as_agent: Optional agent slug \u2014 when set, the comment is\n        posted *by* the agent on behalf of the caller (who\n        must be the agent's ``principal_user_id``, or admin).\n        The ``author_user_id`` column still records the\n        principal so the audit chain stays intact.\n\nReturns:\n    Serialised comment row.  When ``?as_agent=`` is supplied\n    the caller must be the agent's ``principal_user_id`` or\n    install-admin; otherwise the helper raises an\n    :class:`pointlessql.exceptions.AuthorizationError` (the\n    middleware turns it into a 403).\n\nRaises:\n    BadRequestError: On empty body, missing parent, unknown\n        category, or over-deep nesting (the middleware turns\n        it into a 400). An unknown ``?as_agent=`` slug\n        propagates the helper's not-found error as a 404.",
         "operationId": "post_data_product_comment_api_data_products__catalog___schema__comments_post",
         "parameters": [
           {
@@ -16107,7 +16107,7 @@
     },
     "/api/data-products/{catalog}/{schema}/comments/{comment_id}": {
       "delete": {
-        "description": "Soft-delete a comment by setting ``deleted_at``.\n\nAuthor, data-product steward, or install-admin may delete.\nIdempotent on an already-deleted row.\n\nArgs:\n    catalog: UC catalog segment.\n    schema: UC schema segment.\n    comment_id: PK of the comment to soft-delete.\n    request: Incoming FastAPI request.\n\nReturns:\n    ``{\"id\": int, \"deleted_at\": str}`` reflecting the new state.\n\nRaises:\n    AuthorizationError: When the caller is neither author nor\n        steward nor admin.\n    HTTPException: 404 when the comment is missing or scoped to\n        a different product.",
+        "description": "Soft-delete a comment by setting ``deleted_at``.\n\nAuthor, data-product steward, or install-admin may delete.\nIdempotent on an already-deleted row.\n\nArgs:\n    catalog: UC catalog segment.\n    schema: UC schema segment.\n    comment_id: PK of the comment to soft-delete.\n    request: Incoming FastAPI request.\n\nReturns:\n    ``{\"id\": int, \"deleted_at\": str}`` reflecting the new state.\n\nRaises:\n    AuthorizationError: When the caller is neither author nor\n        steward nor admin.\n    ResourceNotFoundError.not_found: When the comment is missing\n        or scoped to a different product (rendered as 404).",
         "operationId": "delete_data_product_comment_api_data_products__catalog___schema__comments__comment_id__delete",
         "parameters": [
           {
@@ -16235,7 +16235,7 @@
     },
     "/api/data-products/{catalog}/{schema}/comments/{comment_id}/reactions": {
       "get": {
-        "description": "Return aggregated reaction counts for a single comment.\n\nArgs:\n    catalog: UC catalog segment.\n    schema: UC schema segment.\n    comment_id: PK of the comment.\n    request: Incoming FastAPI request.\n\nReturns:\n    ``{\"comment_id\": int, \"reactions\": [{emoji, count,\n    has_current_user_reacted}, ...]}``.\n\nRaises:\n    HTTPException: 404 when the comment is missing or scoped\n        to a different product.",
+        "description": "Return aggregated reaction counts for a single comment.\n\nArgs:\n    catalog: UC catalog segment.\n    schema: UC schema segment.\n    comment_id: PK of the comment.\n    request: Incoming FastAPI request.\n\nReturns:\n    ``{\"comment_id\": int, \"reactions\": [{emoji, count,\n    has_current_user_reacted}, ...]}``.\n\nRaises:\n    ResourceNotFoundError.not_found: When the comment is missing\n        or scoped to a different product (rendered as 404).",
         "operationId": "list_comment_reactions_api_data_products__catalog___schema__comments__comment_id__reactions_get",
         "parameters": [
           {
@@ -16297,7 +16297,7 @@
         ]
       },
       "post": {
-        "description": "Add an emoji reaction to a comment.\n\nIdempotent: re-POSTing the same triple is a no-op (no DB\nwrite, no fan-out).  Reactions on a comment notify the\ncomment author only \u2014 DP-wide reaction broadcast is a\nseparate endpoint.\n\nArgs:\n    catalog: UC catalog segment.\n    schema: UC schema segment.\n    comment_id: PK of the comment being reacted to.\n    request: Incoming FastAPI request.\n\nReturns:\n    ``{\"comment_id\": int, \"emoji\": str, \"added\": bool}``.\n\nRaises:\n    HTTPException: 400 on unknown emoji or wrong workspace,\n        404 when the comment is missing or soft-deleted.",
+        "description": "Add an emoji reaction to a comment.\n\nIdempotent: re-POSTing the same triple is a no-op (no DB\nwrite, no fan-out).  Reactions on a comment notify the\ncomment author only \u2014 DP-wide reaction broadcast is a\nseparate endpoint.  Propagates :class:`BadRequestError`\n(rendered as 400) from emoji validation.\n\nArgs:\n    catalog: UC catalog segment.\n    schema: UC schema segment.\n    comment_id: PK of the comment being reacted to.\n    request: Incoming FastAPI request.\n\nReturns:\n    ``{\"comment_id\": int, \"emoji\": str, \"added\": bool}``.\n\nRaises:\n    ResourceNotFoundError.not_found: When the comment is missing,\n        soft-deleted, or scoped to a different product (rendered\n        as 404).",
         "operationId": "add_comment_reaction_api_data_products__catalog___schema__comments__comment_id__reactions_post",
         "parameters": [
           {
@@ -16361,7 +16361,7 @@
     },
     "/api/data-products/{catalog}/{schema}/comments/{comment_id}/reactions/{emoji}": {
       "delete": {
-        "description": "Remove a single emoji reaction from a comment.\n\nIdempotent: returns ``removed=False`` when no row matched.\nOnly touches the caller's own row \u2014 never another user's.\n\nArgs:\n    catalog: UC catalog segment.\n    schema: UC schema segment.\n    comment_id: PK of the comment.\n    emoji: The emoji to remove.\n    request: Incoming FastAPI request.\n\nReturns:\n    ``{\"comment_id\": int, \"emoji\": str, \"removed\": bool}``.\n\nRaises:\n    HTTPException: 400 on unknown emoji, 404 when the comment\n        is missing or scoped to a different product.",
+        "description": "Remove a single emoji reaction from a comment.\n\nIdempotent: returns ``removed=False`` when no row matched.\nOnly touches the caller's own row \u2014 never another user's.\nPropagates :class:`BadRequestError` (rendered as 400) from\nemoji validation.\n\nArgs:\n    catalog: UC catalog segment.\n    schema: UC schema segment.\n    comment_id: PK of the comment.\n    emoji: The emoji to remove.\n    request: Incoming FastAPI request.\n\nReturns:\n    ``{\"comment_id\": int, \"emoji\": str, \"removed\": bool}``.\n\nRaises:\n    ResourceNotFoundError.not_found: When the comment is missing\n        or scoped to a different product (rendered as 404).",
         "operationId": "remove_comment_reaction_api_data_products__catalog___schema__comments__comment_id__reactions__emoji__delete",
         "parameters": [
           {
@@ -17141,7 +17141,7 @@
     },
     "/api/data-products/{catalog}/{schema}/domain": {
       "patch": {
-        "description": "Set or clear the product's owning domain.\n\nBody ``{\"domain_id\": int}`` assigns; ``{\"domain_id\": null}``\nunassigns.  The domain must live in the same workspace.\n\nReturns:\n    ``{\"data_product_id\": int, \"domain_id\": int | None}``.",
+        "description": "Set or clear the product's owning domain.\n\nBody ``{\"domain_id\": int}`` assigns; ``{\"domain_id\": null}``\nunassigns.  The domain must live in the same workspace.\n\nArgs:\n    catalog: UC catalog segment of the product.\n    schema: UC schema segment of the product.\n    request: Incoming FastAPI request \u2014 supplies the session\n        user, active workspace, and app state.\n    body: JSON body carrying the ``domain_id`` key (an integer\n        to assign, ``null`` to unassign).\n\nReturns:\n    ``{\"data_product_id\": int, \"domain_id\": int | None}``.\n\nRaises:\n    BadRequestError: When ``domain_id`` is missing or neither an\n        integer nor ``null``, or the domain service rejects the\n        assignment (e.g. the domain lives in another workspace).",
         "operationId": "assign_domain_api_data_products__catalog___schema__domain_patch",
         "parameters": [
           {
@@ -17261,7 +17261,7 @@
         ]
       },
       "post": {
-        "description": "Apply an endorsement of the given type.\n\nBody: ``{\"endorsement_type\": str, \"note_md\": str?}``.\n\nArgs:\n    catalog: UC catalog segment.\n    schema: UC schema segment.\n    request: Incoming FastAPI request.\n    as_agent: Optional agent slug \u2014 when set,\n        the endorsement is applied *by the agent on behalf of*\n        the caller (who must be the agent's\n        ``principal_user_id``, or admin).  ``applied_by_user_id``\n        still records the principal so the audit chain stays\n        intact.\n\nReturns:\n    Serialised endorsement row.  If an active row of the same\n    type already exists, returns it unchanged (no second row).\n    When ``?as_agent=`` is supplied the caller must be the\n    agent's ``principal_user_id`` or admin; otherwise the\n    helper raises :class:`AuthorizationError` (rendered as a\n    403 by middleware).\n\nRaises:\n    HTTPException: 400 when ``endorsement_type`` is missing or\n        outside the typed allow-list; 404 on unknown\n        ``?as_agent=`` slug.",
+        "description": "Apply an endorsement of the given type.\n\nBody: ``{\"endorsement_type\": str, \"note_md\": str?}``.\n\nArgs:\n    catalog: UC catalog segment.\n    schema: UC schema segment.\n    request: Incoming FastAPI request.\n    as_agent: Optional agent slug \u2014 when set,\n        the endorsement is applied *by the agent on behalf of*\n        the caller (who must be the agent's\n        ``principal_user_id``, or admin).  ``applied_by_user_id``\n        still records the principal so the audit chain stays\n        intact.\n\nReturns:\n    Serialised endorsement row.  If an active row of the same\n    type already exists, returns it unchanged (no second row).\n    When ``?as_agent=`` is supplied the caller must be the\n    agent's ``principal_user_id`` or admin; otherwise the\n    helper raises :class:`AuthorizationError` (rendered as a\n    403 by middleware).  An unknown ``?as_agent=`` slug\n    propagates :class:`ResourceNotFoundError` (404) from\n    :func:`resolve_agent_for_principal`.\n\nRaises:\n    BadRequestError: 400 when ``endorsement_type`` is missing\n        or outside the typed allow-list.",
         "operationId": "apply_endorsement_api_data_products__catalog___schema__endorsements_post",
         "parameters": [
           {
@@ -17332,7 +17332,7 @@
     },
     "/api/data-products/{catalog}/{schema}/endorsements/{endorsement_id}": {
       "delete": {
-        "description": "Soft-delete an endorsement.\n\nArgs:\n    catalog: UC catalog segment.\n    schema: UC schema segment.\n    endorsement_id: PK of the endorsement row.\n    request: Incoming FastAPI request.\n\nReturns:\n    ``{\"id\": int, \"removed_at\": str}``.  Idempotent on\n    already-removed rows (returns the existing\n    ``removed_at`` unchanged).\n\nRaises:\n    HTTPException: 404 when the endorsement is missing or\n        scoped to a different product.",
+        "description": "Soft-delete an endorsement.\n\nArgs:\n    catalog: UC catalog segment.\n    schema: UC schema segment.\n    endorsement_id: PK of the endorsement row.\n    request: Incoming FastAPI request.\n\nReturns:\n    ``{\"id\": int, \"removed_at\": str}``.  Idempotent on\n    already-removed rows (returns the existing\n    ``removed_at`` unchanged).\n\nRaises:\n    ResourceNotFoundError.not_found: 404 when the endorsement\n        is missing or scoped to a different product.",
         "operationId": "remove_endorsement_api_data_products__catalog___schema__endorsements__endorsement_id__delete",
         "parameters": [
           {
@@ -20375,7 +20375,7 @@
     },
     "/api/data-products/{catalog}/{schema}/passport/refresh": {
       "post": {
-        "description": "Trigger a manual passport refresh.\n\nArgs:\n    catalog: UC catalog segment.\n    schema: UC schema segment.\n    request: Incoming FastAPI request.\n\nReturns:\n    ``{\"version_int\": int}`` for the new passport row.\n\nRaises:\n    HTTPException: 404 when the DP doesn't exist.",
+        "description": "Trigger a manual passport refresh.\n\nArgs:\n    catalog: UC catalog segment.\n    schema: UC schema segment.\n    request: Incoming FastAPI request.\n\nReturns:\n    ``{\"version_int\": int}`` for the new passport row.\n\nRaises:\n    ResourceNotFoundError: When the refresh reports no matching\n        data product (a version of ``0``).",
         "operationId": "post_refresh_passport_api_data_products__catalog___schema__passport_refresh_post",
         "parameters": [
           {
@@ -20430,7 +20430,7 @@
     },
     "/api/data-products/{catalog}/{schema}/point-in-time-read": {
       "get": {
-        "description": "GET-equivalent of the POST point-in-time endpoint.\n\nBrowser + plugin callers prefer a query-string interface so the\nURL is shareable.  The path resolves the same manifest as the\nPOST sibling for the target product alone.\n\nArgs:\n    catalog: UC catalog segment.\n    schema: UC schema segment.\n    request: Incoming FastAPI request.\n    as_of: ISO-8601 timestamp.  ``Z`` is normalised to ``+00:00``;\n        naive values default to UTC.\n\nReturns:\n    Same shape as :func:`point_in_time_read`.",
+        "description": "GET-equivalent of the POST point-in-time endpoint.\n\nBrowser + plugin callers prefer a query-string interface so the\nURL is shareable.  The path resolves the same manifest as the\nPOST sibling for the target product alone.\n\nArgs:\n    catalog: UC catalog segment.\n    schema: UC schema segment.\n    request: Incoming FastAPI request.\n    as_of: ISO-8601 timestamp.  ``Z`` is normalised to ``+00:00``;\n        naive values default to UTC.\n\nReturns:\n    Same shape as :func:`point_in_time_read`.\n\nRaises:\n    BadRequestError: When ``as_of`` is empty or not a parseable\n        ISO-8601 timestamp, or when the manifest resolver\n        rejects the request (its ``ValueError`` is re-raised\n        with this type so the client sees a 400).",
         "operationId": "point_in_time_read_get_api_data_products__catalog___schema__point_in_time_read_get",
         "parameters": [
           {
@@ -20797,7 +20797,7 @@
         ]
       },
       "post": {
-        "description": "Open a new schema-change proposal.\n\nArgs:\n    catalog: UC catalog segment.\n    schema: UC schema segment.\n    request: Incoming FastAPI request.\n\nReturns:\n    Serialised proposal row.\n\nRaises:\n    HTTPException: 400 when the diff is malformed.",
+        "description": "Open a new schema-change proposal.\n\nArgs:\n    catalog: UC catalog segment.\n    schema: UC schema segment.\n    request: Incoming FastAPI request.\n\nA malformed ``diff`` body is rejected by :func:`validate_diff`\n(propagates :class:`BadRequestError`).\n\nReturns:\n    Serialised proposal row.\n\nRaises:\n    BadRequestError: When neither a session user nor an\n        ``X-Agent-Run-Id`` header identifies the proposer.",
         "operationId": "open_proposal_api_data_products__catalog___schema__proposals_post",
         "parameters": [
           {
@@ -20852,7 +20852,7 @@
     },
     "/api/data-products/{catalog}/{schema}/proposals/{proposal_id}/approve": {
       "post": {
-        "description": "Approve a proposal (in-place yaml rewrite or draft export).\n\nArgs:\n    catalog: UC catalog segment.\n    schema: UC schema segment.\n    proposal_id: PK of the proposal row.\n    request: Incoming FastAPI request.\n\nReturns:\n    ``{\"id\": int, \"status\": \"approved_inplace\" |\n    \"approved_draft\", \"applied_path\": str | None,\n    \"draft_id\": int | None}``.\n\nRaises:\n    HTTPException: 400 on unsafe inplace diff or missing\n        target yaml; 404 when the proposal doesn't exist.",
+        "description": "Approve a proposal (in-place yaml rewrite or draft export).\n\nArgs:\n    catalog: UC catalog segment.\n    schema: UC schema segment.\n    proposal_id: PK of the proposal row.\n    request: Incoming FastAPI request.\n\nReturns:\n    ``{\"id\": int, \"status\": \"approved_inplace\" |\n    \"approved_draft\", \"applied_path\": str | None,\n    \"draft_id\": int | None}``.\n\nRaises:\n    BadRequestError: When ``kind`` is invalid, the proposal is\n        already resolved, the diff contains ops unsafe for\n        in-place apply, or no yaml file resolves for the product.\n    ResourceNotFoundError.not_found: When the proposal id does\n        not exist in the workspace.",
         "operationId": "approve_proposal_api_data_products__catalog___schema__proposals__proposal_id__approve_post",
         "parameters": [
           {
@@ -21834,7 +21834,7 @@
         ]
       },
       "put": {
-        "description": "Idempotent upsert of the caller's review on this product.\n\nBody: ``{\"stars\": int (1..5), \"body_md\": str?}``.\n\nArgs:\n    catalog: UC catalog segment.\n    schema: UC schema segment.\n    request: Incoming FastAPI request.\n    as_agent: Optional agent slug \u2014 when set,\n        the review is authored *by the agent on behalf of* the\n        caller (who must be the agent's ``principal_user_id``,\n        or admin).  ``author_user_id`` still records the\n        principal so the audit chain stays intact.\n\nReturns:\n    Serialised review row.  When ``?as_agent=`` is supplied\n    the caller must be the agent's ``principal_user_id`` or\n    admin; otherwise the helper raises\n    :class:`pointlessql.exceptions.AuthorizationError` (the\n    middleware turns it into a 403).\n\nRaises:\n    HTTPException: 400 on invalid stars or missing payload;\n        404 on unknown ``?as_agent=`` slug.",
+        "description": "Idempotent upsert of the caller's review on this product.\n\nBody: ``{\"stars\": int (1..5), \"body_md\": str?}``.\n\nArgs:\n    catalog: UC catalog segment.\n    schema: UC schema segment.\n    request: Incoming FastAPI request.\n    as_agent: Optional agent slug \u2014 when set,\n        the review is authored *by the agent on behalf of* the\n        caller (who must be the agent's ``principal_user_id``,\n        or admin).  ``author_user_id`` still records the\n        principal so the audit chain stays intact.\n\nReturns:\n    Serialised review row.  When ``?as_agent=`` is supplied\n    the caller must be the agent's ``principal_user_id`` or\n    admin; otherwise the helper raises\n    :class:`pointlessql.exceptions.AuthorizationError` (the\n    middleware turns it into a 403).  An unknown ``?as_agent=``\n    slug propagates the 404-shaped not-found error raised by\n    :func:`resolve_agent_for_principal`.\n\nRaises:\n    BadRequestError: When ``stars`` is missing, not an int, or\n        outside ``1..5``.",
         "operationId": "upsert_data_product_review_api_data_products__catalog___schema__reviews_put",
         "parameters": [
           {
@@ -22505,7 +22505,7 @@
         ]
       },
       "put": {
-        "description": "Replace the DP's topic assignment with the supplied list.\n\nArgs:\n    catalog: UC catalog segment.\n    schema: UC schema segment.\n    request: Incoming FastAPI request.\n\nReturns:\n    ``{\"data_product_id\": int, \"topic_slugs\": [...]}``.\n\nRaises:\n    AuthorizationError: When the caller is not steward / admin.\n    HTTPException: 400 if an unknown slug is supplied;\n        404 if the DP is missing.",
+        "description": "Replace the DP's topic assignment with the supplied list.\n\nA missing DP propagates the 404-shaped not-found error raised\ninside :func:`load_one`.\n\nArgs:\n    catalog: UC catalog segment.\n    schema: UC schema segment.\n    request: Incoming FastAPI request.\n\nReturns:\n    ``{\"data_product_id\": int, \"topic_slugs\": [...]}``.\n\nRaises:\n    AuthorizationError: When the caller is not steward / admin.\n    BadRequestError: When ``topics`` is not a list or an unknown\n        slug is supplied.",
         "operationId": "set_dp_topics_api_data_products__catalog___schema__topics_put",
         "parameters": [
           {
@@ -23387,7 +23387,7 @@
     },
     "/api/dbt/test-failures": {
       "get": {
-        "description": "Return the dbt-test failures for one agent run.\n\nJoins ``lineage_row_rejects`` (where ``reason='expectation_failed'``)\nwith ``agent_run_operations`` so each row carries the failing\ntest's ``unique_id``, the model relation it ran against, dbt's\nfailure message, and the owning op id for cross-link.\n\nSupervisor or auditor scope required: per-run audit-axis routes\nfollow the same asymmetric ladder as the rest of\n``/api/agent-runs/{id}/audit/*`` (see :func:`require_supervisor`\ndocstring).\n\nArgs:\n    request: Incoming FastAPI request.\n    agent_run_id: UUID of the run whose failures to list.  When\n        omitted, returns recent failures across every dbt-cli\n        run for the cockpit's \"Test failures\" tab.\n    paging: Shared offset+limit pair (default page size 100, max 1000).\n\nReturns:\n    ``{\"agent_run_id\": str | None, \"row_count\": int, \"rows\": [...]}``.\n\nRaises:\n    HTTPException: When the caller lacks supervisor / auditor scope\n        (raised by :func:`require_supervisor`).",
+        "description": "Return the dbt-test failures for one agent run.\n\nJoins ``lineage_row_rejects`` (where ``reason='expectation_failed'``)\nwith ``agent_run_operations`` so each row carries the failing\ntest's ``unique_id``, the model relation it ran against, dbt's\nfailure message, and the owning op id for cross-link.\n\nSupervisor or auditor scope required: per-run audit-axis routes\nfollow the same asymmetric ladder as the rest of\n``/api/agent-runs/{id}/audit/*``.  Callers lacking that scope\nget the :class:`HTTPException` (403) propagated from\n:func:`require_supervisor`.\n\nArgs:\n    request: Incoming FastAPI request.\n    agent_run_id: UUID of the run whose failures to list.  When\n        omitted, returns recent failures across every dbt-cli\n        run for the cockpit's \"Test failures\" tab.\n    paging: Shared offset+limit pair (default page size 100, max 1000).\n\nReturns:\n    ``{\"agent_run_id\": str | None, \"row_count\": int, \"rows\": [...]}``.",
         "operationId": "api_dbt_test_failures_api_dbt_test_failures_get",
         "parameters": [
           {
@@ -28643,7 +28643,7 @@
     },
     "/api/memory/{agent_id}/branch": {
       "post": {
-        "description": "Create a Delta branch off the run's schema state.\n\nArgs:\n    agent_id: Free-form runtime identifier.\n    body: Request payload.\n    request: Incoming FastAPI request.\n\nReturns:\n    ``{\"branch_schema_fqn\": ..., \"parent_schema_fqn\": ...,\n    \"pinned_delta_version\": ..., \"intent\": ...}``.\n\nRaises:\n    HTTPException: 400 on validation failures, 422 on\n        soyuz-side schema conflicts, 503 when soyuz-catalog\n        is unreachable.",
+        "description": "Create a Delta branch off the run's schema state.\n\nArgs:\n    agent_id: Free-form runtime identifier.\n    body: Request payload.\n    request: Incoming FastAPI request.\n\nReturns:\n    ``{\"branch_schema_fqn\": ..., \"parent_schema_fqn\": ...,\n    \"pinned_delta_version\": ..., \"intent\": ...}``.\n\nRaises:\n    BadRequestError: 400 \u2014 caller-supplied validation failures\n        surfaced by the memory primitive.\n    CatalogNotFoundError: 404 \u2014 the source run's schema is\n        unknown to soyuz-catalog.\n    CatalogUnavailableError: 502 \u2014 soyuz-catalog is unreachable.",
         "operationId": "branch_endpoint_api_memory__agent_id__branch_post",
         "parameters": [
           {
@@ -28698,7 +28698,7 @@
     },
     "/api/memory/{agent_id}/recall": {
       "get": {
-        "description": "Filter the agent's operation log.\n\nArgs:\n    agent_id: Free-form runtime identifier.\n    request: Incoming FastAPI request.\n    op_name: Optional :class:`OpName` member name to filter on.\n    target_table: Optional exact-match filter.\n    status: One of ``\"success\"`` / ``\"failed\"`` / ``\"running\"``.\n    since: ISO-8601 inclusive lower bound on ``started_at``.\n    until: ISO-8601 exclusive upper bound on ``started_at``.\n    paging: Shared offset+limit pair (default page size 100, max 1000;\n        the service still caps ``limit`` to 1000).\n\nReturns:\n    ``{\"agent_id\": str, \"operations\": [...], \"count\": int}``.\n\nRaises:\n    HTTPException: 400 when a query parameter is malformed.",
+        "description": "Filter the agent's operation log.\n\nArgs:\n    agent_id: Free-form runtime identifier.\n    request: Incoming FastAPI request.\n    op_name: Optional :class:`OpName` member name to filter on.\n    target_table: Optional exact-match filter.\n    status: One of ``\"success\"`` / ``\"failed\"`` / ``\"running\"``.\n    since: ISO-8601 inclusive lower bound on ``started_at``.\n    until: ISO-8601 exclusive upper bound on ``started_at``.\n    paging: Shared offset+limit pair (default page size 100, max 1000;\n        the service still caps ``limit`` to 1000).\n\nReturns:\n    ``{\"agent_id\": str, \"operations\": [...], \"count\": int}``.\n\nRaises:\n    BadRequestError: When a query parameter is malformed\n        (rendered as a 400).",
         "operationId": "recall_endpoint_api_memory__agent_id__recall_get",
         "parameters": [
           {
@@ -28850,7 +28850,7 @@
     },
     "/api/memory/{agent_id}/replay": {
       "post": {
-        "description": "Replay a source run's operations onto the named branch.\n\nArgs:\n    agent_id: Free-form runtime identifier.\n    body: Request payload.\n    request: Incoming FastAPI request.\n\nReturns:\n    :class:`JSONResponse` with the replay result fields plus\n    an ``HX-Redirect`` header pointing at\n    ``/runs/{replay_run_id}`` so HTMX clients land on the new\n    run's detail page in one round-trip.\n\nRaises:\n    HTTPException: 400 on validation / unknown policy, 422\n        when STRICT policy hits an unsafe op, 503 when soyuz\n        is unreachable.",
+        "description": "Replay a source run's operations onto the named branch.\n\nArgs:\n    agent_id: Free-form runtime identifier.\n    body: Request payload.\n    request: Incoming FastAPI request.\n\nReturns:\n    :class:`JSONResponse` with the replay result fields plus\n    an ``HX-Redirect`` header pointing at\n    ``/runs/{replay_run_id}`` so HTMX clients land on the new\n    run's detail page in one round-trip.\n\nRaises:\n    BadRequestError: When ``body.policy`` is not a known\n        :class:`ReplayPolicy` value.\n    CatalogUnavailableError: When soyuz-catalog is unreachable\n        (re-raised for the central problem+json handler).\n    ValidationError: When the strict policy hits an unsafe op,\n        or replay-input validation fails.",
         "operationId": "replay_endpoint_api_memory__agent_id__replay_post",
         "parameters": [
           {
@@ -30036,7 +30036,7 @@
     },
     "/api/notebook/chat/{editor_session_id}/explain-cell": {
       "post": {
-        "description": "Attach an explanation to an existing notebook cell (auto-accept).\n\nAuto-accepts on create \u2014 no Run button \u2014 and writes a\n``NotebookCellProvenance`` row immediately so the explanation\nis anchored to the cell without waiting for a save.  This is\nthe behavior the user picked during planning: explanations are\nnotes, not mutations; persisting them now means they survive\nconversation resets and the revision-history UI can render\nthem per cell.\n\nArgs:\n    request: Incoming request \u2014 must carry an\n        ``X-Agent-Run-Id`` matching the session's agent run.\n    editor_session_id: UUID7 of the target chat session.\n    body: Validated :class:`ExplainCellBody`.\n\nReturns:\n    ``{\"proposal_id\": str, \"action\": \"explain\",\n    \"status\": \"accepted\"}``.\n\nRaises:\n    HTTPException: 403 on X-Agent-Run-Id mismatch; 404 on\n        unknown session.  Body validation errors surface as 422\n        via FastAPI.",
+        "description": "Attach an explanation to an existing notebook cell (auto-accept).\n\nAuto-accepts on create \u2014 no Run button \u2014 and writes a\n``NotebookCellProvenance`` row immediately so the explanation\nis anchored to the cell without waiting for a save.  This is\nthe behavior the user picked during planning: explanations are\nnotes, not mutations; persisting them now means they survive\nconversation resets and the revision-history UI can render\nthem per cell.\n\nPropagates :class:`PermissionDeniedError` (403) on an\n``X-Agent-Run-Id`` mismatch and :class:`ResourceNotFoundError`\n(404) on an unknown session, both raised inside\n:func:`_resolve_session`.  Body validation errors surface as 422\nvia FastAPI.\n\nArgs:\n    request: Incoming request \u2014 must carry an\n        ``X-Agent-Run-Id`` matching the session's agent run.\n    editor_session_id: UUID7 of the target chat session.\n    body: Validated :class:`ExplainCellBody`.\n\nReturns:\n    ``{\"proposal_id\": str, \"action\": \"explain\",\n    \"status\": \"accepted\"}``.",
         "operationId": "api_explain_cell_api_notebook_chat__editor_session_id__explain_cell_post",
         "parameters": [
           {
@@ -30088,7 +30088,7 @@
     },
     "/api/notebook/chat/{editor_session_id}/fix-cell": {
       "post": {
-        "description": "Draft a source replacement for an existing notebook cell.\n\nArgs:\n    request: Incoming request \u2014 must carry an\n        ``X-Agent-Run-Id`` matching the session's agent run.\n    editor_session_id: UUID7 of the target chat session.\n    body: Validated :class:`FixCellBody`.\n\nReturns:\n    ``{\"proposal_id\": str, \"action\": \"fix\",\n    \"idempotent_match\": bool}``.  ``idempotent_match=True`` when\n    an identical pending fix existed in the last 60 seconds and\n    its ``proposal_id`` is returned instead of writing a new row.\n\nRaises:\n    HTTPException: 403 on X-Agent-Run-Id mismatch; 404 on\n        unknown session.  Body validation errors surface as 422\n        via FastAPI.",
+        "description": "Draft a source replacement for an existing notebook cell.\n\nPropagates :class:`PermissionDeniedError` (403) on an\n``X-Agent-Run-Id`` mismatch and :class:`ResourceNotFoundError`\n(404) on an unknown session, both raised inside\n:func:`_resolve_session`.  Body validation errors surface as 422\nvia FastAPI.\n\nArgs:\n    request: Incoming request \u2014 must carry an\n        ``X-Agent-Run-Id`` matching the session's agent run.\n    editor_session_id: UUID7 of the target chat session.\n    body: Validated :class:`FixCellBody`.\n\nReturns:\n    ``{\"proposal_id\": str, \"action\": \"fix\",\n    \"idempotent_match\": bool}``.  ``idempotent_match=True`` when\n    an identical pending fix existed in the last 60 seconds and\n    its ``proposal_id`` is returned instead of writing a new row.",
         "operationId": "api_fix_cell_api_notebook_chat__editor_session_id__fix_cell_post",
         "parameters": [
           {
@@ -30140,7 +30140,7 @@
     },
     "/api/notebook/chat/{editor_session_id}/propose-cell": {
       "post": {
-        "description": "Draft a new cell to insert into the open notebook.\n\nArgs:\n    request: Incoming request \u2014 must carry an\n        ``X-Agent-Run-Id`` matching the session's agent run.\n    editor_session_id: UUID7 of the target notebook chat session.\n    body: Validated :class:`ProposeCellBody`.\n\nReturns:\n    ``{\"proposal_id\": str, \"action\": \"propose\"}``.\n\nRaises:\n    HTTPException: 403 on X-Agent-Run-Id mismatch; 404 on\n        unknown session.  Body validation errors surface as 422\n        via FastAPI.",
+        "description": "Draft a new cell to insert into the open notebook.\n\nPropagates :class:`PermissionDeniedError` (403) on an\n``X-Agent-Run-Id`` mismatch and :class:`ResourceNotFoundError`\n(404) on an unknown session, both raised inside\n:func:`_resolve_session`.  Body validation errors surface as 422\nvia FastAPI.\n\nArgs:\n    request: Incoming request \u2014 must carry an\n        ``X-Agent-Run-Id`` matching the session's agent run.\n    editor_session_id: UUID7 of the target notebook chat session.\n    body: Validated :class:`ProposeCellBody`.\n\nReturns:\n    ``{\"proposal_id\": str, \"action\": \"propose\"}``.",
         "operationId": "api_propose_cell_api_notebook_chat__editor_session_id__propose_cell_post",
         "parameters": [
           {
@@ -30721,7 +30721,7 @@
     },
     "/api/notebooks/delete": {
       "delete": {
-        "description": "Delete a notebook + cascade its persisted outputs.\n\nThe confirm-flag keeps a stray ``DELETE /api/notebooks/delete``\nfrom a misconfigured client from wiping a file silently \u2014 the\nbrowser editor flips it to ``true`` after the user OKs the\nconfirm modal.\n\nArgs:\n    request: Incoming FastAPI request; any authenticated user.\n    path: Relative path of the notebook to delete.\n    confirm: Must be ``true`` to actually delete; ``false`` is\n        a 400 with a clear envelope.\n\nReturns:\n    JSON ``{\"path\": ...}`` on success.\n\nRaises:\n    HTTPException: 400 when ``confirm`` is not ``true`` \u2014 the\n        browser editor sets it after the confirm-modal pick;\n        curl callers must opt in explicitly.",
+        "description": "Delete a notebook + cascade its persisted outputs.\n\nThe confirm-flag keeps a stray ``DELETE /api/notebooks/delete``\nfrom a misconfigured client from wiping a file silently \u2014 the\nbrowser editor flips it to ``true`` after the user OKs the\nconfirm modal.\n\nArgs:\n    request: Incoming FastAPI request; any authenticated user.\n    path: Relative path of the notebook to delete.\n    confirm: Must be ``true`` to actually delete; ``false`` is\n        a 400 with a clear envelope.\n\nReturns:\n    JSON ``{\"path\": ...}`` on success.\n\nRaises:\n    BadRequestError: When ``confirm`` is not ``true`` (rendered\n        as a 400) \u2014 the browser editor sets it after the\n        confirm-modal pick; curl callers must opt in\n        explicitly.",
         "operationId": "api_delete_notebook_api_notebooks_delete_delete",
         "parameters": [
           {
@@ -31271,7 +31271,7 @@
     },
     "/api/notebooks/load": {
       "get": {
-        "description": "Load a ``.py`` notebook + its persisted outputs.\n\nThe browser editor calls this on page-mount.  Returns the cell list\n(with content_hashes) plus every persisted output frame keyed by\n``(content_hash, kernel_session_id)``.  Re-render cost on a page\nreload stays close to free \u2014 kernel-message replay happens\nclient-side from the embedded JSON, no extra fetch.\n\nArgs:\n    request: Incoming FastAPI request; any authenticated user.\n    path: Relative notebook path under ``notebooks_dir``.\n\nReturns:\n    JSON ``{path, dirty, cells: [...], outputs: [...]}``.\n    Each cell carries ``id`` (transient ordinal), ``content_hash``,\n    ``cell_type``, ``source``, ``result_var``.  Each output carries\n    ``content_hash``, ``kernel_session_id``, ``output_index``,\n    ``msg_type``, ``content``, ``metadata``, ``created_at``.\n\nRaises:\n    ValidationError: When the path is missing / outside the\n        workspace / wrong suffix / does not exist.  Surfaces\n        via :func:`resolve_py_notebook_path`.",
+        "description": "Load a ``.py`` notebook + its persisted outputs.\n\nThe browser editor calls this on page-mount.  Returns the cell list\n(with content_hashes) plus every persisted output frame keyed by\n``(content_hash, kernel_session_id)``.  Re-render cost on a page\nreload stays close to free \u2014 kernel-message replay happens\nclient-side from the embedded JSON, no extra fetch.\n\nPropagates :class:`ValidationError` raised by\n:func:`resolve_py_notebook_path` when the path is missing /\noutside the workspace / wrong suffix / does not exist.\n\nArgs:\n    request: Incoming FastAPI request; any authenticated user.\n    path: Relative notebook path under ``notebooks_dir``.\n\nReturns:\n    JSON ``{path, dirty, cells: [...], outputs: [...]}``.\n    Each cell carries ``id`` (transient ordinal), ``content_hash``,\n    ``cell_type``, ``source``, ``result_var``.  Each output carries\n    ``content_hash``, ``kernel_session_id``, ``output_index``,\n    ``msg_type``, ``content``, ``metadata``, ``created_at``.",
         "operationId": "api_load_notebook_api_notebooks_load_get",
         "parameters": [
           {
@@ -32682,7 +32682,7 @@
     },
     "/api/notebooks/{notebook_id}/coedit/agent-presence": {
       "post": {
-        "description": "Broadcast an agent-presence update to every connected client.\n\nArgs:\n    request: Incoming request; must carry a cookie or Bearer\n        auth (no anonymous traffic) so the broadcast can be\n        attributed back to a workspace member.\n    notebook_id: 36-char :class:`Notebook` UUID the agent is\n        operating on.\n    body: Validated :class:`AgentPresenceRequest`.\n\nReturns:\n    ``{\"status\": \"broadcast\"}`` when the hub broadcast the\n    frame; ``{\"status\": \"no-hub\"}`` when no clients are\n    currently connected.  Both are 200 \u2014 agent-presence is\n    best-effort and the API contract treats the no-hub case\n    as success rather than 404 (the canonical state is the\n    agent_run_id itself, not the broadcast).\n\nRaises:\n    HTTPException: 404 when the notebook id does not resolve\n        in the caller's workspace.",
+        "description": "Broadcast an agent-presence update to every connected client.\n\nArgs:\n    request: Incoming request; must carry a cookie or Bearer\n        auth (no anonymous traffic) so the broadcast can be\n        attributed back to a workspace member.\n    notebook_id: 36-char :class:`Notebook` UUID the agent is\n        operating on.\n    body: Validated :class:`AgentPresenceRequest`.\n\nReturns:\n    ``{\"status\": \"broadcast\"}`` when the hub broadcast the\n    frame; ``{\"status\": \"no-hub\"}`` when no clients are\n    currently connected.  Both are 200 \u2014 agent-presence is\n    best-effort and the API contract treats the no-hub case\n    as success rather than 404 (the canonical state is the\n    agent_run_id itself, not the broadcast).\n\nRaises:\n    ResourceNotFoundError: When the notebook id does not\n        resolve to a stored notebook (rendered as 404).",
         "operationId": "api_agent_presence_api_notebooks__notebook_id__coedit_agent_presence_post",
         "parameters": [
           {
@@ -33095,7 +33095,7 @@
     },
     "/api/pql/autoload": {
       "post": {
-        "description": "Lift files from a Volume directory into a Delta target.\n\nMirrors :meth:`pointlessql.pql.pql.PQL.autoload` over HTTP.  Used\nby the ``pql_autoload`` Hermes tool so a working agent can fold a\nraw-drop directory into bronze without leaving the chat surface.\n\nPrivilege model: when the target already exists the principal\nneeds ``MODIFY`` on it; when the target is missing the route\naccepts ``USE SCHEMA`` on the parent schema, mirroring how the\nprimitive itself bootstraps a fresh Delta log under the parent's\n``storage_root`` on the first successful append.\n\nArgs:\n    request: Incoming FastAPI request.\n    body: JSON body with ``source_path``, ``target``,\n        ``source_system`` (optional), and ``file_format`` (optional,\n        default ``\"auto\"``).\n\nReturns:\n    ``{\"target\", \"files_scanned\", \"files_ingested\", \"files_skipped\",\n    \"rows_ingested\"}`` \u2014 the dict :meth:`PQL.autoload` returns.\n\nRaises:\n    ValidationError: When required fields are missing or malformed.\n    AuthorizationError: When the principal lacks ``MODIFY`` /\n        ``USE SCHEMA`` (raised by :func:`check_privilege`).",
+        "description": "Lift files from a Volume directory into a Delta target.\n\nMirrors :meth:`pointlessql.pql.pql.PQL.autoload` over HTTP.  Used\nby the ``pql_autoload`` Hermes tool so a working agent can fold a\nraw-drop directory into bronze without leaving the chat surface.\n\nPrivilege model: when the target already exists the principal\nneeds ``MODIFY`` on it; when the target is missing the route\naccepts ``USE SCHEMA`` on the parent schema, mirroring how the\nprimitive itself bootstraps a fresh Delta log under the parent's\n``storage_root`` on the first successful append.  A principal\nlacking those privileges propagates the\n:class:`pointlessql.exceptions.AuthorizationError` raised inside\nthe privilege check.\n\nArgs:\n    request: Incoming FastAPI request.\n    body: JSON body with ``source_path``, ``target``,\n        ``source_system`` (optional), and ``file_format`` (optional,\n        default ``\"auto\"``).\n\nReturns:\n    ``{\"target\", \"files_scanned\", \"files_ingested\", \"files_skipped\",\n    \"rows_ingested\"}`` \u2014 the dict :meth:`PQL.autoload` returns.\n\nRaises:\n    ValidationError: When required fields are missing or malformed.",
         "operationId": "api_pql_autoload_api_pql_autoload_post",
         "requestBody": {
           "content": {
@@ -33221,7 +33221,7 @@
     },
     "/api/pql/delete": {
       "post": {
-        "description": "Apply ``DELETE FROM target WHERE ...`` against a Delta table.\n\nMirrors :meth:`pointlessql.pql.pql.PQL.delete` over HTTP.  ``where``\nomitted or ``None`` triggers a full-table delete; the SQL editor\nsurface forces a confirmation modal in that case but\nthe route itself does not refuse the call \u2014 Hermes-driven agents\nmay legitimately need a full-table wipe.\n\nArgs:\n    request: Incoming FastAPI request.\n    body: JSON body with ``target`` (3-part UC name) and optional\n        ``where`` (SQL WHERE clause string).\n\nReturns:\n    ``{\"target\", \"rows_affected\", \"stats\"}`` where ``stats`` is the\n    deltalake metrics dict.\n\nRaises:\n    ValidationError: When required fields are missing or malformed.\n    AuthorizationError: When the principal lacks ``MODIFY`` on target.\n    CatalogNotFoundError: When the target is unknown.",
+        "description": "Apply ``DELETE FROM target WHERE ...`` against a Delta table.\n\nMirrors :meth:`pointlessql.pql.pql.PQL.delete` over HTTP.  ``where``\nomitted or ``None`` triggers a full-table delete; the SQL editor\nsurface forces a confirmation modal in that case but\nthe route itself does not refuse the call \u2014 Hermes-driven agents\nmay legitimately need a full-table wipe.  The target check\npropagates :class:`pointlessql.exceptions.AuthorizationError`\n(principal lacks ``MODIFY``) and\n:class:`pointlessql.exceptions.CatalogNotFoundError` (target\nunknown) raised inside the shared write-target helper.\n\nArgs:\n    request: Incoming FastAPI request.\n    body: JSON body with ``target`` (3-part UC name) and optional\n        ``where`` (SQL WHERE clause string).\n\nReturns:\n    ``{\"target\", \"rows_affected\", \"stats\"}`` where ``stats`` is the\n    deltalake metrics dict.\n\nRaises:\n    ValidationError: When required fields are missing or malformed.",
         "operationId": "api_pql_delete_api_pql_delete_post",
         "requestBody": {
           "content": {
@@ -33347,7 +33347,7 @@
     },
     "/api/pql/drop_table": {
       "post": {
-        "description": "Delete a Unity Catalog table \u2014 admin-only.\n\nMirrors soyuz-catalog's\n``DELETE /catalogs/{c}/schemas/{s}/tables/{t}`` route.  Wrapping\nit as ``POST /api/pql/drop_table`` keeps the agent's surface\nJSON-bodied (every other write tool POSTs JSON, so consistency\nmatters more than REST verb purity here) and lets the\n:func:`require_admin` gate do the work \u2014 drops are destructive\nand not in the working-agent's privilege envelope.\n\nThe Delta storage bytes underneath the catalog row are **not**\nremoved by this route \u2014 that is soyuz's call, and the current\nsoyuz behaviour is registry-only deletion.  An operator is still\nexpected to clean up the storage directory manually if needed.\n\nArgs:\n    request: Incoming FastAPI request \u2014 must carry a cookie /\n        api-key with admin role.\n    body: JSON body with ``full_name`` (3-part UC name).\n\nReturns:\n    ``{\"target\", \"deleted\": True}`` on success.\n\nRaises:\n    ValidationError: When ``full_name`` is missing or malformed.\n    AuthorizationError: When the caller is not an admin (raised\n        by :func:`require_admin`).\n    CatalogNotFoundError: When the target is unknown to soyuz.",
+        "description": "Delete a Unity Catalog table \u2014 admin-only.\n\nMirrors soyuz-catalog's\n``DELETE /catalogs/{c}/schemas/{s}/tables/{t}`` route.  Wrapping\nit as ``POST /api/pql/drop_table`` keeps the agent's surface\nJSON-bodied (every other write tool POSTs JSON, so consistency\nmatters more than REST verb purity here) and lets the\n:func:`require_admin` gate do the work \u2014 drops are destructive\nand not in the working-agent's privilege envelope.\n\nThe Delta storage bytes underneath the catalog row are **not**\nremoved by this route \u2014 that is soyuz's call, and the current\nsoyuz behaviour is registry-only deletion.  An operator is still\nexpected to clean up the storage directory manually if needed.\n\nNon-admin callers propagate the\n:class:`pointlessql.exceptions.AuthorizationError` raised by\n:func:`require_admin`; a target unknown to soyuz propagates the\n:class:`pointlessql.exceptions.CatalogNotFoundError` surfaced by\nthe client call.\n\nArgs:\n    request: Incoming FastAPI request \u2014 must carry a cookie /\n        api-key with admin role.\n    body: JSON body with ``full_name`` (3-part UC name).\n\nReturns:\n    ``{\"target\", \"deleted\": True}`` on success.\n\nRaises:\n    ValidationError: When ``full_name`` is missing or malformed.",
         "operationId": "api_pql_drop_table_api_pql_drop_table_post",
         "requestBody": {
           "content": {
@@ -33532,7 +33532,7 @@
     },
     "/api/pql/merge": {
       "post": {
-        "description": "Run a SELECT, merge the result into an existing Delta target.\n\nMirrors :meth:`pointlessql.pql.pql.PQL.merge` over HTTP.  The\ntarget must already exist (the merge semantics need a live Delta\nlog to apply changes against); use ``POST /api/pql/write_table``\nor ``POST /api/pql/autoload`` to bootstrap.\n\nTwo strategies match the primitive: ``\"upsert\"`` (key match \u2192\nupdate non-key columns; otherwise insert) and ``\"scd2\"``\n(append-only history with ``_valid_from`` / ``_valid_to`` /\n``_is_current``).\n\nArgs:\n    request: Incoming FastAPI request.\n    body: JSON body with ``sql`` (source SELECT), ``target`` (3-part\n        UC name), ``on`` (non-empty list of merge-key columns),\n        ``strategy`` (``\"upsert\"`` default, or ``\"scd2\"``), and\n        optional ``source_model_uri`` (registered-\n        model URI when the merge writes inference outputs into an\n        existing predictions table).\n\nReturns:\n    The merge stats dict from :meth:`PQL.merge` \u2014 carries\n    ``strategy`` plus the deltalake counts (``num_target_rows_inserted``,\n    ``num_target_rows_updated``, \u2026).  SCD-2 also includes\n    ``rows_appended``.\n\nRaises:\n    ValidationError: When required fields are missing or malformed.\n    AuthorizationError: When the principal lacks ``SELECT`` on a\n        referenced table or ``MODIFY`` on the target.\n    CatalogNotFoundError: When the target or a referenced table is\n        unknown.\n    SQLExecutionError: When DuckDB rejects the source SELECT.",
+        "description": "Run a SELECT, merge the result into an existing Delta target.\n\nMirrors :meth:`pointlessql.pql.pql.PQL.merge` over HTTP.  The\ntarget must already exist (the merge semantics need a live Delta\nlog to apply changes against); use ``POST /api/pql/write_table``\nor ``POST /api/pql/autoload`` to bootstrap.\n\nTwo strategies match the primitive: ``\"upsert\"`` (key match \u2192\nupdate non-key columns; otherwise insert) and ``\"scd2\"``\n(append-only history with ``_valid_from`` / ``_valid_to`` /\n``_is_current``).\n\nPropagates :class:`AuthorizationError` from the privilege gates\nwhen the principal lacks ``SELECT`` on a referenced table or\n``MODIFY`` on the target, and :class:`CatalogNotFoundError` when\nthe target or a referenced table is unknown.\n\nArgs:\n    request: Incoming FastAPI request.\n    body: JSON body with ``sql`` (source SELECT), ``target`` (3-part\n        UC name), ``on`` (non-empty list of merge-key columns),\n        ``strategy`` (``\"upsert\"`` default, or ``\"scd2\"``), and\n        optional ``source_model_uri`` (registered-\n        model URI when the merge writes inference outputs into an\n        existing predictions table).\n\nReturns:\n    The merge stats dict from :meth:`PQL.merge` \u2014 carries\n    ``strategy`` plus the deltalake counts (``num_target_rows_inserted``,\n    ``num_target_rows_updated``, \u2026).  SCD-2 also includes\n    ``rows_appended``.\n\nRaises:\n    ValidationError: When required fields are missing or malformed.\n    SQLExecutionError: When the source SELECT does not parse.",
         "operationId": "api_pql_merge_api_pql_merge_post",
         "requestBody": {
           "content": {
@@ -33775,7 +33775,7 @@
     },
     "/api/pql/update": {
       "post": {
-        "description": "Apply ``UPDATE target SET ... WHERE ...`` against a Delta table.\n\nMirrors :meth:`pointlessql.pql.pql.PQL.update` over HTTP.  The\ntarget must already exist; ``MODIFY`` privilege is enforced.\n\nArgs:\n    request: Incoming FastAPI request.\n    body: JSON body with ``target`` (3-part UC name),\n        ``set_clause`` (mapping ``column_name -> SQL-expression-string``,\n        non-empty), optional ``where`` (SQL WHERE clause string;\n        ``None`` updates every row), and optional\n        ``track_value_changes`` (boolean, opt-in CDF capture).\n\nReturns:\n    ``{\"target\", \"rows_affected\", \"stats\"}`` where ``stats`` is the\n    deltalake metrics dict.\n\nRaises:\n    ValidationError: When required fields are missing or malformed.\n    AuthorizationError: When the principal lacks ``MODIFY`` on target.\n    CatalogNotFoundError: When the target is unknown.",
+        "description": "Apply ``UPDATE target SET ... WHERE ...`` against a Delta table.\n\nMirrors :meth:`pointlessql.pql.pql.PQL.update` over HTTP.  The\ntarget must already exist; ``MODIFY`` privilege is enforced.\nThe target check propagates\n:class:`pointlessql.exceptions.AuthorizationError` (principal\nlacks ``MODIFY``) and\n:class:`pointlessql.exceptions.CatalogNotFoundError` (target\nunknown) raised inside the shared write-target helper.\n\nArgs:\n    request: Incoming FastAPI request.\n    body: JSON body with ``target`` (3-part UC name),\n        ``set_clause`` (mapping ``column_name -> SQL-expression-string``,\n        non-empty), optional ``where`` (SQL WHERE clause string;\n        ``None`` updates every row), and optional\n        ``track_value_changes`` (boolean, opt-in CDF capture).\n\nReturns:\n    ``{\"target\", \"rows_affected\", \"stats\"}`` where ``stats`` is the\n    deltalake metrics dict.\n\nRaises:\n    ValidationError: When required fields are missing or malformed.",
         "operationId": "api_pql_update_api_pql_update_post",
         "requestBody": {
           "content": {
@@ -33901,7 +33901,7 @@
     },
     "/api/pql/write_table": {
       "post": {
-        "description": "Run a SELECT, write the result rows to a Delta target.\n\nMirrors :meth:`pointlessql.pql.pql.PQL.write_table` over HTTP, with\none twist: the agent supplies the source rows as a SELECT statement\nrather than uploading a pandas frame \u2014 this keeps the request body\nJSON-shaped and removes the agent's need to construct a binary\npayload.  The server runs the SELECT against the SQL-editor\npipeline (parse, UC SELECT enforcement, DuckDB execute) and only\nthen hands the resulting frame to the write primitive.\n\nArgs:\n    request: Incoming FastAPI request.\n    body: JSON body with ``sql`` (the source SELECT), ``target``\n        (3-part UC name), ``mode`` (one of ``\"error\"`` /\n        ``\"append\"`` / ``\"overwrite\"`` / ``\"ignore\"``, default\n        ``\"overwrite\"``), and optional ``source_model_uri``\n        (registered-model URI of the form\n        ``models:/cat.sch.model/<version>`` when *df* is the\n        output of inference against a model; threaded into\n        ``lineage_row_edges.source_model_uri``).\n\nReturns:\n    ``{\"target\", \"mode\", \"rows_written\"}`` \u2014 the row count is\n    sourced from the materialised pandas frame so the agent gets\n    an ack of how much landed without a follow-up ``COUNT(*)``.\n\nRaises:\n    ValidationError: When required fields are missing or malformed.\n    AuthorizationError: When the principal lacks ``SELECT`` on a\n        referenced table or ``MODIFY`` / ``USE SCHEMA`` on the\n        target.\n    CatalogNotFoundError: When a referenced table is unknown.\n    SQLExecutionError: When DuckDB rejects the SELECT.",
+        "description": "Run a SELECT, write the result rows to a Delta target.\n\nMirrors :meth:`pointlessql.pql.pql.PQL.write_table` over HTTP, with\none twist: the agent supplies the source rows as a SELECT statement\nrather than uploading a pandas frame \u2014 this keeps the request body\nJSON-shaped and removes the agent's need to construct a binary\npayload.  The server runs the SELECT against the SQL-editor\npipeline (parse, UC SELECT enforcement, DuckDB execute) and only\nthen hands the resulting frame to the write primitive.\n\nPropagates :class:`AuthorizationError` from the privilege gates\nwhen the principal lacks ``SELECT`` on a referenced table or\n``MODIFY`` / ``USE SCHEMA`` on the target, and\n:class:`CatalogNotFoundError` when a referenced table is unknown.\n\nArgs:\n    request: Incoming FastAPI request.\n    body: JSON body with ``sql`` (the source SELECT), ``target``\n        (3-part UC name), ``mode`` (one of ``\"error\"`` /\n        ``\"append\"`` / ``\"overwrite\"`` / ``\"ignore\"``, default\n        ``\"overwrite\"``), and optional ``source_model_uri``\n        (registered-model URI of the form\n        ``models:/cat.sch.model/<version>`` when *df* is the\n        output of inference against a model; threaded into\n        ``lineage_row_edges.source_model_uri``).\n\nReturns:\n    ``{\"target\", \"mode\", \"rows_written\"}`` \u2014 the row count is\n    sourced from the materialised pandas frame so the agent gets\n    an ack of how much landed without a follow-up ``COUNT(*)``.\n\nRaises:\n    ValidationError: When required fields are missing or malformed.\n    SQLExecutionError: When the source SELECT does not parse.",
         "operationId": "api_pql_write_table_api_pql_write_table_post",
         "requestBody": {
           "content": {
@@ -34355,7 +34355,7 @@
     },
     "/api/runs/{run_id}/graph": {
       "get": {
-        "description": "Return the unified row + column lineage DAG for one run.\n\nThe route follows the auditor / supervisor scope ladder used by\nthe per-run audit-axis JSON endpoints \u2014 same data already\nvisible on the run-detail Lineage tab, just rearranged.\n\nArgs:\n    request: Incoming FastAPI request.\n    run_id: UUID of the run.\n    op_id: Optional op filter.  When set, only edges + nodes\n        touched by this op are emitted.\n\nReturns:\n    ``{\"run_id\", \"op_id\", \"nodes\": [...], \"edges\": [...]}``.\n    See :func:`pointlessql.services.lineage.graph_builder.build_lineage_graph`\n    for the full per-element shape.\n\nRaises:\n    AuthorizationError: Caller lacks the supervisor or auditor\n        scope.\n    CatalogNotFoundError: No run with that id.",
+        "description": "Return the unified row + column lineage DAG for one run.\n\nThe route follows the auditor / supervisor scope ladder used by\nthe per-run audit-axis JSON endpoints \u2014 same data already\nvisible on the run-detail Lineage tab, just rearranged.  A caller\nwithout the supervisor or auditor scope propagates the\n:class:`pointlessql.exceptions.AuthorizationError` raised by\n:func:`require_supervisor`.\n\nArgs:\n    request: Incoming FastAPI request.\n    run_id: UUID of the run.\n    op_id: Optional op filter.  When set, only edges + nodes\n        touched by this op are emitted.\n\nReturns:\n    ``{\"run_id\", \"op_id\", \"nodes\": [...], \"edges\": [...]}``.\n    See :func:`pointlessql.services.lineage.graph_builder.build_lineage_graph`\n    for the full per-element shape.\n\nRaises:\n    CatalogNotFoundError: No run with that id.",
         "operationId": "api_run_graph_api_runs__run_id__graph_get",
         "parameters": [
           {
@@ -34463,7 +34463,7 @@
     },
     "/api/runs/{run_id}/rollback": {
       "post": {
-        "description": "Execute ``pql.rollback`` for ``(run_id, target)`` under a fresh run.\n\nSpawns a brand-new ``agent_runs`` row to host the rollback op,\ninvokes :func:`pointlessql.pql._rollback.rollback_table` under\nthat run id, and returns the new run id + the version delta on\nsuccess.  Refusal modes from the primitive each carry their own\nHTTP status + error code via the centralised handler:\n\n* ``RollbackTargetNotFound`` \u2192 404 ``rollback_target_not_found``.\n* ``RollbackAmbiguous`` \u2192 409 ``rollback_ambiguous`` with\n  ``candidate_ordinals`` extension payload.\n* ``RollbackInvalid`` \u2192 422 ``rollback_invalid``.\n* ``RollbackStale`` \u2192 409 ``rollback_stale`` with\n  ``current_version`` / ``expected_version`` /\n  ``intervening_op_count`` extension payload.\n\nOn any refusal the spawned rollback run is marked ``failed``\nwith ``finished_at`` set so the audit trail records both the\nattempt and the gate that fired.\n\nA ``pointlessql.rollback.executed`` CloudEvent fires on\nsuccess; the same event family the rest of agent-run lifecycle\nuses.\n\nArgs:\n    request: Incoming FastAPI request.\n    run_id: ``agent_runs.id`` whose write should be undone.\n    body: JSON body with ``target`` (3-part UC name, required),\n        ``op_ordinal`` (int, optional \u2014 required when the run\n        touched the target more than once), ``allow_force``\n        (bool, default ``False``).\n\nReturns:\n    ``{\"new_run_id\", \"new_op_id\", \"version_before\",\n    \"version_after\", \"target_version_restored\",\n    \"rolled_back_run_id\", \"target\", \"allow_force\"}``.\n\nRaises:\n    ValidationError: Body shape problem, or the targeted op was\n        a creation (drop is out of v1 scope).\n    CatalogNotFoundError: No matching op found, or the target\n        isn't registered with soyuz.\n    AuthorizationError: Non-admin caller.",
+        "description": "Execute ``pql.rollback`` for ``(run_id, target)`` under a fresh run.\n\nSpawns a brand-new ``agent_runs`` row to host the rollback op,\ninvokes :func:`pointlessql.pql._rollback.rollback_table` under\nthat run id, and returns the new run id + the version delta on\nsuccess.  Refusal modes from the primitive each carry their own\nHTTP status + error code via the centralised handler:\n\n* ``RollbackTargetNotFound`` \u2192 404 ``rollback_target_not_found``.\n* ``RollbackAmbiguous`` \u2192 409 ``rollback_ambiguous`` with\n  ``candidate_ordinals`` extension payload.\n* ``RollbackInvalid`` \u2192 422 ``rollback_invalid``.\n* ``RollbackStale`` \u2192 409 ``rollback_stale`` with\n  ``current_version`` / ``expected_version`` /\n  ``intervening_op_count`` extension payload.\n\nOn any refusal the spawned rollback run is marked ``failed``\nwith ``finished_at`` set so the audit trail records both the\nattempt and the gate that fired.\n\nA ``pointlessql.rollback.executed`` CloudEvent fires on\nsuccess; the same event family the rest of agent-run lifecycle\nuses.\n\nPropagates :class:`AuthorizationError` raised by\n``require_admin`` for non-admin callers.\n\nArgs:\n    request: Incoming FastAPI request.\n    run_id: ``agent_runs.id`` whose write should be undone.\n    body: JSON body with ``target`` (3-part UC name, required),\n        ``op_ordinal`` (int, optional \u2014 required when the run\n        touched the target more than once), ``allow_force``\n        (bool, default ``False``).\n\nReturns:\n    ``{\"new_run_id\", \"new_op_id\", \"version_before\",\n    \"version_after\", \"target_version_restored\",\n    \"rolled_back_run_id\", \"target\", \"allow_force\"}``.\n\nRaises:\n    ValidationError: Body shape problem (missing ``target``,\n        non-integer ``op_ordinal``).\n    RollbackTargetNotFound: The run never wrote to ``target``,\n        or the target isn't registered with soyuz.\n    RollbackAmbiguous: The run touched the target more than\n        once and no ``op_ordinal`` disambiguates.\n    RollbackInvalid: The targeted op was a creation (drop is\n        out of scope for rollback).\n    RollbackStale: The table moved past the targeted op and\n        ``allow_force`` was not set.\n    Exception: Any unexpected primitive failure is re-raised\n        after the spawned rollback run is marked ``failed``.",
         "operationId": "api_run_rollback_api_runs__run_id__rollback_post",
         "parameters": [
           {
@@ -34520,7 +34520,7 @@
     },
     "/api/runs/{run_id}/rollback-preview": {
       "get": {
-        "description": "Preview what ``pql.rollback`` would do for ``(run_id, target)``.\n\nReturns the version delta that would be restored, a flag for\nwhether the table moved past the targeted op (staleness),\na list of intervening ``agent_run_operations`` rows that would\nbe overwritten on a forced rollback, and a list of downstream\ntables that derived data from the target via row + column\nlineage.  When the run touched the target more than once the\nresponse carries ``op_candidates`` and ``op_id: null`` so the\ncaller can pick by ordinal.\n\nThe route is admin-only \u2014 rollback itself is admin-only and the\npreview leaks no information beyond what the admin can already\nsee in ``/runs/{id}``.\n\nArgs:\n    request: Incoming FastAPI request.\n    run_id: UUID string of the run whose write is being\n        previewed.\n    target: Fully-qualified UC name of the target table.\n\nReturns:\n    ``{\"run_id\", \"target_table\", \"op_id\", \"op_candidates\",\n    \"delta_version_before\", \"delta_version_after\",\n    \"current_version\", \"is_stale\", \"intervening_writes\",\n    \"downstream_warnings\"}``.\n\nRaises:\n    CatalogNotFoundError: No matching ``agent_run_operations``\n        row, or the target is unknown to soyuz-catalog.\n    ValidationError: The targeted op is a creation\n        (``delta_version_before is None``) and rollback would\n        mean dropping the table (out of v1 scope).\n    AuthorizationError: Non-admin caller.",
+        "description": "Preview what ``pql.rollback`` would do for ``(run_id, target)``.\n\nReturns the version delta that would be restored, a flag for\nwhether the table moved past the targeted op (staleness),\na list of intervening ``agent_run_operations`` rows that would\nbe overwritten on a forced rollback, and a list of downstream\ntables that derived data from the target via row + column\nlineage.  When the run touched the target more than once the\nresponse carries ``op_candidates`` and ``op_id: null`` so the\ncaller can pick by ordinal.\n\nThe route is admin-only \u2014 rollback itself is admin-only and the\npreview leaks no information beyond what the admin can already\nsee in ``/runs/{id}``.  Propagates :class:`AuthorizationError`\nraised by ``require_admin`` for non-admin callers.\n\nArgs:\n    request: Incoming FastAPI request.\n    run_id: UUID string of the run whose write is being\n        previewed.\n    target: Fully-qualified UC name of the target table.\n\nReturns:\n    ``{\"run_id\", \"target_table\", \"op_id\", \"op_candidates\",\n    \"delta_version_before\", \"delta_version_after\",\n    \"current_version\", \"is_stale\", \"intervening_writes\",\n    \"downstream_warnings\"}``.\n\nRaises:\n    CatalogNotFoundError: No matching ``agent_run_operations``\n        row, or the target is unknown to soyuz-catalog.\n    ValidationError: The targeted op is a creation\n        (``delta_version_before is None``) and rollback would\n        mean dropping the table (out of v1 scope).",
         "operationId": "api_rollback_preview_api_runs__run_id__rollback_preview_get",
         "parameters": [
           {
@@ -35074,7 +35074,7 @@
         ]
       },
       "patch": {
-        "description": "Update a saved query.  Only owner + admin may mutate.\n\nArgs:\n    request: The incoming request.\n    slug: The slug of the row to update.\n    body: Partial update payload \u2014 ``title``, ``description``,\n        ``sql_text`` / ``sql``, ``is_shared``.  Any field not\n        present is left unchanged.\n\nReturns:\n    The updated row as a dict.\n\nRaises:\n    CatalogNotFoundError: If the row is missing or the user\n        is not the owner / admin.  (We do not differentiate\n        so unauthorised clients cannot probe for existence.)\n    ValidationError: If a non-``None`` title / sql is empty.",
+        "description": "Update a saved query.  Only owner + admin may mutate.\n\nPropagates :class:`ValidationError` raised by\n:func:`saved_queries_service.update_by_slug` when a non-``None``\ntitle / sql is empty.\n\nArgs:\n    request: The incoming request.\n    slug: The slug of the row to update.\n    body: Partial update payload \u2014 ``title``, ``description``,\n        ``sql_text`` / ``sql``, ``is_shared``.  Any field not\n        present is left unchanged.\n\nReturns:\n    The updated row as a dict.\n\nRaises:\n    CatalogNotFoundError: If the row is missing or the user\n        is not the owner / admin.  (We do not differentiate\n        so unauthorised clients cannot probe for existence.)",
         "operationId": "api_update_saved_query_api_saved_queries__slug__patch",
         "parameters": [
           {
@@ -35214,7 +35214,7 @@
         ]
       },
       "put": {
-        "description": "Merge-update the caller's notification prefs.\n\nArgs:\n    request: Incoming FastAPI request.\n\nReturns:\n    The full updated prefs payload (same shape as ``GET``).\n\nRaises:\n    HTTPException: 400 when the body is not an object.",
+        "description": "Merge-update the caller's notification prefs.\n\nArgs:\n    request: Incoming FastAPI request.\n\nReturns:\n    The full updated prefs payload (same shape as ``GET``).\n\nRaises:\n    BadRequestError: 400 when the body is not a JSON object.\n    ResourceNotFoundError: 404 when the caller's user row no\n        longer exists.",
         "operationId": "update_notification_prefs_api_settings_notifications_put",
         "responses": {
           "200": {
@@ -37149,7 +37149,7 @@
         ]
       },
       "post": {
-        "description": "Open a new issue against a parent entity.\n\nRequest body shape:\n    ``{\"title\": str, \"body_md\"?: str, \"labels\"?: list[str],\n    \"assignee_user_id\"?: int, \"milestone_id\"?: int}``\n\nArgs:\n    parent_kind: Parent entity kind from the URL path.\n    parent_ref: Parent entity reference from the URL path.\n    request: Active FastAPI request \u2014 used to resolve the\n        caller, workspace scope and JSON body.\n\nReturns:\n    The new issue as a JSON dict.\n\nRaises:\n    BadRequestError: On bad body / parent ref / labels.\n    ResourceNotFoundError: When the parent kind opts out of\n        issues or the DP parent is missing.",
+        "description": "Open a new issue against a parent entity.\n\nRequest body shape:\n    ``{\"title\": str, \"body_md\"?: str, \"labels\"?: list[str],\n    \"assignee_user_id\"?: int, \"milestone_id\"?: int}``\n\nArgs:\n    parent_kind: Parent entity kind from the URL path.\n    parent_ref: Parent entity reference from the URL path.\n    request: Active FastAPI request \u2014 used to resolve the\n        caller, workspace scope and JSON body.\n\nPropagates :class:`ResourceNotFoundError` from the\nparent-resolution helpers when the parent kind opts out of\nissues or the DP parent is missing.\n\nReturns:\n    The new issue as a JSON dict.\n\nRaises:\n    BadRequestError: On bad body / parent ref / labels.",
         "operationId": "open_issue_api_social__parent_kind___parent_ref__issues_post",
         "parameters": [
           {
@@ -37250,7 +37250,7 @@
     },
     "/api/sql/builder/columns": {
       "post": {
-        "description": "Probe a 3-part UC table for column names + DuckDB types.\n\nArgs:\n    request: Incoming request.\n    body: ``{\"table_fqn\": \"<catalog>.<schema>.<table>\"}``.\n\nReturns:\n    ``{\"columns\": [{\"name\": ..., \"type\": ...}, ...]}``.\n\nRaises:\n    CatalogNotFoundError: When the table or its storage\n        location is unknown.\n    SQLExecutionError: When the underlying DuckDB probe fails.",
+        "description": "Probe a 3-part UC table for column names + DuckDB types.\n\nPropagates :class:`SQLExecutionError` from the probe thread when\nthe underlying DuckDB probe fails, and :class:`AuthorizationError`\nfrom :func:`check_privilege` when the actor lacks SELECT on the\ntable.\n\nArgs:\n    request: Incoming request.\n    body: ``{\"table_fqn\": \"<catalog>.<schema>.<table>\"}``.\n\nReturns:\n    ``{\"columns\": [{\"name\": ..., \"type\": ...}, ...]}``.\n\nRaises:\n    CatalogNotFoundError: When the table or its storage\n        location is unknown.\n    ValidationError: When ``table_fqn`` is not a three-part\n        dotted name.",
         "operationId": "api_builder_columns_api_sql_builder_columns_post",
         "requestBody": {
           "content": {
@@ -37459,7 +37459,7 @@
     },
     "/api/sql/chat/{editor_session_id}/propose": {
       "post": {
-        "description": "Draft a non-SELECT SQL statement for the human's review.\n\n``kind`` is derived server-side from the parsed statement type\nso agents can't lie about it.\n\nArgs:\n    request: Incoming request \u2014 must carry an\n        ``X-Agent-Run-Id`` matching the session's agent run.\n    editor_session_id: UUID7 of the target chat session.\n    body: Validated :class:`ProposeSqlBody`.\n\nReturns:\n    ``{\"proposal_id\": str, \"kind\": \"dml\" | \"ddl\",\n    \"idempotent_match\": bool}``.  ``idempotent_match=True``\n    when a duplicate proposal was returned instead of created.\n\nRaises:\n    ValidationError: On invalid SQL or SELECT statements.\n    PermissionDeniedError: On ``X-Agent-Run-Id`` mismatch.\n    ResourceNotFoundError: When the session is unknown.",
+        "description": "Draft a non-SELECT SQL statement for the human's review.\n\n``kind`` is derived server-side from the parsed statement type\nso agents can't lie about it.  Invalid SQL and SELECT\nstatements propagate :class:`ValidationError` (400) from\n:func:`_classify_proposal_kind`.\n\nArgs:\n    request: Incoming request \u2014 must carry an\n        ``X-Agent-Run-Id`` matching the session's agent run.\n    editor_session_id: UUID7 of the target chat session.\n    body: Validated :class:`ProposeSqlBody`.\n\nReturns:\n    ``{\"proposal_id\": str, \"kind\": \"dml\" | \"ddl\",\n    \"idempotent_match\": bool}``.  ``idempotent_match=True``\n    when a duplicate proposal was returned instead of created.\n\nRaises:\n    PermissionDeniedError: On ``X-Agent-Run-Id`` mismatch.\n    ResourceNotFoundError: When the session is unknown.",
         "operationId": "api_propose_sql_api_sql_chat__editor_session_id__propose_post",
         "parameters": [
           {
@@ -37514,7 +37514,7 @@
     },
     "/api/sql/execute": {
       "post": {
-        "description": "Parse, enforce, execute a single SELECT against the UC lakehouse.\n\nFlow:\n\n1. Parse via :func:`~pointlessql.pql.sql_parser.prepare_sql` to\n   extract the 3-part table references and a DuckDB-safe rewrite\n   of the SQL.\n2. For every referenced table: fetch ``storage_location`` from\n   soyuz-catalog and call ``check_privilege(SELECT)``.  Admin\n   short-circuits per :mod:`pointlessql.services.authorization`.\n3. Dispatch :meth:`PQL.sql` via :func:`asyncio.to_thread` so the\n   event loop keeps serving other requests during the DuckDB\n   call.\n4. Audit the execution with the ``query.executed`` action string.\n\nErrors raised inside the parse / enforce / execute stages map to\nRFC 9457 problem+json via the centralised handler.\n\nArgs:\n    request: The incoming FastAPI request.  Needs ``request.state.user``\n        (auth middleware) and ``request.app.state.settings``.\n    body: JSON body with a single ``sql`` key.\n\nReturns:\n    The serialised :class:`SQLResult` as a plain dict.\n\nRaises:\n    SQLExecutionError: If the SQL editor is disabled, the SQL is\n        malformed or out-of-scope, or DuckDB rejects the query\n        at execution time.\n    AuthorizationError: If the user lacks ``SELECT`` on any\n        referenced table (raised by :func:`check_privilege`).\n    CatalogNotFoundError: If a referenced table is unknown to\n        soyuz-catalog or has no ``storage_location``.",
+        "description": "Parse, enforce, execute a single SELECT against the UC lakehouse.\n\nFlow:\n\n1. Parse via :func:`~pointlessql.pql.sql_parser.prepare_sql` to\n   extract the 3-part table references and a DuckDB-safe rewrite\n   of the SQL.\n2. For every referenced table: fetch ``storage_location`` from\n   soyuz-catalog and call ``check_privilege(SELECT)``.  Admin\n   short-circuits per :mod:`pointlessql.services.authorization`.\n3. Dispatch :meth:`PQL.sql` via :func:`asyncio.to_thread` so the\n   event loop keeps serving other requests during the DuckDB\n   call.\n4. Audit the execution with the ``query.executed`` action string.\n\nErrors raised inside the parse / enforce / execute stages map to\nRFC 9457 problem+json via the centralised handler.  The enforce\nstage propagates :class:`AuthorizationError` (raised by\n:func:`check_privilege` when the user lacks ``SELECT`` on a\nreferenced table) and :class:`CatalogNotFoundError` (when a\nreferenced table is unknown to soyuz-catalog or has no\n``storage_location``).\n\nArgs:\n    request: The incoming FastAPI request.  Needs ``request.state.user``\n        (auth middleware) and ``request.app.state.settings``.\n    body: JSON body with a single ``sql`` key.\n\nReturns:\n    The serialised :class:`SQLResult` as a plain dict.\n\nRaises:\n    SQLExecutionError: If the SQL editor is disabled, the SQL is\n        malformed or out-of-scope, or DuckDB rejects the query\n        at execution time.\n    Exception: Any failure from the parse / enforce / dispatch\n        stages is re-raised verbatim after a failed history row\n        is recorded, then mapped to problem+json by the\n        centralised handler.",
         "operationId": "api_sql_execute_api_sql_execute_post",
         "requestBody": {
           "content": {
@@ -37560,7 +37560,7 @@
     },
     "/api/sql/execute/{history_id}/download": {
       "get": {
-        "description": "Stream a historical query's result as CSV or Parquet.\n\nThe flow mirrors ``POST /api/sql/execute`` but reads the SQL\nfrom the ``query_history`` row instead of the request body:\n\n1. Fetch the history row; require the caller to be the owner\n   or an admin.  Any other user sees a 404 so they cannot\n   probe for history IDs.\n2. Re-run enforcement per referenced table \u2014 a history row is\n   **not** a bypass.  Grants can be revoked after the original\n   run; we must not leak data via an old history ID.\n3. Re-execute the SQL against DuckDB.  Stream the resulting\n   Arrow table out as CSV (generator over rows) or Parquet\n   (full write to an in-memory buffer, single response).\n\nArgs:\n    request: The incoming request.\n    history_id: Primary key of the :class:`QueryHistory` row.\n    format: ``\"csv\"`` (default) or ``\"parquet\"``.\n\nReturns:\n    A :class:`StreamingResponse` (CSV) or :class:`Response`\n    (Parquet) with a filename-stamped ``Content-Disposition``.\n\nRaises:\n    CatalogNotFoundError: If the history row is missing, the\n        caller cannot see it, or a referenced table is no\n        longer registered in soyuz-catalog.\n    SQLExecutionError: If re-parse or re-execution fails.\n    AuthorizationError: If the caller lost ``SELECT`` on a\n        referenced table since the original run.",
+        "description": "Stream a historical query's result as CSV or Parquet.\n\nThe flow mirrors ``POST /api/sql/execute`` but reads the SQL\nfrom the ``query_history`` row instead of the request body:\n\n1. Fetch the history row; require the caller to be the owner\n   or an admin.  Any other user sees a 404 so they cannot\n   probe for history IDs.\n2. Re-run enforcement per referenced table \u2014 a history row is\n   **not** a bypass.  Grants can be revoked after the original\n   run; we must not leak data via an old history ID.\n3. Re-execute the SQL against DuckDB.  Stream the resulting\n   Arrow table out as CSV (generator over rows) or Parquet\n   (full write to an in-memory buffer, single response).\n\nPropagates :class:`AuthorizationError` from\n:func:`check_privilege` when the caller lost ``SELECT`` on a\nreferenced table since the original run.\n\nArgs:\n    request: The incoming request.\n    history_id: Primary key of the :class:`QueryHistory` row.\n    format: ``\"csv\"`` (default) or ``\"parquet\"``.\n\nReturns:\n    A :class:`StreamingResponse` (CSV) or :class:`Response`\n    (Parquet) with a filename-stamped ``Content-Disposition``.\n\nRaises:\n    CatalogNotFoundError: If the history row is missing, the\n        caller cannot see it, or a referenced table is no\n        longer registered in soyuz-catalog.\n    SQLExecutionError: If re-parse or re-execution fails.",
         "operationId": "api_sql_download_api_sql_execute__history_id__download_get",
         "parameters": [
           {
@@ -37697,7 +37697,7 @@
     },
     "/api/sql/explain": {
       "get": {
-        "description": "Return a DuckDB EXPLAIN plan + heuristic cost for *sql*.\n\nCost gate.  Mirrors the parse + UC-SELECT-enforce front-half of\n:func:`api_sql_execute` so the caller cannot EXPLAIN a query\nwhose tables they don't have permission to read \u2014 that would\nleak schema information through the plan even without row\nmaterialisation.\n\nAbove ``settings.sql.cost_gate_threshold_rows`` the response\nflips ``needs_approval`` to ``True``.  No enforcement happens\nhere \u2014 the agent or run-detail UI decides what to do with the\nflag.\n\nArgs:\n    request: Incoming FastAPI request.  Reads\n        ``request.state.user`` (auth middleware) and\n        ``request.app.state.settings``.\n    sql: The SELECT statement to analyse (passed as a query-\n        string parameter for convenient ``curl`` usage).\n\nReturns:\n    Plain dict with ``plan`` (the parsed JSON tree DuckDB\n    emitted), ``cost`` (heuristic dict with\n    ``max_cardinality`` / ``join_depth`` / ``cost`` /\n    ``explanation``), ``needs_approval`` (bool against the\n    configured threshold), ``threshold`` (the threshold echoed\n    for client reasoning), and ``referenced_tables`` (the\n    enforcement list).\n\nRaises:\n    SQLExecutionError: SQL editor disabled, malformed SQL, or\n        DuckDB rejected the EXPLAIN.\n    AuthorizationError: User lacks ``SELECT`` on a referenced\n        table (raised by :func:`check_privilege`).\n    CatalogNotFoundError: Referenced table unknown to\n        soyuz-catalog or has no ``storage_location``.",
+        "description": "Return a DuckDB EXPLAIN plan + heuristic cost for *sql*.\n\nCost gate.  Mirrors the parse + UC-SELECT-enforce front-half of\n:func:`api_sql_execute` so the caller cannot EXPLAIN a query\nwhose tables they don't have permission to read \u2014 that would\nleak schema information through the plan even without row\nmaterialisation.\n\nAbove ``settings.sql.cost_gate_threshold_rows`` the response\nflips ``needs_approval`` to ``True``.  No enforcement happens\nhere \u2014 the agent or run-detail UI decides what to do with the\nflag.\n\nPropagates :class:`AuthorizationError` from\n:func:`check_privilege` when the user lacks ``SELECT`` on a\nreferenced table.\n\nArgs:\n    request: Incoming FastAPI request.  Reads\n        ``request.state.user`` (auth middleware) and\n        ``request.app.state.settings``.\n    sql: The SELECT statement to analyse (passed as a query-\n        string parameter for convenient ``curl`` usage).\n\nReturns:\n    Plain dict with ``plan`` (the parsed JSON tree DuckDB\n    emitted), ``cost`` (heuristic dict with\n    ``max_cardinality`` / ``join_depth`` / ``cost`` /\n    ``explanation``), ``needs_approval`` (bool against the\n    configured threshold), ``threshold`` (the threshold echoed\n    for client reasoning), and ``referenced_tables`` (the\n    enforcement list).\n\nRaises:\n    SQLExecutionError: SQL editor disabled, malformed SQL, or\n        DuckDB rejected the EXPLAIN.\n    CatalogNotFoundError: Referenced table unknown to\n        soyuz-catalog or has no ``storage_location``.",
         "operationId": "api_sql_explain_api_sql_explain_get",
         "parameters": [
           {
@@ -37743,7 +37743,7 @@
     },
     "/api/sql/vector_search": {
       "post": {
-        "description": "Run a top-K semantic search against an existing vector index.\n\nArgs:\n    request: Incoming FastAPI request.\n    body: Validated request body with ``table``, ``column``,\n        ``query``, ``top_k``.\n\nReturns:\n    A :class:`VectorSearchResponse` carrying the index's\n    embedder + freshness metadata plus the ranked hits.\n\nRaises:\n    SQLExecutionError: When the SQL editor is disabled or the\n        target table is not three-part qualified.\n    AuthorizationError: When the caller lacks ``SELECT`` on the\n        target table (raised by ``check_privilege``).\n    CatalogNotFoundError: When the target table is unknown.\n    FileNotFoundError: When no vector index exists for the\n        ``(table, column)`` pair.",
+        "description": "Run a top-K semantic search against an existing vector index.\n\nPropagates :class:`AuthorizationError` from\n:func:`enforce_select_per_table` when the caller lacks ``SELECT``\non the target table, and :class:`CatalogNotFoundError` from the\nunderlying search when the target table is unknown.\n\nArgs:\n    request: Incoming FastAPI request.\n    body: Validated request body with ``table``, ``column``,\n        ``query``, ``top_k``.\n\nReturns:\n    A :class:`VectorSearchResponse` carrying the index's\n    embedder + freshness metadata plus the ranked hits.\n\nRaises:\n    SQLExecutionError: When the SQL editor is disabled or the\n        target table is not three-part qualified.\n    ResourceNotFoundError: When no vector index exists for the\n        ``(table, column)`` pair.\n    Exception: Re-raises whatever the search thread raised, after\n        recording the failed query in the audit history.",
         "operationId": "api_sql_vector_search_api_sql_vector_search_post",
         "requestBody": {
           "content": {
@@ -37841,7 +37841,7 @@
         ]
       },
       "post": {
-        "description": "Create or rebuild a vector index over ``table.column``.\n\nArgs:\n    request: Incoming FastAPI request.\n    body: Validated request body.\n\nReturns:\n    The newly-persisted :class:`VectorIndexSummary` row.\n\nRaises:\n    AuthorizationError: When the caller is not a workspace admin.\n    CatalogNotFoundError: When the target table is unknown.\n    EmbedderUnavailableError: When the requested embedder cannot\n        be resolved (e.g. ``[vector]`` extra not installed).\n    ValidationError: When the table FQN is not three-part.",
+        "description": "Create or rebuild a vector index over ``table.column``.\n\nPropagates :class:`AuthorizationError` from\n:func:`require_workspace_admin` when the caller is not a\nworkspace admin, :class:`ValidationError` from\n:func:`parse_full_name` when the table FQN is not three-part,\nand :class:`CatalogNotFoundError` /\n:class:`EmbedderUnavailableError` from\n:func:`create_or_rebuild_index` when the target table is\nunknown or the requested embedder cannot be resolved (e.g.\n``[vector]`` extra not installed).\n\nArgs:\n    request: Incoming FastAPI request.\n    body: Validated request body.\n\nReturns:\n    The newly-persisted :class:`VectorIndexSummary` row.",
         "operationId": "api_vector_index_create_api_sql_vector_search_indices_post",
         "requestBody": {
           "content": {
@@ -37884,7 +37884,7 @@
     },
     "/api/sql/vector_search/indices/{index_id}": {
       "delete": {
-        "description": "Delete a vector index by id and remove its on-disk file.\n\nArgs:\n    request: Incoming FastAPI request.\n    index_id: Auto-increment id of the ``vector_indices`` row.\n\nRaises:\n    HTTPException: 404 when the index row does not exist in\n        the caller's workspace.\n    AuthorizationError: When the caller is not a workspace admin.",
+        "description": "Delete a vector index by id and remove its on-disk file.\n\nPropagates :class:`AuthorizationError` from\n:func:`require_workspace_admin` when the caller is not a\nworkspace admin.\n\nArgs:\n    request: Incoming FastAPI request.\n    index_id: Auto-increment id of the ``vector_indices`` row.\n\nRaises:\n    ResourceNotFoundError: When the index row does not exist in\n        the caller's workspace (rendered as a 404).",
         "operationId": "api_vector_index_delete_api_sql_vector_search_indices__index_id__delete",
         "parameters": [
           {
@@ -37988,7 +37988,7 @@
     },
     "/api/tables/{full_name}/profile": {
       "post": {
-        "description": "Compute + cache per-column statistics for the Delta table.\n\nThe caller must hold SELECT on the table or be an administrator.\nResults are cached by ``(full_name, delta_log_version)`` so a\nsecond call at the same Delta version is a single index seek.\n\nArgs:\n    request: Incoming request.\n    full_name: UC three-part dotted name (path-encoded).\n\nReturns:\n    Dict with ``full_name``, ``delta_log_version``, and a\n    ``columns`` list of serialised stats rows.\n\nRaises:\n    CatalogNotFoundError: On missing table or missing storage.\n    AuthorizationError: When the caller lacks SELECT.",
+        "description": "Compute + cache per-column statistics for the Delta table.\n\nThe caller must hold SELECT on the table or be an administrator.\nResults are cached by ``(full_name, delta_log_version)`` so a\nsecond call at the same Delta version is a single index seek.\nPropagates :class:`CatalogNotFoundError` (missing table or\nstorage) and :class:`AuthorizationError` (caller lacks SELECT)\nraised by :func:`enforce_table_profile_access`.\n\nArgs:\n    request: Incoming request.\n    full_name: UC three-part dotted name (path-encoded).\n\nReturns:\n    Dict with ``full_name``, ``delta_log_version``, and a\n    ``columns`` list of serialised stats rows.",
         "operationId": "api_profile_table_api_tables__full_name__profile_post",
         "parameters": [
           {
@@ -38069,7 +38069,7 @@
         ]
       },
       "get": {
-        "description": "Return cached stats for a UC table, optionally pinned to a version.\n\nArgs:\n    request: Incoming request.\n    full_name: UC three-part dotted name.\n    version: Optional Delta log version; defaults to the latest\n        cached version for this table.\n\nReturns:\n    Dict with ``full_name``, ``delta_log_version``, and\n    ``columns`` (empty list if nothing is cached yet).\n\nRaises:\n    CatalogNotFoundError: On missing table or missing storage.\n    AuthorizationError: When the caller lacks SELECT.",
+        "description": "Return cached stats for a UC table, optionally pinned to a version.\n\nPropagates :class:`CatalogNotFoundError` (missing table or\nstorage) and :class:`AuthorizationError` (caller lacks SELECT)\nraised by :func:`enforce_table_profile_access`.\n\nArgs:\n    request: Incoming request.\n    full_name: UC three-part dotted name.\n    version: Optional Delta log version; defaults to the latest\n        cached version for this table.\n\nReturns:\n    Dict with ``full_name``, ``delta_log_version``, and\n    ``columns`` (empty list if nothing is cached yet).",
         "operationId": "api_get_table_stats_api_tables__full_name__stats_get",
         "parameters": [
           {
@@ -38383,7 +38383,7 @@
         ]
       },
       "post": {
-        "description": "Create a new workspace-scoped topic.\n\nBody: ``{\"display_name\": str, \"description_md\": str | None}``.\n\nArgs:\n    request: Incoming FastAPI request.\n\nReturns:\n    Serialised topic row.\n\nRaises:\n    HTTPException: 400 on empty display name; 403 if the\n        caller is not steward / install-admin.",
+        "description": "Create a new workspace-scoped topic.\n\nBody: ``{\"display_name\": str, \"description_md\": str | None}``.\n\nArgs:\n    request: Incoming FastAPI request.\n\nReturns:\n    Serialised topic row.\n\nRaises:\n    BadRequestError: When ``display_name`` is empty.\n    PermissionDeniedError: When the caller is not steward+\n        (supervisor or install-admin).",
         "operationId": "create_topic_api_topics_post",
         "responses": {
           "200": {
@@ -38408,7 +38408,7 @@
     },
     "/api/topics/{slug}": {
       "get": {
-        "description": "Return a topic + its assigned DPs + follower count.\n\nArgs:\n    slug: URL-safe topic identifier.\n    request: Incoming FastAPI request.\n\nReturns:\n    ``{\"topic\": {...}, \"data_products\": [...],\n    \"followers\": int, \"viewer_follows\": bool}``.\n\nRaises:\n    HTTPException: 404 when the slug does not resolve.",
+        "description": "Return a topic + its assigned DPs + follower count.\n\nArgs:\n    slug: URL-safe topic identifier.\n    request: Incoming FastAPI request.\n\nReturns:\n    ``{\"topic\": {...}, \"data_products\": [...],\n    \"followers\": int, \"viewer_follows\": bool}``.\n\nRaises:\n    ResourceNotFoundError: When the slug does not resolve.",
         "operationId": "topic_detail_api_topics__slug__get",
         "parameters": [
           {
@@ -38741,7 +38741,7 @@
         ]
       },
       "post": {
-        "description": "Follow another user.  Idempotent.\n\nArgs:\n    user_id: PK of the user to follow.\n    request: Incoming FastAPI request.\n\nReturns:\n    ``{\"followed_user_id\": int, \"added\": bool}``.\n\nRaises:\n    HTTPException: 400 on self-follow attempt; 404 when the\n        target user does not exist.",
+        "description": "Follow another user.  Idempotent.\n\nArgs:\n    user_id: PK of the user to follow.\n    request: Incoming FastAPI request.\n\nReturns:\n    ``{\"followed_user_id\": int, \"added\": bool}``.\n\nRaises:\n    BadRequestError: On a self-follow attempt.\n    ResourceNotFoundError.not_found: When the target user does\n        not exist.",
         "operationId": "follow_user_api_users__user_id__follow_post",
         "parameters": [
           {
@@ -38879,7 +38879,7 @@
     },
     "/api/users/{user_id}/profile": {
       "get": {
-        "description": "Return the user's profile + counts + badges + recent activity.\n\nArgs:\n    user_id: PK of the user.\n    request: Incoming FastAPI request.\n\nReturns:\n    ``{\"profile\": {...}, \"counts\": {followers, following,\n    stewarded_dps, comments_30d, reviews}, \"badges\": [...]\n    , \"recent_activity\": [...]}``.\n\nRaises:\n    HTTPException: 404 when the target user does not exist.",
+        "description": "Return the user's profile + counts + badges + recent activity.\n\nArgs:\n    user_id: PK of the user.\n    request: Incoming FastAPI request.\n\nReturns:\n    ``{\"profile\": {...}, \"counts\": {followers, following,\n    stewarded_dps, comments_30d, reviews}, \"badges\": [...]\n    , \"recent_activity\": [...]}``.\n\nRaises:\n    ResourceNotFoundError.not_found: 404 when the target user\n        does not exist.",
         "operationId": "get_user_profile_api_users__user_id__profile_get",
         "parameters": [
           {
@@ -38923,7 +38923,7 @@
         ]
       },
       "put": {
-        "description": "Update the caller's profile (or any profile when admin).\n\nArgs:\n    user_id: PK of the profile to update.\n    request: Incoming FastAPI request.\n\nReturns:\n    Serialised :func:`_serialise_profile` payload.\n\nRaises:\n    AuthorizationError: When the caller is not the owner and\n        not install-admin.\n    HTTPException: 400 on oversized bio / too many link rows;\n        404 when the target user does not exist.",
+        "description": "Update the caller's profile (or any profile when admin).\n\nArgs:\n    user_id: PK of the profile to update.\n    request: Incoming FastAPI request.\n\nReturns:\n    Serialised :func:`_serialise_profile` payload.\n\nRaises:\n    AuthorizationError: When the caller is not the owner and\n        not install-admin.\n    BadRequestError: 400 on oversized bio or malformed / too\n        many link rows.\n    ResourceNotFoundError.not_found: 404 when the target user\n        does not exist.",
         "operationId": "update_user_profile_api_users__user_id__profile_put",
         "parameters": [
           {
@@ -39118,7 +39118,7 @@
         ]
       },
       "post": {
-        "description": "Create a new saved view.\n\nArgs:\n    request: Incoming FastAPI request.\n    body: ``{title, description, sql, parameters?, dp_id?,\n        target_fqn?}``.\n\nReturns:\n    The serialised row.\n\nRaises:\n    ValidationError: When the SQL is not SELECT, or\n        parameters / placeholders mismatch.",
+        "description": "Create a new saved view.\n\nPropagates :class:`ValidationError` from\n:func:`saved_views_service.create_saved_view` when the SQL is\nnot a SELECT or the parameters / placeholders mismatch.\n\nArgs:\n    request: Incoming FastAPI request.\n    body: ``{title, description, sql, parameters?, dp_id?,\n        target_fqn?}``.\n\nReturns:\n    The serialised row.",
         "operationId": "api_create_view_api_views_post",
         "requestBody": {
           "content": {
@@ -39298,7 +39298,7 @@
     },
     "/api/views/{slug}/run": {
       "post": {
-        "description": "Execute a saved view with the supplied parameter values.\n\nArgs:\n    request: Incoming request.\n    slug: View slug.\n    body: ``{\"parameters\": {name: value, ...}}`` (may be empty).\n\nReturns:\n    ``{\"columns\": [...], \"rows\": [...], \"row_count\": N,\n    \"truncated\": bool, \"duration_ms\": int}``.\n\nRaises:\n    CatalogNotFoundError: When the slug is unknown.\n    ValidationError: When parameter values fail coercion.\n    SQLExecutionError: When DuckDB rejects the rewritten SQL.",
+        "description": "Execute a saved view with the supplied parameter values.\n\nPropagates :class:`SQLExecutionError` from the worker thread\nwhen DuckDB rejects the rewritten SQL.\n\nArgs:\n    request: Incoming request.\n    slug: View slug.\n    body: ``{\"parameters\": {name: value, ...}}`` (may be empty).\n\nReturns:\n    ``{\"columns\": [...], \"rows\": [...], \"row_count\": N,\n    \"truncated\": bool, \"duration_ms\": int}``.\n\nRaises:\n    CatalogNotFoundError: When the slug is unknown or the view\n        is archived.\n    ValidationError: When the parameters payload is not an\n        object (parameter-value coercion failures propagate the\n        same exception from the service layer).",
         "operationId": "api_run_view_api_views__slug__run_post",
         "parameters": [
           {
@@ -43647,7 +43647,7 @@
     },
     "/notebooks/edit/{path}": {
       "get": {
-        "description": "Render the browser notebook editor for a specific ``.py`` file.\n\nThe path is validated against the workspace root before render so\na bad path 422s before a stale editor frame paints.  The editor\nboots itself from ``GET /api/notebooks/load`` after Alpine mounts.\n\nArgs:\n    request: Incoming FastAPI request; any authenticated user.\n    path: Relative notebook path, captured by the\n        ``{path:path}`` converter (slashes preserved).\n\nReturns:\n    The rendered ``pages/notebook_editor.html`` template.\n\nRaises:\n    ValidationError: When the path is missing / outside the\n        workspace / wrong suffix / does not exist.  Surfaces\n        via :func:`resolve_py_notebook_path`.",
+        "description": "Render the browser notebook editor for a specific ``.py`` file.\n\nThe path is validated against the workspace root before render so\na bad path 422s before a stale editor frame paints.  The editor\nboots itself from ``GET /api/notebooks/load`` after Alpine mounts.\nPropagates :class:`ValidationError` raised by\n:func:`resolve_py_notebook_path` when the path is missing, outside\nthe workspace, has the wrong suffix, or does not exist.\n\nArgs:\n    request: Incoming FastAPI request; any authenticated user.\n    path: Relative notebook path, captured by the\n        ``{path:path}`` converter (slashes preserved).\n\nReturns:\n    The rendered ``pages/notebook_editor.html`` template.",
         "operationId": "notebook_editor_page_notebooks_edit__path__get",
         "parameters": [
           {
@@ -44524,7 +44524,7 @@
     },
     "/webhook/git/{repo_id}": {
       "post": {
-        "description": "Receive an inbound git-host webhook for *repo_id*.\n\nArgs:\n    repo_id: ``WorkspaceRepo.id`` from the URL.\n    request: Incoming FastAPI request.  Body and headers are\n        consumed for signature verification.\n\nReturns:\n    Always a 202 envelope describing what happened\n    (``verified`` / ``parsed_kind`` / ``branch`` / ``status``).\n    Sync work runs in the background; the caller never blocks.\n\nRaises:\n    HTTPException: 404 when the repo is unknown, 401 when the\n        signature did not verify or the provider does not\n        implement a signature scheme.",
+        "description": "Receive an inbound git-host webhook for *repo_id*.\n\nArgs:\n    repo_id: ``WorkspaceRepo.id`` from the URL.\n    request: Incoming FastAPI request.  Body and headers are\n        consumed for signature verification.\n\nReturns:\n    Always a 202 envelope describing what happened\n    (``verified`` / ``parsed_kind`` / ``branch`` / ``status``).\n    Sync work runs in the background; the caller never blocks.\n\nRaises:\n    HTTPException: 401 when the signature did not verify or the\n        provider does not implement a signature scheme.\n    ResourceNotFoundError.not_found: 404 when no\n        :class:`WorkspaceRepo` row exists for *repo_id*.",
         "operationId": "receive_repo_webhook_webhook_git__repo_id__post",
         "parameters": [
           {
@@ -44569,7 +44569,7 @@
     },
     "/workspaces/{slug}": {
       "get": {
-        "description": "Render the workspace landing page.\n\nArgs:\n    request: Incoming FastAPI request.\n    slug: Workspace slug from the URL.\n\nReturns:\n    The rendered ``pages/workspace_landing.html`` template.\n\nRaises:\n    HTTPException: 404 when the workspace slug doesn't exist.",
+        "description": "Render the workspace landing page.\n\nPropagates :class:`ResourceNotFoundError` raised by\n``_resolve_workspace`` when the workspace slug doesn't exist.\n\nArgs:\n    request: Incoming FastAPI request.\n    slug: Workspace slug from the URL.\n\nReturns:\n    The rendered ``pages/workspace_landing.html`` template.",
         "operationId": "workspace_landing_page_workspaces__slug__get",
         "parameters": [
           {

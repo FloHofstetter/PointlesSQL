@@ -77,6 +77,10 @@ async def api_list_views(
 async def api_create_view(request: Request, body: dict[str, Any] = Body(...)) -> dict[str, Any]:
     """Create a new saved view.
 
+    Propagates :class:`ValidationError` from
+    :func:`saved_views_service.create_saved_view` when the SQL is
+    not a SELECT or the parameters / placeholders mismatch.
+
     Args:
         request: Incoming FastAPI request.
         body: ``{title, description, sql, parameters?, dp_id?,
@@ -84,11 +88,7 @@ async def api_create_view(request: Request, body: dict[str, Any] = Body(...)) ->
 
     Returns:
         The serialised row.
-
-    Raises:
-        ValidationError: When the SQL is not SELECT, or
-            parameters / placeholders mismatch.
-    """  # noqa: DOC502 — propagated from saved_views_service.create_saved_view
+    """
     require_user(request)
     workspace_id = current_workspace_id(request)
     user = get_user(request)
@@ -231,6 +231,9 @@ async def api_run_view(
 ) -> dict[str, Any]:
     """Execute a saved view with the supplied parameter values.
 
+    Propagates :class:`SQLExecutionError` from the worker thread
+    when DuckDB rejects the rewritten SQL.
+
     Args:
         request: Incoming request.
         slug: View slug.
@@ -241,10 +244,12 @@ async def api_run_view(
         "truncated": bool, "duration_ms": int}``.
 
     Raises:
-        CatalogNotFoundError: When the slug is unknown.
-        ValidationError: When parameter values fail coercion.
-        SQLExecutionError: When DuckDB rejects the rewritten SQL.
-    """  # noqa: DOC502,DOC503 — propagated from service / DuckDB
+        CatalogNotFoundError: When the slug is unknown or the view
+            is archived.
+        ValidationError: When the parameters payload is not an
+            object (parameter-value coercion failures propagate the
+            same exception from the service layer).
+    """
     import duckdb
 
     from pointlessql.pql import prepare_sql

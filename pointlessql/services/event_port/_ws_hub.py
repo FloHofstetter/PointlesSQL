@@ -104,6 +104,12 @@ async def broadcast(hub: EventHub, frame: dict[str, Any]) -> int:
     Best-effort: any send failure deregisters the failing subscriber
     without raising.
 
+    Args:
+        hub: The per-``(product, table)`` hub whose subscribers
+            receive the frame.
+        frame: JSON-serialisable event payload; encoded once and
+            sent as text to every subscriber.
+
     Returns:
         The number of subscribers the frame was delivered to.
     """

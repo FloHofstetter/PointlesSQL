@@ -33,6 +33,9 @@ async def api_profile_table(
     The caller must hold SELECT on the table or be an administrator.
     Results are cached by ``(full_name, delta_log_version)`` so a
     second call at the same Delta version is a single index seek.
+    Propagates :class:`CatalogNotFoundError` (missing table or
+    storage) and :class:`AuthorizationError` (caller lacks SELECT)
+    raised by :func:`enforce_table_profile_access`.
 
     Args:
         request: Incoming request.
@@ -41,11 +44,7 @@ async def api_profile_table(
     Returns:
         Dict with ``full_name``, ``delta_log_version``, and a
         ``columns`` list of serialised stats rows.
-
-    Raises:
-        CatalogNotFoundError: On missing table or missing storage.
-        AuthorizationError: When the caller lacks SELECT.
-    """  # noqa: DOC502,DOC503 — raised via helpers
+    """
     from pointlessql.services import table_stats as ts_service
 
     table_info = await enforce_table_profile_access(request, full_name)
@@ -133,6 +132,10 @@ async def api_get_table_stats(
 ) -> dict[str, Any]:
     """Return cached stats for a UC table, optionally pinned to a version.
 
+    Propagates :class:`CatalogNotFoundError` (missing table or
+    storage) and :class:`AuthorizationError` (caller lacks SELECT)
+    raised by :func:`enforce_table_profile_access`.
+
     Args:
         request: Incoming request.
         full_name: UC three-part dotted name.
@@ -142,11 +145,7 @@ async def api_get_table_stats(
     Returns:
         Dict with ``full_name``, ``delta_log_version``, and
         ``columns`` (empty list if nothing is cached yet).
-
-    Raises:
-        CatalogNotFoundError: On missing table or missing storage.
-        AuthorizationError: When the caller lacks SELECT.
-    """  # noqa: DOC502,DOC503 — raised via helpers
+    """
     from pointlessql.services import table_stats as ts_service
 
     await enforce_table_profile_access(request, full_name)

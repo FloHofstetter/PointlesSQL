@@ -61,7 +61,9 @@ def create_pin(
 
     Captures a snapshot of the assistant text + the most recent SQL
     tool-call's executed_sql + result_preview so the pin survives
-    source-session deletion.
+    source-session deletion.  Propagates :class:`ResourceNotFoundError`
+    from the snapshot capture when *source_message_id* is set but does
+    not point at an assistant message in the workspace.
 
     Args:
         factory: SQLAlchemy session factory.
@@ -74,11 +76,7 @@ def create_pin(
 
     Returns:
         The detached :class:`LensPinnedAnswer` row.
-
-    Raises:
-        ResourceNotFoundError: When *source_message_id* is set but
-            does not point at an assistant message in the workspace.
-    """  # noqa: DOC502 — ResourceNotFoundError raised by _capture_snapshot
+    """
     base_slug = _slugify(title)
     slug = _next_unique_slug(factory, workspace_id=workspace_id, base=base_slug)
 

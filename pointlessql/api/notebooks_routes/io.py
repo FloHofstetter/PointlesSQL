@@ -80,6 +80,10 @@ async def api_load_notebook(request: Request, path: str) -> JSONResponse:
     reload stays close to free — kernel-message replay happens
     client-side from the embedded JSON, no extra fetch.
 
+    Propagates :class:`ValidationError` raised by
+    :func:`resolve_py_notebook_path` when the path is missing /
+    outside the workspace / wrong suffix / does not exist.
+
     Args:
         request: Incoming FastAPI request; any authenticated user.
         path: Relative notebook path under ``notebooks_dir``.
@@ -90,12 +94,7 @@ async def api_load_notebook(request: Request, path: str) -> JSONResponse:
         ``cell_type``, ``source``, ``result_var``.  Each output carries
         ``content_hash``, ``kernel_session_id``, ``output_index``,
         ``msg_type``, ``content``, ``metadata``, ``created_at``.
-
-    Raises:
-        ValidationError: When the path is missing / outside the
-            workspace / wrong suffix / does not exist.  Surfaces
-            via :func:`resolve_py_notebook_path`.
-    """  # noqa: DOC502
+    """
     require_user(request)
     settings: Settings = request.app.state.settings
     notebooks_dir = settings.jupyter.notebooks_dir.resolve()

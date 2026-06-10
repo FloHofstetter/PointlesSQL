@@ -59,6 +59,11 @@ async def api_builder_operators(request: Request) -> dict[str, Any]:
 async def api_builder_columns(request: Request, body: dict[str, Any] = Body(...)) -> dict[str, Any]:
     """Probe a 3-part UC table for column names + DuckDB types.
 
+    Propagates :class:`SQLExecutionError` from the probe thread when
+    the underlying DuckDB probe fails, and :class:`AuthorizationError`
+    from :func:`check_privilege` when the actor lacks SELECT on the
+    table.
+
     Args:
         request: Incoming request.
         body: ``{"table_fqn": "<catalog>.<schema>.<table>"}``.
@@ -69,8 +74,9 @@ async def api_builder_columns(request: Request, body: dict[str, Any] = Body(...)
     Raises:
         CatalogNotFoundError: When the table or its storage
             location is unknown.
-        SQLExecutionError: When the underlying DuckDB probe fails.
-    """  # noqa: DOC502,DOC503 — propagated from soyuz facade / DuckDB
+        ValidationError: When ``table_fqn`` is not a three-part
+            dotted name.
+    """
     import duckdb
 
     from pointlessql.pql.engine import register_delta_view

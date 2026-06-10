@@ -56,8 +56,24 @@ def create_subscription(
 ) -> dict[str, Any]:
     """Create a durable subscription on an event output port.
 
+    Args:
+        factory: Sessionmaker callable.
+        data_product_id: Product that owns the output port.
+        output_port_id: PK of the ``kind='event'`` output port to
+            subscribe to.
+        table_name: CDF-enabled table the consumer reads changes
+            from; stripped before storage.
+        consumer_label: Caller-chosen consumer name; unique per
+            (port, table) pair, stripped before storage.
+        owner_user_id: Subscribing user's PK, or ``None``.
+        start_version: Delta version the position cursor starts at.
+
+    Returns:
+        The serialised subscription row with ``status='active'``.
+
     Raises:
-        ValueError: When the referenced output port is not of kind
+        ValueError: When the label/table are blank, the port is
+            missing, belongs to another product, or is not of kind
             ``'event'``, or the (port, label, table) triple already
             exists.
     """
@@ -186,8 +202,21 @@ def advance_position(
 ) -> dict[str, Any] | None:
     """Advance the cursor forward.  Rejects backward movement.
 
+    Args:
+        factory: Sessionmaker callable.
+        subscription_id: PK of the subscription whose cursor moves.
+        to_version: Target Delta version; must be at or past the
+            current cursor version.
+        row_offset: Row position reached within *to_version*.
+
+    Returns:
+        The serialised subscription row with the updated cursor and
+        ``last_delivered_at``, or ``None`` when the subscription does
+        not exist.
+
     Raises:
-        ValueError: When *to_version* is less than the current version.
+        ValueError: When *to_version* or *row_offset* is negative, or
+            *to_version* is less than the current version.
     """
     if to_version < 0 or row_offset < 0:
         raise ValueError("to_version and row_offset must be >= 0")
@@ -231,6 +260,9 @@ def record_delivery(
 
     Returns:
         The delivery row's id.
+
+    Raises:
+        ValueError: When *status* is not one of the accepted values.
     """
     if status not in ("ok", "error", "empty"):
         raise ValueError(f"status {status!r} invalid")

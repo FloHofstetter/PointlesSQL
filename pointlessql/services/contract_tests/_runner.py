@@ -90,6 +90,10 @@ def run_contract_tests(
 
     Returns:
         :class:`RunOutcome` summary.
+
+    Raises:
+        ValueError: When *mode* is not in :data:`RUN_MODES`.
+        LookupError: When *data_product_id* matches no product row.
     """
     if mode not in RUN_MODES:
         raise ValueError(f"unknown run mode: {mode}")

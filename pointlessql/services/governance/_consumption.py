@@ -197,8 +197,20 @@ def assert_declared_consumption(
 ) -> ConsumptionDecision:
     """Like :func:`evaluate_consumption`, but raise on ``BLOCK``.
 
-    Returns the decision so the caller can still emit an audit row in
-    ``WARN`` mode.
+    Args:
+        factory: Sessionmaker callable.
+        mode: Effective enforcement mode of the consumer
+            (typically the value returned by
+            :func:`pointlessql.services.governance.get_effective_policy`
+            for ``consumption_enforcement``).
+        consumer_product_id: PK of the product the read is happening
+            "in the context of" — the *consumer*.
+        source_fqn: The source being read, ``catalog.schema`` or
+            ``catalog.schema.table`` form.
+
+    Returns:
+        The :class:`ConsumptionDecision` so the caller can still
+        emit an audit row in ``WARN`` mode.
 
     Raises:
         ConsumptionViolation: When the resolved verdict is

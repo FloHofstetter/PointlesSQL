@@ -53,6 +53,8 @@ class PreviewResult(BaseModel):
     """Envelope returned by :func:`preview_until`.
 
     Attributes:
+        model_config: Pydantic config freezing the model so cached
+            envelopes can never be mutated by a later request.
         columns: Ordered column names from the DuckDB result, or empty
             list when ``errors`` is non-empty.
         rows: Each row as a list of JSON-coerced cell values (datetimes
@@ -158,6 +160,10 @@ def preview_until(
 ) -> PreviewResult:
     """Compile a slice of *doc* ending at *upto_node_id* and return preview rows.
 
+    Propagates :class:`CatalogUnavailableError` raised by
+    :func:`resolve_storage_location` when soyuz is unreachable while
+    resolving a referenced table.
+
     Args:
         doc: The canvas document the editor currently has open.  The
             caller is responsible for handing in the *current* document
@@ -188,8 +194,6 @@ def preview_until(
         ResourceNotFoundError: When *upto_node_id* isn't in the doc.
         ValidationError: When the target node is an ``OutputPort`` (the
             preview path is read-only — use materialise instead).
-        CatalogUnavailableError: When soyuz is unreachable while
-            resolving a referenced table.
     """
     target = next((n for n in doc.nodes if n.id == upto_node_id), None)
     if target is None:

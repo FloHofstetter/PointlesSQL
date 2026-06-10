@@ -179,6 +179,16 @@ class QuotaExceededError(PointlessSQLError):
     Attributes:
         status_code: Always 429.
         error_code: Always ``ErrorCode.QUOTA_EXCEEDED``.
+
+    Args:
+        consumer_id: Consumer registration the quota belongs to,
+            when the violation is consumer-scoped.
+        data_product_id: Data product whose consumption tripped the
+            quota, when known.
+        metric: Which quota bucket overflowed (e.g. daily cost or
+            hourly query count).
+        limit: Configured ceiling for *metric*.
+        observed: Measured value that exceeded the ceiling.
     """
 
     status_code: int = 429

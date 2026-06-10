@@ -117,9 +117,10 @@ async def api_delete_notebook(
         JSON ``{"path": ...}`` on success.
 
     Raises:
-        HTTPException: 400 when ``confirm`` is not ``true`` — the
-            browser editor sets it after the confirm-modal pick;
-            curl callers must opt in explicitly.
+        BadRequestError: When ``confirm`` is not ``true`` (rendered
+            as a 400) — the browser editor sets it after the
+            confirm-modal pick; curl callers must opt in
+            explicitly.
     """
     require_user(request)
     if not confirm:

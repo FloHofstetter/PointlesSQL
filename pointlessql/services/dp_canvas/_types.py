@@ -41,6 +41,8 @@ class SinkResult(BaseModel):
     """The per-sink outcome of one :func:`execute_canvas` run.
 
     Attributes:
+        model_config: Pydantic configuration; ``frozen=True`` keeps
+            the result immutable once the executor emits it.
         port_name: ``OutputPort.config.port_name`` this result belongs to.
         target_fqn: Three-part UC name this sink materialised to.
         rows_written: Rows written into the target Delta table; ``0`` when
@@ -74,6 +76,8 @@ class MultiExecuteResult(BaseModel):
     untouched and surfaces as that sink's ``status == "failed"``.
 
     Attributes:
+        model_config: Pydantic configuration; ``frozen=True`` keeps
+            the envelope immutable once the executor returns it.
         sinks: Per-sink outcomes for this run (at least one).
         graph_version: ``version`` the executor stamped on the single
             ``data_product_canvas_graph`` row minted for this run — all

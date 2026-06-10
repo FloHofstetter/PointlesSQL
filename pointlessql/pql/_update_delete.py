@@ -58,6 +58,17 @@ def update_table(
 ) -> dict[str, Any]:
     """Apply ``UPDATE target SET ... WHERE ...`` and emit the audit row.
 
+    Propagates :class:`ValidationError` from name parsing (when
+    *full_name* does not have exactly three parts),
+    :class:`CatalogNotFoundError` (when the table does not exist in
+    soyuz-catalog — UPDATE on a missing table is invalid; use
+    :meth:`PQL.write_table` to bootstrap) and
+    :class:`CatalogUnavailableError` (when soyuz-catalog is
+    unreachable) from location resolution, and
+    :class:`AuditUnavailableError` from the operation recorder when
+    *agent_run_id* is set and the ``agent_run_operations`` row
+    cannot be persisted.
+
     Args:
         client: Configured ``soyuz_catalog_client.Client`` (used
             only to resolve the table's storage location).
@@ -86,14 +97,12 @@ def update_table(
         ``scan_time_ms``).
 
     Raises:
-        ValidationError: If *full_name* does not have exactly three parts.
-        CatalogNotFoundError: If the table does not exist in
-            soyuz-catalog (UPDATE on missing table is invalid; use
-            :meth:`PQL.write_table` to bootstrap).
-        CatalogUnavailableError: If soyuz-catalog is unreachable.
-        AuditUnavailableError: If *agent_run_id* is set and the
-            ``agent_run_operations`` row cannot be persisted.
-    """  # noqa: DOC503
+        ValueError: If *set_clause* is empty.
+        Exception: delta-rs failures during the update (predicate
+            parse error, type mismatch, schema drift) are re-raised
+            verbatim so the dispatcher surfaces them to the editor
+            with a structured envelope.
+    """
     if not set_clause:
         msg = "pql.update: set_clause must not be empty."
         raise ValueError(msg)
@@ -163,6 +172,14 @@ def delete_table_rows(
     ; the primitive itself does not refuse the call —
     Hermes-driven agents may legitimately need a full-table wipe.
 
+    Propagates :class:`ValidationError` from name parsing (when
+    *full_name* does not have exactly three parts),
+    :class:`CatalogNotFoundError` (when the table does not exist)
+    and :class:`CatalogUnavailableError` (when soyuz-catalog is
+    unreachable) from location resolution, and
+    :class:`AuditUnavailableError` from the operation recorder when
+    the ``agent_run_operations`` row cannot be persisted.
+
     Args:
         client: Configured ``soyuz_catalog_client.Client`` (used
             only to resolve the table's storage location).
@@ -178,13 +195,7 @@ def delete_table_rows(
         ``num_removed_files``, ``num_deleted_rows``,
         ``num_copied_rows``, ``execution_time_ms``,
         ``scan_time_ms``).
-
-    Raises:
-        ValidationError: If *full_name* does not have exactly three parts.
-        CatalogNotFoundError: If the table does not exist.
-        CatalogUnavailableError: If soyuz-catalog is unreachable.
-        AuditUnavailableError: If the audit row cannot be persisted.
-    """  # noqa: DOC502,DOC503 — exceptions propagate from helpers
+    """
     parse_full_name(full_name)
     location = _resolve_existing_location(client, full_name, unreachable_msg)
 

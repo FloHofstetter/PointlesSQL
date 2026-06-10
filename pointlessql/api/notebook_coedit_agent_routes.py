@@ -83,8 +83,8 @@ async def api_agent_presence(
         agent_run_id itself, not the broadcast).
 
     Raises:
-        HTTPException: 404 when the notebook id does not resolve
-            in the caller's workspace.
+        ResourceNotFoundError: When the notebook id does not
+            resolve to a stored notebook (rendered as 404).
     """
     require_user(request)
     factory = request.app.state.session_factory

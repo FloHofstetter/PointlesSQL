@@ -40,6 +40,12 @@ async def api_pql_drop_table(request: Request, body: dict[str, Any] = Body(...))
     soyuz behaviour is registry-only deletion.  An operator is still
     expected to clean up the storage directory manually if needed.
 
+    Non-admin callers propagate the
+    :class:`pointlessql.exceptions.AuthorizationError` raised by
+    :func:`require_admin`; a target unknown to soyuz propagates the
+    :class:`pointlessql.exceptions.CatalogNotFoundError` surfaced by
+    the client call.
+
     Args:
         request: Incoming FastAPI request — must carry a cookie /
             api-key with admin role.
@@ -50,10 +56,7 @@ async def api_pql_drop_table(request: Request, body: dict[str, Any] = Body(...))
 
     Raises:
         ValidationError: When ``full_name`` is missing or malformed.
-        AuthorizationError: When the caller is not an admin (raised
-            by :func:`require_admin`).
-        CatalogNotFoundError: When the target is unknown to soyuz.
-    """  # noqa: DOC502,DOC503 — exceptions bubble up to the centralised handler
+    """
     require_admin(request)
 
     full_name = (body or {}).get("full_name", "")
@@ -78,6 +81,11 @@ async def api_pql_update(request: Request, body: dict[str, Any] = Body(...)) -> 
 
     Mirrors :meth:`pointlessql.pql.pql.PQL.update` over HTTP.  The
     target must already exist; ``MODIFY`` privilege is enforced.
+    The target check propagates
+    :class:`pointlessql.exceptions.AuthorizationError` (principal
+    lacks ``MODIFY``) and
+    :class:`pointlessql.exceptions.CatalogNotFoundError` (target
+    unknown) raised inside the shared write-target helper.
 
     Args:
         request: Incoming FastAPI request.
@@ -93,9 +101,7 @@ async def api_pql_update(request: Request, body: dict[str, Any] = Body(...)) -> 
 
     Raises:
         ValidationError: When required fields are missing or malformed.
-        AuthorizationError: When the principal lacks ``MODIFY`` on target.
-        CatalogNotFoundError: When the target is unknown.
-    """  # noqa: DOC502,DOC503 — exceptions bubble up to the centralised handler
+    """
     target = (body or {}).get("target", "")
     set_clause_raw = (body or {}).get("set_clause", {})
     where_raw = (body or {}).get("where")
@@ -160,7 +166,11 @@ async def api_pql_delete(request: Request, body: dict[str, Any] = Body(...)) -> 
     omitted or ``None`` triggers a full-table delete; the SQL editor
     surface forces a confirmation modal in that case but
     the route itself does not refuse the call — Hermes-driven agents
-    may legitimately need a full-table wipe.
+    may legitimately need a full-table wipe.  The target check
+    propagates :class:`pointlessql.exceptions.AuthorizationError`
+    (principal lacks ``MODIFY``) and
+    :class:`pointlessql.exceptions.CatalogNotFoundError` (target
+    unknown) raised inside the shared write-target helper.
 
     Args:
         request: Incoming FastAPI request.
@@ -173,9 +183,7 @@ async def api_pql_delete(request: Request, body: dict[str, Any] = Body(...)) -> 
 
     Raises:
         ValidationError: When required fields are missing or malformed.
-        AuthorizationError: When the principal lacks ``MODIFY`` on target.
-        CatalogNotFoundError: When the target is unknown.
-    """  # noqa: DOC502,DOC503 — exceptions bubble up to the centralised handler
+    """
     target = (body or {}).get("target", "")
     where_raw = (body or {}).get("where")
 

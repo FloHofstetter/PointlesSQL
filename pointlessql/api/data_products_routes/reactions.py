@@ -69,7 +69,8 @@ async def add_comment_reaction(
     Idempotent: re-POSTing the same triple is a no-op (no DB
     write, no fan-out).  Reactions on a comment notify the
     comment author only — DP-wide reaction broadcast is a
-    separate endpoint.
+    separate endpoint.  Propagates :class:`BadRequestError`
+    (rendered as 400) from emoji validation.
 
     Args:
         catalog: UC catalog segment.
@@ -81,8 +82,9 @@ async def add_comment_reaction(
         ``{"comment_id": int, "emoji": str, "added": bool}``.
 
     Raises:
-        HTTPException: 400 on unknown emoji or wrong workspace,
-            404 when the comment is missing or soft-deleted.
+        ResourceNotFoundError.not_found: When the comment is missing,
+            soft-deleted, or scoped to a different product (rendered
+            as 404).
     """
     require_user(request)
     user = get_user(request)
@@ -194,6 +196,8 @@ async def remove_comment_reaction(
 
     Idempotent: returns ``removed=False`` when no row matched.
     Only touches the caller's own row — never another user's.
+    Propagates :class:`BadRequestError` (rendered as 400) from
+    emoji validation.
 
     Args:
         catalog: UC catalog segment.
@@ -206,8 +210,8 @@ async def remove_comment_reaction(
         ``{"comment_id": int, "emoji": str, "removed": bool}``.
 
     Raises:
-        HTTPException: 400 on unknown emoji, 404 when the comment
-            is missing or scoped to a different product.
+        ResourceNotFoundError.not_found: When the comment is missing
+            or scoped to a different product (rendered as 404).
     """
     require_user(request)
     user = get_user(request)
@@ -271,8 +275,8 @@ async def list_comment_reactions(
         has_current_user_reacted}, ...]}``.
 
     Raises:
-        HTTPException: 404 when the comment is missing or scoped
-            to a different product.
+        ResourceNotFoundError.not_found: When the comment is missing
+            or scoped to a different product (rendered as 404).
     """
     require_user(request)
     user = get_user(request)

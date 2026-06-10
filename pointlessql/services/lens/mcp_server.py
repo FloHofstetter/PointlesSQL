@@ -137,6 +137,10 @@ def create_lens_mcp_server(
     its executor is wrapped via :func:`execute_tool_with_audit` so
     the lens_messages audit trail is honored even on the MCP path.
 
+    Propagates :class:`LensMcpAuthError` from
+    :func:`resolve_lens_key` when *api_key_secret* is set but does
+    not resolve to a usable key.
+
     Args:
         factory: SQLAlchemy session factory.
         settings: Resolved :class:`Settings`.
@@ -147,11 +151,7 @@ def create_lens_mcp_server(
 
     Returns:
         Ready-to-run :class:`FastMCP`.
-
-    Raises:
-        LensMcpAuthError: When *api_key_secret* is set but does not
-            resolve to a usable key.
-    """  # noqa: DOC502 — LensMcpAuthError raised by resolve_lens_key
+    """
     mcp = FastMCP("PointlesSQL Lens")
 
     # Pre-resolve the Bearer for stdio transport.  SSE transport
@@ -227,6 +227,10 @@ def run_lens_mcp_stdio(
     fresh :class:`Settings` instance when *factory* / *settings* are
     omitted.
 
+    Propagates :class:`LensMcpAuthError` from the key-resolution
+    helper when no Bearer secret is available or it does not
+    resolve.
+
     Args:
         factory: SQLAlchemy session factory.  ``None`` builds one via
             :func:`pointlessql.db.init_db`.
@@ -234,11 +238,7 @@ def run_lens_mcp_stdio(
             fresh instance from env.
         api_key_secret: Bearer secret.  ``None`` reads from
             ``LENS_API_KEY``.
-
-    Raises:
-        LensMcpAuthError: When no Bearer secret is available or it
-            does not resolve.
-    """  # noqa: DOC502 — LensMcpAuthError raised by helper
+    """
     import asyncio
 
     from pointlessql.db import get_session_factory, init_db

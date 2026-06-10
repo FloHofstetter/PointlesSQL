@@ -53,6 +53,17 @@ def propose_forget(
 ) -> DataProductForgetRequest:
     """Record a ``proposed`` forget request (no deletion runs).
 
+    Args:
+        session_factory: Sessionmaker callable.
+        data_product_id: Product the forget request is scoped to.
+        subject_column: Identifying column naming the data subject.
+        subject_value: Raw subject value — only its install-keyed
+            HMAC is stored on the ledger row.
+        requested_by_user_id: User opening the request, when a human
+            proposed it.
+        agent_run_id: Agent run opening the request, when an agent
+            proposed it.
+
     Returns:
         The detached ledger row.
 

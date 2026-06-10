@@ -106,7 +106,9 @@ async def api_propose_sql(
     """Draft a non-SELECT SQL statement for the human's review.
 
     ``kind`` is derived server-side from the parsed statement type
-    so agents can't lie about it.
+    so agents can't lie about it.  Invalid SQL and SELECT
+    statements propagate :class:`ValidationError` (400) from
+    :func:`_classify_proposal_kind`.
 
     Args:
         request: Incoming request — must carry an
@@ -120,10 +122,9 @@ async def api_propose_sql(
         when a duplicate proposal was returned instead of created.
 
     Raises:
-        ValidationError: On invalid SQL or SELECT statements.
         PermissionDeniedError: On ``X-Agent-Run-Id`` mismatch.
         ResourceNotFoundError: When the session is unknown.
-    """  # noqa: DOC503 — ValidationError bubbles up from _classify_proposal_kind
+    """
     require_user(request)
     workspace_id = current_workspace_id(request)
 

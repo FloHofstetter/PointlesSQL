@@ -242,7 +242,9 @@ def resolve_agent_for_principal(
         ``author_agent_id`` / ``applied_by_agent_id``.
 
     Raises:
-        HTTPException: 404 when the slug doesn't resolve.
+        ResourceNotFoundError.not_found: When the slug doesn't
+            resolve in the workspace; the message lists the known
+            agent slugs so callers can self-correct typos.
         AuthorizationError: When the caller is neither the agent's
             ``principal_user_id`` nor install-admin.
     """

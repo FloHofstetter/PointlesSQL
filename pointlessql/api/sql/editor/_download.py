@@ -45,6 +45,10 @@ async def api_sql_download(
        Arrow table out as CSV (generator over rows) or Parquet
        (full write to an in-memory buffer, single response).
 
+    Propagates :class:`AuthorizationError` from
+    :func:`check_privilege` when the caller lost ``SELECT`` on a
+    referenced table since the original run.
+
     Args:
         request: The incoming request.
         history_id: Primary key of the :class:`QueryHistory` row.
@@ -59,9 +63,7 @@ async def api_sql_download(
             caller cannot see it, or a referenced table is no
             longer registered in soyuz-catalog.
         SQLExecutionError: If re-parse or re-execution fails.
-        AuthorizationError: If the caller lost ``SELECT`` on a
-            referenced table since the original run.
-    """  # noqa: DOC502,DOC503 — raised by helpers below + check_privilege
+    """
     import csv
     import io
 

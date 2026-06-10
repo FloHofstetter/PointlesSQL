@@ -41,6 +41,11 @@ async def api_sql_vector_search(
 ) -> VectorSearchResponse:
     """Run a top-K semantic search against an existing vector index.
 
+    Propagates :class:`AuthorizationError` from
+    :func:`enforce_select_per_table` when the caller lacks ``SELECT``
+    on the target table, and :class:`CatalogNotFoundError` from the
+    underlying search when the target table is unknown.
+
     Args:
         request: Incoming FastAPI request.
         body: Validated request body with ``table``, ``column``,
@@ -53,12 +58,11 @@ async def api_sql_vector_search(
     Raises:
         SQLExecutionError: When the SQL editor is disabled or the
             target table is not three-part qualified.
-        AuthorizationError: When the caller lacks ``SELECT`` on the
-            target table (raised by ``check_privilege``).
-        CatalogNotFoundError: When the target table is unknown.
-        FileNotFoundError: When no vector index exists for the
+        ResourceNotFoundError: When no vector index exists for the
             ``(table, column)`` pair.
-    """  # noqa: DOC502,DOC503
+        Exception: Re-raises whatever the search thread raised, after
+            recording the failed query in the audit history.
+    """
     settings = request.app.state.settings
     if not settings.sql.enabled:
         raise SQLExecutionError("The SQL editor is disabled on this deployment.")

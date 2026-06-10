@@ -52,6 +52,9 @@ def fetch_table_info(client: Client, fqn: str) -> TableInfo | None:
 
     Raises:
         CatalogUnavailableError: soyuz could not be reached.
+        UnexpectedStatus: soyuz answered with a non-404 error
+            response; re-raised untouched so the caller sees the
+            real status code.
     """
     try:
         response = _get_table.sync(client=client, full_name=fqn)
@@ -79,6 +82,9 @@ def resolve_storage_location(
 def resolve_storage_location(client: Client, fqn: str, *, required: bool) -> str | None:
     """Read the Delta storage location of *fqn* from UC.
 
+    Propagates :class:`CatalogUnavailableError` raised by
+    :func:`fetch_table_info` when soyuz could not be reached.
+
     Args:
         client: Configured soyuz client.
         fqn: Three-part table name.
@@ -94,7 +100,6 @@ def resolve_storage_location(client: Client, fqn: str, *, required: bool) -> str
     Raises:
         ValidationError: ``required`` is True and the table is unknown or
             has no storage location.
-        CatalogUnavailableError: soyuz could not be reached.
     """
     info = fetch_table_info(client, fqn)
     if info is None:
@@ -132,8 +137,16 @@ def table_info_to_pin_schema(info: TableInfo) -> PinSchema:
 def resolve_table_schema(client: Client, fqn: str) -> PinSchema | None:
     """Fetch *fqn* and project it to a ``PinSchema``; ``None`` on miss.
 
-    Raises:
-        CatalogUnavailableError: soyuz could not be reached.
+    Propagates :class:`CatalogUnavailableError` raised by
+    :func:`fetch_table_info` when soyuz could not be reached.
+
+    Args:
+        client: Configured soyuz client.
+        fqn: Three-part table name.
+
+    Returns:
+        The table's column layout as a ``PinSchema``, or ``None``
+        when the table is unknown to UC.
     """
     info = fetch_table_info(client, fqn)
     if info is None:

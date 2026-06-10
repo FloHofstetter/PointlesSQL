@@ -244,9 +244,10 @@ def operation_context(
     Raises:
         AuditUnavailableError: When emission is requested
             (``agent_run_id`` is set) and the trail row cannot be
-            persisted.  Also re-raises whatever the wrapped block
-            raised after persisting the failure row.
-    """  # noqa: DOC502,DOC503 — re-raises wrapped exceptions verbatim
+            persisted.
+        BaseException: Whatever the wrapped ``with`` block raised,
+            re-raised verbatim after the failure row is persisted.
+    """
     recorder = OperationRecorder()
     if agent_run_id is None:
         yield recorder

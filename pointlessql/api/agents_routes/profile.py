@@ -30,7 +30,8 @@ async def agent_profile(slug: str, request: Request) -> dict[str, Any]:
         {count}}``.
 
     Raises:
-        HTTPException: 404 when slug is unknown.
+        ResourceNotFoundError: When no agent in the workspace has
+            that slug.
     """
     require_user(request)
     workspace_id = current_workspace_id(request)

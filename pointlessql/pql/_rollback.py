@@ -104,6 +104,17 @@ def rollback_table(
     targeted op's ``delta_version_after``, *allow_force* must be
     set to confirm intervening writes will be overwritten.
 
+    Several failure modes propagate from the helpers this calls:
+    :class:`RollbackTargetNotFound` when no ``agent_run_operations``
+    row matches the (run, target) pair; :class:`RollbackAmbiguous`
+    when multiple rows match and *op_ordinal* does not pick exactly
+    one; :class:`pointlessql.exceptions.CatalogNotFoundError` when
+    *target* is unknown to soyuz-catalog or has no
+    ``storage_location``; :class:`CatalogUnavailableError` when
+    soyuz-catalog is unreachable; and ``AuditUnavailableError`` when
+    *agent_run_id* is set and the ``agent_run_operations`` row cannot
+    be persisted.
+
     Args:
         client: Configured ``soyuz_catalog_client.Client``.
         target: UC ``"catalog.schema.table"`` string.  Must exist
@@ -129,22 +140,13 @@ def rollback_table(
         the number of files restored.
 
     Raises:
-        RollbackTargetNotFound: No ``agent_run_operations`` row
-            matches the (run, target) pair.
-        RollbackAmbiguous: Multiple rows match and *op_ordinal*
-            was not supplied (or did not pick a row).
         RollbackInvalid: The chosen op's ``delta_version_before``
             is ``None`` (it created the table; rollback would
             mean dropping it — out of v1 scope).
         RollbackStale: ``DeltaTable.version()`` no longer matches
             the chosen op's ``delta_version_after`` and
             *allow_force* is ``False``.
-        CatalogNotFoundError: *target* is unknown to
-            soyuz-catalog or has no ``storage_location``.
-        CatalogUnavailableError: When soyuz-catalog is unreachable.
-        AuditUnavailableError: When *agent_run_id* is set and the
-            ``agent_run_operations`` row cannot be persisted.
-    """  # noqa: DOC502,DOC503 — Catalog* / Rollback* / AuditUnavailableError propagate
+    """
     target_location = _resolve_target_location(client, target, unreachable_msg)
 
     from pointlessql.db import get_session_factory

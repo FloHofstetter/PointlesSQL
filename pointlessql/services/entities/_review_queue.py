@@ -61,6 +61,20 @@ def accept_candidate(
 ) -> dict[str, Any]:
     """Promote a candidate into an :class:`EntityLink`.
 
+    Args:
+        session_factory: Sessionmaker backing the candidate and
+            entity-link tables.
+        candidate_id: PK of the :class:`EntityLinkCandidate` row to
+            accept.
+        reviewed_by_user_id: User credited with the decision (also
+            recorded as the new link's declarer), or ``None`` for
+            system-driven acceptance.
+
+    Returns:
+        Summary dict carrying the candidate id, the ``"accepted"``
+        decision, and the linked source/target entity ids plus the
+        link kind.
+
     Raises:
         LookupError: When the candidate id is unknown.
         ValueError: When the candidate is already decided.

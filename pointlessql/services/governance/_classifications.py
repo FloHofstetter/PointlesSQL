@@ -152,6 +152,15 @@ def delete_classification(
 ) -> bool:
     """Remove a classification from a product.
 
+    Args:
+        session_factory: Sessionmaker backing the classification
+            table.
+        data_product_id: Owning data product id — scopes the delete
+            so a classification can only be removed through its own
+            product.
+        classification_id: PK of the
+            :class:`DataProductColumnClassification` row to delete.
+
     Returns:
         ``True`` when a row was deleted, ``False`` when none matched.
     """

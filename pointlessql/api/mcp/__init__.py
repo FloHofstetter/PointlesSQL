@@ -71,17 +71,14 @@ def mount_lens_mcp_sse(app: Any) -> None:
 def authorize_mcp_request(request: Request) -> None:
     """Enforce the Bearer-key gate before forwarding to FastMCP.
 
-    Raises :class:`LensMcpAuthError` (mapped to 403 by the global
-    error handler) when the request lacks a usable analyst key.
-    Mounted onto every SSE/HTTP MCP route via FastAPI dependency
-    injection.
+    Propagates :class:`LensMcpAuthError` raised by
+    :func:`resolve_lens_key` (mapped to 403 by the global error
+    handler) when the request lacks a usable analyst key.  Mounted
+    onto every SSE/HTTP MCP route via FastAPI dependency injection.
 
     Args:
         request: Incoming FastAPI request.
-
-    Raises:
-        LensMcpAuthError: When the Bearer is missing or unauthorised.
-    """  # noqa: DOC502 — LensMcpAuthError raised by resolve_lens_key
+    """
     factory = request.app.state.session_factory
     bearer = request.headers.get("authorization")
     resolve_lens_key(factory, bearer_value=bearer)

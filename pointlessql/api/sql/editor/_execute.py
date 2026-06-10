@@ -53,7 +53,12 @@ async def api_sql_execute(request: Request, body: dict[str, Any] = Body(...)) ->
     4. Audit the execution with the ``query.executed`` action string.
 
     Errors raised inside the parse / enforce / execute stages map to
-    RFC 9457 problem+json via the centralised handler.
+    RFC 9457 problem+json via the centralised handler.  The enforce
+    stage propagates :class:`AuthorizationError` (raised by
+    :func:`check_privilege` when the user lacks ``SELECT`` on a
+    referenced table) and :class:`CatalogNotFoundError` (when a
+    referenced table is unknown to soyuz-catalog or has no
+    ``storage_location``).
 
     Args:
         request: The incoming FastAPI request.  Needs ``request.state.user``
@@ -67,11 +72,11 @@ async def api_sql_execute(request: Request, body: dict[str, Any] = Body(...)) ->
         SQLExecutionError: If the SQL editor is disabled, the SQL is
             malformed or out-of-scope, or DuckDB rejects the query
             at execution time.
-        AuthorizationError: If the user lacks ``SELECT`` on any
-            referenced table (raised by :func:`check_privilege`).
-        CatalogNotFoundError: If a referenced table is unknown to
-            soyuz-catalog or has no ``storage_location``.
-    """  # noqa: DOC502,DOC503 — AuthorizationError is raised inside check_privilege
+        Exception: Any failure from the parse / enforce / dispatch
+            stages is re-raised verbatim after a failed history row
+            is recorded, then mapped to problem+json by the
+            centralised handler.
+    """
     import duckdb
 
     from pointlessql.api.sql._dispatcher import dispatch

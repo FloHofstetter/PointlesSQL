@@ -29,7 +29,10 @@ async def api_pql_autoload(request: Request, body: dict[str, Any] = Body(...)) -
     needs ``MODIFY`` on it; when the target is missing the route
     accepts ``USE SCHEMA`` on the parent schema, mirroring how the
     primitive itself bootstraps a fresh Delta log under the parent's
-    ``storage_root`` on the first successful append.
+    ``storage_root`` on the first successful append.  A principal
+    lacking those privileges propagates the
+    :class:`pointlessql.exceptions.AuthorizationError` raised inside
+    the privilege check.
 
     Args:
         request: Incoming FastAPI request.
@@ -43,9 +46,7 @@ async def api_pql_autoload(request: Request, body: dict[str, Any] = Body(...)) -
 
     Raises:
         ValidationError: When required fields are missing or malformed.
-        AuthorizationError: When the principal lacks ``MODIFY`` /
-            ``USE SCHEMA`` (raised by :func:`check_privilege`).
-    """  # noqa: DOC502,DOC503 — AuthorizationError raised inside check_privilege
+    """
     source_path = (body or {}).get("source_path", "")
     target = (body or {}).get("target", "")
     source_system = (body or {}).get("source_system", "")

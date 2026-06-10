@@ -33,12 +33,22 @@ class ApiKey(Base):
             would only buy resistance against brute-force on weak
             secrets, and we control the secrets here.
         secret_prefix: First 8 plaintext characters for UI display.
+        token_format: Token-format discriminator — ``'legacy'`` for
+            the original ``secrets.token_urlsafe(32)`` tokens,
+            ``'v1'`` for the structured
+            ``pql_{env}_v1_{body40}_{crc8}`` format.  Drives badge
+            rendering and lets future code drop legacy support
+            cleanly.
+        token_env: Environment discriminator — ``'live'`` /
+            ``'test'`` for v1 tokens, ``'legacy'`` for older keys.
+            Test keys are visually distinct in audit logs; refusal
+            in production is wired by config.
         supervisor: When ``True``, the key may invoke the supervisor
             routes (per-run summary / diff).
         auditor: When ``True``, the key may invoke the audit-read
             surface (tenant-wide ``/api/audit/*`` aggregates and the
             per-run audit-axis routes).  Independent of
-            ``supervisor``.1 separates read-audit from
+            ``supervisor`` — the split separates read-audit from
             run-supervision so the daily Audit-Reviewer-Agent can be
             issued an auditor key without inheriting supervisor
             privileges (or admin's PII-reveal).
@@ -79,6 +89,24 @@ class ApiKey(Base):
             the workspace selected at creation time.  The middleware
             uses this as the resolved workspace for Bearer-authed
             requests when no ``X-Workspace`` header is supplied.
+        expires_at: Optional TTL deadline after which the key stops
+            authenticating; ``None`` means the key never expires.
+        rotated_from_id: Id of the predecessor key when this key was
+            minted by rotation, or ``None`` for first-generation
+            keys.
+        rotated_at: Timestamp this key was rotated away (a successor
+            key was minted from it), or ``None`` when never rotated.
+        grace_until: End of the post-rotation grace window during
+            which the rotated-away key still authenticates, or
+            ``None`` when no grace window applies.
+        quarantined_at: Timestamp the key was quarantined (auth
+            refused without permanently revoking), or ``None`` when
+            not quarantined.
+        quarantine_reason: Free-text reason recorded when the key
+            was quarantined, or ``None``.
+        expiry_warned_at: Timestamp an expiry warning was last
+            emitted for this key so warnings are not repeated, or
+            ``None`` when never warned.
     """
 
     __tablename__ = "api_keys"

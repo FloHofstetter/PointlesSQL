@@ -52,20 +52,23 @@ async def api_vector_index_create(
 ) -> VectorIndexSummary:
     """Create or rebuild a vector index over ``table.column``.
 
+    Propagates :class:`AuthorizationError` from
+    :func:`require_workspace_admin` when the caller is not a
+    workspace admin, :class:`ValidationError` from
+    :func:`parse_full_name` when the table FQN is not three-part,
+    and :class:`CatalogNotFoundError` /
+    :class:`EmbedderUnavailableError` from
+    :func:`create_or_rebuild_index` when the target table is
+    unknown or the requested embedder cannot be resolved (e.g.
+    ``[vector]`` extra not installed).
+
     Args:
         request: Incoming FastAPI request.
         body: Validated request body.
 
     Returns:
         The newly-persisted :class:`VectorIndexSummary` row.
-
-    Raises:
-        AuthorizationError: When the caller is not a workspace admin.
-        CatalogNotFoundError: When the target table is unknown.
-        EmbedderUnavailableError: When the requested embedder cannot
-            be resolved (e.g. ``[vector]`` extra not installed).
-        ValidationError: When the table FQN is not three-part.
-    """  # noqa: DOC502,DOC503
+    """
     require_workspace_admin(request)
     parse_full_name(body.table)
     settings = request.app.state.settings
@@ -153,15 +156,18 @@ async def api_vector_index_list(
 async def api_vector_index_delete(request: Request, index_id: int) -> None:
     """Delete a vector index by id and remove its on-disk file.
 
+    Propagates :class:`AuthorizationError` from
+    :func:`require_workspace_admin` when the caller is not a
+    workspace admin.
+
     Args:
         request: Incoming FastAPI request.
         index_id: Auto-increment id of the ``vector_indices`` row.
 
     Raises:
-        HTTPException: 404 when the index row does not exist in
-            the caller's workspace.
-        AuthorizationError: When the caller is not a workspace admin.
-    """  # noqa: DOC502,DOC503
+        ResourceNotFoundError: When the index row does not exist in
+            the caller's workspace (rendered as a 404).
+    """
     require_workspace_admin(request)
     workspace_id = current_workspace_id(request)
     session_factory = get_session_factory()

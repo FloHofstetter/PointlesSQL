@@ -44,8 +44,8 @@ def _resolve_chat_session_int_id(request: Request, raw: str) -> int:
         The ``editor_chat_sessions.id`` integer.
 
     Raises:
-        HTTPException: 404 when the UUID is unknown; 422 when *raw* is
-            neither a parseable integer nor a recognised UUID.
+        ResourceNotFoundError: When *raw* is neither a parseable
+            integer nor a known ``editor_session_id`` UUID.
     """
     if raw.isdigit():
         return int(raw)

@@ -81,6 +81,9 @@ def translate_merge_ast(
 ) -> MergeCallSpec:
     """Convert a parsed MERGE AST to a :class:`MergeCallSpec`.
 
+    Propagates :class:`SQLParseError` raised by the extraction
+    helpers when the target is not 3-part qualified.
+
     Args:
         ast: The :class:`exp.Merge` node from
             :func:`pointlessql.pql.sql_parser.parse_and_classify`.
@@ -98,8 +101,7 @@ def translate_merge_ast(
     Raises:
         SQLMergeUnsupportedError: When the AST contains features
             outside :meth:`PQL.merge`'s ``upsert`` subset.
-        SQLParseError: When the target is not 3-part qualified.
-    """  # noqa: DOC502,DOC503 — SQLParseError propagates from helpers
+    """
     target_fqn = _extract_target(ast)
     on_cols = _extract_on_columns(ast)
     if not on_cols:

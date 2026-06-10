@@ -85,7 +85,9 @@ def parse_and_classify(sql: str) -> tuple[Expression, StmtType]:
     (with or without AS SELECT), DROP TABLE, CREATE SCHEMA,
     DROP SCHEMA, and ALTER TABLE.  Anything else (CREATE/DROP
     CATALOG, generic ``Command`` fall-throughs, multi-statement
-    input) raises :class:`SQLParseError`.
+    input) propagates :class:`SQLParseError` from
+    :func:`_parse_root` / :func:`classify`, as do plain parse
+    failures.
 
     Args:
         sql: The user-entered SQL.  Must be exactly one statement.
@@ -93,11 +95,7 @@ def parse_and_classify(sql: str) -> tuple[Expression, StmtType]:
     Returns:
         ``(ast, stype)`` — the sqlglot expression and its
         :class:`StmtType` classification.
-
-    Raises:
-        SQLParseError: On parse failure, multi-statement input, or
-            an unsupported statement class.
-    """  # noqa: DOC502 — propagates from _parse_root + classify
+    """
     root = _parse_root(sql)
     return root, classify(root)
 

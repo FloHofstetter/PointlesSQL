@@ -156,6 +156,12 @@ async def post_polymorphic_comment(
     Body: ``{"body_md": str, "parent_comment_id": int | None,
     "category": str | None}``.
 
+    Propagates :class:`ResourceNotFoundError` raised by
+    :func:`resolve_agent_for_principal` when the ``as_agent`` slug
+    does not resolve, and the same helper's authorisation failure for
+    unauthorised ``as_agent`` callers (surfaces as 403 via the global
+    handler).
+
     Args:
         kind: Entity kind discriminator.
         ref: Opaque entity reference within *kind*.
@@ -175,11 +181,6 @@ async def post_polymorphic_comment(
     Raises:
         BadRequestError: On empty body, missing parent, unknown
             category, or over-deep nesting.
-        ResourceNotFoundError: When ``as_agent`` slug does not
-            resolve.  Indirect: also raised inside
-            :func:`resolve_agent_for_principal` for unauthorised
-            ``as_agent`` callers (surfaces as 403 via the global
-            handler).
     """
     require_user(request)
     user = get_user(request)

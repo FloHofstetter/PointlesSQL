@@ -72,6 +72,10 @@ def record(
     keep using :func:`operation_context` directly so the
     post-commit lineage / column-edge / value-change hooks fire.
 
+    Propagates :class:`AuditUnavailableError` from
+    :func:`record_operation` when the run does not exist, the
+    op_name is unknown, or any DB error blocks the insert.
+
     Args:
         session_factory: SQLAlchemy session factory.
         agent_run_id: UUID string of the owning :class:`AgentRun`.
@@ -93,11 +97,7 @@ def record(
 
     Returns:
         The auto-assigned primary key of the new row.
-
-    Raises:
-        AuditUnavailableError: When the run does not exist, the
-            op_name is unknown, or any DB error blocks the insert.
-    """  # noqa: DOC502 — delegate raises
+    """
     now = datetime.datetime.now(datetime.UTC)
     began_at = started_at or now
     ended_at = finished_at or began_at
@@ -136,6 +136,9 @@ def recall(
     using ``pql.memory.recall`` do not need to know about the
     ``services.agent_runs.memory`` package layout.
 
+    Propagates :class:`ValueError` from :func:`recall_operations`
+    when ``status`` is not one of the accepted three strings.
+
     Args:
         session_factory: SQLAlchemy session factory.
         agent_id: Free-form runtime-side identifier
@@ -151,11 +154,7 @@ def recall(
 
     Returns:
         Operations ordered ``started_at DESC``.
-
-    Raises:
-        ValueError: When ``status`` is not one of the accepted
-            three strings.
-    """  # noqa: DOC502 — delegate raises
+    """
     return recall_operations(
         session_factory,
         agent_id=agent_id,
@@ -186,6 +185,13 @@ def branch(
     facade's top-level import light when callers only ever use
     :func:`record` / :func:`recall`.
 
+    Propagates :class:`ValidationError` from the delegate when the
+    source run is unknown or has no recorded operations to branch
+    from, :class:`BranchVersionUnavailableError` when
+    ``pin_to_version`` is ``True`` but the requested Delta version
+    was already VACUUM'd, and :class:`CatalogUnavailableError`
+    when soyuz-catalog is unreachable.
+
     Args:
         client: Configured soyuz-catalog client.
         session_factory: SQLAlchemy session factory.
@@ -208,16 +214,7 @@ def branch(
     Returns:
         ``{"branch_schema_fqn": ..., "parent_schema_fqn": ...,
         "pinned_delta_version": <int|None>}``.
-
-    Raises:
-        ValidationError: When the source run is unknown or has no
-            recorded operations to branch from.
-        BranchVersionUnavailableError: When ``pin_to_version`` is
-            ``True`` but the requested Delta version was already
-            VACUUM'd.
-        CatalogUnavailableError: When soyuz-catalog is
-            unreachable.
-    """  # noqa: DOC502 — delegate raises
+    """
     from pointlessql.services.agent_runs.memory._branch import branch_from_run
 
     return branch_from_run(
@@ -297,6 +294,13 @@ def replay(
     training, schema-destructive branches) are gated by
     ``policy``.
 
+    Propagates :class:`ReplayUnsafeOpError` from the delegate when
+    ``policy`` is :attr:`ReplayPolicy.STRICT` and an unsafe op was
+    encountered, :class:`ValidationError` when ``source_run_id``
+    is unknown or has no operations, and
+    :class:`CatalogUnavailableError` when soyuz-catalog is
+    unreachable.
+
     Args:
         client: Configured soyuz-catalog client.
         engine: Engine to execute the replayed primitives on.
@@ -313,16 +317,7 @@ def replay(
         :class:`ReplayResult` with the new run id, the number of
         successfully replayed operations, and a tuple of skipped
         ops with reasons.
-
-    Raises:
-        ReplayUnsafeOpError: When ``policy`` is
-            :attr:`ReplayPolicy.STRICT` and an unsafe op was
-            encountered.
-        ValidationError: When ``source_run_id`` is unknown or has
-            no operations.
-        CatalogUnavailableError: When soyuz-catalog is
-            unreachable.
-    """  # noqa: DOC502 — delegate raises
+    """
     from pointlessql.services.agent_runs.memory._replay import replay_run_on_branch
 
     return replay_run_on_branch(

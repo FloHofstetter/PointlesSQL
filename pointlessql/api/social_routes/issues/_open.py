@@ -49,13 +49,15 @@ async def open_issue(parent_kind: str, parent_ref: str, request: Request) -> dic
         request: Active FastAPI request — used to resolve the
             caller, workspace scope and JSON body.
 
+    Propagates :class:`ResourceNotFoundError` from the
+    parent-resolution helpers when the parent kind opts out of
+    issues or the DP parent is missing.
+
     Returns:
         The new issue as a JSON dict.
 
     Raises:
         BadRequestError: On bad body / parent ref / labels.
-        ResourceNotFoundError: When the parent kind opts out of
-            issues or the DP parent is missing.
     """
     require_user(request)
     user = get_user(request)

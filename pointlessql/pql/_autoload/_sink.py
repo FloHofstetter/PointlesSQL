@@ -51,6 +51,10 @@ def _resolve_target_or_derive(
 ) -> tuple[str, bool]:
     """Resolve the target's storage location, deriving one when missing.
 
+    Propagates :class:`CatalogNotFoundError` from
+    :func:`derive_storage_location` when the table doesn't exist and
+    the parent schema has no ``storage_root`` to derive one from.
+
     Args:
         client: Configured catalog client.
         catalog: Catalog name.
@@ -63,12 +67,9 @@ def _resolve_target_or_derive(
         ``(storage_location, target_exists)`` tuple.
 
     Raises:
-        CatalogNotFoundError: When the table doesn't exist and no
-            schema storage_root is set to derive one from
-            (propagates from :func:`derive_storage_location`).
         CatalogUnavailableError: When soyuz-catalog is unreachable.
         UnexpectedStatus: For any non-404 soyuz-catalog error.
-    """  # noqa: DOC502,DOC503 — CatalogNotFoundError propagates from derive_storage_location
+    """
     try:
         response = _get_table.sync(client=client, full_name=full_name)
     except httpx.ConnectError as exc:

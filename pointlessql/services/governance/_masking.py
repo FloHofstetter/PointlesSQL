@@ -62,6 +62,11 @@ def mask_cell(value: Any, strategy: str, *, secret: str | None) -> Any:
 
     Returns:
         The masked value.
+
+    Raises:
+        ValueError: When *strategy* is not one of the known
+            strategies — masking fails closed rather than passing
+            cleartext through.
     """
     if strategy == "none":
         return value

@@ -83,8 +83,8 @@ def _build_payload(body: dict[str, Any]) -> DraftContract:
         The validated :class:`DraftContract`.
 
     Raises:
-        HTTPException: 400 on validation failure (catalog,
-            schema, or tables missing).
+        BadRequestError: When catalog, schema, or tables is missing,
+            or :func:`build_contract` validation fails.
     """
     catalog = body.get("catalog")
     schema = body.get("schema") or body.get("schema_name")
@@ -280,9 +280,13 @@ async def promote_draft(
         "destination_path": str}``.
 
     Raises:
-        HTTPException: 404 when the draft doesn't exist, 400
-            when no writable ``yaml_search_paths`` entry is
-            configured or the draft was already promoted.
+        BadRequestError: When no writable ``yaml_search_paths``
+            directory is configured, or the draft file is missing
+            on disk.
+        ConflictError: When the draft was already promoted or has
+            been discarded.
+        ResourceNotFoundError.not_found: When no draft with that id
+            exists in the workspace.
     """
     _require_steward_or_admin(request)
     workspace_id = current_workspace_id(request)
@@ -368,7 +372,8 @@ async def discard_draft(
         ``{"discarded": bool}``.
 
     Raises:
-        HTTPException: 404 when the draft doesn't exist.
+        ResourceNotFoundError.not_found: When no draft with that id
+            exists in the workspace.
     """
     _require_steward_or_admin(request)
     workspace_id = current_workspace_id(request)

@@ -224,6 +224,12 @@ async def point_in_time_read_get(
 
     Returns:
         Same shape as :func:`point_in_time_read`.
+
+    Raises:
+        BadRequestError: When ``as_of`` is empty or not a parseable
+            ISO-8601 timestamp, or when the manifest resolver
+            rejects the request (its ``ValueError`` is re-raised
+            with this type so the client sees a 400).
     """
     require_user(request)
     user = get_user(request)

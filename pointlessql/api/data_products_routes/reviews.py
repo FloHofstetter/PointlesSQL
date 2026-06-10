@@ -202,11 +202,13 @@ async def upsert_data_product_review(
         the caller must be the agent's ``principal_user_id`` or
         admin; otherwise the helper raises
         :class:`pointlessql.exceptions.AuthorizationError` (the
-        middleware turns it into a 403).
+        middleware turns it into a 403).  An unknown ``?as_agent=``
+        slug propagates the 404-shaped not-found error raised by
+        :func:`resolve_agent_for_principal`.
 
     Raises:
-        HTTPException: 400 on invalid stars or missing payload;
-            404 on unknown ``?as_agent=`` slug.
+        BadRequestError: When ``stars`` is missing, not an int, or
+            outside ``1..5``.
     """
     require_user(request)
     user = get_user(request)

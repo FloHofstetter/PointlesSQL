@@ -47,6 +47,12 @@ def _resolve_graph(
 ) -> tuple[dict[str, dict[str, Any]], list[dict[str, Any]]]:
     """Build the full node map + edge list for a workspace.
 
+    Args:
+        session: Open SQLAlchemy session to read products, ports and
+            domains from.
+        workspace_id: Workspace whose data products form the graph.
+        slug: Mesh slug woven into each node's ``urn:`` identifier.
+
     Returns:
         ``(nodes_by_ref, edges)`` where every edge's ``source`` +
         ``target`` are present in ``nodes_by_ref`` (dangling
