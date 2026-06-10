@@ -29,6 +29,23 @@ class ServerSettings(BaseSettings):
     base_url: str | None = None
 
 
+class ExecutorSettings(BaseSettings):
+    """Sizing for the app-owned request-path thread pool.
+
+    Reads ``POINTLESSQL_EXECUTOR_*`` environment variables.  The pool
+    backs :func:`pointlessql.services._executor.run_sync` — the bridge
+    routes use to run blocking work (PQL reads, ORM queries, audit
+    writes) off the event loop.  ``max_workers=0`` keeps Python's own
+    ``ThreadPoolExecutor`` heuristic (``min(32, cpu+4)``), matching the
+    sizing the loop default executor had; set a positive integer to
+    bound request-path threads explicitly.
+    """
+
+    model_config = SettingsConfigDict(env_prefix="POINTLESSQL_EXECUTOR_")
+
+    max_workers: int = 0
+
+
 class LoggingSettings(BaseSettings):
     """Runtime logging configuration.
 

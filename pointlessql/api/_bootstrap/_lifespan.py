@@ -23,6 +23,7 @@ import contextlib
 import logging
 import os
 from collections.abc import AsyncIterator, Callable
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import AbstractAsyncContextManager, asynccontextmanager
 from typing import Any
 
@@ -52,6 +53,7 @@ from pointlessql.config import get_settings
 from pointlessql.db import get_session_factory, init_db
 from pointlessql.services import api_keys as api_keys_service
 from pointlessql.services import scheduler as scheduler_service
+from pointlessql.services._executor import bind_app_executor
 from pointlessql.services.dbt import (
     DBTStartupError,
     DBTSubprocess,
@@ -142,6 +144,18 @@ def make_lifespan(
             getattr(app.state, "settings", None) if fast_test_lifespan else None
         ) or settings
         app.state.templates = templates
+
+        # App-owned request-path thread pool behind ``run_sync``.
+        # Created unconditionally (threads spawn lazily, so the fast-test
+        # path pays nothing); ``max_workers=0`` keeps Python's default
+        # sizing so production behaviour matches the old shared loop
+        # default executor until an operator bounds it explicitly.
+        executor = ThreadPoolExecutor(
+            max_workers=app.state.settings.executor.max_workers or None,
+            thread_name_prefix="pql-app-exec",
+        )
+        app.state.executor = executor
+        bind_app_executor(executor)
         if not fast_test_lifespan or not hasattr(app.state, "session_factory"):
             engine = init_db(settings.db.url)
             app.state.engine = engine
@@ -556,6 +570,8 @@ def make_lifespan(
             await _cancel_task(active_reviewer_task)
             if scheduler is not None:
                 await scheduler.stop()
+            bind_app_executor(None)
+            executor.shutdown(wait=True)
             if not fast_test_lifespan and app.state.uc_client is not None:
                 await app.state.uc_client.aclose()
 
