@@ -32,6 +32,7 @@ from sqlalchemy import (
     Index,
     Integer,
     String,
+    Text,
     UniqueConstraint,
 )
 from sqlalchemy.orm import Mapped, mapped_column
@@ -98,6 +99,10 @@ class DataProductSLO(Base):
         enabled: Whether the evaluator considers this objective.
         created_by_user_id: Nullable FK on ``users.id``.
         created_at: Wall-clock the objective was declared.
+        last_measured_at: Wall-clock of the latest evaluator run that
+            measured this objective, or ``None`` before the first run.
+        last_measurement_detail_json: JSON payload of the latest
+            measurement (observed value, verdict, inputs), or ``None``.
     """
 
     __tablename__ = "data_product_slos"
@@ -140,3 +145,7 @@ class DataProductSLO(Base):
         Integer, ForeignKey("users.id"), nullable=True
     )
     created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    last_measured_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    last_measurement_detail_json: Mapped[str | None] = mapped_column(Text, nullable=True)

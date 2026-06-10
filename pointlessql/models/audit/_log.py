@@ -31,6 +31,8 @@ class AuditLog(Base):
             ``None`` for system-generated rows.
         detail: Optional JSON-encoded context (stored as ``Text`` so
             arbitrarily-sized structured payloads fit).
+        correlation_id: Optional cross-product trace id linking this
+            row to agent-run operations and event deliveries.
         created_at: Timestamp when the action occurred.
     """
 
@@ -41,6 +43,7 @@ class AuditLog(Base):
         Index("ix_audit_log_target_created", "target", "created_at"),
         Index("ix_audit_log_created", "created_at"),
         Index("ix_audit_log_workspace_created", "workspace_id", "created_at"),
+        Index("ix_audit_log_correlation_id", "correlation_id"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -56,4 +59,5 @@ class AuditLog(Base):
     target: Mapped[str] = mapped_column(String(500), nullable=False)
     client_ip: Mapped[str | None] = mapped_column(String(45), nullable=True)
     detail: Mapped[str | None] = mapped_column(Text, nullable=True)
+    correlation_id: Mapped[str | None] = mapped_column(String(40), nullable=True)
     created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)

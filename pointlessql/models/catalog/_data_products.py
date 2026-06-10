@@ -217,6 +217,8 @@ class DataProductContractEvent(Base):
             object ``{}`` for ``compliant`` / ``no_contract`` rows;
             populated for ``violated`` and ``schema_drift_warning``
             with the breaking diff or drift summary.
+        correlation_id: Optional cross-product trace id linking this
+            row to agent-run operations and audit-log rows.
         created_at: Wall-clock the row was stamped.
     """
 
@@ -236,6 +238,10 @@ class DataProductContractEvent(Base):
             "ix_data_product_contract_events_op",
             "agent_run_operation_id",
         ),
+        Index(
+            "ix_data_product_contract_events_correlation_id",
+            "correlation_id",
+        ),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -251,6 +257,7 @@ class DataProductContractEvent(Base):
     )
     outcome: Mapped[str] = mapped_column(String(32), nullable=False)
     details_json: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
+    correlation_id: Mapped[str | None] = mapped_column(String(40), nullable=True)
     created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
@@ -370,6 +377,13 @@ class DataProductCanvasGraph(Base):
             name="uq_dp_canvas_graph_dp_version",
         ),
         Index("ix_dp_canvas_graph_dp", "data_product_id"),
+        Index(
+            "idx_unique_production_per_dp",
+            "data_product_id",
+            unique=True,
+            sqlite_where=sa.text("is_production = 1"),
+            postgresql_where=sa.text("is_production = TRUE"),
+        ),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)

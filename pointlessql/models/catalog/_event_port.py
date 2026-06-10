@@ -108,6 +108,10 @@ class DataProductEventDelivery(Base):
             "subscription_id",
             "delivered_at",
         ),
+        Index(
+            "ix_data_product_event_deliveries_correlation_id",
+            "correlation_id",
+        ),
         CheckConstraint(
             "status IN ('ok','error','empty')",
             name="ck_dp_event_deliveries_status",
@@ -125,3 +129,4 @@ class DataProductEventDelivery(Base):
     row_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     delivered_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     status: Mapped[str] = mapped_column(String(8), nullable=False)
+    correlation_id: Mapped[str | None] = mapped_column(String(40), nullable=True)
