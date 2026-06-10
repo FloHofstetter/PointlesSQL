@@ -3854,6 +3854,90 @@ PointlesSQL
 │       │   Kapazität („Budget erreicht in N Tagen") + Cost am Agent-Run +
 │       │   FinOps-Grafana-Panels.  estimated_cost = Schätzung, kein $.
 │   │
+├── Phase 208 — Infrastruktur-Redesign (Querschnitt + CI-Grün)  ✅ shipped (local, 2026-06-11)
+│   │
+│   │   "Wenn wir die Codebasis heute neu designen würden" als
+│   │   verhaltenserhaltende Refactors umgesetzt — plus die Entdeckung,
+│   │   dass CI seit Wochen rot war (Lint-Job starb am Ruff-Step und
+│   │   maskierte alles dahinter) und die komplette Altlasten-Tilgung.
+│   │
+│   ├── CI erstmals grün (Altlasten-Tilgung)
+│   │       222 Dateien ruff-formatiert, 24 pyright-Errors auf 0, alle
+│   │       271 pydoclint-Verstöße über 139 Dateien bereinigt (12
+│   │       parallele Agents), OpenAPI-Snapshot deterministisch
+│   │       (explizite operation_id auf den Multi-Method-Proxies),
+│   │       Form-Label-Schwelle auf gemessene Baseline (170/175;
+│   │       Label-Backlog siehe unten), ORM↔Migrations-Drift behoben
+│   │       (correlation_id ×3, SLO-Messspalten, Canvas-Partial-Index),
+│   │       CVE-Locks aktualisiert (aiohttp/idna/pip/pyjwt/starlette;
+│   │       transformers-Advisory mit Drop-when-Note ignoriert).
+│   │
+│   ├── Test-Schulden
+│   │       12 stale CI-Deselects entfernt (Fixes waren längst da),
+│   │       Seam-Fixtures in conftest (uc_client_stub ersetzt ~180 rohe
+│   │       app.state-Zuweisungen + ~50 _patch_for_principal-Kopien;
+│   │       settings_override, jupyter_workspace, llm_stub),
+│   │       test_table_stats als Template migriert, uc_client-Mock pro
+│   │       Test frisch (Leak-Fix), node:test-Harness für frontend/js
+│   │       (21 Tests: inline_md-Security, humanize_cron, formatSql;
+│   │       package.json nur als ESM-Marker, kein npm).
+│   │
+│   ├── Backend-Infrastruktur
+│   │       App-eigener, settings-dimensionierter Executor hinter
+│   │       run_sync (ContextVar-treu; 105 Route-Sites migriert,
+│   │       Background-Loops bewusst auf to_thread; Gate
+│   │       check-sync-bridge.sh).  Typisierter Principal:
+│   │       get_optional_user (None-erhaltend für nullable
+│   │       actor-Spalten) + 21 rohe request.state.user-Sites migriert
+│   │       (Gate check-typed-principal.sh; Pyright-Floor 1029→1013).
+│   │       Shared-WS-Gerüst: authenticate_or_close für vier Handler
+│   │       (Wire-Bytes je Konsument erhalten) + _editor_chat_ws-Engine
+│   │       fürs ~85%-identische Chat-Paar (sql 450→136 LOC, notebook
+│   │       400→67; String-Patch-Ziele unverändert).  Kernel-WS,
+│   │       Coedit-Loop-Paar und Hermes-Proxy bewusst NICHT vereinheitlicht
+│   │       (falsche Seams: anderes Wire-Verhalten).  Error-Registry
+│   │       war bereits deklarativ (Klassenattribute) — nur verifiziert.
+│   │
+│   ├── Frontend-Infrastruktur
+│   │       Inline-Script-Exodus: theme_boot.js + layout_boot.js
+│   │       (klassisch, render-blocking, vor dem ersten Stylesheet;
+│   │       Gate check-theme-boot-order.sh), CDF-Tail-Shims + beide
+│   │       Embeds extern, Social-Drawer-IIFE → Jinja-Flag.
+│   │       Per-Page-Entries: {% block page_entry %} + entries/-Module;
+│   │       Full-Loads laden das Entry als statisches module-<script>
+│   │       NACH der Importmap und VOR Alpine (Dokumentreihenfolge =
+│   │       deterministisch), Boost-Swaps über x-ignore +
+│   │       page_entry_loader (afterSwap/historyRestore).  Gelernte
+│   │       Falle: Alpine 3 deferred beim Start ALLE Direktiven-Handler
+│   │       — x-ignore greift im Initial-Walk NICHT (Flag wird erst
+│   │       nach dem Walk gesetzt); und ein Modul-Load vor der
+│   │       Importmap annulliert sie ("Import maps are not allowed
+│   │       after a module load").  bootstrap.js 154→139 window-Globals
+│   │       (Ratchet check-frontend-bootstrap-budget.sh): Admin-Konsole
+│   │       (9 Seiten), Agent-Profil, Hermes, 3 Listen-Piloten.
+│   │       pqlApi-Migration: DP-Overview/Social/Content (44 Sites,
+│   │       silent:true, Fehlertexte identisch); Raw-fetch-Ratchet
+│   │       200→156 (check-frontend-raw-fetch-budget.sh).
+│   │       Live-verifiziert (Firefox): Cold-Loads, Boost-Kette,
+│   │       History-Restore; DP-Detail rendert die migrierten Panels.
+│   │
+│   ├── Offene Folge-Tranchen (geplant)
+│   │       Restliche DP-Detail-/Browse-Entries; topics/issues/glossary/
+│   │       domains-Entries; lens/catalog_tree/feed-Fetch-Migration;
+│   │       mention_autocomplete (braucht aborted-Flag) und
+│   │       Text-Response-Sites (braucht parse:'text') in pqlApi;
+│   │       http.js-Löschung (toter Cookie-CSRF-Wrapper, Bugfix-
+│   │       Charakter, via notebook-cell-social.md verifizieren);
+│   │       Form-Label-Backlog abtragen (170 → Schwelle schrittweise
+│   │       senken); services/-to_thread-Sites bei Bedarf auf einen
+│   │       eigenen Background-Pool.  Known Issue (vorbestehend):
+│   │       htmx-History-Snapshots konservieren Alpine-gerenderte
+│   │       x-for-Klone des Chromes (Command-Palette, Footer) — beim
+│   │       Restore re-initialisiert der Observer die Waisen und flutet
+│   │       die Konsole mit Expression-Warnings (funktional + visuell
+│   │       folgenlos); Fix-Kandidat: Klone in htmx:beforeHistorySave
+│   │       strippen.
+│   │
 ├── Phase 207 — DP-Canvas Replay-Polish (Playwright-Sweep)  ✅ shipped (local, 2026-06-09)
 │   │
 │   │   Live-Replay des dp-canvas-builder-Playbooks (Playwright/Firefox,

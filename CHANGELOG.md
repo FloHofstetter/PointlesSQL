@@ -17,6 +17,36 @@ defined in ``scripts/clusters.json``. -->
 
 ### Added
 
+- **Infrastructure redesign (phase 208).** App-owned bounded executor behind
+  `run_sync` (ContextVar-preserving; the api layer migrated off
+  `asyncio.to_thread`, background loops deliberately excluded); typed
+  principal accessors (`get_optional_user` joins `get_user`; raw
+  `request.state.user` confined to its two owner modules); shared WebSocket
+  auth scaffold + an editor-chat engine collapsing the ~85%-identical
+  sql/notebook chat pair; per-page Alpine entries (`{% block page_entry %}` +
+  `frontend/js/entries/`, static module tag on full loads, x-ignore +
+  loader on boosted swaps) shrinking bootstrap.js from 154 to 139 window
+  globals; theme/layout boot scripts extracted from every layout head; the
+  data-product fetch clusters (44 sites) moved onto `pqlApi.fetch`. Six new
+  drift gates (sync-bridge, typed-principal, theme-boot order, bootstrap
+  window-global budget, raw-fetch budget) plus a node:test unit harness for
+  `frontend/js` — the project's first JS unit tests.
+- **Test-debt paydown (phase 208).** Seam fixtures (`uc_client_stub`,
+  `settings_override`, `jupyter_workspace`, `llm_stub`) replace the suite's
+  copy-pasted mock patterns; per-test fresh `app.state.uc_client` stops
+  cross-test mock leakage; the 12 stale CI deselects are gone.
+
+### Fixed
+
+- **CI made green again (phase 208).** The lint job died at the Ruff step
+  and masked everything behind it: 222 unformatted files, 24 pyright
+  errors, 271 pydoclint violations across 139 files, a nondeterministic
+  OpenAPI snapshot (multi-method proxy operationIds picked from a *set*),
+  ORM↔migration drift (correlation_id columns, SLO measurement columns,
+  the production-canvas partial unique index), and five CVE-flagged locked
+  packages (aiohttp, idna, pip, pyjwt, starlette). All fixed at the
+  source; budgets re-frozen at measured floors with ratchet notes.
+
 - **DP-canvas editor ergonomics (phase 207).** Palette filter box; double-click
   (or Enter on a focused palette item) drops a block at the stage centre,
   cascading and undoable; empty state gains an "Add an input port" quick

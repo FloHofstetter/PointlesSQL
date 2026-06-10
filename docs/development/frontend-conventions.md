@@ -92,7 +92,9 @@ and the prefix would be noise.
 
 ```
 frontend/js/
-├── bootstrap.js                    # import + window-attach entry
+├── bootstrap.js                    # import + window-attach entry (cross-page chrome only)
+├── entries/                        # per-page entry modules (window-attach one page's factories)
+├── theme_boot.js, layout_boot.js   # classic render-blocking head scripts (no-flash boot)
 ├── api.js, http.js, toast.js, …    # shared utilities (top-level)
 ├── base_*.js                       # side-effect bridges (htmx, theme, panels, recent)
 ├── components/                     # shared widgets (lineage_dag/, sidebars/, …)
@@ -103,9 +105,21 @@ frontend/js/
 
 - All files are native **ES modules**.  Each exports a single factory
   or singleton.
-- `bootstrap.js` imports each and re-attaches it to `window.<name>` so
-  templates' `x-data="myFactory({...})"` keep resolving without
-  per-page `<script>` tags.  See
+- **Page-scoped factories load through page entries, not
+  bootstrap.js.**  A page declares
+  `{% block page_entry %}foo.js{% endblock %}`; base.html renders the
+  matching `frontend/js/entries/foo.js` as a static module `<script>`
+  on full loads (after the importmap, before Alpine — document order
+  makes the registration deterministic) and as
+  `data-pql-entry` + `x-ignore` on hx-boosted responses, where
+  `page_entry_loader.js` imports the entry and activates the swapped
+  subtree.  `scripts/check-frontend-bootstrap-budget.sh` freezes
+  bootstrap.js's window-global count so new page factories cannot
+  regress to globals.
+- `bootstrap.js` imports the remaining **cross-page chrome** and
+  re-attaches it to `window.<name>` so templates'
+  `x-data="myFactory({...})"` keep resolving without per-page
+  `<script>` tags.  See
   [`frontend/js/README.md`](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/js/README.md) for the
   attach pattern.
 - **`pql*` prefix** for utility singletons surfaced via `window`
