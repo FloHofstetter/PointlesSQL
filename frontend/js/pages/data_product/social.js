@@ -9,7 +9,6 @@
 
 export function installDpSocial(state) {
   Object.assign(state, {
-
     async loadFollowState() {
       try {
         const res = await fetch(
@@ -329,6 +328,6 @@ export function installDpSocial(state) {
       } catch (e) {
         console.error('comment delete failed', e);
       }
-    }
+    },
   });
 }

@@ -9,7 +9,6 @@
 
 export function installDpLifecycle(state) {
   Object.assign(state, {
-
     async init() {
       await this.loadDetail();
       await this.loadReviewSummary();
@@ -95,6 +94,6 @@ export function installDpLifecycle(state) {
       } catch (e) {
         console.error('detail load failed', e);
       }
-    }
+    },
   });
 }

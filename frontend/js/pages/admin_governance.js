@@ -53,10 +53,8 @@ export function adminGovernance() {
       const body = {};
       if (this.policy.retention_days !== '')
         body.retention_days = Number(this.policy.retention_days);
-      if (this.policy.encryption_class !== '')
-        body.encryption_class = this.policy.encryption_class;
-      if (this.policy.residency_region !== '')
-        body.residency_region = this.policy.residency_region;
+      if (this.policy.encryption_class !== '') body.encryption_class = this.policy.encryption_class;
+      if (this.policy.residency_region !== '') body.residency_region = this.policy.residency_region;
       if (this.policy.consent_required !== '')
         body.consent_required = this.policy.consent_required === 'true';
       if (this.policy.consent_basis !== '') body.consent_basis = this.policy.consent_basis;

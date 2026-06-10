@@ -9,7 +9,6 @@
 
 export function installDpInsights(state) {
   Object.assign(state, {
-
     async loadDiff() {
       this.diffLoading = true;
       this.diffError = null;
@@ -63,6 +62,6 @@ export function installDpInsights(state) {
         this.lineageEmpty = true;
         this.lineageLoaded = true;
       }
-    }
+    },
   });
 }

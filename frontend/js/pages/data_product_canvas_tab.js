@@ -19,10 +19,9 @@ export function dataProductCanvasTab(product) {
     async load() {
       if (this.versions !== null || this.loading) return;
       this.loading = true;
-      const res = await window.pqlApi.fetch(
-        `/api/dp/${this.product.id}/canvas/versions`,
-        { silent: true },
-      );
+      const res = await window.pqlApi.fetch(`/api/dp/${this.product.id}/canvas/versions`, {
+        silent: true,
+      });
       this.loading = false;
       if (!res.ok) {
         this.error = res.error || 'Failed to load versions';

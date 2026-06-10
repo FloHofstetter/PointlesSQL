@@ -10,7 +10,6 @@
 
 export function installFeedTriage(state) {
   Object.assign(state, {
-
     // Keyboard navigation — j/k/o/e/m/r/?.
     _focusedIndex: -1,
     _hotkeysAttached: false,
@@ -262,6 +261,6 @@ export function installFeedTriage(state) {
       } catch (e) {
         /* ignore */
       }
-    }
+    },
   });
 }

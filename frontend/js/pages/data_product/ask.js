@@ -9,7 +9,6 @@
 
 export function installDpAsk(state) {
   Object.assign(state, {
-
     // --- "Ask this data product" panel -----------------
 
     async openAsk() {
@@ -103,6 +102,6 @@ export function installDpAsk(state) {
         }
       }
       return null;
-    }
+    },
   });
 }

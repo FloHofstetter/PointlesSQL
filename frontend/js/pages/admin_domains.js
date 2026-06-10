@@ -34,7 +34,9 @@ export function domainArchiveButton(domainId, slug) {
     async archive() {
       if (
         !window.confirm(
-          'Archive domain "' + slug + '"? Products keep their assignment but it hides from listings.'
+          'Archive domain "' +
+            slug +
+            '"? Products keep their assignment but it hides from listings.'
         )
       ) {
         return;

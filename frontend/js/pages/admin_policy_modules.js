@@ -79,10 +79,9 @@ export function adminPolicyModules() {
 
     async remove(module) {
       if (!window.confirm('Delete policy module "' + module.name + '"?')) return;
-      const res = await window.pqlApi.fetch(
-        '/api/admin/policy-modules/' + module.id,
-        { method: 'DELETE' }
-      );
+      const res = await window.pqlApi.fetch('/api/admin/policy-modules/' + module.id, {
+        method: 'DELETE',
+      });
       if (!res.ok) return;
       await this.load();
     },
@@ -111,7 +110,7 @@ export function adminPolicyModules() {
       const res = await window.pqlApi.fetch(
         '/api/admin/policy-modules/' + module.id + '/decisions'
       );
-      this.decisions = res.ok ? (res.data?.decisions || []) : [];
+      this.decisions = res.ok ? res.data?.decisions || [] : [];
     },
   };
 }

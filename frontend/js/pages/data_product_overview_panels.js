@@ -4,10 +4,7 @@
 // existing dataProductPortsPanel / dataProductSemanticPanel style.
 
 function dpBase(catalog, schema) {
-  return '/api/data-products/'
-    + encodeURIComponent(catalog)
-    + '/'
-    + encodeURIComponent(schema);
+  return '/api/data-products/' + encodeURIComponent(catalog) + '/' + encodeURIComponent(schema);
 }
 
 const LIFECYCLE_LABELS = {
@@ -86,7 +83,7 @@ export function dataProductLifecyclePanel(catalog, schema, canManage) {
       try {
         const res = await fetch(
           dpBase(this.catalog, this.schema) + '/lifecycle/' + encodeURIComponent(target),
-          { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' },
+          { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }
         );
         if (!res.ok) {
           this.error = 'Transition failed (HTTP ' + res.status + ')';
@@ -139,7 +136,13 @@ export function dataProductInfrastructurePanel(catalog, schema, canManage) {
     canManage: !!canManage,
     editing: false,
     record: {},
-    draft: { storage_class: '', compute_runtime: '', access_methods_csv: '', region: '', notes: '' },
+    draft: {
+      storage_class: '',
+      compute_runtime: '',
+      access_methods_csv: '',
+      region: '',
+      notes: '',
+    },
     error: '',
 
     async init() {
@@ -327,7 +330,7 @@ export function dataProductConsumptionPanel(catalog, schema, canManage) {
           this.modeSource = policy.source || '';
         }
         const audit = await fetch(
-          dpBase(this.catalog, this.schema) + '/consumption-acknowledgements?status=open',
+          dpBase(this.catalog, this.schema) + '/consumption-acknowledgements?status=open'
         );
         if (audit.ok) this.recent = (await audit.json()).items || [];
       } catch (e) {
@@ -338,10 +341,9 @@ export function dataProductConsumptionPanel(catalog, schema, canManage) {
     async ack(id) {
       this.error = '';
       try {
-        await fetch(
-          dpBase(this.catalog, this.schema) + '/consumption-acknowledgements/' + id,
-          { method: 'POST' },
-        );
+        await fetch(dpBase(this.catalog, this.schema) + '/consumption-acknowledgements/' + id, {
+          method: 'POST',
+        });
         await this.reload();
       } catch (e) {
         this.error = 'Ack failed: ' + e.message;
@@ -380,9 +382,7 @@ export function dataProductEventPortPanel(catalog, schema, canManage) {
           }
         }
         if (this.hasPort) {
-          const subs = await fetch(
-            dpBase(this.catalog, this.schema) + '/event-subscriptions',
-          );
+          const subs = await fetch(dpBase(this.catalog, this.schema) + '/event-subscriptions');
           if (subs.ok) this.subscriptions = (await subs.json()).items || [];
         }
       } catch (e) {
@@ -392,42 +392,39 @@ export function dataProductEventPortPanel(catalog, schema, canManage) {
 
     curlSnippet() {
       return (
-        'curl -N -H "Accept: application/x-ndjson" \\\n  '
-        + window.location.origin
-        + dpBase(this.catalog, this.schema)
-        + '/events?table=&lt;table&gt;&since=0'
+        'curl -N -H "Accept: application/x-ndjson" \\\n  ' +
+        window.location.origin +
+        dpBase(this.catalog, this.schema) +
+        '/events?table=&lt;table&gt;&since=0'
       );
     },
 
     wsSnippet() {
       const wsProto = window.location.protocol === 'https:' ? 'wss' : 'ws';
       return (
-        "const ws = new WebSocket('"
-        + wsProto
-        + '://'
-        + window.location.host
-        + '/ws/data-products/'
-        + this.catalog
-        + '/'
-        + this.schema
-        + "/events?table=<table>');\nws.onmessage = (e) => console.log(JSON.parse(e.data));"
+        "const ws = new WebSocket('" +
+        wsProto +
+        '://' +
+        window.location.host +
+        '/ws/data-products/' +
+        this.catalog +
+        '/' +
+        this.schema +
+        "/events?table=<table>');\nws.onmessage = (e) => console.log(JSON.parse(e.data));"
       );
     },
 
     async subscribe() {
       this.error = '';
       try {
-        const res = await fetch(
-          dpBase(this.catalog, this.schema) + '/event-subscriptions',
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              table: this.draft.table,
-              consumer_label: this.draft.consumer_label,
-            }),
-          },
-        );
+        const res = await fetch(dpBase(this.catalog, this.schema) + '/event-subscriptions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            table: this.draft.table,
+            consumer_label: this.draft.consumer_label,
+          }),
+        });
         if (!res.ok) {
           this.error = 'Subscribe failed (HTTP ' + res.status + ')';
           return;
@@ -441,18 +438,16 @@ export function dataProductEventPortPanel(catalog, schema, canManage) {
     },
 
     async pause(id) {
-      await fetch(
-        dpBase(this.catalog, this.schema) + '/event-subscriptions/' + id + '/pause',
-        { method: 'POST' },
-      );
+      await fetch(dpBase(this.catalog, this.schema) + '/event-subscriptions/' + id + '/pause', {
+        method: 'POST',
+      });
       await this.reload();
     },
 
     async resume(id) {
-      await fetch(
-        dpBase(this.catalog, this.schema) + '/event-subscriptions/' + id + '/resume',
-        { method: 'POST' },
-      );
+      await fetch(dpBase(this.catalog, this.schema) + '/event-subscriptions/' + id + '/resume', {
+        method: 'POST',
+      });
       await this.reload();
     },
   };

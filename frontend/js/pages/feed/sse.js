@@ -10,7 +10,6 @@
 
 export function installFeedSse(state) {
   Object.assign(state, {
-
     async init() {
       // Restore density from localStorage so the user lands on
       // whichever stream density they last used.
@@ -195,6 +194,6 @@ export function installFeedSse(state) {
         if (eventType === prefix || eventType.startsWith(prefix)) return [category, severity];
       }
       return ['social', 'info'];
-    }
+    },
   });
 }

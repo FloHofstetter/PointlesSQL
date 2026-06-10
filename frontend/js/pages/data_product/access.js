@@ -9,7 +9,6 @@
 
 export function installDpAccess(state) {
   Object.assign(state, {
-
     // --- Self-service access (Data tab) ----------------
 
     _accessBase() {
@@ -103,6 +102,6 @@ export function installDpAccess(state) {
       } finally {
         this.accessBusy = false;
       }
-    }
+    },
   });
 }

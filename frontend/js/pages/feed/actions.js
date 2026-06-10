@@ -10,7 +10,6 @@
 
 export function installFeedActions(state) {
   Object.assign(state, {
-
     setDensity(key) {
       this.density = key;
       try {
@@ -302,6 +301,6 @@ export function installFeedActions(state) {
           return r;
         });
       }, 1500);
-    }
+    },
   });
 }

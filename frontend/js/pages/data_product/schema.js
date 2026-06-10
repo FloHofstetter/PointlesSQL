@@ -9,7 +9,6 @@
 
 export function installDpSchema(state) {
   Object.assign(state, {
-
     async copySnippet(kind) {
       const snip = this.consumeSnippets[kind];
       if (snip) navigator.clipboard.writeText(snip);
@@ -124,6 +123,6 @@ export function installDpSchema(state) {
       } finally {
         this.heatmapLoaded = true;
       }
-    }
+    },
   });
 }

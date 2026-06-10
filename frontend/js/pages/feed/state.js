@@ -78,6 +78,6 @@ export function installFeedState(state, isAdmin) {
     _sse: null,
     _sseBackoffMs: 1000,
     _sseReconnectTimer: null,
-    _sseFirstFailedAt: 0
+    _sseFirstFailedAt: 0,
   });
 }

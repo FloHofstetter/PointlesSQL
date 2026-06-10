@@ -74,7 +74,6 @@ const LANE_EYEBROWS = {
 
 export function installFeedRender(state) {
   Object.assign(state, {
-
     iconForKind(kind) {
       return KIND_ICONS[kind] || 'bi-circle';
     },
@@ -227,6 +226,6 @@ export function installFeedRender(state) {
       if (eventType.endsWith('.promoted')) return 'Promoted';
       if (eventType.endsWith('.discarded')) return 'Discarded';
       return 'Updated';
-    }
+    },
   });
 }

@@ -19,19 +19,18 @@
  * instance below so Alpine reads them as reactive computed properties.
  */
 
+import { installDpAccess } from './data_product/access.js';
+import { installDpAsk } from './data_product/ask.js';
+import { installDpContent } from './data_product/content.js';
+import { installDpInsights } from './data_product/insights.js';
 import { installDpLifecycle } from './data_product/lifecycle.js';
 import { installDpSchema } from './data_product/schema.js';
-import { installDpContent } from './data_product/content.js';
 import { installDpSocial } from './data_product/social.js';
-import { installDpAsk } from './data_product/ask.js';
-import { installDpAccess } from './data_product/access.js';
-import { installDpInsights } from './data_product/insights.js';
 import { installDpState } from './data_product/state.js';
 
 export function dataProductDetail(product, ctx) {
   ctx = ctx || {};
   const obj = {
-
     get canEditReadme() {
       return this.isAdmin || this.isSteward;
     },
@@ -116,7 +115,7 @@ export function dataProductDetail(product, ctx) {
 
     get topLevelComments() {
       return (this.comments || []).filter((c) => c.parent_comment_id === null);
-    }
+    },
   };
 
   installDpState(obj, product, ctx);

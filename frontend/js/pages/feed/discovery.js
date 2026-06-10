@@ -10,7 +10,6 @@
 
 export function installFeedDiscovery(state) {
   Object.assign(state, {
-
     async loadTrending() {
       try {
         const res = await fetch('/api/feed/trending');
@@ -95,6 +94,6 @@ export function installFeedDiscovery(state) {
     deleteSavedSearch(idx) {
       this.savedSearches.splice(idx, 1);
       this._persistSavedSearches();
-    }
+    },
   });
 }

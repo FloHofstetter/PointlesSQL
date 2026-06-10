@@ -45,14 +45,14 @@ export function installSmoothCurvature(Drawflow) {
   if (!Drawflow || Drawflow.__pqlSmoothCurvature) return;
   Drawflow.__pqlSmoothCurvature = true;
 
-  Drawflow.prototype.createCurvature = function (
+  Drawflow.prototype.createCurvature = (
     start_pos_x,
     start_pos_y,
     end_pos_x,
     end_pos_y,
     curvature_value,
     type
-  ) {
+  ) => {
     const sx = start_pos_x;
     const sy = start_pos_y;
     const ex = end_pos_x;

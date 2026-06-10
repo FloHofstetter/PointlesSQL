@@ -54,9 +54,10 @@ export async function attachCanvasCoedit(editor, dpId) {
 
   const aw = new awareness.Awareness(doc);
 
-  const wsUrl = (window.location.protocol === 'https:' ? 'wss://' : 'ws://')
-    + window.location.host
-    + `/ws/dp-canvas/${dpId}`;
+  const wsUrl =
+    (window.location.protocol === 'https:' ? 'wss://' : 'ws://') +
+    window.location.host +
+    `/ws/dp-canvas/${dpId}`;
   const ws = new WebSocket(wsUrl);
   ws.binaryType = 'arraybuffer';
 
@@ -64,12 +65,18 @@ export async function attachCanvasCoedit(editor, dpId) {
     const json = canvasMap.get('json');
     if (typeof json !== 'string' || !json.trim()) return;
     let parsed;
-    try { parsed = JSON.parse(json); } catch (e) { return; }
+    try {
+      parsed = JSON.parse(json);
+    } catch (e) {
+      return;
+    }
     suppressLocal = true;
     try {
       editor._loadIntoDrawflow(parsed);
     } finally {
-      window.setTimeout(() => { suppressLocal = false; }, 50);
+      window.setTimeout(() => {
+        suppressLocal = false;
+      }, 50);
     }
   }
 
@@ -96,11 +103,17 @@ export async function attachCanvasCoedit(editor, dpId) {
     const tag = data[0];
     const payload = data.slice(1);
     if (tag === TAG_SYNC_STEP2) {
-      try { Y.applyUpdate(doc, payload, 'remote'); } catch (e) {}
+      try {
+        Y.applyUpdate(doc, payload, 'remote');
+      } catch (e) {}
     } else if (tag === TAG_SYNC_UPDATE) {
-      try { Y.applyUpdate(doc, payload, 'remote'); } catch (e) {}
+      try {
+        Y.applyUpdate(doc, payload, 'remote');
+      } catch (e) {}
     } else if (tag === TAG_AWARENESS_UPDATE) {
-      try { awareness.applyAwarenessUpdate(aw, payload, 'remote'); } catch (e) {}
+      try {
+        awareness.applyAwarenessUpdate(aw, payload, 'remote');
+      } catch (e) {}
     }
   };
 
@@ -138,7 +151,7 @@ export async function attachCanvasCoedit(editor, dpId) {
   }
 
   const originalScheduleAutosave = editor._scheduleAutosave.bind(editor);
-  editor._scheduleAutosave = function () {
+  editor._scheduleAutosave = () => {
     pushLocalSerialisation();
     return originalScheduleAutosave();
   };
@@ -151,9 +164,15 @@ export async function attachCanvasCoedit(editor, dpId) {
 
   return {
     destroy() {
-      try { ws.close(); } catch (e) {}
-      try { aw.destroy(); } catch (e) {}
-      try { doc.destroy(); } catch (e) {}
+      try {
+        ws.close();
+      } catch (e) {}
+      try {
+        aw.destroy();
+      } catch (e) {}
+      try {
+        doc.destroy();
+      } catch (e) {}
       editor._scheduleAutosave = originalScheduleAutosave;
     },
     awareness: aw,

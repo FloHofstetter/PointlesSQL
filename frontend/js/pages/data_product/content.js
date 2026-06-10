@@ -9,7 +9,6 @@
 
 export function installDpContent(state) {
   Object.assign(state, {
-
     async loadProposals() {
       this.proposalsLoaded = false;
       try {
@@ -192,6 +191,6 @@ export function installDpContent(state) {
     toggleHistory() {
       this.historyOpen = !this.historyOpen;
       this.diffText = '';
-    }
+    },
   });
 }

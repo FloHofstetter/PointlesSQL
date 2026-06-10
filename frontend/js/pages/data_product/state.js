@@ -90,6 +90,6 @@ export function installDpState(state, product, ctx) {
     // Contributor heatmap.
 
     heatmap: { cells: [], total: 0 },
-    heatmapLoaded: false
+    heatmapLoaded: false,
   });
 }

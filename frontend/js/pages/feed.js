@@ -58,7 +58,6 @@ function _dayIso(rowDate, todayStart) {
 
 export function feedPage(isAdmin = false) {
   const obj = {
-
     // The pinned inbox zone — act rows first (by severity), then
     // for_you (newest first).  A row appears here OR in the stream,
     // never both.
@@ -118,7 +117,7 @@ export function feedPage(isAdmin = false) {
         return a.iso < b.iso ? 1 : -1;
       });
       return ordered;
-    }
+    },
   };
 
   installFeedState(obj, isAdmin);
