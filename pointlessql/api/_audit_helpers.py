@@ -11,7 +11,6 @@ the request handler never blocks on the DB round-trip.
 
 from __future__ import annotations
 
-import asyncio
 import logging
 import os
 from datetime import datetime
@@ -22,6 +21,7 @@ from fastapi import Request
 from pointlessql.api.dependencies import client_ip, effective_principal, get_user
 from pointlessql.services import audit as audit_service
 from pointlessql.services import query_history as query_history_service
+from pointlessql.services._executor import run_sync
 from pointlessql.types import QueryStatus, ReadKind, RunId
 
 logger = logging.getLogger(__name__)
@@ -116,7 +116,7 @@ async def record_query_async(
     workspace_id = int(getattr(request.state, "workspace_id", 1))
     resolved_read_kind = read_kind if isinstance(read_kind, ReadKind) else ReadKind(read_kind)
     try:
-        return await asyncio.to_thread(
+        return await run_sync(
             query_history_service.record_query,
             factory,
             user_id=user["id"],
@@ -195,7 +195,7 @@ async def audit(
             merged["note"] = detail
         detail_payload = merged
     workspace_id = int(getattr(request.state, "workspace_id", 1))
-    await asyncio.to_thread(
+    await run_sync(
         audit_service.log_action,
         factory,
         user["id"],

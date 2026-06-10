@@ -17,7 +17,6 @@ mapping from refusal exception classes to PointlesSQL HTTP errors).
 
 from __future__ import annotations
 
-import asyncio
 import datetime
 import uuid
 from typing import Any
@@ -36,6 +35,7 @@ from pointlessql.config import Settings
 from pointlessql.exceptions import CatalogNotFoundError, ValidationError
 from pointlessql.models import AgentRunOperation
 from pointlessql.models.agent._runs import AgentRun
+from pointlessql.services._executor import run_sync
 from pointlessql.services.agent_runs.events import (
     EVENT_TYPE_ROLLBACK_EXECUTED,
     emit_agent_run_event,
@@ -489,7 +489,7 @@ async def api_run_rollback(
         }
 
     try:
-        result = await asyncio.to_thread(_run_rollback)
+        result = await run_sync(_run_rollback)
     except (RollbackAmbiguous, RollbackStale, RollbackInvalid, RollbackTargetNotFound) as exc:
         # Each refusal class is now a PointlessSQLError subclass with
         # its own status_code / error_code; the centralised handler

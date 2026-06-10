@@ -17,7 +17,6 @@ by admins (see :mod:`pointlessql.api.admin.mesh_entities`).
 
 from __future__ import annotations
 
-import asyncio
 from typing import Any
 
 from fastapi import APIRouter, Request
@@ -35,6 +34,7 @@ from pointlessql.api.dependencies import (
 from pointlessql.models.agent._audit import AgentRunOperation
 from pointlessql.services import mesh as mesh_service
 from pointlessql.services import slo as slo_service
+from pointlessql.services._executor import run_sync
 
 router = APIRouter(tags=["mesh"])
 
@@ -64,7 +64,7 @@ async def api_mesh_slo_scan(request: Request) -> dict[str, Any]:
     factory = request.app.state.session_factory
     workspace_id = current_workspace_id(request)
     user = get_user(request)
-    summary = await asyncio.to_thread(
+    summary = await run_sync(
         slo_service.scan_workspace,
         factory,
         workspace_id=workspace_id,

@@ -37,6 +37,7 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from pointlessql.api.ws_auth import resolve_websocket_user
 from pointlessql.models import DataProduct
+from pointlessql.services._executor import run_sync
 from pointlessql.services.dp_canvas._coedit import (
     get_or_init_canvas_ydoc,
     persist_canvas_ydoc,
@@ -119,14 +120,12 @@ async def _flush_loop(hub: _CanvasHub, factory: sessionmaker[Any]) -> None:
                 hub.dirty = False
                 snapshot_doc = hub.doc
                 author = hub.last_author_user_id
-            await asyncio.get_running_loop().run_in_executor(
-                None,
-                lambda: persist_canvas_ydoc(
-                    factory,
-                    data_product_id=hub.dp_id,
-                    doc=snapshot_doc,
-                    author_user_id=author,
-                ),
+            await run_sync(
+                persist_canvas_ydoc,
+                factory,
+                data_product_id=hub.dp_id,
+                doc=snapshot_doc,
+                author_user_id=author,
             )
     except asyncio.CancelledError:
         pass
@@ -137,10 +136,7 @@ async def _get_or_create_hub(dp_id: int, factory: sessionmaker[Any]) -> _CanvasH
         existing = _HUBS.get(dp_id)
         if existing is not None:
             return existing
-        doc = await asyncio.get_running_loop().run_in_executor(
-            None,
-            lambda: get_or_init_canvas_ydoc(factory, data_product_id=dp_id),
-        )
+        doc = await run_sync(get_or_init_canvas_ydoc, factory, data_product_id=dp_id)
         hub = _CanvasHub(dp_id=dp_id, doc=doc)
         hub.flush_task = asyncio.create_task(
             _flush_loop(hub, factory), name=f"dp-canvas-coedit-flush-{dp_id}"
@@ -172,14 +168,12 @@ async def _release_hub_if_empty(dp_id: int, factory: sessionmaker[Any]) -> None:
                 snapshot = None
                 author = None
         if snapshot is not None:
-            await asyncio.get_running_loop().run_in_executor(
-                None,
-                lambda: persist_canvas_ydoc(
-                    factory,
-                    data_product_id=dp_id,
-                    doc=snapshot,
-                    author_user_id=author,
-                ),
+            await run_sync(
+                persist_canvas_ydoc,
+                factory,
+                data_product_id=dp_id,
+                doc=snapshot,
+                author_user_id=author,
             )
         _HUBS.pop(dp_id, None)
 

@@ -18,7 +18,6 @@ sits at "detection only" and not "hard-block".
 
 from __future__ import annotations
 
-import asyncio
 import logging
 from typing import Any
 
@@ -29,6 +28,7 @@ from pointlessql.api._audit_helpers import audit
 from pointlessql.api.dependencies import get_templates, get_user, require_admin
 from pointlessql.exceptions import CatalogNotFoundError
 from pointlessql.services import external_write_scanner
+from pointlessql.services._executor import run_sync
 
 logger = logging.getLogger(__name__)
 
@@ -60,16 +60,14 @@ async def admin_external_writes_index(
         if isinstance(table_fqn_like, str) and table_fqn_like.strip()
         else None
     )
-    entries = await asyncio.to_thread(
+    entries = await run_sync(
         external_write_scanner.list_unattributed,
         factory,
         only_unacknowledged=only_unacknowledged,
         table_fqn_like=cleaned_like,
         limit=500,
     )
-    unacknowledged_total = await asyncio.to_thread(
-        external_write_scanner.count_unacknowledged, factory
-    )
+    unacknowledged_total = await run_sync(external_write_scanner.count_unacknowledged, factory)
     return get_templates(request).TemplateResponse(
         request,
         "pages/admin_external_writes.html",
@@ -114,7 +112,7 @@ async def api_list_external_writes(
         else None
     )
     effective_limit = max(1, min(int(limit), 1000))
-    return await asyncio.to_thread(
+    return await run_sync(
         external_write_scanner.list_unattributed,
         factory,
         only_unacknowledged=only_unacknowledged,
@@ -171,7 +169,7 @@ async def api_acknowledge_external_write(
     factory = request.app.state.session_factory
     user = get_user(request)
     acknowledged_by = user.get("email", "admin")
-    ok = await asyncio.to_thread(
+    ok = await run_sync(
         external_write_scanner.acknowledge,
         factory,
         write_id,

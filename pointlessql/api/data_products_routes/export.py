@@ -10,7 +10,6 @@ exportable, so the port never leaks an undeclared sibling table.
 
 from __future__ import annotations
 
-import asyncio
 import io
 from typing import Any, Literal
 
@@ -30,6 +29,7 @@ from pointlessql.api.dependencies import (
 from pointlessql.config import Settings
 from pointlessql.exceptions import BadRequestError
 from pointlessql.services import governance as governance_service
+from pointlessql.services._executor import run_sync
 from pointlessql.services.authorization import SELECT, check_privilege_from_effective
 from pointlessql.services.pii._redactor import get_or_create_pii_hash_secret
 from pointlessql.services.soyuz_client import make_principal_client, make_soyuz_client
@@ -195,7 +195,7 @@ async def export_table(
 
     fmt = format.lower()
     settings: Settings = request.app.state.settings
-    payload = await asyncio.to_thread(
+    payload = await run_sync(
         _export_blocking, settings, principal, full_name, strategies, unmask, secret, fmt
     )
     if fmt == "csv":

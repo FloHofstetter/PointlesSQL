@@ -20,7 +20,6 @@ the forget op gate on ``_require_steward_or_admin``.
 
 from __future__ import annotations
 
-import asyncio
 import json
 from typing import Any
 
@@ -42,6 +41,7 @@ from pointlessql.config import Settings
 from pointlessql.exceptions import BadRequestError
 from pointlessql.models import AuditLog
 from pointlessql.services import governance as governance_service
+from pointlessql.services._executor import run_sync
 from pointlessql.services.governance._compliance import COMPLIANCE_VIOLATION_ACTION
 from pointlessql.services.workspace.governance import (
     EVENT_TYPE_DATA_PRODUCT_FORGOTTEN,
@@ -249,7 +249,7 @@ async def right_to_be_forgotten(
     settings: Settings = request.app.state.settings
     executor = int(user["id"]) if user["id"] > 0 else None
     try:
-        summary = await asyncio.to_thread(
+        summary = await run_sync(
             governance_service.execute_forget,
             factory,
             settings,

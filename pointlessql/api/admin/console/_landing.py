@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-import asyncio
-
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 
 from pointlessql.api.dependencies import get_templates, require_admin
+from pointlessql.services._executor import run_sync
 
 router = APIRouter(tags=["admin"])
 
@@ -70,7 +69,7 @@ async def admin_index(request: Request) -> HTMLResponse:
             or 0
         )
 
-    unacknowledged_external_writes = await asyncio.to_thread(
+    unacknowledged_external_writes = await run_sync(
         external_write_scanner.count_unacknowledged, factory
     )
 

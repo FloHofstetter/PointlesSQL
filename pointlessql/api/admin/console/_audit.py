@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import hashlib
 import json
 import logging
@@ -26,6 +25,7 @@ from pointlessql.api.dependencies import (
     get_user,
     require_admin,
 )
+from pointlessql.services._executor import run_sync
 
 logger = logging.getLogger(__name__)
 
@@ -225,7 +225,7 @@ async def admin_audit_export(
             for r in result
         ]
 
-    rows = await asyncio.to_thread(_rows)
+    rows = await run_sync(_rows)
     timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
 
     from pointlessql.api.dependencies import effective_principal, get_user
@@ -347,7 +347,7 @@ async def admin_audit_export_tarball(
         actor=user,
         target=target,
     )
-    rows = await asyncio.to_thread(serialise_rows, factory, filters)
+    rows = await run_sync(serialise_rows, factory, filters)
     exported_at = datetime.now(UTC)
     timestamp = exported_at.strftime("%Y%m%dT%H%M%SZ")
     payload = encode_payload(rows, fmt=fmt, exported_at=exported_at)

@@ -18,7 +18,6 @@ the cross-link, never re-read by this route.
 
 from __future__ import annotations
 
-import asyncio
 import datetime as _dt
 import json
 import logging
@@ -28,6 +27,7 @@ from fastapi import APIRouter, Body, Request
 
 from pointlessql.api._audit_helpers import audit, effective_agent_run_id
 from pointlessql.exceptions import ValidationError
+from pointlessql.services._executor import run_sync
 from pointlessql.services.agent_runs.operations import (
     VALID_OP_NAMES,
     record_operation,
@@ -178,7 +178,7 @@ async def api_pql_training_log(
             training_params_json=training_params_json,
         )
 
-    op_id = await asyncio.to_thread(_persist)
+    op_id = await run_sync(_persist)
 
     await audit(
         request,

@@ -21,7 +21,6 @@ surfaces the feature without a second dashboard.
 
 from __future__ import annotations
 
-import asyncio
 from dataclasses import dataclass
 from typing import Any
 
@@ -30,6 +29,7 @@ from fastapi.responses import HTMLResponse, Response
 
 from pointlessql.services import audit as audit_service
 from pointlessql.services import rate_limit as rate_limit_service
+from pointlessql.services._executor import run_sync
 
 
 @dataclass(frozen=True)
@@ -236,7 +236,7 @@ async def rate_limit_middleware(request: Request, call_next: Any) -> Response:
             # viewer already renders verbatim.
             # Async write — the reject path is hot and we do not
             # want the audit INSERT to block the 429.
-            await asyncio.to_thread(
+            await run_sync(
                 audit_service.log_action,
                 factory,
                 0,  # user_id=0 keeps the audit row non-null-constrained

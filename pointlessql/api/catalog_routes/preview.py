@@ -9,7 +9,6 @@ server-side before serialisation.
 
 from __future__ import annotations
 
-import asyncio
 import logging
 import re
 from typing import Any
@@ -28,6 +27,7 @@ from pointlessql.api.dependencies import (
 )
 from pointlessql.config import Settings
 from pointlessql.services import governance as governance_service
+from pointlessql.services._executor import run_sync
 from pointlessql.services.authorization import (
     SELECT,
     check_privilege_from_effective,
@@ -247,7 +247,7 @@ async def api_table_preview(
         SELECT,
     )
     settings: Settings = request.app.state.settings
-    payload = await asyncio.to_thread(
+    payload = await run_sync(
         run_table_preview,
         settings,
         principal,
@@ -301,7 +301,7 @@ async def api_table_stats(
         SELECT,
     )
     settings: Settings = request.app.state.settings
-    payload = await asyncio.to_thread(
+    payload = await run_sync(
         compute_table_stats,
         settings,
         principal,

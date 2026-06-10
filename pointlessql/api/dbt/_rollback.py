@@ -9,7 +9,6 @@ auto-rollback never fires on the bare ``dbt run`` route.
 
 from __future__ import annotations
 
-import asyncio
 from typing import Any
 
 from fastapi import Request
@@ -17,6 +16,7 @@ from sqlalchemy import select
 
 from pointlessql.api.dependencies import get_user
 from pointlessql.models.agent._audit import AgentRunOperation
+from pointlessql.services._executor import run_sync
 from pointlessql.services.workspace.governance import (
     EVENT_TYPE_DBT_AUTO_ROLLBACK_EXECUTED,
     emit_governance_event,
@@ -124,7 +124,7 @@ async def auto_rollback_on_error(
     failed: list[dict[str, Any]] = []
     for target, ordinal in targets:
         try:
-            result = await asyncio.to_thread(
+            result = await run_sync(
                 invoke_pql_rollback,
                 settings,
                 principal=principal,

@@ -20,7 +20,6 @@ manage any subscription on a product they steward.
 
 from __future__ import annotations
 
-import asyncio
 import json
 from collections.abc import AsyncIterator
 from typing import Any
@@ -41,6 +40,7 @@ from pointlessql.models import (
     DataProductOutputPort,
 )
 from pointlessql.services import event_port as event_port_service
+from pointlessql.services._executor import run_sync
 from pointlessql.services.event_port import _ws_hub
 from pointlessql.services.event_port._cdf_reader import read_changes
 
@@ -323,7 +323,7 @@ async def http_event_stream(
         )
         cursor = int(since)
         while True:
-            rows = await asyncio.to_thread(
+            rows = await run_sync(
                 read_changes, location, since_version=cursor, max_versions=max_versions
             )
             if not rows:

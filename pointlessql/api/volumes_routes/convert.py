@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import logging
 from pathlib import Path
 from typing import Any
@@ -18,6 +17,7 @@ from pointlessql.api.dependencies import (
 from pointlessql.api.volumes_routes._shared import soyuz_base_url, volume_full_name_split
 from pointlessql.config import Settings
 from pointlessql.exceptions import ValidationError
+from pointlessql.services._executor import run_sync
 from pointlessql.services.unitycatalog import UnityCatalogClient
 
 logger = logging.getLogger(__name__)
@@ -206,7 +206,7 @@ async def api_convert_volume_file_to_delta(
             volume_root = storage_location[len("file://") :]
             delta_dir = Path(volume_root) / f"_delta_{table_name}"
             delta_dir.parent.mkdir(parents=True, exist_ok=True)
-            await asyncio.to_thread(
+            await run_sync(
                 convert_volume_file_sync,
                 settings,
                 source_file=target_path,

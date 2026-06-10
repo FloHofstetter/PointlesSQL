@@ -12,7 +12,6 @@ short-lived DuckDB connection with positional parameter bindings.
 
 from __future__ import annotations
 
-import asyncio
 import logging
 import time
 from typing import Any
@@ -35,6 +34,7 @@ from pointlessql.exceptions import (
     ValidationError,
 )
 from pointlessql.services import saved_views as saved_views_service
+from pointlessql.services._executor import run_sync
 
 logger = logging.getLogger(__name__)
 
@@ -62,7 +62,7 @@ async def api_list_views(
     require_user(request)
     workspace_id = current_workspace_id(request)
     factory = request.app.state.session_factory
-    rows = await asyncio.to_thread(
+    rows = await run_sync(
         saved_views_service.list_visible,
         factory,
         workspace_id=workspace_id,
@@ -93,7 +93,7 @@ async def api_create_view(request: Request, body: dict[str, Any] = Body(...)) ->
     workspace_id = current_workspace_id(request)
     user = get_user(request)
     payload = body or {}
-    row = await asyncio.to_thread(
+    row = await run_sync(
         saved_views_service.create_saved_view,
         request.app.state.session_factory,
         workspace_id=workspace_id,
@@ -130,7 +130,7 @@ async def api_get_view(request: Request, slug: str) -> dict[str, Any]:
     """  # noqa: DOC502
     require_user(request)
     workspace_id = current_workspace_id(request)
-    row = await asyncio.to_thread(
+    row = await run_sync(
         saved_views_service.get_by_slug,
         request.app.state.session_factory,
         slug,
@@ -165,7 +165,7 @@ async def api_update_view(
     workspace_id = current_workspace_id(request)
     user = get_user(request)
     payload = body or {}
-    row = await asyncio.to_thread(
+    row = await run_sync(
         saved_views_service.update_by_slug,
         request.app.state.session_factory,
         slug,
@@ -211,7 +211,7 @@ async def api_delete_view(request: Request, slug: str) -> Response:
     require_user(request)
     workspace_id = current_workspace_id(request)
     user = get_user(request)
-    ok = await asyncio.to_thread(
+    ok = await run_sync(
         saved_views_service.delete_by_slug,
         request.app.state.session_factory,
         slug,
@@ -259,7 +259,7 @@ async def api_run_view(
     workspace_id = current_workspace_id(request)
     settings = request.app.state.settings
     factory = request.app.state.session_factory
-    row = await asyncio.to_thread(
+    row = await run_sync(
         saved_views_service.get_row,
         factory,
         slug,
@@ -341,7 +341,7 @@ async def api_run_view(
         finally:
             conn.close()
 
-    result = await asyncio.to_thread(_run)
+    result = await run_sync(_run)
     # JSON-serialise rows where DuckDB returned native datetime / Decimal.
     serialised_rows: list[list[Any]] = []
     for row_values in result["rows"]:
@@ -398,7 +398,7 @@ async def page_views_list(request: Request) -> HTMLResponse:
     """
     require_user(request)
     workspace_id = current_workspace_id(request)
-    rows = await asyncio.to_thread(
+    rows = await run_sync(
         saved_views_service.list_visible,
         request.app.state.session_factory,
         workspace_id=workspace_id,
@@ -448,7 +448,7 @@ async def page_view_detail(request: Request, slug: str) -> HTMLResponse:
     """  # noqa: DOC502
     require_user(request)
     workspace_id = current_workspace_id(request)
-    row = await asyncio.to_thread(
+    row = await run_sync(
         saved_views_service.get_by_slug,
         request.app.state.session_factory,
         slug,
@@ -484,7 +484,7 @@ async def page_view_embed(request: Request, slug: str) -> HTMLResponse:
     """  # noqa: DOC502
     require_user(request)
     workspace_id = current_workspace_id(request)
-    row = await asyncio.to_thread(
+    row = await run_sync(
         saved_views_service.get_by_slug,
         request.app.state.session_factory,
         slug,

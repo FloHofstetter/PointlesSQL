@@ -15,6 +15,7 @@ from pointlessql.config import Settings
 from pointlessql.data_products import load_contracts_for_workspace
 from pointlessql.exceptions import BadRequestError
 from pointlessql.models.catalog._data_products import DataProduct
+from pointlessql.services._executor import run_sync
 from pointlessql.services.workspace.governance import (
     EVENT_TYPE_DATA_PRODUCT_SCHEMA_CHANGED,
     emit_governance_event,
@@ -131,7 +132,7 @@ async def reload_data_products(request: Request) -> dict[str, Any]:
                         refresh_passport_for_dp,
                     )
 
-                    await asyncio.to_thread(
+                    await run_sync(
                         refresh_passport_for_dp,
                         factory,
                         workspace_id=workspace_id,

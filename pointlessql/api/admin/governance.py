@@ -16,7 +16,6 @@ action prefix.
 
 from __future__ import annotations
 
-import asyncio
 from typing import Any
 
 from fastapi import APIRouter, Body, Request
@@ -31,6 +30,7 @@ from pointlessql.api.dependencies import (
 )
 from pointlessql.config import Settings
 from pointlessql.services import governance as governance_service
+from pointlessql.services._executor import run_sync
 
 router = APIRouter(tags=["admin-governance"])
 
@@ -88,7 +88,7 @@ async def api_admin_run_scan(request: Request) -> dict[str, Any]:
     workspace_id = current_workspace_id(request)
     user = get_user(request)
     settings: Settings = request.app.state.settings
-    summary = await asyncio.to_thread(
+    summary = await run_sync(
         governance_service.scan_workspace,
         factory,
         settings,

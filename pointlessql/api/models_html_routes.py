@@ -20,6 +20,7 @@ from pointlessql.api.dependencies import get_uc_client, get_user
 from pointlessql.api.models_routes import annotate_version, fetch_mlflow_context
 from pointlessql.exceptions import ResourceNotFoundError, ValidationError
 from pointlessql.services import model_promotion
+from pointlessql.services._executor import run_sync
 
 _logger = logging.getLogger(__name__)
 
@@ -62,7 +63,7 @@ async def _gather_versions_with_mlflow(
     async def _resolve(v: dict[str, Any]) -> dict[str, Any]:
         marker = v.get("link_marker") or {}
         run_id = marker.get("mlflow_run_id") or v.get("run_id")
-        mlflow_ctx = await asyncio.to_thread(fetch_mlflow_context, run_id)
+        mlflow_ctx = await run_sync(fetch_mlflow_context, run_id)
         return {**v, "mlflow": mlflow_ctx}
 
     if not annotated:
@@ -154,8 +155,8 @@ async def model_compare_page(
         return marker.get("mlflow_run_id") or annot.get("run_id")
 
     v1_mlflow, v2_mlflow = await asyncio.gather(
-        asyncio.to_thread(fetch_mlflow_context, _run_id_for(v1_annot)),
-        asyncio.to_thread(fetch_mlflow_context, _run_id_for(v2_annot)),
+        run_sync(fetch_mlflow_context, _run_id_for(v1_annot)),
+        run_sync(fetch_mlflow_context, _run_id_for(v2_annot)),
     )
 
     metric_diff = compute_metric_diff(v1_mlflow, v2_mlflow)

@@ -9,7 +9,6 @@ manifest-or-404 helper used by the read-only endpoints downstream.
 
 from __future__ import annotations
 
-import asyncio
 import logging
 from typing import Any
 
@@ -26,6 +25,7 @@ from pointlessql.api.dbt._lifecycle import (
 from pointlessql.api.dbt._rollback import auto_rollback_on_error
 from pointlessql.api.dependencies import get_user, require_supervisor
 from pointlessql.exceptions import EngineError, ResourceNotFoundError
+from pointlessql.services._executor import run_sync
 from pointlessql.services.dbt import (
     DBTExecutionError,
     DBTNodeResult,
@@ -85,7 +85,7 @@ async def run_or_test(
     # emitted ``dbt_model`` op — the anchors ``pql.rollback`` needs
     # to undo a dbt-driven write.  Best-effort: a fresh project
     # without a manifest yields an empty map.
-    pre_versions = await asyncio.to_thread(
+    pre_versions = await run_sync(
         capture_pre_run_versions,
         request,
         executor.manifest_path,

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import logging
 from datetime import UTC, datetime
 from typing import Any, cast
@@ -17,6 +16,7 @@ from pointlessql.api.dependencies import (
 from pointlessql.api.governance_routes._helpers import (
     enforce_table_profile_access,
 )
+from pointlessql.services._executor import run_sync
 
 logger = logging.getLogger(__name__)
 
@@ -59,12 +59,12 @@ async def api_profile_table(
 
     # Short-circuit: if the current version is already cached we
     # still surface it but do not recompute.
-    current_version = await asyncio.to_thread(
+    current_version = await run_sync(
         ts_service.read_delta_log_version,
         storage_location,
     )
     if factory is not None:
-        cached = await asyncio.to_thread(
+        cached = await run_sync(
             ts_service.read_cached,
             factory,
             full_name=full_name,
@@ -84,14 +84,14 @@ async def api_profile_table(
                 "columns": cached,
             }
 
-    stats = await asyncio.to_thread(
+    stats = await run_sync(
         ts_service.compute_stats,
         full_name,
         storage_location,
         columns,
     )
     if factory is not None:
-        await asyncio.to_thread(
+        await run_sync(
             ts_service.write_cached,
             factory,
             full_name=full_name,
@@ -152,7 +152,7 @@ async def api_get_table_stats(
     factory = getattr(request.app.state, "session_factory", None)
     if factory is None:
         return {"full_name": full_name, "delta_log_version": None, "columns": []}
-    cached = await asyncio.to_thread(
+    cached = await run_sync(
         ts_service.read_cached,
         factory,
         full_name=full_name,
@@ -191,7 +191,7 @@ async def api_delete_table_stats(
     factory = getattr(request.app.state, "session_factory", None)
     if factory is None:
         return Response(status_code=204)
-    removed = await asyncio.to_thread(
+    removed = await run_sync(
         ts_service.delete_cached,
         factory,
         full_name,
