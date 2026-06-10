@@ -44,6 +44,11 @@ jobs:
         # asyncio.to_thread / raw run_in_executor.  Background loops
         # under api/_bootstrap/_loops/ are allowlisted by the script.
         run: bash scripts/check-sync-bridge.sh
+      - name: Typed-principal drift gate
+        # Raw request.state.user access is confined to the auth
+        # middleware (producer) and dependencies/_principal.py
+        # (accessors); routes use get_user / get_optional_user.
+        run: bash scripts/check-typed-principal.sh
       - name: Pydoclint (Google style)
         # Phase 74.CI.1 — force-reinstall docstring-parser-fork
         # immediately before pydoclint runs.  pydoclint imports

@@ -101,6 +101,12 @@ repos:
         language: system
         pass_filenames: false
         files: ^pointlessql/api/.*\.py$
+      - id: typed-principal
+        name: request.state.user confined to its owner modules
+        entry: bash scripts/check-typed-principal.sh
+        language: system
+        pass_filenames: false
+        files: ^pointlessql/.*\.py$
       - id: doc-orphans
         name: doc-tree orphan guard (mkdocs nav vs filesystem)
         entry: bash scripts/check-doc-orphans.sh
