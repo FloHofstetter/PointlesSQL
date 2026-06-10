@@ -51,7 +51,12 @@
                 </li>
             </ul>
             <div class="tab-content">
+                {# Default-activate the Discussion pane server-side: the
+                   shared polymorphic pane ships without ``show active``
+                   because other consumers default to a different tab. #}
+                {% set discussion_active = true %}
                 {% include "partials/social/_discussion_pane.html" %}
+                {% set discussion_active = false %}
                 {% include "partials/social/_reviews_pane.html" %}
                 {% include "partials/social/_readme_pane.html" %}
                 {# Issues pane.  Wrapped in a tiny inline scope that exposes
@@ -66,19 +71,3 @@
             </div>
         </div>
     </div>
-    {# Default-activate the Discussion pane.  The
-       shared polymorphic ``_discussion_pane.html`` ships with
-       ``class="tab-pane fade"`` (no ``show active``) because other
-       consumers default to a different tab.  Promote it inside the
-       DP drawer at first paint so opening the drawer shows
-       Discussion immediately instead of a blank body. #}
-    <script>
-        (function () {
-            const pane = document.querySelector(
-                '#pql-dp-social-drawer #tab-discussion'
-            );
-            if (pane && !pane.classList.contains('active')) {
-                pane.classList.add('show', 'active');
-            }
-        })();
-    </script>

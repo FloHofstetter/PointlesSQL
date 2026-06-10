@@ -1,4 +1,7 @@
-        <div class="tab-pane fade" id="tab-discussion" role="tabpanel">
+        {#- ``discussion_active`` lets a consumer default-activate this
+            pane server-side (the DP social drawer does); other
+            consumers keep their own default tab. -#}
+        <div class="tab-pane fade{% if discussion_active %} show active{% endif %}" id="tab-discussion" role="tabpanel">
             <template x-if="!commentsLoaded">
                 <div class="text-muted small p-3">Loading…</div>
             </template>

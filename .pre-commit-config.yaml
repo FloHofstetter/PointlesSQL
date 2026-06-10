@@ -95,6 +95,12 @@ repos:
         language: system
         pass_filenames: false
         files: ^frontend/templates/.*\.html$
+      - id: theme-boot-order
+        name: theme_boot.js precedes the first stylesheet
+        entry: bash scripts/check-theme-boot-order.sh
+        language: system
+        pass_filenames: false
+        files: ^(frontend/templates/(base.*\.html|_layouts/.*\.html)|frontend/js/theme_boot\.js)$
       - id: sync-bridge
         name: api layer routes blocking work through run_sync
         entry: bash scripts/check-sync-bridge.sh

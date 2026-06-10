@@ -105,6 +105,11 @@ jobs:
           node-version: '24'
       - name: Run JS unit tests
         run: node --test "frontend/js/**/*.test.js"
+      - name: Frontend — theme-boot ordering gate
+        # theme_boot.js must precede the first stylesheet in every
+        # layout so data-bs-theme is set before CSS parses (no theme
+        # flash on first paint).
+        run: bash scripts/check-theme-boot-order.sh
       - name: Frontend — Form-label A11y drift guard
         # W8 drift-guard.  Counts <input>/<select>/<textarea> in
         # frontend/templates/ that lack any of: aria-label,

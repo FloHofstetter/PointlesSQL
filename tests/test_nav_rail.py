@@ -238,6 +238,6 @@ class TestRailStateInit:
         ) as client:
             resp = await client.get("/")
         body = resp.text
-        # The inline init script writes data-pql-rail-state on <html>.
-        assert "data-pql-rail-state" in body
-        assert "pql.primary-rail.collapsed" in body
+        # The boot script that writes data-pql-rail-state on <html>
+        # loads render-blocking from the head (it used to be inline).
+        assert "/static/js/layout_boot.js" in body
