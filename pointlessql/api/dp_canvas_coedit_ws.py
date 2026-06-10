@@ -1,8 +1,8 @@
 """Real-time co-edit WebSocket hub for the visual data-product canvas.
 
-Mirrors the Phase-105 ``notebook_coedit_ws`` pattern at a smaller
-scale: one in-memory ``pycrdt.Doc`` per data-product id, binary
-frames with a one-byte protocol tag, periodic flush to the
+Mirrors the ``notebook_coedit_ws`` pattern at a smaller scale: one
+in-memory ``pycrdt.Doc`` per data-product id, binary frames with a
+one-byte protocol tag, periodic flush to the
 ``data_product_canvas_graph`` table.
 
 Wire format — every frame starts with a single tag byte:
@@ -35,7 +35,7 @@ from typing import TYPE_CHECKING, Any
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
-from pointlessql.api.ws_auth import resolve_websocket_user
+from pointlessql.api._ws_scaffold import authenticate_or_close
 from pointlessql.models import DataProduct
 from pointlessql.services._executor import run_sync
 from pointlessql.services.dp_canvas._coedit import (
@@ -190,14 +190,14 @@ async def dp_canvas_coedit_ws(websocket: WebSocket, dp_id: int) -> None:
     """
     factory = websocket.app.state.session_factory
     await websocket.accept()
-    user = resolve_websocket_user(websocket)
+    user = await authenticate_or_close(
+        websocket,
+        close_reason=None,
+        reject_api_key_principals=True,
+    )
     if user is None:
-        await websocket.close(code=4401)
         return
     user_id = int(user.get("id") or 0)
-    if user_id == 0:
-        await websocket.close(code=4403)
-        return
     with factory() as session:
         dp = session.get(DataProduct, dp_id)
         if dp is None:

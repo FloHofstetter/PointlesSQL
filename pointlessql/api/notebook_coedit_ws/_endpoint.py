@@ -8,6 +8,7 @@ import uuid
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
+from pointlessql.api._ws_scaffold import authenticate_or_close
 from pointlessql.api.notebook_coedit_ws._broadcast import (
     broadcast,
     publish_to_bus,
@@ -25,7 +26,6 @@ from pointlessql.api.notebook_coedit_ws._hub import (
     release_hub_if_empty,
 )
 from pointlessql.api.notebook_coedit_ws._state import ClientSubscription
-from pointlessql.api.ws_auth import resolve_websocket_user
 from pointlessql.models import Notebook
 from pointlessql.services.notebook import permissions as perms_service
 
@@ -57,17 +57,17 @@ async def notebook_coedit_ws(  # noqa: C901 — handshake + dispatch are inheren
     settings = websocket.app.state.settings
     await websocket.accept()
 
-    user = resolve_websocket_user(websocket)
+    # Synthetic api-key principals are intentionally locked out
+    # of the browser-only co-edit surface.
+    user = await authenticate_or_close(
+        websocket,
+        close_reason=None,
+        reject_api_key_principals=True,
+    )
     if user is None:
-        await websocket.close(code=4401)
         return
     user_id = int(user.get("id") or 0)
     is_admin = bool(user.get("is_admin"))
-    if user_id == 0:
-        # Synthetic api-key principals are intentionally locked out
-        # of the browser-only co-edit surface.
-        await websocket.close(code=4403)
-        return
 
     with factory() as session:
         notebook = session.get(Notebook, notebook_id)
