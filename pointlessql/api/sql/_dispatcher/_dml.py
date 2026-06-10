@@ -10,7 +10,6 @@ generic wrapper would obscure rather than clarify.
 
 from __future__ import annotations
 
-import asyncio
 from typing import Any, Literal
 
 from sqlglot import expressions as exp
@@ -33,6 +32,7 @@ from pointlessql.api.sql._dispatcher._privilege import (
 from pointlessql.api.sql._dispatcher._types import DispatchContext, ExecutionResult
 from pointlessql.exceptions import SQLExecutionError
 from pointlessql.pql import extract_source_refs, extract_write_target
+from pointlessql.services._executor import run_sync
 
 
 async def execute_insert(
@@ -100,7 +100,7 @@ async def execute_insert(
         return {"rows_affected": rows}
 
     try:
-        info = await asyncio.to_thread(_run)
+        info = await run_sync(_run)
         await finish_agent_run(ctx, run_id, status="succeeded")
     except Exception as exc:
         await finish_agent_run(ctx, run_id, status="failed", error=str(exc))
@@ -150,7 +150,7 @@ async def execute_update(ctx: DispatchContext) -> ExecutionResult:
         return pql.update(target_fqn, set_clause=set_clause, where=where)
 
     try:
-        stats = await asyncio.to_thread(_run)
+        stats = await run_sync(_run)
         await finish_agent_run(ctx, run_id, status="succeeded")
     except Exception as exc:
         await finish_agent_run(ctx, run_id, status="failed", error=str(exc))
@@ -201,7 +201,7 @@ async def execute_delete(ctx: DispatchContext) -> ExecutionResult:
         return pql.delete(target_fqn, where=where)
 
     try:
-        stats = await asyncio.to_thread(_run)
+        stats = await run_sync(_run)
         await finish_agent_run(ctx, run_id, status="succeeded")
     except Exception as exc:
         await finish_agent_run(ctx, run_id, status="failed", error=str(exc))
@@ -272,7 +272,7 @@ async def execute_merge(ctx: DispatchContext) -> ExecutionResult:
         )
 
     try:
-        stats = await asyncio.to_thread(_run)
+        stats = await run_sync(_run)
         await finish_agent_run(ctx, run_id, status="succeeded")
     except Exception as exc:
         await finish_agent_run(ctx, run_id, status="failed", error=str(exc))

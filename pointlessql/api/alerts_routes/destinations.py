@@ -6,7 +6,6 @@ parent CRUD.
 
 from __future__ import annotations
 
-import asyncio
 import logging
 from typing import Any
 
@@ -15,6 +14,7 @@ from fastapi.responses import Response
 
 from pointlessql.api._audit_helpers import audit
 from pointlessql.api.dependencies import get_user
+from pointlessql.services._executor import run_sync
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +49,7 @@ async def api_add_alert_destination(
         raise CatalogNotFoundError(f"Alert {slug!r} not found.")
     user = get_user(request)
     payload = body or {}
-    dest = await asyncio.to_thread(
+    dest = await run_sync(
         alerts_service.add_destination,
         factory,
         slug,
@@ -103,7 +103,7 @@ async def api_delete_alert_destination(
     if factory is None:
         raise CatalogNotFoundError(f"Alert {slug!r} not found.")
     user = get_user(request)
-    ok = await asyncio.to_thread(
+    ok = await run_sync(
         alerts_service.delete_destination,
         factory,
         slug,

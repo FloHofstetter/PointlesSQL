@@ -3,7 +3,6 @@
 
 from __future__ import annotations
 
-import asyncio
 from typing import Any
 
 from fastapi import APIRouter, Body, Request
@@ -18,6 +17,7 @@ from pointlessql.api.dependencies import (
 from pointlessql.api.error_responses import STANDARD_ERROR_RESPONSES
 from pointlessql.api.sql.write._helpers import _check_write_target
 from pointlessql.exceptions import ValidationError
+from pointlessql.services._executor import run_sync
 from pointlessql.types import TableFqn
 
 router = APIRouter(tags=["pql-write"])
@@ -143,7 +143,7 @@ async def api_pql_update(request: Request, body: dict[str, Any] = Body(...)) -> 
             track_value_changes=track_value_changes,
         )
 
-    stats = await asyncio.to_thread(_run)
+    stats = await run_sync(_run)
     rows_affected = stats.get("num_updated_rows")
     await audit(
         request,
@@ -207,7 +207,7 @@ async def api_pql_delete(request: Request, body: dict[str, Any] = Body(...)) -> 
         pql = _write_pkg._build_pql(request, principal=email, agent_run_id=agent_run_id)
         return pql.delete(target, where=where)
 
-    stats = await asyncio.to_thread(_run)
+    stats = await run_sync(_run)
     rows_affected = stats.get("num_deleted_rows")
     await audit(
         request,

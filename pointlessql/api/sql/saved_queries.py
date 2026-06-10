@@ -20,7 +20,6 @@ Visibility model:
 
 from __future__ import annotations
 
-import asyncio
 import json
 import logging
 from datetime import UTC, datetime, timedelta
@@ -34,6 +33,7 @@ from pointlessql.api.dependencies import get_templates, get_user, is_htmx_partia
 from pointlessql.exceptions import ValidationError
 from pointlessql.services import query_history as query_history_service
 from pointlessql.services import saved_queries as saved_queries_service
+from pointlessql.services._executor import run_sync
 from pointlessql.types import QueryHistoryId
 
 logger = logging.getLogger(__name__)
@@ -126,7 +126,7 @@ async def api_list_queries(
     cleaned_read_kind = (
         read_kind.strip() if isinstance(read_kind, str) and read_kind.strip() else None
     )
-    return await asyncio.to_thread(
+    return await run_sync(
         query_history_service.list_queries,
         factory,
         user_id=user_id,
@@ -163,7 +163,7 @@ async def api_get_query(request: Request, history_id: int) -> dict[str, Any]:
     if factory is None:
         raise CatalogNotFoundError(f"Query {history_id} not found.")
     user = get_user(request)
-    row = await asyncio.to_thread(
+    row = await run_sync(
         query_history_service.get_by_id,
         factory,
         QueryHistoryId(history_id),
@@ -217,7 +217,7 @@ async def api_update_query_chart_config(
         serialised = json.dumps(raw, separators=(",", ":"), sort_keys=True)
     else:
         raise ValidationError("chart_config must be an object or null.")
-    row = await asyncio.to_thread(
+    row = await run_sync(
         query_history_service.update_chart_config,
         factory,
         history_id,
@@ -293,7 +293,7 @@ async def queries_page(
     since_dt = parse_since(cleaned_since) if cleaned_since else None
     user_filter: int | None = None if user.get("is_admin") else user["id"]
     if factory is not None:
-        entries = await asyncio.to_thread(
+        entries = await run_sync(
             query_history_service.list_queries,
             factory,
             user_id=user_filter,
@@ -304,7 +304,7 @@ async def queries_page(
             limit=_QUERIES_PAGE_SIZE,
             offset=offset,
         )
-        total = await asyncio.to_thread(
+        total = await run_sync(
             query_history_service.count_queries,
             factory,
             user_id=user_filter,
@@ -352,7 +352,7 @@ async def api_list_saved_queries(request: Request) -> list[dict[str, Any]]:
     if factory is None:
         return []
     user = get_user(request)
-    return await asyncio.to_thread(
+    return await run_sync(
         saved_queries_service.list_visible,
         factory,
         user_id=user["id"],
@@ -388,7 +388,7 @@ async def api_create_saved_query(
     description = payload.get("description")
     sql_text = payload.get("sql_text") or payload.get("sql") or ""
     is_shared = bool(payload.get("is_shared", False))
-    row = await asyncio.to_thread(
+    row = await run_sync(
         saved_queries_service.create_saved_query,
         factory,
         owner_id=user["id"],
@@ -424,7 +424,7 @@ async def api_get_saved_query(request: Request, slug: str) -> dict[str, Any]:
     if factory is None:
         raise CatalogNotFoundError(f"Saved query {slug!r} not found.")
     user = get_user(request)
-    row = await asyncio.to_thread(
+    row = await run_sync(
         saved_queries_service.get_by_slug,
         factory,
         slug,
@@ -470,14 +470,14 @@ async def api_update_saved_query(
         raise CatalogNotFoundError(f"Saved query {slug!r} not found.")
     user = get_user(request)
     payload = body or {}
-    previous = await asyncio.to_thread(
+    previous = await run_sync(
         saved_queries_service.get_by_slug,
         factory,
         slug,
         user_id=user["id"],
         is_admin=user.get("is_admin", False),
     )
-    row = await asyncio.to_thread(
+    row = await run_sync(
         saved_queries_service.update_by_slug,
         factory,
         slug,
@@ -523,7 +523,7 @@ async def api_delete_saved_query(request: Request, slug: str) -> Response:
     if factory is None:
         raise CatalogNotFoundError(f"Saved query {slug!r} not found.")
     user = get_user(request)
-    ok = await asyncio.to_thread(
+    ok = await run_sync(
         saved_queries_service.delete_by_slug,
         factory,
         slug,

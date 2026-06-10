@@ -8,7 +8,6 @@ unknown tokens with 401 so private alert histories are never exposed.
 
 from __future__ import annotations
 
-import asyncio
 import logging
 from datetime import UTC, datetime, timedelta
 
@@ -16,6 +15,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse, Response
 
 from pointlessql.api.alerts_routes._helpers import base_url, user_for_feed_token
+from pointlessql.services._executor import run_sync
 
 logger = logging.getLogger(__name__)
 
@@ -39,11 +39,11 @@ async def feed_atom(request: Request, token: str = "") -> Response:
     factory = getattr(request.app.state, "session_factory", None)
     if factory is None:
         return Response(status_code=401)
-    user = await asyncio.to_thread(user_for_feed_token, factory, token)
+    user = await run_sync(user_for_feed_token, factory, token)
     if user is None:
         return Response(status_code=401)
     cutoff = datetime.now(UTC) - timedelta(days=30)
-    events = await asyncio.to_thread(
+    events = await run_sync(
         alerts_service.list_events_for_owner,
         factory,
         user.id,
@@ -78,11 +78,11 @@ async def feed_json(request: Request, token: str = "") -> Response:
     factory = getattr(request.app.state, "session_factory", None)
     if factory is None:
         return Response(status_code=401)
-    user = await asyncio.to_thread(user_for_feed_token, factory, token)
+    user = await run_sync(user_for_feed_token, factory, token)
     if user is None:
         return Response(status_code=401)
     cutoff = datetime.now(UTC) - timedelta(days=30)
-    events = await asyncio.to_thread(
+    events = await run_sync(
         alerts_service.list_events_for_owner,
         factory,
         user.id,

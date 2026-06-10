@@ -8,7 +8,6 @@ revoked after the original run, so every download re-runs the
 
 from __future__ import annotations
 
-import asyncio
 from datetime import UTC, datetime
 from typing import Any, Literal
 
@@ -19,6 +18,7 @@ from pointlessql.api._audit_helpers import audit
 from pointlessql.api.dependencies import effective_principal, get_uc_client, get_user
 from pointlessql.api.sql.editor._helpers import run_sql_export_sync
 from pointlessql.config import Settings
+from pointlessql.services._executor import run_sync
 from pointlessql.services.authorization import SELECT, check_privilege
 
 router = APIRouter(tags=["sql"])
@@ -87,7 +87,7 @@ async def api_sql_download(
         with factory() as session:
             return session.scalar(_select(QueryHistory).where(QueryHistory.id == history_id))
 
-    row = await asyncio.to_thread(_fetch_row)
+    row = await run_sync(_fetch_row)
     if row is None or (not is_admin and row.user_id != user["id"]):
         raise CatalogNotFoundError(f"History row {history_id!r} not found.")
 
@@ -112,7 +112,7 @@ async def api_sql_download(
         await check_privilege(client, email, is_admin, "table", full_name, SELECT)
         approved[full_name] = storage_location
 
-    arrow_table = await asyncio.to_thread(
+    arrow_table = await run_sync(
         run_sql_export_sync,
         settings,
         row.sql_text,

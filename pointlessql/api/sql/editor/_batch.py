@@ -9,7 +9,6 @@ statement raises.
 
 from __future__ import annotations
 
-import asyncio
 import logging
 from typing import Any
 from uuid import uuid4
@@ -20,6 +19,7 @@ from pointlessql.api._audit_helpers import audit
 from pointlessql.api.dependencies import effective_principal, get_user
 from pointlessql.api.sql.editor._helpers import strip_ansi
 from pointlessql.config import Settings
+from pointlessql.services._executor import run_sync
 
 logger = logging.getLogger(__name__)
 
@@ -218,7 +218,7 @@ async def _rollback_run(request: Request, *, run_id: str) -> dict[str, Any]:
             ).all()
             return [(int(r[0]), r[1]) for r in rows]
 
-    ops = await asyncio.to_thread(_ops)
+    ops = await run_sync(_ops)
 
     rolled: list[int] = []
     errors: list[dict[str, Any]] = []
@@ -231,7 +231,7 @@ async def _rollback_run(request: Request, *, run_id: str) -> dict[str, Any]:
         if not target:
             continue
         try:
-            await asyncio.to_thread(_do_rollback, ordinal, target)
+            await run_sync(_do_rollback, ordinal, target)
             rolled.append(ordinal)
         except Exception as exc:  # noqa: BLE001 — best-effort
             # bare-broad-ok: per-op rollback errors are returned in

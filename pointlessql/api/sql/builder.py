@@ -11,7 +11,6 @@ Three thin endpoints that wrap :mod:`pointlessql.services.sql.builder`:
 
 from __future__ import annotations
 
-import asyncio
 import logging
 from typing import Any
 
@@ -28,6 +27,7 @@ from pointlessql.exceptions import (
     SQLExecutionError,
     ValidationError,
 )
+from pointlessql.services._executor import run_sync
 from pointlessql.services.authorization import SELECT, check_privilege
 from pointlessql.services.sql.builder import (
     SUPPORTED_AGGS,
@@ -131,7 +131,7 @@ async def api_builder_columns(request: Request, body: dict[str, Any] = Body(...)
         finally:
             conn.close()
 
-    columns = await asyncio.to_thread(_probe)
+    columns = await run_sync(_probe)
     return {"columns": columns}
 
 
@@ -153,7 +153,7 @@ async def api_builder_build(request: Request, body: dict[str, Any] = Body(...)) 
     require_user(request)
     state = body or {}
     try:
-        sql = await asyncio.to_thread(build_sql_from_state, state)
+        sql = await run_sync(build_sql_from_state, state)
     except ValueError as exc:
         raise ValidationError(str(exc)) from exc
     return {"sql": sql}
@@ -175,5 +175,5 @@ async def api_builder_parse(request: Request, body: dict[str, Any] = Body(...)) 
     sql = str((body or {}).get("sql") or "")
     if not sql.strip():
         return {"state": None}
-    state = await asyncio.to_thread(parse_sql_to_state, sql)
+    state = await run_sync(parse_sql_to_state, sql)
     return {"state": state}

@@ -28,6 +28,7 @@ from pointlessql.api.sql.editor._helpers import (
     strip_ansi,
 )
 from pointlessql.config import Settings
+from pointlessql.services._executor import run_sync
 from pointlessql.types import QueryStatus
 
 logger = logging.getLogger(__name__)
@@ -156,7 +157,7 @@ async def api_sql_execute(request: Request, body: dict[str, Any] = Body(...)) ->
             approved = await enforce_select_per_table(ctx, prepared.refs)
             try:
                 result = await asyncio.wait_for(
-                    asyncio.to_thread(
+                    run_sync(
                         run_sql_sync,
                         settings,
                         query,

@@ -3,7 +3,6 @@
 
 from __future__ import annotations
 
-import asyncio
 from typing import Any
 
 from fastapi import APIRouter, Body, Request
@@ -13,6 +12,7 @@ from pointlessql.api.dependencies import effective_principal, get_user
 from pointlessql.api.error_responses import STANDARD_ERROR_RESPONSES
 from pointlessql.api.sql.write._helpers import _check_write_target
 from pointlessql.exceptions import ValidationError
+from pointlessql.services._executor import run_sync
 
 router = APIRouter(tags=["pql-write"])
 
@@ -83,7 +83,7 @@ async def api_pql_autoload(request: Request, body: dict[str, Any] = Body(...)) -
             file_format=file_format,
         )
 
-    result = await asyncio.to_thread(_run)
+    result = await run_sync(_run)
     await audit(
         request,
         "pql.autoload",

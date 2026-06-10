@@ -9,7 +9,6 @@ import cycles when the editor evolves.
 
 from __future__ import annotations
 
-import asyncio
 from typing import Any
 
 from pointlessql.api._consumption_hook import enforce_consumption_for_read
@@ -18,6 +17,7 @@ from pointlessql.api.sql._dispatcher._privilege import enforce_select_per_table
 from pointlessql.api.sql._dispatcher._types import DispatchContext, ExecutionResult
 from pointlessql.pql import prepare_sql
 from pointlessql.services import governance as governance_service
+from pointlessql.services._executor import run_sync
 from pointlessql.services.pii._redactor import get_or_create_pii_hash_secret
 
 
@@ -82,7 +82,7 @@ async def execute_select(ctx: DispatchContext) -> ExecutionResult:
                 source_fqn=full_name,
             )
 
-    result = await asyncio.to_thread(
+    result = await run_sync(
         run_sql_sync,
         ctx.settings,
         ctx.sql,

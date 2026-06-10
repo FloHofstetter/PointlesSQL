@@ -10,7 +10,6 @@ trail captures the attempt.
 
 from __future__ import annotations
 
-import asyncio
 import logging
 import uuid as _uuid
 from typing import Any, cast
@@ -21,6 +20,7 @@ from pointlessql.api._audit_helpers import audit
 from pointlessql.api.dependencies import effective_principal, get_uc_client, get_user
 from pointlessql.api.sql.editor._helpers import short_sql_hash
 from pointlessql.config import Settings
+from pointlessql.services._executor import run_sync
 from pointlessql.services.authorization import SELECT, check_privilege
 from pointlessql.types import OpName, RunId
 
@@ -139,7 +139,7 @@ async def api_sql_explain(request: Request, sql: str = "") -> dict[str, Any]:
             approved[full_name] = storage_location
 
         try:
-            result = await asyncio.to_thread(run_explain, prepared.rewritten_sql, approved)
+            result = await run_sync(run_explain, prepared.rewritten_sql, approved)
         except ValueError as exc:
             raise SQLExecutionError(str(exc)) from exc
 

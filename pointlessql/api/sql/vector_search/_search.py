@@ -8,7 +8,6 @@ materialised on a thread so the event loop keeps serving.
 
 from __future__ import annotations
 
-import asyncio
 import logging
 from datetime import UTC, datetime
 from typing import Any
@@ -27,6 +26,7 @@ from pointlessql.api.sql.vector_search._models import (
 from pointlessql.exceptions import ResourceNotFoundError, SQLExecutionError
 from pointlessql.pql._parsing import parse_full_name
 from pointlessql.pql._vector import search as _pql_vector_search
+from pointlessql.services._executor import run_sync
 from pointlessql.services.soyuz_client import make_principal_client, make_soyuz_client
 from pointlessql.types import QueryStatus
 
@@ -92,7 +92,7 @@ async def api_sql_vector_search(
 
     started_at = datetime.now(UTC)
     try:
-        result = await asyncio.to_thread(
+        result = await run_sync(
             _pql_vector_search,
             client=client,
             table=body.table,

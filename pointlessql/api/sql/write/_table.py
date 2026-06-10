@@ -9,7 +9,6 @@ to already exist.
 
 from __future__ import annotations
 
-import asyncio
 from typing import Any
 
 from fastapi import APIRouter, Body, Request
@@ -22,6 +21,7 @@ from pointlessql.api.sql.write._helpers import (
     _check_write_target,
 )
 from pointlessql.exceptions import ValidationError
+from pointlessql.services._executor import run_sync
 
 router = APIRouter(tags=["pql-write"])
 
@@ -131,7 +131,7 @@ async def api_pql_write_table(request: Request, body: dict[str, Any] = Body(...)
             "rows_written": int(len(df)),
         }
 
-    result = await asyncio.to_thread(_run)
+    result = await run_sync(_run)
     audit_extra: dict[str, Any] = {
         "mode": mode,
         "rows_written": result["rows_written"],
@@ -248,7 +248,7 @@ async def api_pql_merge(request: Request, body: dict[str, Any] = Body(...)) -> d
             source_model_uri=source_model_uri,
         )
 
-    result = await asyncio.to_thread(_run)
+    result = await run_sync(_run)
     audit_extra: dict[str, Any] = {
         "strategy": strategy,
         "on": on,

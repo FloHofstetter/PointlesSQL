@@ -6,7 +6,6 @@ forbidden collapses to 404 so private slugs are not discoverable.
 
 from __future__ import annotations
 
-import asyncio
 import logging
 from typing import Any
 
@@ -16,6 +15,7 @@ from fastapi.responses import Response
 from pointlessql.api._audit_helpers import audit
 from pointlessql.api.dependencies import get_user
 from pointlessql.exceptions import ValidationError
+from pointlessql.services._executor import run_sync
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +40,7 @@ async def api_list_alerts(request: Request) -> list[dict[str, Any]]:
     if factory is None:
         return []
     user = get_user(request)
-    return await asyncio.to_thread(
+    return await run_sync(
         alerts_service.list_visible,
         factory,
         user_id=user["id"],
@@ -74,7 +74,7 @@ async def api_create_alert(
         raise ValidationError("Alerts are not available in this deployment.")
     user = get_user(request)
     payload = body or {}
-    row = await asyncio.to_thread(
+    row = await run_sync(
         alerts_service.create_alert,
         factory,
         owner_id=user["id"],
@@ -115,7 +115,7 @@ async def api_get_alert(request: Request, slug: str) -> dict[str, Any]:
     if factory is None:
         raise CatalogNotFoundError(f"Alert {slug!r} not found.")
     user = get_user(request)
-    row = await asyncio.to_thread(
+    row = await run_sync(
         alerts_service.get_by_slug,
         factory,
         slug,
@@ -154,7 +154,7 @@ async def api_update_alert(
         raise CatalogNotFoundError(f"Alert {slug!r} not found.")
     user = get_user(request)
     payload = body or {}
-    row = await asyncio.to_thread(
+    row = await run_sync(
         alerts_service.update_by_slug,
         factory,
         slug,
@@ -200,7 +200,7 @@ async def api_delete_alert(request: Request, slug: str) -> Response:
     if factory is None:
         raise CatalogNotFoundError(f"Alert {slug!r} not found.")
     user = get_user(request)
-    ok = await asyncio.to_thread(
+    ok = await run_sync(
         alerts_service.delete_by_slug,
         factory,
         slug,

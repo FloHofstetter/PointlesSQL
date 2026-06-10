@@ -10,7 +10,6 @@ don't flow through PQL's ``operation_context``.
 
 from __future__ import annotations
 
-import asyncio
 import hashlib
 import json
 import logging
@@ -20,6 +19,7 @@ from typing import Any, Literal
 
 from pointlessql.api.sql._dispatcher._types import DispatchContext
 from pointlessql.models.agent._runs import STATUS_RUNNING, AgentRun
+from pointlessql.services._executor import run_sync
 
 logger = logging.getLogger(__name__)
 
@@ -69,7 +69,7 @@ async def start_editor_agent_run(ctx: DispatchContext, *, target_fqn: str) -> st
             session.add(row)
             session.commit()
 
-    await asyncio.to_thread(_insert)
+    await run_sync(_insert)
     return run_id
 
 
@@ -109,7 +109,7 @@ async def finish_agent_run(
             session.commit()
 
     try:
-        await asyncio.to_thread(_update)
+        await run_sync(_update)
     except Exception:  # noqa: BLE001 — best-effort
         logger.exception("sql-editor agent_run finish update failed for %s", run_id)
 
@@ -170,6 +170,6 @@ async def emit_ddl_op(
             session.commit()
 
     try:
-        await asyncio.to_thread(_insert)
+        await run_sync(_insert)
     except Exception:  # noqa: BLE001 — best-effort
         logger.exception("sql-editor DDL op record failed for run=%s op=%s", run_id, op_name_value)

@@ -6,7 +6,6 @@ sees their own alerts, missing-vs-forbidden collapses to 404.
 
 from __future__ import annotations
 
-import asyncio
 import logging
 from typing import Any
 
@@ -15,6 +14,7 @@ from fastapi.responses import HTMLResponse
 
 from pointlessql.api.dependencies import get_templates, get_user
 from pointlessql.services import saved_queries as saved_queries_service
+from pointlessql.services._executor import run_sync
 
 logger = logging.getLogger(__name__)
 
@@ -38,13 +38,13 @@ async def alerts_page(request: Request) -> HTMLResponse:
     alerts: list[dict[str, Any]] = []
     saved: list[dict[str, Any]] = []
     if factory is not None:
-        alerts = await asyncio.to_thread(
+        alerts = await run_sync(
             alerts_service.list_visible,
             factory,
             user_id=user["id"],
             is_admin=bool(user.get("is_admin", False)),
         )
-        saved = await asyncio.to_thread(
+        saved = await run_sync(
             saved_queries_service.list_visible,
             factory,
             user_id=user["id"],
@@ -87,7 +87,7 @@ async def alert_detail_page(request: Request, slug: str) -> HTMLResponse:
     if factory is None:
         raise CatalogNotFoundError(f"Alert {slug!r} not found.")
     user = get_user(request)
-    alert_row = await asyncio.to_thread(
+    alert_row = await run_sync(
         alerts_service.get_by_slug,
         factory,
         slug,
@@ -96,7 +96,7 @@ async def alert_detail_page(request: Request, slug: str) -> HTMLResponse:
     )
     if alert_row is None:
         raise CatalogNotFoundError(f"Alert {slug!r} not found.")
-    events = await asyncio.to_thread(
+    events = await run_sync(
         alerts_service.list_events_for_alert,
         factory,
         alert_row["id"],

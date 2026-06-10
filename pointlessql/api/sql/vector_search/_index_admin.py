@@ -12,7 +12,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import logging
 from pathlib import Path
 from typing import Any
@@ -35,6 +34,7 @@ from pointlessql.exceptions import ResourceNotFoundError
 from pointlessql.models.vector import VectorIndex
 from pointlessql.pql._parsing import parse_full_name
 from pointlessql.pql._vector import create_or_rebuild_index
+from pointlessql.services._executor import run_sync
 from pointlessql.services.soyuz_client import make_principal_client, make_soyuz_client
 
 logger = logging.getLogger(__name__)
@@ -82,7 +82,7 @@ async def api_vector_index_create(
     unreachable_msg = f"soyuz-catalog at {settings.soyuz.catalog_url} is unreachable."
 
     agent_run_id = effective_agent_run_id(request)
-    stats = await asyncio.to_thread(
+    stats = await run_sync(
         create_or_rebuild_index,
         client=client,
         table=body.table,
