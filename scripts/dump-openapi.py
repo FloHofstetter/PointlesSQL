@@ -23,7 +23,6 @@ from __future__ import annotations
 
 import json
 import pathlib
-import sys
 
 from pointlessql.api.main import app
 
@@ -32,6 +31,7 @@ OUTPUT_PATH = REPO_ROOT / "docs" / "reference" / "_generated" / "openapi.json"
 
 
 def main() -> int:
+    """Write the app's OpenAPI schema snapshot and return an exit code."""
     OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
     schema = app.openapi()
     OUTPUT_PATH.write_text(

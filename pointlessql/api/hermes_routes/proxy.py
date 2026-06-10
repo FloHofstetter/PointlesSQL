@@ -51,6 +51,10 @@ async def hermes_root_redirect() -> RedirectResponse:
 @router.api_route(
     "/hermes/{path:path}",
     methods=["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS", "HEAD"],
+    # Explicit because FastAPI's default unique-id picks an arbitrary
+    # member of the methods *set*, which made the generated OpenAPI
+    # snapshot flip between runs.
+    operation_id="hermes_proxy_hermes_path",
 )
 async def hermes_proxy(path: str, request: Request) -> Response:
     """Forward an admin request to the Hermes dashboard.
@@ -120,9 +124,7 @@ async def hermes_proxy(path: str, request: Request) -> Response:
             _logger.warning("Hermes proxy upstream error for %s: %s", path, exc)
             # bare-http-ok: 502 is the canonical proxy-upstream-failed
             # status; no domain-named exception exists for it.
-            raise HTTPException(
-                status_code=502, detail=f"Hermes upstream error: {exc}"
-            ) from exc
+            raise HTTPException(status_code=502, detail=f"Hermes upstream error: {exc}") from exc
 
     response_headers = {
         k: v for k, v in upstream.headers.items() if k.lower() not in _HOP_BY_HOP_RESPONSE

@@ -34,6 +34,10 @@ _PROXY_TIMEOUT_S = 60.0
 @router.api_route(
     "/{path:path}",
     methods=["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS", "HEAD"],
+    # Explicit because FastAPI's default unique-id picks an arbitrary
+    # member of the methods *set*, which made the generated OpenAPI
+    # snapshot flip between runs.
+    operation_id="dbt_proxy_dbt_docs_path",
 )
 async def dbt_proxy(path: str, request: Request) -> Response:
     """Forward an authenticated request to the dbt-docs subprocess.

@@ -44,6 +44,10 @@ _PROXY_TIMEOUT_S = 300.0  # 5 minutes; long enough for log_metric bursts
 @router.api_route(
     "/{path:path}",
     methods=["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS", "HEAD"],
+    # Explicit because FastAPI's default unique-id picks an arbitrary
+    # member of the methods *set*, which made the generated OpenAPI
+    # snapshot flip between runs.
+    operation_id="mlflow_proxy_mlflow_path",
 )
 async def mlflow_proxy(path: str, request: Request) -> Response:
     """Forward an authenticated request to the MLflow subprocess.

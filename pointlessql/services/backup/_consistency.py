@@ -98,6 +98,6 @@ def check_consistency(engine: Any) -> ConsistencyReport:
             try:
                 fn(conn, report)
                 report.checks_run.append(name)
-            except Exception as exc:  # noqa: BLE001 — one check must not abort the rest
+            except Exception as exc:  # noqa: BLE001  # bare-broad-ok: one check must not abort the rest
                 report.warnings.append(f"check {name!r} raised and was skipped: {exc}")
     return report

@@ -41,10 +41,11 @@ async def execute_write_with_provenance(
 ) -> Any:
     """Run a write *body* inside the audited agent-run provenance chain.
 
-    Enforces, in order: the tool's required scopes, the presence of an
-    agent run (no anonymous mutation), and an ``operation_context`` that
-    persists an ``AgentRunOperation`` row whether the body succeeds or
-    raises.
+    Enforces, in order: the tool's required scopes (``require_scopes``
+    raises :class:`ToolScopeError` for a missing scope), the presence
+    of an agent run (no anonymous mutation), and an
+    ``operation_context`` that persists an ``AgentRunOperation`` row
+    whether the body succeeds or raises.
 
     Args:
         ctx: The per-call session context (factory, workspace, uc client).
@@ -60,7 +61,6 @@ async def execute_write_with_provenance(
         Whatever *body* returns.
 
     Raises:
-        ToolScopeError: If the caller lacks a required scope.
         WriteProvenanceError: If *agent_run_id* / *op_name* is missing.
     """
     require_scopes(granted_scopes, spec.scope_required, tool_name=spec.name)
@@ -73,11 +73,11 @@ async def execute_write_with_provenance(
         raise WriteProvenanceError(f"write tool {spec.name!r} has no op_name to record under")
 
     from pointlessql.services.agent_runs import operation_context
-    from pointlessql.types import OpName
+    from pointlessql.types import OpName, RunId
 
     with operation_context(
         ctx.factory,
-        agent_run_id=agent_run_id,
+        agent_run_id=RunId(agent_run_id),
         op_name=OpName(spec.op_name),
         params=params,
         target_table=target_table,

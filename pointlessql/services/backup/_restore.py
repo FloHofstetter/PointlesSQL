@@ -26,10 +26,10 @@ from alembic.script import ScriptDirectory
 
 import pointlessql
 from pointlessql.services.backup._dump import (
-    _libpq_url,
-    _sqlite_path,
-    _table_rowcounts,
     dialect_of,
+    libpq_url,
+    sqlite_path,
+    table_rowcounts,
 )
 from pointlessql.services.backup._manifest import (
     BackupError,
@@ -95,7 +95,7 @@ def _restore_postgres(payload: bytes, target_url: str) -> None:
                     "--if-exists",
                     "--no-owner",
                     "--dbname",
-                    _libpq_url(target_url),
+                    libpq_url(target_url),
                     tmp_path,
                 ],
                 capture_output=True,
@@ -167,12 +167,12 @@ def restore_db(
             os.close(tmp_fd)
             effective_url = f"sqlite:///{tmp_path}"
         try:
-            _restore_sqlite(payload, _sqlite_path(effective_url))
+            _restore_sqlite(payload, sqlite_path(effective_url))
             report.alembic_revision_after = _upgrade_head(effective_url)
             _check_rowcounts(effective_url, manifest, report)
         finally:
             if dry_run:
-                Path(_sqlite_path(effective_url)).unlink(missing_ok=True)
+                Path(sqlite_path(effective_url)).unlink(missing_ok=True)
         report.target_url = effective_url
         return report
 
@@ -192,7 +192,7 @@ def restore_db(
 
 def _check_rowcounts(url: str, manifest: BackupManifest, report: RestoreReport) -> None:
     """Compare restored row counts against the manifest and record drift."""
-    restored = _table_rowcounts(url)
+    restored = table_rowcounts(url)
     for table, expected in manifest.rowcounts.items():
         actual = restored.get(table)
         if actual is None:

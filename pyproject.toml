@@ -198,6 +198,10 @@ pydocstyle.convention = "google"
 # follow the same docstring exemption — test packages don't need
 # Google-style module docstrings since they don't ship as a library.
 "e2e/**" = ["D"]
+# Seed scripts are operator tooling that provisions demo/e2e fixtures
+# by speaking the generated client directly — the same admin paths the
+# facade hides from the app, mirroring the tests/** exemption above.
+"scripts/seed-*.py" = ["TID251"]
 # Phase 31.1/31.3 — ``tests/conftest.py`` sets env vars and rebinds
 # the bcrypt hasher *before* importing the application, which trips
 # the "imports at top of file" / "import block sorting" rules even

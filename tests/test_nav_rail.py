@@ -103,7 +103,7 @@ HUB_SPOKES: list[tuple[str, list[str]]] = [
             "Mesh",
             "Ingest",
             "Views",
-            "Canvas",
+            "DataFrame Studio",
             "ML models",
             "MLflow",
             "Delta branches",

@@ -17,7 +17,7 @@ from __future__ import annotations
 import csv
 import io
 from collections import defaultdict
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from decimal import Decimal
 
@@ -56,7 +56,11 @@ class ChargebackRow:
     breakdown: dict[str, Decimal]
 
 
-def _pivot(records: Iterable[CostRecord], key, sub) -> list[ChargebackRow]:
+def _pivot(
+    records: Iterable[CostRecord],
+    key: Callable[[CostRecord], str],
+    sub: Callable[[CostRecord], str],
+) -> list[ChargebackRow]:
     """Roll *records* up by ``key(record)`` with a ``sub(record)`` breakdown."""
     totals: dict[str, Decimal] = defaultdict(lambda: Decimal(0))
     counts: dict[str, int] = defaultdict(int)

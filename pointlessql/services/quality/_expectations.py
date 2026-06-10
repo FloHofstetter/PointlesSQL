@@ -55,7 +55,7 @@ def assert_uniqueness(spec: dict[str, Any], table: pa.Table) -> AssertionVerdict
     if err is not None:
         return err
     col = table[column].drop_null()
-    distinct = int(pc.count_distinct(col).as_py() or 0)
+    distinct = int(pc.count_distinct(col).as_py() or 0)  # type: ignore[attr-defined]
     total = int(len(col))
     duplicates = total - distinct
     status = "pass" if duplicates == 0 else "fail"
@@ -134,17 +134,17 @@ def assert_cross_column(spec: dict[str, Any], table: pa.Table) -> AssertionVerdi
         if err is not None:
             return err
     ops = {
-        "<=": pc.less_equal,
-        "<": pc.less,
-        ">=": pc.greater_equal,
-        ">": pc.greater,
-        "==": pc.equal,
-        "!=": pc.not_equal,
+        "<=": pc.less_equal,  # type: ignore[attr-defined]
+        "<": pc.less,  # type: ignore[attr-defined]
+        ">=": pc.greater_equal,  # type: ignore[attr-defined]
+        ">": pc.greater,  # type: ignore[attr-defined]
+        "==": pc.equal,  # type: ignore[attr-defined]
+        "!=": pc.not_equal,  # type: ignore[attr-defined]
     }
     if op not in ops:
         return AssertionVerdict(status="error", observation={"reason": f"unknown op '{op}'"})
     mask = ops[op](table[left], table[right])
-    holds = int(pc.sum(pc.cast(mask, pa.int64())).as_py() or 0)
+    holds = int(pc.sum(pc.cast(mask, pa.int64())).as_py() or 0)  # type: ignore[attr-defined]
     total = int(table.num_rows)
     breaches = total - holds
     status = "pass" if breaches == 0 else "fail"

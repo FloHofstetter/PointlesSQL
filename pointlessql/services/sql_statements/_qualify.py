@@ -32,9 +32,10 @@ def qualify_sql(
       ``default_catalog.default_schema.table`` when both defaults
       are set; otherwise pass through.
 
-    A SQL parse error in this stage propagates as
-    :class:`sqlglot.errors.ParseError` so the caller can map it to
-    DBX ``SQL_PARSE_ERROR``.
+    A SQL parse error in this stage propagates as sqlglot's own
+    :class:`sqlglot.errors.ParseError` (raised inside ``parse_one``,
+    not by this function) so the caller can map it to the DBX
+    ``SQL_PARSE_ERROR`` envelope.
 
     Args:
         sql: Raw user SQL.
@@ -46,12 +47,7 @@ def qualify_sql(
         refs need qualification, the result is round-tripped through
         sqlglot and may differ cosmetically (whitespace, quoting)
         from the input.
-
-    Raises:
-        ParseError: sqlglot's own ``sqlglot.errors.ParseError`` when
-            *sql* cannot be parsed; callers map it to the DBX
-            ``SQL_PARSE_ERROR`` envelope.
-    """  # noqa: DOC502  — sqlglot raises the error inside parse_one
+    """
     if not default_catalog and not default_schema:
         return sql
     # Parse with DuckDB dialect to match the downstream engine; the

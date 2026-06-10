@@ -59,17 +59,24 @@ defined in ``scripts/clusters.json``. -->
 def run_cliff(commit_range: str) -> str:
     """Invoke git-cliff for the given range and return the body output."""
     cmd = [
-        "uvx", "--from", "git-cliff", "git-cliff",
+        "uvx",
+        "--from",
+        "git-cliff",
+        "git-cliff",
         commit_range,
-        "--config", str(CLIFF_CONFIG),
-        "--strip", "header",
+        "--config",
+        str(CLIFF_CONFIG),
+        "--strip",
+        "header",
         # Suppress per-tag sub-sectioning inside a cluster range.  The
         # repo carries v0.1.0rc1/rc2/rc3 tags from the Sprint 39 release
         # engineering trial; without --ignore-tags those would split
         # Cluster 02's body into 3 extra `## [vX]` sub-headings on top
         # of the cluster heading the wrapper injects.
-        "--ignore-tags", "v.*",
-        "--output", "-",
+        "--ignore-tags",
+        "v.*",
+        "--output",
+        "-",
     ]
     result = subprocess.run(cmd, capture_output=True, text=True, cwd=REPO_ROOT)
     if result.returncode != 0:
@@ -88,10 +95,7 @@ def wrap_cluster(cluster: dict, prev_to: str | None) -> str:
     range_arg = f"{prev_to}..{cluster['to_commit']}" if prev_to else cluster["to_commit"]
     body = run_cliff(range_arg)
     # Replace cliff's '## [Unreleased]' marker with our cluster heading.
-    heading = (
-        f"## [Cluster {cluster['id']} — {cluster['name']}] "
-        f"- {cluster['closed']}"
-    )
+    heading = f"## [Cluster {cluster['id']} — {cluster['name']}] - {cluster['closed']}"
     body = re.sub(r"^## \[Unreleased\]", heading, body, count=1, flags=re.MULTILINE)
     synopsis = f"> {cluster['synopsis']}\n\n"
     # Insert synopsis after the heading line.
@@ -104,7 +108,10 @@ def commit_timestamp(commit: str) -> int:
     """Return committer-date Unix timestamp of *commit*."""
     out = subprocess.run(
         ["git", "log", "-1", "--format=%ct", commit],
-        capture_output=True, text=True, cwd=REPO_ROOT, check=True,
+        capture_output=True,
+        text=True,
+        cwd=REPO_ROOT,
+        check=True,
     )
     return int(out.stdout.strip())
 
@@ -133,6 +140,7 @@ def compute_from(cluster: dict, all_clusters: list[dict]) -> str | None:
 
 
 def main() -> int:
+    """Regenerate CHANGELOG.md from the cluster index and return an exit code."""
     clusters = json.loads(CLUSTERS_PATH.read_text())
     parts = [HEADER]
     # Output newest-first (ADR-0009 D1 + Keep-a-Changelog convention).
@@ -147,8 +155,7 @@ def main() -> int:
         prev_to = compute_from(cluster, clusters)
         parts.append(wrap_cluster(cluster, prev_to))
     CHANGELOG_PATH.write_text("".join(parts))
-    print(f"Wrote {CHANGELOG_PATH} ({len(''.join(parts))} bytes, "
-          f"{len(clusters)} cluster sections)")
+    print(f"Wrote {CHANGELOG_PATH} ({len(''.join(parts))} bytes, {len(clusters)} cluster sections)")
     return 0
 
 

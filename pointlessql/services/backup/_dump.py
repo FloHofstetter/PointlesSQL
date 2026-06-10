@@ -28,7 +28,13 @@ logger = logging.getLogger(__name__)
 
 
 def dialect_of(url: str) -> str:
-    """Return ``"sqlite"`` or ``"postgresql"`` for a SQLAlchemy URL.
+    """Classify a SQLAlchemy URL as a supported backup dialect.
+
+    Args:
+        url: The SQLAlchemy database URL to classify.
+
+    Returns:
+        ``"sqlite"`` or ``"postgresql"``.
 
     Raises:
         BackupError: For any other (unsupported) backend.
@@ -40,7 +46,7 @@ def dialect_of(url: str) -> str:
     raise BackupError(f"unsupported backend for backup: {url.split(':', 1)[0]}")
 
 
-def _sqlite_path(url: str) -> str:
+def sqlite_path(url: str) -> str:
     """Extract the on-disk path from a ``sqlite:///path`` URL."""
     path = url.split("///", 1)[-1]
     if not path or path == ":memory:":
@@ -48,7 +54,7 @@ def _sqlite_path(url: str) -> str:
     return path
 
 
-def _libpq_url(url: str) -> str:
+def libpq_url(url: str) -> str:
     """Strip the SQLAlchemy driver suffix so ``pg_dump`` accepts the URL."""
     # postgresql+psycopg://… -> postgresql://…
     if "+" in url.split("://", 1)[0]:
@@ -59,7 +65,7 @@ def _libpq_url(url: str) -> str:
 
 def _dump_sqlite(url: str) -> bytes:
     """Return a consistent SQLite snapshot via the online backup API."""
-    src_path = _sqlite_path(url)
+    src_path = sqlite_path(url)
     tmp_fd, tmp_path = tempfile.mkstemp(suffix=".db")
     os.close(tmp_fd)
     try:
@@ -82,7 +88,7 @@ def _dump_postgres(url: str) -> bytes:
     """Return a ``pg_dump`` custom-format archive of the database."""
     try:
         result = subprocess.run(
-            ["pg_dump", "--format=custom", "--no-owner", "--no-privileges", _libpq_url(url)],
+            ["pg_dump", "--format=custom", "--no-owner", "--no-privileges", libpq_url(url)],
             capture_output=True,
             check=True,
         )
@@ -93,7 +99,7 @@ def _dump_postgres(url: str) -> bytes:
     return result.stdout
 
 
-def _table_rowcounts(url: str) -> dict[str, int]:
+def table_rowcounts(url: str) -> dict[str, int]:
     """Return a ``{table: count}`` map for every table in the DB."""
     engine = create_engine(url)
     counts: dict[str, int] = {}
@@ -115,7 +121,7 @@ def _current_revision(url: str) -> str | None:
         with engine.connect() as conn:
             try:
                 row = conn.execute(text("SELECT version_num FROM alembic_version")).scalar()
-            except Exception:  # noqa: BLE001 — table may not exist on a fresh DB
+            except Exception:  # noqa: BLE001  # bare-broad-ok: table may not exist on a fresh DB
                 return None
             return None if row is None else str(row)
     finally:
@@ -136,7 +142,7 @@ def dump_db(url: str, *, dumped_at: str) -> tuple[bytes, BackupManifest]:
     """
     dialect = dialect_of(url)
     payload = _dump_sqlite(url) if dialect == "sqlite" else _dump_postgres(url)
-    rowcounts = _table_rowcounts(url)
+    rowcounts = table_rowcounts(url)
     revision = _current_revision(url)
     manifest = build_manifest(
         dialect=dialect,

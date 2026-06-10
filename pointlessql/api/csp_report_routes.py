@@ -38,7 +38,7 @@ async def collect_csp_report(request: Request) -> Response:
     """
     try:
         payload: Any = await request.json()
-    except Exception:  # noqa: BLE001 — a malformed report must not 500
+    except Exception:  # noqa: BLE001  # bare-broad-ok: malformed report must not 500
         payload = None
     report = None
     if isinstance(payload, dict):

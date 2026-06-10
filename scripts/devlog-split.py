@@ -101,11 +101,11 @@ def write_cluster_files(
         sections = sections_by_cluster.get(c["id"], [])
         frontmatter = (
             "---\n"
-            f"title: \"Cluster {c['id']} — {c['name']} (dev-log)\"\n"
+            f'title: "Cluster {c["id"]} — {c["name"]} (dev-log)"\n'
             "audience: contributor\n"
-            f"cluster_id: \"{c['id']}\"\n"
-            f"phases: \"{c['phases']}\"\n"
-            f"closed: \"{c['closed']}\"\n"
+            f'cluster_id: "{c["id"]}"\n'
+            f'phases: "{c["phases"]}"\n'
+            f'closed: "{c["closed"]}"\n'
             "---\n\n"
         )
         intro = (
@@ -119,15 +119,20 @@ def write_cluster_files(
             "section provides.\n\n"
             "---\n\n"
         )
-        body = "\n".join(sections) if sections else (
-            "_No sections from the pre-W3 CHANGELOG mapped to this "
-            "cluster.  Earlier history is captured in the "
-            "auto-generated CHANGELOG section instead._\n"
+        body = (
+            "\n".join(sections)
+            if sections
+            else (
+                "_No sections from the pre-W3 CHANGELOG mapped to this "
+                "cluster.  Earlier history is captured in the "
+                "auto-generated CHANGELOG section instead._\n"
+            )
         )
         cluster_filename(c).write_text(frontmatter + intro + body)
 
 
 def main() -> int:
+    """Split the devlog backup into per-cluster pages and return an exit code."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--source",
@@ -162,15 +167,12 @@ def main() -> int:
         cluster_id = phase_to_cluster.get(current_phase)
         if cluster_id is None:
             sys.stderr.write(
-                f"warn: Phase {current_phase} not mapped to any "
-                f"cluster — skipping section\n"
+                f"warn: Phase {current_phase} not mapped to any cluster — skipping section\n"
             )
             current_section = []
             current_phase = None
             return
-        breadcrumb = (
-            f"> from CHANGELOG.md (bucket: **{current_bucket}**)\n\n"
-        )
+        breadcrumb = f"> from CHANGELOG.md (bucket: **{current_bucket}**)\n\n"
         body = "\n".join(current_section).rstrip() + "\n"
         sections_by_cluster[cluster_id].append(breadcrumb + body)
         current_section = []
@@ -181,7 +183,7 @@ def main() -> int:
         if skip_until_first_section:
             if MODERN_BULLET_RE.match(line) or OLDER_HEADING_RE.match(line):
                 skip_until_first_section = False
-            elif (m := BUCKET_RE.match(line)):
+            elif m := BUCKET_RE.match(line):
                 current_bucket = m.group(1)
                 continue
             else:
