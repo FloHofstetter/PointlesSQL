@@ -37,9 +37,7 @@ def test_add_relation_rejects_unknown_kind() -> None:
     a = _seed_term("x1")
     b = _seed_term("x2")
     with pytest.raises(ValueError):
-        glossary_service.add_relation(
-            _factory(), source_term_id=a, target_term_id=b, kind="bogus"
-        )
+        glossary_service.add_relation(_factory(), source_term_id=a, target_term_id=b, kind="bogus")
 
 
 def test_add_relation_rejects_self_link() -> None:
@@ -65,9 +63,7 @@ def test_add_relation_is_idempotent() -> None:
 def test_list_relations_direction_outgoing() -> None:
     a = _seed_term("dir-a")
     b = _seed_term("dir-b")
-    glossary_service.add_relation(
-        _factory(), source_term_id=a, target_term_id=b, kind="related"
-    )
+    glossary_service.add_relation(_factory(), source_term_id=a, target_term_id=b, kind="related")
     outgoing = glossary_service.list_relations(_factory(), term_id=a, direction="outgoing")
     incoming = glossary_service.list_relations(_factory(), term_id=a, direction="incoming")
     assert len(outgoing) == 1
@@ -96,12 +92,8 @@ def test_term_graph_walks_neighbours_at_depth_one() -> None:
     a = _seed_term("graph-a")
     b = _seed_term("graph-b")
     c = _seed_term("graph-c")
-    glossary_service.add_relation(
-        _factory(), source_term_id=a, target_term_id=b, kind="parent"
-    )
-    glossary_service.add_relation(
-        _factory(), source_term_id=b, target_term_id=c, kind="parent"
-    )
+    glossary_service.add_relation(_factory(), source_term_id=a, target_term_id=b, kind="parent")
+    glossary_service.add_relation(_factory(), source_term_id=b, target_term_id=c, kind="parent")
     graph = glossary_service.term_graph(_factory(), root_term_id=a, depth=1)
     node_ids = {n["id"] for n in graph["nodes"]}
     assert a in node_ids
@@ -113,12 +105,8 @@ def test_term_graph_walks_to_depth_two() -> None:
     a = _seed_term("graph2-a")
     b = _seed_term("graph2-b")
     c = _seed_term("graph2-c")
-    glossary_service.add_relation(
-        _factory(), source_term_id=a, target_term_id=b, kind="parent"
-    )
-    glossary_service.add_relation(
-        _factory(), source_term_id=b, target_term_id=c, kind="parent"
-    )
+    glossary_service.add_relation(_factory(), source_term_id=a, target_term_id=b, kind="parent")
+    glossary_service.add_relation(_factory(), source_term_id=b, target_term_id=c, kind="parent")
     graph = glossary_service.term_graph(_factory(), root_term_id=a, depth=2)
     node_ids = {n["id"] for n in graph["nodes"]}
     assert {a, b, c} <= node_ids

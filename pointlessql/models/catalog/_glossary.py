@@ -39,7 +39,11 @@ from sqlalchemy.orm import Mapped, mapped_column
 from pointlessql.models.base import Base
 
 GLOSSARY_TERM_RELATION_KINDS: tuple[str, ...] = (
-    "parent", "child", "synonym", "related", "antonym",
+    "parent",
+    "child",
+    "synonym",
+    "related",
+    "antonym",
 )
 
 
@@ -158,7 +162,9 @@ class GlossaryTermRelation(Base):
 
     __table_args__ = (
         UniqueConstraint(
-            "source_term_id", "target_term_id", "kind",
+            "source_term_id",
+            "target_term_id",
+            "kind",
             name="uq_glossary_term_relations_identity",
         ),
         CheckConstraint(
@@ -184,6 +190,4 @@ class GlossaryTermRelation(Base):
     created_by_user_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("users.id"), nullable=True
     )
-    created_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)

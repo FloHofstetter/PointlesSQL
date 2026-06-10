@@ -24,16 +24,18 @@ def test_warn_mode_collects_violations_without_raising() -> None:
 
 
 def test_warn_mode_accepts_iso8601_variants() -> None:
-    df = pd.DataFrame({
-        "created_at": [
-            "2026-05-30",
-            "2026-05-30T12:00:00",
-            "2026-05-30T12:00:00Z",
-            "2026-05-30T12:00:00.123456",
-            "2026-05-30T12:00:00+02:00",
-            "2026-05-30 12:00:00",
-        ]
-    })
+    df = pd.DataFrame(
+        {
+            "created_at": [
+                "2026-05-30",
+                "2026-05-30T12:00:00",
+                "2026-05-30T12:00:00Z",
+                "2026-05-30T12:00:00.123456",
+                "2026-05-30T12:00:00+02:00",
+                "2026-05-30 12:00:00",
+            ]
+        }
+    )
     assert validate_timestamps(df, mode="warn") == []
 
 
@@ -56,9 +58,11 @@ def test_non_timestamp_columns_are_skipped() -> None:
 
 
 def test_datetime_typed_columns_are_accepted() -> None:
-    df = pd.DataFrame({
-        "created_at": pd.to_datetime(["2026-05-30", "2026-05-31"]),
-    })
+    df = pd.DataFrame(
+        {
+            "created_at": pd.to_datetime(["2026-05-30", "2026-05-31"]),
+        }
+    )
     assert validate_timestamps(df, mode="strict") == []
 
 

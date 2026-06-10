@@ -19,6 +19,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["volumes"])
 
+
 @router.get("/api/volumes/{full_name:path}/files")
 async def api_browse_volume(
     request: Request,

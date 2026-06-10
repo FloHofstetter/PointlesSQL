@@ -26,7 +26,7 @@ def _factory():
     return app.state.session_factory
 
 
-_SRC = 'permit(principal, action, resource);'
+_SRC = "permit(principal, action, resource);"
 
 
 # --- create validation ----------------------------------------------------

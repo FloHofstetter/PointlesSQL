@@ -102,9 +102,9 @@ def test_list_entities_orders_by_name() -> None:
             source_table=name.lower(),
             primary_key_columns=["id"],
         )
-    names = [e["entity_name"] for e in entities_service.list_entities(
-        _factory(), data_product_id=dp
-    )]
+    names = [
+        e["entity_name"] for e in entities_service.list_entities(_factory(), data_product_id=dp)
+    ]
     assert names == sorted(names)
 
 
@@ -112,12 +112,18 @@ def test_link_entities_same_as_creates_bidirectional_cluster() -> None:
     dp_a = _seed_dp("e3e", "src")
     dp_b = _seed_dp("e3f", "tgt")
     ent_a = entities_service.declare_entity(
-        _factory(), data_product_id=dp_a,
-        entity_name="Customer", source_table="t", primary_key_columns=["id"],
+        _factory(),
+        data_product_id=dp_a,
+        entity_name="Customer",
+        source_table="t",
+        primary_key_columns=["id"],
     )
     ent_b = entities_service.declare_entity(
-        _factory(), data_product_id=dp_b,
-        entity_name="Customer", source_table="t", primary_key_columns=["id"],
+        _factory(),
+        data_product_id=dp_b,
+        entity_name="Customer",
+        source_table="t",
+        primary_key_columns=["id"],
     )
     link = entities_service.link_entities(
         _factory(),
@@ -126,9 +132,7 @@ def test_link_entities_same_as_creates_bidirectional_cluster() -> None:
         kind="same_as",
     )
     assert link["kind"] == "same_as"
-    identity = entities_service.resolve_same_as_graph(
-        _factory(), entity_id=ent_a["id"]
-    )
+    identity = entities_service.resolve_same_as_graph(_factory(), entity_id=ent_a["id"])
     member_ids = {m["id"] for m in identity.members}
     assert member_ids == {ent_a["id"], ent_b["id"]}
     assert identity.canonical_entity_id == min(ent_a["id"], ent_b["id"])
@@ -137,12 +141,18 @@ def test_link_entities_same_as_creates_bidirectional_cluster() -> None:
 def test_link_entities_rejects_unknown_kind() -> None:
     dp = _seed_dp("e3g", "x")
     a = entities_service.declare_entity(
-        _factory(), data_product_id=dp,
-        entity_name="A", source_table="t", primary_key_columns=["id"],
+        _factory(),
+        data_product_id=dp,
+        entity_name="A",
+        source_table="t",
+        primary_key_columns=["id"],
     )
     b = entities_service.declare_entity(
-        _factory(), data_product_id=dp,
-        entity_name="B", source_table="t", primary_key_columns=["id"],
+        _factory(),
+        data_product_id=dp,
+        entity_name="B",
+        source_table="t",
+        primary_key_columns=["id"],
     )
     with pytest.raises(ValueError):
         entities_service.link_entities(
@@ -156,8 +166,11 @@ def test_link_entities_rejects_unknown_kind() -> None:
 def test_link_entities_rejects_self_link() -> None:
     dp = _seed_dp("e3h", "x")
     ent = entities_service.declare_entity(
-        _factory(), data_product_id=dp,
-        entity_name="X", source_table="t", primary_key_columns=["id"],
+        _factory(),
+        data_product_id=dp,
+        entity_name="X",
+        source_table="t",
+        primary_key_columns=["id"],
     )
     with pytest.raises(ValueError):
         entities_service.link_entities(
@@ -171,20 +184,30 @@ def test_link_entities_rejects_self_link() -> None:
 def test_link_is_idempotent_on_identity() -> None:
     dp = _seed_dp("e3i", "x")
     a = entities_service.declare_entity(
-        _factory(), data_product_id=dp,
-        entity_name="A", source_table="t", primary_key_columns=["id"],
+        _factory(),
+        data_product_id=dp,
+        entity_name="A",
+        source_table="t",
+        primary_key_columns=["id"],
     )
     b = entities_service.declare_entity(
-        _factory(), data_product_id=dp,
-        entity_name="B", source_table="t", primary_key_columns=["id"],
+        _factory(),
+        data_product_id=dp,
+        entity_name="B",
+        source_table="t",
+        primary_key_columns=["id"],
     )
     first = entities_service.link_entities(
         _factory(),
-        source_entity_id=a["id"], target_entity_id=b["id"], kind="related_to",
+        source_entity_id=a["id"],
+        target_entity_id=b["id"],
+        kind="related_to",
     )
     second = entities_service.link_entities(
         _factory(),
-        source_entity_id=a["id"], target_entity_id=b["id"], kind="related_to",
+        source_entity_id=a["id"],
+        target_entity_id=b["id"],
+        kind="related_to",
     )
     assert first["id"] == second["id"]
 
@@ -193,22 +216,27 @@ def test_resolve_same_as_walks_transitive() -> None:
     dps = [_seed_dp(f"e3j{i}", f"s{i}") for i in range(3)]
     ents = [
         entities_service.declare_entity(
-            _factory(), data_product_id=dp,
-            entity_name="Customer", source_table="t", primary_key_columns=["id"],
+            _factory(),
+            data_product_id=dp,
+            entity_name="Customer",
+            source_table="t",
+            primary_key_columns=["id"],
         )
         for dp in dps
     ]
     entities_service.link_entities(
         _factory(),
-        source_entity_id=ents[0]["id"], target_entity_id=ents[1]["id"], kind="same_as",
+        source_entity_id=ents[0]["id"],
+        target_entity_id=ents[1]["id"],
+        kind="same_as",
     )
     entities_service.link_entities(
         _factory(),
-        source_entity_id=ents[1]["id"], target_entity_id=ents[2]["id"], kind="same_as",
+        source_entity_id=ents[1]["id"],
+        target_entity_id=ents[2]["id"],
+        kind="same_as",
     )
-    identity = entities_service.resolve_same_as_graph(
-        _factory(), entity_id=ents[2]["id"]
-    )
+    identity = entities_service.resolve_same_as_graph(_factory(), entity_id=ents[2]["id"])
     member_ids = {m["id"] for m in identity.members}
     assert member_ids == {e["id"] for e in ents}
 
@@ -216,28 +244,37 @@ def test_resolve_same_as_walks_transitive() -> None:
 def test_resolve_does_not_cross_non_same_as_links() -> None:
     dp = _seed_dp("e3k", "x")
     a = entities_service.declare_entity(
-        _factory(), data_product_id=dp,
-        entity_name="A", source_table="t", primary_key_columns=["id"],
+        _factory(),
+        data_product_id=dp,
+        entity_name="A",
+        source_table="t",
+        primary_key_columns=["id"],
     )
     b = entities_service.declare_entity(
-        _factory(), data_product_id=dp,
-        entity_name="B", source_table="t", primary_key_columns=["id"],
+        _factory(),
+        data_product_id=dp,
+        entity_name="B",
+        source_table="t",
+        primary_key_columns=["id"],
     )
     entities_service.link_entities(
         _factory(),
-        source_entity_id=a["id"], target_entity_id=b["id"], kind="related_to",
+        source_entity_id=a["id"],
+        target_entity_id=b["id"],
+        kind="related_to",
     )
-    identity = entities_service.resolve_same_as_graph(
-        _factory(), entity_id=a["id"]
-    )
+    identity = entities_service.resolve_same_as_graph(_factory(), entity_id=a["id"])
     assert {m["id"] for m in identity.members} == {a["id"]}
 
 
 def test_resolve_by_pk_returns_cluster_for_known_product() -> None:
     dp = _seed_dp("e3l", "customers")
     ent = entities_service.declare_entity(
-        _factory(), data_product_id=dp,
-        entity_name="Customer", source_table="t", primary_key_columns=["id"],
+        _factory(),
+        data_product_id=dp,
+        entity_name="Customer",
+        source_table="t",
+        primary_key_columns=["id"],
     )
     identity = entities_service.resolve_entity_by_pk(
         _factory(), catalog="e3l", schema="customers", entity_name="Customer"
@@ -257,16 +294,24 @@ def test_resolve_by_pk_returns_none_for_unknown_entity() -> None:
 def test_unlink_removes_link() -> None:
     dp = _seed_dp("e3n", "x")
     a = entities_service.declare_entity(
-        _factory(), data_product_id=dp,
-        entity_name="A", source_table="t", primary_key_columns=["id"],
+        _factory(),
+        data_product_id=dp,
+        entity_name="A",
+        source_table="t",
+        primary_key_columns=["id"],
     )
     b = entities_service.declare_entity(
-        _factory(), data_product_id=dp,
-        entity_name="B", source_table="t", primary_key_columns=["id"],
+        _factory(),
+        data_product_id=dp,
+        entity_name="B",
+        source_table="t",
+        primary_key_columns=["id"],
     )
     link = entities_service.link_entities(
         _factory(),
-        source_entity_id=a["id"], target_entity_id=b["id"], kind="related_to",
+        source_entity_id=a["id"],
+        target_entity_id=b["id"],
+        kind="related_to",
     )
     assert entities_service.unlink_entities(_factory(), link_id=link["id"]) is True
     assert entities_service.unlink_entities(_factory(), link_id=link["id"]) is False

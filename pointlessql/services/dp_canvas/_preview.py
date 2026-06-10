@@ -112,15 +112,11 @@ def _primary_output_pin(node: CanvasNode) -> str | None:
     return spec.output_pins[0][0]
 
 
-def _build_preview_doc(
-    doc: CanvasDoc, upto_node: CanvasNode, pin_name: str
-) -> CanvasDoc:
+def _build_preview_doc(doc: CanvasDoc, upto_node: CanvasNode, pin_name: str) -> CanvasDoc:
     """Return a new doc keeping only upstream-of-*upto_node* plus a synthetic sink."""
     keep = _collect_ancestors(doc, upto_node.id)
     kept_nodes = [n for n in doc.nodes if n.id in keep]
-    kept_edges = [
-        e for e in doc.edges if e.source_node_id in keep and e.target_node_id in keep
-    ]
+    kept_edges = [e for e in doc.edges if e.source_node_id in keep and e.target_node_id in keep]
     sink = CanvasNode(
         id=_PREVIEW_SINK_ID,
         block_type="OutputPort",
@@ -197,18 +193,12 @@ def preview_until(
     """
     target = next((n for n in doc.nodes if n.id == upto_node_id), None)
     if target is None:
-        raise ResourceNotFoundError(
-            f"preview node {upto_node_id!r} not found in canvas"
-        )
+        raise ResourceNotFoundError(f"preview node {upto_node_id!r} not found in canvas")
     if target.block_type == "OutputPort":
-        raise ValidationError(
-            "preview is read-only; the OutputPort block is materialise-only"
-        )
+        raise ValidationError("preview is read-only; the OutputPort block is materialise-only")
     pin = _primary_output_pin(target)
     if pin is None:
-        raise ValidationError(
-            f"preview node {upto_node_id!r} has no output pin to preview"
-        )
+        raise ValidationError(f"preview node {upto_node_id!r} has no output pin to preview")
 
     safe_limit = max(1, min(int(limit or 100), _MAX_PREVIEW_LIMIT))
 
@@ -243,9 +233,7 @@ def preview_until(
                         kind="bad_config",
                         node_id=None,
                         pin=None,
-                        message=(
-                            f"preview cannot resolve Delta location for table {fqn!r}"
-                        ),
+                        message=(f"preview cannot resolve Delta location for table {fqn!r}"),
                     )
                 ],
             )

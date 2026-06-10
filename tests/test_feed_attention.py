@@ -174,12 +174,8 @@ async def test_legacy_null_attention_falls_back(admin_client: httpx.AsyncClient)
     bucketed sensibly.
     """
     admin_id = _user_id("test@test.com")
-    _insert_notification(
-        admin_id, event_type="pointlessql.data_product.mentioned", attention=None
-    )
-    _insert_notification(
-        admin_id, event_type="pointlessql.data_product.commented", attention=None
-    )
+    _insert_notification(admin_id, event_type="pointlessql.data_product.mentioned", attention=None)
+    _insert_notification(admin_id, event_type="pointlessql.data_product.commented", attention=None)
     res = await admin_client.get("/api/feed")
     assert res.status_code == 200, res.text
     by_event = {r["event_type"]: r["attention"] for r in res.json()["rows"]}

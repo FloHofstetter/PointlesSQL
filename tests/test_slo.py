@@ -301,9 +301,7 @@ async def test_discovery_carries_slos_additional() -> None:
         "slo_disco",
         tables=[{"name": "t", "columns": [{"name": "id", "type": "integer"}]}],
     )
-    slo_service.declare_slo(
-        _factory(), data_product_id=dp_id, slo_kind="volume", target_value=10.0
-    )
+    slo_service.declare_slo(_factory(), data_product_id=dp_id, slo_kind="volume", target_value=10.0)
     async with httpx.AsyncClient(
         transport=httpx.ASGITransport(app=app),
         base_url="http://test",

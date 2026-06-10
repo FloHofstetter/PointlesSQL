@@ -80,9 +80,7 @@ class OutputPortSchemaVersion(Base):
     schema_json: Mapped[str] = mapped_column(Text(), nullable=False)
     change_kind: Mapped[str] = mapped_column(String(8), nullable=False)
     change_summary: Mapped[str | None] = mapped_column(Text(), nullable=True)
-    bumped_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
+    bumped_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     bumped_by_user_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("users.id"), nullable=True
     )

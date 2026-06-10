@@ -81,6 +81,8 @@ def _parse_row_dt(value: object) -> datetime.datetime | None:
     if parsed.tzinfo is None:
         parsed = parsed.replace(tzinfo=datetime.UTC)
     return parsed
+
+
 # Entity kinds whose ``entity_ref`` is an internal id with no standalone
 # display value — excluded from the Trending rail.
 _TRENDING_SKIP_KINDS = frozenset({"user", "review", "badge"})

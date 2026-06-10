@@ -20,6 +20,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["volumes"])
 
+
 @router.get("/volumes", response_class=HTMLResponse)
 async def volumes_page(request: Request) -> HTMLResponse:
     """Render the volumes list page.

@@ -114,9 +114,7 @@ def list_canvas_versions(dp_id: int, request: Request) -> CanvasVersionsResponse
 
 
 @router.get("/{dp_id}/canvas/versions/{version}", response_model=CanvasLoadVersionResponse)
-def load_canvas_version(
-    dp_id: int, version: int, request: Request
-) -> CanvasLoadVersionResponse:
+def load_canvas_version(dp_id: int, version: int, request: Request) -> CanvasLoadVersionResponse:
     """Return the canvas document for a specific stored version."""
     require_user(request)
     load_dp(request, dp_id)

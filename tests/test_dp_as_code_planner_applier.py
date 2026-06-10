@@ -86,9 +86,7 @@ def test_apply_creates_product_and_subentities() -> None:
             "catalog": "dpac",
             "schema": "apply_add",
             "output_ports": [{"name": "sql", "kind": "sql"}],
-            "slos": [
-                {"kind": "freshness", "target_value": 60.0, "comparator": "lte"}
-            ],
+            "slos": [{"kind": "freshness", "target_value": 60.0, "comparator": "lte"}],
         }
     )
     plan = plan_spec(_factory(), spec=spec)
@@ -129,9 +127,7 @@ def test_apply_is_idempotent_on_repeat() -> None:
             "schema": "idempotent",
             "output_ports": [{"name": "sql", "kind": "sql"}],
             "input_ports": [{"name": "iot", "kind": "operational_system"}],
-            "slos": [
-                {"kind": "freshness", "target_value": 30.0, "comparator": "lte"}
-            ],
+            "slos": [{"kind": "freshness", "target_value": 30.0, "comparator": "lte"}],
         }
     )
     plan_one = plan_spec(_factory(), spec=spec)
@@ -188,9 +184,7 @@ def test_modification_op_emitted_when_field_diverges() -> None:
             "name": "Customers",
             "catalog": "dpac",
             "schema": "mod",
-            "output_ports": [
-                {"name": "sql", "kind": "sql", "description": "new note"}
-            ],
+            "output_ports": [{"name": "sql", "kind": "sql", "description": "new note"}],
         }
     )
     plan = plan_spec(_factory(), spec=spec_v2)
@@ -204,9 +198,7 @@ def test_export_round_trip_yields_noop_plan() -> None:
             "catalog": "dpac",
             "schema": "round_trip",
             "output_ports": [{"name": "sql", "kind": "sql"}],
-            "slos": [
-                {"kind": "completeness", "target_value": 0.95, "comparator": "gte"}
-            ],
+            "slos": [{"kind": "completeness", "target_value": 0.95, "comparator": "gte"}],
             "entities": [
                 {
                     "name": "Customer",
@@ -217,9 +209,7 @@ def test_export_round_trip_yields_noop_plan() -> None:
         }
     )
     apply_plan(_factory(), spec=spec, plan=plan_spec(_factory(), spec=spec))
-    exported = export_data_product(
-        _factory(), catalog="dpac", schema="round_trip"
-    )
+    exported = export_data_product(_factory(), catalog="dpac", schema="round_trip")
     plan = plan_spec(_factory(), spec=exported)
     assert plan.is_noop() is True
 
@@ -256,8 +246,6 @@ def test_export_emits_policies_when_present() -> None:
         }
     )
     apply_plan(_factory(), spec=spec, plan=plan_spec(_factory(), spec=spec))
-    exported = export_data_product(
-        _factory(), catalog="dpac", schema="export_policy"
-    )
+    exported = export_data_product(_factory(), catalog="dpac", schema="export_policy")
     assert exported.policies is not None
     assert exported.policies.retention_days == 90

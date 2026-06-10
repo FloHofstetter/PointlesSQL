@@ -99,9 +99,7 @@ def test_resolve_connect_error_raises_unavailable(
 # --- read_table_at_version -----------------------------------------------
 
 
-def test_read_at_version_returns_frame(
-    monkeypatch: pytest.MonkeyPatch, fake_delta: None
-) -> None:
+def test_read_at_version_returns_frame(monkeypatch: pytest.MonkeyPatch, fake_delta: None) -> None:
     _patch_get_table(monkeypatch, TableInfo(storage_location="file:///tmp/t"))
     df = _time_travel.read_table_at_version(
         client=object(), full_name="c.s.t", version=2, unreachable_msg=_UNREACHABLE
@@ -137,9 +135,7 @@ def test_read_at_timestamp_rejects_naive_datetime() -> None:
         )
 
 
-def test_read_at_timestamp_returns_frame(
-    monkeypatch: pytest.MonkeyPatch, fake_delta: None
-) -> None:
+def test_read_at_timestamp_returns_frame(monkeypatch: pytest.MonkeyPatch, fake_delta: None) -> None:
     _patch_get_table(monkeypatch, TableInfo(storage_location="file:///tmp/t"))
     when = datetime.datetime(2026, 1, 1, tzinfo=datetime.UTC)
     df = _time_travel.read_table_at_timestamp(

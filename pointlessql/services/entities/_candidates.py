@@ -60,9 +60,7 @@ class CandidateScore:
         }
 
 
-def score_pk_overlap(
-    source_pk: list[str], target_pk: list[str]
-) -> float:
+def score_pk_overlap(source_pk: list[str], target_pk: list[str]) -> float:
     """Return the Jaccard similarity of the two PK-column sets."""
     source_set = {c.strip().lower() for c in source_pk if c.strip()}
     target_set = {c.strip().lower() for c in target_pk if c.strip()}
@@ -73,9 +71,7 @@ def score_pk_overlap(
     return len(intersect) / len(union) if union else 0.0
 
 
-def score_column_similarity(
-    source: DataProductEntity, target: DataProductEntity
-) -> float:
+def score_column_similarity(source: DataProductEntity, target: DataProductEntity) -> float:
     """Return a token-overlap score on the entity names."""
     src_tokens = _tokenise(source.entity_name)
     tgt_tokens = _tokenise(target.entity_name)
@@ -86,18 +82,14 @@ def score_column_similarity(
     return len(intersect) / len(union) if union else 0.0
 
 
-def score_combined(
-    source: DataProductEntity, target: DataProductEntity
-) -> CandidateScore:
+def score_combined(source: DataProductEntity, target: DataProductEntity) -> CandidateScore:
     """Return the combined score + per-feature breakdown."""
     source_pk = _decode_pk(source.primary_key_columns)
     target_pk = _decode_pk(target.primary_key_columns)
     pk = score_pk_overlap(source_pk, target_pk)
     col = score_column_similarity(source, target)
     combined = _PK_WEIGHT * pk + _COL_WEIGHT * col
-    return CandidateScore(
-        pk_overlap=pk, column_similarity=col, combined=combined
-    )
+    return CandidateScore(pk_overlap=pk, column_similarity=col, combined=combined)
 
 
 def discover_candidates(
@@ -122,11 +114,7 @@ def discover_candidates(
     moment = now or datetime.datetime.now(datetime.UTC)
     _ = workspace_id  # workspace scoping happens through data_product FK chain
     with session_factory() as session:
-        entities = list(
-            session.scalars(
-                select(DataProductEntity).order_by(DataProductEntity.id)
-            )
-        )
+        entities = list(session.scalars(select(DataProductEntity).order_by(DataProductEntity.id)))
         existing_links = {
             (int(row.source_entity_id), int(row.target_entity_id), str(row.kind))
             for row in session.scalars(select(EntityLink))
@@ -178,7 +166,7 @@ def _decode_pk(raw: str | list[str] | None) -> list[str]:
         return []
     try:
         decoded = json.loads(raw)
-    except (json.JSONDecodeError, TypeError, ValueError):
+    except json.JSONDecodeError, TypeError, ValueError:
         return []
     return [str(x) for x in decoded] if isinstance(decoded, list) else []
 

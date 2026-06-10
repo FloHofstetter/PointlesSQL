@@ -61,9 +61,7 @@ def resolve_quota_mode(
     mode = str(policy.get("quota_enforcement", {}).get("value") or "off")
     limits = {
         "max_cost_per_day": policy.get("max_cost_per_day", {}).get("value"),
-        "max_queries_per_hour": policy.get("max_queries_per_hour", {}).get(
-            "value"
-        ),
+        "max_queries_per_hour": policy.get("max_queries_per_hour", {}).get("value"),
     }
     return mode, limits
 
@@ -170,6 +168,7 @@ def check_quota(
 
 def _same_hour(left: datetime.datetime, right: datetime.datetime) -> bool:
     """Return True when left and right fall in the same UTC hour."""
+
     def normalise(value: datetime.datetime) -> tuple[int, int, int, int]:
         if value.tzinfo is not None:
             utc = value.astimezone(datetime.UTC)
@@ -185,7 +184,7 @@ def _decimal_or_none(value: Any) -> Decimal | None:
         return None
     try:
         return Decimal(str(value))
-    except (ValueError, TypeError):
+    except ValueError, TypeError:
         return None
 
 
@@ -194,5 +193,5 @@ def _int_or_none(value: Any) -> int | None:
         return None
     try:
         return int(value)
-    except (ValueError, TypeError):
+    except ValueError, TypeError:
         return None

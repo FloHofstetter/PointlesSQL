@@ -230,9 +230,7 @@ def list_access_requests(catalog: str, schema: str, request: Request) -> dict[st
                 {
                     "user_id": r.requester_user_id,
                     "email": getattr(users.get(r.requester_user_id), "email", None),
-                    "display_name": getattr(
-                        users.get(r.requester_user_id), "display_name", None
-                    ),
+                    "display_name": getattr(users.get(r.requester_user_id), "display_name", None),
                 },
             )
             for r in rows
@@ -341,11 +339,7 @@ def _load_decidable(
     _require_steward_or_admin(user, dp_row)
     with factory() as session:
         row = session.get(DataProductAccessRequest, request_id)
-        if (
-            row is None
-            or row.data_product_id != dp_row.id
-            or row.workspace_id != workspace_id
-        ):
+        if row is None or row.data_product_id != dp_row.id or row.workspace_id != workspace_id:
             raise ResourceNotFoundError(f"access request {request_id} not found")
         if row.status != "pending":
             raise BadRequestError(f"access request {request_id} is already {row.status}")

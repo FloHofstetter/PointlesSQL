@@ -46,9 +46,7 @@ class MeterContext:
     error_class: str | None = None
 
 
-def record_query_cost(
-    session_factory: SessionFactory, ctx: MeterContext
-) -> int:
+def record_query_cost(session_factory: SessionFactory, ctx: MeterContext) -> int:
     """Insert one :class:`DataProductQueryCost` row and return its id."""
     cost_value = (
         ctx.estimated_cost

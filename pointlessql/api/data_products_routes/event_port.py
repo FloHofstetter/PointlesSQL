@@ -114,9 +114,7 @@ async def list_event_subscriptions(
     require_user(request)
     data_product_id = _resolve_product_id(request, catalog, schema)
     factory = request.app.state.session_factory
-    rows = event_port_service.list_subscriptions(
-        factory, data_product_id=data_product_id
-    )
+    rows = event_port_service.list_subscriptions(factory, data_product_id=data_product_id)
     if not _is_steward_or_admin(request, catalog, schema):
         user_id = int(get_user(request).get("id", 0))
         rows = [r for r in rows if r["owner_user_id"] == user_id]
@@ -187,9 +185,7 @@ async def delete_event_subscription(
             if row.owner_user_id != user_id:
                 raise BadRequestError("only the owner / steward may delete")
     factory = request.app.state.session_factory
-    removed = event_port_service.delete_subscription(
-        factory, subscription_id=subscription_id
-    )
+    removed = event_port_service.delete_subscription(factory, subscription_id=subscription_id)
     if not removed:
         raise ResourceNotFoundError(f"subscription {subscription_id} not found")
     return {"deleted": True}
@@ -211,13 +207,9 @@ def _control(
         raise BadRequestError("only steward / admin may control subscriptions")
     factory = request.app.state.session_factory
     if action == "pause":
-        row = event_port_service.pause_subscription(
-            factory, subscription_id=subscription_id
-        )
+        row = event_port_service.pause_subscription(factory, subscription_id=subscription_id)
     elif action == "resume":
-        row = event_port_service.resume_subscription(
-            factory, subscription_id=subscription_id
-        )
+        row = event_port_service.resume_subscription(factory, subscription_id=subscription_id)
     elif action == "rewind":
         if to_version is None:
             raise BadRequestError("to_version query param required for rewind")
@@ -236,9 +228,7 @@ def _control(
     return row
 
 
-@router.post(
-    "/api/data-products/{catalog}/{schema}/event-subscriptions/{subscription_id}/pause"
-)
+@router.post("/api/data-products/{catalog}/{schema}/event-subscriptions/{subscription_id}/pause")
 async def pause_event_subscription(
     request: Request, catalog: str, schema: str, subscription_id: int
 ) -> dict[str, Any]:
@@ -246,9 +236,7 @@ async def pause_event_subscription(
     return _control(request, catalog, schema, subscription_id, "pause")
 
 
-@router.post(
-    "/api/data-products/{catalog}/{schema}/event-subscriptions/{subscription_id}/resume"
-)
+@router.post("/api/data-products/{catalog}/{schema}/event-subscriptions/{subscription_id}/resume")
 async def resume_event_subscription(
     request: Request, catalog: str, schema: str, subscription_id: int
 ) -> dict[str, Any]:
@@ -256,9 +244,7 @@ async def resume_event_subscription(
     return _control(request, catalog, schema, subscription_id, "resume")
 
 
-@router.post(
-    "/api/data-products/{catalog}/{schema}/event-subscriptions/{subscription_id}/rewind"
-)
+@router.post("/api/data-products/{catalog}/{schema}/event-subscriptions/{subscription_id}/rewind")
 async def rewind_event_subscription(
     request: Request,
     catalog: str,
@@ -282,9 +268,7 @@ async def rewind_event_subscription(
 # ---------------------------------------------------------------------------
 
 
-def _resolve_table_location(
-    request: Request, catalog: str, schema: str, table: str
-) -> str | None:
+def _resolve_table_location(request: Request, catalog: str, schema: str, table: str) -> str | None:
     """Return the Delta storage URI for the source table, or ``None``."""
     # NDJSON pull bypasses the per-request UC facade because it needs a
     # location URI, not row data — the facade is row-oriented.

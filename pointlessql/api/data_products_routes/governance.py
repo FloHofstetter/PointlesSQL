@@ -369,7 +369,7 @@ def _recent_violations(
     for row in rows:
         try:
             detail = json.loads(row.detail) if row.detail else {}
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             detail = {}
         violations.append(
             {"created_at": row.created_at.isoformat() if row.created_at else None, **detail}

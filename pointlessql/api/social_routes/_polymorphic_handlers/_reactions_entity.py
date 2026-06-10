@@ -42,9 +42,7 @@ def reactor_names(session: Any, user_ids: set[int]) -> dict[int, str]:
 
     if not user_ids:
         return {}
-    pairs = session.execute(
-        select(User.id, User.display_name).where(User.id.in_(user_ids))
-    ).all()
+    pairs = session.execute(select(User.id, User.display_name).where(User.id.in_(user_ids))).all()
     return {int(uid): str(name) for uid, name in pairs}
 
 

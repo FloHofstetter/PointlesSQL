@@ -30,7 +30,7 @@ def _row_to_entry(row: AuditSavedFilter) -> dict[str, Any]:
 def _safe_parse_json(raw: str) -> dict[str, Any]:
     try:
         parsed = json.loads(raw or "{}")
-    except (ValueError, json.JSONDecodeError):
+    except ValueError, json.JSONDecodeError:
         return {}
     return parsed if isinstance(parsed, dict) else {}
 

@@ -61,13 +61,11 @@ def _compile_window(
     partition = _coerce_str_list(cfg.get("partition_by"))
     order = _coerce_str_list(cfg.get("order_by"))
     args_sql = ", ".join(f'"{a}"' for a in args) if args else "*" if fn == "count" else ""
-    partition_sql = (
-        f"PARTITION BY {', '.join(f'"{c}"' for c in partition)} " if partition else ""
-    )
+    partition_sql = f"PARTITION BY {', '.join(f'"{c}"' for c in partition)} " if partition else ""
     order_sql = f"ORDER BY {', '.join(f'"{c}"' for c in order)} " if order else ""
     over = f"({partition_sql}{order_sql}".rstrip() + ")"
     return CompiledBlock(
-        sql=f"SELECT *, {fn.upper()}({args_sql}) OVER {over} AS \"{alias}\" FROM {src}",
+        sql=f'SELECT *, {fn.upper()}({args_sql}) OVER {over} AS "{alias}" FROM {src}',
         output_schema=output_schema,
     )
 
@@ -126,9 +124,7 @@ def _compile_pivot(
     agg_sql = "COUNT(DISTINCT" if agg == "count_distinct" else agg.upper() + "("
     suffix = ")"
     return CompiledBlock(
-        sql=(
-            f'PIVOT {src} ON "{on_col}" USING {agg_sql}"{value_col}"{suffix}'
-        ),
+        sql=(f'PIVOT {src} ON "{on_col}" USING {agg_sql}"{value_col}"{suffix}'),
         output_schema=output_schema,
     )
 
@@ -177,9 +173,7 @@ def _compile_unpivot(
         return None
     cols_sql = ", ".join(f'"{c}"' for c in value_cols)
     return CompiledBlock(
-        sql=(
-            f'UNPIVOT {src} ON {cols_sql} INTO NAME "{name_label}" VALUE "{value_label}"'
-        ),
+        sql=(f'UNPIVOT {src} ON {cols_sql} INTO NAME "{name_label}" VALUE "{value_label}"'),
         output_schema=output_schema,
     )
 
@@ -613,7 +607,7 @@ def _compile_sample(
     raw_value = cfg.get("value")
     try:
         value = float(raw_value) if raw_value is not None else 0.0
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         errors.append(_bad_config(node_id, "Sample.value must be numeric."))
         return None
     if kind == "percent":

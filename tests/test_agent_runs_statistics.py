@@ -27,9 +27,7 @@ def _rows(dp_id: int) -> list[DataProductStatistics]:
     with factory() as session:
         return list(
             session.scalars(
-                select(DataProductStatistics).where(
-                    DataProductStatistics.data_product_id == dp_id
-                )
+                select(DataProductStatistics).where(DataProductStatistics.data_product_id == dp_id)
             ).all()
         )
 
@@ -84,9 +82,7 @@ def test_cache_upgrade_replaces_shape(monkeypatch: pytest.MonkeyPatch) -> None:
     def _fake_read_cached(factory: Any, *, full_name: str, delta_log_version: int) -> Any:
         return [{"column_name": "x", "stats": {"null_count": 0, "distinct_count": 2}}]
 
-    monkeypatch.setattr(
-        "pointlessql.services.table_stats.read_cached", _fake_read_cached
-    )
+    monkeypatch.setattr("pointlessql.services.table_stats.read_cached", _fake_read_cached)
     pending = (4102, "main.gold.u", 7, 10, {"column_count": 0}, "light")
     record_statistics_after_commit(
         app.state.session_factory, op_id=12, target_table="main.gold.u", pending=pending

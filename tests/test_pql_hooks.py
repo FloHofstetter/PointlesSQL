@@ -21,6 +21,7 @@ def test_register_and_run_before_read_chain() -> None:
 
 def test_before_read_hook_raise_propagates() -> None:
     with _hooks.HookContext():
+
         def hook(ctx: dict) -> None:
             raise PermissionError("blocked")
 
@@ -31,6 +32,7 @@ def test_before_read_hook_raise_propagates() -> None:
 
 def test_after_read_hook_can_replace_frame() -> None:
     with _hooks.HookContext():
+
         def mask(frame, ctx):
             return frame + "_masked"
 
@@ -41,6 +43,7 @@ def test_after_read_hook_can_replace_frame() -> None:
 
 def test_after_read_hook_returning_none_keeps_frame() -> None:
     with _hooks.HookContext():
+
         def noop(frame, ctx):
             return None
 
@@ -51,6 +54,7 @@ def test_after_read_hook_returning_none_keeps_frame() -> None:
 
 def test_before_write_hook_can_replace_frame() -> None:
     with _hooks.HookContext():
+
         def stamp(frame, ctx):
             return f"{frame}+stamped"
 

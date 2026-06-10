@@ -92,7 +92,6 @@ class ConsumptionViolation(PermissionDeniedError):
         }
 
 
-
 def _normalise_source(source_fqn: str) -> tuple[str, str, str | None]:
     """Split ``catalog.schema[.table]`` into a tuple.
 
@@ -103,9 +102,7 @@ def _normalise_source(source_fqn: str) -> tuple[str, str, str | None]:
         return parts[0], parts[1], None
     if len(parts) >= 3:
         return parts[0], parts[1], ".".join(parts[2:])
-    raise ValueError(
-        f"source_fqn {source_fqn!r} must be catalog.schema or catalog.schema.table"
-    )
+    raise ValueError(f"source_fqn {source_fqn!r} must be catalog.schema or catalog.schema.table")
 
 
 def _is_declared_upstream(

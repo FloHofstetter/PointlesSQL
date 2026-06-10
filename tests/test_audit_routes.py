@@ -566,13 +566,9 @@ async def test_audit_saved_filter_duplicate_name_rejected(
         "filters": {"since": "24h"},
         "is_shared_workspace": False,
     }
-    res1 = await admin_client.post(
-        "/admin/audit/saved-filters", json=payload, headers=headers
-    )
+    res1 = await admin_client.post("/admin/audit/saved-filters", json=payload, headers=headers)
     assert res1.status_code == 201
-    res2 = await admin_client.post(
-        "/admin/audit/saved-filters", json=payload, headers=headers
-    )
+    res2 = await admin_client.post("/admin/audit/saved-filters", json=payload, headers=headers)
     assert res2.status_code == 422
     assert "already exists" in res2.text.lower()
 

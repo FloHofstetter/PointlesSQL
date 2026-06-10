@@ -68,9 +68,7 @@ def test_round_trip_dump_and_reparse() -> None:
             "catalog": "mobility",
             "schema": "trips",
             "input_ports": [{"name": "iot", "kind": "operational_system"}],
-            "output_ports": [
-                {"name": "events", "kind": "event", "format": "json"}
-            ],
+            "output_ports": [{"name": "events", "kind": "event", "format": "json"}],
             "entities": [
                 {
                     "name": "Trip",

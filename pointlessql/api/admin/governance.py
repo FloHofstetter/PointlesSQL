@@ -41,9 +41,11 @@ async def api_admin_get_policy(request: Request) -> dict[str, Any]:
     require_admin(request)
     factory = request.app.state.session_factory
     workspace_id = current_workspace_id(request)
-    return {"workspace_default": governance_service.get_workspace_policy(
-        factory, workspace_id=workspace_id
-    )}
+    return {
+        "workspace_default": governance_service.get_workspace_policy(
+            factory, workspace_id=workspace_id
+        )
+    }
 
 
 @router.put("/api/admin/governance/policy")
@@ -71,9 +73,11 @@ async def api_admin_set_policy(
         f"workspace:{workspace_id}",
         {"fields": list(fields.keys())},
     )
-    return {"workspace_default": governance_service.get_workspace_policy(
-        factory, workspace_id=workspace_id
-    )}
+    return {
+        "workspace_default": governance_service.get_workspace_policy(
+            factory, workspace_id=workspace_id
+        )
+    }
 
 
 @router.post("/api/admin/governance/scan")

@@ -543,9 +543,7 @@ def test_file_output_writes_sandboxed_file(tmp_path, factory, monkeypatch, file_
     assert count is not None and count[0] == 3
 
     with factory() as session:
-        assert (
-            session.query(DataProductOutputPort).filter_by(data_product_id=dp_id).count() == 0
-        )
+        assert session.query(DataProductOutputPort).filter_by(data_product_id=dp_id).count() == 0
 
 
 def test_file_input_reads_csv_end_to_end(tmp_path, factory, monkeypatch, file_sandbox) -> None:

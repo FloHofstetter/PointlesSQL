@@ -18,11 +18,7 @@ class BitemporalRequirementError(ValueError):
 def _has_temporal_dtype(series: Any) -> bool:
     """Best-effort: True when *series* looks like a datetime-typed column."""
     dtype_str = str(getattr(series, "dtype", "")).lower()
-    return (
-        "datetime" in dtype_str
-        or "timestamp" in dtype_str
-        or "date" in dtype_str
-    )
+    return "datetime" in dtype_str or "timestamp" in dtype_str or "date" in dtype_str
 
 
 def validate_event_time_column(
@@ -57,8 +53,7 @@ def validate_event_time_column(
             )
         if not _has_temporal_dtype(df[column]):
             raise BitemporalRequirementError(
-                f"event-time column {column!r} must carry a datetime dtype "
-                f"(got {df[column].dtype})"
+                f"event-time column {column!r} must carry a datetime dtype (got {df[column].dtype})"
             )
         return
     try:
@@ -73,8 +68,7 @@ def validate_event_time_column(
         ftype = df.schema.field(column).type
         if not (pa.types.is_timestamp(ftype) or pa.types.is_date(ftype)):
             raise BitemporalRequirementError(
-                f"event-time column {column!r} must carry a timestamp/date "
-                f"dtype (got {ftype})"
+                f"event-time column {column!r} must carry a timestamp/date dtype (got {ftype})"
             )
         return
     # Unknown frame type — nothing to validate.  Engine will fail

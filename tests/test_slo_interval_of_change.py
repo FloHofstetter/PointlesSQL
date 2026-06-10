@@ -156,9 +156,7 @@ def test_verdict_pass_when_under_lte_target() -> None:
     m_dp = _seed_product("ioc", "verdict_pass")
     _seed_writes(m_dp, [10, 10])
     measurement = measure_interval_of_change(_factory(), data_product_id=m_dp)
-    verdict, _ = verdict_from_measurement(
-        measurement, target_value=60.0, comparator="lte"
-    )
+    verdict, _ = verdict_from_measurement(measurement, target_value=60.0, comparator="lte")
     assert verdict == "pass"
 
 
@@ -166,15 +164,11 @@ def test_verdict_fail_when_over_lte_target() -> None:
     m_dp = _seed_product("ioc", "verdict_fail")
     _seed_writes(m_dp, [200, 200])
     measurement = measure_interval_of_change(_factory(), data_product_id=m_dp)
-    verdict, _ = verdict_from_measurement(
-        measurement, target_value=60.0, comparator="lte"
-    )
+    verdict, _ = verdict_from_measurement(measurement, target_value=60.0, comparator="lte")
     assert verdict == "fail"
 
 
 def test_verdict_unmeasured_when_no_samples() -> None:
-    verdict, detail = verdict_from_measurement(
-        None, target_value=60.0, comparator="lte"
-    )
+    verdict, detail = verdict_from_measurement(None, target_value=60.0, comparator="lte")
     assert verdict == "unmeasured"
     assert "reason" in detail

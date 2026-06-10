@@ -92,9 +92,7 @@ class DataProductFixture(Base):
     created_by_user_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("users.id"), nullable=True
     )
-    created_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
 class DataProductContractTest(Base):
@@ -126,9 +124,7 @@ class DataProductContractTest(Base):
             "severity IN ('info','warn','error')",
             name="ck_contract_tests_severity",
         ),
-        UniqueConstraint(
-            "data_product_id", "name", name="uq_contract_tests_product_name"
-        ),
+        UniqueConstraint("data_product_id", "name", name="uq_contract_tests_product_name"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -143,15 +139,11 @@ class DataProductContractTest(Base):
     severity: Mapped[str] = mapped_column(
         String(8), nullable=False, default="warn", server_default="warn"
     )
-    enabled: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, default=True, server_default="1"
-    )
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="1")
     created_by_user_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("users.id"), nullable=True
     )
-    created_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
 class DataProductContractTestResult(Base):
@@ -185,14 +177,10 @@ class DataProductContractTestResult(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     contract_test_id: Mapped[int] = mapped_column(
         Integer,
-        ForeignKey(
-            "data_product_contract_tests.id", ondelete="CASCADE"
-        ),
+        ForeignKey("data_product_contract_tests.id", ondelete="CASCADE"),
         nullable=False,
     )
-    run_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
+    run_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     status: Mapped[str] = mapped_column(String(8), nullable=False)
     observation_json: Mapped[str | None] = mapped_column(Text(), nullable=True)
     duration_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)

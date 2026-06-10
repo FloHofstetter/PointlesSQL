@@ -307,8 +307,6 @@ def test_cast_unknown_type_carries_suggestion() -> None:
     cast_errors = [e for e in errors if e.node_id == "cst"]
     assert cast_errors, "expected at least one Cast diagnostic"
     assert any(
-        e.column == "amt"
-        and e.actual_type == "BANANAS"
-        and e.suggestion == "UNKNOWN_DUCKDB_TYPE"
+        e.column == "amt" and e.actual_type == "BANANAS" and e.suggestion == "UNKNOWN_DUCKDB_TYPE"
         for e in cast_errors
     )

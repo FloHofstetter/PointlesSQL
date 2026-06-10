@@ -34,7 +34,6 @@ WRITE_OUTCOMES: tuple[str, ...] = (
 )
 
 
-
 @dataclasses.dataclass(frozen=True)
 class IntervalOfChangeMeasurement:
     """Result of one interval-of-change measurement.

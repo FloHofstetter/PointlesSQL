@@ -134,9 +134,7 @@ def test_precision_fails_when_null_ratio_over_target() -> None:
 
 def test_availability_unmeasured_without_probes() -> None:
     dp = _seed_product("rt6", "t6")
-    verdict, _ = runtime_slo.measure_availability(
-        _factory(), data_product_id=dp, target_value=99.0
-    )
+    verdict, _ = runtime_slo.measure_availability(_factory(), data_product_id=dp, target_value=99.0)
     assert verdict == "unmeasured"
 
 
@@ -145,22 +143,26 @@ def test_availability_passes_when_above_target() -> None:
     now = datetime.datetime.now(datetime.UTC)
     with _factory()() as session:
         for _ in range(99):
-            session.add(DataProductAvailabilityProbe(
+            session.add(
+                DataProductAvailabilityProbe(
+                    data_product_id=dp,
+                    output_port_id=None,
+                    port_kind="sql",
+                    probed_at=now,
+                    latency_ms=5,
+                    status="ok",
+                )
+            )
+        session.add(
+            DataProductAvailabilityProbe(
                 data_product_id=dp,
                 output_port_id=None,
                 port_kind="sql",
                 probed_at=now,
-                latency_ms=5,
-                status="ok",
-            ))
-        session.add(DataProductAvailabilityProbe(
-            data_product_id=dp,
-            output_port_id=None,
-            port_kind="sql",
-            probed_at=now,
-            latency_ms=None,
-            status="fail",
-        ))
+                latency_ms=None,
+                status="fail",
+            )
+        )
         session.commit()
     verdict, detail = runtime_slo.measure_availability(
         _factory(), data_product_id=dp, target_value=95.0
@@ -174,27 +176,29 @@ def test_availability_fails_when_below_target() -> None:
     now = datetime.datetime.now(datetime.UTC)
     with _factory()() as session:
         for _ in range(10):
-            session.add(DataProductAvailabilityProbe(
-                data_product_id=dp,
-                output_port_id=None,
-                port_kind="sql",
-                probed_at=now,
-                latency_ms=5,
-                status="ok",
-            ))
+            session.add(
+                DataProductAvailabilityProbe(
+                    data_product_id=dp,
+                    output_port_id=None,
+                    port_kind="sql",
+                    probed_at=now,
+                    latency_ms=5,
+                    status="ok",
+                )
+            )
         for _ in range(10):
-            session.add(DataProductAvailabilityProbe(
-                data_product_id=dp,
-                output_port_id=None,
-                port_kind="sql",
-                probed_at=now,
-                latency_ms=None,
-                status="fail",
-            ))
+            session.add(
+                DataProductAvailabilityProbe(
+                    data_product_id=dp,
+                    output_port_id=None,
+                    port_kind="sql",
+                    probed_at=now,
+                    latency_ms=None,
+                    status="fail",
+                )
+            )
         session.commit()
-    verdict, _ = runtime_slo.measure_availability(
-        _factory(), data_product_id=dp, target_value=95.0
-    )
+    verdict, _ = runtime_slo.measure_availability(_factory(), data_product_id=dp, target_value=95.0)
     assert verdict == "fail"
 
 
@@ -211,13 +215,15 @@ def test_performance_passes_when_p95_under_target() -> None:
     now = datetime.datetime.now(datetime.UTC)
     with _factory()() as session:
         for i in range(50):
-            session.add(DataProductQueryPerfSample(
-                data_product_id=dp,
-                table_name="t10",
-                started_at=now,
-                duration_ms=100 + i,
-                status="ok",
-            ))
+            session.add(
+                DataProductQueryPerfSample(
+                    data_product_id=dp,
+                    table_name="t10",
+                    started_at=now,
+                    duration_ms=100 + i,
+                    status="ok",
+                )
+            )
         session.commit()
     verdict, detail = runtime_slo.measure_performance(
         _factory(), data_product_id=dp, target_value=1000.0

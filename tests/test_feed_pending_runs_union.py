@@ -97,9 +97,7 @@ async def test_approving_removes_card_and_notifies_principal(
     # The principal (non-admin) received an informational approved notice.
     r = await non_admin_client.get("/api/feed")
     approved = [
-        row
-        for row in r.json()["rows"]
-        if row.get("event_type") == "pointlessql.agent_run.approved"
+        row for row in r.json()["rows"] if row.get("event_type") == "pointlessql.agent_run.approved"
     ]
     assert len(approved) == 1
     assert approved[0]["category"] == "approval"
@@ -120,9 +118,7 @@ async def test_denying_notifies_principal_with_reason(
 
     r = await non_admin_client.get("/api/feed")
     denied = [
-        row
-        for row in r.json()["rows"]
-        if row.get("event_type") == "pointlessql.agent_run.denied"
+        row for row in r.json()["rows"] if row.get("event_type") == "pointlessql.agent_run.denied"
     ]
     assert len(denied) == 1
     assert "cost gate" in denied[0]["summary_md"]

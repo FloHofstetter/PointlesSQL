@@ -75,9 +75,7 @@ def list_use_cases(
     return [_serialise(r) for r in rows]
 
 
-def delete_use_case(
-    factory: SessionFactory, *, data_product_id: int, use_case_id: int
-) -> bool:
+def delete_use_case(factory: SessionFactory, *, data_product_id: int, use_case_id: int) -> bool:
     """Delete one use case.  Returns True when a row was removed."""
     with factory() as session:
         row = session.scalar(

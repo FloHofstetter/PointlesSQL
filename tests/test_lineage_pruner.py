@@ -66,9 +66,9 @@ def _count_edges(run_id: str) -> int:
     with factory() as session:
         return int(
             session.scalar(
-                select(func.count()).select_from(LineageRowEdge).where(
-                    LineageRowEdge.run_id == run_id
-                )
+                select(func.count())
+                .select_from(LineageRowEdge)
+                .where(LineageRowEdge.run_id == run_id)
             )
             or 0
         )

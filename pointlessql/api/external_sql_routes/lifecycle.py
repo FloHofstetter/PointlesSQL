@@ -33,6 +33,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["sql-statements"])
 
+
 def _row_to_envelope(row: SqlStatement) -> dict[str, Any]:
     """Reconstruct a DBX envelope from a persisted ``SqlStatement`` row.
 

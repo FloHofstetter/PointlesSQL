@@ -102,9 +102,7 @@ async def delete_use_case(
     return {"deleted": True}
 
 
-@router.post(
-    "/api/data-products/{catalog}/{schema}/use-cases/{use_case_id}/vote"
-)
+@router.post("/api/data-products/{catalog}/{schema}/use-cases/{use_case_id}/vote")
 async def vote_use_case(
     catalog: str, schema: str, use_case_id: int, request: Request
 ) -> dict[str, Any]:
@@ -124,17 +122,13 @@ async def vote_use_case(
 
 
 @router.get("/api/data-products/{catalog}/{schema}/rating")
-async def get_rating(
-    catalog: str, schema: str, request: Request
-) -> dict[str, Any]:
+async def get_rating(catalog: str, schema: str, request: Request) -> dict[str, Any]:
     """Return the product's rating summary + caller's own row."""
     require_user(request)
     factory = request.app.state.session_factory
     workspace_id = current_workspace_id(request)
     dp_row, _, _, _ = load_one(factory, workspace_id, catalog, schema)
-    summary = consumer_voice_service.list_rating_summary(
-        factory, data_product_id=int(dp_row.id)
-    )
+    summary = consumer_voice_service.list_rating_summary(factory, data_product_id=int(dp_row.id))
     user = get_user(request)
     own: dict[str, Any] | None = None
     if user.get("id"):

@@ -146,9 +146,7 @@ class OperationRecorder:
     # (data_product_id, table_name, delta_log_version, row_count,
     # shape, profile_kind).  The post-commit hook stamps one
     # data_product_statistics row.  None means "not a product write".
-    pending_statistics: (
-        tuple[int, str, int | None, int | None, dict[str, Any], str] | None
-    ) = None
+    pending_statistics: tuple[int, str, int | None, int | None, dict[str, Any], str] | None = None
 
 
 def serialise_warnings(markers: list[str]) -> str | None:

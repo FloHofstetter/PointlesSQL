@@ -40,9 +40,7 @@ def upgrade() -> None:
         ),
         sa.Column("table_name", sa.String(length=200), nullable=False),
         sa.Column("generator_spec_json", sa.Text(), nullable=False),
-        sa.Column(
-            "row_count", sa.Integer(), nullable=False, server_default="100"
-        ),
+        sa.Column("row_count", sa.Integer(), nullable=False, server_default="100"),
         sa.Column(
             "created_by_user_id",
             sa.Integer(),
@@ -69,12 +67,8 @@ def upgrade() -> None:
         sa.Column("name", sa.String(length=128), nullable=False),
         sa.Column("assertion_kind", sa.String(length=32), nullable=False),
         sa.Column("assertion_spec_json", sa.Text(), nullable=False),
-        sa.Column(
-            "severity", sa.String(length=8), nullable=False, server_default="warn"
-        ),
-        sa.Column(
-            "enabled", sa.Boolean(), nullable=False, server_default="1"
-        ),
+        sa.Column("severity", sa.String(length=8), nullable=False, server_default="warn"),
+        sa.Column("enabled", sa.Boolean(), nullable=False, server_default="1"),
         sa.Column(
             "created_by_user_id",
             sa.Integer(),
@@ -91,9 +85,7 @@ def upgrade() -> None:
             "severity IN ('info','warn','error')",
             name="ck_contract_tests_severity",
         ),
-        sa.UniqueConstraint(
-            "data_product_id", "name", name="uq_contract_tests_product_name"
-        ),
+        sa.UniqueConstraint("data_product_id", "name", name="uq_contract_tests_product_name"),
     )
 
     op.create_table(
@@ -102,9 +94,7 @@ def upgrade() -> None:
         sa.Column(
             "contract_test_id",
             sa.Integer(),
-            sa.ForeignKey(
-                "data_product_contract_tests.id", ondelete="CASCADE"
-            ),
+            sa.ForeignKey("data_product_contract_tests.id", ondelete="CASCADE"),
             nullable=False,
         ),
         sa.Column("run_at", sa.DateTime(timezone=True), nullable=False),

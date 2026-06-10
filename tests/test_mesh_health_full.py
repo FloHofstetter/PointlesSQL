@@ -148,8 +148,6 @@ def test_empty_workspace_returns_empty_lists() -> None:
 def test_top_consumers_truncated_to_ten() -> None:
     a = _seed_product("mh", "ten_users")
     for uid in range(1, 12):
-        _seed_bucket(
-            a, cost=Decimal("0.1"), queries=uid, consumer_user_id=uid
-        )
+        _seed_bucket(a, cost=Decimal("0.1"), queries=uid, consumer_user_id=uid)
     payload = mesh_health_full(_factory(), workspace_id=1)
     assert len(payload["top_consumers"]) <= 10

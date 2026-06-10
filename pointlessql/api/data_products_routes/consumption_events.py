@@ -72,7 +72,7 @@ async def list_consumption_events(
         if row.detail:
             try:
                 detail = json.loads(row.detail)
-            except (TypeError, ValueError):
+            except TypeError, ValueError:
                 detail = {"raw": row.detail}
         items.append(
             {
@@ -88,9 +88,7 @@ async def list_consumption_events(
     return {"items": items}
 
 
-@router.post(
-    "/api/data-products/{catalog}/{schema}/consumption-acknowledgements/{event_id}"
-)
+@router.post("/api/data-products/{catalog}/{schema}/consumption-acknowledgements/{event_id}")
 async def acknowledge_consumption_event(
     catalog: str,
     schema: str,

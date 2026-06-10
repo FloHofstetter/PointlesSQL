@@ -39,6 +39,7 @@ DELTA_PRIMITIVE_TO_UC: dict[str, tuple[str, str]] = {
     "binary": ("BINARY", "binary"),
 }
 
+
 def convert_volume_file_sync(
     settings: Settings,
     *,

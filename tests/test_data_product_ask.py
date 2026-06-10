@@ -69,9 +69,9 @@ async def test_ask_message_on_unowned_session_404(
 ) -> None:
     """A different user cannot post into someone else's Ask session."""
     _seed_product(tmp_path)
-    sid = (
-        await admin_client.post("/api/data-products/main/sales_gold/ask/sessions")
-    ).json()["session_id"]
+    sid = (await admin_client.post("/api/data-products/main/sales_gold/ask/sessions")).json()[
+        "session_id"
+    ]
     res = await non_admin_client.post(
         f"/api/data-products/main/sales_gold/ask/sessions/{sid}/messages",
         json={"content": "hi"},
@@ -85,9 +85,9 @@ async def test_ask_message_without_provider_422(
 ) -> None:
     """Posting a turn with no provider key surfaces a clean 422."""
     _seed_product(tmp_path)
-    sid = (
-        await admin_client.post("/api/data-products/main/sales_gold/ask/sessions")
-    ).json()["session_id"]
+    sid = (await admin_client.post("/api/data-products/main/sales_gold/ask/sessions")).json()[
+        "session_id"
+    ]
     res = await admin_client.post(
         f"/api/data-products/main/sales_gold/ask/sessions/{sid}/messages",
         json={"content": "How many orders are there?"},

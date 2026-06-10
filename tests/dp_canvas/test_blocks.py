@@ -460,7 +460,7 @@ class TestSemiAntiJoin:
         )
         assert out is not None and errors == []
         assert out.sql == (
-            'SELECT l.* FROM l l WHERE EXISTS '
+            "SELECT l.* FROM l l WHERE EXISTS "
             '(SELECT 1 FROM r r WHERE l."id" = r."id" AND l."region" = r."region")'
         )
 

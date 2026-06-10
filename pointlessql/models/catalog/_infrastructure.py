@@ -56,8 +56,7 @@ class DataProductInfrastructure(Base):
     __table_args__ = (
         UniqueConstraint("data_product_id", name="uq_dp_infrastructure_product"),
         CheckConstraint(
-            "storage_class IS NULL OR "
-            "storage_class IN ('delta','parquet','external')",
+            "storage_class IS NULL OR storage_class IN ('delta','parquet','external')",
             name="ck_dp_infrastructure_storage_class",
         ),
     )

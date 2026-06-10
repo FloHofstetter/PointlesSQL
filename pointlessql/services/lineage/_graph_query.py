@@ -37,9 +37,7 @@ def _build_adjacency(
         ``downstream_adj[X]`` lists refs *consuming* X.
     """
     graph = build_mesh_graph(factory, workspace_id=workspace_id)
-    nodes_by_ref: dict[str, dict[str, Any]] = {
-        node["ref"]: node for node in graph.get("nodes", [])
-    }
+    nodes_by_ref: dict[str, dict[str, Any]] = {node["ref"]: node for node in graph.get("nodes", [])}
     upstream_adj: dict[str, list[str]] = {ref: [] for ref in nodes_by_ref}
     downstream_adj: dict[str, list[str]] = {ref: [] for ref in nodes_by_ref}
     for edge in graph.get("edges", []):
@@ -126,9 +124,7 @@ def find_upstream(
     return [
         nodes[ref]
         for ref in refs
-        if _matches_filters(
-            nodes[ref], filter_kind=filter_kind, filter_domain=filter_domain
-        )
+        if _matches_filters(nodes[ref], filter_kind=filter_kind, filter_domain=filter_domain)
     ]
 
 
@@ -151,9 +147,7 @@ def find_downstream(
     return [
         nodes[ref]
         for ref in refs
-        if _matches_filters(
-            nodes[ref], filter_kind=filter_kind, filter_domain=filter_domain
-        )
+        if _matches_filters(nodes[ref], filter_kind=filter_kind, filter_domain=filter_domain)
     ]
 
 

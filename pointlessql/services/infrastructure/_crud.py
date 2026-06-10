@@ -27,7 +27,7 @@ def _row_to_dict(row: DataProductInfrastructure | None) -> dict[str, Any]:
         }
     try:
         methods = json.loads(row.access_methods_json) if row.access_methods_json else []
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         methods = []
     return {
         "storage_class": row.storage_class,
@@ -39,9 +39,7 @@ def _row_to_dict(row: DataProductInfrastructure | None) -> dict[str, Any]:
     }
 
 
-def get_infrastructure(
-    factory: SessionFactory, *, data_product_id: int
-) -> dict[str, Any]:
+def get_infrastructure(factory: SessionFactory, *, data_product_id: int) -> dict[str, Any]:
     """Return the product's infrastructure declaration, or all-``None`` row."""
     with factory() as session:
         row = session.scalar(
@@ -79,9 +77,7 @@ def set_infrastructure(
     """
     storage_class = fields.get("storage_class")
     if storage_class is not None and storage_class not in INFRASTRUCTURE_STORAGE_CLASSES:
-        raise ValueError(
-            f"storage_class {storage_class!r} not in {INFRASTRUCTURE_STORAGE_CLASSES}"
-        )
+        raise ValueError(f"storage_class {storage_class!r} not in {INFRASTRUCTURE_STORAGE_CLASSES}")
     now = datetime.datetime.now(datetime.UTC)
     with factory() as session:
         row = session.scalar(
@@ -115,9 +111,7 @@ def set_infrastructure(
                 )
         if "region" in fields:
             value = fields["region"]
-            row.region = (
-                value.strip() if isinstance(value, str) and value.strip() else None
-            )
+            row.region = value.strip() if isinstance(value, str) and value.strip() else None
         if "notes" in fields:
             value = fields["notes"]
             row.notes = value if isinstance(value, str) and value.strip() else None

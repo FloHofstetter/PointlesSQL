@@ -56,13 +56,9 @@ def assert_transition(current: str, target: str) -> None:
             :data:`LIFECYCLE_STATES` or not reachable from *current*.
     """
     if target not in LIFECYCLE_STATES:
-        raise LifecycleTransitionError(
-            f"target state {target!r} not in {sorted(LIFECYCLE_STATES)}"
-        )
+        raise LifecycleTransitionError(f"target state {target!r} not in {sorted(LIFECYCLE_STATES)}")
     if target == current:
-        raise LifecycleTransitionError(
-            f"product is already in state {current!r}; nothing to do"
-        )
+        raise LifecycleTransitionError(f"product is already in state {current!r}; nothing to do")
     if target not in allowed_targets(current):
         raise LifecycleTransitionError(
             f"cannot transition from {current!r} to {target!r}; "

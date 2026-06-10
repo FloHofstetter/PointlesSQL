@@ -66,8 +66,7 @@ class Iso8601Violation(PermissionDeniedError):
         """Return JSON-serialisable detail for the FastAPI handler."""
         return {
             "violations": [
-                {"column": f.column, "row": f.row_index, "value": f.value}
-                for f in self.findings
+                {"column": f.column, "row": f.row_index, "value": f.value} for f in self.findings
             ],
         }
 
@@ -83,10 +82,7 @@ def _is_date_column(dtype_name: str) -> bool:
 def _looks_like_timestamp_column(column: str) -> bool:
     """Heuristic: column name implies a timestamp surface."""
     lowered = column.lower()
-    return any(
-        token in lowered
-        for token in ("_at", "_time", "_ts", "timestamp", "date", "_dt")
-    )
+    return any(token in lowered for token in ("_at", "_time", "_ts", "timestamp", "date", "_dt"))
 
 
 def _value_is_iso8601(value: Any) -> bool:

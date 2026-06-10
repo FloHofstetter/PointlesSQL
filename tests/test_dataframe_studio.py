@@ -91,7 +91,9 @@ def test_compile_studio_select_ok() -> None:
 
 def test_compile_studio_select_rejects_sink() -> None:
     doc = _src_filter_doc()
-    doc.nodes.append(CanvasNode(id="out", block_type="OutputPort", config={"materialized_table": "a.b.c"}))
+    doc.nodes.append(
+        CanvasNode(id="out", block_type="OutputPort", config={"materialized_table": "a.b.c"})
+    )
     doc.edges.append(
         CanvasEdge(
             id="e2",

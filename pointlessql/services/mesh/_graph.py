@@ -53,9 +53,7 @@ def _resolve_graph(
         ``source_ref`` values are dropped).
     """
     products = list(
-        session.scalars(
-            select(DataProduct).where(DataProduct.workspace_id == workspace_id)
-        ).all()
+        session.scalars(select(DataProduct).where(DataProduct.workspace_id == workspace_id)).all()
     )
     domain_cache: dict[int, dict[str, Any] | None] = {}
 
@@ -114,9 +112,7 @@ def _workspace_slug(session: Any, workspace_id: int) -> str:
     return ws.slug if ws is not None else str(workspace_id)
 
 
-def build_mesh_graph(
-    session_factory: SessionFactory, *, workspace_id: int
-) -> dict[str, Any]:
+def build_mesh_graph(session_factory: SessionFactory, *, workspace_id: int) -> dict[str, Any]:
     """Return the whole workspace's emergent mesh graph.
 
     Args:

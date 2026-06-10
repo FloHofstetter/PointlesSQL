@@ -69,12 +69,8 @@ def upgrade() -> None:
 def downgrade() -> None:
     """Drop the per-policy ``consumption_enforcement`` columns + checks."""
     with op.batch_alter_table("data_product_policies", schema=None) as batch_op:
-        batch_op.drop_constraint(
-            "ck_data_product_policies_consumption", type_="check"
-        )
+        batch_op.drop_constraint("ck_data_product_policies_consumption", type_="check")
         batch_op.drop_column("consumption_enforcement")
     with op.batch_alter_table("workspace_governance_policies", schema=None) as batch_op:
-        batch_op.drop_constraint(
-            "ck_workspace_governance_policies_consumption", type_="check"
-        )
+        batch_op.drop_constraint("ck_workspace_governance_policies_consumption", type_="check")
         batch_op.drop_column("consumption_enforcement")

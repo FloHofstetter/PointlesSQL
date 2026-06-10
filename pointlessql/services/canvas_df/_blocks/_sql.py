@@ -121,9 +121,7 @@ def _describe_sql_block(
             col_clauses = ", ".join(
                 f"{_quote_ident(col.name)} {col.duckdb_type}" for col in upstream.columns
             )
-            conn.execute(
-                f"CREATE TEMP TABLE {_quote_ident(temp_table_name)} ({col_clauses})"
-            )
+            conn.execute(f"CREATE TEMP TABLE {_quote_ident(temp_table_name)} ({col_clauses})")
         try:
             rows = conn.execute(f"DESCRIBE ({rewritten})").fetchall()
         except (duckdb.Error, RuntimeError) as exc:

@@ -70,9 +70,7 @@ def test_settings_defaults_unchanged() -> None:
 def test_effective_inherits_workspace_when_no_override() -> None:
     dp_id = _seed_dp("bt1", "s1")
     settings = BitemporalSettings(inject_processing_time=True)
-    eff = bitemporal_service.effective_policy(
-        _factory(), settings=settings, data_product_id=dp_id
-    )
+    eff = bitemporal_service.effective_policy(_factory(), settings=settings, data_product_id=dp_id)
     assert eff.enforcement == "opt_in"
     assert eff.inject_processing_time is True
     assert eff.enforcement_source == "workspace"
@@ -86,9 +84,7 @@ def test_effective_uses_product_override() -> None:
         fields={"enforcement": "required"},
     )
     settings = BitemporalSettings(inject_processing_time=False)
-    eff = bitemporal_service.effective_policy(
-        _factory(), settings=settings, data_product_id=dp_id
-    )
+    eff = bitemporal_service.effective_policy(_factory(), settings=settings, data_product_id=dp_id)
     assert eff.enforcement == "required"
     assert eff.inject_processing_time is True  # 'required' forces inject
     assert eff.enforcement_source == "product"
@@ -102,9 +98,7 @@ def test_off_mode_disables_inject_regardless_of_settings() -> None:
         fields={"enforcement": "off"},
     )
     settings = BitemporalSettings(inject_processing_time=True)
-    eff = bitemporal_service.effective_policy(
-        _factory(), settings=settings, data_product_id=dp_id
-    )
+    eff = bitemporal_service.effective_policy(_factory(), settings=settings, data_product_id=dp_id)
     assert eff.inject_processing_time is False
 
 
@@ -119,9 +113,7 @@ def test_column_name_override_takes_effect() -> None:
         },
     )
     settings = BitemporalSettings()
-    eff = bitemporal_service.effective_policy(
-        _factory(), settings=settings, data_product_id=dp_id
-    )
+    eff = bitemporal_service.effective_policy(_factory(), settings=settings, data_product_id=dp_id)
     assert eff.processing_time_column == "_proc_ts"
     assert eff.event_time_column == "_evt_ts"
 
@@ -138,9 +130,7 @@ def test_invalid_enforcement_rejected() -> None:
 
 def test_no_product_id_returns_workspace_view() -> None:
     settings = BitemporalSettings(enforcement="required")
-    eff = bitemporal_service.effective_policy(
-        _factory(), settings=settings, data_product_id=None
-    )
+    eff = bitemporal_service.effective_policy(_factory(), settings=settings, data_product_id=None)
     assert eff.enforcement == "required"
     assert eff.enforcement_source == "workspace"
 
@@ -178,9 +168,7 @@ def test_validate_raises_when_column_present_non_temporal() -> None:
 
 
 def test_validate_passes_silently_for_unknown_frame() -> None:
-    validate_event_time_column(
-        "not a dataframe", column="_event_time", require=True
-    )
+    validate_event_time_column("not a dataframe", column="_event_time", require=True)
 
 
 # ---------------------------------------------------------------------------

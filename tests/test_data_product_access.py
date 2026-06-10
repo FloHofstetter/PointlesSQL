@@ -88,9 +88,7 @@ async def test_request_access_when_already_has_access_400(
 ) -> None:
     """An admin already has access, so filing a request is rejected."""
     _seed_product(tmp_path)
-    res = await admin_client.post(
-        "/api/data-products/main/sales_gold/access-requests", json={}
-    )
+    res = await admin_client.post("/api/data-products/main/sales_gold/access-requests", json={})
     assert res.status_code == 400
 
 
@@ -103,9 +101,7 @@ async def test_approve_grants_select_and_transitions(
 ) -> None:
     """Approval issues a UC SELECT grant and marks the request approved."""
     _seed_product(tmp_path)
-    req = await non_admin_client.post(
-        "/api/data-products/main/sales_gold/access-requests", json={}
-    )
+    req = await non_admin_client.post("/api/data-products/main/sales_gold/access-requests", json={})
     req_id = req.json()["id"]
 
     res = await admin_client.post(
@@ -122,9 +118,7 @@ async def test_approve_grants_select_and_transitions(
     args = uc_mock.update_permissions.await_args
     assert args.args[0] == "table"
     assert args.args[1] == "main.sales_gold.orders"
-    assert args.args[2] == [
-        {"principal": "nonadmin@test.com", "add": ["SELECT"], "remove": []}
-    ]
+    assert args.args[2] == [{"principal": "nonadmin@test.com", "add": ["SELECT"], "remove": []}]
 
     with app.state.session_factory() as session:
         row = session.scalar(
@@ -143,9 +137,7 @@ async def test_deny_transitions_without_grant(
     """Denial records the decision and issues no grant."""
     _seed_product(tmp_path)
     req_id = (
-        await non_admin_client.post(
-            "/api/data-products/main/sales_gold/access-requests", json={}
-        )
+        await non_admin_client.post("/api/data-products/main/sales_gold/access-requests", json={})
     ).json()["id"]
     res = await admin_client.post(
         f"/api/data-products/main/sales_gold/access-requests/{req_id}/deny",
@@ -163,9 +155,7 @@ async def test_decision_requires_steward_or_admin(
     """A non-steward consumer cannot approve a request (even their own)."""
     _seed_product(tmp_path)
     req_id = (
-        await non_admin_client.post(
-            "/api/data-products/main/sales_gold/access-requests", json={}
-        )
+        await non_admin_client.post("/api/data-products/main/sales_gold/access-requests", json={})
     ).json()["id"]
     res = await non_admin_client.post(
         f"/api/data-products/main/sales_gold/access-requests/{req_id}/approve",
@@ -186,9 +176,7 @@ async def test_steward_sees_pending_in_list(
     await non_admin_client.post(
         "/api/data-products/main/sales_gold/access-requests", json={"note": "please"}
     )
-    listing = (
-        await admin_client.get("/api/data-products/main/sales_gold/access-requests")
-    ).json()
+    listing = (await admin_client.get("/api/data-products/main/sales_gold/access-requests")).json()
     assert len(listing["requests"]) == 1
     assert listing["requests"][0]["requester"]["email"] == "nonadmin@test.com"
     assert listing["requests"][0]["request_note"] == "please"

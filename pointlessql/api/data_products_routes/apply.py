@@ -64,9 +64,7 @@ async def plan_data_product(
     factory = request.app.state.session_factory
     workspace_id = current_workspace_id(request)
     spec = _spec_from_body(body)
-    plan = dpac_service.plan_spec(
-        factory, spec=spec, workspace_id=workspace_id
-    )
+    plan = dpac_service.plan_spec(factory, spec=spec, workspace_id=workspace_id)
     return {
         "plan": {
             "product_present": plan.product_present,
@@ -110,9 +108,7 @@ async def apply_data_product(
                 securable_type="data_product",
                 full_name=f"{spec.catalog}.{spec.schema}",
             )
-    plan = dpac_service.plan_spec(
-        factory, spec=spec, workspace_id=workspace_id
-    )
+    plan = dpac_service.plan_spec(factory, spec=spec, workspace_id=workspace_id)
     outcome = dpac_service.apply_plan(
         factory,
         spec=spec,
@@ -178,9 +174,7 @@ async def apply_data_product(
 
 
 @router.post("/api/data-products/{catalog}/{schema}/export")
-async def export_data_product(
-    catalog: str, schema: str, request: Request
-) -> dict[str, Any]:
+async def export_data_product(catalog: str, schema: str, request: Request) -> dict[str, Any]:
     """Return the YAML spec for an existing product (any-user)."""
     require_user(request)
     factory = request.app.state.session_factory

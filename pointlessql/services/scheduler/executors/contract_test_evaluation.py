@@ -33,9 +33,7 @@ async def _contract_test_evaluation_executor(
     del job_run_id, uc_client
     raw_id = config.get("data_product_id")
     if not isinstance(raw_id, int):
-        raise ValidationError(
-            "contract_test_evaluation requires config.data_product_id (int)"
-        )
+        raise ValidationError("contract_test_evaluation requires config.data_product_id (int)")
     mode = str(config.get("mode") or "synthetic")
     user_id = int(user_info.get("id") or 0)
     user_email = str(user_info.get("email") or "system")

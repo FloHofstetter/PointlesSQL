@@ -43,6 +43,7 @@ def _parse_window(
     since: str | None, until: str | None
 ) -> tuple[datetime.datetime | None, datetime.datetime | None]:
     """Best-effort ISO-8601 parse; raises 400 on malformed input."""
+
     def parse(value: str | None) -> datetime.datetime | None:
         if not value:
             return None

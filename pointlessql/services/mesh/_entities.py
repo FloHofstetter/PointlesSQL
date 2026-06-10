@@ -23,7 +23,6 @@ from pointlessql.types import SessionFactory
 _SLUG_RE = re.compile(r"[^a-z0-9]+")
 
 
-
 def slugify(value: str) -> str:
     """Return a URL-safe slug for an entity name.
 
@@ -113,9 +112,7 @@ def create_entity(
         return row
 
 
-def delete_entity(
-    session_factory: SessionFactory, *, workspace_id: int, entity_id: int
-) -> bool:
+def delete_entity(session_factory: SessionFactory, *, workspace_id: int, entity_id: int) -> bool:
     """Delete an entity (and its bindings, via CASCADE).
 
     Returns:
@@ -233,9 +230,7 @@ def add_binding(
         return row
 
 
-def delete_binding(
-    session_factory: SessionFactory, *, binding_id: int
-) -> bool:
+def delete_binding(session_factory: SessionFactory, *, binding_id: int) -> bool:
     """Remove an entity-column binding.
 
     Returns:

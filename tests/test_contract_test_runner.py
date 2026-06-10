@@ -95,9 +95,7 @@ def test_synthetic_run_emits_result_per_test() -> None:
         assertion_spec_json={"table": "users", "columns": ["email"]},
     )
 
-    outcome = run_contract_tests(
-        _factory(), data_product_id=dp_id, mode="synthetic"
-    )
+    outcome = run_contract_tests(_factory(), data_product_id=dp_id, mode="synthetic")
 
     assert outcome.total == 2
     assert outcome.passed == 2
@@ -126,9 +124,7 @@ def test_synthetic_run_fails_when_assertion_violates() -> None:
         assertion_kind="row_count_range",
         assertion_spec_json={"table": "users", "min": 1000, "max": 10000},
     )
-    outcome = run_contract_tests(
-        _factory(), data_product_id=dp_id, mode="synthetic"
-    )
+    outcome = run_contract_tests(_factory(), data_product_id=dp_id, mode="synthetic")
     assert outcome.failed == 1
     assert outcome.passed == 0
 
@@ -142,9 +138,7 @@ def test_live_mode_requires_table_provider() -> None:
         assertion_kind="row_count_range",
         assertion_spec_json={"table": "users", "min": 0, "max": 10},
     )
-    outcome = run_contract_tests(
-        _factory(), data_product_id=dp_id, mode="live"
-    )
+    outcome = run_contract_tests(_factory(), data_product_id=dp_id, mode="live")
     assert outcome.errored == 1
     assert outcome.passed == 0
 
@@ -188,7 +182,5 @@ def test_disabled_tests_are_skipped() -> None:
         assertion_spec_json={"table": "x", "min": 0, "max": 0},
         enabled=False,
     )
-    outcome = run_contract_tests(
-        _factory(), data_product_id=dp_id, mode="synthetic"
-    )
+    outcome = run_contract_tests(_factory(), data_product_id=dp_id, mode="synthetic")
     assert outcome.total == 0

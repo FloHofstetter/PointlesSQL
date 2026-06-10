@@ -21,7 +21,7 @@ def decode_position(payload: str | None) -> dict[str, int]:
         return {"version": 0, "row_offset": 0}
     try:
         data = json.loads(payload)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return {"version": 0, "row_offset": 0}
     return {
         "version": int(data.get("version", 0)),
@@ -38,9 +38,7 @@ def _serialise(row: DataProductEventSubscription) -> dict[str, Any]:
         "consumer_label": row.consumer_label,
         "status": row.status,
         "position": decode_position(row.position_marker_json),
-        "last_delivered_at": (
-            row.last_delivered_at.isoformat() if row.last_delivered_at else None
-        ),
+        "last_delivered_at": (row.last_delivered_at.isoformat() if row.last_delivered_at else None),
         "owner_user_id": row.owner_user_id,
         "created_at": row.created_at.isoformat() if row.created_at else None,
     }
@@ -74,13 +72,10 @@ def create_subscription(
             raise ValueError(f"output port id={output_port_id} not found")
         if port.kind != "event":
             raise ValueError(
-                f"output port id={output_port_id} is not kind='event' "
-                f"(got {port.kind!r})"
+                f"output port id={output_port_id} is not kind='event' (got {port.kind!r})"
             )
         if port.data_product_id != data_product_id:
-            raise ValueError(
-                "output_port_id does not belong to the given data_product_id"
-            )
+            raise ValueError("output_port_id does not belong to the given data_product_id")
         existing = session.scalar(
             select(DataProductEventSubscription).where(
                 DataProductEventSubscription.output_port_id == output_port_id,
@@ -98,9 +93,7 @@ def create_subscription(
             output_port_id=output_port_id,
             table_name=cleaned_table,
             consumer_label=cleaned_label,
-            position_marker_json=json.dumps(
-                {"version": int(start_version), "row_offset": 0}
-            ),
+            position_marker_json=json.dumps({"version": int(start_version), "row_offset": 0}),
             status="active",
             owner_user_id=owner_user_id,
             created_at=now,
@@ -122,13 +115,9 @@ def list_subscriptions(
     with factory() as session:
         stmt = select(DataProductEventSubscription)
         if data_product_id is not None:
-            stmt = stmt.where(
-                DataProductEventSubscription.data_product_id == data_product_id
-            )
+            stmt = stmt.where(DataProductEventSubscription.data_product_id == data_product_id)
         if output_port_id is not None:
-            stmt = stmt.where(
-                DataProductEventSubscription.output_port_id == output_port_id
-            )
+            stmt = stmt.where(DataProductEventSubscription.output_port_id == output_port_id)
         if status is not None:
             stmt = stmt.where(DataProductEventSubscription.status == status)
         stmt = stmt.order_by(DataProductEventSubscription.id.desc())
@@ -147,16 +136,12 @@ def delete_subscription(factory: SessionFactory, *, subscription_id: int) -> boo
         return True
 
 
-def pause_subscription(
-    factory: SessionFactory, *, subscription_id: int
-) -> dict[str, Any] | None:
+def pause_subscription(factory: SessionFactory, *, subscription_id: int) -> dict[str, Any] | None:
     """Set ``status='paused'``; return the serialised row or ``None``."""
     return _set_status(factory, subscription_id, "paused")
 
 
-def resume_subscription(
-    factory: SessionFactory, *, subscription_id: int
-) -> dict[str, Any] | None:
+def resume_subscription(factory: SessionFactory, *, subscription_id: int) -> dict[str, Any] | None:
     """Set ``status='active'``; return the serialised row or ``None``."""
     return _set_status(factory, subscription_id, "active")
 
@@ -186,9 +171,7 @@ def rewind_subscription(
         row = session.get(DataProductEventSubscription, subscription_id)
         if row is None:
             return None
-        row.position_marker_json = json.dumps(
-            {"version": int(to_version), "row_offset": 0}
-        )
+        row.position_marker_json = json.dumps({"version": int(to_version), "row_offset": 0})
         session.commit()
         session.refresh(row)
         return _serialise(row)

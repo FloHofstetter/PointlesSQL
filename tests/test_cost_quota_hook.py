@@ -113,29 +113,35 @@ def test_register_cost_hooks_is_idempotent(quota_hook_env: None) -> None:
 
 def test_off_mode_lets_read_through(quota_hook_env: None) -> None:
     product_id = _seed_product(quota_mode="off")
-    run_before_read({
-        "full_name": "hook.quota.foo",
-        "principal": {"id": 1, "email": "a@b.test"},
-        "authoring_product_id": product_id,
-        "workspace_id": 1,
-    })
+    run_before_read(
+        {
+            "full_name": "hook.quota.foo",
+            "principal": {"id": 1, "email": "a@b.test"},
+            "authoring_product_id": product_id,
+            "workspace_id": 1,
+        }
+    )
 
 
 def test_strict_breach_raises_quota_exceeded(quota_hook_env: None) -> None:
     product_id = _seed_product(quota_mode="strict", queries_per_hour=1)
     _seed_bucket(product_id, query_count=2)
     with pytest.raises(QuotaExceededError):
-        run_before_read({
-            "full_name": "hook.quota.foo",
-            "principal": {"id": 1, "email": "a@b.test"},
-            "authoring_product_id": product_id,
-            "workspace_id": 1,
-        })
+        run_before_read(
+            {
+                "full_name": "hook.quota.foo",
+                "principal": {"id": 1, "email": "a@b.test"},
+                "authoring_product_id": product_id,
+                "workspace_id": 1,
+            }
+        )
 
 
 def test_missing_authoring_product_skips_hook(quota_hook_env: None) -> None:
-    run_before_read({
-        "full_name": "no.product.here",
-        "principal": {"id": 1, "email": "a@b.test"},
-        "workspace_id": 1,
-    })
+    run_before_read(
+        {
+            "full_name": "no.product.here",
+            "principal": {"id": 1, "email": "a@b.test"},
+            "workspace_id": 1,
+        }
+    )

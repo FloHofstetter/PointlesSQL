@@ -41,9 +41,7 @@ def _require_steward_or_admin(request: Request, catalog: str, schema: str) -> No
 
 
 @router.get("/api/data-products/{catalog}/{schema}/contract-tests")
-async def list_contract_tests(
-    catalog: str, schema: str, request: Request
-) -> dict[str, Any]:
+async def list_contract_tests(catalog: str, schema: str, request: Request) -> dict[str, Any]:
     """Return every contract test on the product."""
     require_user(request)
     factory = request.app.state.session_factory
@@ -86,9 +84,7 @@ async def declare_contract_test(
     return {"contract_test": test}
 
 
-@router.delete(
-    "/api/data-products/{catalog}/{schema}/contract-tests/{contract_test_id}"
-)
+@router.delete("/api/data-products/{catalog}/{schema}/contract-tests/{contract_test_id}")
 async def delete_contract_test(
     catalog: str, schema: str, contract_test_id: int, request: Request
 ) -> dict[str, Any]:
@@ -101,25 +97,19 @@ async def delete_contract_test(
     )
     if not removed:
         # bare-http-ok: 404 for unknown contract-test PK; no domain exception.
-        raise HTTPException(
-            status_code=404, detail="contract test not found"
-        )
+        raise HTTPException(status_code=404, detail="contract test not found")
     return {"deleted": True}
 
 
 @router.get("/api/data-products/{catalog}/{schema}/fixtures")
-async def list_fixtures(
-    catalog: str, schema: str, request: Request
-) -> dict[str, Any]:
+async def list_fixtures(catalog: str, schema: str, request: Request) -> dict[str, Any]:
     """Return every fixture declared on the product."""
     require_user(request)
     factory = request.app.state.session_factory
     workspace_id = current_workspace_id(request)
     dp_row, _, _, _ = load_one(factory, workspace_id, catalog, schema)
     return {
-        "fixtures": contract_tests_service.list_fixtures(
-            factory, data_product_id=int(dp_row.id)
-        )
+        "fixtures": contract_tests_service.list_fixtures(factory, data_product_id=int(dp_row.id))
     }
 
 
@@ -151,9 +141,7 @@ async def declare_fixture(
     return {"fixture": fixture}
 
 
-@router.delete(
-    "/api/data-products/{catalog}/{schema}/fixtures/{fixture_id}"
-)
+@router.delete("/api/data-products/{catalog}/{schema}/fixtures/{fixture_id}")
 async def delete_fixture(
     catalog: str, schema: str, fixture_id: int, request: Request
 ) -> dict[str, Any]:
@@ -161,9 +149,7 @@ async def delete_fixture(
     require_user(request)
     _require_steward_or_admin(request, catalog, schema)
     factory = request.app.state.session_factory
-    removed = contract_tests_service.delete_fixture(
-        factory, fixture_id=fixture_id
-    )
+    removed = contract_tests_service.delete_fixture(factory, fixture_id=fixture_id)
     if not removed:
         # bare-http-ok: 404 for unknown fixture PK; no domain exception.
         raise HTTPException(status_code=404, detail="fixture not found")
@@ -205,9 +191,7 @@ async def run_contract_tests_now(
     }
 
 
-@router.get(
-    "/api/data-products/{catalog}/{schema}/contract-tests/{contract_test_id}/results"
-)
+@router.get("/api/data-products/{catalog}/{schema}/contract-tests/{contract_test_id}/results")
 async def list_contract_test_results(
     catalog: str,
     schema: str,

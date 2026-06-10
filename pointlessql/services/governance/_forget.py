@@ -131,9 +131,7 @@ def execute_forget(
 
     targets = [name for name, columns in declared_tables if subject_column in columns]
     if not targets:
-        raise ValueError(
-            f"column {subject_column!r} is not declared on any table of this product"
-        )
+        raise ValueError(f"column {subject_column!r} is not declared on any table of this product")
 
     value_hash = hash_subject(session_factory, subject_value)
     if request_id is not None:

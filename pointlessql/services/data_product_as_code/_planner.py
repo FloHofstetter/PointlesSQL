@@ -128,9 +128,7 @@ def plan_spec(
         live_slos = (
             list(
                 session.scalars(
-                    select(DataProductSLO).where(
-                        DataProductSLO.data_product_id == product_id
-                    )
+                    select(DataProductSLO).where(DataProductSLO.data_product_id == product_id)
                 )
             )
             if product_id
@@ -139,9 +137,7 @@ def plan_spec(
         live_entities = (
             list(
                 session.scalars(
-                    select(DataProductEntity).where(
-                        DataProductEntity.data_product_id == product_id
-                    )
+                    select(DataProductEntity).where(DataProductEntity.data_product_id == product_id)
                 )
             )
             if product_id
@@ -202,9 +198,7 @@ def plan_spec(
     _diff_contract_tests(spec, live_tests, additions, modifications, removals)
     _diff_fixtures(spec, live_fixtures, additions, modifications, removals)
     if product_present:
-        _diff_policies(
-            session_factory, spec, product_id, modifications
-        )
+        _diff_policies(session_factory, spec, product_id, modifications)
     elif spec.policies is not None:
         additions.append(
             Op(
@@ -296,9 +290,7 @@ def _output_port_dict(row: DataProductOutputPort) -> dict[str, Any]:
         "format": row.format,
         "location": row.location,
         "identity_requirements": (
-            json.loads(row.identity_requirements)
-            if row.identity_requirements
-            else None
+            json.loads(row.identity_requirements) if row.identity_requirements else None
         ),
     }
 
@@ -445,9 +437,7 @@ def _diff_entities(
                 "name": existing.entity_name,
                 "source_table": existing.source_table,
                 "primary_key_columns": (
-                    json.loads(existing.primary_key_columns)
-                    if existing.primary_key_columns
-                    else []
+                    json.loads(existing.primary_key_columns) if existing.primary_key_columns else []
                 ),
                 "description": existing.description,
             }
@@ -502,9 +492,7 @@ def _diff_contract_tests(
                 "name": existing.name,
                 "assertion_kind": existing.assertion_kind,
                 "assertion_spec": (
-                    json.loads(existing.assertion_spec_json)
-                    if existing.assertion_spec_json
-                    else {}
+                    json.loads(existing.assertion_spec_json) if existing.assertion_spec_json else {}
                 ),
                 "severity": existing.severity,
                 "enabled": bool(existing.enabled),
@@ -559,9 +547,7 @@ def _diff_fixtures(
             before = {
                 "table_name": existing.table_name,
                 "generator_spec": (
-                    json.loads(existing.generator_spec_json)
-                    if existing.generator_spec_json
-                    else []
+                    json.loads(existing.generator_spec_json) if existing.generator_spec_json else []
                 ),
                 "row_count": int(existing.row_count),
             }

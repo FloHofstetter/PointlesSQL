@@ -276,9 +276,7 @@ def test_usage_summary_wow_calculates_change_pct() -> None:
 
 def test_usage_summary_wow_change_pct_none_when_prev_zero() -> None:
     _wipe()
-    row, _ = api_keys_service.create_api_key(
-        app.state.session_factory, name="phase164-no-prev"
-    )
+    row, _ = api_keys_service.create_api_key(app.state.session_factory, name="phase164-no-prev")
     factory = app.state.session_factory
     now = datetime.now(UTC).replace(microsecond=0, second=0)
     today = now.date()
@@ -303,9 +301,7 @@ def test_usage_summary_wow_change_pct_none_when_prev_zero() -> None:
 def test_usage_summary_anomaly_flag_for_3sigma_spike() -> None:
     """A day count > 3σ from the prior 7-day mean is flagged is_anomaly."""
     _wipe()
-    row, _ = api_keys_service.create_api_key(
-        app.state.session_factory, name="phase164-spike"
-    )
+    row, _ = api_keys_service.create_api_key(app.state.session_factory, name="phase164-spike")
     factory = app.state.session_factory
     now = datetime.now(UTC).replace(microsecond=0, second=0)
     today = now.date()
@@ -343,9 +339,7 @@ def test_usage_summary_anomaly_flag_for_3sigma_spike() -> None:
 def test_usage_summary_zero_std_no_anomaly() -> None:
     """Constant traffic should never flag as anomaly (std = 0)."""
     _wipe()
-    row, _ = api_keys_service.create_api_key(
-        app.state.session_factory, name="phase164-const"
-    )
+    row, _ = api_keys_service.create_api_key(app.state.session_factory, name="phase164-const")
     factory = app.state.session_factory
     now = datetime.now(UTC).replace(microsecond=0, second=0)
     today = now.date()

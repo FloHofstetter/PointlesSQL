@@ -416,9 +416,7 @@ async def api_admin_update_member_role(
 
 
 @router.delete("/api/admin/domains/{domain_id}/members/{user_id}")
-async def api_admin_remove_member(
-    request: Request, domain_id: int, user_id: int
-) -> dict[str, Any]:
+async def api_admin_remove_member(request: Request, domain_id: int, user_id: int) -> dict[str, Any]:
     """Remove a user from a domain.
 
     Returns:
@@ -466,9 +464,7 @@ async def admin_domains_page(request: Request):
     member_counts: dict[int, int] = {}
     product_counts: dict[int, int] = {}
     for row in all_rows:
-        member_counts[row.id] = len(
-            domains_service.list_members(factory, domain_id=row.id)
-        )
+        member_counts[row.id] = len(domains_service.list_members(factory, domain_id=row.id))
         product_counts[row.id] = len(
             domains_service.list_products_for_domain(factory, domain_id=row.id)
         )

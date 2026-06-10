@@ -26,9 +26,7 @@ def upsert_rating(
     """
     if not (1 <= int(score) <= 5):
         raise ValueError("score must be in 1..5")
-    cleaned_comment = (
-        comment.strip() if isinstance(comment, str) and comment.strip() else None
-    )
+    cleaned_comment = comment.strip() if isinstance(comment, str) and comment.strip() else None
     now = datetime.datetime.now(datetime.UTC)
     with factory() as session:
         row = session.scalar(
@@ -62,9 +60,7 @@ def upsert_rating(
         }
 
 
-def list_rating_summary(
-    factory: SessionFactory, *, data_product_id: int
-) -> dict[str, Any]:
+def list_rating_summary(factory: SessionFactory, *, data_product_id: int) -> dict[str, Any]:
     """Return ``{avg, count}`` aggregate for one product."""
     with factory() as session:
         result = session.execute(

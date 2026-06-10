@@ -24,9 +24,7 @@ class InputPortSpec(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     name: str
-    kind: str = Field(
-        description="One of operational_system, upstream_product, external."
-    )
+    kind: str = Field(description="One of operational_system, upstream_product, external.")
     source_ref: str | None = None
     description: str | None = None
 

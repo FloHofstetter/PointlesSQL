@@ -33,7 +33,7 @@ def _parse_link_list(raw: str | None) -> list[int]:
         return []
     try:
         decoded = json.loads(raw)
-    except (json.JSONDecodeError, TypeError, ValueError):
+    except json.JSONDecodeError, TypeError, ValueError:
         return []
     if not isinstance(decoded, list):
         return []
@@ -81,9 +81,7 @@ def load_linked_modules_for_product(
     """
     with session_factory() as session:
         product_row = session.scalar(
-            select(DataProductPolicy).where(
-                DataProductPolicy.data_product_id == data_product_id
-            )
+            select(DataProductPolicy).where(DataProductPolicy.data_product_id == data_product_id)
         )
         product_links = (
             _parse_link_list(getattr(product_row, "linked_policy_module_ids", None))

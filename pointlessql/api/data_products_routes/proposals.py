@@ -58,7 +58,6 @@ from pointlessql.services.workspace.governance import (
 router = APIRouter(tags=["data-products"])
 
 
-
 def _serialise_proposal(row: DataProductSchemaProposal) -> dict[str, Any]:
     """Render one proposal row as JSON.
 
@@ -103,10 +102,6 @@ def _require_steward_or_admin(user: Any, row: Any) -> None:
             securable_type="data_product",
             full_name=f"{row.catalog_name}.{row.schema_name}",
         )
-
-
-
-
 
 
 @router.get("/api/data-products/{catalog}/{schema}/proposals")

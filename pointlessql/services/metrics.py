@@ -215,9 +215,9 @@ def record_http_latency(
         duration_seconds: Wall-clock handler latency in seconds.
     """
     status_label = str(status)
-    http_request_duration_seconds.labels(
-        route=route, method=method, status=status_label
-    ).observe(duration_seconds)
+    http_request_duration_seconds.labels(route=route, method=method, status=status_label).observe(
+        duration_seconds
+    )
     http_requests_total.labels(route=route, method=method, status=status_label).inc()
 
 

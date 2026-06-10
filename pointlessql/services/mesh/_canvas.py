@@ -67,9 +67,7 @@ def _dp_ref(dp: DataProduct) -> str:
     return f"{dp.catalog_name}.{dp.schema_name}"
 
 
-def build_mesh_canvas_doc(
-    factory: sessionmaker[Session], *, workspace_id: int
-) -> MeshCanvasDoc:
+def build_mesh_canvas_doc(factory: sessionmaker[Session], *, workspace_id: int) -> MeshCanvasDoc:
     """Snapshot the workspace's DPs + their upstream bindings as a canvas doc.
 
     Edge IDs are deterministic (``mesh_edge_<port_id>``) so the
@@ -82,9 +80,7 @@ def build_mesh_canvas_doc(
     """
     with factory() as session:
         dps = list(
-            session.scalars(
-                select(DataProduct).where(DataProduct.workspace_id == workspace_id)
-            )
+            session.scalars(select(DataProduct).where(DataProduct.workspace_id == workspace_id))
         )
         dp_ids = [dp.id for dp in dps] or [-1]
         ports = list(
@@ -96,17 +92,12 @@ def build_mesh_canvas_doc(
             )
         )
         ref_to_dp = {_dp_ref(dp): dp.id for dp in dps}
-        nodes: list[MeshCanvasNode] = [
-            MeshCanvasNode(dp_id=dp.id, ref=_dp_ref(dp))
-            for dp in dps
-        ]
+        nodes: list[MeshCanvasNode] = [MeshCanvasNode(dp_id=dp.id, ref=_dp_ref(dp)) for dp in dps]
         cross_ws_ports = [p for p in ports if p.source_workspace_id is not None]
         cross_ws_ids = {p.source_workspace_id for p in cross_ws_ports}
         ws_by_id: dict[int, Workspace] = {}
         if cross_ws_ids:
-            for ws in session.scalars(
-                select(Workspace).where(Workspace.id.in_(cross_ws_ids))
-            ):
+            for ws in session.scalars(select(Workspace).where(Workspace.id.in_(cross_ws_ids))):
                 ws_by_id[ws.id] = ws
         cross_ws_refs: dict[tuple[int, str], int] = {}
         next_ghost_id = -1
@@ -195,7 +186,7 @@ def apply_mesh_canvas_doc(
     for edge in current.edges:
         if edge.id in desired_ids:
             continue
-        port_id_str = edge.id[len(_EDGE_PORT_PREFIX):]
+        port_id_str = edge.id[len(_EDGE_PORT_PREFIX) :]
         try:
             port_id = int(port_id_str)
         except ValueError:
@@ -203,7 +194,7 @@ def apply_mesh_canvas_doc(
             continue
         to_remove_port_ids.append((edge.target_dp_id, port_id))
 
-    for (target_dp_id, port_id) in to_remove_port_ids:
+    for target_dp_id, port_id in to_remove_port_ids:
         if delete_input_port(factory, data_product_id=target_dp_id, port_id=port_id):
             summary.removed += 1
 
@@ -229,9 +220,7 @@ def apply_mesh_canvas_doc(
         if edge.id in current_ids:
             continue
         if edge.target_dp_id not in valid_dp_ids:
-            summary.skipped.append(
-                f"edge {edge.id!r} target dp_id outside workspace"
-            )
+            summary.skipped.append(f"edge {edge.id!r} target dp_id outside workspace")
             continue
         if edge.source_workspace_slug:
             cross_added = _apply_cross_workspace_edge(
@@ -245,9 +234,7 @@ def apply_mesh_canvas_doc(
                 next_seq += 1
             continue
         if edge.source_dp_id not in valid_dp_ids:
-            summary.skipped.append(
-                f"edge {edge.id!r} source dp_id outside workspace"
-            )
+            summary.skipped.append(f"edge {edge.id!r} source dp_id outside workspace")
             continue
         upstream = dps_by_id.get(edge.source_dp_id)
         if upstream is None:
@@ -300,8 +287,7 @@ def _apply_cross_workspace_edge(
         upstream = session.get(DataProduct, edge.source_dp_id)
         if upstream is None or upstream.workspace_id != ws_row.id:
             summary.skipped.append(
-                f"edge {edge.id!r} upstream dp not in workspace "
-                f"{edge.source_workspace_slug!r}"
+                f"edge {edge.id!r} upstream dp not in workspace {edge.source_workspace_slug!r}"
             )
             return False
         ref = _dp_ref(upstream)
@@ -316,8 +302,7 @@ def _apply_cross_workspace_edge(
             source_ref=ref,
             source_workspace_id=source_workspace_id,
             description=(
-                f"Mesh-canvas cross-workspace binding from "
-                f"{edge.source_workspace_slug}:{ref}"
+                f"Mesh-canvas cross-workspace binding from {edge.source_workspace_slug}:{ref}"
             ),
             created_by_user_id=actor_user_id,
         )

@@ -109,9 +109,7 @@ def test_product_required_event_time_present_passes() -> None:
     )
     ts = datetime.datetime(2026, 5, 29, 12, 0, tzinfo=datetime.UTC)
     df = pd.DataFrame({"a": [1], "_event_time": [ts]})
-    out = _maybe_validate_and_stamp_bitemporal(
-        df, factory=_factory(), data_product_id=pid
-    )
+    out = _maybe_validate_and_stamp_bitemporal(df, factory=_factory(), data_product_id=pid)
     assert "_event_time" in out.columns
     assert "_processing_time" in out.columns
 
@@ -126,9 +124,7 @@ def test_product_event_time_wrong_dtype_raises() -> None:
     )
     df = pd.DataFrame({"a": [1], "_event_time": ["not a date"]})
     with pytest.raises(BitemporalRequirementError):
-        _maybe_validate_and_stamp_bitemporal(
-            df, factory=_factory(), data_product_id=pid
-        )
+        _maybe_validate_and_stamp_bitemporal(df, factory=_factory(), data_product_id=pid)
 
 
 def test_product_off_overrides_workspace_inject() -> None:
@@ -162,7 +158,5 @@ def test_product_custom_event_time_column() -> None:
     )
     ts = datetime.datetime(2026, 1, 1, tzinfo=datetime.UTC)
     df = pd.DataFrame({"a": [1], "occurred_at": [ts]})
-    out = _maybe_validate_and_stamp_bitemporal(
-        df, factory=_factory(), data_product_id=pid
-    )
+    out = _maybe_validate_and_stamp_bitemporal(df, factory=_factory(), data_product_id=pid)
     assert "occurred_at" in out.columns

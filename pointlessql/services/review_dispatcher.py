@@ -49,7 +49,6 @@ _SEVERITY_RANK: dict[str, int] = {
 }
 
 
-
 def build_envelope(
     review: AgentReview,
     *,

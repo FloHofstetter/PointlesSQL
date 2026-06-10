@@ -18,6 +18,7 @@ from pointlessql.api._dbx_error_wrapper import (
 
 logger = logging.getLogger(__name__)
 
+
 def require_enabled(request: Request) -> None:
     """Reject every call with 503 when the API is disabled by settings."""
     settings = request.app.state.settings

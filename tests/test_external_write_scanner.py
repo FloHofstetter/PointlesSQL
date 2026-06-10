@@ -126,9 +126,7 @@ def test_scan_is_idempotent(patch_delta: Any) -> None:
     fqn = TableFqn.from_parts("main", "sch", "ews_c")
     history = [{"version": 1, "timestamp": 1609459200000, "operation": "WRITE"}]
     patch_delta(history)
-    first = ews.scan_table(
-        app.state.session_factory, table_fqn=fqn, storage_location="x", now=_NOW
-    )
+    first = ews.scan_table(app.state.session_factory, table_fqn=fqn, storage_location="x", now=_NOW)
     assert len(first) == 1
     patch_delta(history)
     second = ews.scan_table(
@@ -185,17 +183,13 @@ def test_list_unattributed_filters_unacknowledged() -> None:
 
 def test_acknowledge_marks_row() -> None:
     write_id = _add_write("main.crud.t2", 0)
-    assert ews.acknowledge(
-        app.state.session_factory, write_id, acknowledged_by="bob@x", now=_NOW
-    )
+    assert ews.acknowledge(app.state.session_factory, write_id, acknowledged_by="bob@x", now=_NOW)
     rows = ews.list_unattributed(app.state.session_factory, table_fqn_like="main.crud.t2")
     assert rows[0]["acknowledged_by"] == "bob@x"
 
 
 def test_acknowledge_missing_returns_false() -> None:
-    assert not ews.acknowledge(
-        app.state.session_factory, 999999, acknowledged_by="bob@x", now=_NOW
-    )
+    assert not ews.acknowledge(app.state.session_factory, 999999, acknowledged_by="bob@x", now=_NOW)
 
 
 def test_count_unacknowledged_counts_open_rows() -> None:

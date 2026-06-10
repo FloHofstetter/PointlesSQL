@@ -50,7 +50,7 @@ def _serialise_result(row: DataProductContractTestResult) -> dict[str, Any]:
             decoded = json.loads(row.observation_json)
             if isinstance(decoded, dict):
                 obs = decoded
-        except (json.JSONDecodeError, ValueError):
+        except json.JSONDecodeError, ValueError:
             obs = {"raw": row.observation_json}
     return {
         "id": int(row.id),
@@ -132,14 +132,11 @@ def list_contract_tests(
         if not include_disabled:
             stmt = stmt.where(DataProductContractTest.enabled.is_(True))
         return [
-            _serialise_test(r)
-            for r in session.scalars(stmt.order_by(DataProductContractTest.id))
+            _serialise_test(r) for r in session.scalars(stmt.order_by(DataProductContractTest.id))
         ]
 
 
-def delete_contract_test(
-    session_factory: SessionFactory, *, contract_test_id: int
-) -> bool:
+def delete_contract_test(session_factory: SessionFactory, *, contract_test_id: int) -> bool:
     """Remove one contract test row; returns True if a row was deleted."""
     with session_factory() as session:
         row = session.get(DataProductContractTest, contract_test_id)
@@ -197,9 +194,7 @@ def declare_fixture(
         return _serialise_fixture(row)
 
 
-def list_fixtures(
-    session_factory: SessionFactory, *, data_product_id: int
-) -> list[dict[str, Any]]:
+def list_fixtures(session_factory: SessionFactory, *, data_product_id: int) -> list[dict[str, Any]]:
     """Return every fixture row for a product."""
     with session_factory() as session:
         rows = session.scalars(
@@ -210,9 +205,7 @@ def list_fixtures(
         return [_serialise_fixture(r) for r in rows]
 
 
-def delete_fixture(
-    session_factory: SessionFactory, *, fixture_id: int
-) -> bool:
+def delete_fixture(session_factory: SessionFactory, *, fixture_id: int) -> bool:
     """Remove one fixture row; returns True if a row was deleted."""
     with session_factory() as session:
         row = session.get(DataProductFixture, fixture_id)
@@ -234,9 +227,7 @@ def list_results(
     with session_factory() as session:
         rows = session.scalars(
             select(DataProductContractTestResult)
-            .where(
-                DataProductContractTestResult.contract_test_id == contract_test_id
-            )
+            .where(DataProductContractTestResult.contract_test_id == contract_test_id)
             .order_by(DataProductContractTestResult.run_at.desc())
             .limit(max(1, min(limit, 500)))
             .offset(max(0, offset))

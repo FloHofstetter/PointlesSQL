@@ -34,9 +34,7 @@ def _serialise_module(row: PolicyModule) -> dict[str, Any]:
         "version": int(row.version),
         "enabled": bool(row.enabled),
         "created_by_user_id": (
-            int(row.created_by_user_id)
-            if row.created_by_user_id is not None
-            else None
+            int(row.created_by_user_id) if row.created_by_user_id is not None else None
         ),
         "created_at": row.created_at.isoformat(),
         "updated_at": row.updated_at.isoformat(),
@@ -51,9 +49,7 @@ def list_modules(
 ) -> list[dict[str, Any]]:
     """Return every policy module in *workspace_id*."""
     with session_factory() as session:
-        stmt = select(PolicyModule).where(
-            PolicyModule.workspace_id == workspace_id
-        )
+        stmt = select(PolicyModule).where(PolicyModule.workspace_id == workspace_id)
         if not include_disabled:
             stmt = stmt.where(PolicyModule.enabled.is_(True))
         rows = session.scalars(stmt.order_by(PolicyModule.id)).all()
@@ -107,9 +103,7 @@ def create_module(
             session.commit()
         except IntegrityError as exc:
             session.rollback()
-            raise ValueError(
-                f"policy module name '{name}' already exists in workspace"
-            ) from exc
+            raise ValueError(f"policy module name '{name}' already exists in workspace") from exc
         session.refresh(row)
         invalidate_cache(int(row.id))
         return _serialise_module(row)
@@ -129,9 +123,7 @@ def update_module(
         if row is None:
             return None
         bump = False
-        if cedar_source is not None and cedar_source.strip() != (
-            row.cedar_source or ""
-        ).strip():
+        if cedar_source is not None and cedar_source.strip() != (row.cedar_source or "").strip():
             row.cedar_source = cedar_source
             row.version = int(row.version) + 1
             bump = True
@@ -174,9 +166,7 @@ def set_module_enabled(
     enabled: bool,
 ) -> dict[str, Any] | None:
     """Flip the ``enabled`` flag without bumping the version."""
-    return update_module(
-        session_factory, module_id=module_id, enabled=enabled
-    )
+    return update_module(session_factory, module_id=module_id, enabled=enabled)
 
 
 def list_decisions(
@@ -203,21 +193,23 @@ def list_decisions(
                     decoded = json.loads(row.context_json)
                     if isinstance(decoded, dict):
                         context = decoded
-                except (json.JSONDecodeError, ValueError):
+                except json.JSONDecodeError, ValueError:
                     context = {"raw": row.context_json}
-            out.append({
-                "id": int(row.id),
-                "policy_module_id": int(row.policy_module_id),
-                "workspace_id": int(row.workspace_id),
-                "decision_at": row.decision_at.isoformat(),
-                "principal_user_id": row.principal_user_id,
-                "action": row.action,
-                "resource_type": row.resource_type,
-                "resource_id": row.resource_id,
-                "effect": row.effect,
-                "latency_ms": row.latency_ms,
-                "context": context,
-            })
+            out.append(
+                {
+                    "id": int(row.id),
+                    "policy_module_id": int(row.policy_module_id),
+                    "workspace_id": int(row.workspace_id),
+                    "decision_at": row.decision_at.isoformat(),
+                    "principal_user_id": row.principal_user_id,
+                    "action": row.action,
+                    "resource_type": row.resource_type,
+                    "resource_id": row.resource_id,
+                    "effect": row.effect,
+                    "latency_ms": row.latency_ms,
+                    "context": context,
+                }
+            )
         return out
 
 
@@ -233,9 +225,7 @@ def link_modules_to_product(
     now = datetime.datetime.now(datetime.UTC)
     with session_factory() as session:
         row = session.scalar(
-            select(DataProductPolicy).where(
-                DataProductPolicy.data_product_id == data_product_id
-            )
+            select(DataProductPolicy).where(DataProductPolicy.data_product_id == data_product_id)
         )
         if row is None:
             row = DataProductPolicy(

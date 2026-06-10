@@ -64,11 +64,7 @@ def _upstream_doc_hash(doc: CanvasDoc, upto_node_id: str) -> str:
         key=lambda n: n.id,
     )
     edge_items = sorted(
-        (
-            e
-            for e in doc.edges
-            if e.source_node_id in keep and e.target_node_id in keep
-        ),
+        (e for e in doc.edges if e.source_node_id in keep and e.target_node_id in keep),
         key=lambda e: (
             e.source_node_id,
             e.source_pin,
@@ -76,10 +72,7 @@ def _upstream_doc_hash(doc: CanvasDoc, upto_node_id: str) -> str:
             e.target_pin,
         ),
     )
-    nodes = [
-        {"id": n.id, "block_type": n.block_type, "config": n.config}
-        for n in node_items
-    ]
+    nodes = [{"id": n.id, "block_type": n.block_type, "config": n.config} for n in node_items]
     edges = [
         {
             "source_node_id": e.source_node_id,

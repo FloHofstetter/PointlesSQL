@@ -393,9 +393,7 @@ async def admin_audit_export_tarball(
 # ---------------------------------------------------------------------------
 
 
-def _list_saved_filters_for_request(
-    request: Request, current_user: Any
-) -> list[dict[str, Any]]:
+def _list_saved_filters_for_request(request: Request, current_user: Any) -> list[dict[str, Any]]:
     """Best-effort fetch — returns [] on any DB error so the page still renders."""
     try:
         from pointlessql.services.audit._saved_filters import list_for_user
@@ -439,9 +437,7 @@ def list_saved_filters(request: Request) -> JSONResponse:
 
 
 @router.post("/admin/audit/saved-filters")
-def create_saved_filter(
-    body: SavedFilterCreateRequest, request: Request
-) -> JSONResponse:
+def create_saved_filter(body: SavedFilterCreateRequest, request: Request) -> JSONResponse:
     """Create a new saved filter for the current admin."""
     require_admin(request)
     from pointlessql.exceptions import ValidationError as _ValidationError

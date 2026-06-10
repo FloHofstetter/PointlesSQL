@@ -87,9 +87,7 @@ class DataProductAccessRequest(Base):
         ForeignKey("data_products.id", ondelete="CASCADE"),
         nullable=False,
     )
-    requester_user_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("users.id"), nullable=False
-    )
+    requester_user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
     status: Mapped[str] = mapped_column(Text, nullable=False, server_default="pending")
     request_note: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)

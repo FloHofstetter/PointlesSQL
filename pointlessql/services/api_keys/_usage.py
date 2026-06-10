@@ -205,8 +205,9 @@ def get_usage_summary(
         ip_counts[source_ip or ""] += count
 
     today = datetime.datetime.now(datetime.UTC).date()
-    counts_in_order = [daily_counts.get(today - datetime.timedelta(days=i), 0)
-                        for i in range(days - 1, -1, -1)]
+    counts_in_order = [
+        daily_counts.get(today - datetime.timedelta(days=i), 0) for i in range(days - 1, -1, -1)
+    ]
     days_list: list[dict[str, Any]] = []
     for idx, count in enumerate(counts_in_order):
         prior_window = counts_in_order[max(0, idx - 7) : idx]
@@ -221,15 +222,11 @@ def get_usage_summary(
         else:
             is_anomaly = False
         d = today - datetime.timedelta(days=days - 1 - idx)
-        days_list.append(
-            {"date": d.isoformat(), "count": count, "is_anomaly": bool(is_anomaly)}
-        )
+        days_list.append({"date": d.isoformat(), "count": count, "is_anomaly": bool(is_anomaly)})
     top_ips = [{"ip": ip, "count": int(c)} for ip, c in ip_counts.most_common(10)]
 
     last_7d = sum(counts_in_order[-7:]) if counts_in_order else 0
-    prev_7d = (
-        sum(counts_in_order[-14:-7]) if len(counts_in_order) >= 14 else 0
-    )
+    prev_7d = sum(counts_in_order[-14:-7]) if len(counts_in_order) >= 14 else 0
     change_pct: float | None = None
     if prev_7d > 0:
         change_pct = round((last_7d - prev_7d) / prev_7d * 100.0, 2)

@@ -136,7 +136,7 @@ def read_latest_statistics(
             lag_minutes = max(0, int((reference - created).total_seconds() // 60))
         try:
             shape = json.loads(row.shape_json) if row.shape_json else {}
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             shape = {}
         latest.append(
             {

@@ -75,9 +75,7 @@ def test_pipeline_spec_rejects_extra_fields() -> None:
     import pytest as _pytest
 
     with _pytest.raises(Exception):
-        CanvasPipelineSpec.model_validate(
-            {"version": 1, "nodes": [], "edges": [], "bogus": 1}
-        )
+        CanvasPipelineSpec.model_validate({"version": 1, "nodes": [], "edges": [], "bogus": 1})
 
 
 def test_diff_identical_doc_is_empty() -> None:
@@ -88,9 +86,7 @@ def test_diff_identical_doc_is_empty() -> None:
 
 def test_diff_added_node_surfaces() -> None:
     before = _doc_three_block()
-    after_nodes = list(before.nodes) + [
-        CanvasNode(id="lim", block_type="Limit", config={"n": 100})
-    ]
+    after_nodes = list(before.nodes) + [CanvasNode(id="lim", block_type="Limit", config={"n": 100})]
     after = CanvasDoc(nodes=after_nodes, edges=before.edges)
     result = diff_docs(before, after)
     assert [n.id for n in result.added_nodes] == ["lim"]

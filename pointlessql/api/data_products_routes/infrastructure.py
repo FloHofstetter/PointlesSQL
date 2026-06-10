@@ -40,9 +40,7 @@ def _require_steward_or_admin(request: Request, catalog: str, schema: str) -> No
 
 
 @router.get("/api/data-products/{catalog}/{schema}/infrastructure")
-async def get_infrastructure(
-    catalog: str, schema: str, request: Request
-) -> dict[str, Any]:
+async def get_infrastructure(catalog: str, schema: str, request: Request) -> dict[str, Any]:
     """Return the product's infrastructure declaration."""
     require_user(request)
     factory = request.app.state.session_factory

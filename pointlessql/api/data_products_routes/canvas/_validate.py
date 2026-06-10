@@ -48,16 +48,11 @@ def validate_canvas(
     resolved_doc = resolve_dp_refs(request, body.document)
     seeds, seed_errors = seed_schemas_for_doc(resolved_doc, client)
     pin_schemas, flow_errors = validate_schema_flow(resolved_doc, seed_schemas=seeds)
-    wire_schemas = {
-        f"{node_id}:{pin}": schema for (node_id, pin), schema in pin_schemas.items()
-    }
+    wire_schemas = {f"{node_id}:{pin}": schema for (node_id, pin), schema in pin_schemas.items()}
     edge_categories: dict[str, str] = {}
     for edge in resolved_doc.edges:
         source_schema = pin_schemas.get((edge.source_node_id, edge.source_pin))
-        key = (
-            f"{edge.source_node_id}:{edge.source_pin}->"
-            f"{edge.target_node_id}:{edge.target_pin}"
-        )
+        key = f"{edge.source_node_id}:{edge.source_pin}->{edge.target_node_id}:{edge.target_pin}"
         edge_categories[key] = categorize_pin_schema(source_schema)
     return CanvasValidateResponse(
         pin_schemas=wire_schemas,
@@ -85,16 +80,11 @@ def ghost_diff_canvas(
     client = raw_soyuz_client(request)
     seeds, seed_errors = seed_schemas_for_doc(proposed, client)
     pin_schemas, flow_errors = validate_schema_flow(proposed, seed_schemas=seeds)
-    wire_schemas = {
-        f"{node_id}:{pin}": schema for (node_id, pin), schema in pin_schemas.items()
-    }
+    wire_schemas = {f"{node_id}:{pin}": schema for (node_id, pin), schema in pin_schemas.items()}
     edge_categories: dict[str, str] = {}
     for edge in proposed.edges:
         source_schema = pin_schemas.get((edge.source_node_id, edge.source_pin))
-        key = (
-            f"{edge.source_node_id}:{edge.source_pin}->"
-            f"{edge.target_node_id}:{edge.target_pin}"
-        )
+        key = f"{edge.source_node_id}:{edge.source_pin}->{edge.target_node_id}:{edge.target_pin}"
         edge_categories[key] = categorize_pin_schema(source_schema)
     return CanvasGhostDiffResponse(
         diff=diff_docs(current, proposed),

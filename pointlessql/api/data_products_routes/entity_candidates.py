@@ -73,9 +73,7 @@ async def list_entity_link_candidates(
 
 
 @router.post("/api/entity-link-candidates/{candidate_id}/accept")
-async def accept_entity_link_candidate(
-    candidate_id: int, request: Request
-) -> dict[str, Any]:
+async def accept_entity_link_candidate(candidate_id: int, request: Request) -> dict[str, Any]:
     """Promote a candidate to an entity_link (steward/admin)."""
     _require_steward_or_admin(request)
     factory = request.app.state.session_factory
@@ -95,9 +93,7 @@ async def accept_entity_link_candidate(
 
 
 @router.post("/api/entity-link-candidates/{candidate_id}/reject")
-async def reject_entity_link_candidate(
-    candidate_id: int, request: Request
-) -> dict[str, Any]:
+async def reject_entity_link_candidate(candidate_id: int, request: Request) -> dict[str, Any]:
     """Mark a candidate as rejected (steward/admin)."""
     _require_steward_or_admin(request)
     factory = request.app.state.session_factory
@@ -117,9 +113,7 @@ async def reject_entity_link_candidate(
 
 
 @router.post("/api/entity-link-candidates/{candidate_id}/defer")
-async def defer_entity_link_candidate(
-    candidate_id: int, request: Request
-) -> dict[str, Any]:
+async def defer_entity_link_candidate(candidate_id: int, request: Request) -> dict[str, Any]:
     """Mark a candidate as deferred (steward/admin)."""
     _require_steward_or_admin(request)
     factory = request.app.state.session_factory

@@ -71,9 +71,7 @@ def _seed_granular_from_canvas(doc: Any, canvas_doc: CanvasDoc) -> None:
         nodes_map[node.id] = node_record
         nodes_map[node.id]["block_type"] = node.block_type
         nodes_map[node.id]["config_json"] = json.dumps(node.config, default=str)
-        nodes_map[node.id]["position_json"] = json.dumps(
-            node.position or {}, default=str
-        )
+        nodes_map[node.id]["position_json"] = json.dumps(node.position or {}, default=str)
         nodes_order.append(node.id)
     for edge in canvas_doc.edges:
         edge_record = pycrdt.Map()
@@ -112,7 +110,7 @@ def _read_granular(doc: Any) -> CanvasDoc | None:
             continue
         try:
             config = json.loads(str(record.get("config_json") or "{}"))
-        except (ValueError, json.JSONDecodeError):
+        except ValueError, json.JSONDecodeError:
             config = {}
         position_raw = record.get("position_json")
         position: dict[str, Any] | None = None
@@ -121,7 +119,7 @@ def _read_granular(doc: Any) -> CanvasDoc | None:
                 parsed = json.loads(str(position_raw))
                 if isinstance(parsed, dict) and parsed:
                     position = parsed
-            except (ValueError, json.JSONDecodeError):
+            except ValueError, json.JSONDecodeError:
                 position = None
         nodes.append(
             CanvasNode(
@@ -158,13 +156,11 @@ def _read_legacy_json_slot(doc: Any) -> CanvasDoc | None:
         return None
     try:
         return CanvasDoc.model_validate_json(payload)
-    except (ValueError, json.JSONDecodeError):
+    except ValueError, json.JSONDecodeError:
         return None
 
 
-def get_or_init_canvas_ydoc(
-    factory: sessionmaker[Session], *, data_product_id: int
-) -> Any:
+def get_or_init_canvas_ydoc(factory: sessionmaker[Session], *, data_product_id: int) -> Any:
     """Return a fresh :class:`pycrdt.Doc` seeded from the latest saved canvas.
 
     Always populates the granular ``nodes_*`` / ``edges_*`` maps so

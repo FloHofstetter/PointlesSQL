@@ -60,9 +60,7 @@ def upgrade() -> None:
             nullable=True,
         ),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
-        sa.UniqueConstraint(
-            "owner_user_id", "name", name="uq_audit_saved_filters_owner_name"
-        ),
+        sa.UniqueConstraint("owner_user_id", "name", name="uq_audit_saved_filters_owner_name"),
     )
     op.create_index(
         "ix_audit_saved_filters_workspace_shared",

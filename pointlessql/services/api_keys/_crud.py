@@ -110,6 +110,7 @@ def parse_keys(raw: str | None) -> dict[str, tuple[str, bool, bool, bool, bool, 
         out[name] = (secret, supervisor, auditor, lineage_inbound, analyst, sql_execute)
     return out
 
+
 def bootstrap_from_env(session_factory: SessionFactory, env: dict[str, str] | None = None) -> int:
     """Idempotently spill ``POINTLESSQL_API_KEYS`` pairs into the DB.
 
@@ -179,6 +180,7 @@ def bootstrap_from_env(session_factory: SessionFactory, env: dict[str, str] | No
         invalidate_cache()
         logger.info("Bootstrapped %d API keys from POINTLESSQL_API_KEYS", inserted)
     return inserted
+
 
 def create_api_key(
     session_factory: SessionFactory,
@@ -280,6 +282,7 @@ def create_api_key(
     invalidate_cache()
     return row, plaintext
 
+
 def revoke_api_key(session_factory: SessionFactory, *, name: str) -> bool:
     """Mark *name* as revoked.  Returns ``True`` when a row was updated."""
     with session_factory() as session:
@@ -290,6 +293,7 @@ def revoke_api_key(session_factory: SessionFactory, *, name: str) -> bool:
         session.commit()
     invalidate_cache()
     return True
+
 
 def list_api_keys(
     session_factory: SessionFactory, *, include_revoked: bool = False
@@ -311,6 +315,7 @@ def list_api_keys(
         for row in rows:
             session.expunge(row)
         return rows
+
 
 def rotate_api_key(
     session_factory: SessionFactory,
@@ -379,6 +384,7 @@ def rotate_api_key(
     invalidate_cache()
     return successor, plaintext
 
+
 def quarantine_api_key(session_factory: SessionFactory, *, name: str, reason: str) -> bool:
     """Soft-disable a key.  Returns ``True`` when applied.
 
@@ -415,6 +421,7 @@ def quarantine_api_key(session_factory: SessionFactory, *, name: str, reason: st
     invalidate_cache()
     return True
 
+
 def unquarantine_api_key(session_factory: SessionFactory, *, name: str) -> bool:
     """Clear quarantine on *name*.  Returns ``True`` when applied."""
     with session_factory() as session:
@@ -426,6 +433,7 @@ def unquarantine_api_key(session_factory: SessionFactory, *, name: str) -> bool:
         session.commit()
     invalidate_cache()
     return True
+
 
 def update_api_key_ttl(
     session_factory: SessionFactory,

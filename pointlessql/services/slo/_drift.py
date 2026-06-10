@@ -22,7 +22,6 @@ from pointlessql.types import SessionFactory
 DEFAULT_BASELINE_DEPTH = 10
 
 
-
 def _z_score(observed: float, baseline: list[float]) -> tuple[float, float, float]:
     """Return ``(z, mean, std)`` of *observed* against *baseline* values.
 
@@ -47,7 +46,7 @@ def _null_ratios(shape_json: str, row_count: int | None) -> dict[str, float]:
         return {}
     try:
         shape = json.loads(shape_json) if shape_json else {}
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return {}
     columns = shape.get("columns", {}) if isinstance(shape, dict) else {}
     ratios: dict[str, float] = {}

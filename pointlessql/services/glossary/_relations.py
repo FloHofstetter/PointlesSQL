@@ -190,15 +190,15 @@ def term_graph(
                 edge_id = (rel.source_term_id, rel.target_term_id, rel.kind)
                 if edge_id not in seen_edges:
                     seen_edges.add(edge_id)
-                    edges.append({
-                        "source": rel.source_term_id,
-                        "target": rel.target_term_id,
-                        "kind": rel.kind,
-                    })
+                    edges.append(
+                        {
+                            "source": rel.source_term_id,
+                            "target": rel.target_term_id,
+                            "kind": rel.kind,
+                        }
+                    )
                 neighbour_id = (
-                    rel.target_term_id
-                    if rel.source_term_id == current
-                    else rel.source_term_id
+                    rel.target_term_id if rel.source_term_id == current else rel.source_term_id
                 )
                 if neighbour_id in visited:
                     continue

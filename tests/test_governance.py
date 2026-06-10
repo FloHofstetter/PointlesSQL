@@ -298,8 +298,13 @@ def test_unclassified_pii_findings_pure() -> None:
             "catalog": "main",
             "schema_name": "x",
             "tables": [
-                {"name": "t", "columns": [{"name": "email", "type": "string"},
-                                          {"name": "id", "type": "long"}]}
+                {
+                    "name": "t",
+                    "columns": [
+                        {"name": "email", "type": "string"},
+                        {"name": "id", "type": "long"},
+                    ],
+                }
             ],
         }
     )
@@ -416,8 +421,15 @@ async def test_governance_aggregate_shape() -> None:
         res = await client.get("/api/data-products/main/gov_agg/governance")
     assert res.status_code == 200, res.text
     body = res.json()
-    assert {"effective_policy", "classifications", "violations", "trust_downgraded",
-            "forget_requests", "ownership_suggestion", "can_manage"} <= set(body)
+    assert {
+        "effective_policy",
+        "classifications",
+        "violations",
+        "trust_downgraded",
+        "forget_requests",
+        "ownership_suggestion",
+        "can_manage",
+    } <= set(body)
 
 
 async def test_policy_mutation_requires_steward_or_admin() -> None:

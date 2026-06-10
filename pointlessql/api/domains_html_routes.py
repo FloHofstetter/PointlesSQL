@@ -91,9 +91,7 @@ async def api_list_domains(request: Request, include_archived: bool = False) -> 
     for row in rows:
         members = _members_with_email(factory, row.id)
         owners = [m for m in members if m["role"] == "owner"]
-        product_count = len(
-            domains_service.list_products_for_domain(factory, domain_id=row.id)
-        )
+        product_count = len(domains_service.list_products_for_domain(factory, domain_id=row.id))
         payload = _serialise_domain(row)
         payload["owners"] = owners
         payload["member_count"] = len(members)

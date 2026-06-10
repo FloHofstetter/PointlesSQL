@@ -52,9 +52,7 @@ def upgrade() -> None:
         ),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
-        sa.UniqueConstraint(
-            "data_product_id", name="uq_dp_bitemporal_policy_product"
-        ),
+        sa.UniqueConstraint("data_product_id", name="uq_dp_bitemporal_policy_product"),
         sa.CheckConstraint(
             "enforcement IS NULL OR enforcement IN ('off','opt_in','required')",
             name="ck_dp_bitemporal_policy_enforcement",

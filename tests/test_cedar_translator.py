@@ -24,9 +24,7 @@ def test_cedar_action_passthrough() -> None:
 
 
 def test_build_resource_id_data_product() -> None:
-    uid = build_resource_id(
-        resource_type="DataProduct", catalog="main", schema="silver"
-    )
+    uid = build_resource_id(resource_type="DataProduct", catalog="main", schema="silver")
     assert uid == 'DataProduct::"main.silver"'
 
 
@@ -36,7 +34,4 @@ def test_build_resource_id_data_product_missing_segments() -> None:
 
 
 def test_build_resource_id_output_port_with_pk() -> None:
-    assert (
-        build_resource_id(resource_type="OutputPort", id_value=7)
-        == 'OutputPort::"7"'
-    )
+    assert build_resource_id(resource_type="OutputPort", id_value=7) == 'OutputPort::"7"'

@@ -117,15 +117,11 @@ class DataProductEventDelivery(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     subscription_id: Mapped[int] = mapped_column(
         Integer,
-        ForeignKey(
-            "data_product_event_subscriptions.id", ondelete="CASCADE"
-        ),
+        ForeignKey("data_product_event_subscriptions.id", ondelete="CASCADE"),
         nullable=False,
     )
     version_from: Mapped[int] = mapped_column(Integer, nullable=False)
     version_to: Mapped[int] = mapped_column(Integer, nullable=False)
     row_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    delivered_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
+    delivered_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     status: Mapped[str] = mapped_column(String(8), nullable=False)

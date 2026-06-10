@@ -88,7 +88,7 @@ async def _pump(sub: _Subscriber) -> None:
         while True:
             frame = await sub.outbound.get()
             await sub.websocket.send_bytes(frame)
-    except (WebSocketDisconnect, asyncio.CancelledError):
+    except WebSocketDisconnect, asyncio.CancelledError:
         pass
     except Exception:  # noqa: BLE001  # bare-broad-ok: last-ditch shutdown of the socket
         _LOG.exception("dp-canvas-coedit: pump for %s crashed", sub.client_id)
@@ -98,9 +98,7 @@ async def _pump(sub: _Subscriber) -> None:
             pass
 
 
-async def _broadcast(
-    hub: _CanvasHub, frame: bytes, *, exclude: _Subscriber | None
-) -> None:
+async def _broadcast(hub: _CanvasHub, frame: bytes, *, exclude: _Subscriber | None) -> None:
     for sub in list(hub.subscribers):
         if sub is exclude:
             continue
@@ -110,9 +108,7 @@ async def _broadcast(
             _LOG.warning("dp_canvas-coedit: outbound queue overflow for %s", sub.client_id)
 
 
-async def _flush_loop(
-    hub: _CanvasHub, factory: sessionmaker[Any]
-) -> None:
+async def _flush_loop(hub: _CanvasHub, factory: sessionmaker[Any]) -> None:
     """Persist the live Y.Doc to ``data_product_canvas_graph`` periodically."""
     try:
         while True:
@@ -136,9 +132,7 @@ async def _flush_loop(
         pass
 
 
-async def _get_or_create_hub(
-    dp_id: int, factory: sessionmaker[Any]
-) -> _CanvasHub:
+async def _get_or_create_hub(dp_id: int, factory: sessionmaker[Any]) -> _CanvasHub:
     async with _HUBS_LOCK:
         existing = _HUBS.get(dp_id)
         if existing is not None:
@@ -155,9 +149,7 @@ async def _get_or_create_hub(
         return hub
 
 
-async def _release_hub_if_empty(
-    dp_id: int, factory: sessionmaker[Any]
-) -> None:
+async def _release_hub_if_empty(dp_id: int, factory: sessionmaker[Any]) -> None:
     async with _HUBS_LOCK:
         hub = _HUBS.get(dp_id)
         if hub is None:
@@ -225,9 +217,7 @@ async def dp_canvas_coedit_ws(websocket: WebSocket, dp_id: int) -> None:
         pump_task=None,
         user_id=user_id,
     )
-    sub.pump_task = asyncio.create_task(
-        _pump(sub), name=f"dp-canvas-coedit-pump-{sub.client_id}"
-    )
+    sub.pump_task = asyncio.create_task(_pump(sub), name=f"dp-canvas-coedit-pump-{sub.client_id}")
     async with hub.lock:
         hub.subscribers.append(sub)
         initial = hub.doc.get_update()
@@ -277,7 +267,7 @@ async def dp_canvas_coedit_ws(websocket: WebSocket, dp_id: int) -> None:
         sub.pump_task.cancel()
         try:
             await sub.pump_task
-        except (asyncio.CancelledError, Exception):  # noqa: BLE001
+        except asyncio.CancelledError, Exception:  # noqa: BLE001
             pass
         async with hub.lock:
             if sub in hub.subscribers:

@@ -198,10 +198,18 @@ async def test_pump_with_rows_advances_position_and_records_ok() -> None:
     pid, sid = _create_sub("evt", "ok", "orders", "stub-ok")
 
     rows_to_yield = [
-        ChangeRow(version=1, commit_timestamp="2026-05-29T00:00:00Z",
-                  change_type="insert", data={"id": 1, "qty": 10}),
-        ChangeRow(version=2, commit_timestamp="2026-05-29T01:00:00Z",
-                  change_type="insert", data={"id": 2, "qty": 20}),
+        ChangeRow(
+            version=1,
+            commit_timestamp="2026-05-29T00:00:00Z",
+            change_type="insert",
+            data={"id": 1, "qty": 10},
+        ),
+        ChangeRow(
+            version=2,
+            commit_timestamp="2026-05-29T01:00:00Z",
+            change_type="insert",
+            data={"id": 2, "qty": 20},
+        ),
     ]
 
     def _reader(_location: str, _since: int, _max: int) -> list[ChangeRow]:
@@ -262,15 +270,12 @@ async def test_pump_broadcasts_to_live_subscribers() -> None:
     ws = _StubWS()
     await _ws_hub.register(hub, ws)
     try:
-        change = ChangeRow(version=5, commit_timestamp=None,
-                           change_type="insert", data={"x": 42})
+        change = ChangeRow(version=5, commit_timestamp=None, change_type="insert", data={"x": 42})
 
         def _reader(_l: str, _s: int, _m: int) -> list[ChangeRow]:
             return [change]
 
-        await pump_subscription(
-            _factory(), subscription_id=sid, max_versions=10, reader=_reader
-        )
+        await pump_subscription(_factory(), subscription_id=sid, max_versions=10, reader=_reader)
         assert len(ws.sent) == 1
         frame = json.loads(ws.sent[0])
         assert frame["version"] == 5
@@ -287,9 +292,7 @@ async def test_pump_all_active_aggregates() -> None:
     event_port_service.pause_subscription(_factory(), subscription_id=sid2)
 
     def _reader(_l: str, _s: int, _m: int) -> list[ChangeRow]:
-        return [
-            ChangeRow(version=10, commit_timestamp=None, change_type="insert", data={})
-        ]
+        return [ChangeRow(version=10, commit_timestamp=None, change_type="insert", data={})]
 
     summary = await pump_all_active(_factory(), max_versions=5, reader=_reader)
     # sid1 active; sid2 paused (not active so won't be picked up)
@@ -331,9 +334,7 @@ def test_cdf_reader_missing_table_returns_empty() -> None:
 @pytest.mark.asyncio
 async def test_list_event_subscriptions_admin_sees_all(admin_client: Any) -> None:
     pid, sid = _create_sub("evt", "httpadmin", "tab", "http-admin")
-    response = await admin_client.get(
-        "/api/data-products/evt/httpadmin/event-subscriptions"
-    )
+    response = await admin_client.get("/api/data-products/evt/httpadmin/event-subscriptions")
     assert response.status_code == 200
     items = response.json()["items"]
     ids = [i["id"] for i in items]
@@ -345,7 +346,5 @@ async def test_anonymous_subscriptions_list_rejected(
     anonymous_client: Any,
 ) -> None:
     _create_sub("evt", "httpanon", "tab", "http-anon")
-    response = await anonymous_client.get(
-        "/api/data-products/evt/httpanon/event-subscriptions"
-    )
+    response = await anonymous_client.get("/api/data-products/evt/httpanon/event-subscriptions")
     assert response.status_code in (401, 403)

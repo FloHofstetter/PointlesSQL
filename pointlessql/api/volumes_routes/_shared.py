@@ -11,6 +11,7 @@ from pointlessql.exceptions import ValidationError
 
 logger = logging.getLogger(__name__)
 
+
 def soyuz_base_url(request: Request) -> str:
     """Return the configured soyuz-catalog base URL.
 

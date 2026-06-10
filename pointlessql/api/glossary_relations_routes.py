@@ -44,9 +44,7 @@ async def add_relation(
 
 
 @router.delete("/api/glossary/{term_id}/relations/{relation_id}")
-async def delete_relation(
-    term_id: int, relation_id: int, request: Request
-) -> dict[str, Any]:
+async def delete_relation(term_id: int, relation_id: int, request: Request) -> dict[str, Any]:
     """Delete one relation (admin)."""
     require_admin(request)
     factory = request.app.state.session_factory
@@ -58,32 +56,24 @@ async def delete_relation(
 
 
 @router.get("/api/glossary/{term_id}/relations")
-async def list_relations(
-    term_id: int, request: Request, direction: str = "both"
-) -> dict[str, Any]:
+async def list_relations(term_id: int, request: Request, direction: str = "both") -> dict[str, Any]:
     """Return relations incident on *term_id* (any-user)."""
     require_user(request)
     factory = request.app.state.session_factory
     return {
-        "relations": glossary_service.list_relations(
-            factory, term_id=term_id, direction=direction
-        )
+        "relations": glossary_service.list_relations(factory, term_id=term_id, direction=direction)
     }
 
 
 @router.get("/api/glossary/{term_id}/graph")
-async def get_term_graph(
-    term_id: int, request: Request, depth: int = 2
-) -> dict[str, Any]:
+async def get_term_graph(term_id: int, request: Request, depth: int = 2) -> dict[str, Any]:
     """Return the bounded knowledge-graph rooted at *term_id*."""
     require_user(request)
     factory = request.app.state.session_factory
     if depth <= 0 or depth > 5:
         raise BadRequestError("depth must be in [1, 5]")
     try:
-        result = glossary_service.term_graph(
-            factory, root_term_id=term_id, depth=depth
-        )
+        result = glossary_service.term_graph(factory, root_term_id=term_id, depth=depth)
     except LookupError as exc:
         # bare-http-ok: 404 for unknown root term; no domain exception needed.
         raise HTTPException(status_code=404, detail=str(exc)) from exc

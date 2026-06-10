@@ -206,9 +206,7 @@ async def test_roundtrip_complex_doc(admin_client: httpx.AsyncClient) -> None:
                 "GroupBy",
                 {
                     "keys": ["id"],
-                    "aggregations": [
-                        {"column": "amount", "fn": "sum", "alias": "total"}
-                    ],
+                    "aggregations": [{"column": "amount", "fn": "sum", "alias": "total"}],
                 },
             ),
             node("lim", "Limit", {"n": 10}),
@@ -268,9 +266,7 @@ def _stub_uc_client(monkeypatch, *, columns_by_fqn: dict[str, list[ColumnInfo]])
 
 
 @pytest.mark.asyncio
-async def test_validate_valid_doc_zero_errors(
-    admin_client: httpx.AsyncClient, monkeypatch
-) -> None:
+async def test_validate_valid_doc_zero_errors(admin_client: httpx.AsyncClient, monkeypatch) -> None:
     dp_id = _seed_dp(schema_name="canvas_valid")
     _stub_uc_client(
         monkeypatch,
@@ -281,9 +277,7 @@ async def test_validate_valid_doc_zero_errors(
             ],
         },
     )
-    doc = linear_doc(
-        "main.canvas_valid.src", "main.canvas_valid.tgt", predicate="amount > 0"
-    )
+    doc = linear_doc("main.canvas_valid.src", "main.canvas_valid.tgt", predicate="amount > 0")
     res = await admin_client.post(
         f"/api/dp/{dp_id}/canvas/validate",
         json={"document": _doc_dict(doc)},
@@ -457,9 +451,7 @@ async def test_materialize_multiple_sinks(
         names = {
             r.name
             for r in session.execute(
-                select(DataProductOutputPort).where(
-                    DataProductOutputPort.data_product_id == dp_id
-                )
+                select(DataProductOutputPort).where(DataProductOutputPort.data_product_id == dp_id)
             ).scalars()
         }
     assert {"port_a", "port_b"} <= names
@@ -719,9 +711,7 @@ async def test_preview_filter_applies_predicate(
             ),
         },
     )
-    doc = linear_doc(
-        "main.prev_flt.src", "main.prev_flt.tgt", predicate="amt > 10"
-    )
+    doc = linear_doc("main.prev_flt.src", "main.prev_flt.tgt", predicate="amt > 10")
     res = await admin_client.post(
         f"/api/dp/{dp_id}/canvas/preview",
         json={
@@ -796,9 +786,7 @@ async def test_diff_two_versions_surfaces_modified_node(
         f"/api/dp/{dp_id}/canvas",
         json={
             "document": _doc_dict(
-                linear_doc(
-                    "main.diffroute.src", "main.diffroute.tgt", predicate="x > 0"
-                )
+                linear_doc("main.diffroute.src", "main.diffroute.tgt", predicate="x > 0")
             )
         },
     )
@@ -806,15 +794,11 @@ async def test_diff_two_versions_surfaces_modified_node(
         f"/api/dp/{dp_id}/canvas",
         json={
             "document": _doc_dict(
-                linear_doc(
-                    "main.diffroute.src", "main.diffroute.tgt", predicate="x > 99"
-                )
+                linear_doc("main.diffroute.src", "main.diffroute.tgt", predicate="x > 99")
             )
         },
     )
-    res = await admin_client.get(
-        f"/api/dp/{dp_id}/canvas/diff?from_version=1&to_version=2"
-    )
+    res = await admin_client.get(f"/api/dp/{dp_id}/canvas/diff?from_version=1&to_version=2")
     assert res.status_code == 200, res.text
     body = res.json()
     assert body["from_version"] == 1
@@ -824,9 +808,7 @@ async def test_diff_two_versions_surfaces_modified_node(
 
 
 @pytest.mark.asyncio
-async def test_ghost_diff_proposed_vs_current(
-    admin_client: httpx.AsyncClient, monkeypatch
-) -> None:
+async def test_ghost_diff_proposed_vs_current(admin_client: httpx.AsyncClient, monkeypatch) -> None:
     dp_id = _seed_dp(schema_name="ghostdiff")
     _stub_uc_client(
         monkeypatch,
@@ -949,9 +931,7 @@ async def test_unpin_version_clears_flag(
     admin_client: httpx.AsyncClient,
 ) -> None:
     dp_id = _seed_dp(schema_name="unpin_clear")
-    await admin_client.post(
-        f"/api/dp/{dp_id}/canvas", json={"document": _doc_dict(_bare_doc())}
-    )
+    await admin_client.post(f"/api/dp/{dp_id}/canvas", json={"document": _doc_dict(_bare_doc())})
     await admin_client.post(f"/api/dp/{dp_id}/canvas/versions/1/pin")
     listing = (await admin_client.get(f"/api/dp/{dp_id}/canvas/versions")).json()
     assert listing["pinned_version"] == 1
@@ -967,9 +947,7 @@ async def test_pin_non_steward_forbidden(
     admin_client: httpx.AsyncClient,
 ) -> None:
     dp_id = _seed_dp(schema_name="pin_forbidden")
-    await admin_client.post(
-        f"/api/dp/{dp_id}/canvas", json={"document": _doc_dict(_bare_doc())}
-    )
+    await admin_client.post(f"/api/dp/{dp_id}/canvas", json={"document": _doc_dict(_bare_doc())})
     res = await non_admin_client.post(f"/api/dp/{dp_id}/canvas/versions/1/pin")
     assert res.status_code == 403, res.text
 
@@ -997,9 +975,7 @@ async def test_pin_emits_audit_row(
     from pointlessql.models import AuditLog
 
     dp_id = _seed_dp(schema_name="pin_audit")
-    await admin_client.post(
-        f"/api/dp/{dp_id}/canvas", json={"document": _doc_dict(_bare_doc())}
-    )
+    await admin_client.post(f"/api/dp/{dp_id}/canvas", json={"document": _doc_dict(_bare_doc())})
     await admin_client.post(f"/api/dp/{dp_id}/canvas/versions/1/pin")
     factory = app.state.session_factory
     with factory() as session:
@@ -1131,9 +1107,7 @@ async def test_preview_cache_busted_by_save_graph(
     payload = {"document": _doc_dict(doc), "upto_node_id": "inp", "limit": 5}
     await admin_client.post(f"/api/dp/{dp_id}/canvas/preview", json=payload)
     assert _preview_cache.size() == 1
-    save_res = await admin_client.post(
-        f"/api/dp/{dp_id}/canvas", json={"document": _doc_dict(doc)}
-    )
+    save_res = await admin_client.post(f"/api/dp/{dp_id}/canvas", json={"document": _doc_dict(doc)})
     assert save_res.status_code == 200
     assert _preview_cache.size() == 0
     _preview_cache.clear_all()
@@ -1165,9 +1139,7 @@ async def test_preview_explicit_bust_query_param(
     doc = linear_doc("main.prev_bustparam.src", "main.prev_bustparam.tgt")
     payload = {"document": _doc_dict(doc), "upto_node_id": "inp", "limit": 5}
     await admin_client.post(f"/api/dp/{dp_id}/canvas/preview", json=payload)
-    res2 = await admin_client.post(
-        f"/api/dp/{dp_id}/canvas/preview?bust=1", json=payload
-    )
+    res2 = await admin_client.post(f"/api/dp/{dp_id}/canvas/preview?bust=1", json=payload)
     # bust=1 clears before executing → fresh scan → cache_hit=False
     assert res2.json()["cache_hit"] is False
     _preview_cache.clear_all()

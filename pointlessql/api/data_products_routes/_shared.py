@@ -45,7 +45,7 @@ def _parse_contract(row: DataProduct) -> DataProductContract:
     try:
         raw = json.loads(row.contract_json) if row.contract_json else {}
         return DataProductContract.model_validate(raw)
-    except (json.JSONDecodeError, PydanticValidationError):
+    except json.JSONDecodeError, PydanticValidationError:
         logger.warning(
             "data product %s.%s has an empty or invalid contract_json; "
             "falling back to row-derived contract",

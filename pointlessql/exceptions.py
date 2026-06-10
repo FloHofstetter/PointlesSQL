@@ -193,9 +193,7 @@ class QuotaExceededError(PointlessSQLError):
         limit: float,
         observed: float,
     ) -> None:
-        detail = (
-            f"quota exceeded on {metric}: observed={observed} > limit={limit}"
-        )
+        detail = f"quota exceeded on {metric}: observed={observed} > limit={limit}"
         Exception.__init__(self, detail)
         self.detail = detail
         self.consumer_id = consumer_id

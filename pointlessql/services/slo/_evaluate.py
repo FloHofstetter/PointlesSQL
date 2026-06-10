@@ -53,9 +53,7 @@ def _completeness_pct(entry: dict[str, Any]) -> float | None:
     total_cells = row_count * len(columns)
     if total_cells == 0:
         return None
-    total_nulls = sum(
-        c.get("null_count", 0) for c in columns.values() if isinstance(c, dict)
-    )
+    total_nulls = sum(c.get("null_count", 0) for c in columns.values() if isinstance(c, dict))
     return max(0.0, (1.0 - total_nulls / total_cells) * 100.0)
 
 
@@ -83,9 +81,7 @@ def _observe_measurable(
     scoped = _stats_for(stats, table_name)
     if slo_kind == "freshness":
         lags = [
-            e["freshness_lag_minutes"]
-            for e in scoped
-            if e.get("freshness_lag_minutes") is not None
+            e["freshness_lag_minutes"] for e in scoped if e.get("freshness_lag_minutes") is not None
         ]
         return float(max(lags)) if lags else None
     if slo_kind == "volume":
@@ -201,9 +197,7 @@ def evaluate_product(
             else None
         )
         verdict = (
-            _verdict(observed, slo.target_value, slo.comparator)
-            if measurable
-            else "unmeasured"
+            _verdict(observed, slo.target_value, slo.comparator) if measurable else "unmeasured"
         )
         results.append(
             {

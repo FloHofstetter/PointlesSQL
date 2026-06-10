@@ -91,9 +91,7 @@ class EntityLinkCandidate(Base):
         nullable=False,
     )
     kind: Mapped[str] = mapped_column(String(16), nullable=False)
-    confidence_score: Mapped[Decimal] = mapped_column(
-        Numeric(precision=3, scale=2), nullable=False
-    )
+    confidence_score: Mapped[Decimal] = mapped_column(Numeric(precision=3, scale=2), nullable=False)
     evidence_json: Mapped[str] = mapped_column(Text(), nullable=False)
     discovered_at: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True), nullable=False

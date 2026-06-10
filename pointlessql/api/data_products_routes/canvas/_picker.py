@@ -29,9 +29,7 @@ def list_dp_picker(request: Request) -> DataProductPickerResponse:
     factory = request.app.state.session_factory
     with factory() as session:
         dps = (
-            session.execute(
-                select(DataProduct).where(DataProduct.workspace_id == workspace_id)
-            )
+            session.execute(select(DataProduct).where(DataProduct.workspace_id == workspace_id))
             .scalars()
             .all()
         )

@@ -155,7 +155,6 @@ def _unknown_schema() -> PinSchema:
     return PinSchema(kind="table", columns=[], unknown=True)
 
 
-
 # --------------------------------------------------------------------- output modes
 
 OUTPUT_MODES: tuple[str, ...] = ("overwrite", "append", "merge")

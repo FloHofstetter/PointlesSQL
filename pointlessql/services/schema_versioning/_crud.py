@@ -17,9 +17,7 @@ from pointlessql.services.schema_versioning._diff import (
 from pointlessql.types import SessionFactory
 
 
-def list_versions(
-    session_factory: SessionFactory, *, output_port_id: int
-) -> list[dict[str, Any]]:
+def list_versions(session_factory: SessionFactory, *, output_port_id: int) -> list[dict[str, Any]]:
     """Return every history row for one port, newest first."""
     with session_factory() as session:
         rows = session.scalars(
@@ -52,7 +50,7 @@ def current_schema(
             return None
         try:
             decoded = json.loads(row.schema_json)
-        except (json.JSONDecodeError, TypeError, ValueError):
+        except json.JSONDecodeError, TypeError, ValueError:
             return None
         return decoded if isinstance(decoded, dict) else None
 
@@ -93,12 +91,10 @@ def bump_port_version(
                 decoded = json.loads(current_row.schema_json)
                 if isinstance(decoded, dict):
                     prior = decoded
-            except (json.JSONDecodeError, TypeError, ValueError):
+            except json.JSONDecodeError, TypeError, ValueError:
                 prior = None
         diff = compute_diff(prior, new_schema)
-        next_semver, kind = propose_bump(
-            port.version_semver or "0.1.0", diff
-        )
+        next_semver, kind = propose_bump(port.version_semver or "0.1.0", diff)
         if kind == "none" and current_row is not None:
             return _serialise(current_row), diff
         new_row = OutputPortSchemaVersion(

@@ -58,9 +58,7 @@ def resolve_sandbox_path(rel: str, *, for_write: bool) -> str:
     root = Path(cfg.root).resolve()
     full = (root / rel).resolve()
     if not full.is_relative_to(root):
-        raise ValidationError(
-            f"File path {rel!r} escapes the configured sandbox root."
-        )
+        raise ValidationError(f"File path {rel!r} escapes the configured sandbox root.")
     # A single quote would break out of the quoted path literal in the
     # DuckDB read_*/COPY statement.  The relative part is allow-listed
     # already; this guards a pathological root configured with a quote.
@@ -77,9 +75,7 @@ def rewrite_file_sentinels(sql: str) -> str:
     sentinel resolves as a *read* (``for_write=False``); an out-of-sandbox or
     disabled path raises :class:`ValidationError`.
     """
-    return FILE_SENTINEL_RE.sub(
-        lambda m: resolve_sandbox_path(m.group(1), for_write=False), sql
-    )
+    return FILE_SENTINEL_RE.sub(lambda m: resolve_sandbox_path(m.group(1), for_write=False), sql)
 
 
 __all__ = ["resolve_sandbox_path", "rewrite_file_sentinels"]

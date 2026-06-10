@@ -32,7 +32,6 @@ from pointlessql.types import SessionFactory
 _LOG = logging.getLogger(__name__)
 
 
-
 ReaderFn = Callable[[str, int, int], list[ChangeRow]]
 
 
@@ -41,9 +40,7 @@ def _default_reader(location: str, since_version: int, max_versions: int) -> lis
     return read_changes(location, since_version=since_version, max_versions=max_versions)
 
 
-def _resolve_location(
-    factory: SessionFactory, *, subscription: dict[str, Any]
-) -> str | None:
+def _resolve_location(factory: SessionFactory, *, subscription: dict[str, Any]) -> str | None:
     """Look up the Delta storage location for the subscription's source.
 
     Returns ``None`` when the parent product or the storage location
@@ -192,9 +189,7 @@ async def pump_subscription(
     }
 
 
-async def _product_full_name(
-    factory: SessionFactory, data_product_id: int
-) -> str | None:
+async def _product_full_name(factory: SessionFactory, data_product_id: int) -> str | None:
     """Return ``catalog.schema`` of the data product, or ``None``."""
     with factory() as session:
         product = session.get(DataProduct, data_product_id)

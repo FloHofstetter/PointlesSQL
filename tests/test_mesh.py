@@ -96,9 +96,7 @@ def test_local_mesh_neighbourhood_hop_limit() -> None:
     c = _seed_dp("hop", "c")
     _add_input_port(b, "from_a", "hop.a")
     _add_input_port(c, "from_b", "hop.b")
-    local = mesh_service.build_local_mesh(
-        _factory(), workspace_id=1, data_product_id=b, hops=1
-    )
+    local = mesh_service.build_local_mesh(_factory(), workspace_id=1, data_product_id=b, hops=1)
     refs = {n["ref"] for n in local["nodes"]}
     assert refs == {"hop.a", "hop.b", "hop.c"}
     assert local["center"] == "hop.b"
@@ -145,12 +143,22 @@ def test_joinable_columns_across_products_sharing_an_entity() -> None:
     right = _seed_dp("join", "right")
     entity = mesh_service.create_entity(_factory(), workspace_id=1, name="Party")
     mesh_service.add_binding(
-        _factory(), mesh_entity_id=entity.id, data_product_id=left,
-        catalog="join", schema="left", table="orders", column="cust_id",
+        _factory(),
+        mesh_entity_id=entity.id,
+        data_product_id=left,
+        catalog="join",
+        schema="left",
+        table="orders",
+        column="cust_id",
     )
     mesh_service.add_binding(
-        _factory(), mesh_entity_id=entity.id, data_product_id=right,
-        catalog="join", schema="right", table="customers", column="id",
+        _factory(),
+        mesh_entity_id=entity.id,
+        data_product_id=right,
+        catalog="join",
+        schema="right",
+        table="customers",
+        column="id",
     )
     suggestions = mesh_service.joinable_columns(
         _factory(), left_product_id=left, right_product_id=right

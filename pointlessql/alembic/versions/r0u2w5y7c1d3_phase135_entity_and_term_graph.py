@@ -52,7 +52,8 @@ def upgrade() -> None:
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
         sa.UniqueConstraint(
-            "data_product_id", "entity_name",
+            "data_product_id",
+            "entity_name",
             name="uq_dp_entities_identity",
         ),
     )
@@ -87,7 +88,9 @@ def upgrade() -> None:
         ),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.UniqueConstraint(
-            "source_entity_id", "target_entity_id", "kind",
+            "source_entity_id",
+            "target_entity_id",
+            "kind",
             name="uq_entity_links_identity",
         ),
         sa.CheckConstraint(
@@ -130,7 +133,9 @@ def upgrade() -> None:
         ),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.UniqueConstraint(
-            "source_term_id", "target_term_id", "kind",
+            "source_term_id",
+            "target_term_id",
+            "kind",
             name="uq_glossary_term_relations_identity",
         ),
         sa.CheckConstraint(

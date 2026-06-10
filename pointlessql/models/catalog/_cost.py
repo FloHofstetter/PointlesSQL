@@ -81,9 +81,7 @@ class DataProductQueryCost(Base):
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    started_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
+    started_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     completed_at: Mapped[datetime.datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
@@ -146,9 +144,7 @@ class DataProductCostBucketHourly(Base):
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    bucket_hour: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
+    bucket_hour: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     data_product_id: Mapped[int] = mapped_column(
         Integer,
         ForeignKey("data_products.id", ondelete="CASCADE"),
@@ -157,9 +153,7 @@ class DataProductCostBucketHourly(Base):
     consumer_user_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("users.id"), nullable=True
     )
-    query_count: Mapped[int] = mapped_column(
-        Integer, nullable=False, default=0, server_default="0"
-    )
+    query_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
     total_duration_ms: Mapped[int] = mapped_column(
         BigInteger, nullable=False, default=0, server_default="0"
     )

@@ -41,12 +41,8 @@ def upgrade() -> None:
         ),
         sa.Column("name", sa.String(length=128), nullable=False),
         sa.Column("cedar_source", sa.Text(), nullable=False),
-        sa.Column(
-            "version", sa.Integer(), nullable=False, server_default="1"
-        ),
-        sa.Column(
-            "enabled", sa.Boolean(), nullable=False, server_default="1"
-        ),
+        sa.Column("version", sa.Integer(), nullable=False, server_default="1"),
+        sa.Column("enabled", sa.Boolean(), nullable=False, server_default="1"),
         sa.Column(
             "created_by_user_id",
             sa.Integer(),
@@ -55,9 +51,7 @@ def upgrade() -> None:
         ),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
-        sa.UniqueConstraint(
-            "workspace_id", "name", name="uq_policy_modules_ws_name"
-        ),
+        sa.UniqueConstraint("workspace_id", "name", name="uq_policy_modules_ws_name"),
     )
     op.create_index(
         "ix_policy_modules_ws",
@@ -122,9 +116,7 @@ def upgrade() -> None:
 def downgrade() -> None:
     """Reverse 141 — drop the columns, decisions ledger, and modules."""
     op.drop_column("data_product_policies", "linked_policy_module_ids")
-    op.drop_column(
-        "workspace_governance_policies", "linked_policy_module_ids"
-    )
+    op.drop_column("workspace_governance_policies", "linked_policy_module_ids")
     op.drop_index(
         "ix_policy_module_decisions_principal",
         table_name="policy_module_decisions",

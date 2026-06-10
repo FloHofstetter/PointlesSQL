@@ -49,9 +49,7 @@ def upgrade() -> None:
             sa.Column(
                 "lifecycle_changed_by_user_id",
                 sa.Integer(),
-                sa.ForeignKey(
-                    "users.id", name="fk_data_products_lifecycle_changed_by"
-                ),
+                sa.ForeignKey("users.id", name="fk_data_products_lifecycle_changed_by"),
                 nullable=True,
             )
         )
@@ -59,9 +57,7 @@ def upgrade() -> None:
             sa.Column(
                 "replacement_data_product_id",
                 sa.Integer(),
-                sa.ForeignKey(
-                    "data_products.id", name="fk_data_products_replacement"
-                ),
+                sa.ForeignKey("data_products.id", name="fk_data_products_replacement"),
                 nullable=True,
             )
         )
@@ -80,9 +76,7 @@ def downgrade() -> None:
     """Drop the four lifecycle columns + the check + index."""
     op.drop_index("ix_data_products_lifecycle_state", table_name="data_products")
     with op.batch_alter_table("data_products", schema=None) as batch_op:
-        batch_op.drop_constraint(
-            "ck_data_products_lifecycle_state", type_="check"
-        )
+        batch_op.drop_constraint("ck_data_products_lifecycle_state", type_="check")
         batch_op.drop_column("replacement_data_product_id")
         batch_op.drop_column("lifecycle_changed_by_user_id")
         batch_op.drop_column("lifecycle_changed_at")

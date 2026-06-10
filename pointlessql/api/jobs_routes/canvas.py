@@ -148,9 +148,7 @@ def validate_job_canvas(
     """Run side-effect-free shape / cycle / kind / name checks."""
     require_user(request)
     load_job_or_404(request, job_id)
-    issues = validate_job_dag_doc(
-        body.document, known_kinds=set(JOB_REGISTRY.kinds())
-    )
+    issues = validate_job_dag_doc(body.document, known_kinds=set(JOB_REGISTRY.kinds()))
     return JobCanvasValidateResponse(issues=issues)
 
 
@@ -158,9 +156,7 @@ def validate_job_canvas(
     "/api/jobs/{job_id}/canvas/run-status",
     response_model=JobCanvasRunStatusResponse,
 )
-def job_canvas_run_status(
-    job_id: int, run_id: int, request: Request
-) -> JobCanvasRunStatusResponse:
+def job_canvas_run_status(job_id: int, run_id: int, request: Request) -> JobCanvasRunStatusResponse:
     """Overlay one run's per-task statuses onto the canvas node ids."""
     require_user(request)
     load_job_or_404(request, job_id)
@@ -174,9 +170,7 @@ def job_canvas_kinds(job_id: int, request: Request) -> JobKindsResponse:
     """Return the runnable task-kind palette for the editor."""
     require_user(request)
     load_job_or_404(request, job_id)
-    kinds = [
-        JobKindEntry(type=k, label=_kind_label(k)) for k in JOB_REGISTRY.kinds()
-    ]
+    kinds = [JobKindEntry(type=k, label=_kind_label(k)) for k in JOB_REGISTRY.kinds()]
     return JobKindsResponse(kinds=kinds)
 
 

@@ -90,9 +90,7 @@ def build_rows() -> list[tuple[str, str, str, str]]:
 
 def render_markdown(rows: list[tuple[str, str, str, str]]) -> str:
     """Render the matrix rows as a Markdown document."""
-    admin_no_gate = [
-        r for r in rows if r[3] == "authenticated" and "/admin" in r[1]
-    ]
+    admin_no_gate = [r for r in rows if r[3] == "authenticated" and "/admin" in r[1]]
     lines = [
         "---",
         "title: Authorization coverage matrix (generated)",

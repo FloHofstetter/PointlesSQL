@@ -65,11 +65,7 @@ def upgrade() -> None:
         )
 
     with op.batch_alter_table("data_product_policies") as batch:
-        batch.add_column(
-            sa.Column(
-                "iso8601_enforcement", sa.String(length=8), nullable=True
-            )
-        )
+        batch.add_column(sa.Column("iso8601_enforcement", sa.String(length=8), nullable=True))
         batch.create_check_constraint(
             "ck_data_product_iso8601_enforcement",
             "iso8601_enforcement IS NULL OR iso8601_enforcement IN ('off','warn','strict')",
@@ -79,15 +75,11 @@ def upgrade() -> None:
 def downgrade() -> None:
     """Drop the columns added above."""
     with op.batch_alter_table("data_product_policies") as batch:
-        batch.drop_constraint(
-            "ck_data_product_iso8601_enforcement", type_="check"
-        )
+        batch.drop_constraint("ck_data_product_iso8601_enforcement", type_="check")
         batch.drop_column("iso8601_enforcement")
 
     with op.batch_alter_table("workspace_governance_policies") as batch:
-        batch.drop_constraint(
-            "ck_workspace_iso8601_enforcement", type_="check"
-        )
+        batch.drop_constraint("ck_workspace_iso8601_enforcement", type_="check")
         batch.drop_column("iso8601_enforcement")
 
     for table in _TRACE_TABLES:

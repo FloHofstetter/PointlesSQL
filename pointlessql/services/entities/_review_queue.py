@@ -70,9 +70,7 @@ def accept_candidate(
         if row is None:
             raise LookupError(f"candidate {candidate_id} not found")
         if row.decision is not None:
-            raise ValueError(
-                f"candidate {candidate_id} already decided: {row.decision}"
-            )
+            raise ValueError(f"candidate {candidate_id} already decided: {row.decision}")
         row.decision = "accepted"
         row.reviewed_at = datetime.datetime.now(datetime.UTC)
         row.reviewed_by_user_id = reviewed_by_user_id
@@ -140,9 +138,7 @@ def _set_decision(
         if row is None:
             raise LookupError(f"candidate {candidate_id} not found")
         if row.decision is not None:
-            raise ValueError(
-                f"candidate {candidate_id} already decided: {row.decision}"
-            )
+            raise ValueError(f"candidate {candidate_id} already decided: {row.decision}")
         row.decision = decision
         row.reviewed_at = datetime.datetime.now(datetime.UTC)
         row.reviewed_by_user_id = reviewed_by_user_id
@@ -180,21 +176,21 @@ def _list_candidates(
                     decoded = json.loads(row.evidence_json)
                     if isinstance(decoded, dict):
                         evidence = decoded
-                except (json.JSONDecodeError, ValueError):
+                except json.JSONDecodeError, ValueError:
                     pass
-            out.append({
-                "id": int(row.id),
-                "source_entity_id": int(row.source_entity_id),
-                "target_entity_id": int(row.target_entity_id),
-                "kind": row.kind,
-                "confidence_score": float(row.confidence_score),
-                "evidence": evidence,
-                "discovered_at": row.discovered_at.isoformat(),
-                "decision": row.decision,
-                "reviewed_at": (
-                    row.reviewed_at.isoformat()
-                    if row.reviewed_at is not None
-                    else None
-                ),
-            })
+            out.append(
+                {
+                    "id": int(row.id),
+                    "source_entity_id": int(row.source_entity_id),
+                    "target_entity_id": int(row.target_entity_id),
+                    "kind": row.kind,
+                    "confidence_score": float(row.confidence_score),
+                    "evidence": evidence,
+                    "discovered_at": row.discovered_at.isoformat(),
+                    "decision": row.decision,
+                    "reviewed_at": (
+                        row.reviewed_at.isoformat() if row.reviewed_at is not None else None
+                    ),
+                }
+            )
         return out

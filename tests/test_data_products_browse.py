@@ -210,9 +210,7 @@ async def test_active_endorsement_surfaces_in_listing(
     product = (await admin_client.get("/api/data-products")).json()["data_products"][0]
     assert [e["type"] for e in product["endorsements"]] == ["production-ready"]
 
-    await admin_client.delete(
-        f"/api/data-products/main/sales_gold/endorsements/{endorsement_id}"
-    )
+    await admin_client.delete(f"/api/data-products/main/sales_gold/endorsements/{endorsement_id}")
     product2 = (await admin_client.get("/api/data-products")).json()["data_products"][0]
     assert product2["endorsements"] == []
 
@@ -224,9 +222,7 @@ async def test_bound_glossary_term_surfaces_in_listing(
     """A glossary term bound to a product column appears in ``glossary_terms``."""
     _seed_product(tmp_path)
     factory = app.state.session_factory
-    term = glossary_service.create_term(
-        factory, workspace_id=1, slug="order-key", term="Order key"
-    )
+    term = glossary_service.create_term(factory, workspace_id=1, slug="order-key", term="Order key")
     glossary_service.bind_column(
         factory,
         term_id=term.id,

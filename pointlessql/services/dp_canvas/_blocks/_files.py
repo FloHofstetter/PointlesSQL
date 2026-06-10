@@ -61,9 +61,7 @@ def make_file_sentinel(rel: str) -> str:
     return f"@@CANVAS_FILE:{rel}@@"
 
 
-def _safe_relative_path(
-    node_id: str, raw: Any, errors: list[CompileError]
-) -> str | None:
+def _safe_relative_path(node_id: str, raw: Any, errors: list[CompileError]) -> str | None:
     """Validate a path's shape only — relative, no traversal, safe charset.
 
     Pure and string-only on purpose: it never touches the filesystem or
@@ -134,9 +132,7 @@ def _compile_file_input(
         return None
     fmt = _coerce_str(cfg.get("format"), default="auto").lower().strip()
     if fmt not in _INPUT_FORMATS:
-        errors.append(
-            _bad_config(node_id, f"FileInput.format must be one of {_INPUT_FORMATS}.")
-        )
+        errors.append(_bad_config(node_id, f"FileInput.format must be one of {_INPUT_FORMATS}."))
         return None
     reader = _reader_for(fmt, rel)
     return CompiledBlock(

@@ -122,9 +122,7 @@ def build_job_dag_doc(factory: Any, *, job_id: int) -> CanvasDoc:
         tasks.
     """
     with factory() as session:
-        tasks = list(
-            session.scalars(select(JobTask).where(JobTask.job_id == job_id))
-        )
+        tasks = list(session.scalars(select(JobTask).where(JobTask.job_id == job_id)))
     nodes = [_task_node(t) for t in tasks]
     edges: list[CanvasEdge] = []
     for t in tasks:
@@ -141,9 +139,7 @@ def build_job_dag_doc(factory: Any, *, job_id: int) -> CanvasDoc:
     return CanvasDoc(nodes=nodes, edges=edges)
 
 
-def validate_job_dag_doc(
-    doc: CanvasDoc, *, known_kinds: set[str] | None = None
-) -> list[str]:
+def validate_job_dag_doc(doc: CanvasDoc, *, known_kinds: set[str] | None = None) -> list[str]:
     """Run side-effect-free checks on an edited task-chain doc.
 
     Surfaces the same failure classes the save path would reject — a cyclic
@@ -206,9 +202,7 @@ def build_run_status(factory: Any, *, job_id: int, run_id: int) -> dict[str, str
         run = session.get(JobRun, run_id)
         if run is None or run.job_id != job_id:
             return statuses
-        rows = session.scalars(
-            select(TaskRun).where(TaskRun.job_run_id == run_id)
-        )
+        rows = session.scalars(select(TaskRun).where(TaskRun.job_run_id == run_id))
         for tr in rows:
             statuses[node_id_for_task(tr.task_id)] = str(tr.status)
     return statuses
@@ -225,9 +219,7 @@ class JobDagSaveSummary(BaseModel):
     id_remap: dict[str, str]
 
 
-def _tasks_with_live_runs(
-    session: Any, job_id: int, task_ids: list[int]
-) -> list[int]:
+def _tasks_with_live_runs(session: Any, job_id: int, task_ids: list[int]) -> list[int]:
     """Return the subset of *task_ids* pinned by an in-flight run.
 
     A task is pinned when it has a ``TaskRun`` whose parent ``JobRun`` is
@@ -238,9 +230,7 @@ def _tasks_with_live_runs(
         return []
     live_run_ids = list(
         session.scalars(
-            select(JobRun.id).where(
-                JobRun.job_id == job_id, JobRun.status == "running"
-            )
+            select(JobRun.id).where(JobRun.job_id == job_id, JobRun.status == "running")
         )
     )
     if not live_run_ids:
@@ -310,10 +300,7 @@ def apply_job_dag_doc(
         if job is None:
             raise ResourceNotFoundError(f"Job {job_id} not found")
         existing = {
-            t.id: t
-            for t in session.scalars(
-                select(JobTask).where(JobTask.job_id == job_id)
-            )
+            t.id: t for t in session.scalars(select(JobTask).where(JobTask.job_id == job_id))
         }
 
         node_to_task: dict[str, JobTask] = {}
@@ -351,24 +338,16 @@ def apply_job_dag_doc(
 
         # Delete tasks the doc dropped — guarded against in-flight runs.
         to_delete = [t for tid, t in existing.items() if tid not in seen_ids]
-        pinned = _tasks_with_live_runs(
-            session, job_id, [t.id for t in to_delete]
-        )
+        pinned = _tasks_with_live_runs(session, job_id, [t.id for t in to_delete])
         if pinned:
-            names = sorted(
-                existing[tid].name for tid in pinned if tid in existing
-            )
-            raise ValidationError(
-                f"cannot delete task(s) with an in-flight run: {names}"
-            )
+            names = sorted(existing[tid].name for tid in pinned if tid in existing)
+            raise ValidationError(f"cannot delete task(s) with an in-flight run: {names}")
         for task in to_delete:
             session.delete(task)
             deleted += 1
 
         # Recompute depends_on from the edges (A → B ⇒ B depends on A).
-        deps_by_task: dict[int, list[int]] = {
-            t.id: [] for t in node_to_task.values()
-        }
+        deps_by_task: dict[int, list[int]] = {t.id: [] for t in node_to_task.values()}
         for edge in doc.edges:
             src = node_to_task.get(edge.source_node_id)
             tgt = node_to_task.get(edge.target_node_id)
@@ -381,14 +360,10 @@ def apply_job_dag_doc(
             task.depends_on = json.dumps(deps_by_task.get(task.id, []))
 
         session.flush()
-        remaining = list(
-            session.scalars(select(JobTask).where(JobTask.job_id == job_id))
-        )
+        remaining = list(session.scalars(select(JobTask).where(JobTask.job_id == job_id)))
         # Final gate on the persisted rows — rolls back the whole save on a
         # cycle (the context manager exits without commit on the raise).
         validate_dag(remaining)
         session.commit()
 
-    return JobDagSaveSummary(
-        created=created, updated=updated, deleted=deleted, id_remap=id_remap
-    )
+    return JobDagSaveSummary(created=created, updated=updated, deleted=deleted, id_remap=id_remap)

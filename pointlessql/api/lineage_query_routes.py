@@ -79,9 +79,7 @@ async def lineage_downstream(
 
 
 @router.get("/api/lineage/query/path")
-async def lineage_path(
-    request: Request, source: str, target: str
-) -> dict[str, Any]:
+async def lineage_path(request: Request, source: str, target: str) -> dict[str, Any]:
     """Return the shortest producer→consumer path between two products."""
     factory, workspace_id = _common(request)
     try:
@@ -101,8 +99,4 @@ async def lineage_path(
 async def lineage_clusters(request: Request) -> dict[str, Any]:
     """Return every workspace product clustered by domain."""
     factory, workspace_id = _common(request)
-    return {
-        "clusters": graph_query.cluster_by_domain(
-            factory, workspace_id=workspace_id
-        )
-    }
+    return {"clusters": graph_query.cluster_by_domain(factory, workspace_id=workspace_id)}

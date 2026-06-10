@@ -102,7 +102,7 @@ def measure_precision_accuracy(
         return "unmeasured", {"reason": "no statistics snapshot"}
     try:
         payload = json.loads(snapshot.shape_json or "{}")
-    except (ValueError, TypeError):
+    except ValueError, TypeError:
         payload = {}
     null_ratio = float(payload.get("null_ratio_max", 0.0) or 0.0)
     if comparator == "lte":

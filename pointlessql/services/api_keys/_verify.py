@@ -81,6 +81,7 @@ def _emit_auth_denied_audit(
             exc_info=True,
         )
 
+
 def verify_bearer(
     authorization_header: str | None,
     session_factory: SessionFactory | None,
@@ -211,6 +212,7 @@ def verify_bearer(
     resolve_cache[digest] = (entry, now + CACHE_TTL_SECONDS)
     return entry
 
+
 def is_supervisor(session_factory: SessionFactory, *, name: str) -> bool:
     """Return ``True`` when the named key carries the supervisor scope.
 
@@ -229,6 +231,7 @@ def is_supervisor(session_factory: SessionFactory, *, name: str) -> bool:
     with session_factory() as session:
         row = session.scalar(select(ApiKey).where(ApiKey.name == name, ApiKey.revoked_at.is_(None)))
         return bool(row and row.supervisor)
+
 
 def is_auditor(session_factory: SessionFactory, *, name: str) -> bool:
     """Return ``True`` when the named key carries the auditor scope.

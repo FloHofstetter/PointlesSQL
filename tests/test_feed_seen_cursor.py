@@ -72,9 +72,11 @@ async def test_seen_creates_then_advances_forward_only(
 
     factory = app.state.session_factory
     with factory() as session:
-        rows = session.execute(
-            select(FeedReadMarker).where(FeedReadMarker.user_id == admin_id)
-        ).scalars().all()
+        rows = (
+            session.execute(select(FeedReadMarker).where(FeedReadMarker.user_id == admin_id))
+            .scalars()
+            .all()
+        )
     assert len(rows) == 1  # upsert, never duplicated
 
 

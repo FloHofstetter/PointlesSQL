@@ -25,9 +25,7 @@ router = APIRouter(tags=["data-products"])
     response_class=HTMLResponse,
     response_model=None,
 )
-async def dp_canvas_editor_page(
-    request: Request, dp_id: int
-) -> HTMLResponse | RedirectResponse:
+async def dp_canvas_editor_page(request: Request, dp_id: int) -> HTMLResponse | RedirectResponse:
     """Render the visual canvas editor for *dp_id*.
 
     Anonymous visitors are redirected through the OIDC login so the
@@ -49,9 +47,7 @@ async def dp_canvas_editor_page(
     """  # noqa: DOC502
     user = get_user(request)
     if user["id"] == 0:
-        return RedirectResponse(
-            url=f"/auth/login?next=/dp/{dp_id}/canvas", status_code=303
-        )
+        return RedirectResponse(url=f"/auth/login?next=/dp/{dp_id}/canvas", status_code=303)
 
     workspace_id = current_workspace_id(request)
     factory = request.app.state.session_factory
@@ -78,8 +74,7 @@ async def dp_canvas_editor_page(
             "current_user_id": int(user.get("id") or 0),
             "is_admin": bool(user.get("is_admin")),
             "is_steward": (
-                product["steward_user_id"] is not None
-                and product["steward_user_id"] == user["id"]
+                product["steward_user_id"] is not None and product["steward_user_id"] == user["id"]
             ),
             "active_page": "data_products",
         },
@@ -91,15 +86,11 @@ async def dp_canvas_editor_page(
     response_class=HTMLResponse,
     response_model=None,
 )
-async def dp_canvas_diff_page(
-    request: Request, dp_id: int
-) -> HTMLResponse | RedirectResponse:
+async def dp_canvas_diff_page(request: Request, dp_id: int) -> HTMLResponse | RedirectResponse:
     """Render the canvas diff-viewer for *dp_id*."""  # noqa: DOC502
     user = get_user(request)
     if user["id"] == 0:
-        return RedirectResponse(
-            url=f"/auth/login?next=/dp/{dp_id}/canvas/diff", status_code=303
-        )
+        return RedirectResponse(url=f"/auth/login?next=/dp/{dp_id}/canvas/diff", status_code=303)
     workspace_id = current_workspace_id(request)
     factory = request.app.state.session_factory
     with factory() as session:

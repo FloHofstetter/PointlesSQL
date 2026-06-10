@@ -106,9 +106,7 @@ class DataProductRating(Base):
 
     __tablename__ = "data_product_ratings"
 
-    __table_args__ = (
-        CheckConstraint("score BETWEEN 1 AND 5", name="ck_dp_ratings_score_range"),
-    )
+    __table_args__ = (CheckConstraint("score BETWEEN 1 AND 5", name="ck_dp_ratings_score_range"),)
 
     data_product_id: Mapped[int] = mapped_column(
         Integer,

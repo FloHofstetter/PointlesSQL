@@ -48,9 +48,7 @@ def upgrade() -> None:
         sa.Column(
             "output_port_id",
             sa.Integer(),
-            sa.ForeignKey(
-                "data_product_output_ports.id", ondelete="CASCADE"
-            ),
+            sa.ForeignKey("data_product_output_ports.id", ondelete="CASCADE"),
             nullable=False,
         ),
         sa.Column("table_name", sa.String(length=200), nullable=False),
@@ -61,9 +59,7 @@ def upgrade() -> None:
             nullable=False,
             server_default='{"version": 0, "row_offset": 0}',
         ),
-        sa.Column(
-            "status", sa.String(length=16), nullable=False, server_default="active"
-        ),
+        sa.Column("status", sa.String(length=16), nullable=False, server_default="active"),
         sa.Column("last_delivered_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column(
             "owner_user_id",
@@ -100,16 +96,12 @@ def upgrade() -> None:
         sa.Column(
             "subscription_id",
             sa.Integer(),
-            sa.ForeignKey(
-                "data_product_event_subscriptions.id", ondelete="CASCADE"
-            ),
+            sa.ForeignKey("data_product_event_subscriptions.id", ondelete="CASCADE"),
             nullable=False,
         ),
         sa.Column("version_from", sa.Integer(), nullable=False),
         sa.Column("version_to", sa.Integer(), nullable=False),
-        sa.Column(
-            "row_count", sa.Integer(), nullable=False, server_default="0"
-        ),
+        sa.Column("row_count", sa.Integer(), nullable=False, server_default="0"),
         sa.Column("delivered_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("status", sa.String(length=8), nullable=False),
         sa.CheckConstraint(

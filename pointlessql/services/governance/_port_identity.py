@@ -63,7 +63,7 @@ def parse_requirements(raw: str | None) -> IdentityRequirements | None:
         return None
     try:
         payload = json.loads(raw)
-    except (ValueError, TypeError):
+    except ValueError, TypeError:
         return None
     if not isinstance(payload, dict):
         return None

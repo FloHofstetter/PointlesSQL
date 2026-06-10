@@ -91,9 +91,7 @@ def test_output_port_crud_and_uniqueness() -> None:
 def test_output_port_rejects_bad_kind() -> None:
     dp_id = _seed_dp("main", "ports_badkind")
     with pytest.raises(ValueError, match="kind"):
-        ports_service.create_output_port(
-            _factory(), data_product_id=dp_id, name="x", kind="bogus"
-        )
+        ports_service.create_output_port(_factory(), data_product_id=dp_id, name="x", kind="bogus")
 
 
 def test_input_port_crud() -> None:
@@ -122,9 +120,7 @@ def test_semantic_concepts_and_sample_sql() -> None:
     )
     with pytest.raises(ValueError, match="already declared"):
         semantic_service.add_concept(_factory(), data_product_id=dp_id, concept="Order")
-    product = semantic_service.set_sample_sql(
-        _factory(), data_product_id=dp_id, sql="SELECT 1"
-    )
+    product = semantic_service.set_sample_sql(_factory(), data_product_id=dp_id, sql="SELECT 1")
     assert product.sample_sql == "SELECT 1"
     cleared = semantic_service.set_sample_sql(_factory(), data_product_id=dp_id, sql="   ")
     assert cleared.sample_sql is None
@@ -171,9 +167,7 @@ def test_glossary_term_binding_and_reverse_lookup() -> None:
 
 def test_glossary_terms_for_schemas_bulk() -> None:
     """The bulk sibling keys bound term labels by ``(catalog, schema)``."""
-    rev = glossary_service.create_term(
-        _factory(), workspace_id=1, slug="bulk-rev", term="Revenue"
-    )
+    rev = glossary_service.create_term(_factory(), workspace_id=1, slug="bulk-rev", term="Revenue")
     cust = glossary_service.create_term(
         _factory(), workspace_id=1, slug="bulk-cust", term="Customer"
     )
@@ -311,8 +305,16 @@ async def test_discovery_contract_shape() -> None:
     assert body["uri"].startswith("urn:pointlessql:product:")
     assert body["uri"].endswith(":main:disco")
     assert body["discovery_version"] == "1.0"
-    assert {"identity", "semantics", "output_ports", "input_ports", "tables", "slos",
-            "statistics", "links"} <= set(body)
+    assert {
+        "identity",
+        "semantics",
+        "output_ports",
+        "input_ports",
+        "tables",
+        "slos",
+        "statistics",
+        "links",
+    } <= set(body)
     assert body["tables"][0]["name"] == "t"
 
 

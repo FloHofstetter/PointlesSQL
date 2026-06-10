@@ -36,25 +36,17 @@ def _require_steward_or_admin(request: Request, catalog: str, schema: str) -> No
     )
 
 
-@router.get(
-    "/api/data-products/{catalog}/{schema}/output-ports/{port_id}/versions"
-)
+@router.get("/api/data-products/{catalog}/{schema}/output-ports/{port_id}/versions")
 async def list_port_versions(
     catalog: str, schema: str, port_id: int, request: Request
 ) -> dict[str, Any]:
     """Return the schema-version history for one output port (any-user)."""
     require_user(request)
     factory = request.app.state.session_factory
-    return {
-        "versions": sv_service.list_versions(
-            factory, output_port_id=port_id
-        )
-    }
+    return {"versions": sv_service.list_versions(factory, output_port_id=port_id)}
 
 
-@router.post(
-    "/api/data-products/{catalog}/{schema}/output-ports/{port_id}/bump"
-)
+@router.post("/api/data-products/{catalog}/{schema}/output-ports/{port_id}/bump")
 async def bump_port_schema(
     catalog: str,
     schema: str,
@@ -94,9 +86,7 @@ async def bump_port_schema(
     }
 
 
-@router.get(
-    "/api/data-products/{catalog}/{schema}/output-ports/{port_id}/diff"
-)
+@router.get("/api/data-products/{catalog}/{schema}/output-ports/{port_id}/diff")
 async def diff_port_versions(
     catalog: str,
     schema: str,

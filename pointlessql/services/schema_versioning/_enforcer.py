@@ -107,19 +107,13 @@ def assert_schema_compatibility(
             return None
         from pointlessql.services.schema_versioning._crud import current_schema
 
-        prior = current_schema(
-            session_factory, output_port_id=int(port.id)
-        )
+        prior = current_schema(session_factory, output_port_id=int(port.id))
         version = str(port.version_semver or "0.1.0")
         port_name = str(port.name)
     diff = compute_diff(prior, new_schema)
-    outcome = EnforcementOutcome(
-        mode=mode, diff=diff, version=version, port_name=port_name
-    )
+    outcome = EnforcementOutcome(mode=mode, diff=diff, version=version, port_name=port_name)
     if mode == "block" and diff.is_breaking():
-        raise SchemaBreakingChangeError(
-            port_name=port_name, version=version, diff=diff
-        )
+        raise SchemaBreakingChangeError(port_name=port_name, version=version, diff=diff)
     return outcome
 
 

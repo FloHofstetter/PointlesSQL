@@ -19,7 +19,6 @@ from pointlessql.types import SessionFactory
 _SLUG_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,62}[a-z0-9]$|^[a-z0-9]$")
 
 
-
 def _validate_slug(slug: str) -> str:
     """Return *slug* lowered + trimmed, or raise on shape violation.
 
@@ -227,9 +226,7 @@ def unbind_column(session_factory: SessionFactory, *, binding_id: int) -> bool:
         return True
 
 
-def list_bindings(
-    session_factory: SessionFactory, *, term_id: int
-) -> list[GlossaryTermColumn]:
+def list_bindings(session_factory: SessionFactory, *, term_id: int) -> list[GlossaryTermColumn]:
     """Return every column binding for *term_id*."""
     with session_factory() as session:
         rows = list(

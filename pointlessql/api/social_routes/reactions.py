@@ -51,6 +51,7 @@ def _review_ref(kind: str, ref: str) -> str:
     """
     return ref if kind == "dp" else parse_ref(kind, ref)
 
+
 router = APIRouter(tags=["social"])
 
 

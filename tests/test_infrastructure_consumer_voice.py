@@ -63,9 +63,7 @@ def _seed_dp(catalog: str, schema: str) -> int:
 
 def test_infrastructure_default_is_blank() -> None:
     dp_id = _seed_dp("inf", "blank")
-    view = infrastructure_service.get_infrastructure(
-        _factory(), data_product_id=dp_id
-    )
+    view = infrastructure_service.get_infrastructure(_factory(), data_product_id=dp_id)
     assert view["storage_class"] is None
     assert view["access_methods"] == []
 
@@ -83,9 +81,7 @@ def test_infrastructure_upsert_persists() -> None:
             "notes": "  primary  ",
         },
     )
-    view = infrastructure_service.get_infrastructure(
-        _factory(), data_product_id=dp_id
-    )
+    view = infrastructure_service.get_infrastructure(_factory(), data_product_id=dp_id)
     assert view["storage_class"] == "delta"
     assert view["compute_runtime"] == "pql"
     assert view["access_methods"] == ["sql", "file"]
@@ -151,9 +147,7 @@ def test_list_use_cases_orders_by_votes_desc() -> None:
     b = consumer_voice_service.add_use_case(
         _factory(), data_product_id=dp_id, title="B", body="", author_user_id=None
     )
-    consumer_voice_service.vote_use_case(
-        _factory(), use_case_id=b["id"], user_id=_admin_user_id()
-    )
+    consumer_voice_service.vote_use_case(_factory(), use_case_id=b["id"], user_id=_admin_user_id())
     rows = consumer_voice_service.list_use_cases(_factory(), data_product_id=dp_id)
     assert rows[0]["id"] == b["id"]
     assert rows[1]["id"] == a["id"]
@@ -209,9 +203,7 @@ def test_rating_upsert_replaces_existing_score() -> None:
     consumer_voice_service.upsert_rating(
         _factory(), data_product_id=dp_id, user_id=uid, score=5, comment="great"
     )
-    summary = consumer_voice_service.list_rating_summary(
-        _factory(), data_product_id=dp_id
-    )
+    summary = consumer_voice_service.list_rating_summary(_factory(), data_product_id=dp_id)
     assert summary["count"] == 1
     assert summary["avg"] == 5.0
 
@@ -242,17 +234,13 @@ def test_rating_summary_two_users_averaged() -> None:
         user_id=_non_admin_user_id(),
         score=3,
     )
-    summary = consumer_voice_service.list_rating_summary(
-        _factory(), data_product_id=dp_id
-    )
+    summary = consumer_voice_service.list_rating_summary(_factory(), data_product_id=dp_id)
     assert summary["count"] == 2
     assert summary["avg"] == 4.0
 
 
 def test_rating_summary_no_ratings_returns_none_avg() -> None:
     dp_id = _seed_dp("rt", "none")
-    summary = consumer_voice_service.list_rating_summary(
-        _factory(), data_product_id=dp_id
-    )
+    summary = consumer_voice_service.list_rating_summary(_factory(), data_product_id=dp_id)
     assert summary["count"] == 0
     assert summary["avg"] is None

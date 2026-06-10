@@ -181,9 +181,7 @@ def test_set_product_override_via_existing_policy_route() -> None:
         data_product_id=consumer,
         fields={"consumption_enforcement": "strict"},
     )
-    product_policy = governance_service.get_product_policy(
-        _factory(), data_product_id=consumer
-    )
+    product_policy = governance_service.get_product_policy(_factory(), data_product_id=consumer)
     assert product_policy["consumption_enforcement"] == "strict"
 
 

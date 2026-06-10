@@ -33,9 +33,7 @@ def test_dp_kind_requires_data_product_id() -> None:
 def test_non_dp_kind_rejects_data_product_id() -> None:
     with app.state.session_factory() as session:
         with pytest.raises(ValueError, match="must not carry a data_product_id"):
-            get_or_create_target(
-                session, workspace_id=1, kind="table", ref="r3", data_product_id=5
-            )
+            get_or_create_target(session, workspace_id=1, kind="table", ref="r3", data_product_id=5)
 
 
 def test_creates_new_anchor() -> None:
@@ -51,13 +49,9 @@ def test_creates_new_anchor() -> None:
 
 def test_get_or_create_is_idempotent() -> None:
     with app.state.session_factory() as session:
-        first = get_or_create_target(
-            session, workspace_id=1, kind="table", ref="tgt-idem-unique"
-        )
+        first = get_or_create_target(session, workspace_id=1, kind="table", ref="tgt-idem-unique")
         session.flush()
-        second = get_or_create_target(
-            session, workspace_id=1, kind="table", ref="tgt-idem-unique"
-        )
+        second = get_or_create_target(session, workspace_id=1, kind="table", ref="tgt-idem-unique")
         assert first.id == second.id
 
 

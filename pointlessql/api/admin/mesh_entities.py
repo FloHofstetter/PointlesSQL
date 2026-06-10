@@ -58,9 +58,7 @@ async def api_admin_list_entities(request: Request) -> dict[str, Any]:
     out: list[dict[str, Any]] = []
     for row in rows:
         payload = _serialize_entity(row)
-        payload["binding_count"] = len(
-            mesh_service.list_bindings(factory, mesh_entity_id=row.id)
-        )
+        payload["binding_count"] = len(mesh_service.list_bindings(factory, mesh_entity_id=row.id))
         out.append(payload)
     return {"entities": out}
 
@@ -118,9 +116,7 @@ async def api_admin_delete_entity(request: Request, entity_id: int) -> dict[str,
     require_admin(request)
     factory = request.app.state.session_factory
     workspace_id = current_workspace_id(request)
-    deleted = mesh_service.delete_entity(
-        factory, workspace_id=workspace_id, entity_id=entity_id
-    )
+    deleted = mesh_service.delete_entity(factory, workspace_id=workspace_id, entity_id=entity_id)
     if deleted:
         await audit(
             request,
@@ -139,8 +135,7 @@ async def admin_mesh_entities_page(request: Request):
     workspace_id = current_workspace_id(request)
     entities = mesh_service.list_entities(factory, workspace_id=workspace_id)
     binding_counts: dict[int, int] = {
-        row.id: len(mesh_service.list_bindings(factory, mesh_entity_id=row.id))
-        for row in entities
+        row.id: len(mesh_service.list_bindings(factory, mesh_entity_id=row.id)) for row in entities
     }
     return get_templates(request).TemplateResponse(
         request,

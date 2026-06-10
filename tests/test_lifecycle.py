@@ -76,12 +76,8 @@ def test_default_state_is_active() -> None:
 
 def test_allowed_transitions_table() -> None:
     assert lifecycle_service.allowed_targets("draft") == frozenset({"active", "archived"})
-    assert lifecycle_service.allowed_targets("active") == frozenset(
-        {"deprecated", "archived"}
-    )
-    assert lifecycle_service.allowed_targets("deprecated") == frozenset(
-        {"retired", "active"}
-    )
+    assert lifecycle_service.allowed_targets("active") == frozenset({"deprecated", "archived"})
+    assert lifecycle_service.allowed_targets("deprecated") == frozenset({"retired", "active"})
     assert lifecycle_service.allowed_targets("retired") == frozenset({"archived"})
     assert lifecycle_service.allowed_targets("archived") == frozenset({"active"})
 
@@ -138,9 +134,7 @@ def test_replacement_outside_workspace_rejected() -> None:
     succ_id = _seed_dp("lc6", "ws6_v2")
     with _factory()() as session:
         session.execute(
-            DataProduct.__table__.update()
-            .where(DataProduct.id == succ_id)
-            .values(workspace_id=999)
+            DataProduct.__table__.update().where(DataProduct.id == succ_id).values(workspace_id=999)
         )
         session.commit()
     lifecycle_service.transition(

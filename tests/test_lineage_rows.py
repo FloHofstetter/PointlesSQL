@@ -73,9 +73,9 @@ def _count_rows(run_id: str) -> int:
     with app.state.session_factory() as session:
         return int(
             session.scalar(
-                select(func.count()).select_from(LineageRowEdge).where(
-                    LineageRowEdge.run_id == run_id
-                )
+                select(func.count())
+                .select_from(LineageRowEdge)
+                .where(LineageRowEdge.run_id == run_id)
             )
             or 0
         )

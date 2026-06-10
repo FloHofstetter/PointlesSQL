@@ -109,9 +109,7 @@ def test_pending_queue_returns_undecided_only() -> None:
 def test_accept_promotes_to_entity_link() -> None:
     src, tgt = _seed_entity_pair()
     cand_id = _make_candidate(src, tgt)
-    result = accept_candidate(
-        _factory(), candidate_id=cand_id, reviewed_by_user_id=None
-    )
+    result = accept_candidate(_factory(), candidate_id=cand_id, reviewed_by_user_id=None)
     assert result["decision"] == "accepted"
     with _factory()() as session:
         link_count = session.query(EntityLink).count()
@@ -121,9 +119,7 @@ def test_accept_promotes_to_entity_link() -> None:
 def test_reject_marks_decision_without_link() -> None:
     src, tgt = _seed_entity_pair()
     cand_id = _make_candidate(src, tgt)
-    result = reject_candidate(
-        _factory(), candidate_id=cand_id, reviewed_by_user_id=None
-    )
+    result = reject_candidate(_factory(), candidate_id=cand_id, reviewed_by_user_id=None)
     assert result["decision"] == "rejected"
     with _factory()() as session:
         assert session.query(EntityLink).count() == 0
@@ -146,9 +142,7 @@ def test_double_decision_raises_value_error() -> None:
     cand_id = _make_candidate(src, tgt)
     accept_candidate(_factory(), candidate_id=cand_id, reviewed_by_user_id=None)
     with pytest.raises(ValueError, match="already decided"):
-        reject_candidate(
-            _factory(), candidate_id=cand_id, reviewed_by_user_id=None
-        )
+        reject_candidate(_factory(), candidate_id=cand_id, reviewed_by_user_id=None)
 
 
 def test_unknown_candidate_raises_lookup_error() -> None:

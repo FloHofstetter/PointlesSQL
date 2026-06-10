@@ -82,7 +82,7 @@ def _pick_provider(factory: Any, workspace_id: int, settings: Any) -> tuple[str,
         if provider == "openai"
         else settings.lens.anthropic_model_default
     )
-    model = (chosen.default_model if chosen and chosen.default_model else default_model)
+    model = chosen.default_model if chosen and chosen.default_model else default_model
     return provider, model, chosen is not None
 
 
@@ -104,9 +104,7 @@ def _grounding(
         "Tables you can query — use these fully-qualified names verbatim in any SQL:",
     ]
     for table in tables:
-        cols = ", ".join(
-            f"{c['name']} ({c['type']})" for c in table.get("columns", [])
-        )
+        cols = ", ".join(f"{c['name']} ({c['type']})" for c in table.get("columns", []))
         lines.append(f"- {catalog}.{schema}.{table['name']}: {cols or 'no columns declared'}")
     if concepts:
         lines.append("")

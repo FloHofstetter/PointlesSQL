@@ -55,12 +55,9 @@ def upgrade() -> None:
         ),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
-        sa.UniqueConstraint(
-            "data_product_id", name="uq_dp_infrastructure_product"
-        ),
+        sa.UniqueConstraint("data_product_id", name="uq_dp_infrastructure_product"),
         sa.CheckConstraint(
-            "storage_class IS NULL OR "
-            "storage_class IN ('delta','parquet','external')",
+            "storage_class IS NULL OR storage_class IN ('delta','parquet','external')",
             name="ck_dp_infrastructure_storage_class",
         ),
     )
@@ -132,9 +129,7 @@ def upgrade() -> None:
         sa.Column("comment", sa.Text(), nullable=True),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
-        sa.CheckConstraint(
-            "score BETWEEN 1 AND 5", name="ck_dp_ratings_score_range"
-        ),
+        sa.CheckConstraint("score BETWEEN 1 AND 5", name="ck_dp_ratings_score_range"),
     )
 
 
@@ -142,8 +137,6 @@ def downgrade() -> None:
     """Drop the four declarative-surface tables."""
     op.drop_table("data_product_ratings")
     op.drop_table("data_product_use_case_votes")
-    op.drop_index(
-        "ix_dp_use_cases_product_votes", table_name="data_product_use_cases"
-    )
+    op.drop_index("ix_dp_use_cases_product_votes", table_name="data_product_use_cases")
     op.drop_table("data_product_use_cases")
     op.drop_table("data_product_infrastructure")

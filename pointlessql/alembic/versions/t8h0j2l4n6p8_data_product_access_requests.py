@@ -91,8 +91,6 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     """Drop data_product_access_requests + its indexes."""
-    op.drop_index(
-        "ix_dp_access_request_ws_status", table_name="data_product_access_requests"
-    )
+    op.drop_index("ix_dp_access_request_ws_status", table_name="data_product_access_requests")
     op.drop_index("uq_dp_access_request_open", table_name="data_product_access_requests")
     op.drop_table("data_product_access_requests")

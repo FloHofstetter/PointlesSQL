@@ -98,8 +98,6 @@ def mesh_health(
             "bands": bands,
             "green_pct": (bands["green"] / total * 100.0) if total else None,
             "pass_rate": (total_passed / scored) if scored else None,
-            "worst_offenders": [
-                {"ref": p["ref"], "failed": p["failed"]} for p in worst
-            ],
+            "worst_offenders": [{"ref": p["ref"], "failed": p["failed"]} for p in worst],
         },
     }

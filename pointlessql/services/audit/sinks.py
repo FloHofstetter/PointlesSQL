@@ -43,7 +43,6 @@ logger = logging.getLogger(__name__)
 _DEFAULT_TIMEOUT = httpx.Timeout(connect=5.0, read=10.0, write=10.0, pool=10.0)
 
 
-
 def _decode_config(sink: AuditSink) -> dict[str, Any]:
     """Decode ``sink.config_json`` into a dict, raising :class:`ValueError` on bad JSON.
 

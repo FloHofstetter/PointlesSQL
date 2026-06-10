@@ -39,7 +39,8 @@ class DataProductAvailabilityProbe(Base):
         ),
         Index(
             "ix_dp_availability_probes_product",
-            "data_product_id", "probed_at",
+            "data_product_id",
+            "probed_at",
         ),
     )
 
@@ -51,9 +52,7 @@ class DataProductAvailabilityProbe(Base):
     )
     output_port_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     port_kind: Mapped[str] = mapped_column(String(16), nullable=False)
-    probed_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
+    probed_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     latency_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
     status: Mapped[str] = mapped_column(String(8), nullable=False)
 
@@ -70,7 +69,8 @@ class DataProductQueryPerfSample(Base):
         ),
         Index(
             "ix_dp_query_perf_product",
-            "data_product_id", "started_at",
+            "data_product_id",
+            "started_at",
         ),
     )
 
@@ -81,8 +81,6 @@ class DataProductQueryPerfSample(Base):
         nullable=True,
     )
     table_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
-    started_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
+    started_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     duration_ms: Mapped[int] = mapped_column(Integer, nullable=False)
     status: Mapped[str] = mapped_column(String(8), nullable=False)

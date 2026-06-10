@@ -88,11 +88,15 @@ def test_admin_flag_overrides_role_rank() -> None:
 
 
 def test_parse_requirements_decodes_aud_list() -> None:
-    parsed = parse_requirements(json.dumps({
-        "oidc_audiences": ["a", "b"],
-        "required_scopes": ["read"],
-        "min_role": "consumer",
-    }))
+    parsed = parse_requirements(
+        json.dumps(
+            {
+                "oidc_audiences": ["a", "b"],
+                "required_scopes": ["read"],
+                "min_role": "consumer",
+            }
+        )
+    )
     assert parsed is not None
     assert parsed.oidc_audiences == ("a", "b")
     assert parsed.required_scopes == ("read",)

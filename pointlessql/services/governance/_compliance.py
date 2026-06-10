@@ -177,15 +177,13 @@ def scan_workspace(
                 select(DataProduct).where(DataProduct.workspace_id == workspace_id)
             ).all()
         )
-        product_meta = [
-            (p.id, p.catalog_name, p.schema_name, p.contract_json) for p in products
-        ]
+        product_meta = [(p.id, p.catalog_name, p.schema_name, p.contract_json) for p in products]
 
     violations: list[dict[str, Any]] = []
     for product_id, catalog, schema, contract_json in product_meta:
         try:
             contract = DataProductContract.model_validate(json.loads(contract_json))
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             continue
         class_index = classifications_for_schema(session_factory, catalog=catalog, schema=schema)
         effective = get_effective_policy(

@@ -29,13 +29,9 @@ def cost_by_product(
     by_product: dict[int, dict[str, Any]] = {}
     with session_factory() as session:
         products = list(
-            session.scalars(
-                select(DataProduct).where(DataProduct.workspace_id == workspace_id)
-            )
+            session.scalars(select(DataProduct).where(DataProduct.workspace_id == workspace_id))
         )
-        ref_by_id = {
-            int(p.id): f"{p.catalog_name}.{p.schema_name}" for p in products
-        }
+        ref_by_id = {int(p.id): f"{p.catalog_name}.{p.schema_name}" for p in products}
         rows = session.scalars(
             select(DataProductCostBucketHourly)
             .where(DataProductCostBucketHourly.bucket_hour >= start)
@@ -56,9 +52,7 @@ def cost_by_product(
             )
             entry["query_count"] += int(row.query_count or 0)
             entry["total_duration_ms"] += int(row.total_duration_ms or 0)
-            entry["total_estimated_cost"] += Decimal(
-                str(row.total_estimated_cost or 0)
-            )
+            entry["total_estimated_cost"] += Decimal(str(row.total_estimated_cost or 0))
             entry["total_bytes_scanned"] += int(row.total_bytes_scanned or 0)
     for entry in by_product.values():
         entry["total_estimated_cost"] = float(entry["total_estimated_cost"])
@@ -101,9 +95,7 @@ def cost_by_consumer(
             )
             entry["query_count"] += int(row.query_count or 0)
             entry["total_duration_ms"] += int(row.total_duration_ms or 0)
-            entry["total_estimated_cost"] += Decimal(
-                str(row.total_estimated_cost or 0)
-            )
+            entry["total_estimated_cost"] += Decimal(str(row.total_estimated_cost or 0))
             entry["total_bytes_scanned"] += int(row.total_bytes_scanned or 0)
     for entry in by_consumer.values():
         entry["total_estimated_cost"] = float(entry["total_estimated_cost"])
@@ -130,9 +122,7 @@ def mesh_health_full(
     base = mesh_health(session_factory, workspace_id=workspace_id, sigma=sigma)
     per_domain = _aggregate_per_domain(session_factory, workspace_id, base)
     cost_trend = cost_by_product(session_factory, workspace_id=workspace_id)
-    top_consumers = cost_by_consumer(
-        session_factory, workspace_id=workspace_id
-    )[:10]
+    top_consumers = cost_by_consumer(session_factory, workspace_id=workspace_id)[:10]
     base["per_domain"] = per_domain
     base["cost_trend"] = cost_trend
     base["top_consumers"] = top_consumers
@@ -150,17 +140,12 @@ def _aggregate_per_domain(
         for product in session.scalars(
             select(DataProduct).where(DataProduct.workspace_id == workspace_id)
         ):
-            domain_by_id[int(product.id)] = (
-                product.domain if hasattr(product, "domain") else None
-            )
+            domain_by_id[int(product.id)] = product.domain if hasattr(product, "domain") else None
         # SLO presence informs the unknown count.
         _ = session.scalars(select(DataProductSLO)).all()
     by_domain: dict[str, dict[str, Any]] = {}
     for product in base.get("products", []):
-        domain = (
-            domain_by_id.get(int(product.get("data_product_id", -1)))
-            or "uncategorised"
-        )
+        domain = domain_by_id.get(int(product.get("data_product_id", -1))) or "uncategorised"
         entry = by_domain.setdefault(
             domain,
             {"green": 0, "red": 0, "unknown": 0, "total": 0},

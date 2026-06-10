@@ -151,9 +151,7 @@ def set_product_policy(
         "opt_in",
         "required",
     ):
-        raise ValueError(
-            f"enforcement {enforcement!r} not in ('off','opt_in','required')"
-        )
+        raise ValueError(f"enforcement {enforcement!r} not in ('off','opt_in','required')")
     with factory() as session:
         row = session.scalar(
             select(DataProductBitemporalPolicy).where(
@@ -183,8 +181,7 @@ def set_product_policy(
             )
         if "require_event_time" in fields:
             row.require_event_time = (
-                None if fields["require_event_time"] is None
-                else bool(fields["require_event_time"])
+                None if fields["require_event_time"] is None else bool(fields["require_event_time"])
             )
         row.updated_by_user_id = updated_by_user_id
         row.updated_at = now

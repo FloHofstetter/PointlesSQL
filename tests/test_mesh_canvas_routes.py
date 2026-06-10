@@ -193,9 +193,7 @@ def _seed_workspace(slug: str) -> int:
         return ws.id
 
 
-def _seed_dp_in_workspace(
-    *, workspace_id: int, schema_name: str, catalog: str = "main"
-) -> int:
+def _seed_dp_in_workspace(*, workspace_id: int, schema_name: str, catalog: str = "main") -> int:
     now = datetime.datetime.now(datetime.UTC)
     factory = app.state.session_factory
     with factory.begin() as session:
@@ -223,9 +221,7 @@ async def test_mesh_canvas_creates_cross_workspace_edge(
 ) -> None:
     target_dp = _seed_dp(schema_name="mesh_xws_target")
     foreign_ws_id = _seed_workspace("marketing")
-    upstream_dp = _seed_dp_in_workspace(
-        workspace_id=foreign_ws_id, schema_name="foreign_src"
-    )
+    upstream_dp = _seed_dp_in_workspace(workspace_id=foreign_ws_id, schema_name="foreign_src")
     res = await admin_client.post(
         "/api/mesh/canvas",
         json={

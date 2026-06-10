@@ -62,9 +62,7 @@ def _review_ids() -> list[int]:
 
 
 @pytest.mark.asyncio
-async def test_react_to_review_round_trip(
-    tmp_path: Path, admin_client: httpx.AsyncClient
-) -> None:
+async def test_react_to_review_round_trip(tmp_path: Path, admin_client: httpx.AsyncClient) -> None:
     """POST adds a reaction; GET reflects it; DELETE removes it."""
     _seed_product(tmp_path)
     await admin_client.put(
@@ -164,9 +162,7 @@ async def test_sibling_reviews_have_independent_counts(
 
 
 @pytest.mark.asyncio
-async def test_review_reactions_with_names(
-    tmp_path: Path, admin_client: httpx.AsyncClient
-) -> None:
+async def test_review_reactions_with_names(tmp_path: Path, admin_client: httpx.AsyncClient) -> None:
     """``?with_names=1`` enriches each emoji with its reactor identities."""
     _seed_product(tmp_path)
     await admin_client.put(

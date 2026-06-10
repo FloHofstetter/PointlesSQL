@@ -65,9 +65,7 @@ class PolicyModule(Base):
     __tablename__ = "policy_modules"
 
     __table_args__ = (
-        UniqueConstraint(
-            "workspace_id", "name", name="uq_policy_modules_ws_name"
-        ),
+        UniqueConstraint("workspace_id", "name", name="uq_policy_modules_ws_name"),
         Index("ix_policy_modules_ws", "workspace_id", "enabled"),
     )
 
@@ -79,21 +77,13 @@ class PolicyModule(Base):
     )
     name: Mapped[str] = mapped_column(String(128), nullable=False)
     cedar_source: Mapped[str] = mapped_column(Text(), nullable=False)
-    version: Mapped[int] = mapped_column(
-        Integer, nullable=False, default=1, server_default="1"
-    )
-    enabled: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, default=True, server_default="1"
-    )
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1, server_default="1")
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="1")
     created_by_user_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("users.id"), nullable=True
     )
-    created_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
-    updated_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    updated_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
 class PolicyModuleDecision(Base):
@@ -153,9 +143,7 @@ class PolicyModuleDecision(Base):
         ForeignKey("workspaces.id", ondelete="CASCADE"),
         nullable=False,
     )
-    decision_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
+    decision_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     principal_user_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("users.id"), nullable=True
     )

@@ -84,9 +84,7 @@ def test_description_only_change_is_patch() -> None:
 
 
 def test_first_version_is_minor_when_columns_added() -> None:
-    new = _schema(
-        ("id", "Int", False, ""), ("email", "String", True, "")
-    )
+    new = _schema(("id", "Int", False, ""), ("email", "String", True, ""))
     diff = compute_diff(None, new)
     assert diff.change_kind == "major"  # any not-null column on first add is major
 

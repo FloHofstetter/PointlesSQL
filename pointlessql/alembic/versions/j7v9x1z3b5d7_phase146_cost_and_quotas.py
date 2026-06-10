@@ -42,7 +42,9 @@ def upgrade() -> None:
         sa.Column("completed_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("duration_ms", sa.Integer(), nullable=True),
         sa.Column(
-            "estimated_cost", sa.Numeric(precision=10, scale=4), nullable=False,
+            "estimated_cost",
+            sa.Numeric(precision=10, scale=4),
+            nullable=False,
             server_default="0",
         ),
         sa.Column("bytes_scanned", sa.BigInteger(), nullable=True),
@@ -108,9 +110,7 @@ def upgrade() -> None:
             nullable=True,
         ),
         sa.Column("query_count", sa.Integer(), nullable=False, server_default="0"),
-        sa.Column(
-            "total_duration_ms", sa.BigInteger(), nullable=False, server_default="0"
-        ),
+        sa.Column("total_duration_ms", sa.BigInteger(), nullable=False, server_default="0"),
         sa.Column(
             "total_estimated_cost",
             sa.Numeric(precision=14, scale=4),
@@ -144,11 +144,7 @@ def upgrade() -> None:
                 nullable=True,
             )
         )
-        batch.add_column(
-            sa.Column(
-                "max_queries_per_hour", sa.Integer(), nullable=True
-            )
-        )
+        batch.add_column(sa.Column("max_queries_per_hour", sa.Integer(), nullable=True))
         batch.add_column(
             sa.Column(
                 "quota_enforcement",
@@ -170,36 +166,23 @@ def upgrade() -> None:
                 nullable=True,
             )
         )
-        batch.add_column(
-            sa.Column(
-                "max_queries_per_hour", sa.Integer(), nullable=True
-            )
-        )
-        batch.add_column(
-            sa.Column(
-                "quota_enforcement", sa.String(length=8), nullable=True
-            )
-        )
+        batch.add_column(sa.Column("max_queries_per_hour", sa.Integer(), nullable=True))
+        batch.add_column(sa.Column("quota_enforcement", sa.String(length=8), nullable=True))
         batch.create_check_constraint(
             "ck_data_product_policies_quota_enforcement",
-            "quota_enforcement IS NULL OR "
-            "quota_enforcement IN ('off','warn','strict')",
+            "quota_enforcement IS NULL OR quota_enforcement IN ('off','warn','strict')",
         )
 
 
 def downgrade() -> None:
     """Drop the cost ledger + quota columns."""
     with op.batch_alter_table("data_product_policies") as batch:
-        batch.drop_constraint(
-            "ck_data_product_policies_quota_enforcement", type_="check"
-        )
+        batch.drop_constraint("ck_data_product_policies_quota_enforcement", type_="check")
         batch.drop_column("quota_enforcement")
         batch.drop_column("max_queries_per_hour")
         batch.drop_column("max_cost_per_day")
     with op.batch_alter_table("workspace_governance_policies") as batch:
-        batch.drop_constraint(
-            "ck_workspace_governance_policies_quota_enforcement", type_="check"
-        )
+        batch.drop_constraint("ck_workspace_governance_policies_quota_enforcement", type_="check")
         batch.drop_column("quota_enforcement")
         batch.drop_column("max_queries_per_hour")
         batch.drop_column("max_cost_per_day")
@@ -208,13 +191,7 @@ def downgrade() -> None:
         table_name="data_product_cost_buckets_hourly",
     )
     op.drop_table("data_product_cost_buckets_hourly")
-    op.drop_index(
-        "ix_dp_query_cost_consumer", table_name="data_product_query_cost"
-    )
-    op.drop_index(
-        "ix_dp_query_cost_product", table_name="data_product_query_cost"
-    )
-    op.drop_index(
-        "ix_dp_query_cost_started", table_name="data_product_query_cost"
-    )
+    op.drop_index("ix_dp_query_cost_consumer", table_name="data_product_query_cost")
+    op.drop_index("ix_dp_query_cost_product", table_name="data_product_query_cost")
+    op.drop_index("ix_dp_query_cost_started", table_name="data_product_query_cost")
     op.drop_table("data_product_query_cost")

@@ -210,15 +210,11 @@ def test_advance_position_forward_only() -> None:
         table_name="t",
         consumer_label="cons",
     )
-    moved = event_port_service.advance_position(
-        _factory(), subscription_id=sub["id"], to_version=5
-    )
+    moved = event_port_service.advance_position(_factory(), subscription_id=sub["id"], to_version=5)
     assert moved["position"]["version"] == 5
     assert moved["last_delivered_at"] is not None
     with pytest.raises(ValueError):
-        event_port_service.advance_position(
-            _factory(), subscription_id=sub["id"], to_version=3
-        )
+        event_port_service.advance_position(_factory(), subscription_id=sub["id"], to_version=3)
 
 
 def test_rewind_subscription_moves_back() -> None:
@@ -231,9 +227,7 @@ def test_rewind_subscription_moves_back() -> None:
         table_name="t",
         consumer_label="cons",
     )
-    event_port_service.advance_position(
-        _factory(), subscription_id=sub["id"], to_version=10
-    )
+    event_port_service.advance_position(_factory(), subscription_id=sub["id"], to_version=10)
     rewound = event_port_service.rewind_subscription(
         _factory(), subscription_id=sub["id"], to_version=2
     )
@@ -252,9 +246,7 @@ def test_rewind_rejects_negative_version() -> None:
         consumer_label="cons",
     )
     with pytest.raises(ValueError):
-        event_port_service.rewind_subscription(
-            _factory(), subscription_id=sub["id"], to_version=-1
-        )
+        event_port_service.rewind_subscription(_factory(), subscription_id=sub["id"], to_version=-1)
 
 
 # ---------------------------------------------------------------------------
@@ -283,9 +275,7 @@ def test_record_delivery_writes_ledger_row() -> None:
     assert delivery_id > 0
     with _factory()() as session:
         row = session.scalar(
-            select(DataProductEventDelivery).where(
-                DataProductEventDelivery.id == delivery_id
-            )
+            select(DataProductEventDelivery).where(DataProductEventDelivery.id == delivery_id)
         )
     assert row is not None
     assert row.row_count == 42

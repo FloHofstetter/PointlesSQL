@@ -99,12 +99,14 @@ def test_register_cedar_hooks_is_idempotent(hook_env: None) -> None:
 
 def test_unlinked_product_passes_through_hook(hook_env: None) -> None:
     dp_id = _seed_dp("hook", "pass_through")
-    run_before_read({
-        "full_name": "hook.pass_through.foo",
-        "principal": {"id": 1, "email": "a@b.test"},
-        "authoring_product_id": dp_id,
-        "workspace_id": 1,
-    })
+    run_before_read(
+        {
+            "full_name": "hook.pass_through.foo",
+            "principal": {"id": 1, "email": "a@b.test"},
+            "authoring_product_id": dp_id,
+            "workspace_id": 1,
+        }
+    )
 
 
 def test_permit_module_allows_read(hook_env: None) -> None:
@@ -113,7 +115,7 @@ def test_permit_module_allows_read(hook_env: None) -> None:
         _factory(),
         workspace_id=1,
         name="permit_all_reads",
-        cedar_source="permit(principal, action == Action::\"read\", resource);",
+        cedar_source='permit(principal, action == Action::"read", resource);',
         created_by_user_id=None,
     )
     link_modules_to_product(
@@ -122,12 +124,14 @@ def test_permit_module_allows_read(hook_env: None) -> None:
         module_ids=[int(module["id"])],
         updated_by_user_id=None,
     )
-    run_before_read({
-        "full_name": "hook.permit_read.metrics",
-        "principal": {"id": 1, "email": "a@b.test"},
-        "authoring_product_id": dp_id,
-        "workspace_id": 1,
-    })
+    run_before_read(
+        {
+            "full_name": "hook.permit_read.metrics",
+            "principal": {"id": 1, "email": "a@b.test"},
+            "authoring_product_id": dp_id,
+            "workspace_id": 1,
+        }
+    )
     with _factory()() as session:
         rows = session.query(PolicyModuleDecision).all()
         assert len(rows) == 1
@@ -140,7 +144,7 @@ def test_forbid_module_raises_permission_error(hook_env: None) -> None:
         _factory(),
         workspace_id=1,
         name="forbid_all_reads",
-        cedar_source="forbid(principal, action == Action::\"read\", resource);",
+        cedar_source='forbid(principal, action == Action::"read", resource);',
         created_by_user_id=None,
     )
     link_modules_to_product(
@@ -150,12 +154,14 @@ def test_forbid_module_raises_permission_error(hook_env: None) -> None:
         updated_by_user_id=None,
     )
     with pytest.raises(PermissionDeniedError):
-        run_before_read({
-            "full_name": "hook.forbid_read.metrics",
-            "principal": {"id": 1, "email": "a@b.test"},
-            "authoring_product_id": dp_id,
-            "workspace_id": 1,
-        })
+        run_before_read(
+            {
+                "full_name": "hook.forbid_read.metrics",
+                "principal": {"id": 1, "email": "a@b.test"},
+                "authoring_product_id": dp_id,
+                "workspace_id": 1,
+            }
+        )
 
 
 def test_before_write_uses_write_action(hook_env: None) -> None:
@@ -165,8 +171,8 @@ def test_before_write_uses_write_action(hook_env: None) -> None:
         workspace_id=1,
         name="permit_read_block_write",
         cedar_source=(
-            "permit(principal, action == Action::\"read\", resource);\n"
-            "forbid(principal, action == Action::\"write\", resource);"
+            'permit(principal, action == Action::"read", resource);\n'
+            'forbid(principal, action == Action::"write", resource);'
         ),
         created_by_user_id=None,
     )
@@ -176,19 +182,24 @@ def test_before_write_uses_write_action(hook_env: None) -> None:
         module_ids=[int(module["id"])],
         updated_by_user_id=None,
     )
-    run_before_read({
-        "full_name": "hook.writes_only.foo",
-        "principal": {"id": 1, "email": "a@b.test"},
-        "authoring_product_id": dp_id,
-        "workspace_id": 1,
-    })
-    with pytest.raises(PermissionDeniedError):
-        run_before_write(None, {
+    run_before_read(
+        {
             "full_name": "hook.writes_only.foo",
             "principal": {"id": 1, "email": "a@b.test"},
             "authoring_product_id": dp_id,
             "workspace_id": 1,
-        })
+        }
+    )
+    with pytest.raises(PermissionDeniedError):
+        run_before_write(
+            None,
+            {
+                "full_name": "hook.writes_only.foo",
+                "principal": {"id": 1, "email": "a@b.test"},
+                "authoring_product_id": dp_id,
+                "workspace_id": 1,
+            },
+        )
 
 
 def test_broken_policy_fails_closed(hook_env: None) -> None:
@@ -207,12 +218,14 @@ def test_broken_policy_fails_closed(hook_env: None) -> None:
         updated_by_user_id=None,
     )
     with pytest.raises(PermissionDeniedError):
-        run_before_read({
-            "full_name": "hook.broken_policy.foo",
-            "principal": {"id": 1, "email": "a@b.test"},
-            "authoring_product_id": dp_id,
-            "workspace_id": 1,
-        })
+        run_before_read(
+            {
+                "full_name": "hook.broken_policy.foo",
+                "principal": {"id": 1, "email": "a@b.test"},
+                "authoring_product_id": dp_id,
+                "workspace_id": 1,
+            }
+        )
     with _factory()() as session:
         rows = session.query(PolicyModuleDecision).all()
         assert rows
@@ -224,11 +237,13 @@ def test_broken_policy_fails_closed(hook_env: None) -> None:
 
 
 def test_missing_authoring_product_id_skips_hook(hook_env: None) -> None:
-    run_before_read({
-        "full_name": "nope.nope.nope",
-        "principal": {"id": 1, "email": "a@b.test"},
-        "workspace_id": 1,
-    })
+    run_before_read(
+        {
+            "full_name": "nope.nope.nope",
+            "principal": {"id": 1, "email": "a@b.test"},
+            "workspace_id": 1,
+        }
+    )
     with _factory()() as session:
         assert session.query(PolicyModuleDecision).count() == 0
 
@@ -241,10 +256,11 @@ def test_workspace_default_link_resolves_when_product_unset(
         _factory(),
         workspace_id=1,
         name="ws_only_block",
-        cedar_source="forbid(principal, action == Action::\"read\", resource);",
+        cedar_source='forbid(principal, action == Action::"read", resource);',
         created_by_user_id=None,
     )
     from pointlessql.services.policy_as_code import link_modules_to_workspace
+
     link_modules_to_workspace(
         _factory(),
         workspace_id=1,
@@ -252,12 +268,14 @@ def test_workspace_default_link_resolves_when_product_unset(
         updated_by_user_id=None,
     )
     with pytest.raises(PermissionDeniedError):
-        run_before_read({
-            "full_name": "hook.ws_default.foo",
-            "principal": {"id": 1, "email": "a@b.test"},
-            "authoring_product_id": dp_id,
-            "workspace_id": 1,
-        })
+        run_before_read(
+            {
+                "full_name": "hook.ws_default.foo",
+                "principal": {"id": 1, "email": "a@b.test"},
+                "authoring_product_id": dp_id,
+                "workspace_id": 1,
+            }
+        )
 
 
 def test_decision_persistence_carries_principal_and_resource(
@@ -268,7 +286,7 @@ def test_decision_persistence_carries_principal_and_resource(
         _factory(),
         workspace_id=1,
         name="permit_for_audit",
-        cedar_source="permit(principal, action == Action::\"read\", resource);",
+        cedar_source='permit(principal, action == Action::"read", resource);',
         created_by_user_id=None,
     )
     link_modules_to_product(
@@ -277,12 +295,14 @@ def test_decision_persistence_carries_principal_and_resource(
         module_ids=[int(module["id"])],
         updated_by_user_id=None,
     )
-    run_before_read({
-        "full_name": "hook.audit_trail.metrics",
-        "principal": {"id": 17, "email": "a@b.test"},
-        "authoring_product_id": dp_id,
-        "workspace_id": 1,
-    })
+    run_before_read(
+        {
+            "full_name": "hook.audit_trail.metrics",
+            "principal": {"id": 17, "email": "a@b.test"},
+            "authoring_product_id": dp_id,
+            "workspace_id": 1,
+        }
+    )
     with _factory()() as session:
         row = session.query(PolicyModuleDecision).one()
         assert row.principal_user_id == 17

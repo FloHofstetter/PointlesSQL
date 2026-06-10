@@ -200,7 +200,7 @@ class HermesInstance:
                     if resp.status_code == 200:
                         _logger.info("Hermes dashboard healthy on port %d", self.port)
                         return
-                except (httpx.ConnectError, httpx.ReadTimeout):
+                except httpx.ConnectError, httpx.ReadTimeout:
                     pass
                 await asyncio.sleep(_HEALTH_POLL_S)
         raise HermesStartupError(

@@ -46,7 +46,7 @@ def _seed_chain(refs: list[tuple[str, str]]) -> list[int]:
             session.flush()
             ids.append(row.id)
         for i in range(1, len(refs)):
-            producer = f"{refs[i-1][0]}.{refs[i-1][1]}"
+            producer = f"{refs[i - 1][0]}.{refs[i - 1][1]}"
             consumer_id = ids[i]
             session.add(
                 DataProductInputPort(
@@ -73,21 +73,15 @@ def test_upstream_returns_direct_producer() -> None:
 
 def test_upstream_respects_depth() -> None:
     _seed_chain([("lq2", "a"), ("lq2", "b"), ("lq2", "c")])
-    one = graph_query.find_upstream(
-        _factory(), workspace_id=1, product_ref="lq2.c", depth=1
-    )
-    two = graph_query.find_upstream(
-        _factory(), workspace_id=1, product_ref="lq2.c", depth=2
-    )
+    one = graph_query.find_upstream(_factory(), workspace_id=1, product_ref="lq2.c", depth=1)
+    two = graph_query.find_upstream(_factory(), workspace_id=1, product_ref="lq2.c", depth=2)
     assert {n["ref"] for n in one} == {"lq2.b"}
     assert {n["ref"] for n in two} == {"lq2.a", "lq2.b"}
 
 
 def test_downstream_walks_consumers() -> None:
     _seed_chain([("lq3", "src"), ("lq3", "mid"), ("lq3", "snk")])
-    down = graph_query.find_downstream(
-        _factory(), workspace_id=1, product_ref="lq3.src", depth=2
-    )
+    down = graph_query.find_downstream(_factory(), workspace_id=1, product_ref="lq3.src", depth=2)
     assert {n["ref"] for n in down} == {"lq3.mid", "lq3.snk"}
 
 
@@ -118,17 +112,13 @@ def test_shortest_path_none_when_disconnected() -> None:
 
 def test_unknown_product_raises_lookup() -> None:
     with pytest.raises(LookupError):
-        graph_query.find_upstream(
-            _factory(), workspace_id=1, product_ref="does.not.exist", depth=1
-        )
+        graph_query.find_upstream(_factory(), workspace_id=1, product_ref="does.not.exist", depth=1)
 
 
 def test_zero_depth_raises_value() -> None:
     _seed_chain([("lq7", "a")])
     with pytest.raises(ValueError):
-        graph_query.find_upstream(
-            _factory(), workspace_id=1, product_ref="lq7.a", depth=0
-        )
+        graph_query.find_upstream(_factory(), workspace_id=1, product_ref="lq7.a", depth=0)
 
 
 def test_cluster_by_domain_buckets_no_domain() -> None:

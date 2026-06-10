@@ -99,9 +99,7 @@ def get_mesh_canvas(request: Request) -> MeshCanvasLoadResponse:
 
 
 @router.post("/canvas", response_model=MeshCanvasSaveResponse)
-def save_mesh_canvas(
-    body: MeshCanvasSaveRequest, request: Request
-) -> MeshCanvasSaveResponse:
+def save_mesh_canvas(body: MeshCanvasSaveRequest, request: Request) -> MeshCanvasSaveResponse:
     """Diff *body.document* against the current state and apply the delta."""
     require_user(request)
     user = get_user(request)
@@ -149,9 +147,7 @@ class MeshXwsPickerResponse(BaseModel):
     "/canvas/picker/{workspace_slug}",
     response_model=MeshXwsPickerResponse,
 )
-def mesh_canvas_picker(
-    workspace_slug: str, request: Request
-) -> MeshXwsPickerResponse:
+def mesh_canvas_picker(workspace_slug: str, request: Request) -> MeshXwsPickerResponse:
     """List DPs in *workspace_slug* the mesh-canvas can wire as upstreams.
 
     Admin-only — cross-workspace browse opens a permission surface
@@ -172,16 +168,9 @@ def mesh_canvas_picker(
         ws = session.scalar(select(Workspace).where(Workspace.slug == workspace_slug))
         if ws is None:
             raise ResourceNotFoundError(f"workspace slug={workspace_slug!r} not found")
-        dps = list(
-            session.scalars(
-                select(DataProduct).where(DataProduct.workspace_id == ws.id)
-            )
-        )
+        dps = list(session.scalars(select(DataProduct).where(DataProduct.workspace_id == ws.id)))
         entries = [
-            MeshXwsPickerEntry(
-                dp_id=dp.id, ref=f"{dp.catalog_name}.{dp.schema_name}"
-            )
-            for dp in dps
+            MeshXwsPickerEntry(dp_id=dp.id, ref=f"{dp.catalog_name}.{dp.schema_name}") for dp in dps
         ]
     return MeshXwsPickerResponse(
         workspace_slug=workspace_slug,
@@ -189,9 +178,7 @@ def mesh_canvas_picker(
     )
 
 
-@html_router.get(
-    "/mesh/canvas", response_class=HTMLResponse, response_model=None
-)
+@html_router.get("/mesh/canvas", response_class=HTMLResponse, response_model=None)
 def mesh_canvas_editor_page(request: Request) -> HTMLResponse | RedirectResponse:
     """Render the standalone mesh-canvas editor template."""
     user = get_user(request)

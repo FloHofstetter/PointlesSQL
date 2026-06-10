@@ -66,8 +66,10 @@ def resolve_same_as_graph(
             current = queue.popleft()
             link_rows = session.scalars(
                 select(EntityLink).where(
-                    ((EntityLink.source_entity_id == current)
-                     | (EntityLink.target_entity_id == current)),
+                    (
+                        (EntityLink.source_entity_id == current)
+                        | (EntityLink.target_entity_id == current)
+                    ),
                     EntityLink.kind == "same_as",
                 )
             ).all()

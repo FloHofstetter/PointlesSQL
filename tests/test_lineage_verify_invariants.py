@@ -178,9 +178,7 @@ def test_inv5_change_on_unknown_row() -> None:
 
 def test_inv5_noop_change() -> None:
     facts = _clean_facts()
-    facts.value_changes.append(
-        ValueChangeFact(facts.target_row_ids[0], "size_sqft", "5", "5")
-    )
+    facts.value_changes.append(ValueChangeFact(facts.target_row_ids[0], "size_sqft", "5", "5"))
     issues = check_value_changes_real(facts)
     assert any("no actual change" in i.message for i in issues)
 

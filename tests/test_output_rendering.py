@@ -88,9 +88,7 @@ def test_empty_bundle_is_empty_variant() -> None:
 
 
 def test_widget_bundle_renders_placeholder() -> None:
-    out = _display(
-        {"application/vnd.jupyter.widget-view+json": {"model_id": "abcdef1234567890"}}
-    )
+    out = _display({"application/vnd.jupyter.widget-view+json": {"model_id": "abcdef1234567890"}})
     assert out.variant == "widget"
     assert "not rendered" in out.html
     # model_id is truncated to the first 8 chars.
@@ -164,9 +162,7 @@ def test_markdown_outranks_html() -> None:
 
 
 def test_html_outranks_svg_and_png() -> None:
-    out = _display(
-        {"text/html": "<b>x</b>", "image/svg+xml": "<svg/>", "image/png": "QUJD"}
-    )
+    out = _display({"text/html": "<b>x</b>", "image/svg+xml": "<svg/>", "image/png": "QUJD"})
     assert out.variant == "html"
 
 

@@ -107,9 +107,7 @@ def run_contract_tests(
         ).all()
         fixtures_by_table: dict[str, DataProductFixture] = {}
         for row in session.scalars(
-            select(DataProductFixture).where(
-                DataProductFixture.data_product_id == data_product_id
-            )
+            select(DataProductFixture).where(DataProductFixture.data_product_id == data_product_id)
         ):
             fixtures_by_table[row.table_name] = row
 
@@ -256,6 +254,6 @@ def _decode_spec_dict(spec_json: str | None) -> dict[str, Any]:
         return {}
     try:
         decoded = json.loads(spec_json)
-    except (json.JSONDecodeError, TypeError, ValueError):
+    except json.JSONDecodeError, TypeError, ValueError:
         return {}
     return decoded if isinstance(decoded, dict) else {}

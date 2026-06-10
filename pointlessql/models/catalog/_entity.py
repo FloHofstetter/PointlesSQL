@@ -65,7 +65,8 @@ class DataProductEntity(Base):
 
     __table_args__ = (
         UniqueConstraint(
-            "data_product_id", "entity_name",
+            "data_product_id",
+            "entity_name",
             name="uq_dp_entities_identity",
         ),
         Index("ix_dp_entities_product", "data_product_id"),
@@ -84,12 +85,8 @@ class DataProductEntity(Base):
     created_by_user_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("users.id"), nullable=True
     )
-    created_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
-    updated_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    updated_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
 class EntityLink(Base):
@@ -113,7 +110,9 @@ class EntityLink(Base):
 
     __table_args__ = (
         UniqueConstraint(
-            "source_entity_id", "target_entity_id", "kind",
+            "source_entity_id",
+            "target_entity_id",
+            "kind",
             name="uq_entity_links_identity",
         ),
         CheckConstraint(
@@ -140,6 +139,4 @@ class EntityLink(Base):
     declared_by_user_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("users.id"), nullable=True
     )
-    created_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)

@@ -42,6 +42,7 @@ router = APIRouter(tags=["sql-statements"])
 
 _TIMEOUT_RE = re.compile(r"^\s*(\d+)\s*(s|ms)?\s*$", re.IGNORECASE)
 
+
 def _parse_wait_timeout(raw: Any, default_s: int, max_s: int) -> int:
     """Parse the DBX-shape ``wait_timeout`` body field to seconds.
 

@@ -59,9 +59,7 @@ def scan_workspace(
 
     violations: list[dict[str, Any]] = []
     for product_id, catalog, schema in product_meta:
-        evaluation = evaluate_product(
-            session_factory, data_product_id=product_id, sigma=sigma
-        )
+        evaluation = evaluate_product(session_factory, data_product_id=product_id, sigma=sigma)
         target = f"data_product:{catalog}.{schema}"
         for result in evaluation["results"]:
             if result["verdict"] != "fail":

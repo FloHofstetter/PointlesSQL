@@ -158,9 +158,7 @@ async def export_table(
 
     declared = {t.name for t in contract.tables}
     if table not in declared:
-        raise BadRequestError(
-            f"table {table!r} is not declared by data product {catalog}.{schema}"
-        )
+        raise BadRequestError(f"table {table!r} is not declared by data product {catalog}.{schema}")
 
     full_name = f"{catalog}.{schema}.{table}"
     enforce_consumption_for_read(

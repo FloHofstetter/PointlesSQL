@@ -128,15 +128,11 @@ def _resolve_replacement(
             )
         )
     if successor is None:
-        raise ResourceNotFoundError(
-            f"replacement product {catalog}.{schema} not found"
-        )
+        raise ResourceNotFoundError(f"replacement product {catalog}.{schema} not found")
     return successor.id, replacement_uri
 
 
-def _successor_uri(
-    factory: Any, workspace_id: int, replacement_id: int | None
-) -> str | None:
+def _successor_uri(factory: Any, workspace_id: int, replacement_id: int | None) -> str | None:
     """Render the successor's URN, or ``None`` when none is set."""
     if replacement_id is None:
         return None
@@ -149,9 +145,7 @@ def _successor_uri(
 
 
 @router.get("/api/data-products/{catalog}/{schema}/lifecycle")
-async def get_lifecycle(
-    catalog: str, schema: str, request: Request
-) -> dict[str, Any]:
+async def get_lifecycle(catalog: str, schema: str, request: Request) -> dict[str, Any]:
     """Return the product's current lifecycle state + reachable targets."""
     require_user(request)
     workspace_id = current_workspace_id(request)
@@ -163,13 +157,9 @@ async def get_lifecycle(
     return {
         "state": dp_row.lifecycle_state,
         "changed_at": (
-            dp_row.lifecycle_changed_at.isoformat()
-            if dp_row.lifecycle_changed_at
-            else None
+            dp_row.lifecycle_changed_at.isoformat() if dp_row.lifecycle_changed_at else None
         ),
-        "reachable_targets": sorted(
-            lifecycle_service.allowed_targets(dp_row.lifecycle_state)
-        ),
+        "reachable_targets": sorted(lifecycle_service.allowed_targets(dp_row.lifecycle_state)),
         "replacement_uri": _successor_uri(
             factory, workspace_id, dp_row.replacement_data_product_id
         ),
@@ -241,9 +231,7 @@ async def transition_lifecycle(
     ``{"note"?: str}`` only.
     """
     if target_slug not in _TARGET_MAP:
-        raise BadRequestError(
-            f"target {target_slug!r} not in {sorted(_TARGET_MAP)}"
-        )
+        raise BadRequestError(f"target {target_slug!r} not in {sorted(_TARGET_MAP)}")
     require_user(request)
     user = get_user(request)
     workspace_id = current_workspace_id(request)
@@ -258,12 +246,10 @@ async def transition_lifecycle(
         replacement_id, canonical_uri = _resolve_replacement(
             factory, workspace_id=workspace_id, replacement_uri=replacement_uri_in
         )
-    except (BadRequestError, ResourceNotFoundError):
+    except BadRequestError, ResourceNotFoundError:
         raise
     if replacement_id is not None and target_state != "retired":
-        raise BadRequestError(
-            "replacement_uri is only valid for the 'retire' target"
-        )
+        raise BadRequestError("replacement_uri is only valid for the 'retire' target")
     try:
         updated = lifecycle_service.transition(
             factory,
@@ -293,9 +279,7 @@ async def transition_lifecycle(
     return {
         "state": updated.lifecycle_state,
         "changed_at": (
-            updated.lifecycle_changed_at.isoformat()
-            if updated.lifecycle_changed_at
-            else None
+            updated.lifecycle_changed_at.isoformat() if updated.lifecycle_changed_at else None
         ),
         "replacement_uri": _successor_uri(
             factory, workspace_id, updated.replacement_data_product_id

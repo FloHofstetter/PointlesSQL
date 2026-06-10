@@ -62,10 +62,9 @@ def reset_for_tests() -> None:
     _registered = False
 
 
-def _make_evaluator(
-    session_factory: SessionFactory, *, action: str
-) -> Any:
+def _make_evaluator(session_factory: SessionFactory, *, action: str) -> Any:
     """Build a closure that evaluates Cedar for one action verb."""
+
     def hook(ctx: dict[str, Any]) -> None:
         product_id = ctx.get("authoring_product_id")
         workspace_id = int(ctx.get("workspace_id") or 1)
@@ -97,9 +96,7 @@ def _make_evaluator(
                 session_factory,
                 policy_module_id=int(module.id),
                 workspace_id=workspace_id,
-                principal_user_id=(
-                    int(principal["id"]) if principal.get("id") else None
-                ),
+                principal_user_id=(int(principal["id"]) if principal.get("id") else None),
                 principal_email=str(principal.get("email", "")),
                 action=action,
                 resource_type="DataProduct",
@@ -130,9 +127,7 @@ def evaluate_via_modules_for_test(
         load_active_modules_for_workspace,
     )
 
-    modules = load_active_modules_for_workspace(
-        session_factory, workspace_id=workspace_id
-    )
+    modules = load_active_modules_for_workspace(session_factory, workspace_id=workspace_id)
     _ = datetime.datetime.now(datetime.UTC)
     return cedar_evaluate(
         modules,

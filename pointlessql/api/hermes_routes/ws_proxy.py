@@ -85,7 +85,7 @@ async def _pump(client: WebSocket, upstream: ClientConnection) -> None:
                 data = msg.get("bytes")
                 if data is not None:
                     await upstream.send(data)
-        except (WebSocketDisconnect, ConnectionClosed, RuntimeError):
+        except WebSocketDisconnect, ConnectionClosed, RuntimeError:
             pass
 
     async def upstream_to_client() -> None:
@@ -95,14 +95,12 @@ async def _pump(client: WebSocket, upstream: ClientConnection) -> None:
                     await client.send_text(frame)
                 else:
                     await client.send_bytes(frame)
-        except (ConnectionClosed, RuntimeError):
+        except ConnectionClosed, RuntimeError:
             pass
 
     forward = asyncio.create_task(client_to_upstream())
     backward = asyncio.create_task(upstream_to_client())
-    _done, pending = await asyncio.wait(
-        {forward, backward}, return_when=asyncio.FIRST_COMPLETED
-    )
+    _done, pending = await asyncio.wait({forward, backward}, return_when=asyncio.FIRST_COMPLETED)
     for task in pending:
         task.cancel()
 

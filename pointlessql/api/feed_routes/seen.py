@@ -70,7 +70,7 @@ def _resolve_at(raw: str | None) -> datetime.datetime:
         return now
     try:
         parsed = datetime.datetime.fromisoformat(raw)
-    except (ValueError, TypeError):
+    except ValueError, TypeError:
         return now
     if parsed.tzinfo is None:
         parsed = parsed.replace(tzinfo=datetime.UTC)

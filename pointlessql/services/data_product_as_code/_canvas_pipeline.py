@@ -104,9 +104,7 @@ def to_canvas_doc(spec: CanvasPipelineSpec) -> CanvasDoc:
             id=n.id,
             block_type=n.type,
             config=dict(n.config),
-            position=(
-                {"x": n.position.x, "y": n.position.y} if n.position else None
-            ),
+            position=({"x": n.position.x, "y": n.position.y} if n.position else None),
         )
         for n in spec.nodes
     ]

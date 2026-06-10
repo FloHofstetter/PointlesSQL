@@ -76,8 +76,7 @@ def _wipe():
 def _schema(*cols) -> dict:
     return {
         "columns": [
-            {"name": n, "type": t, "nullable": nul, "description": ""}
-            for n, t, nul in cols
+            {"name": n, "type": t, "nullable": nul, "description": ""} for n, t, nul in cols
         ]
     }
 

@@ -30,7 +30,6 @@ from pointlessql.types import SessionFactory
 logger = logging.getLogger(__name__)
 
 
-
 # Status enum surfaced on freshness rows.
 STATUS_FRESH = "fresh"
 STATUS_STALE = "stale"

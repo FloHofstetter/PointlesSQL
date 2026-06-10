@@ -48,8 +48,7 @@ async def _event_port_pump_executor(
         return
 
     max_versions = int(
-        config.get("max_versions")
-        or getattr(event_port, "cdf_max_versions_per_pump", 100)
+        config.get("max_versions") or getattr(event_port, "cdf_max_versions_per_pump", 100)
     )
     factory = get_session_factory()
     summary = await pump_all_active(factory, max_versions=max_versions)

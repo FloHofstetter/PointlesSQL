@@ -57,9 +57,7 @@ def materialize_canvas(
     else:
         loaded = load_latest_graph(factory, data_product_id=dp_id)
         if loaded is None:
-            raise ValidationError(
-                f"data product {dp_id} has no saved canvas to materialise"
-            )
+            raise ValidationError(f"data product {dp_id} has no saved canvas to materialise")
         doc = loaded[0]
 
     client = raw_soyuz_client(request)

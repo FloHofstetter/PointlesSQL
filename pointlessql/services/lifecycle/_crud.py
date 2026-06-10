@@ -36,7 +36,6 @@ LIFECYCLE_CHANGED_ACTION = "data_product.lifecycle_changed"
 LIFECYCLE_PROPOSED_ACTION = "data_product.lifecycle_proposed"
 
 
-
 @dataclasses.dataclass(frozen=True)
 class LifecycleHistoryEntry:
     """One row of the product's lifecycle timeline.
@@ -111,9 +110,7 @@ def transition(
     with factory() as session:
         product = session.get(DataProduct, data_product_id)
         if product is None:
-            raise LifecycleTransitionError(
-                f"data product id={data_product_id} not found"
-            )
+            raise LifecycleTransitionError(f"data product id={data_product_id} not found")
         assert_transition(product.lifecycle_state, target)
         if replacement_data_product_id is not None and target != "retired":
             raise LifecycleTransitionError(
@@ -181,9 +178,7 @@ def propose_transition(
     with factory() as session:
         product = session.get(DataProduct, data_product_id)
         if product is None:
-            raise LifecycleTransitionError(
-                f"data product id={data_product_id} not found"
-            )
+            raise LifecycleTransitionError(f"data product id={data_product_id} not found")
         assert_transition(product.lifecycle_state, target)
         return product.lifecycle_state
 
@@ -231,7 +226,7 @@ def list_history(
     for row in rows:
         try:
             detail = json.loads(row.detail) if row.detail else {}
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             detail = {}
         history.append(
             LifecycleHistoryEntry(

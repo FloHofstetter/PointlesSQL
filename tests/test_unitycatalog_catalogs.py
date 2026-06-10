@@ -95,9 +95,7 @@ async def test_delete_catalog_forwards_force(monkeypatch: pytest.MonkeyPatch) ->
 
 
 async def test_update_catalog_maps_body(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(
-        mod._update_catalog, "asyncio", AsyncMock(return_value=_row(comment="hi"))
-    )
+    monkeypatch.setattr(mod._update_catalog, "asyncio", AsyncMock(return_value=_row(comment="hi")))
     assert await _Catalogs().update_catalog("main", {"comment": "hi"}) == {"comment": "hi"}
 
 

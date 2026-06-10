@@ -88,9 +88,7 @@ def test_build_frame_aggregates_and_stamps_lineage_id() -> None:
 
 
 def test_build_frame_collects_source_ids_when_lineage_present() -> None:
-    df = pd.DataFrame(
-        {"k": ["a", "a", "b"], "amount": [1, 2, 3], _LRID: ["s1", "s2", "s3"]}
-    )
+    df = pd.DataFrame({"k": ["a", "a", "b"], "amount": [1, 2, 3], _LRID: ["s1", "s2", "s3"]})
     grouped, per_group = agg._build_aggregate_frame(
         source_df=df, target="c.s.t", group_by=["k"], aggs={"total": ("amount", "sum")}
     )
@@ -152,9 +150,7 @@ def test_aggregate_output_edge_carries_agg_label() -> None:
 
 
 def test_aggregate_on_missing_source_is_unknown_origin() -> None:
-    edges = _edges(
-        source_df=pd.DataFrame({"k": [1]}), aggs={"total": ("nope", "sum")}
-    )
+    edges = _edges(source_df=pd.DataFrame({"k": [1]}), aggs={"total": ("nope", "sum")})
     out = [e for e in edges if e.target_column == "total"]
     assert out and out[0].transform_kind == "unknown_origin"
 

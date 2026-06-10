@@ -100,9 +100,7 @@ async def list_entity_bindings(catalog: str, schema: str, request: Request) -> d
     return {
         "can_manage": is_admin or is_steward,
         "bindings": [_serialise_binding(b) for b in bindings],
-        "available_entities": [
-            {"id": e.id, "slug": e.slug, "name": e.name} for e in available
-        ],
+        "available_entities": [{"id": e.id, "slug": e.slug, "name": e.name} for e in available],
     }
 
 
@@ -131,8 +129,7 @@ async def bind_entity_column(
         raise BadRequestError("entity_slug, table and column are required")
 
     entities = {
-        e.slug: e.id
-        for e in mesh_service.list_entities(factory, workspace_id=workspace_id)
+        e.slug: e.id for e in mesh_service.list_entities(factory, workspace_id=workspace_id)
     }
     entity_id = entities.get(entity_slug)
     if entity_id is None:
@@ -330,9 +327,7 @@ async def interop_aggregate(catalog: str, schema: str, request: Request) -> dict
             factory, workspace_id=workspace_id, data_product_id=dp_row.id, hops=1
         ),
         "bindings": [_serialise_binding(b) for b in bindings],
-        "available_entities": [
-            {"id": e.id, "slug": e.slug, "name": e.name} for e in available
-        ],
+        "available_entities": [{"id": e.id, "slug": e.slug, "name": e.name} for e in available],
         "bitemporal": {
             "inject_processing_time": settings.bitemporal.inject_processing_time,
             "processing_time_column": settings.bitemporal.processing_time_column,

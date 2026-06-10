@@ -35,23 +35,17 @@ def upgrade() -> None:
         sa.Column(
             "source_entity_id",
             sa.Integer(),
-            sa.ForeignKey(
-                "data_product_entities.id", ondelete="CASCADE"
-            ),
+            sa.ForeignKey("data_product_entities.id", ondelete="CASCADE"),
             nullable=False,
         ),
         sa.Column(
             "target_entity_id",
             sa.Integer(),
-            sa.ForeignKey(
-                "data_product_entities.id", ondelete="CASCADE"
-            ),
+            sa.ForeignKey("data_product_entities.id", ondelete="CASCADE"),
             nullable=False,
         ),
         sa.Column("kind", sa.String(length=16), nullable=False),
-        sa.Column(
-            "confidence_score", sa.Numeric(precision=3, scale=2), nullable=False
-        ),
+        sa.Column("confidence_score", sa.Numeric(precision=3, scale=2), nullable=False),
         sa.Column("evidence_json", sa.Text(), nullable=False),
         sa.Column("discovered_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("reviewed_at", sa.DateTime(timezone=True), nullable=True),

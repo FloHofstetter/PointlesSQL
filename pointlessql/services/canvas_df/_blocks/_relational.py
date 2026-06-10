@@ -486,10 +486,7 @@ def _compile_exists_join(
     cond = " AND ".join(f'l."{key}" = r."{key}"' for key in keys)
     exists_kw = "NOT EXISTS" if negate else "EXISTS"
     return CompiledBlock(
-        sql=(
-            f"SELECT l.* FROM {left} l "
-            f"WHERE {exists_kw} (SELECT 1 FROM {right} r WHERE {cond})"
-        ),
+        sql=(f"SELECT l.* FROM {left} l WHERE {exists_kw} (SELECT 1 FROM {right} r WHERE {cond})"),
         output_schema=output_schema,
     )
 

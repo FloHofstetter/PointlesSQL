@@ -81,9 +81,7 @@ def apply_plan(
     skipped = 0
     errors: list[tuple[str, str]] = []
 
-    product_id = _ensure_product(
-        session_factory, spec=spec, workspace_id=workspace_id
-    )
+    product_id = _ensure_product(session_factory, spec=spec, workspace_id=workspace_id)
 
     for op in plan.additions + plan.modifications + plan.removals:
         if op.kind == "product":
@@ -206,9 +204,7 @@ def _apply_output_port(
         existing = next(
             (
                 r
-                for r in list_output_ports(
-                    session_factory, data_product_id=product_id
-                )
+                for r in list_output_ports(session_factory, data_product_id=product_id)
                 if r.name == op.target
             ),
             None,
@@ -236,9 +232,7 @@ def _apply_output_port(
         existing = next(
             (
                 r
-                for r in list_output_ports(
-                    session_factory, data_product_id=product_id
-                )
+                for r in list_output_ports(session_factory, data_product_id=product_id)
                 if r.name == op.target
             ),
             None,
@@ -274,9 +268,7 @@ def _apply_input_port(
         existing = next(
             (
                 r
-                for r in list_input_ports(
-                    session_factory, data_product_id=product_id
-                )
+                for r in list_input_ports(session_factory, data_product_id=product_id)
                 if r.name == op.target
             ),
             None,
@@ -293,9 +285,7 @@ def _apply_input_port(
                 session_factory,
                 data_product_id=product_id,
                 name=str(after.get("name", op.target)),
-                kind=str(
-                    after.get("kind", existing.kind if existing else "external")
-                ),
+                kind=str(after.get("kind", existing.kind if existing else "external")),
                 source_ref=after.get("source_ref"),
                 description=after.get("description"),
                 created_by_user_id=user_id,
@@ -356,16 +346,10 @@ def _apply_entity(
             created_by_user_id=user_id,
         )
     elif op.action == "remove":
-        entities = entities_service.list_entities(
-            session_factory, data_product_id=product_id
-        )
-        target = next(
-            (e for e in entities if e["entity_name"] == op.target), None
-        )
+        entities = entities_service.list_entities(session_factory, data_product_id=product_id)
+        target = next((e for e in entities if e["entity_name"] == op.target), None)
         if target is not None:
-            entities_service.delete_entity(
-                session_factory, entity_id=int(target["id"])
-            )
+            entities_service.delete_entity(session_factory, entity_id=int(target["id"]))
 
 
 def _apply_contract_test(
@@ -389,14 +373,10 @@ def _apply_contract_test(
     elif op.action == "remove":
         from pointlessql.services.contract_tests import list_contract_tests
 
-        tests = list_contract_tests(
-            session_factory, data_product_id=product_id
-        )
+        tests = list_contract_tests(session_factory, data_product_id=product_id)
         target = next((t for t in tests if t["name"] == op.target), None)
         if target is not None:
-            delete_contract_test(
-                session_factory, contract_test_id=int(target["id"])
-            )
+            delete_contract_test(session_factory, contract_test_id=int(target["id"]))
 
 
 def _apply_fixture(
@@ -418,12 +398,8 @@ def _apply_fixture(
     elif op.action == "remove":
         from pointlessql.services.contract_tests import list_fixtures
 
-        fixtures = list_fixtures(
-            session_factory, data_product_id=product_id
-        )
-        target = next(
-            (f for f in fixtures if f["table_name"] == op.target), None
-        )
+        fixtures = list_fixtures(session_factory, data_product_id=product_id)
+        target = next((f for f in fixtures if f["table_name"] == op.target), None)
         if target is not None:
             delete_fixture(session_factory, fixture_id=int(target["id"]))
 
@@ -439,9 +415,7 @@ def _apply_policies(
     if "linked_policy_module_ids" in fields and isinstance(
         fields["linked_policy_module_ids"], list
     ):
-        fields["linked_policy_module_ids"] = json.dumps(
-            fields["linked_policy_module_ids"]
-        )
+        fields["linked_policy_module_ids"] = json.dumps(fields["linked_policy_module_ids"])
     set_product_policy(
         session_factory,
         data_product_id=product_id,

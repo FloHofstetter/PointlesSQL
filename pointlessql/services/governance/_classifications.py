@@ -34,7 +34,6 @@ DEFAULT_STRATEGY_BY_CLASS: dict[str, str] = {
 }
 
 
-
 def effective_strategy(classification: str, override: str | None) -> str:
     """Return the masking strategy for a class + optional override.
 

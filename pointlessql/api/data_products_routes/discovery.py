@@ -57,9 +57,7 @@ def _workspace_slug(factory: Any, workspace_id: int) -> str:
         return ws.slug if ws is not None else str(workspace_id)
 
 
-def _summarise_cost(
-    factory: Any, data_product_id: int, workspace_id: int
-) -> dict[str, Any]:
+def _summarise_cost(factory: Any, data_product_id: int, workspace_id: int) -> dict[str, Any]:
     """Return a 7-day cost rollup for *data_product_id*.
 
     Aggregates the hourly bucket table over the last 7 days so the
@@ -71,15 +69,9 @@ def _summarise_cost(
 
     end = _datetime.datetime.now(_datetime.UTC)
     start = end - _datetime.timedelta(days=7)
-    rollup = cost_by_product(
-        factory, workspace_id=workspace_id, since=start, until=end
-    )
+    rollup = cost_by_product(factory, workspace_id=workspace_id, since=start, until=end)
     entry = next(
-        (
-            row
-            for row in rollup
-            if int(row.get("data_product_id") or 0) == int(data_product_id)
-        ),
+        (row for row in rollup if int(row.get("data_product_id") or 0) == int(data_product_id)),
         None,
     )
     if entry is None:
@@ -88,16 +80,12 @@ def _summarise_cost(
             "last_7d_query_count": 0,
         }
     return {
-        "last_7d_total_estimated_cost": float(
-            entry.get("total_estimated_cost") or 0
-        ),
+        "last_7d_total_estimated_cost": float(entry.get("total_estimated_cost") or 0),
         "last_7d_query_count": int(entry.get("query_count") or 0),
     }
 
 
-def _replacement_uri(
-    factory: Any, workspace_id: int, replacement_id: int | None
-) -> str | None:
+def _replacement_uri(factory: Any, workspace_id: int, replacement_id: int | None) -> str | None:
     """Render the successor product's URN, or ``None`` when none is set."""
     if replacement_id is None:
         return None
@@ -142,15 +130,9 @@ async def get_discovery_contract(catalog: str, schema: str, request: Request) ->
     classifications = governance_service.list_classifications(factory, data_product_id=row.id)
     slos = slo_service.list_slos(factory, data_product_id=row.id)
     entity_index = mesh_service.entities_for_schema(factory, catalog=catalog, schema=schema)
-    infrastructure = infrastructure_service.get_infrastructure(
-        factory, data_product_id=row.id
-    )
-    top_use_cases = consumer_voice_service.list_use_cases(
-        factory, data_product_id=row.id, limit=5
-    )
-    rating_summary = consumer_voice_service.list_rating_summary(
-        factory, data_product_id=row.id
-    )
+    infrastructure = infrastructure_service.get_infrastructure(factory, data_product_id=row.id)
+    top_use_cases = consumer_voice_service.list_use_cases(factory, data_product_id=row.id, limit=5)
+    rating_summary = consumer_voice_service.list_rating_summary(factory, data_product_id=row.id)
     policy_modules = load_linked_modules_for_product(
         factory, data_product_id=row.id, workspace_id=workspace_id
     )
@@ -187,9 +169,7 @@ async def get_discovery_contract(catalog: str, schema: str, request: Request) ->
                 "location": p.location,
                 "description": p.description,
                 "version_semver": getattr(p, "version_semver", None) or "0.1.0",
-                "identity_requirements": getattr(
-                    p, "identity_requirements_json", None
-                ),
+                "identity_requirements": getattr(p, "identity_requirements_json", None),
                 "schema_history": list_versions(factory, output_port_id=int(p.id))[:5],
             }
             for p in output_ports
@@ -209,18 +189,12 @@ async def get_discovery_contract(catalog: str, schema: str, request: Request) ->
             "encryption_class": effective_policy["encryption_class"]["value"],
             "residency_region": effective_policy["residency_region"]["value"],
             "consent_required": bool(effective_policy["consent_required"]["value"]),
-            "consumption_enforcement": effective_policy["consumption_enforcement"][
+            "consumption_enforcement": effective_policy["consumption_enforcement"]["value"],
+            "iso8601_enforcement": effective_policy.get("iso8601_enforcement", {}).get("value"),
+            "linked_policy_module_ids": [int(m.id) for m in policy_modules],
+            "breaking_change_policy": effective_policy.get("breaking_change_policy", {}).get(
                 "value"
-            ],
-            "iso8601_enforcement": effective_policy.get(
-                "iso8601_enforcement", {}
-            ).get("value"),
-            "linked_policy_module_ids": [
-                int(m.id) for m in policy_modules
-            ],
-            "breaking_change_policy": effective_policy.get(
-                "breaking_change_policy", {}
-            ).get("value"),
+            ),
             "quota_enforcement": quota_mode,
             "max_cost_per_day": quota_limits.get("max_cost_per_day"),
             "max_queries_per_hour": quota_limits.get("max_queries_per_hour"),
@@ -257,9 +231,7 @@ async def get_discovery_contract(catalog: str, schema: str, request: Request) ->
         "lifecycle": {
             "state": row.lifecycle_state,
             "changed_at": (
-                row.lifecycle_changed_at.isoformat()
-                if row.lifecycle_changed_at
-                else None
+                row.lifecycle_changed_at.isoformat() if row.lifecycle_changed_at else None
             ),
             "replacement_uri": _replacement_uri(
                 factory, workspace_id, row.replacement_data_product_id

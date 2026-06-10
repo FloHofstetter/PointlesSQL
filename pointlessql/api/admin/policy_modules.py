@@ -42,9 +42,7 @@ async def admin_policy_modules_index(request: Request) -> HTMLResponse:
 
 
 @router.get("/api/admin/policy-modules")
-async def list_policy_modules(
-    request: Request, include_disabled: bool = True
-) -> dict[str, Any]:
+async def list_policy_modules(request: Request, include_disabled: bool = True) -> dict[str, Any]:
     """Return every module in the current workspace."""
     require_admin(request)
     factory = request.app.state.session_factory
@@ -155,6 +153,7 @@ async def test_policy_module(
     resource = str(body.get("resource", 'DataProduct::"main.silver"'))
     context = body.get("context") if isinstance(body.get("context"), dict) else {}
     from pointlessql.models import PolicyModule
+
     with factory() as session:
         row = session.get(PolicyModule, module_id)
         if row is None:

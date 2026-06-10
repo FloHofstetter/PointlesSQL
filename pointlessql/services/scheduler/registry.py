@@ -118,8 +118,6 @@ def build_default_registry() -> KindRegistry:
     registry.register("ingest_pull", ingest_pull_executor)
     registry.register("event_port_pump", _event_port_pump_executor)
     registry.register("cost_rollup_hourly", _cost_rollup_hourly_executor)
-    registry.register(
-        "contract_test_evaluation", _contract_test_evaluation_executor
-    )
+    registry.register("contract_test_evaluation", _contract_test_evaluation_executor)
     registry.register("entity_link_discovery", _entity_link_discovery_executor)
     return registry

@@ -88,9 +88,7 @@ def test_off_mode_returns_no_check() -> None:
         data_product_id=dp_id,
         fields={"quota_enforcement": "off"},
     )
-    result = check_quota(
-        _factory(), consumer_user_id=1, data_product_id=dp_id
-    )
+    result = check_quota(_factory(), consumer_user_id=1, data_product_id=dp_id)
     assert result.mode == "off"
     assert result.breached is False
 
@@ -106,9 +104,7 @@ def test_warn_mode_returns_outcome_without_raising() -> None:
         },
     )
     _seed_bucket(dp_id, cost=Decimal("10"), count=1)
-    result = check_quota(
-        _factory(), consumer_user_id=1, data_product_id=dp_id
-    )
+    result = check_quota(_factory(), consumer_user_id=1, data_product_id=dp_id)
     assert result.mode == "warn"
     assert result.breached is True
     assert result.offending_metric == "cost_per_day"
@@ -126,9 +122,7 @@ def test_strict_mode_raises_quota_exceeded() -> None:
     )
     _seed_bucket(dp_id, cost=Decimal("10"), count=1)
     with pytest.raises(QuotaExceededError) as info:
-        check_quota(
-            _factory(), consumer_user_id=1, data_product_id=dp_id
-        )
+        check_quota(_factory(), consumer_user_id=1, data_product_id=dp_id)
     assert info.value.status_code == 429
     assert info.value.metric == "cost_per_day"
 
@@ -145,9 +139,7 @@ def test_strict_mode_blocks_on_queries_per_hour() -> None:
     )
     _seed_bucket(dp_id, cost=Decimal("1"), count=10)
     with pytest.raises(QuotaExceededError) as info:
-        check_quota(
-            _factory(), consumer_user_id=None, data_product_id=dp_id
-        )
+        check_quota(_factory(), consumer_user_id=None, data_product_id=dp_id)
     assert info.value.metric == "queries_per_hour"
 
 
@@ -163,9 +155,7 @@ def test_below_limit_passes_without_breach() -> None:
         },
     )
     _seed_bucket(dp_id, cost=Decimal("0.50"), count=1)
-    result = check_quota(
-        _factory(), consumer_user_id=1, data_product_id=dp_id
-    )
+    result = check_quota(_factory(), consumer_user_id=1, data_product_id=dp_id)
     assert result.breached is False
     assert result.observed_cost_today == Decimal("0.50")
 
@@ -181,17 +171,13 @@ def test_old_hour_does_not_count_toward_current_hour() -> None:
         },
     )
     _seed_bucket(dp_id, cost=Decimal("1"), count=20, hour_offset=2)
-    result = check_quota(
-        _factory(), consumer_user_id=None, data_product_id=dp_id
-    )
+    result = check_quota(_factory(), consumer_user_id=None, data_product_id=dp_id)
     assert result.breached is False
 
 
 def test_resolve_quota_mode_returns_off_when_unset() -> None:
     dp_id = _seed_product("q", "resolve")
-    mode, limits = resolve_quota_mode(
-        _factory(), data_product_id=dp_id
-    )
+    mode, limits = resolve_quota_mode(_factory(), data_product_id=dp_id)
     assert mode == "off"
     assert limits["max_cost_per_day"] is None
 
@@ -206,8 +192,6 @@ def test_resolve_quota_mode_respects_product_override() -> None:
             "max_cost_per_day": Decimal("42.50"),
         },
     )
-    mode, limits = resolve_quota_mode(
-        _factory(), data_product_id=dp_id
-    )
+    mode, limits = resolve_quota_mode(_factory(), data_product_id=dp_id)
     assert mode == "strict"
     assert limits["max_cost_per_day"] == Decimal("42.50")

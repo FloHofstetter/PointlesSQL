@@ -64,9 +64,7 @@ def roll_up_hourly_buckets(
             )
             bucket["query_count"] += 1
             bucket["total_duration_ms"] += int(row.duration_ms or 0)
-            bucket["total_estimated_cost"] += Decimal(
-                str(row.estimated_cost or 0)
-            )
+            bucket["total_estimated_cost"] += Decimal(str(row.estimated_cost or 0))
             bucket["total_bytes_scanned"] += int(row.bytes_scanned or 0)
 
         written = 0
@@ -74,15 +72,11 @@ def roll_up_hourly_buckets(
             existing = session.scalar(
                 select(DataProductCostBucketHourly)
                 .where(DataProductCostBucketHourly.bucket_hour == payload["bucket_hour"])
-                .where(
-                    DataProductCostBucketHourly.data_product_id
-                    == payload["data_product_id"]
-                )
+                .where(DataProductCostBucketHourly.data_product_id == payload["data_product_id"])
                 .where(
                     DataProductCostBucketHourly.consumer_user_id.is_(None)
                     if payload["consumer_user_id"] is None
-                    else DataProductCostBucketHourly.consumer_user_id
-                    == payload["consumer_user_id"]
+                    else DataProductCostBucketHourly.consumer_user_id == payload["consumer_user_id"]
                 )
             )
             if existing is None:

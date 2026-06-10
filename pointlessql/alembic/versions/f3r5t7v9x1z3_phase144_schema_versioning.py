@@ -47,9 +47,7 @@ def upgrade() -> None:
         sa.Column(
             "output_port_id",
             sa.Integer(),
-            sa.ForeignKey(
-                "data_product_output_ports.id", ondelete="CASCADE"
-            ),
+            sa.ForeignKey("data_product_output_ports.id", ondelete="CASCADE"),
             nullable=False,
         ),
         sa.Column("version_semver", sa.String(length=16), nullable=False),
@@ -103,22 +101,17 @@ def upgrade() -> None:
         )
         batch.create_check_constraint(
             "ck_data_product_policies_breaking_change",
-            "breaking_change_policy IS NULL OR "
-            "breaking_change_policy IN ('block','warn','off')",
+            "breaking_change_policy IS NULL OR breaking_change_policy IN ('block','warn','off')",
         )
 
 
 def downgrade() -> None:
     """Drop the columns + history table in reverse order."""
     with op.batch_alter_table("data_product_policies") as batch:
-        batch.drop_constraint(
-            "ck_data_product_policies_breaking_change", type_="check"
-        )
+        batch.drop_constraint("ck_data_product_policies_breaking_change", type_="check")
         batch.drop_column("breaking_change_policy")
     with op.batch_alter_table("workspace_governance_policies") as batch:
-        batch.drop_constraint(
-            "ck_workspace_governance_policies_breaking_change", type_="check"
-        )
+        batch.drop_constraint("ck_workspace_governance_policies_breaking_change", type_="check")
         batch.drop_column("breaking_change_policy")
     op.drop_index(
         "ix_output_port_schema_versions_port",

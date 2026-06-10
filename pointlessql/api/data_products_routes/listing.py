@@ -237,9 +237,7 @@ async def list_data_products(request: Request, q: str | None = None) -> dict[str
                 },
             )
             payload["endorsements"] = endorsement_map.get(row.id, [])
-            payload["glossary_terms"] = glossary_map.get(
-                (row.catalog_name, row.schema_name), []
-            )
+            payload["glossary_terms"] = glossary_map.get((row.catalog_name, row.schema_name), [])
             items.append(payload)
 
     return {"workspace_id": workspace_id, "data_products": items}

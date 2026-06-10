@@ -79,9 +79,7 @@ def test_persist_canvas_ydoc_skips_when_no_change() -> None:
     v1 = save_graph(factory, data_product_id=dp_id, doc=seed, author_user_id=None)
     doc = get_or_init_canvas_ydoc(factory, data_product_id=dp_id)
     # No changes between fetched seed and current state → persist returns same version.
-    result = persist_canvas_ydoc(
-        factory, data_product_id=dp_id, doc=doc, author_user_id=None
-    )
+    result = persist_canvas_ydoc(factory, data_product_id=dp_id, doc=doc, author_user_id=None)
     assert result == v1
 
 
@@ -102,9 +100,7 @@ def test_persist_canvas_ydoc_bumps_version_on_change() -> None:
     nodes_map["inp2"]["config_json"] = '{"table_fqn": "x.y.z"}'
     nodes_map["inp2"]["position_json"] = "{}"
     nodes_order.append("inp2")
-    v = persist_canvas_ydoc(
-        factory, data_product_id=dp_id, doc=doc, author_user_id=None
-    )
+    v = persist_canvas_ydoc(factory, data_product_id=dp_id, doc=doc, author_user_id=None)
     assert v is not None
     assert v >= 1
 
@@ -149,9 +145,7 @@ def test_persist_reads_from_granular_maps() -> None:
     nodes_map["filt"]["config_json"] = '{"predicate": "amt > 10"}'
     nodes_map["filt"]["position_json"] = "{}"
     nodes_order.append("filt")
-    v = persist_canvas_ydoc(
-        factory, data_product_id=dp_id, doc=doc, author_user_id=None
-    )
+    v = persist_canvas_ydoc(factory, data_product_id=dp_id, doc=doc, author_user_id=None)
     assert v == 1
     canvas = extract_canvas_doc(doc)
     assert canvas is not None
@@ -182,9 +176,7 @@ def test_extract_falls_back_to_legacy_json_slot() -> None:
     assert len(nodes_order) == 1
     assert "json" not in canvas_map
     # Persist round-trip still works.
-    v = persist_canvas_ydoc(
-        factory, data_product_id=dp_id, doc=doc, author_user_id=None
-    )
+    v = persist_canvas_ydoc(factory, data_product_id=dp_id, doc=doc, author_user_id=None)
     assert v is not None and v >= 1
 
 

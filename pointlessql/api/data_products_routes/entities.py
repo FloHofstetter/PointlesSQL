@@ -42,19 +42,13 @@ def _require_steward_or_admin(request: Request, catalog: str, schema: str) -> No
 
 
 @router.get("/api/data-products/{catalog}/{schema}/entities")
-async def list_entities(
-    catalog: str, schema: str, request: Request
-) -> dict[str, Any]:
+async def list_entities(catalog: str, schema: str, request: Request) -> dict[str, Any]:
     """Return all entities declared on the product."""
     require_user(request)
     factory = request.app.state.session_factory
     workspace_id = current_workspace_id(request)
     dp_row, _, _, _ = load_one(factory, workspace_id, catalog, schema)
-    return {
-        "entities": entities_service.list_entities(
-            factory, data_product_id=int(dp_row.id)
-        )
-    }
+    return {"entities": entities_service.list_entities(factory, data_product_id=int(dp_row.id))}
 
 
 @router.post("/api/data-products/{catalog}/{schema}/entities")
@@ -132,9 +126,7 @@ async def link_entities(
     return {"link": result}
 
 
-@router.delete(
-    "/api/data-products/{catalog}/{schema}/entities/{entity_id}/links/{link_id}"
-)
+@router.delete("/api/data-products/{catalog}/{schema}/entities/{entity_id}/links/{link_id}")
 async def unlink_entities(
     catalog: str, schema: str, entity_id: int, link_id: int, request: Request
 ) -> dict[str, Any]:
@@ -160,11 +152,7 @@ async def list_entity_links(
     """Return the links incident on the entity."""
     require_user(request)
     factory = request.app.state.session_factory
-    return {
-        "links": entities_service.list_links(
-            factory, entity_id=entity_id, direction=direction
-        )
-    }
+    return {"links": entities_service.list_links(factory, entity_id=entity_id, direction=direction)}
 
 
 @router.get("/api/data-products/{catalog}/{schema}/entities/{entity_id}/resolve")
@@ -175,9 +163,7 @@ async def resolve_entity(
     require_user(request)
     factory = request.app.state.session_factory
     try:
-        identity = entities_service.resolve_same_as_graph(
-            factory, entity_id=entity_id
-        )
+        identity = entities_service.resolve_same_as_graph(factory, entity_id=entity_id)
     except LookupError as exc:
         # bare-http-ok: 404 for unknown entity in resolver; no domain exception.
         raise HTTPException(status_code=404, detail=str(exc)) from exc

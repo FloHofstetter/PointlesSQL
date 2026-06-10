@@ -154,9 +154,7 @@ async def test_query_masks_classified_column_through_aggregation(tmp_path: Path)
     ctx = _ctx(fake, email="nonadmin@test.com")
     out = await _execute_query(
         ctx,
-        QueryArgs(
-            sql="SELECT email, COUNT(*) AS n FROM demo.salesmask.orders GROUP BY email"
-        ),
+        QueryArgs(sql="SELECT email, COUNT(*) AS n FROM demo.salesmask.orders GROUP BY email"),
     )
     emails = [row[0] for row in out.rows]
     # masking ran at the source, so no cleartext address survives the aggregation
@@ -173,7 +171,5 @@ async def test_query_denies_table_without_select(tmp_path: Path) -> None:
     fake = _FakeUC(str(loc), grants={})  # no privileges for anyone
     ctx = _ctx(fake, email="nonadmin@test.com")
     with pytest.raises(LensToolError) as excinfo:
-        await _execute_query(
-            ctx, QueryArgs(sql="SELECT id FROM demo.sales.orders")
-        )
+        await _execute_query(ctx, QueryArgs(sql="SELECT id FROM demo.sales.orders"))
     assert excinfo.value.status == "access_denied"

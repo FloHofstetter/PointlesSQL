@@ -146,18 +146,14 @@ class WorkspaceGovernancePolicy(Base):
     iso8601_enforcement: Mapped[str] = mapped_column(
         String(8), nullable=False, default="warn", server_default="warn"
     )
-    linked_policy_module_ids: Mapped[str | None] = mapped_column(
-        Text(), nullable=True
-    )
+    linked_policy_module_ids: Mapped[str | None] = mapped_column(Text(), nullable=True)
     breaking_change_policy: Mapped[str] = mapped_column(
         String(8), nullable=False, default="warn", server_default="warn"
     )
     max_cost_per_day: Mapped[Decimal | None] = mapped_column(
         Numeric(precision=10, scale=2), nullable=True
     )
-    max_queries_per_hour: Mapped[int | None] = mapped_column(
-        Integer, nullable=True
-    )
+    max_queries_per_hour: Mapped[int | None] = mapped_column(Integer, nullable=True)
     quota_enforcement: Mapped[str] = mapped_column(
         String(8), nullable=False, default="off", server_default="off"
     )
@@ -220,21 +216,13 @@ class DataProductPolicy(Base):
     consent_basis: Mapped[str | None] = mapped_column(String(200), nullable=True)
     consumption_enforcement: Mapped[str | None] = mapped_column(String(16), nullable=True)
     iso8601_enforcement: Mapped[str | None] = mapped_column(String(8), nullable=True)
-    linked_policy_module_ids: Mapped[str | None] = mapped_column(
-        Text(), nullable=True
-    )
-    breaking_change_policy: Mapped[str | None] = mapped_column(
-        String(8), nullable=True
-    )
+    linked_policy_module_ids: Mapped[str | None] = mapped_column(Text(), nullable=True)
+    breaking_change_policy: Mapped[str | None] = mapped_column(String(8), nullable=True)
     max_cost_per_day: Mapped[Decimal | None] = mapped_column(
         Numeric(precision=10, scale=2), nullable=True
     )
-    max_queries_per_hour: Mapped[int | None] = mapped_column(
-        Integer, nullable=True
-    )
-    quota_enforcement: Mapped[str | None] = mapped_column(
-        String(8), nullable=True
-    )
+    max_queries_per_hour: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    quota_enforcement: Mapped[str | None] = mapped_column(String(8), nullable=True)
     updated_by_user_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("users.id"), nullable=True
     )

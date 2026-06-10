@@ -37,7 +37,7 @@ def _decode_pk(raw: str) -> list[str]:
     """Decode the JSON PK-column tuple.  Empty list on parse error."""
     try:
         value = json.loads(raw)
-    except (ValueError, TypeError):
+    except ValueError, TypeError:
         return []
     return [str(c) for c in value] if isinstance(value, list) else []
 
@@ -271,9 +271,7 @@ def list_links(
                 "source_entity_id": row.source_entity_id,
                 "target_entity_id": row.target_entity_id,
                 "kind": row.kind,
-                "confidence": (
-                    float(row.confidence) if row.confidence is not None else None
-                ),
+                "confidence": (float(row.confidence) if row.confidence is not None else None),
                 "declared_by_user_id": row.declared_by_user_id,
                 "created_at": row.created_at.isoformat() if row.created_at else None,
             }

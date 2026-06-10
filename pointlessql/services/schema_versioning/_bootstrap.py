@@ -45,9 +45,7 @@ def register_schema_versioning_hooks(session_factory: SessionFactory) -> None:
             data_product_id=product_id,
             workspace_id=workspace_id,
         )
-        mode = str(
-            policy.get("breaking_change_policy", {}).get("value") or "warn"
-        )
+        mode = str(policy.get("breaking_change_policy", {}).get("value") or "warn")
         assert_schema_compatibility(
             session_factory,
             data_product_id=product_id,
@@ -89,7 +87,7 @@ def _frame_schema_dict(frame: Any) -> dict[str, Any] | None:
         if hasattr(schema, "field"):
             try:
                 field = schema.field(index)
-            except (IndexError, KeyError, TypeError):
+            except IndexError, KeyError, TypeError:
                 field = None
         type_name = str(getattr(field, "type", "unknown")) if field else "unknown"
         nullable = bool(getattr(field, "nullable", True)) if field else True

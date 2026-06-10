@@ -31,9 +31,7 @@ if TYPE_CHECKING:
     from sqlalchemy.orm import Session, sessionmaker
 
 
-def get_pinned_version(
-    session: Session, *, dp_id: int
-) -> int | None:
+def get_pinned_version(session: Session, *, dp_id: int) -> int | None:
     """Return the version-int of the pinned row for *dp_id*, else ``None``."""
     row = session.execute(
         select(DataProductCanvasGraph.version)
@@ -66,9 +64,7 @@ def pin_version(
             .where(DataProductCanvasGraph.version == version)
         ).scalar_one_or_none()
         if target is None:
-            raise ResourceNotFoundError(
-                f"canvas version dp={dp_id} v={version} not found"
-            )
+            raise ResourceNotFoundError(f"canvas version dp={dp_id} v={version} not found")
         session.execute(
             update(DataProductCanvasGraph)
             .where(DataProductCanvasGraph.data_product_id == dp_id)
@@ -120,9 +116,7 @@ def unpin_version(
             .where(DataProductCanvasGraph.version == version)
         ).scalar_one_or_none()
         if target is None:
-            raise ResourceNotFoundError(
-                f"canvas version dp={dp_id} v={version} not found"
-            )
+            raise ResourceNotFoundError(f"canvas version dp={dp_id} v={version} not found")
         session.execute(
             update(DataProductCanvasGraph)
             .where(DataProductCanvasGraph.id == target.id)

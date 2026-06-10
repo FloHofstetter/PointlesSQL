@@ -27,7 +27,6 @@ from pointlessql.types import SessionFactory
 logger = logging.getLogger(__name__)
 
 
-
 def _version_and_count_at(storage_location: str, when: datetime.datetime) -> dict[str, Any]:
     """Resolve the as-of version + best-effort row count of a Delta table.
 
@@ -59,7 +58,7 @@ def _declared_tables(contract_json: str) -> list[str]:
     """Return the declared table names from a serialised contract."""
     try:
         contract = DataProductContract.model_validate(json.loads(contract_json))
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return []
     return [t.name for t in contract.tables]
 
@@ -100,9 +99,7 @@ async def resolve_as_of(
                 )
             ).all()
         )
-        specs = [
-            (r.catalog_name, r.schema_name, _declared_tables(r.contract_json)) for r in rows
-        ]
+        specs = [(r.catalog_name, r.schema_name, _declared_tables(r.contract_json)) for r in rows]
 
     products: dict[str, Any] = {}
     for catalog, schema, tables in specs:

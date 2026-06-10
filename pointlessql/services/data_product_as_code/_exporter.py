@@ -62,9 +62,7 @@ def export_data_product(
                 format=p.format,
                 location=p.location,
                 identity_requirements=(
-                    json.loads(p.identity_requirements)
-                    if p.identity_requirements
-                    else None
+                    json.loads(p.identity_requirements) if p.identity_requirements else None
                 ),
             )
             for p in session.scalars(
@@ -105,9 +103,7 @@ def export_data_product(
                 name=e.entity_name,
                 source_table=e.source_table,
                 primary_key_columns=(
-                    json.loads(e.primary_key_columns)
-                    if e.primary_key_columns
-                    else []
+                    json.loads(e.primary_key_columns) if e.primary_key_columns else []
                 ),
                 description=e.description,
             )
@@ -121,11 +117,7 @@ def export_data_product(
             ContractTestSpec(
                 name=t.name,
                 assertion_kind=t.assertion_kind,
-                assertion_spec=(
-                    json.loads(t.assertion_spec_json)
-                    if t.assertion_spec_json
-                    else {}
-                ),
+                assertion_spec=(json.loads(t.assertion_spec_json) if t.assertion_spec_json else {}),
                 severity=t.severity,
                 enabled=bool(t.enabled),
             )
@@ -138,11 +130,7 @@ def export_data_product(
         fixtures = [
             FixtureSpec(
                 table_name=f.table_name,
-                generator_spec=(
-                    json.loads(f.generator_spec_json)
-                    if f.generator_spec_json
-                    else []
-                ),
+                generator_spec=(json.loads(f.generator_spec_json) if f.generator_spec_json else []),
                 row_count=int(f.row_count),
             )
             for f in session.scalars(
@@ -152,9 +140,7 @@ def export_data_product(
             )
         ]
         product_name = product.contract_json
-    policy_payload = get_product_policy(
-        session_factory, data_product_id=product_id
-    )
+    policy_payload = get_product_policy(session_factory, data_product_id=product_id)
     policies = (
         PolicySpec(**{f: policy_payload.get(f) for f in POLICY_FIELDS})
         if any(policy_payload.get(f) is not None for f in POLICY_FIELDS)
@@ -191,7 +177,7 @@ def _extract_name(contract_json: str | None, *, default: str) -> str:
         return default
     try:
         decoded = json.loads(contract_json)
-    except (json.JSONDecodeError, ValueError):
+    except json.JSONDecodeError, ValueError:
         return default
     if isinstance(decoded, dict) and decoded.get("name"):
         return str(decoded["name"])

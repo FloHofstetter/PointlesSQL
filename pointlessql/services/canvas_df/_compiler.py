@@ -251,9 +251,7 @@ def compile_canvas(
         return None, errors
 
     seeds = upstream_schemas or {}
-    cte_names, output_schemas, ctes = _build_cte_chain(
-        ordered_nodes, edges_in, seeds, errors
-    )
+    cte_names, output_schemas, ctes = _build_cte_chain(ordered_nodes, edges_in, seeds, errors)
     if errors:
         return None, errors
 
@@ -428,9 +426,7 @@ def compile_to_select(
 
     keep = _collect_ancestors(doc, terminal_node_id)
     kept_nodes = [n for n in doc.nodes if n.id in keep]
-    kept_edges = [
-        e for e in doc.edges if e.source_node_id in keep and e.target_node_id in keep
-    ]
+    kept_edges = [e for e in doc.edges if e.source_node_id in keep and e.target_node_id in keep]
     _check_block_types(kept_nodes, errors)
     if errors:
         return None, errors
@@ -444,9 +440,7 @@ def compile_to_select(
         return None, errors
 
     seeds = upstream_schemas or {}
-    cte_names, output_schemas, ctes = _build_cte_chain(
-        ordered_nodes, edges_in, seeds, errors
-    )
+    cte_names, output_schemas, ctes = _build_cte_chain(ordered_nodes, edges_in, seeds, errors)
     if errors:
         return None, errors
 

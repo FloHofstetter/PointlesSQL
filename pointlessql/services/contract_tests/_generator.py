@@ -75,15 +75,10 @@ def generate_arrow_table(
         name = str(descriptor.get("column", "")).strip()
         kind = str(descriptor.get("kind", "")).strip()
         if not name or not kind:
-            raise ValueError(
-                "every spec entry needs both 'column' and 'kind'"
-            )
+            raise ValueError("every spec entry needs both 'column' and 'kind'")
         if kind not in GENERATOR_KINDS:
             raise ValueError(f"unknown generator kind: {kind}")
-        columns[name] = [
-            _generate_value(kind, descriptor, rnd, fake)
-            for _ in range(rows)
-        ]
+        columns[name] = [_generate_value(kind, descriptor, rnd, fake) for _ in range(rows)]
     return pa.table(columns or {})
 
 
@@ -132,9 +127,7 @@ def _generate_value(
     if kind == "iso8601_ts":
         since_days = int(descriptor.get("since_days", 30))
         delta_seconds = rnd.randint(0, max(1, since_days) * 86400)
-        moment = datetime.datetime.now(datetime.UTC) - datetime.timedelta(
-            seconds=delta_seconds
-        )
+        moment = datetime.datetime.now(datetime.UTC) - datetime.timedelta(seconds=delta_seconds)
         return moment.isoformat()
     if kind == "choice":
         choices = list(descriptor.get("choices", []) or [])

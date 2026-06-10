@@ -76,9 +76,7 @@ async def test_governance_card_consumes_new_cost_block() -> None:
         base_url="http://test",
         cookies=app.state._test_auth_cookie,
     ) as client:
-        res = await client.get(
-            "/api/data-products/surface/gov_cost_block/discovery"
-        )
+        res = await client.get("/api/data-products/surface/gov_cost_block/discovery")
     assert res.status_code == 200, res.text
     body = res.json()
     assert "cost" in body

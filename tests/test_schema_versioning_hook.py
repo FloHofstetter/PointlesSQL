@@ -152,10 +152,13 @@ def test_compatible_write_passes(schema_hook_env: None) -> None:
             "value": _FakeField("string", True),
         }
     )
-    run_before_write(frame, {
-        "authoring_product_id": product_id,
-        "workspace_id": 1,
-    })
+    run_before_write(
+        frame,
+        {
+            "authoring_product_id": product_id,
+            "workspace_id": 1,
+        },
+    )
 
 
 def test_breaking_write_blocked_under_strict_policy(schema_hook_env: None) -> None:
@@ -167,17 +170,23 @@ def test_breaking_write_blocked_under_strict_policy(schema_hook_env: None) -> No
         }
     )
     with pytest.raises(PermissionDeniedError):
-        run_before_write(frame, {
-            "authoring_product_id": product_id,
-            "workspace_id": 1,
-        })
+        run_before_write(
+            frame,
+            {
+                "authoring_product_id": product_id,
+                "workspace_id": 1,
+            },
+        )
 
 
 def test_missing_frame_skips_hook(schema_hook_env: None) -> None:
     product_id, _port = _seed(breaking_change_policy="block")
     # Cedar fires the same chain with frame=None; the schema hook must
     # not raise on absent frames so unrelated callers stay unaffected.
-    run_before_write(None, {
-        "authoring_product_id": product_id,
-        "workspace_id": 1,
-    })
+    run_before_write(
+        None,
+        {
+            "authoring_product_id": product_id,
+            "workspace_id": 1,
+        },
+    )

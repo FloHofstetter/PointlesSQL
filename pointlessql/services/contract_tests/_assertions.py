@@ -87,9 +87,7 @@ def _decode_spec(spec_json: str | dict[str, Any]) -> dict[str, Any]:
     return decoded
 
 
-def _assert_row_count_range(
-    spec: dict[str, Any], table: pa.Table
-) -> AssertionVerdict:
+def _assert_row_count_range(spec: dict[str, Any], table: pa.Table) -> AssertionVerdict:
     """Row count is between ``min`` and ``max`` (inclusive)."""
     lo = int(spec.get("min", 0))
     hi = int(spec.get("max", 10**12))
@@ -101,9 +99,7 @@ def _assert_row_count_range(
     )
 
 
-def _assert_column_present(
-    spec: dict[str, Any], table: pa.Table
-) -> AssertionVerdict:
+def _assert_column_present(spec: dict[str, Any], table: pa.Table) -> AssertionVerdict:
     """Every column in ``columns`` exists on the table (case-sensitive)."""
     required = list(spec.get("columns", []) or [])
     if not required:
@@ -117,9 +113,7 @@ def _assert_column_present(
     )
 
 
-def _assert_value_distribution(
-    spec: dict[str, Any], table: pa.Table
-) -> AssertionVerdict:
+def _assert_value_distribution(spec: dict[str, Any], table: pa.Table) -> AssertionVerdict:
     """Distinct value count for ``column`` falls within ``min``/``max``."""
     column = str(spec.get("column", ""))
     if not column:
@@ -144,9 +138,7 @@ def _assert_value_distribution(
     )
 
 
-def _assert_null_rate(
-    spec: dict[str, Any], table: pa.Table
-) -> AssertionVerdict:
+def _assert_null_rate(spec: dict[str, Any], table: pa.Table) -> AssertionVerdict:
     """Null fraction for ``column`` is at most ``max_rate``."""
     column = str(spec.get("column", ""))
     max_rate = float(spec.get("max_rate", 0.0))
@@ -178,9 +170,7 @@ def _assert_null_rate(
     )
 
 
-def _assert_referential(
-    spec: dict[str, Any], table: pa.Table
-) -> AssertionVerdict:
+def _assert_referential(spec: dict[str, Any], table: pa.Table) -> AssertionVerdict:
     """Every value in ``column`` is in ``allowed_values``."""
     column = str(spec.get("column", ""))
     allowed = spec.get("allowed_values")
@@ -205,9 +195,7 @@ def _assert_referential(
     )
 
 
-def _assert_freshness(
-    spec: dict[str, Any], table: pa.Table
-) -> AssertionVerdict:
+def _assert_freshness(spec: dict[str, Any], table: pa.Table) -> AssertionVerdict:
     """Max value in ``timestamp_column`` is within ``max_lag_minutes`` of now."""
     column = str(spec.get("timestamp_column", ""))
     max_lag_minutes = float(spec.get("max_lag_minutes", 60))
@@ -224,9 +212,7 @@ def _assert_freshness(
             status="fail",
             observation={"reason": "no non-null timestamps"},
         )
-    parsed = sorted(
-        [m for v in values if (m := _parse_iso8601(v)) is not None]
-    )
+    parsed = sorted([m for v in values if (m := _parse_iso8601(v)) is not None])
     if not parsed:
         return AssertionVerdict(
             status="error",
@@ -249,19 +235,11 @@ def _assert_freshness(
 def _parse_iso8601(value: Any) -> datetime.datetime | None:
     """Best-effort ISO-8601 parse returning timezone-aware UTC moments."""
     if isinstance(value, datetime.datetime):
-        return (
-            value
-            if value.tzinfo is not None
-            else value.replace(tzinfo=datetime.UTC)
-        )
+        return value if value.tzinfo is not None else value.replace(tzinfo=datetime.UTC)
     if not isinstance(value, str):
         return None
     try:
         parsed = datetime.datetime.fromisoformat(value)
-    except (ValueError, TypeError):
+    except ValueError, TypeError:
         return None
-    return (
-        parsed
-        if parsed.tzinfo is not None
-        else parsed.replace(tzinfo=datetime.UTC)
-    )
+    return parsed if parsed.tzinfo is not None else parsed.replace(tzinfo=datetime.UTC)

@@ -82,9 +82,7 @@ async def apply_polymorphic_review_reaction(
 
     added = False
     with factory() as session:
-        load_review_on_target(
-            session, review_id, workspace_id=workspace_id, target_id=target_id
-        )
+        load_review_on_target(session, review_id, workspace_id=workspace_id, target_id=target_id)
         try:
             session.add(
                 DataProductReviewReaction(
@@ -142,9 +140,7 @@ async def remove_polymorphic_review_reaction(
 
     removed = False
     with factory() as session:
-        load_review_on_target(
-            session, review_id, workspace_id=workspace_id, target_id=target_id
-        )
+        load_review_on_target(session, review_id, workspace_id=workspace_id, target_id=target_id)
         result = session.execute(
             _delete(DataProductReviewReaction).where(
                 DataProductReviewReaction.review_id == review_id,
@@ -192,9 +188,7 @@ async def list_polymorphic_review_reactions(
 
     with_names = bool(request.query_params.get("with_names"))
     with factory() as session:
-        load_review_on_target(
-            session, review_id, workspace_id=workspace_id, target_id=target_id
-        )
+        load_review_on_target(session, review_id, workspace_id=workspace_id, target_id=target_id)
         rows = session.execute(
             select(
                 DataProductReviewReaction.emoji,
