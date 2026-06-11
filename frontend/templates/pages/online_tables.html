@@ -1,0 +1,207 @@
+{% extends "base.html" %}
+{% block title %}Online Tables · PointlesSQL{% endblock %}
+{% block page_entry %}online_tables.js{% endblock %}
+
+{% set breadcrumbs = [
+ {"label": "Home", "href": "/"},
+ {"label": "Online Tables"}
+] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block content %}
+<div x-data="onlineTables()" x-init="init()">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <div class="d-flex align-items-center gap-2">
+            <i class="bi bi-database-fill-gear fs-3"></i>
+            <h1 class="h3 mb-0">Online Tables</h1>
+        </div>
+        <button type="button" class="btn btn-primary btn-sm" @click="openCreate()">
+            <i class="bi bi-plus-lg me-1"></i>New online table
+        </button>
+    </div>
+
+    <p class="text-muted">
+        An online table is a low-latency copy of a Delta table, synced into a
+        Postgres or SQLite serving database for point lookups by primary key.
+        Full mode replaces the target on every sync; CDF mode applies Change
+        Data Feed events incrementally from the last synced version. Target
+        URLs may reference credentials as
+        <code>{{ '{{secrets/<scope>/<key>}}' }}</code> — the placeholder is
+        stored, never the secret.
+    </p>
+
+    <div class="alert alert-danger" x-show="error" x-text="error" x-cloak></div>
+    <div class="col-auto" x-show="loading" x-cloak>
+        <span class="spinner-border spinner-border-sm" role="status" aria-label="Loading"></span>
+    </div>
+
+    <template x-if="creator">
+        <div class="card mb-4">
+            <div class="card-header d-flex align-items-center justify-content-between">
+                <span>New online table</span>
+                <button type="button" class="btn-close" aria-label="Close editor" @click="creator = null"></button>
+            </div>
+            <div class="card-body">
+                <div class="row g-2 mb-2">
+                    <div class="col-md-3">
+                        <label class="form-label" for="ot-name">Name</label>
+                        <input id="ot-name" type="text" class="form-control form-control-sm font-monospace"
+                               x-model="creator.name" placeholder="users-online">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label" for="ot-source">Source table (catalog.schema.table)</label>
+                        <input id="ot-source" type="text" class="form-control form-control-sm font-monospace"
+                               x-model="creator.source_fqn" placeholder="shop.gold.users">
+                    </div>
+                    <div class="col-md-5">
+                        <label class="form-label" for="ot-target-url">Target URL (SQLAlchemy)</label>
+                        <input id="ot-target-url" type="text" class="form-control form-control-sm font-monospace"
+                               x-model="creator.target_url"
+                               placeholder="postgresql://app:{{ '{{secrets/warehouse/pg-password}}' }}@db/serving">
+                    </div>
+                </div>
+                <div class="row g-2 mb-3">
+                    <div class="col-md-3">
+                        <label class="form-label" for="ot-target-table">Target table</label>
+                        <input id="ot-target-table" type="text" class="form-control form-control-sm font-monospace"
+                               x-model="creator.target_table" placeholder="users_online">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label" for="ot-pks">Primary keys (comma-separated)</label>
+                        <input id="ot-pks" type="text" class="form-control form-control-sm font-monospace"
+                               x-model="creator.primary_keys" placeholder="id">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label" for="ot-mode">Mode</label>
+                        <select id="ot-mode" class="form-select form-select-sm" x-model="creator.mode">
+                            <option value="full">full</option>
+                            <option value="cdf">cdf</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="alert alert-danger" x-show="creatorError" x-text="creatorError" x-cloak></div>
+                <button type="button" class="btn btn-primary btn-sm" :disabled="creating" @click="create()">
+                    <span x-show="!creating">Create online table</span>
+                    <span x-show="creating" x-cloak>Creating&hellip;</span>
+                </button>
+            </div>
+        </div>
+    </template>
+
+    <div class="table-responsive">
+        <table class="table table-sm align-middle pql-list-table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Source</th>
+                    <th>Target</th>
+                    <th>Mode</th>
+                    <th>Status</th>
+                    <th class="text-end">Rows synced</th>
+                    <th class="text-end">Version</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <template x-for="t in tables" :key="t.name">
+                    <tr>
+                        <td data-label="Name"><code x-text="t.name"></code></td>
+                        <td data-label="Source"><code class="small" x-text="t.source_fqn"></code></td>
+                        <td data-label="Target"><code class="small" x-text="t.target_table"></code></td>
+                        <td data-label="Mode"><span class="badge text-bg-light" x-text="t.mode"></span></td>
+                        <td data-label="Status">
+                            <span class="badge" :class="statusBadge(t.status)" x-text="t.status"
+                                  :title="t.last_error || ''"></span>
+                        </td>
+                        <td data-label="Rows synced" class="text-end" x-text="t.rows_synced"></td>
+                        <td data-label="Version" class="text-end"
+                            x-text="t.last_synced_version === null ? '—' : t.last_synced_version"></td>
+                        <td data-label="Actions" class="text-nowrap">
+                            <button type="button" class="btn btn-sm btn-outline-primary"
+                                    :disabled="syncing === t.name" @click="syncNow(t)">
+                                <i class="bi bi-arrow-repeat"></i>
+                                <span x-text="syncing === t.name ? 'Syncing…' : 'Sync now'"></span>
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" @click="toggleLookup(t)">
+                                <i class="bi bi-search"></i> Lookup
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-danger" @click="remove(t)">
+                                <i class="bi bi-trash"></i> Delete
+                            </button>
+                        </td>
+                    </tr>
+                </template>
+                <tr x-show="!loading && tables.length === 0">
+                    <td colspan="8" class="text-muted">No online tables yet.</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <template x-if="lookupTable">
+        <div class="card mb-4">
+            <div class="card-header d-flex align-items-center justify-content-between">
+                <span><i class="bi bi-search me-1"></i>Lookup <code x-text="lookupTable.name"></code></span>
+                <button type="button" class="btn-close" aria-label="Close lookup panel" @click="lookupTable = null"></button>
+            </div>
+            <div class="card-body">
+                <div class="row g-2 align-items-end mb-2">
+                    <div class="col-auto">
+                        <label class="form-label" for="ot-lookup-column">Key column</label>
+                        <select id="ot-lookup-column" class="form-select form-select-sm" x-model="lookup.key_column">
+                            <template x-for="k in lookupTable.primary_keys" :key="k">
+                                <option :value="k" x-text="k"></option>
+                            </template>
+                        </select>
+                    </div>
+                    <div class="col-auto">
+                        <label class="form-label" for="ot-lookup-value">Value</label>
+                        <input id="ot-lookup-value" type="text" class="form-control form-control-sm font-monospace"
+                               x-model="lookup.key" @keydown.enter="runLookup()">
+                    </div>
+                    <div class="col-auto">
+                        <label class="form-label" for="ot-lookup-limit">Limit</label>
+                        <input id="ot-lookup-limit" type="number" class="form-control form-control-sm"
+                               x-model.number="lookup.limit" min="1" max="100">
+                    </div>
+                    <div class="col-auto">
+                        <button type="button" class="btn btn-primary btn-sm"
+                                :disabled="!lookup.key_column || lookupRunning" @click="runLookup()">
+                            <span x-show="!lookupRunning">Look up</span>
+                            <span x-show="lookupRunning" x-cloak>Looking up&hellip;</span>
+                        </button>
+                    </div>
+                </div>
+                <div class="alert alert-danger" x-show="lookupError" x-text="lookupError" x-cloak></div>
+                <div x-show="lookupResult" x-cloak>
+                    <div class="text-muted small mb-1"
+                         x-text="lookupResult ? lookupResult.row_count + ' rows' : ''"></div>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-striped">
+                            <thead>
+                                <tr>
+                                    <template x-for="c in lookupColumns" :key="c">
+                                        <th x-text="c"></th>
+                                    </template>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <template x-for="(row, i) in (lookupResult ? lookupResult.rows : [])" :key="i">
+                                    <tr>
+                                        <template x-for="c in lookupColumns" :key="c">
+                                            <td x-text="row[c]"></td>
+                                        </template>
+                                    </tr>
+                                </template>
+                                <tr x-show="lookupResult && lookupResult.rows.length === 0">
+                                    <td :colspan="lookupColumns.length || 1" class="text-muted">No match.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </template>
+</div>
+{% endblock %}
