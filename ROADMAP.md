@@ -3854,7 +3854,7 @@ PointlesSQL
 │       │   Kapazität („Budget erreicht in N Tagen") + Cost am Agent-Run +
 │       │   FinOps-Grafana-Panels.  estimated_cost = Schätzung, kein $.
 │   │
-├── Phase 209 — Databricks-Parität: Top-10-Features  🟨 in progress (gestartet 2026-06-11)
+├── Phase 209 — Databricks-Parität: Top-10-Features  ✅ shipped (local, 2026-06-11)
 │   │
 │   │   Deep-Research-Programm (Web + beide Codebasen): die zehn
 │   │   wirkungsstärksten noch fehlenden Databricks-Features, nativ
@@ -3881,6 +3881,150 @@ PointlesSQL
 │   │       Kernel-Bootstrap (POINTLESSQL_WORKSPACE_ID neu
 │   │       injiziert) und {{secrets/<scope>/<key>}}-Auflösung
 │   │       just-in-time im Ingest-Executor.
+│   │
+│   ├── 209.2 — AI/BI Dashboards  ✅ shipped (local, 2026-06-11)
+│   │       Lakeview-förmige Widget-Dashboards, getrennt von den
+│   │       Notebook-Dashboards: bi_dashboards/bi_dashboard_widgets
+│   │       (chart|counter|table|markdown; Inline-SQL oder Saved
+│   │       Query; gridstack-Rechteck + ECharts-Spec als Client-
+│   │       interpretiertes JSON), typgeprüfte Parameter-
+│   │       Substitution ({{param}} → escaptes Literal, Zahlen
+│   │       re-emittiert), Widget-Daten durch dieselbe SELECT-
+│   │       Enforcement wie der SQL-Editor (Viewer-Principal;
+│   │       Public-Token-Pfad läuft als Owner = Embedded
+│   │       Credentials), /bi-Liste + Grid-Editor (Drag/Resize,
+│   │       Widget-Drawer, Layout-Autosave) + /bi/public/{token}
+│   │       auf dem Share-Layout.  ECharts + gridstack via
+│   │       Importmap (esm.sh, gepinnt) mit sichtbarer Degradation
+│   │       bei CDN-Ausfall.  Playbook bi-dashboards.md.
+│   │
+│   ├── 209.3 — Metric Views (Semantic Layer)  ✅ shipped (local, 2026-06-11)
+│   │       soyuz speichert die Definitionen (Über-Spec-Ressource,
+│   │       dortiges ADR-0014); PointlesSQL kompiliert: sqlglot-
+│   │       Compiler (Dimensionen/Measures/Filter → ein DuckDB-
+│   │       SELECT; jedes Fragment muss als einzelner Ausdruck
+│   │       parsen, Statements/Subqueries abgelehnt), Ausführung
+│   │       durch SELECT-Enforcement + Read-Policies wie der
+│   │       SQL-Editor, /metric-views-Browser (Picker,
+│   │       Definitions-Editor, Query-Panel mit kompilierter SQL
+│   │       als Provenance) + Nav.  Playbook metric-views.md.
+│   │
+│   ├── 209.4 — Row Filters + Column Masks  ✅ shipped (local, 2026-06-11)
+│   │       Governance auf dem Lesepfad als Table-Properties
+│   │       (pointlessql.row_filter mit current_user()-
+│   │       Substitution; pointlessql.mask.<col> = redact|hash|null
+│   │       oder {col}-Template) — heute schon editierbar über die
+│   │       bestehende Properties-Card.  Enforcement an der
+│   │       Engstelle, durch die jeder PQL-Read muss:
+│   │       register_delta_view bindet den gepunkteten Namen an
+│   │       eine Policy-View über der internen Basis-Relation —
+│   │       keine Query-Form erreicht Rohdaten (Aggregate
+│   │       inklusive).  Die Enforcement-Hops sammeln Policies
+│   │       neben approved_tables (SQL-Dispatcher, Notebook-SQL-
+│   │       Zellen inkl. repr-Kerneltransfer, BI-Widgets, Metric
+│   │       Views, Pipelines); Admins + Table-Owner sind exempt.
+│   │
+│   ├── 209.5 — Model Serving  ✅ shipped (local, 2026-06-11)
+│   │       Registry-Modelle als REST-Inference-Endpoints:
+│   │       serving_endpoints-Lifecycle (stopped/starting/ready/
+│   │       failed; Boot-Reset, Worker überleben den Prozess nie),
+│   │       ServingManager mit einem `mlflow models serve`-Child
+│   │       pro gestartetem Endpoint auf konfiguriertem Loopback-
+│   │       Portbereich (Health-Poll, stderr-Tail bei Fehlstart,
+│   │       Lifespan-Teardown), auditierter /invocations-Proxy im
+│   │       MLflow-Scoring-Protokoll hinter PointlesSQL-Auth;
+│   │       ohne [ml]-Extra antworten die Lifecycle-Gates 503.
+│   │       POINTLESSQL_SERVING_* dimensioniert den Pool.
+│   │       /serving-Konsole: Status-Badges, Start/Stop mit
+│   │       Poll-until-ready, Try-it-Drawer für /invocations.
+│   │       Playbook model-serving.md.
+│   │
+│   ├── 209.6 — Delta Sharing (PointlesSQL-Seite)  ✅ shipped (local, 2026-06-11)
+│   │       Provider: admin-gated /api/sharing-Proxies über die
+│   │       Facade (Shares, Objects, Grants, Recipients mit
+│   │       Einmal-Token + Rotate), alles auditiert.  Consumer:
+│   │       sharing_providers-Profile (Endpoint + Fernet-
+│   │       verschlüsseltes Bearer-Token), minimaler synchroner
+│   │       Protokoll-Client (NDJSON-Query → vorsignierte
+│   │       Parquet-Downloads → pandas; Größen-Cap; kein
+│   │       Bearer-Leak an fremde File-Hosts),
+│   │       /api/sharing/providers für Registrierung, Browsing
+│   │       und auditierte Previews.  Die Server-Seite lebt in
+│   │       soyuz-catalog (dortiges ADR-0015).  UI: /admin/sharing
+│   │       (18. Admin-Karte; Einmal-Token-Modal mit Copy +
+│   │       Nie-wieder-Warnung) + /shared-with-me (Profile,
+│   │       Browsing, gecappte Previews).  Playbook
+│   │       delta-sharing.md.
+│   │
+│   ├── 209.7 — Deklarative Pipelines  ✅ shipped (local, 2026-06-11)
+│   │       Lakeflow-Idiom nativ auf dem vorhandenen Stack:
+│   │       Datasets als validiertes JSON-Dokument (Target-FQN,
+│   │       materialized_view|streaming_table, SELECT,
+│   │       Expectations), DAG aus sqlglot-Refs (Zyklen abgelehnt),
+│   │       MVs rechnen voll neu (Arrow-Pfad ohne Row-Cap),
+│   │       Streaming Tables lesen das CDF der einzigen Quelle ab
+│   │       Cursor (Batch als Temp-Delta unter dem Quellnamen
+│   │       gebunden → das gespeicherte SQL läuft wortwörtlich;
+│   │       erster Lauf = Backfill, leerer Feed = Skip),
+│   │       Expectations warn/drop/fail mit Metriken am Run.
+│   │       Routen machen die async-Vorarbeit (Enforcement +
+│   │       Policies je externer Ref als Caller), Engine via
+│   │       run_sync; Scheduler-Kind pipeline_run als Run-as-User.
+│   │       /pipelines-Editor + Run-Historie mit Violation-Badges;
+│   │       Playbook pipelines.md.
+│   │
+│   ├── 209.8 — Genie-Spaces  ✅ shipped (local, 2026-06-11)
+│   │       Kuratierte NL-Datenräume auf der Lens-LLM-Verdrahtung:
+│   │       ein Space kuratiert Tabellen + Metric Views +
+│   │       Instructions + Trusted-Q→SQL-Beispiele; Fragen laufen
+│   │       durch einen Kontext-Builder (kompakte DDL aus dem
+│   │       Catalog, Metric-View-Specs, Few-Shots, harter
+│   │       Zeichen-Cap) zu EINEM LLM-generierten DuckDB-SELECT,
+│   │       das parsen muss, nur kuratierte Tabellen referenzieren
+│   │       darf und dann durch SELECT-Enforcement + Read-Policies
+│   │       läuft.  Antworten persistieren mit SQL als Provenance;
+│   │       Daumen-Feedback, Owner-Promote → Trusted Asset.
+│   │       /genie-Liste + Space-Raum (Chat, Asset-Chips,
+│   │       Config-Drawer); fehlende BYO-Credential → 503 mit
+│   │       eigenem Error-Code.  Playbook genie-spaces.md.
+│   │
+│   ├── 209.9 — Synced/Online Tables  ✅ shipped (local, 2026-06-11)
+│   │       Lakebase-lite Reverse-ETL: synced_tables mappen eine
+│   │       UC-Quelle auf ein SQLAlchemy-Ziel (URL darf
+│   │       {{secrets/…}}-Platzhalter tragen); full = Truncate-
+│   │       Load, cdf = Change-Feed ab Versions-Cursor als portable
+│   │       Per-PK-Upserts (erster Lauf = Backfill).  Lookup-API
+│   │       nur über deklarierte PK-Spalten, Werte gebunden.
+│   │       /online-tables-Seite mit Status, Sync-now,
+│   │       Lookup-Tester; Scheduler-Kind table_sync.  Playbook
+│   │       online-tables.md.
+│   │
+│   ├── 209.10 — Auto Loader + Direct-Write-Streams  ✅ shipped (local, 2026-06-11)
+│   │       Auto Loader: Processed-Files-Registry macht File-Glob-
+│   │       Pulls inkrementell (Discover minus Verarbeitet, Append
+│   │       je Datei at-least-once); Mappings opt-in via
+│   │       pull_mode="auto_loader", Default-Pfad byte-identisch.
+│   │       Zerobus-lite: POST /api/ingest/streams/{c}/{s}/{t}
+│   │       puffert JSON-Rows in-process (Flush nach Größe/Alter,
+│   │       Force-Flush-Endpoint) und appended Micro-Batches mit
+│   │       additivem Schema-Merge; MODIFY-Enforcement wie der
+│   │       SQL-Dispatcher, auditiert, Drain im Lifespan-Teardown.
+│   │       Playbook ingest-streaming.md.
+│   │
+│   ├── Offene Folge-Tranchen (geplant)
+│   │       Dashboard-Refresh-Schedules + E-Mail-Abos (Scheduler/
+│   │       Alerts-Unterbau steht); Metric-Views als Genie-/BI-
+│   │       Datenquelle erster Klasse (heute: Tabellen + manuelle
+│   │       Specs); SQL-Editor-Makro metric_view(<name>); Kafka-
+│   │       Quelle für Streams (heute Direct-Write + Auto Loader);
+│   │       S3-Discovery für den Auto Loader; Row-Filter/Mask-
+│   │       Editor-Card an der Tabellenseite (heute Properties-
+│   │       Card); Stream-Buffer-Settings-ifizierung
+│   │       (POINTLESSQL_INGEST_STREAM_*); Serving-Endpoint-
+│   │       Metriken (Latenz-Histogramme); Sharing: CDF-/
+│   │       Zeitreise-Queries (soyuz antwortet 501) + Cloud-
+│   │       Schemes.  Pyright-Floor 1027 → Stub-Pass für die
+│   │       pandas/pyarrow-Seams.
 │   │
 ├── Phase 208 — Infrastruktur-Redesign (Querschnitt + CI-Grün)  ✅ shipped (local, 2026-06-11)
 │   │

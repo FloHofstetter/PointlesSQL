@@ -25,6 +25,61 @@ defined in ``scripts/clusters.json``. -->
   playbook), `pql_secrets.get("scope", "key")` inside notebook kernels, and
   just-in-time `{{secrets/<scope>/<key>}}` resolution for ingest connector
   configs so credentials stop resting in `ingest_sources`.
+- **AI/BI dashboards (phase 209.2).** Lakeview-shaped widget dashboards
+  (separate from the notebook-output dashboards): gridstack canvas with
+  chart/counter/table/markdown widgets over inline SQL or saved queries,
+  type-checked `{{param}}` substitution, widget data through the SQL
+  editor's SELECT enforcement (viewer principal; the public-token path runs
+  as the owner), `/bi` list + grid editor + `/bi/public/{token}` viewer,
+  ECharts + gridstack via the importmap with visible CDN degradation.
+- **Metric views (phase 209.3).** The semantic layer: definitions live in
+  soyuz-catalog (its ADR-0014); PointlesSQL compiles picked
+  dimensions/measures into one governed DuckDB SELECT (every fragment must
+  parse as a lone expression) and ships the `/metric-views` browser with a
+  query panel that shows the compiled SQL as provenance.
+- **Row filters + column masks (phase 209.4).** Read-path governance as
+  plain table properties (`pointlessql.row_filter`,
+  `pointlessql.mask.<column>` = `redact|hash|null` or a `{col}` template),
+  enforced where every PQL read funnels anyway — the registered DuckDB view
+  applies masks + filter, so no query shape (aggregates included) reaches
+  raw rows. Admins and table owners are exempt; all enforcement hops
+  (dispatcher, notebook SQL cells, BI widgets, metric views, pipelines)
+  collect policies alongside `approved_tables`.
+- **Model serving (phase 209.5).** Registry models behind REST inference
+  endpoints: lifecycle rows + a worker manager running one
+  `mlflow models serve` child per started endpoint (health-polled,
+  stderr-tail failure detail, lifespan teardown, boot reset), and an
+  audited `/invocations` proxy in the MLflow scoring protocol behind
+  PointlesSQL auth.
+- **Delta Sharing (phase 209.6).** Both directions: admin-gated provider
+  management proxied to soyuz-catalog (shares, objects, grants, recipients
+  with one-time tokens + rotate) and a consumer half — Fernet-encrypted
+  provider profiles plus a minimal open-protocol client (NDJSON query →
+  pre-signed parquet downloads → pandas, size-capped, no bearer leakage to
+  foreign file hosts). The server half lives in soyuz-catalog (ADR-0015).
+- **Declarative pipelines (phase 209.7).** The Lakeflow idiom built
+  natively: dataset documents (materialized views + streaming tables +
+  expectations) compile into a DAG from their SELECTs; MVs recompute in
+  full, streaming tables read the source's change feed from a per-dataset
+  cursor (first run backfills), `warn|drop|fail` expectations gate every
+  batch with metrics on the run, `/pipelines` editor + run history, and a
+  `pipeline_run` scheduler kind.
+- **Genie spaces (phase 209.8).** Curated natural-language data rooms on
+  the Lens LLM plumbing: spaces curate tables + metric views +
+  instructions + trusted Q→SQL examples; questions become one validated
+  DuckDB SELECT (curated-tables-only, then the SQL editor's enforcement
+  path), answers persist with their SQL as provenance, and thumbs-up
+  answers promote into trusted assets.
+- **Synced/online tables (phase 209.9).** Lakebase-lite reverse ETL from
+  Delta into Postgres/SQLite (full truncate-load or CDF-cursor upserts),
+  a parameter-bound primary-key lookup API, the `/online-tables` page,
+  and a `table_sync` scheduler kind.
+- **Auto loader + direct-write streams (phase 209.10).** Incremental
+  file-glob ingestion via a processed-files registry
+  (`pull_mode="auto_loader"` per mapping), and a Zerobus-shaped
+  `POST /api/ingest/streams/{catalog}/{schema}/{table}` that buffers JSON
+  rows in-process and appends micro-batches to Delta with additive schema
+  merge behind MODIFY enforcement.
 - **Infrastructure redesign (phase 208).** App-owned bounded executor behind
   `run_sync` (ContextVar-preserving; the api layer migrated off
   `asyncio.to_thread`, background loops deliberately excluded); typed
