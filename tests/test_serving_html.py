@@ -40,6 +40,10 @@ async def test_serving_renders_for_non_admin(non_admin_client: httpx.AsyncClient
     assert 'data-pql-entry="serving.js' in body
     assert "servingEndpoints(" in body
     assert "Model Serving" in body
+    # the endpoints JSON carries double quotes, so the x-data
+    # attribute MUST be single-quoted or Alpine sees a torn
+    # expression (found in the live browser sweep).
+    assert "x-data='servingEndpoints(" in body
 
 
 @pytest.mark.asyncio

@@ -313,6 +313,11 @@ async def test_pipeline_routes_crud_and_pages(uc_client_stub) -> None:
         detail = await client.get(f"/pipelines/{slug}")
         assert detail.status_code == 200
         assert "pipeline_detail.js" in detail.text
+        # the config JSON carries double quotes, so the x-data
+        # attribute MUST be single-quoted or Alpine sees a torn
+        # expression (found live: scope died with "runs is not
+        # defined" until the quoting flipped).
+        assert "x-data='pipelineDetail(" in detail.text
 
         gone = await client.delete(f"/api/pipelines/{slug}")
         assert gone.json()["deleted"] is True
