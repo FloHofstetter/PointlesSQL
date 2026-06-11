@@ -1,0 +1,236 @@
+{% extends "base.html" %}
+{% block title %}Edit {{ dashboard.title }} · PointlesSQL{% endblock %}
+{% block page_entry %}bi_dashboard_edit.js{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="https://esm.sh/gridstack@12.6.0/dist/gridstack.min.css">
+{% endblock %}
+
+{% set breadcrumbs = [
+ {"label": "Home", "href": "/"},
+ {"label": "AI/BI Dashboards", "href": "/bi"},
+ {"label": dashboard.title, "href": "/bi/" ~ dashboard.slug},
+ {"label": "Edit"}
+] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block content %}
+{% set _bi_config = {
+ "slug": dashboard.slug,
+ "widgets": widgets,
+ "params": dashboard.params,
+} %}
+<div x-data='biDashboardEdit({{ _bi_config|tojson }})'>
+    <div class="d-flex align-items-center justify-content-between mb-1">
+        <div class="d-flex align-items-center gap-2">
+            <i class="bi bi-bar-chart fs-3"></i>
+            <h1 class="h3 mb-0">{{ dashboard.title }}</h1>
+            <span class="badge text-bg-secondary-subtle border">editing</span>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <button type="button" class="btn btn-sm btn-primary" @click="openAdd()">
+                <i class="bi bi-plus-lg me-1"></i>Add widget
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" @click="saveLayout(false)">
+                <i class="bi bi-save me-1"></i>Save layout
+            </button>
+            <a href="/bi/{{ dashboard.slug }}" class="btn btn-sm btn-outline-secondary">
+                <i class="bi bi-eye me-1"></i>View
+            </a>
+        </div>
+    </div>
+    <p class="text-muted">
+        Drag and resize widgets on the grid — the layout autosaves.
+        Reference dashboard parameters in widget SQL as
+        <code>{{ '{{name}}' }}</code>.
+    </p>
+    <div class="alert alert-danger" x-show="error" x-text="error" x-cloak></div>
+
+    <div class="card mb-3">
+        <div class="card-header d-flex align-items-center justify-content-between py-2">
+            <span class="small fw-semibold"><i class="bi bi-sliders me-1"></i>Parameters</span>
+            <div class="d-flex gap-2">
+                <button type="button" class="btn btn-sm btn-outline-secondary" @click="addParam()">
+                    <i class="bi bi-plus-lg me-1"></i>Add parameter
+                </button>
+                <button type="button" class="btn btn-sm btn-primary"
+                        :disabled="savingParams" @click="saveParams()">
+                    <span x-show="!savingParams">Save parameters</span>
+                    <span x-show="savingParams" x-cloak>Saving&hellip;</span>
+                </button>
+            </div>
+        </div>
+        <div class="card-body py-2">
+            <template x-for="(p, i) in paramRows" :key="i">
+                <div class="row g-2 mb-2 align-items-center">
+                    <div class="col">
+                        <input type="text" class="form-control form-control-sm font-monospace"
+                               aria-label="Parameter name" placeholder="name" x-model="p.name">
+                    </div>
+                    <div class="col">
+                        <input type="text" class="form-control form-control-sm"
+                               aria-label="Parameter label" placeholder="Label" x-model="p.label">
+                    </div>
+                    <div class="col">
+                        <select class="form-select form-select-sm" aria-label="Parameter type" x-model="p.type">
+                            <option value="string">string</option>
+                            <option value="number">number</option>
+                            <option value="date">date</option>
+                        </select>
+                    </div>
+                    <div class="col">
+                        <input type="text" class="form-control form-control-sm"
+                               aria-label="Parameter default" placeholder="default" x-model="p.default">
+                    </div>
+                    <div class="col-auto">
+                        <button type="button" class="btn btn-sm btn-outline-danger"
+                                aria-label="Remove parameter" @click="removeParam(i)">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            </template>
+            <p class="text-muted small mb-0" x-show="paramRows.length === 0">
+                No parameters. Add one to make widget SQL filterable from the view page.
+            </p>
+        </div>
+    </div>
+
+    {% if widgets %}
+    <div class="grid-stack pql-bi-grid" data-bi-grid>
+        {% for w in widgets %}
+        <div class="grid-stack-item"
+             gs-id="{{ w.id }}"
+             gs-x="{{ w.position.get('x', 0) }}"
+             gs-y="{{ w.position.get('y', 0) }}"
+             gs-w="{{ w.position.get('w', 6) }}"
+             gs-h="{{ w.position.get('h', 4) }}">
+            <div class="grid-stack-item-content card pql-bi-widget">
+                <div class="card-header py-1 d-flex align-items-center gap-1">
+                    <span class="small fw-semibold flex-grow-1 text-truncate"
+                          data-widget-title="{{ w.id }}">{{ w.title or w.kind }}</span>
+                    <button type="button" class="btn btn-sm btn-outline-secondary border-0 py-0 px-1"
+                            aria-label="Edit widget" @click="openEdit({{ w.id }})">
+                        <i class="bi bi-pencil"></i>
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-danger border-0 py-0 px-1"
+                            aria-label="Delete widget" @click="removeWidget({{ w.id }})">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
+                <div class="card-body p-2 pql-bi-widget-body"
+                     data-widget-id="{{ w.id }}"
+                     data-widget-kind="{{ w.kind }}">
+                    <div class="text-muted small">Loading&hellip;</div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="text-muted border rounded p-4 text-center">
+        No widgets yet — click "Add widget" to place the first one.
+    </div>
+    {% endif %}
+
+    {# Widget add/edit drawer (Alpine-controlled so prefill state and
+       Bootstrap's offcanvas JS never fight over visibility). #}
+    <div class="card shadow-lg pql-bi-drawer" x-show="drawer.open" x-cloak
+         role="dialog" aria-label="Widget editor">
+        <div class="card-header d-flex align-items-center justify-content-between">
+            <span class="fw-semibold" x-text="drawer.widgetId === null ? 'Add widget' : 'Edit widget'"></span>
+            <button type="button" class="btn-close" aria-label="Close" @click="drawer.open = false"></button>
+        </div>
+        <div class="card-body overflow-auto">
+            <div class="mb-3">
+                <label class="form-label" for="bi-w-kind">Kind</label>
+                <select id="bi-w-kind" class="form-select form-select-sm"
+                        x-model="drawer.form.kind" :disabled="drawer.widgetId !== null">
+                    <option value="chart">chart</option>
+                    <option value="counter">counter</option>
+                    <option value="table">table</option>
+                    <option value="markdown">markdown</option>
+                </select>
+                <div class="form-text" x-show="drawer.widgetId !== null">
+                    Kind is fixed once created — add a new widget to change it.
+                </div>
+            </div>
+            <div class="mb-3">
+                <label class="form-label" for="bi-w-title">Title (optional)</label>
+                <input id="bi-w-title" type="text" class="form-control form-control-sm"
+                       x-model="drawer.form.title" maxlength="200">
+            </div>
+            <template x-if="drawer.form.kind === 'markdown'">
+                <div class="mb-3">
+                    <label class="form-label" for="bi-w-md">Markdown</label>
+                    <textarea id="bi-w-md" class="form-control form-control-sm" rows="6"
+                              x-model="drawer.form.markdown"
+                              placeholder="## Notes&#10;Inline **bold**, *italic*, `code`, [links](/bi)."></textarea>
+                </div>
+            </template>
+            <template x-if="drawer.form.kind !== 'markdown'">
+                <div>
+                    <div class="mb-3">
+                        <label class="form-label" for="bi-w-sql">SQL</label>
+                        <textarea id="bi-w-sql" class="form-control form-control-sm font-monospace" rows="6"
+                                  x-model="drawer.form.sql_text"
+                                  placeholder="SELECT region, SUM(amount) AS total&#10;FROM demo.sales.orders GROUP BY region"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="bi-w-sq">&hellip;or saved query id</label>
+                        <input id="bi-w-sq" type="number" min="1" class="form-control form-control-sm"
+                               x-model="drawer.form.saved_query_id">
+                        <div class="form-text">
+                            Numeric id from <a href="/audit/queries">saved queries</a>.
+                            Leave the SQL box empty when binding one.
+                        </div>
+                    </div>
+                </div>
+            </template>
+            <template x-if="drawer.form.kind === 'chart'">
+                <div class="row g-2 mb-3">
+                    <div class="col-4">
+                        <label class="form-label" for="bi-w-charttype">Chart type</label>
+                        <select id="bi-w-charttype" class="form-select form-select-sm"
+                                x-model="drawer.form.chart_type">
+                            <option value="bar">bar</option>
+                            <option value="line">line</option>
+                            <option value="area">area</option>
+                            <option value="pie">pie</option>
+                            <option value="scatter">scatter</option>
+                        </select>
+                    </div>
+                    <div class="col-4">
+                        <label class="form-label" for="bi-w-chartx">X field</label>
+                        <input id="bi-w-chartx" type="text" class="form-control form-control-sm font-monospace"
+                               x-model="drawer.form.chart_x" placeholder="region">
+                    </div>
+                    <div class="col-4">
+                        <label class="form-label" for="bi-w-charty">Y field</label>
+                        <input id="bi-w-charty" type="text" class="form-control form-control-sm font-monospace"
+                               x-model="drawer.form.chart_y" placeholder="total">
+                    </div>
+                </div>
+            </template>
+            <div class="alert alert-danger small py-1 px-2" x-show="drawer.error" x-text="drawer.error" x-cloak></div>
+            <div class="alert alert-success small py-1 px-2" x-show="drawer.runResult" x-text="drawer.runResult" x-cloak></div>
+        </div>
+        <div class="card-footer d-flex align-items-center gap-2">
+            <button type="button" class="btn btn-sm btn-primary"
+                    :disabled="drawer.saving" @click="saveWidget()">
+                <span x-show="!drawer.saving">Save widget</span>
+                <span x-show="drawer.saving" x-cloak>Saving&hellip;</span>
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-secondary"
+                    x-show="drawer.widgetId !== null && drawer.form.kind !== 'markdown'"
+                    :disabled="drawer.running" @click="runPreview()">
+                <span x-show="!drawer.running"><i class="bi bi-play me-1"></i>Run</span>
+                <span x-show="drawer.running" x-cloak>Running&hellip;</span>
+            </button>
+            <span class="text-muted small ms-auto"
+                  x-show="drawer.widgetId !== null && drawer.form.kind !== 'markdown'">
+                Run executes the last saved SQL.
+            </span>
+        </div>
+    </div>
+</div>
+{% endblock %}

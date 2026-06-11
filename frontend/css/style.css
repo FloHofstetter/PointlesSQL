@@ -38,6 +38,7 @@
 @import url("./components/detail_drawer.css?v=ASSET_VERSION");  /* offcanvas detail drawers */
 @import url("./components/sql_editor.css?v=ASSET_VERSION");     /* SQL editor surfaces, explain-tree badges */
 @import url("./components/feed.css?v=ASSET_VERSION");           /* feed page chrome */
+@import url("./components/bi_dashboards.css?v=ASSET_VERSION");  /* AI/BI widget dashboards */
 /* notebook.css is loaded lazily by pages/notebook_editor.html via
  * {% block extra_css %} — keeping ~300 LOC of editor-only rules
  * out of every non-notebook page-load. */

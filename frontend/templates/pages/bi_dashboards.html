@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% from "_macros/timestamps.html" import relative_time %}
+{% block title %}AI/BI Dashboards · PointlesSQL{% endblock %}
+{% block page_entry %}bi_dashboards.js{% endblock %}
+
+{% set breadcrumbs = [
+ {"label": "Home", "href": "/"},
+ {"label": "AI/BI Dashboards"}
+] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block content %}
+<div x-data="biDashboardsList()">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <div class="d-flex align-items-center gap-2">
+            <i class="bi bi-bar-chart fs-3"></i>
+            <h1 class="h3 mb-0">AI/BI Dashboards</h1>
+        </div>
+        <div class="d-flex align-items-center gap-3">
+            <span class="text-muted small">{{ dashboards|length }} dashboard{{ '' if dashboards|length == 1 else 's' }}</span>
+            <button type="button" class="btn btn-primary btn-sm"
+                    data-bs-toggle="modal" data-bs-target="#createBiDashboardModal">
+                <i class="bi bi-plus-lg me-1"></i>New dashboard
+            </button>
+        </div>
+    </div>
+
+    <p class="text-muted">
+        Widget dashboards over live SQL: charts, counters, tables, and
+        markdown tiles on a drag-and-drop grid. Publish a dashboard to
+        share a read-only link that needs no login.
+    </p>
+
+    <div class="modal fade" id="createBiDashboardModal" tabindex="-1"
+         aria-labelledby="createBiDashboardModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="createBiDashboardModalLabel">New dashboard</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label" for="bi-dash-title">Title</label>
+                        <input id="bi-dash-title" type="text" class="form-control"
+                               x-model="form.title" placeholder="Revenue overview" maxlength="200">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="bi-dash-desc">Description (optional)</label>
+                        <textarea id="bi-dash-desc" class="form-control" rows="3"
+                                  x-model="form.description"
+                                  placeholder="What this dashboard answers."></textarea>
+                    </div>
+                    <div class="alert alert-danger" x-show="error" x-text="error" x-cloak></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary"
+                            :disabled="!form.title || creating"
+                            @click="create()">
+                        <span x-show="!creating">Create dashboard</span>
+                        <span x-show="creating" x-cloak>Creating&hellip;</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-sm align-middle pql-list-table">
+            <thead>
+                <tr>
+                    <th>Title</th>
+                    <th>Description</th>
+                    <th class="text-end">Widgets</th>
+                    <th>Published</th>
+                    <th>Updated</th>
+                    <th>Owner</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for d in dashboards %}
+                <tr>
+                    <td data-label="Title"><a href="/bi/{{ d.slug }}">{{ d.title }}</a></td>
+                    <td data-label="Description" class="text-muted small">{{ d.description or '' }}</td>
+                    <td data-label="Widgets" class="text-end">{{ d.widget_count }}</td>
+                    <td data-label="Published">
+                        {% if d.is_published %}
+                        <span class="badge text-bg-success-subtle border">Published</span>
+                        {% else %}
+                        <span class="badge text-bg-secondary-subtle border">Private</span>
+                        {% endif %}
+                    </td>
+                    <td data-label="Updated" class="text-muted small">{{ relative_time(d.updated_at) }}</td>
+                    <td data-label="Owner" class="text-muted small">{{ owners.get(d.owner_id, '—') }}</td>
+                </tr>
+                {% else %}
+                <tr><td colspan="6" class="text-muted">No dashboards yet. Create one to start charting.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

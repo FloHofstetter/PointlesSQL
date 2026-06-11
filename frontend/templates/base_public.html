@@ -233,5 +233,12 @@
  </a>
 </footer>
 {% endif %}
+{# Page-supplied scripts.  Empty for the notebook share viewer; the
+   public BI-dashboard viewer uses it to bring its own importmap +
+   entry module + Alpine, because its widgets are hydrated
+   client-side against the token-credentialed /api/bi/public/ data
+   path (which is anonymous-capable, unlike the secondary fetches
+   the chrome above was stripped to avoid). #}
+{% block extra_js %}{% endblock %}
 </body>
 </html>

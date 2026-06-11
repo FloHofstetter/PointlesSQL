@@ -26,10 +26,10 @@ ML registry, dbt-pipeline, and packaging surfaces.
 
 ## Inventory (full)
 
-73 walkthroughs total. Each carries a `> **Mode:**` tag in its
+74 walkthroughs total. Each carries a `> **Mode:**` tag in its
 first content block; this section is the grep-friendly index.
 
-### `Mode: browser` — Playwright MCP replay (50)
+### `Mode: browser` — Playwright MCP replay (51)
 
 Reload `auth.md` first; later ones reuse seeded users + catalog.
 
@@ -65,6 +65,7 @@ Reload `auth.md` first; later ones reuse seeded users + catalog.
 | [`sql-editor.md`](sql-editor.md) | `/sql` + saved queries | |
 | [`sql-editor-writes.md`](sql-editor-writes.md) | `/sql` write traffic + audit linkage | |
 | [`dashboards.md`](dashboards.md) | `/dashboards`, `/dashboards/{id}` | |
+| [`bi-dashboards.md`](bi-dashboards.md) | `/bi` widget dashboards + grid editor + public link | |
 | [`alerts.md`](alerts.md) | `/alerts` + destinations + Atom feed | |
 | [`rollback.md`](rollback.md) | `/runs/{id}` admin rollback card | |
 | [`time-travel.md`](time-travel.md) | `/admin/audit/by-table` row-at-version | |

@@ -1,0 +1,55 @@
+/* AI/BI widget dashboards (/bi, /bi/{slug}, /bi/{slug}/edit, /bi/public/{token}).
+ *
+ * Gridstack brings its own structural CSS (lazy-loaded per page via
+ * {% block extra_css %}); these rules only cover the widget cards and
+ * the editor drawer.  The widget body must be a definite-height flex
+ * child so ECharts can size its canvas inside a gridstack item. */
+
+.pql-bi-grid {
+  min-height: 120px;
+}
+
+.pql-bi-widget {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.pql-bi-widget-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+
+/* Before gridstack initialises (or when its CDN import fails) the
+ * items are plain block elements; give them breathing room so the
+ * fallback vertical stack stays readable.  The page factory adds
+ * the --ready modifier after a successful GridStack.init. */
+.pql-bi-grid:not(.pql-bi-grid--ready) > .grid-stack-item {
+  margin-bottom: 0.75rem;
+  min-height: 160px;
+}
+
+/* Counter widgets: one huge number, centred. */
+.pql-bi-counter {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  text-align: center;
+}
+
+/* Widget add/edit drawer on the editor page (Alpine-controlled). */
+.pql-bi-drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(440px, 100vw);
+  z-index: 1045;
+  border-radius: 0;
+  display: flex;
+  flex-direction: column;
+}

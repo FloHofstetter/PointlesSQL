@@ -1,0 +1,49 @@
+{% extends "base_public.html" %}
+
+{# Public BI-dashboard viewer.
+
+   Chromeless sibling of bi_dashboard_view.html sharing the same grid
+   partial and the same ``biDashboardView`` factory.  Because
+   base_public.html ships none of the authenticated bootstrap, this
+   page brings exactly the three scripts the grid needs: an importmap
+   for the lazily-imported chart/grid libraries, the page-entry module
+   that registers the factory, and the Alpine CDN tag (in that order —
+   module tags run in document order, so the factory exists before
+   Alpine's walk).  All widget data flows through the anonymous
+   token-credentialed /api/bi/public/ path. #}
+
+{% block title %}{{ dashboard.title }} · PointlesSQL{% endblock %}
+{% block topbar_title %}{{ dashboard.title }}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://esm.sh/gridstack@12.6.0/dist/gridstack.min.css">
+{% endblock %}
+
+{% block content %}
+{% set _bi_config = {
+ "slug": dashboard.slug,
+ "publicToken": public_token,
+ "widgets": widgets,
+ "params": dashboard.params,
+} %}
+<div x-data='biDashboardView({{ _bi_config|tojson }})'>
+    <h1 class="h3 mb-1">{{ dashboard.title }}</h1>
+    {% if dashboard.description %}
+    <div class="pql-public-meta">{{ dashboard.description }}</div>
+    {% endif %}
+    {% include "pages/_partials/bi/grid.html" %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script type="importmap">
+{
+  "imports": {
+    "echarts": "https://esm.sh/echarts@6.0.0",
+    "gridstack": "https://esm.sh/gridstack@12.6.0"
+  }
+}
+</script>
+<script type="module" src="/static/js/entries/bi_dashboard_view.js?v={{ asset_version }}"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+{% endblock %}

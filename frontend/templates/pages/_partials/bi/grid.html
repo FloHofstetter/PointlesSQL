@@ -1,0 +1,61 @@
+{# Shared params bar + widget grid for the dashboard view pages.
+
+   Included by both the authenticated view (bi_dashboard_view.html)
+   and the public viewer (bi_dashboard_public.html); the including
+   page creates the ``biDashboardView({...})`` Alpine scope this
+   markup hooks into.  The grid renders server-side with the
+   gridstack ``gs-*`` rectangle attributes so the layout survives a
+   gridstack CDN outage (items then simply stack vertically); the
+   factory hydrates each widget body from the data endpoints. #}
+{% if dashboard.params %}
+<form class="row g-2 align-items-end mb-3" @submit.prevent="applyParams()">
+    {% for p in dashboard.params %}
+    <div class="col-auto">
+        <label class="form-label small mb-1" for="bi-param-{{ p.name }}">{{ p.label }}</label>
+        {% if p.type == 'number' %}
+        <input type="number" step="any" class="form-control form-control-sm"
+               id="bi-param-{{ p.name }}" data-bi-param="{{ p.name }}"
+               value="{{ p.default if p.default is not none else '' }}">
+        {% elif p.type == 'date' %}
+        <input type="date" class="form-control form-control-sm"
+               id="bi-param-{{ p.name }}" data-bi-param="{{ p.name }}"
+               value="{{ p.default if p.default is not none else '' }}">
+        {% else %}
+        <input type="text" class="form-control form-control-sm"
+               id="bi-param-{{ p.name }}" data-bi-param="{{ p.name }}"
+               value="{{ p.default if p.default is not none else '' }}">
+        {% endif %}
+    </div>
+    {% endfor %}
+    <div class="col-auto">
+        <button type="submit" class="btn btn-sm btn-primary">Apply</button>
+    </div>
+</form>
+{% endif %}
+{% if widgets %}
+<div class="grid-stack pql-bi-grid" data-bi-grid>
+    {% for w in widgets %}
+    <div class="grid-stack-item"
+         gs-id="{{ w.id }}"
+         gs-x="{{ w.position.get('x', 0) }}"
+         gs-y="{{ w.position.get('y', 0) }}"
+         gs-w="{{ w.position.get('w', 6) }}"
+         gs-h="{{ w.position.get('h', 4) }}">
+        <div class="grid-stack-item-content card pql-bi-widget">
+            {% if w.title %}
+            <div class="card-header py-1 small fw-semibold text-truncate">{{ w.title }}</div>
+            {% endif %}
+            <div class="card-body p-2 pql-bi-widget-body"
+                 data-widget-id="{{ w.id }}"
+                 data-widget-kind="{{ w.kind }}">
+                <div class="text-muted small">Loading&hellip;</div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="text-muted border rounded p-4 text-center">
+    This dashboard has no widgets yet.
+</div>
+{% endif %}

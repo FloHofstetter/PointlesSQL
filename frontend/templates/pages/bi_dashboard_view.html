@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}{{ dashboard.title }} · PointlesSQL{% endblock %}
+{% block page_entry %}bi_dashboard_view.js{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="https://esm.sh/gridstack@12.6.0/dist/gridstack.min.css">
+{% endblock %}
+
+{% set breadcrumbs = [
+ {"label": "Home", "href": "/"},
+ {"label": "AI/BI Dashboards", "href": "/bi"},
+ {"label": dashboard.title}
+] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block content %}
+{% set _bi_config = {
+ "slug": dashboard.slug,
+ "publicToken": none,
+ "widgets": widgets,
+ "params": dashboard.params,
+ "isPublished": dashboard.is_published,
+ "shareToken": dashboard.public_token,
+} %}
+<div x-data='biDashboardView({{ _bi_config|tojson }})'>
+    <div class="d-flex align-items-center justify-content-between mb-1">
+        <div class="d-flex align-items-center gap-2">
+            <i class="bi bi-bar-chart fs-3"></i>
+            <h1 class="h3 mb-0">{{ dashboard.title }}</h1>
+        </div>
+        {% if can_edit %}
+        <div class="d-flex align-items-center gap-2">
+            <a href="/bi/{{ dashboard.slug }}/edit" class="btn btn-sm btn-outline-secondary">
+                <i class="bi bi-pencil me-1"></i>Edit
+            </a>
+            <div class="dropdown">
+                <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button"
+                        data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="bi bi-share me-1"></i>
+                    <span x-show="!published">Share</span>
+                    <span x-show="published" x-cloak>Published</span>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    <li x-show="!published">
+                        <button class="dropdown-item" type="button" @click="setPublish(true)">
+                            <i class="bi bi-globe me-1"></i>Publish public link
+                        </button>
+                    </li>
+                    <li x-show="published" x-cloak>
+                        <button class="dropdown-item" type="button" @click="copyPublicLink()">
+                            <i class="bi bi-clipboard me-1"></i>Copy public link
+                        </button>
+                    </li>
+                    <li x-show="published" x-cloak>
+                        <button class="dropdown-item text-danger" type="button" @click="setPublish(false)">
+                            <i class="bi bi-x-circle me-1"></i>Unpublish
+                        </button>
+                    </li>
+                </ul>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    {% if dashboard.description %}
+    <p class="text-muted">{{ dashboard.description }}</p>
+    {% endif %}
+    {% include "pages/_partials/bi/grid.html" %}
+</div>
+{% endblock %}
