@@ -109,5 +109,8 @@ class ErrorCode(StrEnum):
     LENS_NON_SELECT_BLOCKED = "lens_non_select_blocked"
     LENS_PROVIDER_NOT_CONFIGURED = "lens_provider_not_configured"
 
+    # Genie spaces (curated NL data rooms).
+    GENIE_LLM_NOT_CONFIGURED = "genie_llm_not_configured"
+
     # Cost + quotas.
     QUOTA_EXCEEDED = "quota_exceeded"

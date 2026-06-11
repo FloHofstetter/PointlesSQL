@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block title %}Genie Spaces · PointlesSQL{% endblock %}
+{% block page_entry %}genie_spaces.js{% endblock %}
+
+{% set breadcrumbs = [
+ {"label": "Home", "href": "/"},
+ {"label": "Genie Spaces"}
+] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block content %}
+<div x-data="genieSpaces()" x-init="init()">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <div class="d-flex align-items-center gap-2">
+            <i class="bi bi-stars fs-3"></i>
+            <h1 class="h3 mb-0">Genie Spaces</h1>
+        </div>
+        <button type="button" class="btn btn-primary btn-sm" @click="creating = !creating">
+            <i class="bi bi-plus-lg me-1"></i>New space
+        </button>
+    </div>
+
+    <p class="text-muted">
+        A Genie space is a curated room over a handful of governed tables
+        and metric views: ask questions in plain language, get back SQL
+        that is validated against the room's scope and executed with the
+        same SELECT enforcement as the SQL editor.
+    </p>
+
+    <div class="card mb-3" x-show="creating" x-cloak>
+        <div class="card-body">
+            <div class="row g-2 align-items-end">
+                <div class="col-md-4">
+                    <label class="form-label" for="gs-title">Title</label>
+                    <input id="gs-title" type="text" class="form-control form-control-sm"
+                           x-model="form.title" placeholder="Sales analytics">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label" for="gs-description">Description (optional)</label>
+                    <input id="gs-description" type="text" class="form-control form-control-sm"
+                           x-model="form.description" placeholder="Ask about orders and revenue">
+                </div>
+                <div class="col-md-2">
+                    <button type="button" class="btn btn-primary btn-sm w-100"
+                            :disabled="saving || !form.title.trim()" @click="create()">
+                        <span x-show="!saving">Create</span>
+                        <span x-show="saving" x-cloak>Creating&hellip;</span>
+                    </button>
+                </div>
+            </div>
+            <div class="alert alert-danger mt-2 mb-0" x-show="createError" x-text="createError" x-cloak></div>
+        </div>
+    </div>
+
+    <div class="alert alert-danger" x-show="error" x-text="error" x-cloak></div>
+
+    <div class="table-responsive">
+        <table class="table table-sm align-middle pql-list-table">
+            <thead>
+                <tr>
+                    <th>Title</th>
+                    <th>Description</th>
+                    <th class="text-end">Tables</th>
+                    <th class="text-end">Metric views</th>
+                    <th>Updated</th>
+                </tr>
+            </thead>
+            <tbody>
+                <template x-for="s in spaces" :key="s.slug">
+                    <tr>
+                        <td data-label="Title">
+                            <a :href="'/genie/' + encodeURIComponent(s.slug)" x-text="s.title"></a>
+                        </td>
+                        <td data-label="Description" class="text-muted small" x-text="s.description || ''"></td>
+                        <td data-label="Tables" class="text-end" x-text="(s.tables || []).length"></td>
+                        <td data-label="Metric views" class="text-end" x-text="(s.metric_views || []).length"></td>
+                        <td data-label="Updated" class="text-muted small"
+                            x-text="s.updated_at ? s.updated_at.slice(0, 16).replace('T', ' ') : ''"></td>
+                    </tr>
+                </template>
+                <tr x-show="!loading && spaces.length === 0">
+                    <td colspan="5" class="text-muted">No Genie spaces yet — create one to start asking.</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

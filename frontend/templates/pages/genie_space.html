@@ -1,0 +1,229 @@
+{% extends "base.html" %}
+{% block title %}{{ space.title }} · Genie · PointlesSQL{% endblock %}
+{% block page_entry %}genie_space.js{% endblock %}
+
+{% set breadcrumbs = [
+ {"label": "Home", "href": "/"},
+ {"label": "Genie Spaces", "href": "/genie"},
+ {"label": space.title}
+] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block content %}
+{% set _genie_config = {
+ "slug": space.slug,
+ "canEdit": can_edit,
+} %}
+<div x-data='genieSpace({{ _genie_config|tojson }})' x-init="init()">
+    <div class="d-flex align-items-center justify-content-between mb-1">
+        <div class="d-flex align-items-center gap-2">
+            <i class="bi bi-stars fs-3"></i>
+            <h1 class="h3 mb-0">{{ space.title }}</h1>
+        </div>
+        {% if can_edit %}
+        <button type="button" class="btn btn-sm btn-outline-secondary" @click="toggleConfig()">
+            <i class="bi bi-gear me-1"></i>Configure
+        </button>
+        {% endif %}
+    </div>
+    {% if space.description %}
+    <p class="text-muted">{{ space.description }}</p>
+    {% endif %}
+
+    <div class="alert alert-danger" x-show="error" x-text="error" x-cloak></div>
+
+    {% if can_edit %}
+    <div class="card mb-3" x-show="showConfig" x-cloak>
+        <div class="card-header"><i class="bi bi-gear me-1"></i>Space configuration</div>
+        <div class="card-body">
+            <div class="row g-2 mb-2">
+                <div class="col-md-4">
+                    <label class="form-label" for="gsp-title">Title</label>
+                    <input id="gsp-title" type="text" class="form-control form-control-sm"
+                           x-model="cfg.title">
+                </div>
+                <div class="col-md-8">
+                    <label class="form-label" for="gsp-description">Description</label>
+                    <input id="gsp-description" type="text" class="form-control form-control-sm"
+                           x-model="cfg.description">
+                </div>
+            </div>
+            <div class="mb-2">
+                <label class="form-label" for="gsp-instructions">Instructions for the model (optional)</label>
+                <textarea id="gsp-instructions" class="form-control form-control-sm" rows="3"
+                          x-model="cfg.instructions"
+                          placeholder="Revenue means sum(amount) on completed orders only."></textarea>
+            </div>
+            <div class="row g-2 mb-2">
+                <div class="col-md-6">
+                    <label class="form-label" for="gsp-tables">Tables (one catalog.schema.table per line)</label>
+                    <textarea id="gsp-tables" class="form-control form-control-sm font-monospace" rows="4"
+                              x-model="cfg.tables" placeholder="shop.gold.orders"></textarea>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label" for="gsp-metric-views">Metric views (one full name per line)</label>
+                    <textarea id="gsp-metric-views" class="form-control form-control-sm font-monospace" rows="4"
+                              x-model="cfg.metricViews" placeholder="shop.gold.revenue"></textarea>
+                </div>
+            </div>
+            <div class="alert alert-danger" x-show="cfgError" x-text="cfgError" x-cloak></div>
+            <button type="button" class="btn btn-primary btn-sm" :disabled="cfgSaving" @click="saveConfig()">
+                <span x-show="!cfgSaving">Save configuration</span>
+                <span x-show="cfgSaving" x-cloak>Saving&hellip;</span>
+            </button>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="row g-3">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header"><i class="bi bi-chat-dots me-1"></i>Conversation</div>
+                <div class="card-body">
+                    <div x-show="messages.length === 0" class="text-muted">
+                        No questions yet — ask the first one below.
+                    </div>
+                    <template x-for="m in messages" :key="m.id">
+                        <div class="mb-3">
+                            <div class="d-flex align-items-center gap-2 mb-1">
+                                <span class="badge"
+                                      :class="m.role === 'user' ? 'text-bg-secondary' : (m.status === 'error' ? 'text-bg-danger' : 'text-bg-primary')"
+                                      x-text="m.role === 'user' ? 'You' : 'Genie'"></span>
+                                <span class="text-muted small"
+                                      x-text="m.created_at ? m.created_at.slice(0, 16).replace('T', ' ') : ''"></span>
+                            </div>
+                            <div x-text="m.content"></div>
+                            <div class="text-danger small" x-show="m.error" x-text="m.error" x-cloak></div>
+                            <div x-show="m.sql_text" x-cloak>
+                                <a href="#" class="small" @click.prevent="toggleSql(m.id)">generated SQL</a>
+                                <pre class="small bg-body-tertiary p-2 rounded mb-1"
+                                     x-show="expandedSql[m.id]" x-cloak x-text="m.sql_text"></pre>
+                            </div>
+                            <div class="d-flex align-items-center gap-1" x-show="m.role === 'assistant'" x-cloak>
+                                <button type="button" class="btn btn-sm py-0 px-1"
+                                        :class="m.feedback === 'up' ? 'btn-success' : 'btn-outline-secondary'"
+                                        aria-label="Good answer" @click="feedback(m, 'up')">
+                                    <i class="bi bi-hand-thumbs-up"></i>
+                                </button>
+                                <button type="button" class="btn btn-sm py-0 px-1"
+                                        :class="m.feedback === 'down' ? 'btn-danger' : 'btn-outline-secondary'"
+                                        aria-label="Bad answer" @click="feedback(m, 'down')">
+                                    <i class="bi bi-hand-thumbs-down"></i>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-1"
+                                        x-show="canEdit && m.status === 'ok' && m.sql_text" x-cloak
+                                        aria-label="Promote to trusted assets" @click="promote(m)">
+                                    <i class="bi bi-patch-check"></i> Trust
+                                </button>
+                            </div>
+                            <div class="table-responsive mt-2"
+                                 x-show="lastResult && lastResult.messageId === m.id" x-cloak>
+                                <div class="text-muted small mb-1"
+                                     x-text="lastResult ? lastResult.rowCount + ' rows' + (lastResult.truncated ? ' (truncated)' : '') + (lastResult.rows.length > 100 ? ' — showing first 100' : '') : ''"></div>
+                                <table class="table table-sm table-striped">
+                                    <thead>
+                                        <tr>
+                                            <template x-for="c in (lastResult ? lastResult.columns : [])" :key="c.name">
+                                                <th x-text="c.name"></th>
+                                            </template>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <template x-for="(row, i) in displayRows()" :key="i">
+                                            <tr>
+                                                <template x-for="(cell, j) in row" :key="j">
+                                                    <td x-text="cell"></td>
+                                                </template>
+                                            </tr>
+                                        </template>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </template>
+
+                    <div class="mt-3">
+                        <label class="form-label" for="gsp-question">Ask a question</label>
+                        <div class="d-flex gap-2">
+                            <input id="gsp-question" type="text" class="form-control"
+                                   x-model="question" :disabled="asking"
+                                   placeholder="What was revenue by region last month?"
+                                   @keydown.enter.prevent="ask()">
+                            <button type="button" class="btn btn-primary"
+                                    :disabled="asking || !question.trim()" @click="ask()">
+                                <span x-show="!asking">Ask</span>
+                                <span x-show="asking" x-cloak>Thinking&hellip;</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card mb-3">
+                <div class="card-header"><i class="bi bi-patch-check me-1"></i>Trusted questions</div>
+                <div class="card-body">
+                    <div x-show="assets.length === 0" class="text-muted small">
+                        No trusted questions yet.
+                    </div>
+                    <template x-for="a in assets" :key="a.id">
+                        <div class="d-flex align-items-start gap-1 mb-2">
+                            <button type="button" class="btn btn-sm btn-outline-primary text-start flex-grow-1"
+                                    @click="useAsset(a)" x-text="a.question"></button>
+                            <button type="button" class="btn btn-sm btn-outline-danger"
+                                    x-show="canEdit" x-cloak
+                                    aria-label="Delete trusted question" @click="deleteAsset(a)">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
+                    </template>
+                    <p class="text-muted small mb-0">
+                        Click a trusted question to prefill the input — they are
+                        curator-approved and also guide the model.
+                    </p>
+                </div>
+            </div>
+
+            {% if can_edit %}
+            <div class="card mb-3">
+                <div class="card-header"><i class="bi bi-plus-circle me-1"></i>Add trusted question</div>
+                <div class="card-body">
+                    <div class="mb-2">
+                        <label class="form-label" for="gsp-asset-question">Question</label>
+                        <input id="gsp-asset-question" type="text" class="form-control form-control-sm"
+                               x-model="newAsset.question">
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label" for="gsp-asset-sql">SQL (single SELECT)</label>
+                        <textarea id="gsp-asset-sql" class="form-control form-control-sm font-monospace" rows="3"
+                                  x-model="newAsset.sql"></textarea>
+                    </div>
+                    <div class="alert alert-danger" x-show="assetError" x-text="assetError" x-cloak></div>
+                    <button type="button" class="btn btn-outline-primary btn-sm"
+                            :disabled="!newAsset.question.trim() || !newAsset.sql.trim()" @click="addAsset()">
+                        Add
+                    </button>
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="card">
+                <div class="card-header"><i class="bi bi-table me-1"></i>In scope</div>
+                <div class="card-body">
+                    <div class="fw-semibold small mb-1">Tables</div>
+                    <div x-show="space && space.tables.length === 0" class="text-muted small">None yet.</div>
+                    <template x-for="t in (space ? space.tables : [])" :key="t">
+                        <div><code class="small" x-text="t"></code></div>
+                    </template>
+                    <div class="fw-semibold small mb-1 mt-2">Metric views</div>
+                    <div x-show="space && space.metric_views.length === 0" class="text-muted small">None yet.</div>
+                    <template x-for="v in (space ? space.metric_views : [])" :key="v">
+                        <div><code class="small" x-text="v"></code></div>
+                    </template>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
