@@ -111,6 +111,12 @@
         </a>
     </li>
     <li class="nav-item">
+        <a class="nav-link d-flex align-items-center gap-2{% if active_section == 'quality' %} active{% endif %}"
+           href="/quality">
+            <i class="bi bi-heart-pulse"></i> Quality
+        </a>
+    </li>
+    <li class="nav-item">
         <a class="nav-link d-flex align-items-center gap-2{% if active_section == 'dbt' %} active{% endif %}"
            href="/dbt">
             <i class="bi bi-bezier2"></i> dbt
@@ -171,6 +177,18 @@
         <a class="nav-link d-flex align-items-center gap-2{% if active_section == 'online-tables' %} active{% endif %}"
            href="/online-tables">
             <i class="bi bi-lightning-charge"></i> Online Tables
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link d-flex align-items-center gap-2{% if active_section == 'apps' %} active{% endif %}"
+           href="/apps">
+            <i class="bi bi-window-stack"></i> Apps
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link d-flex align-items-center gap-2{% if active_section == 'access-requests' %} active{% endif %}"
+           href="/access-requests">
+            <i class="bi bi-person-check"></i> Access requests
         </a>
     </li>
     <li class="nav-item">

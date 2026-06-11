@@ -1,0 +1,201 @@
+{% extends "base.html" %}
+{% block title %}Data Quality · PointlesSQL{% endblock %}
+{% block page_entry %}quality.js{% endblock %}
+
+{% set breadcrumbs = [
+ {"label": "Home", "href": "/"},
+ {"label": "Data Quality"}
+] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block content %}
+<div x-data='qualityMonitors({{ monitors | tojson }}, {{ is_admin | tojson }})'>
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <div class="d-flex align-items-center gap-2">
+            <i class="bi bi-clipboard2-pulse fs-3"></i>
+            <h1 class="h3 mb-0">Data Quality</h1>
+        </div>
+        <span class="text-muted small"
+              x-text="monitors.length + (monitors.length === 1 ? ' monitor' : ' monitors')"></span>
+    </div>
+
+    <p class="text-muted">
+        A quality monitor profiles a table — or every table in a schema —
+        on a cron schedule and raises anomalies when the data drifts:
+        row-count drops, null-fraction spikes, schema changes, and stale
+        tables that stopped receiving writes.
+    </p>
+
+    <div class="card mb-4" x-show="isAdmin">
+        <div class="card-header"><i class="bi bi-plus-lg me-1"></i>New monitor</div>
+        <div class="card-body">
+            <div class="row g-2 align-items-end">
+                <div class="col-md-5">
+                    <label class="form-label" for="qm-target">Target</label>
+                    <input id="qm-target" type="text" class="form-control form-control-sm font-monospace"
+                           x-model="form.target" placeholder="shop.silver or shop.silver.orders">
+                    <div class="form-text">catalog.schema scans every table; catalog.schema.table scans one</div>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label" for="qm-cron">Cron schedule</label>
+                    <input id="qm-cron" type="text" class="form-control form-control-sm font-monospace"
+                           x-model="form.cron_expr" placeholder="0 6 * * *">
+                </div>
+                <div class="col-md-2">
+                    <div class="form-check mb-1">
+                        <input id="qm-active" type="checkbox" class="form-check-input" x-model="form.is_active">
+                        <label class="form-check-label" for="qm-active">Active</label>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <button type="button" class="btn btn-primary btn-sm w-100 mb-1"
+                            :disabled="creating" @click="create()">
+                        <span x-show="!creating">Create</span>
+                        <span x-show="creating" x-cloak>Creating&hellip;</span>
+                    </button>
+                </div>
+            </div>
+            <div class="alert alert-danger mt-2 mb-0" x-show="createError" x-text="createError" x-cloak></div>
+        </div>
+    </div>
+
+    <div class="alert alert-danger" x-show="error" x-text="error" x-cloak></div>
+
+    <div class="table-responsive">
+        <table class="table table-sm align-middle pql-list-table">
+            <thead>
+                <tr>
+                    <th>Target</th>
+                    <th>Schedule</th>
+                    <th>Status</th>
+                    <th class="text-end">Open anomalies</th>
+                    <th>Updated</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <template x-for="m in monitors" :key="m.id">
+                    <tr>
+                        <td data-label="Target">
+                            <a href="#" @click.prevent="toggleDetail(m)">
+                                <code x-text="m.target"></code>
+                            </a>
+                        </td>
+                        <td data-label="Schedule"><code class="small" x-text="m.cron_expr"></code></td>
+                        <td data-label="Status">
+                            <span class="badge" :class="m.is_active ? 'bg-success' : 'bg-secondary'"
+                                  x-text="m.is_active ? 'active' : 'paused'"></span>
+                        </td>
+                        <td data-label="Open anomalies" class="text-end">
+                            <span class="badge" :class="m.open_anomalies > 0 ? 'bg-danger' : 'bg-secondary'"
+                                  x-text="m.open_anomalies"></span>
+                        </td>
+                        <td data-label="Updated" class="text-muted small" x-text="ago(m.updated_at)"></td>
+                        <td data-label="Actions" class="text-nowrap">
+                            <button type="button" class="btn btn-sm btn-outline-secondary"
+                                    @click="toggleDetail(m)">
+                                <i class="bi bi-zoom-in"></i> Detail
+                            </button>
+                            <template x-if="isAdmin">
+                                <span>
+                                    <button type="button" class="btn btn-sm btn-outline-success"
+                                            :disabled="busy[m.id]" @click="runNow(m)">
+                                        <i class="bi bi-play"></i> Run now
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary"
+                                            :disabled="busy[m.id]" @click="toggleActive(m)">
+                                        <i class="bi" :class="m.is_active ? 'bi-pause' : 'bi-play-circle'"></i>
+                                        <span x-text="m.is_active ? 'Pause' : 'Resume'"></span>
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-danger"
+                                            :disabled="busy[m.id]" @click="remove(m)">
+                                        <i class="bi bi-trash"></i> Delete
+                                    </button>
+                                </span>
+                            </template>
+                            <div class="text-muted small mt-1" x-show="runResults[m.id]" x-cloak>
+                                Last manual run: <span x-text="runResults[m.id]"></span>
+                            </div>
+                        </td>
+                    </tr>
+                </template>
+                <tr x-show="monitors.length === 0">
+                    <td colspan="6" class="text-muted">
+                        No quality monitors yet<span x-show="isAdmin">. Create one above</span>.
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="card mt-3" x-show="detailId !== null" x-cloak>
+        <div class="card-header d-flex align-items-center justify-content-between">
+            <span>
+                <i class="bi bi-clipboard2-data me-1"></i>
+                Monitor detail
+                <code x-show="detail" x-text="detail ? detail.target : ''"></code>
+            </span>
+            <button type="button" class="btn btn-sm btn-outline-secondary"
+                    @click="detailId = null; detail = null">
+                <i class="bi bi-x-lg"></i> Close
+            </button>
+        </div>
+        <div class="card-body">
+            <div class="text-muted" x-show="detailLoading">Loading&hellip;</div>
+            <template x-if="detail">
+                <div>
+                    <h2 class="h6">Latest snapshot per table</h2>
+                    <div class="table-responsive mb-3">
+                        <table class="table table-sm align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Table</th>
+                                    <th class="text-end">Rows</th>
+                                    <th class="text-end">Columns</th>
+                                    <th>Captured</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <template x-for="s in latestSnapshots()" :key="s.id">
+                                    <tr>
+                                        <td data-label="Table"><code x-text="s.table_fqn"></code></td>
+                                        <td data-label="Rows" class="text-end" x-text="s.row_count"></td>
+                                        <td data-label="Columns" class="text-end" x-text="columnCount(s)"></td>
+                                        <td data-label="Captured" class="text-muted small" x-text="ago(s.captured_at)"></td>
+                                    </tr>
+                                </template>
+                                <tr x-show="latestSnapshots().length === 0">
+                                    <td colspan="4" class="text-muted">No snapshots yet — run the monitor.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <h2 class="h6">Anomaly timeline</h2>
+                    <ul class="list-group list-group-flush">
+                        <template x-for="a in detail.anomalies" :key="a.id">
+                            <li class="list-group-item px-0">
+                                <div class="d-flex align-items-center gap-2 flex-wrap">
+                                    <span class="badge" :class="severityBadge(a.severity)"
+                                          x-text="kindLabel(a.kind)"></span>
+                                    <code class="small" x-text="a.table_fqn + (a.column_name ? '.' + a.column_name : '')"></code>
+                                    <span class="badge bg-success" x-show="a.resolved_at">resolved</span>
+                                    <span class="text-muted small ms-auto" x-text="ago(a.detected_at)"></span>
+                                </div>
+                                <div class="small mt-1">
+                                    Observed <span x-text="a.observed"></span>,
+                                    expected <span x-text="a.expected"></span>.
+                                    <span class="text-muted" x-show="a.detail" x-text="a.detail"></span>
+                                </div>
+                            </li>
+                        </template>
+                        <li class="list-group-item px-0 text-muted" x-show="detail.anomalies.length === 0">
+                            No anomalies detected.
+                        </li>
+                    </ul>
+                </div>
+            </template>
+        </div>
+    </div>
+</div>
+{% endblock %}

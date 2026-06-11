@@ -94,6 +94,7 @@ def build_default_registry() -> KindRegistry:
     from pointlessql.services.ingest.executor import ingest_pull_executor
     from pointlessql.services.pii_classification import pii_classification_executor
     from pointlessql.services.pipelines import pipeline_run_executor
+    from pointlessql.services.quality_monitoring import quality_monitor_executor
     from pointlessql.services.scheduler.executors import (
         _alert_check_executor,
         _branch_cleanup_executor,
@@ -128,4 +129,5 @@ def build_default_registry() -> KindRegistry:
     registry.register("entity_link_discovery", _entity_link_discovery_executor)
     registry.register("pii_classification", pii_classification_executor)
     registry.register("bi_snapshot", bi_snapshot_executor)
+    registry.register("quality_monitor", quality_monitor_executor)
     return registry

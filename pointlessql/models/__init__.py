@@ -238,6 +238,13 @@ from pointlessql.models.pipelines import (
     PipelineCursor,
     PipelineRun,
 )
+from pointlessql.models.quality_monitoring import (
+    QUALITY_ANOMALY_KINDS,
+    QUALITY_ANOMALY_SEVERITIES,
+    QualityAnomaly,
+    QualityMonitor,
+    TableProfileSnapshot,
+)
 from pointlessql.models.saved_views import (
     SAVED_VIEW_PARAM_TYPES,
     SavedView,
@@ -454,6 +461,10 @@ __all__ = [
     "NotebookShare",
     "NotebookTag",
     "NotebookWidget",
+    "QUALITY_ANOMALY_KINDS",
+    "QUALITY_ANOMALY_SEVERITIES",
+    "QualityAnomaly",
+    "QualityMonitor",
     "QueryHistory",
     "QueryHistoryTable",
     "REVIEW_SEVERITIES",
@@ -492,6 +503,7 @@ __all__ = [
     "SharingProvider",
     "SyncedTable",
     "SystemKey",
+    "TableProfileSnapshot",
     "TableStats",
     "TagPolicyRule",
     "TaskRun",
