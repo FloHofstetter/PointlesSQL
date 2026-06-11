@@ -90,11 +90,44 @@ from soyuz_catalog_client.api.lineage import (
 from soyuz_catalog_client.api.lineage import (
     get_upstream_lineage_upstream_full_name_get as _get_upstream,
 )
+from soyuz_catalog_client.api.metric_views import (
+    create_metric_view_api_2_1_unity_catalog_metric_views_post as _create_metric_view,
+)
+from soyuz_catalog_client.api.metric_views import (
+    delete_metric_view_api_2_1_unity_catalog_metric_views_full_name_delete as _delete_metric_view,  # noqa: E501
+)
+from soyuz_catalog_client.api.metric_views import (
+    get_metric_view_api_2_1_unity_catalog_metric_views_full_name_get as _get_metric_view,
+)
+from soyuz_catalog_client.api.metric_views import (
+    list_metric_views_api_2_1_unity_catalog_metric_views_get as _list_metric_views,
+)
+from soyuz_catalog_client.api.metric_views import (
+    update_metric_view_api_2_1_unity_catalog_metric_views_full_name_patch as _update_metric_view,  # noqa: E501
+)
 from soyuz_catalog_client.api.permissions import (
     get_permissions_api_2_1_unity_catalog_permissions_securable_type_full_name_get as _get_permissions,  # noqa: E501
 )
 from soyuz_catalog_client.api.permissions import (
     update_permissions_api_2_1_unity_catalog_permissions_securable_type_full_name_patch as _update_permissions,  # noqa: E501
+)
+from soyuz_catalog_client.api.recipients import (
+    create_recipient_api_2_1_unity_catalog_recipients_post as _create_recipient,
+)
+from soyuz_catalog_client.api.recipients import (
+    delete_recipient_api_2_1_unity_catalog_recipients_name_delete as _delete_recipient,
+)
+from soyuz_catalog_client.api.recipients import (
+    get_recipient_api_2_1_unity_catalog_recipients_name_get as _get_recipient,
+)
+from soyuz_catalog_client.api.recipients import (
+    list_recipients_api_2_1_unity_catalog_recipients_get as _list_recipients,
+)
+from soyuz_catalog_client.api.recipients import (
+    rotate_recipient_token_api_2_1_unity_catalog_recipients_name_rotate_token_post as _rotate_recipient_token,  # noqa: E501
+)
+from soyuz_catalog_client.api.recipients import (
+    update_recipient_api_2_1_unity_catalog_recipients_name_patch as _update_recipient,
 )
 from soyuz_catalog_client.api.schemas import (
     create_schema_api_2_1_unity_catalog_schemas_post as _create_schema,
@@ -110,6 +143,33 @@ from soyuz_catalog_client.api.schemas import (
 )
 from soyuz_catalog_client.api.schemas import (
     update_schema_api_2_1_unity_catalog_schemas_full_name_patch as _update_schema,
+)
+from soyuz_catalog_client.api.shares import (
+    add_share_object_api_2_1_unity_catalog_shares_name_objects_post as _add_share_object,
+)
+from soyuz_catalog_client.api.shares import (
+    create_share_api_2_1_unity_catalog_shares_post as _create_share,
+)
+from soyuz_catalog_client.api.shares import (
+    delete_share_api_2_1_unity_catalog_shares_name_delete as _delete_share,
+)
+from soyuz_catalog_client.api.shares import (
+    get_share_api_2_1_unity_catalog_shares_name_get as _get_share,
+)
+from soyuz_catalog_client.api.shares import (
+    grant_share_api_2_1_unity_catalog_shares_name_recipients_recipient_name_put as _grant_share,  # noqa: E501
+)
+from soyuz_catalog_client.api.shares import (
+    list_shares_api_2_1_unity_catalog_shares_get as _list_shares,
+)
+from soyuz_catalog_client.api.shares import (
+    remove_share_object_api_2_1_unity_catalog_shares_name_objects_delete as _remove_share_object,  # noqa: E501
+)
+from soyuz_catalog_client.api.shares import (
+    revoke_share_api_2_1_unity_catalog_shares_name_recipients_recipient_name_delete as _revoke_share,  # noqa: E501
+)
+from soyuz_catalog_client.api.shares import (
+    update_share_api_2_1_unity_catalog_shares_name_patch as _update_share,
 )
 from soyuz_catalog_client.api.tables import (
     create_table_api_2_1_unity_catalog_tables_post as _create_table,
@@ -138,17 +198,24 @@ logger = logging.getLogger(__name__)
 
 
 __all__ = [
+    "_add_share_object",
     "_create_catalog",
     "_create_connection",
     "_create_credential",
     "_create_ext_loc",
+    "_create_metric_view",
+    "_create_recipient",
     "_create_schema",
+    "_create_share",
     "_create_table",
     "_delete_catalog",
     "_delete_connection",
     "_delete_credential",
     "_delete_ext_loc",
+    "_delete_metric_view",
+    "_delete_recipient",
     "_delete_schema",
+    "_delete_share",
     "_delete_table",
     "_get_catalog",
     "_get_connection",
@@ -156,22 +223,35 @@ __all__ = [
     "_get_downstream",
     "_get_effective_permissions",
     "_get_ext_loc",
+    "_get_metric_view",
     "_get_permissions",
+    "_get_recipient",
     "_get_schema",
+    "_get_share",
     "_get_table",
     "_get_tags",
     "_get_upstream",
+    "_grant_share",
     "_list_catalogs",
     "_list_connections",
     "_list_credentials",
     "_list_ext_locs",
+    "_list_metric_views",
+    "_list_recipients",
     "_list_schemas",
+    "_list_shares",
+    "_remove_share_object",
+    "_revoke_share",
+    "_rotate_recipient_token",
     "_update_catalog",
     "_update_connection",
     "_update_credential",
     "_update_ext_loc",
+    "_update_metric_view",
     "_update_permissions",
+    "_update_recipient",
     "_update_schema",
+    "_update_share",
     "_update_tags",
     "wrap_catalog_errors",
 ]

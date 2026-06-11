@@ -21,6 +21,10 @@ The package is composed of six sibling modules under
 * :mod:`._lineage` — :class:`LineageMixin` (upstream + downstream).
 * :mod:`._federation` — :class:`FederationMixin` (connections +
   external locations + credentials).
+* :mod:`._semantics` — :class:`MetricViewsMixin` (semantic-layer
+  metric-view definitions).
+* :mod:`._sharing` — :class:`SharingMixin` (Delta Sharing provider
+  administration: shares, recipients, grants).
 
 The concrete :class:`UnityCatalogClient` composes the mixins.  Because
 the soyuz function imports are re-exported at the legacy
@@ -38,17 +42,24 @@ from soyuz_catalog_client import Client
 # referenced them stay resolvable.  Mixins import these from
 # ``._api`` directly (one source of truth for the binding).
 from pointlessql.services.unitycatalog._api import (
+    _add_share_object,
     _create_catalog,
     _create_connection,
     _create_credential,
     _create_ext_loc,
+    _create_metric_view,
+    _create_recipient,
     _create_schema,
+    _create_share,
     _create_table,
     _delete_catalog,
     _delete_connection,
     _delete_credential,
     _delete_ext_loc,
+    _delete_metric_view,
+    _delete_recipient,
     _delete_schema,
+    _delete_share,
     _delete_table,
     _get_catalog,
     _get_connection,
@@ -56,22 +67,35 @@ from pointlessql.services.unitycatalog._api import (
     _get_downstream,
     _get_effective_permissions,
     _get_ext_loc,
+    _get_metric_view,
     _get_permissions,
+    _get_recipient,
     _get_schema,
+    _get_share,
     _get_table,
     _get_tags,
     _get_upstream,
+    _grant_share,
     _list_catalogs,
     _list_connections,
     _list_credentials,
     _list_ext_locs,
+    _list_metric_views,
+    _list_recipients,
     _list_schemas,
+    _list_shares,
+    _remove_share_object,
+    _revoke_share,
+    _rotate_recipient_token,
     _update_catalog,
     _update_connection,
     _update_credential,
     _update_ext_loc,
+    _update_metric_view,
     _update_permissions,
+    _update_recipient,
     _update_schema,
+    _update_share,
     _update_tags,
     wrap_catalog_errors,
 )
@@ -81,6 +105,8 @@ from pointlessql.services.unitycatalog._lineage import LineageMixin
 from pointlessql.services.unitycatalog._metadata import MetadataMixin
 from pointlessql.services.unitycatalog._models import ModelsMixin
 from pointlessql.services.unitycatalog._permissions import PermissionsMixin
+from pointlessql.services.unitycatalog._semantics import MetricViewsMixin
+from pointlessql.services.unitycatalog._sharing import SharingMixin
 
 
 class UnityCatalogClient(
@@ -90,11 +116,14 @@ class UnityCatalogClient(
     PermissionsMixin,
     LineageMixin,
     FederationMixin,
+    MetricViewsMixin,
+    SharingMixin,
 ):
     """Async facade over the generated soyuz-catalog client.
 
     Composes per-securable mixins (catalogs, metadata, permissions,
-    lineage, federation) into a single client surface.
+    lineage, federation, metric views, sharing) into a single client
+    surface.
 
     Args:
         client: A configured ``soyuz_catalog_client.Client`` instance,
@@ -131,20 +160,29 @@ __all__ = [
     "FederationMixin",
     "LineageMixin",
     "MetadataMixin",
+    "MetricViewsMixin",
     "ModelsMixin",
     "PermissionsMixin",
+    "SharingMixin",
     "UnityCatalogClient",
+    "_add_share_object",
     "_create_catalog",
     "_create_connection",
     "_create_credential",
     "_create_ext_loc",
+    "_create_metric_view",
+    "_create_recipient",
     "_create_schema",
+    "_create_share",
     "_create_table",
     "_delete_catalog",
     "_delete_connection",
     "_delete_credential",
     "_delete_ext_loc",
+    "_delete_metric_view",
+    "_delete_recipient",
     "_delete_schema",
+    "_delete_share",
     "_delete_table",
     "_get_catalog",
     "_get_connection",
@@ -152,22 +190,35 @@ __all__ = [
     "_get_downstream",
     "_get_effective_permissions",
     "_get_ext_loc",
+    "_get_metric_view",
     "_get_permissions",
+    "_get_recipient",
     "_get_schema",
+    "_get_share",
     "_get_table",
     "_get_tags",
     "_get_upstream",
+    "_grant_share",
     "_list_catalogs",
     "_list_connections",
     "_list_credentials",
     "_list_ext_locs",
+    "_list_metric_views",
+    "_list_recipients",
     "_list_schemas",
+    "_list_shares",
+    "_remove_share_object",
+    "_revoke_share",
+    "_rotate_recipient_token",
     "_update_catalog",
     "_update_connection",
     "_update_credential",
     "_update_ext_loc",
+    "_update_metric_view",
     "_update_permissions",
+    "_update_recipient",
     "_update_schema",
+    "_update_share",
     "_update_tags",
     "wrap_catalog_errors",
 ]
