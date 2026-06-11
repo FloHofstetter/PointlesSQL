@@ -365,7 +365,10 @@ def run_sql_then_write_op(
 
         sql_run_id = fresh_run_id()
         _seed_run(factory, sql_run_id)
-        query = f"SELECT {', '.join(select_columns)} FROM {bronze_fqn}"
+        # Quote the generated identifiers — hypothesis legitimately
+        # draws SQL reserved words ("by", "in", …) as column names,
+        # which a real user would also have to quote.
+        query = f"SELECT {', '.join(f'"{c}"' for c in select_columns)} FROM {bronze_fqn}"
         with (
             _bound_factory(factory),
             patch.dict(os.environ, {"POINTLESSQL_AGENT_RUN_ID": sql_run_id}),
