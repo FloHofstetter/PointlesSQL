@@ -31,6 +31,7 @@ from pointlessql.config._settings._auth import (
     OIDCSettings,
 )
 from pointlessql.config._settings._features import (
+    AiFunctionsSettings,
     ApiKeyAclSettings,
     ApiKeyLifecycleSettings,
     BitemporalSettings,
@@ -99,6 +100,7 @@ class Settings(BaseSettings):
     canvas_file_io: CanvasFileIoSettings = Field(default_factory=CanvasFileIoSettings)
     sql: SQLSettings = Field(default_factory=SQLSettings)
     sql_execution_api: SqlExecutionApiSettings = Field(default_factory=SqlExecutionApiSettings)
+    ai_functions: AiFunctionsSettings = Field(default_factory=AiFunctionsSettings)
     api_key_lifecycle: ApiKeyLifecycleSettings = Field(default_factory=ApiKeyLifecycleSettings)
     api_key_acl: ApiKeyAclSettings = Field(default_factory=ApiKeyAclSettings)
     editor_chat: EditorChatSettings = Field(default_factory=EditorChatSettings)
@@ -124,6 +126,7 @@ class Settings(BaseSettings):
 
 __all__ = [
     "AgentRunsSettings",
+    "AiFunctionsSettings",
     "ApiKeyAclSettings",
     "ApiKeyLifecycleSettings",
     "AuditSettings",

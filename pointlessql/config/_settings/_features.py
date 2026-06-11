@@ -35,6 +35,30 @@ class SQLSettings(BaseSettings):
     cost_gate_threshold_rows: int = 1_000_000
 
 
+class AiFunctionsSettings(BaseSettings):
+    """LLM-backed SQL functions (``ai_query`` and friends).
+
+    Reads ``POINTLESSQL_AI_FUNCTIONS_*`` environment variables.  The
+    functions register on the per-query DuckDB connection whenever a
+    governed SELECT references one of them; ``enabled=False`` skips
+    registration entirely so the names fall through to DuckDB's
+    regular unknown-function error.  ``max_calls_per_query`` is a hard
+    cost guard — one LLM round-trip per *distinct* argument tuple, so
+    a column with heavy value repetition stays cheap, but a runaway
+    cross join cannot fan out into thousands of provider calls.
+    ``model`` overrides the Lens per-provider default for these
+    functions only.
+    """
+
+    model_config = SettingsConfigDict(env_prefix="POINTLESSQL_AI_FUNCTIONS_")
+
+    enabled: bool = True
+    max_calls_per_query: int = 200
+    max_output_chars: int = 2_000
+    model: str | None = None
+    timeout_seconds: float = 30.0
+
+
 class SqlExecutionApiSettings(BaseSettings):
     """public DBX-compatible SQL Statement Execution API.
 

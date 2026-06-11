@@ -20,6 +20,7 @@ from pointlessql.exceptions import (
     SQLExecutionError,
     ValidationError,
 )
+from pointlessql.pql._ai_functions import register_ai_functions, sql_uses_ai_functions
 from pointlessql.pql._types import SQLResult
 from pointlessql.pql.engine import register_delta_view
 from pointlessql.pql.sql_parser import (
@@ -149,6 +150,17 @@ def run_sql(
                     approved_tables[ref],
                     policy=(table_policies or {}).get(ref),
                 )
+
+            if sql_uses_ai_functions(query):
+                # LLM-backed scalar functions (ai_query & friends).
+                # Registered per query with a fresh runner so the
+                # call budget and the dedup cache are query-scoped.
+                from pointlessql.config import get_settings
+                from pointlessql.services.ai_functions import build_runner
+
+                ai_settings = get_settings()
+                if ai_settings.ai_functions.enabled:
+                    register_ai_functions(conn, build_runner(ai_settings))
 
             # carry ``_lineage_row_id`` forward when a row-preserving
             # SELECT reads a lineage-bearing source but omits it, so the

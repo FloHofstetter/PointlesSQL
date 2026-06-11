@@ -35,6 +35,7 @@ from pointlessql.config._logging import (
 )
 from pointlessql.config._settings import (
     AgentRunsSettings,
+    AiFunctionsSettings,
     ApiKeyAclSettings,
     ApiKeyLifecycleSettings,
     AuditSettings,
@@ -74,6 +75,7 @@ from pointlessql.config._settings import (
 
 __all__ = [
     "AgentRunsSettings",
+    "AiFunctionsSettings",
     "ApiKeyAclSettings",
     "ApiKeyLifecycleSettings",
     "AuditSettings",
