@@ -90,6 +90,7 @@ def build_default_registry() -> KindRegistry:
     """
     # Local import: executors module imports from registry, but registry
     # only needs the executors at factory-call time.
+    from pointlessql.services.bi_snapshots import bi_snapshot_executor
     from pointlessql.services.ingest.executor import ingest_pull_executor
     from pointlessql.services.pii_classification import pii_classification_executor
     from pointlessql.services.pipelines import pipeline_run_executor
@@ -126,4 +127,5 @@ def build_default_registry() -> KindRegistry:
     registry.register("contract_test_evaluation", _contract_test_evaluation_executor)
     registry.register("entity_link_discovery", _entity_link_discovery_executor)
     registry.register("pii_classification", pii_classification_executor)
+    registry.register("bi_snapshot", bi_snapshot_executor)
     return registry

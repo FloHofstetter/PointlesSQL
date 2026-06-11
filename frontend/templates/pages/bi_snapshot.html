@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Snapshot · {{ dashboard.title }} · PointlesSQL{% endblock %}
+{% block page_entry %}bi_snapshot.js{% endblock %}
+
+{% set breadcrumbs = [
+ {"label": "Home", "href": "/"},
+ {"label": "AI/BI Dashboards", "href": "/bi"},
+ {"label": dashboard.title, "href": "/bi/" ~ dashboard.slug},
+ {"label": "Snapshot #" ~ snapshot.id}
+] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block content %}
+{% set _snap_config = {
+ "widgets": snapshot.payload.widgets,
+} %}
+<div x-data='biSnapshotView({{ _snap_config|tojson }})'>
+    <div class="d-flex align-items-center justify-content-between mb-1">
+        <div class="d-flex align-items-center gap-2">
+            <i class="bi bi-camera fs-3"></i>
+            <h1 class="h3 mb-0">{{ dashboard.title }}</h1>
+            <span class="badge text-bg-secondary-subtle border">snapshot</span>
+        </div>
+        <a href="/bi/{{ dashboard.slug }}" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-bar-chart me-1"></i>Live dashboard
+        </a>
+    </div>
+    <p class="text-muted">
+        Captured {{ snapshot.captured_at }}
+        ({{ "scheduled" if snapshot.triggered_by == "schedule" else "manual" }} capture) —
+        results are frozen; no query runs on this page.
+    </p>
+    {% if snapshot.payload.widgets %}
+    <div class="row g-3">
+        {% for w in snapshot.payload.widgets %}
+        <div class="col-12 col-lg-6">
+            <div class="card pql-bi-widget h-100">
+                {% if w.title %}
+                <div class="card-header py-1 small fw-semibold text-truncate">{{ w.title }}</div>
+                {% endif %}
+                <div class="card-body p-2 pql-bi-widget-body"
+                     data-widget-id="{{ w.widget_id }}"
+                     data-widget-kind="{{ w.kind }}"
+                     {% if w.kind == 'chart' %}style="min-height: 300px"{% endif %}>
+                    <div class="text-muted small">Loading&hellip;</div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="text-muted border rounded p-4 text-center">
+        This snapshot captured no widgets.
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

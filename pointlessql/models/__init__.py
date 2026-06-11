@@ -76,6 +76,10 @@ from pointlessql.models.bi_dashboards import (
     BiDashboard,
     BiDashboardWidget,
 )
+from pointlessql.models.bi_schedules import (
+    BiDashboardSchedule,
+    BiDashboardSnapshot,
+)
 from pointlessql.models.catalog import (
     ASSERTION_KINDS,
     BITEMPORAL_ENFORCEMENT_MODES,
@@ -322,6 +326,8 @@ __all__ = [
     "BI_WIDGET_KINDS",
     "Base",
     "BiDashboard",
+    "BiDashboardSchedule",
+    "BiDashboardSnapshot",
     "BiDashboardWidget",
     "BranchAuditLog",
     "CLASSIFICATIONS",

@@ -216,11 +216,12 @@ def update_dashboard(
 
 
 def delete_dashboard(factory: sessionmaker[Session], *, dashboard_id: int) -> bool:
-    """Delete a dashboard and its widgets.
+    """Delete a dashboard and its widgets, snapshots, and schedule.
 
     Children go explicitly in the same transaction (same rationale
     as the secret-scope delete: SQLite only cascades with the FK
-    pragma on).
+    pragma on).  The snapshot schedule goes through its own delete
+    helper first so the hidden backing job disappears with it.
 
     Args:
         factory: SQLAlchemy session factory.
@@ -229,12 +230,19 @@ def delete_dashboard(factory: sessionmaker[Session], *, dashboard_id: int) -> bo
     Returns:
         ``True`` when a row was deleted.
     """
+    from pointlessql.models import BiDashboardSnapshot
+    from pointlessql.services.bi_snapshots import delete_schedule
+
+    delete_schedule(factory, dashboard_id=dashboard_id)
     with factory() as session:
         row = session.get(BiDashboard, dashboard_id)
         if row is None:
             return False
         session.execute(
             delete(BiDashboardWidget).where(BiDashboardWidget.dashboard_id == dashboard_id)
+        )
+        session.execute(
+            delete(BiDashboardSnapshot).where(BiDashboardSnapshot.dashboard_id == dashboard_id)
         )
         session.delete(row)
         session.commit()

@@ -18,6 +18,15 @@ export function biDashboardView(config) {
     widgets: config.widgets || [],
     published: !!config.isPublished,
     shareToken: config.shareToken || null,
+    canEdit: !!config.canEdit,
+    schedule: {
+      open: false,
+      loading: false,
+      saving: false,
+      exists: false,
+      form: { cron_expr: '0 8 * * *', is_active: true, deliver_inapp: true, webhook_url: '' },
+    },
+    snapshots: { open: false, loading: false, capturing: false, items: [] },
 
     async init() {
       await this._initGrid();
@@ -81,6 +90,96 @@ export function biDashboardView(config) {
       } catch (e) {
         toast('error', 'Could not copy the link — copy it from the address bar instead.');
       }
+    },
+
+    async openSchedule() {
+      this.snapshots.open = false;
+      this.schedule.open = true;
+      this.schedule.loading = true;
+      const res = await pqlApi.fetch(`/api/bi/dashboards/${this.slug}/schedule`);
+      this.schedule.loading = false;
+      if (!res.ok) return;
+      const row = res.data.schedule;
+      this.schedule.exists = !!row;
+      if (row) {
+        this.schedule.form = {
+          cron_expr: row.cron_expr || '',
+          is_active: !!row.is_active,
+          deliver_inapp: !!row.deliver_inapp,
+          webhook_url: row.webhook_url || '',
+        };
+      }
+    },
+
+    async saveSchedule() {
+      const form = this.schedule.form;
+      this.schedule.saving = true;
+      const res = await pqlApi.fetch(`/api/bi/dashboards/${this.slug}/schedule`, {
+        method: 'PUT',
+        body: {
+          cron_expr: form.cron_expr,
+          is_active: !!form.is_active,
+          deliver_inapp: !!form.deliver_inapp,
+          webhook_url: form.webhook_url || null,
+        },
+      });
+      this.schedule.saving = false;
+      if (!res.ok) return;
+      this.schedule.exists = true;
+      this.schedule.open = false;
+      toast('success', 'Refresh schedule saved.');
+    },
+
+    async removeSchedule() {
+      const res = await pqlApi.fetch(`/api/bi/dashboards/${this.slug}/schedule`, {
+        method: 'DELETE',
+      });
+      if (!res.ok) return;
+      this.schedule.exists = false;
+      this.schedule.form = {
+        cron_expr: '0 8 * * *',
+        is_active: true,
+        deliver_inapp: true,
+        webhook_url: '',
+      };
+      this.schedule.open = false;
+      toast('success', 'Refresh schedule removed.');
+    },
+
+    async openSnapshots() {
+      this.schedule.open = false;
+      this.snapshots.open = true;
+      await this.loadSnapshots();
+    },
+
+    async loadSnapshots() {
+      this.snapshots.loading = true;
+      const res = await pqlApi.fetch(`/api/bi/dashboards/${this.slug}/snapshots`);
+      this.snapshots.loading = false;
+      if (!res.ok) return;
+      this.snapshots.items = res.data.snapshots || [];
+    },
+
+    async snapshotNow() {
+      this.snapshots.capturing = true;
+      const res = await pqlApi.fetch(`/api/bi/dashboards/${this.slug}/snapshots`, {
+        method: 'POST',
+        body: {},
+      });
+      this.snapshots.capturing = false;
+      if (!res.ok) return;
+      toast('success', 'Snapshot captured.');
+      await this.loadSnapshots();
+    },
+
+    snapshotHref(id) {
+      return `/bi/${this.slug}/snapshots/${id}`;
+    },
+
+    formatTs(ts) {
+      if (!ts) return '';
+      const d = new Date(ts);
+      return Number.isNaN(d.getTime()) ? String(ts) : d.toLocaleString();
     },
   };
 }

@@ -20,6 +20,7 @@
  "params": dashboard.params,
  "isPublished": dashboard.is_published,
  "shareToken": dashboard.public_token,
+ "canEdit": can_edit,
 } %}
 <div x-data='biDashboardView({{ _bi_config|tojson }})'>
     <div class="d-flex align-items-center justify-content-between mb-1">
@@ -32,6 +33,12 @@
             <a href="/bi/{{ dashboard.slug }}/edit" class="btn btn-sm btn-outline-secondary">
                 <i class="bi bi-pencil me-1"></i>Edit
             </a>
+            <button type="button" class="btn btn-sm btn-outline-secondary" @click="openSchedule()">
+                <i class="bi bi-clock me-1"></i>Schedule
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" @click="openSnapshots()">
+                <i class="bi bi-camera me-1"></i>Snapshots
+            </button>
             <div class="dropdown">
                 <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button"
                         data-bs-toggle="dropdown" aria-expanded="false">
@@ -64,5 +71,88 @@
     <p class="text-muted">{{ dashboard.description }}</p>
     {% endif %}
     {% include "pages/_partials/bi/grid.html" %}
+
+    {% if can_edit %}
+    {# Refresh-schedule drawer (Alpine-controlled, mirrors the editor's
+       widget drawer so prefill state never fights Bootstrap JS). #}
+    <div class="card shadow-lg pql-bi-drawer" x-show="schedule.open" x-cloak
+         role="dialog" aria-label="Refresh schedule">
+        <div class="card-header d-flex align-items-center justify-content-between">
+            <span class="fw-semibold"><i class="bi bi-clock me-1"></i>Refresh schedule</span>
+            <button type="button" class="btn-close" aria-label="Close" @click="schedule.open = false"></button>
+        </div>
+        <div class="card-body overflow-auto">
+            <div class="text-muted small mb-2" x-show="schedule.loading">Loading&hellip;</div>
+            <div class="mb-3">
+                <label class="form-label" for="bi-sched-cron">Cron expression</label>
+                <input id="bi-sched-cron" type="text" class="form-control form-control-sm font-monospace"
+                       x-model="schedule.form.cron_expr" placeholder="0 8 * * *">
+                <div class="form-text">5-field cron, minute granularity — e.g. <code>0 8 * * *</code> for daily 08:00 UTC.</div>
+            </div>
+            <div class="form-check form-switch mb-2">
+                <input id="bi-sched-active" class="form-check-input" type="checkbox"
+                       x-model="schedule.form.is_active">
+                <label class="form-check-label" for="bi-sched-active">Active</label>
+            </div>
+            <div class="form-check form-switch mb-3">
+                <input id="bi-sched-inapp" class="form-check-input" type="checkbox"
+                       x-model="schedule.form.deliver_inapp">
+                <label class="form-check-label" for="bi-sched-inapp">Notify me in-app after each capture</label>
+            </div>
+            <div class="mb-3">
+                <label class="form-label" for="bi-sched-webhook">Webhook URL (optional)</label>
+                <input id="bi-sched-webhook" type="url" class="form-control form-control-sm"
+                       x-model="schedule.form.webhook_url" placeholder="https://example.com/hooks/bi">
+                <div class="form-text">Each capture POSTs a CloudEvents envelope there.</div>
+            </div>
+        </div>
+        <div class="card-footer d-flex align-items-center gap-2">
+            <button type="button" class="btn btn-sm btn-primary"
+                    :disabled="schedule.saving" @click="saveSchedule()">
+                <span x-show="!schedule.saving">Save schedule</span>
+                <span x-show="schedule.saving" x-cloak>Saving&hellip;</span>
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-danger ms-auto"
+                    x-show="schedule.exists" @click="removeSchedule()">
+                <i class="bi bi-trash me-1"></i>Remove
+            </button>
+        </div>
+    </div>
+
+    {# Snapshot history drawer: links into the frozen snapshot pages
+       plus the on-demand capture button. #}
+    <div class="card shadow-lg pql-bi-drawer" x-show="snapshots.open" x-cloak
+         role="dialog" aria-label="Snapshots">
+        <div class="card-header d-flex align-items-center justify-content-between">
+            <span class="fw-semibold"><i class="bi bi-camera me-1"></i>Snapshots</span>
+            <button type="button" class="btn-close" aria-label="Close" @click="snapshots.open = false"></button>
+        </div>
+        <div class="card-body overflow-auto">
+            <button type="button" class="btn btn-sm btn-primary mb-3"
+                    :disabled="snapshots.capturing" @click="snapshotNow()">
+                <span x-show="!snapshots.capturing"><i class="bi bi-camera me-1"></i>Snapshot now</span>
+                <span x-show="snapshots.capturing" x-cloak>Capturing&hellip;</span>
+            </button>
+            <div class="text-muted small" x-show="snapshots.loading">Loading&hellip;</div>
+            <div class="list-group list-group-flush">
+                <template x-for="s in snapshots.items" :key="s.id">
+                    <a class="list-group-item list-group-item-action d-flex align-items-center justify-content-between px-0"
+                       :href="snapshotHref(s.id)">
+                        <span>
+                            <span class="fw-semibold" x-text="formatTs(s.captured_at)"></span>
+                            <span class="text-muted small ms-1"
+                                  x-text="`${s.widget_count} widget${s.widget_count === 1 ? '' : 's'}`"></span>
+                        </span>
+                        <span class="badge text-bg-secondary-subtle border"
+                              x-text="s.triggered_by === 'schedule' ? 'scheduled' : 'manual'"></span>
+                    </a>
+                </template>
+            </div>
+            <p class="text-muted small mb-0" x-show="!snapshots.loading && snapshots.items.length === 0">
+                No snapshots yet — capture one or set up a schedule.
+            </p>
+        </div>
+    </div>
+    {% endif %}
 </div>
 {% endblock %}
