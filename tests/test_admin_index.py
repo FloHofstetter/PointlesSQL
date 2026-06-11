@@ -116,6 +116,7 @@ class TestAdminIndexCards:
             ("workspaces", "/admin/workspaces"),
             ("audit-sinks", "/admin/audit-sinks"),
             ("review-destinations", "/admin/review-destinations"),
+            ("secrets", "/admin/secrets"),
             ("cdf-subscriptions", "/admin/cdf-subscriptions"),
         ]:
             assert f'data-admin-card="{marker}"' in body, marker

@@ -4454,6 +4454,28 @@
         ]
       }
     },
+    "/admin/secrets": {
+      "get": {
+        "description": "Render the admin secrets cockpit (scopes + keys + ACLs).",
+        "operationId": "admin_secrets_page_admin_secrets_get",
+        "responses": {
+          "200": {
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Admin Secrets Page",
+        "tags": [
+          "admin-secrets"
+        ]
+      }
+    },
     "/admin/sources": {
       "get": {
         "description": "Render the system-wide ingest health monitor.\n\nPure HTML shell \u2014 the page fetches ``/api/admin/ingest-sources``\non load to populate the table.",

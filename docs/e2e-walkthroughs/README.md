@@ -73,7 +73,8 @@ Reload `auth.md` first; later ones reuse seeded users + catalog.
 | [`audit-sinks.md`](audit-sinks.md) | `/admin/audit-sinks` CRUD | |
 | [`admin-audit.md`](admin-audit.md) | `/admin/audit` | |
 | [`admin-cdf-tail.md`](admin-cdf-tail.md) | `/admin/cdf-tail` + table CDF tab | |
-| [`admin-console.md`](admin-console.md) | `/admin/*` 7-card landing | |
+| [`admin-console.md`](admin-console.md) | `/admin/*` 17-card landing | |
+| [`admin-secrets.md`](admin-secrets.md) | `/admin/secrets` scopes + write-only values + ACLs | |
 | [`admin-policy-modules.md`](admin-policy-modules.md) | `/admin/policy-modules` CRUD + dry-run | |
 | [`admin-mesh-dashboard.md`](admin-mesh-dashboard.md) | `/admin/mesh-dashboard` vital signs + cost rollups | |
 | [`admin-entity-discovery.md`](admin-entity-discovery.md) | `/admin/entity-discovery` review queue | |
@@ -285,7 +286,7 @@ model lives in soyuz:
 **admin + audit cockpit + dbt**.  Five playbooks closing the
 admin + audit-cockpit + dbt coverage:
 
-19. [`admin-console.md`](admin-console.md) — admin landing 7-card grid + ``/admin/external-writes``
+19. [`admin-console.md`](admin-console.md) — admin landing card grid + ``/admin/external-writes``
  + ``/admin/api-keys`` (with the plaintext-secret modal +
  load-bearing secret-not-in-outerHTML assertion) +
  ``/admin/review-destinations`` + ``/admin/system-info``.

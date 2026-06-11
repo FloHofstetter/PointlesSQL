@@ -143,6 +143,18 @@ async def test_scope_delete_requires_manage() -> None:
 
 
 @pytest.mark.asyncio
+async def test_admin_secrets_page_admin_only() -> None:
+    async with _client(app.state._test_auth_cookie) as admin:
+        page = await admin.get("/admin/secrets")
+        assert page.status_code == 200
+        assert 'x-data="adminSecrets()"' in page.text
+        assert "admin_secrets.js" in page.text
+    async with _client(app.state._test_non_admin_cookie) as client:
+        denied = await client.get("/admin/secrets")
+        assert denied.status_code == 403
+
+
+@pytest.mark.asyncio
 async def test_validation_errors() -> None:
     async with _client(app.state._test_auth_cookie) as admin:
         bad_name = await admin.post("/api/secrets/scopes", json={"name": "has space"})
