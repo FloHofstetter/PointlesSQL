@@ -55,6 +55,7 @@ def run_sql_sync(
     max_rows: int,
     conn: Any = None,
     explain: bool = False,
+    table_policies: dict[str, Any] | None = None,
 ) -> Any:
     """Execute *query* in the sync :class:`PQL` SQL bridge.
 
@@ -77,6 +78,10 @@ def run_sql_sync(
         explain: When ``True``, prepend ``EXPLAIN ANALYZE`` to the
             rewritten SQL so the caller gets the physical plan
             instead of the actual rows.
+        table_policies: Optional per-table row-filter / column-mask
+            policies (see :mod:`pointlessql.pql._policies`),
+            collected by the enforcement hop alongside
+            *approved_tables*.
 
     Returns:
         A :class:`pointlessql.pql.pql.SQLResult` dataclass.
@@ -90,6 +95,7 @@ def run_sql_sync(
         max_rows=max_rows,
         conn=conn,
         explain=explain,
+        table_policies=table_policies,
     )
 
 

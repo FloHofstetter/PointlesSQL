@@ -8,6 +8,8 @@ storage_location / privilege handshake.
 
 from __future__ import annotations
 
+from typing import Any
+
 from pointlessql.api.dependencies import get_uc_client
 from pointlessql.api.sql._dispatcher._types import DispatchContext
 from pointlessql.exceptions import (
@@ -31,13 +33,41 @@ async def enforce_select_per_table(ctx: DispatchContext, refs: list[str]) -> dic
 
     Returns:
         Mapping ``full_name → storage_location`` for every ref.
+    """
+    approved, _policies = await enforce_select_with_policies(ctx, refs)
+    return approved
+
+
+async def enforce_select_with_policies(
+    ctx: DispatchContext, refs: list[str]
+) -> tuple[dict[str, str], dict[str, Any]]:
+    """SELECT enforcement plus effective read-policy collection.
+
+    Same handshake as :func:`enforce_select_per_table`, but the
+    table info fetched for the storage lookup also yields each
+    table's row-filter / column-mask policy
+    (:func:`pointlessql.pql._policies.extract_table_policy`).
+    Admins and the table owner are exempt — they administer the
+    policy, so their reads stay raw.
+
+    Args:
+        ctx: Dispatcher context.
+        refs: 3-part table names to enforce.
+
+    Returns:
+        ``(approved, policies)`` — the storage map plus
+        ``full_name → TablePolicy`` for every governed ref.
 
     Raises:
         SQLExecutionError: When a ref is not 3-part qualified.
         CatalogNotFoundError: When a ref is unknown.
+        ValidationError: When a stored policy property is malformed.
     """
+    from pointlessql.pql._policies import extract_table_policy
+
     uc_client = get_uc_client(ctx.request)
     approved: dict[str, str] = {}
+    policies: dict[str, Any] = {}
     for full_name in refs:
         parts = full_name.split(".")
         if len(parts) != 3:
@@ -54,7 +84,17 @@ async def enforce_select_per_table(ctx: DispatchContext, refs: list[str]) -> dic
             )
         await check_privilege(uc_client, ctx.actor_email, ctx.is_admin, "table", full_name, SELECT)
         approved[full_name] = storage
-    return approved
+        is_owner = bool(ctx.actor_email) and info.get("owner") == ctx.actor_email
+        if not ctx.is_admin and not is_owner:
+            try:
+                policy = extract_table_policy(info, principal=ctx.actor_email)
+            except ValueError as exc:
+                raise ValidationError(
+                    f"table {full_name!r} carries a malformed read policy: {exc}"
+                ) from exc
+            if policy is not None:
+                policies[full_name] = policy
+    return approved, policies
 
 
 async def enforce_modify_target(ctx: DispatchContext, target: str, *, must_exist: bool) -> bool:

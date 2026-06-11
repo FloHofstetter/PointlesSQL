@@ -241,15 +241,17 @@ async def test_widget_data_substitutes_and_frames(monkeypatch) -> None:
 
     seen: dict[str, Any] = {}
 
-    async def _fake_resolve(sql: str, **kwargs: Any) -> dict[str, str]:
+    async def _fake_resolve(sql: str, **kwargs: Any) -> tuple[dict[str, str], dict[str, Any]]:
         seen["sql"] = sql
-        return {"c.s.orders": "memory://orders"}
+        return {"c.s.orders": "memory://orders"}, {}
 
-    def _fake_exec(sql: str, approved: dict[str, str], max_rows: int) -> SQLResult:
+    def _fake_exec(
+        sql: str, approved: dict[str, str], max_rows: int, policies: Any = None
+    ) -> SQLResult:
         seen["max_rows"] = max_rows
         return _fake_result()
 
-    monkeypatch.setattr(data_module, "resolve_approved_tables", _fake_resolve)
+    monkeypatch.setattr(data_module, "resolve_select_context", _fake_resolve)
     monkeypatch.setattr(data_module, "_run_widget_sql", _fake_exec)
 
     async with _client(app.state._test_auth_cookie) as client:
@@ -279,12 +281,12 @@ async def test_public_data_requires_valid_token(monkeypatch) -> None:
         token = published.json()["public_token"]
         assert token
 
-    async def _fake_resolve(sql: str, **kwargs: Any) -> dict[str, str]:
+    async def _fake_resolve(sql: str, **kwargs: Any) -> tuple[dict[str, str], dict[str, Any]]:
         seen_actor.append(kwargs["actor_email"])
-        return {"c.s.orders": "memory://orders"}
+        return {"c.s.orders": "memory://orders"}, {}
 
     seen_actor: list[str] = []
-    monkeypatch.setattr(data_module, "resolve_approved_tables", _fake_resolve)
+    monkeypatch.setattr(data_module, "resolve_select_context", _fake_resolve)
     monkeypatch.setattr(data_module, "_run_widget_sql", lambda *args: _fake_result())
 
     # anonymous client, no cookies — the token is the credential.

@@ -13,7 +13,7 @@ from typing import Any
 
 from pointlessql.api._consumption_hook import enforce_consumption_for_read
 from pointlessql.api.dependencies import current_workspace_id, get_authoring_product, get_user
-from pointlessql.api.sql._dispatcher._privilege import enforce_select_per_table
+from pointlessql.api.sql._dispatcher._privilege import enforce_select_with_policies
 from pointlessql.api.sql._dispatcher._types import DispatchContext, ExecutionResult
 from pointlessql.pql import prepare_sql
 from pointlessql.services import governance as governance_service
@@ -65,7 +65,7 @@ async def execute_select(ctx: DispatchContext) -> ExecutionResult:
     from pointlessql.api.sql.editor import run_sql_sync
 
     prepared = prepare_sql(ctx.sql)
-    approved = await enforce_select_per_table(ctx, prepared.refs)
+    approved, policies = await enforce_select_with_policies(ctx, prepared.refs)
 
     authoring_product_id = get_authoring_product(ctx.request)
     if authoring_product_id is not None:
@@ -90,6 +90,7 @@ async def execute_select(ctx: DispatchContext) -> ExecutionResult:
         ctx.max_rows,
         ctx.conn,
         False,  # explain handled in the route
+        policies,
     )
 
     rows = list(result.rows)

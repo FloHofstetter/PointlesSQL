@@ -42,12 +42,17 @@ _BOOTSTRAP_TIMEOUT = 10.0
 # renders the table inline.  Errors raise normally so the kernel emits
 # a standard ``error`` iopub message the toolbar already paints in red.
 _NOTEBOOK_BOOTSTRAP_CODE = """\
-def __pql_sql_run(query, *, approved_tables, result_var, max_rows):
+def __pql_sql_run(query, *, approved_tables, result_var, max_rows, table_policies=None):
     import pandas as pd
     from IPython.display import display
     from pointlessql.pql import PQL
 
-    res = PQL.sql(query, approved_tables=approved_tables, max_rows=max_rows)
+    res = PQL.sql(
+        query,
+        approved_tables=approved_tables,
+        max_rows=max_rows,
+        table_policies=table_policies,
+    )
     # SQLResult.columns is list[dict[str, str]] with ``name`` / ``type``
     # entries — pandas needs the bare names as the column index.
     column_names = [c.get("name") if isinstance(c, dict) else c for c in res.columns]

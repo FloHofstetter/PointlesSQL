@@ -81,7 +81,7 @@ async def handle_execute(
         # never sees the approved_tables map.
         try:
             uc_client = websocket.app.state.uc_client
-            approved = await notebook_sql_cell.resolve_approved_tables(
+            approved, policies = await notebook_sql_cell.resolve_select_context(
                 source,
                 uc_client=uc_client,
                 actor_email=str(user.get("email") or ""),
@@ -115,6 +115,7 @@ async def handle_execute(
             source,
             approved_tables=approved,
             result_var=result_var if isinstance(result_var, str) else None,
+            table_policies=policies,
         )
         sql_cell_metadata[(content_hash, session.session_id)] = {
             "raw_sql": source,
@@ -130,7 +131,7 @@ async def handle_execute(
         for block in pre.sql_blocks:
             try:
                 uc_client = websocket.app.state.uc_client
-                approved = await notebook_sql_cell.resolve_approved_tables(
+                approved, policies = await notebook_sql_cell.resolve_select_context(
                     block.sql,
                     uc_client=uc_client,
                     actor_email=str(user.get("email") or ""),
@@ -165,6 +166,7 @@ async def handle_execute(
                     block.sql,
                     approved_tables=approved,
                     result_var=block.result_var,
+                    table_policies=policies,
                 ).strip()
             )
         kernel_source = notebook_magic_commands.apply_sql_resolutions(pre.source, wrappers=wrappers)

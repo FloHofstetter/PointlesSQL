@@ -44,6 +44,7 @@ def run_sql(
     explain: bool = False,
     agent_run_id: str | None = None,
     preserve_lineage_row_id: bool = True,
+    table_policies: dict[str, Any] | None = None,
 ) -> SQLResult:
     """Run a single SELECT against DuckDB with UC-backed views.
 
@@ -80,6 +81,11 @@ def run_sql(
             downstream write keeps its row-edges.  Aggregating /
             collapsing SELECTs are left untouched.  Pass ``False`` to
             opt out and return exactly the projected columns.
+        table_policies: Optional mapping of fully-qualified table
+            name to its effective
+            :class:`pointlessql.pql._policies.TablePolicy` (or dict
+            form).  Applied at view-registration time, so row
+            filters and column masks hold for every query shape.
 
     Returns:
         A :class:`SQLResult` with columns, rows, and metrics.
@@ -129,7 +135,12 @@ def run_sql(
             conn = duckdb.connect()
         try:
             for ref in prepared.refs:
-                register_delta_view(conn, ref, approved_tables[ref])
+                register_delta_view(
+                    conn,
+                    ref,
+                    approved_tables[ref],
+                    policy=(table_policies or {}).get(ref),
+                )
 
             # carry ``_lineage_row_id`` forward when a row-preserving
             # SELECT reads a lineage-bearing source but omits it, so the

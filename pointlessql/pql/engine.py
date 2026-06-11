@@ -9,6 +9,7 @@ internally.
 
 from __future__ import annotations
 
+import re
 from typing import TYPE_CHECKING, Any, Literal, Protocol, runtime_checkable
 
 import deltalake
@@ -163,6 +164,7 @@ def register_delta_view(
     conn: duckdb.DuckDBPyConnection,
     full_name: str,
     storage_location: str,
+    policy: Any = None,
 ) -> None:
     """Register a Delta table as a DuckDB view named after its UC path.
 
@@ -173,15 +175,39 @@ def register_delta_view(
     the 3-part name verbatim so the view is scoped to the connection
     and disappears when the connection closes.
 
+    With a *policy*, the dotted name instead binds to a temporary
+    view that applies the policy's column masks and row filter over
+    an internally-registered base relation — because the policy
+    wraps the registration itself, no query shape can reach the raw
+    rows through this connection.
+
     Args:
         conn: A live DuckDB connection.
         full_name: The UC ``catalog.schema.table`` three-part name,
             used verbatim as the view identifier.
         storage_location: Filesystem path or URI of the Delta table.
+        policy: Optional :class:`pointlessql.pql._policies.TablePolicy`
+            (or its dict form) to enforce on every read.
     """
+    from pointlessql.pql._policies import coerce_policy, policy_view_sql
+
     dt = deltalake.DeltaTable(storage_location)
     arrow_dataset = dt.to_pyarrow_dataset()
-    conn.register(full_name, arrow_dataset)
+    effective = coerce_policy(policy)
+    if effective is None or effective.is_empty():
+        conn.register(full_name, arrow_dataset)
+        return
+    base_name = "__pql_base_" + re.sub(r"[^A-Za-z0-9_]", "_", full_name)
+    conn.register(base_name, arrow_dataset)
+    columns = list(arrow_dataset.schema.names)
+    conn.execute(
+        policy_view_sql(
+            view_name=full_name,
+            base_relation=base_name,
+            columns=columns,
+            policy=effective,
+        )
+    )
 
 
 class DuckDBEngine:

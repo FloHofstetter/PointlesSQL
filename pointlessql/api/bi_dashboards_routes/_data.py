@@ -27,7 +27,7 @@ from pointlessql.models.auth import User
 from pointlessql.models.bi_dashboards import BiDashboard
 from pointlessql.services import bi_dashboards as bi_service
 from pointlessql.services._executor import run_sync
-from pointlessql.services.notebook._sql_cell import resolve_approved_tables
+from pointlessql.services.notebook._sql_cell import resolve_select_context
 
 router = APIRouter()
 
@@ -35,11 +35,16 @@ _ROW_CAPS: dict[str, int] = {"counter": 10, "table": 1_000, "chart": 10_000}
 """Per-kind row caps — a counter never needs more than a handful."""
 
 
-def _run_widget_sql(sql: str, approved: dict[str, str], max_rows: int) -> Any:
+def _run_widget_sql(
+    sql: str,
+    approved: dict[str, str],
+    max_rows: int,
+    policies: dict[str, Any] | None = None,
+) -> Any:
     """Execute *sql* in the sync PQL bridge (dispatched via run_sync)."""
     from pointlessql.pql import PQL
 
-    return PQL.sql(sql, approved_tables=approved, max_rows=max_rows)
+    return PQL.sql(sql, approved_tables=approved, max_rows=max_rows, table_policies=policies)
 
 
 async def _execute_widget(
@@ -84,14 +89,14 @@ async def _execute_widget(
         sql = bi_service.substitute_params(sql, specs=specs, values=values)
     except ValueError as exc:
         raise ValidationError(str(exc)) from exc
-    approved = await resolve_approved_tables(
+    approved, policies = await resolve_select_context(
         sql,
         uc_client=request.app.state.uc_client,
         actor_email=actor_email,
         is_admin=is_admin,
     )
     max_rows = _ROW_CAPS.get(widget.kind, 1_000)
-    result = await run_sync(_run_widget_sql, sql, approved, max_rows)
+    result = await run_sync(_run_widget_sql, sql, approved, max_rows, policies)
     return {
         "columns": result.columns,
         "rows": result.rows,
