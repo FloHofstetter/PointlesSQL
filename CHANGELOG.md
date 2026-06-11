@@ -17,6 +17,14 @@ defined in ``scripts/clusters.json``. -->
 
 ### Added
 
+- **Secret scopes (phase 209.1).** Databricks-shaped secrets surface on the
+  existing Fernet vault: workspace-scoped scopes with a `READ < WRITE <
+  MANAGE` ACL ladder, a `/api/secrets` management API whose responses never
+  carry values, an audited runtime getter (browser and `via: kernel`
+  flagged), an admin cockpit (`/admin/secrets`, 17th landing card, e2e
+  playbook), `pql_secrets.get("scope", "key")` inside notebook kernels, and
+  just-in-time `{{secrets/<scope>/<key>}}` resolution for ingest connector
+  configs so credentials stop resting in `ingest_sources`.
 - **Infrastructure redesign (phase 208).** App-owned bounded executor behind
   `run_sync` (ContextVar-preserving; the api layer migrated off
   `asyncio.to_thread`, background loops deliberately excluded); typed

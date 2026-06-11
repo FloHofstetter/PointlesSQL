@@ -3854,6 +3854,34 @@ PointlesSQL
 │       │   Kapazität („Budget erreicht in N Tagen") + Cost am Agent-Run +
 │       │   FinOps-Grafana-Panels.  estimated_cost = Schätzung, kein $.
 │   │
+├── Phase 209 — Databricks-Parität: Top-10-Features  🟨 in progress (gestartet 2026-06-11)
+│   │
+│   │   Deep-Research-Programm (Web + beide Codebasen): die zehn
+│   │   wirkungsstärksten noch fehlenden Databricks-Features, nativ
+│   │   gebaut auf dem vorhandenen Stack (sqlglot/duckdb/deltalake/
+│   │   Scheduler/LLM-Verdrahtung) statt Framework-Einbettung —
+│   │   null neue Python-Runtime-Deps als Designziel.  Reihenfolge:
+│   │   Secrets → Metric Views → Dashboards → Genie → Serving →
+│   │   Delta Sharing → Synced Tables → Pipelines → Row Filters →
+│   │   Auto Loader.  soyuz-Anteile (Metric-View-Ressource +
+│   │   Delta-Sharing-Server) laufen als eigener soyuz-Sprint.
+│   │
+│   ├── 209.1 — Secret Scopes  ✅ shipped (local, 2026-06-11)
+│   │       Databricks-förmige Secret Scopes auf dem bestehenden
+│   │       Fernet-Vault (system_keys-Masterkey): drei Tabellen
+│   │       (Scopes/Secrets/ACLs, workspace-scoped), ACL-Leiter
+│   │       READ < WRITE < MANAGE (Admins implizit MANAGE,
+│   │       Creator-Grant, '*'-Wildcard), /api/secrets mit
+│   │       Write-only-Werten (ungranted Scopes antworten 404 —
+│   │       Existenz ist selbst ein Geheimnis), auditierter
+│   │       Runtime-Getter (Browser + via:kernel getrennt),
+│   │       Admin-Cockpit als 17. Karte (+ Playbook
+│   │       admin-secrets.md; admin-console.md von stale 8 auf
+│   │       real 17 Karten korrigiert), pql_secrets.get() im
+│   │       Kernel-Bootstrap (POINTLESSQL_WORKSPACE_ID neu
+│   │       injiziert) und {{secrets/<scope>/<key>}}-Auflösung
+│   │       just-in-time im Ingest-Executor.
+│   │
 ├── Phase 208 — Infrastruktur-Redesign (Querschnitt + CI-Grün)  ✅ shipped (local, 2026-06-11)
 │   │
 │   │   "Wenn wir die Codebasis heute neu designen würden" als
