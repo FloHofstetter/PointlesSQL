@@ -29865,6 +29865,304 @@
         ]
       }
     },
+    "/api/metric-views": {
+      "get": {
+        "description": "List a schema's metric views.\n\nArgs:\n    request: Incoming FastAPI request.\n    catalog_name: Parent catalog.\n    schema_name: Parent schema.\n\nReturns:\n    ``{\"metric_views\": [...]}`` straight from the catalog.",
+        "operationId": "api_list_metric_views_api_metric_views_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "catalog_name",
+            "required": true,
+            "schema": {
+              "title": "Catalog Name",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "schema_name",
+            "required": true,
+            "schema": {
+              "title": "Schema Name",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api List Metric Views Api Metric Views Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api List Metric Views",
+        "tags": [
+          "metric-views"
+        ]
+      },
+      "post": {
+        "description": "Create a metric view.\n\nArgs:\n    request: Incoming FastAPI request.\n    body: ``{\"name\", \"catalog_name\", \"schema_name\",\n        \"source_table_full_name\", \"spec\", \"comment\"?}`` \u2014\n        validated structurally by soyuz.\n\nReturns:\n    The created metric-view info dict.",
+        "operationId": "api_create_metric_view_api_metric_views_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Body",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Create Metric View Api Metric Views Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Create Metric View",
+        "tags": [
+          "metric-views"
+        ]
+      }
+    },
+    "/api/metric-views/{full_name}": {
+      "delete": {
+        "description": "Delete a metric view.",
+        "operationId": "api_delete_metric_view_api_metric_views__full_name__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "full_name",
+            "required": true,
+            "schema": {
+              "title": "Full Name",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Delete Metric View Api Metric Views  Full Name  Delete",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Delete Metric View",
+        "tags": [
+          "metric-views"
+        ]
+      },
+      "get": {
+        "description": "Return one metric view by ``catalog.schema.name``.",
+        "operationId": "api_get_metric_view_api_metric_views__full_name__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "full_name",
+            "required": true,
+            "schema": {
+              "title": "Full Name",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Get Metric View Api Metric Views  Full Name  Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Get Metric View",
+        "tags": [
+          "metric-views"
+        ]
+      },
+      "patch": {
+        "description": "Patch a metric view (spec / comment / source / rename).",
+        "operationId": "api_update_metric_view_api_metric_views__full_name__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "full_name",
+            "required": true,
+            "schema": {
+              "title": "Full Name",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Body",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Update Metric View Api Metric Views  Full Name  Patch",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Update Metric View",
+        "tags": [
+          "metric-views"
+        ]
+      }
+    },
+    "/api/metric-views/{full_name}/query": {
+      "post": {
+        "description": "Compile and run a governed query against a metric view.\n\nArgs:\n    request: Incoming FastAPI request.\n    full_name: ``catalog.schema.name`` of the metric view.\n    body: ``{\"dimensions\"?: [names], \"measures\": [names],\n        \"where\"?: str, \"order_by\"?: str, \"limit\"?: int}``.\n\nReturns:\n    ``{\"sql\", \"columns\", \"rows\", \"row_count\", \"truncated\",\n    \"duration_ms\"}`` \u2014 the compiled SQL ships so the UI can show\n    provenance.\n\nRaises:\n    ValidationError: On unknown dimension/measure names or\n        malformed fragments.",
+        "operationId": "api_query_metric_view_api_metric_views__full_name__query_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "full_name",
+            "required": true,
+            "schema": {
+              "title": "Full Name",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Body",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Query Metric View Api Metric Views  Full Name  Query Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Query Metric View",
+        "tags": [
+          "metric-views"
+        ]
+      }
+    },
     "/api/ml/table-relations": {
       "get": {
         "description": "Reverse-index UC tables \u2192 ML models that scored into them.\n\nSingle-call analog of ``/api/dbt/manifest`` for the MLflow side.\nPowers the catalog-tree ML pill, schema-detail badge, and the\ntable-detail \"ML model\" card.\n\nArgs:\n    request: FastAPI request.\n    catalog: Optional catalog filter \u2014 narrows the result to\n        tables under one catalog.\n    schema: Optional schema filter \u2014 narrows further within a\n        catalog.  Ignored when ``catalog`` is omitted.\n\nReturns:\n    ``{\"tables\": {\"catalog.schema.table\": {\"trained_models\":\n    [], \"scoring_models\": [{\"full_name\", \"version\",\n    \"edge_count\"}, ...]}}}``.",
@@ -36336,6 +36634,262 @@
         ]
       }
     },
+    "/api/serving-endpoints": {
+      "get": {
+        "description": "List the active workspace's serving endpoints.",
+        "operationId": "api_list_endpoints_api_serving_endpoints_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api List Endpoints Api Serving Endpoints Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Api List Endpoints",
+        "tags": [
+          "serving"
+        ]
+      },
+      "post": {
+        "description": "Create an endpoint in ``stopped`` state.\n\nArgs:\n    request: Incoming FastAPI request.\n    body: ``{\"name\", \"model_name\", \"model_version\"}`` \u2014\n        ``model_version`` is a version number or ``@alias``.\n\nReturns:\n    The serialized endpoint row.\n\nRaises:\n    ValidationError: On malformed input or a duplicate name.\n    PermissionDeniedError: When the caller is unauthenticated.",
+        "operationId": "api_create_endpoint_api_serving_endpoints_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Body",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Create Endpoint Api Serving Endpoints Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Create Endpoint",
+        "tags": [
+          "serving"
+        ]
+      }
+    },
+    "/api/serving-endpoints/{name}": {
+      "delete": {
+        "description": "Stop (if running) and delete an endpoint.",
+        "operationId": "api_delete_endpoint_api_serving_endpoints__name__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "title": "Name",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Delete Endpoint Api Serving Endpoints  Name  Delete",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Delete Endpoint",
+        "tags": [
+          "serving"
+        ]
+      }
+    },
+    "/api/serving-endpoints/{name}/invocations": {
+      "post": {
+        "description": "Proxy one scoring request to the endpoint's worker.\n\nThe body passes through verbatim in the MLflow scoring protocol\n(``dataframe_split`` / ``dataframe_records`` / ``instances`` /\n``inputs``); the worker's JSON answer returns with its status.\n\nArgs:\n    request: Incoming FastAPI request.\n    name: Endpoint name.\n    body: Scoring payload (protocol-shaped, passed through).\n\nReturns:\n    The worker's JSON response.\n\nRaises:\n    ValidationError: When the endpoint is not running or the\n        worker cannot be reached.",
+        "operationId": "api_invoke_endpoint_api_serving_endpoints__name__invocations_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "title": "Name",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Body",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Invoke Endpoint",
+        "tags": [
+          "serving"
+        ]
+      }
+    },
+    "/api/serving-endpoints/{name}/start": {
+      "post": {
+        "description": "Start the endpoint's scoring worker and wait for health.\n\nArgs:\n    request: Incoming FastAPI request.\n    name: Endpoint name.\n\nReturns:\n    The serialized endpoint row (``ready`` on success).\n\nRaises:\n    ValidationError: When the worker fails to come up \u2014 the\n        message carries the stderr tail for the detail page.",
+        "operationId": "api_start_endpoint_api_serving_endpoints__name__start_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "title": "Name",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Start Endpoint Api Serving Endpoints  Name  Start Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Start Endpoint",
+        "tags": [
+          "serving"
+        ]
+      }
+    },
+    "/api/serving-endpoints/{name}/stop": {
+      "post": {
+        "description": "Stop the endpoint's scoring worker.",
+        "operationId": "api_stop_endpoint_api_serving_endpoints__name__stop_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "title": "Name",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Stop Endpoint Api Serving Endpoints  Name  Stop Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Stop Endpoint",
+        "tags": [
+          "serving"
+        ]
+      }
+    },
     "/api/settings/notifications": {
       "get": {
         "description": "Return the caller's prefs + the canonical event-type list.\n\nArgs:\n    request: Incoming FastAPI request.\n\nReturns:\n    ``{\"prefs\": {event_type: {inbox, email, webhook}},\n    \"known_event_types\": [...]}``.  Missing keys + missing\n    sub-keys are filled in as ``True``.",
@@ -36381,6 +36935,859 @@
         "tags": [
           "settings",
           "settings"
+        ]
+      }
+    },
+    "/api/sharing/providers": {
+      "get": {
+        "description": "List the workspace's registered remote providers.",
+        "operationId": "api_list_providers_api_sharing_providers_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api List Providers Api Sharing Providers Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Api List Providers",
+        "tags": [
+          "sharing"
+        ]
+      },
+      "post": {
+        "description": "Register a remote provider profile.\n\nArgs:\n    request: Incoming FastAPI request.\n    body: ``{\"name\", \"endpoint_url\", \"token\", \"comment\"?}`` \u2014\n        the shape of a ``config.share`` profile file.\n\nReturns:\n    The serialized provider (without any token material).\n\nRaises:\n    ValidationError: On malformed input or a duplicate alias.\n    PermissionDeniedError: When the caller is unauthenticated.",
+        "operationId": "api_create_provider_api_sharing_providers_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Body",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Create Provider Api Sharing Providers Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Create Provider",
+        "tags": [
+          "sharing"
+        ]
+      }
+    },
+    "/api/sharing/providers/{name}": {
+      "delete": {
+        "description": "Delete a provider profile.",
+        "operationId": "api_delete_provider_api_sharing_providers__name__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "title": "Name",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Delete Provider Api Sharing Providers  Name  Delete",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Delete Provider",
+        "tags": [
+          "sharing"
+        ]
+      }
+    },
+    "/api/sharing/providers/{name}/read": {
+      "post": {
+        "description": "Preview one shared table as JSON rows.\n\nArgs:\n    request: Incoming FastAPI request.\n    name: Provider alias.\n    body: ``{\"share\", \"schema\", \"table\", \"limit\"?}`` (preview\n        rows capped server-side).\n\nReturns:\n    ``{\"columns\", \"rows\", \"row_count\", \"truncated\"}``.\n\nRaises:\n    ValidationError: On missing coordinates or protocol errors.",
+        "operationId": "api_provider_read_api_sharing_providers__name__read_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "title": "Name",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Body",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Provider Read Api Sharing Providers  Name  Read Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Provider Read",
+        "tags": [
+          "sharing"
+        ]
+      }
+    },
+    "/api/sharing/providers/{name}/shares": {
+      "get": {
+        "description": "List the shares the remote side offers this profile.\n\nArgs:\n    request: Incoming FastAPI request.\n    name: Provider alias.\n\nReturns:\n    ``{\"shares\": [names]}``.\n\nRaises:\n    ValidationError: When the remote answers outside the\n        protocol.",
+        "operationId": "api_provider_shares_api_sharing_providers__name__shares_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "title": "Name",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Provider Shares Api Sharing Providers  Name  Shares Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Provider Shares",
+        "tags": [
+          "sharing"
+        ]
+      }
+    },
+    "/api/sharing/providers/{name}/shares/{share}/tables": {
+      "get": {
+        "description": "List every table of one remote share.\n\nArgs:\n    request: Incoming FastAPI request.\n    name: Provider alias.\n    share: Remote share name.\n\nReturns:\n    ``{\"tables\": [{\"share\", \"schema\", \"name\"}]}``.\n\nRaises:\n    ValidationError: When the remote answers outside the\n        protocol.",
+        "operationId": "api_provider_tables_api_sharing_providers__name__shares__share__tables_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "title": "Name",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "share",
+            "required": true,
+            "schema": {
+              "title": "Share",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Provider Tables Api Sharing Providers  Name  Shares  Share  Tables Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Provider Tables",
+        "tags": [
+          "sharing"
+        ]
+      }
+    },
+    "/api/sharing/recipients": {
+      "get": {
+        "description": "List every recipient (no token material).",
+        "operationId": "api_list_recipients_api_sharing_recipients_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api List Recipients Api Sharing Recipients Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Api List Recipients",
+        "tags": [
+          "sharing"
+        ]
+      },
+      "post": {
+        "description": "Create a recipient \u2014 the response carries the ONE-TIME token.\n\nThe plaintext token appears exactly once here and never again\n(soyuz stores only its hash); the UI must surface it immediately\nwith a copy affordance.\n\nArgs:\n    request: Incoming FastAPI request.\n    body: ``{\"name\", \"comment\"?}``.\n\nReturns:\n    The recipient info dict including ``token``.",
+        "operationId": "api_create_recipient_api_sharing_recipients_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Body",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Create Recipient Api Sharing Recipients Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Create Recipient",
+        "tags": [
+          "sharing"
+        ]
+      }
+    },
+    "/api/sharing/recipients/{name}": {
+      "delete": {
+        "description": "Delete a recipient (grants cascade on soyuz).",
+        "operationId": "api_delete_recipient_api_sharing_recipients__name__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "title": "Name",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Delete Recipient Api Sharing Recipients  Name  Delete",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Delete Recipient",
+        "tags": [
+          "sharing"
+        ]
+      }
+    },
+    "/api/sharing/recipients/{name}/rotate-token": {
+      "post": {
+        "description": "Rotate a recipient's bearer token; returns the new one-time token.",
+        "operationId": "api_rotate_recipient_token_api_sharing_recipients__name__rotate_token_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "title": "Name",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Rotate Recipient Token Api Sharing Recipients  Name  Rotate Token Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Rotate Recipient Token",
+        "tags": [
+          "sharing"
+        ]
+      }
+    },
+    "/api/sharing/shares": {
+      "get": {
+        "description": "List every share this install offers.",
+        "operationId": "api_list_shares_api_sharing_shares_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api List Shares Api Sharing Shares Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Api List Shares",
+        "tags": [
+          "sharing"
+        ]
+      },
+      "post": {
+        "description": "Create a share (``{\"name\", \"comment\"?}``).",
+        "operationId": "api_create_share_api_sharing_shares_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Body",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Create Share Api Sharing Shares Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Create Share",
+        "tags": [
+          "sharing"
+        ]
+      }
+    },
+    "/api/sharing/shares/{name}": {
+      "delete": {
+        "description": "Delete a share (objects + grants cascade on soyuz).",
+        "operationId": "api_delete_share_api_sharing_shares__name__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "title": "Name",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Delete Share Api Sharing Shares  Name  Delete",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Delete Share",
+        "tags": [
+          "sharing"
+        ]
+      },
+      "get": {
+        "description": "Return one share with its objects and grants.",
+        "operationId": "api_get_share_api_sharing_shares__name__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "title": "Name",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Get Share Api Sharing Shares  Name  Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Get Share",
+        "tags": [
+          "sharing"
+        ]
+      },
+      "patch": {
+        "description": "Patch a share's comment.",
+        "operationId": "api_update_share_api_sharing_shares__name__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "title": "Name",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Body",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Update Share Api Sharing Shares  Name  Patch",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Update Share",
+        "tags": [
+          "sharing"
+        ]
+      }
+    },
+    "/api/sharing/shares/{name}/objects": {
+      "delete": {
+        "description": "Remove a table from a share.",
+        "operationId": "api_remove_share_object_api_sharing_shares__name__objects_delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "title": "Name",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "table_full_name",
+            "required": true,
+            "schema": {
+              "title": "Table Full Name",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Remove Share Object Api Sharing Shares  Name  Objects Delete",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Remove Share Object",
+        "tags": [
+          "sharing"
+        ]
+      },
+      "post": {
+        "description": "Add a table (``{\"table_full_name\", \"shared_as\"?}``) to a share.",
+        "operationId": "api_add_share_object_api_sharing_shares__name__objects_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "title": "Name",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Body",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Add Share Object Api Sharing Shares  Name  Objects Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Add Share Object",
+        "tags": [
+          "sharing"
+        ]
+      }
+    },
+    "/api/sharing/shares/{name}/recipients/{recipient_name}": {
+      "delete": {
+        "description": "Revoke a recipient's access to a share.",
+        "operationId": "api_revoke_share_api_sharing_shares__name__recipients__recipient_name__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "title": "Name",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "recipient_name",
+            "required": true,
+            "schema": {
+              "title": "Recipient Name",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Revoke Share Api Sharing Shares  Name  Recipients  Recipient Name  Delete",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Revoke Share",
+        "tags": [
+          "sharing"
+        ]
+      },
+      "put": {
+        "description": "Grant a recipient access to a share (idempotent).",
+        "operationId": "api_grant_share_api_sharing_shares__name__recipients__recipient_name__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "title": "Name",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "recipient_name",
+            "required": true,
+            "schema": {
+              "title": "Recipient Name",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Grant Share Api Sharing Shares  Name  Recipients  Recipient Name  Put",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Grant Share",
+        "tags": [
+          "sharing"
         ]
       }
     },
@@ -41743,6 +43150,157 @@
         ]
       }
     },
+    "/bi": {
+      "get": {
+        "description": "Render the dashboards list page (any logged-in user).",
+        "operationId": "bi_dashboards_page_bi_get",
+        "responses": {
+          "200": {
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Bi Dashboards Page",
+        "tags": [
+          "bi-dashboards-html"
+        ]
+      }
+    },
+    "/bi/public/{token}": {
+      "get": {
+        "description": "Render a published dashboard for anonymous viewers.\n\nDeclared before the ``/bi/{slug}`` routes so ``public`` can never\nbe captured as a slug.  The token is the credential (mirroring the\nnotebook ``/share/`` viewer); widget queries run as the owner via\nthe ``/api/bi/public/{token}`` data path the page wires itself to.\n\nArgs:\n    request: Incoming FastAPI request.\n    token: Public-share token from the URL.\n\nReturns:\n    The rendered chromeless viewer page.\n\nRaises:\n    ResourceNotFoundError: For unknown or revoked tokens.",
+        "operationId": "bi_dashboard_public_page_bi_public__token__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "token",
+            "required": true,
+            "schema": {
+              "title": "Token",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Bi Dashboard Public Page",
+        "tags": [
+          "bi-dashboards-html"
+        ]
+      }
+    },
+    "/bi/{slug}": {
+      "get": {
+        "description": "Render one dashboard's read-only grid (any logged-in user).\n\nEdit / publish affordances render only for the owner and admins;\nthe JSON mutations re-check the same permission server-side.",
+        "operationId": "bi_dashboard_view_page_bi__slug__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Bi Dashboard View Page",
+        "tags": [
+          "bi-dashboards-html"
+        ]
+      }
+    },
+    "/bi/{slug}/edit": {
+      "get": {
+        "description": "Render the dashboard editor (owner or admin only).\n\nThe permission gate runs here \u2014 not just in the JSON layer \u2014\nbecause the editor page is useless chrome for a viewer who cannot\nsave anything; a 403 with the role hint is the clearer answer.",
+        "operationId": "bi_dashboard_edit_page_bi__slug__edit_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Bi Dashboard Edit Page",
+        "tags": [
+          "bi-dashboards-html"
+        ]
+      }
+    },
     "/branches": {
       "get": {
         "description": "Render the branches list page (admin-only).",
@@ -44327,6 +45885,28 @@
         "summary": "Mesh Health Page",
         "tags": [
           "mesh"
+        ]
+      }
+    },
+    "/metric-views": {
+      "get": {
+        "description": "Render the metric-view browser (catalog/schema picker + editor).",
+        "operationId": "metric_views_page_metric_views_get",
+        "responses": {
+          "200": {
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Metric Views Page",
+        "tags": [
+          "metric-views"
         ]
       }
     },

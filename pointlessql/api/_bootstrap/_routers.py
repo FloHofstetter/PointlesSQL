@@ -35,6 +35,7 @@ def register_routers(app: FastAPI) -> None:
     from pointlessql.api.audit import router as audit_router
     from pointlessql.api.auth_routes import router as auth_router
     from pointlessql.api.bi_dashboards_routes import router as bi_dashboards_router
+    from pointlessql.api.bi_html_routes import router as bi_html_router
     from pointlessql.api.branches_routes import router as branches_router
     from pointlessql.api.catalog_html_routes import router as catalog_html_router
     from pointlessql.api.catalog_routes import router as catalog_router
@@ -91,6 +92,7 @@ def register_routers(app: FastAPI) -> None:
         router as mesh_canvas_router,
     )
     from pointlessql.api.mesh_routes import router as mesh_router
+    from pointlessql.api.metric_views_routes import router as metric_views_router
     from pointlessql.api.ml_routes import router as ml_router
     from pointlessql.api.mlflow_html_routes import router as mlflow_html_router
     from pointlessql.api.mlflow_proxy import router as mlflow_proxy_router
@@ -123,7 +125,9 @@ def register_routers(app: FastAPI) -> None:
     )
     from pointlessql.api.saved_views_routes import router as saved_views_router
     from pointlessql.api.secrets_routes import router as secrets_router
+    from pointlessql.api.serving_routes import router as serving_router
     from pointlessql.api.settings_routes import router as settings_router
+    from pointlessql.api.sharing_routes import router as sharing_router
     from pointlessql.api.social_routes import router as social_router
     from pointlessql.api.sql import router as sql_router
     from pointlessql.api.sql_chat_routes import router as sql_chat_router
@@ -217,5 +221,9 @@ def register_routers(app: FastAPI) -> None:
     app.include_router(ingest_html_router)
     app.include_router(secrets_router)
     app.include_router(bi_dashboards_router)
+    app.include_router(bi_html_router)
+    app.include_router(metric_views_router)
+    app.include_router(serving_router)
+    app.include_router(sharing_router)
     app.include_router(help_router)
     app.include_router(health_router)

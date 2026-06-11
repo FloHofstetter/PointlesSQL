@@ -408,6 +408,17 @@ def make_lifespan(
                     exc,
                 )
 
+        # Model-serving endpoints: workers never outlive the process,
+        # so reset every stale ``ready``/``starting`` row to
+        # ``stopped`` before traffic; the manager itself is created
+        # lazily on first use and torn down in the finally block.
+        try:
+            from pointlessql.services.model_serving import reset_states_on_boot
+
+            reset_states_on_boot(app.state.session_factory)
+        except Exception:  # noqa: BLE001 — serving reset must not block boot
+            logger.warning("serving-endpoint state reset failed", exc_info=True)
+
         # dbt-docs subprocess.  Optional — only spawned when
         # ``settings.dbt.enabled`` is true, ``dbt-duckdb`` is installed
         # *and* the project has a compiled ``target/manifest.json``.
@@ -544,6 +555,9 @@ def make_lifespan(
                 bind_coedit_bus(None)
                 await coedit_bus.stop()
             await app.state.kernel_registry.shutdown_all()
+            serving_manager = getattr(app.state, "serving_manager", None)
+            if serving_manager is not None:
+                await serving_manager.stop_all()
             if app.state.mlflow_subprocess is not None:
                 await app.state.mlflow_subprocess.stop()
             if app.state.dbt_subprocess is not None:
