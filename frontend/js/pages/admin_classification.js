@@ -11,7 +11,14 @@ export function adminClassification(initialRules) {
     creating: false,
     saving: false,
     error: '',
-    form: { tag_key: '', tag_value: '', effect: 'mask', expr: 'redact', priority: 100, description: '' },
+    form: {
+      tag_key: '',
+      tag_value: '',
+      effect: 'mask',
+      expr: 'redact',
+      priority: 100,
+      description: '',
+    },
     scan: { catalog: '', schema: '', table: '' },
     scanning: false,
     scanError: '',
@@ -28,7 +35,11 @@ export function adminClassification(initialRules) {
       };
       if (this.form.tag_value.trim()) body.tag_value = this.form.tag_value.trim();
       if (this.form.description.trim()) body.description = this.form.description.trim();
-      const res = await window.pqlApi.fetch('/api/admin/tag-policies', { method: 'POST', body, silent: true });
+      const res = await window.pqlApi.fetch('/api/admin/tag-policies', {
+        method: 'POST',
+        body,
+        silent: true,
+      });
       this.saving = false;
       if (!res.ok) {
         this.error = res.error || 'Failed to create rule';
@@ -36,7 +47,14 @@ export function adminClassification(initialRules) {
       }
       this.rules.push(res.data);
       this.creating = false;
-      this.form = { tag_key: '', tag_value: '', effect: 'mask', expr: 'redact', priority: 100, description: '' };
+      this.form = {
+        tag_key: '',
+        tag_value: '',
+        effect: 'mask',
+        expr: 'redact',
+        priority: 100,
+        description: '',
+      };
     },
 
     async toggle(rule) {

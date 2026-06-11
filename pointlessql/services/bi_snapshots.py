@@ -406,6 +406,8 @@ async def _capture_widget(
             _run_widget_sql, sql, approved, _ROW_CAPS.get(widget.kind, 1_000), policies
         )
     except Exception as exc:  # noqa: BLE001 — per-widget isolation is the contract here
+        # bare-broad-ok: the error is captured into the snapshot payload
+        logger.debug("snapshot widget %s failed", widget.id, exc_info=True)
         entry["error"] = str(exc)
         return entry
     entry["columns"] = result.columns

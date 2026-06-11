@@ -106,7 +106,7 @@ def classify_values(samples: list[str]) -> str | None:
         The PII kind whose pattern matches at least
         :data:`MATCH_THRESHOLD` of the samples, or ``None``.
     """
-    cleaned = [s.strip() for s in samples if isinstance(s, str) and s.strip()]
+    cleaned = [s.strip() for s in samples if s.strip()]
     if len(cleaned) < 3:
         return None
     for kind, pattern in _VALUE_PATTERNS:
@@ -252,7 +252,9 @@ async def pii_classification_executor(
 
     Config carries either ``{"table": "cat.sch.tbl"}`` or
     ``{"catalog": ..., "schema": ...}``.  Every finding lands as a job
-    log line so the run detail page documents what was tagged.
+    log line so the run detail page documents what was tagged.  A
+    config without a usable scope propagates :class:`ValueError` from
+    :func:`scan_scope`, failing the run with the validation message.
 
     Args:
         job_run_id: Owning run (log correlation).
@@ -260,9 +262,6 @@ async def pii_classification_executor(
             caller already bound).
         config: Scan scope.
         uc_client: Principal-bound catalog facade.
-
-    Raises:
-        ValueError: When the config carries no usable scope.
     """
     del user_info
     from pointlessql.db import get_session_factory
