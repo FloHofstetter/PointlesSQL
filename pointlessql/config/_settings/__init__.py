@@ -57,6 +57,7 @@ from pointlessql.config._settings._infra import (
     ServerSettings,
 )
 from pointlessql.config._settings._integrations import (
+    AppsSettings,
     DBTSettings,
     HermesSettings,
     JupyterSettings,
@@ -117,6 +118,7 @@ class Settings(BaseSettings):
     workspace_repos: WorkspaceReposSettings = Field(default_factory=WorkspaceReposSettings)
     mlflow: MLflowSettings = Field(default_factory=MLflowSettings)
     serving: ServingSettings = Field(default_factory=ServingSettings)
+    apps: AppsSettings = Field(default_factory=AppsSettings)
     dbt: DBTSettings = Field(default_factory=DBTSettings)
     hermes: HermesSettings = Field(default_factory=HermesSettings)
     lens: LensSettings = Field(default_factory=LensSettings)
@@ -128,6 +130,7 @@ __all__ = [
     "AgentRunsSettings",
     "AiFunctionsSettings",
     "ApiKeyAclSettings",
+    "AppsSettings",
     "ApiKeyLifecycleSettings",
     "AuditSettings",
     "AuditStreamSettings",

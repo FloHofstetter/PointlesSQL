@@ -180,6 +180,11 @@ from pointlessql.models.genie import (
     GenieSpace,
     GenieTrustedAsset,
 )
+from pointlessql.models.hosted_apps import (
+    HOSTED_APP_KINDS,
+    HOSTED_APP_STATES,
+    HostedApp,
+)
 from pointlessql.models.ingest import (
     INGEST_PULL_MODES,
     INGEST_SOURCE_KINDS,
@@ -421,6 +426,9 @@ __all__ = [
     "EditorChatSession",
     "ExpectedLineageInbound",
     "GovernanceEvent",
+    "HOSTED_APP_KINDS",
+    "HOSTED_APP_STATES",
+    "HostedApp",
     "INGEST_PULL_MODES",
     "INGEST_SOURCE_KINDS",
     "IngestSource",

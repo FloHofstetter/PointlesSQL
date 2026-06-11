@@ -32,6 +32,9 @@ def register_routers(app: FastAPI) -> None:
     from pointlessql.api.agents_html_routes import router as agents_html_router
     from pointlessql.api.agents_routes import router as agents_router
     from pointlessql.api.alerts_routes import router as alerts_router
+    from pointlessql.api.apps_html_routes import router as apps_html_router
+    from pointlessql.api.apps_proxy import router as apps_proxy_router
+    from pointlessql.api.apps_routes import router as apps_router
     from pointlessql.api.audit import router as audit_router
     from pointlessql.api.auth_routes import router as auth_router
     from pointlessql.api.bi_dashboards_routes import router as bi_dashboards_router
@@ -121,8 +124,8 @@ def register_routers(app: FastAPI) -> None:
     from pointlessql.api.online_tables_routes import router as online_tables_router
     from pointlessql.api.pipelines_routes import router as pipelines_router
     from pointlessql.api.pql_introspect_routes import router as pql_introspect_router
-    from pointlessql.api.quality_routes import router as quality_router
     from pointlessql.api.pql_training_routes import router as pql_training_router
+    from pointlessql.api.quality_routes import router as quality_router
     from pointlessql.api.review_destinations_routes import (
         router as review_destinations_router,
     )
@@ -231,6 +234,9 @@ def register_routers(app: FastAPI) -> None:
     app.include_router(secrets_router)
     app.include_router(classification_router)
     app.include_router(quality_router)
+    app.include_router(apps_router)
+    app.include_router(apps_html_router)
+    app.include_router(apps_proxy_router)
     app.include_router(bi_dashboards_router)
     app.include_router(bi_snapshot_router)
     app.include_router(bi_html_router)

@@ -21,6 +21,7 @@ auth cookie carries ``SameSite=Lax`` as a second layer.
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from fastapi import Request
@@ -31,6 +32,12 @@ from pointlessql.services import csrf
 _SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
 _EXEMPT_PREFIXES = ("/api/", "/static/", "/webhook/git/")
 _EXEMPT_PATHS = frozenset({"/healthz"})
+# The hosted-apps reverse-proxy forwards arbitrary in-iframe app
+# traffic (forms, fetches) whose JS cannot know PointlesSQL's CSRF
+# token.  The proxy enforces its own auth gate and the auth cookie is
+# ``SameSite=Lax``, which covers the cross-site write vector the CSRF
+# check exists for.
+_APPS_PROXY_RE = re.compile(r"^/apps/[^/]+/proxy/")
 # Content types whose body we parse to extract the ``csrf_token`` form
 # field. Every other content type (e.g. ``application/json``) is only
 # validated via the ``X-CSRF-Token`` header.
@@ -40,6 +47,8 @@ _FORM_CONTENT_TYPES = ("application/x-www-form-urlencoded", "multipart/form-data
 def _is_exempt_path(path: str) -> bool:
     """Return True when *path* is not subject to CSRF enforcement."""
     if path in _EXEMPT_PATHS:
+        return True
+    if _APPS_PROXY_RE.match(path):
         return True
     return any(path.startswith(prefix) for prefix in _EXEMPT_PREFIXES)
 

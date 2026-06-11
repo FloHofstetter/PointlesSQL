@@ -197,6 +197,27 @@ class ServingSettings(BaseSettings):
     invocation_timeout_seconds: float = 30.0
 
 
+class AppsSettings(BaseSettings):
+    """Hosted-apps worker pool configuration.
+
+    Reads ``POINTLESSQL_APPS_*`` environment variables.  App workers
+    are per-app subprocesses (uvicorn / streamlit / custom command)
+    on loopback ports starting at ``port_range_start``; ``max_apps``
+    caps concurrency.  ``startup_timeout_seconds`` bounds the
+    post-spawn health poll, ``request_timeout_seconds`` bounds one
+    proxied request.  ``apps_root`` is where app sources are
+    materialised; ``None`` falls back to a temp-dir subfolder.
+    """
+
+    model_config = SettingsConfigDict(env_prefix="POINTLESSQL_APPS_")
+
+    port_range_start: int = 9200
+    max_apps: int = 8
+    startup_timeout_seconds: float = 60.0
+    request_timeout_seconds: float = 30.0
+    apps_root: Path | None = None
+
+
 class HermesSettings(BaseSettings):
     """Embedded Hermes agent dashboard + reverse-proxy configuration.
 

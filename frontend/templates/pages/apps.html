@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+{% block title %}Apps · PointlesSQL{% endblock %}
+{% block page_entry %}apps.js{% endblock %}
+
+{% set breadcrumbs = [
+ {"label": "Home", "href": "/"},
+ {"label": "Apps"}
+] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block content %}
+<div x-data='hostedApps({{ apps | tojson }}, {{ can_admin | tojson }})'>
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <div class="d-flex align-items-center gap-2">
+            <i class="bi bi-window-stack fs-3"></i>
+            <h1 class="h3 mb-0">Apps</h1>
+        </div>
+        <span class="text-muted small"
+              x-text="apps.length + (apps.length === 1 ? ' app' : ' apps')"></span>
+    </div>
+
+    <p class="text-muted">
+        Host small data apps (FastAPI, Streamlit, or a custom command)
+        as managed worker processes. Every request is fronted by
+        PointlesSQL's authenticating reverse-proxy — the apps never
+        expose their own port.
+    </p>
+
+    {% if can_admin %}
+    <div class="card mb-4">
+        <div class="card-header"><i class="bi bi-plus-lg me-1"></i>New app</div>
+        <div class="card-body">
+            <div class="row g-2 align-items-end">
+                <div class="col-md-4">
+                    <label class="form-label" for="app-title">Title</label>
+                    <input id="app-title" type="text" class="form-control form-control-sm"
+                           x-model="form.title" placeholder="Churn explorer" maxlength="200">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label" for="app-kind">Kind</label>
+                    <select id="app-kind" class="form-select form-select-sm" x-model="form.kind">
+                        <option value="fastapi">FastAPI</option>
+                        <option value="streamlit">Streamlit</option>
+                        <option value="command">Command</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label" for="app-command">
+                        Command <span class="text-muted">(command kind only)</span>
+                    </label>
+                    <input id="app-command" type="text"
+                           class="form-control form-control-sm font-monospace"
+                           x-model="form.command_override"
+                           placeholder="python -m http.server {port}"
+                           :disabled="form.kind !== 'command'">
+                </div>
+                <div class="col-md-2">
+                    <button type="button" class="btn btn-primary btn-sm w-100 mb-1"
+                            :disabled="creating" @click="create()">
+                        <span x-show="!creating">Create</span>
+                        <span x-show="creating" x-cloak>Creating&hellip;</span>
+                    </button>
+                </div>
+            </div>
+            <div class="mt-2">
+                <label class="form-label" for="app-source">Source (app.py)</label>
+                <textarea id="app-source" class="form-control form-control-sm font-monospace"
+                          rows="6" x-model="form.source_code" spellcheck="false"></textarea>
+            </div>
+            <div class="mt-2">
+                <label class="form-label" for="app-env">Env (JSON object)</label>
+                <textarea id="app-env" class="form-control form-control-sm font-monospace"
+                          rows="2" x-model="form.env_text" spellcheck="false"
+                          placeholder='{"API_TOKEN": "{{ "{{secrets/my-scope/token}}" }}"}'></textarea>
+                <div class="form-text">
+                    Extra environment variables for the worker. Values may
+                    carry <code>{{ '{{secrets/<scope>/<key>}}' }}</code>
+                    references — they resolve at start time, never at rest.
+                </div>
+            </div>
+            <div class="alert alert-danger mt-2 mb-0" x-show="createError" x-text="createError" x-cloak></div>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="alert alert-danger" x-show="error" x-text="error" x-cloak></div>
+
+    <div class="table-responsive">
+        <table class="table table-sm align-middle pql-list-table">
+            <thead>
+                <tr>
+                    <th>Title</th>
+                    <th>Slug</th>
+                    <th>Kind</th>
+                    <th>State</th>
+                    <th>Port</th>
+                    <th>Updated</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <template x-for="app in apps" :key="app.slug">
+                    <tr>
+                        <td data-label="Title">
+                            <a :href="'/apps/' + encodeURIComponent(app.slug)" x-text="app.title"></a>
+                        </td>
+                        <td data-label="Slug"><code class="small" x-text="app.slug"></code></td>
+                        <td data-label="Kind"><span class="badge bg-secondary-subtle text-body" x-text="app.kind"></span></td>
+                        <td data-label="State">
+                            <span class="badge" :class="stateBadge(app.state)"
+                                  :title="app.state === 'failed' ? (app.last_error || '') : ''"
+                                  x-text="app.state"></span>
+                        </td>
+                        <td data-label="Port" class="text-muted small"
+                            x-text="app.port ? String(app.port) : '—'"></td>
+                        <td data-label="Updated" class="text-muted small" x-text="ago(app.updated_at)"></td>
+                        <td data-label="Actions" class="text-nowrap">
+                            <a class="btn btn-sm btn-outline-primary"
+                               :class="{ disabled: app.state !== 'ready' }"
+                               :href="'/apps/' + encodeURIComponent(app.slug)">
+                                <i class="bi bi-box-arrow-up-right"></i> Open
+                            </a>
+                            <template x-if="canAdmin">
+                                <span>
+                                    <button type="button" class="btn btn-sm btn-outline-success"
+                                            :disabled="app.state === 'ready' || app.state === 'starting' || busy[app.slug]"
+                                            @click="start(app)">
+                                        <i class="bi bi-play"></i> Start
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary"
+                                            :disabled="app.state === 'stopped' || busy[app.slug]"
+                                            @click="stop(app)">
+                                        <i class="bi bi-stop"></i> Stop
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-danger"
+                                            :disabled="busy[app.slug]" @click="remove(app)">
+                                        <i class="bi bi-trash"></i> Delete
+                                    </button>
+                                </span>
+                            </template>
+                        </td>
+                    </tr>
+                </template>
+                <tr x-show="apps.length === 0">
+                    <td colspan="7" class="text-muted">
+                        No apps yet.{% if can_admin %} Create one above.{% endif %}
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

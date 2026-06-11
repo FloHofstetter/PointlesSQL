@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block title %}{{ app.title }} · Apps · PointlesSQL{% endblock %}
+{% block page_entry %}app_detail.js{% endblock %}
+
+{% set breadcrumbs = [
+ {"label": "Home", "href": "/"},
+ {"label": "Apps", "href": "/apps"},
+ {"label": app.title}
+] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block content %}
+<div x-data='hostedAppDetail({{ app | tojson }}, {{ can_admin | tojson }})'>
+    <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+        <div class="d-flex align-items-center gap-2">
+            <i class="bi bi-window-stack fs-3"></i>
+            <h1 class="h3 mb-0" x-text="app.title"></h1>
+            <span class="badge" :class="stateBadge(app.state)" x-text="app.state"></span>
+            <span class="badge bg-secondary-subtle text-body" x-text="app.kind"></span>
+        </div>
+        {% if can_admin %}
+        <div class="text-nowrap">
+            <button type="button" class="btn btn-sm btn-outline-success"
+                    :disabled="app.state === 'ready' || app.state === 'starting' || busy"
+                    @click="start()">
+                <i class="bi bi-play"></i> Start
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-secondary"
+                    :disabled="app.state === 'stopped' || busy"
+                    @click="stop()">
+                <i class="bi bi-stop"></i> Stop
+            </button>
+        </div>
+        {% endif %}
+    </div>
+
+    <p class="text-muted" x-show="app.description" x-text="app.description"></p>
+
+    <div class="alert alert-danger" x-show="error" x-text="error" x-cloak></div>
+    <div class="alert alert-warning" x-show="app.state === 'failed' && app.last_error"
+         x-text="app.last_error" x-cloak></div>
+
+    <div class="card mb-4">
+        <div class="card-header d-flex align-items-center justify-content-between">
+            <span><i class="bi bi-display me-1"></i>App</span>
+            <code class="small" x-text="proxyUrl()"></code>
+        </div>
+        <div class="card-body p-0">
+            <template x-if="app.state === 'ready'">
+                <iframe :src="proxyUrl()" class="w-100 border-0" style="min-height: 60vh;"
+                        title="Hosted app"></iframe>
+            </template>
+            <div class="p-3 text-muted" x-show="app.state !== 'ready'">
+                The app is not running. <span x-show="app.state === 'starting'">Starting&hellip;</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header d-flex align-items-center justify-content-between">
+            <span><i class="bi bi-file-text me-1"></i>Worker log (stderr tail)</span>
+            <button type="button" class="btn btn-sm btn-outline-secondary" @click="fetchLogs()">
+                <i class="bi bi-arrow-clockwise"></i> Refresh
+            </button>
+        </div>
+        <div class="card-body">
+            <pre class="small bg-body-tertiary p-2 rounded mb-0" style="max-height: 18rem; overflow: auto;"
+                 x-text="logs || 'No log output yet.'"></pre>
+        </div>
+    </div>
+
+    {% if can_admin %}
+    <div class="card mb-4">
+        <div class="card-header"><i class="bi bi-code-square me-1"></i>Source (app.py)</div>
+        <div class="card-body">
+            <textarea class="form-control form-control-sm font-monospace" rows="14"
+                      x-model="source" spellcheck="false"
+                      aria-label="App source code"></textarea>
+            <div class="d-flex align-items-center gap-2 mt-2">
+                <button type="button" class="btn btn-sm btn-primary" :disabled="saving" @click="save()">
+                    <span x-show="!saving">Save</span>
+                    <span x-show="saving" x-cloak>Saving&hellip;</span>
+                </button>
+                <span class="text-muted small" x-show="saveMsg" x-text="saveMsg" x-cloak></span>
+            </div>
+            <div class="form-text">
+                Saved source takes effect on the next start. Environment
+                variables (including <code>{{ '{{secrets/<scope>/<key>}}' }}</code>
+                references) are edited through <code>PATCH /api/apps/&lt;slug&gt;</code>.
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

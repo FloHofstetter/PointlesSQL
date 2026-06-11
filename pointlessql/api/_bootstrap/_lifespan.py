@@ -419,6 +419,27 @@ def make_lifespan(
         except Exception:  # noqa: BLE001 — serving reset must not block boot
             logger.warning("serving-endpoint state reset failed", exc_info=True)
 
+        # Hosted-apps worker pool: same never-outlive-the-process
+        # contract as serving.  The manager is constructed up front
+        # (the proxy 503s while it is absent) and every stale state
+        # row resets to ``stopped`` before traffic.
+        try:
+            from pointlessql.services import app_hosting
+
+            app.state.apps_manager = app_hosting.AppsManager(
+                app_hosting.AppsConfig(
+                    port_range_start=settings.apps.port_range_start,
+                    max_apps=settings.apps.max_apps,
+                    startup_timeout_seconds=settings.apps.startup_timeout_seconds,
+                    request_timeout_seconds=settings.apps.request_timeout_seconds,
+                    apps_root=settings.apps.apps_root,
+                )
+            )
+            app_hosting.reset_states_on_boot(app.state.session_factory)
+        except Exception:  # noqa: BLE001 — apps reset must not block boot
+            app.state.apps_manager = None
+            logger.warning("hosted-apps manager boot failed", exc_info=True)
+
         # dbt-docs subprocess.  Optional — only spawned when
         # ``settings.dbt.enabled`` is true, ``dbt-duckdb`` is installed
         # *and* the project has a compiled ``target/manifest.json``.
@@ -558,6 +579,9 @@ def make_lifespan(
             serving_manager = getattr(app.state, "serving_manager", None)
             if serving_manager is not None:
                 await serving_manager.stop_all()
+            apps_manager = getattr(app.state, "apps_manager", None)
+            if apps_manager is not None:
+                await apps_manager.stop_all()
             stream_buffer = getattr(app.state, "ingest_stream_buffer", None)
             if stream_buffer is not None:
                 await stream_buffer.shutdown()
