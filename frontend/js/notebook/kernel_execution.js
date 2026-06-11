@@ -18,6 +18,7 @@
  * pure behavior-installer.
  */
 
+import { installNotebookDebugger } from './debugger.js';
 import { createKernelClient } from './kernel_ws.js';
 import { renderOutputFrame } from './output_renderer.js';
 import { installVariableInspector } from './variable_inspector.js';
@@ -47,9 +48,11 @@ import { installVariableInspector } from './variable_inspector.js';
 export function installKernelExecution(state, deps) {
   const computeContentHash = deps.computeContentHash;
 
-  // Install variable-inspector surface first so the kernel-client
-  // wiring below can reference its frame handlers via `this`.
+  // Install variable-inspector + debugger surfaces first so the
+  // kernel-client wiring below can reference their frame handlers
+  // via `this`.
   installVariableInspector(state);
+  installNotebookDebugger(state);
 
   state._connectKernel = function () {
     if (this._kernel) return;
@@ -69,6 +72,7 @@ export function installKernelExecution(state, deps) {
       },
       onVariableSnapshot: (params) => this._onVariableSnapshot(params),
       onVariableDetail: (params) => this._onVariableDetail(params),
+      onDebugEvent: (params) => this._onDebugEvent(params),
     });
     this._kernel.connect();
   };

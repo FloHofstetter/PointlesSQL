@@ -568,6 +568,7 @@ export function notebookEditor({ initialPath = '', currentUser = null } = {}) {
     openPanelCount() {
       let n = 0;
       if (this.jobsPanelOpen) n++;
+      if (this.debugPanelOpen) n++;
       if (this.replays && this.replays.open) n++;
       if (this.sequenceProposals && this.sequenceProposals.open) n++;
       if (this.widgetsPanel && this.widgetsPanel.open) n++;
@@ -578,6 +579,11 @@ export function notebookEditor({ initialPath = '', currentUser = null } = {}) {
 
     closeAllPanels() {
       this.jobsPanelOpen = false;
+      // Routed through the debugger mixin's close so an active debug
+      // session is detached before the panel disappears.
+      if (this.debugPanelOpen && typeof this.closeDebugPanel === 'function') {
+        this.closeDebugPanel();
+      }
       if (this.replays) this.replays.open = false;
       if (this.sequenceProposals) this.sequenceProposals.open = false;
       if (this.widgetsPanel) this.widgetsPanel.open = false;

@@ -11,6 +11,7 @@ from typing import Any
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from pointlessql.api.notebook_kernel_ws._handlers import (
+    handle_debug,
     handle_execute,
     handle_interrupt,
     handle_restart,
@@ -220,6 +221,13 @@ async def notebook_kernel_ws(websocket: WebSocket) -> None:
                     sql_cell_metadata=sql_cell_metadata,
                     cell_run_started_at=cell_run_started_at,
                     user=user,
+                )
+            elif method == "debug":
+                await handle_debug(
+                    websocket,
+                    request_id=request_id,
+                    params=params,
+                    session=session,
                 )
             elif method == "interrupt":
                 await handle_interrupt(

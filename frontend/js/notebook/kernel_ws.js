@@ -7,7 +7,8 @@
  *
  * Connection lifecycle is owned by ``notebookEditor`` via
  * :func:`createKernelClient`.  The factory exposes ``connect()``,
- * ``execute(contentHash, source)``, ``interrupt()``, ``restart()``
+ * ``execute(contentHash, source)``, ``debug(content)``,
+ * ``interrupt()``, ``restart()``
  * and ``close()``; every method that triggers a kernel reply returns
  * a ``Promise`` that resolves with the matching ``{id, result}``
  * frame.  Streamed kernel-message frames invoke the
@@ -32,6 +33,10 @@ export function createKernelClient({
   // the per-cell output rendering pipe.
   onVariableSnapshot = () => {},
   onVariableDetail = () => {},
+  // Debug Adapter Protocol events (``stopped`` / ``continued`` / …)
+  // forwarded by the server pump as ``debug_event`` notifies — they
+  // carry no content_hash, so they bypass the per-cell pipe too.
+  onDebugEvent = () => {},
 } = {}) {
   if (!notebookPath) {
     throw new Error('createKernelClient: notebookPath is required');
@@ -71,6 +76,14 @@ export function createKernelClient({
       if (payload.notify === 'variable_detail') {
         try {
           onVariableDetail(payload.params || {});
+        } catch (e) {
+          onError(e);
+        }
+        return;
+      }
+      if (payload.notify === 'debug_event') {
+        try {
+          onDebugEvent(payload.params || {});
         } catch (e) {
           onError(e);
         }
@@ -148,6 +161,10 @@ export function createKernelClient({
         result_var: options.resultVar || null,
         silent: !!options.silent,
       });
+    },
+
+    debug(content) {
+      return _request('debug', { content });
     },
 
     interrupt() {

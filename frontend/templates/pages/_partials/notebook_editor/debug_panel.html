@@ -1,0 +1,149 @@
+{# Step-through debugger panel.
+
+   Opened via the per-cell run-dropdown's "Debug this cell…" item
+   (``openDebugger(cell)``).  Breakpoints are entered as
+   comma-separated 1-based line numbers — the per-cell CodeMirror
+   editor has no gutter-marker extension, so the panel input is the
+   breakpoint surface.  While paused, the panel shows the stack
+   frames (clickable — loads that frame's scope variables) and one
+   level of name/type/value variable rows; Continue / Next /
+   Step In / Step Out / Stop drive the kernel's debug adapter. #}
+<div class="pql-notebook-debug-panel card mt-2"
+     x-show="debugPanelOpen"
+     x-cloak
+     data-testid="debug-panel">
+ <div class="card-body small">
+  <div class="d-flex justify-content-between align-items-center mb-2">
+   <strong>
+    <i class="bi bi-bug me-1" aria-hidden="true"></i>
+    Debugger
+    <span class="text-muted fw-normal ms-1"
+          x-show="debugTargetCell()"
+          x-text="debugTargetCell()
+                  ? `· cell ${cells.findIndex(c => c.id === _debugTargetCellId) + 1}`
+                  : ''"></span>
+   </strong>
+   <button type="button" class="btn-close btn-close-sm"
+           aria-label="Close debugger"
+           @click="closeDebugPanel()"></button>
+  </div>
+
+  <div class="d-flex align-items-center gap-2 mb-2">
+   <label class="form-label mb-0 text-nowrap" for="pql-debug-breakpoints">
+    Breakpoints
+   </label>
+   <input id="pql-debug-breakpoints"
+          type="text"
+          class="form-control form-control-sm"
+          placeholder="e.g. 2, 5, 9"
+          title="Comma-separated 1-based line numbers within the target cell"
+          x-model="breakpointInput"
+          :disabled="debugActive"
+          data-testid="debug-breakpoints-input">
+   <button type="button"
+           class="btn btn-sm btn-success text-nowrap"
+           @click="startDebugCell()"
+           :disabled="debugBusy || debugActive || kernelStatus !== 'ready'"
+           data-testid="debug-start"
+           title="Set breakpoints and run the target cell under the debugger">
+    <i class="bi bi-bug-fill" aria-hidden="true"></i> Debug cell
+   </button>
+  </div>
+
+  <template x-if="debugActive">
+   <div>
+    <div class="d-flex align-items-center gap-2 mb-2 flex-wrap">
+     <span class="badge"
+           :class="stopped ? 'bg-warning text-dark' : 'bg-success'"
+           data-testid="debug-state-badge">
+      <span x-show="stopped" x-cloak>
+       Paused —
+       <span x-text="stopped && stopped.frames.length > 0
+                     ? stopped.frames[0].name
+                     : '?'"></span>
+      </span>
+      <span x-show="!stopped">Running</span>
+     </span>
+     <div class="btn-group btn-group-sm" role="group"
+          aria-label="Debugger stepping">
+      <button type="button" class="btn btn-outline-success"
+              @click="debugContinue()"
+              :disabled="!stopped"
+              data-testid="debug-continue"
+              title="Continue to the next breakpoint">
+       <i class="bi bi-play-fill" aria-hidden="true"></i> Continue
+      </button>
+      <button type="button" class="btn btn-outline-secondary"
+              @click="debugNext()"
+              :disabled="!stopped"
+              data-testid="debug-next"
+              title="Step over the current line">
+       <i class="bi bi-arrow-right" aria-hidden="true"></i> Next
+      </button>
+      <button type="button" class="btn btn-outline-secondary"
+              @click="debugStepIn()"
+              :disabled="!stopped"
+              data-testid="debug-step-in"
+              title="Step into the call on the current line">
+       <i class="bi bi-box-arrow-in-down-right" aria-hidden="true"></i> Step in
+      </button>
+      <button type="button" class="btn btn-outline-secondary"
+              @click="debugStepOut()"
+              :disabled="!stopped"
+              data-testid="debug-step-out"
+              title="Run until the current frame returns">
+       <i class="bi bi-box-arrow-up-left" aria-hidden="true"></i> Step out
+      </button>
+     </div>
+     <button type="button" class="btn btn-sm btn-outline-danger"
+             @click="debugStop()"
+             :disabled="debugBusy"
+             data-testid="debug-stop"
+             title="Resume execution and detach the debugger">
+      <i class="bi bi-stop-fill" aria-hidden="true"></i> Stop
+     </button>
+    </div>
+
+    <template x-if="stopped">
+     <div class="row g-2">
+      <div class="col-5">
+       <div class="text-muted text-uppercase small mb-1">Stack</div>
+       <ul class="list-unstyled mb-0" data-testid="debug-frames">
+        <template x-for="f in stopped.frames" :key="f.id">
+         <li>
+          <button type="button"
+                  class="btn btn-link btn-sm p-0 text-start text-decoration-none"
+                  :class="{ 'fw-bold': stopped.frameId === f.id }"
+                  @click="debugSelectFrame(f.id)"
+                  :title="f.source">
+           <span x-text="f.name"></span><!--
+           --><span class="text-muted"
+                    x-text="`:${f.line != null ? f.line : '?'}`"></span>
+          </button>
+         </li>
+        </template>
+       </ul>
+      </div>
+      <div class="col-7">
+       <div class="text-muted text-uppercase small mb-1">Variables</div>
+       <template x-if="stopped.variables.length === 0">
+        <div class="text-muted">No variables in this scope.</div>
+       </template>
+       <ul class="list-unstyled mb-0" data-testid="debug-variables">
+        <template x-for="v in stopped.variables" :key="v.name">
+         <li class="font-monospace text-truncate" :title="v.value">
+          <span x-text="v.name"></span><!--
+          --><span class="text-muted"
+                   x-show="v.type"
+                   x-text="`: ${v.type}`"></span>
+          = <span x-text="v.value"></span>
+         </li>
+        </template>
+       </ul>
+      </div>
+     </div>
+    </template>
+   </div>
+  </template>
+ </div>
+</div>

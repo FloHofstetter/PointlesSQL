@@ -15,8 +15,10 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+import queue
 import uuid
 from pathlib import Path
+from typing import Any
 
 from jupyter_client.asynchronous.client import AsyncKernelClient  # type: ignore[import-untyped]
 from jupyter_client.manager import AsyncKernelManager  # type: ignore[import-untyped]
@@ -31,6 +33,9 @@ logger = logging.getLogger(__name__)
 _KERNEL_READY_TIMEOUT = 30.0
 _SHUTDOWN_TIMEOUT = 5.0
 _BOOTSTRAP_TIMEOUT = 10.0
+# Generous because the very first DAP ``attach`` spawns the debugpy
+# adapter inside the kernel; later requests answer in milliseconds.
+_DEBUG_REPLY_TIMEOUT = 15.0
 
 
 # Kernel-side helper that turns the WS ``execute_sql`` wrapper into
@@ -298,6 +303,8 @@ class KernelSession:
         self._iopub_task: asyncio.Task[None] | None = None
         self._shell_task: asyncio.Task[None] | None = None
         self._exec_lock = asyncio.Lock()
+        self._debug_lock = asyncio.Lock()
+        self._debug_seq = 0
 
     async def start(self) -> None:
         """Launch the kernel subprocess and start the pump tasks.
@@ -487,6 +494,79 @@ class KernelSession:
             )
             self._msg_to_content_hash[msg_id] = content_hash
             return msg_id
+
+    async def debug_request(
+        self,
+        content: dict[str, Any],
+        *,
+        timeout: float = _DEBUG_REPLY_TIMEOUT,
+    ) -> dict[str, Any]:
+        """Send one DAP request over the control channel, await the reply.
+
+        The Jupyter Debug Protocol wraps Debug Adapter Protocol
+        requests in ``debug_request`` messages on the CONTROL channel
+        (not shell, so the debugger stays reachable while a cell is
+        executing).  The matching ``debug_reply`` arrives on the same
+        channel; asynchronous DAP *events* (``stopped``, ``continued``,
+        …) arrive on iopub as ``debug_event`` frames and flow through
+        the regular pump instead.
+
+        The DAP ``seq`` counter is stamped here rather than in the
+        browser: several tabs can share one kernel, and the session is
+        the only place that sees every request, so it is the single
+        sequence authority.  A dedicated lock serialises requests so
+        a reply can never be attributed to the wrong caller.
+
+        Args:
+            content: DAP request payload carrying ``command`` and
+                ``arguments``.  ``type`` and ``seq`` are overwritten
+                here; callers do not need to provide them.
+            timeout: Seconds to wait for the matching ``debug_reply``
+                before giving up.
+
+        Returns:
+            The ``debug_reply`` message content — a DAP response dict
+            with ``success``, ``command``, and (usually) ``body``.
+
+        Raises:
+            TimeoutError: No matching ``debug_reply`` arrived within
+                ``timeout`` seconds — typically a dead kernel or a
+                debug adapter that failed to start.
+        """
+        assert self._kc is not None
+        kc = self._kc
+        async with self._debug_lock:
+            self._debug_seq += 1
+            request = dict(content)
+            request["type"] = "request"
+            request["seq"] = self._debug_seq
+            msg = kc.session.msg("debug_request", request)
+            msg_id: str = msg["header"]["msg_id"]
+            kc.control_channel.send(msg)
+            loop = asyncio.get_running_loop()
+            deadline = loop.time() + timeout
+            while True:
+                remaining = deadline - loop.time()
+                if remaining <= 0:
+                    raise TimeoutError(
+                        f"debug_request {request.get('command')!r} timed out after "
+                        f"{timeout:.0f}s waiting for the kernel's debug_reply "
+                        f"(notebook={self._notebook_path})"
+                    )
+                try:
+                    raw = await kc.control_channel.get_msg(timeout=remaining)
+                except queue.Empty:
+                    raise TimeoutError(
+                        f"debug_request {request.get('command')!r} timed out after "
+                        f"{timeout:.0f}s waiting for the kernel's debug_reply "
+                        f"(notebook={self._notebook_path})"
+                    ) from None
+                if raw.get("parent_header", {}).get("msg_id") != msg_id:
+                    # Stale reply from an earlier (timed-out) request —
+                    # drain and keep waiting for ours.
+                    continue
+                reply: dict[str, Any] = raw.get("content", {}) or {}
+                return reply
 
     async def interrupt(self) -> None:
         """Send SIGINT to the kernel (``KeyboardInterrupt`` inside)."""

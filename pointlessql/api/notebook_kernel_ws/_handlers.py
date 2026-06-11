@@ -1,11 +1,11 @@
-"""JSON-RPC method handlers — execute / interrupt / restart."""
+"""JSON-RPC method handlers — execute / interrupt / restart / debug."""
 
 from __future__ import annotations
 
 import datetime
 import json
 import logging
-from typing import Any
+from typing import Any, cast
 
 from fastapi import WebSocket
 
@@ -214,6 +214,49 @@ async def handle_execute(
         "result": {"msg_id": msg_id, "kernel_session_id": session.session_id},
     }
     await websocket.send_text(json.dumps(payload))
+
+
+async def handle_debug(
+    websocket: WebSocket,
+    *,
+    request_id: int | None,
+    params: dict[str, Any],
+    session: KernelSession,
+) -> None:
+    """Handle a JSON-RPC ``debug`` request — proxy one DAP request.
+
+    The browser-side step-through debugger sends raw Debug Adapter
+    Protocol payloads (``debugInfo`` / ``attach`` / ``dumpCell`` /
+    ``setBreakpoints`` / ``stackTrace`` / …); the server forwards
+    them verbatim to the kernel's control channel via
+    :meth:`KernelSession.debug_request` and returns the
+    ``debug_reply`` content unchanged.  Keeping the server a dumb
+    proxy means new DAP commands need no backend change — the
+    privilege gate already happened at WebSocket-open time.
+    """
+    content = params.get("content")
+    if not isinstance(content, dict):
+        await send_error(
+            websocket,
+            request_id=request_id,
+            code="bad_params",
+            message="debug params.content must be a JSON object",
+        )
+        return
+    try:
+        reply = await session.debug_request(cast("dict[str, Any]", content))
+    except Exception as exc:  # noqa: BLE001
+        # bare-broad-ok: debugger errors (timeouts, dead kernel) are
+        # surfaced to the browser via the structured JSON-RPC error
+        # envelope; that IS the diagnostic the user acts on.
+        await send_error(
+            websocket,
+            request_id=request_id,
+            code="debug_failed",
+            message=str(exc),
+        )
+        return
+    await websocket.send_text(json.dumps({"id": request_id, "result": {"reply": reply}}))
 
 
 async def handle_interrupt(

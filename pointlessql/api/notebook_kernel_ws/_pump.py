@@ -127,6 +127,20 @@ async def handle_kernel_message(
         # Skip bootstrap echoes — the helper definition is internal.
         return
 
+    # Jupyter Debug Protocol events.  DAP events (``stopped`` /
+    # ``continued`` / ``thread`` / …) arrive on iopub as ``debug_event``
+    # frames parented to a control-channel ``debug_request`` — they
+    # never carry a content_hash, so they must be forwarded before the
+    # per-cell routing below would drop or mis-route them.  The
+    # browser-side debugger mixin reacts (e.g. fetching the stack
+    # trace on ``stopped``); nothing is persisted because debug state
+    # is transient to the live kernel.
+    if channel == "iopub" and msg.msg_type == "debug_event":
+        await websocket.send_text(
+            json.dumps({"notify": "debug_event", "params": {"content": msg.content}})
+        )
+        return
+
     # Variable Inspector custom-MIME interception.
     # ``__pql_inspect__`` / ``__pql_inspect_detail__`` emit
     # ``display_data`` frames carrying our private MIMEs. Route them as
