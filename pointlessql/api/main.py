@@ -250,6 +250,10 @@ cli = typer.Typer(
 _admin_cli = typer.Typer(help="Administrative helpers (key issuance, …).")
 cli.add_typer(_admin_cli, name="admin")
 
+from pointlessql.cli.bundles import bundles_cli  # noqa: E402  # CLI-only import
+
+cli.add_typer(bundles_cli, name="bundle")
+
 
 @cli.callback()
 def _root(ctx: typer.Context) -> None:  # pyright: ignore[reportUnusedFunction]

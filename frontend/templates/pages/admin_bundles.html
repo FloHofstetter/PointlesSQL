@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+{% block title %}Asset bundles · PointlesSQL{% endblock %}
+{% block page_entry %}admin_bundles.js{% endblock %}
+
+{% set breadcrumbs = [
+    {"label": "Home", "href": "/"},
+    {"label": "Admin", "href": "/admin"},
+    {"label": "Asset bundles"}
+] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block content %}
+<div x-data="adminBundles()">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <div class="d-flex align-items-center gap-2">
+            <i class="bi bi-box-seam fs-3"></i>
+            <h1 class="h3 mb-0">Asset bundles</h1>
+        </div>
+    </div>
+
+    <p class="text-muted">
+        Declare jobs, pipelines, and BI dashboards as one YAML bundle,
+        then plan + apply it idempotently. Plan diffs each resource by
+        its identity (job name / pipeline slug / dashboard slug) and
+        never deletes top-level resources — unmanaged ones are listed
+        as orphans. Widgets of a managed dashboard belong entirely to
+        the bundle: undeclared widgets are removed on apply.
+    </p>
+
+    <div class="row g-3">
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-header"><strong>Bundle (YAML)</strong></div>
+                <div class="card-body">
+                    <textarea class="form-control font-monospace" rows="18"
+                              x-model="yamlText"
+                              placeholder="bundle:&#10;  name: nightly-stack&#10;jobs: []&#10;pipelines: []&#10;dashboards: []&#10;"></textarea>
+                    <div class="d-flex align-items-center gap-3 mt-3">
+                        <button class="btn btn-outline-secondary" @click="runPlan()"
+                                :disabled="!yamlText || busy">Plan</button>
+                        <button class="btn btn-primary" @click="runApply()"
+                                :disabled="!yamlText || busy">Apply</button>
+                        <div class="form-check mb-0">
+                            <input class="form-check-input" type="checkbox" id="bundle-dry-run"
+                                   x-model="dryRun">
+                            <label class="form-check-label" for="bundle-dry-run">Dry run</label>
+                        </div>
+                    </div>
+                    <div class="alert alert-danger mt-3" x-show="error" x-cloak
+                         x-text="error"></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-header"><strong>Plan / Outcome</strong></div>
+                <div class="card-body" style="max-height: 34rem; overflow:auto">
+                    <div x-show="!plan && !outcome" x-cloak class="text-muted small">
+                        Plan + apply results render here.
+                    </div>
+                    <div x-show="plan" x-cloak>
+                        <table class="table table-sm align-middle small">
+                            <thead>
+                                <tr>
+                                    <th>Resource</th>
+                                    <th>Identity</th>
+                                    <th>Action</th>
+                                    <th>Changes</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <template x-for="entry in plan?.entries || []"
+                                          :key="entry.resource_type + ':' + entry.identity">
+                                    <tr>
+                                        <td x-text="entry.resource_type"></td>
+                                        <td class="font-monospace" x-text="entry.identity"></td>
+                                        <td>
+                                            <span class="badge" :class="actionBadge(entry.action)"
+                                                  x-text="entry.action"></span>
+                                        </td>
+                                        <td x-text="(entry.changes || []).join('; ')"></td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                        <div x-show="(plan?.orphans || []).length" x-cloak class="small">
+                            <strong>Orphans</strong>
+                            <span class="text-muted">(live resources the bundle does not manage — never deleted)</span>
+                            <ul class="mb-0">
+                                <template x-for="orphan in plan?.orphans || []"
+                                          :key="orphan.resource_type + ':' + orphan.identity">
+                                    <li>
+                                        <span x-text="orphan.resource_type"></span>:
+                                        <span class="font-monospace" x-text="orphan.identity"></span>
+                                    </li>
+                                </template>
+                            </ul>
+                        </div>
+                    </div>
+                    <div x-show="outcome" x-cloak class="mt-3">
+                        <strong>Apply outcome</strong>
+                        <span class="badge bg-secondary" x-show="outcome?.dry_run" x-cloak>dry run</span>
+                        <table class="table table-sm align-middle small mt-2">
+                            <thead>
+                                <tr>
+                                    <th>Resource</th>
+                                    <th>Identity</th>
+                                    <th>Action</th>
+                                    <th>Error</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <template x-for="result in outcome?.results || []"
+                                          :key="result.resource_type + ':' + result.identity">
+                                    <tr>
+                                        <td x-text="result.resource_type"></td>
+                                        <td class="font-monospace" x-text="result.identity"></td>
+                                        <td>
+                                            <span class="badge" :class="actionBadge(result.action)"
+                                                  x-text="result.action"></span>
+                                        </td>
+                                        <td class="text-danger" x-text="result.error || ''"></td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mt-3">
+        <div class="card-header"><strong>Export</strong></div>
+        <div class="card-body">
+            <p class="text-muted small mb-2">
+                Comma-separated job names / pipeline slugs / dashboard
+                slugs — leave a field empty to export all resources of
+                that type.
+            </p>
+            <div class="row g-2 align-items-end">
+                <div class="col-md-3">
+                    <label class="form-label small" for="bundle-export-jobs">Jobs</label>
+                    <input class="form-control form-control-sm" id="bundle-export-jobs"
+                           x-model="exportJobs" placeholder="all">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small" for="bundle-export-pipelines">Pipelines</label>
+                    <input class="form-control form-control-sm" id="bundle-export-pipelines"
+                           x-model="exportPipelines" placeholder="all">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small" for="bundle-export-dashboards">Dashboards</label>
+                    <input class="form-control form-control-sm" id="bundle-export-dashboards"
+                           x-model="exportDashboards" placeholder="all">
+                </div>
+                <div class="col-md-3 d-flex gap-2">
+                    <button class="btn btn-outline-secondary btn-sm" @click="runExport()"
+                            :disabled="busy">Export</button>
+                    <button class="btn btn-outline-secondary btn-sm" @click="copyExport()"
+                            x-show="exportYaml" x-cloak
+                            x-text="copied ? 'Copied!' : 'Copy'"></button>
+                </div>
+            </div>
+            <div class="alert alert-danger mt-3 mb-0" x-show="exportError" x-cloak
+                 x-text="exportError"></div>
+            <pre class="bg-light p-2 small mt-3 mb-0" style="max-height: 24rem; overflow:auto"
+                 x-show="exportYaml" x-cloak x-text="exportYaml"></pre>
+        </div>
+    </div>
+</div>
+{% endblock %}
