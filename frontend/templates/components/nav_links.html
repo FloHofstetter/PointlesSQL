@@ -81,6 +81,18 @@
         </a>
     </li>
     <li class="nav-item">
+        <a class="nav-link d-flex align-items-center gap-2{% if active_section == 'bi' %} active{% endif %}"
+           href="/bi">
+            <i class="bi bi-bar-chart"></i> AI/BI Dashboards
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link d-flex align-items-center gap-2{% if active_section == 'metric-views' %} active{% endif %}"
+           href="/metric-views">
+            <i class="bi bi-rulers"></i> Metric Views
+        </a>
+    </li>
+    <li class="nav-item">
         <a class="nav-link d-flex align-items-center gap-2{% if active_section == 'jobs' %} active{% endif %}"
            href="/jobs">
             <i class="bi bi-clock-history"></i> Scheduled jobs

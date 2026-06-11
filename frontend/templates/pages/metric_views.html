@@ -1,0 +1,249 @@
+{% extends "base.html" %}
+{% block title %}Metric Views · PointlesSQL{% endblock %}
+{% block page_entry %}metric_views.js{% endblock %}
+
+{% set breadcrumbs = [
+ {"label": "Home", "href": "/"},
+ {"label": "Metric Views"}
+] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block content %}
+<div x-data="metricViews()" x-init="init()">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <div class="d-flex align-items-center gap-2">
+            <i class="bi bi-rulers fs-3"></i>
+            <h1 class="h3 mb-0">Metric Views</h1>
+        </div>
+        <button type="button" class="btn btn-primary btn-sm" @click="openCreate()"
+                :disabled="!schema">
+            <i class="bi bi-plus-lg me-1"></i>New metric view
+        </button>
+    </div>
+
+    <p class="text-muted">
+        A metric view defines dimensions and measures once, governed in the
+        catalog; dashboards, Genie, and the API all query the same
+        definitions. Expressions compile against the source table with the
+        same SELECT enforcement as the SQL editor.
+    </p>
+
+    <div class="row g-2 align-items-end mb-3">
+        <div class="col-auto">
+            <label class="form-label" for="mv-catalog">Catalog</label>
+            <select id="mv-catalog" class="form-select form-select-sm" x-model="catalog"
+                    @change="schema=''; views=[]; loadSchemas()">
+                <option value="">— pick —</option>
+                <template x-for="c in catalogs" :key="c.name">
+                    <option :value="c.name" x-text="c.name"></option>
+                </template>
+            </select>
+        </div>
+        <div class="col-auto">
+            <label class="form-label" for="mv-schema">Schema</label>
+            <select id="mv-schema" class="form-select form-select-sm" x-model="schema"
+                    @change="loadViews()" :disabled="!catalog">
+                <option value="">— pick —</option>
+                <template x-for="s in schemas" :key="s.name">
+                    <option :value="s.name" x-text="s.name"></option>
+                </template>
+            </select>
+        </div>
+        <div class="col-auto" x-show="loading" x-cloak>
+            <span class="spinner-border spinner-border-sm" role="status" aria-label="Loading"></span>
+        </div>
+    </div>
+
+    <div class="alert alert-danger" x-show="error" x-text="error" x-cloak></div>
+
+    <div class="table-responsive" x-show="schema" x-cloak>
+        <table class="table table-sm align-middle pql-list-table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Source table</th>
+                    <th class="text-end">Dimensions</th>
+                    <th class="text-end">Measures</th>
+                    <th>Comment</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <template x-for="v in views" :key="v.full_name">
+                    <tr>
+                        <td data-label="Name"><code x-text="v.full_name"></code></td>
+                        <td data-label="Source"><code class="small" x-text="v.source_table_full_name"></code></td>
+                        <td data-label="Dimensions" class="text-end" x-text="(v.spec.dimensions || []).length"></td>
+                        <td data-label="Measures" class="text-end" x-text="(v.spec.measures || []).length"></td>
+                        <td data-label="Comment" class="text-muted small" x-text="v.comment || ''"></td>
+                        <td data-label="Actions" class="text-nowrap">
+                            <button type="button" class="btn btn-sm btn-outline-primary" @click="toggleQuery(v)">
+                                <i class="bi bi-play"></i> Query
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" @click="openEdit(v)">
+                                <i class="bi bi-pencil"></i> Edit
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-danger" @click="remove(v)">
+                                <i class="bi bi-trash"></i> Delete
+                            </button>
+                        </td>
+                    </tr>
+                </template>
+                <tr x-show="views.length === 0">
+                    <td colspan="6" class="text-muted">No metric views in this schema yet.</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <template x-if="queryView">
+        <div class="card mb-4">
+            <div class="card-header d-flex align-items-center justify-content-between">
+                <span><i class="bi bi-play me-1"></i>Query <code x-text="queryView.full_name"></code></span>
+                <button type="button" class="btn-close" aria-label="Close query panel" @click="queryView = null"></button>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <div class="fw-semibold small mb-1">Dimensions</div>
+                        <template x-for="d in queryView.spec.dimensions || []" :key="d.name">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" :id="'dim-' + d.name"
+                                       :value="d.name" x-model="q.dimensions">
+                                <label class="form-check-label" :for="'dim-' + d.name" x-text="d.name"></label>
+                            </div>
+                        </template>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="fw-semibold small mb-1">Measures</div>
+                        <template x-for="m in queryView.spec.measures || []" :key="m.name">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" :id="'mea-' + m.name"
+                                       :value="m.name" x-model="q.measures">
+                                <label class="form-check-label" :for="'mea-' + m.name" x-text="m.name"></label>
+                            </div>
+                        </template>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label" for="mv-where">Extra filter (SQL predicate, optional)</label>
+                        <input id="mv-where" type="text" class="form-control form-control-sm font-monospace"
+                               x-model="q.where" placeholder="region = 'emea'">
+                        <div class="row g-2 mt-1">
+                            <div class="col">
+                                <label class="form-label" for="mv-order">Order by</label>
+                                <input id="mv-order" type="text" class="form-control form-control-sm font-monospace"
+                                       x-model="q.order_by" placeholder="revenue desc">
+                            </div>
+                            <div class="col">
+                                <label class="form-label" for="mv-limit">Limit</label>
+                                <input id="mv-limit" type="number" class="form-control form-control-sm"
+                                       x-model.number="q.limit" min="1" max="10000">
+                            </div>
+                        </div>
+                        <button type="button" class="btn btn-primary btn-sm mt-2"
+                                :disabled="q.measures.length === 0 || running" @click="runQuery()">
+                            <span x-show="!running">Run</span>
+                            <span x-show="running" x-cloak>Running&hellip;</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="mt-3" x-show="result" x-cloak>
+                    <div class="d-flex align-items-center gap-3 mb-1">
+                        <span class="text-muted small" x-text="result ? result.row_count + ' rows · ' + result.duration_ms + ' ms' : ''"></span>
+                        <a href="#" class="small" @click.prevent="showSql = !showSql">compiled SQL</a>
+                    </div>
+                    <pre class="small bg-body-tertiary p-2 rounded" x-show="showSql" x-cloak x-text="result ? result.sql : ''"></pre>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-striped">
+                            <thead>
+                                <tr>
+                                    <template x-for="c in (result ? result.columns : [])" :key="c.name">
+                                        <th x-text="c.name"></th>
+                                    </template>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <template x-for="(row, i) in (result ? result.rows : [])" :key="i">
+                                    <tr>
+                                        <template x-for="(cell, j) in row" :key="j">
+                                            <td x-text="cell"></td>
+                                        </template>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <template x-if="editor">
+        <div class="card mb-4">
+            <div class="card-header d-flex align-items-center justify-content-between">
+                <span x-text="editor.full_name ? 'Edit ' + editor.full_name : 'New metric view in ' + catalog + '.' + schema"></span>
+                <button type="button" class="btn-close" aria-label="Close editor" @click="editor = null"></button>
+            </div>
+            <div class="card-body">
+                <div class="row g-2 mb-2">
+                    <div class="col-md-3">
+                        <label class="form-label" for="mv-name">Name</label>
+                        <input id="mv-name" type="text" class="form-control form-control-sm font-monospace"
+                               x-model="editor.name" :disabled="!!editor.full_name">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label" for="mv-source">Source table (catalog.schema.table)</label>
+                        <input id="mv-source" type="text" class="form-control form-control-sm font-monospace"
+                               x-model="editor.source_table_full_name">
+                    </div>
+                    <div class="col-md-5">
+                        <label class="form-label" for="mv-comment">Comment</label>
+                        <input id="mv-comment" type="text" class="form-control form-control-sm"
+                               x-model="editor.comment">
+                    </div>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label" for="mv-filter">Filter (baked into every query, optional)</label>
+                    <input id="mv-filter" type="text" class="form-control form-control-sm font-monospace"
+                           x-model="editor.spec.filter" placeholder="status = 'completed'">
+                </div>
+
+                <div class="fw-semibold small mb-1">Dimensions</div>
+                <template x-for="(d, i) in editor.spec.dimensions" :key="i">
+                    <div class="row g-2 mb-1">
+                        <div class="col-md-3"><input type="text" class="form-control form-control-sm font-monospace" x-model="d.name" placeholder="name" aria-label="Dimension name"></div>
+                        <div class="col-md-8"><input type="text" class="form-control form-control-sm font-monospace" x-model="d.expr" placeholder="date_trunc('month', ordered_at)" aria-label="Dimension expression"></div>
+                        <div class="col-md-1"><button type="button" class="btn btn-sm btn-outline-danger" aria-label="Remove dimension" @click="editor.spec.dimensions.splice(i, 1)"><i class="bi bi-x"></i></button></div>
+                    </div>
+                </template>
+                <button type="button" class="btn btn-sm btn-outline-secondary mb-3"
+                        @click="editor.spec.dimensions.push({name: '', expr: ''})">
+                    <i class="bi bi-plus"></i> Dimension
+                </button>
+
+                <div class="fw-semibold small mb-1">Measures</div>
+                <template x-for="(m, i) in editor.spec.measures" :key="i">
+                    <div class="row g-2 mb-1">
+                        <div class="col-md-3"><input type="text" class="form-control form-control-sm font-monospace" x-model="m.name" placeholder="revenue" aria-label="Measure name"></div>
+                        <div class="col-md-8"><input type="text" class="form-control form-control-sm font-monospace" x-model="m.expr" placeholder="sum(amount)" aria-label="Measure expression"></div>
+                        <div class="col-md-1"><button type="button" class="btn btn-sm btn-outline-danger" aria-label="Remove measure" @click="editor.spec.measures.splice(i, 1)"><i class="bi bi-x"></i></button></div>
+                    </div>
+                </template>
+                <button type="button" class="btn btn-sm btn-outline-secondary mb-3"
+                        @click="editor.spec.measures.push({name: '', expr: ''})">
+                    <i class="bi bi-plus"></i> Measure
+                </button>
+
+                <div class="alert alert-danger" x-show="editorError" x-text="editorError" x-cloak></div>
+                <div>
+                    <button type="button" class="btn btn-primary btn-sm" :disabled="saving" @click="save()">
+                        <span x-show="!saving" x-text="editor.full_name ? 'Save changes' : 'Create metric view'"></span>
+                        <span x-show="saving" x-cloak>Saving&hellip;</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </template>
+</div>
+{% endblock %}
