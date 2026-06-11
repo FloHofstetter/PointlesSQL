@@ -3854,6 +3854,165 @@ PointlesSQL
 │       │   Kapazität („Budget erreicht in N Tagen") + Cost am Agent-Run +
 │       │   FinOps-Grafana-Panels.  estimated_cost = Schätzung, kein $.
 │   │
+├── Phase 210 — Databricks-Parität Runde 2: Top-10 aus der Juni-Recherche  ✅ shipped (local, 2026-06-11)
+│   │
+│   │   Zweites Deep-Research-Programm (offizielle Databricks-Blogs/
+│   │   Docs DAIS 2024/2025, Community-Stimmen HN/Foren/G2, eigenes
+│   │   Codebasis-Inventar): die zehn wirkungsstärksten verbliebenen
+│   │   Lücken, wieder nativ auf dem Stack (DuckDB-Pragmas, sqlglot,
+│   │   Scheduler-Backing-Jobs, Subprozess-Manager, UC-Tags) — null
+│   │   neue Python-Runtime-Deps.  Gewichtung: Community-Killer-QoL
+│   │   (Query Profile, Debugger, Repair Run) + DAIS-2025-Welle
+│   │   (DQ-Monitoring, AI Functions, Apps, ABAC) + Workflow-as-Code
+│   │   (Asset Bundles).
+│   │
+│   ├── 210.1 — Query Profile (Runtime-Profiling)  ✅ shipped (local, 2026-06-11)
+│   │       Profile-Button neben Explain: der SELECT läuft normal
+│   │       und DuckDBs JSON-Profil wird aus derselben Ausführung
+│   │       gefangen (profiling-to-tempfile, Ergebnis unangetastet).
+│   │       Summarizer flacht den Baum defensiv über Key-Drift
+│   │       (operator_type/name, operator_timing/timing) in eine
+│   │       slowest-first Operator-Liste; Panel über der Ergebnis-
+│   │       tabelle (Balken = Zeitanteil); Roh-Baum persistiert auf
+│   │       query_history.profile_json.  Policies greifen exakt wie
+│   │       beim normalen SELECT.  Playbook query-profile.md.
+│   │
+│   ├── 210.2 — AI Functions in SQL  ✅ shipped (local, 2026-06-11)
+│   │       ai_query/ai_classify/ai_extract/ai_translate (LLM) +
+│   │       ai_mask (deterministisch, pii-Masker) als DuckDB-UDFs,
+│   │       registriert pro Query in run_sql — SQL-Editor, Notebook-
+│   │       SQL-Zellen, BI-Widgets, Metric Views und Pipelines erben
+│   │       dieselbe Vokabel.  Pro-Query-Runner mit Distinct-Args-
+│   │       Dedup-Cache und hartem max_calls_per_query-Budget;
+│   │       Credentials wie Genie (Workspace-Lens-Creds, Env-Key-
+│   │       Fallback); POINTLESSQL_AI_FUNCTIONS_*-Settings.
+│   │       Playbook ai-functions.md.
+│   │
+│   ├── 210.3 — Jobs v2 (Orchestrierung)  ✅ shipped (local, 2026-06-11)
+│   │       Repair Run (neuer Run reused erfolgreiche DAG-Tasks,
+│   │       führt nur Fehlgeschlagenes/Übersprungenes aus;
+│   │       trigger="repair" + repair_of_run_id-Kette), run_if pro
+│   │       Task (all_success-Default unverändert, all_done für
+│   │       Cleanup, at_least_one_failed für Error-Handler — unmet
+│   │       Conditions landen im neuen benignen "excluded"-Status),
+│   │       for_each pro Task (Item-Liste, sequenziell, item in die
+│   │       Config gemerged), Event-Trigger file_arrival (Glob-
+│   │       Fingerprint) + table_update (Delta-Version-Poll als
+│   │       Run-as-Principal) mit stiller Baseline + Cursor-
+│   │       Persistenz, notify_on (In-App-Notification an den
+│   │       Run-as-User).  Playbook jobs-v2.md.
+│   │
+│   ├── 210.4 — Tag Policies + Auto-PII-Klassifikation (ABAC)  ✅ shipped (local, 2026-06-11)
+│   │       Deployment-globale Regeln auf UC-Tags: mask-Regeln
+│   │       maskieren jede getaggte Spalte, row_filter-Regeln ANDen
+│   │       ihr Prädikat (current_user()-Substitution) in Reads
+│   │       getaggter Tabellen — enforced an beiden SELECT-Choke-
+│   │       Points, Admin/Owner exempt, explizite Properties
+│   │       gewinnen pro Spalte, fail-closed bei kaputtem Prädikat,
+│   │       TTL-Caches + Null-Overhead-Fastpath ohne Regeln.
+│   │       PII-Scanner (Namens- + Sample-Regex-Heuristiken: email/
+│   │       phone/iban/card/birthdate/address) taggt pii=<kind>
+│   │       additiv-only; /admin/classification-Konsole (Regeln-CRUD
+│   │       + Scan-Panel) + Executor-Kind pii_classification.
+│   │       Playbook data-classification.md.
+│   │
+│   ├── 210.5 — Data Quality Monitoring  ✅ shipped (local, 2026-06-11)
+│   │       Monitore auf Tabelle oder Schema, Profil-Snapshots über
+│   │       die table-stats-Engine (+ Delta-Version + Freshness),
+│   │       Anomalie-Regeln gegen den Vorgänger-Snapshot:
+│   │       volume_drop (<50% critical / <80% warn, 100-Zeilen-
+│   │       Floor), null_spike (+0.2/+0.5 absolut), schema_change,
+│   │       freshness (>24h).  Offene Anomalien dedupen auf
+│   │       (table, column, kind) und resolven automatisch;
+│   │       Backing-Job-Muster (kind quality_monitor), Creator-
+│   │       Notification, /quality-Cockpit + Nav.
+│   │       Playbook quality-monitoring.md.
+│   │
+│   ├── 210.6 — Access Requests + Zertifizierungen  ✅ shipped (local, 2026-06-11)
+│   │       UC-Discover-Schleife: ohne SELECT rendert die Tabellen-
+│   │       seite eine Metadaten-Ansicht (USE SCHEMA als Render-
+│   │       Gate; effective=[] bleibt 403) + Request-access-Button
+│   │       mit Justification; /access-requests mit My-requests- und
+│   │       To-decide-Tabs (Admins alle, Owner ihre — Owner-Snapshot
+│   │       beim Anlegen); Approve führt den echten UC-Grant über
+│   │       die Facade aus, jede Transition fanout-benachrichtigt.
+│   │       Zertifizierungen migrationsfrei auf UC-Tags
+│   │       (pointlessql.certification + _note): certified-Badge,
+│   │       deprecated-Badge + Banner, Owner/Admin-Verwaltung am
+│   │       Tabellen-Header.  Playbook access-requests.md.
+│   │
+│   ├── 210.7 — Hosted Apps  ✅ shipped (local, 2026-06-11)
+│   │       Databricks-Apps-förmig: Admins deklarieren eine App aus
+│   │       Inline-Source (fastapi via Projekt-uvicorn, streamlit
+│   │       falls installiert — sauberes Gate, oder command),
+│   │       AppsManager nach Serving-Muster (Port-Range 9200+,
+│   │       Health-Poll <500, stderr-Tail, reset_states_on_boot,
+│   │       stop_all im Teardown), Env mit {{secrets/...}}-
+│   │       Auflösung, authentifizierter Reverse-Proxy
+│   │       /apps/{slug}/proxy/ inkl. bidirektionaler WS-Bridge
+│   │       (Close-Codes 4401/4404/4503) und eng begrenzter CSRF-
+│   │       Exemption (Begründung in csrf_middleware.py); /apps-
+│   │       Liste + Detail (Quellcode-Editor, Log-Tail, iframe).
+│   │       Playbook hosted-apps.md.
+│   │
+│   ├── 210.8 — Dashboard-Schedules + Snapshots  ✅ shipped (local, 2026-06-11)
+│   │       Ein Schedule pro BI-Dashboard als Backing-Job (kind
+│   │       bi_snapshot, Alert-Muster); Renderer führt alle Widgets
+│   │       serverseitig unter den Privilegien des Schedule-
+│   │       Erstellers aus (Widget-Fehler → error-Feld statt
+│   │       Abbruch), Snapshots frieren die Payloads ein und rendern
+│   │       read-only unter /bi/{slug}/snapshots/{id} (Lesen Owner/
+│   │       Admin-gated — Snapshots tragen die Sicht des Erstellers,
+│   │       nicht des Viewers); Zustellung in-app + optional HMAC-
+│   │       CloudEvents-Webhook; Dashboard-Delete räumt Schedule
+│   │       (inkl. Job) + Snapshots.  Playbook dashboard-snapshots.md.
+│   │
+│   ├── 210.9 — Notebook-Debugger  ✅ shipped (local, 2026-06-11)
+│   │       Step-Through über das Jupyter Debug Protocol (debugpy in
+│   │       ipykernel 7): KernelSession.debug_request über den
+│   │       Control-Channel (session-eigener seq-Zähler — mehrere
+│   │       Tabs teilen einen Kernel; Server bleibt dummer DAP-
+│   │       Proxy), debug_events als WS-Notify an alle Tabs,
+│   │       Debug-Panel (Paused-Badge, klickbare Frames, Variablen,
+│   │       Continue/Next/Step/Stop), Breakpoints per Zeilenfeld
+│   │       (Gutter-Marker unter Co-Edit bewusst verworfen — Zeilen
+│   │       verschieben sich), Debug-Lauf nutzt den normalen
+│   │       execute-Pfad (Outputs/Run-History identisch); Stop/
+│   │       Close disconnecten immer (kein geparkter Kernel).
+│   │       Integrationstest gegen echten ipykernel.
+│   │       Playbook notebook-debugger.md.
+│   │
+│   ├── 210.10 — Asset Bundles  ✅ shipped (local, 2026-06-11)
+│   │       Workspace-as-Code nach DAB-Vorbild: ein YAML deklariert
+│   │       Jobs (inkl. DAG-Tasks, run_if/for_each, Trigger,
+│   │       notify_on), Pipelines und BI-Dashboards; Planner difft
+│   │       per name/slug in create/update/unchanged mit Feld-Notes
+│   │       (Orphans nur informativ, nie Deletes), Applier
+│   │       idempotent (Re-Apply konvergiert; Task-Abgleich per
+│   │       Name, Widgets gehören dem Bundle (kind+title-Match,
+│   │       Überzählige gelöscht), validate_dag vor Commit,
+│   │       Fehler pro Ressource isoliert), Export→Parse→Plan ist
+│   │       Fixpunkt (getestet; einzige Abweichung: Saved-Query-
+│   │       Widgets exportieren mit Inline-SQL).  /admin/bundles
+│   │       (20. Karte) + CLI `pointlessql bundle
+│   │       validate|plan|apply|export` (in-process, --run-as).
+│   │       Playbook asset-bundles.md.
+│   │
+│   ├── Offene Folge-Tranchen (geplant)
+│   │       Profile-Replay aus der Query-History-UI (profile_json
+│   │       liegt schon); ai_*-Batch-Vektorisierung + Kosten-Spalte
+│   │       in der History; Repair-Run für Pipeline-Runs; ABAC auf
+│   │       Schema-/Catalog-Tags (heute Tabelle/Spalte); DQ-Monitore
+│   │       mit konfigurierbaren Schwellen + Webhook-Zustellung;
+│   │       Access-Requests für Schemas/Volumes; Apps mit
+│   │       Requirements-Installation (heute Projekt-Env) + Public-
+│   │       Token-Apps; Snapshot-Read-Zugriff für Viewer (bewusste
+│   │       Gating-Entscheidung, s. 210.8); Debugger-Gutter-Marker
+│   │       via CodeMirror-StateField; Bundles: TaskRun-FK-Verhalten
+│   │       beim Task-Delete auf Postgres prüfen + Alerts/Monitore
+│   │       als Bundle-Ressourcen.  Pyright-Floor 1073 → derselbe
+│   │       Stub-Pass wie bei 209.
+│   │
 ├── Phase 209 — Databricks-Parität: Top-10-Features  ✅ shipped (local, 2026-06-11)
 │   │
 │   │   Deep-Research-Programm (Web + beide Codebasen): die zehn

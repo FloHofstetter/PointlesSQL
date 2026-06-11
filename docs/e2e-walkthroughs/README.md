@@ -26,10 +26,10 @@ ML registry, dbt-pipeline, and packaging surfaces.
 
 ## Inventory (full)
 
-102 walkthroughs total. Each carries a `> **Mode:**` tag in its
+112 walkthroughs total. Each carries a `> **Mode:**` tag in its
 first content block; this section is the grep-friendly index.
 
-### `Mode: browser` — Playwright MCP replay (56)
+### `Mode: browser` — Playwright MCP replay (66)
 
 Reload `auth.md` first; later ones reuse seeded users + catalog.
 
@@ -68,6 +68,16 @@ Reload `auth.md` first; later ones reuse seeded users + catalog.
 | [`bi-dashboards.md`](bi-dashboards.md) | `/bi` widget dashboards + grid editor + public link | |
 | [`metric-views.md`](metric-views.md) | `/metric-views` semantic layer + governed queries | |
 | [`pipelines.md`](pipelines.md) | `/pipelines` declarative MV/ST refresh + expectations | |
+| [`query-profile.md`](query-profile.md) | `/sql` runtime per-operator profile panel | |
+| [`ai-functions.md`](ai-functions.md) | `/sql` ai_query/ai_classify/ai_mask vocabulary | |
+| [`jobs-v2.md`](jobs-v2.md) | `/jobs` repair runs, run_if handlers, event triggers | |
+| [`data-classification.md`](data-classification.md) | `/admin/classification` tag policies + PII scan | |
+| [`quality-monitoring.md`](quality-monitoring.md) | `/quality` monitors, profiles, anomaly lifecycle | |
+| [`access-requests.md`](access-requests.md) | `/access-requests` + table detail request/approve | |
+| [`hosted-apps.md`](hosted-apps.md) | `/apps` managed app workers + auth proxy | |
+| [`dashboard-snapshots.md`](dashboard-snapshots.md) | `/bi/{slug}` schedule + stored snapshots | |
+| [`notebook-debugger.md`](notebook-debugger.md) | notebook editor step-through debugging | |
+| [`asset-bundles.md`](asset-bundles.md) | `/admin/bundles` YAML plan/apply/export + CLI | |
 | [`genie-spaces.md`](genie-spaces.md) | `/genie` curated NL data rooms + trusted assets | |
 | [`online-tables.md`](online-tables.md) | `/online-tables` Delta→Postgres/SQLite sync + lookup | |
 | [`model-serving.md`](model-serving.md) | `/serving` endpoints + invocation console | |
@@ -81,7 +91,7 @@ Reload `auth.md` first; later ones reuse seeded users + catalog.
 | [`audit-sinks.md`](audit-sinks.md) | `/admin/audit-sinks` CRUD | |
 | [`admin-audit.md`](admin-audit.md) | `/admin/audit` | |
 | [`admin-cdf-tail.md`](admin-cdf-tail.md) | `/admin/cdf-tail` + table CDF tab | |
-| [`admin-console.md`](admin-console.md) | `/admin/*` 17-card landing | |
+| [`admin-console.md`](admin-console.md) | `/admin/*` 20-card landing | |
 | [`admin-secrets.md`](admin-secrets.md) | `/admin/secrets` scopes + write-only values + ACLs | |
 | [`admin-policy-modules.md`](admin-policy-modules.md) | `/admin/policy-modules` CRUD + dry-run | |
 | [`admin-mesh-dashboard.md`](admin-mesh-dashboard.md) | `/admin/mesh-dashboard` vital signs + cost rollups | |

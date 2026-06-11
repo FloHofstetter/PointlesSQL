@@ -17,6 +17,77 @@ defined in ``scripts/clusters.json``. -->
 
 ### Added
 
+- **Runtime query profiles (phase 210.1).** A Profile button next to
+  Explain runs the SELECT normally and captures DuckDB's JSON profile
+  from the same execution: slowest-first per-operator panel (time,
+  rows, share bars) above the result table, raw tree persisted on the
+  new `query_history.profile_json` column, policies enforced exactly
+  like a regular SELECT.
+- **AI functions in SQL (phase 210.2).** `ai_query` / `ai_classify` /
+  `ai_extract` / `ai_translate` (LLM-backed) and `ai_mask`
+  (deterministic PII masking) register as DuckDB scalar functions on
+  the per-query connection — editor, notebook SQL cells, BI widgets,
+  metric views, and pipelines share the vocabulary.  Per-query runner
+  with a distinct-args dedup cache and a hard `max_calls_per_query`
+  budget; credentials resolve like Genie's (workspace Lens creds,
+  env-key fallback); `POINTLESSQL_AI_FUNCTIONS_*` settings.
+- **Jobs v2 (phase 210.3).** Repair runs (re-run only what failed,
+  previous successes reused; `trigger="repair"` + lineage column),
+  per-task `run_if` (all_success / all_done / at_least_one_failed
+  with the new benign `excluded` task status), per-task `for_each`
+  item lists, event triggers (`file_arrival` glob fingerprint and
+  `table_update` Delta-version poll, silent first-evaluation
+  baseline), and opt-in `notify_on` run notifications.
+- **Tag policies + automatic PII classification (phase 210.4).**
+  Deployment-global ABAC on Unity-Catalog tags: mask rules mask every
+  tagged column, row-filter rules AND their predicate into reads of
+  tagged tables — enforced at both SELECT choke points with
+  admin/owner exemption, per-column precedence for explicit
+  properties, fail-closed validation, and TTL-cached zero-overhead
+  fast path.  The PII scanner (name + sampled-value heuristics) tags
+  columns `pii=<kind>` additively from the `/admin/classification`
+  console or the `pii_classification` job kind.
+- **Table quality monitors (phase 210.5).** Monitors profile a table
+  or schema on a cadence (hidden backing job) and raise deduplicating,
+  auto-resolving anomalies against the previous snapshot: volume
+  drops, null spikes, schema changes, and staleness — with creator
+  notifications and the `/quality` cockpit.
+- **Access requests + certifications (phase 210.6).** Users without
+  SELECT see a metadata view with a Request-access button; owners and
+  admins decide from `/access-requests`, approval executes the real
+  UC grant, every transition notifies.  Certifications ride UC tags:
+  certified badge, deprecated badge + banner, managed from the table
+  header.
+- **Hosted apps (phase 210.7).** Admin-declared apps (FastAPI via the
+  project's uvicorn, Streamlit when installed, or a custom command)
+  run as managed loopback workers behind the authenticated
+  `/apps/{slug}/proxy/` reverse proxy with WebSocket bridging, env
+  `{{secrets/...}}` resolution, log tail, and boot-time state reset.
+- **Dashboard schedules + snapshots (phase 210.8).** One cron
+  schedule per BI dashboard (backing job) renders every widget
+  server-side under the creator's privileges into frozen snapshots
+  with read-only replay pages, in-app delivery, and optional
+  HMAC-signed CloudEvents webhooks.
+- **Notebook step-through debugging (phase 210.9).** The Jupyter
+  debug protocol over the kernel control channel: breakpoint lines,
+  paused badge with stack frames and variables, continue/step
+  controls — the debug run flows through the normal execute path so
+  outputs and run history behave identically; verified against a
+  real ipykernel.
+- **Asset bundles (phase 210.10).** Jobs, pipelines, and BI
+  dashboards as one YAML document with plan/apply/export from
+  `/admin/bundles` or `pointlessql bundle` — idempotent applies,
+  field-level diffs, orphan listing instead of deletes, and an
+  export→plan fixed point.
+
+### Changed
+
+- `pointlessql.pql._policies` gained `substitute_current_user`; the
+  table detail page now renders a metadata view for principals
+  holding USE SCHEMA without SELECT (previously 403) — data access
+  remains gated.  The pyright warning budget moved 1027 → 1073 with
+  the decrement-log note (same stub-less seams, remedy unchanged).
+
 - **Secret scopes (phase 209.1).** Databricks-shaped secrets surface on the
   existing Fernet vault: workspace-scoped scopes with a `READ < WRITE <
   MANAGE` ACL ladder, a `/api/secrets` management API whose responses never
