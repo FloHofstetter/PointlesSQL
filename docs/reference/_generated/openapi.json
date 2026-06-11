@@ -12857,6 +12857,638 @@
         ]
       }
     },
+    "/api/bi/dashboards": {
+      "get": {
+        "description": "List the active workspace's dashboards with widget counts.",
+        "operationId": "api_list_dashboards_api_bi_dashboards_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api List Dashboards Api Bi Dashboards Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Api List Dashboards",
+        "tags": [
+          "bi-dashboards"
+        ]
+      },
+      "post": {
+        "description": "Create an empty dashboard.\n\nArgs:\n    request: Incoming FastAPI request.\n    body: ``{\"title\": str, \"description\"?: str}``.\n\nReturns:\n    The serialized dashboard row.\n\nRaises:\n    ValidationError: On a missing/empty title.\n    PermissionDeniedError: When the caller is unauthenticated.",
+        "operationId": "api_create_dashboard_api_bi_dashboards_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Body",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Create Dashboard Api Bi Dashboards Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Create Dashboard",
+        "tags": [
+          "bi-dashboards"
+        ]
+      }
+    },
+    "/api/bi/dashboards/{slug}": {
+      "delete": {
+        "description": "Delete a dashboard and its widgets (owner or admin).",
+        "operationId": "api_delete_dashboard_api_bi_dashboards__slug__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Delete Dashboard Api Bi Dashboards  Slug  Delete",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Delete Dashboard",
+        "tags": [
+          "bi-dashboards"
+        ]
+      },
+      "get": {
+        "description": "Return one dashboard with its widgets.",
+        "operationId": "api_get_dashboard_api_bi_dashboards__slug__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Get Dashboard Api Bi Dashboards  Slug  Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Get Dashboard",
+        "tags": [
+          "bi-dashboards"
+        ]
+      },
+      "patch": {
+        "description": "Patch title / description / params (owner or admin).\n\nArgs:\n    request: Incoming FastAPI request.\n    slug: Dashboard slug.\n    body: Any of ``{\"title\", \"description\", \"params\"}``.\n\nReturns:\n    The serialized refreshed dashboard.\n\nRaises:\n    ValidationError: On an empty title or malformed params.",
+        "operationId": "api_update_dashboard_api_bi_dashboards__slug__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Body",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Update Dashboard Api Bi Dashboards  Slug  Patch",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Update Dashboard",
+        "tags": [
+          "bi-dashboards"
+        ]
+      }
+    },
+    "/api/bi/dashboards/{slug}/layout": {
+      "put": {
+        "description": "Bulk-save widget rectangles after a gridstack drag (owner/admin).\n\nArgs:\n    request: Incoming FastAPI request.\n    slug: Dashboard slug.\n    body: ``{\"positions\": {\"<widget_id>\": {\"x\",\"y\",\"w\",\"h\"}}}``.\n\nReturns:\n    ``{\"updated\": int}``.\n\nRaises:\n    ValidationError: When ``positions`` is not an object.",
+        "operationId": "api_save_layout_api_bi_dashboards__slug__layout_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Body",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Save Layout Api Bi Dashboards  Slug  Layout Put",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Save Layout",
+        "tags": [
+          "bi-dashboards"
+        ]
+      }
+    },
+    "/api/bi/dashboards/{slug}/publish": {
+      "post": {
+        "description": "Publish or unpublish a dashboard (owner or admin).\n\nPublishing mints a public token; the dashboard then renders\nunauthenticated under ``/bi/public/{token}`` with widget queries\nrunning as the owner (embedded-credentials model).\n\nArgs:\n    request: Incoming FastAPI request.\n    slug: Dashboard slug.\n    body: ``{\"publish\": bool}``.\n\nReturns:\n    ``{\"is_published\": bool, \"public_token\": str | None}``.",
+        "operationId": "api_publish_dashboard_api_bi_dashboards__slug__publish_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Body",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Publish Dashboard Api Bi Dashboards  Slug  Publish Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Publish Dashboard",
+        "tags": [
+          "bi-dashboards"
+        ]
+      }
+    },
+    "/api/bi/dashboards/{slug}/widgets": {
+      "post": {
+        "description": "Add a widget to a dashboard (owner or admin).\n\nArgs:\n    request: Incoming FastAPI request.\n    slug: Dashboard slug.\n    body: ``{\"kind\", \"title\"?, \"sql_text\"?, \"saved_query_id\"?,\n        \"markdown\"?, \"chart_spec\"?, \"position\"?}``.\n\nReturns:\n    The serialized widget row.\n\nRaises:\n    ValidationError: On an unknown kind or inconsistent source.",
+        "operationId": "api_add_widget_api_bi_dashboards__slug__widgets_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Body",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Add Widget Api Bi Dashboards  Slug  Widgets Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Add Widget",
+        "tags": [
+          "bi-dashboards"
+        ]
+      }
+    },
+    "/api/bi/dashboards/{slug}/widgets/{widget_id}": {
+      "delete": {
+        "description": "Remove a widget (owner or admin).",
+        "operationId": "api_delete_widget_api_bi_dashboards__slug__widgets__widget_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "widget_id",
+            "required": true,
+            "schema": {
+              "title": "Widget Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Delete Widget Api Bi Dashboards  Slug  Widgets  Widget Id  Delete",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Delete Widget",
+        "tags": [
+          "bi-dashboards"
+        ]
+      },
+      "patch": {
+        "description": "Patch a widget's fields (owner or admin).\n\nArgs:\n    request: Incoming FastAPI request.\n    slug: Dashboard slug.\n    widget_id: Widget primary key.\n    body: Any subset of the widget fields.\n\nReturns:\n    The serialized refreshed widget.\n\nRaises:\n    ResourceNotFoundError: When the widget is not on this\n        dashboard.\n    ValidationError: When the patch leaves the widget without a\n        consistent data source.",
+        "operationId": "api_update_widget_api_bi_dashboards__slug__widgets__widget_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "widget_id",
+            "required": true,
+            "schema": {
+              "title": "Widget Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Body",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Update Widget Api Bi Dashboards  Slug  Widgets  Widget Id  Patch",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Update Widget",
+        "tags": [
+          "bi-dashboards"
+        ]
+      }
+    },
+    "/api/bi/dashboards/{slug}/widgets/{widget_id}/data": {
+      "post": {
+        "description": "Run a widget query as the authenticated viewer.\n\nArgs:\n    request: Incoming FastAPI request.\n    slug: Dashboard slug.\n    widget_id: Widget primary key.\n    body: ``{\"params\"?: {<name>: <value>}}``.\n\nReturns:\n    The framed result payload.",
+        "operationId": "api_widget_data_api_bi_dashboards__slug__widgets__widget_id__data_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "widget_id",
+            "required": true,
+            "schema": {
+              "title": "Widget Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "default": {},
+                "title": "Body",
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Widget Data Api Bi Dashboards  Slug  Widgets  Widget Id  Data Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Widget Data",
+        "tags": [
+          "bi-dashboards"
+        ]
+      }
+    },
+    "/api/bi/public/{token}/widgets/{widget_id}/data": {
+      "post": {
+        "description": "Run a widget query on a published dashboard (token = credential).\n\nExecutes as the dashboard owner \u2014 the embedded-credentials model\nevery published BI dashboard implies.  Unknown / revoked tokens\nanswer 404.\n\nArgs:\n    request: Incoming FastAPI request.\n    token: Public-share token from the URL.\n    widget_id: Widget primary key.\n    body: ``{\"params\"?: {<name>: <value>}}``.\n\nReturns:\n    The framed result payload.\n\nRaises:\n    ResourceNotFoundError: For unknown tokens or when the owner\n        account no longer exists.",
+        "operationId": "api_public_widget_data_api_bi_public__token__widgets__widget_id__data_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "token",
+            "required": true,
+            "schema": {
+              "title": "Token",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "widget_id",
+            "required": true,
+            "schema": {
+              "title": "Widget Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "default": {},
+                "title": "Body",
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Public Widget Data Api Bi Public  Token  Widgets  Widget Id  Data Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Public Widget Data",
+        "tags": [
+          "bi-dashboards"
+        ]
+      }
+    },
     "/api/branches": {
       "get": {
         "description": "JSON list of every branch across every catalog.",

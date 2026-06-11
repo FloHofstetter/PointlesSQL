@@ -70,6 +70,11 @@ from pointlessql.models.audit import (
 )
 from pointlessql.models.auth import User
 from pointlessql.models.base import Base
+from pointlessql.models.bi_dashboards import (
+    BI_WIDGET_KINDS,
+    BiDashboard,
+    BiDashboardWidget,
+)
 from pointlessql.models.catalog import (
     ASSERTION_KINDS,
     BITEMPORAL_ENFORCEMENT_MODES,
@@ -286,7 +291,10 @@ __all__ = [
     "AuditSink",
     "AutoloadCheckpoint",
     "BRANCH_ACTIONS",
+    "BI_WIDGET_KINDS",
     "Base",
+    "BiDashboard",
+    "BiDashboardWidget",
     "BranchAuditLog",
     "CLASSIFICATIONS",
     "CONTRACT_EVENT_OUTCOMES",

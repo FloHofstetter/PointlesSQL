@@ -99,6 +99,11 @@ PUBLIC_PREFIXES: tuple[str, ...] = (
     # browser-posted CSP violation reports.  Credential-less by
     # design — the browser sends these without cookies or an API key.
     "/api/csp-report",
+    # published BI dashboards.  Same auth-by-token contract as
+    # /share/: the public_token IS the credential, unknown tokens
+    # 404 inside the route, and widget queries run as the owner.
+    "/bi/public/",
+    "/api/bi/public/",
 )
 
 
