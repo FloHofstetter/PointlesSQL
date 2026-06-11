@@ -60,6 +60,7 @@ from pointlessql.config._settings._integrations import (
     HermesSettings,
     JupyterSettings,
     MLflowSettings,
+    ServingSettings,
     SoyuzSettings,
     WorkspaceReposSettings,
 )
@@ -113,6 +114,7 @@ class Settings(BaseSettings):
     notifications: NotificationsSettings = Field(default_factory=NotificationsSettings)
     workspace_repos: WorkspaceReposSettings = Field(default_factory=WorkspaceReposSettings)
     mlflow: MLflowSettings = Field(default_factory=MLflowSettings)
+    serving: ServingSettings = Field(default_factory=ServingSettings)
     dbt: DBTSettings = Field(default_factory=DBTSettings)
     hermes: HermesSettings = Field(default_factory=HermesSettings)
     lens: LensSettings = Field(default_factory=LensSettings)
@@ -156,6 +158,7 @@ __all__ = [
     "SQLSettings",
     "SchedulerSettings",
     "ServerSettings",
+    "ServingSettings",
     "Settings",
     "SoyuzSettings",
     "SqlExecutionApiSettings",

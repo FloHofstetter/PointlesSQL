@@ -177,6 +177,26 @@ class MLflowSettings(BaseSettings):
     registry_uri: str | None = None
 
 
+class ServingSettings(BaseSettings):
+    """Model-serving worker pool configuration.
+
+    Reads ``POINTLESSQL_SERVING_*`` environment variables.  Serving
+    workers are ``mlflow models serve`` subprocesses on loopback
+    ports starting at ``port_range_start``; ``max_endpoints`` caps
+    how many may run at once (each loads a full model into memory).
+    ``startup_timeout_seconds`` bounds the health-poll after spawn,
+    ``invocation_timeout_seconds`` bounds a single proxied scoring
+    request.
+    """
+
+    model_config = SettingsConfigDict(env_prefix="POINTLESSQL_SERVING_")
+
+    port_range_start: int = 9100
+    max_endpoints: int = 8
+    startup_timeout_seconds: float = 120.0
+    invocation_timeout_seconds: float = 30.0
+
+
 class HermesSettings(BaseSettings):
     """Embedded Hermes agent dashboard + reverse-proxy configuration.
 

@@ -234,6 +234,11 @@ from pointlessql.models.secret_scopes import (
     SecretScopeAcl,
     SecretScopeSecret,
 )
+from pointlessql.models.serving import (
+    SERVING_ENDPOINT_STATES,
+    ServingEndpoint,
+)
+from pointlessql.models.sharing_providers import SharingProvider
 from pointlessql.models.social import (
     BADGE_KEYS,
     DataProductTopic,
@@ -435,9 +440,12 @@ __all__ = [
     "SqlStatement",
     "SyncRun",
     "SECRET_SCOPE_PERMISSIONS",
+    "SERVING_ENDPOINT_STATES",
     "SecretScope",
     "SecretScopeAcl",
     "SecretScopeSecret",
+    "ServingEndpoint",
+    "SharingProvider",
     "SystemKey",
     "TableStats",
     "TaskRun",
