@@ -54,6 +54,13 @@
  <i class="bi bi-diagram-3"></i> Explain{{ info('sql.cost-gate') }}
  </button>
  <button type="button"
+ class="btn btn-outline-info btn-sm"
+ @click="run({ profile: true })"
+ :disabled="running"
+ title="Run and capture the per-operator runtime profile">
+ <i class="bi bi-speedometer2"></i> Profile
+ </button>
+ <button type="button"
  class="btn btn-outline-secondary btn-sm"
  @click="openSaveModal()">
  <i class="bi bi-bookmark-plus"></i> Save{{ info('sql.saved-queries') }}

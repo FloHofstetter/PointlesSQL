@@ -93,6 +93,7 @@ export const executeMethods = {
       return;
     }
     const explain = !!(opts && opts.explain);
+    const profile = !explain && !!(opts && opts.profile);
     if (!explain && !(opts && opts.skipConfirm)) {
       const destructive = this._isDestructive(query);
       if (destructive && !this._confirmDestructive(destructive)) {
@@ -104,12 +105,13 @@ export const executeMethods = {
     this.result = null;
     this.explainText = null;
     this.explainPlan = null;
+    this.profile = null;
     this.currentQueryId = this._generateQueryId();
     this._startElapsed();
     const started = performance.now();
     const fetchOpts = {
       method: 'POST',
-      body: { sql: query, query_id: this.currentQueryId, explain },
+      body: { sql: query, query_id: this.currentQueryId, explain, profile },
       silent: true,
     };
     // when the user has accepted a chat proposal,
@@ -159,6 +161,7 @@ export const executeMethods = {
         };
       } else {
         this.result = res.data;
+        this.profile = res.data.profile || null;
         this.referencedTables = res.data.referenced_tables || [];
         this.currentHistoryId = res.data.history_id || null;
         // Reset chart selection for the new result set unless a

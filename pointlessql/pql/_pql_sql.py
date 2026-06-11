@@ -23,6 +23,7 @@ class _SqlMixin(_PQLBase):
         explain: bool = False,
         preserve_lineage_row_id: bool = True,
         table_policies: dict[str, Any] | None = None,
+        profile: bool = False,
     ) -> SQLResult:
         """Run a single SELECT against DuckDB with UC-backed views.
 
@@ -54,6 +55,9 @@ class _SqlMixin(_PQLBase):
             table_policies: Optional per-table row-filter / column-mask
                 policies applied at view-registration time (see
                 :mod:`pointlessql.pql._policies`).
+            profile: When ``True``, capture DuckDB's JSON runtime
+                profile alongside the regular result rows (see
+                :attr:`SQLResult.profile`).
 
         Returns:
             A :class:`SQLResult` with columns, rows, and metrics.
@@ -66,4 +70,5 @@ class _SqlMixin(_PQLBase):
             explain=explain,
             preserve_lineage_row_id=preserve_lineage_row_id,
             table_policies=table_policies,
+            profile=profile,
         )

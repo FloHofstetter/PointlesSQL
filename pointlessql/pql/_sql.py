@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import logging
 import os
+import tempfile
 import time
 from typing import Any, cast
 
@@ -45,6 +46,7 @@ def run_sql(
     agent_run_id: str | None = None,
     preserve_lineage_row_id: bool = True,
     table_policies: dict[str, Any] | None = None,
+    profile: bool = False,
 ) -> SQLResult:
     """Run a single SELECT against DuckDB with UC-backed views.
 
@@ -86,6 +88,12 @@ def run_sql(
             :class:`pointlessql.pql._policies.TablePolicy` (or dict
             form).  Applied at view-registration time, so row
             filters and column masks hold for every query shape.
+        profile: When ``True``, run the query with DuckDB JSON
+            profiling enabled and attach the runtime profile tree to
+            :attr:`SQLResult.profile`.  Unlike *explain*, the actual
+            result rows are still returned — the profile is captured
+            from the same execution.  Ignored when *explain* is set
+            (the EXPLAIN ANALYZE plan already carries timings).
 
     Returns:
         A :class:`SQLResult` with columns, rows, and metrics.
@@ -174,6 +182,18 @@ def run_sql(
                 # the JSON, formats it back to a readable text blob).
                 conn.execute("PRAGMA enable_profiling='json'")
 
+            profile_path: str | None = None
+            if profile and not explain:
+                # profiling-to-file keeps the result set untouched: the
+                # query runs normally and DuckDB writes the JSON profile
+                # tree on completion.  A tempfile (not stdout) because
+                # the engine interleaves inline profiles with result
+                # rendering on some duckdb versions.
+                fd, profile_path = tempfile.mkstemp(prefix="pql-profile-", suffix=".json")
+                os.close(fd)
+                conn.execute("PRAGMA enable_profiling='json'")
+                conn.execute(f"PRAGMA profiling_output='{profile_path}'")
+
             final_sql = f"EXPLAIN ANALYZE {query_sql}" if explain else query_sql
             start = time.perf_counter()
             try:
@@ -181,6 +201,14 @@ def run_sql(
             except duckdb.Error as exc:
                 raise SQLExecutionError(str(exc)) from exc
             duration_ms = int((time.perf_counter() - start) * 1000)
+
+            profile_tree: Any | None = None
+            if profile_path is not None:
+                try:
+                    conn.execute("PRAGMA disable_profiling")
+                except duckdb.Error:
+                    logger.debug("disable_profiling raised", exc_info=True)
+                profile_tree = _read_profile_file(profile_path)
 
             total = arrow_result.num_rows
             if total > max_rows:
@@ -231,10 +259,45 @@ def run_sql(
                 executed_sql=query,
                 rewritten_sql=prepared.rewritten_sql,
                 referenced_tables=list(prepared.refs),
+                profile=profile_tree,
             )
         finally:
             if owns_conn:
                 conn.close()
+
+
+def _read_profile_file(path: str) -> Any | None:
+    """Read and parse the DuckDB JSON profile written to *path*.
+
+    Best-effort by design: a missing or malformed profile must never
+    fail the query that produced it — the rows are the deliverable,
+    the profile is diagnostics.  The tempfile is removed either way.
+
+    Args:
+        path: Filesystem path the ``profiling_output`` PRAGMA pointed at.
+
+    Returns:
+        The parsed profile tree, or ``None`` when the file is missing,
+        empty, or not valid JSON.
+    """
+    import json
+
+    try:
+        with open(path, encoding="utf-8") as fh:
+            text = fh.read()
+    except OSError:
+        return None
+    finally:
+        try:
+            os.unlink(path)
+        except OSError:
+            logger.debug("profile tempfile cleanup failed", exc_info=True)
+    if not text.strip():
+        return None
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        return None
 
 
 def _build_schema_dict(

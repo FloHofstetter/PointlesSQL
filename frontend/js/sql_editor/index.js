@@ -117,6 +117,10 @@ export function sqlEditor() {
     explainPlan: null,
     explainShowJson: false,
 
+    // -- Runtime profile (rows + per-operator timings from the
+    // same execution; ``{summary, tree}`` from the execute route) --
+    profile: null,
+
     // Walk the parsed JSON plan returned by DuckDB's
     // ``enable_profiling='json'`` pragma into a flat list of
     // operator entries the template iterates over.

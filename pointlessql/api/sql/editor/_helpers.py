@@ -56,6 +56,7 @@ def run_sql_sync(
     conn: Any = None,
     explain: bool = False,
     table_policies: dict[str, Any] | None = None,
+    profile: bool = False,
 ) -> Any:
     """Execute *query* in the sync :class:`PQL` SQL bridge.
 
@@ -82,6 +83,8 @@ def run_sql_sync(
             policies (see :mod:`pointlessql.pql._policies`),
             collected by the enforcement hop alongside
             *approved_tables*.
+        profile: When ``True``, capture DuckDB's JSON runtime profile
+            alongside the regular result rows.
 
     Returns:
         A :class:`pointlessql.pql.pql.SQLResult` dataclass.
@@ -96,6 +99,7 @@ def run_sql_sync(
         conn=conn,
         explain=explain,
         table_policies=table_policies,
+        profile=profile,
     )
 
 

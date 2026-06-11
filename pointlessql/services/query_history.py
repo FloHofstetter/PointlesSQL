@@ -91,6 +91,7 @@ def record_query(
     workspace_id: int = 1,
     notebook_path: str | None = None,
     notebook_content_hash: str | None = None,
+    profile_json: str | None = None,
 ) -> QueryHistoryId:
     """Insert a :class:`QueryHistory` row plus its table-reference rows.
 
@@ -140,6 +141,8 @@ def record_query(
         notebook_content_hash: FNV-1a-64 cell identity, paired
             with ``notebook_path`` so the audit cockpit can
             deep-link the row back to the originating cell.
+        profile_json: Serialised DuckDB runtime profile for queries
+            that ran with profiling enabled; ``None`` otherwise.
 
     Returns:
         The auto-assigned ``QueryHistory.id`` of the new row (so
@@ -168,6 +171,7 @@ def record_query(
             read_kind=read_kind,
             notebook_path=notebook_path,
             notebook_content_hash=notebook_content_hash,
+            profile_json=profile_json,
         )
         session.add(entry)
         session.flush()  # assigns entry.id for the FK below

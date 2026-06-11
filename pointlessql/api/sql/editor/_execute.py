@@ -109,6 +109,12 @@ async def api_sql_execute(request: Request, body: dict[str, Any] = Body(...)) ->
     # surfaces clean.
     explain = bool((body or {}).get("explain", False))
 
+    # Optional runtime-profile mode (SELECT-only): the query executes
+    # normally and returns its rows, with DuckDB's JSON profile
+    # captured from the same execution.  EXPLAIN takes precedence —
+    # its plan already carries per-operator timings.
+    profile = bool((body or {}).get("profile", False)) and not explain
+
     started_at = datetime.now(UTC)
     cancelled = False
     timed_out = False
@@ -123,6 +129,10 @@ async def api_sql_execute(request: Request, body: dict[str, Any] = Body(...)) ->
         if explain and stype is not StmtType.SELECT:
             raise SQLExecutionError(
                 "EXPLAIN is only supported for SELECT statements.",
+            )
+        if profile and stype is not StmtType.SELECT:
+            raise SQLExecutionError(
+                "Runtime profiling is only supported for SELECT statements.",
             )
 
         # Open a DuckDB connection for SELECT (cancellable) and for
@@ -182,6 +192,60 @@ async def api_sql_execute(request: Request, body: dict[str, Any] = Body(...)) ->
                 raise SQLExecutionError("Query cancelled by user.") from exc
 
             return serialize_explain(query_id, query, result)
+
+        if stype is StmtType.SELECT and profile:
+            # Profile path: a real run (policies enforced, rows
+            # returned, history + audit recorded) that additionally
+            # captures DuckDB's runtime profile from the execution.
+            from pointlessql.api.sql._dispatcher import DispatchContext
+            from pointlessql.api.sql._dispatcher._privilege import (
+                enforce_select_with_policies,
+            )
+            from pointlessql.pql import prepare_sql
+
+            prepared = prepare_sql(query)
+            user = get_user(request)
+            ctx = DispatchContext(
+                request=request,
+                settings=settings,
+                sql=query,
+                ast=ast,
+                stype=stype,
+                actor_email=effective_principal(request) or user.get("email", ""),
+                is_admin=bool(user.get("is_admin", False)),
+                conn=conn,
+                max_rows=settings.sql.max_rows,
+            )
+            approved, policies = await enforce_select_with_policies(ctx, prepared.refs)
+            try:
+                result = await asyncio.wait_for(
+                    run_sync(
+                        run_sql_sync,
+                        settings,
+                        query,
+                        approved,
+                        settings.sql.max_rows,
+                        conn,
+                        False,  # explain
+                        policies,
+                        True,  # profile
+                    ),
+                    timeout=timeout_s,
+                )
+            except TimeoutError:
+                timed_out = True
+                try:
+                    conn.interrupt()
+                except Exception:  # noqa: BLE001 — diagnostic only
+                    logger.debug("conn.interrupt() after timeout raised", exc_info=True)
+                raise SQLExecutionError(
+                    f"Query exceeded {timeout_s}s timeout and was cancelled.",
+                ) from None
+            except duckdb.InterruptException as exc:
+                cancelled = True
+                raise SQLExecutionError("Query cancelled by user.") from exc
+
+            return await _finish_profiled_select(request, query_id, query, started_at, result)
 
         try:
             exec_result = await asyncio.wait_for(
@@ -322,6 +386,78 @@ async def api_sql_execute(request: Request, body: dict[str, Any] = Body(...)) ->
         "stats": exec_result.stats,
         "executed_sql": exec_result.executed_sql,
         "referenced_tables": exec_result.referenced_tables,
+    }
+
+
+async def _finish_profiled_select(
+    request: Request,
+    query_id: str,
+    query: str,
+    started_at: datetime,
+    result: Any,
+) -> dict[str, Any]:
+    """Record history + audit for a profiled SELECT and build its response.
+
+    Mirrors the regular SELECT epilogue, with two additions: the raw
+    profile tree is persisted on the history row (``profile_json``)
+    and the response carries both the flattened summary and the tree
+    for the editor's profile panel.
+
+    Args:
+        request: The incoming request (history + audit context).
+        query_id: Client-supplied query ID echoed back.
+        query: Verbatim user SQL.
+        started_at: Route-entry timestamp for the history row.
+        result: The :class:`SQLResult` carrying rows and profile.
+
+    Returns:
+        The standard SELECT response dict plus a ``profile`` key.
+    """
+    from pointlessql.services.sql.profile import summarize_profile
+
+    finished_at = datetime.now(UTC)
+    profile_json = json.dumps(result.profile) if result.profile is not None else None
+    history_id = await record_query_async(
+        request,
+        sql_text=query,
+        started_at=started_at,
+        finished_at=finished_at,
+        status=QueryStatus.SUCCEEDED,
+        row_count=result.row_count,
+        duration_ms=result.duration_ms,
+        referenced_tables=result.referenced_tables,
+        profile_json=profile_json,
+    )
+    await audit(
+        request,
+        "query.executed",
+        f"query:{short_sql_hash(query)}",
+        {
+            "row_count": result.row_count,
+            "duration_ms": result.duration_ms,
+            "tables": result.referenced_tables,
+            "truncated": result.truncated,
+            "profiled": True,
+        },
+    )
+    summary = summarize_profile(result.profile) if result.profile is not None else None
+    return {
+        "query_id": query_id,
+        "history_id": history_id,
+        "is_explain": False,
+        "explain_text": None,
+        "explain_plan": None,
+        "kind": "select",
+        "columns": result.columns,
+        "rows": result.rows,
+        "row_count": result.row_count,
+        "truncated": result.truncated,
+        "duration_ms": result.duration_ms,
+        "executed_sql": result.executed_sql,
+        "referenced_tables": result.referenced_tables,
+        "profile": (
+            {"summary": summary, "tree": result.profile} if result.profile is not None else None
+        ),
     }
 
 

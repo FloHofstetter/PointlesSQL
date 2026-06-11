@@ -64,6 +64,7 @@ async def record_query_async(
     error_message: str | None = None,
     agent_run_id: str | None = None,
     read_kind: ReadKind | str = ReadKind.SQL_EXECUTE,
+    profile_json: str | None = None,
 ) -> int | None:
     """Persist a query-history row without blocking the loop.
 
@@ -95,6 +96,8 @@ async def record_query_async(
             INSERT/UPDATE/DELETE/MERGE and ``"sql_ddl"`` for
             DROP/CREATE so :file:`/queries` can filter editor
             traffic by family.
+        profile_json: Serialised DuckDB runtime profile when the run
+            captured one; ``None`` otherwise.
 
     Returns:
         The new ``query_history.id`` on success; ``None`` if no
@@ -133,6 +136,7 @@ async def record_query_async(
             agent_run_id=RunId(resolved_run_id) if resolved_run_id else None,
             workspace_id=workspace_id,
             read_kind=resolved_read_kind,
+            profile_json=profile_json,
         )
     except Exception:  # noqa: BLE001 — never mask the query response
         logger.exception("failed to record query_history row")

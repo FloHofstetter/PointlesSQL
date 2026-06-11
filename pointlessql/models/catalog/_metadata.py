@@ -188,6 +188,10 @@ class QueryHistory(Base):
             Lets a future replay-from-history feature distinguish a
             re-run of "the same cell" from a re-run of "an edited
             cell".
+        profile_json: DuckDB JSON runtime profile captured when the
+            query ran with profiling enabled; ``None`` for normal
+            runs.  Stored verbatim so the history surface can replay
+            the per-operator breakdown without re-executing.
     """
 
     __tablename__ = "query_history"
@@ -238,6 +242,7 @@ class QueryHistory(Base):
     # cockpit can deep-link back to the cell that produced the row.
     notebook_path: Mapped[str | None] = mapped_column(String(1024), nullable=True)
     notebook_content_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    profile_json: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
 class QueryHistoryTable(Base):

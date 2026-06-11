@@ -45,6 +45,10 @@ class SQLResult:
             3-part → single-quoted-identifier rewrite.
         referenced_tables: The list of UC ``catalog.schema.table``
             references extracted from the parsed SQL.
+        profile: DuckDB's JSON runtime profile tree when the call ran
+            with profiling enabled, ``None`` otherwise.  The tree shape
+            follows DuckDB's ``enable_profiling='json'`` output; treat
+            keys defensively across engine versions.
     """
 
     columns: list[dict[str, str]]
@@ -55,6 +59,7 @@ class SQLResult:
     executed_sql: str
     rewritten_sql: str
     referenced_tables: list[str]
+    profile: Any | None = None
 
 
 class ArrowField(Protocol):
