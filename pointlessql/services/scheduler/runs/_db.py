@@ -127,7 +127,12 @@ def _workspace_id_for_job(session: Session, job_id: int) -> int:
     return int(value) if value is not None else 1
 
 
-def _start_run(session: Session, job_id: int, trigger: str) -> JobRun:
+def _start_run(
+    session: Session,
+    job_id: int,
+    trigger: str,
+    repair_of_run_id: int | None = None,
+) -> JobRun:
     """Insert a fresh ``running`` :class:`JobRun` and return it."""
     run = JobRun(
         workspace_id=_workspace_id_for_job(session, job_id),
@@ -135,6 +140,7 @@ def _start_run(session: Session, job_id: int, trigger: str) -> JobRun:
         started_at=_utcnow(),
         status="running",
         trigger=trigger,
+        repair_of_run_id=repair_of_run_id,
     )
     session.add(run)
     session.commit()

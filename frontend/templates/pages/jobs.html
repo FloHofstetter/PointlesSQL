@@ -143,6 +143,11 @@
          kind: 'dag',
          name: '',
          cron: '* * * * *',
+         triggerKind: 'cron',
+         triggerPath: '',
+         triggerTable: '',
+         notifyFailure: false,
+         notifySuccess: false,
          maxParallel: 1,
          tasks: JSON.stringify([{name: 'hello', kind: 'python', config: {entry_point: 'my_entry'}, depends_on: [], max_retries: 0, retry_backoff_seconds: 0}], null, 2),
          notebookPath: '',
@@ -224,6 +229,15 @@
              for (const p of this.params) out[p.name] = this.typedValue(p);
              return out;
          },
+         triggerFields() {
+             const notify = [];
+             if (this.notifyFailure) notify.push('failure');
+             if (this.notifySuccess) notify.push('success');
+             const out = { trigger_kind: this.triggerKind, notify_on: notify };
+             if (this.triggerKind === 'file_arrival') out.trigger_config = { path: this.triggerPath };
+             if (this.triggerKind === 'table_update') out.trigger_config = { table: this.triggerTable };
+             return out;
+         },
          submit() {
              this.error = null;
              this.submitting = true;
@@ -237,6 +251,7 @@
                      cron_expr: this.cron,
                      tasks: parsedTasks,
                      max_parallel_runs: Number(this.maxParallel),
+                     ...this.triggerFields(),
                  };
              } else if (this.kind === 'papermill') {
                  if (!this.notebookPath) {
@@ -252,6 +267,7 @@
                      config: {notebook_path: this.notebookPath, parameters: parsedParams},
                      max_parallel_runs: Number(this.maxParallel),
                      run_as_user_id: {{ current_user_id|tojson }},
+                     ...this.triggerFields(),
                  };
              } else {
                  this.error = 'unknown kind: ' + this.kind; this.submitting = false; return;
@@ -283,11 +299,46 @@
                     id='job-name', size=None,
                     x_model='name', placeholder='my-job',
                 ) }}
-                {{ labeled_input(
-                    'job-cron', 'Cron expression',
-                    id='job-cron', size=None, classes='font-monospace',
-                    x_model='cron',
+                {{ labeled_select(
+                    'job-trigger-kind', 'Trigger',
+                    id='job-trigger-kind', size=None,
+                    x_model='triggerKind',
+                    options=[('cron', 'Cron schedule'), ('file_arrival', 'File arrival (glob)'), ('table_update', 'Table update (Delta version)')],
                 ) }}
+                <div x-show="triggerKind === 'cron'">
+                    {{ labeled_input(
+                        'job-cron', 'Cron expression',
+                        id='job-cron', size=None, classes='font-monospace',
+                        x_model='cron',
+                    ) }}
+                </div>
+                <div x-show="triggerKind === 'file_arrival'" x-cloak>
+                    {{ labeled_input(
+                        'job-trigger-path', 'Path glob',
+                        id='job-trigger-path', size=None, classes='font-monospace',
+                        x_model='triggerPath', placeholder='/data/incoming/*.csv',
+                        hint='The job fires when the matched file set changes (first match is a silent baseline).',
+                    ) }}
+                </div>
+                <div x-show="triggerKind === 'table_update'" x-cloak>
+                    {{ labeled_input(
+                        'job-trigger-table', 'Table',
+                        id='job-trigger-table', size=None, classes='font-monospace',
+                        x_model='triggerTable', placeholder='catalog.schema.table',
+                        hint='The job fires when the Delta table version advances.',
+                    ) }}
+                </div>
+                <div class="mb-3">
+                    <span class="form-label small fw-bold d-block">Notify run-as user</span>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="checkbox" id="job-notify-failure" x-model="notifyFailure">
+                        <label class="form-check-label small" for="job-notify-failure">on failure</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="checkbox" id="job-notify-success" x-model="notifySuccess">
+                        <label class="form-check-label small" for="job-notify-success">on success</label>
+                    </div>
+                </div>
                 {{ labeled_input(
                     'job-max-parallel', 'Max parallel runs',
                     id='job-max-parallel', size=None, type='number',

@@ -65,11 +65,20 @@ from pointlessql.services.scheduler.runs import (
     execute_run,
     log_job,
 )
+from pointlessql.services.scheduler.runs._logic import (
+    NOTIFY_ON_CHOICES,
+    RUN_IF_CHOICES,
+    TRIGGER_KINDS,
+)
+from pointlessql.services.scheduler.triggers import evaluate_event_trigger
 
 __all__ = [
     "JobExecutor",
     "KindRegistry",
+    "NOTIFY_ON_CHOICES",
+    "RUN_IF_CHOICES",
     "Scheduler",
+    "TRIGGER_KINDS",
     "_WEBHOOK_TIMEOUT_SECONDS",
     "_alert_check_executor",
     "_emit_run_telemetry",
@@ -85,6 +94,7 @@ __all__ = [
     "_topological_order",
     "_webhook_client_factory",
     "build_default_registry",
+    "evaluate_event_trigger",
     "execute_run",
     "log_job",
     "resolve_notebook_path",

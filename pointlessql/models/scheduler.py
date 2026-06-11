@@ -62,6 +62,25 @@ class Job(Base):
             for the payload shape. No retries — a one-shot 5-second
             POST, with any transport failure logged and swallowed so
             the run itself never depends on an external receiver.
+        trigger_kind: How the job fires — ``"cron"`` (the default;
+            ``cron_expr`` drives :func:`_is_due`), ``"file_arrival"``
+            (a filesystem glob is fingerprinted every tick and the job
+            fires when the file set changes), or ``"table_update"``
+            (the target Delta table's version is polled and the job
+            fires when it advances).
+        trigger_config: JSON-encoded parameters for the non-cron
+            trigger kinds — ``{"path": <glob>}`` for ``file_arrival``,
+            ``{"table": <catalog.schema.table>}`` for
+            ``table_update``.  Ignored for ``cron`` jobs.
+        trigger_cursor: Opaque change-detection state for non-cron
+            triggers (file-set fingerprint / last seen Delta version).
+            ``None`` until the first tick establishes the baseline —
+            the baseline itself never fires the job, only subsequent
+            changes do.
+        notify_on: JSON-encoded list of run outcomes that should
+            create an in-app notification for the run-as user —
+            subset of ``["failure", "success"]``.  Empty (the
+            default) keeps runs silent, matching pre-existing jobs.
         created_at: Timestamp when the job was created.
         updated_at: Timestamp of the most recent mutation.
     """
@@ -86,6 +105,14 @@ class Job(Base):
         Integer, nullable=False, default=1, server_default="1"
     )
     on_failure_url: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    trigger_kind: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="cron", server_default="cron"
+    )
+    trigger_config: Mapped[str] = mapped_column(
+        Text, nullable=False, default="{}", server_default="{}"
+    )
+    trigger_cursor: Mapped[str | None] = mapped_column(Text, nullable=True)
+    notify_on: Mapped[str] = mapped_column(Text, nullable=False, default="[]", server_default="[]")
     created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     updated_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
@@ -110,9 +137,14 @@ class JobRun(Base):
         finished_at: Timestamp when the executor returned, or ``None``
             while still running.
         status: ``running``, ``succeeded``, ``failed`` or ``skipped``.
-        trigger: ``scheduled`` or ``manual``.
+        trigger: ``scheduled``, ``manual``, ``event`` (file-arrival /
+            table-update trigger), or ``repair`` (partial re-run of a
+            failed run).
         error: Exception message when ``status == "failed"`` or
             ``"skipped"``; ``None`` otherwise.
+        repair_of_run_id: For ``trigger == "repair"`` runs, the id of
+            the failed run being repaired.  Plain integer (no FK) so
+            pruning old runs never cascades into repair lineage.
     """
 
     __tablename__ = "job_runs"
@@ -138,6 +170,7 @@ class JobRun(Base):
     status: Mapped[str] = mapped_column(String(20), nullable=False)
     trigger: Mapped[str] = mapped_column(String(20), nullable=False)
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    repair_of_run_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
 
 class JobTask(Base):
@@ -174,6 +207,18 @@ class JobTask(Base):
             retry already competes for the per-job + global scheduler
             semaphores — adding exponential growth on top makes tuning
             harder without buying much.
+        run_if: Condition gating execution relative to upstream
+            outcomes — ``"all_success"`` (default; today's skip-on-
+            upstream-failure), ``"all_done"`` (run once dependencies
+            are terminal, whatever their outcome), or
+            ``"at_least_one_failed"`` (an error-handler task that only
+            runs when an upstream failed; otherwise it is excluded
+            without failing the run).
+        for_each_json: Optional JSON-encoded list.  When present the
+            executor runs once per item, sequentially, with the item
+            merged into the task config under the ``"item"`` key.  A
+            retry restarts the whole item loop, so executors keep the
+            same idempotency expectations as plain retried tasks.
     """
 
     __tablename__ = "job_tasks"
@@ -197,6 +242,10 @@ class JobTask(Base):
     retry_backoff_seconds: Mapped[int] = mapped_column(
         Integer, nullable=False, default=0, server_default="0"
     )
+    run_if: Mapped[str] = mapped_column(
+        String(30), nullable=False, default="all_success", server_default="all_success"
+    )
+    for_each_json: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
 class TaskRun(Base):

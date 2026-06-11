@@ -64,11 +64,25 @@
         <dl class="row mb-0">
             <dt class="col-sm-3">Kind</dt>
             <dd class="col-sm-9"><span class="badge bg-info text-dark">{{ job.kind }}</span></dd>
-            <dt class="col-sm-3">Cron</dt>
-            <dd class="col-sm-9 font-monospace"
-                x-data='{ c: {{ job.cron_expr|tojson }} }'
-                x-text="pqlHumanizeCron(c)"
-                x-bind:title="c">{{ job.cron_expr }}</dd>
+            <dt class="col-sm-3">Trigger</dt>
+            <dd class="col-sm-9">
+                {% if job.trigger_kind == "file_arrival" %}
+                <span class="badge bg-info text-dark">file arrival</span>
+                <code class="ms-1">{{ job.trigger_config.get("path", "") }}</code>
+                {% elif job.trigger_kind == "table_update" %}
+                <span class="badge bg-info text-dark">table update</span>
+                <code class="ms-1">{{ job.trigger_config.get("table", "") }}</code>
+                {% else %}
+                <span class="font-monospace"
+                      x-data='{ c: {{ job.cron_expr|tojson }} }'
+                      x-text="pqlHumanizeCron(c)"
+                      x-bind:title="c">{{ job.cron_expr }}</span>
+                {% endif %}
+            </dd>
+            {% if job.notify_on %}
+            <dt class="col-sm-3">Notifications</dt>
+            <dd class="col-sm-9 small">on {{ job.notify_on|join(", ") }}</dd>
+            {% endif %}
             <dt class="col-sm-3">Run as user</dt>
             <dd class="col-sm-9">#{{ job.run_as_user_id }}</dd>
             <dt class="col-sm-3">Max parallel runs</dt>
@@ -301,12 +315,25 @@
                             <span class="badge bg-info text-dark">{{ run.status }}</span>
                             {% endif %}
                         </td>
-                        <td data-label="Trigger" class="small">{{ run.trigger }}</td>
+                        <td data-label="Trigger" class="small">
+                            {{ run.trigger }}{% if run.repair_of_run_id %}
+                            <span class="text-muted">(of #{{ run.repair_of_run_id }})</span>
+                            {% endif %}
+                        </td>
                         <td data-label="Duration" class="small">
                             {% if run.duration_seconds is not none %}{{ "%.1f"|format(run.duration_seconds) }}s{% else %}—{% endif %}
                         </td>
                         <td data-label="Error" class="small text-danger">{{ run.error or "" }}</td>
                         <td data-label="Actions" class="pe-3 text-end">
+                            {% if can_manage and run.status == "failed" %}
+                            <button type="button"
+                                    class="btn btn-sm btn-outline-warning"
+                                    title="Re-run only the tasks that did not succeed"
+                                    x-data
+                                    x-on:click.stop="window.pqlApi.fetch('/api/jobs/{{ job.id }}/runs/{{ run.id }}/repair', {method: 'POST'}).then(r => { if (r.ok) window.pqlApi.reloadWithToast('Repair run started.'); })">
+                                <i class="bi bi-wrench-adjustable me-1"></i>Repair
+                            </button>
+                            {% endif %}
                             {% if job.kind == "papermill" and run.status in ("succeeded", "failed") %}
                             <a href="/jobs/{{ job.id }}/runs/{{ run.id }}/notebook/download?format=ipynb"
                                onclick="event.stopPropagation()"

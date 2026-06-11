@@ -24,8 +24,9 @@ from pointlessql.services.scheduler.runs._db import (
 )
 from pointlessql.services.scheduler.runs._logic import (
     compose_task_fail_message,
-    detect_upstream_failures,
+    decide_task_execution,
     parse_config_json,
+    parse_for_each,
     retry_delay_seconds,
     select_max_attempts,
     upstream_skip_messages,
@@ -145,6 +146,37 @@ async def _run_one_task(
                 )
             return False, detail
 
+        for_each_items, fe_err = parse_for_each(task.for_each_json)
+        if fe_err is not None:
+            log_job(factory, job_run_id, task.id, "ERROR", fe_err)
+            with factory() as session:
+                _update_task_run(
+                    session,
+                    task_run_id,
+                    status="failed",
+                    attempts=0,
+                    error=fe_err,
+                    finished_at=_utcnow(),
+                )
+            return False, fe_err
+
+        async def _invoke() -> None:
+            """Run the executor once, or once per for_each item."""
+            if for_each_items is None:
+                await executor(job_run_id, user_info, config, uc_client)
+                return
+            total = len(for_each_items)
+            base = config if isinstance(config, dict) else {}
+            for index, item in enumerate(for_each_items, start=1):
+                log_job(
+                    factory,
+                    job_run_id,
+                    task.id,
+                    "INFO",
+                    f"task {task.name!r} for_each item {index}/{total}",
+                )
+                await executor(job_run_id, user_info, {**base, "item": item}, uc_client)
+
         max_attempts = select_max_attempts(task.max_retries)
         last_error: str | None = None
         started = _utcnow()
@@ -165,7 +197,7 @@ async def _run_one_task(
 
         for attempt in range(1, max_attempts + 1):
             try:
-                await executor(job_run_id, user_info, config, uc_client)
+                await _invoke()
             except PointlessSQLError as exc:
                 last_error = exc.detail
             except Exception as exc:  # noqa: BLE001 — executor boundary
@@ -243,8 +275,16 @@ async def _run_dag(
     job_run_id: int,
     user_info: UserInfo,
     uc_client: UnityCatalogClient,
+    *,
+    satisfied_task_ids: set[int] | None = None,
 ) -> tuple[bool, str | None]:
-    """Walk *tasks* topologically, executing ready ones and skipping on upstream failure.
+    """Walk *tasks* topologically, honouring each task's ``run_if`` condition.
+
+    Per task, :func:`decide_task_execution` maps the upstream outcomes
+    onto one of three decisions: ``run`` (execute with retries),
+    ``skip`` (upstream failure under ``all_success`` — counts as a
+    run-level failure, the historical behaviour), or ``exclude`` (the
+    condition makes the task irrelevant — recorded but benign).
 
     Args:
         factory: Session factory for state transitions.
@@ -255,29 +295,52 @@ async def _run_dag(
         job_run_id: Owning :class:`JobRun` id.
         user_info: Run-as user info.
         uc_client: Principal-forwarded facade.
+        satisfied_task_ids: Tasks whose previous success a repair run
+            reuses — they are recorded ``succeeded`` without executing
+            and count as succeeded for downstream conditions.
 
     Returns:
         A ``(succeeded, error)`` tuple where ``succeeded`` is ``True``
-        iff every task succeeded (any ``failed`` / ``skipped`` is a
-        run-level failure).
+        iff no task ``failed`` or was ``skipped`` by an upstream
+        failure (``excluded`` tasks never fail the run).
     """
     validate_dag(tasks)
     ordered = _topological_order(tasks)
+    satisfied = satisfied_task_ids or set()
     task_run_ids: dict[int, int] = {}
     with factory() as session:
         for t in ordered:
             tr = _create_task_run(session, job_run_id, t.id, "pending")
             task_run_ids[t.id] = tr.id
 
-    results: dict[int, str] = {}  # task.id -> "succeeded" | "failed" | "skipped"
+    # task.id -> "succeeded" | "failed" | "skipped" | "excluded"
+    results: dict[int, str] = {}
     run_error: str | None = None
     run_ok = True
 
     for t in ordered:
+        if t.id in satisfied:
+            log_job(
+                factory,
+                job_run_id,
+                t.id,
+                "INFO",
+                f"task {t.name!r} reused previous success (repair run)",
+            )
+            with factory() as session:
+                _update_task_run(
+                    session,
+                    task_run_ids[t.id],
+                    status="succeeded",
+                    finished_at=_utcnow(),
+                )
+            results[t.id] = "succeeded"
+            continue
+
         deps = _parse_depends_on(t.depends_on)
-        upstream_failed = detect_upstream_failures(deps, results)
-        if upstream_failed:
-            detail, task_error = upstream_skip_messages(t.name, upstream_failed)
+        decision, blocking = decide_task_execution(t.run_if, deps, results)
+        if decision == "skip":
+            detail, task_error = upstream_skip_messages(t.name, blocking)
             log_job(factory, job_run_id, t.id, "INFO", detail)
             with factory() as session:
                 _update_task_run(
@@ -290,6 +353,19 @@ async def _run_dag(
             results[t.id] = "skipped"
             run_ok = False
             run_error = run_error or detail
+            continue
+        if decision == "exclude":
+            detail = f"task {t.name!r} excluded: run_if={t.run_if!r} condition not met"
+            log_job(factory, job_run_id, t.id, "INFO", detail)
+            with factory() as session:
+                _update_task_run(
+                    session,
+                    task_run_ids[t.id],
+                    status="excluded",
+                    finished_at=_utcnow(),
+                    error=f"run_if {t.run_if!r} not met",
+                )
+            results[t.id] = "excluded"
             continue
 
         ok, err = await _run_one_task(

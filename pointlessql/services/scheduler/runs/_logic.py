@@ -18,6 +18,16 @@ from typing import Any
 # Task outcomes that make a downstream dependant unrunnable.
 _BLOCKING_UPSTREAM = frozenset({"failed", "skipped"})
 
+# Valid ``JobTask.run_if`` values.  ``all_success`` reproduces the
+# historical behaviour and is the column default.
+RUN_IF_CHOICES: tuple[str, ...] = ("all_success", "all_done", "at_least_one_failed")
+
+# Valid ``Job.trigger_kind`` values.
+TRIGGER_KINDS: tuple[str, ...] = ("cron", "file_arrival", "table_update")
+
+# Valid ``Job.notify_on`` entries.
+NOTIFY_ON_CHOICES: tuple[str, ...] = ("failure", "success")
+
 
 def parse_config_json(raw: str | None) -> tuple[Any, str | None]:
     """Decode a job/task config JSON blob.
@@ -92,6 +102,98 @@ def upstream_skip_messages(task_name: str, failed_deps: list[int]) -> tuple[str,
     detail = f"task {task_name!r} skipped: upstream {failed_deps} did not succeed"
     error = f"upstream {failed_deps} failed"
     return detail, error
+
+
+def decide_task_execution(
+    run_if: str,
+    deps: list[int],
+    results: Mapping[int, str],
+) -> tuple[str, list[int]]:
+    """Decide what happens to a task given its upstream outcomes.
+
+    The walker resolves tasks in topological order, so every entry of
+    *deps* already has a terminal status in *results* (``succeeded`` /
+    ``failed`` / ``skipped`` / ``excluded``).
+
+    Args:
+        run_if: The task's ``run_if`` condition (one of
+            :data:`RUN_IF_CHOICES`; unknown values fall back to
+            ``all_success`` for forward compatibility).
+        deps: Upstream task ids.
+        results: Terminal status per already-resolved task id.
+
+    Returns:
+        A ``(decision, blocking_deps)`` pair.  ``decision`` is one of:
+
+        * ``"run"`` — execute the task.
+        * ``"skip"`` — upstream failure under ``all_success``; the
+          task records ``skipped`` and the run counts as failed.
+        * ``"exclude"`` — the condition makes the task irrelevant
+          (an unmet ``at_least_one_failed``, or an ``all_success``
+          task whose upstreams were themselves excluded); the task
+          records ``excluded`` and the run is *not* failed by it.
+
+        ``blocking_deps`` lists the upstream ids that motivated a
+        non-``run`` decision (empty for ``run``).
+    """
+    failed = [d for d in deps if results.get(d) in _BLOCKING_UPSTREAM]
+    excluded = [d for d in deps if results.get(d) == "excluded"]
+    if run_if == "all_done":
+        return "run", []
+    if run_if == "at_least_one_failed":
+        if failed:
+            return "run", []
+        return "exclude", excluded or deps
+    # all_success (and any unknown value).
+    if failed:
+        return "skip", failed
+    if excluded:
+        return "exclude", excluded
+    return "run", []
+
+
+def parse_for_each(raw: str | None) -> tuple[list[Any] | None, str | None]:
+    """Decode a task's ``for_each_json`` column.
+
+    Args:
+        raw: The stored JSON, or ``None`` / empty for a regular task.
+
+    Returns:
+        A ``(items, error)`` pair: ``(None, None)`` for a regular
+        task, ``(list, None)`` for a valid item list, and
+        ``(None, message)`` when the JSON is invalid or not a list.
+    """
+    if raw is None or not raw.strip():
+        return None, None
+    try:
+        decoded = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        return None, f"invalid for_each JSON: {exc}"
+    if not isinstance(decoded, list):
+        return None, "for_each must be a JSON array"
+    return decoded, None
+
+
+def parse_notify_on(raw: str | None) -> list[str]:
+    """Decode a job's ``notify_on`` column into a validated list.
+
+    Unknown entries and malformed JSON degrade to "no notifications"
+    rather than failing the run — notification delivery must never be
+    the reason a job errors.
+
+    Args:
+        raw: The stored JSON, or ``None``.
+
+    Returns:
+        The subset of decoded entries that are valid outcomes.
+    """
+    try:
+        decoded = json.loads(raw or "[]")
+    except json.JSONDecodeError:
+        return []
+    if not isinstance(decoded, list):
+        return []
+    return [e for e in decoded if isinstance(e, str) and e in NOTIFY_ON_CHOICES]
 
 
 def compose_task_fail_message(task_name: str, err: str | None) -> str:

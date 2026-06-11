@@ -59,6 +59,9 @@ def serialize_job(job: Any, last_run: Any = None) -> dict[str, Any]:
         "is_paused": job.is_paused,
         "max_parallel_runs": job.max_parallel_runs,
         "on_failure_url": job.on_failure_url,
+        "trigger_kind": job.trigger_kind,
+        "trigger_config": json.loads(job.trigger_config or "{}"),
+        "notify_on": json.loads(job.notify_on or "[]"),
         "created_at": job.created_at.isoformat() if job.created_at else None,
         "updated_at": job.updated_at.isoformat() if job.updated_at else None,
         "last_run_status": last_status,
@@ -135,6 +138,8 @@ def serialize_task(task: Any) -> dict[str, Any]:
         "depends_on": json.loads(task.depends_on or "[]"),
         "max_retries": task.max_retries,
         "retry_backoff_seconds": task.retry_backoff_seconds,
+        "run_if": task.run_if,
+        "for_each": json.loads(task.for_each_json) if task.for_each_json else None,
     }
 
 
@@ -165,5 +170,6 @@ def serialize_run(run: Any) -> dict[str, Any]:
         "status": run.status,
         "trigger": run.trigger,
         "error": run.error,
+        "repair_of_run_id": run.repair_of_run_id,
         "duration_seconds": duration,
     }

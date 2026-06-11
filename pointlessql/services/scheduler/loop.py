@@ -73,10 +73,24 @@ async def tick_once(
     for job in jobs:
         if job.is_paused:
             continue
-        with factory() as session:
-            last_started = _last_run_started(session, job.id)
-            if not _is_due(job.cron_expr, current_time, last_started):
+        trigger_kind = job.trigger_kind or "cron"
+        run_trigger = "scheduled"
+        if trigger_kind == "cron":
+            with factory() as session:
+                last_started = _last_run_started(session, job.id)
+                if not _is_due(job.cron_expr, current_time, last_started):
+                    continue
+        else:
+            # file-arrival / table-update jobs fire on source change,
+            # not on the clock.  Evaluation errors are logged inside
+            # and read as "no change" so one bad glob or unreachable
+            # table never stalls the whole tick.
+            from pointlessql.services.scheduler.triggers import evaluate_event_trigger
+
+            if not await evaluate_event_trigger(factory, settings, job, current_time):
                 continue
+            run_trigger = "event"
+        with factory() as session:
             running = _count_running_runs(session, job.id)
             if running >= max(1, job.max_parallel_runs):
                 skipped = _insert_skipped(
@@ -97,7 +111,7 @@ async def tick_once(
             settings,
             registry,
             job.id,
-            "scheduled",
+            run_trigger,
             global_semaphore,
             per_job_semaphores,
         )

@@ -90,11 +90,40 @@ async def api_create_job(request: Request, body: dict[str, Any] = Body(...)) -> 
     user = get_user(request)
 
     name = body.get("name")
+    if not name:
+        raise _VE("name is required")
+
+    trigger_kind = str(body.get("trigger_kind") or "cron")
+    if trigger_kind not in scheduler_service.TRIGGER_KINDS:
+        raise _VE(
+            f"trigger_kind must be one of {list(scheduler_service.TRIGGER_KINDS)}, "
+            f"got {trigger_kind!r}"
+        )
+    trigger_config = body.get("trigger_config") or {}
+    if not isinstance(trigger_config, dict):
+        raise _VE("trigger_config must be a JSON object")
+
     cron_expr = body.get("cron_expr")
-    if not name or not cron_expr:
-        raise _VE("name and cron_expr are required")
-    if not _croniter.is_valid(str(cron_expr)):
-        raise _VE(f"Invalid cron expression: {cron_expr!r}")
+    if trigger_kind == "cron":
+        if not cron_expr:
+            raise _VE("cron_expr is required for cron-triggered jobs")
+        if not _croniter.is_valid(str(cron_expr)):
+            raise _VE(f"Invalid cron expression: {cron_expr!r}")
+    else:
+        # event-triggered jobs never consult croniter; the sentinel
+        # keeps the non-nullable column honest and reads clearly in
+        # the UI.
+        cron_expr = "@event"
+        if trigger_kind == "file_arrival" and not str(trigger_config.get("path") or "").strip():
+            raise _VE("file_arrival trigger needs trigger_config.path (a glob)")
+        if trigger_kind == "table_update" and not str(trigger_config.get("table") or "").strip():
+            raise _VE("table_update trigger needs trigger_config.table (catalog.schema.table)")
+
+    notify_on = body.get("notify_on") or []
+    if not isinstance(notify_on, list) or any(
+        e not in scheduler_service.NOTIFY_ON_CHOICES for e in notify_on
+    ):
+        raise _VE(f"notify_on must be a subset of {list(scheduler_service.NOTIFY_ON_CHOICES)}")
 
     tasks_payload = body.get("tasks")
     if tasks_payload is not None and not isinstance(tasks_payload, list):
@@ -132,6 +161,15 @@ async def api_create_job(request: Request, body: dict[str, Any] = Body(...)) -> 
             t_deps = t_entry.get("depends_on") or []
             if not isinstance(t_deps, list):
                 raise _VE(f"task {t_name!r}: depends_on must be a JSON array")
+            t_run_if = t_entry.get("run_if") or "all_success"
+            if t_run_if not in scheduler_service.RUN_IF_CHOICES:
+                raise _VE(
+                    f"task {t_name!r}: run_if must be one of "
+                    f"{list(scheduler_service.RUN_IF_CHOICES)}"
+                )
+            t_for_each = t_entry.get("for_each")
+            if t_for_each is not None and not isinstance(t_for_each, list):
+                raise _VE(f"task {t_name!r}: for_each must be a JSON array when provided")
 
     run_as_user_id = int(body.get("run_as_user_id") or user["id"])
     is_paused = bool(body.get("is_paused", False))
@@ -157,6 +195,9 @@ async def api_create_job(request: Request, body: dict[str, Any] = Body(...)) -> 
             is_paused=is_paused,
             max_parallel_runs=max_parallel_runs,
             on_failure_url=on_failure_url,
+            trigger_kind=trigger_kind,
+            trigger_config=json.dumps(trigger_config),
+            notify_on=json.dumps(notify_on),
             created_at=now,
             updated_at=now,
         )
@@ -173,6 +214,7 @@ async def api_create_job(request: Request, body: dict[str, Any] = Body(...)) -> 
                 if not isinstance(entry, dict):
                     continue
                 t_entry: dict[str, Any] = entry
+                t_for_each = t_entry.get("for_each")
                 jt = JobTaskModel(
                     job_id=job.id,
                     name=str(t_entry["name"]),
@@ -182,6 +224,8 @@ async def api_create_job(request: Request, body: dict[str, Any] = Body(...)) -> 
                     depends_on="[]",
                     max_retries=int(t_entry.get("max_retries") or 0),
                     retry_backoff_seconds=int(t_entry.get("retry_backoff_seconds") or 0),
+                    run_if=str(t_entry.get("run_if") or "all_success"),
+                    for_each_json=(json.dumps(t_for_each) if t_for_each is not None else None),
                 )
                 session.add(jt)
                 session.flush()
@@ -251,6 +295,42 @@ async def api_run_job(request: Request, job_id: int) -> dict[str, Any]:
     factory = request.app.state.session_factory
     run = await scheduler_service.execute_run(factory, settings, JOB_REGISTRY, job_id, "manual")
     await audit(request, "run_job", f"job:{job.name}")
+    return serialize_run(run)
+
+
+@router.post("/api/jobs/{job_id}/runs/{run_id}/repair")
+async def api_repair_run(request: Request, job_id: int, run_id: int) -> dict[str, Any]:
+    """Repair a failed run: re-run only what did not succeed (admin or owner).
+
+    For DAG jobs the new run reuses every task that succeeded in the
+    referenced run (recorded as ``succeeded`` without executing) and
+    executes only the failed / skipped ones plus their gating logic.
+    Single-task jobs simply re-run.  The new run carries
+    ``trigger="repair"`` and ``repair_of_run_id`` so the run list can
+    chain the lineage.
+    """
+    from pointlessql.exceptions import ValidationError as _VE
+    from pointlessql.models import JobRun as JobRunModel
+
+    job = load_job_or_404(request, job_id)
+    require_job_owner_or_admin(request, job)
+    factory = request.app.state.session_factory
+    with factory() as session:
+        ref = session.get(JobRunModel, run_id)
+        if ref is None or ref.job_id != job_id:
+            raise _VE(f"run {run_id} does not belong to job {job_id}")
+        if ref.status != "failed":
+            raise _VE(f"only failed runs can be repaired (run {run_id} is {ref.status!r})")
+    settings: Settings = request.app.state.settings
+    run = await scheduler_service.execute_run(
+        factory,
+        settings,
+        JOB_REGISTRY,
+        job_id,
+        "repair",
+        repair_of_run_id=run_id,
+    )
+    await audit(request, "repair_job_run", f"job:{job.name}", {"repaired_run_id": run_id})
     return serialize_run(run)
 
 
