@@ -1,0 +1,265 @@
+{% extends "base.html" %}
+{% block title %}Delta Sharing · PointlesSQL{% endblock %}
+{% block page_entry %}admin_sharing.js{% endblock %}
+
+{% set breadcrumbs = [
+ {"label": "Home", "href": "/"},
+ {"label": "Admin", "href": "/admin"},
+ {"label": "Delta Sharing"}
+] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block content %}
+<div x-data="adminSharing()" x-init="init()">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <div class="d-flex align-items-center gap-2">
+            <i class="bi bi-share fs-3"></i>
+            <h1 class="h3 mb-0">Delta Sharing</h1>
+        </div>
+        <span class="text-muted small"
+              x-text="shares.length + (shares.length === 1 ? ' share' : ' shares') + ' · '
+                      + recipients.length + (recipients.length === 1 ? ' recipient' : ' recipients')"></span>
+    </div>
+
+    <p class="text-muted">
+        Provider-side administration of what this install shares with the
+        outside world. A <strong>share</strong> is a named bundle of tables;
+        a <strong>recipient</strong> is an external party holding a bearer
+        token. Granting a share to a recipient makes its tables readable
+        over the open Delta Sharing protocol.
+    </p>
+
+    <div class="alert alert-danger" x-show="error" x-text="error" x-cloak></div>
+
+    {# ------------------------------------------------ Shares ------- #}
+    <div class="card mb-4">
+        <div class="card-header"><i class="bi bi-box-seam me-1"></i>Shares</div>
+        <div class="card-body">
+            <div class="row g-2 align-items-end mb-3">
+                <div class="col-md-4">
+                    <label class="form-label" for="sh-name">Name</label>
+                    <input id="sh-name" type="text" class="form-control form-control-sm font-monospace"
+                           x-model="shareForm.name" placeholder="quarterly-finance" maxlength="128">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label" for="sh-comment">Comment (optional)</label>
+                    <input id="sh-comment" type="text" class="form-control form-control-sm"
+                           x-model="shareForm.comment" placeholder="Curated finance tables for partners.">
+                </div>
+                <div class="col-md-2">
+                    <button type="button" class="btn btn-primary btn-sm w-100 mb-1"
+                            :disabled="creatingShare" @click="createShare()">
+                        <span x-show="!creatingShare">Create share</span>
+                        <span x-show="creatingShare" x-cloak>Creating&hellip;</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-sm align-middle pql-list-table mb-0">
+                    <thead>
+                        <tr>
+                            <th>Share</th>
+                            <th>Comment</th>
+                            <th class="text-end">Objects</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <template x-for="s in shares" :key="s.name">
+                            <tr>
+                                <td data-label="Share"><code x-text="s.name"></code></td>
+                                <td data-label="Comment" class="text-muted small" x-text="s.comment || ''"></td>
+                                <td data-label="Objects" class="text-end" x-text="(s.objects || []).length"></td>
+                                <td data-label="Actions" class="text-nowrap">
+                                    <button type="button" class="btn btn-sm btn-outline-secondary"
+                                            @click="toggleShare(s.name)">
+                                        <i class="bi bi-unlock"></i> Manage
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-danger"
+                                            @click="removeShare(s)">
+                                        <i class="bi bi-trash"></i> Delete
+                                    </button>
+                                    <template x-if="open[s.name]">
+                                        <div class="mt-2 p-2 border rounded bg-body-tertiary" style="white-space: normal;">
+                                            <div class="fw-semibold small mb-1"><i class="bi bi-table me-1"></i>Objects</div>
+                                            <div class="row g-2 align-items-end mb-2">
+                                                <div class="col">
+                                                    <input type="text" class="form-control form-control-sm font-monospace"
+                                                           x-model="objDrafts[s.name].table_full_name"
+                                                           placeholder="catalog.schema.table"
+                                                           aria-label="Table full name (three-part)">
+                                                </div>
+                                                <div class="col">
+                                                    <input type="text" class="form-control form-control-sm font-monospace"
+                                                           x-model="objDrafts[s.name].shared_as"
+                                                           placeholder="shared_as schema.table (optional)"
+                                                           aria-label="Shared-as name (two-part, optional)">
+                                                </div>
+                                                <div class="col-auto">
+                                                    <button type="button" class="btn btn-sm btn-primary"
+                                                            @click="addObject(s.name)">Add table</button>
+                                                </div>
+                                            </div>
+                                            <ul class="list-group list-group-flush mb-3">
+                                                <template x-for="o in ((details[s.name] || {}).objects || [])" :key="o.table_full_name">
+                                                    <li class="list-group-item d-flex justify-content-between align-items-center px-2 py-1">
+                                                        <span>
+                                                            <code x-text="o.table_full_name"></code>
+                                                            <span class="text-muted small" x-show="o.shared_as"
+                                                                  x-text="'→ shared as ' + o.shared_as"></span>
+                                                        </span>
+                                                        <button type="button" class="btn btn-sm btn-outline-danger"
+                                                                @click="removeObject(s.name, o.table_full_name)">Remove</button>
+                                                    </li>
+                                                </template>
+                                                <li class="list-group-item text-muted small px-2 py-1"
+                                                    x-show="((details[s.name] || {}).objects || []).length === 0">
+                                                    No tables in this share yet.
+                                                </li>
+                                            </ul>
+
+                                            <div class="fw-semibold small mb-1"><i class="bi bi-people me-1"></i>Grants</div>
+                                            <div class="row g-2 align-items-end mb-1">
+                                                <div class="col">
+                                                    <input type="text" class="form-control form-control-sm font-monospace"
+                                                           x-model="grantDrafts[s.name]"
+                                                           placeholder="recipient name"
+                                                           aria-label="Recipient name to grant or revoke">
+                                                </div>
+                                                <div class="col-auto">
+                                                    <button type="button" class="btn btn-sm btn-primary"
+                                                            @click="grant(s.name)">Grant</button>
+                                                    <button type="button" class="btn btn-sm btn-outline-danger"
+                                                            @click="revoke(s.name)">Revoke</button>
+                                                </div>
+                                            </div>
+                                            <div class="text-muted small">
+                                                Grant and revoke are idempotent; the management API does not
+                                                list a share's grants — the audit log records every change.
+                                            </div>
+                                        </div>
+                                    </template>
+                                </td>
+                            </tr>
+                        </template>
+                        <tr x-show="shares.length === 0">
+                            <td colspan="4" class="text-muted">No shares yet. Create one to start sharing tables.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    {# --------------------------------------------- Recipients ------ #}
+    <div class="card mb-4">
+        <div class="card-header"><i class="bi bi-person-badge me-1"></i>Recipients</div>
+        <div class="card-body">
+            <div class="row g-2 align-items-end mb-3">
+                <div class="col-md-4">
+                    <label class="form-label" for="rc-name">Name</label>
+                    <input id="rc-name" type="text" class="form-control form-control-sm font-monospace"
+                           x-model="recipForm.name" placeholder="partner-acme" maxlength="128">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label" for="rc-comment">Comment (optional)</label>
+                    <input id="rc-comment" type="text" class="form-control form-control-sm"
+                           x-model="recipForm.comment" placeholder="ACME Corp analytics team.">
+                </div>
+                <div class="col-md-2">
+                    <button type="button" class="btn btn-primary btn-sm w-100 mb-1"
+                            :disabled="creatingRecipient" @click="createRecipient()">
+                        <span x-show="!creatingRecipient">Create recipient</span>
+                        <span x-show="creatingRecipient" x-cloak>Creating&hellip;</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-sm align-middle pql-list-table mb-0">
+                    <thead>
+                        <tr>
+                            <th>Recipient</th>
+                            <th>Comment</th>
+                            <th>Created by</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <template x-for="r in recipients" :key="r.name">
+                            <tr>
+                                <td data-label="Recipient"><code x-text="r.name"></code></td>
+                                <td data-label="Comment" class="text-muted small" x-text="r.comment || ''"></td>
+                                <td data-label="Created by" class="text-muted small" x-text="r.created_by || '—'"></td>
+                                <td data-label="Actions" class="text-nowrap">
+                                    <button type="button" class="btn btn-sm btn-outline-secondary"
+                                            @click="rotateToken(r)">
+                                        <i class="bi bi-arrow-repeat"></i> Rotate token
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-danger"
+                                            @click="removeRecipient(r)">
+                                        <i class="bi bi-trash"></i> Delete
+                                    </button>
+                                </td>
+                            </tr>
+                        </template>
+                        <tr x-show="recipients.length === 0">
+                            <td colspan="4" class="text-muted">No recipients yet. Create one to mint its bearer token.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    {# One-time token modal: gated by `:class="{ 'd-block': … }"` not
+       x-show — Bootstrap modals + Alpine x-show fight over `display`. #}
+    <div class="modal" tabindex="-1"
+         :class="{ 'd-block': tokenModal.show }"
+         :style="tokenModal.show ? 'background-color: rgba(0,0,0,0.5);' : ''">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="bi bi-key text-warning"></i>
+                        Recipient token
+                    </h5>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-warning small mb-3">
+                        <strong>Copy this token now.</strong>
+                        It is shown exactly once and can never be recovered —
+                        only its hash is stored. Losing it means rotating the
+                        recipient's token and re-distributing.
+                    </div>
+                    <div class="mb-2">
+                        <div class="form-label small mb-1">Recipient</div>
+                        <div class="font-monospace small" x-text="tokenModal.name"></div>
+                    </div>
+                    <div>
+                        <label class="form-label small mb-1" for="sharing-token-value">One-time bearer token</label>
+                        <div class="input-group input-group-sm">
+                            <input id="sharing-token-value" type="text" class="form-control font-monospace"
+                                   readonly
+                                   :value="tokenModal.token"
+                                   x-ref="tokenField">
+                            <button type="button" class="btn btn-outline-primary"
+                                    @click="copyToken()">
+                                <i class="bi bi-clipboard"></i>
+                                <span x-text="tokenModal.copyLabel"></span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-sm"
+                            @click="dismissToken()">
+                        I have copied the token
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

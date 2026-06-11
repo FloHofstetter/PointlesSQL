@@ -37,15 +37,15 @@ nav-from-landing flow is exercised end-to-end.
    - Assert: page title `Admin · PointlesSQL`. Heading reads
      "Admin". Right-aligned hint reads "Operator-only surfaces.".
 
-2. **Verify all 17 cards in the grid** (load-bearing — the grid
+2. **Verify all 18 cards in the grid** (load-bearing — the grid
    has grown card by card; the most recent addition is the
-   Secrets card).
+   Delta Sharing card).
    - Action:
      ```js
      () => Array.from(document.querySelectorAll('a.pql-admin-card[data-admin-card]'))
        .map(a => ({slug: a.getAttribute('data-admin-card'), href: a.getAttribute('href')}))
      ```
-   - Assert: returns an array of length 17 with these slug→href
+   - Assert: returns an array of length 18 with these slug→href
      pairs in this order:
      - `audit-log` → `/admin/audit`
      - `external-writes` → `/admin/external-writes`
@@ -58,6 +58,7 @@ nav-from-landing flow is exercised end-to-end.
      - `review-destinations` → `/admin/review-destinations`
      - `api-keys` → `/admin/api-keys`
      - `secrets` → `/admin/secrets`
+     - `sharing` → `/admin/sharing`
      - `cdf-subscriptions` → `/admin/cdf-subscriptions`
      - `policy-modules` → `/admin/policy-modules`
      - `mesh-dashboard` → `/admin/mesh-dashboard`

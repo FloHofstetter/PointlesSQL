@@ -1,0 +1,189 @@
+{% extends "base.html" %}
+{% block title %}Shared with me · PointlesSQL{% endblock %}
+{% block page_entry %}shared_with_me.js{% endblock %}
+
+{% set breadcrumbs = [
+ {"label": "Home", "href": "/"},
+ {"label": "Shared with me"}
+] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block content %}
+<div x-data="sharedWithMe()" x-init="init()">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <div class="d-flex align-items-center gap-2">
+            <i class="bi bi-box-arrow-in-down fs-3"></i>
+            <h1 class="h3 mb-0">Shared with me</h1>
+        </div>
+        <span class="text-muted small"
+              x-text="providers.length + (providers.length === 1 ? ' provider' : ' providers')"></span>
+    </div>
+
+    <p class="text-muted">
+        Data other installs share with you over the open Delta Sharing
+        protocol. Register a provider profile (endpoint + bearer token from
+        the credential the provider issued), then browse its shares and
+        preview tables — possession of the token is the grant.
+    </p>
+
+    <div class="card mb-4">
+        <div class="card-header"><i class="bi bi-plus-lg me-1"></i>Register provider</div>
+        <div class="card-body">
+            <div class="row g-2 align-items-end">
+                <div class="col-md-2">
+                    <label class="form-label" for="sp-name">Name</label>
+                    <input id="sp-name" type="text" class="form-control form-control-sm font-monospace"
+                           x-model="form.name" placeholder="acme-corp" maxlength="128">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label" for="sp-url">Endpoint URL</label>
+                    <input id="sp-url" type="text" class="form-control form-control-sm font-monospace"
+                           x-model="form.endpoint_url" placeholder="https://share.example.com/delta-sharing">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label" for="sp-token">Token</label>
+                    <input id="sp-token" type="password" class="form-control form-control-sm"
+                           x-model="form.token" autocomplete="new-password">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label" for="sp-comment">Comment (optional)</label>
+                    <input id="sp-comment" type="text" class="form-control form-control-sm"
+                           x-model="form.comment">
+                </div>
+                <div class="col-md-2">
+                    <button type="button" class="btn btn-primary btn-sm w-100 mb-1"
+                            :disabled="creating" @click="createProvider()">
+                        <span x-show="!creating">Register</span>
+                        <span x-show="creating" x-cloak>Registering&hellip;</span>
+                    </button>
+                </div>
+            </div>
+            <div class="alert alert-danger mt-2 mb-0" x-show="createError" x-text="createError" x-cloak></div>
+        </div>
+    </div>
+
+    <div class="alert alert-danger" x-show="error" x-text="error" x-cloak></div>
+
+    <div class="table-responsive">
+        <table class="table table-sm align-middle pql-list-table">
+            <thead>
+                <tr>
+                    <th>Provider</th>
+                    <th>Endpoint</th>
+                    <th>Comment</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <template x-for="p in providers" :key="p.name">
+                    <tr>
+                        <td data-label="Provider"><code x-text="p.name"></code></td>
+                        <td data-label="Endpoint" class="text-muted small font-monospace" x-text="p.endpoint_url"></td>
+                        <td data-label="Comment" class="text-muted small" x-text="p.comment || ''"></td>
+                        <td data-label="Actions" class="text-nowrap">
+                            <button type="button" class="btn btn-sm btn-outline-primary"
+                                    @click="browse(p)">
+                                <i class="bi bi-folder2-open"></i> Browse
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-danger"
+                                    @click="removeProvider(p)">
+                                <i class="bi bi-trash"></i> Delete
+                            </button>
+                        </td>
+                    </tr>
+                </template>
+                <tr x-show="providers.length === 0">
+                    <td colspan="4" class="text-muted">No providers registered yet.</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <template x-if="active">
+        <div class="card mb-4">
+            <div class="card-header d-flex align-items-center justify-content-between">
+                <span><i class="bi bi-folder2-open me-1"></i>Browsing <code x-text="active"></code></span>
+                <button type="button" class="btn-close" aria-label="Close browser" @click="closeBrowse()"></button>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-danger" x-show="browseError" x-text="browseError" x-cloak></div>
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <div class="fw-semibold small mb-1">Shares</div>
+                        <div class="list-group list-group-flush">
+                            <template x-for="sh in browseShares" :key="sh">
+                                <button type="button"
+                                        class="list-group-item list-group-item-action px-2 py-1 font-monospace small"
+                                        :class="{ active: sh === activeShare }"
+                                        @click="openShare(sh)" x-text="sh"></button>
+                            </template>
+                            <div class="text-muted small px-2 py-1"
+                                 x-show="browseShares.length === 0 && !loadingShares">
+                                This provider offers no shares.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="fw-semibold small mb-1">Tables</div>
+                        <div class="list-group list-group-flush">
+                            <template x-for="t in tables" :key="t.schema + '.' + t.name">
+                                <button type="button"
+                                        class="list-group-item list-group-item-action px-2 py-1 font-monospace small"
+                                        :class="{ active: activeTable && activeTable.schema === t.schema && activeTable.name === t.name }"
+                                        @click="openTable(t)" x-text="t.schema + '.' + t.name"></button>
+                            </template>
+                            <div class="text-muted small px-2 py-1"
+                                 x-show="activeShare && tables.length === 0 && !loadingTables">
+                                No tables in this share.
+                            </div>
+                            <div class="text-muted small px-2 py-1" x-show="!activeShare">
+                                Pick a share to list its tables.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="fw-semibold small mb-1">Preview</div>
+                        <div class="text-muted small" x-show="previewLoading" x-cloak>
+                            <span class="spinner-border spinner-border-sm me-1" role="status" aria-label="Loading preview"></span>
+                            Fetching shared files&hellip;
+                        </div>
+                        <template x-if="preview">
+                            <div>
+                                <div class="text-muted small mb-1">
+                                    <span x-text="preview.row_count + ' rows shown'"></span>
+                                    <span x-show="preview.truncated" x-cloak>
+                                        · preview truncated to the first 50 rows
+                                    </span>
+                                </div>
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-striped">
+                                        <thead>
+                                            <tr>
+                                                <template x-for="c in preview.columns" :key="c">
+                                                    <th x-text="c"></th>
+                                                </template>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <template x-for="(row, i) in preview.rows" :key="i">
+                                                <tr>
+                                                    <template x-for="(cell, j) in row" :key="j">
+                                                        <td x-text="cell"></td>
+                                                    </template>
+                                                </tr>
+                                            </template>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </template>
+                        <div class="text-muted small" x-show="!preview && !previewLoading">
+                            Pick a table to preview its rows.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </template>
+</div>
+{% endblock %}

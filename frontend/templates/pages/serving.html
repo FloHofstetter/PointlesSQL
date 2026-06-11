@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+{% block title %}Model Serving · PointlesSQL{% endblock %}
+{% block page_entry %}serving.js{% endblock %}
+
+{% set breadcrumbs = [
+ {"label": "Home", "href": "/"},
+ {"label": "Model Serving"}
+] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block content %}
+<div x-data="servingEndpoints({{ endpoints | tojson }})">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <div class="d-flex align-items-center gap-2">
+            <i class="bi bi-rocket-takeoff fs-3"></i>
+            <h1 class="h3 mb-0">Model Serving</h1>
+        </div>
+        <span class="text-muted small"
+              x-text="endpoints.length + (endpoints.length === 1 ? ' endpoint' : ' endpoints')"></span>
+    </div>
+
+    <p class="text-muted">
+        Serve a registry model behind a stable REST endpoint. Each started
+        endpoint runs a local scoring worker speaking the MLflow invocation
+        protocol; PointlesSQL's auth and audit front every scoring request.
+    </p>
+
+    <div class="card mb-4">
+        <div class="card-header"><i class="bi bi-plus-lg me-1"></i>New endpoint</div>
+        <div class="card-body">
+            <div class="row g-2 align-items-end">
+                <div class="col-md-3">
+                    <label class="form-label" for="sv-name">Name</label>
+                    <input id="sv-name" type="text" class="form-control form-control-sm font-monospace"
+                           x-model="form.name" placeholder="churn-scorer" maxlength="128">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label" for="sv-model">Model name</label>
+                    <input id="sv-model" type="text" class="form-control form-control-sm font-monospace"
+                           x-model="form.model_name" placeholder="main.models.churn">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label" for="sv-version">Model version</label>
+                    <input id="sv-version" type="text" class="form-control form-control-sm font-monospace"
+                           x-model="form.model_version" placeholder="1">
+                    <div class="form-text">@alias or number</div>
+                </div>
+                <div class="col-md-2">
+                    <button type="button" class="btn btn-primary btn-sm w-100 mb-1"
+                            :disabled="creating" @click="create()">
+                        <span x-show="!creating">Create</span>
+                        <span x-show="creating" x-cloak>Creating&hellip;</span>
+                    </button>
+                </div>
+            </div>
+            <div class="alert alert-danger mt-2 mb-0" x-show="createError" x-text="createError" x-cloak></div>
+        </div>
+    </div>
+
+    <div class="alert alert-danger" x-show="error" x-text="error" x-cloak></div>
+
+    <div class="table-responsive">
+        <table class="table table-sm align-middle pql-list-table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Model</th>
+                    <th>State</th>
+                    <th class="text-end">Invocations</th>
+                    <th>Last invoked</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <template x-for="ep in endpoints" :key="ep.name">
+                    <tr>
+                        <td data-label="Name"><code x-text="ep.name"></code></td>
+                        <td data-label="Model">
+                            <code class="small" x-text="ep.model_name + ' / ' + ep.model_version"></code>
+                        </td>
+                        <td data-label="State">
+                            <span class="badge" :class="stateBadge(ep.state)"
+                                  :title="ep.state === 'failed' ? (ep.last_error || '') : ''"
+                                  x-text="ep.state"></span>
+                        </td>
+                        <td data-label="Invocations" class="text-end" x-text="ep.invocation_count"></td>
+                        <td data-label="Last invoked" class="text-muted small" x-text="ago(ep.last_invoked_at)"></td>
+                        <td data-label="Actions" class="text-nowrap">
+                            <button type="button" class="btn btn-sm btn-outline-success"
+                                    :disabled="ep.state === 'ready' || ep.state === 'starting' || busy[ep.name]"
+                                    @click="start(ep)">
+                                <i class="bi bi-play"></i> Start
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary"
+                                    :disabled="ep.state === 'stopped' || busy[ep.name]"
+                                    @click="stop(ep)">
+                                <i class="bi bi-stop"></i> Stop
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-danger"
+                                    :disabled="busy[ep.name]" @click="remove(ep)">
+                                <i class="bi bi-trash"></i> Delete
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-primary"
+                                    x-show="ep.state === 'ready'" @click="toggleTry(ep)">
+                                <i class="bi bi-send"></i> Try it
+                            </button>
+                            <template x-if="tryOpen[ep.name]">
+                                <div class="mt-2 p-2 border rounded bg-body-tertiary" style="white-space: normal;">
+                                    <div class="form-label small mb-1">
+                                        <i class="bi bi-braces me-1"></i>Request body (MLflow scoring protocol)
+                                    </div>
+                                    <textarea class="form-control form-control-sm font-monospace" rows="4"
+                                              x-model="tryBodies[ep.name]"
+                                              aria-label="Invocation request body"></textarea>
+                                    <button type="button" class="btn btn-sm btn-primary mt-2"
+                                            :disabled="busy[ep.name]" @click="invoke(ep)">
+                                        <i class="bi bi-send"></i> Send
+                                    </button>
+                                    <pre class="small bg-body p-2 rounded mt-2 mb-0"
+                                         x-show="tryResults[ep.name]"
+                                         x-text="tryResults[ep.name]" x-cloak></pre>
+                                </div>
+                            </template>
+                        </td>
+                    </tr>
+                </template>
+                <tr x-show="endpoints.length === 0">
+                    <td colspan="6" class="text-muted">
+                        No serving endpoints yet. Create one from a registry model above.
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
