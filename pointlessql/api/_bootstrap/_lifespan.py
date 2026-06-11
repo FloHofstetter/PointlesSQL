@@ -558,6 +558,9 @@ def make_lifespan(
             serving_manager = getattr(app.state, "serving_manager", None)
             if serving_manager is not None:
                 await serving_manager.stop_all()
+            stream_buffer = getattr(app.state, "ingest_stream_buffer", None)
+            if stream_buffer is not None:
+                await stream_buffer.shutdown()
             if app.state.mlflow_subprocess is not None:
                 await app.state.mlflow_subprocess.stop()
             if app.state.dbt_subprocess is not None:

@@ -60,6 +60,7 @@ def register_routers(app: FastAPI) -> None:
     from pointlessql.api.federation_routes import router as federation_router
     from pointlessql.api.feed_html_routes import router as feed_html_router
     from pointlessql.api.feed_routes import router as feed_router
+    from pointlessql.api.genie_routes import router as genie_router
     from pointlessql.api.glossary_html_routes import router as glossary_html_router
     from pointlessql.api.glossary_relations_routes import (
         router as glossary_relations_router,
@@ -71,6 +72,7 @@ def register_routers(app: FastAPI) -> None:
     from pointlessql.api.home_routes import router as home_router
     from pointlessql.api.ingest_html_routes import router as ingest_html_router
     from pointlessql.api.ingest_routes import router as ingest_router
+    from pointlessql.api.ingest_stream_routes import router as ingest_stream_router
     from pointlessql.api.issues_html_routes import router as issues_html_router
     from pointlessql.api.jobs_routes import router as jobs_router
     from pointlessql.api.lens import router as lens_router
@@ -93,7 +95,6 @@ def register_routers(app: FastAPI) -> None:
     )
     from pointlessql.api.mesh_routes import router as mesh_router
     from pointlessql.api.metric_views_routes import router as metric_views_router
-    from pointlessql.api.pipelines_routes import router as pipelines_router
     from pointlessql.api.ml_routes import router as ml_router
     from pointlessql.api.mlflow_html_routes import router as mlflow_html_router
     from pointlessql.api.mlflow_proxy import router as mlflow_proxy_router
@@ -115,6 +116,8 @@ def register_routers(app: FastAPI) -> None:
     from pointlessql.api.notebooks_routes import router as notebooks_router
     from pointlessql.api.notifications_routes import router as notifications_router
     from pointlessql.api.notifications_stream import router as notifications_stream_router
+    from pointlessql.api.online_tables_routes import router as online_tables_router
+    from pointlessql.api.pipelines_routes import router as pipelines_router
     from pointlessql.api.pql_introspect_routes import router as pql_introspect_router
     from pointlessql.api.pql_training_routes import router as pql_training_router
     from pointlessql.api.review_destinations_routes import (
@@ -126,8 +129,10 @@ def register_routers(app: FastAPI) -> None:
     )
     from pointlessql.api.saved_views_routes import router as saved_views_router
     from pointlessql.api.secrets_routes import router as secrets_router
+    from pointlessql.api.serving_html_routes import router as serving_html_router
     from pointlessql.api.serving_routes import router as serving_router
     from pointlessql.api.settings_routes import router as settings_router
+    from pointlessql.api.sharing_html_routes import router as sharing_html_router
     from pointlessql.api.sharing_routes import router as sharing_router
     from pointlessql.api.social_routes import router as social_router
     from pointlessql.api.sql import router as sql_router
@@ -225,6 +230,11 @@ def register_routers(app: FastAPI) -> None:
     app.include_router(bi_html_router)
     app.include_router(metric_views_router)
     app.include_router(pipelines_router)
+    app.include_router(genie_router)
+    app.include_router(ingest_stream_router)
+    app.include_router(online_tables_router)
+    app.include_router(serving_html_router)
+    app.include_router(sharing_html_router)
     app.include_router(serving_router)
     app.include_router(sharing_router)
     app.include_router(help_router)

@@ -26,10 +26,10 @@ ML registry, dbt-pipeline, and packaging surfaces.
 
 ## Inventory (full)
 
-74 walkthroughs total. Each carries a `> **Mode:**` tag in its
+102 walkthroughs total. Each carries a `> **Mode:**` tag in its
 first content block; this section is the grep-friendly index.
 
-### `Mode: browser` — Playwright MCP replay (51)
+### `Mode: browser` — Playwright MCP replay (56)
 
 Reload `auth.md` first; later ones reuse seeded users + catalog.
 
@@ -68,6 +68,11 @@ Reload `auth.md` first; later ones reuse seeded users + catalog.
 | [`bi-dashboards.md`](bi-dashboards.md) | `/bi` widget dashboards + grid editor + public link | |
 | [`metric-views.md`](metric-views.md) | `/metric-views` semantic layer + governed queries | |
 | [`pipelines.md`](pipelines.md) | `/pipelines` declarative MV/ST refresh + expectations | |
+| [`genie-spaces.md`](genie-spaces.md) | `/genie` curated NL data rooms + trusted assets | |
+| [`online-tables.md`](online-tables.md) | `/online-tables` Delta→Postgres/SQLite sync + lookup | |
+| [`model-serving.md`](model-serving.md) | `/serving` endpoints + invocation console | |
+| [`delta-sharing.md`](delta-sharing.md) | `/admin/sharing` provider + `/shared-with-me` consumer | |
+| [`ingest-streaming.md`](ingest-streaming.md) | auto-loader pull mode + direct-write stream API | |
 | [`alerts.md`](alerts.md) | `/alerts` + destinations + Atom feed | |
 | [`rollback.md`](rollback.md) | `/runs/{id}` admin rollback card | |
 | [`time-travel.md`](time-travel.md) | `/admin/audit/by-table` row-at-version | |

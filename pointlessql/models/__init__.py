@@ -69,6 +69,7 @@ from pointlessql.models.audit import (
     SavedAuditQuery,
 )
 from pointlessql.models.auth import User
+from pointlessql.models.autoloader import AutoloaderFile
 from pointlessql.models.base import Base
 from pointlessql.models.bi_dashboards import (
     BI_WIDGET_KINDS,
@@ -167,6 +168,14 @@ from pointlessql.models.editor_chat import (
     EditorChatSession,
     NotebookCellProposal,
 )
+from pointlessql.models.genie import (
+    GENIE_FEEDBACK_VALUES,
+    GENIE_MESSAGE_ROLES,
+    GENIE_MESSAGE_STATUSES,
+    GenieMessage,
+    GenieSpace,
+    GenieTrustedAsset,
+)
 from pointlessql.models.ingest import (
     INGEST_PULL_MODES,
     INGEST_SOURCE_KINDS,
@@ -255,6 +264,11 @@ from pointlessql.models.social import (
     UserFollow,
     UserProfile,
     UserTopicFollow,
+)
+from pointlessql.models.synced_tables import (
+    SYNCED_TABLE_MODES,
+    SYNCED_TABLE_STATUSES,
+    SyncedTable,
 )
 from pointlessql.models.system_keys import SystemKey
 from pointlessql.models.vector import VectorIndex
@@ -453,13 +467,23 @@ __all__ = [
     "SavedView",
     "SqlStatement",
     "SyncRun",
+    "GENIE_FEEDBACK_VALUES",
+    "GENIE_MESSAGE_ROLES",
+    "GENIE_MESSAGE_STATUSES",
     "SECRET_SCOPE_PERMISSIONS",
     "SERVING_ENDPOINT_STATES",
+    "SYNCED_TABLE_MODES",
+    "SYNCED_TABLE_STATUSES",
+    "AutoloaderFile",
+    "GenieMessage",
+    "GenieSpace",
+    "GenieTrustedAsset",
     "SecretScope",
     "SecretScopeAcl",
     "SecretScopeSecret",
     "ServingEndpoint",
     "SharingProvider",
+    "SyncedTable",
     "SystemKey",
     "TableStats",
     "TaskRun",

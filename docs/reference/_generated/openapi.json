@@ -1365,6 +1365,7 @@
           "lens_session_budget_exceeded",
           "lens_non_select_blocked",
           "lens_provider_not_configured",
+          "genie_llm_not_configured",
           "quota_exceeded"
         ],
         "title": "ErrorCode",
@@ -4473,6 +4474,28 @@
         "summary": "Admin Secrets Page",
         "tags": [
           "admin-secrets"
+        ]
+      }
+    },
+    "/admin/sharing": {
+      "get": {
+        "description": "Render the provider-side Delta Sharing cockpit (shares + recipients).",
+        "operationId": "admin_sharing_page_admin_sharing_get",
+        "responses": {
+          "200": {
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Admin Sharing Page",
+        "tags": [
+          "sharing-html"
         ]
       }
     },
@@ -25757,6 +25780,532 @@
         ]
       }
     },
+    "/api/genie/messages/{message_id}/feedback": {
+      "post": {
+        "description": "Record a thumbs reaction on an assistant answer.\n\nArgs:\n    request: Incoming FastAPI request.\n    message_id: Assistant message primary key.\n    body: ``{\"feedback\": \"up\" | \"down\"}``.\n\nReturns:\n    ``{\"id\", \"feedback\"}`` after the update.\n\nRaises:\n    PermissionDeniedError: When the caller is unauthenticated.\n    ValidationError: On an unknown feedback value or a\n        non-assistant target.",
+        "operationId": "api_message_feedback_api_genie_messages__message_id__feedback_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "message_id",
+            "required": true,
+            "schema": {
+              "title": "Message Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Body",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Message Feedback Api Genie Messages  Message Id  Feedback Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Message Feedback",
+        "tags": [
+          "genie"
+        ]
+      }
+    },
+    "/api/genie/messages/{message_id}/promote": {
+      "post": {
+        "description": "Promote an assistant answer into the trusted assets (owner/admin).\n\nArgs:\n    request: Incoming FastAPI request.\n    message_id: Assistant message primary key.\n\nReturns:\n    The serialized trusted asset created from the answer.\n\nRaises:\n    ValidationError: When the message is not a promotable\n        assistant answer.",
+        "operationId": "api_promote_message_api_genie_messages__message_id__promote_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "message_id",
+            "required": true,
+            "schema": {
+              "title": "Message Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Promote Message Api Genie Messages  Message Id  Promote Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Promote Message",
+        "tags": [
+          "genie"
+        ]
+      }
+    },
+    "/api/genie/spaces": {
+      "get": {
+        "description": "List the active workspace's Genie spaces.",
+        "operationId": "api_list_spaces_api_genie_spaces_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api List Spaces Api Genie Spaces Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Api List Spaces",
+        "tags": [
+          "genie"
+        ]
+      },
+      "post": {
+        "description": "Create an empty Genie space.\n\nArgs:\n    request: Incoming FastAPI request.\n    body: ``{\"title\": str, \"description\"?: str}``.\n\nReturns:\n    The serialized space row.\n\nRaises:\n    ValidationError: On a missing/empty title.\n    PermissionDeniedError: When the caller is unauthenticated.",
+        "operationId": "api_create_space_api_genie_spaces_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Body",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Create Space Api Genie Spaces Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Create Space",
+        "tags": [
+          "genie"
+        ]
+      }
+    },
+    "/api/genie/spaces/{slug}": {
+      "delete": {
+        "description": "Delete a space, its assets, and its transcript (owner or admin).",
+        "operationId": "api_delete_space_api_genie_spaces__slug__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Delete Space Api Genie Spaces  Slug  Delete",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Delete Space",
+        "tags": [
+          "genie"
+        ]
+      },
+      "get": {
+        "description": "Return one space with its trusted assets.",
+        "operationId": "api_get_space_api_genie_spaces__slug__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Get Space Api Genie Spaces  Slug  Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Get Space",
+        "tags": [
+          "genie"
+        ]
+      },
+      "patch": {
+        "description": "Patch curation fields (owner or admin).\n\nArgs:\n    request: Incoming FastAPI request.\n    slug: Space slug.\n    body: Any of ``{\"title\", \"description\", \"instructions\",\n        \"tables\", \"metric_views\"}``.\n\nReturns:\n    The serialized refreshed space.\n\nRaises:\n    ValidationError: On an empty title or a malformed FQN list.",
+        "operationId": "api_update_space_api_genie_spaces__slug__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Body",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Update Space Api Genie Spaces  Slug  Patch",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Update Space",
+        "tags": [
+          "genie"
+        ]
+      }
+    },
+    "/api/genie/spaces/{slug}/ask": {
+      "post": {
+        "description": "Answer one natural-language question inside a space.\n\nArgs:\n    request: Incoming FastAPI request.\n    slug: Space slug.\n    body: ``{\"question\": str}``.\n\nReturns:\n    ``{\"message_id\", \"sql\", \"columns\", \"rows\", \"row_count\",\n    \"truncated\"}`` \u2014 the persisted assistant turn plus the\n    governed result.\n\nRaises:\n    PermissionDeniedError: When the caller is unauthenticated.\n    ValidationError: On an empty question, a non-SELECT model\n        reply, or generated SQL referencing tables outside the\n        space (the rejection is also persisted as an assistant\n        ``error`` turn).\n    PointlessSQLError: Propagated from SELECT enforcement or\n        execution after the failure is persisted to the\n        transcript.  An unconfigured LLM raises the 503\n        :class:`pointlessql.services.genie.GenieLLMNotConfiguredError`.",
+        "operationId": "api_ask_api_genie_spaces__slug__ask_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Body",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Ask Api Genie Spaces  Slug  Ask Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Ask",
+        "tags": [
+          "genie"
+        ]
+      }
+    },
+    "/api/genie/spaces/{slug}/assets": {
+      "post": {
+        "description": "Add a trusted Q\u2192SQL example (owner or admin).\n\nArgs:\n    request: Incoming FastAPI request.\n    slug: Space slug.\n    body: ``{\"question\": str, \"sql_text\": str}``.\n\nReturns:\n    The serialized asset row.\n\nRaises:\n    ValidationError: On empty fields or SQL that does not parse\n        as a single SELECT.",
+        "operationId": "api_add_trusted_asset_api_genie_spaces__slug__assets_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Body",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Add Trusted Asset Api Genie Spaces  Slug  Assets Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Add Trusted Asset",
+        "tags": [
+          "genie"
+        ]
+      }
+    },
+    "/api/genie/spaces/{slug}/assets/{asset_id}": {
+      "delete": {
+        "description": "Remove one trusted asset (owner or admin).",
+        "operationId": "api_delete_trusted_asset_api_genie_spaces__slug__assets__asset_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "asset_id",
+            "required": true,
+            "schema": {
+              "title": "Asset Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Delete Trusted Asset Api Genie Spaces  Slug  Assets  Asset Id  Delete",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Delete Trusted Asset",
+        "tags": [
+          "genie"
+        ]
+      }
+    },
+    "/api/genie/spaces/{slug}/messages": {
+      "get": {
+        "description": "Return the room's shared transcript (last 50 turns).",
+        "operationId": "api_list_messages_api_genie_spaces__slug__messages_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api List Messages Api Genie Spaces  Slug  Messages Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api List Messages",
+        "tags": [
+          "genie"
+        ]
+      }
+    },
     "/api/glossary": {
       "get": {
         "description": "List the active workspace's glossary terms with binding counts.",
@@ -26686,6 +27235,146 @@
           "ingest",
           "ingest",
           "tables"
+        ]
+      }
+    },
+    "/api/ingest/streams/{catalog}/{schema}/{table}": {
+      "post": {
+        "description": "Accept a batch of JSON rows for the target Delta table.\n\nRows are buffered in-process and flushed as one Delta append when\nthe buffer's size or age policy trips (or on ``/flush``).  A\n``buffered`` value of ``0`` in the response means this request\nitself tripped the size flush.\n\nArgs:\n    request: Incoming FastAPI request.\n    catalog: Catalog name from the URL.\n    schema: Schema name from the URL.\n    table: Table name from the URL.\n    body: ``{\"rows\": [{...}, ...]}`` \u2014 at most\n        :data:`MAX_ROWS_PER_REQUEST` objects.\n\nReturns:\n    ``{\"accepted\": <rows in this request>, \"buffered\": <rows\n    still pending for the target>}``.",
+        "operationId": "api_stream_append_api_ingest_streams__catalog___schema___table__post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "catalog",
+            "required": true,
+            "schema": {
+              "title": "Catalog",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "schema",
+            "required": true,
+            "schema": {
+              "title": "Schema",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "table",
+            "required": true,
+            "schema": {
+              "title": "Table",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Body",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Stream Append Api Ingest Streams  Catalog   Schema   Table  Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Stream Append",
+        "tags": [
+          "ingest",
+          "streams"
+        ]
+      }
+    },
+    "/api/ingest/streams/{catalog}/{schema}/{table}/flush": {
+      "post": {
+        "description": "Force-flush the target's pending rows to Delta.\n\nArgs:\n    request: Incoming FastAPI request.\n    catalog: Catalog name from the URL.\n    schema: Schema name from the URL.\n    table: Table name from the URL.\n\nReturns:\n    ``{\"flushed\": <rows written>}`` \u2014 ``0`` when nothing was\n    pending.",
+        "operationId": "api_stream_flush_api_ingest_streams__catalog___schema___table__flush_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "catalog",
+            "required": true,
+            "schema": {
+              "title": "Catalog",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "schema",
+            "required": true,
+            "schema": {
+              "title": "Schema",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "table",
+            "required": true,
+            "schema": {
+              "title": "Table",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Stream Flush Api Ingest Streams  Catalog   Schema   Table  Flush Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Stream Flush",
+        "tags": [
+          "ingest",
+          "streams"
         ]
       }
     },
@@ -33919,6 +34608,237 @@
         ]
       }
     },
+    "/api/online-tables": {
+      "get": {
+        "description": "List the active workspace's synced tables.",
+        "operationId": "api_list_online_tables_api_online_tables_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api List Online Tables Api Online Tables Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Api List Online Tables",
+        "tags": [
+          "online-tables"
+        ]
+      },
+      "post": {
+        "description": "Create a synced table in ``idle`` state.\n\nArgs:\n    request: Incoming FastAPI request.\n    body: ``{\"name\", \"source_fqn\", \"target_url\", \"target_table\",\n        \"primary_keys\"?, \"mode\"?}`` \u2014 ``primary_keys`` is a\n        comma-separated column list, required for ``cdf`` mode.\n\nReturns:\n    The serialized synced-table row.\n\nRaises:\n    ValidationError: On malformed input or a duplicate name.\n    PermissionDeniedError: When the caller is unauthenticated.",
+        "operationId": "api_create_online_table_api_online_tables_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Body",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Create Online Table Api Online Tables Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Create Online Table",
+        "tags": [
+          "online-tables"
+        ]
+      }
+    },
+    "/api/online-tables/{name}": {
+      "delete": {
+        "description": "Delete a synced table (admin or creator only).\n\nThe target table itself is left in place \u2014 deleting the row only\nstops PointlesSQL from syncing it.\n\nArgs:\n    request: Incoming FastAPI request.\n    name: Synced-table name.\n\nReturns:\n    ``{\"deleted\": bool}``.\n\nRaises:\n    PermissionDeniedError: When the caller is neither an admin\n        nor the creator of the synced table.",
+        "operationId": "api_delete_online_table_api_online_tables__name__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "title": "Name",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Delete Online Table Api Online Tables  Name  Delete",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Delete Online Table",
+        "tags": [
+          "online-tables"
+        ]
+      }
+    },
+    "/api/online-tables/{name}/lookup": {
+      "get": {
+        "description": "Point-read rows from the synced target by primary key.\n\nArgs:\n    request: Incoming FastAPI request.\n    name: Synced-table name.\n    key_column: Column to filter on; must be one of the synced\n        table's primary keys.\n    key: Value to match (always parameter-bound).\n    limit: Maximum rows returned.\n\nReturns:\n    ``{\"rows\": [...], \"row_count\": int}``.\n\nRaises:\n    ValidationError: When *key_column* is not a primary-key\n        column or the target cannot be queried.",
+        "operationId": "api_lookup_online_table_api_online_tables__name__lookup_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "title": "Name",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "key_column",
+            "required": true,
+            "schema": {
+              "title": "Key Column",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "title": "Key",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 10,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Lookup Online Table Api Online Tables  Name  Lookup Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Lookup Online Table",
+        "tags": [
+          "online-tables"
+        ]
+      }
+    },
+    "/api/online-tables/{name}/sync": {
+      "post": {
+        "description": "Run one sync of the synced table's Delta source into its target.\n\nArgs:\n    request: Incoming FastAPI request.\n    name: Synced-table name.\n\nReturns:\n    ``{\"rows_affected\", \"version\", \"table\"}`` \u2014 the per-run stats\n    plus the refreshed serialized row.\n\nRaises:\n    ValidationError: When the sync fails (the row is left in\n        ``failed`` state with the error recorded).\n    PermissionDeniedError: When the caller is unauthenticated.",
+        "operationId": "api_sync_online_table_api_online_tables__name__sync_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "title": "Name",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Sync Online Table Api Online Tables  Name  Sync Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Sync Online Table",
+        "tags": [
+          "online-tables"
+        ]
+      }
+    },
     "/api/permissions/{securable_type}/{full_name}": {
       "get": {
         "description": "Return privilege assignments for a securable.",
@@ -34042,6 +34962,307 @@
         "tags": [
           "governance",
           "governance"
+        ]
+      }
+    },
+    "/api/pipelines": {
+      "get": {
+        "description": "List the active workspace's pipelines.",
+        "operationId": "api_list_pipelines_api_pipelines_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api List Pipelines Api Pipelines Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Api List Pipelines",
+        "tags": [
+          "pipelines"
+        ]
+      },
+      "post": {
+        "description": "Create a pipeline from a dataset document.\n\nArgs:\n    request: Incoming FastAPI request.\n    body: ``{\"title\", \"description\"?, \"datasets\": [...]}``.\n\nReturns:\n    The serialized pipeline.\n\nRaises:\n    ValidationError: When the dataset document does not compile\n        into a DAG.\n    PermissionDeniedError: When the caller is unauthenticated.",
+        "operationId": "api_create_pipeline_api_pipelines_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Body",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Create Pipeline Api Pipelines Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Create Pipeline",
+        "tags": [
+          "pipelines"
+        ]
+      }
+    },
+    "/api/pipelines/{slug}": {
+      "delete": {
+        "description": "Delete a pipeline with its runs and cursors (owner or admin).",
+        "operationId": "api_delete_pipeline_api_pipelines__slug__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Delete Pipeline Api Pipelines  Slug  Delete",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Delete Pipeline",
+        "tags": [
+          "pipelines"
+        ]
+      },
+      "get": {
+        "description": "Return one pipeline with its recent runs.",
+        "operationId": "api_get_pipeline_api_pipelines__slug__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Get Pipeline Api Pipelines  Slug  Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Get Pipeline",
+        "tags": [
+          "pipelines"
+        ]
+      },
+      "patch": {
+        "description": "Patch title / description / datasets (owner or admin).\n\nArgs:\n    request: Incoming FastAPI request.\n    slug: Pipeline slug.\n    body: Any of ``{\"title\", \"description\", \"datasets\"}``.\n\nReturns:\n    The serialized refreshed pipeline.\n\nRaises:\n    ValidationError: When the new dataset document is invalid.",
+        "operationId": "api_update_pipeline_api_pipelines__slug__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Body",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Update Pipeline Api Pipelines  Slug  Patch",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Update Pipeline",
+        "tags": [
+          "pipelines"
+        ]
+      }
+    },
+    "/api/pipelines/{slug}/run": {
+      "post": {
+        "description": "Run a pipeline now (as the caller) and return the run record.\n\nArgs:\n    request: Incoming FastAPI request.\n    slug: Pipeline slug.\n\nReturns:\n    The serialized run (terminal state \u2014 the engine runs to\n    completion within the request).\n\nRaises:\n    ValidationError: When the stored definition no longer\n        validates.\n    ResourceNotFoundError: When the run row vanished between\n        dispatch and readback (defence in depth).",
+        "operationId": "api_run_pipeline_api_pipelines__slug__run_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Run Pipeline Api Pipelines  Slug  Run Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Run Pipeline",
+        "tags": [
+          "pipelines"
+        ]
+      }
+    },
+    "/api/pipelines/{slug}/runs": {
+      "get": {
+        "description": "List a pipeline's recent runs.",
+        "operationId": "api_list_runs_api_pipelines__slug__runs_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api List Runs Api Pipelines  Slug  Runs Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api List Runs",
+        "tags": [
+          "pipelines"
         ]
       }
     },
@@ -44742,6 +45963,71 @@
         ]
       }
     },
+    "/genie": {
+      "get": {
+        "description": "Render the Genie spaces list page.",
+        "operationId": "genie_spaces_page_genie_get",
+        "responses": {
+          "200": {
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Genie Spaces Page",
+        "tags": [
+          "genie"
+        ]
+      }
+    },
+    "/genie/{slug}": {
+      "get": {
+        "description": "Render one Genie room (chat + curated sidebar + config drawer).\n\nArgs:\n    request: Incoming FastAPI request.\n    slug: Space slug from the URL.\n\nReturns:\n    The server-rendered shell; transcript, assets, and config\n    hydrate client-side through the JSON surface.",
+        "operationId": "genie_space_page_genie__slug__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Genie Space Page",
+        "tags": [
+          "genie"
+        ]
+      }
+    },
     "/glossary": {
       "get": {
         "description": "Render the workspace-wide glossary index page.",
@@ -46505,6 +47791,93 @@
         ]
       }
     },
+    "/online-tables": {
+      "get": {
+        "description": "Render the online-tables browser (list + create + lookup tester).",
+        "operationId": "online_tables_page_online_tables_get",
+        "responses": {
+          "200": {
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Online Tables Page",
+        "tags": [
+          "online-tables"
+        ]
+      }
+    },
+    "/pipelines": {
+      "get": {
+        "description": "Render the pipelines list page.",
+        "operationId": "pipelines_page_pipelines_get",
+        "responses": {
+          "200": {
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Pipelines Page",
+        "tags": [
+          "pipelines"
+        ]
+      }
+    },
+    "/pipelines/{slug}": {
+      "get": {
+        "description": "Render one pipeline's editor + run history page.",
+        "operationId": "pipeline_detail_page_pipelines__slug__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Pipeline Detail Page",
+        "tags": [
+          "pipelines"
+        ]
+      }
+    },
     "/queries": {
       "get": {
         "description": "Render the query history page.\n\nServer-side pagination via offset.  HTMX requests with\n``HX-Request: true`` short-circuit to a partial template\n(rows + OOB-swap pager) so the Load-More button can stream\nfurther pages without re-rendering the shell \u2014 same plumbing\nas ``/runs``.\n\nWhen an ``agent_run_id`` query param is present the pre-loaded\nslice scopes to that run only and the page surfaces a\ndismissable filter pill so users see they're inside a sub-view.\nThe ``read_kind`` param applies the analogous filter for the\nSQL-execute / pql-table / engine-direct discriminator.\n\nArgs:\n    request: The incoming FastAPI request.\n    agent_run_id: Optional run-UUID filter via the URL query\n        string (typically arrived from a run-detail \"Queries\"\n        tab link).\n    read_kind: Optional read-kind filter (``sql_execute`` /\n        ``pql_table`` / ``engine_direct``); unknown values are\n        dropped silently by the service layer.\n    status: Optional outcome filter (``succeeded`` / ``failed``\n        / ``cancelled``); same drop-on-unknown behaviour.\n    since: Optional time-range filter (``24h`` / ``7d`` /\n        ``30d``); applied as a ``WHERE started_at >`` clause.\n    offset: Zero-based offset for pagination.  HTMX Load-More\n        uses this to stream subsequent pages.\n\nReturns:\n    ``pages/queries.html`` for full requests, or\n    ``pages/_partials/queries_list_append.html`` for HTMX.",
@@ -46770,6 +48143,28 @@
         ]
       }
     },
+    "/serving": {
+      "get": {
+        "description": "Render the model-serving cockpit (endpoint table + try-it drawer).",
+        "operationId": "serving_page_serving_get",
+        "responses": {
+          "200": {
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Serving Page",
+        "tags": [
+          "serving-html"
+        ]
+      }
+    },
     "/settings/notifications": {
       "get": {
         "description": "Render the per-event-type notification-preferences settings page.",
@@ -46831,6 +48226,28 @@
         "tags": [
           "notebooks",
           "notebooks"
+        ]
+      }
+    },
+    "/shared-with-me": {
+      "get": {
+        "description": "Render the consumer-side browser for remote Delta Sharing providers.",
+        "operationId": "shared_with_me_page_shared_with_me_get",
+        "responses": {
+          "200": {
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Shared With Me Page",
+        "tags": [
+          "sharing-html"
         ]
       }
     },

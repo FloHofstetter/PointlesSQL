@@ -69,6 +69,12 @@
         </a>
     </li>
     <li class="nav-item">
+        <a class="nav-link d-flex align-items-center gap-2{% if active_section == 'genie' %} active{% endif %}"
+           href="/genie">
+            <i class="bi bi-stars"></i> Genie
+        </a>
+    </li>
+    <li class="nav-item">
         <a class="nav-link d-flex align-items-center gap-2{% if active_section == 'workspace' %} active{% endif %}"
            href="/notebooks/workspace">
             <i class="bi bi-journal-code"></i> Notebooks
@@ -153,6 +159,24 @@
         <a class="nav-link d-flex align-items-center gap-2{% if active_section == 'mlflow' %} active{% endif %}"
            href="/ml">
             <i class="bi bi-robot"></i> MLflow
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link d-flex align-items-center gap-2{% if active_section == 'serving' %} active{% endif %}"
+           href="/serving">
+            <i class="bi bi-rocket-takeoff"></i> Model Serving
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link d-flex align-items-center gap-2{% if active_section == 'online-tables' %} active{% endif %}"
+           href="/online-tables">
+            <i class="bi bi-lightning-charge"></i> Online Tables
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link d-flex align-items-center gap-2{% if active_section == 'shared-with-me' %} active{% endif %}"
+           href="/shared-with-me">
+            <i class="bi bi-box-arrow-in-down"></i> Shared with me
         </a>
     </li>
     <li class="nav-item">

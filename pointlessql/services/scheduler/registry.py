@@ -106,6 +106,7 @@ def build_default_registry() -> KindRegistry:
         _python_executor,
         _slo_evaluation_executor,
     )
+    from pointlessql.services.synced_tables import sync_executor as table_sync_executor
 
     registry = KindRegistry()
     registry.register("pg_sync", _pg_sync_executor)
@@ -118,6 +119,7 @@ def build_default_registry() -> KindRegistry:
     registry.register("slo_evaluation", _slo_evaluation_executor)
     registry.register("ingest_pull", ingest_pull_executor)
     registry.register("pipeline_run", pipeline_run_executor)
+    registry.register("table_sync", table_sync_executor)
     registry.register("event_port_pump", _event_port_pump_executor)
     registry.register("cost_rollup_hourly", _cost_rollup_hourly_executor)
     registry.register("contract_test_evaluation", _contract_test_evaluation_executor)
