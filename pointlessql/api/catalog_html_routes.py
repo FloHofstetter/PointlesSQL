@@ -6,7 +6,10 @@ schemas/{sch}``, clicking a table opens ``/catalogs/{cat}/schemas/
 {sch}/tables/{tab}``.  Each page fetches metadata + tags +
 permissions + effective-permissions concurrently from soyuz, then
 hierarchical privilege checks gate the render
-(USE_CATALOG → USE_SCHEMA → SELECT).
+(USE_CATALOG → USE_SCHEMA).  The table page renders its metadata
+for anyone who may browse the parent schema; holders of ``SELECT``
+get the data affordances, everyone else gets a "Request access"
+entry point (the preview API keeps enforcing ``SELECT`` on reads).
 
 The corresponding JSON endpoints
 (``/api/catalogs/{cat}/schemas`` etc.) live in
@@ -30,6 +33,8 @@ from pointlessql.api.dependencies import (
     get_user,
 )
 from pointlessql.exceptions import CatalogUnavailableError
+from pointlessql.services import access_requests as access_requests_service
+from pointlessql.services import certifications as certifications_service
 from pointlessql.services import pg_sync as pg_sync_service
 from pointlessql.services.authorization import (
     MANAGE_GRANTS,
@@ -215,26 +220,39 @@ async def table_detail(
     except CatalogUnavailableError as exc:
         error = exc.detail
 
+    can_select = has_privilege(
+        effective,
+        user.get("email", ""),
+        user.get("is_admin", False),
+        SELECT,
+    )
     if error is None:
-        check_privilege_from_effective(
-            effective,
-            user.get("email", ""),
-            user.get("is_admin", False),
-            "table",
-            full_name,
-            SELECT,
-        )
-        # record the visit for the per-user "Recent
-        # tables" sidebar block.  Best-effort; service swallows its
-        # own exceptions so a recents-write hiccup never blocks the
-        # rendered page.
-        from pointlessql.services import recents as recents_service
+        if not can_select:
+            # Without SELECT the page still renders as a metadata-only
+            # view with a "Request access" entry point — but only for
+            # users who may browse the parent schema.  Everyone else
+            # keeps getting the 403 page.  Data reads stay gated by
+            # the preview API's own SELECT check.
+            check_privilege_from_effective(
+                effective,
+                user.get("email", ""),
+                user.get("is_admin", False),
+                "schema",
+                f"{catalog_name}.{schema_name}",
+                USE_SCHEMA,
+            )
+        else:
+            # record the visit for the per-user "Recent
+            # tables" sidebar block.  Best-effort; service swallows its
+            # own exceptions so a recents-write hiccup never blocks the
+            # rendered page.
+            from pointlessql.services import recents as recents_service
 
-        recents_service.record_table_visit(
-            request.app.state.session_factory,
-            int(user.get("id", 0) or 0),
-            full_name,
-        )
+            recents_service.record_table_visit(
+                request.app.state.session_factory,
+                int(user.get("id", 0) or 0),
+                full_name,
+            )
 
     can_manage = has_privilege(
         effective,
@@ -242,11 +260,30 @@ async def table_detail(
         user.get("is_admin", False),
         MANAGE_GRANTS,
     )
+    # the badge derives from the tag list the gather
+    # above already fetched, so no extra UC round-trip is needed.
+    certification = certifications_service.certification_from_tags(tags)
+    is_owner = (
+        bool(user.get("email"))
+        and isinstance(table, dict)
+        and (table.get("owner") == user.get("email"))
+    )
+    can_certify = bool(user.get("is_admin", False)) or is_owner or can_manage
+    workspace_id = current_workspace_id(request)
+    pending_access_request = (
+        _has_pending_access_request(
+            str(full_name),
+            workspace_id=workspace_id,
+            user_id=int(user.get("id", 0) or 0),
+            session_factory=request.app.state.session_factory,
+        )
+        if error is None and table is not None and not can_select
+        else False
+    )
     lineage_columns = _columns_with_lineage(full_name)
     external_producers = _external_producers_for_table(
         full_name, session_factory=request.app.state.session_factory
     )
-    workspace_id = current_workspace_id(request)
     cdf_subscription = _cdf_subscription_for_table(
         full_name,
         workspace_id=workspace_id,
@@ -299,6 +336,10 @@ async def table_detail(
             "vector_indices": vector_indices,
             "text_column_names": text_column_names,
             "can_manage": can_manage,
+            "can_select": can_select,
+            "can_certify": can_certify,
+            "certification": certification,
+            "pending_access_request": pending_access_request,
             "is_admin": user.get("is_admin", False),
             "error": error,
             "active_catalog": catalog_name,
@@ -306,6 +347,35 @@ async def table_detail(
             "active_table": table_name,
         },
     )
+
+
+def _has_pending_access_request(
+    full_name: str,
+    *,
+    workspace_id: int,
+    user_id: int,
+    session_factory: Any,
+) -> bool:
+    """Whether the user has an open access request for *full_name*.
+
+    Best-effort: answers ``False`` when the metadata DB is unreachable
+    (or the request ledger is missing) so the table page still renders
+    — the worst case is a re-enabled "Request access" button, and the
+    create endpoint's duplicate guard catches the resubmit.
+    """
+    if session_factory is None or user_id <= 0:
+        return False
+    try:
+        return access_requests_service.has_pending_request(
+            session_factory,
+            workspace_id=workspace_id,
+            securable_type="table",
+            full_name=full_name,
+            requester_user_id=user_id,
+        )
+    except Exception:  # noqa: BLE001 — DB miss must not break table-detail HTML render
+        logger.exception("pending access-request lookup failed for %s", full_name)
+        return False
 
 
 _TEXT_TYPE_PREFIXES: tuple[str, ...] = ("STRING", "VARCHAR", "CHAR", "TEXT")

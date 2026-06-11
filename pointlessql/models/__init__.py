@@ -37,6 +37,7 @@ per-domain grouping below documents the cross-module FK relationships:
 
 from __future__ import annotations
 
+from pointlessql.models.access_requests import AccessRequest
 from pointlessql.models.actionable_signals import ActionableSignal
 from pointlessql.models.agent import (
     AVATAR_KINDS,
@@ -309,6 +310,7 @@ from pointlessql.models.workspace import (
 )
 
 __all__ = [
+    "AccessRequest",
     "ActionableSignal",
     "AgentReview",
     "AgentRun",

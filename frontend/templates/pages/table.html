@@ -20,6 +20,13 @@
      x-data='pqlStarToggle({kind: "table", catalog: {{ catalog_name|tojson }}, schema: {{ schema_name|tojson }}, table: {{ table_name|tojson }}})'>
  <i class="bi bi-table fs-3"></i>
  <h1 class="h3 mb-0">{{ catalog_name }}.{{ schema_name }}.{{ table_name }}</h1>
+ {% if certification and certification.status == "certified" %}
+ <span class="badge bg-success"{% if certification.note %} title="{{ certification.note }}"{% endif %}>
+  <i class="bi bi-patch-check me-1"></i>Certified</span>
+ {% elif certification and certification.status == "deprecated" %}
+ <span class="badge bg-warning text-dark"{% if certification.note %} title="{{ certification.note }}"{% endif %}>
+  <i class="bi bi-exclamation-triangle me-1"></i>Deprecated</span>
+ {% endif %}
  <button type="button"
          class="btn btn-sm btn-link p-0 ms-2 text-warning"
          @click="toggle()"
@@ -43,7 +50,92 @@
          title="Open social drawer (Discussion / Endorsements / Followers / README / Issues)">
   <i class="bi bi-people me-1"></i>Social
  </button>
+ {% if table and can_certify %}
+ <div class="dropdown"
+      x-data='tableCertification({{ (catalog_name ~ "." ~ schema_name ~ "." ~ table_name)|tojson }})'>
+  <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle"
+          data-bs-toggle="dropdown" aria-expanded="false" :disabled="busy"
+          title="Set or clear this table's certification">
+   <i class="bi bi-patch-check me-1"></i>Certification
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+   <li>
+    <button type="button" class="dropdown-item" @click="setCertified()">
+     <i class="bi bi-patch-check me-1 text-success"></i>Set certified
+    </button>
+   </li>
+   <li>
+    <button type="button" class="dropdown-item" @click="setDeprecated()">
+     <i class="bi bi-exclamation-triangle me-1 text-warning"></i>Set deprecated&hellip;
+    </button>
+   </li>
+   <li><hr class="dropdown-divider"></li>
+   <li>
+    <button type="button" class="dropdown-item" @click="clearCertification()">
+     <i class="bi bi-x-circle me-1"></i>Clear certification
+    </button>
+   </li>
+  </ul>
+ </div>
+ {% endif %}
+ {% if table and not can_select %}
+ {% if pending_access_request %}
+ <button type="button" class="btn btn-sm btn-outline-secondary" disabled
+         title="Your access request is awaiting a decision">
+  <i class="bi bi-hourglass-split me-1"></i>Access requested
+ </button>
+ {% else %}
+ <button type="button" class="btn btn-sm btn-primary"
+         data-bs-toggle="modal" data-bs-target="#pql-request-access-modal"
+         title="Ask the table owner for SELECT on this table">
+  <i class="bi bi-unlock me-1"></i>Request access
+ </button>
+ {% endif %}
+ {% endif %}
 </div>
+
+{% if certification and certification.status == "deprecated" %}
+<div class="alert alert-warning">
+ <i class="bi bi-exclamation-triangle me-1"></i>
+ <strong>This table is deprecated.</strong>
+ {% if certification.note %}{{ certification.note }}{% else %}Plan a migration away from it.{% endif %}
+</div>
+{% endif %}
+
+{% if table and not can_select and not pending_access_request %}
+<div class="modal fade" id="pql-request-access-modal" tabindex="-1"
+     aria-labelledby="pql-request-access-modal-title" aria-hidden="true"
+     x-data='requestAccess({{ (catalog_name ~ "." ~ schema_name ~ "." ~ table_name)|tojson }})'>
+ <div class="modal-dialog">
+  <div class="modal-content">
+   <div class="modal-header">
+    <h5 class="modal-title" id="pql-request-access-modal-title">
+     <i class="bi bi-unlock me-1"></i>Request access
+    </h5>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+   </div>
+   <div class="modal-body">
+    <p class="mb-2">
+     Ask the table owner (or an admin) for <code>SELECT</code> on
+     <code>{{ catalog_name }}.{{ schema_name }}.{{ table_name }}</code>.
+    </p>
+    <label class="form-label" for="pql-request-access-justification">Justification (optional)</label>
+    <textarea id="pql-request-access-justification" class="form-control" rows="3"
+              placeholder="Why do you need access to this table?"
+              x-model="justification"></textarea>
+    <div class="alert alert-danger mt-2 mb-0" x-show="error" x-text="error" x-cloak></div>
+   </div>
+   <div class="modal-footer">
+    <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+    <button type="button" class="btn btn-primary btn-sm" :disabled="busy" @click="submit()">
+     <span x-show="!busy">Send request</span>
+     <span x-show="busy" x-cloak>Sending&hellip;</span>
+    </button>
+   </div>
+  </div>
+ </div>
+</div>
+{% endif %}
 
 {% if error %}
 <div class="alert alert-danger">

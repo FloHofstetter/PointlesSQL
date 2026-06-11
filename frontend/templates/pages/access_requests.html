@@ -1,0 +1,192 @@
+{% extends "base.html" %}
+{% block title %}Access requests · PointlesSQL{% endblock %}
+{% block page_entry %}access_requests.js{% endblock %}
+
+{% set breadcrumbs = [
+ {"label": "Home", "href": "/"},
+ {"label": "Access requests"}
+] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block content %}
+<div x-data='accessRequests({{ is_admin|tojson }})' x-init="load()">
+    <div class="d-flex align-items-center gap-2 mb-3">
+        <i class="bi bi-person-check fs-3"></i>
+        <h1 class="h3 mb-0">Access requests</h1>
+    </div>
+
+    <p class="text-muted">
+        Self-service table access: file a request from any table page
+        you can browse but not read. The table owner (or an admin)
+        approves or denies it here; an approval grants the requested
+        privileges in the catalog right away.
+    </p>
+
+    <ul class="nav nav-tabs mb-3" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button type="button" class="nav-link" role="tab"
+                    :class="tab === 'mine' ? 'active' : ''"
+                    :aria-selected="tab === 'mine' ? 'true' : 'false'"
+                    @click="tab = 'mine'">
+                <i class="bi bi-send me-1"></i>My requests
+                <span class="badge bg-secondary ms-1" x-show="loaded" x-text="mine.length" x-cloak></span>
+            </button>
+        </li>
+        <li class="nav-item" role="presentation" x-show="showDecideTab" x-cloak>
+            <button type="button" class="nav-link" role="tab"
+                    :class="tab === 'decide' ? 'active' : ''"
+                    :aria-selected="tab === 'decide' ? 'true' : 'false'"
+                    @click="tab = 'decide'">
+                <i class="bi bi-inbox me-1"></i>To decide
+                <span class="badge bg-warning text-dark ms-1" x-show="loaded" x-text="decide.length" x-cloak></span>
+            </button>
+        </li>
+    </ul>
+
+    <div class="alert alert-danger" x-show="error" x-text="error" x-cloak></div>
+
+    {# --- My requests ------------------------------------------------- #}
+    <div x-show="tab === 'mine'">
+        <div class="table-responsive">
+            <table class="table table-sm align-middle pql-list-table">
+                <thead>
+                    <tr>
+                        <th>Table</th>
+                        <th>Privileges</th>
+                        <th>Status</th>
+                        <th>Requested</th>
+                        <th>Decision note</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <template x-for="r in mine" :key="r.id">
+                        <tr>
+                            <td data-label="Table">
+                                <template x-if="tableHref(r.full_name)">
+                                    <a class="font-monospace" :href="tableHref(r.full_name)" x-text="r.full_name"></a>
+                                </template>
+                                <template x-if="!tableHref(r.full_name)">
+                                    <span class="font-monospace" x-text="r.full_name"></span>
+                                </template>
+                                <div class="text-muted small" x-show="r.justification" x-text="r.justification"></div>
+                            </td>
+                            <td data-label="Privileges" class="font-monospace small"
+                                x-text="(r.privileges || []).join(', ')"></td>
+                            <td data-label="Status">
+                                <span class="badge" :class="statusBadge(r.status)" x-text="r.status"></span>
+                            </td>
+                            <td data-label="Requested" class="text-muted small"
+                                x-text="pqlRelativeTime(r.created_at)" :title="pqlAbsTime(r.created_at)"></td>
+                            <td data-label="Decision note" class="text-muted small"
+                                x-text="r.decision_note || ''"></td>
+                            <td data-label="Actions" class="text-end">
+                                <button type="button" class="btn btn-sm btn-outline-secondary"
+                                        x-show="r.status === 'pending'"
+                                        :disabled="busy"
+                                        @click="cancelRequest(r)"
+                                        title="Withdraw this pending request">
+                                    <i class="bi bi-x-lg me-1"></i>Cancel
+                                </button>
+                            </td>
+                        </tr>
+                    </template>
+                    <tr x-show="loaded && mine.length === 0">
+                        <td colspan="6" class="text-muted">
+                            No requests yet — use the &ldquo;Request access&rdquo; button on a table page.
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    {# --- To decide ---------------------------------------------------- #}
+    <div x-show="tab === 'decide'" x-cloak>
+        <div class="card mb-3" x-show="decision" x-cloak>
+            <div class="card-body">
+                <template x-if="decision">
+                    <div>
+                        <div class="mb-2">
+                            <strong x-text="decision.action === 'approve' ? 'Approve' : 'Deny'"></strong>
+                            the request from
+                            <span class="font-monospace" x-text="decision.requester_email"></span>
+                            for
+                            <span class="font-monospace" x-text="decision.full_name"></span>.
+                        </div>
+                        <label class="form-label" for="ar-decision-note">
+                            <span x-text="decision.action === 'approve' ? 'Note (optional)' : 'Note (required)'"></span>
+                        </label>
+                        <textarea id="ar-decision-note" class="form-control form-control-sm" rows="2"
+                                  x-model="decision.note"
+                                  :placeholder="decision.action === 'approve' ? 'Anything the requester should know…' : 'Why is this request denied?'"></textarea>
+                        <div class="mt-2 d-flex gap-2">
+                            <button type="button" class="btn btn-sm"
+                                    :class="decision.action === 'approve' ? 'btn-success' : 'btn-danger'"
+                                    :disabled="busy || (decision.action === 'deny' && !decision.note.trim())"
+                                    @click="confirmDecision()">
+                                <span x-show="!busy" x-text="decision.action === 'approve' ? 'Approve and grant' : 'Deny'"></span>
+                                <span x-show="busy" x-cloak>Working&hellip;</span>
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" @click="cancelDecision()">
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-sm align-middle pql-list-table">
+                <thead>
+                    <tr>
+                        <th>Table</th>
+                        <th>Requester</th>
+                        <th>Privileges</th>
+                        <th>Justification</th>
+                        <th>Requested</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <template x-for="r in decide" :key="r.id">
+                        <tr>
+                            <td data-label="Table">
+                                <template x-if="tableHref(r.full_name)">
+                                    <a class="font-monospace" :href="tableHref(r.full_name)" x-text="r.full_name"></a>
+                                </template>
+                                <template x-if="!tableHref(r.full_name)">
+                                    <span class="font-monospace" x-text="r.full_name"></span>
+                                </template>
+                            </td>
+                            <td data-label="Requester" class="small" x-text="r.requester_email"></td>
+                            <td data-label="Privileges" class="font-monospace small"
+                                x-text="(r.privileges || []).join(', ')"></td>
+                            <td data-label="Justification" class="text-muted small"
+                                x-text="r.justification || ''"></td>
+                            <td data-label="Requested" class="text-muted small"
+                                x-text="pqlRelativeTime(r.created_at)" :title="pqlAbsTime(r.created_at)"></td>
+                            <td data-label="Actions" class="text-end">
+                                <div class="btn-group btn-group-sm" role="group" aria-label="Decide request">
+                                    <button type="button" class="btn btn-outline-success"
+                                            :disabled="busy" @click="beginDecision(r, 'approve')">
+                                        <i class="bi bi-check-lg me-1"></i>Approve
+                                    </button>
+                                    <button type="button" class="btn btn-outline-danger"
+                                            :disabled="busy" @click="beginDecision(r, 'deny')">
+                                        <i class="bi bi-x-lg me-1"></i>Deny
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    </template>
+                    <tr x-show="loaded && decide.length === 0">
+                        <td colspan="6" class="text-muted">Nothing to decide right now.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

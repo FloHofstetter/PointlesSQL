@@ -26,6 +26,7 @@ def register_routers(app: FastAPI) -> None:
     the pre-split shape (each router module loads exactly once,
     when ``main.py`` calls us).
     """
+    from pointlessql.api.access_requests_routes import router as access_requests_router
     from pointlessql.api.admin import router as admin_router
     from pointlessql.api.agent_reviews_routes import router as agent_reviews_router
     from pointlessql.api.agent_runs_routes import router as agent_runs_router
@@ -237,6 +238,7 @@ def register_routers(app: FastAPI) -> None:
     app.include_router(apps_router)
     app.include_router(apps_html_router)
     app.include_router(apps_proxy_router)
+    app.include_router(access_requests_router)
     app.include_router(bi_dashboards_router)
     app.include_router(bi_snapshot_router)
     app.include_router(bi_html_router)
