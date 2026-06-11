@@ -202,6 +202,15 @@ async def resolve_select_context(
                 raise ValidationError(
                     f"table {full_name!r} carries a malformed read policy: {exc}"
                 ) from exc
+            from pointlessql.services.tag_policies import apply_tag_policies
+
+            policy = await apply_tag_policies(
+                uc_client,
+                full_name=full_name,
+                info=info,
+                base=policy,
+                principal=actor_email,
+            )
             if policy is not None:
                 policies[full_name] = asdict(policy)
     return approved, policies

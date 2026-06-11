@@ -1,0 +1,196 @@
+{% extends "base.html" %}
+{% block title %}Data classification · PointlesSQL{% endblock %}
+{% block page_entry %}admin_classification.js{% endblock %}
+
+{% set breadcrumbs = [
+ {"label": "Home", "href": "/"},
+ {"label": "Admin", "href": "/admin"},
+ {"label": "Data classification"}
+] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block content %}
+<div x-data='adminClassification({{ rules | tojson }})'>
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <div class="d-flex align-items-center gap-2">
+            <i class="bi bi-shield-shaded fs-3"></i>
+            <h1 class="h3 mb-0">Data classification</h1>
+        </div>
+    </div>
+
+    <p class="text-muted">
+        Tag policies turn Unity-Catalog tags into governance: a
+        <strong>mask</strong> rule masks every column tagged with the
+        key, a <strong>row filter</strong> rule ANDs its predicate into
+        reads of every table tagged with the key. Admins and table
+        owners stay exempt, and explicit per-table properties win over
+        tag rules. The scanner below detects likely PII columns and
+        tags them <code>pii=&lt;kind&gt;</code> — additively only, so
+        human curation is never overwritten.
+    </p>
+
+    <div class="card mb-4">
+        <div class="card-header d-flex align-items-center justify-content-between">
+            <span><i class="bi bi-list-check me-1"></i>Tag policy rules</span>
+            <button type="button" class="btn btn-primary btn-sm" @click="creating = !creating">
+                <i class="bi bi-plus-lg me-1"></i>New rule
+            </button>
+        </div>
+        <div class="card-body" x-show="creating" x-cloak>
+            <div class="row g-2 align-items-end">
+                <div class="col-md-2">
+                    <label class="form-label small fw-bold" for="tp-key">Tag key</label>
+                    <input id="tp-key" type="text" class="form-control form-control-sm font-monospace"
+                           x-model="form.tag_key" placeholder="pii">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small fw-bold" for="tp-value">Tag value (optional)</label>
+                    <input id="tp-value" type="text" class="form-control form-control-sm font-monospace"
+                           x-model="form.tag_value" placeholder="any">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small fw-bold" for="tp-effect">Effect</label>
+                    <select id="tp-effect" class="form-select form-select-sm" x-model="form.effect">
+                        <option value="mask">mask (column tags)</option>
+                        <option value="row_filter">row filter (table tags)</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small fw-bold" for="tp-expr">Expression</label>
+                    <input id="tp-expr" type="text" class="form-control form-control-sm font-monospace"
+                           x-model="form.expr"
+                           :placeholder="form.effect === 'mask' ? 'redact | hash | null | template with {col}' : 'region = current_user_region()'">
+                </div>
+                <div class="col-md-1">
+                    <label class="form-label small fw-bold" for="tp-priority">Priority</label>
+                    <input id="tp-priority" type="number" class="form-control form-control-sm"
+                           x-model.number="form.priority">
+                </div>
+                <div class="col-md-2">
+                    <button type="button" class="btn btn-success btn-sm w-100" :disabled="saving" @click="create()">
+                        <span x-show="!saving">Create</span>
+                        <span x-show="saving" x-cloak>Saving&hellip;</span>
+                    </button>
+                </div>
+            </div>
+            <div class="mt-2">
+                <input type="text" class="form-control form-control-sm"
+                       x-model="form.description" placeholder="Why this rule exists (shown here)"
+                       aria-label="Rule description">
+            </div>
+            <div class="alert alert-danger mt-2 mb-0" x-show="error" x-text="error" x-cloak></div>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-sm align-middle mb-0 pql-list-table">
+                <thead>
+                    <tr>
+                        <th class="ps-3">Tag</th>
+                        <th>Effect</th>
+                        <th>Expression</th>
+                        <th>Priority</th>
+                        <th>Active</th>
+                        <th>Description</th>
+                        <th class="pe-3"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <template x-for="r in rules" :key="r.id">
+                        <tr>
+                            <td data-label="Tag" class="ps-3 font-monospace">
+                                <span x-text="r.tag_key"></span><template x-if="r.tag_value"><span>=<span x-text="r.tag_value"></span></span></template>
+                            </td>
+                            <td data-label="Effect">
+                                <span class="badge"
+                                      :class="r.effect === 'mask' ? 'bg-info text-dark' : 'bg-warning text-dark'"
+                                      x-text="r.effect"></span>
+                            </td>
+                            <td data-label="Expression"><code x-text="r.expr"></code></td>
+                            <td data-label="Priority" x-text="r.priority"></td>
+                            <td data-label="Active">
+                                <button type="button" class="btn btn-sm"
+                                        :class="r.is_active ? 'btn-success' : 'btn-outline-secondary'"
+                                        @click="toggle(r)"
+                                        x-text="r.is_active ? 'active' : 'inactive'"></button>
+                            </td>
+                            <td data-label="Description" class="small text-muted" x-text="r.description || ''"></td>
+                            <td data-label="Actions" class="pe-3 text-end">
+                                <button type="button" class="btn btn-sm btn-outline-danger"
+                                        aria-label="Delete rule" @click="remove(r)">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    </template>
+                    <tr x-show="rules.length === 0">
+                        <td colspan="7" class="text-muted p-3">
+                            No rules yet. A common starter: key <code>pii</code>,
+                            effect <code>mask</code>, expression <code>redact</code>.
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <i class="bi bi-search me-1"></i>PII scan
+        </div>
+        <div class="card-body">
+            <div class="row g-2 align-items-end">
+                <div class="col-md-3">
+                    <label class="form-label small fw-bold" for="scan-catalog">Catalog</label>
+                    <input id="scan-catalog" type="text" class="form-control form-control-sm font-monospace"
+                           x-model="scan.catalog" placeholder="demo">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small fw-bold" for="scan-schema">Schema</label>
+                    <input id="scan-schema" type="text" class="form-control form-control-sm font-monospace"
+                           x-model="scan.schema" placeholder="silver">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label small fw-bold" for="scan-table">&hellip;or a single table</label>
+                    <input id="scan-table" type="text" class="form-control form-control-sm font-monospace"
+                           x-model="scan.table" placeholder="catalog.schema.table">
+                </div>
+                <div class="col-md-2">
+                    <button type="button" class="btn btn-primary btn-sm w-100" :disabled="scanning" @click="runScan()">
+                        <span x-show="!scanning">Scan now</span>
+                        <span x-show="scanning" x-cloak>
+                            <span class="spinner-border spinner-border-sm me-1" role="status"></span>Scanning&hellip;
+                        </span>
+                    </button>
+                </div>
+            </div>
+            <div class="alert alert-danger mt-2 mb-0" x-show="scanError" x-text="scanError" x-cloak></div>
+            <div class="mt-3" x-show="findings !== null" x-cloak>
+                <div class="fw-semibold small mb-2">
+                    <span x-text="(findings || []).length"></span> finding(s)
+                </div>
+                <div class="table-responsive" x-show="(findings || []).length > 0">
+                    <table class="table table-sm mb-0">
+                        <thead><tr><th>Table</th><th>Column</th><th>Kind</th><th>Signal</th><th>Tagged</th></tr></thead>
+                        <tbody>
+                            <template x-for="(f, i) in findings" :key="i">
+                                <tr>
+                                    <td class="font-monospace" x-text="f.table"></td>
+                                    <td class="font-monospace" x-text="f.column"></td>
+                                    <td><span class="badge bg-warning text-dark" x-text="f.kind"></span></td>
+                                    <td class="small text-muted" x-text="f.source"></td>
+                                    <td>
+                                        <span class="badge" :class="f.applied ? 'bg-success' : 'bg-secondary'"
+                                              x-text="f.applied ? 'tagged' : 'already curated'"></span>
+                                    </td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+                <p class="text-muted small mb-0" x-show="(findings || []).length === 0">
+                    Nothing classified — either the scope is clean or names/values carry no PII signal.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

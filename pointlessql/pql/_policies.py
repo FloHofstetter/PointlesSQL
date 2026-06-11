@@ -117,6 +117,20 @@ def validate_row_filter(predicate: str) -> str:
     return candidate
 
 
+def substitute_current_user(predicate: str, principal: str | None) -> str:
+    """Replace ``current_user()`` in *predicate* with the principal literal.
+
+    Args:
+        predicate: A validated row-filter predicate.
+        principal: The reading principal; quotes are SQL-escaped.
+
+    Returns:
+        The predicate with every ``current_user()`` call replaced.
+    """
+    literal = (principal or "").replace("'", "''")
+    return _CURRENT_USER_RE.sub(f"'{literal}'", predicate)
+
+
 def extract_table_policy(
     table_info: dict[str, Any], *, principal: str | None
 ) -> TablePolicy | None:
@@ -142,8 +156,7 @@ def extract_table_policy(
     raw_filter = properties.get(ROW_FILTER_PROPERTY)
     if isinstance(raw_filter, str) and raw_filter.strip():
         validated = validate_row_filter(raw_filter)
-        literal = (principal or "").replace("'", "''")
-        row_filter = _CURRENT_USER_RE.sub(f"'{literal}'", validated)
+        row_filter = substitute_current_user(validated, principal)
     masks: dict[str, str] = {}
     for key, value in properties.items():
         if not key.startswith(MASK_PROPERTY_PREFIX):

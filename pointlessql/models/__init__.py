@@ -271,6 +271,7 @@ from pointlessql.models.synced_tables import (
     SyncedTable,
 )
 from pointlessql.models.system_keys import SystemKey
+from pointlessql.models.tag_policies import TagPolicyRule
 from pointlessql.models.vector import VectorIndex
 from pointlessql.models.workspace import (
     SQL_STATEMENT_STATES,
@@ -486,6 +487,7 @@ __all__ = [
     "SyncedTable",
     "SystemKey",
     "TableStats",
+    "TagPolicyRule",
     "TaskRun",
     "UnattributedWrite",
     "Topic",
