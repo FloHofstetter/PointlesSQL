@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% block title %}Pipelines · PointlesSQL{% endblock %}
+{% block page_entry %}pipelines.js{% endblock %}
+
+{% set breadcrumbs = [
+ {"label": "Home", "href": "/"},
+ {"label": "Pipelines"}
+] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block content %}
+<div x-data="pipelinesList()" x-init="load()">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <div class="d-flex align-items-center gap-2">
+            <i class="bi bi-diagram-3 fs-3"></i>
+            <h1 class="h3 mb-0">Pipelines</h1>
+        </div>
+        <button type="button" class="btn btn-primary btn-sm" @click="creating = !creating">
+            <i class="bi bi-plus-lg me-1"></i>New pipeline
+        </button>
+    </div>
+
+    <p class="text-muted">
+        A declarative pipeline refreshes materialized views and streaming
+        tables in dependency order. Streaming tables read their source's
+        change feed incrementally; expectations gate every batch
+        (warn / drop / fail) before it lands.
+    </p>
+
+    <div class="card mb-3" x-show="creating" x-cloak>
+        <div class="card-body">
+            <div class="row g-2">
+                <div class="col-md-4">
+                    <label class="form-label" for="pl-title">Title</label>
+                    <input id="pl-title" type="text" class="form-control form-control-sm" x-model="form.title">
+                </div>
+                <div class="col-md-8">
+                    <label class="form-label" for="pl-desc">Description (optional)</label>
+                    <input id="pl-desc" type="text" class="form-control form-control-sm" x-model="form.description">
+                </div>
+            </div>
+            <div class="form-text mb-2">
+                The pipeline starts with one empty materialized view — add
+                datasets in the editor after creating.
+            </div>
+            <div class="row g-2 align-items-end">
+                <div class="col-md-4">
+                    <label class="form-label" for="pl-target">First dataset target (catalog.schema.table)</label>
+                    <input id="pl-target" type="text" class="form-control form-control-sm font-monospace"
+                           x-model="form.target" placeholder="shop.gold.daily_revenue">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label" for="pl-sql">First dataset SELECT</label>
+                    <input id="pl-sql" type="text" class="form-control form-control-sm font-monospace"
+                           x-model="form.sql" placeholder="SELECT region, sum(amount) AS revenue FROM shop.silver.orders GROUP BY 1">
+                </div>
+                <div class="col-auto">
+                    <button type="button" class="btn btn-primary btn-sm" :disabled="saving || !form.title || !form.target || !form.sql"
+                            @click="create()">
+                        <span x-show="!saving">Create</span>
+                        <span x-show="saving" x-cloak>Creating&hellip;</span>
+                    </button>
+                </div>
+            </div>
+            <div class="alert alert-danger mt-2 mb-0" x-show="error" x-text="error" x-cloak></div>
+        </div>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-sm align-middle pql-list-table">
+            <thead>
+                <tr>
+                    <th>Pipeline</th>
+                    <th class="text-end">Datasets</th>
+                    <th>Updated</th>
+                </tr>
+            </thead>
+            <tbody>
+                <template x-for="p in pipelines" :key="p.slug">
+                    <tr>
+                        <td data-label="Pipeline">
+                            <a :href="'/pipelines/' + p.slug" x-text="p.title"></a>
+                            <div class="text-muted small" x-text="p.description || ''"></div>
+                        </td>
+                        <td data-label="Datasets" class="text-end" x-text="p.datasets.length"></td>
+                        <td data-label="Updated" class="text-muted small" x-text="p.updated_at"></td>
+                    </tr>
+                </template>
+                <tr x-show="pipelines.length === 0">
+                    <td colspan="3" class="text-muted">No pipelines yet.</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

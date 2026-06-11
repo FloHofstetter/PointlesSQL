@@ -93,6 +93,12 @@
         </a>
     </li>
     <li class="nav-item">
+        <a class="nav-link d-flex align-items-center gap-2{% if active_section == 'pipelines' %} active{% endif %}"
+           href="/pipelines">
+            <i class="bi bi-diagram-3"></i> Pipelines
+        </a>
+    </li>
+    <li class="nav-item">
         <a class="nav-link d-flex align-items-center gap-2{% if active_section == 'jobs' %} active{% endif %}"
            href="/jobs">
             <i class="bi bi-clock-history"></i> Scheduled jobs

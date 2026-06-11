@@ -217,6 +217,14 @@ from pointlessql.models.notifications import (
     UserNotification,
     UserWebhookSubscription,
 )
+from pointlessql.models.pipelines import (
+    PIPELINE_DATASET_KINDS,
+    PIPELINE_EXPECTATION_ACTIONS,
+    PIPELINE_RUN_STATES,
+    Pipeline,
+    PipelineCursor,
+    PipelineRun,
+)
 from pointlessql.models.saved_views import (
     SAVED_VIEW_PARAM_TYPES,
     SavedView,
@@ -373,6 +381,12 @@ __all__ = [
     "MeshEntity",
     "MeshEntityBinding",
     "OutputPortSchemaVersion",
+    "PIPELINE_DATASET_KINDS",
+    "PIPELINE_EXPECTATION_ACTIONS",
+    "PIPELINE_RUN_STATES",
+    "Pipeline",
+    "PipelineCursor",
+    "PipelineRun",
     "PolicyModule",
     "PolicyModuleDecision",
     "WorkspaceGovernancePolicy",

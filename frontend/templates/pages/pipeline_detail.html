@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+{% block title %}{{ pipeline.title }} · Pipelines · PointlesSQL{% endblock %}
+{% block page_entry %}pipeline_detail.js{% endblock %}
+
+{% set breadcrumbs = [
+ {"label": "Home", "href": "/"},
+ {"label": "Pipelines", "href": "/pipelines"},
+ {"label": pipeline.title}
+] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block content %}
+<div x-data="pipelineDetail({{ pipeline | tojson }}, {{ 'true' if can_edit else 'false' }})" x-init="init()">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <div class="d-flex align-items-center gap-2">
+            <i class="bi bi-diagram-3 fs-3"></i>
+            <h1 class="h3 mb-0">{{ pipeline.title }}</h1>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <button type="button" class="btn btn-success btn-sm" :disabled="running" @click="run()">
+                <span x-show="!running"><i class="bi bi-play-fill me-1"></i>Run now</span>
+                <span x-show="running" x-cloak>Running&hellip;</span>
+            </button>
+            <button type="button" class="btn btn-outline-danger btn-sm" x-show="canEdit" @click="remove()">
+                <i class="bi bi-trash"></i> Delete
+            </button>
+        </div>
+    </div>
+
+    {% if pipeline.description %}<p class="text-muted">{{ pipeline.description }}</p>{% endif %}
+    <div class="alert alert-danger" x-show="error" x-text="error" x-cloak></div>
+
+    <h2 class="h5 mt-3">Datasets <span class="text-muted small">(run in dependency order)</span></h2>
+    <template x-for="(d, i) in datasets" :key="i">
+        <div class="card mb-2">
+            <div class="card-body py-2">
+                <div class="row g-2">
+                    <div class="col-md-4">
+                        <label class="form-label small" :for="'ds-name-' + i">Target (catalog.schema.table)</label>
+                        <input :id="'ds-name-' + i" type="text" class="form-control form-control-sm font-monospace"
+                               x-model="d.name" :disabled="!canEdit">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small" :for="'ds-kind-' + i">Kind</label>
+                        <select :id="'ds-kind-' + i" class="form-select form-select-sm" x-model="d.kind" :disabled="!canEdit">
+                            <option value="materialized_view">Materialized view (full recompute)</option>
+                            <option value="streaming_table">Streaming table (incremental, CDF)</option>
+                        </select>
+                    </div>
+                    <div class="col-md-5 text-md-end align-self-end">
+                        <button type="button" class="btn btn-sm btn-outline-secondary" x-show="canEdit"
+                                @click="d.expectations.push({name: '', constraint: '', action: 'warn'})">
+                            <i class="bi bi-plus"></i> Expectation
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-danger" x-show="canEdit"
+                                aria-label="Remove dataset" @click="datasets.splice(i, 1)">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="mt-2">
+                    <label class="form-label small" :for="'ds-sql-' + i">SELECT</label>
+                    <textarea :id="'ds-sql-' + i" class="form-control form-control-sm font-monospace" rows="3"
+                              x-model="d.sql" :disabled="!canEdit"></textarea>
+                </div>
+                <template x-for="(e, j) in d.expectations" :key="j">
+                    <div class="row g-2 mt-1">
+                        <div class="col-md-3"><input type="text" class="form-control form-control-sm font-monospace" x-model="e.name" placeholder="valid_amount" aria-label="Expectation name" :disabled="!canEdit"></div>
+                        <div class="col-md-5"><input type="text" class="form-control form-control-sm font-monospace" x-model="e.constraint" placeholder="amount > 0" aria-label="Expectation constraint" :disabled="!canEdit"></div>
+                        <div class="col-md-3">
+                            <select class="form-select form-select-sm" x-model="e.action" aria-label="Expectation action" :disabled="!canEdit">
+                                <option value="warn">warn (record only)</option>
+                                <option value="drop">drop violating rows</option>
+                                <option value="fail">fail the run</option>
+                            </select>
+                        </div>
+                        <div class="col-md-1"><button type="button" class="btn btn-sm btn-outline-danger" x-show="canEdit" aria-label="Remove expectation" @click="d.expectations.splice(j, 1)"><i class="bi bi-x"></i></button></div>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </template>
+    <div class="mb-3" x-show="canEdit">
+        <button type="button" class="btn btn-sm btn-outline-secondary"
+                @click="datasets.push({name: '', kind: 'materialized_view', sql: '', expectations: []})">
+            <i class="bi bi-plus"></i> Dataset
+        </button>
+        <button type="button" class="btn btn-sm btn-primary ms-2" :disabled="saving" @click="save()">
+            <span x-show="!saving">Save definition</span>
+            <span x-show="saving" x-cloak>Saving&hellip;</span>
+        </button>
+    </div>
+
+    <h2 class="h5 mt-4">Runs</h2>
+    <div class="table-responsive">
+        <table class="table table-sm align-middle pql-list-table">
+            <thead>
+                <tr>
+                    <th>Run</th>
+                    <th>Status</th>
+                    <th>Triggered by</th>
+                    <th>Started</th>
+                    <th>Datasets</th>
+                </tr>
+            </thead>
+            <tbody>
+                <template x-for="r in runs" :key="r.id">
+                    <tr>
+                        <td data-label="Run" x-text="'#' + r.id"></td>
+                        <td data-label="Status">
+                            <span class="badge"
+                                  :class="r.status === 'ok' ? 'bg-success' : (r.status === 'failed' ? 'bg-danger' : 'bg-warning text-dark')"
+                                  x-text="r.status"></span>
+                            <div class="text-danger small" x-show="r.error" x-text="r.error"></div>
+                        </td>
+                        <td data-label="Triggered by" class="text-muted small" x-text="r.triggered_by || ''"></td>
+                        <td data-label="Started" class="text-muted small" x-text="r.started_at"></td>
+                        <td data-label="Datasets">
+                            <template x-for="m in r.metrics" :key="m.dataset">
+                                <div class="small">
+                                    <code x-text="m.dataset"></code>
+                                    <span class="text-muted" x-text="m.skipped ? '— no new data' : '— ' + m.rows_written + ' rows'"></span>
+                                    <template x-for="e in m.expectations" :key="e.name">
+                                        <span class="badge ms-1"
+                                              :class="e.violations > 0 ? 'bg-warning text-dark' : 'bg-secondary'"
+                                              x-text="e.name + ': ' + e.violations"></span>
+                                    </template>
+                                </div>
+                            </template>
+                        </td>
+                    </tr>
+                </template>
+                <tr x-show="runs.length === 0">
+                    <td colspan="5" class="text-muted">No runs yet.</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

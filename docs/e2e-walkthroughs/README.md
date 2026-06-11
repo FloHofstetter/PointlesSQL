@@ -66,6 +66,8 @@ Reload `auth.md` first; later ones reuse seeded users + catalog.
 | [`sql-editor-writes.md`](sql-editor-writes.md) | `/sql` write traffic + audit linkage | |
 | [`dashboards.md`](dashboards.md) | `/dashboards`, `/dashboards/{id}` | |
 | [`bi-dashboards.md`](bi-dashboards.md) | `/bi` widget dashboards + grid editor + public link | |
+| [`metric-views.md`](metric-views.md) | `/metric-views` semantic layer + governed queries | |
+| [`pipelines.md`](pipelines.md) | `/pipelines` declarative MV/ST refresh + expectations | |
 | [`alerts.md`](alerts.md) | `/alerts` + destinations + Atom feed | |
 | [`rollback.md`](rollback.md) | `/runs/{id}` admin rollback card | |
 | [`time-travel.md`](time-travel.md) | `/admin/audit/by-table` row-at-version | |
