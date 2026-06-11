@@ -21,7 +21,7 @@ from __future__ import annotations
 
 import datetime
 import re
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from sqlalchemy import delete, select
 
@@ -553,3 +553,39 @@ def resolve_secret_references(
         return value
 
     return SECRET_REFERENCE_RE.sub(_substitute, text)
+
+
+def resolve_references_in_tree(
+    factory: sessionmaker[Session], *, workspace_id: int, data: object
+) -> object:
+    """Resolve placeholders in every string of a JSON-shaped tree.
+
+    Connector configs arrive as parsed JSON (nested dicts / lists /
+    strings); this walks the tree and pipes each string through
+    :func:`resolve_secret_references`, leaving every other node
+    untouched.  Unknown references propagate the same
+    :class:`ValueError`.
+
+    Args:
+        factory: SQLAlchemy session factory.
+        workspace_id: Workspace whose scopes are consulted.
+        data: Parsed JSON value (dict / list / str / scalar).
+
+    Returns:
+        The tree with every placeholder-bearing string resolved.
+    """
+    if isinstance(data, str):
+        return resolve_secret_references(factory, workspace_id=workspace_id, text=data)
+    if isinstance(data, dict):
+        mapping = cast("dict[str, object]", data)
+        return {
+            k: resolve_references_in_tree(factory, workspace_id=workspace_id, data=v)
+            for k, v in mapping.items()
+        }
+    if isinstance(data, list):
+        items = cast("list[object]", data)
+        return [
+            resolve_references_in_tree(factory, workspace_id=workspace_id, data=item)
+            for item in items
+        ]
+    return data

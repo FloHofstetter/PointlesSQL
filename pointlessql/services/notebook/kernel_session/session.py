@@ -58,6 +58,22 @@ def __pql_sql_run(query, *, approved_tables, result_var, max_rows):
     return None
 
 
+def __pql_make_secrets():
+    import types
+
+    def get(scope, key):
+        from pointlessql.services.secret_runtime import get_secret
+
+        return get_secret(scope, key)
+
+    return types.SimpleNamespace(get=get)
+
+
+# `pql_secrets.get("scope", "key")` — ACL-checked, audited secret
+# reads inside the kernel; backed by the same vault as /api/secrets.
+pql_secrets = __pql_make_secrets()
+
+
 # Variable Inspector helpers.
 #
 # `__pql_inspect__` emits a list of {name, type, repr, size?} dicts for
@@ -241,6 +257,10 @@ class KernelSession:
         branch_name: Optional branch binding surfaced as
             ``POINTLESSQL_BRANCH`` so Delta reads/writes scope to
             the chosen branch branch-aware notebooks.
+        workspace_id: Active workspace surfaced as
+            ``POINTLESSQL_WORKSPACE_ID`` so the in-kernel secrets
+            getter (``pql_secrets.get``) resolves scopes against
+            the workspace the notebook session runs in.
     """
 
     def __init__(
@@ -251,10 +271,12 @@ class KernelSession:
         cwd: Path,
         notebook_id: str | None = None,
         branch_name: str | None = None,
+        workspace_id: int | None = None,
     ) -> None:
         self._user_email = user_email
         self._notebook_path = notebook_path
         self._cwd = cwd
+        self._workspace_id = workspace_id
         # context the kernel needs but cell
         # source code shouldn't touch directly.  Surfaced as env vars
         # so PQL + pointlessql.pql.context pick them up on
@@ -291,6 +313,8 @@ class KernelSession:
             env["POINTLESSQL_NOTEBOOK_ID"] = self._notebook_id
         if self._branch_name:
             env["POINTLESSQL_BRANCH"] = self._branch_name
+        if self._workspace_id:
+            env["POINTLESSQL_WORKSPACE_ID"] = str(self._workspace_id)
         km = AsyncKernelManager()
         await km.start_kernel(env=env, cwd=str(self._cwd))
         kc: AsyncKernelClient = km.client()

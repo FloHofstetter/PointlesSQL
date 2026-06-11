@@ -15,7 +15,7 @@ from __future__ import annotations
 import datetime
 import json
 import logging
-from typing import Any
+from typing import Any, cast
 
 from sqlalchemy import select
 
@@ -92,6 +92,27 @@ async def run_pull(
         source_name = source.name
         workspace_id = source.workspace_id
         owner_user_id = source.owner_user_id
+
+    # Swap {{secrets/<scope>/<key>}} placeholders for their decrypted
+    # values just-in-time — the config rows keep the placeholder, so
+    # credentials never rest inside ingest_sources.
+    from pointlessql.services import secret_scopes as secret_scopes_service
+
+    try:
+        config_dict = cast(
+            "dict[str, Any]",
+            secret_scopes_service.resolve_references_in_tree(
+                factory, workspace_id=workspace_id, data=config_dict
+            ),
+        )
+        secrets_dict = cast(
+            "dict[str, Any]",
+            secret_scopes_service.resolve_references_in_tree(
+                factory, workspace_id=workspace_id, data=secrets_dict
+            ),
+        )
+    except ValueError as exc:
+        raise ValidationError(f"IngestSource {source_id} secret reference failed: {exc}.") from exc
 
     pql_instance = PQL(principal=user_email or None)
 

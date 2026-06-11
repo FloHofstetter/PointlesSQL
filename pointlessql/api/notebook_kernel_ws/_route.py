@@ -113,12 +113,14 @@ async def notebook_kernel_ws(websocket: WebSocket) -> None:
                     return
     except Exception:  # noqa: BLE001
         logger.exception("kernel context resolve failed; running against main")
+    workspace_id = int(getattr(websocket.state, "workspace_id", 0) or 0) or 1
     session = await registry.get_or_start(
         user_id,
         user_email,
         relative_path,
         notebook_id=notebook_id,
         branch_name=branch_name,
+        workspace_id=workspace_id,
     )
     factory = websocket.app.state.session_factory
     await websocket.accept()
@@ -127,7 +129,6 @@ async def notebook_kernel_ws(websocket: WebSocket) -> None:
     output_counters: dict[tuple[str, str], int] = {}
     sql_cell_metadata: dict[tuple[str, str], dict[str, Any]] = {}
     cell_run_started_at: dict[tuple[str, str], datetime.datetime] = {}
-    workspace_id = int(getattr(websocket.state, "workspace_id", 0) or 0) or 1
     iopub_task = asyncio.create_task(
         pump_subscription(
             websocket,

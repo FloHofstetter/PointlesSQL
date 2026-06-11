@@ -44,6 +44,7 @@ class KernelRegistry:
         *,
         notebook_id: str | None = None,
         branch_name: str | None = None,
+        workspace_id: int | None = None,
     ) -> KernelSession:
         """Return the kernel for ``(user_id, notebook_path)``, launching if absent.
 
@@ -59,6 +60,10 @@ class KernelRegistry:
                 ``POINTLESSQL_BRANCH``; ``PQL._branch_remap`` reads
                 it on every read / write to route the FQN to the
                 bound branch schema.
+            workspace_id: Active workspace surfaced via
+                ``POINTLESSQL_WORKSPACE_ID`` so the in-kernel
+                secrets getter resolves scopes against the right
+                workspace.
 
         Returns:
             A running :class:`KernelSession`.
@@ -73,6 +78,7 @@ class KernelRegistry:
                     cwd=self._notebooks_dir,
                     notebook_id=notebook_id,
                     branch_name=branch_name,
+                    workspace_id=workspace_id,
                 )
                 await session.start()
                 self._sessions[key] = session
