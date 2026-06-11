@@ -3,6 +3,7 @@
 {% from "_macros/timestamps.html" import relative_time_epoch %}
 {% from "_macros/metadata.html" import section_header, copyable, copyable_id, owner_cell %}
 {% block title %}{{ catalog_name }}.{{ schema_name }}.{{ table_name }} · PointlesSQL{% endblock %}
+{% block page_entry %}table_detail.js{% endblock %}
 
 {% block breadcrumbs %}
 <ol class="breadcrumb mb-0 ms-3">
