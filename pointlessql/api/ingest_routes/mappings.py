@@ -12,6 +12,9 @@ Validation rules:
 * ``mode`` must be ``"full"`` or ``"incremental"``.
 * When ``mode == "incremental"`` the mapping must carry a non-empty
   ``high_water_col``.
+* ``pull_mode`` is optional; only ``"auto_loader"`` is persisted (it
+  reroutes file-based pulls through the incremental file-discovery
+  path) — ``"full_reload"`` / absence keeps the regular pull.
 """
 
 from __future__ import annotations
@@ -27,6 +30,10 @@ from pointlessql.api.dependencies import current_workspace_id, require_user
 from pointlessql.exceptions import ResourceNotFoundError, ValidationError
 from pointlessql.models import IngestSource
 from pointlessql.models.ingest import INGEST_PULL_MODES
+from pointlessql.services.ingest.autoloader import (
+    AUTOLOADER_PULL_MODE,
+    INGEST_FILE_PULL_MODES,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -65,9 +72,15 @@ def _validate_mapping(raw: dict[str, Any]) -> dict[str, Any]:
     mode = str(raw.get("mode") or "full").strip()
     high_water_col_raw = raw.get("high_water_col")
     high_water_col = str(high_water_col_raw).strip() if high_water_col_raw else None
+    pull_mode_raw = raw.get("pull_mode")
+    pull_mode = str(pull_mode_raw).strip() if pull_mode_raw else ""
 
     if mode not in INGEST_PULL_MODES:
         raise ValidationError(f"mode must be one of {INGEST_PULL_MODES}, got {mode!r}.")
+    if pull_mode and pull_mode not in INGEST_FILE_PULL_MODES:
+        raise ValidationError(
+            f"pull_mode must be one of {INGEST_FILE_PULL_MODES}, got {pull_mode!r}."
+        )
     _validate_target_fqn(target_fqn)
     if mode == "incremental" and not high_water_col:
         raise ValidationError("incremental mode requires a non-empty high_water_col.")
@@ -79,6 +92,10 @@ def _validate_mapping(raw: dict[str, Any]) -> dict[str, Any]:
     }
     if high_water_col:
         out["high_water_col"] = high_water_col
+    # Only the non-default pull mode is persisted — absence of the key
+    # IS the default, keeping pre-existing mappings byte-identical.
+    if pull_mode == AUTOLOADER_PULL_MODE:
+        out["pull_mode"] = AUTOLOADER_PULL_MODE
     # Preserve previously-stored watermark + last-pull stats if the
     # caller round-tripped them; the executor will overwrite on the
     # next run.

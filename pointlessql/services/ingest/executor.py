@@ -117,13 +117,30 @@ async def run_pull(
     pql_instance = PQL(principal=user_email or None)
 
     try:
-        result = pull_mapping(
-            kind=source_kind,
-            config=config_dict,
-            secrets=secrets_dict,
-            mapping=mapping,
-            pql_instance=pql_instance,
-        )
+        # ``pull_mode`` is an optional free-form mapping key; only the
+        # literal "auto_loader" reroutes through the incremental
+        # file-discovery path — every other value (or absence) keeps
+        # the regular full / watermark pull untouched.
+        if str(mapping.get("pull_mode") or "") == "auto_loader":
+            from pointlessql.services.ingest.autoloader import pull_incremental
+
+            result = pull_incremental(
+                factory,
+                source_id=int(source_id),
+                mapping_index=int(mapping_index),
+                kind=source_kind,
+                config=config_dict,
+                mapping=mapping,
+                pql_instance=pql_instance,
+            )
+        else:
+            result = pull_mapping(
+                kind=source_kind,
+                config=config_dict,
+                secrets=secrets_dict,
+                mapping=mapping,
+                pql_instance=pql_instance,
+            )
     except PullError as exc:
         _record_pull_outcome(
             factory=factory,

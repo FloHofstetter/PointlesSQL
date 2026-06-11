@@ -23,6 +23,11 @@ export function ingestSourceDetail(sourceId) {
         this.seedAvailableFromStored();
       }
     },
+    // Local-file kinds support the auto-loader pull mode (incremental
+    // file discovery); other kinds never render the selector.
+    isFileKind() {
+      return ['file_upload', 'parquet_glob'].includes(this.source?.kind);
+    },
     seedAvailableFromStored() {
       // If the source already has saved mappings, seed the
       // editor with them so the user sees current state when
@@ -35,6 +40,7 @@ export function ingestSourceDetail(sourceId) {
         target_fqn: m.target_fqn,
         mode: m.mode || 'full',
         high_water_col: m.high_water_col || '',
+        pull_mode: m.pull_mode || 'full_reload',
       }));
     },
     async loadAvailableTables() {
@@ -65,6 +71,7 @@ export function ingestSourceDetail(sourceId) {
           target_fqn: prev?.target_fqn || `${targetCatalog}.${targetSchema}.${basename}`,
           mode: prev?.mode || 'full',
           high_water_col: prev?.high_water_col || '',
+          pull_mode: prev?.pull_mode || 'full_reload',
         };
       });
     },
@@ -93,6 +100,11 @@ export function ingestSourceDetail(sourceId) {
           };
           if (t.mode === 'incremental' && t.high_water_col) {
             m.high_water_col = t.high_water_col;
+          }
+          // Only the non-default value travels — absence of the key
+          // is the "full reload" default on the server side.
+          if (this.isFileKind() && t.pull_mode === 'auto_loader') {
+            m.pull_mode = 'auto_loader';
           }
           return m;
         });

@@ -190,6 +190,7 @@
                                             <th>Target FQN</th>
                                             <th style="width:130px">Mode</th>
                                             <th style="width:180px">High-water column</th>
+                                            <th style="width:150px" x-show="isFileKind()">Pull mode</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -227,6 +228,15 @@
                                                            x-model="t.high_water_col"
                                                            :disabled="!t.checked || t.mode !== 'incremental'"
                                                            placeholder="updated_at">
+                                                </td>
+                                                <td x-show="isFileKind()">
+                                                    <select class="form-select form-select-sm"
+                                                            x-bind:aria-label="'Pull mode for ' + t.name"
+                                                            x-model="t.pull_mode"
+                                                            :disabled="!t.checked">
+                                                        <option value="full_reload">Full reload</option>
+                                                        <option value="auto_loader">Auto loader</option>
+                                                    </select>
                                                 </td>
                                             </tr>
                                         </template>
