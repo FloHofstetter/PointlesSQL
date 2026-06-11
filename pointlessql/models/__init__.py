@@ -223,6 +223,12 @@ from pointlessql.models.scheduler import (
     JobTask,
     TaskRun,
 )
+from pointlessql.models.secret_scopes import (
+    SECRET_SCOPE_PERMISSIONS,
+    SecretScope,
+    SecretScopeAcl,
+    SecretScopeSecret,
+)
 from pointlessql.models.social import (
     BADGE_KEYS,
     DataProductTopic,
@@ -420,6 +426,10 @@ __all__ = [
     "SavedView",
     "SqlStatement",
     "SyncRun",
+    "SECRET_SCOPE_PERMISSIONS",
+    "SecretScope",
+    "SecretScopeAcl",
+    "SecretScopeSecret",
     "SystemKey",
     "TableStats",
     "TaskRun",

@@ -35189,6 +35189,499 @@
         ]
       }
     },
+    "/api/secrets/scopes": {
+      "get": {
+        "description": "List the scopes visible to the caller with effective permissions.",
+        "operationId": "api_list_scopes_api_secrets_scopes_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api List Scopes Api Secrets Scopes Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Api List Scopes",
+        "tags": [
+          "secrets"
+        ]
+      },
+      "post": {
+        "description": "Create a scope; the creator receives ``MANAGE``.\n\nArgs:\n    request: Incoming FastAPI request.\n    body: ``{\"name\": str, \"description\"?: str}``.\n\nReturns:\n    The serialized scope row.\n\nRaises:\n    ValidationError: On a malformed or already-taken name.\n    PermissionDeniedError: When the caller is unauthenticated.",
+        "operationId": "api_create_scope_api_secrets_scopes_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Body",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Create Scope Api Secrets Scopes Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Create Scope",
+        "tags": [
+          "secrets"
+        ]
+      }
+    },
+    "/api/secrets/scopes/{scope_name}": {
+      "delete": {
+        "description": "Delete a scope and, via CASCADE, its secrets and ACLs (``MANAGE``).",
+        "operationId": "api_delete_scope_api_secrets_scopes__scope_name__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "scope_name",
+            "required": true,
+            "schema": {
+              "title": "Scope Name",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Delete Scope Api Secrets Scopes  Scope Name  Delete",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Delete Scope",
+        "tags": [
+          "secrets"
+        ]
+      }
+    },
+    "/api/secrets/scopes/{scope_name}/acls": {
+      "get": {
+        "description": "List a scope's ACL rows (``MANAGE``).",
+        "operationId": "api_list_acls_api_secrets_scopes__scope_name__acls_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "scope_name",
+            "required": true,
+            "schema": {
+              "title": "Scope Name",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api List Acls Api Secrets Scopes  Scope Name  Acls Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api List Acls",
+        "tags": [
+          "secrets"
+        ]
+      }
+    },
+    "/api/secrets/scopes/{scope_name}/acls/{principal}": {
+      "delete": {
+        "description": "Revoke a principal's grant (``MANAGE``).",
+        "operationId": "api_delete_acl_api_secrets_scopes__scope_name__acls__principal__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "scope_name",
+            "required": true,
+            "schema": {
+              "title": "Scope Name",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "principal",
+            "required": true,
+            "schema": {
+              "title": "Principal",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Delete Acl Api Secrets Scopes  Scope Name  Acls  Principal  Delete",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Delete Acl",
+        "tags": [
+          "secrets"
+        ]
+      },
+      "put": {
+        "description": "Grant or update a principal's permission (``MANAGE``).\n\nArgs:\n    request: Incoming FastAPI request.\n    scope_name: Scope identifier.\n    principal: User e-mail or ``*``.\n    body: ``{\"permission\": \"READ\"|\"WRITE\"|\"MANAGE\"}``.\n\nReturns:\n    The serialized ACL row.\n\nRaises:\n    ValidationError: On an unknown permission level or empty\n        principal.",
+        "operationId": "api_put_acl_api_secrets_scopes__scope_name__acls__principal__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "scope_name",
+            "required": true,
+            "schema": {
+              "title": "Scope Name",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "principal",
+            "required": true,
+            "schema": {
+              "title": "Principal",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Body",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Put Acl Api Secrets Scopes  Scope Name  Acls  Principal  Put",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Put Acl",
+        "tags": [
+          "secrets"
+        ]
+      }
+    },
+    "/api/secrets/scopes/{scope_name}/secrets": {
+      "get": {
+        "description": "List a scope's secret keys + write metadata (``READ``); never values.",
+        "operationId": "api_list_secrets_api_secrets_scopes__scope_name__secrets_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "scope_name",
+            "required": true,
+            "schema": {
+              "title": "Scope Name",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api List Secrets Api Secrets Scopes  Scope Name  Secrets Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api List Secrets",
+        "tags": [
+          "secrets"
+        ]
+      }
+    },
+    "/api/secrets/scopes/{scope_name}/secrets/{key}": {
+      "delete": {
+        "description": "Delete a secret (``WRITE``).",
+        "operationId": "api_delete_secret_api_secrets_scopes__scope_name__secrets__key__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "scope_name",
+            "required": true,
+            "schema": {
+              "title": "Scope Name",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "title": "Key",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Delete Secret Api Secrets Scopes  Scope Name  Secrets  Key  Delete",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Delete Secret",
+        "tags": [
+          "secrets"
+        ]
+      },
+      "put": {
+        "description": "Create or overwrite a secret value (``WRITE``).\n\nArgs:\n    request: Incoming FastAPI request.\n    scope_name: Scope identifier.\n    key: Secret name.\n    body: ``{\"value\": str}`` \u2014 the plaintext to encrypt at rest.\n\nReturns:\n    The serialized secret metadata (without any value).\n\nRaises:\n    ValidationError: On a malformed key, a non-string value, or a\n        value beyond the size cap.",
+        "operationId": "api_put_secret_api_secrets_scopes__scope_name__secrets__key__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "scope_name",
+            "required": true,
+            "schema": {
+              "title": "Scope Name",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "title": "Key",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Body",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Put Secret Api Secrets Scopes  Scope Name  Secrets  Key  Put",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Put Secret",
+        "tags": [
+          "secrets"
+        ]
+      }
+    },
+    "/api/secrets/scopes/{scope_name}/secrets/{key}/value": {
+      "get": {
+        "description": "Decrypt one value for runtime use (``READ``) \u2014 always audited.\n\nThe UI never calls this; it exists for kernel helpers and\nconnector runtimes.  Every hit lands in the audit log as\n``secret.accessed`` *before* the response leaves.\n\nArgs:\n    request: Incoming FastAPI request.\n    scope_name: Scope identifier.\n    key: Secret name.\n\nReturns:\n    ``{\"scope\", \"key\", \"value\"}`` with the plaintext value.\n\nRaises:\n    ResourceNotFoundError: When the key does not exist in the\n        scope.",
+        "operationId": "api_get_secret_value_api_secrets_scopes__scope_name__secrets__key__value_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "scope_name",
+            "required": true,
+            "schema": {
+              "title": "Scope Name",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "title": "Key",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Get Secret Value Api Secrets Scopes  Scope Name  Secrets  Key  Value Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Get Secret Value",
+        "tags": [
+          "secrets"
+        ]
+      }
+    },
     "/api/settings/notifications": {
       "get": {
         "description": "Return the caller's prefs + the canonical event-type list.\n\nArgs:\n    request: Incoming FastAPI request.\n\nReturns:\n    ``{\"prefs\": {event_type: {inbox, email, webhook}},\n    \"known_event_types\": [...]}``.  Missing keys + missing\n    sub-keys are filled in as ``True``.",

@@ -121,6 +121,7 @@ def register_routers(app: FastAPI) -> None:
         router as saved_audit_queries_router,
     )
     from pointlessql.api.saved_views_routes import router as saved_views_router
+    from pointlessql.api.secrets_routes import router as secrets_router
     from pointlessql.api.settings_routes import router as settings_router
     from pointlessql.api.social_routes import router as social_router
     from pointlessql.api.sql import router as sql_router
@@ -213,5 +214,6 @@ def register_routers(app: FastAPI) -> None:
     app.include_router(workspaces_public_router)
     app.include_router(ingest_router)
     app.include_router(ingest_html_router)
+    app.include_router(secrets_router)
     app.include_router(help_router)
     app.include_router(health_router)
