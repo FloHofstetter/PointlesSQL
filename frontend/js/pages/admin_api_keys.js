@@ -186,6 +186,10 @@ export function apiKeyCreate(defaultWorkspaceId) {
 export function apiKeyCreatedModal() {
   return {
     showSecret: false,
+    // The plaintext token is masked by default; Copy still works
+    // without revealing it, so a shoulder-surfer can't read it off the
+    // screen during the one-time display.
+    revealed: false,
     createdName: '',
     createdSecret: '',
     copyLabel: 'Copy',
@@ -194,6 +198,7 @@ export function apiKeyCreatedModal() {
       this.createdName = name;
       this.createdSecret = secret;
       this.copyLabel = 'Copy';
+      this.revealed = false;
       this.showSecret = true;
     },
 
@@ -210,6 +215,7 @@ export function apiKeyCreatedModal() {
 
     dismiss() {
       this.showSecret = false;
+      this.revealed = false;
       this.createdName = '';
       this.createdSecret = '';
       window.pqlApi.reloadWithToast('API key created.');

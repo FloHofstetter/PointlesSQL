@@ -305,10 +305,17 @@ is supplied.
                 <div>
                     <label class="form-label small mb-1" for="apikey-created-secret">Plaintext secret</label>
                     <div class="input-group input-group-sm">
-                        <input id="apikey-created-secret" type="text" class="form-control font-monospace"
+                        <input id="apikey-created-secret" class="form-control font-monospace"
+                               :type="revealed ? 'text' : 'password'"
                                readonly
                                :value="createdSecret"
                                x-ref="secretField">
+                        <button type="button" class="btn btn-outline-secondary"
+                                @click="revealed = !revealed"
+                                :title="revealed ? 'Hide' : 'Reveal'"
+                                :aria-label="revealed ? 'Hide secret' : 'Reveal secret'">
+                            <i class="bi" :class="revealed ? 'bi-eye-slash' : 'bi-eye'"></i>
+                        </button>
                         <button type="button" class="btn btn-outline-primary"
                                 @click="copySecret()">
                             <i class="bi bi-clipboard"></i>

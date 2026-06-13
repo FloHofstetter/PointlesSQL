@@ -19,7 +19,7 @@ export function adminSharing() {
     details: {},
     objDrafts: {},
     grantDrafts: {},
-    tokenModal: { show: false, name: '', token: '', copyLabel: 'Copy' },
+    tokenModal: { show: false, revealed: false, name: '', token: '', copyLabel: 'Copy' },
 
     async init() {
       await Promise.all([this.loadShares(), this.loadRecipients()]);
@@ -227,7 +227,13 @@ export function adminSharing() {
     // -- One-time token modal ---------------------------------------
 
     showToken(name, token) {
-      this.tokenModal = { show: true, name: name, token: token, copyLabel: 'Copy' };
+      this.tokenModal = {
+        show: true,
+        revealed: false,
+        name: name,
+        token: token,
+        copyLabel: 'Copy',
+      };
     },
 
     async copyToken() {
@@ -242,7 +248,7 @@ export function adminSharing() {
     },
 
     dismissToken() {
-      this.tokenModal = { show: false, name: '', token: '', copyLabel: 'Copy' };
+      this.tokenModal = { show: false, revealed: false, name: '', token: '', copyLabel: 'Copy' };
     },
   };
 }

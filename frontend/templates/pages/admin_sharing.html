@@ -244,10 +244,17 @@
                     <div>
                         <label class="form-label small mb-1" for="sharing-token-value">One-time bearer token</label>
                         <div class="input-group input-group-sm">
-                            <input id="sharing-token-value" type="text" class="form-control font-monospace"
+                            <input id="sharing-token-value" class="form-control font-monospace"
+                                   :type="tokenModal.revealed ? 'text' : 'password'"
                                    readonly
                                    :value="tokenModal.token"
                                    x-ref="tokenField">
+                            <button type="button" class="btn btn-outline-secondary"
+                                    @click="tokenModal.revealed = !tokenModal.revealed"
+                                    :title="tokenModal.revealed ? 'Hide' : 'Reveal'"
+                                    :aria-label="tokenModal.revealed ? 'Hide token' : 'Reveal token'">
+                                <i class="bi" :class="tokenModal.revealed ? 'bi-eye-slash' : 'bi-eye'"></i>
+                            </button>
                             <button type="button" class="btn btn-outline-primary"
                                     @click="copyToken()">
                                 <i class="bi bi-clipboard"></i>
