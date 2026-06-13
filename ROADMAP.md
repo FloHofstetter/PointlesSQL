@@ -3964,7 +3964,7 @@ PointlesSQL
 │   │       (Studio/Mesh) sind Desktop-Tools — Mobil-Overflow dort bewusst
 │   │       nicht verfolgt.
 │   │
-│   └── 212.12 — Follower-Zähler sagte „1 followers"  ✅ shipped (local, 2026-06-13, `91e28bd0`)
+│   ├── 212.12 — Follower-Zähler sagte „1 followers"  ✅ shipped (local, 2026-06-13, `91e28bd0`)
 │   │       Der Topic-Detail-Follower-Badge und die Data-Product-
 │   │       Listenkarte verketteten den rohen Zähler mit hartkodiertem
 │   │       „ followers" → „1 followers" bei genau einem Follower.  Der
@@ -3975,6 +3975,39 @@ PointlesSQL
 │   │       „1 follower" / „0 followers").  Übriger Community-Sweep
 │   │       (Topics-Liste + Empty-State, People-Verzeichnis, User-Profil
 │   │       mit Stat-Tiles, Inline-Edit-Profil) sauber.
+│   │
+│   └── 212.13 — Flächendeckender Code-Audit + Batch-Fixes (Welle 1)  ✅ shipped (local, 2026-06-13, `62323f9c`/`45140ade`)
+│   │       Auf Nutzerwunsch „alle UX-Punkte" statt eine Fläche pro
+│   │       Iteration: 7 parallele Audit-Agenten haben das gesamte
+│   │       Surface-Inventar (Catalog/Tabellen, SQL/Build/Notebooks,
+│   │       Watch/Runs/Pipelines, Audit-Cockpit, Admin-Konsole, Data-
+│   │       Products/Mesh/Lineage, ML/Agent/BI) am *aktuellen* Code auf
+│   │       echte Klickpfad-Defekte geprüft (keine Screenshot-Fehl-
+│   │       lesungen).  Befund-Backlog liegt in `ux-loop/FINDINGS.md`.
+│   │       Welle 1 fixt zwei Commits:
+│   │       • `62323f9c` — fünf kaputte Klickpfade: Issue-„Discussion"-Tab
+│   │         zeigte die Endorsements-Pane (Kommentar-Thread unerreichbar);
+│   │         Model-Lineage-DAG rendert in 0×0-Container (blank, gleiche
+│   │         Klasse wie 212.5); Run-Detail „Tables touched" 404te (fehlende
+│   │         /schemas//tables/-Segmente); Mesh-Canvas „Create new DP here"
+│   │         → /dp/new 404; Saved-View-Fehler verwarfen die echte Engine-
+│   │         Meldung (`res.data.detail`/`res.message` immer null → `res.error`).
+│   │       • `45140ade` — Sweep: Pluralisierung (~16 „1 rows/tables/hits/
+│   │         products/…"-Stellen aufs `(n===1?'':'s')`-Idiom); Insider-
+│   │         Strings/Jargon raus (`/workspaces/<slug>`, `READ/WRITE/MANAGE`,
+│   │         „install-global"→„All workspaces", „Pull-modell"→„Pull model",
+│   │         API-Key-Tooltip ohne Phase-Nr./Literale-Backticks, „edit the
+│   │         row in the API" weg, /docs/-Toter-Link→/help); a11y-Labels für
+│   │         Icon-only-Buttons (Volume-/Alert-Delete, DP-Refresh, btn-close);
+│   │         Mobil-Umbruch BI-Editor-Header + DP-Canvas-Topbar; Trace-
+│   │         Breadcrumb ohne /catalogs-404; Candidates-Reload-405→Button;
+│   │         By-Table-Status-Badge farbkodiert statt einheitlich grau.
+│   │       Verifiziert: biome + no-phase-refs + raw-fetch-Gate grün, 13
+│   │       editierte Seiten rendern 200 (in-Browser-Fetch mit Session),
+│   │       Admin-Copy-Fix live bestätigt.  Offen (Folge-Wellen in
+│   │       FINDINGS.md): Sparkline-Hidden-Tab, Notebook-Create-Silent-
+│   │       Fail, Sources-Filter-Leerzustand, Review-Dest-Secret-Modal,
+│   │       DP-Overview-Re-Layout, ISO-Timestamps, Backend-Serializer.
 │   │
 ├── Phase 211 — Bootstrap-UI-Audit: Fixes aus dem 169-Screenshot-Sweep  ✅ shipped (local, 2026-06-13)
 │   │

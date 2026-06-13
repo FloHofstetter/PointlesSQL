@@ -220,6 +220,27 @@ defined in ``scripts/clusters.json``. -->
   now match the data-product detail header, which already said
   "1 follower".
 
+- **Comprehensive UX-audit fixes (phase 212.13).** A code-verified sweep
+  of the whole surface inventory (catalog/tables, SQL/build/notebooks,
+  watch/runs/pipelines, audit cockpit, admin console, data-products/mesh/
+  lineage, ML/agent/BI) fixed two batches of click-path defects. Five
+  functional dead-ends: the issue "Discussion" tab showed the
+  endorsements pane (comment thread unreachable); the model lineage DAG
+  rendered into a 0×0 hidden container and stayed blank; run-detail
+  "Tables touched" links 404'd (missing `/schemas/`+`/tables/` segments);
+  the mesh canvas "Create new DP here" went to a non-existent `/dp/new`;
+  and saved-view errors discarded the real engine message. Plus a broad
+  cosmetic sweep: pluralisation of ~16 "1 rows/tables/hits/…" count
+  labels; insider strings and jargon removed from admin/audit/CDF/subscription
+  copy (`/workspaces/<slug>`, `READ/WRITE/MANAGE`, "install-global",
+  "Pull-modell", a release-phase number in an API-key tooltip, an
+  "edit the row in the API" hint, a `/docs/` link that 404'd); accessible
+  names on icon-only controls; mobile-wrap on the BI editor header and
+  the DP-canvas topbar; the trace breadcrumbs no longer link a
+  non-existent `/catalogs` list; the candidates "reload" link no longer
+  GETs a POST-only route (405); and the audit by-table status column is
+  colour-coded instead of uniformly grey.
+
 - **Bootstrap UI-audit fixes (phase 211).** Acting on a full headful
   audit (774 API routes + 169 screenshots graded against Bootstrap 5.3):
   the light theme's decorative aurora was toned down (the over-saturated
