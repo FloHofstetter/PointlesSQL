@@ -121,7 +121,7 @@
                             </div>
                         </td>
                         <td data-label="Triggered by" class="text-muted small" x-text="r.triggered_by || ''"></td>
-                        <td data-label="Started" class="text-muted small" x-text="r.started_at"></td>
+                        <td data-label="Started" class="text-muted small" x-text="pqlRelativeTime(r.started_at) || '—'" :title="pqlAbsTime(r.started_at)"></td>
                         <td data-label="Datasets">
                             <template x-for="m in r.metrics" :key="m.dataset">
                                 <div class="small">

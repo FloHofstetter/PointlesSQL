@@ -81,7 +81,8 @@
                                 </dd>
                                 <dt class="col-sm-3">Created</dt>
                                 <dd class="col-sm-9 text-muted"
-                                    x-text="source.created_at"></dd>
+                                    x-text="pqlRelativeTime(source.created_at) || '—'"
+                                    :title="pqlAbsTime(source.created_at)"></dd>
                                 <dt class="col-sm-3">Status</dt>
                                 <dd class="col-sm-9">
                                     <span x-show="source.is_active" class="text-success">
@@ -306,7 +307,7 @@
                                         </td>
                                         <td x-text="r.stats?.rows_written"></td>
                                         <td x-text="r.stats?.duration_ms + ' ms'"></td>
-                                        <td class="text-muted small" x-text="r.stats?.ts"></td>
+                                        <td class="text-muted small" x-text="pqlRelativeTime(r.stats?.ts) || '—'" :title="pqlAbsTime(r.stats?.ts)"></td>
                                     </tr>
                                 </template>
                             </tbody>
@@ -342,8 +343,8 @@
                                               x-text="jr.status"></span>
                                     </td>
                                     <td class="small text-muted" x-text="jr.trigger"></td>
-                                    <td class="small text-muted" x-text="jr.started_at"></td>
-                                    <td class="small text-muted" x-text="jr.finished_at"></td>
+                                    <td class="small text-muted" x-text="pqlRelativeTime(jr.started_at) || '—'" :title="pqlAbsTime(jr.started_at)"></td>
+                                    <td class="small text-muted" x-text="pqlRelativeTime(jr.finished_at) || '—'" :title="pqlAbsTime(jr.finished_at)"></td>
                                     <td class="small text-danger" x-text="jr.error"></td>
                                 </tr>
                             </template>

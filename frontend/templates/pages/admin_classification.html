@@ -164,7 +164,7 @@
             <div class="alert alert-danger mt-2 mb-0" x-show="scanError" x-text="scanError" x-cloak></div>
             <div class="mt-3" x-show="findings !== null" x-cloak>
                 <div class="fw-semibold small mb-2">
-                    <span x-text="(findings || []).length"></span> finding(s)
+                    <span x-text="((findings || []).length) + ' finding' + ((findings || []).length === 1 ? '' : 's')"></span>
                 </div>
                 <div class="table-responsive" x-show="(findings || []).length > 0">
                     <table class="table table-sm mb-0">

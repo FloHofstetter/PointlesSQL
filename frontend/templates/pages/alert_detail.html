@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% from "_macros/copy_button.html" import copy_btn %}
+{% from "_macros/timestamps.html" import relative_time %}
 {% block title %}{{ alert.title }} · Alerts · PointlesSQL{% endblock %}
 
 {% set breadcrumbs = [
@@ -149,7 +150,7 @@
  <tbody>
  {% for ev in events %}
  <tr>
- <td>{{ ev.fired_at }}</td>
+ <td>{{ relative_time(ev.fired_at) }}</td>
  <td>
  {% if ev.outcome == 'fired' %}
  <span class="badge text-bg-success">fired</span>

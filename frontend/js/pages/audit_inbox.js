@@ -94,7 +94,7 @@ function _init() {
     const data = await resp.json();
     lastAnomalies = data.anomalies || [];
     clearSelection();
-    metaEl.textContent = `${data.anomalies.length} of ${data.total_count} breach(es) — metrics ${data.metrics.join(', ')}, ${data.window_days}d baseline at ${data.threshold_sigma}σ`;
+    metaEl.textContent = `${data.anomalies.length} of ${data.total_count} breach${data.total_count === 1 ? '' : 'es'} — metrics ${data.metrics.join(', ')}, ${data.window_days}d baseline at ${data.threshold_sigma}σ`;
     if (!data.anomalies.length) {
       rowsEl.innerHTML =
         '<tr><td colspan="9" class="text-center text-muted py-4">No active anomalies for the chosen filters.</td></tr>';

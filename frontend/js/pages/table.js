@@ -30,6 +30,16 @@ export function tableStats(fullName) {
         this.cached = this.columns.length > 0;
         if (this.cached) this.$nextTick(() => this.drawSparklines());
       }
+      // Charts drawn while the Columns tab is hidden size to 0×0 and
+      // render blank; redraw when the pane hosting the sparklines first
+      // becomes visible.
+      document.addEventListener('shown.bs.tab', (e) => {
+        const sel = e.target && e.target.getAttribute('data-bs-target');
+        const pane = sel ? document.querySelector(sel) : null;
+        if (this.cached && pane && pane.querySelector('.pql-stats-sparkline')) {
+          this.$nextTick(() => this.drawSparklines());
+        }
+      });
     },
 
     async profile() {

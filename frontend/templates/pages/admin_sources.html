@@ -62,6 +62,14 @@
         </div>
     </template>
 
+    <template x-if="!loading && sources.length > 0 && filtered().length === 0">
+        <div class="card">
+            <div class="card-body text-muted small text-center py-4">
+                No sources match the current filter.
+            </div>
+        </div>
+    </template>
+
     <template x-if="!loading && filtered().length > 0">
         <div class="card">
             <div class="table-responsive">

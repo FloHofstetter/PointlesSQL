@@ -83,7 +83,7 @@
                             <div class="text-muted small" x-text="p.description || ''"></div>
                         </td>
                         <td data-label="Datasets" class="text-end" x-text="p.datasets.length"></td>
-                        <td data-label="Updated" class="text-muted small" x-text="p.updated_at"></td>
+                        <td data-label="Updated" class="text-muted small" x-text="pqlRelativeTime(p.updated_at) || '—'" :title="pqlAbsTime(p.updated_at)"></td>
                     </tr>
                 </template>
             </tbody>

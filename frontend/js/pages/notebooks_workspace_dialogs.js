@@ -125,16 +125,17 @@ export function notebookDialogs() {
       }
       this.pathDialog.submitting = true;
       try {
+        let ok;
         if (this.pathDialog.mode === 'create') {
-          if (this.pathDialog.templateId) {
-            await this._createFromTemplateApi(this.pathDialog.templateId, path);
-          } else {
-            await this._createNotebookApi(path);
-          }
+          ok = this.pathDialog.templateId
+            ? await this._createFromTemplateApi(this.pathDialog.templateId, path)
+            : await this._createNotebookApi(path);
         } else {
-          await this._renameNotebookApi(this.pathDialog.originalPath, path);
+          ok = await this._renameNotebookApi(this.pathDialog.originalPath, path);
         }
-        this.pathDialog.open = false;
+        // Keep the dialog open on failure so the typed path (and the
+        // toasted error) survive for a retry.
+        if (ok) this.pathDialog.open = false;
       } finally {
         this.pathDialog.submitting = false;
       }
@@ -152,10 +153,14 @@ export function notebookDialogs() {
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        throw new Error(body?.detail || `HTTP ${res.status}`);
+        if (window.pqlToast) {
+          window.pqlToast.error(body?.detail || `Create failed (HTTP ${res.status})`);
+        }
+        return false;
       }
       const body = await res.json();
       window.location.assign(`/notebooks/edit/${encodeURIComponent(body.path || path)}`);
+      return true;
     },
 
     openDeleteDialog(path) {
@@ -172,8 +177,8 @@ export function notebookDialogs() {
     async submitDeleteDialog() {
       this.deleteDialog.submitting = true;
       try {
-        await this._deleteNotebookApi(this.deleteDialog.path);
-        this.deleteDialog.open = false;
+        const ok = await this._deleteNotebookApi(this.deleteDialog.path);
+        if (ok) this.deleteDialog.open = false;
       } finally {
         this.deleteDialog.submitting = false;
       }

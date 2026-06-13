@@ -83,7 +83,7 @@ function _initTabs() {
       return;
     }
     const data = await resp.json();
-    metaEl.textContent = `${data.row_count} run(s) ${kind} ${escapeHtml(data.fqn)}`;
+    metaEl.textContent = `${data.row_count} run${data.row_count === 1 ? '' : 's'} ${kind} ${escapeHtml(data.fqn)}`;
     if (!data.runs.length) {
       rowsEl.innerHTML = `<tr><td colspan="5" class="text-center text-muted py-4">No runs ${escapeHtml(kind)} this table.</td></tr>`;
       return;

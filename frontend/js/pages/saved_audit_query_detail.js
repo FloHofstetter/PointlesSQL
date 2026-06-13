@@ -80,7 +80,7 @@ function _initRunButton() {
 
   function renderResult(body) {
     meta.innerHTML =
-      `${body.row_count} row(s) · references ${body.referenced_tables.join(', ')}` +
+      `${body.row_count} row${body.row_count === 1 ? '' : 's'} · references ${body.referenced_tables.join(', ')}` +
       (body.truncated ? ' · <span class="text-warning">truncated</span>' : '');
     thead.innerHTML = '<tr>' + body.columns.map((c) => `<th>${c}</th>`).join('') + '</tr>';
     tbody.innerHTML = body.rows

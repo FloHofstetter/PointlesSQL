@@ -21,12 +21,13 @@ export function notebookModalApis() {
         method: 'POST',
         body: { path: path },
       });
-      if (!res.ok) return;
+      if (!res.ok) return false;
       const created = (res.data && res.data.path) || path;
       try {
         sessionStorage.removeItem(STORAGE_KEY);
       } catch (e) {}
       window.location.href = '/notebooks/edit/' + encodeURI(created);
+      return true;
     },
 
     async _renameNotebookApi(fromPath, toPath) {
@@ -34,7 +35,7 @@ export function notebookModalApis() {
         method: 'POST',
         body: { from_path: fromPath, to_path: toPath },
       });
-      if (!res.ok) return;
+      if (!res.ok) return false;
       try {
         sessionStorage.removeItem(STORAGE_KEY);
       } catch (e) {}
@@ -47,6 +48,7 @@ export function notebookModalApis() {
           detail: { kind: 'rename', from: fromPath, to: toPath },
         })
       );
+      return true;
     },
 
     async _deleteNotebookApi(path) {
@@ -54,7 +56,7 @@ export function notebookModalApis() {
       const res = await window.pqlApi.fetch('/api/notebooks/delete?' + qs.toString(), {
         method: 'DELETE',
       });
-      if (!res.ok) return;
+      if (!res.ok) return false;
       try {
         sessionStorage.removeItem(STORAGE_KEY);
       } catch (e) {}
@@ -64,6 +66,7 @@ export function notebookModalApis() {
           detail: { kind: 'delete', path },
         })
       );
+      return true;
     },
   };
 }

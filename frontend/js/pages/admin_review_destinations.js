@@ -80,10 +80,20 @@ export function reviewDestCreate() {
     },
     creating: false,
     error: '',
-    createdSecret: false,
+    createdSecret: '',
 
     canSubmit() {
       return !!(this.form.name.trim() && this.form.webhookUrl.trim());
+    },
+
+    copySecret() {
+      if (!navigator.clipboard || !navigator.clipboard.writeText) return;
+      navigator.clipboard.writeText(this.createdSecret).then(
+        () => window.pqlToast && window.pqlToast.success('Secret copied to clipboard.'),
+        () =>
+          window.pqlToast &&
+          window.pqlToast.error('Copy failed — select the field and copy manually.')
+      );
     },
 
     async create() {
@@ -108,8 +118,16 @@ export function reviewDestCreate() {
         this.error = res.error || 'Failed to create destination.';
         return;
       }
-      this.createdSecret = !!body.hmac_secret;
-      window.pqlApi.reloadWithToast('Destination created.');
+      // The cleartext HMAC secret is returned exactly once. If one was
+      // set, surface it in a copy field and hold the reload until the
+      // admin has copied it; otherwise reload straight away.
+      const secret = (res.data && res.data.hmac_secret) || body.hmac_secret || '';
+      if (secret) {
+        this.createdSecret = secret;
+        if (window.pqlToast) window.pqlToast.success('Destination created.');
+      } else {
+        window.pqlApi.reloadWithToast('Destination created.');
+      }
     },
   };
 }

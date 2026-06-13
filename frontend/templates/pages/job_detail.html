@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_macros/timestamps.html" import relative_time %}
 {% block title %}{{ job.name }} · Jobs · PointlesSQL{% endblock %}
 
 {% block breadcrumbs %}
@@ -303,7 +304,7 @@
                     {% set is_selectable = job.kind == "papermill" and run.status in ["succeeded", "failed"] %}
                     <tr {% if is_selectable %}style="cursor: pointer;"
                         onclick="window.dispatchEvent(new CustomEvent('run-selected', { detail: { runId: {{ run.id }} } }))"{% endif %}>
-                        <td data-label="Started" class="ps-3 small">{{ run.started_at }}</td>
+                        <td data-label="Started" class="ps-3 small">{{ relative_time(run.started_at) }}</td>
                         <td data-label="Status">
                             {% if run.status == "succeeded" %}
                             <span class="badge text-bg-success">{{ run.status }}</span>

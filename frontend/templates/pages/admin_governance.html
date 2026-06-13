@@ -110,9 +110,9 @@
             </button>
             <div class="mt-3 small" x-show="scanSummary" x-cloak>
                 Scanned <strong x-text="scanSummary && scanSummary.products_scanned"></strong>
-                product(s), found
+                <span x-text="(scanSummary && scanSummary.products_scanned) === 1 ? 'product' : 'products'"></span>, found
                 <strong x-text="scanSummary && scanSummary.violations.length"></strong>
-                violation(s).
+                <span x-text="(scanSummary && scanSummary.violations.length) === 1 ? 'violation' : 'violations'"></span>.
             </div>
         </div>
     </div>

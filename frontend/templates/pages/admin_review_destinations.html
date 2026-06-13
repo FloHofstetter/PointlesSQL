@@ -185,9 +185,25 @@ request body with the configured secret; see
                 <span x-show="creating">Creating&hellip;</span>
             </button>
             <span x-show="error" class="text-danger small" x-text="error"></span>
-            <span x-show="createdSecret" class="text-success small ms-auto">
-                <i class="bi bi-key"></i> Saved.  Cleartext secret was returned once — copy from network log if needed.
-            </span>
+        </div>
+        <div x-show="createdSecret" x-cloak class="alert alert-success mt-3 mb-0">
+            <div class="small fw-semibold mb-2">
+                <i class="bi bi-key"></i> Destination saved. Copy the HMAC secret into the
+                receiving system now — it is shown only this once.
+            </div>
+            <div class="input-group input-group-sm">
+                <input type="text" class="form-control font-monospace" readonly
+                       :value="createdSecret"
+                       @focus="$event.target.select()"
+                       aria-label="HMAC secret">
+                <button type="button" class="btn btn-outline-secondary" @click="copySecret()">
+                    <i class="bi bi-clipboard"></i> Copy
+                </button>
+                <button type="button" class="btn btn-outline-secondary"
+                        @click="window.location.reload()">
+                    Done
+                </button>
+            </div>
         </div>
     </div>
 </div>

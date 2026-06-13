@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_macros/timestamps.html" import relative_time %}
 {% block title %}Followed data products · PointlesSQL{% endblock %}
 
 {% set breadcrumbs = [
@@ -72,8 +73,8 @@
                     <td>
                         <span class="badge text-bg-secondary">v{{ f.version }}</span>
                     </td>
-                    <td class="small text-muted">{{ f.last_loaded_at }}</td>
-                    <td class="small text-muted">{{ f.followed_at }}</td>
+                    <td class="small text-muted">{{ relative_time(f.last_loaded_at) }}</td>
+                    <td class="small text-muted">{{ relative_time(f.followed_at) }}</td>
                 </tr>
                 {% endfor %}
             </tbody>
