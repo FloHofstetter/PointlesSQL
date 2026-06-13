@@ -186,6 +186,12 @@ export function workspaceSidebar() {
 
       hrefFor(row) {
         if (row.kind === 'dir') return '#';
+        // The in-browser editor only handles .py (jupytext Percent)
+        // notebooks; an .ipynb path 422s there. Point .ipynb rows at the
+        // workspace browser instead, where they can be scheduled or run.
+        if (row.format !== 'py') {
+          return '/notebooks/workspace?path=' + encodeURI(row.path);
+        }
         return '/notebooks/edit/' + encodeURI(row.path);
       },
 
