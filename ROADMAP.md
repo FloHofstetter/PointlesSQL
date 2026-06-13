@@ -3854,6 +3854,61 @@ PointlesSQL
 │       │   Kapazität („Budget erreicht in N Tagen") + Cost am Agent-Run +
 │       │   FinOps-Grafana-Panels.  estimated_cost = Schätzung, kein $.
 │   │
+├── Phase 211 — Bootstrap-UI-Audit: Fixes aus dem 169-Screenshot-Sweep  ✅ shipped (local, 2026-06-13)
+│   │
+│   │   Umsetzung der Befunde aus `ui-audit/IMPROVEMENT-PLAN.md` (voller
+│   │   Headful-Sweep: 774 API-Routen + 169 Screenshots, jede Fläche
+│   │   A–F gegen Bootstrap 5.3 bewertet).  Beim Abgleich gegen den
+│   │   echten Code waren ~40 % der „bestätigten Bugs" Fehllesungen des
+│   │   Screenshot-Audits (Edit-Profile-Gate, Query-History-Badges,
+│   │   Social-Tabs erreichbar, Toast-Container vorhanden, DP-Detail
+│   │   bereits getabbt, Mesh-Save bereits primary) und blieben bewusst
+│   │   unangetastet; umgesetzt wurde das Reale.
+│   │
+│   ├── 211.1 — Light-Theme-Aurora gezähmt  ✅ shipped (local, 2026-06-13, `30fc15b3`)
+│   │       Light-Mode-Aurora-Blobs zu kräftig (Indigo 34 % → Lila-Band
+│   │       hinter dem Header), Surfaces zu transluzent.  Blob-Opazität
+│   │       in base.css gesenkt, Panels nahezu opak, Border kräftiger;
+│   │       Brand-Gradient-Button auf dark gescoped (white-on-bright-
+│   │       green-Kontrast in light).  Eine Token-Änderung, ~alle
+│   │       Light-Flächen.
+│   ├── 211.2 — feed.css backdrop-filter entfernt  ✅ shipped (local, 2026-06-13, `3fd103b3`)
+│   │       Zwei Live-Blur-Sticky-Bars → opakes rgba-Fallback (Software-
+│   │       Compositor-Perfregel).
+│   ├── 211.3 — Geteilte Macros + Adoption  ✅ shipped (local, 2026-06-13, `0653f116`/`9ebe82e3`/`b681b80a`)
+│   │       Neu: alert_box / data_table / page_help / stat_tiles in
+│   │       `_macros/`.  empty.html über 21 Listen-Leerzustände adoptiert
+│   │       (Header-über-Void → Icon+Titel+Message); page_help dedupt 6
+│   │       Admin-„What is this page?"-Accordions.
+│   ├── 211.4 — Fehler-/Disabled-Rendering  ✅ shipped (local, 2026-06-13, `d0a69f9a`)
+│   │       BI-Widget-Fehler amber→danger+Icon; Pipeline-Roh-JSON →
+│   │       `<details>`; Chat-Konfig-aus (4503/LLM) als amber-gear statt
+│   │       Hart-Rot; README-404 nicht mehr als Error-Toast (silent GET).
+│   ├── 211.5 — Tabellen-Chrome  ✅ shipped (local, 2026-06-13, `c8b845cb`)
+│   │       ~40 Datentabellen in `.table-responsive` (Inline-Key/Value-
+│   │       Editoren bewusst ausgenommen).
+│   ├── 211.6 — Mobile-Nav-Doppelmenü  ✅ shipped (local, 2026-06-13, `90c90f26`)
+│   │       Offcanvas stapelte Hub-Spokes (Kontext) + nav_links (Hub) →
+│   │       Spokes desktop-only gescoped; Wrapper-Klasse trägt die
+│   │       First-Header-Ausrichtung am Icon-Rail.
+│   ├── 211.7 — Command-Palette als echtes BS-Modal  ✅ shipped (local, 2026-06-13, `6fc9870f`)
+│   │       Custom-Overlay → bootstrap.Modal (Focus-Trap, Scroll-Lock,
+│   │       Return-Focus); Alpine behält Suche + ↑↓↵; Backdrop-Sweep-
+│   │       Sicherheitsnetz; gesättigte Lime-Auswahl → dezenter Akzent.
+│   ├── 211.8 — Social-Sub-Tabs deep-linkbar  ✅ shipped (local, 2026-06-13, `6a11c987`)
+│   │       `#social-<tab>`-Hash öffnet die Offcanvas-Panes; Öffnen/
+│   │       Tab-Wechsel spiegelt zurück (replaceState).
+│   ├── 211.9 — Mesh-Graph-Label-Kontrast + BI-Leerzustand  ✅ shipped (local, 2026-06-13, `3cdcccc2`)
+│   │       Cytoscape-Node-Labels theme-aware + Text-Outline (waren
+│   │       dark-on-dark unsichtbar); BI-„no widgets" → empty.html.
+│   │
+│   │   Bewusst zurückgestellt (reine Kosmetik, hoher Churn, geringer
+│   │   Wert; Badge/Button-Massenmigration ist laut `_macros/README.md`
+│   │   ohnehin separater Sweep): flächendeckende Badge/Count-Recolors
+│   │   (T5), Form-Grid-/Toolbar-Retrofit (T7c), Button-Hierarchie +
+│   │   Breiten-Caps (T8).  Stat-tiles-Macro liegt bereit, noch ohne
+│   │   Konsumenten.
+│   │
 ├── Phase 210 — Databricks-Parität Runde 2: Top-10 aus der Juni-Recherche  ✅ shipped (local, 2026-06-11)
 │   │
 │   │   Zweites Deep-Research-Programm (offizielle Databricks-Blogs/

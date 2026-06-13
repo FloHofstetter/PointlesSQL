@@ -172,6 +172,27 @@ defined in ``scripts/clusters.json``. -->
 
 ### Fixed
 
+- **Bootstrap UI-audit fixes (phase 211).** Acting on a full headful
+  audit (774 API routes + 169 screenshots graded against Bootstrap 5.3):
+  the light theme's decorative aurora was toned down (the over-saturated
+  blobs had pooled into a lavender band behind the header and washed out
+  card borders); the feed's two `backdrop-filter` blur bars were dropped
+  for opaque fallbacks (software-compositor perf rule); failed BI widgets
+  now render as a danger alert (not an amber caution), pipeline run
+  errors tuck their raw JSON behind a `<details>`, config-disabled chat
+  shows an amber gear caution instead of a hard-red error, and an absent
+  README no longer fires an error toast; the mobile nav drawer no longer
+  stacks two menus; the command palette is now a real `bootstrap.Modal`
+  (focus-trap, scroll-lock, return-focus) with a quiet selected row;
+  the table social sub-tabs are deep-linkable (`#social-<tab>`); ~40 data
+  tables gained a `.table-responsive` wrapper; and the mesh graph's
+  cytoscape node labels are theme-aware (they were invisible dark-on-dark).
+  ~40 % of the audit's "confirmed bugs" turned out to be screenshot
+  misreads (already-correct code) and were left untouched. Shared macros
+  `alert_box` / `data_table` / `page_help` / `stat_tiles` landed;
+  `empty.html` was adopted across 21 list empty states and `page_help`
+  deduplicated six admin disclosure accordions.
+
 - **CI made green again (phase 208).** The lint job died at the Ruff step
   and masked everything behind it: 222 unformatted files, 24 pyright
   errors, 271 pydoclint violations across 139 files, a nondeterministic
