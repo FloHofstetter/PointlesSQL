@@ -2,6 +2,7 @@
 {% from "_macros/help_icon.html" import info %}
 {% from "_macros/labeled_input.html" import labeled_input %}
 {% from "_macros/labeled_select.html" import labeled_select %}
+{% from "_macros/page_help.html" import page_help %}
 {% block title %}Audit sinks · PointlesSQL{% endblock %}
 
 {% set breadcrumbs = [
@@ -22,32 +23,13 @@
     </span>
 </div>
 
-<div class="accordion accordion-flush mb-3" id="info-accordion-audit-sinks">
-    <div class="accordion-item">
-        <h2 class="accordion-header">
-            <button class="accordion-button collapsed small fw-normal"
-                    type="button"
-                    data-bs-toggle="collapse"
-                    data-bs-target="#info-collapse-audit-sinks"
-                    aria-expanded="false"
-                    aria-controls="info-collapse-audit-sinks">
-                <i class="bi bi-info-circle me-2"></i>
-                What is this page?
-            </button>
-        </h2>
-        <div id="info-collapse-audit-sinks"
-             class="accordion-collapse collapse"
-             data-bs-parent="#info-accordion-audit-sinks">
-            <div class="accordion-body small">
-                Forwards governance CloudEvents to webhooks, S3 buckets, or
-                AWS CloudTrail.  Secrets are stored in plaintext at rest and
-                redacted on read; rotate via the row's <em>Edit</em> form.
-                Inactive sinks are skipped by the dispatcher but kept on
-                record so you can re-enable without retyping config.
-            </div>
-        </div>
-    </div>
-</div>
+{% call page_help('audit-sinks') %}
+Forwards governance CloudEvents to webhooks, S3 buckets, or
+AWS CloudTrail.  Secrets are stored in plaintext at rest and
+redacted on read; rotate via the row's <em>Edit</em> form.
+Inactive sinks are skipped by the dispatcher but kept on
+record so you can re-enable without retyping config.
+{% endcall %}
 
 <div class="card mb-4">
     <div class="card-header">

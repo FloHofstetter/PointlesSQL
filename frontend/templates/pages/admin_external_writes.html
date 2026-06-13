@@ -2,6 +2,7 @@
 {% from "_macros/truncate.html" import truncate_cell %}
 {% from "_macros/help_icon.html" import info %}
 {% from "_macros/detail_drawer.html" import detail_drawer %}
+{% from "_macros/page_help.html" import page_help %}
 {% block title %}External writes · PointlesSQL{% endblock %}
 
 {% set breadcrumbs = [
@@ -27,34 +28,15 @@
     </span>
 </div>
 
-<div class="accordion accordion-flush mb-3" id="info-accordion-external-writes">
-    <div class="accordion-item">
-        <h2 class="accordion-header">
-            <button class="accordion-button collapsed small fw-normal"
-                    type="button"
-                    data-bs-toggle="collapse"
-                    data-bs-target="#info-collapse-external-writes"
-                    aria-expanded="false"
-                    aria-controls="info-collapse-external-writes">
-                <i class="bi bi-info-circle me-2"></i>
-                What is this page?
-            </button>
-        </h2>
-        <div id="info-collapse-external-writes"
-             class="accordion-collapse collapse"
-             data-bs-parent="#info-accordion-external-writes">
-            <div class="accordion-body small">
-                Detection-only.  Lists Delta-table commits whose version is
-                <em>not</em> referenced by any <code>agent_run_operations</code>
-                row — i.e. writes that bypassed every PQL primitive (raw
-                <code>deltalake.write_deltalake()</code>, Spark, <code>cp</code>
-                of parquet, foreign tools).  See
-                <code>POINTLESSQL_EXTERNAL_WRITES_SCAN_INTERVAL_SECONDS</code>
-                for the periodic-loop opt-in; the button below works regardless.
-            </div>
-        </div>
-    </div>
-</div>
+{% call page_help('external-writes') %}
+Detection-only.  Lists Delta-table commits whose version is
+<em>not</em> referenced by any <code>agent_run_operations</code>
+row — i.e. writes that bypassed every PQL primitive (raw
+<code>deltalake.write_deltalake()</code>, Spark, <code>cp</code>
+of parquet, foreign tools).  See
+<code>POINTLESSQL_EXTERNAL_WRITES_SCAN_INTERVAL_SECONDS</code>
+for the periodic-loop opt-in; the button below works regardless.
+{% endcall %}
 
 <div class="card mb-3">
     <div class="card-body">

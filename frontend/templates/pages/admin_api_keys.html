@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% from "_macros/timestamps.html" import relative_time %}
+{% from "_macros/page_help.html" import page_help %}
 {% block title %}API keys · PointlesSQL{% endblock %}
 
 {% set breadcrumbs = [
@@ -20,34 +21,15 @@
     </span>
 </div>
 
-<div class="accordion accordion-flush mb-3" id="info-accordion-api-keys">
-    <div class="accordion-item">
-        <h2 class="accordion-header">
-            <button class="accordion-button collapsed small fw-normal"
-                    type="button"
-                    data-bs-toggle="collapse"
-                    data-bs-target="#info-collapse-api-keys"
-                    aria-expanded="false"
-                    aria-controls="info-collapse-api-keys">
-                <i class="bi bi-info-circle me-2"></i>
-                What is this page?
-            </button>
-        </h2>
-        <div id="info-collapse-api-keys"
-             class="accordion-collapse collapse"
-             data-bs-parent="#info-accordion-api-keys">
-            <div class="accordion-body small">
-                Bearer tokens for plugin / agent / CLI access.  Plaintext is shown
-                <strong>once</strong> at creation — there is no way to recover a lost
-                secret.  Revocation is soft so audit attribution
-                (<code>api_key:&lt;name&gt;</code>) keeps resolving after rotation.
-                Each key pins to exactly one workspace and inherits that as the
-                resolved request workspace when no <code>X-Workspace</code> header
-                is supplied.
-            </div>
-        </div>
-    </div>
-</div>
+{% call page_help('api-keys') %}
+Bearer tokens for plugin / agent / CLI access.  Plaintext is shown
+<strong>once</strong> at creation — there is no way to recover a lost
+secret.  Revocation is soft so audit attribution
+(<code>api_key:&lt;name&gt;</code>) keeps resolving after rotation.
+Each key pins to exactly one workspace and inherits that as the
+resolved request workspace when no <code>X-Workspace</code> header
+is supplied.
+{% endcall %}
 
 <div class="d-flex justify-content-end mb-2">
     {% if include_revoked %}
