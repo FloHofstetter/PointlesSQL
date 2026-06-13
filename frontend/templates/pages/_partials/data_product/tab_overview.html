@@ -49,7 +49,8 @@
                 </div>
                 <div class="card-body">
                     <div class="alert alert-danger py-1 px-2 small" x-show="error" x-text="error" x-cloak></div>
-                    <table class="table table-sm align-middle mb-2" x-show="evaluation.results.length > 0" x-cloak>
+                    <div class="table-responsive">
+                        <table class="table table-sm align-middle mb-2" x-show="evaluation.results.length > 0" x-cloak>
                         <thead>
                             <tr><th>Objective</th><th>Target</th><th>Observed</th><th>Verdict</th><th></th></tr>
                         </thead>
@@ -72,6 +73,7 @@
                             </template>
                         </tbody>
                     </table>
+                    </div>
                     <div class="text-muted small mb-2" x-show="evaluation.results.length === 0" x-cloak>
                         No objectives declared. Freshness is tracked from the product's SLA; declare
                         volume / completeness / shape objectives below.
@@ -258,7 +260,8 @@
                                 <div class="modal-body">
                                     <div class="alert alert-danger py-1 px-2 small"
                                          x-show="versionError" x-text="versionError" x-cloak></div>
-                                    <table class="table table-sm">
+                                    <div class="table-responsive">
+                                        <table class="table table-sm">
                                         <thead class="table-light">
                                             <tr>
                                                 <th>Version</th>
@@ -288,6 +291,7 @@
                                             </tr>
                                         </tbody>
                                     </table>
+                                    </div>
                                     <template x-if="canManage">
                                         <div class="border-top pt-3 mt-3">
                                             <h6 class="small text-muted text-uppercase mb-2">Propose bump</h6>

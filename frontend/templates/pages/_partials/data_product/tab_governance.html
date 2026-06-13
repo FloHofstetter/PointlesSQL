@@ -12,7 +12,8 @@
                         </span>
                     </div>
                     <div class="card-body">
-                        <table class="table table-sm align-middle mb-3">
+                        <div class="table-responsive">
+                            <table class="table table-sm align-middle mb-3">
                             <thead>
                                 <tr><th>Policy</th><th>Effective value</th><th>Source</th></tr>
                             </thead>
@@ -30,6 +31,7 @@
                                 </template>
                             </tbody>
                         </table>
+                        </div>
 
                         <template x-if="canManage">
                             <div class="row g-2 align-items-end">

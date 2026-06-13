@@ -6,6 +6,7 @@
  across {{ lineage_summary.rows | length }} operation{% if lineage_summary.rows | length != 1 %}s{% endif %}
  </div>
  <div class="card-body p-0">
+ <div class="table-responsive">
  <table class="table table-sm mb-0 small align-middle">
  <thead>
  <tr>
@@ -53,6 +54,7 @@
  {% endfor %}
  </tbody>
  </table>
+ </div>
  </div>
  </div>
  {% else %}

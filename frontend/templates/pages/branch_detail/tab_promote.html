@@ -116,7 +116,8 @@
                 <template x-if="previewResult && !previewResult.ok">
                     <div class="alert alert-warning small mb-0">
                         <strong><i class="bi bi-exclamation-circle me-1"></i>Promotion conflicts detected</strong>
-                        <table class="table table-sm small mt-2 mb-0">
+                        <div class="table-responsive">
+                            <table class="table table-sm small mt-2 mb-0">
                             <thead><tr><th>Table</th><th>Expected</th><th>Actual</th><th>Reason</th></tr></thead>
                             <tbody>
                                 <template x-for="c in previewResult.conflicts" :key="c.table">
@@ -129,6 +130,7 @@
                                 </template>
                             </tbody>
                         </table>
+                        </div>
                         <div class="mt-2 mb-0">
                             Discard and re-branch from the current parent state to resolve.
                         </div>

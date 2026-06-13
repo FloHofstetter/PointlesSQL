@@ -22,7 +22,8 @@
                         </div>
                     </div>
                     <div class="card-body">
-                        <table class="table table-sm align-middle mb-2" x-show="tests.length > 0">
+                        <div class="table-responsive">
+                            <table class="table table-sm align-middle mb-2" x-show="tests.length > 0">
                             <thead>
                                 <tr>
                                     <th>Name</th>
@@ -55,6 +56,7 @@
                                 </template>
                             </tbody>
                         </table>
+                        </div>
                         <div x-show="tests.length === 0 && loaded" x-cloak>
                             {% with icon="bi-clipboard-check", title="No contract tests declared yet", message="Declare a contract test below to assert row counts, null rates, freshness, and more against this data product.", flush=True %}
                               {% include "components/empty.html" with context %}
@@ -116,7 +118,8 @@
                         </div>
                     </div>
                     <div class="card-body p-0">
-                        <table class="table table-sm mb-0">
+                        <div class="table-responsive">
+                            <table class="table table-sm mb-0">
                             <thead class="table-light">
                                 <tr>
                                     <th>Test</th>
@@ -139,6 +142,7 @@
                                 </template>
                             </tbody>
                         </table>
+                        </div>
                     </div>
                 </div>
 

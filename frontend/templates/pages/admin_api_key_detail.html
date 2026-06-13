@@ -93,24 +93,26 @@
                     Each row narrows the key to the listed
                     <code>catalog</code> (and optional <code>schema</code>).
                 </p>
-                <table class="table table-sm" x-show="catalogGrants.length > 0">
-                    <thead><tr><th>Catalog</th><th>Schema</th><th></th></tr></thead>
-                    <tbody>
-                        <template x-for="g in catalogGrants" :key="g.id">
-                            <tr>
-                                <td class="font-monospace" x-text="g.catalog_name"></td>
-                                <td class="font-monospace" x-text="g.schema_name || '*'"></td>
-                                <td class="text-end">
-                                    <button type="button" class="btn btn-sm btn-outline-danger"
-                                            @click="removeCatalog(g.id)"
-                                            :disabled="busy">
-                                        Delete
-                                    </button>
-                                </td>
-                            </tr>
-                        </template>
-                    </tbody>
-                </table>
+                <div class="table-responsive">
+                    <table class="table table-sm" x-show="catalogGrants.length > 0">
+                        <thead><tr><th>Catalog</th><th>Schema</th><th></th></tr></thead>
+                        <tbody>
+                            <template x-for="g in catalogGrants" :key="g.id">
+                                <tr>
+                                    <td class="font-monospace" x-text="g.catalog_name"></td>
+                                    <td class="font-monospace" x-text="g.schema_name || '*'"></td>
+                                    <td class="text-end">
+                                        <button type="button" class="btn btn-sm btn-outline-danger"
+                                                @click="removeCatalog(g.id)"
+                                                :disabled="busy">
+                                            Delete
+                                        </button>
+                                    </td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
                 <div class="row g-2">
                     <div class="col-md-5">
                         <input type="text" class="form-control form-control-sm"
@@ -141,24 +143,26 @@
                     Zero rows = unrestricted.  Each row whitelists a
                     <code>CIDR</code> the request must source from.
                 </p>
-                <table class="table table-sm" x-show="ipGrants.length > 0">
-                    <thead><tr><th>CIDR</th><th>Label</th><th></th></tr></thead>
-                    <tbody>
-                        <template x-for="g in ipGrants" :key="g.id">
-                            <tr>
-                                <td class="font-monospace" x-text="g.cidr"></td>
-                                <td x-text="g.label || '—'"></td>
-                                <td class="text-end">
-                                    <button type="button" class="btn btn-sm btn-outline-danger"
-                                            @click="removeIp(g.id)"
-                                            :disabled="busy">
-                                        Delete
-                                    </button>
-                                </td>
-                            </tr>
-                        </template>
-                    </tbody>
-                </table>
+                <div class="table-responsive">
+                    <table class="table table-sm" x-show="ipGrants.length > 0">
+                        <thead><tr><th>CIDR</th><th>Label</th><th></th></tr></thead>
+                        <tbody>
+                            <template x-for="g in ipGrants" :key="g.id">
+                                <tr>
+                                    <td class="font-monospace" x-text="g.cidr"></td>
+                                    <td x-text="g.label || '—'"></td>
+                                    <td class="text-end">
+                                        <button type="button" class="btn btn-sm btn-outline-danger"
+                                                @click="removeIp(g.id)"
+                                                :disabled="busy">
+                                            Delete
+                                        </button>
+                                    </td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
                 <div class="row g-2">
                     <div class="col-md-5">
                         <input type="text" class="form-control form-control-sm"

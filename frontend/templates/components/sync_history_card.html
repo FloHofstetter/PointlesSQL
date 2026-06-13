@@ -41,7 +41,8 @@
 
     <div class="card-body">
         {% if sync_runs %}
-        <table class="table table-sm mb-0 align-middle">
+        <div class="table-responsive">
+            <table class="table table-sm mb-0 align-middle">
             <thead>
                 <tr>
                     <th>Status</th>
@@ -75,6 +76,7 @@
                 {% endfor %}
             </tbody>
         </table>
+        </div>
         {% else %}
         <p class="text-muted small fst-italic mb-0">No sync runs yet.</p>
         {% endif %}

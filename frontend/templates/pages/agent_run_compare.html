@@ -125,6 +125,7 @@
 
     <div class="tab-pane fade show active" id="tab-ops" role="tabpanel">
         <div class="card"><div class="card-body p-0">
+            <div class="table-responsive">
             <table class="table table-sm mb-0 small">
                 <thead>
                     <tr>
@@ -165,6 +166,7 @@
                     {% endfor %}
                 </tbody>
             </table>
+            </div>
         </div></div>
     </div>
 
@@ -223,6 +225,7 @@
             </div>
             {% if table.divergent_cells %}
             <div class="card-body p-0">
+                <div class="table-responsive">
                 <table class="table table-sm mb-0 small font-monospace">
                     <thead>
                         <tr>
@@ -243,6 +246,7 @@
                         {% endfor %}
                     </tbody>
                 </table>
+                </div>
             </div>
             {% endif %}
             {% if table.a_only or table.b_only %}
@@ -335,6 +339,7 @@
 
     <div class="tab-pane fade" id="tab-tools" role="tabpanel">
         <div class="card"><div class="card-body p-0">
+            <div class="table-responsive">
             <table class="table table-sm mb-0 small">
                 <thead>
                     <tr>
@@ -357,6 +362,7 @@
                     {% endfor %}
                 </tbody>
             </table>
+            </div>
         </div></div>
     </div>
 

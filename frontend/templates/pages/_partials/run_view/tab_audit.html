@@ -35,6 +35,7 @@
  {% if tool_calls %}
  <div class="card">
  <div class="card-body p-0">
+ <div class="table-responsive">
  <table class="table table-sm mb-0 small align-middle">
  <thead>
  <tr>
@@ -77,6 +78,7 @@
  </table>
  </div>
  </div>
+ </div>
  {% else %}
  <div class="alert alert-info mb-0">
  <i class="bi bi-info-circle me-1"></i>
@@ -91,6 +93,7 @@
  {% if audit_entries %}
  <div class="card">
  <div class="card-body p-0">
+ <div class="table-responsive">
  <table class="table table-sm mb-0 small">
  <thead>
  <tr>
@@ -122,6 +125,7 @@
  {% endfor %}
  </tbody>
  </table>
+ </div>
  </div>
  </div>
  {% else %}

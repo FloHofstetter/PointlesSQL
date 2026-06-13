@@ -37,7 +37,8 @@
                     <div class="card-header">Parent versions at branch creation</div>
                     <div class="card-body">
                         {% if tags.parent_version_at_create %}
-                        <table class="table table-sm small mb-0">
+                        <div class="table-responsive">
+                            <table class="table table-sm small mb-0">
                             <thead><tr><th>Table</th><th class="text-end">Version</th></tr></thead>
                             <tbody>
                                 {% for table_name, version in tags.parent_version_at_create.items() %}
@@ -48,6 +49,7 @@
                                 {% endfor %}
                             </tbody>
                         </table>
+                        </div>
                         {% else %}
                         <p class="text-muted mb-0 small">No tables tracked.</p>
                         {% endif %}

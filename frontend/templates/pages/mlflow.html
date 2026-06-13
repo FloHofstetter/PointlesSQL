@@ -49,43 +49,45 @@
                 <div class="text-muted small p-3">No registered models yet.</div>
             </template>
             <template x-if="!modelsLoading && models.length > 0">
-                <table class="table table-sm mb-0 align-middle">
-                    <thead>
-                        <tr>
-                            <th>Model</th>
-                            <th>Catalog</th>
-                            <th>Schema</th>
-                            <th>Owner</th>
-                            <th>Updated</th>
-                            <th class="text-end">Open</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <template x-for="m in models" :key="m.full_name">
+                <div class="table-responsive">
+                    <table class="table table-sm mb-0 align-middle">
+                        <thead>
                             <tr>
-                                <td>
-                                    <a :href="'/models/' + m.full_name"
-                                       class="font-monospace small text-decoration-none"
-                                       x-text="m.name || m.full_name"></a>
-                                </td>
-                                <td class="text-muted small" x-text="m.catalog_name || '—'"></td>
-                                <td class="text-muted small" x-text="m.schema_name || '—'"></td>
-                                <td class="text-muted small" x-text="m.owner || '—'"></td>
-                                <td class="text-muted small font-monospace"
-                                    x-text="m.updated_at ? pqlRelativeTime(m.updated_at) : '—'"
-                                    :title="pqlAbsTime(m.updated_at)"></td>
-                                <td class="text-end">
-                                    <a :href="'/mlflow/#/models/' + m.full_name"
-                                       target="_blank" rel="noopener"
-                                       class="btn btn-link btn-sm py-0"
-                                       title="Open in MLflow UI">
-                                        <i class="bi bi-box-arrow-up-right"></i>
-                                    </a>
-                                </td>
+                                <th>Model</th>
+                                <th>Catalog</th>
+                                <th>Schema</th>
+                                <th>Owner</th>
+                                <th>Updated</th>
+                                <th class="text-end">Open</th>
                             </tr>
-                        </template>
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            <template x-for="m in models" :key="m.full_name">
+                                <tr>
+                                    <td>
+                                        <a :href="'/models/' + m.full_name"
+                                           class="font-monospace small text-decoration-none"
+                                           x-text="m.name || m.full_name"></a>
+                                    </td>
+                                    <td class="text-muted small" x-text="m.catalog_name || '—'"></td>
+                                    <td class="text-muted small" x-text="m.schema_name || '—'"></td>
+                                    <td class="text-muted small" x-text="m.owner || '—'"></td>
+                                    <td class="text-muted small font-monospace"
+                                        x-text="m.updated_at ? pqlRelativeTime(m.updated_at) : '—'"
+                                        :title="pqlAbsTime(m.updated_at)"></td>
+                                    <td class="text-end">
+                                        <a :href="'/mlflow/#/models/' + m.full_name"
+                                           target="_blank" rel="noopener"
+                                           class="btn btn-link btn-sm py-0"
+                                           title="Open in MLflow UI">
+                                            <i class="bi bi-box-arrow-up-right"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
             </template>
         </div>
     </div>
@@ -103,43 +105,45 @@
                 <div class="text-muted small p-3">No agent runs with an MLflow run-id yet.</div>
             </template>
             <template x-if="!runsLoading && runs.length > 0">
-                <table class="table table-sm mb-0 align-middle">
-                    <thead>
-                        <tr>
-                            <th>Agent run</th>
-                            <th>MLflow run</th>
-                            <th>Status</th>
-                            <th>Started</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <template x-for="r in runs" :key="r.id">
+                <div class="table-responsive">
+                    <table class="table table-sm mb-0 align-middle">
+                        <thead>
                             <tr>
-                                <td>
-                                    <a :href="'/runs/' + r.id"
-                                       class="font-monospace small text-decoration-none"
-                                       x-text="r.id ? r.id.slice(0, 8) : '—'"></a>
-                                </td>
-                                <td>
-                                    <a :href="'/mlflow/#/runs/' + r.mlflow_run_id"
-                                       target="_blank" rel="noopener"
-                                       class="font-monospace small text-decoration-none"
-                                       x-text="r.mlflow_run_id ? r.mlflow_run_id.slice(0, 8) : '—'"></a>
-                                </td>
-                                <td>
-                                    <span class="badge"
-                                          :class="r.status === 'completed' ? 'bg-success'
-                                                 : (r.status === 'failed' ? 'bg-danger'
-                                                 : 'bg-secondary')"
-                                          x-text="r.status || '—'"></span>
-                                </td>
-                                <td class="text-muted small font-monospace"
-                                    x-text="r.started_at ? pqlRelativeTime(r.started_at) : '—'"
-                                    :title="pqlAbsTime(r.started_at)"></td>
+                                <th>Agent run</th>
+                                <th>MLflow run</th>
+                                <th>Status</th>
+                                <th>Started</th>
                             </tr>
-                        </template>
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            <template x-for="r in runs" :key="r.id">
+                                <tr>
+                                    <td>
+                                        <a :href="'/runs/' + r.id"
+                                           class="font-monospace small text-decoration-none"
+                                           x-text="r.id ? r.id.slice(0, 8) : '—'"></a>
+                                    </td>
+                                    <td>
+                                        <a :href="'/mlflow/#/runs/' + r.mlflow_run_id"
+                                           target="_blank" rel="noopener"
+                                           class="font-monospace small text-decoration-none"
+                                           x-text="r.mlflow_run_id ? r.mlflow_run_id.slice(0, 8) : '—'"></a>
+                                    </td>
+                                    <td>
+                                        <span class="badge"
+                                              :class="r.status === 'completed' ? 'bg-success'
+                                                     : (r.status === 'failed' ? 'bg-danger'
+                                                     : 'bg-secondary')"
+                                              x-text="r.status || '—'"></span>
+                                    </td>
+                                    <td class="text-muted small font-monospace"
+                                        x-text="r.started_at ? pqlRelativeTime(r.started_at) : '—'"
+                                        :title="pqlAbsTime(r.started_at)"></td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
             </template>
         </div>
     </div>

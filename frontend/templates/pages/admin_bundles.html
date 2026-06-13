@@ -60,30 +60,32 @@
                         Plan + apply results render here.
                     </div>
                     <div x-show="plan" x-cloak>
-                        <table class="table table-sm align-middle small">
-                            <thead>
-                                <tr>
-                                    <th>Resource</th>
-                                    <th>Identity</th>
-                                    <th>Action</th>
-                                    <th>Changes</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <template x-for="entry in plan?.entries || []"
-                                          :key="entry.resource_type + ':' + entry.identity">
+                        <div class="table-responsive">
+                            <table class="table table-sm align-middle small">
+                                <thead>
                                     <tr>
-                                        <td x-text="entry.resource_type"></td>
-                                        <td class="font-monospace" x-text="entry.identity"></td>
-                                        <td>
-                                            <span class="badge" :class="actionBadge(entry.action)"
-                                                  x-text="entry.action"></span>
-                                        </td>
-                                        <td x-text="(entry.changes || []).join('; ')"></td>
+                                        <th>Resource</th>
+                                        <th>Identity</th>
+                                        <th>Action</th>
+                                        <th>Changes</th>
                                     </tr>
-                                </template>
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody>
+                                    <template x-for="entry in plan?.entries || []"
+                                              :key="entry.resource_type + ':' + entry.identity">
+                                        <tr>
+                                            <td x-text="entry.resource_type"></td>
+                                            <td class="font-monospace" x-text="entry.identity"></td>
+                                            <td>
+                                                <span class="badge" :class="actionBadge(entry.action)"
+                                                      x-text="entry.action"></span>
+                                            </td>
+                                            <td x-text="(entry.changes || []).join('; ')"></td>
+                                        </tr>
+                                    </template>
+                                </tbody>
+                            </table>
+                        </div>
                         <div x-show="(plan?.orphans || []).length" x-cloak class="small">
                             <strong>Orphans</strong>
                             <span class="text-muted">(live resources the bundle does not manage — never deleted)</span>
@@ -101,30 +103,32 @@
                     <div x-show="outcome" x-cloak class="mt-3">
                         <strong>Apply outcome</strong>
                         <span class="badge bg-secondary" x-show="outcome?.dry_run" x-cloak>dry run</span>
-                        <table class="table table-sm align-middle small mt-2">
-                            <thead>
-                                <tr>
-                                    <th>Resource</th>
-                                    <th>Identity</th>
-                                    <th>Action</th>
-                                    <th>Error</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <template x-for="result in outcome?.results || []"
-                                          :key="result.resource_type + ':' + result.identity">
+                        <div class="table-responsive">
+                            <table class="table table-sm align-middle small mt-2">
+                                <thead>
                                     <tr>
-                                        <td x-text="result.resource_type"></td>
-                                        <td class="font-monospace" x-text="result.identity"></td>
-                                        <td>
-                                            <span class="badge" :class="actionBadge(result.action)"
-                                                  x-text="result.action"></span>
-                                        </td>
-                                        <td class="text-danger" x-text="result.error || ''"></td>
+                                        <th>Resource</th>
+                                        <th>Identity</th>
+                                        <th>Action</th>
+                                        <th>Error</th>
                                     </tr>
-                                </template>
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody>
+                                    <template x-for="result in outcome?.results || []"
+                                              :key="result.resource_type + ':' + result.identity">
+                                        <tr>
+                                            <td x-text="result.resource_type"></td>
+                                            <td class="font-monospace" x-text="result.identity"></td>
+                                            <td>
+                                                <span class="badge" :class="actionBadge(result.action)"
+                                                      x-text="result.action"></span>
+                                            </td>
+                                            <td class="text-danger" x-text="result.error || ''"></td>
+                                        </tr>
+                                    </template>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>

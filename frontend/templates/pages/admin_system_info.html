@@ -143,40 +143,42 @@ a one-click button cannot supply safely.
                     <code>#{{ default_workspace_id }}</code>.
                 </div>
                 {% else %}
-                <table class="table table-sm align-middle mb-0">
-                    <thead>
-                        <tr>
-                            <th>Group</th>
-                            <th>Workspace</th>
-                            <th>Admin</th>
-                            <th>Supervisor</th>
-                            <th>Auditor</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for group, mapping in oidc_group_map %}
-                        <tr>
-                            <td><code>{{ group }}</code></td>
-                            <td>
-                                {% if mapping.workspace_id is none %}
-                                <span class="text-muted small">— (keep current)</span>
-                                {% else %}
-                                {% set ws = workspace_choices|selectattr("id", "equalto", mapping.workspace_id)|first %}
-                                {% if ws %}
-                                <code>{{ ws.slug }}</code>
-                                <span class="text-muted small">#{{ ws.id }}</span>
-                                {% else %}
-                                <span class="text-muted small">#{{ mapping.workspace_id }}</span>
-                                {% endif %}
-                                {% endif %}
-                            </td>
-                            <td>{% if mapping.is_admin %}<i class="bi bi-check-circle-fill text-success"></i>{% endif %}</td>
-                            <td>{% if mapping.is_supervisor %}<i class="bi bi-check-circle-fill text-success"></i>{% endif %}</td>
-                            <td>{% if mapping.is_auditor %}<i class="bi bi-check-circle-fill text-success"></i>{% endif %}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Group</th>
+                                <th>Workspace</th>
+                                <th>Admin</th>
+                                <th>Supervisor</th>
+                                <th>Auditor</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for group, mapping in oidc_group_map %}
+                            <tr>
+                                <td><code>{{ group }}</code></td>
+                                <td>
+                                    {% if mapping.workspace_id is none %}
+                                    <span class="text-muted small">— (keep current)</span>
+                                    {% else %}
+                                    {% set ws = workspace_choices|selectattr("id", "equalto", mapping.workspace_id)|first %}
+                                    {% if ws %}
+                                    <code>{{ ws.slug }}</code>
+                                    <span class="text-muted small">#{{ ws.id }}</span>
+                                    {% else %}
+                                    <span class="text-muted small">#{{ mapping.workspace_id }}</span>
+                                    {% endif %}
+                                    {% endif %}
+                                </td>
+                                <td>{% if mapping.is_admin %}<i class="bi bi-check-circle-fill text-success"></i>{% endif %}</td>
+                                <td>{% if mapping.is_supervisor %}<i class="bi bi-check-circle-fill text-success"></i>{% endif %}</td>
+                                <td>{% if mapping.is_auditor %}<i class="bi bi-check-circle-fill text-success"></i>{% endif %}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
                 {% endif %}
             </div>
         </div>
@@ -193,22 +195,24 @@ a one-click button cannot supply safely.
                     CLI when the privacy story changes.
                 </p>
                 {% if system_keys %}
-                <table class="table table-sm mb-0">
-                    <thead>
-                        <tr>
-                            <th>Name</th>
-                            <th>First written</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for k in system_keys %}
-                        <tr>
-                            <td><code>{{ k.name }}</code></td>
-                            <td class="small text-nowrap">{{ relative_time(k.created_at) }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+                <div class="table-responsive">
+                    <table class="table table-sm mb-0">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>First written</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for k in system_keys %}
+                            <tr>
+                                <td><code>{{ k.name }}</code></td>
+                                <td class="small text-nowrap">{{ relative_time(k.created_at) }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
                 {% else %}
                 <div class="text-muted small">
                     No system_keys rows yet.  The PII hash secret is

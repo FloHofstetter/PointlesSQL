@@ -281,7 +281,8 @@
                         </div>
                     </template>
                     <template x-if="(runs?.latest_per_mapping || []).length > 0">
-                        <table class="table table-sm mb-0 pql-list-table">
+                        <div class="table-responsive">
+                            <table class="table table-sm mb-0 pql-list-table">
                             <thead>
                                 <tr>
                                     <th>Source table</th>
@@ -310,6 +311,7 @@
                                 </template>
                             </tbody>
                         </table>
+                        </div>
                     </template>
                 </div>
             </div>
@@ -317,7 +319,8 @@
             <div class="card" x-show="(runs?.scheduled_history || []).length > 0">
                 <div class="card-header"><strong>Scheduled run history</strong></div>
                 <div class="card-body p-0">
-                    <table class="table table-sm mb-0 pql-list-table">
+                    <div class="table-responsive">
+                        <table class="table table-sm mb-0 pql-list-table">
                         <thead>
                             <tr>
                                 <th>Status</th>
@@ -346,6 +349,7 @@
                             </template>
                         </tbody>
                     </table>
+                    </div>
                 </div>
             </div>
         </div>

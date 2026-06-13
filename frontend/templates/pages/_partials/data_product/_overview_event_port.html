@@ -30,7 +30,8 @@
                 </details>
 
                 <h6 class="small text-muted mt-3 mb-1">Subscriptions</h6>
-                <table class="table table-sm small mb-2" x-show="subscriptions.length > 0" x-cloak>
+                <div class="table-responsive">
+                    <table class="table table-sm small mb-2" x-show="subscriptions.length > 0" x-cloak>
                     <thead>
                         <tr>
                             <th>Label</th><th>Table</th><th>Status</th><th>Cursor</th><th></th>
@@ -63,6 +64,7 @@
                         </template>
                     </tbody>
                 </table>
+                </div>
                 <div class="text-muted small" x-show="subscriptions.length === 0" x-cloak>
                     No subscriptions yet.
                 </div>

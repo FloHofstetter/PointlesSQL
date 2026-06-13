@@ -133,6 +133,7 @@
                 {% if params_diff.added or params_diff.removed or params_diff.changed %}
                 {% if params_diff.changed %}
                 <h6 class="text-warning">Changed</h6>
+                <div class="table-responsive">
                 <table class="table table-sm">
                     <thead><tr><th>Name</th><th>v{{ v1.version }}</th><th>v{{ v2.version }}</th></tr></thead>
                     <tbody>
@@ -145,6 +146,7 @@
                         {% endfor %}
                     </tbody>
                 </table>
+                </div>
                 {% endif %}
                 {% if params_diff.added %}
                 <h6 class="text-success">Added in v{{ v2.version }}</h6>
@@ -179,6 +181,7 @@
                 {% if tags_diff.added or tags_diff.removed or tags_diff.changed %}
                 {% if tags_diff.changed %}
                 <h6 class="text-warning">Changed</h6>
+                <div class="table-responsive">
                 <table class="table table-sm">
                     <thead><tr><th>Name</th><th>v{{ v1.version }}</th><th>v{{ v2.version }}</th></tr></thead>
                     <tbody>
@@ -191,6 +194,7 @@
                         {% endfor %}
                     </tbody>
                 </table>
+                </div>
                 {% endif %}
                 {% if tags_diff.added %}
                 <h6 class="text-success">Added in v{{ v2.version }}</h6>

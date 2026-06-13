@@ -150,24 +150,26 @@
                 <div class="card-body p-0" style="overflow:auto;">
                     <div class="p-2 text-muted" x-show="previewBusy">Running…</div>
                     <div class="p-2 text-danger" x-show="previewError" x-text="previewError"></div>
-                    <table class="table table-sm table-striped mb-0" x-show="previewResult">
-                        <thead>
-                            <tr>
-                                <template x-for="c in (previewResult ? previewResult.columns : [])" :key="c">
-                                    <th class="small" x-text="c"></th>
-                                </template>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <template x-for="(row, ri) in (previewResult ? previewResult.rows : [])" :key="ri">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-striped mb-0" x-show="previewResult">
+                            <thead>
                                 <tr>
-                                    <template x-for="(cell, ci) in row" :key="ci">
-                                        <td class="small" x-text="cell === null ? '∅' : cell"></td>
+                                    <template x-for="c in (previewResult ? previewResult.columns : [])" :key="c">
+                                        <th class="small" x-text="c"></th>
                                     </template>
                                 </tr>
-                            </template>
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                <template x-for="(row, ri) in (previewResult ? previewResult.rows : [])" :key="ri">
+                                    <tr>
+                                        <template x-for="(cell, ci) in row" :key="ci">
+                                            <td class="small" x-text="cell === null ? '∅' : cell"></td>
+                                        </template>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </main>

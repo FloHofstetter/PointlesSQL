@@ -40,7 +40,8 @@
                 <div class="p-3 text-muted small fst-italic">No permissions assigned.</div>
             </template>
 
-            <table x-show="assignments.length > 0" class="table table-sm mb-0 align-middle">
+            <div class="table-responsive">
+                <table x-show="assignments.length > 0" class="table table-sm mb-0 align-middle">
                 <thead>
                     <tr>
                         <th class="ps-3" style="width: 30%;">Principal</th>
@@ -77,6 +78,7 @@
                     </template>
                 </tbody>
             </table>
+            </div>
 
             <template x-if="canManage">
                 <div class="p-3 border-top">
@@ -108,7 +110,8 @@
                 <div class="p-3 text-muted small fst-italic">No effective permissions.</div>
             </template>
 
-            <table x-show="effective.length > 0" class="table table-sm mb-0 align-middle">
+            <div class="table-responsive">
+                <table x-show="effective.length > 0" class="table table-sm mb-0 align-middle">
                 <thead>
                     <tr>
                         <th class="ps-3" style="width: 30%;">Principal</th>
@@ -133,6 +136,7 @@
                     </template>
                 </tbody>
             </table>
+            </div>
         </div>
     </div>
 </div>
