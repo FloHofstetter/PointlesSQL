@@ -53,10 +53,36 @@ export function dataProductInterop(catalog, schema) {
         this.availableEntities = data.available_entities || [];
         this.bitemporal = data.bitemporal || {};
         this.loaded = true;
-        this.$nextTick(() => this.renderGraph());
+        this.$nextTick(() => this.renderGraphWhenVisible());
       } catch (e) {
         this.error = 'Failed to load interop: ' + e.message;
       }
+    },
+
+    // The graph lives in a Bootstrap tab pane that is display:none until
+    // the user opens the Interop tab. Rendering cytoscape into a hidden
+    // (0×0) container sizes the canvas to nothing, so the graph stays
+    // blank even once the tab is shown. Wait until the container is
+    // actually on screen, then render into its real dimensions.
+    renderGraphWhenVisible() {
+      const el = document.getElementById('dp-mesh-cy');
+      if (!el) return;
+      if (this._graphObserver) {
+        this._graphObserver.disconnect();
+        this._graphObserver = null;
+      }
+      if (el.clientWidth > 0 && el.clientHeight > 0) {
+        this.renderGraph();
+        return;
+      }
+      this._graphObserver = new IntersectionObserver((entries, obs) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          obs.disconnect();
+          this._graphObserver = null;
+          this.renderGraph();
+        }
+      });
+      this._graphObserver.observe(el);
     },
 
     async renderGraph() {
