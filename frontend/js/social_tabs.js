@@ -57,7 +57,42 @@ export function socialTabs(params) {
     followBusy: false,
 
     async init() {
+      this._initDeepLink();
       await Promise.all([this.loadEndorsements(), this.loadFollowState()]);
+    },
+
+    // Make the social drawer deep-linkable. When this factory is mounted
+    // on a Bootstrap offcanvas (the table-detail "Social" drawer), a
+    // ``#social`` / ``#social-<tab>`` hash opens the drawer on the right
+    // sub-tab, and opening the drawer / switching sub-tab reflects back
+    // into the hash so the view can be shared or bookmarked.
+    _initDeepLink() {
+      const drawer = this.$el;
+      if (!drawer || !drawer.classList.contains('offcanvas') || !window.bootstrap) return;
+      const activeKey = () => {
+        const a = drawer.querySelector('.nav-link.active[data-pql-tab-key]');
+        return a ? a.getAttribute('data-pql-tab-key') : null;
+      };
+      const writeHash = () => {
+        const k = activeKey();
+        if (k) window.history.replaceState(null, '', '#social-' + k);
+      };
+      drawer.addEventListener('shown.bs.offcanvas', writeHash);
+      drawer.addEventListener('shown.bs.tab', writeHash);
+      drawer.addEventListener('hidden.bs.offcanvas', () => {
+        if (window.location.hash.indexOf('#social') === 0) {
+          window.history.replaceState(null, '', window.location.pathname + window.location.search);
+        }
+      });
+      const m = /^#social(?:-([a-z]+))?$/.exec(window.location.hash);
+      if (m) {
+        const want = m[1];
+        if (want) {
+          const btn = drawer.querySelector('[data-pql-tab-key="' + want + '"]');
+          if (btn) window.bootstrap.Tab.getOrCreateInstance(btn).show();
+        }
+        window.bootstrap.Offcanvas.getOrCreateInstance(drawer).show();
+      }
     },
 
     async loadEndorsements() {
