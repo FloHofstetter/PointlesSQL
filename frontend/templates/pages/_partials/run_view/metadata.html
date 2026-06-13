@@ -18,7 +18,7 @@
  <dt class="col-3 col-md-2">Tables touched</dt>
  <dd class="col-9 col-md-10">
  {% for full_name in run.tables_touched %}
- <a href="/catalogs/{{ full_name.split('.')[0] }}/{{ full_name.split('.')[1] }}/{{ full_name.split('.')[2] }}"
+ <a href="/catalogs/{{ full_name.split('.')[0] }}/schemas/{{ full_name.split('.')[1] }}/tables/{{ full_name.split('.')[2] }}"
  class="badge text-bg-secondary text-decoration-none font-monospace me-1 mb-1">{{ full_name }}</a>
  {% endfor %}
  </dd>

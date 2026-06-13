@@ -24,7 +24,7 @@ export function savedViewDetail(view) {
       if (res.ok && res.data) {
         this.result = res.data;
       } else {
-        this.error = (res.data && res.data.detail) || res.message || 'Run failed';
+        this.error = res.error || 'Run failed';
       }
     },
     copyEmbed() {

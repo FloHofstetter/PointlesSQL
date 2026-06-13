@@ -343,10 +343,12 @@ export function modelLineageDag(fullName) {
           this.loaded = true;
           return;
         }
-        if (typeof window.renderModelGraph === 'function') {
-          window.renderModelGraph('model-cy', data);
-        }
+        // Reveal the container (x-show) before Cytoscape measures it, so it
+        // sizes against real dimensions instead of a 0×0 hidden box.
         this.loaded = true;
+        if (typeof window.renderModelGraph === 'function') {
+          this.$nextTick(() => window.renderModelGraph('model-cy', data));
+        }
       } catch (e) {
         this.error = 'Failed to load lineage: ' + e.message;
         this._started = false;

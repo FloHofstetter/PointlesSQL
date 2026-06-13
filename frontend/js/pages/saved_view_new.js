@@ -38,7 +38,7 @@ export function savedViewForm() {
       if (res.ok && res.data) {
         window.location.href = '/views/' + res.data.slug;
       } else {
-        this.error = (res.data && res.data.detail) || res.message || 'Save failed';
+        this.error = res.error || 'Save failed';
       }
     },
   };

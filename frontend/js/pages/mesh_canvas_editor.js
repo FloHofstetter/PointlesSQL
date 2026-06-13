@@ -135,7 +135,7 @@ export function meshCanvasEditor() {
 
     createDpHere() {
       this.ctxMenuOpen = false;
-      window.location.assign('/dp/new');
+      window.location.assign('/data-products');
     },
 
     dismissBanner() {
