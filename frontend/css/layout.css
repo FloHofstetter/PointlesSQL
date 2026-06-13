@@ -313,6 +313,18 @@ body:has(.pql-shell--has-meta) .pql-layout-toggle--meta { display: inline-flex; 
  min-width: 0;
 }
 
+/* Opt-in readable-width cap for prose / single-column-form pages, so
+   paragraphs and forms don't stretch edge-to-edge on wide screens.
+   A page opts in with ``{% block content_class %}pql-content--readable``;
+   full-bleed surfaces (SQL editor, canvas, graphs, wide data tables)
+   simply leave it off.  Caps each top-level content block and centres
+   it; a block that needs the full width can override with ``mw-100``. */
+.pql-content--readable > * {
+ max-width: 64rem;
+ margin-left: auto;
+ margin-right: auto;
+}
+
 .table > :not(caption) > * > * {
  padding: 0.6rem 0.75rem;
 }
