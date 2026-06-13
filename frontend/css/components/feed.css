@@ -162,16 +162,15 @@
     margin: var(--pql-space-1) 0 0;
 }
 
-/* Sticky filter bar — sits below the topbar.  The blur effect lets
- * the page content show through subtly while keeping the bar
- * legible on top of any feed item that scrolls underneath. */
+/* Sticky filter bar — sits below the topbar.  A nearly-opaque fill
+ * (no backdrop-filter: a live blur re-runs on every scroll frame and
+ * is costly on software-composited displays) keeps the bar legible
+ * over any feed item that scrolls underneath. */
 .pql-feed-filter-bar {
     position: sticky;
     top: var(--pql-topbar-height);
     z-index: 5;
-    background-color: rgba(var(--bs-body-bg-rgb), 0.92);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
+    background-color: rgba(var(--bs-body-bg-rgb), 0.97);
     border-bottom: 1px solid var(--bs-border-color-translucent);
     margin-left: -1rem;
     margin-right: -1rem;
@@ -187,9 +186,7 @@
     position: sticky;
     top: calc(var(--pql-topbar-height) + 3.4rem);
     z-index: 3;
-    background-color: rgba(var(--bs-tertiary-bg-rgb), 0.95);
-    backdrop-filter: blur(6px);
-    -webkit-backdrop-filter: blur(6px);
+    background-color: rgba(var(--bs-tertiary-bg-rgb), 0.97);
     margin: 0;
     border-radius: var(--pql-radius-sm);
 }
