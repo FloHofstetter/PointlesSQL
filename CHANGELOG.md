@@ -195,7 +195,15 @@ defined in ``scripts/clusters.json``. -->
   workspace sidebar and right-click menu no longer link `.ipynb`
   notebooks to the jupytext-`.py`-only editor (which 422'd with
   "Something went wrong"); `.ipynb` rows now open the workspace
-  browser, while `.py` rows still open the editor.
+  browser, while `.py` rows still open the editor. In the visual canvas
+  editors (DataFrame Studio, data-product canvas, mesh canvas, job DAG),
+  the centred "drag a block here to start" hint no longer swallows the
+  first drop — it was an overlay that kept pointer-events, so dropping
+  right on the hint did nothing. And a malformed input-port table name
+  (not three-part, e.g. `demo.sales`) no longer 500s Compile SQL /
+  Preview: the schema-seed pass skips names that fail the FQN rule
+  instead of asking soyuz and re-raising its error, so the block
+  compiler reports the `bad_config` the editor already shows.
 
 - **Bootstrap UI-audit fixes (phase 211).** Acting on a full headful
   audit (774 API routes + 169 screenshots graded against Bootstrap 5.3):

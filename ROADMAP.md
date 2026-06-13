@@ -3904,7 +3904,7 @@ PointlesSQL
 │   │       leer auch nach Tab-Klick.  Render jetzt hinter einem
 │   │       IntersectionObserver: erst wenn der Container sichtbar wird.
 │   │
-│   └── 212.6 — `.ipynb`-Notebooks führten in den 422-Editor  ✅ shipped (local, 2026-06-13, `0fefeb93`/`1b31cb9b`)
+│   ├── 212.6 — `.ipynb`-Notebooks führten in den 422-Editor  ✅ shipped (local, 2026-06-13, `0fefeb93`/`1b31cb9b`)
 │   │       Der In-Browser-Editor akzeptiert nur `.py` (jupytext); ein
 │   │       `.ipynb`-Pfad 422t mit „Something went wrong".  Sidebar-Tree
 │   │       UND Rechtsklick-Menü verlinkten aber jedes Notebook (auch
@@ -3915,6 +3915,25 @@ PointlesSQL
 │   │       Verifiziert nicht-Bugs (kein Fix): Lineage-DAG rendert korrekt
 │   │       (Synthetik-Test), Runs-Tabelle ist responsiv (Card-Collapse),
 │   │       Create/Rename erzwingen `.py`.
+│   │
+│   ├── 212.7 — Canvas-Drops gingen am Leer-Hinweis ins Leere  ✅ shipped (local, 2026-06-13, `2cf4d04d`)
+│   │       Der zentrierte „Block hierher ziehen"-Hinweis liegt als Overlay
+│   │       über dem Drawflow-Drop-Target und behielt pointer-events → der
+│   │       erste Block, genau auf den Hinweis gedroppt, kam nie an (nur
+│   │       Drops daneben zählten).  `pe-none` auf den Hinweis; betrifft
+│   │       alle vier Canvas-Editoren (DataFrame Studio, DP-Canvas, Mesh-
+│   │       Canvas, Job-DAG).  Auf Nutzerwunsch am Studio gefunden.
+│   │
+│   └── 212.8 — Canvas-Compile 500te bei kaputtem Tabellennamen  ✅ shipped (local, 2026-06-13, `699fb4c4`)
+│   │       Ein Input-Port mit nicht-dreiteiligem FQN (z. B. `demo` oder
+│   │       `demo.sales`, leicht beim Tippen) ließ den Schema-Seed-Pass
+│   │       soyuz mit dem kaputten `full_name` fragen; die nicht-404-Antwort
+│   │       wurde reausgeworfen → Studio Compile/Preview + DP-Canvas-
+│   │       Validate/Preview lieferten 500 „An unexpected error occurred."
+│   │       Seed überspringt jetzt nicht-dreiteilige FQNs (wie der Block-
+│   │       Compiler selbst); der meldet das `bad_config` graziös.  Gültiger
+│   │       FQN kompiliert weiter.  Happy-Path (Drag→Tabelle→Compile→SQL)
+│   │       end-to-end verifiziert.
 │   │
 ├── Phase 211 — Bootstrap-UI-Audit: Fixes aus dem 169-Screenshot-Sweep  ✅ shipped (local, 2026-06-13)
 │   │
