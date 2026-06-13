@@ -30,7 +30,8 @@
         <i class="bi bi-collection fs-3"></i>
         <h1 class="h3 mb-0">
             <span x-text="product.name"></span>
-            <span class="text-muted small ms-2" x-text="product.ref"></span>
+            <span class="text-muted small ms-2" x-text="product.ref"
+                  x-show="product.ref && product.ref !== product.name"></span>
         </h1>
         <span class="badge text-bg-secondary ms-2" x-text="'v' + product.version"></span>
         <span class="badge text-bg-warning text-dark ms-2 pql-dp-stars-badge"
