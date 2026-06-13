@@ -20,7 +20,16 @@
  {# Hub spoke-nav — the sub-features of the active rail hub, rendered
     above whatever contextual content the section provides.  The Admin
     hub has no spoke partial: its existing section block below already
-    IS the full spoke list. #}
+    IS the full spoke list.
+
+    Desktop only: on mobile the offcanvas footer renders the full
+    cross-hub nav (components/nav_links.html), which already lists
+    these same links, so showing the spokes there too stacked two
+    near-identical menus in the drawer.  Hidden below md to leave a
+    single navigation menu on phones; the wrapper class also lets the
+    first-header alignment rule reach through it on desktop. #}
+ {% if active_hub in ['home', 'watch', 'build', 'data', 'community'] %}
+ <div class="pql-context-panel__hub-spokes d-none d-md-block">
  {% if active_hub == 'home' %}
  {% include "components/sidebars/_home_hub_spokes.html" %}
  {% elif active_hub == 'watch' %}
@@ -31,6 +40,8 @@
  {% include "components/sidebars/_data_hub_spokes.html" %}
  {% elif active_hub == 'community' %}
  {% include "components/sidebars/_community_hub_spokes.html" %}
+ {% endif %}
+ </div>
  {% endif %}
  {% if active_section == 'federation' %}
  {% include "components/sidebar.html" %}

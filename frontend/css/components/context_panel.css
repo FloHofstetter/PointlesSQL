@@ -47,7 +47,8 @@
    and vertically centre the label so the two columns' divider edges —
    and the first nav items just below them — line up. Only the first
    header grows; mid-panel sub-headers stay compact. */
-.pql-context-panel > .pql-context-panel__header:first-child {
+.pql-context-panel > .pql-context-panel__header:first-child,
+.pql-context-panel > .pql-context-panel__hub-spokes:first-child > .pql-context-panel__header:first-child {
     display: flex;
     align-items: center;
     min-height: 3.5rem;
