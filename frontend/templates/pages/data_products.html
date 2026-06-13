@@ -391,7 +391,7 @@
                                 <template x-if="p.follow_count > 0">
                                     <span class="text-muted">
                                         <i class="bi bi-bookmark-star"></i>
-                                        <span x-text="p.follow_count + ' followers'"></span>
+                                        <span x-text="p.follow_count + ' follower' + (p.follow_count === 1 ? '' : 's')"></span>
                                     </span>
                                 </template>
                             </div>

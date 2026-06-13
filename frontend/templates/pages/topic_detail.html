@@ -15,7 +15,7 @@
         <i class="bi bi-tag fs-3"></i>
         <h1 class="h3 mb-0 pql-topic-name" x-text="topic.display_name"></h1>
         <span class="badge text-bg-secondary ms-1 pql-topic-followers"
-              x-text="(detail.followers || 0) + ' followers'"></span>
+              x-text="(detail.followers || 0) + ' follower' + ((detail.followers || 0) === 1 ? '' : 's')"></span>
         <div class="ms-auto">
             <button class="btn btn-sm btn-primary pql-topic-follow-btn"
                     x-show="!viewerFollows"
