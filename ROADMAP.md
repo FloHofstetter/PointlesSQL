@@ -3945,7 +3945,7 @@ PointlesSQL
 │   │       Inputs gibt nativen Validierungs-Hinweis statt stillem No-op.
 │   │       Audit-Inbox + Alerts in dieser Iteration verifiziert (kein Fix).
 │   │
-│   └── 212.10 — Table-Detail-Header lief auf Mobil über  ✅ shipped (local, 2026-06-13, `54183fd3`)
+│   ├── 212.10 — Table-Detail-Header lief auf Mobil über  ✅ shipped (local, 2026-06-13, `54183fd3`)
 │   │       Titel + Cert-Badge + Star + Runs/Social/Certification-Buttons
 │   │       lagen in EINER nicht-umbrechenden Flex-Reihe (~630 px) → auf
 │   │       390 px scrollte die ganze Seite horizontal.  `flex-wrap`
@@ -3954,6 +3954,15 @@ PointlesSQL
 │   │       nur Bootstrap-Defaults (outline-btn #6c757d/#0d6efd, kein
 │   │       Projekt-Bug); Mobil-Overflow sonst nur hier (home/catalog/DP/
 │   │       SQL responsiv).
+│   │
+│   └── 212.11 — BI-Dashboard-Header lief auf Mobil über  ✅ shipped (local, 2026-06-13, `66e11139`)
+│   │       Gleiches Muster: Titel + Edit/Schedule/Snapshots/Share/Publish
+│   │       in einer `justify-content-between`-Reihe ohne Umbruch (~500 px)
+│   │       → Horizontal-Scroll auf 390 px.  `flex-wrap` auf Header + Action-
+│   │       Gruppe.  Mobil-Sweep sonst sauber (run-detail, workspace, admin-
+│   │       audit, audit-inbox, notebooks responsiv).  Canvas-Editoren
+│   │       (Studio/Mesh) sind Desktop-Tools — Mobil-Overflow dort bewusst
+│   │       nicht verfolgt.
 │   │
 ├── Phase 211 — Bootstrap-UI-Audit: Fixes aus dem 169-Screenshot-Sweep  ✅ shipped (local, 2026-06-13)
 │   │

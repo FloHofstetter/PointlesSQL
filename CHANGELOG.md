@@ -212,7 +212,9 @@ defined in ``scripts/clusters.json``. -->
   detail header (title + certification + star + Runs / Social /
   Certification actions) no longer forces horizontal page scroll on a
   phone — the action row now wraps below ~390px instead of running off
-  the right edge.
+  the right edge. The BI dashboard view header (title + Edit / Schedule /
+  Snapshots / Share / Publish) got the same treatment; its toolbar now
+  wraps on narrow screens instead of forcing a horizontal scroll.
 
 - **Bootstrap UI-audit fixes (phase 211).** Acting on a full headful
   audit (774 API routes + 169 screenshots graded against Bootstrap 5.3):
