@@ -1044,6 +1044,37 @@
         "title": "CanvasVersionsResponse",
         "type": "object"
       },
+      "CertificationBody": {
+        "description": "Input for setting / clearing a table certification.",
+        "properties": {
+          "note": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "maxLength": 32,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          }
+        },
+        "title": "CertificationBody",
+        "type": "object"
+      },
       "ColumnSpec": {
         "description": "One column in a pin's table schema.\n\nAttributes:\n    model_config: Pydantic model config \u2014 instances are frozen so\n        a column spec can be hashed and shared across compile\n        passes without defensive copies.\n    name: Lowercase column identifier as it appears in the DuckDB\n        view bound to the upstream Delta table.\n    duckdb_type: DuckDB-flavoured type string (``\"VARCHAR\"``,\n        ``\"BIGINT\"``, ``\"DECIMAL(10,2)\"``, \u2026).  Not validated\n        beyond non-emptiness \u2014 DuckDB will surface a clearer error\n        at compile time than a bespoke parser would.\n    nullable: Whether the underlying Delta column allows nulls.",
         "properties": {
@@ -1170,6 +1201,47 @@
         "title": "CompileError",
         "type": "object"
       },
+      "CreateAccessRequestBody": {
+        "description": "Input for filing an access request.",
+        "properties": {
+          "full_name": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Full Name",
+            "type": "string"
+          },
+          "justification": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Justification"
+          },
+          "privileges": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Privileges",
+            "type": "array"
+          },
+          "securable_type": {
+            "default": "table",
+            "maxLength": 32,
+            "title": "Securable Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "full_name"
+        ],
+        "title": "CreateAccessRequestBody",
+        "type": "object"
+      },
       "CreatePinBody": {
         "description": "Input for ``POST /api/lens/pinned``.",
         "properties": {
@@ -1287,25 +1359,6 @@
           "data_products"
         ],
         "title": "DataProductPickerResponse",
-        "type": "object"
-      },
-      "DecisionBody": {
-        "description": "Input for approving / denying an access request.",
-        "properties": {
-          "reason": {
-            "anyOf": [
-              {
-                "maxLength": 2000,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Reason"
-          }
-        },
-        "title": "DecisionBody",
         "type": "object"
       },
       "ErrorCode": {
@@ -3483,6 +3536,44 @@
         ],
         "title": "_SnoozeBody",
         "type": "object"
+      },
+      "pointlessql__api__access_requests_routes__DecisionBody": {
+        "description": "Input for approving / denying an access request.",
+        "properties": {
+          "note": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          }
+        },
+        "title": "DecisionBody",
+        "type": "object"
+      },
+      "pointlessql__api__data_products_routes__access_requests__DecisionBody": {
+        "description": "Input for approving / denying an access request.",
+        "properties": {
+          "reason": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "title": "DecisionBody",
+        "type": "object"
       }
     }
   },
@@ -3512,6 +3603,28 @@
         "tags": [
           "home",
           "home"
+        ]
+      }
+    },
+    "/access-requests": {
+      "get": {
+        "description": "Render the access-requests page (own history + decider inbox).\n\nArgs:\n    request: Incoming FastAPI request.\n\nReturns:\n    The rendered template response.",
+        "operationId": "access_requests_page_access_requests_get",
+        "responses": {
+          "200": {
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Access Requests Page",
+        "tags": [
+          "access-requests"
         ]
       }
     },
@@ -4133,6 +4246,28 @@
         ]
       }
     },
+    "/admin/bundles": {
+      "get": {
+        "description": "Render the asset-bundle admin page.",
+        "operationId": "admin_bundles_index_admin_bundles_get",
+        "responses": {
+          "200": {
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Admin Bundles Index",
+        "tags": [
+          "bundles"
+        ]
+      }
+    },
     "/admin/cdf-subscriptions": {
       "get": {
         "description": "Render the CDF tail subscriptions admin page.\n\nArgs:\n    request: Incoming FastAPI request.\n    table_fqn_like: Optional substring filter on ``table_full_name``.\n    only_active: When True, omits paused subscriptions.\n\nReturns:\n    The rendered HTML page.",
@@ -4191,6 +4326,28 @@
         "tags": [
           "admin",
           "cdf-tail"
+        ]
+      }
+    },
+    "/admin/classification": {
+      "get": {
+        "description": "Render the classification console (rules + scan).",
+        "operationId": "admin_classification_page_admin_classification_get",
+        "responses": {
+          "200": {
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Admin Classification Page",
+        "tags": [
+          "classification"
         ]
       }
     },
@@ -5067,6 +5224,249 @@
         "tags": [
           "sql-statements",
           "sql-statements"
+        ]
+      }
+    },
+    "/api/access-requests": {
+      "get": {
+        "description": "List access requests from one of the two inbox perspectives.\n\nArgs:\n    request: Incoming FastAPI request.\n    role: ``requester`` for the caller's own history, ``decider``\n        for the pending items the caller may decide (admins see\n        all pending; owners see their snapshot matches).\n\nReturns:\n    ``{\"requests\": [...]}``, serialized.\n\nRaises:\n    ValidationError: When *role* is neither ``requester`` nor\n        ``decider``.",
+        "operationId": "api_list_access_requests_api_access_requests_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "role",
+            "required": false,
+            "schema": {
+              "default": "requester",
+              "title": "Role",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api List Access Requests Api Access Requests Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api List Access Requests",
+        "tags": [
+          "access-requests"
+        ]
+      },
+      "post": {
+        "description": "File an access request for a table.\n\nSnapshots the table owner for the decider inbox, rejects callers\nwho already hold every requested privilege, and notifies the\nowner through the notification fan-out.\n\nArgs:\n    request: Incoming FastAPI request.\n    body: Securable reference, requested privileges, and an\n        optional justification.\n\nReturns:\n    The created request, serialized.\n\nRaises:\n    ValidationError: When the securable type is unsupported, the\n        name is not a three-part FQN, or a pending duplicate\n        exists.\n    CatalogNotFoundError: When the table does not exist.\n    ConflictError: When the caller already holds every requested\n        privilege.",
+        "operationId": "api_create_access_request_api_access_requests_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAccessRequestBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Create Access Request Api Access Requests Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Create Access Request",
+        "tags": [
+          "access-requests"
+        ]
+      }
+    },
+    "/api/access-requests/{request_id}/approve": {
+      "post": {
+        "description": "Approve a pending request: grant through UC, then flip the row.\n\nThe grant happens first so a soyuz rejection leaves the request\npending and retryable instead of recording an approval that\nnever materialised.\n\nArgs:\n    request: Incoming FastAPI request.\n    request_id: The access-request row id.\n    body: Optional decision note.\n\nReturns:\n    The approved request, serialized.",
+        "operationId": "api_approve_access_request_api_access_requests__request_id__approve_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "request_id",
+            "required": true,
+            "schema": {
+              "title": "Request Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/pointlessql__api__access_requests_routes__DecisionBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Approve Access Request Api Access Requests  Request Id  Approve Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Approve Access Request",
+        "tags": [
+          "access-requests"
+        ]
+      }
+    },
+    "/api/access-requests/{request_id}/cancel": {
+      "post": {
+        "description": "Withdraw the caller's own pending request.\n\nArgs:\n    request: Incoming FastAPI request.\n    request_id: The access-request row id.\n\nReturns:\n    The cancelled request, serialized.\n\nRaises:\n    ResourceNotFoundError: When the id is unknown in the active\n        workspace.",
+        "operationId": "api_cancel_access_request_api_access_requests__request_id__cancel_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "request_id",
+            "required": true,
+            "schema": {
+              "title": "Request Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Cancel Access Request Api Access Requests  Request Id  Cancel Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Cancel Access Request",
+        "tags": [
+          "access-requests"
+        ]
+      }
+    },
+    "/api/access-requests/{request_id}/deny": {
+      "post": {
+        "description": "Deny a pending request (no grant is issued; the note is mandatory).\n\nArgs:\n    request: Incoming FastAPI request.\n    request_id: The access-request row id.\n    body: The denial reason (required).\n\nReturns:\n    The denied request, serialized.",
+        "operationId": "api_deny_access_request_api_access_requests__request_id__deny_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "request_id",
+            "required": true,
+            "schema": {
+              "title": "Request Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/pointlessql__api__access_requests_routes__DecisionBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Deny Access Request Api Access Requests  Request Id  Deny Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Deny Access Request",
+        "tags": [
+          "access-requests"
         ]
       }
     },
@@ -6230,6 +6630,52 @@
         "tags": [
           "admin",
           "cdf-tail"
+        ]
+      }
+    },
+    "/api/admin/classification/scan": {
+      "post": {
+        "description": "Run a PII scan now, as the calling admin (admin only).\n\nArgs:\n    request: The incoming request (admin gate + principal client).\n    body: ``{\"table\": \"cat.sch.tbl\"}`` or\n        ``{\"catalog\": ..., \"schema\": ...}``.\n\nReturns:\n    ``{\"findings\": [...]}`` with one entry per classified column.\n\nRaises:\n    ValidationError: When the body carries no usable scope.",
+        "operationId": "api_classification_scan_api_admin_classification_scan_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Body",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Classification Scan Api Admin Classification Scan Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Classification Scan",
+        "tags": [
+          "classification"
         ]
       }
     },
@@ -8642,6 +9088,177 @@
         ]
       }
     },
+    "/api/admin/tag-policies": {
+      "get": {
+        "description": "List every tag-policy rule (admin only).",
+        "operationId": "api_list_tag_policies_api_admin_tag_policies_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "title": "Response Api List Tag Policies Api Admin Tag Policies Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Api List Tag Policies",
+        "tags": [
+          "classification"
+        ]
+      },
+      "post": {
+        "description": "Create a rule (admin only).\n\nBody: ``{tag_key, tag_value?, effect, expr, priority?, description?}``.",
+        "operationId": "api_create_tag_policy_api_admin_tag_policies_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Body",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Create Tag Policy Api Admin Tag Policies Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Create Tag Policy",
+        "tags": [
+          "classification"
+        ]
+      }
+    },
+    "/api/admin/tag-policies/{rule_id}": {
+      "delete": {
+        "description": "Delete a rule (admin only).\n\nArgs:\n    request: The incoming request (admin gate).\n    rule_id: Target rule id.\n\nReturns:\n    ``{\"deleted\": true}`` on success.\n\nRaises:\n    ValidationError: When the rule does not exist.",
+        "operationId": "api_delete_tag_policy_api_admin_tag_policies__rule_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "rule_id",
+            "required": true,
+            "schema": {
+              "title": "Rule Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Delete Tag Policy Api Admin Tag Policies  Rule Id  Delete",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Delete Tag Policy",
+        "tags": [
+          "classification"
+        ]
+      },
+      "patch": {
+        "description": "Toggle / reprioritise / annotate a rule (admin only).",
+        "operationId": "api_update_tag_policy_api_admin_tag_policies__rule_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "rule_id",
+            "required": true,
+            "schema": {
+              "title": "Rule Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Body",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Update Tag Policy Api Admin Tag Policies  Rule Id  Patch",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Update Tag Policy",
+        "tags": [
+          "classification"
+        ]
+      }
+    },
     "/api/admin/workspaces": {
       "get": {
         "description": "List workspaces with optional archived inclusion.\n\nArgs:\n    request: Incoming FastAPI request.\n    include_archived: When ``True`` archived workspaces are\n        included in the response.\n\nReturns:\n    ``{\"workspaces\": [...]}`` ordered by ``name`` ascending.",
@@ -10973,6 +11590,352 @@
         ]
       }
     },
+    "/api/apps": {
+      "get": {
+        "description": "List the active workspace's hosted apps.",
+        "operationId": "api_list_apps_api_apps_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api List Apps Api Apps Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Api List Apps",
+        "tags": [
+          "apps"
+        ]
+      },
+      "post": {
+        "description": "Create an app in ``stopped`` state (workspace admins only).\n\nArgs:\n    request: Incoming FastAPI request.\n    body: ``{\"title\", \"kind\", \"source_code\"}`` plus optional\n        ``description``, ``command_override``, and ``env``.\n\nReturns:\n    The serialized app row.\n\nRaises:\n    ValidationError: On malformed input.",
+        "operationId": "api_create_app_api_apps_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Body",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Create App Api Apps Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Create App",
+        "tags": [
+          "apps"
+        ]
+      }
+    },
+    "/api/apps/{slug}": {
+      "delete": {
+        "description": "Stop (if running) and delete an app (workspace admins only).",
+        "operationId": "api_delete_app_api_apps__slug__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Delete App Api Apps  Slug  Delete",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Delete App",
+        "tags": [
+          "apps"
+        ]
+      },
+      "get": {
+        "description": "Return one app by slug.",
+        "operationId": "api_get_app_api_apps__slug__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Get App Api Apps  Slug  Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Get App",
+        "tags": [
+          "apps"
+        ]
+      },
+      "patch": {
+        "description": "Patch an app's editable fields (workspace admins only).\n\nAccepts any subset of ``title``, ``description``,\n``source_code``, ``command_override``, and ``env``; source and\nenv edits take effect on the next start.\n\nArgs:\n    request: Incoming FastAPI request.\n    slug: App slug.\n    body: Fields to update.\n\nReturns:\n    The refreshed serialized app row.\n\nRaises:\n    ValidationError: On malformed input.\n    ResourceNotFoundError: When the app vanished mid-update.",
+        "operationId": "api_update_app_api_apps__slug__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Body",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Update App Api Apps  Slug  Patch",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Update App",
+        "tags": [
+          "apps"
+        ]
+      }
+    },
+    "/api/apps/{slug}/logs": {
+      "get": {
+        "description": "Return the last 200 lines of the app worker's stderr log.",
+        "operationId": "api_app_logs_api_apps__slug__logs_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api App Logs Api Apps  Slug  Logs Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api App Logs",
+        "tags": [
+          "apps"
+        ]
+      }
+    },
+    "/api/apps/{slug}/start": {
+      "post": {
+        "description": "Start the app's worker and wait for health (admins only).\n\nSecret references (``{{secrets/<scope>/<key>}}``) in the app's\nstored env resolve here, just-in-time, against the active\nworkspace's scopes \u2014 the resolved values only ever live in the\nworker's process environment.\n\nArgs:\n    request: Incoming FastAPI request.\n    slug: App slug.\n\nReturns:\n    The serialized app row (``ready`` on success).\n\nRaises:\n    ValidationError: When the stored env is corrupt, a secret\n        reference does not resolve, or the worker fails to come\n        up \u2014 the message carries the stderr tail.\n    AppRuntimeMissingError: When the app's runtime package is\n        not installed (renders as 503).",
+        "operationId": "api_start_app_api_apps__slug__start_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Start App Api Apps  Slug  Start Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Start App",
+        "tags": [
+          "apps"
+        ]
+      }
+    },
+    "/api/apps/{slug}/stop": {
+      "post": {
+        "description": "Stop the app's worker (workspace admins only).",
+        "operationId": "api_stop_app_api_apps__slug__stop_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Stop App Api Apps  Slug  Stop Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Stop App",
+        "tags": [
+          "apps"
+        ]
+      }
+    },
     "/api/audit/anomalies": {
       "get": {
         "description": "One severity verdict per bin against an N-day rolling baseline.\n\nThe defaults pick up :class:`AuditSettings` only when the\ncaller omits them; explicit query params always win so an\noperator can drill into a \"10-day baseline at 1.5\u03c3\" view\nwithout changing the global config.\n\nArgs:\n    request: Incoming FastAPI request.\n    metric: One of :data:`audit_aggregator.VALID_METRICS`.\n    window_days: Rolling-window size (1\u201390).\n    sigma: \u03c3-multiplier for the warn / critical split (0.5\u201310).\n    bin_: ``\"hour\"`` / ``\"day\"`` / ``\"week\"``.\n    since: ISO-8601 lower bound.\n    until: ISO-8601 upper bound (exclusive).\n    principal: ``AgentRun.principal`` filter.\n    agent_id: ``AgentRun.agent_id`` filter.\n    table: Three-part UC name filter.\n    workspace: Workspace lens.  See\n        :func:`api_audit_summary` for the resolution rules.\n\nReturns:\n    ``{\"metric\", \"baseline_window_days\", \"threshold_sigma\",\n    \"bin\", \"points\": [...]}``.\n\nRaises:\n    ValidationError: ``metric``/``bin_`` outside the whitelist\n        or ``since``/``until`` not ISO-8601.",
@@ -13205,6 +14168,291 @@
         ]
       }
     },
+    "/api/bi/dashboards/{slug}/schedule": {
+      "delete": {
+        "description": "Delete the dashboard's schedule plus its backing job.\n\nArgs:\n    request: Incoming FastAPI request.\n    slug: Dashboard slug.\n\nReturns:\n    ``{\"deleted\": True}``.\n\nRaises:\n    ResourceNotFoundError: When the dashboard has no schedule.",
+        "operationId": "api_delete_schedule_api_bi_dashboards__slug__schedule_delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Delete Schedule Api Bi Dashboards  Slug  Schedule Delete",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Delete Schedule",
+        "tags": [
+          "bi-snapshots"
+        ]
+      },
+      "get": {
+        "description": "Return the dashboard's refresh schedule (owner/admin only).\n\nArgs:\n    request: Incoming FastAPI request.\n    slug: Dashboard slug.\n\nReturns:\n    ``{\"schedule\": {...}}``, or ``{\"schedule\": None}`` for an\n    unscheduled dashboard \u2014 the modal prefers an empty form over\n    a 404 round-trip.",
+        "operationId": "api_get_schedule_api_bi_dashboards__slug__schedule_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Get Schedule Api Bi Dashboards  Slug  Schedule Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Get Schedule",
+        "tags": [
+          "bi-snapshots"
+        ]
+      },
+      "put": {
+        "description": "Create or replace the dashboard's refresh schedule.\n\nThe backing scheduler job is materialised / re-synced in the same\ntransaction; an invalid cron expression propagates the service's\n``ValidationError`` (HTTP 400).\n\nArgs:\n    request: Incoming FastAPI request.\n    slug: Dashboard slug.\n    body: ``{\"cron_expr\", \"is_active\"?, \"deliver_inapp\"?,\n        \"webhook_url\"?, \"webhook_hmac_secret\"?}``.  Omitting\n        ``webhook_hmac_secret`` keeps the stored secret.\n\nReturns:\n    ``{\"schedule\": {...}}`` with the persisted state.",
+        "operationId": "api_put_schedule_api_bi_dashboards__slug__schedule_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "default": {},
+                "title": "Body",
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Put Schedule Api Bi Dashboards  Slug  Schedule Put",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Put Schedule",
+        "tags": [
+          "bi-snapshots"
+        ]
+      }
+    },
+    "/api/bi/dashboards/{slug}/snapshots": {
+      "get": {
+        "description": "List the dashboard's snapshots, newest first.\n\nArgs:\n    request: Incoming FastAPI request.\n    slug: Dashboard slug.\n\nReturns:\n    ``{\"snapshots\": [{\"id\", \"captured_at\", \"triggered_by\",\n    \"widget_count\"}]}``.",
+        "operationId": "api_list_snapshots_api_bi_dashboards__slug__snapshots_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api List Snapshots Api Bi Dashboards  Slug  Snapshots Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api List Snapshots",
+        "tags": [
+          "bi-snapshots"
+        ]
+      },
+      "post": {
+        "description": "Capture a snapshot now, as the calling principal.\n\nArgs:\n    request: Incoming FastAPI request.\n    slug: Dashboard slug.\n\nReturns:\n    ``{\"id\", \"url\"}`` of the new snapshot.",
+        "operationId": "api_create_snapshot_api_bi_dashboards__slug__snapshots_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Create Snapshot Api Bi Dashboards  Slug  Snapshots Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Create Snapshot",
+        "tags": [
+          "bi-snapshots"
+        ]
+      }
+    },
+    "/api/bi/dashboards/{slug}/snapshots/{snapshot_id}": {
+      "get": {
+        "description": "Return one snapshot's full payload.\n\nArgs:\n    request: Incoming FastAPI request.\n    slug: Dashboard slug.\n    snapshot_id: Snapshot primary key.\n\nReturns:\n    ``{\"id\", \"captured_at\", \"triggered_by\", \"payload\"}``.",
+        "operationId": "api_get_snapshot_api_bi_dashboards__slug__snapshots__snapshot_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "snapshot_id",
+            "required": true,
+            "schema": {
+              "title": "Snapshot Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Get Snapshot Api Bi Dashboards  Slug  Snapshots  Snapshot Id  Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Get Snapshot",
+        "tags": [
+          "bi-snapshots"
+        ]
+      }
+    },
     "/api/bi/dashboards/{slug}/widgets": {
       "post": {
         "description": "Add a widget to a dashboard (owner or admin).\n\nArgs:\n    request: Incoming FastAPI request.\n    slug: Dashboard slug.\n    body: ``{\"kind\", \"title\"?, \"sql_text\"?, \"saved_query_id\"?,\n        \"markdown\"?, \"chart_spec\"?, \"position\"?}``.\n\nReturns:\n    The serialized widget row.\n\nRaises:\n    ValidationError: On an unknown kind or inconsistent source.",
@@ -13713,6 +14961,153 @@
         "summary": "Api Promote Branch",
         "tags": [
           "branches"
+        ]
+      }
+    },
+    "/api/bundles/apply": {
+      "post": {
+        "description": "Apply a bundle spec to the live DB \u2014 idempotent per resource.",
+        "operationId": "apply_bundle_route_api_bundles_apply_post",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "dry_run",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Dry Run",
+              "type": "boolean"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Body",
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Apply Bundle Route Api Bundles Apply Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Apply Bundle Route",
+        "tags": [
+          "bundles"
+        ]
+      }
+    },
+    "/api/bundles/export": {
+      "post": {
+        "description": "Export live resources as a bundle YAML document.\n\nEach of ``jobs`` / ``pipelines`` / ``dashboards`` selects by\nname / slug; omitted (or ``null``) exports all of that resource\ntype, an empty list exports none.  Rejects with 400 when a\nselector is not a list of strings or a selected resource cannot\nbe represented as a spec.",
+        "operationId": "export_bundle_route_api_bundles_export_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Body",
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Export Bundle Route Api Bundles Export Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Export Bundle Route",
+        "tags": [
+          "bundles"
+        ]
+      }
+    },
+    "/api/bundles/plan": {
+      "post": {
+        "description": "Compute the bundle plan against the live DB without writing.\n\nRejects with 400 when the spec is invalid or a declared resource\ncannot be diffed (bad pipeline SQL, ambiguous widget matching).",
+        "operationId": "plan_bundle_route_api_bundles_plan_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Body",
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Plan Bundle Route Api Bundles Plan Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Plan Bundle Route",
+        "tags": [
+          "bundles"
         ]
       }
     },
@@ -15927,7 +17322,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/DecisionBody"
+                "$ref": "#/components/schemas/pointlessql__api__data_products_routes__access_requests__DecisionBody"
               }
             }
           },
@@ -16001,7 +17396,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/DecisionBody"
+                "$ref": "#/components/schemas/pointlessql__api__data_products_routes__access_requests__DecisionBody"
               }
             }
           },
@@ -28260,6 +29655,61 @@
         ]
       }
     },
+    "/api/jobs/{job_id}/runs/{run_id}/repair": {
+      "post": {
+        "description": "Repair a failed run: re-run only what did not succeed (admin or owner).\n\nFor DAG jobs the new run reuses every task that succeeded in the\nreferenced run (recorded as ``succeeded`` without executing) and\nexecutes only the failed / skipped ones plus their gating logic.\nSingle-task jobs simply re-run.  The new run carries\n``trigger=\"repair\"`` and ``repair_of_run_id`` so the run list can\nchain the lineage.",
+        "operationId": "api_repair_run_api_jobs__job_id__runs__run_id__repair_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Repair Run Api Jobs  Job Id  Runs  Run Id  Repair Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Repair Run",
+        "tags": [
+          "jobs",
+          "jobs"
+        ]
+      }
+    },
     "/api/jobs/{job_id}/runs/{run_id}/tasks": {
       "get": {
         "description": "Return per-task state rows for one :class:`JobRun`.\n\nThe route gates on the parent job (via\n:func:`load_job_or_404`), then filters task runs by\n``job_run_id`` so a caller can never read another job's task\nstate by guessing a *run_id*.  Ordered by primary key so the\nDAG view stays stable across renders.",
@@ -36198,6 +37648,315 @@
         ]
       }
     },
+    "/api/quality/anomalies": {
+      "get": {
+        "description": "List the workspace's anomalies, optionally filtered by status.\n\nArgs:\n    request: Incoming FastAPI request.\n    status: ``\"open\"``, ``\"resolved\"``, or omitted for both.\n\nReturns:\n    ``{\"anomalies\": [...]}`` newest-detected first.",
+        "operationId": "api_list_anomalies_api_quality_anomalies_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^(open|resolved)$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api List Anomalies Api Quality Anomalies Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api List Anomalies",
+        "tags": [
+          "quality"
+        ]
+      }
+    },
+    "/api/quality/monitors": {
+      "get": {
+        "description": "List the active workspace's quality monitors.",
+        "operationId": "api_list_monitors_api_quality_monitors_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api List Monitors Api Quality Monitors Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Api List Monitors",
+        "tags": [
+          "quality"
+        ]
+      },
+      "post": {
+        "description": "Create a quality monitor (admin only).\n\nArgs:\n    request: Incoming FastAPI request.\n    body: ``{\"target\", \"cron_expr\", \"is_active\"?}``.\n\nReturns:\n    The serialised monitor.",
+        "operationId": "api_create_monitor_api_quality_monitors_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Body",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Create Monitor Api Quality Monitors Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Create Monitor",
+        "tags": [
+          "quality"
+        ]
+      }
+    },
+    "/api/quality/monitors/{monitor_id}": {
+      "delete": {
+        "description": "Delete a monitor with its snapshots, anomalies, and backing job.",
+        "operationId": "api_delete_monitor_api_quality_monitors__monitor_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "monitor_id",
+            "required": true,
+            "schema": {
+              "title": "Monitor Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Delete Monitor Api Quality Monitors  Monitor Id  Delete",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Delete Monitor",
+        "tags": [
+          "quality"
+        ]
+      },
+      "get": {
+        "description": "Return one monitor with its recent snapshots and anomalies.",
+        "operationId": "api_get_monitor_api_quality_monitors__monitor_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "monitor_id",
+            "required": true,
+            "schema": {
+              "title": "Monitor Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Get Monitor Api Quality Monitors  Monitor Id  Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Get Monitor",
+        "tags": [
+          "quality"
+        ]
+      },
+      "patch": {
+        "description": "Patch target / cron / active flag (admin only).\n\nArgs:\n    request: Incoming FastAPI request.\n    monitor_id: Monitor id from the URL.\n    body: Any of ``{\"target\", \"cron_expr\", \"is_active\"}``.\n\nReturns:\n    The serialised refreshed monitor.",
+        "operationId": "api_update_monitor_api_quality_monitors__monitor_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "monitor_id",
+            "required": true,
+            "schema": {
+              "title": "Monitor Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Body",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Update Monitor Api Quality Monitors  Monitor Id  Patch",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Update Monitor",
+        "tags": [
+          "quality"
+        ]
+      }
+    },
+    "/api/quality/monitors/{monitor_id}/run": {
+      "post": {
+        "description": "Scan a monitor now through the scheduler (admin only).\n\nMaterialises the backing job when the monitor never had one\n(created inactive) and dispatches the same ``execute_run`` path\nthe cron tick uses, stamped ``trigger=\"manual\"``.\n\nArgs:\n    request: Incoming FastAPI request.\n    monitor_id: Monitor id from the URL.\n\nReturns:\n    The terminal run record (``run_id`` / ``status`` / ``error``).\n\nRaises:\n    ValidationError: When the backing job cannot be materialised\n        (the monitor vanished between lookup and run).",
+        "operationId": "api_run_monitor_api_quality_monitors__monitor_id__run_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "monitor_id",
+            "required": true,
+            "schema": {
+              "title": "Monitor Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Run Monitor Api Quality Monitors  Monitor Id  Run Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Run Monitor",
+        "tags": [
+          "quality"
+        ]
+      }
+    },
     "/api/queries": {
       "get": {
         "description": "Return recent query-history rows as JSON.\n\nNon-admin callers see only their own rows \u2014 the ``user_id``\nquery param is clamped to the caller's ID regardless of what\nwas requested, mirroring the visibility rule applied on\n``/api/jobs``.  Admin can pass ``user_id=123`` to scope or\n``None`` to see everyone.\n\nArgs:\n    request: Incoming request (for the current user).\n    user_id: Optional user-ID filter (admin only).\n    status: Optional status filter.\n    since: Window string (``24h`` / ``7d`` / ``30d`` / ``all``).\n    agent_run_id: Optional run-UUID filter.\n    read_kind: Optional read-kind filter (``sql_execute`` /\n        ``pql_table`` / ``engine_direct``).  Unknown values are\n        dropped silently \u2014 see\n        :func:`pointlessql.services.query_history.list_queries`.\n    limit: Hard row cap (default 200).\n\nReturns:\n    A list of history dicts \u2014 see\n    :func:`pointlessql.services.query_history.list_queries`.",
@@ -41694,6 +43453,61 @@
         ]
       }
     },
+    "/api/tables/{full_name}/certification": {
+      "put": {
+        "description": "Set or clear a table's certification (admin / owner / MANAGE_GRANTS).\n\nArgs:\n    request: Incoming FastAPI request.\n    full_name: Dotted three-part name of the table.\n    body: New status (``certified`` / ``deprecated`` / ``null``\n        to clear) and an optional note.\n\nReturns:\n    ``{\"full_name\": ..., \"certification\": {...} | None}``.\n\nRaises:\n    ValidationError: When the status value is unrecognised or the\n        name is not a three-part FQN.\n    CatalogNotFoundError: When the table does not exist.\n    PermissionDeniedError: When the caller is neither an admin,\n        the table owner, nor a MANAGE_GRANTS holder.",
+        "operationId": "api_set_table_certification_api_tables__full_name__certification_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "full_name",
+            "required": true,
+            "schema": {
+              "title": "Full Name",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CertificationBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Set Table Certification Api Tables  Full Name  Certification Put",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Set Table Certification",
+        "tags": [
+          "access-requests"
+        ]
+      }
+    },
     "/api/tables/{full_name}/preview-at-version": {
       "get": {
         "description": "Preview the table at a chosen historical Delta version.\n\nArgs:\n    request: Incoming FastAPI request.\n    full_name: Three-part UC name.\n    version: Target Delta version.\n    limit: Row cap (default 50, max 200).\n\nReturns:\n    ``{full_name, version, columns, rows, total}``.\n\nRaises:\n    ValidationError: 422 when the Delta load fails (version\n        absent / table corrupt).  4xx / 5xx errors from\n        :func:`_resolve_storage` propagate.",
@@ -43454,7 +45268,7 @@
         ]
       },
       "post": {
-        "description": "Pin a polymorphic entity to the workspace landing (admin only).\n\nBody:\n    ``{\"social_target_id\": int}`` \u2014 caller resolves the\n    target id from the social_target row (citations parser\n    can lift one out of a token).",
+        "description": "Pin a data asset to the workspace landing (admin only).\n\nBody:\n    Either ``{\"social_target_id\": int}`` (an already-resolved\n    anchor) or ``{\"kind\": ..., \"ref\": ...}`` naming a catalog,\n    schema, table, or data product \u2014 the picker sends the latter so\n    admins pin by name rather than by internal id.",
         "operationId": "add_pin_api_workspaces__slug__pins_post",
         "parameters": [
           {
@@ -43877,6 +45691,409 @@
         "summary": "Delete Milestone",
         "tags": [
           "social"
+        ]
+      }
+    },
+    "/apps": {
+      "get": {
+        "description": "Render the hosted-apps list (create form + app table).",
+        "operationId": "apps_page_apps_get",
+        "responses": {
+          "200": {
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Apps Page",
+        "tags": [
+          "apps-html"
+        ]
+      }
+    },
+    "/apps/{slug}": {
+      "get": {
+        "description": "Render one app's cockpit (iframe + lifecycle + logs + source).\n\nArgs:\n    request: Incoming FastAPI request.\n    slug: App slug from the URL.\n\nReturns:\n    The rendered detail page.\n\nRaises:\n    ResourceNotFoundError: When no app with *slug* exists in the\n        active workspace.",
+        "operationId": "app_detail_page_apps__slug__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "App Detail Page",
+        "tags": [
+          "apps-html"
+        ]
+      }
+    },
+    "/apps/{slug}/proxy/{path}": {
+      "delete": {
+        "description": "Forward an authenticated request to the app's worker.\n\nArgs:\n    slug: App slug \u2014 selects the worker.\n    path: Captured path segment after ``/apps/<slug>/proxy/`` \u2014\n        empty for the app root, asset paths and API routes\n        otherwise.\n    request: The incoming FastAPI request (used for method,\n        body, query-string, and auth-state).\n\nReturns:\n    Response: The upstream response with content + status + safe\n        headers preserved.  Anonymous callers get a 401 instead.\n\nRaises:\n    AuthenticationError: 401 when the request is anonymous.\n    HTTPException: 502 on upstream HTTP error from the worker.",
+        "operationId": "apps_proxy_apps_slug_proxy_path",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "path",
+            "required": true,
+            "schema": {
+              "title": "Path",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Apps Proxy",
+        "tags": [
+          "apps-proxy"
+        ]
+      },
+      "get": {
+        "description": "Forward an authenticated request to the app's worker.\n\nArgs:\n    slug: App slug \u2014 selects the worker.\n    path: Captured path segment after ``/apps/<slug>/proxy/`` \u2014\n        empty for the app root, asset paths and API routes\n        otherwise.\n    request: The incoming FastAPI request (used for method,\n        body, query-string, and auth-state).\n\nReturns:\n    Response: The upstream response with content + status + safe\n        headers preserved.  Anonymous callers get a 401 instead.\n\nRaises:\n    AuthenticationError: 401 when the request is anonymous.\n    HTTPException: 502 on upstream HTTP error from the worker.",
+        "operationId": "apps_proxy_apps_slug_proxy_path",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "path",
+            "required": true,
+            "schema": {
+              "title": "Path",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Apps Proxy",
+        "tags": [
+          "apps-proxy"
+        ]
+      },
+      "head": {
+        "description": "Forward an authenticated request to the app's worker.\n\nArgs:\n    slug: App slug \u2014 selects the worker.\n    path: Captured path segment after ``/apps/<slug>/proxy/`` \u2014\n        empty for the app root, asset paths and API routes\n        otherwise.\n    request: The incoming FastAPI request (used for method,\n        body, query-string, and auth-state).\n\nReturns:\n    Response: The upstream response with content + status + safe\n        headers preserved.  Anonymous callers get a 401 instead.\n\nRaises:\n    AuthenticationError: 401 when the request is anonymous.\n    HTTPException: 502 on upstream HTTP error from the worker.",
+        "operationId": "apps_proxy_apps_slug_proxy_path",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "path",
+            "required": true,
+            "schema": {
+              "title": "Path",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Apps Proxy",
+        "tags": [
+          "apps-proxy"
+        ]
+      },
+      "options": {
+        "description": "Forward an authenticated request to the app's worker.\n\nArgs:\n    slug: App slug \u2014 selects the worker.\n    path: Captured path segment after ``/apps/<slug>/proxy/`` \u2014\n        empty for the app root, asset paths and API routes\n        otherwise.\n    request: The incoming FastAPI request (used for method,\n        body, query-string, and auth-state).\n\nReturns:\n    Response: The upstream response with content + status + safe\n        headers preserved.  Anonymous callers get a 401 instead.\n\nRaises:\n    AuthenticationError: 401 when the request is anonymous.\n    HTTPException: 502 on upstream HTTP error from the worker.",
+        "operationId": "apps_proxy_apps_slug_proxy_path",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "path",
+            "required": true,
+            "schema": {
+              "title": "Path",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Apps Proxy",
+        "tags": [
+          "apps-proxy"
+        ]
+      },
+      "patch": {
+        "description": "Forward an authenticated request to the app's worker.\n\nArgs:\n    slug: App slug \u2014 selects the worker.\n    path: Captured path segment after ``/apps/<slug>/proxy/`` \u2014\n        empty for the app root, asset paths and API routes\n        otherwise.\n    request: The incoming FastAPI request (used for method,\n        body, query-string, and auth-state).\n\nReturns:\n    Response: The upstream response with content + status + safe\n        headers preserved.  Anonymous callers get a 401 instead.\n\nRaises:\n    AuthenticationError: 401 when the request is anonymous.\n    HTTPException: 502 on upstream HTTP error from the worker.",
+        "operationId": "apps_proxy_apps_slug_proxy_path",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "path",
+            "required": true,
+            "schema": {
+              "title": "Path",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Apps Proxy",
+        "tags": [
+          "apps-proxy"
+        ]
+      },
+      "post": {
+        "description": "Forward an authenticated request to the app's worker.\n\nArgs:\n    slug: App slug \u2014 selects the worker.\n    path: Captured path segment after ``/apps/<slug>/proxy/`` \u2014\n        empty for the app root, asset paths and API routes\n        otherwise.\n    request: The incoming FastAPI request (used for method,\n        body, query-string, and auth-state).\n\nReturns:\n    Response: The upstream response with content + status + safe\n        headers preserved.  Anonymous callers get a 401 instead.\n\nRaises:\n    AuthenticationError: 401 when the request is anonymous.\n    HTTPException: 502 on upstream HTTP error from the worker.",
+        "operationId": "apps_proxy_apps_slug_proxy_path",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "path",
+            "required": true,
+            "schema": {
+              "title": "Path",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Apps Proxy",
+        "tags": [
+          "apps-proxy"
+        ]
+      },
+      "put": {
+        "description": "Forward an authenticated request to the app's worker.\n\nArgs:\n    slug: App slug \u2014 selects the worker.\n    path: Captured path segment after ``/apps/<slug>/proxy/`` \u2014\n        empty for the app root, asset paths and API routes\n        otherwise.\n    request: The incoming FastAPI request (used for method,\n        body, query-string, and auth-state).\n\nReturns:\n    Response: The upstream response with content + status + safe\n        headers preserved.  Anonymous callers get a 401 instead.\n\nRaises:\n    AuthenticationError: 401 when the request is anonymous.\n    HTTPException: 502 on upstream HTTP error from the worker.",
+        "operationId": "apps_proxy_apps_slug_proxy_path",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "path",
+            "required": true,
+            "schema": {
+              "title": "Path",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Apps Proxy",
+        "tags": [
+          "apps-proxy"
         ]
       }
     },
@@ -44519,6 +46736,58 @@
         "summary": "Bi Dashboard Edit Page",
         "tags": [
           "bi-dashboards-html"
+        ]
+      }
+    },
+    "/bi/{slug}/snapshots/{snapshot_id}": {
+      "get": {
+        "description": "Render the read-only snapshot page (owner/admin only).\n\nNo SQL runs here \u2014 every widget paints from the frozen payload,\nwhich is exactly the point of a snapshot.\n\nArgs:\n    request: Incoming FastAPI request.\n    slug: Dashboard slug.\n    snapshot_id: Snapshot primary key.\n\nReturns:\n    The rendered snapshot page.",
+        "operationId": "bi_snapshot_page_bi__slug__snapshots__snapshot_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "snapshot_id",
+            "required": true,
+            "schema": {
+              "title": "Snapshot Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Bi Snapshot Page",
+        "tags": [
+          "bi-snapshots"
         ]
       }
     },
@@ -47875,6 +50144,28 @@
         "summary": "Pipeline Detail Page",
         "tags": [
           "pipelines"
+        ]
+      }
+    },
+    "/quality": {
+      "get": {
+        "description": "Render the data-quality cockpit (monitor table + anomaly timeline).",
+        "operationId": "quality_page_quality_get",
+        "responses": {
+          "200": {
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Quality Page",
+        "tags": [
+          "quality"
         ]
       }
     },

@@ -102,6 +102,53 @@ async def test_pin_crud_round_trip(
 
 
 @pytest.mark.asyncio
+async def test_pin_by_kind_and_ref_resolves_target(
+    admin_client: httpx.AsyncClient,
+) -> None:
+    """Posting ``{kind, ref}`` mints/looks up the target so the pin
+    picker never has to hand an internal id."""
+    add = await admin_client.post(
+        "/api/workspaces/default/pins",
+        json={"kind": "table", "ref": "byname.cat.tbl"},
+    )
+    assert add.status_code == 200, add.text
+    body = add.json()
+    assert body["entity_kind"] == "table"
+    assert body["entity_ref"] == "byname.cat.tbl"
+    target_id = body["social_target_id"]
+
+    # The same (kind, ref) resolves to the same target — a second pin is
+    # therefore a duplicate, not a second anchor.
+    dup = await admin_client.post(
+        "/api/workspaces/default/pins",
+        json={"kind": "table", "ref": "byname.cat.tbl"},
+    )
+    assert dup.status_code == 409, dup.text
+
+    remove = await admin_client.delete(f"/api/workspaces/default/pins/{target_id}")
+    assert remove.status_code == 200, remove.text
+
+
+@pytest.mark.asyncio
+async def test_pin_rejects_unresolvable_kind(
+    admin_client: httpx.AsyncClient,
+) -> None:
+    """A kind the picker can't resolve from a name is a 400, not a
+    silently-mis-pinned anchor."""
+    bad_kind = await admin_client.post(
+        "/api/workspaces/default/pins",
+        json={"kind": "job", "ref": "nightly"},
+    )
+    assert bad_kind.status_code == 400, bad_kind.text
+
+    no_target = await admin_client.post(
+        "/api/workspaces/default/pins",
+        json={"ref": "missing-kind"},
+    )
+    assert no_target.status_code == 400, no_target.text
+
+
+@pytest.mark.asyncio
 async def test_pin_add_rejects_duplicate(
     admin_client: httpx.AsyncClient,
 ) -> None:

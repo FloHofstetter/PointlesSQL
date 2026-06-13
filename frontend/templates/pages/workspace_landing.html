@@ -28,7 +28,7 @@
       <span class="fw-semibold">Pinned entities</span>
       <span class="badge text-bg-secondary ms-2" x-text="pins.length"></span>
       {% if is_admin %}
-      <button class="btn btn-sm btn-outline-primary ms-auto" @click="showAddPin = true">
+      <button class="btn btn-sm btn-outline-primary ms-auto" @click="openAddPin()">
         <i class="bi bi-plus-circle me-1"></i>Pin entity
       </button>
       {% endif %}
@@ -72,20 +72,34 @@
           <button type="button" class="btn-close" @click="showAddPin = false"></button>
         </div>
         <div class="modal-body">
-          <p class="text-muted small mb-2">
-            Paste the ``social_target_id`` of the entity to pin
-            (look it up via the entity's detail page network panel
-            or the admin console).
-          </p>
-          <input type="number" class="form-control"
-                 aria-label="Social target ID to pin"
-                 placeholder="social_target_id" x-model="newPinTargetId">
+          <label for="pin-search" class="form-label small text-muted">
+            Search for a catalog, schema, table, or data product to pin.
+          </label>
+          <input id="pin-search" type="search" class="form-control"
+                 autocomplete="off"
+                 placeholder="Start typing a name…"
+                 x-model="pinQuery" @input="onPinQueryInput()"
+                 @keydown.escape.stop="showAddPin = false">
+          <div x-show="pinError" class="alert alert-danger py-2 px-3 mt-2 mb-0 small"
+               x-text="pinError" x-cloak></div>
+          <div class="list-group mt-2" x-show="pinResults.length > 0" x-cloak>
+            <template x-for="hit in pinResults" :key="hit.type + ':' + hit.label">
+              <button type="button"
+                      class="list-group-item list-group-item-action d-flex align-items-center gap-2"
+                      @click="pinHit(hit)">
+                <span class="badge text-bg-secondary text-uppercase" x-text="hit.type"></span>
+                <span class="font-monospace text-truncate" x-text="hit.label"></span>
+              </button>
+            </template>
+          </div>
+          <div class="text-muted small mt-2"
+               x-show="pinQuery.trim() && !pinSearching && pinResults.length === 0"
+               x-cloak>
+            No matching catalogs, schemas, tables, or data products.
+          </div>
         </div>
         <div class="modal-footer">
-          <button class="btn btn-outline-secondary" @click="showAddPin = false">Cancel</button>
-          <button class="btn btn-primary" @click="addPin()" :disabled="!newPinTargetId">
-            Pin
-          </button>
+          <button class="btn btn-outline-secondary" @click="showAddPin = false">Close</button>
         </div>
       </div>
     </div>

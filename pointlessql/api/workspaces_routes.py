@@ -44,8 +44,19 @@ from pointlessql.models.social._social_target import SocialTarget
 from pointlessql.models.social._workspace_pin import WorkspacePinnedEntity
 from pointlessql.models.workspace._core import Workspace, WorkspaceMember
 from pointlessql.services.social import entity_registry
+from pointlessql.services.social._target_resolver import (
+    get_or_create_target,
+    resolve_dp_target,
+)
 
 router = APIRouter(tags=["workspaces"])
+
+# Entity kinds the pin picker can resolve from a name. These are the
+# data-asset kinds whose ``entity_ref`` is just their fully-qualified
+# name, so a catalog-browser search hit maps to a social target with no
+# extra lookup. Other social kinds (issues, notebooks, …) carry opaque
+# refs and are pinned by their own pages, not from this picker.
+_PINNABLE_RESOLVE_KINDS = ("catalog", "schema", "table", "dp")
 
 
 def _resolve_workspace(session: Any, slug: str) -> Workspace:
@@ -149,14 +160,71 @@ async def list_pins(slug: str, request: Request) -> dict[str, Any]:
         }
 
 
+def _resolve_pin_target_id(session: Any, workspace_id: int, payload: dict[str, Any]) -> int:
+    """Resolve the social-target id a pin should reference.
+
+    Accepts either an explicit ``social_target_id`` or a
+    ``{"kind": ..., "ref": ...}`` pair naming a data asset, which is
+    resolved to (or created as) a social target in the workspace. The
+    name-based form is what the pin picker sends so an admin can search
+    for a catalog / schema / table / data product instead of hand-copying
+    an internal id.
+
+    Args:
+        session: Active SQLAlchemy session (caller owns the transaction).
+        workspace_id: Workspace the pin — and any newly minted target —
+            belongs to.
+        payload: The parsed request body.
+
+    Returns:
+        The positive ``social_targets.id`` to pin.
+
+    Raises:
+        BadRequestError: When neither form is supplied, the kind is not
+            one the picker can resolve, the ref is malformed, or no data
+            product exists at the named ``catalog.schema``.
+    """
+    explicit = payload.get("social_target_id")
+    if isinstance(explicit, int) and explicit > 0:
+        return explicit
+
+    kind = payload.get("kind")
+    ref = payload.get("ref")
+    if not isinstance(kind, str) or not isinstance(ref, str) or not kind or not ref.strip():
+        raise BadRequestError("provide a positive social_target_id or a {kind, ref} pair")
+    ref = ref.strip()
+    if kind not in _PINNABLE_RESOLVE_KINDS:
+        raise BadRequestError(
+            f"kind {kind!r} cannot be pinned from a name; "
+            f"choose one of {', '.join(_PINNABLE_RESOLVE_KINDS)}"
+        )
+    if kind == "dp":
+        parts = ref.split(".")
+        if len(parts) != 2 or not all(parts):
+            raise BadRequestError("data-product ref must be 'catalog.schema'")
+        try:
+            target = resolve_dp_target(
+                session,
+                workspace_id=workspace_id,
+                catalog_name=parts[0],
+                schema_name=parts[1],
+            )
+        except LookupError as exc:
+            raise BadRequestError(str(exc)) from exc
+    else:
+        target = get_or_create_target(session, workspace_id=workspace_id, kind=kind, ref=ref)
+    return int(target.id)
+
+
 @router.post("/api/workspaces/{slug}/pins")
 async def add_pin(slug: str, request: Request) -> dict[str, Any]:
-    """Pin a polymorphic entity to the workspace landing (admin only).
+    """Pin a data asset to the workspace landing (admin only).
 
     Body:
-        ``{"social_target_id": int}`` — caller resolves the
-        target id from the social_target row (citations parser
-        can lift one out of a token).
+        Either ``{"social_target_id": int}`` (an already-resolved
+        anchor) or ``{"kind": ..., "ref": ...}`` naming a catalog,
+        schema, table, or data product — the picker sends the latter so
+        admins pin by name rather than by internal id.
     """
     require_admin(request)
     user = get_user(request)
@@ -164,12 +232,10 @@ async def add_pin(slug: str, request: Request) -> dict[str, Any]:
     if not isinstance(payload_raw, dict):
         raise BadRequestError("request body must be a JSON object")
     payload: dict[str, Any] = cast(dict[str, Any], payload_raw)
-    target_id = payload.get("social_target_id")
-    if not isinstance(target_id, int) or target_id <= 0:
-        raise BadRequestError("social_target_id must be a positive int")
     factory = request.app.state.session_factory
     with factory() as session:
         ws = _resolve_workspace(session, slug)
+        target_id = _resolve_pin_target_id(session, int(ws.id), payload)
         existing = session.execute(
             select(WorkspacePinnedEntity).where(
                 WorkspacePinnedEntity.workspace_id == ws.id,
