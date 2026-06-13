@@ -3935,7 +3935,7 @@ PointlesSQL
 │   │       FQN kompiliert weiter.  Happy-Path (Drag→Tabelle→Compile→SQL)
 │   │       end-to-end verifiziert.
 │   │
-│   └── 212.9 — Lineage-Explorer-Traces 404ten  ✅ shipped (local, 2026-06-13, `b5cbb40a`)
+│   ├── 212.9 — Lineage-Explorer-Traces 404ten  ✅ shipped (local, 2026-06-13, `b5cbb40a`)
 │   │       „Trace a row"/„Trace a column" auf `/lineage` navigierten zu
 │   │       `/tables/<fqn>/rows|columns/…/trace` — eine Route, die es nicht
 │   │       gibt → „Page not found".  Die echten Seiten liegen unter dem
@@ -3944,6 +3944,16 @@ PointlesSQL
 │   │       dreiteiligen Namen jetzt korrekt; `pattern` auf den Tabellen-
 │   │       Inputs gibt nativen Validierungs-Hinweis statt stillem No-op.
 │   │       Audit-Inbox + Alerts in dieser Iteration verifiziert (kein Fix).
+│   │
+│   └── 212.10 — Table-Detail-Header lief auf Mobil über  ✅ shipped (local, 2026-06-13, `54183fd3`)
+│   │       Titel + Cert-Badge + Star + Runs/Social/Certification-Buttons
+│   │       lagen in EINER nicht-umbrechenden Flex-Reihe (~630 px) → auf
+│   │       390 px scrollte die ganze Seite horizontal.  `flex-wrap`
+│   │       lässt die Aktionen auf Mobil umbrechen; Desktop unverändert.
+│   │       Beginn des Theme-/Viewport-Sweeps: Dark-Kontrast-Audit ergab
+│   │       nur Bootstrap-Defaults (outline-btn #6c757d/#0d6efd, kein
+│   │       Projekt-Bug); Mobil-Overflow sonst nur hier (home/catalog/DP/
+│   │       SQL responsiv).
 │   │
 ├── Phase 211 — Bootstrap-UI-Audit: Fixes aus dem 169-Screenshot-Sweep  ✅ shipped (local, 2026-06-13)
 │   │

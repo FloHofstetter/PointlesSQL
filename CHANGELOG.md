@@ -208,7 +208,11 @@ defined in ``scripts/clusters.json``. -->
   land on "Page not found" — they navigated to a non-existent
   `/tables/<fqn>/…` route; they now build the real split-FQN path
   (`/catalogs/<c>/schemas/<s>/tables/<t>/rows|columns/…/trace`), with a
-  pattern on the table input for native validation feedback.
+  pattern on the table input for native validation feedback. The table
+  detail header (title + certification + star + Runs / Social /
+  Certification actions) no longer forces horizontal page scroll on a
+  phone — the action row now wraps below ~390px instead of running off
+  the right edge.
 
 - **Bootstrap UI-audit fixes (phase 211).** Acting on a full headful
   audit (774 API routes + 169 screenshots graded against Bootstrap 5.3):
