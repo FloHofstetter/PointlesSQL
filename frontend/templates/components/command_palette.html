@@ -2,21 +2,15 @@
  @pql:open-palette.window="openPalette()"
  @keydown.window="onGlobalKeydown($event)">
 
- <!-- Command palette dialog -->
- <div x-show="open"
- x-cloak
- class="pql-cmdk-backdrop"
- @click="closePalette()"
- x-transition.opacity></div>
- <div x-show="open"
- x-cloak
- class="pql-cmdk-dialog"
- role="dialog"
- aria-modal="true"
- aria-label="Search PointlesSQL"
- @keydown="onDialogKeydown($event)"
- @click.stop
- x-transition>
+ {# Command palette — a real Bootstrap modal (focus-trap, scroll-lock
+    and return-focus come from bootstrap.Modal) with Alpine driving the
+    search query, result list and ↑↓↵ navigation.  Show/hide is wired
+    through the modal instance in the factory's init(). #}
+ <div class="modal pql-cmdk-modal" id="pql-cmdk-modal" x-ref="modal"
+ tabindex="-1" aria-label="Search PointlesSQL"
+ @keydown="onDialogKeydown($event)">
+ <div class="modal-dialog pql-cmdk-modal-dialog">
+ <div class="modal-content pql-cmdk-dialog">
  <div class="pql-cmdk-input">
  <i class="bi bi-search"></i>
  <input type="text"
@@ -64,23 +58,18 @@
  <span><kbd>esc</kbd> close</span>
  </footer>
  </div>
+ </div>
+ </div>
 
- <!-- Keyboard-shortcuts help modal -->
- <div x-show="helpOpen"
- x-cloak
- class="pql-cmdk-backdrop"
- @click="helpOpen = false"
- x-transition.opacity></div>
- <div x-show="helpOpen"
- x-cloak
- class="pql-cmdk-dialog pql-cmdk-help"
- role="dialog"
- aria-modal="true"
- aria-label="Keyboard shortcuts"
- @keydown.escape.stop.prevent="helpOpen = false"
- @click.stop
- x-transition>
+ {# Keyboard-shortcuts help — a second Bootstrap modal. #}
+ <div class="modal pql-cmdk-modal" id="pql-cmdk-help-modal" x-ref="helpModal"
+ tabindex="-1" aria-label="Keyboard shortcuts">
+ <div class="modal-dialog pql-cmdk-modal-dialog modal-dialog-centered">
+ <div class="modal-content pql-cmdk-dialog pql-cmdk-help">
+ <div class="d-flex justify-content-between align-items-center mb-2">
  <h5 class="m-0">Keyboard shortcuts</h5>
+ <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+ </div>
  <dl class="pql-cmdk-shortcuts">
  <template x-for="s in shortcuts" :key="s.label">
  <div class="pql-cmdk-shortcut-row">
@@ -95,6 +84,8 @@
  </div>
  </template>
  </dl>
+ </div>
+ </div>
  </div>
 </div>
 

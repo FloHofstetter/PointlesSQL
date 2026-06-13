@@ -94,31 +94,56 @@ export function commandPalette() {
 
     init() {
       this.recent = loadRecent();
-      // wire the footer-bar "Show keyboard shortcuts"
-      // button to the existing help overlay.  The button has
-      // dispatched ``pql:show-shortcuts`` since the footer landed
-      // but no listener was attached — clicking it
-      // did nothing.  Listening here (instead of a free-floating
-      // window listener) keeps the help state co-located with the
-      // ``helpOpen`` Alpine flag that drives the dialog template.
-      window.addEventListener('pql:show-shortcuts', () => {
-        this.helpOpen = true;
+      // bootstrap.Modal owns the backdrop, scroll-lock, focus-trap and
+      // return-focus; Alpine owns the search content and ↑↓↵ navigation.
+      // Show/hide is driven through these instances; the bs events keep
+      // the Alpine flags in sync when the modal closes via Esc/backdrop.
+      this._modal = window.bootstrap.Modal.getOrCreateInstance(this.$refs.modal);
+      this._help = window.bootstrap.Modal.getOrCreateInstance(this.$refs.helpModal);
+      this.$refs.modal.addEventListener('shown.bs.modal', () => {
+        if (this.$refs.search) this.$refs.search.focus();
       });
+      this.$refs.modal.addEventListener('hidden.bs.modal', () => {
+        this._resetPalette();
+        this._sweepBackdrops();
+      });
+      this.$refs.helpModal.addEventListener('hidden.bs.modal', () => {
+        this.helpOpen = false;
+        this._sweepBackdrops();
+      });
+      // wire the footer-bar "Show keyboard shortcuts" button (it
+      // dispatches ``pql:show-shortcuts``) to the help modal.
+      window.addEventListener('pql:show-shortcuts', () => this.openHelp());
     },
 
     openPalette() {
       if (this.open) return;
-      this.helpOpen = false;
+      // Never run two modal transitions at once — showing one modal
+      // while another is still animating out orphans a Bootstrap
+      // backdrop. If the help modal is up, just close it; a second
+      // Cmd-K then opens the palette cleanly.
+      if (this.helpOpen) {
+        this._help.hide();
+        this._scheduleSweep();
+        return;
+      }
       this.open = true;
       this.query = '';
       this.results = [];
       this.selected = 0;
-      this.$nextTick(() => {
-        if (this.$refs.search) this.$refs.search.focus();
-      });
+      // focus lands on shown.bs.modal, after the focus-trap is armed.
+      this._modal.show();
     },
 
     closePalette() {
+      // hide() fires hidden.bs.modal → _resetPalette(); the guard keeps
+      // closing working if the modal instance failed to construct.
+      if (this._modal) this._modal.hide();
+      else this._resetPalette();
+      this._scheduleSweep();
+    },
+
+    _resetPalette() {
       this.open = false;
       this.query = '';
       this.results = [];
@@ -129,8 +154,40 @@ export function commandPalette() {
       }
     },
 
+    // Safety net: once a modal has fully closed and none is shown,
+    // strip any backdrop / scroll-lock Bootstrap may have orphaned, so
+    // the page can never end up permanently dimmed or unclickable.
+    _sweepBackdrops() {
+      if (document.querySelector('.modal.show')) return;
+      document.querySelectorAll('.modal-backdrop').forEach((b) => {
+        b.remove();
+      });
+      document.body.classList.remove('modal-open');
+      document.body.style.removeProperty('overflow');
+      document.body.style.removeProperty('padding-right');
+    },
+
+    // hidden.bs.modal sweeps immediately, but if a modal is hidden while
+    // it is still animating in, Bootstrap may never emit that event and
+    // leaves the backdrop behind. Schedule a fallback sweep after the
+    // transition window so a fast Esc/toggle can't strand a backdrop.
+    _scheduleSweep() {
+      if (this._sweepTimer) clearTimeout(this._sweepTimer);
+      this._sweepTimer = setTimeout(() => this._sweepBackdrops(), 300);
+    },
+
+    openHelp() {
+      this.helpOpen = true;
+      this._help.show();
+    },
+
     toggleHelp() {
-      this.helpOpen = !this.helpOpen;
+      if (this.helpOpen) {
+        this._help.hide();
+        this._scheduleSweep();
+      } else {
+        this.openHelp();
+      }
     },
 
     onGlobalKeydown(e) {
@@ -143,20 +200,19 @@ export function commandPalette() {
         else this.openPalette();
         return;
       }
-      // Escape — close help even when palette is closed
-      if (e.key === 'Escape' && this.helpOpen) {
-        e.preventDefault();
-        this._cancelChord();
-        this.helpOpen = false;
-        return;
-      }
+      // Escape on either modal is handled by bootstrap.Modal's own
+      // keyboard binding (which also restores focus to the trigger).
       // The remaining unmodified single-key bindings never fire
       // while a modal is open or the user is typing.
       if (this.open || this.helpOpen) return;
       if (isEditableTarget(e.target)) return;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
+      // A page-level handler may already own this key (e.g. the feed's
+      // own ``?`` shortcuts help); if it claimed the event, don't also
+      // fire the global binding and stack a second modal on top.
+      if (e.defaultPrevented) return;
 
-      // ? opens help
+      // ? opens the global shortcuts help.
       if (e.key === '?') {
         e.preventDefault();
         this._cancelChord();
@@ -199,11 +255,7 @@ export function commandPalette() {
 
     onDialogKeydown(e) {
       const list = this.query ? this.results : this.recent;
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        this.closePalette();
-        return;
-      }
+      // Escape is handled by bootstrap.Modal; here we only own list nav.
       if (e.key === 'ArrowDown') {
         e.preventDefault();
         if (list.length === 0) return;

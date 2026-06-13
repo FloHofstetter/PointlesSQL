@@ -36,27 +36,19 @@
  color: var(--bs-secondary-color);
 }
 
-.pql-cmdk-backdrop {
- position: fixed;
- inset: 0;
- background: rgba(0, 0, 0, 0.55);
- z-index: 1090;
+/* The palette is a bootstrap.Modal: the backdrop, centring container
+   and z-index come from .modal / .modal-dialog.  These rules only size
+   the dialog and skin the .modal-content box (which is already a flex
+   column with a background/border from Bootstrap). */
+.pql-cmdk-modal-dialog {
+ max-width: min(640px, 92vw);
+ margin-top: 12vh;
 }
 .pql-cmdk-dialog {
- position: fixed;
- top: 12vh;
- left: 50%;
- transform: translateX(-50%);
- width: min(640px, 92vw);
  max-height: 70vh;
- z-index: 1091;
- background: var(--bs-body-bg);
- border: 1px solid var(--bs-border-color);
+ overflow: hidden;
  border-radius: var(--pql-radius-md);
  box-shadow: var(--pql-elev-3);
- display: flex;
- flex-direction: column;
- overflow: hidden;
 }
 
 .pql-cmdk-input {
@@ -107,12 +99,8 @@
  color: var(--bs-body-color);
 }
 .pql-cmdk-item.is-selected {
- background: var(--pql-color-accent);
- color: var(--pql-color-accent-fg);
-}
-.pql-cmdk-item.is-selected.pql-cmdk-desc,
-.pql-cmdk-item.is-selected.pql-cmdk-type {
- color: inherit;
+ background: var(--bs-secondary-bg);
+ box-shadow: inset 3px 0 0 var(--pql-color-accent);
 }
 .pql-cmdk-type {
  font-size: var(--pql-text-xs);
@@ -206,7 +194,8 @@
 }
 
 @media (max-width: 640px) {
-.pql-cmdk-dialog { top: 4vh; max-height: 88vh; }
+.pql-cmdk-modal-dialog { margin-top: 4vh; }
+.pql-cmdk-dialog { max-height: 88vh; }
 .pql-cmdk-item { grid-template-columns: auto 1fr; }
 .pql-cmdk-desc { display: none; }
 }
