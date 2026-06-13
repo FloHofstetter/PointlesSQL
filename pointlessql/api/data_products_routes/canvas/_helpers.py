@@ -8,6 +8,7 @@ materialise and save handlers all lean on.
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from fastapi import Request
@@ -27,6 +28,16 @@ from pointlessql.services.dp_canvas import (
     PinSchema,
     fetch_table_info,
     table_info_to_pin_schema,
+)
+
+# Three dot-separated identifiers, mirroring the canvas InputPort block's own
+# FQN rule. A malformed name (e.g. ``demo`` or ``demo.sales``) must not reach
+# soyuz: the lookup re-raises soyuz's non-404 answer, which 500s the
+# compile / preview / validate call. Skipping the seed for such a name lets
+# the block compiler report the same ``bad_config`` the editor already shows
+# on the node, instead of an opaque "unexpected error".
+_THREE_PART_FQN_RE = re.compile(
+    r"^[A-Za-z_][A-Za-z0-9_]*\.[A-Za-z_][A-Za-z0-9_]*\.[A-Za-z_][A-Za-z0-9_]*$"
 )
 
 
@@ -136,6 +147,10 @@ def seed_schemas_for_doc(
             continue
         fqn = str(node.config.get(fqn_key) or "").strip()
         if not fqn:
+            continue
+        if not _THREE_PART_FQN_RE.match(fqn):
+            # Malformed FQN — don't ask soyuz (it would re-raise a non-404).
+            # The block compiler reports the bad_config for this node.
             continue
         try:
             info = fetch_table_info(client, fqn)

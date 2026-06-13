@@ -108,3 +108,51 @@ def test_compile_studio_select_rejects_sink() -> None:
     )
     assert result is None
     assert any(e.node_id == "out" and "not available" in e.message for e in errors)
+
+
+def test_seed_schemas_skips_malformed_fqn_without_soyuz(monkeypatch) -> None:
+    """A malformed input-port FQN must not be sent to soyuz.
+
+    soyuz answers a bad ``full_name`` with a non-404 error the lookup
+    re-raises, which 500'd the compile / preview / validate call. The seed
+    pass now skips such names so the block compiler reports the same
+    ``bad_config`` the editor already shows on the node.
+    """
+    from pointlessql.api.data_products_routes.canvas import _helpers
+
+    def _boom(client: object, fqn: str) -> object:
+        raise AssertionError(f"soyuz must not be queried for malformed FQN {fqn!r}")
+
+    monkeypatch.setattr(_helpers, "fetch_table_info", _boom)
+    for bad in ("demo", "demo.sales", "demo.", ".s.t", "a.b.c.d"):
+        doc = CanvasDoc(
+            nodes=[CanvasNode(id="src", block_type="InputPort", config={"table_fqn": bad})],
+            edges=[],
+        )
+        seeds, errors = _helpers.seed_schemas_for_doc(doc, client=object())  # type: ignore[arg-type]
+        assert seeds == {}, bad
+        assert errors == [], bad
+
+
+def test_seed_schemas_queries_soyuz_for_valid_fqn(monkeypatch) -> None:
+    """A well-formed three-part FQN still reaches soyuz."""
+    from pointlessql.api.data_products_routes.canvas import _helpers
+
+    calls: list[str] = []
+
+    def _record(client: object, fqn: str) -> None:
+        calls.append(fqn)
+        return None
+
+    monkeypatch.setattr(_helpers, "fetch_table_info", _record)
+    doc = CanvasDoc(
+        nodes=[
+            CanvasNode(id="src", block_type="InputPort", config={"table_fqn": "demo.sales.orders"})
+        ],
+        edges=[],
+    )
+    seeds, errors = _helpers.seed_schemas_for_doc(doc, client=object())  # type: ignore[arg-type]
+    assert calls == ["demo.sales.orders"]
+    assert seeds == {}
+    # fetch returned None → the table-missing path emits a bad_config.
+    assert [e.kind for e in errors] == ["bad_config"]
