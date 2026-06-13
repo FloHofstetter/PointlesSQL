@@ -203,7 +203,12 @@ defined in ``scripts/clusters.json``. -->
   (not three-part, e.g. `demo.sales`) no longer 500s Compile SQL /
   Preview: the schema-seed pass skips names that fail the FQN rule
   instead of asking soyuz and re-raising its error, so the block
-  compiler reports the `bad_config` the editor already shows.
+  compiler reports the `bad_config` the editor already shows. The
+  lineage explorer's "Trace a row" / "Trace a column" forms no longer
+  land on "Page not found" — they navigated to a non-existent
+  `/tables/<fqn>/…` route; they now build the real split-FQN path
+  (`/catalogs/<c>/schemas/<s>/tables/<t>/rows|columns/…/trace`), with a
+  pattern on the table input for native validation feedback.
 
 - **Bootstrap UI-audit fixes (phase 211).** Acting on a full headful
   audit (774 API routes + 169 screenshots graded against Bootstrap 5.3):

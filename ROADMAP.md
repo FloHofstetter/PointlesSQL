@@ -3924,7 +3924,7 @@ PointlesSQL
 │   │       alle vier Canvas-Editoren (DataFrame Studio, DP-Canvas, Mesh-
 │   │       Canvas, Job-DAG).  Auf Nutzerwunsch am Studio gefunden.
 │   │
-│   └── 212.8 — Canvas-Compile 500te bei kaputtem Tabellennamen  ✅ shipped (local, 2026-06-13, `699fb4c4`)
+│   ├── 212.8 — Canvas-Compile 500te bei kaputtem Tabellennamen  ✅ shipped (local, 2026-06-13, `699fb4c4`)
 │   │       Ein Input-Port mit nicht-dreiteiligem FQN (z. B. `demo` oder
 │   │       `demo.sales`, leicht beim Tippen) ließ den Schema-Seed-Pass
 │   │       soyuz mit dem kaputten `full_name` fragen; die nicht-404-Antwort
@@ -3934,6 +3934,16 @@ PointlesSQL
 │   │       Compiler selbst); der meldet das `bad_config` graziös.  Gültiger
 │   │       FQN kompiliert weiter.  Happy-Path (Drag→Tabelle→Compile→SQL)
 │   │       end-to-end verifiziert.
+│   │
+│   └── 212.9 — Lineage-Explorer-Traces 404ten  ✅ shipped (local, 2026-06-13, `b5cbb40a`)
+│   │       „Trace a row"/„Trace a column" auf `/lineage` navigierten zu
+│   │       `/tables/<fqn>/rows|columns/…/trace` — eine Route, die es nicht
+│   │       gibt → „Page not found".  Die echten Seiten liegen unter dem
+│   │       gesplitteten FQN-Pfad (`/catalogs/<c>/schemas/<s>/tables/<t>/
+│   │       rows|columns/…/trace`).  `goRow`/`goColumn` splitten den
+│   │       dreiteiligen Namen jetzt korrekt; `pattern` auf den Tabellen-
+│   │       Inputs gibt nativen Validierungs-Hinweis statt stillem No-op.
+│   │       Audit-Inbox + Alerts in dieser Iteration verifiziert (kein Fix).
 │   │
 ├── Phase 211 — Bootstrap-UI-Audit: Fixes aus dem 169-Screenshot-Sweep  ✅ shipped (local, 2026-06-13)
 │   │
