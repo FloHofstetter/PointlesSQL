@@ -56,6 +56,20 @@ function _initTabs() {
     return '<span class="badge bg-secondary-subtle text-secondary-emphasis">ok</span>';
   }
 
+  function statusBadge(status) {
+    const cls =
+      {
+        succeeded: 'bg-success',
+        failed: 'bg-danger',
+        denied: 'bg-danger',
+        running: 'bg-info text-dark',
+        needs_approval: 'bg-warning text-dark',
+        queued: 'bg-secondary',
+        approved: 'bg-secondary',
+      }[status] || 'bg-secondary';
+    return `<span class="badge ${cls}">${escapeHtml(status)}</span>`;
+  }
+
   async function loadKind(kind) {
     const rowsEl = document.getElementById(`bytable-${kind}-rows`);
     const metaEl = document.getElementById(`bytable-${kind}-meta`);
@@ -79,7 +93,7 @@ function _initTabs() {
         return `<tr>
                 <td data-label="ID"><a href="/runs/${encodeURIComponent(run.id)}" class="font-monospace small text-decoration-none">${escapeHtml(run.id.slice(0, 8))}</a></td>
                 <td data-label="Principal" class="font-monospace small">${escapeHtml(run.principal || '—')}</td>
-                <td data-label="Status"><span class="badge bg-secondary">${escapeHtml(run.status)}</span></td>
+                <td data-label="Status">${statusBadge(run.status)}</td>
                 <td data-label="Anomaly">${severityBadge(run.anomaly_severity)}</td>
                 <td data-label="Started" class="font-monospace small text-muted">${escapeHtml(run.started_at || '—')}</td>
             </tr>`;

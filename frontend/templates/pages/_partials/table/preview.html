@@ -21,7 +21,7 @@
  </template>
  </select>
  <span class="text-muted small" x-show="ready">
- <span x-text="rows.length"></span> rows
+ <span x-text="rows.length"></span> <span x-text="rows.length === 1 ? 'row' : 'rows'"></span>
  </span>
  </div>
  </div>

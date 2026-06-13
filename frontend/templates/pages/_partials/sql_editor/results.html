@@ -195,7 +195,7 @@
  <span class="text-muted text-nowrap text-end" style="min-width: 110px;"
  x-text="op.time_ms + ' ms · ' + op.pct + '%'"></span>
  <span class="text-muted text-nowrap text-end" style="min-width: 80px;"
- x-text="op.rows != null ? op.rows + ' rows' : ''"></span>
+ x-text="op.rows != null ? op.rows + ' row' + (op.rows === 1 ? '' : 's') : ''"></span>
  </div>
  </template>
  </div>

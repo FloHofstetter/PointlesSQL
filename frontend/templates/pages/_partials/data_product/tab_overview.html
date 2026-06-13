@@ -639,7 +639,7 @@
                     <i class="bi bi-calendar3"></i>
                     <strong>Contributor activity</strong>
                     <small class="text-muted ms-auto"
-                           x-text="heatmap.total + ' actions in the last year'"></small>
+                           x-text="heatmap.total + (heatmap.total === 1 ? ' action' : ' actions') + ' in the last year'"></small>
                 </div>
                 <div class="card-body">
                     <div class="d-flex flex-wrap" style="gap: 2px;">

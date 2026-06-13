@@ -76,7 +76,8 @@
                         <span x-text="reloading ? 'Reloading…' : 'Reload yaml'"></span>
                     </button>
                     {% endif %}
-                    <button class="btn btn-sm btn-outline-secondary" @click="reload()">
+                    <button class="btn btn-sm btn-outline-secondary" @click="reload()"
+                            title="Refresh" aria-label="Refresh">
                         <i class="bi bi-arrow-clockwise"></i>
                     </button>
                 </div>

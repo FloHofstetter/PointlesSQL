@@ -152,7 +152,7 @@
 
                 <div class="mt-3" x-show="result" x-cloak>
                     <div class="d-flex align-items-center gap-3 mb-1">
-                        <span class="text-muted small" x-text="result ? result.row_count + ' rows · ' + result.duration_ms + ' ms' : ''"></span>
+                        <span class="text-muted small" x-text="result ? result.row_count + ' row' + (result.row_count === 1 ? '' : 's') + ' · ' + result.duration_ms + ' ms' : ''"></span>
                         <a href="#" class="small" @click.prevent="showSql = !showSql">compiled SQL</a>
                     </div>
                     <pre class="small bg-body-tertiary p-2 rounded" x-show="showSql" x-cloak x-text="result ? result.sql : ''"></pre>

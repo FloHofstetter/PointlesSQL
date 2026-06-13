@@ -30,7 +30,7 @@
      })'
      x-init="init()">
 
-    <div class="pql-dp-canvas-topbar d-flex align-items-center gap-2 px-3 py-2 border-bottom bg-body-tertiary">
+    <div class="pql-dp-canvas-topbar d-flex flex-wrap align-items-center gap-2 px-3 py-2 border-bottom bg-body-tertiary">
         <a class="btn btn-sm btn-outline-secondary"
            :href="'/data-products/' + product.catalog + '/' + product.schema"
            title="Back to data product detail">
@@ -585,7 +585,7 @@
                         <div x-show="!ghostDiffEmpty()">
                             <div x-show="ghost.errors.length" class="alert alert-warning py-1 px-2 small mb-2">
                                 <i class="bi bi-exclamation-triangle me-1"></i>
-                                <span x-text="ghost.errors.length"></span> validation issue(s) in the proposal.
+                                <span x-text="ghost.errors.length"></span> <span x-text="ghost.errors.length === 1 ? 'validation issue' : 'validation issues'"></span> in the proposal.
                             </div>
                             <template x-if="ghost.diff.added_nodes.length">
                                 <div class="mb-2">
@@ -811,7 +811,7 @@
                         Preview <span class="text-muted small fw-normal"
                             x-text="previewNodeId && nodes[previewNodeId] ? blockLabel(nodes[previewNodeId].block_type) : ''"></span>
                     </h5>
-                    <button type="button" class="btn-close"
+                    <button type="button" class="btn-close" aria-label="Close preview"
                             @click="closePreviewModal()"></button>
                 </div>
                 <div class="modal-body">
@@ -847,7 +847,7 @@
                                   class="badge bg-info-subtle text-info-emphasis"
                                   x-text="previewResult && (previewResult.truncated
                                       ? ('≥' + previewResult.row_count + ' rows')
-                                      : (previewResult.row_count + ' rows'))">
+                                      : (previewResult.row_count + ' row' + (previewResult.row_count === 1 ? '' : 's')))">
                             </span>
                         </div>
                     </div>

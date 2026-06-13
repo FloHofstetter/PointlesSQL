@@ -86,7 +86,7 @@
    <div x-show="hits.length > 0">
      <div class="d-flex justify-content-between align-items-center mb-2">
        <div class="small text-muted">
-         <span x-text="hits.length"></span> hits ·
+         <span x-text="hits.length"></span> <span x-text="hits.length === 1 ? 'hit' : 'hits'"></span> ·
          model <code x-text="responseMeta.model"></code> ·
          index v<span x-text="responseMeta.delta_version_indexed"></span>
        </div>

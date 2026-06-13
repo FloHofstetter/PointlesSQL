@@ -126,7 +126,7 @@
                             <template x-for="m in r.metrics" :key="m.dataset">
                                 <div class="small">
                                     <code x-text="m.dataset"></code>
-                                    <span class="text-muted" x-text="m.skipped ? '— no new data' : '— ' + m.rows_written + ' rows'"></span>
+                                    <span class="text-muted" x-text="m.skipped ? '— no new data' : '— ' + m.rows_written + ' row' + (m.rows_written === 1 ? '' : 's')"></span>
                                     <template x-for="e in m.expectations" :key="e.name">
                                         <span class="badge ms-1"
                                               :class="e.violations > 0 ? 'bg-warning text-dark' : 'bg-secondary'"

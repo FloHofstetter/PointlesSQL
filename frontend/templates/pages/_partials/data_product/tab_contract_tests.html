@@ -157,7 +157,7 @@
                                 <li class="list-group-item d-flex justify-content-between align-items-center px-2 py-1">
                                     <span>
                                         <code x-text="f.table_name"></code>
-                                        <span class="badge text-bg-secondary ms-1" x-text="f.row_count + ' rows'"></span>
+                                        <span class="badge text-bg-secondary ms-1" x-text="f.row_count + ' row' + (f.row_count === 1 ? '' : 's')"></span>
                                     </span>
                                     <button type="button" class="btn btn-sm btn-outline-danger"
                                             x-show="canManage" @click="removeFixture(f.id)">Remove</button>

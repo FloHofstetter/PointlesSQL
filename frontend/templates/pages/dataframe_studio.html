@@ -126,7 +126,7 @@
                                 @click="copySql()" x-text="copyState === 'copied' ? 'Copied!' : 'Copy SQL'"></button>
                         <button class="btn btn-sm btn-outline-secondary py-0"
                                 @click="copyPqlCall()">Copy pql.sql(…)</button>
-                        <button class="btn-close" @click="compiledSql=''; compileError=null"></button>
+                        <button class="btn-close" aria-label="Close compiled SQL" @click="compiledSql=''; compileError=null"></button>
                     </div>
                 </div>
                 <div class="card-body p-2" style="overflow:auto;">
@@ -144,8 +144,8 @@
                     <strong class="text-uppercase">Preview</strong>
                     <span class="text-muted ms-2"
                           x-show="previewResult"
-                          x-text="(previewResult ? previewResult.row_count : 0) + ' rows' + (previewResult && previewResult.truncated ? ' (truncated)' : '')"></span>
-                    <button class="btn-close ms-auto" @click="previewOpen=false"></button>
+                          x-text="(previewResult ? previewResult.row_count : 0) + ' row' + ((previewResult ? previewResult.row_count : 0) === 1 ? '' : 's') + (previewResult && previewResult.truncated ? ' (truncated)' : '')"></span>
+                    <button class="btn-close ms-auto" aria-label="Close preview" @click="previewOpen=false"></button>
                 </div>
                 <div class="card-body p-0" style="overflow:auto;">
                     <div class="p-2 text-muted" x-show="previewBusy">Running…</div>

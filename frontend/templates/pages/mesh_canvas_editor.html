@@ -179,7 +179,7 @@
                         <span x-show="pickerStage === 'workspace'">Select workspace</span>
                         <span x-show="pickerStage === 'dp'">Select data product</span>
                     </h5>
-                    <button type="button" class="btn-close" @click="closePicker()"></button>
+                    <button type="button" class="btn-close" aria-label="Close" @click="closePicker()"></button>
                 </div>
                 <div class="modal-body">
                     <div x-show="pickerLoading" class="text-muted">Loading…</div>

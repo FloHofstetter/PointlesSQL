@@ -19,7 +19,7 @@
 
 <p class="text-muted small mb-4">
     Tenant-wide administrative tools.  Workspace-local settings live
-    inside each workspace at <code>/workspaces/&lt;slug&gt;</code>.
+    inside each workspace.
 </p>
 
 <div class="row g-3">
@@ -210,8 +210,8 @@
                 </div>
                 <p class="text-muted small mb-0">
                     Encrypted secret scopes for connector credentials.
-                    Values are write-only; runtime reads decrypt under
-                    the READ/WRITE/MANAGE ladder, fully audited.
+                    Values are write-only and decrypt only at runtime,
+                    fully audited.
                 </p>
             </div>
         </a>

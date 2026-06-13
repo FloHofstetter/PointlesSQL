@@ -143,7 +143,7 @@
                                                     <li>
                                                         <code x-text="name"></code> —
                                                         v<span x-text="t.as_of_version !== null ? t.as_of_version : '—'"></span>,
-                                                        <span x-text="t.row_count !== null ? t.row_count + ' rows' : 'rows n/a'"></span>
+                                                        <span x-text="t.row_count !== null ? t.row_count + ' row' + (t.row_count === 1 ? '' : 's') : 'rows n/a'"></span>
                                                     </li>
                                                 </template>
                                             </ul>

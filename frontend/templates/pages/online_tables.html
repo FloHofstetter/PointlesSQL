@@ -177,7 +177,7 @@
                 <div class="alert alert-danger" x-show="lookupError" x-text="lookupError" x-cloak></div>
                 <div x-show="lookupResult" x-cloak>
                     <div class="text-muted small mb-1"
-                         x-text="lookupResult ? lookupResult.row_count + ' rows' : ''"></div>
+                         x-text="lookupResult ? lookupResult.row_count + ' row' + (lookupResult.row_count === 1 ? '' : 's') : ''"></div>
                     <div class="table-responsive">
                         <table class="table table-sm table-striped">
                             <thead>

@@ -23,7 +23,7 @@
 {% block content %}
 <h1 class="h3 mb-1">{{ title }}</h1>
 <div class="pql-public-meta">
- Exported {{ exported_at }} · {{ cell_count }} cells
+ Exported {{ exported_at }} · {{ cell_count }} cell{{ '' if cell_count == 1 else 's' }}
  {% if dashboard_mode %}
   · <span class="text-success">code cells hidden</span>
  {% endif %}

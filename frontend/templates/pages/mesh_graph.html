@@ -36,8 +36,8 @@
     <div class="card" x-show="!loading" x-cloak>
         <div class="card-body">
             <div class="text-muted small mb-2">
-                <span x-text="nodeCount"></span> products,
-                <span x-text="edgeCount"></span> declared edges
+                <span x-text="nodeCount"></span> <span x-text="nodeCount === 1 ? 'product' : 'products'"></span>,
+                <span x-text="edgeCount"></span> <span x-text="edgeCount === 1 ? 'declared edge' : 'declared edges'"></span>
             </div>
             <div id="mesh-cy" style="width: 100%; height: 600px;"></div>
             <div class="text-muted small" x-show="nodeCount === 0">

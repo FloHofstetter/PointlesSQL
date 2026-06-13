@@ -152,7 +152,7 @@
                         <template x-if="preview">
                             <div>
                                 <div class="text-muted small mb-1">
-                                    <span x-text="preview.row_count + ' rows shown'"></span>
+                                    <span x-text="preview.row_count + (preview.row_count === 1 ? ' row shown' : ' rows shown')"></span>
                                     <span x-show="preview.truncated" x-cloak>
                                         · preview truncated to the first 50 rows
                                     </span>

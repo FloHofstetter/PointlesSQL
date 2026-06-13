@@ -119,7 +119,7 @@
                             <div class="table-responsive mt-2"
                                  x-show="lastResult && lastResult.messageId === m.id" x-cloak>
                                 <div class="text-muted small mb-1"
-                                     x-text="lastResult ? lastResult.rowCount + ' rows' + (lastResult.truncated ? ' (truncated)' : '') + (lastResult.rows.length > 100 ? ' — showing first 100' : '') : ''"></div>
+                                     x-text="lastResult ? lastResult.rowCount + ' row' + (lastResult.rowCount === 1 ? '' : 's') + (lastResult.truncated ? ' (truncated)' : '') + (lastResult.rows.length > 100 ? ' — showing first 100' : '') : ''"></div>
                                 <table class="table table-sm table-striped">
                                     <thead>
                                         <tr>
