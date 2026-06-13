@@ -214,7 +214,11 @@ defined in ``scripts/clusters.json``. -->
   phone — the action row now wraps below ~390px instead of running off
   the right edge. The BI dashboard view header (title + Edit / Schedule /
   Snapshots / Share / Publish) got the same treatment; its toolbar now
-  wraps on narrow screens instead of forcing a horizontal scroll.
+  wraps on narrow screens instead of forcing a horizontal scroll. And the
+  follower count on the topic-detail badge and the data-product list card
+  is now pluralised — a single follower read "1 followers"; both surfaces
+  now match the data-product detail header, which already said
+  "1 follower".
 
 - **Bootstrap UI-audit fixes (phase 211).** Acting on a full headful
   audit (774 API routes + 169 screenshots graded against Bootstrap 5.3):

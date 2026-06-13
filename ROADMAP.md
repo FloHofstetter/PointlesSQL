@@ -3955,7 +3955,7 @@ PointlesSQL
 │   │       Projekt-Bug); Mobil-Overflow sonst nur hier (home/catalog/DP/
 │   │       SQL responsiv).
 │   │
-│   └── 212.11 — BI-Dashboard-Header lief auf Mobil über  ✅ shipped (local, 2026-06-13, `66e11139`)
+│   ├── 212.11 — BI-Dashboard-Header lief auf Mobil über  ✅ shipped (local, 2026-06-13, `66e11139`)
 │   │       Gleiches Muster: Titel + Edit/Schedule/Snapshots/Share/Publish
 │   │       in einer `justify-content-between`-Reihe ohne Umbruch (~500 px)
 │   │       → Horizontal-Scroll auf 390 px.  `flex-wrap` auf Header + Action-
@@ -3963,6 +3963,18 @@ PointlesSQL
 │   │       audit, audit-inbox, notebooks responsiv).  Canvas-Editoren
 │   │       (Studio/Mesh) sind Desktop-Tools — Mobil-Overflow dort bewusst
 │   │       nicht verfolgt.
+│   │
+│   └── 212.12 — Follower-Zähler sagte „1 followers"  ✅ shipped (local, 2026-06-13, `91e28bd0`)
+│   │       Der Topic-Detail-Follower-Badge und die Data-Product-
+│   │       Listenkarte verketteten den rohen Zähler mit hartkodiertem
+│   │       „ followers" → „1 followers" bei genau einem Follower.  Der
+│   │       Data-Product-*Detail*-Header pluralisiert bereits korrekt
+│   │       (`+ ' follower'` + ===1-Ternär); diese zwei Flächen waren die
+│   │       Nachzügler.  Jetzt dasselbe Idiom: 1 → „1 follower", sonst
+│   │       mit „s".  Live auf /topics/<t> begangen (Follow-Toggle zeigt
+│   │       „1 follower" / „0 followers").  Übriger Community-Sweep
+│   │       (Topics-Liste + Empty-State, People-Verzeichnis, User-Profil
+│   │       mit Stat-Tiles, Inline-Edit-Profil) sauber.
 │   │
 ├── Phase 211 — Bootstrap-UI-Audit: Fixes aus dem 169-Screenshot-Sweep  ✅ shipped (local, 2026-06-13)
 │   │
