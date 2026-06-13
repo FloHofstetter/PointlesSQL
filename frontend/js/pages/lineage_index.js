@@ -27,6 +27,17 @@ export function lineageExplorerForm() {
     } catch (e) {}
   }
 
+  // The trace pages live under the split FQN path
+  // (/catalogs/<c>/schemas/<s>/tables/<t>/…), not /tables/<fqn>/… — a
+  // single-segment /tables/<fqn> route doesn't exist and 404s. Split the
+  // three-part name and build the real path.
+  function tableBasePath(fqn) {
+    const parts = fqn.split('.');
+    if (parts.length !== 3 || !parts.every((p) => p.length > 0)) return null;
+    const [cat, schema, table] = parts.map(encodeURIComponent);
+    return `/catalogs/${cat}/schemas/${schema}/tables/${table}`;
+  }
+
   return {
     rowTable: '',
     rowId: '',
@@ -40,7 +51,9 @@ export function lineageExplorerForm() {
       const t = this.rowTable.trim();
       const id = this.rowId.trim();
       if (!t || !id) return;
-      const url = `/tables/${encodeURIComponent(t)}/rows/${encodeURIComponent(id)}/trace`;
+      const base = tableBasePath(t);
+      if (!base) return;
+      const url = `${base}/rows/${encodeURIComponent(id)}/trace`;
       push('row', `${t} · row ${id}`, url);
       window.location.href = url;
     },
@@ -48,7 +61,9 @@ export function lineageExplorerForm() {
       const t = this.colTable.trim();
       const c = this.colName.trim();
       if (!t || !c) return;
-      const url = `/tables/${encodeURIComponent(t)}/columns/${encodeURIComponent(c)}/trace`;
+      const base = tableBasePath(t);
+      if (!base) return;
+      const url = `${base}/columns/${encodeURIComponent(c)}/trace`;
       push('column', `${t} · ${c}`, url);
       window.location.href = url;
     },

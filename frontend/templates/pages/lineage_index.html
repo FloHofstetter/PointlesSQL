@@ -40,6 +40,8 @@
                                class="form-control form-control-sm"
                                x-model="rowTable"
                                placeholder="catalog.schema.table_name"
+                               pattern="[^.]+\.[^.]+\.[^.]+"
+                               title="Use a three-part name: catalog.schema.table"
                                required>
                     </label>
                     <label class="small fw-semibold mb-0">
@@ -76,6 +78,8 @@
                                class="form-control form-control-sm"
                                x-model="colTable"
                                placeholder="catalog.schema.table_name"
+                               pattern="[^.]+\.[^.]+\.[^.]+"
+                               title="Use a three-part name: catalog.schema.table"
                                required>
                     </label>
                     <label class="small fw-semibold mb-0">
