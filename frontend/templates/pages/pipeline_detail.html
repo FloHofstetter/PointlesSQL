@@ -111,7 +111,14 @@
                             <span class="badge"
                                   :class="r.status === 'ok' ? 'bg-success' : (r.status === 'failed' ? 'bg-danger' : 'bg-warning text-dark')"
                                   x-text="r.status"></span>
-                            <div class="text-danger small" x-show="r.error" x-text="r.error"></div>
+                            <div class="mt-1" x-show="r.error" x-cloak>
+                                <details class="small">
+                                    <summary class="text-danger" style="cursor: pointer;">
+                                        <i class="bi bi-exclamation-octagon me-1"></i>Error details
+                                    </summary>
+                                    <pre class="mb-0 mt-1 small text-break" x-text="r.error"></pre>
+                                </details>
+                            </div>
                         </td>
                         <td data-label="Triggered by" class="text-muted small" x-text="r.triggered_by || ''"></td>
                         <td data-label="Started" class="text-muted small" x-text="r.started_at"></td>

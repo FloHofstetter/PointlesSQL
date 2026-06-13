@@ -56,6 +56,10 @@ export function notebookChatPanel(editorSessionId, notebookUuid) {
     streaming: false,
     streamingText: '',
     lastError: '',
+    // True when the server turned the assistant off by configuration
+    // (LLM not configured / assistant disabled) — rendered as a caution
+    // rather than a hard error.
+    disabled: false,
     currentTurnId: /** @type {string | null} */ (null),
 
     get proposalCount() {
@@ -72,6 +76,7 @@ export function notebookChatPanel(editorSessionId, notebookUuid) {
       ws.onopen = () => {
         this.status = 'connected';
         this.statusLabel = 'connected';
+        this.disabled = false;
       };
       ws.onmessage = (event) => this._handleFrame(event.data);
       ws.onerror = () => {
@@ -266,12 +271,14 @@ export function notebookChatPanel(editorSessionId, notebookUuid) {
       this.status = 'disconnected';
       if (event.code === 1011 && event.reason === 'LLM_NOT_CONFIGURED') {
         this.statusLabel = 'LLM not configured';
+        this.disabled = true;
         this.lastError =
           'No LLM provider is configured on the server. Set ANTHROPIC_API_KEY (or another supported env var) and reload.';
         return;
       }
       if (event.code === 4503) {
         this.statusLabel = 'AI assistant disabled';
+        this.disabled = true;
         this.lastError = 'The AI Assistant is disabled on this deployment.';
         return;
       }

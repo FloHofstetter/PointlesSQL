@@ -21,8 +21,17 @@ export function renderWidgetError(el, message) {
   disposeChart(el);
   el.innerHTML = '';
   const div = document.createElement('div');
-  div.className = 'alert alert-warning small mb-0 py-1 px-2';
-  div.textContent = message;
+  // A widget that failed to load is an error, not a caution — render it
+  // in danger with an icon so it reads as a recognised failure state
+  // rather than styled body text.
+  div.className = 'alert alert-danger d-flex align-items-start gap-2 small mb-0 py-2 px-2';
+  div.setAttribute('role', 'alert');
+  const icon = document.createElement('i');
+  icon.className = 'bi bi-exclamation-octagon flex-shrink-0 mt-1';
+  icon.setAttribute('aria-hidden', 'true');
+  const span = document.createElement('span');
+  span.textContent = message;
+  div.append(icon, span);
   el.appendChild(div);
 }
 

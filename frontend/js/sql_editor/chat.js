@@ -42,6 +42,10 @@ export function chatPanel(editorSessionId) {
     streaming: false,
     streamingText: '',
     lastError: '',
+    // True when the server turned the feature off by configuration
+    // (LLM not configured / chat disabled) — a "switch this on" state
+    // the drawer renders as a caution rather than a hard error.
+    disabled: false,
     currentTurnId: /** @type {string | null} */ (null),
 
     /** Open the WebSocket. */
@@ -54,6 +58,7 @@ export function chatPanel(editorSessionId) {
       ws.onopen = () => {
         this.status = 'connected';
         this.statusLabel = 'connected';
+        this.disabled = false;
       };
       ws.onmessage = (event) => this._handleFrame(event.data);
       ws.onerror = () => {
@@ -273,12 +278,14 @@ export function chatPanel(editorSessionId) {
       // 1011 + LLM_NOT_CONFIGURED → don't reconnect; surface a helpful error.
       if (event.code === 1011 && event.reason === 'LLM_NOT_CONFIGURED') {
         this.statusLabel = 'LLM not configured';
+        this.disabled = true;
         this.lastError =
           'No LLM provider is configured on the server. Set ANTHROPIC_API_KEY (or another supported env var) and reload.';
         return;
       }
       if (event.code === 4503) {
         this.statusLabel = 'SQL chat disabled';
+        this.disabled = true;
         this.lastError = 'The SQL chat is disabled on this deployment.';
         return;
       }

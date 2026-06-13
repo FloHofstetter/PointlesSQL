@@ -45,7 +45,8 @@ export function catalogReadme(catalogName) {
     readmeLoaded: false,
     async init() {
       const res = await window.pqlApi.fetch(
-        '/api/social/catalog/' + encodeURIComponent(catalogName) + '/readme'
+        '/api/social/catalog/' + encodeURIComponent(catalogName) + '/readme',
+        { silent: true }
       );
       this.bodyRendered =
         (res && res.ok && res.data && (res.data.body_md_resolved || res.data.body_md)) || '';

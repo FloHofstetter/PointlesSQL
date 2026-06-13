@@ -216,7 +216,9 @@
     </template>
 
     <template x-if="lastError">
-     <div class="alert alert-danger small mb-2" x-text="lastError"></div>
+     <div class="alert small mb-2" :class="disabled ? 'alert-warning' : 'alert-danger'">
+      <i class="bi me-1" :class="disabled ? 'bi-gear' : 'bi-exclamation-octagon'"></i><span x-text="lastError"></span>
+     </div>
     </template>
    </div>
 

@@ -36,7 +36,9 @@ export function savedQueryReadme(slug) {
     editing: false,
     readmeLoaded: false,
     async init() {
-      const res = await window.pqlApi.fetch('/api/social/saved_query/' + slug + '/readme');
+      const res = await window.pqlApi.fetch('/api/social/saved_query/' + slug + '/readme', {
+        silent: true,
+      });
       this.bodyRendered =
         (res && res.ok && res.data && (res.data.body_md_resolved || res.data.body_md)) || '';
       this.draftBody = (res && res.ok && res.data && res.data.body_md) || '';
