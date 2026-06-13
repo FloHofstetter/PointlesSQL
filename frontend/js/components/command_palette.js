@@ -212,8 +212,11 @@ export function commandPalette() {
       // fire the global binding and stack a second modal on top.
       if (e.defaultPrevented) return;
 
-      // ? opens the global shortcuts help.
-      if (e.key === '?') {
+      // ? opens the global shortcuts help — unless the current page
+      // ships its own ``?`` keyboard-help (marked data-pql-keyhelp, e.g.
+      // the feed), in which case let that one own the key so the two
+      // don't stack two help dialogs on top of each other.
+      if (e.key === '?' && !document.querySelector('[data-pql-keyhelp]')) {
         e.preventDefault();
         this._cancelChord();
         this.toggleHelp();
