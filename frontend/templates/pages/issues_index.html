@@ -59,7 +59,8 @@
 
   <div class="card">
     <div class="card-body p-0">
-      <table class="table table-sm mb-0 pql-issues-table" data-pql-keynav-table="1">
+      <table class="table table-sm mb-0 pql-issues-table" data-pql-keynav-table="1"
+             x-show="rows.length > 0">
         <thead class="table-light">
           <tr>
             <th class="pql-checkbox-col">
@@ -115,11 +116,13 @@
               </td>
             </tr>
           </template>
-          <tr x-show="rows.length === 0">
-            <td colspan="7" class="text-center text-muted py-4">No issues found.</td>
-          </tr>
         </tbody>
       </table>
+      <div x-show="rows.length === 0" x-cloak>
+        {% with icon="bi-exclamation-circle", title="No issues found", flush=True %}
+          {% include "components/empty.html" with context %}
+        {% endwith %}
+      </div>
     </div>
   </div>
 </div>

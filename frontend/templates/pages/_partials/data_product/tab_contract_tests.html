@@ -22,7 +22,7 @@
                         </div>
                     </div>
                     <div class="card-body">
-                        <table class="table table-sm align-middle mb-2">
+                        <table class="table table-sm align-middle mb-2" x-show="tests.length > 0">
                             <thead>
                                 <tr>
                                     <th>Name</th>
@@ -53,13 +53,13 @@
                                         </td>
                                     </tr>
                                 </template>
-                                <tr x-show="tests.length === 0 && loaded" x-cloak>
-                                    <td colspan="5" class="text-center text-muted py-3">
-                                        No contract tests declared yet.
-                                    </td>
-                                </tr>
                             </tbody>
                         </table>
+                        <div x-show="tests.length === 0 && loaded" x-cloak>
+                            {% with icon="bi-clipboard-check", title="No contract tests declared yet", message="Declare a contract test below to assert row counts, null rates, freshness, and more against this data product.", flush=True %}
+                              {% include "components/empty.html" with context %}
+                            {% endwith %}
+                        </div>
 
                         <template x-if="canManage">
                             <div class="row g-2 align-items-end">

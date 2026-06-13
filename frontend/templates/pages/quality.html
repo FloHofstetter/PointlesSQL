@@ -61,7 +61,7 @@
 
     <div class="alert alert-danger" x-show="error" x-text="error" x-cloak></div>
 
-    <div class="table-responsive">
+    <div class="table-responsive" x-show="monitors.length > 0">
         <table class="table table-sm align-middle pql-list-table">
             <thead>
                 <tr>
@@ -119,13 +119,13 @@
                         </td>
                     </tr>
                 </template>
-                <tr x-show="monitors.length === 0">
-                    <td colspan="6" class="text-muted">
-                        No quality monitors yet<span x-show="isAdmin">. Create one above</span>.
-                    </td>
-                </tr>
             </tbody>
         </table>
+    </div>
+    <div x-show="monitors.length === 0">
+        {% with icon="bi-clipboard2-pulse", title="No quality monitors yet", message="A monitor profiles a table or schema on a schedule and flags drift. Admins can create one above.", flush=True %}
+          {% include "components/empty.html" with context %}
+        {% endwith %}
     </div>
 
     <div class="card mt-3" x-show="detailId !== null" x-cloak>

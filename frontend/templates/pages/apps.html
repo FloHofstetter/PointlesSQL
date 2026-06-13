@@ -85,7 +85,7 @@
 
     <div class="alert alert-danger" x-show="error" x-text="error" x-cloak></div>
 
-    <div class="table-responsive">
+    <div class="table-responsive" x-show="apps.length > 0">
         <table class="table table-sm align-middle pql-list-table">
             <thead>
                 <tr>
@@ -141,13 +141,13 @@
                         </td>
                     </tr>
                 </template>
-                <tr x-show="apps.length === 0">
-                    <td colspan="7" class="text-muted">
-                        No apps yet.{% if can_admin %} Create one above.{% endif %}
-                    </td>
-                </tr>
             </tbody>
         </table>
+    </div>
+    <div x-show="apps.length === 0" x-cloak>
+        {% with icon="bi-window-stack", title="No apps yet", message="Create one above." if can_admin else "Ask an admin to create one.", flush=True %}
+          {% include "components/empty.html" with context %}
+        {% endwith %}
     </div>
 </div>
 {% endblock %}

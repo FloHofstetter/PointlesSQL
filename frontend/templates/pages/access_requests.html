@@ -47,7 +47,7 @@
 
     {# --- My requests ------------------------------------------------- #}
     <div x-show="tab === 'mine'">
-        <div class="table-responsive">
+        <div class="table-responsive" x-show="mine.length > 0">
             <table class="table table-sm align-middle pql-list-table">
                 <thead>
                     <tr>
@@ -91,13 +91,13 @@
                             </td>
                         </tr>
                     </template>
-                    <tr x-show="loaded && mine.length === 0">
-                        <td colspan="6" class="text-muted">
-                            No requests yet — use the &ldquo;Request access&rdquo; button on a table page.
-                        </td>
-                    </tr>
                 </tbody>
             </table>
+        </div>
+        <div x-show="loaded && mine.length === 0" x-cloak>
+            {% with icon="bi-send", title="No requests yet", message="Use the “Request access” button on a table page.", flush=True %}
+              {% include "components/empty.html" with context %}
+            {% endwith %}
         </div>
     </div>
 

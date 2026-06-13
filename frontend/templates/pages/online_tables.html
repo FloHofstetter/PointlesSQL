@@ -88,7 +88,7 @@
         </div>
     </template>
 
-    <div class="table-responsive">
+    <div class="table-responsive" x-show="tables.length > 0 || loading">
         <table class="table table-sm align-middle pql-list-table">
             <thead>
                 <tr>
@@ -131,11 +131,13 @@
                         </td>
                     </tr>
                 </template>
-                <tr x-show="!loading && tables.length === 0">
-                    <td colspan="8" class="text-muted">No online tables yet.</td>
-                </tr>
             </tbody>
         </table>
+    </div>
+    <div x-show="!loading && tables.length === 0" x-cloak>
+        {% with icon="bi-database-fill-gear", title="No online tables yet", message="Create one to sync a Delta table for low-latency lookups.", flush=True %}
+          {% include "components/empty.html" with context %}
+        {% endwith %}
     </div>
 
     <template x-if="lookupTable">

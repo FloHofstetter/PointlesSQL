@@ -59,7 +59,7 @@
 
     <div class="alert alert-danger" x-show="error" x-text="error" x-cloak></div>
 
-    <div class="table-responsive">
+    <div class="table-responsive" x-show="endpoints.length > 0">
         <table class="table table-sm align-middle pql-list-table">
             <thead>
                 <tr>
@@ -124,13 +124,13 @@
                         </td>
                     </tr>
                 </template>
-                <tr x-show="endpoints.length === 0">
-                    <td colspan="6" class="text-muted">
-                        No serving endpoints yet. Create one from a registry model above.
-                    </td>
-                </tr>
             </tbody>
         </table>
+    </div>
+    <div x-show="endpoints.length === 0" x-cloak>
+        {% with icon="bi-rocket-takeoff", title="No serving endpoints yet", message="Create one from a registry model above.", flush=True %}
+          {% include "components/empty.html" with context %}
+        {% endwith %}
     </div>
 </div>
 {% endblock %}

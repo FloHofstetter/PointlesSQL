@@ -80,7 +80,7 @@
             </div>
             <div class="alert alert-danger mt-2 mb-0" x-show="error" x-text="error" x-cloak></div>
         </div>
-        <div class="table-responsive">
+        <div class="table-responsive" x-show="rules.length > 0">
             <table class="table table-sm align-middle mb-0 pql-list-table">
                 <thead>
                     <tr>
@@ -121,14 +121,13 @@
                             </td>
                         </tr>
                     </template>
-                    <tr x-show="rules.length === 0">
-                        <td colspan="7" class="text-muted p-3">
-                            No rules yet. A common starter: key <code>pii</code>,
-                            effect <code>mask</code>, expression <code>redact</code>.
-                        </td>
-                    </tr>
                 </tbody>
             </table>
+        </div>
+        <div x-show="rules.length === 0">
+            {% with icon="bi-shield-shaded", title="No tag policy rules yet", message="A common starter: key pii, effect mask, expression redact.", flush=True %}
+              {% include "components/empty.html" with context %}
+            {% endwith %}
         </div>
     </div>
 

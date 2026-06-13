@@ -67,7 +67,7 @@
     </div>
 
     <div class="table-responsive">
-        <table class="table table-sm align-middle pql-list-table">
+        <table class="table table-sm align-middle pql-list-table" x-show="pipelines.length > 0">
             <thead>
                 <tr>
                     <th>Pipeline</th>
@@ -86,11 +86,13 @@
                         <td data-label="Updated" class="text-muted small" x-text="p.updated_at"></td>
                     </tr>
                 </template>
-                <tr x-show="pipelines.length === 0">
-                    <td colspan="3" class="text-muted">No pipelines yet.</td>
-                </tr>
             </tbody>
         </table>
+    </div>
+    <div x-show="pipelines.length === 0" x-cloak>
+        {% with icon="bi-diagram-3", title="No pipelines yet", message="Create a declarative pipeline to refresh materialized views and streaming tables in dependency order.", flush=True %}
+          {% include "components/empty.html" with context %}
+        {% endwith %}
     </div>
 </div>
 {% endblock %}

@@ -64,7 +64,7 @@
 
     <div class="alert alert-danger" x-show="error" x-text="error" x-cloak></div>
 
-    <div class="table-responsive">
+    <div class="table-responsive" x-show="providers.length > 0">
         <table class="table table-sm align-middle pql-list-table">
             <thead>
                 <tr>
@@ -92,11 +92,13 @@
                         </td>
                     </tr>
                 </template>
-                <tr x-show="providers.length === 0">
-                    <td colspan="4" class="text-muted">No providers registered yet.</td>
-                </tr>
             </tbody>
         </table>
+    </div>
+    <div x-show="providers.length === 0">
+        {% with icon="bi-box-arrow-in-down", title="No providers registered yet", message="Register a provider above with its endpoint and bearer token to browse shared tables.", flush=True %}
+          {% include "components/empty.html" with context %}
+        {% endwith %}
     </div>
 
     <template x-if="active">

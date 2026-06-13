@@ -73,6 +73,7 @@
         </div>
     </div>
 
+    {% if terms %}
     <div class="table-responsive">
         <table class="table table-sm align-middle pql-list-table">
             <thead>
@@ -122,11 +123,14 @@
                         </template>
                     </td>
                 </tr>
-                {% else %}
-                <tr><td colspan="5" class="text-muted">No glossary terms yet. Create one to start binding columns.</td></tr>
                 {% endfor %}
             </tbody>
         </table>
     </div>
+    {% else %}
+    {% with icon="bi-journal-text", title="No glossary terms yet", message="Create one to start binding columns.", flush=True %}
+      {% include "components/empty.html" with context %}
+    {% endwith %}
+    {% endif %}
 </div>
 {% endblock %}

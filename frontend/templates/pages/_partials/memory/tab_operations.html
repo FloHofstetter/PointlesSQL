@@ -45,7 +45,8 @@
     </div>
 
     <div class="table-responsive">
-        <table class="table table-sm table-hover" data-testid="operations-table">
+        <table class="table table-sm table-hover" data-testid="operations-table"
+               x-show="operations.length > 0 || loading">
             <thead>
                 <tr>
                     <th class="small text-muted">When</th>
@@ -59,11 +60,6 @@
                 <template x-if="loading">
                     <tr>
                         <td colspan="5" class="text-muted small">Loading…</td>
-                    </tr>
-                </template>
-                <template x-if="!loading && operations.length === 0">
-                    <tr>
-                        <td colspan="5" class="text-muted small">No operations match the filter.</td>
                     </tr>
                 </template>
                 <template x-for="op in operations" :key="op.id">
@@ -88,5 +84,10 @@
                 </template>
             </tbody>
         </table>
+    </div>
+    <div x-show="!loading && operations.length === 0" x-cloak>
+        {% with icon="bi-clock-history", title="No operations match the filter", message="Adjust the recall filters above, or run an agent operation to populate the operation tape.", flush=True %}
+          {% include "components/empty.html" with context %}
+        {% endwith %}
     </div>
 </div>

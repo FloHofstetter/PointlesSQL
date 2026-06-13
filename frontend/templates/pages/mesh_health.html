@@ -59,7 +59,7 @@
     </div>
 
     <div class="card" x-show="!loading" x-cloak>
-        <div class="table-responsive">
+        <div class="table-responsive" x-show="products.length > 0">
             <table class="table table-sm align-middle mb-0">
                 <thead>
                     <tr><th>Product</th><th>Band</th><th>Passed</th><th>Failed</th><th>Unmeasured</th><th>Pass rate</th></tr>
@@ -75,11 +75,13 @@
                             <td x-text="rate(p.pass_rate)"></td>
                         </tr>
                     </template>
-                    <tr x-show="products.length === 0">
-                        <td colspan="6" class="text-muted small">No products in this workspace.</td>
-                    </tr>
                 </tbody>
             </table>
+        </div>
+        <div x-show="products.length === 0">
+            {% with icon="bi-heart-pulse", title="No products in this workspace", message="Publish a data product to see its SLO health roll up here.", flush=True %}
+              {% include "components/empty.html" with context %}
+            {% endwith %}
         </div>
     </div>
 </div>

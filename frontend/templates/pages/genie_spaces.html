@@ -54,7 +54,7 @@
 
     <div class="alert alert-danger" x-show="error" x-text="error" x-cloak></div>
 
-    <div class="table-responsive">
+    <div class="table-responsive" x-show="spaces.length > 0 || loading">
         <table class="table table-sm align-middle pql-list-table">
             <thead>
                 <tr>
@@ -78,11 +78,13 @@
                             x-text="s.updated_at ? s.updated_at.slice(0, 16).replace('T', ' ') : ''"></td>
                     </tr>
                 </template>
-                <tr x-show="!loading && spaces.length === 0">
-                    <td colspan="5" class="text-muted">No Genie spaces yet — create one to start asking.</td>
-                </tr>
             </tbody>
         </table>
+    </div>
+    <div x-show="!loading && spaces.length === 0" x-cloak>
+        {% with icon="bi-stars", title="No Genie spaces yet", message="Create one to start asking.", flush=True %}
+          {% include "components/empty.html" with context %}
+        {% endwith %}
     </div>
 </div>
 {% endblock %}

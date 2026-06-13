@@ -66,6 +66,7 @@
         </div>
     </div>
 
+    {% if dashboards %}
     <div class="table-responsive">
         <table class="table table-sm align-middle pql-list-table">
             <thead>
@@ -94,11 +95,14 @@
                     <td data-label="Updated" class="text-muted small">{{ relative_time(d.updated_at) }}</td>
                     <td data-label="Owner" class="text-muted small">{{ owners.get(d.owner_id, '—') }}</td>
                 </tr>
-                {% else %}
-                <tr><td colspan="6" class="text-muted">No dashboards yet. Create one to start charting.</td></tr>
                 {% endfor %}
             </tbody>
         </table>
     </div>
+    {% else %}
+    {% with icon="bi-bar-chart", title="No dashboards yet", message="Create one to start charting.", flush=True %}
+      {% include "components/empty.html" with context %}
+    {% endwith %}
+    {% endif %}
 </div>
 {% endblock %}

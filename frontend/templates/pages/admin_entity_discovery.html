@@ -30,7 +30,7 @@
 
     <div class="card">
         <div class="card-body p-0">
-            <table class="table table-sm mb-0 align-middle">
+            <table class="table table-sm mb-0 align-middle" x-show="candidates.length > 0 || loading">
                 <thead class="table-light">
                     <tr>
                         <th>Source</th>
@@ -57,13 +57,13 @@
                             </td>
                         </tr>
                     </template>
-                    <tr x-show="candidates.length === 0 && !loading" x-cloak>
-                        <td colspan="5" class="text-center text-muted py-4">
-                            No pending candidates.
-                        </td>
-                    </tr>
                 </tbody>
             </table>
+            <div x-show="candidates.length === 0 && !loading" x-cloak>
+              {% with icon="bi-search", title="No pending candidates", message="Auto-discovered same-as candidates surface here for review.", flush=True %}
+                {% include "components/empty.html" with context %}
+              {% endwith %}
+            </div>
         </div>
     </div>
 

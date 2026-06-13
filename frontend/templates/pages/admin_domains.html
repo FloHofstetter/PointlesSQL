@@ -86,6 +86,7 @@
 </div>
 
 <h2 class="h5 mb-2">Active domains</h2>
+{% if active_domains %}
 <div class="table-responsive mb-4">
     <table class="table table-sm align-middle pql-list-table">
         <thead>
@@ -158,12 +159,15 @@
                     </div>
                 </td>
             </tr>
-            {% else %}
-            <tr><td colspan="7" class="text-muted">No active domains. Create one to start assigning products.</td></tr>
             {% endfor %}
         </tbody>
     </table>
 </div>
+{% else %}
+{% with icon="bi-diagram-3", title="No active domains", message="Create one to start assigning products.", flush=True %}
+  {% include "components/empty.html" with context %}
+{% endwith %}
+{% endif %}
 
 {% if archived_domains %}
 <h2 class="h5 mb-2 text-muted">Archived</h2>

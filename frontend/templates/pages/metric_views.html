@@ -56,7 +56,7 @@
 
     <div class="alert alert-danger" x-show="error" x-text="error" x-cloak></div>
 
-    <div class="table-responsive" x-show="schema" x-cloak>
+    <div class="table-responsive" x-show="schema && views.length > 0" x-cloak>
         <table class="table table-sm align-middle pql-list-table">
             <thead>
                 <tr>
@@ -89,11 +89,13 @@
                         </td>
                     </tr>
                 </template>
-                <tr x-show="views.length === 0">
-                    <td colspan="6" class="text-muted">No metric views in this schema yet.</td>
-                </tr>
             </tbody>
         </table>
+    </div>
+    <div x-show="schema && views.length === 0" x-cloak>
+        {% with icon="bi-rulers", title="No metric views in this schema yet", message="Create one to define dimensions and measures.", flush=True %}
+          {% include "components/empty.html" with context %}
+        {% endwith %}
     </div>
 
     <template x-if="queryView">

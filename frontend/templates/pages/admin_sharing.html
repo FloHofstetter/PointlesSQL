@@ -55,7 +55,7 @@
                 </div>
             </div>
 
-            <div class="table-responsive">
+            <div class="table-responsive" x-show="shares.length > 0">
                 <table class="table table-sm align-middle pql-list-table mb-0">
                     <thead>
                         <tr>
@@ -143,11 +143,13 @@
                                 </td>
                             </tr>
                         </template>
-                        <tr x-show="shares.length === 0">
-                            <td colspan="4" class="text-muted">No shares yet. Create one to start sharing tables.</td>
-                        </tr>
                     </tbody>
                 </table>
+            </div>
+            <div x-show="shares.length === 0">
+                {% with icon="bi-box-seam", title="No shares yet", message="Create one to start sharing tables over the open Delta Sharing protocol.", flush=True %}
+                  {% include "components/empty.html" with context %}
+                {% endwith %}
             </div>
         </div>
     </div>
@@ -176,7 +178,7 @@
                 </div>
             </div>
 
-            <div class="table-responsive">
+            <div class="table-responsive" x-show="recipients.length > 0">
                 <table class="table table-sm align-middle pql-list-table mb-0">
                     <thead>
                         <tr>
@@ -204,11 +206,13 @@
                                 </td>
                             </tr>
                         </template>
-                        <tr x-show="recipients.length === 0">
-                            <td colspan="4" class="text-muted">No recipients yet. Create one to mint its bearer token.</td>
-                        </tr>
                     </tbody>
                 </table>
+            </div>
+            <div x-show="recipients.length === 0">
+                {% with icon="bi-person-badge", title="No recipients yet", message="Create one to mint its bearer token for the open Delta Sharing protocol.", flush=True %}
+                  {% include "components/empty.html" with context %}
+                {% endwith %}
             </div>
         </div>
     </div>

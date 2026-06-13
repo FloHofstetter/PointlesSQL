@@ -35,7 +35,7 @@
 
     <div class="card">
         <div class="card-body p-0">
-            <table class="table table-sm mb-0 align-middle">
+            <table class="table table-sm mb-0 align-middle" x-show="modules.length > 0 || loading">
                 <thead class="table-light">
                     <tr>
                         <th>Name</th>
@@ -67,13 +67,13 @@
                             </td>
                         </tr>
                     </template>
-                    <tr x-show="modules.length === 0 && !loading" x-cloak>
-                        <td colspan="5" class="text-center text-muted py-4">
-                            No policy modules yet.
-                        </td>
-                    </tr>
                 </tbody>
             </table>
+            <div x-show="modules.length === 0 && !loading" x-cloak>
+              {% with icon="bi-shield-check", title="No policy modules yet", message="Author an ABAC module to layer rules on top of the standard policy.", flush=True %}
+                {% include "components/empty.html" with context %}
+              {% endwith %}
+            </div>
         </div>
     </div>
 
