@@ -17,7 +17,7 @@
 {% block content %}
 <div x-data='mlTableContext({{ catalog_name|tojson }}, {{ schema_name|tojson }}, {{ table_name|tojson }})'>
 <div x-data='dbtTableContext({{ catalog_name|tojson }}, {{ schema_name|tojson }}, {{ table_name|tojson }})'>
-<div class="d-flex align-items-center gap-2 mb-4"
+<div class="d-flex flex-wrap align-items-center gap-2 mb-4"
      x-data='pqlStarToggle({kind: "table", catalog: {{ catalog_name|tojson }}, schema: {{ schema_name|tojson }}, table: {{ table_name|tojson }}})'>
  <i class="bi bi-table fs-3"></i>
  <h1 class="h3 mb-0">{{ catalog_name }}.{{ schema_name }}.{{ table_name }}</h1>
