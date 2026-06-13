@@ -41,22 +41,41 @@ function _rowsOf(state) {
 function _itemsFor(state, row, opts) {
   if (!row) return [];
   if (row.kind === 'notebook') {
-    const items = [
-      {
-        key: 'open',
-        label: 'Open in editor',
-        icon: 'bi-pencil-square',
-        onClick: () => state.openEditor(row.path),
-      },
-      {
-        key: 'open-new-tab',
-        label: 'Open in new tab',
-        icon: 'bi-box-arrow-up-right',
-        onClick: () => {
-          window.open('/notebooks/edit/' + encodeURI(row.path), '_blank', 'noopener,noreferrer');
-        },
-      },
-    ];
+    // The in-browser editor only handles .py (jupytext Percent)
+    // notebooks; an .ipynb path 422s there. Offer the editor for .py
+    // rows and route .ipynb rows to the workspace browser instead.
+    const items =
+      row.format === 'py'
+        ? [
+            {
+              key: 'open',
+              label: 'Open in editor',
+              icon: 'bi-pencil-square',
+              onClick: () => state.openEditor(row.path),
+            },
+            {
+              key: 'open-new-tab',
+              label: 'Open in new tab',
+              icon: 'bi-box-arrow-up-right',
+              onClick: () => {
+                window.open(
+                  '/notebooks/edit/' + encodeURI(row.path),
+                  '_blank',
+                  'noopener,noreferrer'
+                );
+              },
+            },
+          ]
+        : [
+            {
+              key: 'open',
+              label: 'Open in workspace',
+              icon: 'bi-folder2-open',
+              onClick: () => {
+                window.location.href = '/notebooks/workspace?path=' + encodeURI(row.path);
+              },
+            },
+          ];
     if (typeof state.schedule === 'function') {
       items.push({
         key: 'schedule',
