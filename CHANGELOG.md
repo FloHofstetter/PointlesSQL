@@ -172,6 +172,20 @@ defined in ``scripts/clusters.json``. -->
 
 ### Fixed
 
+- **UX-loop click-path sweep (phase 212).** Walking the live click
+  paths instead of static screenshots: the default workspace's
+  description no longer leaks release jargon ("Auto-created by Sprint
+  28.0 bootstrap … pre-dates Phase 28's workspace isolation") into the
+  workspace header — a forward data migration rewrites it, guarded on
+  the old seeded text. The "Pin entity" modal, which asked an admin to
+  paste a numeric `social_target_id` looked up "via the entity's detail
+  page network panel" (browser devtools) — and was effectively unusable
+  because no entity page offers a pin action — is now a typeahead over
+  `/api/search`: search a catalog / schema / table / data product by
+  name and pin it. The pins API accepts a `{kind, ref}` pair and
+  resolves it server-side through the shared social-target resolver;
+  the legacy `{social_target_id}` body still works.
+
 - **Bootstrap UI-audit fixes (phase 211).** Acting on a full headful
   audit (774 API routes + 169 screenshots graded against Bootstrap 5.3):
   the light theme's decorative aurora was toned down (the over-saturated

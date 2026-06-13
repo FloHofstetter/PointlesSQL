@@ -3854,6 +3854,35 @@ PointlesSQL
 │       │   Kapazität („Budget erreicht in N Tagen") + Cost am Agent-Run +
 │       │   FinOps-Grafana-Panels.  estimated_cost = Schätzung, kein $.
 │   │
+├── Phase 212 — UX-Loop: interaktions-getriebener Klickpfad-Sweep  🔄 laufend (local, 2026-06-13)
+│   │
+│   │   Anders als Phase 211 (statischer Screenshot-Audit) werden hier
+│   │   die Klickpfade *live* begangen (Playwright + a11y-Snapshot),
+│   │   jede Fläche sofort bewertet und schlechte UX an der Quelle
+│   │   gefixt.  Befunde + Fixes landen pro Iteration.
+│   │
+│   ├── 212.1 — Default-Workspace-Beschreibung entjargonisiert  ✅ shipped (local, 2026-06-13, `b43a14b0`)
+│   │       Die Seed-Beschreibung des Default-Workspace zeigte „Auto-
+│   │       created by Sprint 28.0 bootstrap … pre-dates Phase 28's
+│   │       workspace isolation" direkt im Header — Release-Jargon, das
+│   │       die no-phase-refs-Gate nicht greift (Daten-Zeile, kein
+│   │       Template-String).  Forward-Daten-Migration schreibt die
+│   │       Beschreibung um, geschützt auf den alten Seed-Text (Hand-
+│   │       Edits bleiben unangetastet).
+│   │
+│   └── 212.2 — Workspace-Pin per Suche statt Roh-ID  ✅ shipped (local, 2026-06-13, `4d265073`)
+│   │       Das „Pin entity"-Modal verlangte eine numerische
+│   │       social_target_id, nachzuschlagen „via the entity's detail
+│   │       page network panel" (= Browser-DevTools); kein Entity-Page
+│   │       bietet eine Pin-Aktion → Feature praktisch unbenutzbar +
+│   │       literale Doppel-Backticks (kein Markdown im Template).
+│   │       Jetzt Typeahead über `/api/search`: Name tippen, Catalog/
+│   │       Schema/Table/Data-Product wählen, fertig.  POST nimmt ein
+│   │       `{kind, ref}`-Paar und löst es serverseitig über denselben
+│   │       `get_or_create_target`/`resolve_dp_target`-Resolver auf wie
+│   │       der Rest des Social-Stacks; `{social_target_id}` bleibt
+│   │       kompatibel.  Dup/unresolvable → klare 409/400 inline.
+│   │
 ├── Phase 211 — Bootstrap-UI-Audit: Fixes aus dem 169-Screenshot-Sweep  ✅ shipped (local, 2026-06-13)
 │   │
 │   │   Umsetzung der Befunde aus `ui-audit/IMPROVEMENT-PLAN.md` (voller
