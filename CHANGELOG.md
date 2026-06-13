@@ -191,7 +191,11 @@ defined in ``scripts/clusters.json``. -->
   stayed blank are fixed: the mesh graph (stuck on "Loading…" because
   render raced its `x-show` reveal) now renders after the card is
   shown, and the data-product interop neighbourhood graph renders
-  behind an IntersectionObserver once its tab is opened.
+  behind an IntersectionObserver once its tab is opened. The notebook
+  workspace sidebar and right-click menu no longer link `.ipynb`
+  notebooks to the jupytext-`.py`-only editor (which 422'd with
+  "Something went wrong"); `.ipynb` rows now open the workspace
+  browser, while `.py` rows still open the editor.
 
 - **Bootstrap UI-audit fixes (phase 211).** Acting on a full headful
   audit (774 API routes + 169 screenshots graded against Bootstrap 5.3):

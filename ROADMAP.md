@@ -3897,12 +3897,24 @@ PointlesSQL
 │   │       wurde nie sichtbar.  render() jetzt im Makrotask: Alpine deckt
 │   │       die Card (600 px) erst auf, dann misst+zeichnet cytoscape.
 │   │
-│   └── 212.5 — DP-Interop-Graph blieb leer  ✅ shipped (local, 2026-06-13, `2eb5e0b5`)
+│   ├── 212.5 — DP-Interop-Graph blieb leer  ✅ shipped (local, 2026-06-13, `2eb5e0b5`)
 │   │       Gleiche Klasse, anderer Auslöser: der Neighbourhood-Graph
 │   │       liegt in einem Bootstrap-Tab (display:none bis geöffnet),
 │   │       render() lief im init-`$nextTick` → cytoscape maß 0×0, blieb
 │   │       leer auch nach Tab-Klick.  Render jetzt hinter einem
 │   │       IntersectionObserver: erst wenn der Container sichtbar wird.
+│   │
+│   └── 212.6 — `.ipynb`-Notebooks führten in den 422-Editor  ✅ shipped (local, 2026-06-13, `0fefeb93`/`1b31cb9b`)
+│   │       Der In-Browser-Editor akzeptiert nur `.py` (jupytext); ein
+│   │       `.ipynb`-Pfad 422t mit „Something went wrong".  Sidebar-Tree
+│   │       UND Rechtsklick-Menü verlinkten aber jedes Notebook (auch
+│   │       `.ipynb`) in den Editor → toter Klickpfad auf
+│   │       getting_started.ipynb + den Smoke-Notebooks.  `.ipynb` zeigt
+│   │       jetzt auf den Workspace-Browser (Schedule/Run); `.py` weiter
+│   │       in den Editor — wie die Edit-Button-Gating im Haupt-Tree.
+│   │       Verifiziert nicht-Bugs (kein Fix): Lineage-DAG rendert korrekt
+│   │       (Synthetik-Test), Runs-Tabelle ist responsiv (Card-Collapse),
+│   │       Create/Rename erzwingen `.py`.
 │   │
 ├── Phase 211 — Bootstrap-UI-Audit: Fixes aus dem 169-Screenshot-Sweep  ✅ shipped (local, 2026-06-13)
 │   │
