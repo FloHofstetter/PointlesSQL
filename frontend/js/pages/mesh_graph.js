@@ -21,7 +21,14 @@ export function meshGraph() {
         this.nodeCount = (data.nodes || []).length;
         this.edgeCount = (data.edges || []).length;
         this.loading = false;
-        this.$nextTick(() => this.render(data));
+        // Let Alpine's reactive flush fully settle first — the graph card
+        // is revealed by ``x-show="!loading"`` and only then has a non-zero
+        // size for cytoscape to measure. Rendering inside ``$nextTick``
+        // races that reveal: cytoscape's synchronous canvas/layout work
+        // interleaves with the still-pending show effect, sizing the graph
+        // to a 0×0 container and leaving the loading state stuck. A
+        // macrotask runs after the card is shown and laid out.
+        setTimeout(() => this.render(data), 0);
       } catch (e) {
         this.error = 'Failed to load mesh graph: ' + e.message;
         this.loading = false;
