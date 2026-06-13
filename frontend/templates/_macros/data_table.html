@@ -1,0 +1,37 @@
+{# Responsive data-table wrapper.
+
+   Standardises the chrome the audit found missing on hand-rolled
+   tables: a ``.table-responsive`` scroll wrapper (so wide tables never
+   clip or push the layout) around a ``.table .table-hover
+   .align-middle`` element.  The caller supplies the ``<thead>`` +
+   ``<tbody>``; numeric columns should still carry ``.text-end`` on
+   their own ``<th>``/``<td>`` (the macro can't know which are numeric).
+
+   For a long, growing log that should keep its header visible while
+   the body scrolls, pass ``max_height`` (a CSS length) and add the
+   ``pql-thead-sticky`` class to the caller's ``<thead>``.
+
+   Usage:
+
+     {% from "_macros/data_table.html" import data_table %}
+     {% call data_table(classes='table-sm', table_id='queries') %}
+         <thead class="pql-thead-sticky">…</thead>
+         <tbody>…</tbody>
+     {% endcall %}
+
+   Args:
+     table_id   — optional id on the ``<table>``.
+     classes    — extra classes on the ``<table>`` (e.g. ``table-sm``,
+                  ``table-striped``).
+     max_height — optional CSS length; when set the responsive wrapper
+                  becomes a fixed-height vertical scroller (pairs with a
+                  ``pql-thead-sticky`` thead for a pinned header).
+     hover      — include ``.table-hover`` (default True). #}
+
+{% macro data_table(table_id=None, classes='', max_height=None, hover=True) %}
+<div class="table-responsive"{% if max_height %} style="max-height: {{ max_height }}; overflow-y: auto;"{% endif %}>
+    <table class="table{% if hover %} table-hover{% endif %} align-middle mb-0{% if classes %} {{ classes }}{% endif %}"{% if table_id %} id="{{ table_id }}"{% endif %}>
+        {{ caller() }}
+    </table>
+</div>
+{% endmacro %}

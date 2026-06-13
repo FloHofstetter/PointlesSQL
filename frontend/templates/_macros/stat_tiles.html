@@ -1,0 +1,48 @@
+{# KPI / metric tile grid.
+
+   Replaces hand-rolled bordered boxes in flex rows with a uniform
+   Bootstrap card grid: equal-height, centred, with a weighted value
+   and a quiet label.  Lays out as ``.row .row-cols-2 .row-cols-md-N``
+   so tiles reflow cleanly from phone (2-up) to desktop.
+
+   Each tile is a dict.  Use ``value`` for a server-rendered number, or
+   ``x_text`` for an Alpine expression when the value is bound at runtime
+   (the two are mutually exclusive; ``x_text`` wins).
+
+   Usage:
+
+     {% from "_macros/stat_tiles.html" import stat_tiles %}
+     {{ stat_tiles([
+          {'label': 'Products', 'x_text': "health?.totals?.products ?? '—'"},
+          {'label': 'Green', 'x_text': "health?.totals?.green ?? '—'", 'variant': 'success'},
+          {'label': 'Cost', 'value': total_cost, 'hint': 'last 30 days'},
+        ], cols=4) }}
+
+   Tile keys:
+     label   — quiet caption above the value (required).
+     value   — server-rendered value (string/number).
+     x_text  — Alpine expression for a runtime-bound value.
+     variant — ``success``/``danger``/``warning``/``info`` tints the
+               value text and adds a coloured left border.
+     hint    — optional small sub-line under the value.
+
+   Args:
+     tiles — list of tile dicts.
+     cols  — tiles per row at >=md (default 4). #}
+
+{% macro stat_tiles(tiles, cols=4) %}
+<div class="row row-cols-2 row-cols-md-{{ cols }} g-3 mb-4">
+    {% for t in tiles %}
+    <div class="col">
+        <div class="card text-center h-100{% if t.variant %} border-start border-4 border-{{ t.variant }}{% endif %}">
+            <div class="card-body">
+                <div class="text-body-secondary small text-uppercase">{{ t.label }}</div>
+                <div class="fs-2 fw-semibold mb-0{% if t.variant %} text-{{ t.variant }}{% endif %}"
+                     {%- if t.x_text %} x-text="{{ t.x_text }}"{% endif %}>{% if not t.x_text %}{{ t.value if t.value is not none else '—' }}{% endif %}</div>
+                {% if t.hint %}<div class="text-body-secondary small">{{ t.hint }}</div>{% endif %}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endmacro %}

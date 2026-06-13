@@ -1,0 +1,51 @@
+{# Bootstrap alert for failure / disabled states.
+
+   One macro for the two recurring non-content states the audit flagged:
+
+     - a *failure*  — render the real message in an ``alert-danger`` with
+       an octagon icon, and tuck any raw diagnostic blob (a JSON error,
+       a stack line) behind a ``<details>`` so it is available but not
+       shouted; pair with a retry affordance in the caller if relevant.
+     - a *disabled* state — a feature switched off by configuration is
+       not a crash; render it as an ``alert-warning`` with a gear icon
+       and name the env var in the message, so it reads as "turn this on"
+       rather than "something broke".
+
+   Usage:
+
+     {% from "_macros/alert_box.html" import alert_box %}
+     {{ alert_box('danger', title='Query failed', message=err, icon='x-octagon', details=raw_json) }}
+     {{ alert_box('warning', title='AI assistant disabled',
+                  message='Set ANTHROPIC_API_KEY on the server and reload.', icon='gear') }}
+
+   Args:
+     variant     — Bootstrap contextual suffix (``danger``/``warning``/
+                   ``info``/``success``/``secondary``).  Default ``danger``.
+     title       — bold heading line (rendered as ``.alert-heading``).
+     message     — body text.  May be omitted when a ``{% call %}`` body
+                   supplies richer content instead.
+     icon        — Bootstrap Icons name without ``bi-``.  Defaults by
+                   variant (danger→x-octagon, warning→gear, else info-circle).
+     details     — optional raw diagnostic string shown in a collapsed
+                   ``<details>``.
+     dismissible — if truthy, adds the BS close button + fade classes.
+     classes     — extra utility classes on the alert root. #}
+
+{% macro alert_box(variant='danger', title=None, message=None, icon=None, details=None, dismissible=False, classes='') %}
+{% set _icon = icon or ('x-octagon' if variant == 'danger' else ('gear' if variant == 'warning' else 'info-circle')) %}
+<div class="alert alert-{{ variant }}{% if dismissible %} alert-dismissible fade show{% endif %}{% if classes %} {{ classes }}{% endif %}" role="alert">
+    {% if title %}
+    <div class="alert-heading fw-semibold mb-1 d-flex align-items-center">
+        <i class="bi bi-{{ _icon }} me-2"></i><span>{{ title }}</span>
+    </div>
+    {% endif %}
+    {% if message %}<div class="small{% if title %} ms-4{% endif %}">{{ message }}</div>{% endif %}
+    {% if details %}
+    <details class="mt-2 small{% if title %} ms-4{% endif %}">
+        <summary class="text-decoration-underline" style="cursor: pointer;">Details</summary>
+        <pre class="mb-0 mt-1 small text-break">{{ details }}</pre>
+    </details>
+    {% endif %}
+    {% if dismissible %}<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>{% endif %}
+</div>
+{% endmacro %}

@@ -1,0 +1,48 @@
+{# Collapsible "What is this page?" disclosure.
+
+   A flush Bootstrap accordion that hides an explanatory paragraph
+   behind a single toggle.  Several admin pages hand-rolled this exact
+   block (same accordion-flush + info-circle + "What is this page?"
+   button); this macro centralises it so the chevron rotation,
+   aria-expanded wiring and focus ring come from one place.  Pure
+   Bootstrap (data-bs-toggle="collapse") — no Alpine, no per-page JS.
+
+   Usage:
+
+     {% from "_macros/page_help.html" import page_help %}
+     {% call page_help('api-keys') %}
+         Bearer tokens for plugin / agent / CLI access. Plaintext is
+         shown <strong>once</strong> at creation …
+     {% endcall %}
+
+   Args:
+     slug   — short unique key per page; the accordion/collapse ids
+              derive from it (must be unique in the rendered document).
+     title  — toggle label.  Defaults to "What is this page?".
+     icon   — Bootstrap Icons name (without the ``bi-`` prefix).
+              Defaults to ``info-circle``. #}
+
+{% macro page_help(slug, title='What is this page?', icon='info-circle') %}
+<div class="accordion accordion-flush mb-3" id="info-accordion-{{ slug }}">
+    <div class="accordion-item">
+        <h2 class="accordion-header">
+            <button class="accordion-button collapsed small fw-normal"
+                    type="button"
+                    data-bs-toggle="collapse"
+                    data-bs-target="#info-collapse-{{ slug }}"
+                    aria-expanded="false"
+                    aria-controls="info-collapse-{{ slug }}">
+                <i class="bi bi-{{ icon }} me-2"></i>
+                {{ title }}
+            </button>
+        </h2>
+        <div id="info-collapse-{{ slug }}"
+             class="accordion-collapse collapse"
+             data-bs-parent="#info-accordion-{{ slug }}">
+            <div class="accordion-body small">
+                {{ caller() }}
+            </div>
+        </div>
+    </div>
+</div>
+{% endmacro %}
