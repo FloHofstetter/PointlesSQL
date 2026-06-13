@@ -184,7 +184,14 @@ defined in ``scripts/clusters.json``. -->
   `/api/search`: search a catalog / schema / table / data product by
   name and pin it. The pins API accepts a `{kind, ref}` pair and
   resolves it server-side through the shared social-target resolver;
-  the legacy `{social_target_id}` body still works.
+  the legacy `{social_target_id}` body still works. The data-product
+  header stopped repeating its identifier ("demo.sales demo.sales") —
+  the muted ref now shows only when it differs from the name. Two
+  cytoscape graphs that rendered into hidden 0×0 containers and so
+  stayed blank are fixed: the mesh graph (stuck on "Loading…" because
+  render raced its `x-show` reveal) now renders after the card is
+  shown, and the data-product interop neighbourhood graph renders
+  behind an IntersectionObserver once its tab is opened.
 
 - **Bootstrap UI-audit fixes (phase 211).** Acting on a full headful
   audit (774 API routes + 169 screenshots graded against Bootstrap 5.3):

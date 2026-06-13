@@ -3870,7 +3870,7 @@ PointlesSQL
 │   │       Beschreibung um, geschützt auf den alten Seed-Text (Hand-
 │   │       Edits bleiben unangetastet).
 │   │
-│   └── 212.2 — Workspace-Pin per Suche statt Roh-ID  ✅ shipped (local, 2026-06-13, `4d265073`)
+│   ├── 212.2 — Workspace-Pin per Suche statt Roh-ID  ✅ shipped (local, 2026-06-13, `4d265073`)
 │   │       Das „Pin entity"-Modal verlangte eine numerische
 │   │       social_target_id, nachzuschlagen „via the entity's detail
 │   │       page network panel" (= Browser-DevTools); kein Entity-Page
@@ -3882,6 +3882,27 @@ PointlesSQL
 │   │       `get_or_create_target`/`resolve_dp_target`-Resolver auf wie
 │   │       der Rest des Social-Stacks; `{social_target_id}` bleibt
 │   │       kompatibel.  Dup/unresolvable → klare 409/400 inline.
+│   │
+│   ├── 212.3 — Data-Product-Titel nicht doppelt  ✅ shipped (local, 2026-06-13, `0b5b21da`)
+│   │       Der DP-Header zeigte Name + gemuteten Ref; da Name meist =
+│   │       Ref (catalog.schema), las er „demo.sales demo.sales".  Ref
+│   │       jetzt nur sichtbar, wenn er sich vom Namen unterscheidet.
+│   │
+│   ├── 212.4 — Mesh-Graph hing auf „Loading…"  ✅ shipped (local, 2026-06-13, `404927b4`)
+│   │       Die Graph-Card ist `x-show="!loading"`-gegated; render()
+│   │       lief im `$nextTick` direkt nach `loading=false` und feuerte
+│   │       cytoscapes synchrone Canvas-/Layout-Arbeit im selben Alpine-
+│   │       Zyklus wie das noch ausstehende show-Effect → cytoscape maß
+│   │       einen 0×0-Container, das x-show-Effect blieb hängen, die Card
+│   │       wurde nie sichtbar.  render() jetzt im Makrotask: Alpine deckt
+│   │       die Card (600 px) erst auf, dann misst+zeichnet cytoscape.
+│   │
+│   └── 212.5 — DP-Interop-Graph blieb leer  ✅ shipped (local, 2026-06-13, `2eb5e0b5`)
+│   │       Gleiche Klasse, anderer Auslöser: der Neighbourhood-Graph
+│   │       liegt in einem Bootstrap-Tab (display:none bis geöffnet),
+│   │       render() lief im init-`$nextTick` → cytoscape maß 0×0, blieb
+│   │       leer auch nach Tab-Klick.  Render jetzt hinter einem
+│   │       IntersectionObserver: erst wenn der Container sichtbar wird.
 │   │
 ├── Phase 211 — Bootstrap-UI-Audit: Fixes aus dem 169-Screenshot-Sweep  ✅ shipped (local, 2026-06-13)
 │   │
