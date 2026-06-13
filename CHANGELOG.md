@@ -241,6 +241,24 @@ defined in ``scripts/clusters.json``. -->
   GETs a POST-only route (405); and the audit by-table status column is
   colour-coded instead of uniformly grey.
 
+- **UX-audit fixes, wave 2 (phase 212.14).** The next batch from the
+  audit backlog. Column-statistics sparklines drawn while the table's
+  Columns tab is hidden sized to 0×0 and rendered blank — they now
+  redraw when the pane that hosts them first becomes visible. The
+  notebook create / rename / delete dialogs closed even when the server
+  rejected the request, silently discarding the typed path; they now
+  stay open on failure and surface the error (the template-create path
+  previously threw an unhandled rejection with no feedback at all).
+  `/admin/sources` showed a blank void when a filter matched nothing —
+  it now shows a "no sources match" empty state. Review-destination
+  creation told admins to recover the one-time HMAC secret "from the
+  network log"; the cleartext secret now lands in a reveal/copy field
+  and the page reload is held until it has been copied. The remaining
+  "(s)" / "(es)" count strings are pluralised, and raw ISO timestamps
+  on the pipelines, jobs, alerts, ingest-source and followed-products
+  surfaces now render as relative time ("2 days ago") with an absolute
+  UTC tooltip instead of a bare machine string.
+
 - **Bootstrap UI-audit fixes (phase 211).** Acting on a full headful
   audit (774 API routes + 169 screenshots graded against Bootstrap 5.3):
   the light theme's decorative aurora was toned down (the over-saturated

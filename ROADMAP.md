@@ -3976,7 +3976,7 @@ PointlesSQL
 │   │       (Topics-Liste + Empty-State, People-Verzeichnis, User-Profil
 │   │       mit Stat-Tiles, Inline-Edit-Profil) sauber.
 │   │
-│   └── 212.13 — Flächendeckender Code-Audit + Batch-Fixes (Welle 1)  ✅ shipped (local, 2026-06-13, `62323f9c`/`45140ade`)
+│   ├── 212.13 — Flächendeckender Code-Audit + Batch-Fixes (Welle 1)  ✅ shipped (local, 2026-06-13, `62323f9c`/`45140ade`)
 │   │       Auf Nutzerwunsch „alle UX-Punkte" statt eine Fläche pro
 │   │       Iteration: 7 parallele Audit-Agenten haben das gesamte
 │   │       Surface-Inventar (Catalog/Tabellen, SQL/Build/Notebooks,
@@ -4008,6 +4008,25 @@ PointlesSQL
 │   │       FINDINGS.md): Sparkline-Hidden-Tab, Notebook-Create-Silent-
 │   │       Fail, Sources-Filter-Leerzustand, Review-Dest-Secret-Modal,
 │   │       DP-Overview-Re-Layout, ISO-Timestamps, Backend-Serializer.
+│   │
+│   └── 212.14 — Welle 2a: Hidden-Tab-Charts, Dialog-Feedback, Copy/Zeit  ✅ shipped (local, 2026-06-13, `ec93d8c2`)
+│           Nächster Befund-Batch aus `ux-loop/FINDINGS.md` (M2/M3/M7/M11,
+│           P17, D1).  Spaltenstatistik-Sparklines wurden im versteckten
+│           Columns-Tab in 0×0 gezeichnet (blank) → Redraw, sobald die Pane
+│           erstmals sichtbar wird (`shown.bs.tab`).  Notebook-Create/Rename/
+│           Delete-Dialoge schlossen trotz Server-Fehler und verwarfen den
+│           getippten Pfad → bleiben bei Fehler offen + toasten (Template-Pfad
+│           warf zuvor eine stille Unhandled-Rejection).  /admin/sources
+│           zeigte bei leerem Filter ein Void → „No sources match"-Zustand.
+│           Review-Destination-Erstellung verwies aufs Netzwerk-Log fürs
+│           Einmal-HMAC-Secret → Reveal/Copy-Feld, Reload erst nach Kopieren.
+│           Rest-Pluralisierung „(s)"/„(es)" → echtes Singular/Plural.  Rohe
+│           ISO-Timestamps (Pipelines/Jobs/Alerts/Ingest/Followed) durch die
+│           Relative-Time-Helfer → „vor 2 Tagen" + Absolut-Tooltip.
+│           Verifiziert: biome + no-phase-refs + form-label + raw-fetch-Gate
+│           grün; alle geänderten Seiten rendern 200; Pipeline-Detail live
+│           „2 days ago" mit UTC-Tooltip, kein ISO-Leak.  Offen: M12 (DP-
+│           Overview-Re-Layout), B1–B4 (Backend-Serializer).
 │   │
 ├── Phase 211 — Bootstrap-UI-Audit: Fixes aus dem 169-Screenshot-Sweep  ✅ shipped (local, 2026-06-13)
 │   │
