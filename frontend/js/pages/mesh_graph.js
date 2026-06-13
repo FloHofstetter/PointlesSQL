@@ -33,6 +33,14 @@ export function meshGraph() {
       try {
         if (typeof window.loadCytoscapeOnce === 'function') await window.loadCytoscapeOnce();
         if (typeof cytoscape !== 'function') return;
+        // Node labels are drawn on the canvas, not by Bootstrap, so they
+        // can't inherit the theme. Pick a label colour for the active
+        // theme and back it with a text outline in the page background
+        // colour so the labels stay legible over the aurora either way
+        // (they were near-invisible dark-on-dark before).
+        const dark = document.documentElement.getAttribute('data-bs-theme') === 'dark';
+        const labelColor = dark ? '#e9ecef' : '#212529';
+        const labelOutline = dark ? '#0a0e0b' : '#ffffff';
         cytoscape({
           container: document.getElementById('mesh-cy'),
           elements: {
@@ -51,7 +59,9 @@ export function meshGraph() {
                 label: 'data(label)',
                 'font-size': '10px',
                 'background-color': '#0d6efd',
-                color: '#212529',
+                color: labelColor,
+                'text-outline-color': labelOutline,
+                'text-outline-width': 2,
                 'text-valign': 'bottom',
                 'text-margin-y': 3,
               },

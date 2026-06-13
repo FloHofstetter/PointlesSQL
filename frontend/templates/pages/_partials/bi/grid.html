@@ -55,7 +55,7 @@
     {% endfor %}
 </div>
 {% else %}
-<div class="text-muted border rounded p-4 text-center">
-    This dashboard has no widgets yet.
-</div>
+{% with icon="bi-bar-chart", title="No widgets yet", message="Add a widget to start building this dashboard.", flush=True %}
+  {% include "components/empty.html" with context %}
+{% endwith %}
 {% endif %}
