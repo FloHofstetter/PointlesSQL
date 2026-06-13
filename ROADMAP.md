@@ -3901,13 +3901,25 @@ PointlesSQL
 │   ├── 211.9 — Mesh-Graph-Label-Kontrast + BI-Leerzustand  ✅ shipped (local, 2026-06-13, `3cdcccc2`)
 │   │       Cytoscape-Node-Labels theme-aware + Text-Outline (waren
 │   │       dark-on-dark unsichtbar); BI-„no widgets" → empty.html.
+│   ├── 211.10 — Badge-Auto-Kontrast  ✅ shipped (local, 2026-06-13, `9f84ea58`)
+│   │       370 `badge bg-*` → `text-bg-*` über 128 Templates (Bootstrap-
+│   │       Auto-Kontrasttext); `-subtle`-Varianten + dynamische `:class`
+│   │       unangetastet; zwei String-Assert-Tests retargeted.
+│   ├── 211.11 — Readable-Width-Cap (opt-in)  ✅ shipped (local, 2026-06-13, `e163c42b`)
+│   │       `pql-content--readable`-Modifier (via `content_class`-Block)
+│   │       cappt Prosa/Formular-Seiten auf 64rem; Help/Me-settings/
+│   │       Governance opt-in.  Datentabellen-Seiten bewusst NICHT (Cap
+│   │       würde Tabellen nur schmaler machen — Audit-Übergeneralisierung).
+│   └── 211.12 — Einmal-Secrets maskiert + Reveal-Toggle  ✅ shipped (local, 2026-06-13, `4370dc86`)
+│   │       API-Key-Plaintext + Sharing-Bearer-Token default `type=password`
+│   │       mit Auge-Toggle; Copy nutzt weiter den Rohwert.
 │   │
-│   │   Bewusst zurückgestellt (reine Kosmetik, hoher Churn, geringer
-│   │   Wert; Badge/Button-Massenmigration ist laut `_macros/README.md`
-│   │   ohnehin separater Sweep): flächendeckende Badge/Count-Recolors
-│   │   (T5), Form-Grid-/Toolbar-Retrofit (T7c), Button-Hierarchie +
-│   │   Breiten-Caps (T8).  Stat-tiles-Macro liegt bereit, noch ohne
-│   │   Konsumenten.
+│   │   Nicht umgesetzt (Audit-Übergeneralisierung / Design-Urteil):
+│   │   flächendeckende Button-Hierarchie-Recolors („ein Primary pro
+│   │   Region") — die konkreten Audit-Beispiele (warning-Save 078) waren
+│   │   Fehllesungen; Form-Grid-Retrofit (A11y-Labels per Gate schon
+│   │   erzwungen, sichtbare-Label-Politur niedrigwertig).  Stat-tiles-
+│   │   Macro liegt einsatzbereit, noch ohne Konsumenten.
 │   │
 ├── Phase 210 — Databricks-Parität Runde 2: Top-10 aus der Juni-Recherche  ✅ shipped (local, 2026-06-11)
 │   │

@@ -191,7 +191,11 @@ defined in ``scripts/clusters.json``. -->
   misreads (already-correct code) and were left untouched. Shared macros
   `alert_box` / `data_table` / `page_help` / `stat_tiles` landed;
   `empty.html` was adopted across 21 list empty states and `page_help`
-  deduplicated six admin disclosure accordions.
+  deduplicated six admin disclosure accordions. Follow-on sweeps: 370
+  solid badges moved to `text-bg-*` for auto-contrasting text; a
+  `pql-content--readable` width cap was added for prose/form pages; and
+  the one-time API-key / sharing secrets are now masked by default with
+  a reveal toggle.
 
 - **CI made green again (phase 208).** The lint job died at the Ruff step
   and masked everything behind it: 222 unformatted files, 24 pyright
