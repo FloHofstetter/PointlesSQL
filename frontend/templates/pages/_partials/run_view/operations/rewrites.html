@@ -31,13 +31,13 @@
  <td>{{ attempt.attempt_no }}</td>
  <td>
  {% if attempt.verdict == 'auto_rewrite_succeeded' %}
- <span class="badge bg-success">{{ attempt.verdict }}</span>
+ <span class="badge text-bg-success">{{ attempt.verdict }}</span>
  {% elif attempt.verdict == 'auto_rewrite_failed' %}
- <span class="badge bg-warning text-dark">{{ attempt.verdict }}</span>
+ <span class="badge text-bg-warning text-dark">{{ attempt.verdict }}</span>
  {% elif attempt.verdict == 'human_approval_required' %}
- <span class="badge bg-danger">{{ attempt.verdict }}</span>
+ <span class="badge text-bg-danger">{{ attempt.verdict }}</span>
  {% else %}
- <span class="badge bg-info text-dark">{{ attempt.verdict }}</span>
+ <span class="badge text-bg-info text-dark">{{ attempt.verdict }}</span>
  {% endif %}
  </td>
  <td><code class="small">{{ attempt.original_sql_hash }}</code></td>

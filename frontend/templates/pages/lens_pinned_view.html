@@ -16,7 +16,7 @@
     </h1>
     <div class="text-secondary small">
       Pinned {{ pin.created_at.strftime('%Y-%m-%d %H:%M UTC') if pin.created_at else '' }}
-      {% if pin.is_shared %}<span class="badge bg-info ms-2">shared</span>{% endif %}
+      {% if pin.is_shared %}<span class="badge text-bg-info ms-2">shared</span>{% endif %}
     </div>
   </div>
 

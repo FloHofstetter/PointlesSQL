@@ -55,7 +55,7 @@ record so you can re-enable without retyping config.
                     x-data='auditSinkRow({{ s.id }}, {{ s.name|tojson }}, {{ s.is_active|tojson }})'>
                     <td data-label="Name"><strong>{{ s.name }}</strong></td>
                     <td data-label="Type">
-                        <span class="badge bg-secondary font-monospace">{{ s.type }}</span>
+                        <span class="badge text-bg-secondary font-monospace">{{ s.type }}</span>
                     </td>
                     <td data-label="Config" class="font-monospace small">
                         {% for k, v in s.config_redacted.items() %}
@@ -75,7 +75,7 @@ record so you can re-enable without retyping config.
                         {% if s.workspace_filter %}
                         {% for ws_id in s.workspace_filter %}
                         {% set ws = workspace_choices|selectattr("id", "equalto", ws_id)|first %}
-                        <span class="badge bg-light text-dark border">
+                        <span class="badge text-bg-light text-dark border">
                             {% if ws %}{{ ws.slug }}{% else %}#{{ ws_id }}{% endif %}
                         </span>
                         {% endfor %}

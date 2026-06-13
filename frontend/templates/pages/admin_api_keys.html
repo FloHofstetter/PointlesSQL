@@ -71,29 +71,29 @@ is supplied.
                         {{ k.secret_prefix }}…
                         {% if k.token_format == 'v1' %}
                             {% if k.token_env == 'test' %}
-                            <span class="badge bg-warning text-dark ms-1" title="Test-mode token; visually distinct in audit logs.">test</span>
+                            <span class="badge text-bg-warning text-dark ms-1" title="Test-mode token; visually distinct in audit logs.">test</span>
                             {% else %}
-                            <span class="badge bg-success ms-1" title="Production (live) token.">live</span>
+                            <span class="badge text-bg-success ms-1" title="Production (live) token.">live</span>
                             {% endif %}
                         {% else %}
-                        <span class="badge bg-secondary ms-1" title="Legacy ``secrets.token_urlsafe`` token; pre-Phase-118 format.  Still valid; rotate via create+revoke to upgrade.">legacy</span>
+                        <span class="badge text-bg-secondary ms-1" title="Legacy ``secrets.token_urlsafe`` token; pre-Phase-118 format.  Still valid; rotate via create+revoke to upgrade.">legacy</span>
                         {% endif %}
                     </td>
                     <td data-label="Scopes" class="small">
                         {% if k.supervisor %}
-                        <span class="badge bg-warning text-dark">supervisor</span>
+                        <span class="badge text-bg-warning text-dark">supervisor</span>
                         {% endif %}
                         {% if k.auditor %}
-                        <span class="badge bg-info text-dark">auditor</span>
+                        <span class="badge text-bg-info text-dark">auditor</span>
                         {% endif %}
                         {% if k.lineage_inbound %}
-                        <span class="badge bg-success">lineage_inbound</span>
+                        <span class="badge text-bg-success">lineage_inbound</span>
                         {% endif %}
                         {% if k.analyst %}
-                        <span class="badge bg-primary">analyst</span>
+                        <span class="badge text-bg-primary">analyst</span>
                         {% endif %}
                         {% if k.sql_execute %}
-                        <span class="badge bg-dark">sql_execute</span>
+                        <span class="badge text-bg-dark">sql_execute</span>
                         {% endif %}
                         {% if not k.supervisor and not k.auditor and not k.lineage_inbound and not k.analyst and not k.sql_execute %}
                         <span class="text-muted">agent</span>
@@ -110,19 +110,19 @@ is supplied.
                     <td data-label="Last used" class="small text-nowrap">{{ k.last_used_at[:10] if k.last_used_at else '—' }}</td>
                     <td data-label="Status">
                         {% if k.lifecycle_state == 'revoked' %}
-                        <span class="badge bg-secondary" title="Revoked {{ k.revoked_at }}">revoked</span>
+                        <span class="badge text-bg-secondary" title="Revoked {{ k.revoked_at }}">revoked</span>
                         {% elif k.lifecycle_state == 'quarantined' %}
-                        <span class="badge bg-danger" title="{{ k.quarantine_reason or 'quarantined' }}">quarantined</span>
+                        <span class="badge text-bg-danger" title="{{ k.quarantine_reason or 'quarantined' }}">quarantined</span>
                         {% elif k.lifecycle_state == 'rotated' %}
-                        <span class="badge bg-warning text-dark" title="In rotation grace window until {{ k.grace_until }}">rotated</span>
+                        <span class="badge text-bg-warning text-dark" title="In rotation grace window until {{ k.grace_until }}">rotated</span>
                         {% elif k.lifecycle_state == 'expired' %}
-                        <span class="badge bg-secondary" title="Expired {{ k.expires_at }}; sweep will auto-quarantine">expired</span>
+                        <span class="badge text-bg-secondary" title="Expired {{ k.expires_at }}; sweep will auto-quarantine">expired</span>
                         {% elif k.lifecycle_state == 'expiring' %}
-                        <span class="badge bg-warning text-dark" title="Expires {{ k.expires_at }}">expiring</span>
+                        <span class="badge text-bg-warning text-dark" title="Expires {{ k.expires_at }}">expiring</span>
                         {% elif k.expires_at %}
-                        <span class="badge bg-success" title="Expires {{ k.expires_at }}">active · TTL</span>
+                        <span class="badge text-bg-success" title="Expires {{ k.expires_at }}">active · TTL</span>
                         {% else %}
-                        <span class="badge bg-success">active</span>
+                        <span class="badge text-bg-success">active</span>
                         {% endif %}
                     </td>
                     <td data-label="Actions">

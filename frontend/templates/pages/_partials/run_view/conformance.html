@@ -17,14 +17,14 @@
  <tr>
  <td>
  {% if finding.severity == 'error' %}
- <span class="badge bg-danger" title="{{ finding.code }}">{{ finding.severity }}</span>
+ <span class="badge text-bg-danger" title="{{ finding.code }}">{{ finding.severity }}</span>
  {% elif finding.severity == 'warning' %}
- <span class="badge bg-warning text-dark" title="{{ finding.code }}">{{ finding.severity }}</span>
+ <span class="badge text-bg-warning text-dark" title="{{ finding.code }}">{{ finding.severity }}</span>
  {% else %}
- <span class="badge bg-info text-dark" title="{{ finding.code }}">{{ finding.severity }}</span>
+ <span class="badge text-bg-info text-dark" title="{{ finding.code }}">{{ finding.severity }}</span>
  {% endif %}
  </td>
- <td><span class="badge bg-secondary">{{ finding.layer }}</span></td>
+ <td><span class="badge text-bg-secondary">{{ finding.layer }}</span></td>
  <td class="font-monospace">{{ finding.table_full_name }}</td>
  <td>{{ finding.message }}</td>
  </tr>

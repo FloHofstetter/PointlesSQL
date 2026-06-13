@@ -164,7 +164,7 @@
  :title="c.connection_name ? 'Foreign catalog (' + c.connection_name + ')' : 'Managed catalog'"></i>
  <span class="text-truncate" x-text="c.name"></span>
  <template x-if="c.connection_name">
- <span class="badge bg-info text-dark ms-auto"
+ <span class="badge text-bg-info text-dark ms-auto"
  style="font-size: 0.65rem;">FOREIGN</span>
  </template>
  </a>
@@ -196,12 +196,12 @@
  <span class="text-truncate" x-text="t.name"></span>
  <span class="ms-auto d-inline-flex gap-1 flex-shrink-0">
  <template x-if="isDbtTable(c, s, t)">
- <span class="badge bg-light text-muted"
+ <span class="badge text-bg-light text-muted"
  style="font-size: 0.55rem;"
  title="Materialized by dbt">dbt</span>
  </template>
  <template x-if="isMlTable(c, s, t)">
- <span class="badge bg-info text-dark"
+ <span class="badge text-bg-info text-dark"
  style="font-size: 0.55rem;"
  title="ML-model output">ml</span>
  </template>

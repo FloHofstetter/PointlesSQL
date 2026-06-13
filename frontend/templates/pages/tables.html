@@ -141,23 +141,23 @@
                             <template x-if='dbtModelByTable[{{ tbl.name|tojson }}]'>
                                 <a :href='"/dbt-docs/#!/model/" + dbtModelByTable[{{ tbl.name|tojson }}]'
                                    target="_blank" rel="noopener"
-                                   class="badge bg-light text-muted text-decoration-none ms-1"
+                                   class="badge text-bg-light text-muted text-decoration-none ms-1"
                                    :title='"Materialized by dbt model " + dbtModelByTable[{{ tbl.name|tojson }}]'>dbt</a>
                             </template>
                             <template x-if='mlModelByTable[{{ tbl.name|tojson }}]'>
                                 <a :href='"/models/" + mlModelByTable[{{ tbl.name|tojson }}]'
-                                   class="badge bg-info text-dark text-decoration-none ms-1"
+                                   class="badge text-bg-info text-dark text-decoration-none ms-1"
                                    :title='"Output of model " + mlModelByTable[{{ tbl.name|tojson }}]'>ml</a>
                             </template>
                         </td>
                         <td data-label="Type">
                             {% if tbl.table_type %}
-                            <span class="badge bg-primary">{{ tbl.table_type }}</span>
+                            <span class="badge text-bg-primary">{{ tbl.table_type }}</span>
                             {% else %}<span class="text-muted">—</span>{% endif %}
                         </td>
                         <td data-label="Format">
                             {% if tbl.data_source_format %}
-                            <span class="badge bg-info text-dark">{{ tbl.data_source_format }}</span>
+                            <span class="badge text-bg-info text-dark">{{ tbl.data_source_format }}</span>
                             {% else %}<span class="text-muted">—</span>{% endif %}
                         </td>
                         <td class="text-muted small" data-label="Columns">{{ (tbl.columns or [])|length }}</td>

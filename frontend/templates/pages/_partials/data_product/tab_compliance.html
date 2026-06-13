@@ -28,16 +28,16 @@
                                             :title="pqlAbsTime(e.created_at)"></td>
                                         <td>
                                             <template x-if="e.outcome === 'compliant'">
-                                                <span class="badge bg-success">compliant</span>
+                                                <span class="badge text-bg-success">compliant</span>
                                             </template>
                                             <template x-if="e.outcome === 'violated'">
-                                                <span class="badge bg-danger">violated</span>
+                                                <span class="badge text-bg-danger">violated</span>
                                             </template>
                                             <template x-if="e.outcome === 'schema_drift_warning'">
-                                                <span class="badge bg-warning text-dark">drift</span>
+                                                <span class="badge text-bg-warning text-dark">drift</span>
                                             </template>
                                             <template x-if="e.outcome === 'no_contract'">
-                                                <span class="badge bg-secondary">no_contract</span>
+                                                <span class="badge text-bg-secondary">no_contract</span>
                                             </template>
                                         </td>
                                         <td>

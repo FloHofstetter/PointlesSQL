@@ -22,7 +22,7 @@
  {% for m in uc_mutations %}
  <tr>
  <td class="font-monospace text-muted">{{ m.created_at }}</td>
- <td><span class="badge bg-info text-dark font-monospace">{{ m.action }}</span></td>
+ <td><span class="badge text-bg-info text-dark font-monospace">{{ m.action }}</span></td>
  <td class="font-monospace">{{ m.target }}</td>
  <td class="font-monospace small">{{ m.principal or "—" }}</td>
  <td>

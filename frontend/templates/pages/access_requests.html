@@ -29,7 +29,7 @@
                     :aria-selected="tab === 'mine' ? 'true' : 'false'"
                     @click="tab = 'mine'">
                 <i class="bi bi-send me-1"></i>My requests
-                <span class="badge bg-secondary ms-1" x-show="loaded" x-text="mine.length" x-cloak></span>
+                <span class="badge text-bg-secondary ms-1" x-show="loaded" x-text="mine.length" x-cloak></span>
             </button>
         </li>
         <li class="nav-item" role="presentation" x-show="showDecideTab" x-cloak>
@@ -38,7 +38,7 @@
                     :aria-selected="tab === 'decide' ? 'true' : 'false'"
                     @click="tab = 'decide'">
                 <i class="bi bi-inbox me-1"></i>To decide
-                <span class="badge bg-warning text-dark ms-1" x-show="loaded" x-text="decide.length" x-cloak></span>
+                <span class="badge text-bg-warning text-dark ms-1" x-show="loaded" x-text="decide.length" x-cloak></span>
             </button>
         </li>
     </ul>

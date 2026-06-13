@@ -19,7 +19,7 @@
  <dd class="col-9 col-md-10">
  {% for full_name in run.tables_touched %}
  <a href="/catalogs/{{ full_name.split('.')[0] }}/{{ full_name.split('.')[1] }}/{{ full_name.split('.')[2] }}"
- class="badge bg-secondary text-decoration-none font-monospace me-1 mb-1">{{ full_name }}</a>
+ class="badge text-bg-secondary text-decoration-none font-monospace me-1 mb-1">{{ full_name }}</a>
  {% endfor %}
  </dd>
  {% endif %}
@@ -35,7 +35,7 @@
  <dt class="col-3 col-md-2">Cost-gate trigger</dt>
  <dd class="col-9 col-md-10" x-data="{ open: false }">
  <div class="small">
- <span class="badge bg-warning text-dark me-2">{{ run.cost_gate_trigger.engine or "duckdb" }}</span>
+ <span class="badge text-bg-warning text-dark me-2">{{ run.cost_gate_trigger.engine or "duckdb" }}</span>
  estimated cost
  <span class="font-monospace">{{ run.cost_gate_trigger.estimated_cost }}</span>
  &gt; threshold

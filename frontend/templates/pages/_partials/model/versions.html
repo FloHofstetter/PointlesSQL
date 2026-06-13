@@ -20,18 +20,18 @@
                         {% for v in versions %}
                         <tr>
                             <td>
-                                <span class="badge bg-secondary">v{{ v.version }}</span>
+                                <span class="badge text-bg-secondary">v{{ v.version }}</span>
                                 {% if champion_version is not none and v.version == champion_version %}
-                                <span class="badge bg-warning text-dark ms-1" title="Current champion">
+                                <span class="badge text-bg-warning text-dark ms-1" title="Current champion">
                                     <i class="bi bi-star-fill"></i> Champion
                                 </span>
                                 {% endif %}
                             </td>
                             <td>
                                 {% if v.status == "READY" %}
-                                <span class="badge bg-success">{{ v.status }}</span>
+                                <span class="badge text-bg-success">{{ v.status }}</span>
                                 {% else %}
-                                <span class="badge bg-warning text-dark">{{ v.status or "—" }}</span>
+                                <span class="badge text-bg-warning text-dark">{{ v.status or "—" }}</span>
                                 {% endif %}
                             </td>
                             <td>

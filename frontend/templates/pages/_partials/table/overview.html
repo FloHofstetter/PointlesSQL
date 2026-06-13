@@ -103,7 +103,7 @@
     <dd class="col-sm-9 font-monospace mb-2" x-text="dbtModel.unique_id"></dd>
 
     <dt class="col-sm-3 text-muted fw-normal">Materialization</dt>
-    <dd class="col-sm-9 mb-2"><span class="badge bg-info text-dark" x-text="dbtModel.materialization || '—'"></span></dd>
+    <dd class="col-sm-9 mb-2"><span class="badge text-bg-info text-dark" x-text="dbtModel.materialization || '—'"></span></dd>
 
     <dt class="col-sm-3 text-muted fw-normal">Tests</dt>
     <dd class="col-sm-9 mb-0" x-text="(dbtModel.tests || []).length + ' configured'"></dd>
@@ -128,7 +128,7 @@
         <a :href="'/models/' + m.full_name"
            class="font-monospace small text-decoration-none"
            x-text="m.full_name"></a>
-        <span class="badge bg-secondary ms-1" x-text="'v' + m.version"></span>
+        <span class="badge text-bg-secondary ms-1" x-text="'v' + m.version"></span>
         <span class="text-muted small ms-2" x-text="'(' + m.edge_count + ' edges)'"></span>
         <a :href="'/mlflow/#/models/' + m.full_name + '/versions/' + m.version"
            target="_blank" rel="noopener"

@@ -25,7 +25,7 @@
 
 {% macro render_node(node, edges, side) %}
 <li class="d-flex align-items-center gap-2 py-1">
- <span class="badge bg-secondary" title="Depth {{ node.depth }}">{{ node.depth }}</span>
+ <span class="badge text-bg-secondary" title="Depth {{ node.depth }}">{{ node.depth }}</span>
  {% if node.get("full_name") %}
  {% set parts = node.full_name.split(".") %}
  {% if parts|length == 3 %}
@@ -39,11 +39,11 @@
  {% endif %}
  {% if side == "up" %}
  {% for edge in edges if edge.target_securable_id == node.securable_id and edge.get("operation") %}
- <span class="badge bg-info text-dark small">{{ edge.operation }}</span>
+ <span class="badge text-bg-info text-dark small">{{ edge.operation }}</span>
  {% endfor %}
  {% else %}
  {% for edge in edges if edge.source_securable_id == node.securable_id and edge.get("operation") %}
- <span class="badge bg-info text-dark small">{{ edge.operation }}</span>
+ <span class="badge text-bg-info text-dark small">{{ edge.operation }}</span>
  {% endfor %}
  {% endif %}
 </li>
@@ -108,13 +108,13 @@
  <div class="p-3">
  <h6 class="text-muted small text-uppercase mb-3">
  <i class="bi bi-broadcast-pin me-1"></i>External producers
- <span class="badge bg-warning text-dark ms-1" title="External OpenLineage events">{{ external_producers|length }}</span>
+ <span class="badge text-bg-warning text-dark ms-1" title="External OpenLineage events">{{ external_producers|length }}</span>
  </h6>
  <ul class="list-unstyled mb-0 ps-2 border-start border-warning">
  {% for prod in external_producers %}
  <li class="d-flex flex-column gap-1 py-1">
  <span class="d-inline-flex align-items-center gap-2">
- <span class="badge bg-warning text-dark lineage-node-external">{{ prod.producer }}</span>
+ <span class="badge text-bg-warning text-dark lineage-node-external">{{ prod.producer }}</span>
  {% if prod.last_seen_at %}
  <span class="text-muted small" title="Last inbound event">{{ prod.last_seen_at.isoformat() if prod.last_seen_at.isoformat is defined else prod.last_seen_at }}</span>
  {% endif %}
@@ -131,9 +131,9 @@
  {% endfor %}
  </ul>
  <div class="text-muted small fst-italic mt-2">
- <span class="badge bg-info text-dark">internal</span>
+ <span class="badge text-bg-info text-dark">internal</span>
  ·
- <span class="badge bg-warning text-dark">external producer</span>
+ <span class="badge text-bg-warning text-dark">external producer</span>
  — external rows arrive via <code>POST /api/lineage/openlineage</code>.
  </div>
  </div>

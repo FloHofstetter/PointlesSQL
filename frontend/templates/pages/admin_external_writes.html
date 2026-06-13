@@ -18,9 +18,9 @@
         <i class="bi bi-exclamation-triangle fs-3"></i>
         <h1 class="h3 mb-0">External writes{{ info('admin.external-writes-review') }}</h1>
         {% if unacknowledged_total %}
-        <span class="badge bg-warning text-dark">{{ unacknowledged_total }} unacknowledged</span>
+        <span class="badge text-bg-warning text-dark">{{ unacknowledged_total }} unacknowledged</span>
         {% else %}
-        <span class="badge bg-success">queue empty</span>
+        <span class="badge text-bg-success">queue empty</span>
         {% endif %}
     </div>
     <span class="text-muted small">
@@ -116,10 +116,10 @@ for the periodic-loop opt-in; the button below works regardless.
                         </td>
                         <td data-label="Acknowledged" class="small">
                             {% if w.acknowledged_at %}
-                            <span class="badge bg-secondary">{{ w.acknowledged_by }}</span>
+                            <span class="badge text-bg-secondary">{{ w.acknowledged_by }}</span>
                             <span class="text-muted">{{ w.acknowledged_at }}</span>
                             {% else %}
-                            <span class="badge bg-warning text-dark">pending</span>
+                            <span class="badge text-bg-warning text-dark">pending</span>
                             {% endif %}
                         </td>
                         <td data-label="Action" class="pe-3 text-end">

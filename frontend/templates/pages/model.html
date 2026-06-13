@@ -17,7 +17,7 @@
     <i class="bi bi-box-seam fs-3"></i>
     <h1 class="h3 mb-0">{{ model.full_name }}{{ copy_btn(model.full_name, label="Copy model URI") }}</h1>
     {% if model.owner %}
-    <span class="badge bg-secondary ms-2">{{ model.owner }}</span>
+    <span class="badge text-bg-secondary ms-2">{{ model.owner }}</span>
     {% endif %}
     {# server-backed Star button.  Inert until the
        Alpine factory's init() fetch resolves; localStorage fallback

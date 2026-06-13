@@ -37,7 +37,7 @@
  <td class="font-monospace fw-medium" data-label="Name">
  {{ col.name }}
  {% if col.partition_index is not none %}
- <span class="badge bg-warning text-dark ms-1" title="Partition column #{{ col.partition_index }}">
+ <span class="badge text-bg-warning text-dark ms-1" title="Partition column #{{ col.partition_index }}">
  <i class="bi bi-diagram-3"></i> Part
  </span>
  {% endif %}
@@ -54,7 +54,7 @@
  {% if col.nullable %}
  <span class="text-muted small">nullable</span>
  {% else %}
- <span class="badge bg-warning text-dark">NOT NULL</span>
+ <span class="badge text-bg-warning text-dark">NOT NULL</span>
  {% endif %}
  </td>
  <td class="text-muted small" data-label="Comment">{{ col.comment or "—" }}</td>

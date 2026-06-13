@@ -71,7 +71,7 @@
     <div class="text-muted small mb-2 d-flex align-items-center">
      <i class="bi bi-clipboard-check me-1"></i>
      <strong>Reviews</strong>
-     <span class="ms-auto badge bg-light text-dark"
+     <span class="ms-auto badge text-bg-light text-dark"
            x-text="reviewComments.length"></span>
     </div>
     <template x-for="c in reviewComments" :key="c.id">
@@ -189,7 +189,7 @@
   <div class="text-muted small mb-2 d-flex align-items-center">
    <i class="bi bi-lightbulb me-1"></i>
    <strong>AI Explanations</strong>
-   <span class="ms-auto badge bg-light text-dark"
+   <span class="ms-auto badge text-bg-light text-dark"
          x-text="explanations.length"></span>
   </div>
   <template x-for="ex in explanations" :key="ex.proposal_id">

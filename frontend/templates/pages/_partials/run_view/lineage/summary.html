@@ -22,7 +22,7 @@
  {% for row in lineage_summary.rows %}
  <tr>
  <td>{{ row.ordinal }}</td>
- <td><span class="badge bg-info text-dark">{{ row.op_name }}</span></td>
+ <td><span class="badge text-bg-info text-dark">{{ row.op_name }}</span></td>
  <td class="font-monospace">
  {% if row.source_table %}{{ row.source_table }}{% else %}<span class="text-muted">—</span>{% endif %}
  </td>

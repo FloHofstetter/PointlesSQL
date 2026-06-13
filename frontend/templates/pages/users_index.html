@@ -15,7 +15,7 @@
             {{ users|length }} member{{ '' if users|length == 1 else 's' }}
             in this workspace.
             {% if role_filter %}
-            <span class="badge bg-secondary ms-2">filter: {{ role_filter }}</span>
+            <span class="badge text-bg-secondary ms-2">filter: {{ role_filter }}</span>
             <a href="/users" class="ms-2 small text-decoration-none">clear filter</a>
             {% endif %}
         </p>

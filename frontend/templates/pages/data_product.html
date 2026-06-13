@@ -32,17 +32,17 @@
             <span x-text="product.name"></span>
             <span class="text-muted small ms-2" x-text="product.ref"></span>
         </h1>
-        <span class="badge bg-secondary ms-2" x-text="'v' + product.version"></span>
-        <span class="badge bg-warning text-dark ms-2 pql-dp-stars-badge"
+        <span class="badge text-bg-secondary ms-2" x-text="'v' + product.version"></span>
+        <span class="badge text-bg-warning text-dark ms-2 pql-dp-stars-badge"
               x-show="reviewSummary && reviewSummary.count > 0"
               x-text="'★ ' + (reviewSummary && reviewSummary.avg_stars ? reviewSummary.avg_stars.toFixed(1) : '') + ' (' + (reviewSummary ? reviewSummary.count : 0) + ')'"></span>
         <template x-if="detail && detail.badges">
             <span class="d-inline-flex gap-1 ms-2 pql-dp-auto-badges">
-                <span class="badge bg-info text-dark pql-dp-badge-downstream"
+                <span class="badge text-bg-info text-dark pql-dp-badge-downstream"
                       x-show="detail.badges.downstream_count > 0"
                       x-text="'↓ ' + detail.badges.downstream_count"
                       title="Downstream tables consuming this DP"></span>
-                <span class="badge bg-primary pql-dp-badge-agent-runs"
+                <span class="badge text-bg-primary pql-dp-badge-agent-runs"
                       x-show="detail.badges.agent_run_count_7d > 0"
                       x-text="'🤖 ' + detail.badges.agent_run_count_7d + ' / 7d'"
                       title="Distinct agent runs touching this DP in the last 7 days"></span>
@@ -51,7 +51,7 @@
                       x-show="detail.badges.last_rollback_passed !== null"
                       x-text="detail.badges.last_rollback_passed ? '↻ rollback ✓' : '↻ rollback ✗'"
                       title="Most recent rollback against this DP"></span>
-                <span class="badge bg-secondary pql-dp-badge-freshness"
+                <span class="badge text-bg-secondary pql-dp-badge-freshness"
                       x-show="detail.badges.freshness_on_time_30d_pct !== null"
                       x-text="(detail.badges.freshness_on_time_30d_pct || 0).toFixed(0) + '% on-time / 30d'"
                       title="Freshness on-time percentage over the last 30 days"></span>
@@ -164,7 +164,7 @@
                     data-bs-target="#tab-activity" type="button" role="tab"
                     data-pql-tab-key="activity">
                 Activity
-                <span class="badge bg-secondary ms-1"
+                <span class="badge text-bg-secondary ms-1"
                       x-show="activityTotal !== null && activityTotal > 0"
                       x-text="activityTotal"></span>
             </button>

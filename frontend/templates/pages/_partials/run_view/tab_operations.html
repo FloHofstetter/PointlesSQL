@@ -11,7 +11,7 @@
  aria-controls="tab-ops" aria-selected="true"
  data-pql-tab-key="ops">
  <i class="bi bi-list-ol me-1"></i>Operations
- {% if operations %}<span class="badge bg-secondary ms-1">{{ operations | length }}</span>{% endif %}
+ {% if operations %}<span class="badge text-bg-secondary ms-1">{{ operations | length }}</span>{% endif %}
  </button>
  </li>
  <li class="nav-item" role="presentation">
@@ -20,7 +20,7 @@
  aria-controls="tab-rejects" aria-selected="false"
  data-pql-tab-key="rejects">
  <i class="bi bi-x-octagon me-1"></i>Rejects
- {% if rejects %}<span class="badge bg-warning text-dark ms-1">{{ rejects | length }}</span>{% endif %}
+ {% if rejects %}<span class="badge text-bg-warning text-dark ms-1">{{ rejects | length }}</span>{% endif %}
  </button>
  </li>
  <li class="nav-item" role="presentation">
@@ -29,7 +29,7 @@
  aria-controls="tab-queries" aria-selected="false"
  data-pql-tab-key="queries">
  <i class="bi bi-code-square me-1"></i>Queries
- {% if queries %}<span class="badge bg-secondary ms-1">{{ queries | length }}</span>{% endif %}
+ {% if queries %}<span class="badge text-bg-secondary ms-1">{{ queries | length }}</span>{% endif %}
  </button>
  </li>
  <li class="nav-item" role="presentation">
@@ -38,7 +38,7 @@
  aria-controls="tab-rewrites" aria-selected="false"
  data-pql-tab-key="rewrites">
  <i class="bi bi-arrow-repeat me-1"></i>Rewrites
- {% if rewrite_attempts %}<span class="badge bg-info text-dark ms-1">{{ rewrite_attempts | length }}</span>{% endif %}
+ {% if rewrite_attempts %}<span class="badge text-bg-info text-dark ms-1">{{ rewrite_attempts | length }}</span>{% endif %}
  </button>
  </li>
  <li class="nav-item" role="presentation">
@@ -47,7 +47,7 @@
  aria-controls="tab-uc-mutations" aria-selected="false"
  data-pql-tab-key="uc-mutations">
  <i class="bi bi-database-gear me-1"></i>UC mutations
- {% if uc_mutations %}<span class="badge bg-secondary ms-1">{{ uc_mutations | length }}</span>{% endif %}
+ {% if uc_mutations %}<span class="badge text-bg-secondary ms-1">{{ uc_mutations | length }}</span>{% endif %}
  </button>
  </li>
  </ul>

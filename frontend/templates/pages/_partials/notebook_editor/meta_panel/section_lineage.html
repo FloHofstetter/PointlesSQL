@@ -9,7 +9,7 @@
            aria-controls="pql-meta-section-lineage">
     <i class="bi bi-diagram-2 me-2" aria-hidden="true"></i>
     Lineage
-    <span class="badge bg-secondary"
+    <span class="badge text-bg-secondary"
           x-show="notebookLineageSummary().writeTables.length > 0"
           x-text="notebookLineageSummary().writeTables.length"
           x-cloak></span>
@@ -38,7 +38,7 @@
          <code class="text-body font-monospace small flex-grow-1 text-truncate"
                :title="row.table"
                x-text="row.table"></code>
-         <span class="badge bg-secondary"
+         <span class="badge text-bg-secondary"
                x-text="row.count"></span>
         </li>
        </template>

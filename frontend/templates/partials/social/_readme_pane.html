@@ -120,7 +120,7 @@
                                                 <template x-for="v in readmeHistory" :key="v.id">
                                                     <tr :data-readme-version="v.version_int">
                                                         <td>
-                                                            <span class="badge bg-light text-dark border"
+                                                            <span class="badge text-bg-light text-dark border"
                                                                   x-text="'v' + v.version_int"></span>
                                                         </td>
                                                         <td x-text="(v.updated_by.display_name || v.updated_by.email) || 'unknown'"></td>

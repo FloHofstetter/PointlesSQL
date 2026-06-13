@@ -59,7 +59,7 @@
     <div class="col-12 col-lg-6">
         <div class="card">
             <div class="card-header d-flex align-items-center gap-2">
-                <span class="badge bg-secondary">{{ label }}</span>
+                <span class="badge text-bg-secondary">{{ label }}</span>
                 <span class="font-monospace small" title="{{ run.id|format_uuid }}">{{ run.id[:12] }}…</span>
                 <span class="text-muted ms-auto small">
                     <i class="bi bi-person"></i> {{ run.principal or '<unknown>' }}
@@ -82,32 +82,32 @@
     <li class="nav-item" role="presentation">
         <button class="nav-link active" id="tab-ops-btn" data-bs-toggle="tab" data-bs-target="#tab-ops" type="button" role="tab" data-pql-tab-key="ops">
             <i class="bi bi-list-ol me-1"></i>Operations
-            <span class="badge bg-secondary ms-1">{{ detail.operations_diff | length }}</span>
+            <span class="badge text-bg-secondary ms-1">{{ detail.operations_diff | length }}</span>
         </button>
     </li>
     <li class="nav-item" role="presentation">
         <button class="nav-link" id="tab-lineage-btn" data-bs-toggle="tab" data-bs-target="#tab-lineage" type="button" role="tab" data-pql-tab-key="lineage">
             <i class="bi bi-diagram-3 me-1"></i>Lineage
-            {% if lineage_diff_count %}<span class="badge bg-secondary ms-1">{{ lineage_diff_count }}</span>{% endif %}
+            {% if lineage_diff_count %}<span class="badge text-bg-secondary ms-1">{{ lineage_diff_count }}</span>{% endif %}
         </button>
     </li>
     <li class="nav-item" role="presentation">
         <button class="nav-link" id="tab-rejects-btn" data-bs-toggle="tab" data-bs-target="#tab-rejects" type="button" role="tab" data-pql-tab-key="rejects">
             <i class="bi bi-x-octagon me-1"></i>Rejects
-            {% if rejects_diff_count %}<span class="badge bg-warning text-dark ms-1">{{ rejects_diff_count }}</span>{% endif %}
+            {% if rejects_diff_count %}<span class="badge text-bg-warning text-dark ms-1">{{ rejects_diff_count }}</span>{% endif %}
         </button>
     </li>
     <li class="nav-item" role="presentation">
         <button class="nav-link" id="tab-tools-btn" data-bs-toggle="tab" data-bs-target="#tab-tools" type="button" role="tab" data-pql-tab-key="tools">
             <i class="bi bi-tools me-1"></i>Tool calls
-            <span class="badge bg-secondary ms-1">{{ detail.tool_calls_diff | length }}</span>
+            <span class="badge text-bg-secondary ms-1">{{ detail.tool_calls_diff | length }}</span>
         </button>
     </li>
     {% if value_changes_diff is defined and value_changes_diff %}
     <li class="nav-item" role="presentation">
         <button class="nav-link" id="tab-cells-btn" data-bs-toggle="tab" data-bs-target="#tab-cells" type="button" role="tab" data-pql-tab-key="cells">
             <i class="bi bi-grid-3x3 me-1"></i>Cells
-            {% if value_changes_diff_count %}<span class="badge bg-secondary ms-1">{{ value_changes_diff_count }}</span>{% endif %}
+            {% if value_changes_diff_count %}<span class="badge text-bg-secondary ms-1">{{ value_changes_diff_count }}</span>{% endif %}
         </button>
     </li>
     {% endif %}
@@ -115,7 +115,7 @@
     <li class="nav-item" role="presentation">
         <button class="nav-link" id="tab-column-lineage-btn" data-bs-toggle="tab" data-bs-target="#tab-column-lineage" type="button" role="tab" data-pql-tab-key="column-lineage">
             <i class="bi bi-bezier2 me-1"></i>Column lineage
-            {% if column_lineage_diff_count %}<span class="badge bg-secondary ms-1">{{ column_lineage_diff_count }}</span>{% endif %}
+            {% if column_lineage_diff_count %}<span class="badge text-bg-secondary ms-1">{{ column_lineage_diff_count }}</span>{% endif %}
         </button>
     </li>
     {% endif %}
@@ -141,7 +141,7 @@
                         <td class="text-center font-monospace text-muted">{{ loop.index }}</td>
                         <td class="font-monospace small">
                             {% if pair.a_op %}
-                            <span class="badge bg-secondary text-uppercase">{{ pair.a_op.op_name }}</span>
+                            <span class="badge text-bg-secondary text-uppercase">{{ pair.a_op.op_name }}</span>
                             {{ pair.a_op.target_table or "—" }}
                             <span class="text-muted">({{ pair.a_op.rows_affected }} rows)</span>
                             {% else %}
@@ -150,7 +150,7 @@
                         </td>
                         <td class="font-monospace small">
                             {% if pair.b_op %}
-                            <span class="badge bg-secondary text-uppercase">{{ pair.b_op.op_name }}</span>
+                            <span class="badge text-bg-secondary text-uppercase">{{ pair.b_op.op_name }}</span>
                             {{ pair.b_op.target_table or "—" }}
                             <span class="text-muted">({{ pair.b_op.rows_affected }} rows)</span>
                             {% else %}
@@ -220,8 +220,8 @@
         <div class="card mb-3">
             <div class="card-header d-flex align-items-center gap-2">
                 <code>{{ table.target_table }}</code>
-                <span class="badge bg-secondary ms-1">op #{{ table.op_id }}</span>
-                {% if table.truncated %}<span class="badge bg-warning text-dark ms-auto">truncated</span>{% endif %}
+                <span class="badge text-bg-secondary ms-1">op #{{ table.op_id }}</span>
+                {% if table.truncated %}<span class="badge text-bg-warning text-dark ms-auto">truncated</span>{% endif %}
             </div>
             {% if table.divergent_cells %}
             <div class="card-body p-0">
@@ -274,12 +274,12 @@
                 <div class="card h-100">
                     <div class="card-header">
                         Only in A
-                        <span class="badge bg-warning text-dark ms-1">{{ column_lineage_diff.edges_only_in_a|length }}</span>
+                        <span class="badge text-bg-warning text-dark ms-1">{{ column_lineage_diff.edges_only_in_a|length }}</span>
                     </div>
                     <ul class="list-group list-group-flush small font-monospace">
                         {% for edge in column_lineage_diff.edges_only_in_a %}
                         <li class="list-group-item">
-                            <span class="badge bg-secondary">op #{{ edge.op_id }}</span>
+                            <span class="badge text-bg-secondary">op #{{ edge.op_id }}</span>
                             {{ edge.source_table or "?" }}.{{ edge.source_column or "?" }}
                             → {{ edge.target_table }}.{{ edge.target_column }}
                             <span class="text-muted ms-1">({{ edge.transform_kind }})</span>
@@ -294,12 +294,12 @@
                 <div class="card h-100">
                     <div class="card-header">
                         Changed
-                        <span class="badge bg-info text-dark ms-1">{{ column_lineage_diff.edges_changed|length }}</span>
+                        <span class="badge text-bg-info text-dark ms-1">{{ column_lineage_diff.edges_changed|length }}</span>
                     </div>
                     <ul class="list-group list-group-flush small font-monospace">
                         {% for change in column_lineage_diff.edges_changed %}
                         <li class="list-group-item">
-                            <span class="badge bg-secondary">op #{{ change.a.op_id }}</span>
+                            <span class="badge text-bg-secondary">op #{{ change.a.op_id }}</span>
                             {{ change.a.source_table or "?" }}.{{ change.a.source_column or "?" }}
                             → {{ change.a.target_table }}.{{ change.a.target_column }}
                             <div class="mt-1 text-muted">
@@ -317,12 +317,12 @@
                 <div class="card h-100">
                     <div class="card-header">
                         Only in B
-                        <span class="badge bg-success ms-1">{{ column_lineage_diff.edges_only_in_b|length }}</span>
+                        <span class="badge text-bg-success ms-1">{{ column_lineage_diff.edges_only_in_b|length }}</span>
                     </div>
                     <ul class="list-group list-group-flush small font-monospace">
                         {% for edge in column_lineage_diff.edges_only_in_b %}
                         <li class="list-group-item">
-                            <span class="badge bg-secondary">op #{{ edge.op_id }}</span>
+                            <span class="badge text-bg-secondary">op #{{ edge.op_id }}</span>
                             {{ edge.source_table or "?" }}.{{ edge.source_column or "?" }}
                             → {{ edge.target_table }}.{{ edge.target_column }}
                             <span class="text-muted ms-1">({{ edge.transform_kind }})</span>

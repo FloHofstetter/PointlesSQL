@@ -56,10 +56,10 @@
                     </div>
                     <div x-show="plan" x-cloak>
                         <div class="d-flex gap-3 mb-2 small">
-                            <span class="badge bg-success" x-text="(plan?.additions?.length || 0) + ' add'"></span>
-                            <span class="badge bg-warning text-dark"
+                            <span class="badge text-bg-success" x-text="(plan?.additions?.length || 0) + ' add'"></span>
+                            <span class="badge text-bg-warning text-dark"
                                   x-text="(plan?.modifications?.length || 0) + ' modify'"></span>
-                            <span class="badge bg-danger"
+                            <span class="badge text-bg-danger"
                                   x-text="(plan?.removals?.length || 0) + ' remove'"></span>
                         </div>
                         <pre class="bg-light p-2 small" style="max-height: 24rem; overflow:auto"

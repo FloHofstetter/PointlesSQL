@@ -19,7 +19,7 @@
             <dt class="col-sm-4 text-muted">Access methods</dt>
             <dd class="col-sm-8">
                 <template x-for="m in (record.access_methods || [])" :key="m">
-                    <span class="badge bg-light text-dark border me-1" x-text="m"></span>
+                    <span class="badge text-bg-light text-dark border me-1" x-text="m"></span>
                 </template>
                 <span x-show="(record.access_methods || []).length === 0">—</span>
             </dd>

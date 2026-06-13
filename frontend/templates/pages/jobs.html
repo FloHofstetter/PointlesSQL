@@ -75,7 +75,7 @@
                             <td class="ps-3" data-label="Name">
                                 <a href="/jobs/{{ job.id }}" class="font-monospace text-decoration-none">{{ job.name }}</a>
                             </td>
-                            <td data-label="Kind"><span class="badge bg-info text-dark">{{ job.kind }}</span></td>
+                            <td data-label="Kind"><span class="badge text-bg-info text-dark">{{ job.kind }}</span></td>
                             <td class="font-monospace small"
                                 data-label="Cron"
                                 x-data='{ c: {{ job.cron_expr|tojson }} }'
@@ -95,9 +95,9 @@
                             </td>
                             <td data-label="Status">
                                 {% if job.is_paused %}
-                                <span class="badge bg-warning text-dark">paused</span>
+                                <span class="badge text-bg-warning text-dark">paused</span>
                                 {% else %}
-                                <span class="badge bg-success">active</span>
+                                <span class="badge text-bg-success">active</span>
                                 {% endif %}
                             </td>
                             {% if is_admin %}

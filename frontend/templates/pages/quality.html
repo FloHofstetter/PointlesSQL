@@ -179,7 +179,7 @@
                                     <span class="badge" :class="severityBadge(a.severity)"
                                           x-text="kindLabel(a.kind)"></span>
                                     <code class="small" x-text="a.table_fqn + (a.column_name ? '.' + a.column_name : '')"></code>
-                                    <span class="badge bg-success" x-show="a.resolved_at">resolved</span>
+                                    <span class="badge text-bg-success" x-show="a.resolved_at">resolved</span>
                                     <span class="text-muted small ms-auto" x-text="ago(a.detected_at)"></span>
                                 </div>
                                 <div class="small mt-1">

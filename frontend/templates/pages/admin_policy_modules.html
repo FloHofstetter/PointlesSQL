@@ -51,8 +51,8 @@
                             <td class="font-monospace small" x-text="m.name"></td>
                             <td x-text="'v' + m.version"></td>
                             <td>
-                                <span class="badge bg-success" x-show="m.enabled">on</span>
-                                <span class="badge bg-secondary" x-show="!m.enabled" x-cloak>off</span>
+                                <span class="badge text-bg-success" x-show="m.enabled">on</span>
+                                <span class="badge text-bg-secondary" x-show="!m.enabled" x-cloak>off</span>
                             </td>
                             <td class="text-muted small" x-text="m.created_at"></td>
                             <td class="text-end">
@@ -178,8 +178,8 @@
                                     <td class="small text-muted" x-text="d.decision_at"></td>
                                     <td class="font-monospace small" x-text="d.action"></td>
                                     <td>
-                                        <span class="badge bg-success" x-show="d.effect === 'permit'">permit</span>
-                                        <span class="badge bg-danger" x-show="d.effect === 'forbid'" x-cloak>forbid</span>
+                                        <span class="badge text-bg-success" x-show="d.effect === 'permit'">permit</span>
+                                        <span class="badge text-bg-danger" x-show="d.effect === 'forbid'" x-cloak>forbid</span>
                                     </td>
                                     <td class="font-monospace small" x-text="d.principal_user_id || '—'"></td>
                                 </tr>

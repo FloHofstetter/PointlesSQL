@@ -67,7 +67,7 @@
                         <td class="small text-muted font-monospace"
                             x-text="(op.started_at || '').substring(0, 19)"></td>
                         <td>
-                            <span class="badge bg-light text-dark border" x-text="op.op_name"></span>
+                            <span class="badge text-bg-light text-dark border" x-text="op.op_name"></span>
                             <template x-if="op.error_message">
                                 <i class="bi bi-exclamation-triangle text-danger ms-1"
                                    :title="op.error_message"></i>

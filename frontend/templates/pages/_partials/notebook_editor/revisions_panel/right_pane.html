@@ -40,7 +40,7 @@
        <div class="small text-muted mb-1">
         <i class="bi bi-pencil-square me-1"></i>
         <strong>Changed</strong>
-        <span class="badge bg-warning text-dark ms-1"
+        <span class="badge text-bg-warning text-dark ms-1"
               x-text="revisions.diff.changed.length"></span>
        </div>
        <template x-for="entry in revisions.diff.changed" :key="`${entry.position}-${entry.new.content_hash}`">
@@ -85,7 +85,7 @@
        <div class="small text-muted mb-1">
         <i class="bi bi-plus-circle me-1"></i>
         <strong>Added</strong>
-        <span class="badge bg-success ms-1"
+        <span class="badge text-bg-success ms-1"
               x-text="revisions.diff.added.length"></span>
        </div>
        <template x-for="entry in revisions.diff.added" :key="entry.cell.content_hash">
@@ -113,7 +113,7 @@
        <div class="small text-muted mb-1">
         <i class="bi bi-dash-circle me-1"></i>
         <strong>Removed</strong>
-        <span class="badge bg-danger ms-1"
+        <span class="badge text-bg-danger ms-1"
               x-text="revisions.diff.removed.length"></span>
        </div>
        <template x-for="entry in revisions.diff.removed" :key="entry.cell.content_hash">
@@ -141,7 +141,7 @@
        <div class="small text-muted mb-1">
         <i class="bi bi-arrow-left-right me-1"></i>
         <strong>Moved</strong>
-        <span class="badge bg-info text-dark ms-1"
+        <span class="badge text-bg-info text-dark ms-1"
               x-text="revisions.diff.moved.length"></span>
        </div>
        <template x-for="entry in revisions.diff.moved" :key="entry.cell.content_hash">

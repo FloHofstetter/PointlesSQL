@@ -60,7 +60,7 @@
                                     <div class="small text-muted">
                                         <strong x-text="(r.author && (r.author.display_name || r.author.email)) || 'unknown'"></strong>
                                         <template x-if="r.agent">
-                                            <span class="badge bg-info ms-1 pql-review-agent-badge"
+                                            <span class="badge text-bg-info ms-1 pql-review-agent-badge"
                                                   :title="'Posted via agent ' + r.agent.slug">
                                                 <i class="bi bi-robot"></i>
                                                 <a :href="'/agents/' + r.agent.slug"
@@ -76,7 +76,7 @@
                                         <span x-text="pqlRelativeTime(r.created_at)"
                                               :title="pqlAbsTime(r.created_at)"></span>
                                         <template x-if="r.dp_version_at_review">
-                                            <span class="badge bg-light text-dark border ms-1"
+                                            <span class="badge text-bg-light text-dark border ms-1"
                                                   x-text="'v' + r.dp_version_at_review"></span>
                                         </template>
                                     </div>

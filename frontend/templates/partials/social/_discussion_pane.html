@@ -34,7 +34,7 @@
                                     <div class="small text-muted">
                                         <strong x-text="(c.author && (c.author.display_name || c.author.email)) || 'unknown'"></strong>
                                         <template x-if="c.agent">
-                                            <span class="badge bg-info ms-1 pql-comment-agent-badge"
+                                            <span class="badge text-bg-info ms-1 pql-comment-agent-badge"
                                                   :title="'Posted via agent ' + c.agent.slug">
                                                 <i class="bi bi-robot"></i>
                                                 <a :href="'/agents/' + c.agent.slug"
@@ -47,7 +47,7 @@
                                         <span x-text="pqlRelativeTime(c.created_at)"
                                               :title="pqlAbsTime(c.created_at)"></span>
                                         <!-- category badge -->
-                                        <span class="badge bg-secondary ms-1 pql-comment-category"
+                                        <span class="badge text-bg-secondary ms-1 pql-comment-category"
                                               x-show="c.category && c.category !== 'general'"
                                               x-text="c.category"></span>
                                     </div>
@@ -86,7 +86,7 @@
                                             <div class="small text-muted">
                                                 <strong x-text="(r.author && (r.author.display_name || r.author.email)) || 'unknown'"></strong>
                                                 <template x-if="r.agent">
-                                                    <span class="badge bg-info ms-1 pql-comment-agent-badge"
+                                                    <span class="badge text-bg-info ms-1 pql-comment-agent-badge"
                                                           :title="'Posted via agent ' + r.agent.slug">
                                                         <i class="bi bi-robot"></i>
                                                         <a :href="'/agents/' + r.agent.slug"
@@ -98,7 +98,7 @@
                                                 ·
                                                 <span x-text="pqlRelativeTime(r.created_at)"
                                                       :title="pqlAbsTime(r.created_at)"></span>
-                                                <span class="badge bg-success ms-1 pql-accepted-answer-badge"
+                                                <span class="badge text-bg-success ms-1 pql-accepted-answer-badge"
                                                       x-show="r.is_accepted_answer">✓ Answer</span>
                                             </div>
                                             <div class="d-flex gap-2">

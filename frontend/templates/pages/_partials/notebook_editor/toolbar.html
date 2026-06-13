@@ -155,7 +155,7 @@
            title="Show scheduled jobs + recent runs for this notebook">
     <i class="bi bi-list-task" aria-hidden="true"></i>
     <span class="pql-toolbar-panel-btn__label">Jobs</span>
-    <span class="badge bg-secondary ms-1"
+    <span class="badge text-bg-secondary ms-1"
           x-show="jobsPanel && jobsPanel.scheduled_jobs && jobsPanel.scheduled_jobs.length > 0"
           x-text="jobsPanel.scheduled_jobs.length"
           x-cloak></span>
@@ -167,7 +167,7 @@
            title="Live kernel variable inspector (refreshes after every cell run)">
     <i class="bi bi-eye" aria-hidden="true"></i>
     <span class="pql-toolbar-panel-btn__label">Variables</span>
-    <span class="badge bg-secondary ms-1"
+    <span class="badge text-bg-secondary ms-1"
           x-show="inspectorVars && inspectorVars.length > 0"
           x-text="inspectorVars.length"
           x-cloak></span>
@@ -189,7 +189,7 @@
            title="Inspect notebook replays / scenario runs">
     <i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i>
     <span class="pql-toolbar-panel-btn__label">Replays</span>
-    <span class="badge bg-secondary ms-1"
+    <span class="badge text-bg-secondary ms-1"
           x-show="replays.loaded && replays.rows.length > 0"
           x-text="replays.rows.length"
           x-cloak></span>
@@ -204,7 +204,7 @@
            title="Cell-sequence proposals">
     <i class="bi bi-stack" aria-hidden="true"></i>
     <span class="pql-toolbar-panel-btn__label">Proposals</span>
-    <span class="badge bg-primary ms-1"
+    <span class="badge text-bg-primary ms-1"
           x-show="sequenceProposals.pending.length > 0"
           x-text="sequenceProposals.pending.length"
           x-cloak></span>
@@ -218,7 +218,7 @@
            title="Notebook input widgets">
     <i class="bi bi-sliders" aria-hidden="true"></i>
     <span class="pql-toolbar-panel-btn__label">Widgets</span>
-    <span class="badge bg-secondary ms-1"
+    <span class="badge text-bg-secondary ms-1"
           x-show="widgetsPanel.loaded && widgetsPanel.widgets.length > 0"
           x-text="widgetsPanel.widgets.length"
           x-cloak></span>

@@ -32,7 +32,7 @@
                         <ul class="list-unstyled mb-0">
                             {% for v in linked[:5] %}
                             <li class="mb-2">
-                                <span class="badge bg-secondary">v{{ v.version }}</span>
+                                <span class="badge text-bg-secondary">v{{ v.version }}</span>
                                 {% if v.link_marker.agent_run_id %}
                                 <a href="/runs/{{ v.link_marker.agent_run_id }}"
                                    class="text-decoration-none">

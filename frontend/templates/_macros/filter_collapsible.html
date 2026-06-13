@@ -8,7 +8,7 @@
    Usage:
 
      {% from "_macros/filter_collapsible.html" import filter_collapsible %}
-     {% set summary %}<span class="badge bg-secondary">Severity: {{ severity }}</span>{% endset %}
+     {% set summary %}<span class="badge text-bg-secondary">Severity: {{ severity }}</span>{% endset %}
      {% call filter_collapsible('inbox-filter-row', summary, expanded=False) %}
          <form id="inbox-filter" class="row g-2 align-items-end" autocomplete="off">
              <!-- existing filter inputs -->

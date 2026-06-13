@@ -13,7 +13,7 @@
     <div class="d-flex align-items-center gap-2 mb-3">
         <i class="bi bi-bell fs-3"></i>
         <h1 class="h3 mb-0">Notifications</h1>
-        <span class="badge bg-danger ms-1 pql-notif-unread-badge"
+        <span class="badge text-bg-danger ms-1 pql-notif-unread-badge"
               x-show="unreadCount > 0"
               x-text="unreadCount"></span>
         <div class="ms-auto d-flex gap-2">
@@ -79,7 +79,7 @@
                    @click="markRead(n.id)">
                     <div class="d-flex w-100 justify-content-between">
                         <span class="small">
-                            <span class="badge bg-light text-dark border me-1"
+                            <span class="badge text-bg-light text-dark border me-1"
                                   x-text="shortEventType(n.event_type)"></span>
                             <strong x-text="n.summary_md"></strong>
                         </span>

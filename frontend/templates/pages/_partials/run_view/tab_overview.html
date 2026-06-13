@@ -14,7 +14,7 @@
  aria-controls="tab-cells" aria-selected="false"
  data-pql-tab-key="cells">
  <i class="bi bi-code-slash me-1"></i>Cells
- {% if cells %}<span class="badge bg-secondary ms-1">{{ cells | length }}</span>{% endif %}
+ {% if cells %}<span class="badge text-bg-secondary ms-1">{{ cells | length }}</span>{% endif %}
  </button>
  </li>
  <li class="nav-item" role="presentation">
@@ -23,7 +23,7 @@
  aria-controls="tab-events" aria-selected="false"
  data-pql-tab-key="events">
  <i class="bi bi-broadcast me-1"></i>Events
- {% if events %}<span class="badge bg-secondary ms-1">{{ events | length }}</span>{% endif %}
+ {% if events %}<span class="badge text-bg-secondary ms-1">{{ events | length }}</span>{% endif %}
  </button>
  </li>
  </ul>
@@ -59,7 +59,7 @@
  {% set outputs = cell_outputs.get(cell.content_hash, []) if cell_outputs else [] %}
  <div class="card mb-3 pql-run-cell pql-run-cell-type-{{ cell.cell_type }}" id="{{ cell.id }}">
  <div class="card-header d-flex align-items-center gap-2 small">
- <span class="badge bg-secondary text-uppercase">{{ cell.cell_type }}</span>
+ <span class="badge text-bg-secondary text-uppercase">{{ cell.cell_type }}</span>
  {% if cell_run and cell_run.execution_count is not none %}
  <span class="font-monospace text-muted">[{{ cell_run.execution_count }}]</span>
  {% else %}
@@ -127,7 +127,7 @@
  {% for ev in events %}
  <tr>
  <td class="font-monospace text-muted">{{ ev.fired_at or "&mdash;" | safe }}</td>
- <td><span class="badge bg-secondary">{{ ev.event_type }}</span></td>
+ <td><span class="badge text-bg-secondary">{{ ev.event_type }}</span></td>
  <td>
  {% if ev.outcome == 'delivered' %}
  <span class="badge bg-success-subtle text-success-emphasis">delivered</span>

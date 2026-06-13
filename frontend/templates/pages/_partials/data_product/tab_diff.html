@@ -21,13 +21,13 @@
                                     <i class="bi bi-table me-1"></i>
                                     <span x-text="t.name"></span>
                                     <template x-if="t.error">
-                                        <span class="badge bg-warning text-dark ms-2" x-text="t.error"></span>
+                                        <span class="badge text-bg-warning text-dark ms-2" x-text="t.error"></span>
                                     </template>
                                     <template x-if="!t.error && !t.is_breaking">
-                                        <span class="badge bg-success ms-2">Compliant</span>
+                                        <span class="badge text-bg-success ms-2">Compliant</span>
                                     </template>
                                     <template x-if="!t.error && t.is_breaking">
-                                        <span class="badge bg-danger ms-2">Breaking drift</span>
+                                        <span class="badge text-bg-danger ms-2">Breaking drift</span>
                                     </template>
                                 </h5>
                                 <template x-if="!t.error">

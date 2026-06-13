@@ -22,10 +22,10 @@
  <i class="bi bi-table fs-3"></i>
  <h1 class="h3 mb-0">{{ catalog_name }}.{{ schema_name }}.{{ table_name }}</h1>
  {% if certification and certification.status == "certified" %}
- <span class="badge bg-success"{% if certification.note %} title="{{ certification.note }}"{% endif %}>
+ <span class="badge text-bg-success"{% if certification.note %} title="{{ certification.note }}"{% endif %}>
   <i class="bi bi-patch-check me-1"></i>Certified</span>
  {% elif certification and certification.status == "deprecated" %}
- <span class="badge bg-warning text-dark"{% if certification.note %} title="{{ certification.note }}"{% endif %}>
+ <span class="badge text-bg-warning text-dark"{% if certification.note %} title="{{ certification.note }}"{% endif %}>
   <i class="bi bi-exclamation-triangle me-1"></i>Deprecated</span>
  {% endif %}
  <button type="button"
@@ -172,7 +172,7 @@
  aria-controls="tab-columns" aria-selected="false"
  data-pql-tab-key="columns">
  <i class="bi bi-list-columns me-1"></i>Columns
- <span class="badge bg-secondary ms-1">{{ table.columns|length }}</span>
+ <span class="badge text-bg-secondary ms-1">{{ table.columns|length }}</span>
  </button>
  </li>
  <li class="nav-item" role="presentation">
@@ -199,11 +199,11 @@
  data-pql-tab-key="cdf-events">
  <i class="bi bi-arrow-down-up me-1"></i>CDF events
  {% if cdf_subscription.last_error %}
- <span class="badge bg-warning text-dark ms-1">err</span>
+ <span class="badge text-bg-warning text-dark ms-1">err</span>
  {% elif not cdf_subscription.is_active %}
- <span class="badge bg-secondary ms-1">paused</span>
+ <span class="badge text-bg-secondary ms-1">paused</span>
  {% elif cdf_recent_events %}
- <span class="badge bg-secondary ms-1">{{ cdf_recent_events|length }}</span>
+ <span class="badge text-bg-secondary ms-1">{{ cdf_recent_events|length }}</span>
  {% endif %}
  </button>
  </li>
@@ -216,7 +216,7 @@
  data-pql-tab-key="semantic-search">
  <i class="bi bi-compass me-1"></i>Semantic search
  {% if vector_indices %}
- <span class="badge bg-secondary ms-1">{{ vector_indices|length }}</span>
+ <span class="badge text-bg-secondary ms-1">{{ vector_indices|length }}</span>
  {% else %}
  <span class="badge bg-warning-subtle text-warning-emphasis ms-1" title="No index yet">+</span>
  {% endif %}

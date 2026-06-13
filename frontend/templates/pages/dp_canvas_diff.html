@@ -75,9 +75,9 @@
         </div>
         <div class="small text-muted ms-2"
              x-show="viewMode === 'visual' && diff && diff.diff && !diffEmpty()">
-            <span class="badge bg-success me-1">●</span> added
-            <span class="badge bg-danger ms-2 me-1">●</span> removed
-            <span class="badge bg-warning ms-2 me-1">●</span> modified
+            <span class="badge text-bg-success me-1">●</span> added
+            <span class="badge text-bg-danger ms-2 me-1">●</span> removed
+            <span class="badge text-bg-warning ms-2 me-1">●</span> modified
         </div>
         <button class="btn btn-sm btn-outline-secondary ms-auto"
                 x-show="viewMode === 'visual' && diff && diff.diff && !diffEmpty()"

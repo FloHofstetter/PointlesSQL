@@ -30,7 +30,7 @@
     <h2 class="h5 d-flex align-items-center gap-2 mb-2">
         <i class="bi bi-exclamation-triangle-fill text-danger"></i>
         <span>System errors</span>
-        <span class="badge bg-danger" data-system-errors-count>{{ system_errors|length }}</span>
+        <span class="badge text-bg-danger" data-system-errors-count>{{ system_errors|length }}</span>
     </h2>
     <p class="text-muted small mb-2">
         Live state of foreign-Delta CDF subscriptions whose last tail
@@ -46,7 +46,7 @@
                     <div class="fw-semibold">
                         <code>{{ err.table_full_name }}</code>
                         {% if not err.is_active %}
-                        <span class="badge bg-secondary ms-1">paused</span>
+                        <span class="badge text-bg-secondary ms-1">paused</span>
                         {% endif %}
                     </div>
                     <div class="text-danger small mt-1 font-monospace text-break">

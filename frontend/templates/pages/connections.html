@@ -79,7 +79,7 @@
                             <td class="ps-3">
                                 <a href="/connections/{{ conn.name }}" class="font-monospace text-decoration-none">{{ conn.name }}</a>
                             </td>
-                            <td><span class="badge bg-info text-dark">{{ conn.connection_type or "—" }}</span></td>
+                            <td><span class="badge text-bg-info text-dark">{{ conn.connection_type or "—" }}</span></td>
                             <td class="text-muted small">{{ conn.owner or "—" }}</td>
                             <td class="text-muted small">{{ relative_time_epoch(conn.created_at) }}</td>
                         </tr>

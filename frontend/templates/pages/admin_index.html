@@ -48,7 +48,7 @@
                     <i class="bi bi-exclamation-triangle fs-4"></i>
                     <h2 class="h5 mb-0">External writes</h2>
                     {% if unacknowledged_external_writes %}
-                    <span class="badge bg-warning text-dark ms-auto">{{ unacknowledged_external_writes }}</span>
+                    <span class="badge text-bg-warning text-dark ms-auto">{{ unacknowledged_external_writes }}</span>
                     {% endif %}
                 </div>
                 <p class="text-muted small mb-0">
@@ -67,7 +67,7 @@
                     <i class="bi bi-folder2-open fs-4"></i>
                     <h2 class="h5 mb-0">Workspaces</h2>
                     {% if active_workspaces %}
-                    <span class="badge bg-secondary ms-auto">{{ active_workspaces }}</span>
+                    <span class="badge text-bg-secondary ms-auto">{{ active_workspaces }}</span>
                     {% endif %}
                 </div>
                 <p class="text-muted small mb-0">
@@ -150,7 +150,7 @@
                     <i class="bi bi-broadcast fs-4"></i>
                     <h2 class="h5 mb-0">Audit sinks</h2>
                     {% if active_sinks %}
-                    <span class="badge bg-secondary ms-auto">{{ active_sinks }}</span>
+                    <span class="badge text-bg-secondary ms-auto">{{ active_sinks }}</span>
                     {% endif %}
                 </div>
                 <p class="text-muted small mb-0">
@@ -169,7 +169,7 @@
                     <i class="bi bi-bell fs-4"></i>
                     <h2 class="h5 mb-0">Review destinations</h2>
                     {% if active_destinations %}
-                    <span class="badge bg-secondary ms-auto">{{ active_destinations }}</span>
+                    <span class="badge text-bg-secondary ms-auto">{{ active_destinations }}</span>
                     {% endif %}
                 </div>
                 <p class="text-muted small mb-0">
@@ -188,7 +188,7 @@
                     <i class="bi bi-key fs-4"></i>
                     <h2 class="h5 mb-0">API keys</h2>
                     {% if active_api_keys %}
-                    <span class="badge bg-secondary ms-auto">{{ active_api_keys }}</span>
+                    <span class="badge text-bg-secondary ms-auto">{{ active_api_keys }}</span>
                     {% endif %}
                 </div>
                 <p class="text-muted small mb-0">
@@ -276,9 +276,9 @@
                     <i class="bi bi-arrow-down-up fs-4"></i>
                     <h2 class="h5 mb-0">CDF subscriptions</h2>
                     {% if cdf_subscriptions_with_errors %}
-                    <span class="badge bg-warning text-dark ms-auto">{{ cdf_subscriptions_with_errors }} err</span>
+                    <span class="badge text-bg-warning text-dark ms-auto">{{ cdf_subscriptions_with_errors }} err</span>
                     {% elif active_cdf_subscriptions %}
-                    <span class="badge bg-secondary ms-auto">{{ active_cdf_subscriptions }}</span>
+                    <span class="badge text-bg-secondary ms-auto">{{ active_cdf_subscriptions }}</span>
                     {% endif %}
                 </div>
                 <p class="text-muted small mb-0">

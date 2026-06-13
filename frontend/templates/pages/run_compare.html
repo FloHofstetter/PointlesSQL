@@ -26,11 +26,11 @@
                 <i class="bi bi-file-earmark-richtext"></i>
                 <span class="fw-semibold">Run #{{ run.id }}</span>
                 {% if run.status == "succeeded" %}
-                <span class="badge bg-success">{{ run.status }}</span>
+                <span class="badge text-bg-success">{{ run.status }}</span>
                 {% elif run.status == "failed" %}
-                <span class="badge bg-danger">{{ run.status }}</span>
+                <span class="badge text-bg-danger">{{ run.status }}</span>
                 {% else %}
-                <span class="badge bg-info text-dark">{{ run.status }}</span>
+                <span class="badge text-bg-info text-dark">{{ run.status }}</span>
                 {% endif %}
             </div>
             <div class="card-body p-2 small">

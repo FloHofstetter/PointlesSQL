@@ -17,12 +17,12 @@
         <h1 class="h4 mb-0">{{ key.name }}</h1>
         {% if key.token_format == 'v1' %}
             {% if key.token_env == 'test' %}
-            <span class="badge bg-warning text-dark">test</span>
+            <span class="badge text-bg-warning text-dark">test</span>
             {% else %}
-            <span class="badge bg-success">live</span>
+            <span class="badge text-bg-success">live</span>
             {% endif %}
         {% else %}
-        <span class="badge bg-secondary">legacy</span>
+        <span class="badge text-bg-secondary">legacy</span>
         {% endif %}
     </div>
     <a class="btn btn-sm btn-outline-secondary" href="/admin/api-keys">

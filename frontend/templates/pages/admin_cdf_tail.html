@@ -16,9 +16,9 @@
         <i class="bi bi-arrow-down-up fs-3"></i>
         <h1 class="h3 mb-0">CDF subscriptions{{ info('admin.cdf-tail') }}</h1>
         {% if with_errors_total %}
-        <span class="badge bg-warning text-dark">{{ with_errors_total }} with last_error</span>
+        <span class="badge text-bg-warning text-dark">{{ with_errors_total }} with last_error</span>
         {% else %}
-        <span class="badge bg-success">all healthy</span>
+        <span class="badge text-bg-success">all healthy</span>
         {% endif %}
     </div>
     <span class="text-muted small">
@@ -140,9 +140,9 @@ background-loop opt-in; the "Run tail now" button works regardless.
                         <td class="font-monospace small">{{ s.producer_label }}</td>
                         <td>
                             {% if s.is_active %}
-                            <span class="badge bg-success">active</span>
+                            <span class="badge text-bg-success">active</span>
                             {% else %}
-                            <span class="badge bg-secondary">paused</span>
+                            <span class="badge text-bg-secondary">paused</span>
                             {% endif %}
                         </td>
                         <td class="font-monospace small">

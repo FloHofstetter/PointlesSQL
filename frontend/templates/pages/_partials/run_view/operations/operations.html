@@ -19,7 +19,7 @@
  {% for op in operations %}
  <tr {% if op.status == 'error' %}class="table-danger"{% endif %}>
  <td class="font-monospace text-muted">{{ op.ordinal }}</td>
- <td><span class="badge bg-secondary text-uppercase">{{ op.op_name }}</span></td>
+ <td><span class="badge text-bg-secondary text-uppercase">{{ op.op_name }}</span></td>
  <td class="font-monospace">{{ op.target_table or "&mdash;" | safe }}</td>
  <td class="font-monospace">{{ op.rows_affected if op.rows_affected is not none else "&mdash;" | safe }}</td>
  <td class="font-monospace text-muted">
@@ -34,7 +34,7 @@
  <td class="font-monospace text-muted">{{ op.duration_ms ~ ' ms' if op.duration_ms is not none else "&mdash;" | safe }}</td>
  <td>
  {% if op.status == 'error' %}
- <span class="badge bg-danger" title="{{ op.error_message or '' }}">error</span>
+ <span class="badge text-bg-danger" title="{{ op.error_message or '' }}">error</span>
  {% else %}
  <span class="badge bg-success-subtle text-success-emphasis">ok</span>
  {% endif %}

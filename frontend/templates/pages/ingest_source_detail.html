@@ -14,7 +14,7 @@
         <div class="d-flex align-items-center gap-2">
             <i class="bi bi-plug-fill fs-3"></i>
             <h1 class="h3 mb-0">{{ source_name }}</h1>
-            <span class="badge bg-secondary font-monospace">{{ source_kind }}</span>
+            <span class="badge text-bg-secondary font-monospace">{{ source_kind }}</span>
         </div>
         <button class="btn btn-primary btn-sm"
                 :disabled="!source || (source.table_mappings || []).length === 0 || pulling"
@@ -35,7 +35,7 @@
             <button class="nav-link" data-bs-toggle="tab"
                     data-bs-target="#tab-mappings" type="button">
                 Mappings
-                <span class="badge bg-secondary"
+                <span class="badge text-bg-secondary"
                       x-text="(source?.table_mappings || []).length"></span>
             </button>
         </li>

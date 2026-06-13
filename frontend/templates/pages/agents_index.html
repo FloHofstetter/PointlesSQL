@@ -31,7 +31,7 @@
                 <i class="bi bi-robot fs-4 text-muted"></i>
                 <div class="flex-grow-1">
                     <a class="pql-agent-name" :href="'/agents/' + a.slug" x-text="a.display_name"></a>
-                    <span class="badge bg-success ms-1 pql-agent-verified-badge"
+                    <span class="badge text-bg-success ms-1 pql-agent-verified-badge"
                           x-show="a.is_verified">✓ verified</span>
                     <div class="small text-muted pql-agent-principal">
                         speaks for <span x-text="a.principal_email || '?'"></span>

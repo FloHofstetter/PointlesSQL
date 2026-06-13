@@ -41,11 +41,11 @@ a one-click button cannot supply safely.
                             <td>
                                 <code>{{ pii_mode }}</code>
                                 {% if pii_mode == "store_clear" %}
-                                <span class="badge bg-danger ms-2">cleartext</span>
+                                <span class="badge text-bg-danger ms-2">cleartext</span>
                                 {% elif pii_mode == "hash_only" %}
-                                <span class="badge bg-success ms-2">hashed</span>
+                                <span class="badge text-bg-success ms-2">hashed</span>
                                 {% else %}
-                                <span class="badge bg-warning text-dark ms-2">redacted+logged</span>
+                                <span class="badge text-bg-warning text-dark ms-2">redacted+logged</span>
                                 {% endif %}
                             </td>
                         </tr>
@@ -57,12 +57,12 @@ a one-click button cannot supply safely.
                             <th>PII hash secret</th>
                             <td>
                                 {% if pii_hash_secret_present %}
-                                <span class="badge bg-success">present</span>
+                                <span class="badge text-bg-success">present</span>
                                 {% if pii_hash_secret_created_at %}
                                 <span class="text-muted small ms-1">since {{ relative_time(pii_hash_secret_created_at) }}</span>
                                 {% endif %}
                                 {% else %}
-                                <span class="badge bg-light text-muted border">missing</span>
+                                <span class="badge text-bg-light text-muted border">missing</span>
                                 <span class="text-muted small ms-1">
                                     (lazy-generated on first hash_only write)
                                 </span>
@@ -73,9 +73,9 @@ a one-click button cannot supply safely.
                             <th>Mask in admin views</th>
                             <td>
                                 {% if pii_mask_default %}
-                                <span class="badge bg-success">on</span>
+                                <span class="badge text-bg-success">on</span>
                                 {% else %}
-                                <span class="badge bg-light text-muted border">off</span>
+                                <span class="badge text-bg-light text-muted border">off</span>
                                 {% endif %}
                                 <span class="text-muted small ms-1">
                                     <code>POINTLESSQL_AUDIT_PII_MASK_DEFAULT</code>

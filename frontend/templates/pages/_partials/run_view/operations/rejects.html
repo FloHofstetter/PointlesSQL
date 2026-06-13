@@ -32,13 +32,13 @@
  </td>
  <td>
  {% if r.reason == 'on_key_null' %}
- <span class="badge bg-warning text-dark">{{ r.reason }}</span>
+ <span class="badge text-bg-warning text-dark">{{ r.reason }}</span>
  {% elif r.reason == 'duplicate_in_source' %}
- <span class="badge bg-info text-dark">{{ r.reason }}</span>
+ <span class="badge text-bg-info text-dark">{{ r.reason }}</span>
  {% elif r.reason == 'schema_mismatch' %}
- <span class="badge bg-danger">{{ r.reason }}</span>
+ <span class="badge text-bg-danger">{{ r.reason }}</span>
  {% else %}
- <span class="badge bg-secondary">{{ r.reason }}</span>
+ <span class="badge text-bg-secondary">{{ r.reason }}</span>
  {% endif %}
  </td>
  <td class="small text-muted">{{ r.detail or '—' }}</td>

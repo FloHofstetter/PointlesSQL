@@ -26,11 +26,11 @@
  <td class="font-monospace text-muted">{{ q.started_at or "&mdash;" | safe }}</td>
  <td>
  {% if q.read_kind == 'pql_table' %}
- <span class="badge bg-info text-dark" title="pql.table() read">pql.table</span>
+ <span class="badge text-bg-info text-dark" title="pql.table() read">pql.table</span>
  {% elif q.read_kind == 'engine_direct' %}
- <span class="badge bg-warning text-dark" title="engine-direct read">engine</span>
+ <span class="badge text-bg-warning text-dark" title="engine-direct read">engine</span>
  {% else %}
- <span class="badge bg-light text-dark border" title="/api/sql/execute">sql</span>
+ <span class="badge text-bg-light text-dark border" title="/api/sql/execute">sql</span>
  {% endif %}
  </td>
  <td>
@@ -49,7 +49,7 @@
  {% elif q.status == 'cancelled' %}
  <span class="badge bg-warning-subtle text-warning-emphasis">cancelled</span>
  {% else %}
- <span class="badge bg-danger" title="{{ q.error_message or '' }}">{{ q.status }}</span>
+ <span class="badge text-bg-danger" title="{{ q.error_message or '' }}">{{ q.status }}</span>
  {% endif %}
  </td>
  </tr>

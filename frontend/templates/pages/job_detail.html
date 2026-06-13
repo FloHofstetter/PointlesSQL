@@ -15,9 +15,9 @@
         <i class="bi bi-clock-history fs-3"></i>
         <h1 class="h3 mb-0 font-monospace">{{ job.name }}</h1>
         {% if job.is_paused %}
-        <span class="badge bg-warning text-dark">paused</span>
+        <span class="badge text-bg-warning text-dark">paused</span>
         {% else %}
-        <span class="badge bg-success">active</span>
+        <span class="badge text-bg-success">active</span>
         {% endif %}
     </div>
     {% if can_manage %}
@@ -63,14 +63,14 @@
     <div class="card-body">
         <dl class="row mb-0">
             <dt class="col-sm-3">Kind</dt>
-            <dd class="col-sm-9"><span class="badge bg-info text-dark">{{ job.kind }}</span></dd>
+            <dd class="col-sm-9"><span class="badge text-bg-info text-dark">{{ job.kind }}</span></dd>
             <dt class="col-sm-3">Trigger</dt>
             <dd class="col-sm-9">
                 {% if job.trigger_kind == "file_arrival" %}
-                <span class="badge bg-info text-dark">file arrival</span>
+                <span class="badge text-bg-info text-dark">file arrival</span>
                 <code class="ms-1">{{ job.trigger_config.get("path", "") }}</code>
                 {% elif job.trigger_kind == "table_update" %}
-                <span class="badge bg-info text-dark">table update</span>
+                <span class="badge text-bg-info text-dark">table update</span>
                 <code class="ms-1">{{ job.trigger_config.get("table", "") }}</code>
                 {% else %}
                 <span class="font-monospace"
@@ -133,18 +133,18 @@
                     {% for t in tasks %}
                     <tr>
                         <td data-label="Name" class="ps-3 font-monospace">{{ t.name }}</td>
-                        <td data-label="Kind"><span class="badge bg-info text-dark">{{ t.kind }}</span></td>
+                        <td data-label="Kind"><span class="badge text-bg-info text-dark">{{ t.kind }}</span></td>
                         <td data-label="Depends on" class="small">{{ t.depends_on|join(", ") if t.depends_on else "—" }}</td>
                         <td data-label="Retries" class="small">{{ t.max_retries }} × {{ t.retry_backoff_seconds }}s</td>
                         <td data-label="Latest status">
                             {% if t.latest_status == "succeeded" %}
-                            <span class="badge bg-success">{{ t.latest_status }}</span>
+                            <span class="badge text-bg-success">{{ t.latest_status }}</span>
                             {% elif t.latest_status == "failed" %}
-                            <span class="badge bg-danger">{{ t.latest_status }}</span>
+                            <span class="badge text-bg-danger">{{ t.latest_status }}</span>
                             {% elif t.latest_status == "skipped" %}
-                            <span class="badge bg-secondary">{{ t.latest_status }}</span>
+                            <span class="badge text-bg-secondary">{{ t.latest_status }}</span>
                             {% elif t.latest_status %}
-                            <span class="badge bg-info text-dark">{{ t.latest_status }}</span>
+                            <span class="badge text-bg-info text-dark">{{ t.latest_status }}</span>
                             {% else %}
                             <span class="text-muted small">—</span>
                             {% endif %}
@@ -176,7 +176,7 @@
                                     <span class="text-muted"
                                           x-text="pqlAbsTime(line.ts)"
                                           :title="line.ts"></span>
-                                    <span class="badge bg-secondary" x-text="line.level"></span>
+                                    <span class="badge text-bg-secondary" x-text="line.level"></span>
                                     <span x-text="line.message"></span>
                                 </div>
                             </template>
@@ -306,13 +306,13 @@
                         <td data-label="Started" class="ps-3 small">{{ run.started_at }}</td>
                         <td data-label="Status">
                             {% if run.status == "succeeded" %}
-                            <span class="badge bg-success">{{ run.status }}</span>
+                            <span class="badge text-bg-success">{{ run.status }}</span>
                             {% elif run.status == "failed" %}
-                            <span class="badge bg-danger">{{ run.status }}</span>
+                            <span class="badge text-bg-danger">{{ run.status }}</span>
                             {% elif run.status == "skipped" %}
-                            <span class="badge bg-secondary">{{ run.status }}</span>
+                            <span class="badge text-bg-secondary">{{ run.status }}</span>
                             {% else %}
-                            <span class="badge bg-info text-dark">{{ run.status }}</span>
+                            <span class="badge text-bg-info text-dark">{{ run.status }}</span>
                             {% endif %}
                         </td>
                         <td data-label="Trigger" class="small">

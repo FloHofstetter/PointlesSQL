@@ -397,7 +397,7 @@ async def test_queries_page_emits_rows_with_hljs_marker(
     body = resp.text
     # Table layout markers + status badge + hljs hook in drawer body.
     assert 'id="queries-tbody"' in body
-    assert 'class="badge bg-success">succeeded' in body
+    assert 'class="badge text-bg-success">succeeded' in body
     assert 'class="language-sql"' in body
     # hljs CDN + page-local highlight bridge are loaded only on /queries.
     assert "highlight.min.js" in body

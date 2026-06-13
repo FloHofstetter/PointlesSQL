@@ -31,7 +31,7 @@
                         <!-- badge row -->
                         <div class="d-flex gap-1 flex-wrap mt-2 pql-profile-badges">
                             <template x-for="b in (badges || [])" :key="b.badge_key">
-                                <span class="badge bg-info"
+                                <span class="badge text-bg-info"
                                       :data-badge-key="b.badge_key"
                                       x-text="b.badge_key.replace(/_/g, ' ')"></span>
                             </template>
@@ -153,7 +153,7 @@
                             <ul class="list-unstyled mb-0 small pql-profile-recent-comments">
                                 <template x-for="c in (recentComments || [])" :key="c.id">
                                     <li class="mb-1">
-                                        <span class="badge bg-secondary me-1"
+                                        <span class="badge text-bg-secondary me-1"
                                               x-show="c.category && c.category !== 'general'"
                                               x-text="c.category"></span>
                                         <span x-text="c.body_md.slice(0, 80)"></span>

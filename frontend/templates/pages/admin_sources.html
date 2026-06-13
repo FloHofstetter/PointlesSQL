@@ -85,7 +85,7 @@
                                 @click="window.location.href = '/ingest/sources/' + s.id">
                                 <td><strong x-text="s.name"></strong></td>
                                 <td>
-                                    <span class="badge bg-secondary font-monospace"
+                                    <span class="badge text-bg-secondary font-monospace"
                                           x-text="s.kind"></span>
                                 </td>
                                 <td class="text-muted small"
@@ -95,9 +95,9 @@
                                 <td class="text-muted small"
                                     x-text="s.last_pull_ts || '—'"></td>
                                 <td class="text-center">
-                                    <span x-show="s.last_pull_ok === true" class="badge bg-success">ok</span>
-                                    <span x-show="s.last_pull_ok === false" class="badge bg-danger">failed</span>
-                                    <span x-show="s.last_pull_ok === null" class="badge bg-secondary">never</span>
+                                    <span x-show="s.last_pull_ok === true" class="badge text-bg-success">ok</span>
+                                    <span x-show="s.last_pull_ok === false" class="badge text-bg-danger">failed</span>
+                                    <span x-show="s.last_pull_ok === null" class="badge text-bg-secondary">never</span>
                                 </td>
                                 <td class="text-end"
                                     :class="s.errors_7d > 0 ? 'text-danger fw-bold' : 'text-muted'"

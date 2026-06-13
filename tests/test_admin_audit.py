@@ -156,7 +156,7 @@ class TestAdminAuditContent:
         # the assertion doesn't get confused by the <option> list of
         # the server-side filter dropdown (which sorts alphabetically).
         def _badge(action: str) -> str:
-            return f'<span class="badge bg-secondary font-monospace">{action}</span>'
+            return f'<span class="badge text-bg-secondary font-monospace">{action}</span>'
 
         # Both recent rows present in the table body.
         assert _badge("update_catalog") in body

@@ -108,7 +108,7 @@
                                 <td><span x-text="m.owner || '—'" class="small text-muted"></span></td>
                                 <td>
                                     <template x-if="m.latest_version">
-                                        <span class="badge bg-secondary" x-text="'v' + m.latest_version"></span>
+                                        <span class="badge text-bg-secondary" x-text="'v' + m.latest_version"></span>
                                     </template>
                                     <template x-if="!m.latest_version">
                                         <span class="text-muted small">—</span>
@@ -116,17 +116,17 @@
                                 </td>
                                 <td>
                                     <template x-if="m.latest_status === 'READY'">
-                                        <span class="badge bg-success" x-text="m.latest_status"></span>
+                                        <span class="badge text-bg-success" x-text="m.latest_status"></span>
                                     </template>
                                     <template x-if="m.latest_status && m.latest_status !== 'READY'">
-                                        <span class="badge bg-warning text-dark" x-text="m.latest_status"></span>
+                                        <span class="badge text-bg-warning text-dark" x-text="m.latest_status"></span>
                                     </template>
                                     <template x-if="!m.latest_status">
                                         <span class="text-muted small">—</span>
                                     </template>
                                 </td>
                                 <td>
-                                    <span class="badge bg-light text-dark" x-text="m.linked_run_count || 0"></span>
+                                    <span class="badge text-bg-light text-dark" x-text="m.linked_run_count || 0"></span>
                                 </td>
                                 <td class="small text-muted"
                                     x-text="pqlRelativeTime(m.updated_at)"

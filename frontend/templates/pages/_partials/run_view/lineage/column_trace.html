@@ -48,10 +48,10 @@
  <li class="list-group-item">
  <div class="d-flex flex-column gap-1 small">
  <div class="d-flex align-items-center gap-2">
- <span class="badge bg-secondary" x-text="'depth ' + step.depth"></span>
+ <span class="badge text-bg-secondary" x-text="'depth ' + step.depth"></span>
  <span class="font-monospace text-break" x-text="step.table"></span>
- <span class="badge bg-light text-dark border font-monospace" x-text="step.column"></span>
- <span x-show="step.op_name" class="badge bg-info text-dark"
+ <span class="badge text-bg-light text-dark border font-monospace" x-text="step.column"></span>
+ <span x-show="step.op_name" class="badge text-bg-info text-dark"
  :title="'op_id=' + step.op_id"
  x-text="step.op_name"></span>
  </div>
@@ -64,7 +64,7 @@
  <li class="font-monospace text-break">
  <i class="bi bi-arrow-90deg-left me-1"></i>
  <span x-text="(pred.table || 'unknown') + '.' + (pred.column || '?')"></span>
- <span class="badge bg-light text-dark border ms-1" x-text="pred.transform_kind || '—'"></span>
+ <span class="badge text-bg-light text-dark border ms-1" x-text="pred.transform_kind || '—'"></span>
  <span x-show="pred.transform_detail"
  class="text-muted small ms-1"
  x-text="pred.transform_detail"></span>

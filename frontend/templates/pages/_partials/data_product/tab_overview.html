@@ -584,7 +584,7 @@
                                 <template x-for="c in schemaPreviewColumns" :key="c.name">
                                     <tr>
                                         <td><code x-text="c.name"></code></td>
-                                        <td><span class="badge bg-secondary" x-text="c.type"></span></td>
+                                        <td><span class="badge text-bg-secondary" x-text="c.type"></span></td>
                                         <td>
                                             <template x-if="c.nullable">
                                                 <span class="text-muted small">nullable</span>
@@ -619,7 +619,7 @@
                 <ul class="list-group list-group-flush">
                     <template x-for="r in releases" :key="r.id">
                         <li class="list-group-item d-flex align-items-center gap-2">
-                            <span class="badge bg-primary" x-text="'v' + r.version"></span>
+                            <span class="badge text-bg-primary" x-text="'v' + r.version"></span>
                             <code class="text-muted small"
                                   x-text="(r.contract_yaml_hash || '').substring(0, 12)"></code>
                             <small class="text-muted ms-2"
@@ -665,7 +665,7 @@
                 <div class="card-header d-flex align-items-center gap-2">
                     <i class="bi bi-diagram-3"></i>
                     <strong>Forks (active Delta branches)</strong>
-                    <span class="badge bg-secondary ms-auto" x-text="forks.length"></span>
+                    <span class="badge text-bg-secondary ms-auto" x-text="forks.length"></span>
                 </div>
                 <ul class="list-group list-group-flush">
                     <template x-for="f in forks" :key="f.branch_schema_fqn">
@@ -735,7 +735,7 @@
                     <div class="card-header d-flex align-items-center gap-2">
                         <i class="bi bi-pencil-square"></i>
                         <strong>Open schema-change proposals</strong>
-                        <span class="badge bg-warning ms-2"
+                        <span class="badge text-bg-warning ms-2"
                               x-text="openProposals.length"></span>
                     </div>
                     <ul class="list-group list-group-flush pql-dp-proposals-list">
@@ -797,8 +797,8 @@
                                     <i class="bi bi-collection me-1"></i>
                                     <span x-text="r.data_product_ref"></span>
                                 </a>
-                                <span class="badge bg-secondary" x-text="'v' + r.version"></span>
-                                <span class="badge bg-light text-dark"
+                                <span class="badge text-bg-secondary" x-text="'v' + r.version"></span>
+                                <span class="badge text-bg-light text-dark"
                                       x-text="r.cooccurrence_count + ' run' + (r.cooccurrence_count === 1 ? '' : 's')"></span>
                             </li>
                         </template>

@@ -152,15 +152,15 @@
  glance; ``system`` (rate-limit rejects) is
  muted. #}
  {% if entry.actor_role == 'admin' %}
- <span class="badge bg-dark">admin</span>
+ <span class="badge text-bg-dark">admin</span>
  {% elif entry.actor_role == 'system' %}
- <span class="badge bg-secondary">system</span>
+ <span class="badge text-bg-secondary">system</span>
  {% else %}
- <span class="badge bg-light text-dark">user</span>
+ <span class="badge text-bg-light text-dark">user</span>
  {% endif %}
  </td>
  <td data-label="Action">
- <span class="badge bg-secondary font-monospace">{{ entry.action }}</span>
+ <span class="badge text-bg-secondary font-monospace">{{ entry.action }}</span>
  </td>
  <td data-label="Target" class="font-monospace small">{{ entry.target }}</td>
  <td data-label="IP" class="font-monospace small text-muted">

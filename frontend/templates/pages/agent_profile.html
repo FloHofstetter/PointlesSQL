@@ -15,7 +15,7 @@
     <div class="d-flex align-items-center gap-2 mb-3">
         <i class="bi bi-robot fs-3"></i>
         <h1 class="h3 mb-0 pql-agent-display-name" x-text="profile.display_name || agent.display_name"></h1>
-        <span class="badge bg-success pql-agent-verified-badge"
+        <span class="badge text-bg-success pql-agent-verified-badge"
               x-show="profile.is_verified">✓ verified</span>
     </div>
 
@@ -72,7 +72,7 @@
                 x-show="(recentComments || []).length > 0">
                 <template x-for="c in recentComments" :key="c.id">
                     <li class="list-group-item">
-                        <span class="badge bg-secondary me-1"
+                        <span class="badge text-bg-secondary me-1"
                               x-show="c.category && c.category !== 'general'"
                               x-text="c.category"></span>
                         <span x-text="(c.body_md || '').slice(0, 200)"></span>

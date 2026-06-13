@@ -92,7 +92,7 @@
                    x-text="'#' + row.id + ' · ' + row.title"></a>
               </td>
               <td>
-                <span class="badge bg-secondary" x-text="row.parent_kind"></span>
+                <span class="badge text-bg-secondary" x-text="row.parent_kind"></span>
                 <span class="ms-1 font-monospace" x-text="row.parent_ref"></span>
               </td>
               <td>
@@ -102,7 +102,7 @@
               </td>
               <td>
                 <template x-for="lbl in row.labels" :key="lbl">
-                  <span class="badge bg-info me-1" x-text="lbl"></span>
+                  <span class="badge text-bg-info me-1" x-text="lbl"></span>
                 </template>
               </td>
               <td>

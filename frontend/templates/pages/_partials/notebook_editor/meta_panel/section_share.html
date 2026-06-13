@@ -10,7 +10,7 @@
            data-testid="meta-panel-share-button">
     <i class="bi bi-share me-2" aria-hidden="true"></i>
     Share / publish
-    <span class="badge bg-secondary"
+    <span class="badge text-bg-secondary"
           x-show="shareDialog.loaded && shareDialog.shares.filter(s => s.active).length > 0"
           x-text="shareDialog.shares.filter(s => s.active).length"
           x-cloak></span>
@@ -83,10 +83,10 @@
     <template x-for="share in shareDialog.shares" :key="share.share_uuid">
      <div class="pql-meta-panel-share__row">
       <div class="d-flex align-items-center gap-1 flex-wrap">
-       <span class="badge bg-secondary" x-text="share.share_mode"></span>
-       <span class="badge bg-info text-dark"
+       <span class="badge text-bg-secondary" x-text="share.share_mode"></span>
+       <span class="badge text-bg-info text-dark"
              x-show="share.dashboard_mode" x-cloak>dashboard</span>
-       <span class="badge bg-danger"
+       <span class="badge text-bg-danger"
              x-show="!share.active" x-cloak>revoked</span>
       </div>
       <code class="pql-meta-panel-share__url text-body"

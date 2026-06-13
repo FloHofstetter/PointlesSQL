@@ -15,7 +15,7 @@
                         <template x-if="champion !== null">
                             <div>
                                 <p class="mb-2">
-                                    Champion version: <span class="badge bg-warning text-dark">v<span x-text="champion"></span></span>
+                                    Champion version: <span class="badge text-bg-warning text-dark">v<span x-text="champion"></span></span>
                                 </p>
                                 <template x-if="latestPromotion">
                                     <dl class="row mb-0">
@@ -50,18 +50,18 @@
                                 {% for v in versions %}
                                 <tr>
                                     <td>
-                                        <span class="badge bg-secondary">v{{ v.version }}</span>
+                                        <span class="badge text-bg-secondary">v{{ v.version }}</span>
                                         <template x-if="champion === {{ v.version }}">
-                                            <span class="badge bg-warning text-dark ms-1">
+                                            <span class="badge text-bg-warning text-dark ms-1">
                                                 <i class="bi bi-star-fill"></i> Champion
                                             </span>
                                         </template>
                                     </td>
                                     <td>
                                         {% if v.status == "READY" %}
-                                        <span class="badge bg-success">{{ v.status }}</span>
+                                        <span class="badge text-bg-success">{{ v.status }}</span>
                                         {% else %}
-                                        <span class="badge bg-warning text-dark">{{ v.status or "—" }}</span>
+                                        <span class="badge text-bg-warning text-dark">{{ v.status or "—" }}</span>
                                         {% endif %}
                                     </td>
                                     <td>
@@ -97,7 +97,7 @@
                 <ul class="list-group list-group-flush small">
                     <template x-for="entry in history" :key="entry.review_id">
                         <li class="list-group-item">
-                            <span class="badge bg-warning text-dark me-2">v<span x-text="entry.champion_version"></span></span>
+                            <span class="badge text-bg-warning text-dark me-2">v<span x-text="entry.champion_version"></span></span>
                             <template x-if="entry.previous_champion !== null && entry.previous_champion !== undefined">
                                 <span class="text-muted me-2">(was v<span x-text="entry.previous_champion"></span>)</span>
                             </template>

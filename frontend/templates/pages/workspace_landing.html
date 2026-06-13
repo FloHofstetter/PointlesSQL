@@ -14,7 +14,7 @@
   <div class="d-flex align-items-center gap-2 mb-3">
     <i class="bi bi-building fs-3"></i>
     <h1 class="h3 mb-0">{{ workspace.name }}</h1>
-    <span class="badge bg-info text-dark ms-2">{{ member_count }} members</span>
+    <span class="badge text-bg-info text-dark ms-2">{{ member_count }} members</span>
   </div>
 
   {% if workspace.description %}
@@ -26,7 +26,7 @@
     <div class="card-header d-flex align-items-center">
       <i class="bi bi-pin-angle me-2"></i>
       <span class="fw-semibold">Pinned entities</span>
-      <span class="badge bg-secondary ms-2" x-text="pins.length"></span>
+      <span class="badge text-bg-secondary ms-2" x-text="pins.length"></span>
       {% if is_admin %}
       <button class="btn btn-sm btn-outline-primary ms-auto" @click="showAddPin = true">
         <i class="bi bi-plus-circle me-1"></i>Pin entity
@@ -45,7 +45,7 @@
           <div class="col-md-4">
             <div class="card">
               <div class="card-body py-2">
-                <span class="badge bg-secondary" x-text="pin.entity_kind"></span>
+                <span class="badge text-bg-secondary" x-text="pin.entity_kind"></span>
                 <a class="font-monospace ms-2" :href="pin.url" x-text="pin.entity_ref"></a>
                 {% if is_admin %}
                 <button class="btn btn-sm btn-link text-danger float-end p-0"
@@ -108,7 +108,7 @@
       <ul class="list-group list-group-flush" x-show="activity.length > 0">
         <template x-for="a in activity" :key="a.created_at + a.event_type">
           <li class="list-group-item d-flex align-items-center gap-2">
-            <span class="badge bg-secondary" x-text="a.entity_kind || '—'"></span>
+            <span class="badge text-bg-secondary" x-text="a.entity_kind || '—'"></span>
             <a :href="a.source_url || '#'" x-text="a.summary_md || a.event_type"></a>
             <span class="text-muted small ms-auto"
                   x-text="pqlRelativeTime(a.created_at)"

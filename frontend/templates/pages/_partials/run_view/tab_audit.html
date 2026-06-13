@@ -8,7 +8,7 @@
  aria-controls="tab-tool-calls" aria-selected="true"
  data-pql-tab-key="tool-calls">
  <i class="bi bi-tools me-1"></i>Tool calls
- {% if tool_calls %}<span class="badge bg-secondary ms-1">{{ tool_calls | length }}</span>{% endif %}
+ {% if tool_calls %}<span class="badge text-bg-secondary ms-1">{{ tool_calls | length }}</span>{% endif %}
  </button>
  </li>
  <li class="nav-item" role="presentation">
@@ -17,7 +17,7 @@
  aria-controls="tab-audit" aria-selected="false"
  data-pql-tab-key="audit-log">
  <i class="bi bi-journal-text me-1"></i>Audit log
- {% if audit_entries %}<span class="badge bg-secondary ms-1">{{ audit_entries | length }}</span>{% endif %}
+ {% if audit_entries %}<span class="badge text-bg-secondary ms-1">{{ audit_entries | length }}</span>{% endif %}
  </button>
  </li>
  <li class="nav-item" role="presentation">
@@ -26,7 +26,7 @@
  aria-controls="tab-external-writes" aria-selected="false"
  data-pql-tab-key="external-writes">
  <i class="bi bi-exclamation-octagon me-1"></i>External writes
- {% if unattributed_writes %}<span class="badge bg-warning text-dark ms-1">{{ unattributed_writes | length }}</span>{% endif %}
+ {% if unattributed_writes %}<span class="badge text-bg-warning text-dark ms-1">{{ unattributed_writes | length }}</span>{% endif %}
  </button>
  </li>
  </ul>
@@ -50,7 +50,7 @@
  {% for tc in tool_calls %}
  <tr>
  <td class="font-monospace text-muted">{{ tc.called_at or "&mdash;" | safe }}</td>
- <td><span class="badge bg-secondary text-uppercase">{{ tc.tool_name }}</span></td>
+ <td><span class="badge text-bg-secondary text-uppercase">{{ tc.tool_name }}</span></td>
  <td>
  {{ truncate_cell(tc.args_json, max=120, klass="font-monospace small") }}
  {% if tc.args_json and tc.args_json|length > 120 %}
@@ -108,7 +108,7 @@
  <tr>
  <td class="font-monospace text-muted">{{ entry.created_at or "&mdash;" | safe }}</td>
  <td class="font-monospace">{{ entry.actor_email or "&mdash;" | safe }} <span class="text-muted">({{ entry.actor_role or "?" }})</span></td>
- <td><span class="badge bg-secondary">{{ entry.action }}</span></td>
+ <td><span class="badge text-bg-secondary">{{ entry.action }}</span></td>
  <td>
  {% if entry.detail %}
  {{ truncate_cell(entry.detail, max=80, klass="font-monospace small text-muted") }}

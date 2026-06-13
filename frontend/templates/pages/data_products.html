@@ -144,7 +144,7 @@
                 <div class="d-flex flex-wrap gap-2 small">
                     <template x-for="p in recentlyActive" :key="'recent-' + p.id">
                         <a :href="'/data-products/' + p.catalog + '/' + p.schema"
-                           class="badge bg-light text-dark border text-decoration-none"
+                           class="badge text-bg-light text-dark border text-decoration-none"
                            :data-recent-ref="p.ref"
                            x-text="p.ref + ' (' + (p.comment_count_7d || 0) + ' new)'"></a>
                     </template>
@@ -175,7 +175,7 @@
                                         <span x-text="p.ref"></span>
                                     </a>
                                 </h5>
-                                <span class="badge bg-secondary flex-shrink-0" x-text="'v' + p.version"></span>
+                                <span class="badge text-bg-secondary flex-shrink-0" x-text="'v' + p.version"></span>
                             </div>
 
                             <!-- Trust + classification badges -->
@@ -208,10 +208,10 @@
                             <template x-if="(p.glossary_terms || []).length > 0">
                                 <div class="d-flex flex-wrap gap-1 mb-2 pql-dp-mkt-terms">
                                     <template x-for="t in (p.glossary_terms || []).slice(0, 5)" :key="t">
-                                        <span class="badge bg-light text-dark border" x-text="t"></span>
+                                        <span class="badge text-bg-light text-dark border" x-text="t"></span>
                                     </template>
                                     <template x-if="(p.glossary_terms || []).length > 5">
-                                        <span class="badge bg-light text-muted border"
+                                        <span class="badge text-bg-light text-muted border"
                                               x-text="'+' + ((p.glossary_terms || []).length - 5)"></span>
                                     </template>
                                 </div>
@@ -306,11 +306,11 @@
                                         <span x-text="p.ref"></span>
                                     </a>
                                     <template x-if="p.has_readme">
-                                        <span class="badge bg-light text-dark border ms-1 pql-dp-readme-badge">README</span>
+                                        <span class="badge text-bg-light text-dark border ms-1 pql-dp-readme-badge">README</span>
                                     </template>
                                 </td>
                                 <td>
-                                    <span class="badge bg-secondary" x-text="'v' + p.version"></span>
+                                    <span class="badge text-bg-secondary" x-text="'v' + p.version"></span>
                                 </td>
                                 <td>
                                     <template x-if="p.steward.email">
@@ -322,7 +322,7 @@
                                 </td>
                                 <td>
                                     <template x-if="p.review_count > 0">
-                                        <span class="badge bg-warning text-dark"
+                                        <span class="badge text-bg-warning text-dark"
                                               x-text="(p.avg_stars ? p.avg_stars.toFixed(1) : '') + ' (' + p.review_count + ')'"></span>
                                     </template>
                                 </td>
@@ -361,9 +361,9 @@
                                     </a>
                                 </h5>
                                 <div class="d-flex gap-1">
-                                    <span class="badge bg-secondary" x-text="'v' + p.version"></span>
+                                    <span class="badge text-bg-secondary" x-text="'v' + p.version"></span>
                                     <template x-if="p.review_count > 0">
-                                        <span class="badge bg-warning text-dark pql-dp-stars-badge"
+                                        <span class="badge text-bg-warning text-dark pql-dp-stars-badge"
                                               x-text="'★ ' + (p.avg_stars ? p.avg_stars.toFixed(1) : '') + ' (' + p.review_count + ')'"></span>
                                     </template>
                                 </div>

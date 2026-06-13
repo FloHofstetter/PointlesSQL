@@ -104,7 +104,7 @@
         <div class="card-body">
           <h6 class="card-subtitle text-muted mb-2">Parent</h6>
           {% if parent_kind and parent_ref %}
-          <span class="badge bg-secondary me-1">{{ parent_kind }}</span>
+          <span class="badge text-bg-secondary me-1">{{ parent_kind }}</span>
           <span class="font-monospace small">{{ parent_ref }}</span>
           {% else %}
           <span class="text-muted">unknown</span>
@@ -155,7 +155,7 @@
           <h6 class="card-subtitle text-muted mb-2">Labels</h6>
           <div>
             <template x-for="lbl in (issue.labels || [])" :key="lbl">
-              <span class="badge bg-info me-1" x-text="lbl"></span>
+              <span class="badge text-bg-info me-1" x-text="lbl"></span>
             </template>
             <span class="text-muted small" x-show="(issue.labels || []).length === 0">— none —</span>
           </div>

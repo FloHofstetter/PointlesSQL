@@ -42,7 +42,7 @@
                                :title="d.job_id !== null ? 'Bound to job #' + d.job_id : 'No job bound'"></i>
                             <span class="text-truncate" x-text="d.title"></span>
                             <template x-if="d.job_id === null">
-                                <span class="badge bg-secondary ms-auto"
+                                <span class="badge text-bg-secondary ms-auto"
                                       style="font-size: 0.65rem;">UNBOUND</span>
                             </template>
                         </a>

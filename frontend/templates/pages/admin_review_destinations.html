@@ -71,16 +71,16 @@ request body with the configured secret; see
                     </td>
                     <td data-label="HMAC" class="text-center">
                         {% if d.has_hmac_secret %}
-                        <span class="badge bg-success">set</span>
+                        <span class="badge text-bg-success">set</span>
                         {% else %}
-                        <span class="badge bg-light text-muted border">none</span>
+                        <span class="badge text-bg-light text-muted border">none</span>
                         {% endif %}
                     </td>
                     <td data-label="Workspace filter" class="small">
                         {% if d.workspace_filter %}
                         {% for ws_id in d.workspace_filter %}
                         {% set ws = workspace_choices|selectattr("id", "equalto", ws_id)|first %}
-                        <span class="badge bg-light text-dark border">
+                        <span class="badge text-bg-light text-dark border">
                             {% if ws %}{{ ws.slug }}{% else %}#{{ ws_id }}{% endif %}
                         </span>
                         {% endfor %}

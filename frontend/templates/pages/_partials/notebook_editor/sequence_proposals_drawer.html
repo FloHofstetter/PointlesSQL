@@ -13,7 +13,7 @@
      x-cloak>
  <div class="pql-notebook-sequence-drawer__header">
   <strong>Cell-sequence proposals</strong>
-  <span class="badge bg-secondary ms-2"
+  <span class="badge text-bg-secondary ms-2"
         x-text="sequenceProposals.pending.length"></span>
   <span class="text-danger small ms-2"
         x-show="sequenceProposals.error"
@@ -37,7 +37,7 @@
    <div class="d-flex align-items-center gap-2 mb-1">
     <code class="text-body font-monospace small"
           x-text="proposal.proposal_id.slice(0, 8)"></code>
-    <span class="badge bg-info text-dark"
+    <span class="badge text-bg-info text-dark"
           x-text="`${(proposal.cells || []).length} cell${(proposal.cells || []).length === 1 ? '' : 's'}`"></span>
     <span class="text-muted small ms-auto"
           x-text="proposal.created_at || ''"></span>
@@ -57,7 +57,7 @@
     <ol class="ps-3 mb-0">
      <template x-for="cell in proposal.cells" :key="cell.position">
       <li>
-       <span class="badge bg-secondary"
+       <span class="badge text-bg-secondary"
              x-text="cell.cell_type"></span>
        <code class="text-body font-monospace small"
              x-text="(cell.source || '').slice(0, 80) + ((cell.source || '').length > 80 ? '…' : '')"></code>

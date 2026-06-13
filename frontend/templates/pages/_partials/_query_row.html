@@ -13,22 +13,22 @@
 <tr>
   <td class="align-middle">
     {% if entry.status == 'succeeded' %}
-    <span class="badge bg-success">succeeded</span>
+    <span class="badge text-bg-success">succeeded</span>
     {% elif entry.status == 'failed' %}
-    <span class="badge bg-danger">failed</span>
+    <span class="badge text-bg-danger">failed</span>
     {% elif entry.status == 'cancelled' %}
-    <span class="badge bg-warning text-dark">cancelled</span>
+    <span class="badge text-bg-warning text-dark">cancelled</span>
     {% else %}
-    <span class="badge bg-secondary">{{ entry.status }}</span>
+    <span class="badge text-bg-secondary">{{ entry.status }}</span>
     {% endif %}
   </td>
   <td class="align-middle">
     {% if entry.read_kind == 'pql_table' %}
-    <span class="badge bg-info text-dark" title="pql.table() read">pql.table</span>
+    <span class="badge text-bg-info text-dark" title="pql.table() read">pql.table</span>
     {% elif entry.read_kind == 'engine_direct' %}
-    <span class="badge bg-warning text-dark" title="engine-direct read">engine</span>
+    <span class="badge text-bg-warning text-dark" title="engine-direct read">engine</span>
     {% else %}
-    <span class="badge bg-light text-dark border" title="/api/sql/execute">sql</span>
+    <span class="badge text-bg-light text-dark border" title="/api/sql/execute">sql</span>
     {% endif %}
   </td>
   <td class="align-middle small font-monospace text-truncate" style="max-width: 32rem;"
