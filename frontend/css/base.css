@@ -135,16 +135,19 @@
  --pql-elev-2: 0 4px 12px rgba(0, 0, 0, 0.12);
  --pql-elev-3: 0 10px 28px rgba(0, 0, 0, 0.18);
 
- /* Aurora + translucent surfaces — light-mode values. Soft pastel
-    blobs on a light base; panels stay opaque enough to keep dense
-    data crisp. */
+ /* Aurora + translucent surfaces — light-mode values. The blobs are
+    kept faint here: on a light base a saturated tint reads as a
+    colour band (the indigo blob in particular pooled into a lavender
+    rectangle behind the header) and washes out card borders. Low
+    blob opacity + near-opaque panels keep figure/ground crisp while
+    still letting a hint of colour glow through. */
  --pql-aurora-bg-base: #eef1f6;
- --pql-aurora-blob-1: rgba(126, 196, 40, 0.26);
- --pql-aurora-blob-2: rgba(24, 202, 186, 0.26);
- --pql-aurora-blob-3: rgba(126, 144, 248, 0.34);
- --pql-surface-card: rgba(255, 255, 255, 0.80);
- --pql-surface-chrome: rgba(255, 255, 255, 0.80);
- --pql-surface-border: rgba(0, 0, 0, 0.08);
+ --pql-aurora-blob-1: rgba(126, 196, 40, 0.12);
+ --pql-aurora-blob-2: rgba(24, 202, 186, 0.12);
+ --pql-aurora-blob-3: rgba(126, 144, 248, 0.12);
+ --pql-surface-card: rgba(255, 255, 255, 0.92);
+ --pql-surface-chrome: rgba(255, 255, 255, 0.94);
+ --pql-surface-border: rgba(0, 0, 0, 0.14);
 }
 
 /* ---------------------------------------------------------------

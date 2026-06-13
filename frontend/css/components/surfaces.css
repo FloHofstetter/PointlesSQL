@@ -74,13 +74,17 @@ body {
 }
 
 /* ---------------------------------------------------------------
- * Brand-green primary button — a subtle gradient, applied app-wide
- * (the brand-colour token override in base.css already turns flat
- * primaries green; this gives the main call-to-action a bit more
- * life).  Hover swaps to a brighter gradient rather than a CSS
- * filter, keeping with the no-filter rule.
+ * Brand-green primary button — a subtle gradient for the main
+ * call-to-action.  Scoped to the dark theme only: the gradient is
+ * tuned for near-black accent text, and in light mode white text
+ * over the bright end of the gradient drops below contrast.  Light
+ * falls back to the stock Bootstrap ``.btn-primary`` (solid brand
+ * green via the ``--bs-primary`` override in base.css), whose text
+ * colour is the well-tested Bootstrap default.  Hover swaps to a
+ * brighter gradient rather than a CSS filter, keeping the no-filter
+ * rule.
  * ------------------------------------------------------------- */
-.btn-primary {
+[data-bs-theme="dark"] .btn-primary {
     --bs-btn-bg: transparent;
     --bs-btn-border-color: transparent;
     --bs-btn-hover-bg: transparent;
@@ -92,9 +96,9 @@ body {
     border: none;
     font-weight: var(--pql-weight-semibold);
 }
-.btn-primary:hover,
-.btn-primary:focus-visible,
-.btn-primary:active {
+[data-bs-theme="dark"] .btn-primary:hover,
+[data-bs-theme="dark"] .btn-primary:focus-visible,
+[data-bs-theme="dark"] .btn-primary:active {
     color: var(--pql-color-accent-fg);
     background-image: linear-gradient(135deg, #9bdc1a, #66a300);
 }
