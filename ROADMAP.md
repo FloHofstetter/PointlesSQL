@@ -4028,7 +4028,7 @@ PointlesSQL
 │           „2 days ago" mit UTC-Tooltip, kein ISO-Leak.  Offen: M12 (DP-
 │           Overview-Re-Layout), B1–B4 (Backend-Serializer).
 │   │
-│   └── 212.15 — Welle 2b: Backend-Serializer + Branded-410  ✅ shipped (local, 2026-06-15, `83d46984`)
+│   ├── 212.15 — Welle 2b: Backend-Serializer + Branded-410  ✅ shipped (local, 2026-06-15, `83d46984`)
 │           Die Backend-anfassende Hälfte des Audits (B1–B4).  Der Admin-
 │           Ingest-Monitor zeigte in der Workspace-Spalte ein rohes
 │           „#<id>" → das Summary trägt jetzt `workspace_slug`, die Tabelle
@@ -4047,6 +4047,22 @@ PointlesSQL
 │           bg-success/bg-danger ohne Bernstein; B2 `_label_consumers` gegen
 │           die echte DB (id→„Admin", None/unbekannt→Fallback); B1/B2-
 │           Endpoints 200 (Env ohne Daten, daher Feld nicht live bestückt).
+│   │
+│   └── 212.16 — Pipeline-Run-Fehler lesbar, Status-Spalte entbläht  ✅ shipped (local, 2026-06-15, `b23589e0`)
+│           Vom Nutzer live gemeldet: die Run-History-Fehleranzeige kippte
+│           den rohen Catalog-Client-Fehler („Unexpected status code: 404 /
+│           Response content: {json}") in die Status-Zelle — das zwang die
+│           Status-Spalte breit genug fürs ganze JSON, also bekam selbst ein
+│           „ok"-Badge eine riesige Spalte, und der Fehler-Run wucherte
+│           vertikal.  Fix: Fehler raus aus der Status-Zelle in eine volle
+│           Zeile unter dem Run (jeder Run ist jetzt ein eigenes `<tbody>`,
+│           damit das x-for beide Zeilen ausgeben kann); die menschenlesbare
+│           Envelope-`message` („Schema 'demo.gold' does not exist") als rote
+│           Einzeiler-Zusammenfassung, der Roh-Dump hinter einem „Raw error"-
+│           Toggle.  Status-Spalte schrumpft aufs Badge (132px statt
+│           tabellenfüllend).  Roh-Fehler bleibt server-seitig gespeichert
+│           (volle Debug-Info), nur die Anzeige wird geparst.  Live
+│           verifiziert + Screenshot.
 │   │
 ├── Phase 211 — Bootstrap-UI-Audit: Fixes aus dem 169-Screenshot-Sweep  ✅ shipped (local, 2026-06-13)
 │   │

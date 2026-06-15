@@ -274,6 +274,17 @@ defined in ``scripts/clusters.json``. -->
   branded public 410 page, with the `410` status preserved so external
   link-checkers still prune dead links.
 
+- **Readable pipeline run errors (phase 212.16).** The pipeline
+  run-history table dumped the raw catalog-client error ("Unexpected
+  status code: 404" plus the full JSON envelope) inside the Status cell,
+  which forced the Status column wide enough to hold the whole blob — so
+  even a one-word "ok" badge got an oversized column, and failed runs
+  sprawled vertically. The error now renders in a full-width row beneath
+  the run (each run is its own `<tbody>`), leading with the envelope's
+  human message ("Schema 'demo.gold' does not exist") as a one-line red
+  summary, with the raw dump tucked behind a collapsed "Raw error"
+  toggle. The Status column shrinks back to just the badge.
+
 - **Bootstrap UI-audit fixes (phase 211).** Acting on a full headful
   audit (774 API routes + 169 screenshots graded against Bootstrap 5.3):
   the light theme's decorative aurora was toned down (the over-saturated
