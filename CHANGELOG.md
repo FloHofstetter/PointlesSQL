@@ -285,6 +285,16 @@ defined in ``scripts/clusters.json``. -->
   summary, with the raw dump tucked behind a collapsed "Raw error"
   toggle. The Status column shrinks back to just the badge.
 
+- **Readable errors in the job + ingest run tables (phase 212.17).** The
+  two siblings of the pipeline fix — the job run-history "Error" column
+  and the ingest scheduled-run error cell — dumped the same raw
+  traceback / catalog-JSON blob into a table cell. The run-error
+  formatter is now a shared `frontend/js/components/error_text.js`
+  helper (used by the pipeline and ingest panels) with a matching
+  `friendly_error` Jinja filter for the server-rendered job table; each
+  cell shows the envelope's human message (or the first line) with the
+  full raw error preserved on a `title` tooltip.
+
 - **Bootstrap UI-audit fixes (phase 211).** Acting on a full headful
   audit (774 API routes + 169 screenshots graded against Bootstrap 5.3):
   the light theme's decorative aurora was toned down (the over-saturated

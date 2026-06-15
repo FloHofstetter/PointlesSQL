@@ -4048,7 +4048,7 @@ PointlesSQL
 │           die echte DB (id→„Admin", None/unbekannt→Fallback); B1/B2-
 │           Endpoints 200 (Env ohne Daten, daher Feld nicht live bestückt).
 │   │
-│   └── 212.16 — Pipeline-Run-Fehler lesbar, Status-Spalte entbläht  ✅ shipped (local, 2026-06-15, `b23589e0`)
+│   ├── 212.16 — Pipeline-Run-Fehler lesbar, Status-Spalte entbläht  ✅ shipped (local, 2026-06-15, `b23589e0`)
 │           Vom Nutzer live gemeldet: die Run-History-Fehleranzeige kippte
 │           den rohen Catalog-Client-Fehler („Unexpected status code: 404 /
 │           Response content: {json}") in die Status-Zelle — das zwang die
@@ -4063,6 +4063,23 @@ PointlesSQL
 │           tabellenfüllend).  Roh-Fehler bleibt server-seitig gespeichert
 │           (volle Debug-Info), nur die Anzeige wird geparst.  Live
 │           verifiziert + Screenshot.
+│   │
+│   └── 212.17 — Selbe Fehler-Lesbarkeit für Job- + Ingest-Run-Tabellen  ✅ shipped (local, 2026-06-15, `4b594e6a`)
+│           Proaktiver Sweep der Geschwister von 212.16: die Job-Run-
+│           History-Spalte „Error" (`{{ run.error }}`) und die Ingest-
+│           Scheduled-Run-Fehlerzelle (`x-text="jr.error"`) kippten denselben
+│           rohen Traceback/Catalog-JSON-Blob in eine Tabellenzelle.  Den
+│           Run-Fehler-Formatter in ein geteiltes
+│           `frontend/js/components/error_text.js` (`friendlyError`) gezogen
+│           — von Pipeline- + Ingest-Alpine-Factory genutzt — und einen
+│           passenden `friendly_error`-Jinja-Filter für die server-gerenderte
+│           Job-Tabelle ergänzt.  Jede Zelle zeigt jetzt die Envelope-
+│           `message` (bzw. erste Zeile), der volle Roh-Fehler hängt im
+│           `title`-Tooltip.  Verifiziert: Filter Unit-getestet (Envelope→
+│           Klartext, Traceback→erste Zeile, leer→leer); Pipeline live noch
+│           „Schema 'demo.gold' does not exist" nach dem Refactor; biome/
+│           pyright(strict)/pydoclint/Warning-Floor-Budget grün; Job/Ingest-
+│           Seiten rendern 200 (Env ohne Daten, daher Zellen nicht bestückt).
 │   │
 ├── Phase 211 — Bootstrap-UI-Audit: Fixes aus dem 169-Screenshot-Sweep  ✅ shipped (local, 2026-06-13)
 │   │
