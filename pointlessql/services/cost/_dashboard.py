@@ -12,6 +12,7 @@ from pointlessql.models import (
     DataProduct,
     DataProductCostBucketHourly,
     DataProductSLO,
+    User,
 )
 from pointlessql.types import SessionFactory
 
@@ -106,6 +107,25 @@ def cost_by_consumer(
     )
 
 
+def _label_consumers(session_factory: SessionFactory, consumers: list[dict[str, Any]]) -> None:
+    """Attach a human ``consumer_label`` to each top-consumer row in place.
+
+    The hourly cost buckets only carry a numeric ``consumer_user_id``;
+    the dashboard wants a name.  Resolve the handful of ids in one query
+    and set ``consumer_label`` to the display name (email fallback); a
+    ``None`` id is the "all consumers" rollup and stays unlabelled.
+    """
+    ids = {int(c["consumer_user_id"]) for c in consumers if c.get("consumer_user_id") is not None}
+    names: dict[int, str] = {}
+    if ids:
+        with session_factory() as session:
+            for user in session.scalars(select(User).where(User.id.in_(ids))).all():
+                names[int(user.id)] = user.display_name or user.email
+    for c in consumers:
+        uid = c.get("consumer_user_id")
+        c["consumer_label"] = names.get(int(uid)) if uid is not None else None
+
+
 def mesh_health_full(
     session_factory: SessionFactory,
     *,
@@ -123,6 +143,7 @@ def mesh_health_full(
     per_domain = _aggregate_per_domain(session_factory, workspace_id, base)
     cost_trend = cost_by_product(session_factory, workspace_id=workspace_id)
     top_consumers = cost_by_consumer(session_factory, workspace_id=workspace_id)[:10]
+    _label_consumers(session_factory, top_consumers)
     base["per_domain"] = per_domain
     base["cost_trend"] = cost_trend
     base["top_consumers"] = top_consumers

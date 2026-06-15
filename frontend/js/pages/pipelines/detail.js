@@ -4,6 +4,8 @@
 // expectations), definition save, run-now with inline result, and
 // the run-history table.
 
+import { statusClass } from '../../components/status_styles.js';
+
 export function pipelineDetail(pipeline, canEdit) {
   return {
     slug: pipeline.slug,
@@ -22,6 +24,10 @@ export function pipelineDetail(pipeline, canEdit) {
     error: '',
     saving: false,
     running: false,
+
+    statusBadge(status) {
+      return statusClass(status);
+    },
 
     async init() {
       await this.loadRuns();

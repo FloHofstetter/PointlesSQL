@@ -97,7 +97,7 @@
                                           x-text="s.kind"></span>
                                 </td>
                                 <td class="text-muted small"
-                                    x-text="'#' + s.workspace_id"></td>
+                                    x-text="s.workspace_slug || ('#' + s.workspace_id)"></td>
                                 <td class="font-monospace small text-muted"
                                     x-text="s.cron_expr || '—'"></td>
                                 <td class="text-muted small"

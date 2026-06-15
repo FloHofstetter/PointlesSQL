@@ -198,6 +198,22 @@ async def api_revoke_share(request: Request, share_uuid: str) -> JSONResponse:
     return JSONResponse({"revoked": removed})
 
 
+def _gone(request: Request, reason: str) -> Response:
+    """Render the branded ``410 Gone`` page for an unavailable share.
+
+    External link-checkers still see the ``410`` status so dead links
+    get pruned automatically; humans get a friendly branded page with
+    ``reason`` spelled out instead of a bare ``text/plain`` line.
+    """
+    templates: Jinja2Templates = request.app.state.templates
+    return templates.TemplateResponse(
+        request,
+        "pages/notebook_share_gone.html",
+        {"reason": reason},
+        status_code=410,
+    )
+
+
 async def _render_share(request: Request, share_uuid: str, *, compact: bool) -> Response:
     """Render the shared body used by :func:`public_share_view` + :func:`public_share_embed`.
 
@@ -218,11 +234,7 @@ async def _render_share(request: Request, share_uuid: str, *, compact: bool) -> 
     with factory() as session:
         share = notebook_shares_service.get_active_share(session, share_uuid=share_uuid)
         if share is None:
-            return Response(
-                content="share is revoked or expired",
-                status_code=410,
-                media_type="text/plain",
-            )
+            return _gone(request, "This share has been revoked or has expired.")
         notebook = session.get(Notebook, share.notebook_id)
         title = notebook.file_path.removesuffix(".py") if notebook else "notebook"
         if share.share_mode == "snapshot" and share.revision_uuid:
@@ -230,28 +242,16 @@ async def _render_share(request: Request, share_uuid: str, *, compact: bool) -> 
                 session, revision_uuid=share.revision_uuid
             )
             if rev is None:
-                return Response(
-                    content="share's pinned revision is missing",
-                    status_code=410,
-                    media_type="text/plain",
-                )
+                return _gone(request, "The pinned revision for this share is no longer available.")
             cells = rev["cells"]
             outputs = rev["outputs"]
             dashboard = share.dashboard_mode
         else:
             if notebook is None:
-                return Response(
-                    content="share's notebook is missing",
-                    status_code=410,
-                    media_type="text/plain",
-                )
+                return _gone(request, "The shared notebook no longer exists.")
             absolute = notebooks_dir / notebook.file_path
             if not absolute.exists():
-                return Response(
-                    content="share's notebook is missing on disk",
-                    status_code=410,
-                    media_type="text/plain",
-                )
+                return _gone(request, "The shared notebook is no longer available.")
             document = notebook_doc_service.load_document(absolute, notebook.file_path)
             cells = [
                 {

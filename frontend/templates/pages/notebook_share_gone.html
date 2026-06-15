@@ -1,0 +1,20 @@
+{% extends "base_public.html" %}
+
+{# Branded 410 page for notebook shares that have been revoked, have
+   expired, or whose underlying notebook / pinned revision is gone.
+   Keeps the public brand chrome so the dead link still feels like part
+   of PointlesSQL instead of a bare text/plain line. #}
+
+{% block title %}Share unavailable · PointlesSQL{% endblock %}
+{% block topbar_title %}Shared notebook{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="mx-auto text-center" style="max-width: 32rem;">
+        <i class="bi bi-link-45deg display-4 text-muted" aria-hidden="true"></i>
+        <h1 class="h4 mt-3">This shared notebook is no longer available</h1>
+        <p class="text-muted">{{ reason }}</p>
+        <a href="/" class="btn btn-primary btn-sm mt-2">Go to PointlesSQL</a>
+    </div>
+</div>
+{% endblock %}

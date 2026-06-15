@@ -19,7 +19,7 @@ from sqlalchemy import select
 
 from pointlessql.api.dependencies import require_admin
 from pointlessql.exceptions import ResourceNotFoundError
-from pointlessql.models import IngestSource, Job, JobRun
+from pointlessql.models import IngestSource, Job, JobRun, Workspace
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +31,7 @@ def _source_summary(
     *,
     job: Job | None,
     runs_7d: list[JobRun],
+    workspace_slug: str | None = None,
 ) -> dict[str, Any]:
     """Project a source + its recent JobRuns into a rollup dict."""
     try:
@@ -61,6 +62,7 @@ def _source_summary(
     return {
         "id": int(row.id),
         "workspace_id": int(row.workspace_id),
+        "workspace_slug": workspace_slug,
         "name": row.name,
         "kind": row.kind,
         "is_active": bool(row.is_active),
@@ -92,6 +94,9 @@ async def api_admin_list_ingest_sources(request: Request) -> dict[str, Any]:
         rows = list(
             session.scalars(select(IngestSource).order_by(IngestSource.created_at.desc())).all()
         )
+        ws_slugs: dict[int, str] = {
+            int(w.id): w.slug for w in session.scalars(select(Workspace)).all()
+        }
         job_ids = [r.job_id for r in rows if r.job_id is not None]
         jobs_by_id: dict[int, Job] = {}
         if job_ids:
@@ -112,6 +117,7 @@ async def api_admin_list_ingest_sources(request: Request) -> dict[str, Any]:
                 r,
                 job=(jobs_by_id.get(r.job_id) if r.job_id is not None else None),
                 runs_7d=(runs_by_job.get(r.job_id, []) if r.job_id is not None else []),
+                workspace_slug=ws_slugs.get(int(r.workspace_id)),
             )
             for r in rows
         ]
@@ -138,6 +144,8 @@ async def api_admin_ingest_source_health(request: Request, source_id: int) -> di
         row = session.get(IngestSource, source_id)
         if row is None:
             raise ResourceNotFoundError("source not found")
+        ws = session.get(Workspace, int(row.workspace_id))
+        workspace_slug = ws.slug if ws is not None else None
         runs: list[JobRun] = []
         if row.job_id is not None:
             runs = list(
@@ -160,6 +168,7 @@ async def api_admin_ingest_source_health(request: Request, source_id: int) -> di
         "source": {
             "id": int(row.id),
             "workspace_id": int(row.workspace_id),
+            "workspace_slug": workspace_slug,
             "name": row.name,
             "kind": row.kind,
             "is_active": bool(row.is_active),

@@ -109,7 +109,7 @@
                         <td data-label="Run" x-text="'#' + r.id"></td>
                         <td data-label="Status">
                             <span class="badge"
-                                  :class="r.status === 'ok' ? 'bg-success' : (r.status === 'failed' ? 'bg-danger' : 'bg-warning text-dark')"
+                                  :class="statusBadge(r.status)"
                                   x-text="r.status"></span>
                             <div class="mt-1" x-show="r.error" x-cloak>
                                 <details class="small">

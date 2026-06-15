@@ -113,8 +113,8 @@
                             <tbody>
                                 <template x-for="row in topConsumers" :key="row.consumer_user_id">
                                     <tr>
-                                        <td class="font-monospace small"
-                                            x-text="row.consumer_user_id ?? 'anonymous'"></td>
+                                        <td class="small"
+                                            x-text="row.consumer_label ?? (row.consumer_user_id != null ? ('#' + row.consumer_user_id) : 'anonymous')"></td>
                                         <td class="text-end" x-text="row.query_count"></td>
                                         <td class="text-end" x-text="row.total_estimated_cost.toFixed(2)"></td>
                                     </tr>
