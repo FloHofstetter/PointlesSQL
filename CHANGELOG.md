@@ -259,6 +259,21 @@ defined in ``scripts/clusters.json``. -->
   surfaces now render as relative time ("2 days ago") with an absolute
   UTC tooltip instead of a bare machine string.
 
+- **UX-audit fixes, wave 2b — serializers + branded 410 (phase 212.15).**
+  The backend-touching half of the audit. The admin ingest-source
+  monitor showed a bare `#<id>` in its Workspace column; the summary now
+  carries `workspace_slug` and the table prints the slug (falling back
+  to `#id`). The mesh cost dashboard's "Top consumers" listed a raw
+  `consumer_user_id`; the handful of ids are resolved to display names
+  once and rendered as the name (falling back to `#id`, then
+  "anonymous"). The pipeline run-status badge hand-rolled its colours
+  and painted every status that wasn't `ok`/`failed` amber "warning"; it
+  now uses the shared `statusClass` helper so it matches the
+  server-rendered badges. And revoked / expired / dangling notebook
+  shares returned a bare `text/plain` "410 Gone" line; they now render a
+  branded public 410 page, with the `410` status preserved so external
+  link-checkers still prune dead links.
+
 - **Bootstrap UI-audit fixes (phase 211).** Acting on a full headful
   audit (774 API routes + 169 screenshots graded against Bootstrap 5.3):
   the light theme's decorative aurora was toned down (the over-saturated

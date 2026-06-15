@@ -4009,7 +4009,7 @@ PointlesSQL
 │   │       Fail, Sources-Filter-Leerzustand, Review-Dest-Secret-Modal,
 │   │       DP-Overview-Re-Layout, ISO-Timestamps, Backend-Serializer.
 │   │
-│   └── 212.14 — Welle 2a: Hidden-Tab-Charts, Dialog-Feedback, Copy/Zeit  ✅ shipped (local, 2026-06-13, `ec93d8c2`)
+│   ├── 212.14 — Welle 2a: Hidden-Tab-Charts, Dialog-Feedback, Copy/Zeit  ✅ shipped (local, 2026-06-13, `ec93d8c2`)
 │           Nächster Befund-Batch aus `ux-loop/FINDINGS.md` (M2/M3/M7/M11,
 │           P17, D1).  Spaltenstatistik-Sparklines wurden im versteckten
 │           Columns-Tab in 0×0 gezeichnet (blank) → Redraw, sobald die Pane
@@ -4027,6 +4027,26 @@ PointlesSQL
 │           grün; alle geänderten Seiten rendern 200; Pipeline-Detail live
 │           „2 days ago" mit UTC-Tooltip, kein ISO-Leak.  Offen: M12 (DP-
 │           Overview-Re-Layout), B1–B4 (Backend-Serializer).
+│   │
+│   └── 212.15 — Welle 2b: Backend-Serializer + Branded-410  ✅ shipped (local, 2026-06-15, `83d46984`)
+│           Die Backend-anfassende Hälfte des Audits (B1–B4).  Der Admin-
+│           Ingest-Monitor zeigte in der Workspace-Spalte ein rohes
+│           „#<id>" → das Summary trägt jetzt `workspace_slug`, die Tabelle
+│           druckt den Slug (Fallback `#id`).  Das Mesh-Cost-Dashboard
+│           listete bei „Top consumers" eine rohe `consumer_user_id` → die
+│           wenigen Ids werden einmal zu Anzeigenamen aufgelöst (Fallback
+│           `#id`, dann „anonymous").  Das Pipeline-Run-Status-Badge rollte
+│           seine Farben von Hand und malte jeden Status außer ok/failed
+│           bernstein „warning" → nutzt jetzt den geteilten `statusClass`-
+│           Helfer (deckungsgleich mit server-gerenderten Badges).  Revoked/
+│           expired/verwaiste Notebook-Shares lieferten eine nackte
+│           text/plain-„410 Gone"-Zeile → jetzt eine gebrandete öffentliche
+│           410-Seite (410-Status bleibt für Link-Checker erhalten).
+│           Verifiziert: ruff + pyright(strict) + pydoclint + biome +
+│           no-phase-refs grün; B4 live HTTP 410 + Brand-Seite; B3 live
+│           bg-success/bg-danger ohne Bernstein; B2 `_label_consumers` gegen
+│           die echte DB (id→„Admin", None/unbekannt→Fallback); B1/B2-
+│           Endpoints 200 (Env ohne Daten, daher Feld nicht live bestückt).
 │   │
 ├── Phase 211 — Bootstrap-UI-Audit: Fixes aus dem 169-Screenshot-Sweep  ✅ shipped (local, 2026-06-13)
 │   │
