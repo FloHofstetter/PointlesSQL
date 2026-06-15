@@ -29,6 +29,26 @@ export function pipelineDetail(pipeline, canEdit) {
       return statusClass(status);
     },
 
+    friendlyError(raw) {
+      if (!raw) return '';
+      // Pipeline failures from the catalog client arrive as
+      // "Unexpected status code: 404\n\nResponse content: {json}".
+      // Surface the envelope's human message; fall back to the first
+      // line. The full raw string stays available behind the toggle.
+      const m = raw.match(/\{[\s\S]*\}/);
+      if (m) {
+        try {
+          const body = JSON.parse(m[0]);
+          if (body && typeof body.message === 'string' && body.message.trim()) {
+            return body.message.trim();
+          }
+        } catch (e) {
+          // not JSON — fall through to the first-line fallback
+        }
+      }
+      return (raw.split('\n')[0] || raw).trim();
+    },
+
     async init() {
       await this.loadRuns();
     },
