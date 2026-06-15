@@ -345,7 +345,7 @@
                                     <td class="small text-muted" x-text="jr.trigger"></td>
                                     <td class="small text-muted" x-text="pqlRelativeTime(jr.started_at) || '—'" :title="pqlAbsTime(jr.started_at)"></td>
                                     <td class="small text-muted" x-text="pqlRelativeTime(jr.finished_at) || '—'" :title="pqlAbsTime(jr.finished_at)"></td>
-                                    <td class="small text-danger" x-text="jr.error"></td>
+                                    <td class="small text-danger" x-text="friendlyError(jr.error)" :title="jr.error"></td>
                                 </tr>
                             </template>
                         </tbody>

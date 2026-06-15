@@ -14,8 +14,10 @@ the old monolith used.
 
 from __future__ import annotations
 
+import json
+import re
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, cast
 
 from fastapi.templating import Jinja2Templates
 from markdown_it import MarkdownIt
@@ -33,6 +35,31 @@ def _format_epoch_ms(value: Any) -> str:
         return datetime.fromtimestamp(int(value) / 1000, tz=UTC).strftime("%Y-%m-%d %H:%M UTC")
     except TypeError, ValueError:
         return str(value)
+
+
+def _friendly_error(raw: str | None) -> str:
+    """Reduce a stored run error to a one-line headline for table cells.
+
+    Run rows persist the full raw error (a traceback, or the catalog
+    client's ``Unexpected status code … {json}`` blob); rendering it
+    verbatim bloats the cell. Surface the catalog envelope's ``message``
+    when present, else the first line. The full text stays reachable via
+    the cell's ``title`` tooltip.
+    """
+    if not raw:
+        return ""
+    match = re.search(r"\{.*\}", raw, re.DOTALL)
+    if match:
+        try:
+            body = json.loads(match.group(0))
+        except ValueError:
+            body = None
+        if isinstance(body, dict):
+            message = cast("dict[str, Any]", body).get("message")
+            if isinstance(message, str) and message.strip():
+                return message.strip()
+    stripped = raw.strip()
+    return stripped.splitlines()[0] if stripped else ""
 
 
 def _format_uuid(value: Any) -> str:
@@ -130,6 +157,7 @@ def register_template_filters(templates: Jinja2Templates) -> None:
     templates.env.filters["format_uuid"] = _format_uuid
     templates.env.filters["format_hash"] = _format_hash
     templates.env.filters["render_markdown"] = _render_markdown
+    templates.env.filters["friendly_error"] = _friendly_error
 
     # contextual help-popover registry (see ``pointlessql/web/
     # help.py``).  Templates resolve slugs via ``{{ help('runs.what-is-a-

@@ -5,9 +5,14 @@
 // matching API calls (/api/ingest/sources/{id}/{tables,mappings,
 // schedule,runs,pulls}).
 
+import { friendlyError as toFriendlyError } from '../components/error_text.js';
+
 export function ingestSourceDetail(sourceId) {
   return {
     sourceId,
+    friendlyError(raw) {
+      return toFriendlyError(raw);
+    },
     source: null,
     pulling: false,
     // Mappings tab state
