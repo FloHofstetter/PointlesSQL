@@ -295,6 +295,16 @@ defined in ``scripts/clusters.json``. -->
   cell shows the envelope's human message (or the first line) with the
   full raw error preserved on a `title` tooltip.
 
+- **Two-column data-product Overview (phase 212.18).** The Overview tab
+  stacked ~20 equal-weight full-width cards — plus six include partials
+  (lifecycle, bitemporal, consumption, event-port, infrastructure,
+  consumer-voice), ~37 cards in all — in one endless scroll. The
+  post-hero card stack now flows into a CSS multi-column container so
+  the cards split into two balanced columns on wide screens (collapsing
+  to one column below the lg breakpoint); cards never split across a
+  column and the health-hero band stays full-width on top. Roughly
+  halves the scroll while keeping every card visible.
+
 - **Bootstrap UI-audit fixes (phase 211).** Acting on a full headful
   audit (774 API routes + 169 screenshots graded against Bootstrap 5.3):
   the light theme's decorative aurora was toned down (the over-saturated

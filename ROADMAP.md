@@ -4064,7 +4064,7 @@ PointlesSQL
 │           (volle Debug-Info), nur die Anzeige wird geparst.  Live
 │           verifiziert + Screenshot.
 │   │
-│   └── 212.17 — Selbe Fehler-Lesbarkeit für Job- + Ingest-Run-Tabellen  ✅ shipped (local, 2026-06-15, `4b594e6a`)
+│   ├── 212.17 — Selbe Fehler-Lesbarkeit für Job- + Ingest-Run-Tabellen  ✅ shipped (local, 2026-06-15, `4b594e6a`)
 │           Proaktiver Sweep der Geschwister von 212.16: die Job-Run-
 │           History-Spalte „Error" (`{{ run.error }}`) und die Ingest-
 │           Scheduled-Run-Fehlerzelle (`x-text="jr.error"`) kippten denselben
@@ -4080,6 +4080,23 @@ PointlesSQL
 │           „Schema 'demo.gold' does not exist" nach dem Refactor; biome/
 │           pyright(strict)/pydoclint/Warning-Floor-Budget grün; Job/Ingest-
 │           Seiten rendern 200 (Env ohne Daten, daher Zellen nicht bestückt).
+│   │
+│   └── 212.18 — DP-Overview als Zwei-Spalten-Layout (M12)  ✅ shipped (local, 2026-06-20, `e26d21cf`)
+│           Der Overview-Tab stapelte ~20 gleichgewichtige Vollbreite-Karten
+│           (plus die Lifecycle/Bitemporal/Consumption/Event-Port/Infra/
+│           Consumer-Voice-Include-Partials, ~37 Karten gesamt) in einem
+│           endlosen Scroll.  Nutzer-Wahl war „Zwei-Spalten-Rail"; weil die 6
+│           Includes einen expliziten Karte-für-Karte-Rail (lg-8/lg-4) über 7
+│           Dateien unpraktikabel machen, der robuste Weg: den Karten-Stapel
+│           nach dem Health-Hero in einen CSS-Multi-Column-Container
+│           (`pql-dp-overview-grid`, `column-count:2` ab lg, `break-inside:
+│           avoid`) gewickelt.  Karten fließen in zwei balancierte Spalten,
+│           keine wird gesplittet, Hero bleibt oben Vollbreite, unter lg
+│           wieder eine Spalte.  Pragmatische Abweichung vom Wide/Narrow-Rail
+│           des Previews: gleichbreite Spalten statt 8/4 — vermeidet das
+│           Quetschen der Include-Karten in eine schmale Rail; spart aber
+│           denselben halben Scroll.  Live verifiziert: zwei Spalten (Karten-
+│           Kanten x=336/881), Hero außerhalb des Grids, 200 + Screenshot.
 │   │
 ├── Phase 211 — Bootstrap-UI-Audit: Fixes aus dem 169-Screenshot-Sweep  ✅ shipped (local, 2026-06-13)
 │   │
