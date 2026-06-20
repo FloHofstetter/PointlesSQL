@@ -14,6 +14,10 @@ jobs:
   commitlint:
     name: Validate PR commit messages
     runs-on: ubuntu-latest
+    # Dependabot authors commits with GitHub's own message shape — long
+    # release-note bodies that exceed body-max-line-length — so the
+    # Conventional-Commits gate does not apply to its bot-generated PRs.
+    if: github.actor != 'dependabot[bot]'
     steps:
       - uses: actions/checkout@v4
         with:
