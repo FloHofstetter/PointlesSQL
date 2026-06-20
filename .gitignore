@@ -101,6 +101,12 @@ phase*-replay/
 # Local canvas UX-audit screenshot dumps — per-session, never tracked.
 .canvas-ux-audit/
 
+# Local UI/UX audit working dirs — per-session screenshots, eval
+# tooling with machine-local paths, and findings JSON. Developer
+# scratch state, never tracked.
+ui-audit/
+ux-loop/
+
 # Mutation testing working copy (mutmut copies the repo here) + its
 # stats cache. Regenerated on every run; never tracked.
 mutants/
