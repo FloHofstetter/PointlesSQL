@@ -898,7 +898,7 @@ PointlesSQL
 │
 │   ├── Phase 121 — Code Quality Wave VI (error-envelope unification)  ✅ done 2026-05-24
 │   │
-│   │     **All 12 sub-sprints closed 2026-05-24.** Three-axis quality pass after the Restschuld I–V modularization waves drained the >700-LOC backlog. Plan-source: ``/home/flo/.claude/plans/ich- denke-es-ist-squishy-pnueli.md``. Wave ran in three batches: 121.1 (error envelope) shipped fi...
+│   │     **All 12 sub-sprints closed 2026-05-24.** Three-axis quality pass after the Restschuld I–V modularization waves drained the >700-LOC backlog. Plan-source: ``.claude/plans/ich- denke-es-ist-squishy-pnueli.md``. Wave ran in three batches: 121.1 (error envelope) shipped fi...
 │   │
 │   │     Sub-sprint detail: [`docs/internal/phase-121.md`](docs/internal/phase-121.md).
 │   │

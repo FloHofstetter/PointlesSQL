@@ -2833,7 +2833,7 @@ PointlesSQL — completed phases (full historical detail)
 │   │   browser-walkthrough to sweep the Monaco output-rendering
 │   │   bugs the user reported during the same session.  Plan
 │   │   lives at
-│   │   [.claude/plans/ich-m-chte-dass-du-luminous-ullman.md](/home/flo/.claude/plans/ich-m-chte-dass-du-luminous-ullman.md).
+│   │   [.claude/plans/ich-m-chte-dass-du-luminous-ullman.md](.claude/plans/ich-m-chte-dass-du-luminous-ullman.md).
 │   │
 │   ├── Sprint 96 — Cell-ID refactor: marker grammar + content-hash identity ✅ done (4c59b85)
 │   │       Merged the two sprints the plan originally sketched
@@ -3052,7 +3052,7 @@ PointlesSQL — completed phases (full historical detail)
 │   │   view (``frontend/templates/pages/run_view.html``) during
 │   │   Sprint 12.12.1, so the visual design intent lives on.
 │   │   Plan stub at
-│   │   [.claude/plans/phase-12-11-notebook-unified-anchor.md](/home/flo/.claude/plans/phase-12-11-notebook-unified-anchor.md).
+│   │   [.claude/plans/phase-12-11-notebook-unified-anchor.md](.claude/plans/phase-12-11-notebook-unified-anchor.md).
 │   │
 │   ├── Sprint 99 — Toolbar + status badges               ✅ done (529aa57)
 │   │       Editor toolbar moved to Bootstrap-native chrome.
@@ -3147,7 +3147,7 @@ PointlesSQL — completed phases (full historical detail)
 │   │   replaces the browser editor as the read-only surface for
 │   │   one notebook + its persisted outputs; ``/runs`` replaces
 │   │   the Notebook nav entry.  Plan:
-│   │   [.claude/plans/siehst-du-mein-repo-zany-horizon.md](/home/flo/.claude/plans/siehst-du-mein-repo-zany-horizon.md).
+│   │   [.claude/plans/siehst-du-mein-repo-zany-horizon.md](.claude/plans/siehst-du-mein-repo-zany-horizon.md).
 │   │
 │   ├── Sprint 12.12.1 — JS / CSS / template deletion + server-render skeleton  ✅ done (bc2ad07)
 │   │       Deleted all 25 modules under
@@ -3871,7 +3871,7 @@ Phases 12.9 + 14–47 — appended 2026-05-12 from ROADMAP.md (verbatim)
 │   │   (api/main.py 6.6k LOC, scheduler.py 1.8k LOC, models.py, every
 │   │   service file >400 LOC) and finishes Tranches 2-6 of the
 │   │   original frontend plan.  19-sprint plan documented in
-│   │   [.claude/plans/ich-m-chte-eine-weitere-precious-goose.md](/home/flo/.claude/plans/ich-m-chte-eine-weitere-precious-goose.md).
+│   │   [.claude/plans/ich-m-chte-eine-weitere-precious-goose.md](.claude/plans/ich-m-chte-eine-weitere-precious-goose.md).
 │   │
 │   │   **Closed 2026-05-05.**  All 19 sprints (76–95) landed.
 │   │   Frontend is 99.3 % ESM (28 modules / 5852 LOC); the 40-LOC

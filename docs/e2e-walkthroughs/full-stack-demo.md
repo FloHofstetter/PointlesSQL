@@ -294,7 +294,7 @@ verifications:
 | Symptom | Likely cause |
 |---|---|
 | `Internal server error` on `--fresh` (catalog drop) | A leftover MLflow registered model under `demo_ml.models.*` blocks the cascade. The script auto-drops registered models before the catalog now, but a partial run from before this fix may leave residue — drop the model row directly: `curl -X DELETE 'http://127.0.0.1:8080/api/2.1/unity-catalog/models/demo_ml.models.house_price_lr?force=true'` |
-| `Permission denied: /home/flo/git/PointlesSQL/warehouse/...` | The default `E2E_WAREHOUSE_ROOT` of `/app/warehouse` only works in Docker. Set `E2E_WAREHOUSE_ROOT=/tmp/pql-demo-warehouse` (or any host path you own) before re-running. |
+| `Permission denied: <your-repo>/warehouse/...` | The default `E2E_WAREHOUSE_ROOT` of `/app/warehouse` only works in Docker. Set `E2E_WAREHOUSE_ROOT=/tmp/pql-demo-warehouse` (or any host path you own) before re-running. |
 | `coefs drifted >30%` warning | The synthetic seed produces predictable coefficients; if the warning fires consistently a regression in `pql.training_context` or sklearn's autolog is the next thing to check. |
 | `promote refused (403)` | The login user is not an admin. Promote your demo user: see the snippet below. |
 | `connection refused: 127.0.0.1:5000` during training | MLflow subprocess is not running. `uv run pointlessql` boots it via lifespan; for a manual smoke verify with `curl -sf http://127.0.0.1:5000/health`. |

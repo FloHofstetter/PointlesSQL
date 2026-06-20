@@ -78,7 +78,7 @@ class TestHumanizePreviewError:
         [
             "/tmp/demo/orders",
             "/var/lake/silver_tab",
-            "/home/flo/data/x.delta",
+            "/home/dev/data/x.delta",
         ],
     )
     def test_path_extraction_preserves_unicode_and_dashes(self, path: str) -> None:

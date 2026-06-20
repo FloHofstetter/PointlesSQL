@@ -15,7 +15,7 @@ compact summary + pointer).
 
 ## Summary
 
-**All 12 sub-sprints closed 2026-05-24.** Three-axis quality pass after the Restschuld I–V modularization waves drained the >700-LOC backlog. Plan-source: ``/home/flo/.claude/plans/ich- denke-es-ist-squishy-pnueli.md``. Wave ran in three batches: 121.1 (error envelope) shipped first, 121.2–121.7 + 121.4 in the secon...
+**All 12 sub-sprints closed 2026-05-24.** Three-axis quality pass after the Restschuld I–V modularization waves drained the >700-LOC backlog. Plan-source: ``.claude/plans/ich- denke-es-ist-squishy-pnueli.md``. Wave ran in three batches: 121.1 (error envelope) shipped first, 121.2–121.7 + 121.4 in the secon...
 
 ## Full detail
 
@@ -23,7 +23,7 @@ compact summary + pointer).
 │   ├── Phase 121 — Code Quality Wave VI (error-envelope unification)  ✅ done 2026-05-24
 │   │     **All 12 sub-sprints closed 2026-05-24.**  Three-axis quality
 │   │     pass after the Restschuld I–V modularization waves drained the
-│   │     >700-LOC backlog.  Plan-source: ``/home/flo/.claude/plans/ich-
+│   │     >700-LOC backlog.  Plan-source: ``.claude/plans/ich-
 │   │     denke-es-ist-squishy-pnueli.md``.  Wave ran in three batches:
 │   │     121.1 (error envelope) shipped first, 121.2–121.7 + 121.4 in
 │   │     the second batch (settings + lint + facade + micro-extractions
