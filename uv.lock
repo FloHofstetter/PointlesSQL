@@ -3201,7 +3201,7 @@ requires-dist = [
     { name = "polars", specifier = ">=1.0" },
     { name = "prometheus-client", specifier = ">=0.21" },
     { name = "psycopg", extras = ["binary"], specifier = ">=3.1" },
-    { name = "pwdlib", extras = ["bcrypt"], specifier = ">=0.2" },
+    { name = "pwdlib", extras = ["bcrypt"], specifier = ">=0.3.0" },
     { name = "pyarrow", specifier = ">=17.0" },
     { name = "pycrdt", specifier = ">=0.10" },
     { name = "pydantic-settings", specifier = ">=2.14.2" },
