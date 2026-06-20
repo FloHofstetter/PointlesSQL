@@ -19,7 +19,7 @@ jobs:
     # Conventional-Commits gate does not apply to its bot-generated PRs.
     if: github.actor != 'dependabot[bot]'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           # commitlint-github-action needs the full PR commit history
           # to validate every commit, not just the merge commit.
