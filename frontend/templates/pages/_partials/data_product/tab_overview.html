@@ -39,6 +39,9 @@
                 </div>
             </div>
 
+            <!-- Two-column card flow (collapses to one column < lg). -->
+            <div class="pql-dp-overview-grid">
+
             <!-- Service-level objectives + live verdicts. -->
             <div class="card mb-3"
                  x-data='dataProductSloPanel({{ product.catalog|tojson }}, {{ product.schema|tojson }}, {{ ((is_admin or is_steward) or false)|tojson }})'>
@@ -805,4 +808,5 @@
                     </ul>
                 </div>
             </template>
+            </div>
         </div>

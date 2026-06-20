@@ -16,6 +16,13 @@
 .pql-dp-data-cols .list-group-item:first-child { padding-top: 0; }
 .pql-dp-data-sample { font-size: .82rem; }
 .pql-dp-data-sample td { max-width: 18rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Overview tab: flow the long card stack into two balanced columns on
+   wide screens instead of one endless scroll. Cards never split across
+   a column; collapses to a single column below the lg breakpoint. */
+@media (min-width: 992px) {
+    .pql-dp-overview-grid { column-count: 2; column-gap: 1rem; }
+    .pql-dp-overview-grid .card { break-inside: avoid; }
+}
 </style>
 {% endblock %}
 
