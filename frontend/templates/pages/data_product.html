@@ -23,6 +23,11 @@
     .pql-dp-overview-grid { column-count: 2; column-gap: 1rem; }
     .pql-dp-overview-grid .card { break-inside: avoid; }
 }
+/* In the narrower two-column cards, keep button labels on one line
+   (so a squeezed column shows "Share", not a stacked "S/ha/re") and let
+   button rows wrap to the next line rather than crushing a control. */
+.pql-dp-overview-grid .btn { white-space: nowrap; }
+.pql-dp-overview-grid .btn-group { flex-wrap: wrap; }
 </style>
 {% endblock %}
 

@@ -30,19 +30,19 @@
 
         <form @submit.prevent="add()" class="small">
             <div class="row g-2">
-                <div class="col-md-4">
+                <div class="col-12 col-md-4">
                     <input class="form-control form-control-sm"
                            placeholder="Short title"
                            x-model="draft.title"
                            required>
                 </div>
-                <div class="col-md-7">
+                <div class="col">
                     <input class="form-control form-control-sm"
                            placeholder="How do you use this product?"
                            x-model="draft.body"
                            required>
                 </div>
-                <div class="col-md-1">
+                <div class="col-12 col-md-auto">
                     <button type="submit" class="btn btn-sm btn-primary w-100">Share</button>
                 </div>
             </div>
