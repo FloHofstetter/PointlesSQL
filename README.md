@@ -1,89 +1,245 @@
-# PointlesSQL
+<div align="center">
 
-**Per-cell auditable lakehouse for agent-driven data engineering, EU-AI-Act-native.**
+<a href="docs/assets/trailer.mp4">
+  <img src="docs/assets/trailer.gif" alt="PointlesSQL — the per-cell auditable lakehouse (watch the trailer)" width="760">
+</a>
 
+<h1>PointlesSQL</h1>
+
+<p><strong>The per-cell auditable lakehouse for agent-driven data engineering — EU-AI-Act-native.</strong></p>
+
+<p>
 A web UI and Python bridge over
-[soyuz-catalog](https://github.com/FloHofstetter/soyuz-catalog)
-(Unity-Catalog REST), Delta Lake, and MLflow — with a forced
-audit trail every agent action falls into, at the row, column,
-and value level.
+<a href="https://github.com/FloHofstetter/soyuz-catalog">soyuz-catalog</a>
+(Unity&nbsp;Catalog&nbsp;REST), Delta&nbsp;Lake, and MLflow — with a forced audit
+trail every agent action falls into, at the <strong>row, column, and value</strong> level.
+</p>
 
-📚 **Documentation**: run `uv run mkdocs serve` and open
-<http://127.0.0.1:8000>.  The docs site goes public as part of
-the public launch; until then, browse the markdown source under
-[`docs/`](docs/).
+<p>
+▶ <a href="docs/assets/trailer.mp4"><strong>Watch the full trailer</strong></a>
+&nbsp;·&nbsp; <a href="https://flohofstetter.github.io/PointlesSQL/">Documentation</a>
+&nbsp;·&nbsp; <a href="#quick-start-docker">Quick start</a>
+&nbsp;·&nbsp; <a href="ROADMAP.md">Roadmap</a>
+</p>
+
+<p>
+<a href="https://github.com/FloHofstetter/PointlesSQL/actions/workflows/test.yml"><img src="https://github.com/FloHofstetter/PointlesSQL/actions/workflows/test.yml/badge.svg" alt="CI"></a>
+<img src="https://img.shields.io/badge/python-3.14%2B-3776AB?logo=python&logoColor=white" alt="Python 3.14+">
+<a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-76b900" alt="License: Apache-2.0"></a>
+<a href="https://github.com/FloHofstetter/PointlesSQL/pkgs/container/pointlessql"><img src="https://img.shields.io/badge/ghcr.io-pointlessql-2496ED?logo=docker&logoColor=white" alt="GHCR image"></a>
+<a href="https://flohofstetter.github.io/PointlesSQL/"><img src="https://img.shields.io/badge/docs-mkdocs-526CFE" alt="Docs"></a>
+<img src="https://img.shields.io/badge/PRs-welcome-76b900" alt="PRs welcome">
+</p>
+
+</div>
+
+---
+
+## Table of contents
+
+- [Why PointlesSQL](#why-pointlessql)
+- [Screenshots](#screenshots)
+- [Features](#features)
+- [Quick start (Docker)](#quick-start-docker)
+- [Quick start (local development)](#quick-start-local-development)
+- [Using PQL](#using-pql)
+- [Architecture](#architecture)
+- [Configuration](#configuration)
+- [Jobs & scheduling](#jobs--scheduling)
+- [Documentation](#documentation)
+- [Contributing](#contributing)
+- [Security](#security)
+- [License](#license)
 
 ## Why PointlesSQL
 
-The EU AI Act (Article 12), SOC 2, and GDPR all require verifiable
-audit trails for data work performed by automated systems. Agents
-writing notebooks today leave no per-row, per-column, per-value
-lineage — when an auditor or incident-responder asks *"which agent
-run produced this value, from which inputs, using which prompt and
-model?"*, the answer has to be reconstructed by hand from logs that
-were never designed to carry that semantic load.
+The EU AI Act (Article 12), SOC 2, and GDPR all require verifiable audit
+trails for data work performed by automated systems. Agents writing
+notebooks today leave no per-row, per-column, per-value lineage — when an
+auditor or incident-responder asks *"which agent run produced this value,
+from which inputs, using which prompt and model?"*, the answer has to be
+reconstructed by hand from logs that were never designed to carry that
+semantic load.
 
-PointlesSQL closes that gap as part of the runtime, not as an
-add-on observability layer:
+PointlesSQL closes that gap **as part of the runtime, not as an add-on
+observability layer**:
 
-- **Forced audit trail** at row, column, and value level — every
-  PQL write, merge, branch, rollback, and read goes into
-  `agent_run_operations` automatically. Opt-out is a deliberate
-  config decision, not the default.
-- **Branch isolation per agent run** — Delta-Lake-native shallow
-  clones let each agent run write to an isolated branch that
-  promotes via human review.
-- **First-class rollback** — `pql.rollback(run_id)` is a
-  supervised action with cryptographic preview, not a manual
-  Delta `RESTORE` ritual.
-- **Review-bot infrastructure** — the same audit primitives feed
-  a daily Audit-Reviewer, a Compliance-Bot, and an Incident-
-  Responder agent, so the audit trail becomes actionable rather
-  than just stored.
+- **Forced audit trail** at row, column, and value level — every PQL write,
+  merge, branch, rollback, and read lands in `agent_run_operations`
+  automatically. Opt-out is a deliberate config decision, not the default.
+- **Branch isolation per agent run** — Delta-Lake-native shallow clones let
+  each agent run write to an isolated branch that promotes via human review.
+- **First-class rollback** — `pql.rollback(run_id)` is a supervised action
+  with cryptographic preview, not a manual Delta `RESTORE` ritual.
+- **Review-bot infrastructure** — the same audit primitives feed a daily
+  Audit-Reviewer, a Compliance-Bot, and an Incident-Responder agent, so the
+  trail becomes actionable rather than just stored.
 
-PointlesSQL doesn't replace your query engine, your catalog, or
-your agent framework — it composes them under a forced-audit
-contract.
+PointlesSQL doesn't replace your query engine, your catalog, or your agent
+framework — it composes them under a forced-audit contract.
 
-## Status
+## Screenshots
 
-Production stack with the following surfaces shipped:
+<p align="center">
+  <a href="docs/assets/screenshots/audit-cockpit.webp"><img src="docs/assets/screenshots/audit-cockpit.webp" alt="Audit Cockpit" width="100%"></a>
+  <br>
+  <sub><b>Audit Cockpit</b> — every agent write, merge, branch, and rollback, traceable by table, row, column, and value.</sub>
+</p>
 
-- **Catalog browser** with inline metadata edit
-- **PQL library** — `from pointlessql import PQL` — read / write
-  / merge / branch / rollback Delta tables by UC name
-- **Audit Cockpit** — `agent_run_operations` with row, column,
-  value, and inference-level lineage
-- **Native notebook editor** with pyright LSP, per-notebook
-  ipykernel, and real-time CRDT-based multi-tab co-edit
-- **MLflow registry surface** with champion/challenger promotion
-  and forced-autolog training audit
-- **Delta branching** — shallow-clone branches per agent run with
-  control-room promote/discard/preview UI
-- **External SQL API** — DBX-compatible `/api/2.0/sql/statements`
-  with per-API-key catalog + IP ACLs and usage aggregation
-- **Audit-Reviewer agent infrastructure** — three personas
-  (daily reviewer, compliance bot, incident responder) backed by
-  the same audit primitives
+<table>
+  <tr>
+    <td width="50%">
+      <a href="docs/assets/screenshots/catalog.webp"><img src="docs/assets/screenshots/catalog.webp" alt="Catalog browser"></a>
+      <br><sub><b>Catalog & table metadata</b> — browse catalogs → schemas → tables with inline comment/property edits.</sub>
+    </td>
+    <td width="50%">
+      <a href="docs/assets/screenshots/sql-editor.webp"><img src="docs/assets/screenshots/sql-editor.webp" alt="SQL editor"></a>
+      <br><sub><b>SQL editor</b> — typed autocomplete, query profile, and a DBX-compatible statement API.</sub>
+    </td>
+  </tr>
+  <tr>
+    <td>
+      <a href="docs/assets/screenshots/row-lineage-trace.webp"><img src="docs/assets/screenshots/row-lineage-trace.webp" alt="Per-row lineage trace"></a>
+      <br><sub><b>Per-row lineage</b> — trace any value back to the run, its inputs, prompt, and model.</sub>
+    </td>
+    <td>
+      <a href="docs/assets/screenshots/runs.webp"><img src="docs/assets/screenshots/runs.webp" alt="Agent run history"></a>
+      <br><sub><b>Agent runs</b> — run history with per-run diff, status, and promote/discard control.</sub>
+    </td>
+  </tr>
+  <tr>
+    <td>
+      <a href="docs/assets/screenshots/data-products.webp"><img src="docs/assets/screenshots/data-products.webp" alt="Data products"></a>
+      <br><sub><b>Data products & mesh</b> — contracts, governance, and a canvas builder over the catalog.</sub>
+    </td>
+    <td>
+      <a href="docs/assets/screenshots/notebook.webp"><img src="docs/assets/screenshots/notebook.webp" alt="Notebook editor"></a>
+      <br><sub><b>Native notebooks</b> — pyright LSP, per-notebook ipykernel, real-time CRDT co-edit.</sub>
+    </td>
+  </tr>
+</table>
 
-See [`ROADMAP.md`](ROADMAP.md) for the per-sprint detail and
-[`CHANGELOG.md`](CHANGELOG.md) for release notes.  The
-[concepts overview](docs/getting-started/concepts.md) is the
-ten-minute read that links the pieces together.
+<details>
+<summary>More screenshots</summary>
 
-## Stack
+<table>
+  <tr>
+    <td width="33%"><a href="docs/assets/screenshots/bi-dashboard.webp"><img src="docs/assets/screenshots/bi-dashboard.webp" alt="BI dashboard"></a><br><sub><b>BI dashboards</b></sub></td>
+    <td width="33%"><a href="docs/assets/screenshots/data-mesh.webp"><img src="docs/assets/screenshots/data-mesh.webp" alt="Data mesh canvas"></a><br><sub><b>Data mesh</b></sub></td>
+    <td width="33%"><a href="docs/assets/screenshots/admin.webp"><img src="docs/assets/screenshots/admin.webp" alt="Admin console"></a><br><sub><b>Admin console</b></sub></td>
+  </tr>
+</table>
 
-- **Python 3.14**, managed with [`uv`](https://docs.astral.sh/uv/)
-- **FastAPI + Uvicorn**, Jinja2 + Bootstrap 5.3 + HTMX + Alpine
-- **`soyuz-catalog-client`** — typed httpx wrapper for UC REST
-- **`deltalake` + `pandas` + `polars` + `duckdb`** — PQL bridge
-- **`jupyter_client` + `ipykernel` + `pyright` + `jupytext`** —
-  notebook editor
-- **SQLAlchemy 2.0 + Alembic** — own metadata DB (sessions, UI
-  preferences, audit trail); soyuz-catalog owns the lakehouse
-  metadata
-- **`mlflow`** — registry subprocess
-- **pytest + ruff + pyright + pydoclint + pre-commit**
+</details>
+
+## Features
+
+A production stack with the following surfaces shipped:
+
+- **Catalog browser** — catalogs → schemas → tables → columns with inline
+  metadata edits.
+- **PQL library** — `from pointlessql import PQL` — read / write / merge /
+  branch / rollback Delta tables by Unity Catalog name.
+- **Audit Cockpit** — `agent_run_operations` with row-, column-, value-, and
+  inference-level lineage.
+- **Native notebook editor** — pyright LSP, per-notebook ipykernel, and
+  real-time CRDT-based multi-tab co-edit.
+- **MLflow registry surface** — champion/challenger promotion and forced
+  autolog training audit.
+- **Delta branching** — shallow-clone branches per agent run with a control
+  room for promote / discard / preview.
+- **External SQL API** — DBX-compatible `/api/2.0/sql/statements` with
+  per-API-key catalog + IP ACLs and usage aggregation.
+- **Audit-Reviewer agents** — three personas (daily reviewer, compliance bot,
+  incident responder) backed by the same audit primitives.
+
+See [`ROADMAP.md`](ROADMAP.md) for per-sprint detail and
+[`CHANGELOG.md`](CHANGELOG.md) for release notes. The
+[concepts overview](https://flohofstetter.github.io/PointlesSQL/getting-started/concepts/)
+is the ten-minute read that links the pieces together.
+
+## Quick start (Docker)
+
+Two commands — no GitHub account, no local build:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/FloHofstetter/PointlesSQL/main/docker/docker-compose.yml -o docker-compose.yml
+docker compose up -d
+```
+
+Both images pull from GHCR — no source checkout, no `docker login`:
+
+- **PointlesSQL** on <http://localhost:8000>
+- **soyuz-catalog** Unity Catalog API on <http://localhost:8080>
+
+Pin a specific release with the `PQL_VERSION` / `SOYUZ_VERSION` environment
+variables; the defaults track the latest published images. Delta tables and
+notebooks live in named Docker volumes that survive `docker compose down`.
+See
+[`docs/getting-started/installation.md`](docs/getting-started/installation.md)
+for production pinning, the Grafana audit overlay, and troubleshooting.
+
+## Quick start (local development)
+
+Source-checkout flow for contributors. See
+[`docs/getting-started/installation.md`](docs/getting-started/installation.md)
+for the full three-flavour guide.
+
+**1. Start soyuz-catalog:**
+
+```bash
+git clone https://github.com/FloHofstetter/soyuz-catalog.git ~/git/soyuz-catalog
+cd ~/git/soyuz-catalog
+uv sync
+uv run soyuz-catalog        # listening on http://127.0.0.1:8080
+```
+
+**2. Start PointlesSQL:**
+
+```bash
+git clone https://github.com/FloHofstetter/PointlesSQL.git ~/git/PointlesSQL
+cd ~/git/PointlesSQL
+uv sync
+uv run pointlessql          # listening on http://127.0.0.1:8000
+```
+
+`uv sync` fetches the `soyuz-catalog-client` wheel from the public pin in
+`pyproject.toml` — no credentials required. If you want edits to
+`../soyuz-catalog` to surface without bumping the pin,
+`bash scripts/use-editable-soyuz.sh` swaps to the sibling checkout.
+
+**3. Browse the catalog:** open <http://127.0.0.1:8000>. The sidebar lists
+every catalog, schema, and table from soyuz-catalog; click through to see
+column schemas and edit comments and properties inline.
+
+## Using PQL
+
+PQL bridges Unity Catalog metadata and Delta Lake DataFrames. Use it from the
+built-in **Notebook** editor or any Python process:
+
+```python
+from pointlessql import PQL
+
+pql = PQL()
+
+# List what's in the catalog
+pql.list_catalogs()
+
+# Read a Delta table as a pandas DataFrame
+df = pql.table("my_catalog.my_schema.my_table")
+
+# Write a DataFrame back as a new table
+import pandas as pd
+df = pd.DataFrame({"id": [1, 2, 3], "value": [10.5, 20.0, 30.7]})
+pql.write_table(df, "my_catalog.my_schema.new_table")
+
+# Every write is recorded; supervised rollback by run id
+pql.rollback(run_id)
+```
+
+New tables appear immediately in the sidebar. The notebook editor speaks
+**jupytext `.py` percent-format**; convert an existing `.ipynb` with
+`jupytext --to py:percent notebook.ipynb`.
 
 ## Architecture
 
@@ -112,146 +268,20 @@ graph TB
     style ML fill:#5C6BC0,color:#fff,stroke:#3F51B5
 ```
 
-PointlesSQL and soyuz-catalog are **separate processes**.
-PointlesSQL imports the typed client library and talks to
-soyuz-catalog over HTTP — no shared Python state, no shared
-database.
+PointlesSQL and soyuz-catalog are **separate processes**. PointlesSQL imports
+the typed client library and talks to soyuz-catalog over HTTP — no shared
+Python state, no shared database.
 
-## Quick start (Docker)
-
-Two commands, no GitHub account, no local build:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/FloHofstetter/PointlesSQL/main/docker/docker-compose.yml -o docker-compose.yml
-docker compose up -d
-```
-
-Both images pull from GHCR — no source checkout, no `docker login`.
-
-- **PointlesSQL** on <http://localhost:8000>
-- **soyuz-catalog** UC API on <http://localhost:8080>
-- **JupyterLab** on <http://localhost:8888>
-
-Pin a specific release with `PQL_VERSION` / `SOYUZ_VERSION`
-environment variables; the defaults track the latest published
-images. Delta tables and notebooks live in named Docker volumes
-that survive `docker compose down`. See
-[`docs/getting-started/installation.md`](docs/getting-started/installation.md)
-for production pinning, the Grafana audit overlay, and
-troubleshooting.
-
-## Quick start (local development)
-
-Source-checkout flow for contributors. See
-[`docs/getting-started/installation.md`](docs/getting-started/installation.md) for the full three-flavour
-guide.
-
-**1. Start soyuz-catalog:**
-
-```bash
-git clone https://github.com/FloHofstetter/soyuz-catalog.git ~/git/soyuz-catalog
-cd ~/git/soyuz-catalog
-uv sync
-uv run soyuz-catalog
-# listening on http://127.0.0.1:8080
-```
-
-**2. Start PointlesSQL:**
-
-```bash
-git clone https://github.com/FloHofstetter/PointlesSQL.git ~/git/PointlesSQL
-cd ~/git/PointlesSQL
-uv sync
-uv run pointlessql
-# listening on http://127.0.0.1:8000
-```
-
-`uv sync` fetches the `soyuz-catalog-client` wheel from the public
-git tag pinned in `pyproject.toml` — no credentials required. If
-you want edits to `../soyuz-catalog` to surface without a tag bump,
-`bash scripts/use-editable-soyuz.sh` swaps the pin to the sibling
-checkout.
-
-**3. Browse the catalog:**
-
-Open <http://127.0.0.1:8000> in a browser. The sidebar shows all
-catalogs, schemas, and tables from soyuz-catalog. Click through
-to see metadata, column schemas, and edit comments and properties
-inline.
-
-**4. Use PQL in the notebook:**
-
-Click the **Notebook** tab in the navbar.  The native Monaco-based
-editor opens at ``notebooks/scratch.py``.  In a new code cell:
-
-```python
-from pointlessql import PQL
-
-pql = PQL()
-
-# List what's in the catalog
-pql.list_catalogs()
-
-# Read a Delta table as a DataFrame
-df = pql.table("my_catalog.my_schema.my_table")
-
-# Write a DataFrame back as a new table
-import pandas as pd
-df = pd.DataFrame({"id": [1, 2, 3], "value": [10.5, 20.0, 30.7]})
-pql.write_table(df, "my_catalog.my_schema.new_table")
-```
-
-New tables appear immediately in the sidebar.
-
-## Migrating from the JupyterLab iframe
-
-The embedded JupyterLab subprocess that the early prototype set up
-has been retired.  The native editor that replaced it supports
-**``.py`` jupytext Percent-format notebooks only** — papermill-
-generated ``.ipynb`` files under ``notebooks/runs/`` continue to
-work as run artefacts and the workspace browser still lists
-``.ipynb`` uploads for scheduling.
-
-If you have hand-authored ``.ipynb`` files you want to keep editing:
-
-```bash
-jupytext --to py:percent notebooks/my_notebook.ipynb
-```
-
-This produces ``notebooks/my_notebook.py``; the editor picks it up
-on open and assigns UUIDs to every cell on first save (ADR 0001 in
-``docs/decisions/0001-notebook-editor.md`` explains the ``pql_cell_id``
-marker format).
-
-The ``jupyterlab`` pypi dep is gone, ``POINTLESSQL_JUPYTER_PORT``
-is no longer listened on (the setting stays for backward-compat but
-does nothing), the ``/notebook`` URL now 302-redirects to
-``/notebook/editor?path=scratch.py``, and the job-detail page's
-``Open in JupyterLab`` deep-link became a ``Download ipynb``
-button.
-
-## Development
-
-```bash
-uv run pre-commit install    # one-time: arm git hook
-uv run pytest                # unit tests
-uv run pytest -m integration # integration tests (needs live soyuz)
-uv run ruff check            # lint
-uv run pyright               # type-check
-uv run pre-commit run -a     # all hooks
-```
-
-`uv sync` fetches `soyuz-catalog-client` from its public git tag
-with no credentials. If it fails, confirm you can reach
-`https://github.com/FloHofstetter/soyuz-catalog` over HTTPS. See
-[`docs/getting-started/installation.md`](docs/getting-started/installation.md) Troubleshooting for the full
-checklist.
+**Built on:** [soyuz-catalog](https://github.com/FloHofstetter/soyuz-catalog)
+(Unity Catalog REST), [Delta Lake](https://delta.io/),
+[MLflow](https://mlflow.org/), FastAPI, and the
+`deltalake` + `pandas` + `polars` + `duckdb` stack.
 
 ## Configuration
 
-PointlesSQL is configured via environment variables.  Every
-variable follows the `POINTLESSQL_<SUBMODEL>_<FIELD>` pattern;
-see `.env.example` for the full list.
+PointlesSQL is configured via environment variables. Every variable follows
+the `POINTLESSQL_<SUBMODEL>_<FIELD>` pattern; see `.env.example` for the full
+list.
 
 | Variable | Default | Description |
 |---|---|---|
@@ -261,39 +291,36 @@ see `.env.example` for the full list.
 | `POINTLESSQL_DB_URL` | `sqlite:///./pointlessql.db` | SQLAlchemy database URL |
 | `POINTLESSQL_AUTH_SECRET_KEY` | `change-me-in-production` | JWT signing key |
 
-## Jobs
+## Jobs & scheduling
 
-PointlesSQL includes an in-process scheduler that can run multi-task
-DAGs on a cron schedule. Two job kinds ship out of the box:
-`pg_sync` (the Postgres-to-UC mirror) and `python` (an entry-point
-loader for user-authored executors). See
-[`docs/guides/jobs.md`](docs/guides/jobs.md) for how to author a custom job kind,
-the executor signature, the optional failure webhook, and a worked
-example that uses `pql` inside a task.
+PointlesSQL includes an in-process scheduler that runs multi-task DAGs on a
+cron schedule. Two job kinds ship out of the box: `pg_sync` (the
+Postgres-to-UC mirror) and `python` (an entry-point loader for user-authored
+executors). See [`docs/guides/jobs.md`](docs/guides/jobs.md) for how to author
+a custom job kind, the executor signature, the optional failure webhook, and a
+worked example that uses `pql` inside a task.
 
 Prometheus metrics are exposed at `GET /metrics` (admin-only).
 
-## Relationship to other repos
+## Documentation
 
-- [`soyuz-catalog`](https://github.com/FloHofstetter/soyuz-catalog)
-  -- the UC REST server PointlesSQL talks to
-- `~/git/delta` -- Delta Lake Python bindings
-- `~/git/unitycatalog` -- upstream JVM reference (kept for spec
-  contracts only)
-- `~/git/spark` -- optional; relevant once PointlesSQL grows into
-  query execution
+- **Online docs:** <https://flohofstetter.github.io/PointlesSQL/>
+- **Local preview:** `uv run --group docs --no-default-groups mkdocs serve`,
+  then open <http://127.0.0.1:8000>.
+- **Concepts:** the
+  [concepts overview](https://flohofstetter.github.io/PointlesSQL/getting-started/concepts/)
+  links the audit trail, lineage, branching, and agent-supervision pieces.
 
 ## Contributing
 
-PRs welcome. See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the
-development environment, local gates, and PR conventions. Bugs and
-feature requests go through GitHub Issues (pick the right template
-from the *New Issue* picker).
+PRs welcome. See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the development
+environment, local gates, and PR conventions. Bugs and feature requests go
+through GitHub Issues (pick the right template from the *New Issue* picker).
 
 ## Security
 
-Vulnerabilities should be reported privately. See
-[`SECURITY.md`](SECURITY.md) for the responsible-disclosure path.
+Vulnerabilities should be reported privately. See [`SECURITY.md`](SECURITY.md)
+for the responsible-disclosure path.
 
 ## License
 
