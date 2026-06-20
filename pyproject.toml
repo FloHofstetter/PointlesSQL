@@ -56,7 +56,7 @@ dependencies = [
     "ansi2html>=1.9",
     "Pygments>=2.18",
     "cryptography>=44.0",
-    "mcp[cli]>=1.2",
+    "mcp[cli]>=1.28.0",
     "openai>=1.50",
     "anthropic>=0.40",
     # Phase 105 — Y.js / CRDT backbone for real-time co-edit.
