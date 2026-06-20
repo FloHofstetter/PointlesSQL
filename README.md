@@ -17,7 +17,7 @@ trail every agent action falls into, at the <strong>row, column, and value</stro
 
 <p>
 ▶ <a href="docs/assets/trailer.mp4"><strong>Watch the full trailer</strong></a>
-&nbsp;·&nbsp; <a href="https://flohofstetter.github.io/PointlesSQL/">Documentation</a>
+&nbsp;·&nbsp; <a href="docs/">Documentation</a>
 &nbsp;·&nbsp; <a href="#quick-start-docker">Quick start</a>
 &nbsp;·&nbsp; <a href="ROADMAP.md">Roadmap</a>
 </p>
@@ -27,7 +27,7 @@ trail every agent action falls into, at the <strong>row, column, and value</stro
 <img src="https://img.shields.io/badge/python-3.14%2B-3776AB?logo=python&logoColor=white" alt="Python 3.14+">
 <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-76b900" alt="License: Apache-2.0"></a>
 <a href="https://github.com/FloHofstetter/PointlesSQL/pkgs/container/pointlessql"><img src="https://img.shields.io/badge/ghcr.io-pointlessql-2496ED?logo=docker&logoColor=white" alt="GHCR image"></a>
-<a href="https://flohofstetter.github.io/PointlesSQL/"><img src="https://img.shields.io/badge/docs-mkdocs-526CFE" alt="Docs"></a>
+<a href="docs/"><img src="https://img.shields.io/badge/docs-in--repo-526CFE" alt="Docs"></a>
 <img src="https://img.shields.io/badge/PRs-welcome-76b900" alt="PRs welcome">
 </p>
 
@@ -124,9 +124,8 @@ framework — it composes them under a forced-audit contract.
 
 <table>
   <tr>
-    <td width="33%"><a href="docs/assets/screenshots/bi-dashboard.webp"><img src="docs/assets/screenshots/bi-dashboard.webp" alt="BI dashboard"></a><br><sub><b>BI dashboards</b></sub></td>
-    <td width="33%"><a href="docs/assets/screenshots/data-mesh.webp"><img src="docs/assets/screenshots/data-mesh.webp" alt="Data mesh canvas"></a><br><sub><b>Data mesh</b></sub></td>
-    <td width="33%"><a href="docs/assets/screenshots/admin.webp"><img src="docs/assets/screenshots/admin.webp" alt="Admin console"></a><br><sub><b>Admin console</b></sub></td>
+    <td width="50%"><a href="docs/assets/screenshots/data-mesh.webp"><img src="docs/assets/screenshots/data-mesh.webp" alt="Data mesh canvas"></a><br><sub><b>Data mesh</b></sub></td>
+    <td width="50%"><a href="docs/assets/screenshots/admin.webp"><img src="docs/assets/screenshots/admin.webp" alt="Admin console"></a><br><sub><b>Admin console</b></sub></td>
   </tr>
 </table>
 
@@ -155,7 +154,7 @@ A production stack with the following surfaces shipped:
 
 See [`ROADMAP.md`](ROADMAP.md) for per-sprint detail and
 [`CHANGELOG.md`](CHANGELOG.md) for release notes. The
-[concepts overview](https://flohofstetter.github.io/PointlesSQL/getting-started/concepts/)
+[concepts overview](docs/getting-started/concepts.md)
 is the ten-minute read that links the pieces together.
 
 ## Quick start (Docker)
@@ -304,11 +303,13 @@ Prometheus metrics are exposed at `GET /metrics` (admin-only).
 
 ## Documentation
 
-- **Online docs:** <https://flohofstetter.github.io/PointlesSQL/>
-- **Local preview:** `uv run --group docs --no-default-groups mkdocs serve`,
-  then open <http://127.0.0.1:8000>.
+- **Browse in-repo:** the full docs tree lives under [`docs/`](docs/) and
+  renders directly on GitHub.
+- **Local site:** `uv run --group docs --no-default-groups mkdocs serve`,
+  then open <http://127.0.0.1:8000>. A hosted docs site follows shortly
+  after launch.
 - **Concepts:** the
-  [concepts overview](https://flohofstetter.github.io/PointlesSQL/getting-started/concepts/)
+  [concepts overview](docs/getting-started/concepts.md)
   links the audit trail, lineage, branching, and agent-supervision pieces.
 
 ## Contributing
