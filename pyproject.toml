@@ -1,6 +1,6 @@
 [build-system]
 requires = ["hatchling"]
-build-backend = "hatchling.build"
+build-backend = "hatchling*"
 
 [project]
 name = "pointlessql"
@@ -21,51 +21,51 @@ classifiers = [
     "Programming Language :: Python :: 3.14",
 ]
 dependencies = [
-    "fastapi>=0.135",
-    "uvicorn>=0.42",
+    "fastapi>=0.138.0",
+    "uvicorn>=0.49.0",
     "pyyaml>=6.0",
     "jinja2>=3.1",
     "websockets>=16.0",
-    "typer>=0.15",
-    "sqlalchemy>=2.0",
+    "typer>=0.26.7",
+    "sqlalchemy>=2.0.51",
     "alembic>=1.15",
     "pwdlib[bcrypt]>=0.2",
     "prometheus_client>=0.21",
     "httpx>=0.28",
     "aiosqlite>=0.22.1",
-    "pydantic-settings>=2.0",
+    "pydantic-settings>=2.14.2",
     "PyJWT[crypto]>=2.9",
     "soyuz-catalog-client",
-    "deltalake>=0.24",
-    "duckdb>=1.0",
+    "deltalake>=1.6.0",
+    "duckdb>=1.5.4",
     "pandas>=2.2",
-    "polars>=1.0",
-    "python-multipart>=0.0.26",
+    "polars>=1.41.2",
+    "python-multipart>=0.0.32",
     "psycopg[binary]>=3.1",
     "pyarrow>=17.0",
     "croniter>=6.2.2",
     "papermill>=2.6",
     "nbconvert>=7.0",
-    "sqlglot>=26.0",
-    "jupytext>=1.16",
-    "jupyter_client>=8.6",
-    "ipykernel>=6.29",
+    "sqlglot>=30.11.0",
+    "jupytext>=1.19.3",
+    "jupyter_client>=8.9.1",
+    "ipykernel>=7.3.0",
     "ipywidgets>=8.1",
-    "pyright>=1.1",
-    "markdown-it-py>=3.0",
+    "pyright>=1.1.410",
+    "markdown-it-py>=4.2.0",
     "ansi2html>=1.9",
     "Pygments>=2.18",
     "cryptography>=44.0",
     "mcp[cli]>=1.2",
-    "openai>=1.50",
-    "anthropic>=0.40",
+    "openai>=2.43.0",
+    "anthropic>=0.111.0",
     # Phase 105 — Y.js / CRDT backbone for real-time co-edit.
     # ``pycrdt`` is the actively maintained successor to ``y-py``;
     # its wire format is byte-identical to Y.js so ``y-monaco`` on
     # the client side talks to the server without a brücke layer.
     # C-extension (binding to yrs).  Sprint 105.1 verifies install
     # via ``uv sync`` before the rest of the phase builds on it.
-    "pycrdt>=0.10",
+    "pycrdt>=0.14.1",
     "cedarpy>=4.8",
     "Faker>=24.0",
 ]
@@ -99,14 +99,14 @@ observability = [
 
 [dependency-groups]
 dev = [
-    "pytest>=9.0",
-    "pytest-asyncio>=0.24",
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
     "pytest-cov>=6.0",
     "pytest-xdist>=3.8",
     "httpx>=0.28",
-    "ruff>=0.15",
-    "pyright>=1.1",
-    "hatchling>=1.29.0",
+    "ruff>=0.15.18",
+    "pyright>=1.1.410",
+    "hatchling>=1.30.1",
     # Capped below 0.8: pydoclint 0.8.0 expanded the rule set with
     # class-attribute checks (DOC601/603 — which flag every pydantic
     # ``model_config`` sentinel as an undocumented attribute) and a
@@ -115,7 +115,7 @@ dev = [
     # not adopt those; a 0.8 bump turns the whole tree red without a
     # corresponding policy change.  Re-pin to 0.7.x until/unless the
     # docstrings are deliberately reconciled to the 0.8 ruleset.
-    "pydoclint>=0.7,<0.8",
+    "pydoclint>=0.8.6,<0.9",
     # Explicit dep on the fork so the post-install state is
     # deterministic.  pydoclint imports ``DocstringYields`` from
     # ``docstring_parser.common``; the symbol only ships in the fork
@@ -126,8 +126,8 @@ dev = [
     # pydoclint ensures uv records both in the resolved env and the
     # fork's files land last on CI's clean install.
     "docstring-parser-fork>=0.0.12",
-    "pip-audit>=2.10.0",
-    "pre-commit>=4.0",
+    "pip-audit>=2.10.1",
+    "pre-commit>=4.6.0",
     "detect-secrets>=1.5",
     "bandit>=1.9.4",
     "mlflow >= 3.11, < 3.12",
@@ -137,7 +137,7 @@ dev = [
     # browsers are not used.  Only the new ``e2e/`` tests import it;
     # the rest of the suite never touches Playwright.
     "playwright>=1.50",
-    "hypothesis>=6",
+    "hypothesis>=6.155.6",
 ]
 docs = [
     "mkdocs>=1.6",
