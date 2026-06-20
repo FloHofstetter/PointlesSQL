@@ -14,7 +14,7 @@ not the catalog API, not the agent runtime.
 | Layer | Process | Repo |
 |---|---|---|
 | **Agent runtime** | Hermes / OpenClaw / Claude Code | various |
-| **Tool surface** | `hermes-plugin-pointlessql` | [GitHub](https://github.com/FloHofstetter/hermes-plugin-pointlessql) |
+| **Tool surface** | `hermes-plugin-pointlessql` | separate repo (private) |
 | **Management + audit** | **PointlesSQL** (this) | [GitHub](https://github.com/FloHofstetter/PointlesSQL) |
 | **Catalog REST** | `soyuz-catalog` (Python UC server) | [GitHub](https://github.com/FloHofstetter/soyuz-catalog) |
 | **Storage** | Delta Lake | files / S3 / ADLS / GCS |

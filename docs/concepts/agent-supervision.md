@@ -41,7 +41,7 @@ graph TD
 ```
 
 The plugin's
-[`tools/__init__.py`](https://github.com/FloHofstetter/hermes-plugin-pointlessql/blob/main/hermes_plugin_pointlessql/tools/__init__.py)
+`tools/__init__.py`
 implements the gating. Server-side, `require_supervisor` /
 `require_auditor` dependencies still re-check the API key scope
 — the env-var gate is belt-and-braces.

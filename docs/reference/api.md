@@ -165,7 +165,7 @@ Validation errors come back as `400 arg_error`:
 ```
 
 The plugin's
-[`tools/_common.py:run`](https://github.com/FloHofstetter/hermes-plugin-pointlessql/blob/main/hermes_plugin_pointlessql/tools/_common.py)
+`tools/_common.py:run`
 unwraps these envelopes into the agent-visible `{"ok": false,...}`
 shape.
 

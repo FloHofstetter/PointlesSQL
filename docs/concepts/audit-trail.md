@@ -261,7 +261,7 @@ demonstrates each query end-to-end.
 - **No prompt-bytes.** PointlesSQL records *what* the agent
  did (the op-rows + tool-calls). It does not record the LLM
  prompts, reasoning tokens, or the iteration content. That's
- the [shoreguard Provenance Log's](https://github.com/FloHofstetter/shoreguard-fresh)
+ the shoreguard Provenance Log's
  job; PointlesSQL cross-references it via an opaque
  `iteration_id` only.
 - **No per-row diff for non-Delta sources.** Row-level lineage

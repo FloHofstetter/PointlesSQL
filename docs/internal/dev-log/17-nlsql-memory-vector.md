@@ -176,7 +176,7 @@ These entries were materialised from the pre-W3 ``CHANGELOG.md`` ``[Unreleased]`
      bumped to 0.1.0rc7.
 
   2. **91.1** — Tool-set hardening.  Three new tools in
-     [`hermes-plugin-pointlessql`](https://github.com/FloHofstetter/hermes-plugin-pointlessql):
+     `hermes-plugin-pointlessql`:
      ``pql_describe_columns_with_stats`` (live PQL→pandas
      reduction backed by new
      [`pointlessql/services/column_stats/`](pointlessql/services/column_stats/)

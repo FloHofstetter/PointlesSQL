@@ -245,7 +245,7 @@ not by `Settings`:
 | `POINTLESSQL_AUDITOR_MODE` | `0` | `1` = plugin registers auditor tools at session start. |
 
 For the plugin-side env-var contract see
-[`hermes-plugin-pointlessql/CLAUDE.md`](https://github.com/FloHofstetter/hermes-plugin-pointlessql/blob/main/CLAUDE.md)
+`hermes-plugin-pointlessql/CLAUDE.md`
 when that repo is public.
 
 ## How settings get loaded

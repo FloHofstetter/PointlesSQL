@@ -1,9 +1,13 @@
 # Hermes plugin
 
-[`hermes-plugin-pointlessql`](https://github.com/FloHofstetter/hermes-plugin-pointlessql)
+`hermes-plugin-pointlessql`
 is the agent-side surface for PointlesSQL. An httpx-only
 plugin (~1200 LOC client + ~50 tools) that registers Family
 A/B/C tools at session start based on env-var flags.
+
+> **Note:** `hermes-plugin-pointlessql` is a separate companion
+> repository that is not yet publicly available. The setup steps
+> below apply once it is published or you otherwise have access.
 
 ## Install
 
@@ -73,7 +77,7 @@ envelopes (mirrors the server's error contract). Validation
 errors become `arg_error` envelopes with `field`, `expected`,
 `hint` fields so the LLM can self-correct.
 
-See [`tools/_common.py`](https://github.com/FloHofstetter/hermes-plugin-pointlessql/blob/main/hermes_plugin_pointlessql/tools/_common.py)
+See `tools/_common.py`
 for the shared helpers.
 
 ## Lifecycle hooks
@@ -111,5 +115,5 @@ session. That's fine for an agent-side surface.
  agent end-to-end in 30 minutes
 - [Permissions](../reference/permissions.md) — what each
  family / scope can do
-- [Plugin repo](https://github.com/FloHofstetter/hermes-plugin-pointlessql)
+- Plugin repo
  (private during ; public after the launch sprint)

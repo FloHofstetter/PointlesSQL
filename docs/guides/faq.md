@@ -119,10 +119,9 @@ versions. Don't do that.
 
 ### When will the docs site go public?
 
-The launch sprint flips the deploy trigger + repo visibility +
-README badge in one commit. See
-[ADR-0004 Public-flip checklist](../decisions/index.md) (lands
-in ).
+The docs site is published to GitHub Pages as part of the public
+launch. Until then, browse the Markdown sources under `docs/` or
+run `uv run --group docs --no-default-groups mkdocs serve` locally.
 
 ### When will PointlesSQL hit `1.0.0`?
 

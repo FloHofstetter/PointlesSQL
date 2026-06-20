@@ -233,7 +233,6 @@ nav:
       - "ADR-0001 Notebook editor": decisions/0001-notebook-editor.md
       - "ADR-0002 DuckDB-first": decisions/0002-duckdb-first.md
       - "ADR-0003 Delta-branching spike": decisions/0003-delta-branching-spike.md
-      - "ADR-0004 Public-flip checklist": decisions/0004-public-flip-checklist.md
       - "ADR-0008 Workspace soft isolation": decisions/0008-workspace-soft-isolation.md
       - "ADR-0009 Doc-publication decisions": decisions/0009-doc-publication-decisions.md
   - "What's new": changelog.md

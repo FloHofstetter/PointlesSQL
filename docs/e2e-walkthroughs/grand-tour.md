@@ -461,7 +461,7 @@ What this tour intentionally does NOT cover, and where to find it:
 - **Hermes agent loops** (audit-reviewer cron, compliance-bot
  one-shots, incident-responder, agent-driven training, drift-monitor)
  — require a Hermes install + the
- [`hermes-plugin-pointlessql`](https://github.com/FloHofstetter/hermes-plugin-pointlessql).
+ `hermes-plugin-pointlessql`.
  See [`audit-reviewer-daily.md`](audit-reviewer-daily.md),
  [`compliance-bot.md`](compliance-bot.md),
  [`incident-responder.md`](incident-responder.md),

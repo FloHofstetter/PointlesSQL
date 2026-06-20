@@ -4,7 +4,7 @@
 
 Exercises the explain-first rewrite loop end to end:
 
-- The Hermes plugin's [`pql_query`](https://github.com/FloHofstetter/hermes-plugin-pointlessql/blob/main/hermes_plugin_pointlessql/tools/query.py)
+- The Hermes plugin's `pql_query`
   tool calls `GET /api/sql/explain` before `POST /api/sql/execute`.
   When the cost-gate verdict says `needs_approval=True` the tool
   returns a structured `cost_gate_denied` envelope carrying the
@@ -35,7 +35,7 @@ Exercises the explain-first rewrite loop end to end:
   run-detail UI.  The agent-side flow uses an API key with
   ``agent`` scope (any working-agent key works).
 - A Hermes-cli session with the
-  [`hermes-plugin-pointlessql`](https://github.com/FloHofstetter/hermes-plugin-pointlessql)
+  `hermes-plugin-pointlessql`
   plugin loaded.  Set ``POINTLESSQL_API_KEY`` and
   ``POINTLESSQL_BASE_URL=http://127.0.0.1:8000`` in the env.
 - The cost-gate threshold is the install default
