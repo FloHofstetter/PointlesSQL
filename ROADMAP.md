@@ -4097,6 +4097,12 @@ PointlesSQL
 │           Quetschen der Include-Karten in eine schmale Rail; spart aber
 │           denselben halben Scroll.  Live verifiziert: zwei Spalten (Karten-
 │           Kanten x=336/881), Hero außerhalb des Grids, 200 + Screenshot.
+│           Follow-up (`670720cb`): die schmaleren Zwei-Spalten-Karten
+│           quetschten Inline-Form-Buttons, bis das Label vertikal umbrach
+│           (Use-Cases-„Share" in `col-md-1` ~43px → „S/ha/re").  Grid-Regel
+│           `white-space:nowrap` + `.btn-group{flex-wrap}` und der Use-Cases-
+│           Submit auf `col-md-auto`; alle 37 Overview-Buttons jetzt einzeilig
+│           (live geprüft, Screenshot).
 │   │
 ├── Phase 211 — Bootstrap-UI-Audit: Fixes aus dem 169-Screenshot-Sweep  ✅ shipped (local, 2026-06-13)
 │   │

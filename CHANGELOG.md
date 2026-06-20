@@ -303,7 +303,11 @@ defined in ``scripts/clusters.json``. -->
   the cards split into two balanced columns on wide screens (collapsing
   to one column below the lg breakpoint); cards never split across a
   column and the health-hero band stays full-width on top. Roughly
-  halves the scroll while keeping every card visible.
+  halves the scroll while keeping every card visible. Follow-up: the
+  narrower two-column cards squeezed inline-form buttons until their
+  labels wrapped vertically (the Use Cases "Share" button rendered as a
+  stacked "S/ha/re"); a grid-scoped `white-space: nowrap` rule plus
+  sizing the submit button to its content keep every button on one line.
 
 - **Bootstrap UI-audit fixes (phase 211).** Acting on a full headful
   audit (774 API routes + 169 screenshots graded against Bootstrap 5.3):
