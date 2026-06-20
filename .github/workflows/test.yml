@@ -15,9 +15,9 @@ jobs:
     name: lint + type + docstring + alembic
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Install uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
       - name: Set up Python
@@ -94,7 +94,7 @@ jobs:
         # frontend/js/package.json carries only {"type": "module"} so
         # Node parses the production ESM files; there is deliberately
         # no root package.json, lockfile, or npm install.
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: '24'
       - name: Run JS unit tests
@@ -160,7 +160,7 @@ jobs:
             --cov-fail-under=55
       - name: Upload coverage XML
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-xml
           path: coverage.xml
@@ -178,9 +178,9 @@ jobs:
     # — track via the Memory entry that lands with this commit.
     continue-on-error: true
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Install uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
       - name: Set up Python
@@ -222,9 +222,9 @@ jobs:
       TEST_DATABASE_URL: postgresql+psycopg://pointlessql:pointlessql@localhost:5432/pointlessql  # pragma: allowlist secret
       POINTLESSQL_DB_URL: postgresql+psycopg://pointlessql:pointlessql@localhost:5432/pointlessql  # pragma: allowlist secret
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Install uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
       - name: Set up Python
@@ -277,9 +277,9 @@ jobs:
     name: dependency CVE scan (pip-audit)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Install uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
       - name: Set up Python
