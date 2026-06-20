@@ -3240,7 +3240,7 @@ docs = [
     { name = "mike", specifier = ">=2.0" },
     { name = "mkdocs", specifier = ">=1.6" },
     { name = "mkdocs-material", specifier = ">=9.6" },
-    { name = "mkdocstrings", extras = ["python"], specifier = ">=0.29" },
+    { name = "mkdocstrings", extras = ["python"], specifier = ">=1.0.4" },
     { name = "neoteroi-mkdocs", specifier = ">=1.1" },
 ]
 
