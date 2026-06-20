@@ -33,7 +33,7 @@ dependencies = [
     "prometheus_client>=0.21",
     "httpx>=0.28",
     "aiosqlite>=0.22.1",
-    "pydantic-settings>=2.0",
+    "pydantic-settings>=2.14.2",
     "PyJWT[crypto]>=2.9",
     "soyuz-catalog-client",
     "deltalake>=0.24",
