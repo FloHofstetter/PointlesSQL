@@ -14,6 +14,10 @@ class VectorSearchRequest(BaseModel):
     column: str = Field(..., description="Indexed text column on the table.")
     query: str = Field(..., min_length=1, description="Free-text query string.")
     top_k: int = Field(10, ge=1, le=200, description="Number of hits to return.")
+    hybrid: bool = Field(
+        False,
+        description="Fuse vector similarity with keyword relevance (RRF) before ranking.",
+    )
 
 
 class VectorSearchHit(BaseModel):
@@ -22,6 +26,8 @@ class VectorSearchHit(BaseModel):
     score: float
     pk: dict[str, Any]
     snippet: str
+    keyword_score: float | None = None
+    fused_score: float | None = None
 
 
 class VectorSearchResponse(BaseModel):

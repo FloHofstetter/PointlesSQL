@@ -56,6 +56,7 @@ export function semanticSearch(indices, tableFqn, textColumns, canManage) {
     selectedColumn: initialColumn,
     query: '',
     topK: 10,
+    hybrid: false,
     hits: /** @type {Array<{score: number, pk: object, snippet: string}>} */ ([]),
     loading: false,
     error: '',
@@ -83,6 +84,7 @@ export function semanticSearch(indices, tableFqn, textColumns, canManage) {
             column: this.selectedColumn,
             query: this.query,
             top_k: this.topK,
+            hybrid: this.hybrid,
           }),
         });
         if (!resp.ok) {

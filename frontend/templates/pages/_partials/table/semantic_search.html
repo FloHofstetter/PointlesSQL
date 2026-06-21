@@ -59,7 +59,7 @@
                </template>
              </select>
            </div>
-           <div class="col-md-7">
+           <div class="col-md-6">
              <label class="form-label small mb-1" for="semsearch-query">Query</label>
              <input id="semsearch-query" type="text" class="form-control form-control-sm"
                     x-model="query" @keydown.enter.prevent="run()"
@@ -69,6 +69,14 @@
              <label class="form-label small mb-1" for="semsearch-topk">Top K</label>
              <input id="semsearch-topk" type="number" class="form-control form-control-sm"
                     x-model.number="topK" min="1" max="200">
+           </div>
+           <div class="col-md-1">
+             <label class="form-label small mb-1" for="semsearch-hybrid"
+                    title="Fuse vector similarity with keyword relevance (RRF)">Hybrid</label>
+             <div class="form-check form-switch mt-1">
+               <input id="semsearch-hybrid" class="form-check-input" type="checkbox"
+                      role="switch" x-model="hybrid">
+             </div>
            </div>
            <div class="col-md-1 text-end">
              <button type="button" class="btn btn-primary btn-sm w-100"

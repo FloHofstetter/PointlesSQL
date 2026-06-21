@@ -26,6 +26,7 @@ from pointlessql.api.sql.vector_search._models import (
 from pointlessql.exceptions import ResourceNotFoundError, SQLExecutionError
 from pointlessql.pql._parsing import parse_full_name
 from pointlessql.pql._vector import search as _pql_vector_search
+from pointlessql.services import hybrid_search
 from pointlessql.services._executor import run_sync
 from pointlessql.services.soyuz_client import make_principal_client, make_soyuz_client
 from pointlessql.types import QueryStatus
@@ -132,13 +133,19 @@ async def api_sql_vector_search(
     finished_at = datetime.now(UTC)
     duration_ms = int((finished_at - started_at).total_seconds() * 1000)
 
+    # Hybrid mode: re-rank the vector hits by fusing their vector order
+    # with a keyword-relevance order over the same snippets (RRF).
+    hits = result["hits"]
+    if body.hybrid:
+        hits = hybrid_search.fuse_vector_hits(hits, body.query)
+
     await record_query_async(
         request,
         sql_text=ctx.sql,
         started_at=started_at,
         finished_at=finished_at,
         status=QueryStatus.SUCCEEDED,
-        row_count=len(result["hits"]),
+        row_count=len(hits),
         duration_ms=duration_ms,
         referenced_tables=[body.table],
     )
@@ -146,6 +153,7 @@ async def api_sql_vector_search(
         "table": body.table,
         "column": body.column,
         "top_k": body.top_k,
+        "hybrid": body.hybrid,
         "duration_ms": duration_ms,
         "model": result.get("model"),
         "embedder": result.get("embedder"),
@@ -159,5 +167,5 @@ async def api_sql_vector_search(
         embedder=str(result.get("embedder") or ""),
         metric=str(result.get("metric") or "cosine"),
         delta_version_indexed=int(result.get("delta_version_indexed") or 0),
-        hits=[VectorSearchHit(**h) for h in result["hits"]],
+        hits=[VectorSearchHit(**h) for h in hits],
     )
