@@ -241,14 +241,14 @@
         </div>
 
         <div x-show="error" class="alert alert-danger small">
-            <strong x-text="error.reason"></strong>
-            <div class="text-muted" x-show="error.hint" x-text="error.hint"></div>
+            <strong x-text="error?.reason"></strong>
+            <div class="text-muted" x-show="error?.hint" x-text="error?.hint"></div>
         </div>
 
         <div x-show="probeResult && probeResult.columns" class="mt-3">
             <h2 class="h6">Resolved columns
                 <span class="text-muted small"
-                      x-text="'(' + (probeResult.columns || []).length + ')'">
+                      x-text="'(' + (probeResult?.columns || []).length + ')'">
                 </span>
             </h2>
             <div class="table-responsive">
@@ -260,7 +260,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <template x-for="c in (probeResult.columns || [])"
+                        <template x-for="c in (probeResult?.columns || [])"
                                   :key="c.name">
                             <tr>
                                 <td class="font-monospace" x-text="c.name"></td>
