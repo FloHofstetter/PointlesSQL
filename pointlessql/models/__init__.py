@@ -210,6 +210,11 @@ from pointlessql.models.lineage import (
     LineageValueChange,
     UnattributedWrite,
 )
+from pointlessql.models.mcp_registry import (
+    MCP_SERVICE_TRANSPORTS,
+    McpService,
+    McpServiceTool,
+)
 from pointlessql.models.notebook import (
     NOTEBOOK_CELL_SEQUENCE_PROPOSAL_STATUSES,
     CoeditBusMessage,
@@ -413,6 +418,9 @@ __all__ = [
     "GlossaryTerm",
     "GlossaryTermColumn",
     "GlossaryTermRelation",
+    "MCP_SERVICE_TRANSPORTS",
+    "McpService",
+    "McpServiceTool",
     "MeshEntity",
     "MeshEntityBinding",
     "OutputPortSchemaVersion",

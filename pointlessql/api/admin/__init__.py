@@ -42,6 +42,7 @@ from pointlessql.api.admin.ingest_sources import (
     router as _admin_ingest_sources_router,
 )
 from pointlessql.api.admin.lens_providers import router as _lens_providers_router
+from pointlessql.api.admin.mcp_services import router as _mcp_services_router
 from pointlessql.api.admin.mesh_entities import router as _mesh_entities_router
 from pointlessql.api.admin.policy_modules import router as _policy_modules_router
 from pointlessql.api.admin.repos import router as _repos_router
@@ -68,6 +69,7 @@ router.include_router(_admin_ingest_sources_router)
 router.include_router(_coedit_bus_router)
 router.include_router(_policy_modules_router)
 router.include_router(_agent_guardrails_router)
+router.include_router(_mcp_services_router)
 router.include_router(_cost_routes_router)
 
 __all__ = ["router"]

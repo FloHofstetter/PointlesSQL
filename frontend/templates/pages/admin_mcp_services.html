@@ -1,0 +1,229 @@
+{% extends "base.html" %}
+{% block title %}MCP services · PointlesSQL{% endblock %}
+
+{% set breadcrumbs = [
+    {"label": "Home", "href": "/"},
+    {"label": "Admin", "href": "/admin"},
+    {"label": "MCP services"}
+] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-1"
+     x-data="{
+        transports: {{ transports | tojson }},
+        services: [],
+        view: 'admin',
+        loading: true,
+        form: { name: '', url: '', transport: 'sse', description: '', secret_scope: '' },
+        registering: false,
+        regError: null,
+        newTool: {},
+        async init() { await this.load(); },
+        async load() {
+            this.loading = true;
+            const path = this.view === 'published'
+                ? '/api/admin/mcp-services/discover'
+                : '/api/admin/mcp-services';
+            const r = await window.pqlApi.fetch(path);
+            this.loading = false;
+            if (r.ok) { this.services = (r.data && r.data.services) || []; }
+        },
+        async setView(v) { this.view = v; await this.load(); },
+        async register() {
+            this.registering = true; this.regError = null;
+            const r = await window.pqlApi.fetch('/api/admin/mcp-services', {
+                method: 'POST', body: { ...this.form }
+            });
+            this.registering = false;
+            if (!r.ok) { this.regError = r.error || 'Failed to register the service'; return; }
+            this.form = { name: '', url: '', transport: 'sse', description: '', secret_scope: '' };
+            await this.load();
+        },
+        async toggleService(svc) {
+            const r = await window.pqlApi.fetch('/api/admin/mcp-services/' + svc.id, {
+                method: 'PATCH', body: { enabled: !svc.enabled }
+            });
+            if (r.ok) await this.load();
+        },
+        async deleteService(svc) {
+            if (!window.confirm('Delete MCP service \'' + svc.name + '\' and all its tools?')) return;
+            const r = await window.pqlApi.fetch('/api/admin/mcp-services/' + svc.id, { method: 'DELETE' });
+            if (r.ok) await this.load();
+        },
+        async addTool(svc) {
+            const name = (this.newTool[svc.id] || '').trim();
+            if (!name) return;
+            const r = await window.pqlApi.fetch('/api/admin/mcp-services/' + svc.id + '/tools', {
+                method: 'POST', body: { name: name }
+            });
+            if (r.ok) { this.newTool[svc.id] = ''; await this.load(); }
+        },
+        async toggleTool(svc, tool) {
+            const r = await window.pqlApi.fetch(
+                '/api/admin/mcp-services/' + svc.id + '/tools/' + tool.id,
+                { method: 'PATCH', body: { enabled: !tool.enabled } }
+            );
+            if (r.ok) await this.load();
+        },
+        async deleteTool(svc, tool) {
+            const r = await window.pqlApi.fetch(
+                '/api/admin/mcp-services/' + svc.id + '/tools/' + tool.id,
+                { method: 'DELETE' }
+            );
+            if (r.ok) await this.load();
+        }
+     }">
+
+    <div class="d-flex align-items-center gap-2 mb-3">
+        <i class="bi bi-hdd-network fs-3"></i>
+        <h1 class="h3 mb-0">MCP services</h1>
+    </div>
+
+    <p class="text-muted">
+        Govern the workspace inventory of approved external Model Context Protocol services. Register a service, curate
+        the tools it advertises with a per-tool allow toggle, and enable or disable the whole service to publish it to
+        developers or pull it from the catalog without losing the registration. The
+        <span class="fw-semibold">Published</span> view shows exactly what a developer discovers — enabled services and
+        their enabled tools only.
+    </p>
+
+    <div class="row g-3">
+        <div class="col-12 col-lg-4">
+            <div class="card">
+                <div class="card-header py-2 fw-semibold">Register a service</div>
+                <div class="card-body">
+                    <div class="mb-2">
+                        <label class="form-label small text-muted" for="mcp-name">Name</label>
+                        <input id="mcp-name" type="text" class="form-control form-control-sm"
+                               x-model="form.name" placeholder="e.g. slack">
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small text-muted" for="mcp-url">Endpoint URL / command</label>
+                        <input id="mcp-url" type="text" class="form-control form-control-sm"
+                               x-model="form.url" placeholder="https://mcp.example.com/sse">
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small text-muted" for="mcp-transport">Transport</label>
+                        <select id="mcp-transport" class="form-select form-select-sm" x-model="form.transport">
+                            <template x-for="t in transports" :key="t">
+                                <option :value="t" x-text="t"></option>
+                            </template>
+                        </select>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small text-muted" for="mcp-desc">Description</label>
+                        <input id="mcp-desc" type="text" class="form-control form-control-sm"
+                               x-model="form.description" placeholder="optional">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small text-muted" for="mcp-scope">Secret scope</label>
+                        <input id="mcp-scope" type="text" class="form-control form-control-sm"
+                               x-model="form.secret_scope" placeholder="optional vault name">
+                    </div>
+                    <button type="button" class="btn btn-primary btn-sm" :disabled="registering" @click="register()">
+                        <span x-show="!registering"><i class="bi bi-plus-lg me-1"></i>Register</span>
+                        <span x-show="registering">working…</span>
+                    </button>
+                    <span x-show="regError" x-text="regError" class="text-danger small ms-2"></span>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-lg-8">
+            <div class="btn-group btn-group-sm mb-3" role="group" aria-label="Registry view">
+                <button type="button" class="btn"
+                        :class="view === 'admin' ? 'btn-primary' : 'btn-outline-primary'"
+                        @click="setView('admin')">All services</button>
+                <button type="button" class="btn"
+                        :class="view === 'published' ? 'btn-primary' : 'btn-outline-primary'"
+                        @click="setView('published')">Published (developer view)</button>
+            </div>
+
+            <div x-show="loading" class="text-muted small">Loading…</div>
+            <div x-show="!loading && services.length === 0" x-cloak class="text-muted small">
+                No MCP services registered yet.
+            </div>
+
+            <template x-for="svc in services" :key="svc.id">
+                <div class="card mb-3">
+                    <div class="card-header py-2 d-flex align-items-center justify-content-between">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="fw-semibold" x-text="svc.name"></span>
+                            <span class="badge bg-secondary" x-text="svc.transport"></span>
+                            <span class="badge" :class="svc.enabled ? 'bg-success' : 'bg-secondary'"
+                                  x-text="svc.enabled ? 'enabled' : 'disabled'"></span>
+                            <span class="badge bg-light text-dark"
+                                  x-text="svc.enabled_tool_count + '/' + svc.tool_count + ' tools'"></span>
+                        </div>
+                        <div class="d-flex align-items-center gap-2" x-show="view === 'admin'">
+                            <div class="form-check form-switch mb-0">
+                                <input class="form-check-input" type="checkbox" role="switch"
+                                       :checked="svc.enabled" @change="toggleService(svc)"
+                                       :id="'svc-en-' + svc.id"
+                                       :aria-label="'Toggle ' + svc.name + ' published'">
+                                <label class="form-check-label small text-muted" :for="'svc-en-' + svc.id">
+                                    published</label>
+                            </div>
+                            <button type="button" class="btn btn-outline-danger btn-sm"
+                                    @click="deleteService(svc)" title="Delete service">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body small">
+                        <p class="text-muted mb-1" x-show="svc.description" x-text="svc.description"></p>
+                        <div class="text-muted mb-2">
+                            <code x-text="svc.url"></code>
+                            <span x-show="svc.secret_scope"> · secret scope:
+                                <code x-text="svc.secret_scope"></code></span>
+                        </div>
+
+                        <div class="table-responsive" x-show="svc.tools.length > 0">
+                            <table class="table table-sm align-middle mb-2">
+                                <tbody>
+                                    <template x-for="tool in svc.tools" :key="tool.id">
+                                        <tr>
+                                            <td class="w-100">
+                                                <code x-text="tool.name"></code>
+                                                <span class="text-muted" x-show="tool.description"
+                                                      x-text="' — ' + tool.description"></span>
+                                            </td>
+                                            <td class="text-nowrap" x-show="view === 'admin'">
+                                                <div class="form-check form-switch mb-0 d-inline-block me-2">
+                                                    <input class="form-check-input" type="checkbox" role="switch"
+                                                           :checked="tool.enabled" @change="toggleTool(svc, tool)"
+                                                           :id="'tool-en-' + tool.id"
+                                                           :aria-label="'Allow tool ' + tool.name">
+                                                </div>
+                                                <button type="button" class="btn btn-outline-danger btn-sm py-0"
+                                                        @click="deleteTool(svc, tool)" title="Remove tool">
+                                                    <i class="bi bi-x-lg"></i>
+                                                </button>
+                                            </td>
+                                            <td class="text-nowrap" x-show="view === 'published'">
+                                                <span class="badge bg-success">allowed</span>
+                                            </td>
+                                        </tr>
+                                    </template>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="text-muted mb-2" x-show="svc.tools.length === 0">No tools listed.</div>
+
+                        <div class="input-group input-group-sm" x-show="view === 'admin'"
+                             style="max-width: 24rem;">
+                            <input type="text" class="form-control" placeholder="add a tool by name"
+                                   aria-label="Add a tool by name"
+                                   x-model="newTool[svc.id]" @keydown.enter="addTool(svc)">
+                            <button type="button" class="btn btn-outline-primary" @click="addTool(svc)">
+                                <i class="bi bi-plus-lg"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </template>
+        </div>
+    </div>
+</div>
+{% endblock %}
