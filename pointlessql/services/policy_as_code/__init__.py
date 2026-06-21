@@ -31,6 +31,10 @@ from pointlessql.services.policy_as_code._engine import (
     cedar_evaluate,
     invalidate_cache,
 )
+from pointlessql.services.policy_as_code._guardrails import (
+    GUARDRAIL_CONTENT_FLAGS,
+    evaluate_agent_action,
+)
 from pointlessql.services.policy_as_code._loader import (
     load_active_modules_for_workspace,
     load_linked_modules_for_product,
@@ -43,11 +47,13 @@ from pointlessql.services.policy_as_code._translator import (
 
 __all__ = [
     "CEDAR_DEFAULT_DENY_REASON",
+    "GUARDRAIL_CONTENT_FLAGS",
     "Decision",
     "build_resource_id",
     "cedar_action",
     "cedar_evaluate",
     "create_module",
+    "evaluate_agent_action",
     "delete_module",
     "get_module",
     "invalidate_cache",

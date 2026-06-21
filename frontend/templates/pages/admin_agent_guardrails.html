@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+{% block title %}Agent guardrails · PointlesSQL{% endblock %}
+
+{% set breadcrumbs = [
+    {"label": "Home", "href": "/"},
+    {"label": "Admin", "href": "/admin"},
+    {"label": "Agent guardrails"}
+] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-1"
+     x-data="{
+        form: { principal_id: '', model: '', mcp_service: '', tool: '', flags: {} },
+        result: null,
+        busy: false,
+        error: null,
+        verdictClass(v) {
+            return v === 'allow' ? 'success' : (v === 'require_approval' ? 'warning' : 'danger');
+        },
+        async evaluate() {
+            this.busy = true; this.error = null;
+            try {
+                const r = await fetch('/api/admin/agent-guardrails/evaluate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        principal_id: this.form.principal_id,
+                        model: this.form.model,
+                        mcp_service: this.form.mcp_service,
+                        tool: this.form.tool,
+                        content_flags: this.form.flags
+                    })
+                });
+                if (!r.ok) { throw new Error('HTTP ' + r.status); }
+                this.result = await r.json();
+            } catch (e) { this.error = String(e); } finally { this.busy = false; }
+        }
+     }">
+
+    <div class="d-flex align-items-center gap-2 mb-3">
+        <i class="bi bi-shield-shaded fs-3"></i>
+        <h1 class="h3 mb-0">Agent guardrails</h1>
+    </div>
+
+    <p class="text-muted">
+        Contextual service policies decide whether an agent action is allowed, blocked, or must wait for human
+        approval — based on who is acting and the model, MCP service, tool and content involved. Author the rules as
+        Cedar modules on the <a href="/admin/policy-modules">Policy modules</a> page, then evaluate a hypothetical
+        action here to see how they fire. A guardrail that <code>forbid</code>s
+        <code>Action::"agent_action"</code> but <code>permit</code>s
+        <code>Action::"agent_action_with_approval"</code> routes the action through review rather than blocking it; a
+        plain <code>forbid</code> blocks it. With no modules linked, every action is allowed.
+    </p>
+
+    <div class="row g-3">
+        <div class="col-12 col-lg-5">
+            <div class="card">
+                <div class="card-header py-2 fw-semibold">Simulate an agent action</div>
+                <div class="card-body">
+                    <div class="mb-2">
+                        <label class="form-label small text-muted" for="cc-principal">Principal user id</label>
+                        <input id="cc-principal" type="number" class="form-control form-control-sm"
+                               x-model="form.principal_id" placeholder="e.g. 1 (blank = anonymous)">
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small text-muted" for="cc-model">Model</label>
+                        <input id="cc-model" type="text" class="form-control form-control-sm"
+                               x-model="form.model" placeholder="e.g. grok, kimi, claude">
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small text-muted" for="cc-mcp">MCP service</label>
+                        <input id="cc-mcp" type="text" class="form-control form-control-sm"
+                               x-model="form.mcp_service" placeholder="e.g. database, slack">
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small text-muted" for="cc-tool">Tool</label>
+                        <input id="cc-tool" type="text" class="form-control form-control-sm"
+                               x-model="form.tool" placeholder="e.g. pql_query">
+                    </div>
+                    <div class="mb-3">
+                        <span class="form-label small text-muted d-block">Content flags</span>
+                        {% for flag in content_flags %}
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="checkbox" id="cc-flag-{{ flag }}"
+                                   x-model="form.flags['{{ flag }}']">
+                            <label class="form-check-label small" for="cc-flag-{{ flag }}">{{ flag }}</label>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <button type="button" class="btn btn-primary btn-sm" :disabled="busy" @click="evaluate()">
+                        <span x-show="!busy"><i class="bi bi-play-fill me-1"></i>Evaluate</span>
+                        <span x-show="busy">working…</span>
+                    </button>
+                    <span x-show="error" x-text="error" class="text-danger small ms-2"></span>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-lg-7">
+            <div class="card h-100" x-show="result" x-cloak>
+                <div class="card-header py-2 d-flex align-items-center justify-content-between">
+                    <span class="fw-semibold">Verdict</span>
+                    <span class="badge" :class="'bg-' + verdictClass(result?.verdict)"
+                          x-text="(result?.verdict || '').replace('_', ' ')"></span>
+                </div>
+                <div class="card-body small">
+                    <dl class="row mb-0">
+                        <dt class="col-sm-4 text-muted fw-normal">Cedar effect</dt>
+                        <dd class="col-sm-8"><code x-text="result?.effect"></code>
+                            <span class="text-muted" x-show="result?.empty"> (no guardrails configured)</span></dd>
+                        <dt class="col-sm-4 text-muted fw-normal">Principal</dt>
+                        <dd class="col-sm-8"><code x-text="result?.principal"></code></dd>
+                        <dt class="col-sm-4 text-muted fw-normal">Resource</dt>
+                        <dd class="col-sm-8"><code x-text="result?.resource"></code></dd>
+                        <dt class="col-sm-4 text-muted fw-normal">Latency</dt>
+                        <dd class="col-sm-8"><span x-text="(result?.latency_ms ?? '—')"></span> ms</dd>
+                        <template x-if="result?.error_class">
+                            <dt class="col-sm-4 text-muted fw-normal">Error</dt>
+                        </template>
+                        <template x-if="result?.error_class">
+                            <dd class="col-sm-8 text-danger"><code x-text="result?.error_class"></code></dd>
+                        </template>
+                    </dl>
+                    <div class="mt-2">
+                        <span class="text-muted">Diagnostics</span>
+                        <pre class="bg-body-tertiary p-2 rounded mt-1 mb-0"
+                             x-text="JSON.stringify(result?.diagnostics, null, 2)"></pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
