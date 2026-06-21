@@ -9,16 +9,21 @@
 {% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
 
 {% block content %}
+<script id="po-scope-types" type="application/json">{{ scope_types | tojson }}</script>
 <div class="container-fluid py-1"
      x-data="{
-        scopeTypes: {{ scope_types | tojson }},
+        scopeTypes: [],
         policies: [],
         form: { scope_type: 'catalog', scope_value: '', enabled: true,
                 optimize: true, vacuum: true, analyze: true },
         formError: null,
         effectiveTable: '',
         effective: null,
-        async init() { await this.load(); },
+        async init() {
+            const el = document.getElementById('po-scope-types');
+            this.scopeTypes = el ? JSON.parse(el.textContent) : [];
+            await this.load();
+        },
         async load() {
             const r = await window.pqlApi.fetch('/api/admin/optimization');
             if (r.ok) { this.policies = (r.data && r.data.policies) || []; }

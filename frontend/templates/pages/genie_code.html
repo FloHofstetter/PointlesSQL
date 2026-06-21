@@ -8,12 +8,17 @@
 {% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
 
 {% block content %}
+<script id="gc-surfaces" type="application/json">{{ surfaces | tojson }}</script>
 <div class="container-fluid py-1"
      x-data="{
         overview: null,
         loading: true,
-        surfaces: {{ surfaces | tojson }},
-        async init() { await this.load(); },
+        surfaces: [],
+        async init() {
+            const el = document.getElementById('gc-surfaces');
+            this.surfaces = el ? JSON.parse(el.textContent) : [];
+            await this.load();
+        },
         async load() {
             const r = await window.pqlApi.fetch('/api/genie-code/overview');
             this.loading = false;

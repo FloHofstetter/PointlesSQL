@@ -9,9 +9,10 @@
 {% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
 
 {% block content %}
+<script id="mcp-transports" type="application/json">{{ transports | tojson }}</script>
 <div class="container-fluid py-1"
      x-data="{
-        transports: {{ transports | tojson }},
+        transports: [],
         services: [],
         view: 'admin',
         loading: true,
@@ -19,7 +20,11 @@
         registering: false,
         regError: null,
         newTool: {},
-        async init() { await this.load(); },
+        async init() {
+            const el = document.getElementById('mcp-transports');
+            this.transports = el ? JSON.parse(el.textContent) : [];
+            await this.load();
+        },
         async load() {
             this.loading = true;
             const path = this.view === 'published'
