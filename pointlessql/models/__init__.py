@@ -287,6 +287,10 @@ from pointlessql.models.social import (
     UserProfile,
     UserTopicFollow,
 )
+from pointlessql.models.synced_table_snapshots import (
+    SNAPSHOT_STATUSES,
+    SyncedTableSnapshot,
+)
 from pointlessql.models.synced_tables import (
     SYNCED_TABLE_MODES,
     SYNCED_TABLE_STATUSES,
@@ -508,6 +512,7 @@ __all__ = [
     "GENIE_MESSAGE_STATUSES",
     "SECRET_SCOPE_PERMISSIONS",
     "SERVING_ENDPOINT_STATES",
+    "SNAPSHOT_STATUSES",
     "SYNCED_TABLE_MODES",
     "SYNCED_TABLE_STATUSES",
     "AutoloaderFile",
@@ -520,6 +525,7 @@ __all__ = [
     "ServingEndpoint",
     "SharingProvider",
     "SyncedTable",
+    "SyncedTableSnapshot",
     "SystemKey",
     "TableProfileSnapshot",
     "TableStats",

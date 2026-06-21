@@ -13,6 +13,7 @@ the integrating session includes it from the bootstrap router list
 
 from __future__ import annotations
 
+import datetime
 from typing import Any, cast
 
 from fastapi import APIRouter, Body, Request
@@ -26,6 +27,8 @@ from pointlessql.exceptions import (
     ValidationError,
 )
 from pointlessql.models.synced_tables import SyncedTable
+from pointlessql.services import lakebase_ops
+from pointlessql.services import synced_table_snapshots as snapshots_service
 from pointlessql.services import synced_tables as synced_tables_service
 from pointlessql.services._executor import run_sync
 
@@ -114,6 +117,31 @@ async def api_list_online_tables(request: Request) -> dict[str, Any]:
         synced_tables_service.list_synced_tables, factory, workspace_id=workspace_id
     )
     return {"online_tables": [_serialize(row) for row in rows]}
+
+
+@router.get("/api/online-tables/ops")
+async def api_online_tables_ops(request: Request) -> dict[str, Any]:
+    """Return the autonomous-ops health + recommendation view.
+
+    A read-only assessment of every synced table — health verdict plus
+    the advisory recommendations (resync, set keys, add a serving index,
+    recover from failure) an operator can review and approve.  Applying
+    a fix in the serving store stays engine-side.
+
+    Args:
+        request: Incoming FastAPI request.
+
+    Returns:
+        The overview from :func:`lakebase_ops.ops_overview`.
+    """
+    factory = request.app.state.session_factory
+    workspace_id = current_workspace_id(request)
+    return await run_sync(
+        lakebase_ops.ops_overview,
+        factory,
+        workspace_id=workspace_id,
+        now=datetime.datetime.now(datetime.UTC),
+    )
 
 
 @router.post("/api/online-tables")
@@ -286,6 +314,93 @@ async def api_lookup_online_table(
     except ValueError as exc:
         raise ValidationError(str(exc)) from exc
     return {"rows": rows, "row_count": len(rows)}
+
+
+@router.get("/api/online-tables/{name}/snapshots")
+async def api_list_snapshots(request: Request, name: str) -> dict[str, Any]:
+    """List a synced table's snapshots / branches."""
+    table = _ensure_synced_table(request, name)
+    factory = request.app.state.session_factory
+    rows = await run_sync(snapshots_service.list_snapshots, factory, synced_table_id=table.id)
+    return {"snapshots": rows}
+
+
+@router.post("/api/online-tables/{name}/snapshots")
+async def api_create_snapshot(
+    request: Request, name: str, body: dict[str, Any] = Body(default_factory=dict[str, Any])
+) -> dict[str, Any]:
+    """Capture a named snapshot of the synced table's current state.
+
+    Args:
+        request: Incoming FastAPI request.
+        name: Synced-table name from the URL.
+        body: JSON with ``name`` and optional ``note``.  A blank or
+            duplicate name propagates the service's
+            :class:`ValidationError` (HTTP 400).
+
+    Returns:
+        ``{"snapshot": {...}}`` with the created snapshot.
+    """
+    table = _ensure_synced_table(request, name)
+    factory = request.app.state.session_factory
+    created_by = get_user(request)["email"] or None
+    snapshot = await run_sync(
+        snapshots_service.create_snapshot,
+        factory,
+        synced_table_id=table.id,
+        name=str(body.get("name") or ""),
+        note=(str(body["note"]) if body.get("note") else None),
+        created_by=created_by,
+    )
+    await audit(request, "online_table.snapshot_created", f"online_table:{name}", snapshot)
+    return {"snapshot": snapshot}
+
+
+@router.post("/api/online-tables/{name}/snapshots/{snapshot_id}/promote")
+async def api_promote_snapshot(request: Request, name: str, snapshot_id: int) -> dict[str, Any]:
+    """Promote a snapshot to the serving baseline."""
+    table = _ensure_synced_table(request, name)
+    factory = request.app.state.session_factory
+    snapshot = await run_sync(
+        snapshots_service.promote_snapshot,
+        factory,
+        snapshot_id=snapshot_id,
+        synced_table_id=table.id,
+    )
+    await audit(request, "online_table.snapshot_promoted", f"online_table:{name}", snapshot)
+    return {"snapshot": snapshot}
+
+
+@router.post("/api/online-tables/{name}/snapshots/{snapshot_id}/discard")
+async def api_discard_snapshot(request: Request, name: str, snapshot_id: int) -> dict[str, Any]:
+    """Soft-discard a snapshot (kept for audit)."""
+    table = _ensure_synced_table(request, name)
+    factory = request.app.state.session_factory
+    snapshot = await run_sync(
+        snapshots_service.discard_snapshot,
+        factory,
+        snapshot_id=snapshot_id,
+        synced_table_id=table.id,
+    )
+    await audit(request, "online_table.snapshot_discarded", f"online_table:{name}", snapshot)
+    return {"snapshot": snapshot}
+
+
+@router.delete("/api/online-tables/{name}/snapshots/{snapshot_id}")
+async def api_delete_snapshot(request: Request, name: str, snapshot_id: int) -> dict[str, Any]:
+    """Hard-delete a snapshot row."""
+    table = _ensure_synced_table(request, name)
+    factory = request.app.state.session_factory
+    deleted = await run_sync(
+        snapshots_service.delete_snapshot,
+        factory,
+        snapshot_id=snapshot_id,
+        synced_table_id=table.id,
+    )
+    await audit(
+        request, "online_table.snapshot_deleted", f"online_table:{name}", {"id": snapshot_id}
+    )
+    return {"deleted": deleted}
 
 
 @router.get("/online-tables", response_class=HTMLResponse)

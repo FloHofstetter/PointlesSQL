@@ -10,6 +10,8 @@ export function onlineTables() {
     loading: false,
     error: '',
 
+    ops: null,
+
     creator: null,
     creatorError: '',
     creating: false,
@@ -22,8 +24,14 @@ export function onlineTables() {
     lookupError: '',
     lookupRunning: false,
 
+    snapshotTable: null,
+    snapshots: [],
+    snapshotForm: { name: '', note: '' },
+    snapshotError: '',
+
     async init() {
       await this.load();
+      await this.loadOps();
     },
 
     async load() {
@@ -38,11 +46,81 @@ export function onlineTables() {
       this.tables = res.data?.online_tables || [];
     },
 
+    async loadOps() {
+      const res = await window.pqlApi.fetch('/api/online-tables/ops', { silent: true });
+      if (res.ok) this.ops = res.data;
+    },
+
     statusBadge(status) {
       if (status === 'ok') return 'text-bg-success';
       if (status === 'failed') return 'text-bg-danger';
       if (status === 'syncing') return 'text-bg-info';
       return 'text-bg-secondary';
+    },
+
+    healthBadge(health) {
+      if (health === 'healthy') return 'text-bg-success';
+      if (health === 'critical') return 'text-bg-danger';
+      if (health === 'degraded') return 'text-bg-warning';
+      return 'text-bg-info';
+    },
+
+    recBadge(severity) {
+      if (severity === 'critical') return 'text-bg-danger';
+      if (severity === 'warn') return 'text-bg-warning';
+      return 'text-bg-secondary';
+    },
+
+    snapshotBadge(status) {
+      if (status === 'promoted') return 'text-bg-success';
+      if (status === 'discarded') return 'text-bg-secondary';
+      return 'text-bg-info';
+    },
+
+    async openSnapshots(t) {
+      this.snapshotTable = t.name;
+      this.snapshotForm = { name: '', note: '' };
+      this.snapshotError = '';
+      await this.loadSnapshots();
+    },
+
+    closeSnapshots() {
+      this.snapshotTable = null;
+      this.snapshots = [];
+    },
+
+    async loadSnapshots() {
+      if (!this.snapshotTable) return;
+      const url = `/api/online-tables/${encodeURIComponent(this.snapshotTable)}/snapshots`;
+      const res = await window.pqlApi.fetch(url, { silent: true });
+      if (res.ok) this.snapshots = res.data?.snapshots || [];
+    },
+
+    async createSnapshot() {
+      this.snapshotError = '';
+      const name = this.snapshotForm.name.trim();
+      if (!name) {
+        this.snapshotError = 'Snapshot name is required.';
+        return;
+      }
+      const body = { name };
+      if (this.snapshotForm.note.trim()) body.note = this.snapshotForm.note.trim();
+      const url = `/api/online-tables/${encodeURIComponent(this.snapshotTable)}/snapshots`;
+      const res = await window.pqlApi.fetch(url, { method: 'POST', body, silent: true });
+      if (!res.ok) {
+        this.snapshotError = res.error || 'Failed to create snapshot';
+        return;
+      }
+      this.snapshotForm = { name: '', note: '' };
+      await this.loadSnapshots();
+    },
+
+    async snapshotAction(id, verb) {
+      const base = `/api/online-tables/${encodeURIComponent(this.snapshotTable)}/snapshots/${id}`;
+      const opts = verb === 'delete' ? { method: 'DELETE' } : { method: 'POST' };
+      const url = verb === 'promote' || verb === 'discard' ? `${base}/${verb}` : base;
+      const res = await window.pqlApi.fetch(url, opts);
+      if (res.ok) await this.loadSnapshots();
     },
 
     openCreate() {

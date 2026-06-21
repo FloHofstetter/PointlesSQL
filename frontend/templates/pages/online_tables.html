@@ -30,6 +30,48 @@
         stored, never the secret.
     </p>
 
+    <template x-if="ops && ops.total > 0">
+        <div class="card mb-4">
+            <div class="card-header py-2 d-flex align-items-center justify-content-between">
+                <span class="fw-semibold"><i class="bi bi-activity me-1"></i>Autonomous ops &amp; health</span>
+                <span class="small text-muted">
+                    <span class="badge text-bg-danger" x-show="ops.summary.critical > 0"
+                          x-text="ops.summary.critical + ' critical'"></span>
+                    <span class="badge text-bg-warning" x-show="ops.summary.degraded > 0"
+                          x-text="ops.summary.degraded + ' degraded'"></span>
+                    <span class="badge text-bg-secondary"
+                          x-text="ops.open_recommendations + ' recommendations'"></span>
+                </span>
+            </div>
+            <div class="card-body p-0">
+                <template x-for="t in ops.tables" :key="t.name">
+                    <div class="border-bottom px-3 py-2" x-show="t.recommendations.length > 0">
+                        <div class="d-flex align-items-center gap-2 mb-1">
+                            <span class="badge" :class="healthBadge(t.health)" x-text="t.health"></span>
+                            <span class="fw-semibold font-monospace" x-text="t.name"></span>
+                            <span class="text-muted small" x-text="t.source_fqn"></span>
+                            <span class="text-muted small" x-show="t.sync_age_minutes !== null"
+                                  x-text="'synced ' + t.sync_age_minutes + ' min ago'"></span>
+                        </div>
+                        <ul class="list-unstyled mb-0 small">
+                            <template x-for="(r, i) in t.recommendations" :key="i">
+                                <li class="mb-1">
+                                    <span class="badge me-1" :class="recBadge(r.severity)"
+                                          x-text="r.action"></span>
+                                    <span class="fw-semibold" x-text="r.title"></span>
+                                    <span class="text-muted">— <span x-text="r.detail"></span></span>
+                                </li>
+                            </template>
+                        </ul>
+                    </div>
+                </template>
+                <div class="px-3 py-2 text-success small" x-show="ops.open_recommendations === 0">
+                    <i class="bi bi-check-circle me-1"></i>All online tables are healthy — no actions proposed.
+                </div>
+            </div>
+        </div>
+    </template>
+
     <div class="alert alert-danger" x-show="error" x-text="error" x-cloak></div>
     <div class="col-auto" x-show="loading" x-cloak>
         <span class="spinner-border spinner-border-sm" role="status" aria-label="Loading"></span>
@@ -125,6 +167,9 @@
                             <button type="button" class="btn btn-sm btn-outline-secondary" @click="toggleLookup(t)">
                                 <i class="bi bi-search"></i> Lookup
                             </button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" @click="openSnapshots(t)">
+                                <i class="bi bi-diagram-2"></i> Snapshots
+                            </button>
                             <button type="button" class="btn btn-sm btn-outline-danger" @click="remove(t)">
                                 <i class="bi bi-trash"></i> Delete
                             </button>
@@ -139,6 +184,83 @@
           {% include "components/empty.html" with context %}
         {% endwith %}
     </div>
+
+    <template x-if="snapshotTable">
+        <div class="card mb-4">
+            <div class="card-header py-2 d-flex align-items-center justify-content-between">
+                <span class="fw-semibold">
+                    <i class="bi bi-diagram-2 me-1"></i>Snapshots &amp; branches —
+                    <code x-text="snapshotTable"></code>
+                </span>
+                <button type="button" class="btn-close" aria-label="Close snapshots"
+                        @click="closeSnapshots()"></button>
+            </div>
+            <div class="card-body">
+                <p class="text-muted small">
+                    A snapshot captures the serving copy's Delta version + row count at a point in
+                    time, so a branch can experiment on production-like data. Promote one as the serving
+                    baseline, or discard it. The copy-on-write storage itself stays engine-side — this
+                    is the management view.
+                </p>
+                <div class="row g-2 align-items-end mb-3">
+                    <div class="col-sm-4">
+                        <label class="form-label small fw-bold" for="snap-name">Name</label>
+                        <input id="snap-name" type="text" class="form-control form-control-sm font-monospace"
+                               x-model="snapshotForm.name" placeholder="experiment-1">
+                    </div>
+                    <div class="col-sm-5">
+                        <label class="form-label small fw-bold" for="snap-note">Note (optional)</label>
+                        <input id="snap-note" type="text" class="form-control form-control-sm"
+                               x-model="snapshotForm.note" placeholder="Why this branch exists">
+                    </div>
+                    <div class="col-sm-3">
+                        <button type="button" class="btn btn-primary btn-sm w-100" @click="createSnapshot()">
+                            <i class="bi bi-plus-lg me-1"></i>Snapshot now
+                        </button>
+                    </div>
+                </div>
+                <div class="alert alert-danger py-1 small" x-show="snapshotError" x-text="snapshotError"
+                     x-cloak></div>
+                <div class="table-responsive" x-show="snapshots.length > 0">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead>
+                            <tr class="small text-muted">
+                                <th>Name</th><th>Status</th><th class="text-end">Version</th>
+                                <th class="text-end">Rows</th><th>Note</th><th class="text-end"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template x-for="s in snapshots" :key="s.id">
+                                <tr>
+                                    <td class="font-monospace" x-text="s.name"></td>
+                                    <td><span class="badge" :class="snapshotBadge(s.status)"
+                                              x-text="s.status"></span></td>
+                                    <td class="text-end"
+                                        x-text="s.source_version === null ? '—' : s.source_version"></td>
+                                    <td class="text-end" x-text="s.rows_snapshot"></td>
+                                    <td class="small text-muted" x-text="s.note || ''"></td>
+                                    <td class="text-end text-nowrap">
+                                        <button type="button" class="btn btn-sm btn-outline-success"
+                                                x-show="s.status !== 'promoted'"
+                                                @click="snapshotAction(s.id, 'promote')">Promote</button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary"
+                                                x-show="s.status !== 'discarded'"
+                                                @click="snapshotAction(s.id, 'discard')">Discard</button>
+                                        <button type="button" class="btn btn-sm btn-outline-danger"
+                                                @click="snapshotAction(s.id, 'delete')"
+                                                aria-label="Delete snapshot"><i class="bi bi-trash"></i></button>
+                                    </td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+                <p class="text-muted small mb-0" x-show="snapshots.length === 0">
+                    No snapshots yet — capture one above.
+                </p>
+            </div>
+        </div>
+    </template>
 
     <template x-if="lookupTable">
         <div class="card mb-4">
