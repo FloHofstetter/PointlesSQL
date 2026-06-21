@@ -76,6 +76,60 @@ async def api_create_space(
     return serialize_space(row, asset_count=0)
 
 
+@router.post("/api/genie/spaces/{slug}/save-as-agent")
+async def api_save_space_as_agent(
+    request: Request,
+    slug: str,
+    body: dict[str, Any] = Body(default_factory=dict[str, Any]),
+) -> dict[str, Any]:
+    """Save a space's conversation as a new named, reusable agent.
+
+    Any authenticated workspace member may distil a room they can see
+    into their own agent space — it snapshots the source's curated
+    sources + instructions and seeds the agent's trusted assets from the
+    source assets plus the conversation's successful answers.
+
+    Args:
+        request: Incoming FastAPI request.
+        slug: Source space slug.
+        body: ``{"name": str, "include_transcript"?: bool}``.
+
+    Returns:
+        The serialized new agent space (carrying ``asset_count``).
+
+    Raises:
+        ValidationError: On a missing/empty name or unknown source.
+        PermissionDeniedError: When the caller is unauthenticated.
+    """
+    source = ensure_space(request, slug)
+    user = get_user(request)
+    if user["id"] <= 0:
+        raise PermissionDeniedError("authentication required to save a Genie agent")
+    name = body.get("name")
+    if not isinstance(name, str) or not name.strip():
+        raise ValidationError("name must be a non-empty string")
+    include_transcript = bool(body.get("include_transcript", True))
+    factory = request.app.state.session_factory
+    try:
+        agent = genie_service.save_space_as_agent(
+            factory,
+            source_space_id=source.id,
+            name=name,
+            owner_id=int(user["id"]),
+            include_transcript=include_transcript,
+        )
+    except ValueError as exc:
+        raise ValidationError(str(exc)) from exc
+    asset_count = len(genie_service.list_trusted_assets(factory, space_id=agent.id))
+    await audit(
+        request,
+        "genie_space.saved_as_agent",
+        f"genie_space:{agent.slug}",
+        {"source": source.slug, "id": agent.id, "asset_count": asset_count},
+    )
+    return serialize_space(agent, asset_count=asset_count)
+
+
 @router.get("/api/genie/spaces/{slug}")
 async def api_get_space(request: Request, slug: str) -> dict[str, Any]:
     """Return one space with its trusted assets."""

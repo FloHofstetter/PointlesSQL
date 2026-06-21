@@ -351,6 +351,63 @@ async def test_ask_rejects_empty_question() -> None:
 
 
 # ---------------------------------------------------------------------------
+# Route: run trusted asset as a deterministic skill
+# ---------------------------------------------------------------------------
+
+
+def _add_asset(space: Any, sql: str, question: str = "Revenue?") -> Any:
+    return genie_service.add_trusted_asset(
+        _factory(),
+        space_id=space.id,
+        question=question,
+        sql_text=sql,
+        created_by=_admin_id(),
+    )
+
+
+@pytest.mark.asyncio
+async def test_run_trusted_asset_executes(monkeypatch) -> None:
+    space = _make_space(tables=["shop.gold.orders"])
+    asset = _add_asset(space, "SELECT region, sum(amount) FROM shop.gold.orders GROUP BY region")
+    exec_seen = _patch_execution(monkeypatch)
+
+    async with _client(app.state._test_auth_cookie) as client:
+        resp = await client.post(f"/api/genie/spaces/{space.slug}/assets/{asset.id}/run", json={})
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+
+    assert body["asset_id"] == asset.id
+    assert body["sql"] == "SELECT region, sum(amount) FROM shop.gold.orders GROUP BY region"
+    assert body["rows"] == [["emea", 30]]
+    assert body["row_count"] == 1
+    # Executed the stored SQL verbatim — no LLM round-trip.
+    assert exec_seen["resolved_sql"].startswith("SELECT region")
+    assert exec_seen["max_rows"] == 1000
+
+
+@pytest.mark.asyncio
+async def test_run_trusted_asset_unknown_is_404(monkeypatch) -> None:
+    space = _make_space(tables=["shop.gold.orders"])
+    _patch_execution(monkeypatch)
+    async with _client(app.state._test_auth_cookie) as client:
+        resp = await client.post(f"/api/genie/spaces/{space.slug}/assets/999999/run", json={})
+    assert resp.status_code == 404, resp.text
+
+
+@pytest.mark.asyncio
+async def test_run_trusted_asset_rejects_table_dropped_from_space(monkeypatch) -> None:
+    space = _make_space(tables=["shop.gold.orders"])
+    asset = _add_asset(space, "SELECT * FROM shop.gold.orders")
+    # The curator narrowed the space after the asset was vetted.
+    genie_service.update_space(_factory(), space_id=space.id, tables=["shop.gold.customers"])
+    _patch_execution(monkeypatch)
+
+    async with _client(app.state._test_auth_cookie) as client:
+        resp = await client.post(f"/api/genie/spaces/{space.slug}/assets/{asset.id}/run", json={})
+    assert resp.status_code == 422, resp.text
+
+
+# ---------------------------------------------------------------------------
 # Route: feedback + promote
 # ---------------------------------------------------------------------------
 

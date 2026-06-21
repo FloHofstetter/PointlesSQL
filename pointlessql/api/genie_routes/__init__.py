@@ -24,11 +24,13 @@ from fastapi import APIRouter
 
 from pointlessql.api.genie_routes._ask import router as _ask_router
 from pointlessql.api.genie_routes._html import router as _html_router
+from pointlessql.api.genie_routes._ontology import router as _ontology_router
 from pointlessql.api.genie_routes._spaces import router as _spaces_router
 
 router = APIRouter(tags=["genie"])
 router.include_router(_spaces_router)
 router.include_router(_ask_router)
+router.include_router(_ontology_router)
 router.include_router(_html_router)
 
 __all__ = ["router"]

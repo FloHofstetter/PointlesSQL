@@ -176,6 +176,67 @@ async def api_ask(
     }
 
 
+@router.post("/api/genie/spaces/{slug}/assets/{asset_id}/run")
+async def api_run_trusted_asset(request: Request, slug: str, asset_id: int) -> dict[str, Any]:
+    """Re-run a trusted asset's stored SQL through the governed path.
+
+    Turns a saved question -> SQL asset into a deterministic, re-runnable
+    skill: it executes the vetted SQL directly (no LLM round-trip) under
+    the caller's own SELECT privileges, after re-checking the SQL still
+    falls within the space's curated tables (which may have changed since
+    the asset was saved).
+
+    Args:
+        request: Incoming FastAPI request.
+        slug: Space slug.
+        asset_id: Trusted-asset primary key.
+
+    Returns:
+        ``{"asset_id", "question", "sql", "columns", "rows",
+        "row_count", "truncated"}``.  A :class:`ValidationError`
+        (stored SQL now outside the space's tables) or a
+        :class:`PointlessSQLError` (SELECT enforcement / execution)
+        propagates from the callees.
+
+    Raises:
+        PermissionDeniedError: When the caller is unauthenticated.
+        ResourceNotFoundError: When the asset is absent or cross-space.
+    """
+    space = ensure_space(request, slug)
+    user = get_user(request)
+    if user["id"] <= 0:
+        raise PermissionDeniedError("authentication required to run a Genie skill")
+    factory = request.app.state.session_factory
+    asset = genie_service.get_trusted_asset(factory, space_id=space.id, asset_id=asset_id)
+    if asset is None:
+        raise ResourceNotFoundError(f"Genie trusted asset {asset_id} not found.")
+    genie_service.validate_generated_sql(
+        asset.sql_text, allowed_tables=genie_service.space_tables(space)
+    )
+    approved, policies = await resolve_select_context(
+        asset.sql_text,
+        uc_client=request.app.state.uc_client,
+        actor_email=user["email"],
+        is_admin=bool(user["is_admin"]),
+    )
+    result = await run_sync(_run_genie_sql, asset.sql_text, approved, _MAX_ROWS, policies)
+    await audit(
+        request,
+        "genie.skill_run",
+        f"genie_space:{space.slug}",
+        {"asset_id": asset_id, "sql_hash": short_sql_hash(asset.sql_text)},
+    )
+    return {
+        "asset_id": asset_id,
+        "question": asset.question,
+        "sql": asset.sql_text,
+        "columns": result.columns,
+        "rows": result.rows,
+        "row_count": result.row_count,
+        "truncated": result.truncated,
+    }
+
+
 def _space_for_message(request: Request, message_id: int) -> tuple[Any, GenieSpace]:
     """Resolve a message + its space, enforcing workspace isolation.
 

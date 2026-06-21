@@ -20,11 +20,39 @@
             <i class="bi bi-stars fs-3"></i>
             <h1 class="h3 mb-0">{{ space.title }}</h1>
         </div>
-        {% if can_edit %}
-        <button type="button" class="btn btn-sm btn-outline-secondary" @click="toggleConfig()">
-            <i class="bi bi-gear me-1"></i>Configure
-        </button>
-        {% endif %}
+        <div class="d-flex align-items-center gap-2">
+            <span x-data="{
+                    saving: false,
+                    err: '',
+                    async saveAsAgent() {
+                        const name = window.prompt('Name for the saved agent:', '{{ space.title }} agent');
+                        if (!name || !name.trim()) { return; }
+                        this.saving = true; this.err = '';
+                        try {
+                            const r = await fetch('/api/genie/spaces/{{ space.slug }}/save-as-agent', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ name: name.trim() })
+                            });
+                            if (!r.ok) { throw new Error('HTTP ' + r.status); }
+                            const agent = await r.json();
+                            window.location.href = '/genie/' + agent.slug;
+                        } catch (e) { this.err = String(e); this.saving = false; }
+                    }
+                }">
+                <button type="button" class="btn btn-sm btn-outline-primary" :disabled="saving"
+                        @click="saveAsAgent()"
+                        title="Save this conversation as a reusable named agent others can call">
+                    <i class="bi bi-bookmark-star me-1"></i>Save as agent
+                </button>
+                <span x-show="err" x-text="err" x-cloak class="text-danger small ms-1"></span>
+            </span>
+            {% if can_edit %}
+            <button type="button" class="btn btn-sm btn-outline-secondary" @click="toggleConfig()">
+                <i class="bi bi-gear me-1"></i>Configure
+            </button>
+            {% endif %}
+        </div>
     </div>
     {% if space.description %}
     <p class="text-muted">{{ space.description }}</p>
@@ -64,6 +92,21 @@
                     <label class="form-label" for="gsp-metric-views">Metric views (one full name per line)</label>
                     <textarea id="gsp-metric-views" class="form-control form-control-sm font-monospace" rows="4"
                               x-model="cfg.metricViews" placeholder="shop.gold.revenue"></textarea>
+                </div>
+            </div>
+            <div class="mb-2" x-show="suggestions.length > 0" x-cloak>
+                <span class="form-label d-block">
+                    <i class="bi bi-diagram-3 me-1"></i>Suggested tables
+                    <span class="text-muted small">— ranked by lineage authority; click to add</span>
+                </span>
+                <div class="d-flex flex-wrap gap-1">
+                    <template x-for="s in suggestions" :key="s.table">
+                        <button type="button" class="btn btn-sm btn-outline-secondary"
+                                @click="addSuggestion(s.table)"
+                                :title="'authority ' + s.score + ' · ' + s.in_degree + ' inbound edges'">
+                            <i class="bi bi-plus-lg me-1"></i><span x-text="s.table"></span>
+                        </button>
+                    </template>
                 </div>
             </div>
             <div class="alert alert-danger" x-show="cfgError" x-text="cfgError" x-cloak></div>
@@ -171,6 +214,11 @@
                         <div class="d-flex align-items-start gap-1 mb-2">
                             <button type="button" class="btn btn-sm btn-outline-primary text-start flex-grow-1"
                                     @click="useAsset(a)" x-text="a.question"></button>
+                            <button type="button" class="btn btn-sm btn-outline-success"
+                                    title="Run this saved question now"
+                                    aria-label="Run trusted question" @click="runAsset(a)">
+                                <i class="bi bi-play-fill"></i>
+                            </button>
                             <button type="button" class="btn btn-sm btn-outline-danger"
                                     x-show="canEdit" x-cloak
                                     aria-label="Delete trusted question" @click="deleteAsset(a)">

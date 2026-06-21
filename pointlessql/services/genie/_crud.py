@@ -157,6 +157,123 @@ def create_space(
     return row
 
 
+def save_space_as_agent(
+    factory: sessionmaker[Session],
+    *,
+    source_space_id: int,
+    name: str,
+    owner_id: int,
+    include_transcript: bool = True,
+    transcript_limit: int = 50,
+) -> GenieSpace:
+    """Crystallise a space + its conversation into a named, reusable agent.
+
+    "Saving a conversation as an agent" snapshots the source space's
+    curated sources (tables + metric views) and curator instructions
+    into a brand-new, independently-owned space, then seeds that space's
+    trusted Q->SQL assets from two places: the source space's existing
+    trusted assets, and the conversation's own successful answers — each
+    ``ok`` assistant turn that produced SQL, paired with the question it
+    answered (skipping thumbs-down turns).  The result is a
+    colleague-callable room that already "knows" the vetted exchanges the
+    conversation accumulated, without sharing transcript or future edits
+    with the source.
+
+    Args:
+        factory: SQLAlchemy session factory.
+        source_space_id: The space whose context + conversation to distil.
+        name: Human-readable name for the agent (slug derives from it).
+        owner_id: The user who will own the new agent space.
+        include_transcript: When true, distil the conversation's
+            successful answers into the agent's trusted assets.
+        transcript_limit: How many recent turns to scan when distilling.
+
+    Returns:
+        The persisted agent space row (detached).
+
+    Raises:
+        ValueError: On an empty name or an unknown source space.
+    """
+    cleaned = name.strip()
+    if not cleaned:
+        raise ValueError("name must be a non-empty string")
+    now = _utcnow()
+    with factory() as session:
+        source = session.get(GenieSpace, source_space_id)
+        if source is None:
+            raise ValueError(f"genie space {source_space_id} not found")
+        agent = GenieSpace(
+            workspace_id=source.workspace_id,
+            slug=_slugify(cleaned),
+            title=cleaned,
+            description=f'Saved agent from the "{source.title}" Genie space.',
+            instructions=source.instructions,
+            tables=source.tables,
+            metric_views=source.metric_views,
+            owner_id=owner_id,
+            created_at=now,
+            updated_at=now,
+        )
+        session.add(agent)
+        session.flush()  # assign agent.id before adding child rows
+        seen_sql: set[str] = set()
+        for asset in session.scalars(
+            select(GenieTrustedAsset)
+            .where(GenieTrustedAsset.space_id == source_space_id)
+            .order_by(GenieTrustedAsset.id)
+        ).all():
+            key = asset.sql_text.strip()
+            if key in seen_sql:
+                continue
+            seen_sql.add(key)
+            session.add(
+                GenieTrustedAsset(
+                    space_id=agent.id,
+                    question=asset.question,
+                    sql_text=asset.sql_text,
+                    created_by=owner_id,
+                    created_at=now,
+                )
+            )
+        if include_transcript:
+            messages = list(
+                session.scalars(
+                    select(GenieMessage)
+                    .where(GenieMessage.space_id == source_space_id)
+                    .order_by(GenieMessage.id.desc())
+                    .limit(transcript_limit)
+                ).all()
+            )
+            last_question: str | None = None
+            for msg in reversed(messages):
+                if msg.role == "user":
+                    last_question = msg.content
+                    continue
+                if (
+                    msg.status == "ok"
+                    and msg.sql_text
+                    and msg.feedback != "down"
+                    and last_question is not None
+                ):
+                    key = msg.sql_text.strip()
+                    if key in seen_sql:
+                        continue
+                    seen_sql.add(key)
+                    session.add(
+                        GenieTrustedAsset(
+                            space_id=agent.id,
+                            question=last_question[:500],
+                            sql_text=msg.sql_text,
+                            created_by=owner_id,
+                            created_at=now,
+                        )
+                    )
+        session.commit()
+        session.refresh(agent)
+        session.expunge(agent)
+    return agent
+
+
 def list_spaces(factory: sessionmaker[Session], *, workspace_id: int) -> list[GenieSpace]:
     """List the workspace's spaces, newest-updated first.
 
@@ -369,6 +486,30 @@ def list_trusted_assets(
         for row in rows:
             session.expunge(row)
     return rows
+
+
+def get_trusted_asset(
+    factory: sessionmaker[Session], *, space_id: int, asset_id: int
+) -> GenieTrustedAsset | None:
+    """Return one trusted asset scoped to its space, or ``None``.
+
+    The ``space_id`` guard makes a cross-space asset id in the URL read
+    as absent rather than leaking another room's saved SQL.
+
+    Args:
+        factory: SQLAlchemy session factory.
+        space_id: Owning space's primary key.
+        asset_id: Asset primary key.
+
+    Returns:
+        The detached row, or ``None`` when absent or cross-space.
+    """
+    with factory() as session:
+        row = session.get(GenieTrustedAsset, asset_id)
+        if row is None or row.space_id != space_id:
+            return None
+        session.expunge(row)
+    return row
 
 
 def delete_trusted_asset(factory: sessionmaker[Session], *, space_id: int, asset_id: int) -> bool:

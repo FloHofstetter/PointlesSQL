@@ -17,10 +17,12 @@ from pointlessql.services.genie._crud import (
     delete_trusted_asset,
     get_message,
     get_space,
+    get_trusted_asset,
     list_messages,
     list_spaces,
     list_trusted_assets,
     promote_message,
+    save_space_as_agent,
     set_feedback,
     space_metric_views,
     space_tables,
@@ -36,6 +38,10 @@ from pointlessql.services.genie._engine import (
     generate_sql,
     validate_generated_sql,
 )
+from pointlessql.services.genie._ontology import (
+    compute_table_authority,
+    suggest_tables_for_space,
+)
 
 __all__ = [
     "CONTEXT_CHAR_CAP",
@@ -45,6 +51,7 @@ __all__ = [
     "add_trusted_asset",
     "append_message",
     "build_context",
+    "compute_table_authority",
     "create_space",
     "delete_space",
     "delete_trusted_asset",
@@ -52,11 +59,14 @@ __all__ = [
     "generate_sql",
     "get_message",
     "get_space",
+    "get_trusted_asset",
     "list_messages",
     "list_spaces",
     "list_trusted_assets",
     "promote_message",
+    "save_space_as_agent",
     "set_feedback",
+    "suggest_tables_for_space",
     "space_metric_views",
     "space_tables",
     "update_space",

@@ -31,6 +31,8 @@ export function genieSpace(config) {
     newAsset: { question: '', sql: '' },
     assetError: '',
 
+    suggestions: [],
+
     async init() {
       await this.loadSpace();
       await this.loadMessages();
@@ -121,6 +123,27 @@ export function genieSpace(config) {
       this.question = asset.question;
     },
 
+    async runAsset(asset) {
+      // Run the saved SQL deterministically (no LLM round-trip) and
+      // render it through the same result table as an ask.
+      this.error = '';
+      const res = await window.pqlApi.fetch(
+        '/api/genie/spaces/' + encodeURIComponent(this.slug) + '/assets/' + asset.id + '/run',
+        { method: 'POST', body: {} }
+      );
+      if (!res.ok) {
+        this.error = res.error || 'Failed to run the trusted question';
+        return;
+      }
+      this.lastResult = {
+        messageId: null,
+        columns: res.data.columns || [],
+        rows: res.data.rows || [],
+        rowCount: res.data.row_count,
+        truncated: !!res.data.truncated,
+      };
+    },
+
     async addAsset() {
       this.assetError = '';
       const res = await window.pqlApi.fetch(
@@ -149,6 +172,23 @@ export function genieSpace(config) {
 
     toggleConfig() {
       this.showConfig = !this.showConfig;
+      if (this.showConfig) this.loadSuggestions();
+    },
+
+    async loadSuggestions() {
+      // Lineage-authority-ranked tables not yet curated — one click
+      // appends one to the tables textarea.
+      const res = await window.pqlApi.fetch(
+        '/api/genie/spaces/' + encodeURIComponent(this.slug) + '/suggested-tables'
+      );
+      if (res.ok) this.suggestions = (res.data && res.data.suggestions) || [];
+    },
+
+    addSuggestion(table) {
+      const current = this._lines(this.cfg.tables);
+      if (!current.includes(table)) current.push(table);
+      this.cfg.tables = current.join('\n');
+      this.suggestions = this.suggestions.filter((s) => s.table !== table);
     },
 
     _lines(text) {
