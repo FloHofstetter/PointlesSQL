@@ -96,10 +96,16 @@ def _resolve_completer(settings: Settings) -> Completer:
 
         return _complete_anthropic
 
+    # Kimi / Grok speak the OpenAI wire format but off their own hosts;
+    # the credential must be sent there, not to OpenAI's default endpoint.
+    from pointlessql.services.lens.llm_provider import OPENAI_COMPATIBLE_BASE_URLS
+
+    base_url = OPENAI_COMPATIBLE_BASE_URLS.get(provider)
+
     def _complete_openai(system: str, user: str) -> str:
         import openai
 
-        client = openai.OpenAI(api_key=api_key, timeout=timeout)
+        client = openai.OpenAI(api_key=api_key, base_url=base_url, timeout=timeout)
         response = client.chat.completions.create(
             model=model,
             max_completion_tokens=max_tokens,

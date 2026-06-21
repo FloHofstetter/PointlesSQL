@@ -225,6 +225,19 @@ class GrokProvider(OpenAIProvider):
     base_url: str | None = "https://api.x.ai/v1"
 
 
+#: Per-provider OpenAI-compatible API base URLs, sourced from the adapters
+#: above so the async Lens chat path and the sync ``ai_functions``
+#: completion seam never drift on a provider's endpoint.  ``None`` (OpenAI)
+#: means the SDK's own default host; Kimi and Grok speak the same wire
+#: format off their own hosts, so a key for either must be sent there
+#: rather than to ``api.openai.com``.
+OPENAI_COMPATIBLE_BASE_URLS: dict[str, str | None] = {
+    "openai": OpenAIProvider.base_url,
+    "kimi": KimiProvider.base_url,
+    "grok": GrokProvider.base_url,
+}
+
+
 class AnthropicProvider(_BaseProvider):
     """Anthropic messages adapter.
 
