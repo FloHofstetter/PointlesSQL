@@ -16,7 +16,7 @@ import json
 from typing import Any
 
 from fastapi import APIRouter, Body, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, Response
 
 from pointlessql.api.bi_dashboards_routes._shared import (
     ensure_can_edit,
@@ -25,6 +25,7 @@ from pointlessql.api.bi_dashboards_routes._shared import (
 )
 from pointlessql.api.dependencies import get_templates
 from pointlessql.exceptions import ResourceNotFoundError
+from pointlessql.services import bi_snapshot_csv
 from pointlessql.services import bi_snapshots as snapshot_service
 
 router = APIRouter(tags=["bi-snapshots"])
@@ -216,6 +217,31 @@ async def api_get_snapshot(request: Request, slug: str, snapshot_id: int) -> dic
         "triggered_by": resolved["triggered_by"],
         "payload": resolved["payload"],
     }
+
+
+@router.get("/api/bi/dashboards/{slug}/snapshots/{snapshot_id}/csv", response_class=Response)
+async def api_get_snapshot_csv(request: Request, slug: str, snapshot_id: int) -> Response:
+    """Download a snapshot's data-backed widgets as a CSV attachment.
+
+    The same tabular CSV a scheduled subscription would attach — one
+    section per data-backed widget.
+
+    Args:
+        request: Incoming FastAPI request.
+        slug: Dashboard slug.
+        snapshot_id: Snapshot primary key.
+
+    Returns:
+        A ``text/csv`` attachment response.
+    """
+    resolved = _ensure_snapshot(request, slug, snapshot_id)
+    csv_text = bi_snapshot_csv.snapshot_to_csv(resolved["payload"])
+    filename = f"{slug}-snapshot-{snapshot_id}.csv"
+    return Response(
+        content=csv_text,
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @router.get("/bi/{slug}/snapshots/{snapshot_id}", response_class=HTMLResponse)
