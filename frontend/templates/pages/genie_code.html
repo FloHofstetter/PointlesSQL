@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+{% block title %}Genie Code · PointlesSQL{% endblock %}
+
+{% set breadcrumbs = [
+    {"label": "Home", "href": "/"},
+    {"label": "Genie Code"}
+] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-1"
+     x-data="{
+        overview: null,
+        loading: true,
+        surfaces: {{ surfaces | tojson }},
+        async init() { await this.load(); },
+        async load() {
+            const r = await window.pqlApi.fetch('/api/genie-code/overview');
+            this.loading = false;
+            if (r.ok) { this.overview = r.data; if (r.data.surfaces) this.surfaces = r.data.surfaces; }
+        },
+        statusClass(s) {
+            if (s === 'succeeded') { return 'bg-success'; }
+            if (s === 'failed' || s === 'denied') { return 'bg-danger'; }
+            if (s === 'needs_approval') { return 'bg-warning text-dark'; }
+            return 'bg-secondary';
+        }
+     }">
+
+    <div class="d-flex align-items-center gap-2 mb-3">
+        <i class="bi bi-magic fs-3"></i>
+        <h1 class="h3 mb-0">Genie Code</h1>
+    </div>
+
+    <p class="text-muted">
+        One roof over PointlesSQL's agentic-authoring surfaces — turn a natural-language prompt into SQL, notebook
+        cells, a supervised pipeline, an ingest connector, or a scheduled job, and watch the supervised agent runs they
+        produce. Pick a surface to start authoring, or glance at recent run activity below.
+    </p>
+
+    <div class="row g-3 mb-4">
+        <template x-for="s in surfaces" :key="s.key">
+            <div class="col-12 col-md-6 col-lg-4 col-xl-3">
+                <a :href="s.href" class="card h-100 text-decoration-none text-body">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center gap-2 mb-2">
+                            <i class="bi fs-4" :class="s.icon"></i>
+                            <h2 class="h6 mb-0" x-text="s.label"></h2>
+                        </div>
+                        <p class="text-muted small mb-0" x-text="s.description"></p>
+                    </div>
+                </a>
+            </div>
+        </template>
+    </div>
+
+    <div x-show="loading" class="text-muted small">Loading recent activity…</div>
+
+    <template x-if="!loading && overview">
+        <div>
+            <div class="row g-2 mb-3">
+                <div class="col-6 col-md-auto">
+                    <div class="card"><div class="card-body py-2 px-3">
+                        <div class="small text-muted">Runs</div>
+                        <div class="h4 mb-0" x-text="overview.stats.total"></div>
+                    </div></div>
+                </div>
+                <div class="col-6 col-md-auto">
+                    <div class="card"><div class="card-body py-2 px-3">
+                        <div class="small text-muted">Active</div>
+                        <div class="h4 mb-0" x-text="overview.stats.active"></div>
+                    </div></div>
+                </div>
+                <div class="col-6 col-md-auto">
+                    <div class="card"><div class="card-body py-2 px-3">
+                        <div class="small text-muted">Needs approval</div>
+                        <div class="h4 mb-0 text-warning" x-text="overview.stats.needs_approval"></div>
+                    </div></div>
+                </div>
+                <div class="col-6 col-md-auto">
+                    <div class="card"><div class="card-body py-2 px-3">
+                        <div class="small text-muted">Succeeded / failed</div>
+                        <div class="h4 mb-0">
+                            <span class="text-success" x-text="overview.stats.succeeded"></span>
+                            <span class="text-muted">/</span>
+                            <span class="text-danger" x-text="overview.stats.failed"></span>
+                        </div>
+                    </div></div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header py-2 fw-semibold">Recent agent runs</div>
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead>
+                            <tr class="small text-muted">
+                                <th>Run</th><th>Status</th><th>Harness</th>
+                                <th>Principal</th><th>Notebook</th><th>Started</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template x-for="run in overview.recent_runs" :key="run.id">
+                                <tr>
+                                    <td>
+                                        <a :href="'/runs/' + run.id" class="text-decoration-none"
+                                           x-text="run.id.slice(0, 8)"></a>
+                                    </td>
+                                    <td><span class="badge" :class="statusClass(run.status)"
+                                              x-text="run.status"></span></td>
+                                    <td><code x-text="run.harness || '—'"></code></td>
+                                    <td x-text="run.principal || '—'"></td>
+                                    <td class="font-monospace small text-truncate" style="max-width: 16rem;"
+                                        x-text="run.notebook_path"></td>
+                                    <td class="small text-muted" x-text="run.started_at"></td>
+                                </tr>
+                            </template>
+                            <tr x-show="overview.recent_runs.length === 0">
+                                <td colspan="6" class="text-muted small">
+                                    No agent runs yet — start from a surface above.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </template>
+</div>
+{% endblock %}
