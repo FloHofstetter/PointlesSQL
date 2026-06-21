@@ -222,6 +222,58 @@ def _get_json(client: httpx.Client, path: str) -> dict[str, Any]:
     return cast("dict[str, Any]", body)
 
 
+def _parse_delta_table_version(headers: Any) -> int | None:
+    """Extract the Delta table version from a sharing response's headers.
+
+    Args:
+        headers: The response header mapping (case-insensitive).
+
+    Returns:
+        The integer version, or ``None`` when the header is missing or
+        non-numeric.
+    """
+    raw = headers.get("Delta-Table-Version")
+    if raw is None:
+        return None
+    try:
+        return int(str(raw).strip())
+    except TypeError, ValueError:
+        return None
+
+
+def remote_table_version(
+    factory: sessionmaker[Session],
+    provider: SharingProvider,
+    *,
+    share: str,
+    schema: str,
+    table: str,
+) -> int | None:
+    """Return a shared table's current version over the OpenSharing protocol.
+
+    Hits the Delta Sharing "Query Table Version" endpoint, whose answer
+    carries the version in the ``Delta-Table-Version`` response header.
+    A non-200 answer or a missing header yields ``None`` so a poller can
+    treat it as "no readable version" rather than crash.
+
+    Args:
+        factory: SQLAlchemy session factory (token decrypt).
+        provider: The remote provider profile.
+        share: Remote share name.
+        schema: Schema within the share.
+        table: Table (or view) name within the schema.
+
+    Returns:
+        The integer table version, or ``None`` when unavailable.
+    """
+    path = f"/shares/{share}/schemas/{schema}/tables/{table}/version"
+    with _client_for(factory, provider) as client:
+        response = client.get(path)
+    if response.status_code != 200:
+        return None
+    return _parse_delta_table_version(response.headers)
+
+
 def list_remote_shares(factory: sessionmaker[Session], provider: SharingProvider) -> list[str]:
     """List share names offered to this recipient.
 

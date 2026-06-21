@@ -146,6 +146,10 @@
          triggerKind: 'cron',
          triggerPath: '',
          triggerTable: '',
+         triggerSource: 'local',
+         triggerProvider: '',
+         triggerShare: '',
+         triggerSchema: '',
          notifyFailure: false,
          notifySuccess: false,
          maxParallel: 1,
@@ -235,7 +239,19 @@
              if (this.notifySuccess) notify.push('success');
              const out = { trigger_kind: this.triggerKind, notify_on: notify };
              if (this.triggerKind === 'file_arrival') out.trigger_config = { path: this.triggerPath };
-             if (this.triggerKind === 'table_update') out.trigger_config = { table: this.triggerTable };
+             if (this.triggerKind === 'table_update') {
+                 if (this.triggerSource === 'sharing') {
+                     out.trigger_config = {
+                         source: 'sharing',
+                         provider: this.triggerProvider,
+                         share: this.triggerShare,
+                         schema: this.triggerSchema,
+                         table: this.triggerTable,
+                     };
+                 } else {
+                     out.trigger_config = { source: this.triggerSource, table: this.triggerTable };
+                 }
+             }
              return out;
          },
          submit() {
@@ -321,11 +337,37 @@
                     ) }}
                 </div>
                 <div x-show="triggerKind === 'table_update'" x-cloak>
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold" for="job-trigger-source">Source</label>
+                        <select id="job-trigger-source" class="form-select form-select-sm"
+                                x-model="triggerSource">
+                            <option value="local">Local Delta table</option>
+                            <option value="sharing">Delta Sharing (provider + share)</option>
+                            <option value="system">System table</option>
+                        </select>
+                    </div>
+                    <div x-show="triggerSource === 'sharing'" x-cloak>
+                        {{ labeled_input(
+                            'job-trigger-provider', 'Sharing provider',
+                            id='job-trigger-provider', size=None, classes='font-monospace',
+                            x_model='triggerProvider', placeholder='provider-alias',
+                        ) }}
+                        {{ labeled_input(
+                            'job-trigger-share', 'Share',
+                            id='job-trigger-share', size=None, classes='font-monospace',
+                            x_model='triggerShare', placeholder='share_name',
+                        ) }}
+                        {{ labeled_input(
+                            'job-trigger-schema', 'Schema',
+                            id='job-trigger-schema', size=None, classes='font-monospace',
+                            x_model='triggerSchema', placeholder='schema_name',
+                        ) }}
+                    </div>
                     {{ labeled_input(
                         'job-trigger-table', 'Table',
                         id='job-trigger-table', size=None, classes='font-monospace',
-                        x_model='triggerTable', placeholder='catalog.schema.table',
-                        hint='The job fires when the Delta table version advances.',
+                        x_model='triggerTable', placeholder='catalog.schema.table (or table name when shared)',
+                        hint='The job fires when the table version advances.',
                     ) }}
                 </div>
                 <div class="mb-3">

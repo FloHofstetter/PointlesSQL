@@ -26,6 +26,7 @@ import hashlib
 import json
 import logging
 import os
+from typing import Any, cast
 
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -116,6 +117,64 @@ async def _table_version(
         return None
 
 
+async def _sharing_table_version(
+    factory: sessionmaker[Session],
+    job: Job,
+    config: dict[str, Any],
+) -> str | None:
+    """Return a Delta-Sharing-shared table's version for a ``table_update`` job.
+
+    Resolves the workspace's sharing provider by alias and polls the
+    shared table's version over the OpenSharing protocol.  Any
+    resolution / transport failure logs a warning and returns ``None``
+    so the tick treats it as "no change".
+
+    Args:
+        factory: Session factory for provider lookup + token decrypt.
+        job: The job whose workspace scopes the provider lookup.
+        config: The ``table_update`` trigger config, expected to carry
+            ``provider`` / ``share`` / ``schema`` / ``table``.
+
+    Returns:
+        The stringified shared-table version, or ``None``.
+    """
+    from pointlessql.services import delta_sharing_consumer
+
+    fields = {key: config.get(key) for key in ("provider", "share", "schema", "table")}
+    if not all(isinstance(value, str) and value.strip() for value in fields.values()):
+        logger.warning(
+            "table_update(sharing) trigger: missing provider/share/schema/table on job %s",
+            job.id,
+        )
+        return None
+    provider = delta_sharing_consumer.get_provider(
+        factory, workspace_id=int(job.workspace_id), name=str(fields["provider"]).strip()
+    )
+    if provider is None:
+        logger.warning(
+            "table_update(sharing) trigger: provider %r not found on job %s",
+            fields["provider"],
+            job.id,
+        )
+        return None
+    try:
+        version = delta_sharing_consumer.remote_table_version(
+            factory,
+            provider,
+            share=str(fields["share"]).strip(),
+            schema=str(fields["schema"]).strip(),
+            table=str(fields["table"]).strip(),
+        )
+    except Exception:  # noqa: BLE001 — trigger polling must not crash the tick
+        logger.warning(
+            "table_update(sharing) trigger: version poll failed for job %s",
+            job.id,
+            exc_info=True,
+        )
+        return None
+    return None if version is None else str(version)
+
+
 async def evaluate_event_trigger(
     factory: sessionmaker[Session],
     settings: Settings,
@@ -146,6 +205,7 @@ async def evaluate_event_trigger(
     if not isinstance(config, dict):
         logger.warning("event trigger: trigger_config is not an object on job %s", job.id)
         return False
+    config = cast("dict[str, Any]", config)
 
     observed: str | None = None
     if job.trigger_kind == "file_arrival":
@@ -155,11 +215,22 @@ async def evaluate_event_trigger(
             return False
         observed = _glob_fingerprint(pattern.strip())
     elif job.trigger_kind == "table_update":
-        table = config.get("table")
-        if not isinstance(table, str) or not table.strip():
-            logger.warning("table_update trigger: missing 'table' on job %s", job.id)
-            return False
-        observed = await _table_version(factory, settings, job, table.strip())
+        raw_source = config.get("source")
+        source = (
+            raw_source.strip() if isinstance(raw_source, str) and raw_source.strip() else "local"
+        )
+        if source == "sharing":
+            # A Delta-Sharing-shared table/view: version comes from the
+            # OpenSharing protocol rather than the local Delta log.
+            observed = await _sharing_table_version(factory, job, config)
+        else:
+            # Local tables and soyuz system tables share the catalog +
+            # Delta-log version path; "system" only pre-fills the FQN.
+            table = config.get("table")
+            if not isinstance(table, str) or not table.strip():
+                logger.warning("table_update trigger: missing 'table' on job %s", job.id)
+                return False
+            observed = await _table_version(factory, settings, job, table.strip())
     else:
         logger.warning("unknown trigger_kind %r on job %s", job.trigger_kind, job.id)
         return False
