@@ -1,0 +1,157 @@
+{% extends "base.html" %}
+{% block title %}Governance hub · PointlesSQL{% endblock %}
+
+{% set breadcrumbs = [
+    {"label": "Home", "href": "/"},
+    {"label": "Admin", "href": "/admin"},
+    {"label": "Governance hub"}
+] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-1"
+     x-data="{
+        posture: null,
+        loading: true,
+        window: '',
+        async init() { await this.load(); },
+        async load() {
+            this.loading = true;
+            const params = new URLSearchParams();
+            if (this.window) {
+                const sinceMs = Date.now() - (parseInt(this.window, 10) * 3600 * 1000);
+                params.set('since', new Date(sinceMs).toISOString());
+            }
+            const qs = params.toString();
+            const r = await window.pqlApi.fetch(
+                '/api/admin/governance-hub/posture' + (qs ? '?' + qs : '')
+            );
+            this.loading = false;
+            if (r.ok) { this.posture = r.data; }
+        },
+        gradeClass() {
+            const g = this.posture && this.posture.grade;
+            if (g === 'A' || g === 'B') { return 'text-success'; }
+            if (g === 'C') { return 'text-warning'; }
+            return 'text-danger';
+        },
+        sevClass(sev) {
+            if (sev === 'critical') { return 'bg-danger'; }
+            if (sev === 'warn') { return 'bg-warning text-dark'; }
+            return 'bg-secondary';
+        }
+     }">
+
+    <div class="d-flex align-items-center gap-2 mb-3">
+        <i class="bi bi-shield-check fs-3"></i>
+        <h1 class="h3 mb-0">Governance hub</h1>
+    </div>
+
+    <p class="text-muted">
+        One posture score across the whole governance surface — compliance-scanner findings and agent-run anomalies
+        rolled into a single grade and a severity-ranked remediation queue, so you see what to fix first without
+        visiting each console. Read-only: it aggregates findings the other subsystems already recorded.
+    </p>
+
+    <div class="row g-2 align-items-end mb-3">
+        <div class="col-auto">
+            <label class="form-label small text-muted mb-1" for="gh-window">Window</label>
+            <select id="gh-window" class="form-select form-select-sm" x-model="window" @change="load()">
+                <option value="">All time</option>
+                <option value="24">Last 24 hours</option>
+                <option value="168">Last 7 days</option>
+                <option value="720">Last 30 days</option>
+            </select>
+        </div>
+        <div class="col-auto">
+            <button type="button" class="btn btn-outline-secondary btn-sm" @click="load()">
+                <i class="bi bi-arrow-clockwise me-1"></i>Refresh
+            </button>
+        </div>
+    </div>
+
+    <div x-show="loading" class="text-muted small">Loading…</div>
+
+    <template x-if="!loading && posture">
+        <div>
+            <div class="row g-3 mb-3">
+                <div class="col-12 col-md-4">
+                    <div class="card h-100">
+                        <div class="card-body text-center">
+                            <div class="small text-muted text-uppercase">Posture</div>
+                            <div class="display-3 fw-bold" :class="gradeClass()" x-text="posture.grade"></div>
+                            <div class="text-muted">
+                                <span class="fs-5 fw-semibold" x-text="posture.posture_score"></span> / 100
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 col-md-8">
+                    <div class="row g-2 h-100">
+                        <div class="col-6 col-lg-3">
+                            <div class="card h-100"><div class="card-body py-2 px-3">
+                                <div class="small text-muted">Findings</div>
+                                <div class="h4 mb-0" x-text="posture.totals.findings"></div>
+                            </div></div>
+                        </div>
+                        <div class="col-6 col-lg-3">
+                            <div class="card h-100 border-danger-subtle"><div class="card-body py-2 px-3">
+                                <div class="small text-muted">Critical</div>
+                                <div class="h4 mb-0 text-danger" x-text="posture.totals.critical"></div>
+                            </div></div>
+                        </div>
+                        <div class="col-6 col-lg-3">
+                            <div class="card h-100 border-warning-subtle"><div class="card-body py-2 px-3">
+                                <div class="small text-muted">Warnings</div>
+                                <div class="h4 mb-0 text-warning" x-text="posture.totals.warn"></div>
+                            </div></div>
+                        </div>
+                        <div class="col-6 col-lg-3">
+                            <div class="card h-100"><div class="card-body py-2 px-3">
+                                <div class="small text-muted">Compliance / anomaly</div>
+                                <div class="h4 mb-0">
+                                    <span x-text="posture.totals.compliance"></span>
+                                    <span class="text-muted">/</span>
+                                    <span x-text="posture.totals.anomaly"></span>
+                                </div>
+                            </div></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header py-2 fw-semibold">Remediation queue</div>
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead>
+                            <tr class="small text-muted">
+                                <th>Severity</th><th>Source</th><th>Kind</th>
+                                <th>Reference</th><th>Detail</th><th>Observed</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template x-for="(f, i) in posture.remediation_queue" :key="i">
+                                <tr>
+                                    <td><span class="badge" :class="sevClass(f.severity)"
+                                              x-text="f.severity"></span></td>
+                                    <td class="small text-muted" x-text="f.source"></td>
+                                    <td><code x-text="f.kind"></code></td>
+                                    <td class="font-monospace small" x-text="f.ref"></td>
+                                    <td class="small" x-text="f.message"></td>
+                                    <td class="small text-muted" x-text="f.observed_at"></td>
+                                </tr>
+                            </template>
+                            <tr x-show="posture.remediation_queue.length === 0">
+                                <td colspan="6" class="text-success small">
+                                    <i class="bi bi-check-circle me-1"></i>No open findings — clean posture.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </template>
+</div>
+{% endblock %}
