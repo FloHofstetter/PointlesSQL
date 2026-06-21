@@ -1,0 +1,280 @@
+{% extends "base.html" %}
+
+{% block title %}Command Center · PointlesSQL{% endblock %}
+{% block content_class %}pql-content--command-center{% endblock %}
+
+{% block breadcrumbs %}
+<ol class="breadcrumb mb-0 ms-3">
+    <li class="breadcrumb-item"><a href="/" class="text-decoration-none">Home</a></li>
+    <li class="breadcrumb-item"><a href="/runs" class="text-decoration-none">Runs</a></li>
+    <li class="breadcrumb-item active">Command Center</li>
+</ol>
+{% endblock %}
+
+{% block content %}
+{# Status → Bootstrap colour, shared by the live board and candidate lists. #}
+{% set _status_class = {
+    'queued': 'secondary',
+    'running': 'info',
+    'needs_approval': 'warning',
+    'approved': 'primary',
+    'succeeded': 'success',
+    'failed': 'danger',
+    'denied': 'dark'
+} %}
+
+<div class="container-fluid py-3"
+     x-data="{
+        selected: [],
+        compareRuns: [],
+        comparing: false,
+        busyRun: null,
+        error: null,
+        isSelected(id) { return this.selected.includes(id); },
+        toggle(id) {
+            const i = this.selected.indexOf(id);
+            if (i === -1) { this.selected.push(id); } else { this.selected.splice(i, 1); }
+        },
+        async selectAndCompare(ids) { this.selected = [...ids]; await this.runCompare(); },
+        async runCompare() {
+            if (this.selected.length === 0) { this.compareRuns = []; return; }
+            this.comparing = true; this.error = null;
+            try {
+                const r = await fetch('/api/command-center/compare?run_ids=' + encodeURIComponent(this.selected.join(',')));
+                if (!r.ok) { throw new Error('HTTP ' + r.status); }
+                const data = await r.json();
+                this.compareRuns = data.runs || [];
+            } catch (e) { this.error = String(e); } finally { this.comparing = false; }
+        },
+        clearCompare() { this.selected = []; this.compareRuns = []; },
+        async decide(id, action) {
+            this.busyRun = id; this.error = null;
+            try {
+                const r = await fetch('/api/agent-runs/' + id + '/' + action, { method: 'POST' });
+                if (!r.ok) { throw new Error('HTTP ' + r.status); }
+                window.location.reload();
+            } catch (e) { this.error = String(e); this.busyRun = null; }
+        },
+        fmtMs(ms) {
+            if (ms === null || ms === undefined) { return '—'; }
+            if (ms < 1000) { return ms + ' ms'; }
+            return (ms / 1000).toFixed(1) + ' s';
+        },
+        fmtCost(c) { return (c === null || c === undefined) ? '—' : Number(c).toFixed(4); },
+        shortId(id) { return id ? id.slice(0, 8) : ''; }
+     }">
+
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <div>
+            <h1 class="h4 mb-1"><i class="bi bi-grid-1x2 me-2"></i>Agent Command Center</h1>
+            <p class="text-muted small mb-0">
+                Watch parallel agent runs in flight and compare competing attempts before you keep one.
+            </p>
+        </div>
+        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="window.location.reload()">
+            <i class="bi bi-arrow-clockwise me-1"></i>Refresh
+        </button>
+    </div>
+
+    <div class="row g-2 mb-4">
+        <div class="col-6 col-md-3">
+            <div class="card h-100"><div class="card-body py-2">
+                <div class="text-muted small text-uppercase">Live threads</div>
+                <div class="h4 mb-0">{{ counts.live }}</div>
+            </div></div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card h-100 {% if counts.needs_approval %}border-warning{% endif %}"><div class="card-body py-2">
+                <div class="text-muted small text-uppercase">Needs approval</div>
+                <div class="h4 mb-0">{{ counts.needs_approval }}</div>
+            </div></div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card h-100"><div class="card-body py-2">
+                <div class="text-muted small text-uppercase">Candidate sets</div>
+                <div class="h4 mb-0">{{ counts.candidate_groups }}</div>
+            </div></div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card h-100"><div class="card-body py-2">
+                <div class="text-muted small text-uppercase">Total runs</div>
+                <div class="h4 mb-0">{{ counts.total }}</div>
+            </div></div>
+        </div>
+    </div>
+
+    <div x-show="error" x-cloak class="alert alert-danger py-2 small" x-text="error"></div>
+
+    {# ── Live threads (parallel in-flight runs) ── #}
+    <h2 class="h6 text-uppercase text-muted mb-2">Live threads</h2>
+    {% if live %}
+    <div class="row g-3 mb-4">
+        {% for run in live %}
+        <div class="col-12 col-lg-6 col-xxl-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-start justify-content-between mb-2">
+                        <span class="badge bg-{{ _status_class.get(run.status, 'secondary') }}">{{ run.status }}</span>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox"
+                                   :checked="isSelected('{{ run.id }}')" @change="toggle('{{ run.id }}')"
+                                   id="cc-live-{{ run.id }}">
+                            <label class="form-check-label small text-muted" for="cc-live-{{ run.id }}">compare</label>
+                        </div>
+                    </div>
+                    <a href="/runs/{{ run.id }}" class="text-decoration-none fw-semibold d-block text-truncate"
+                       title="{{ run.notebook_path }}">
+                        {{ run.notebook_path.split('/')[-1] }}
+                    </a>
+                    <div class="small text-muted mb-2">
+                        #{{ run.id[:8] }} · {{ run.principal or 'unknown' }}
+                        · {{ ((run.started_at or '')[:19])|replace('T', ' ') }}
+                    </div>
+                    {% if run.status == 'needs_approval' and current_user and current_user.is_admin %}
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-success btn-sm"
+                                :disabled="busyRun === '{{ run.id }}'" @click="decide('{{ run.id }}', 'approve')">
+                            <i class="bi bi-check-circle me-1"></i>Approve
+                        </button>
+                        <button type="button" class="btn btn-outline-danger btn-sm"
+                                :disabled="busyRun === '{{ run.id }}'" @click="decide('{{ run.id }}', 'deny')">
+                            <i class="bi bi-x-circle me-1"></i>Deny
+                        </button>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="text-muted small mb-4">No runs are in flight right now.</div>
+    {% endif %}
+
+    {# ── Candidate sets (competing attempts over the same notebook) ── #}
+    <h2 class="h6 text-uppercase text-muted mb-2">Candidate sets</h2>
+    {% if candidate_groups %}
+    {% for group in candidate_groups %}
+    <div class="card mb-3">
+        <div class="card-header d-flex align-items-center justify-content-between py-2">
+            <span class="fw-semibold text-truncate" title="{{ group.notebook_path }}">
+                <i class="bi bi-diagram-3 me-1"></i>{{ group.notebook_path }}
+                <span class="badge bg-secondary ms-1">{{ group.size }} attempts</span>
+            </span>
+            <button type="button" class="btn btn-outline-primary btn-sm"
+                    @click="selectAndCompare([{% for r in group.runs %}'{{ r.id }}'{% if not loop.last %}, {% endif %}{% endfor %}])">
+                <i class="bi bi-layout-split me-1"></i>Compare set
+            </button>
+        </div>
+        <ul class="list-group list-group-flush">
+            {% for run in group.runs %}
+            <li class="list-group-item d-flex align-items-center justify-content-between py-2">
+                <span class="d-flex align-items-center gap-2">
+                    <input class="form-check-input mt-0" type="checkbox"
+                           :checked="isSelected('{{ run.id }}')" @change="toggle('{{ run.id }}')"
+                           aria-label="Select run {{ run.id[:8] }} for comparison">
+                    <a href="/runs/{{ run.id }}" class="text-decoration-none">#{{ run.id[:8] }}</a>
+                    <span class="badge bg-{{ _status_class.get(run.status, 'secondary') }}">{{ run.status }}</span>
+                    {% if group.best_pick == run.id %}
+                    <span class="badge bg-success-subtle text-success-emphasis" title="Recommended candidate">
+                        <i class="bi bi-star-fill me-1"></i>best pick
+                    </span>
+                    {% endif %}
+                </span>
+                <span class="small text-muted">
+                    cost {{ '%.4f'|format(run.cost_est) if run.cost_est is not none else '—' }}
+                    · {{ ((run.started_at or '')[:19])|replace('T', ' ') }}
+                </span>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endfor %}
+    {% else %}
+    <div class="text-muted small mb-4">No notebook has more than one run yet — candidate sets appear once attempts repeat.</div>
+    {% endif %}
+
+    {# ── Comparison drawer (populated by the selection) ── #}
+    <div class="card mt-4" x-show="selected.length > 0" x-cloak>
+        <div class="card-header d-flex align-items-center justify-content-between py-2">
+            <span class="fw-semibold">
+                <i class="bi bi-layout-split me-1"></i>Comparison
+                <span class="text-muted small" x-text="'(' + selected.length + ' selected)'"></span>
+            </span>
+            <span class="d-flex gap-2">
+                <button type="button" class="btn btn-primary btn-sm" :disabled="comparing" @click="runCompare()">
+                    <span x-show="!comparing"><i class="bi bi-arrow-repeat me-1"></i>Compare selected</span>
+                    <span x-show="comparing">working…</span>
+                </button>
+                <button type="button" class="btn btn-outline-secondary btn-sm" @click="clearCompare()">Clear</button>
+            </span>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive" x-show="compareRuns.length > 0">
+                <table class="table table-sm mb-0 align-middle">
+                    <thead>
+                        <tr>
+                            <th scope="col">Metric</th>
+                            <template x-for="c in compareRuns" :key="c.id">
+                                <th scope="col">
+                                    <a class="text-decoration-none" :href="'/runs/' + c.id" x-text="'#' + shortId(c.id)"></a>
+                                </th>
+                            </template>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <th scope="row" class="text-muted fw-normal">Status</th>
+                            <template x-for="c in compareRuns" :key="c.id + '-status'">
+                                <td x-text="c.status"></td>
+                            </template>
+                        </tr>
+                        <tr>
+                            <th scope="row" class="text-muted fw-normal">Principal</th>
+                            <template x-for="c in compareRuns" :key="c.id + '-prin'">
+                                <td x-text="c.principal || '—'"></td>
+                            </template>
+                        </tr>
+                        <tr>
+                            <th scope="row" class="text-muted fw-normal">Cost estimate</th>
+                            <template x-for="c in compareRuns" :key="c.id + '-cost'">
+                                <td x-text="fmtCost(c.cost_est)"></td>
+                            </template>
+                        </tr>
+                        <tr>
+                            <th scope="row" class="text-muted fw-normal">Operations</th>
+                            <template x-for="c in compareRuns" :key="c.id + '-ops'">
+                                <td><span x-text="c.op_count"></span>
+                                    <span class="text-danger" x-show="c.errored_ops > 0" x-text="'(' + c.errored_ops + ' err)'"></span>
+                                </td>
+                            </template>
+                        </tr>
+                        <tr>
+                            <th scope="row" class="text-muted fw-normal">Duration</th>
+                            <template x-for="c in compareRuns" :key="c.id + '-dur'">
+                                <td x-text="fmtMs(c.duration_ms)"></td>
+                            </template>
+                        </tr>
+                        <tr>
+                            <th scope="row" class="text-muted fw-normal">Tables touched</th>
+                            <template x-for="c in compareRuns" :key="c.id + '-tab'">
+                                <td x-text="(c.tables_touched && c.tables_touched.length) ? c.tables_touched.join(', ') : '—'"></td>
+                            </template>
+                        </tr>
+                        <tr>
+                            <th scope="row" class="text-muted fw-normal">Anomaly</th>
+                            <template x-for="c in compareRuns" :key="c.id + '-anom'">
+                                <td x-text="c.anomaly_severity || 'ok'"></td>
+                            </template>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="p-3 text-muted small" x-show="compareRuns.length === 0 && !comparing">
+                Select runs and press <strong>Compare selected</strong> to see them side by side.
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
