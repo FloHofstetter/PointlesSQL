@@ -18,6 +18,7 @@ validation is testable without a live model.
 from __future__ import annotations
 
 import json
+import logging
 import re
 from typing import Any, cast
 
@@ -33,6 +34,8 @@ from pointlessql.services.canvas_df import (
     PinSchema,
     validate_schema_flow,
 )
+
+logger = logging.getLogger(__name__)
 
 #: The single-input transform blocks an NL-generated pipeline may use.
 #: Restricted to single-pin blocks so the generated chain is always a
@@ -220,7 +223,16 @@ def generate_pipeline(
         rejection / parse failure), ``errors`` the validation findings,
         and ``steps`` the parsed plan.
     """
-    raw = complete(_SYSTEM_PROMPT, _build_user_prompt(prompt, input_table, columns))
+    user_prompt = _build_user_prompt(prompt, input_table, columns)
+    try:
+        raw = complete(_SYSTEM_PROMPT, user_prompt)
+    except Exception as exc:  # noqa: BLE001 — any provider/transport failure becomes a surfaced finding, not a 500
+        logger.exception("pipeline generation: provider completion failed")
+        return {
+            "document": None,
+            "errors": [{"kind": "provider_error", "message": f"AI provider call failed: {exc}"}],
+            "steps": [],
+        }
     steps, parse_error = _parse_plan(raw)
     if parse_error is not None:
         return {
