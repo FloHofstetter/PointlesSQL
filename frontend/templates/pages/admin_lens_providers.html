@@ -96,17 +96,20 @@
                                 API key <span x-show="cred(p.provider)" class="text-muted">(rotate)</span>
                             </label>
                             <input :id="'lp-key-' + p.provider" type="password" autocomplete="off"
+                                   :aria-label="'API key for ' + p.provider"
                                    class="form-control form-control-sm font-monospace"
                                    x-model="forms[p.provider].api_key" placeholder="sk-…">
                         </div>
                         <div class="mb-2">
                             <label class="form-label small text-muted" :for="'lp-model-' + p.provider">Default model</label>
                             <input :id="'lp-model-' + p.provider" type="text"
+                                   :aria-label="'Default model for ' + p.provider"
                                    class="form-control form-control-sm font-monospace"
                                    x-model="forms[p.provider].default_model" :placeholder="p.default_model">
                         </div>
                         <div class="form-check form-switch mb-3">
                             <input :id="'lp-enabled-' + p.provider" class="form-check-input" type="checkbox" role="switch"
+                                   :aria-label="'Enable ' + p.provider + ' provider'"
                                    x-model="forms[p.provider].enabled">
                             <label class="form-check-label small" :for="'lp-enabled-' + p.provider">Enabled</label>
                         </div>
