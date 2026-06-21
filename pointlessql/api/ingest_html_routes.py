@@ -15,6 +15,7 @@ from pointlessql.api.dependencies import current_workspace_id, get_user
 from pointlessql.exceptions import ResourceNotFoundError
 from pointlessql.models import IngestSource
 from pointlessql.models.ingest import INGEST_SOURCE_KINDS
+from pointlessql.services.ingest import connector_gallery
 
 router = APIRouter(tags=["ingest"])
 
@@ -51,6 +52,7 @@ async def ingest_sources_new(request: Request) -> HTMLResponse | RedirectRespons
             "active_page": "ingest",
             "is_admin": user["is_admin"],
             "connector_kinds": INGEST_SOURCE_KINDS,
+            "connector_gallery": connector_gallery.gallery_groups(),
         },
     )
 

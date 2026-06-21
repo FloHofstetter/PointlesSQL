@@ -38,20 +38,34 @@
 
         <div class="mb-3">
             <label class="form-label small fw-bold">Connector kind</label>
-            <div class="btn-group btn-group-sm flex-wrap" role="group">
-                {% for k in connector_kinds %}
-                <input type="radio"
-                       class="btn-check"
-                       name="kind"
-                       id="kind-{{ k }}"
-                       value="{{ k }}"
-                       x-model="form.kind">
-                <label class="btn btn-outline-secondary" for="kind-{{ k }}">
-                    <i class="bi" :class="iconFor('{{ k }}')"></i>
-                    {{ k.replace('_', ' ')|title }}
-                </label>
-                {% endfor %}
+            {% for group in connector_gallery %}
+            <div class="mb-2">
+                <div class="text-muted small text-uppercase mb-1">{{ group.label }}</div>
+                <div class="d-flex flex-wrap gap-2">
+                    {% for c in group['connectors'] %}
+                    {% if c.status == 'available' %}
+                    <input type="radio"
+                           class="btn-check"
+                           name="kind"
+                           id="kind-{{ c.kind }}"
+                           value="{{ c.kind }}"
+                           x-model="form.kind">
+                    <label class="btn btn-sm btn-outline-secondary" for="kind-{{ c.kind }}"
+                           title="{{ c.description }}">
+                        <i class="bi {{ c.icon }} me-1"></i>{{ c.label }}
+                    </label>
+                    {% else %}
+                    <span class="btn btn-sm btn-outline-secondary disabled opacity-50"
+                          title="{{ c.description }}">
+                        <i class="bi {{ c.icon }} me-1"></i>{{ c.label }}
+                        <span class="badge ms-1 {{ 'bg-success' if c.maturity == 'ga' else 'bg-info text-dark' }}">
+                            {{ 'GA' if c.maturity == 'ga' else 'Beta' }}</span>
+                    </span>
+                    {% endif %}
+                    {% endfor %}
+                </div>
             </div>
+            {% endfor %}
         </div>
 
         <!-- file_upload -->
