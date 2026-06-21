@@ -113,6 +113,21 @@ def _resolve_completer(settings: Settings) -> Completer:
     return _complete_openai
 
 
+def resolve_completer(settings: Settings) -> Completer:
+    """Public entry point to the provider seam for non-UDF callers.
+
+    Args:
+        settings: Resolved application settings.
+
+    Returns:
+        A sync ``(system, user) -> completion`` callable bound to the
+        active workspace's credential (or the ambient env key).  When no
+        provider credential is available the underlying resolver's
+        :class:`SQLExecutionError` propagates to the caller.
+    """
+    return _resolve_completer(settings)
+
+
 def _resolve_provider(settings: Settings) -> tuple[str, str, str]:
     """Pick ``(provider, api_key, model)`` for the active workspace.
 

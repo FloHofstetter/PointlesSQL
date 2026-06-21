@@ -20,6 +20,8 @@ is no Studio graph table.
 
 from __future__ import annotations
 
+from typing import Any
+
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from pydantic import BaseModel, ConfigDict, Field
@@ -29,6 +31,10 @@ from pointlessql.api.data_products_routes.canvas._helpers import (
     seed_schemas_for_doc,
 )
 from pointlessql.api.dependencies import get_user, require_user
+from pointlessql.config import get_settings
+from pointlessql.exceptions import SQLExecutionError, ValidationError
+from pointlessql.services import dataframe_designer
+from pointlessql.services.ai_functions import resolve_completer
 from pointlessql.services.canvas_df import (
     CanvasDoc,
     ColumnSpec,
@@ -177,6 +183,49 @@ def preview_studio(body: StudioPreviewRequest, request: Request) -> StudioPrevie
         sql=result.sql,
         errors=[*seed_errors, *result.errors],
     )
+
+
+class StudioGenerateRequest(BaseModel):
+    """Body for ``POST /api/dataframe-studio/generate``."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    prompt: str = Field(min_length=1, max_length=2000)
+    input_table: str = Field(min_length=1, max_length=512)
+    columns: list[dict[str, Any]] = Field(default_factory=lambda: [])
+
+
+class StudioGenerateResponse(BaseModel):
+    """Response for ``POST /api/dataframe-studio/generate``."""
+
+    document: dict[str, Any] | None = None
+    errors: list[dict[str, Any]] = Field(default_factory=lambda: [])
+    steps: list[dict[str, Any]] = Field(default_factory=lambda: [])
+
+
+@router.post("/generate", response_model=StudioGenerateResponse)
+def generate_studio(body: StudioGenerateRequest, request: Request) -> StudioGenerateResponse:
+    """Generate a pre-filled canvas from a natural-language prompt.
+
+    Resolves the workspace's AI provider, asks it for an ordered plan of
+    single-input transforms, and maps that onto a validated linear canvas
+    rooted at the base table.  A missing provider returns a clear 400 so
+    the editor can prompt the user to configure one.
+    """
+    require_user(request)
+    try:
+        completer = resolve_completer(get_settings())
+    except SQLExecutionError as exc:
+        raise ValidationError(
+            f"No AI provider is configured for pipeline generation: {exc}"
+        ) from exc
+    result = dataframe_designer.generate_pipeline(
+        prompt=body.prompt,
+        input_table=body.input_table,
+        columns=body.columns,
+        complete=completer,
+    )
+    return StudioGenerateResponse(**result)
 
 
 @router.post("/validate", response_model=StudioValidateResponse)
