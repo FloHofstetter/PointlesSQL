@@ -49,7 +49,7 @@ def propose_forget(
     subject_column: str,
     subject_value: str,
     requested_by_user_id: int | None = None,
-    agent_run_id: int | None = None,
+    agent_run_id: str | None = None,
 ) -> DataProductForgetRequest:
     """Record a ``proposed`` forget request (no deletion runs).
 

@@ -89,12 +89,12 @@ def test_propose_forget_persists_exact_defaults() -> None:
         subject_column="customer_id",
         subject_value="v-1",
         requested_by_user_id=42,
-        agent_run_id=7,
+        agent_run_id="run-0007",
     )
     assert row.status == "proposed"
     assert row.tables_affected_json == "[]"
     assert row.requested_by_user_id == 42
-    assert row.agent_run_id == 7
+    assert row.agent_run_id == "run-0007"
     # Reloaded row carries the same persisted shape.
     with _factory()() as session:
         stored = session.get(DataProductForgetRequest, row.id)
@@ -102,7 +102,7 @@ def test_propose_forget_persists_exact_defaults() -> None:
         assert stored.status == "proposed"
         assert stored.tables_affected_json == "[]"
         assert stored.requested_by_user_id == 42
-        assert stored.agent_run_id == 7
+        assert stored.agent_run_id == "run-0007"
 
 
 def test_propose_forget_requires_both_fields() -> None:

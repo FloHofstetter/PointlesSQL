@@ -393,8 +393,8 @@ class DataProductForgetRequest(Base):
     requested_by_user_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("users.id"), nullable=True
     )
-    agent_run_id: Mapped[int | None] = mapped_column(
-        Integer, ForeignKey("agent_runs.id", ondelete="SET NULL"), nullable=True
+    agent_run_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("agent_runs.id", ondelete="SET NULL"), nullable=True
     )
     executed_by_user_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("users.id"), nullable=True
