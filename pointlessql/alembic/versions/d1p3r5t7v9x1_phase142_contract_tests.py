@@ -68,7 +68,7 @@ def upgrade() -> None:
         sa.Column("assertion_kind", sa.String(length=32), nullable=False),
         sa.Column("assertion_spec_json", sa.Text(), nullable=False),
         sa.Column("severity", sa.String(length=8), nullable=False, server_default="warn"),
-        sa.Column("enabled", sa.Boolean(), nullable=False, server_default="1"),
+        sa.Column("enabled", sa.Boolean(), nullable=False, server_default=sa.true()),
         sa.Column(
             "created_by_user_id",
             sa.Integer(),

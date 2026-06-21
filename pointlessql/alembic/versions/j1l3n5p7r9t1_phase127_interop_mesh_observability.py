@@ -47,7 +47,7 @@ def upgrade() -> None:
         sa.Column("target_value", sa.Float(), nullable=True),
         sa.Column("comparator", sa.String(length=4), nullable=False, server_default="lte"),
         sa.Column("unit", sa.String(length=24), nullable=True),
-        sa.Column("enabled", sa.Boolean(), nullable=False, server_default="1"),
+        sa.Column("enabled", sa.Boolean(), nullable=False, server_default=sa.true()),
         sa.Column(
             "created_by_user_id",
             sa.Integer(),

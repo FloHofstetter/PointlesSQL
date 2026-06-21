@@ -53,7 +53,7 @@ def upgrade() -> None:
             "consent_required",
             sa.Boolean(),
             nullable=False,
-            server_default="0",
+            server_default=sa.false(),
         ),
         sa.Column("consent_basis", sa.String(length=200), nullable=True),
         sa.Column(

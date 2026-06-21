@@ -55,7 +55,7 @@ def upgrade() -> None:
             "branch_promote_requires_endorsement",
             sa.Boolean(),
             nullable=False,
-            server_default=sa.text("0"),
+            server_default=sa.false(),
         ),
     )
 

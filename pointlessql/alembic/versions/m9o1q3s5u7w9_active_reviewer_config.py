@@ -46,7 +46,7 @@ def upgrade() -> None:
             "enabled",
             sa.Boolean(),
             nullable=False,
-            server_default="0",
+            server_default=sa.false(),
         ),
         sa.Column("runner", sa.String(length=20), nullable=False),
         sa.Column("llm_provider", sa.String(length=20), nullable=True),

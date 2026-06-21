@@ -42,7 +42,7 @@ def upgrade() -> None:
         sa.Column("name", sa.String(length=128), nullable=False),
         sa.Column("cedar_source", sa.Text(), nullable=False),
         sa.Column("version", sa.Integer(), nullable=False, server_default="1"),
-        sa.Column("enabled", sa.Boolean(), nullable=False, server_default="1"),
+        sa.Column("enabled", sa.Boolean(), nullable=False, server_default=sa.true()),
         sa.Column(
             "created_by_user_id",
             sa.Integer(),

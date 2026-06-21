@@ -36,7 +36,7 @@ def upgrade() -> None:
         sa.Column(
             "dashboard_mode",
             sa.Boolean(),
-            server_default="0",
+            server_default=sa.false(),
             nullable=False,
         ),
         sa.Column("revision_uuid", sa.String(length=36), nullable=True),

@@ -35,7 +35,7 @@ def upgrade() -> None:
         sa.Column("genie_space_slug", sa.String(length=200), nullable=True),
         sa.Column("token_hash", sa.String(length=64), nullable=False),
         sa.Column("token_prefix", sa.String(length=16), server_default="", nullable=False),
-        sa.Column("enabled", sa.Boolean(), server_default="1", nullable=False),
+        sa.Column("enabled", sa.Boolean(), server_default=sa.true(), nullable=False),
         sa.Column("created_by", sa.String(length=254), nullable=True),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
