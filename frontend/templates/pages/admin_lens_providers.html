@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+{% block title %}Lens providers · PointlesSQL{% endblock %}
+
+{% set breadcrumbs = [
+    {"label": "Home", "href": "/"},
+    {"label": "Admin", "href": "/admin"},
+    {"label": "Lens providers"}
+] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block content %}
+<script id="lp-providers-data" type="application/json">{{ providers | tojson }}</script>
+<div class="container-fluid py-1"
+     x-data="{
+        providers: [],
+        creds: [],
+        forms: {},
+        tests: {},
+        errors: {},
+        busy: {},
+        labels: { openai: 'OpenAI', anthropic: 'Anthropic', kimi: 'Kimi (Moonshot)', grok: 'Grok (xAI)' },
+        async init() {
+            const el = document.getElementById('lp-providers-data');
+            this.providers = el ? JSON.parse(el.textContent) : [];
+            for (const p of this.providers) {
+                this.forms[p.provider] = { api_key: '', default_model: '', enabled: true };
+            }
+            await this.load();
+        },
+        async load() {
+            const r = await window.pqlApi.fetch('/api/admin/lens-providers');
+            if (r.ok) { this.creds = (r.data && r.data.providers) || []; }
+        },
+        label(p) { return this.labels[p] || (p.charAt(0).toUpperCase() + p.slice(1)); },
+        cred(p) { return this.creds.find(c => c.provider === p) || null; },
+        async save(p) {
+            this.errors[p] = null; this.tests[p] = null;
+            const f = this.forms[p];
+            if (!f.api_key.trim()) { this.errors[p] = 'An API key is required to save or rotate.'; return; }
+            this.busy[p] = true;
+            const r = await window.pqlApi.fetch('/api/admin/lens-providers', {
+                method: 'POST',
+                body: {
+                    provider: p,
+                    api_key: f.api_key.trim(),
+                    default_model: f.default_model.trim() || null,
+                    enabled: f.enabled
+                }
+            });
+            this.busy[p] = false;
+            if (!r.ok) { this.errors[p] = r.error || 'Failed to save credential.'; return; }
+            f.api_key = '';
+            await this.load();
+        },
+        async test(p) {
+            this.errors[p] = null;
+            this.busy[p] = true;
+            const r = await window.pqlApi.fetch('/api/admin/lens-providers/' + p + '/test', { method: 'POST' });
+            this.busy[p] = false;
+            this.tests[p] = r.ok ? r.data : { ok: false, reason: r.error || 'Test failed.' };
+        },
+        async remove(p) {
+            if (!window.confirm('Delete the stored credential for ' + this.label(p) + '?')) return;
+            this.errors[p] = null; this.tests[p] = null;
+            const r = await window.pqlApi.fetch('/api/admin/lens-providers/' + p, { method: 'DELETE' });
+            if (r.ok) { await this.load(); } else { this.errors[p] = r.error || 'Failed to delete.'; }
+        }
+     }">
+
+    <div class="d-flex align-items-center gap-2 mb-3">
+        <i class="bi bi-key-fill fs-3"></i>
+        <h1 class="h3 mb-0">Lens providers</h1>
+    </div>
+
+    <p class="text-muted">
+        Bring-your-own LLM credentials for Lens, the data-product ask path, and AI functions. Each key is stored
+        Fernet-encrypted per workspace and never echoed back — to change a key you rotate it. Leave the default model
+        blank to fall back to the provider's built-in default. The test button confirms the stored key decrypts
+        cleanly; it does not call the provider.
+    </p>
+
+    <div class="row g-3">
+        <template x-for="p in providers" :key="p.provider">
+            <div class="col-12 col-md-6 col-xxl-3">
+                <div class="card h-100">
+                    <div class="card-header py-2 d-flex align-items-center justify-content-between">
+                        <span class="fw-semibold" x-text="label(p.provider)"></span>
+                        <span class="badge" :class="cred(p.provider) && cred(p.provider).enabled ? 'bg-success'
+                                  : (cred(p.provider) ? 'bg-secondary' : 'bg-light text-muted border')"
+                              x-text="cred(p.provider) ? (cred(p.provider).enabled ? 'configured' : 'disabled')
+                                  : 'not configured'"></span>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-2">
+                            <label class="form-label small text-muted" :for="'lp-key-' + p.provider">
+                                API key <span x-show="cred(p.provider)" class="text-muted">(rotate)</span>
+                            </label>
+                            <input :id="'lp-key-' + p.provider" type="password" autocomplete="off"
+                                   class="form-control form-control-sm font-monospace"
+                                   x-model="forms[p.provider].api_key" placeholder="sk-…">
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label small text-muted" :for="'lp-model-' + p.provider">Default model</label>
+                            <input :id="'lp-model-' + p.provider" type="text"
+                                   class="form-control form-control-sm font-monospace"
+                                   x-model="forms[p.provider].default_model" :placeholder="p.default_model">
+                        </div>
+                        <div class="form-check form-switch mb-3">
+                            <input :id="'lp-enabled-' + p.provider" class="form-check-input" type="checkbox" role="switch"
+                                   x-model="forms[p.provider].enabled">
+                            <label class="form-check-label small" :for="'lp-enabled-' + p.provider">Enabled</label>
+                        </div>
+                        <div class="d-flex flex-wrap gap-2">
+                            <button type="button" class="btn btn-primary btn-sm" :disabled="busy[p.provider]"
+                                    @click="save(p.provider)">
+                                <i class="bi bi-check-lg me-1"></i><span x-text="cred(p.provider) ? 'Rotate' : 'Save'"></span>
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" x-show="cred(p.provider)"
+                                    :disabled="busy[p.provider]" @click="test(p.provider)">
+                                <i class="bi bi-plug me-1"></i>Test
+                            </button>
+                            <button type="button" class="btn btn-outline-danger btn-sm ms-auto" x-show="cred(p.provider)"
+                                    :disabled="busy[p.provider]" @click="remove(p.provider)" aria-label="Delete credential">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
+                        <div class="mt-2 small" x-show="tests[p.provider]" x-cloak>
+                            <span class="badge" :class="tests[p.provider] && tests[p.provider].ok ? 'bg-success' : 'bg-danger'"
+                                  x-text="tests[p.provider] && tests[p.provider].ok ? 'decrypts ok' : 'failed'"></span>
+                            <span class="text-muted ms-1 font-monospace" x-show="tests[p.provider] && tests[p.provider].ok"
+                                  x-text="'key ' + (tests[p.provider] ? tests[p.provider].key_prefix : '') + '…'"></span>
+                            <span class="text-danger ms-1" x-show="tests[p.provider] && !tests[p.provider].ok"
+                                  x-text="tests[p.provider] ? tests[p.provider].reason : ''"></span>
+                        </div>
+                        <div class="mt-2 small text-danger" x-show="errors[p.provider]" x-cloak
+                             x-text="errors[p.provider]"></div>
+                    </div>
+                </div>
+            </div>
+        </template>
+    </div>
+</div>
+{% endblock %}

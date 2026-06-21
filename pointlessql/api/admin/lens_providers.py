@@ -14,9 +14,11 @@ just confirm the cred decrypts cleanly.
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Request
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
 
-from pointlessql.api.dependencies import current_workspace_id, require_admin
+from pointlessql.api.dependencies import current_workspace_id, get_templates, require_admin
+from pointlessql.config import get_settings
 from pointlessql.exceptions import ResourceNotFoundError
 from pointlessql.models import LENS_PROVIDERS
 from pointlessql.services.lens import (
@@ -28,6 +30,41 @@ from pointlessql.services.lens import (
 from pointlessql.services.lens._provider_creds import UnknownLensProviderError
 
 router = APIRouter()
+
+
+@router.get("/admin/lens-providers", response_class=HTMLResponse)
+def lens_providers_page(request: Request) -> HTMLResponse:
+    """Render the BYO LLM provider credential console.
+
+    The store / rotate / drop API for provider credentials had no UI;
+    the Lens page linked here but the route 404'd.  This page is the
+    discovery + management surface: one card per known provider with its
+    configured state, default-model fallback, a key-rotation form, a
+    decrypt self-test, and a delete control — all driven by the existing
+    JSON API.
+
+    Args:
+        request: Incoming FastAPI request.
+
+    Returns:
+        The rendered ``pages/admin_lens_providers.html`` response.
+    """
+    require_admin(request)
+    lens = get_settings().lens
+    providers = [
+        {"provider": name, "default_model": lens.model_default(name)} for name in LENS_PROVIDERS
+    ]
+    return get_templates(request).TemplateResponse(
+        request,
+        "pages/admin_lens_providers.html",
+        {
+            "active_page": "admin",
+            "providers": providers,
+            "active_catalog": None,
+            "active_schema": None,
+            "active_table": None,
+        },
+    )
 
 
 class ProviderCredsBody(BaseModel):
