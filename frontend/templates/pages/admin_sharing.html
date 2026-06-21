@@ -138,6 +138,32 @@
                                                 Grant and revoke are idempotent; the management API does not
                                                 list a share's grants — the audit log records every change.
                                             </div>
+
+                                            <hr class="my-2">
+                                            <button type="button"
+                                                    class="btn btn-sm btn-outline-secondary"
+                                                    @click="toggleIceberg(s.name)">
+                                                <i class="bi bi-snow2 me-1"></i>
+                                                <span x-text="showIceberg[s.name] ? 'Hide' : 'Connect via Iceberg REST'"></span>
+                                            </button>
+                                            <template x-if="showIceberg[s.name] && icebergHints[s.name]">
+                                                <div class="mt-2">
+                                                    <div class="text-muted small mb-1">
+                                                        Point any Iceberg-REST client at
+                                                        <code x-text="icebergHints[s.name].catalog_uri"></code>
+                                                        with <code x-text="s.name"></code> as the warehouse.
+                                                    </div>
+                                                    <template x-for="h in (icebergHints[s.name].hints || [])"
+                                                              :key="h.engine">
+                                                        <div class="mb-2">
+                                                            <div class="small fw-semibold" x-text="h.title"></div>
+                                                            <pre class="border rounded bg-body-tertiary p-2 mb-0 small"
+                                                                 style="white-space: pre-wrap;"><code
+                                                                 x-text="h.snippet"></code></pre>
+                                                        </div>
+                                                    </template>
+                                                </div>
+                                            </template>
                                         </div>
                                     </template>
                                 </td>

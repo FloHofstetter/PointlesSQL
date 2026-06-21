@@ -17,6 +17,8 @@ export function adminSharing() {
     creatingRecipient: false,
     open: {},
     details: {},
+    icebergHints: {},
+    showIceberg: {},
     objDrafts: {},
     grantDrafts: {},
     tokenModal: { show: false, revealed: false, name: '', token: '', copyLabel: 'Copy' },
@@ -85,6 +87,19 @@ export function adminSharing() {
     async loadDetail(name) {
       const res = await window.pqlApi.fetch('/api/sharing/shares/' + encodeURIComponent(name));
       if (res.ok) this.details[name] = res.data || {};
+    },
+
+    async loadIcebergHints(name) {
+      if (this.icebergHints[name]) return;
+      const res = await window.pqlApi.fetch(
+        '/api/sharing/shares/' + encodeURIComponent(name) + '/iceberg-rest'
+      );
+      if (res.ok) this.icebergHints[name] = res.data || {};
+    },
+
+    async toggleIceberg(name) {
+      this.showIceberg[name] = !this.showIceberg[name];
+      if (this.showIceberg[name]) await this.loadIcebergHints(name);
     },
 
     async addObject(name) {

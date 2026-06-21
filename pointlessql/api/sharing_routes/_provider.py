@@ -14,6 +14,7 @@ from fastapi import APIRouter, Body, Query, Request
 
 from pointlessql.api._audit_helpers import audit
 from pointlessql.api.dependencies import get_uc_client, require_admin
+from pointlessql.services import iceberg_rest_sharing
 
 router = APIRouter()
 
@@ -42,6 +43,35 @@ async def api_get_share(request: Request, name: str) -> dict[str, Any]:
     require_admin(request)
     uc = get_uc_client(request)
     return await uc.get_share(name)
+
+
+@router.get("/api/sharing/shares/{name}/iceberg-rest")
+async def api_share_iceberg_rest_hints(
+    request: Request, name: str, token: str | None = Query(default=None)
+) -> dict[str, Any]:
+    """Return Iceberg-REST client connection hints for a share.
+
+    OpenSharing lets a recipient consume the share from any Iceberg-REST
+    engine; this renders the connection config for Trino / Spark /
+    PyIceberg / Flink / Snowflake against this install's Iceberg REST
+    catalog root.  The live REST serving is soyuz-catalog's job — this
+    is the operator-facing copy-paste helper.
+
+    Args:
+        request: The incoming request (admin gate + base URL).
+        name: The share name (used as the Iceberg warehouse).
+        token: Optional recipient bearer token to inline into the
+            snippets; a placeholder is used when omitted.
+
+    Returns:
+        ``{"share", "catalog_uri", "hints": [...]}``.
+    """
+    require_admin(request)
+    catalog_uri = str(request.base_url).rstrip("/") + "/iceberg/v1"
+    hints = iceberg_rest_sharing.iceberg_rest_connection_hints(
+        catalog_uri=catalog_uri, share=name, token=token
+    )
+    return {"share": name, "catalog_uri": catalog_uri, "hints": hints}
 
 
 @router.patch("/api/sharing/shares/{name}")
