@@ -8,13 +8,7 @@
    'EXTERNAL': 'bg-warning text-dark',
    'VIEW': 'bg-info text-dark',
  }.get(table.table_type, 'bg-secondary') %}
- {% set _fmt_badge = {
-   'DELTA': 'bg-info text-dark',
-   'PARQUET': 'bg-secondary',
-   'ICEBERG': 'bg-primary',
-   'CSV': 'bg-warning text-dark',
-   'JSON': 'bg-warning text-dark',
- }.get(table.data_source_format, 'bg-light text-dark border') %}
+ {% set _fmt = format_badge(table.data_source_format) %}
  <div class="card mb-4">
   <div class="card-header d-flex align-items-center">
    <i class="bi bi-info-circle me-2"></i>
@@ -51,7 +45,20 @@
       <dd class="mb-2"><span class="badge {{ _type_badge }}">{{ table.table_type }}</span></dd>
 
       <dt class="text-muted fw-normal">Format</dt>
-      <dd class="mb-0"><span class="badge {{ _fmt_badge }}">{{ table.data_source_format }}</span></dd>
+      <dd class="{{ 'mb-2' if table_features else 'mb-0' }}">
+       <span class="badge {{ _fmt.css }}">
+        {%- if _fmt.icon %}<i class="bi {{ _fmt.icon }} me-1"></i>{% endif -%}
+        {{ table.data_source_format or _fmt.label }}</span></dd>
+
+      {% if table_features %}
+      <dt class="text-muted fw-normal">Features</dt>
+      <dd class="mb-0 d-flex flex-wrap gap-1">
+       {% for feat in table_features %}
+       <span class="badge bg-primary-subtle text-primary-emphasis border border-primary-subtle"
+             title="{{ feat.title }}"><i class="bi {{ feat.icon }} me-1"></i>{{ feat.label }}</span>
+       {% endfor %}
+      </dd>
+      {% endif %}
      </dl>
     </div>
 

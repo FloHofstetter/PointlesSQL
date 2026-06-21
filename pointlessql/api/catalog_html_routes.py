@@ -36,6 +36,7 @@ from pointlessql.exceptions import CatalogUnavailableError
 from pointlessql.services import access_requests as access_requests_service
 from pointlessql.services import certifications as certifications_service
 from pointlessql.services import pg_sync as pg_sync_service
+from pointlessql.services import table_features as table_features_service
 from pointlessql.services.authorization import (
     MANAGE_GRANTS,
     SELECT,
@@ -313,10 +314,16 @@ async def table_detail(
     # ``columns`` entry is a list of column dicts with ``name`` +
     # ``type_text`` keys.  ``[]`` is the empty-page fallback when the
     # catalog call errored above.
-    _cols = (table or {}).get("columns", []) if isinstance(table, dict) else []
+    _cols: list[Any] = (table or {}).get("columns", []) if isinstance(table, dict) else []
     text_column_names = [
         col["name"] for col in _cols if _is_text_column_type(col.get("type_text", ""))
     ]
+    # Iceberg-v3-era surfacing: feature badges from the Delta/UniForm
+    # properties + per-column VARIANT/geospatial kinds, both derived
+    # from metadata already fetched (no extra round-trip).
+    table_props = (table or {}).get("properties") if isinstance(table, dict) else None
+    table_features = table_features_service.table_feature_badges(table_props)
+    advanced_column_kinds = table_features_service.column_type_kinds(_cols)
     return get_templates(request).TemplateResponse(
         request,
         "pages/table.html",
@@ -325,6 +332,8 @@ async def table_detail(
             "schema_name": schema_name,
             "table_name": table_name,
             "table": table,
+            "table_features": table_features,
+            "advanced_column_kinds": advanced_column_kinds,
             "tags": tags,
             "permissions": permissions,
             "effective": effective,

@@ -157,7 +157,10 @@
                         </td>
                         <td data-label="Format">
                             {% if tbl.data_source_format %}
-                            <span class="badge text-bg-info text-dark">{{ tbl.data_source_format }}</span>
+                            {% set _fb = format_badge(tbl.data_source_format) %}
+                            <span class="badge {{ _fb.css }}">
+                                {%- if _fb.icon %}<i class="bi {{ _fb.icon }} me-1"></i>{% endif -%}
+                                {{ _fb.label }}</span>
                             {% else %}<span class="text-muted">—</span>{% endif %}
                         </td>
                         <td class="text-muted small" data-label="Columns">{{ (tbl.columns or [])|length }}</td>

@@ -23,6 +23,7 @@ from fastapi.templating import Jinja2Templates
 from markdown_it import MarkdownIt
 
 import pointlessql
+from pointlessql.services.table_features import format_badge as _format_badge
 from pointlessql.web import get_help as _get_help
 from pointlessql.web import status_class as _status_class
 
@@ -175,6 +176,11 @@ def register_template_filters(templates: Jinja2Templates) -> None:
     templates.env.globals["status_class"] = _status_class  # pyright: ignore[reportArgumentType]
 
     templates.env.globals["paginate_url"] = _paginate_url  # pyright: ignore[reportArgumentType]
+
+    # Centralised data-source-format → badge descriptor.  Templates call
+    # ``{{ format_badge(tbl.data_source_format) }}`` so Delta and Iceberg
+    # render as first-class peers wherever a table format is shown.
+    templates.env.globals["format_badge"] = _format_badge  # pyright: ignore[reportArgumentType]
 
 
 __all__ = ["register_template_filters"]

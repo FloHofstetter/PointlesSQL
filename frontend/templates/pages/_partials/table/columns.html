@@ -49,7 +49,16 @@
  </a>
  {% endif %}
  </td>
- <td class="font-monospace small text-info" data-label="Type">{{ col.type_text }}</td>
+ <td class="font-monospace small text-info" data-label="Type">{{ col.type_text }}
+ {% set _kind = advanced_column_kinds.get(col.name) if advanced_column_kinds else None %}
+ {% if _kind == 'variant' %}
+ <span class="badge bg-primary-subtle text-primary-emphasis border border-primary-subtle ms-1"
+       title="Semi-structured VARIANT — expanded in preview">VARIANT</span>
+ {% elif _kind == 'geospatial' %}
+ <span class="badge bg-success-subtle text-success-emphasis border border-success-subtle ms-1"
+       title="Geospatial type (GEOMETRY / GEOGRAPHY)"><i class="bi bi-geo-alt me-1"></i>geo</span>
+ {% endif %}
+ </td>
  <td data-label="Nullable">
  {% if col.nullable %}
  <span class="text-muted small">nullable</span>
