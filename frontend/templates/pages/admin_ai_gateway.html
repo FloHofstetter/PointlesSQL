@@ -1,0 +1,271 @@
+{% extends "base.html" %}
+{% block title %}AI gateway · PointlesSQL{% endblock %}
+
+{% set breadcrumbs = [
+    {"label": "Home", "href": "/"},
+    {"label": "Admin", "href": "/admin"},
+    {"label": "AI gateway"}
+] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-1"
+     x-data="{
+        overview: null,
+        loading: true,
+        window: '168',
+        budget: '',
+        async init() { await this.load(); },
+        async load() {
+            this.loading = true;
+            const params = new URLSearchParams();
+            if (this.window) {
+                const sinceMs = Date.now() - (parseInt(this.window, 10) * 3600 * 1000);
+                params.set('since', new Date(sinceMs).toISOString());
+            }
+            if (this.budget !== '' && this.budget !== null) {
+                params.set('budget', this.budget);
+            }
+            const qs = params.toString();
+            const r = await window.pqlApi.fetch(
+                '/api/admin/ai-gateway/overview' + (qs ? '?' + qs : '')
+            );
+            this.loading = false;
+            if (r.ok) { this.overview = r.data; }
+        },
+        fmtCost(v) {
+            return (v === null || v === undefined) ? '—' : '$' + Number(v).toFixed(4);
+        },
+        fmtTokens(v) { return Number(v || 0).toLocaleString(); },
+        budgetClass() {
+            const s = this.overview && this.overview.budget && this.overview.budget.status;
+            if (s === 'exhausted') { return 'alert-danger'; }
+            if (s === 'warn') { return 'alert-warning'; }
+            return 'alert-success';
+        }
+     }">
+
+    <div class="d-flex align-items-center gap-2 mb-3">
+        <i class="bi bi-cpu fs-3"></i>
+        <h1 class="h3 mb-0">AI gateway</h1>
+    </div>
+
+    <p class="text-muted">
+        Unified AI-spend governance over the Lens chat surface: every model round-trip rolled up by the provider and
+        model that served it and by the user it ran for, with the spend split into model-inference cost (assistant
+        turns) and tool / SQL cost (tool turns). Type a budget to evaluate the accrued spend against warn / block
+        thresholds. Hard per-session caps already live on the cost gate — this view is the cross-session visibility and
+        attribution layer.
+    </p>
+
+    <div class="row g-2 align-items-end mb-3">
+        <div class="col-auto">
+            <label class="form-label small text-muted mb-1" for="aigw-window">Window</label>
+            <select id="aigw-window" class="form-select form-select-sm" x-model="window" @change="load()">
+                <option value="24">Last 24 hours</option>
+                <option value="168">Last 7 days</option>
+                <option value="720">Last 30 days</option>
+                <option value="">All time</option>
+            </select>
+        </div>
+        <div class="col-auto">
+            <label class="form-label small text-muted mb-1" for="aigw-budget">Budget (spend ceiling)</label>
+            <input id="aigw-budget" type="number" min="0" step="0.01" class="form-control form-control-sm"
+                   style="max-width: 12rem;" x-model="budget" @change="load()" placeholder="e.g. 100">
+        </div>
+        <div class="col-auto">
+            <button type="button" class="btn btn-outline-secondary btn-sm" @click="load()">
+                <i class="bi bi-arrow-clockwise me-1"></i>Refresh
+            </button>
+        </div>
+    </div>
+
+    <div x-show="loading" class="text-muted small">Loading…</div>
+
+    <template x-if="!loading && overview">
+        <div>
+            <div class="row g-2 mb-3">
+                <div class="col-6 col-md-auto">
+                    <div class="card"><div class="card-body py-2 px-3">
+                        <div class="small text-muted">Total spend</div>
+                        <div class="h4 mb-0" x-text="fmtCost(overview.totals.total_cost)"></div>
+                    </div></div>
+                </div>
+                <div class="col-6 col-md-auto">
+                    <div class="card"><div class="card-body py-2 px-3">
+                        <div class="small text-muted">Inference</div>
+                        <div class="h4 mb-0" x-text="fmtCost(overview.totals.llm_cost)"></div>
+                    </div></div>
+                </div>
+                <div class="col-6 col-md-auto">
+                    <div class="card"><div class="card-body py-2 px-3">
+                        <div class="small text-muted">Tool / SQL</div>
+                        <div class="h4 mb-0" x-text="fmtCost(overview.totals.tool_cost)"></div>
+                    </div></div>
+                </div>
+                <div class="col-6 col-md-auto">
+                    <div class="card"><div class="card-body py-2 px-3">
+                        <div class="small text-muted">Tokens (in / out)</div>
+                        <div class="h4 mb-0">
+                            <span x-text="fmtTokens(overview.totals.tokens_in)"></span>
+                            <span class="text-muted">/</span>
+                            <span x-text="fmtTokens(overview.totals.tokens_out)"></span>
+                        </div>
+                    </div></div>
+                </div>
+                <div class="col-6 col-md-auto">
+                    <div class="card"><div class="card-body py-2 px-3">
+                        <div class="small text-muted">Sessions</div>
+                        <div class="h4 mb-0" x-text="overview.totals.sessions"></div>
+                    </div></div>
+                </div>
+            </div>
+
+            <div x-show="overview.budget" x-cloak class="alert d-flex align-items-center gap-3"
+                 :class="budgetClass()" role="alert">
+                <i class="bi bi-cash-coin fs-4"></i>
+                <div class="flex-grow-1">
+                    <span class="fw-semibold text-capitalize" x-text="overview.budget && overview.budget.status"></span>
+                    —
+                    <span x-text="fmtCost(overview.budget && overview.budget.accrued)"></span>
+                    of
+                    <span x-text="fmtCost(overview.budget && overview.budget.amount)"></span>
+                    used
+                    (<span x-text="(overview.budget && overview.budget.percent_used) + '%'"></span>)
+                    <div class="progress mt-1" style="height: 6px;">
+                        <div class="progress-bar"
+                             :class="overview.budget && overview.budget.status === 'exhausted' ? 'bg-danger'
+                                     : overview.budget && overview.budget.status === 'warn' ? 'bg-warning' : 'bg-success'"
+                             :style="'width: ' + Math.min(100, (overview.budget && overview.budget.percent_used) || 0)
+                                     + '%'"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row g-3">
+                <div class="col-12 col-xl-6">
+                    <div class="card">
+                        <div class="card-header py-2 fw-semibold">Spend by provider</div>
+                        <div class="table-responsive">
+                            <table class="table table-sm align-middle mb-0">
+                                <thead>
+                                    <tr class="small text-muted">
+                                        <th>Provider</th><th class="text-end">Sessions</th>
+                                        <th class="text-end">Inference</th><th class="text-end">Tool</th>
+                                        <th class="text-end">Total</th><th class="text-end">Models</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <template x-for="row in overview.by_provider" :key="row.key">
+                                        <tr>
+                                            <td><code x-text="row.key"></code></td>
+                                            <td class="text-end" x-text="row.sessions"></td>
+                                            <td class="text-end" x-text="fmtCost(row.llm_cost)"></td>
+                                            <td class="text-end" x-text="fmtCost(row.tool_cost)"></td>
+                                            <td class="text-end" x-text="fmtCost(row.total_cost)"></td>
+                                            <td class="text-end" x-text="row.distinct_models"></td>
+                                        </tr>
+                                    </template>
+                                    <tr x-show="overview.by_provider.length === 0">
+                                        <td colspan="6" class="text-muted small">No Lens spend in this window.</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-12 col-xl-6">
+                    <div class="card">
+                        <div class="card-header py-2 fw-semibold">Spend by model</div>
+                        <div class="table-responsive">
+                            <table class="table table-sm align-middle mb-0">
+                                <thead>
+                                    <tr class="small text-muted">
+                                        <th>Model</th><th>Provider</th><th class="text-end">Sessions</th>
+                                        <th class="text-end">Total</th><th class="text-end">Tokens</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <template x-for="row in overview.by_model" :key="row.provider + ':' + row.key">
+                                        <tr>
+                                            <td><code x-text="row.key"></code></td>
+                                            <td class="small text-muted" x-text="row.provider"></td>
+                                            <td class="text-end" x-text="row.sessions"></td>
+                                            <td class="text-end" x-text="fmtCost(row.total_cost)"></td>
+                                            <td class="text-end"
+                                                x-text="fmtTokens(row.tokens_in + row.tokens_out)"></td>
+                                        </tr>
+                                    </template>
+                                    <tr x-show="overview.by_model.length === 0">
+                                        <td colspan="5" class="text-muted small">No Lens spend in this window.</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-12 col-xl-6">
+                    <div class="card">
+                        <div class="card-header py-2 fw-semibold">Spend by user</div>
+                        <div class="table-responsive">
+                            <table class="table table-sm align-middle mb-0">
+                                <thead>
+                                    <tr class="small text-muted">
+                                        <th>User</th><th class="text-end">Sessions</th>
+                                        <th class="text-end">Total</th><th class="text-end">Models</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <template x-for="row in overview.by_user" :key="row.key">
+                                        <tr>
+                                            <td x-text="row.key"></td>
+                                            <td class="text-end" x-text="row.sessions"></td>
+                                            <td class="text-end" x-text="fmtCost(row.total_cost)"></td>
+                                            <td class="text-end" x-text="row.distinct_models"></td>
+                                        </tr>
+                                    </template>
+                                    <tr x-show="overview.by_user.length === 0">
+                                        <td colspan="4" class="text-muted small">No Lens spend in this window.</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-12 col-xl-6">
+                    <div class="card">
+                        <div class="card-header py-2 fw-semibold">Recent sessions</div>
+                        <div class="table-responsive">
+                            <table class="table table-sm align-middle mb-0">
+                                <thead>
+                                    <tr class="small text-muted">
+                                        <th>Session</th><th>Model</th><th>User</th>
+                                        <th class="text-end">Cost</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <template x-for="sess in overview.recent_sessions" :key="sess.id">
+                                        <tr>
+                                            <td class="text-truncate" style="max-width: 12rem;"
+                                                x-text="sess.title"></td>
+                                            <td><code x-text="sess.model"></code></td>
+                                            <td x-text="sess.owner"></td>
+                                            <td class="text-end" x-text="fmtCost(sess.total_cost)"></td>
+                                        </tr>
+                                    </template>
+                                    <tr x-show="overview.recent_sessions.length === 0">
+                                        <td colspan="4" class="text-muted small">No sessions in this window.</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </template>
+</div>
+{% endblock %}
