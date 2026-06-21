@@ -3854,6 +3854,803 @@ PointlesSQL
 │       │   Kapazität („Budget erreicht in N Tagen") + Cost am Agent-Run +
 │       │   FinOps-Grafana-Panels.  estimated_cost = Schätzung, kein $.
 │   │
+├── Phase 245 — Databricks Free Edition expansion: verifiziert bereits vorhanden — kein Code (Summit-Recherche)  ✅ verified (local, 2026-06-21)
+│   │
+│   │   Dreiunddreißigster und letzter Eintrag aus
+│   │   `databricks-summit-backlog.md` (Free-Edition-Erweiterung um Genie
+│   │   Code, serverless GPUs, Lakebase, Agent Bricks, Lakeflow Designer).
+│   │   Es ist eine **Paketierungs-/Preisankündigung** (Gratis-Tier), keine
+│   │   neue Produktfunktion — PointlesSQL modelliert bewusst keine
+│   │   Entitlements/Billing/Free-Tier, also entsteht keine neue soyuz-
+│   │   catalog-UI-Fläche.  Verifiziert, dass vier der fünf gebündelten
+│   │   Produkte bereits als direkte Analoga existieren: **Lakebase**
+│   │   (`services/synced_tables.py` + `api/online_tables_routes.py` +
+│   │   `services/pg_sync/`), **Agent Bricks** (`services/agent_runs` +
+│   │   `services/agent_gateway.py` + `api/mcp`), **Lakeflow Designer**
+│   │   (`services/pipelines` + `api/pipelines_routes.py`) und **Genie Code**
+│   │   (`services/genie` + `services/genie_code.py` + `api/sql_chat_routes`).
+│   │   Nur die serverless GPUs sind Hardware-/Compute-Infrastruktur und
+│   │   bleiben — korrekt — außerhalb des Scopes.  Kein Code geändert; die
+│   │   Gates blieben aus der vorigen Runde grün.  Damit ist der gesamte
+│   │   Summit-Backlog abgearbeitet (33/33).
+│   │
+├── Phase 244 — Genie for Microsoft Teams / M365 Copilot: token-authentifizierter @Genie-Bot-Webhook über die grant-erzwungene Genie-Engine + Connector-Registry-Admin-Konsole (Summit-Recherche)  ✅ shipped (local, 2026-06-21)
+│   │
+│   │   Zweiunddreißigster umgesetzter Eintrag aus
+│   │   `databricks-summit-backlog.md` (Genie für Microsoft Teams + M365
+│   │   Copilot: @Genie in einem Teams-Thread erwähnen, UC-governte Antwort
+│   │   aus dem Lakehouse).  PointlesSQL hatte die Genie-Engine schon in-app
+│   │   (NL→SQL über kuratierte Spaces) + einen MCP-Surface; gefehlt hat der
+│   │   **ausgehende Konnektor in externe Chat-Tools**.  Geliefert: eine
+│   │   Connector-Registry (`models/genie_connectors.py` →
+│   │   `genie_bot_connectors`, Migration `d118521b6c15`, eine einzelne
+│   │   Tabelle, drift-clean) + `services/genie_connectors.py` (CRUD,
+│   │   Shared-Secret-Token nur als SHA-256-Hash gespeichert, einmalig im
+│   │   Klartext bei create/rotate ausgegeben, `authenticate` per public_id +
+│   │   konstanter-Zeit-`hmac.compare_digest`) + der pure Bot-Framework-
+│   │   Adapter `services/genie_teams.py` (Activity parsen, `@Genie`-Mention
+│   │   strippen, Reply-Activity mit getauschten from/recipient bauen).
+│   │   Inbound-Webhook `POST /api/genie/teams/{public_id}/messages`
+│   │   (`api/genie_teams_routes.py`, in `PUBLIC_PREFIXES` aufgenommen — Auth
+│   │   ist der Connector-Token, nicht das Session-Cookie): authentifiziert
+│   │   den Token, parst die Activity, leitet eine Nachricht durch den
+│   │   **exakt gleichen grant-erzwungenen Genie-Pfad** wie die In-App-Fläche
+│   │   (`build_context` → `generate_sql` → `resolve_select_context` →
+│   │   `PQL.sql`, der Bot enforced als sein `created_by`-Prinzipal) und
+│   │   auditet jede Antwort; degradiert höflich (kein 503) bei fehlendem LLM
+│   │   oder ungebundenem Space.  Admin-Konsole `/admin/genie-connectors`
+│   │   (`api/admin/genie_connectors.py` + Template + Landing-Card):
+│   │   Connector anlegen/Token rotieren (einmalig sichtbar)/Space binden/
+│   │   enablen/löschen.  16 Tests (Adapter, Token-Hash, Registry-CRUD,
+│   │   Auth-Reject disabled/bad-token, Webhook 401/Reply/Ack, Admin-Konsole
+│   │   + Auth), alle Gates inkl. biome + alembic-Drift + form-labels grün,
+│   │   pyright 0/1073 (1065).  Vertagt (je eigener Scope): die echte
+│   │   Bot-Framework-JWT-Validierung (hier Shared-Secret-Token), ausgehendes
+│   │   proaktives Messaging über `serviceUrl`, das Copilot-Studio-Manifest
+│   │   und die Live-LLM-Antwort (braucht konfigurierten Provider + gebundenen
+│   │   Space; deterministisch über die Degradations-Zweige getestet).
+│   │
+├── Phase 243 — Genie App Builder: NL-to-App-Authoring — Prompt → lauffähiges App-Scaffold (FastAPI/Streamlit) auf dem Apps-Hosting-Klon, LLM mit deterministischem Fallback (Summit-Recherche)  ✅ shipped (local, 2026-06-21)
+│   │
+│   │   Einunddreißigster umgesetzter Eintrag aus
+│   │   `databricks-summit-backlog.md` (Genie App Builder: "Governed Vibe
+│   │   Coding" — eine NL-Beschreibung wird zur lauffähigen Business-App,
+│   │   deployt über Databricks Apps).  PointlesSQL hatte beide Hälften
+│   │   schon adjazent (den Apps-Hosting-Klon + die Genie/Lens-LLM-
+│   │   Plumbing); gefehlt hat die **Authoring-Verdrahtung dazwischen**.
+│   │   Geliefert: `services/genie_app_builder.py` (Scaffold-Assembly ist
+│   │   pure + deterministisch) — `extract_python` (fenced ```python aus der
+│   │   LLM-Antwort), `default_title`, `build_system_prompt` (pint das
+│   │   Modell auf eine einzige `app.py` je kind), `scaffold_app` (baut eine
+│   │   lauffähige Einzeldatei: nutzt den LLM-Body verbatim, wenn er den
+│   │   Entry-Point definiert, sonst ein deterministisches Placeholder-App,
+│   │   das den Prompt rendert — also immer lauffähig) und das async
+│   │   `generate_app_source`, das den Workspace-BYO-LLM (geteilte Lens-
+│   │   Credential-Zeilen) draftet und **ohne konfigurierten LLM auf das
+│   │   Scaffold zurückfällt** (kein 503, das Feature funktioniert end-to-
+│   │   end ohne Provider).  Route `POST /api/apps/genie-build`
+│   │   (`api/genie_app_builder_routes.py`, workspace-admin-geschützt):
+│   │   Prompt + kind → `generate_app_source` → `app_hosting.create_app`,
+│   │   der App wird danach auf der regulären `/apps`-Fläche verwaltet
+│   │   (Start/Edit/Proxy), keine neue Metadatenfläche.  Authoring-Card
+│   │   "Build with Genie" auf `pages/apps.html` + `genieBuild()` in
+│   │   `apps.js`.  14 Tests (extract/scaffold/Title/Fallback/Route-Lifecycle
+│   │   + Auth), alle Gates inkl. biome + form-labels grün, pyright 0/1073
+│   │   (1065).  Vertagt (je eigener Scope): der echte LLM-Draft-Pfad braucht
+│   │   eine konfigurierte BYO-Credential (im Test deterministischer Fallback)
+│   │   und eine Edit-vor-Deploy-Preview-UX (heute editiert man die Quelle
+│   │   nach dem Anlegen auf der App-Detailseite).
+│   │
+├── Phase 242 — Excel Add-in: governter Lakehouse-/Metric-View-Bridge — Office.js-Manifest + OData-v4-Feed über den grant-erzwungenen Metric-Query-Pfad (Summit-Recherche)  ✅ shipped (local, 2026-06-21)
+│   │
+│   │   Dreißigster umgesetzter Eintrag aus
+│   │   `databricks-summit-backlog.md` (treiberloses Excel-Add-in, das
+│   │   governte Lakehouse-Daten + UC-Metric-Views direkt in Excel bringt,
+│   │   inkl. Write-back).  Die Datenseite existiert schon vollständig
+│   │   (grant-erzwungene SELECT-Reads, der Metric-View-Query-Pfad via
+│   │   `compile_metric_query`, der PQL-Write-back-Pfad); gefehlt hat der
+│   │   **externe Excel-Client-Adapter**.  Geliefert: `services/excel_bridge.py`
+│   │   (pure, getestet) — `to_odata_feed` (tabellarisches Ergebnis →
+│   │   OData-v4-JSON-Envelope, den Excels "Aus OData-Feed" liest),
+│   │   `odata_service_document` (Service-Dokument der ziehbaren Feeds) und
+│   │   `office_manifest` (Office.js-TaskPaneApp-Manifest-XML, korrekt
+│   │   ge-escaped, das Excel auf diesen Server zeigt).  Routen in
+│   │   `api/excel_routes.py`: `GET /api/excel/manifest.xml`
+│   │   (application/xml-Manifest), `GET /api/excel/odata?catalog=&schema=`
+│   │   (Service-Dokument der Metric-Views via UC-Facade) und
+│   │   `GET /api/excel/odata/metric/{full_name}` (kompiliert die Metric-Query,
+│   │   löst den grant-erzwungenen Read-Kontext über `resolve_select_context`
+│   │   auf, führt ihn über den synchronen PQL-Bridge aus und wickelt das
+│   │   Ergebnis in den OData-Feed).  6 Tests (Feed-Shaping inkl. dict-Columns
+│   │   + leer, Service-Dokument, wohlgeformtes Manifest-XML, Manifest-Route
+│   │   + leeres Service-Dokument ohne Schema), alle Gates grün, pyright
+│   │   0/1073 (1065).  Vertagt (je eigener Scope): das eigentliche
+│   │   Office.js-Taskpane-HTML (rein client-seitig) und der Write-back-Round-
+│   │   trip über den vorhandenen PQL-Merge-Pfad (eigene Mutations-/Konflikt-
+│   │   Semantik).
+│   │
+├── Phase 241 — Databricks Apps: App Spaces — Governance-Grenze über Hosted Apps (geteilte API-Scopes + Zuweisung) (Summit-Recherche)  ✅ shipped (local, 2026-06-21)
+│   │
+│   │   Neunundzwanzigster umgesetzter Eintrag aus
+│   │   `databricks-summit-backlog.md` (Databricks Apps: App Spaces als
+│   │   Governance-Grenze, Marketplace-Listing, scale-to-zero Micro Apps).
+│   │   PointlesSQL hat schon einen Apps-Klon (per-Workspace App-Hosting +
+│   │   Reverse-Proxy); geliefert ist Sub-Feature #1, die **App-Spaces-
+│   │   Governance-Grenze**: neue Eigen-Metadaten-Tabelle `app_spaces`
+│   │   (Migration `442e355e08bf`) + ein nullable `hosted_apps.app_space_id`-
+│   │   FK (SET NULL beim Space-Delete, benannt damit der SQLite-Batch-FK +
+│   │   die create_all-Drift übereinstimmen).  `services/app_spaces.py`:
+│   │   create/list (mit Member-Count)/update/delete-Space, `assign_app`
+│   │   (App↔Space, workspace-validiert) und der `effective_app_scopes`-
+│   │   Resolver (eine App erbt die API-Scopes ihres Space).  Admin-Konsole
+│   │   `/admin/app-spaces` (Space-Create-Form mit Scope-Liste, Space-Liste
+│   │   mit Scopes/Member-Count/Scope-Edit/Delete, Hosted-Apps-Tabelle mit
+│   │   Space-Dropdown je App) + `GET/POST/PATCH/DELETE /api/admin/app-spaces`
+│   │   + `…/assign` + Landing-Card.  9 Tests (Scope-Dedup, Create-
+│   │   Validierung, Assign + Effective-Scopes + Detach, Foreign-Reject,
+│   │   Delete-ungroups-Apps, Member-Count, Route-Lifecycle + Render +
+│   │   Auth), alle Gates inkl. biome + alembic-Drift grün, pyright 0/1073
+│   │   (1065).  Vertagt (je eigener Scope): die tatsächliche On-behalf-of-
+│   │   user-Scope-Durchsetzung über grant_enforcement/policy_as_code, das
+│   │   Marketplace-Listing einer App und die scale-to-zero/Usage-Ansicht
+│   │   (Micro-VM-Infra bleibt out-of-scope).
+│   │
+├── Phase 240 — AI/BI Dashboards 2026: CSV-Anhang-Kanal für Snapshot-Subscriptions (Summit-Recherche)  ✅ shipped (local, 2026-06-21)
+│   │
+│   │   Achtundzwanzigster umgesetzter Eintrag aus
+│   │   `databricks-summit-backlog.md` (AI/BI-Dashboards-2026-Refresh: neue
+│   │   Chart-Kinds Gantt/Choropleth, Cross-Filter/Drill-through, Workspace-
+│   │   Themes+Fonts, Slack/Teams/E-Mail-Abos mit CSV-Anhang).  Geliefert
+│   │   ist die baubare, testbare Scheibe daraus: der tabellarische
+│   │   **CSV-Anhang-Kanal**.  Ein Dashboard-Snapshot friert bereits jedes
+│   │   Widget-Ergebnis (columns+rows) in seinem Payload ein;
+│   │   `services/bi_snapshot_csv.py` (pure, getestet) serialisiert die
+│   │   datengetragenen Widgets zu einem CSV-Dokument (eine `# <Titel>`-
+│   │   Sektion je Widget, korrektes csv-Quoting für Kommas/Quotes, NULL→""),
+│   │   Markdown-/Errored-Widgets übersprungen; Route
+│   │   `GET /api/bi/dashboards/{slug}/snapshots/{id}/csv` liefert das als
+│   │   `text/csv`-Attachment (genau das CSV, das ein geplantes Abo
+│   │   anhängen würde).  3 Tests (Daten-Widgets serialisiert + andere
+│   │   übersprungen, csv-Escaping + NULL, dict-Columns + leeres Payload),
+│   │   alle Gates inkl. biome grün, pyright 0/1073 (1065), keine Migration.
+│   │   Vertagt (je eigener Scope, größtenteils JS/Renderer): die neuen
+│   │   Chart-Sub-Types Gantt + Choropleth im ECharts-Renderer (rein
+│   │   client-seitig, kein Server-Enum), Cross-Filter/Drill-through-State,
+│   │   Workspace-Themes+Fonts und das tatsächliche Slack/Teams/E-Mail-
+│   │   Routing der Subscription (Reyden/Lakehouse//RT bleibt out-of-scope).
+│   │
+├── Phase 239 — Lakebase governed Online/Synced-Table-Surface — bereits vorhanden, verifiziert (Summit-Recherche)  ✅ verified (local, 2026-06-21; no new code)
+│   │
+│   │   Siebenundzwanzigster Backlog-Eintrag aus
+│   │   `databricks-summit-backlog.md` (Lakebase managed serverless
+│   │   Postgres OLTP — governed online/synced-table surface, markiert
+│   │   `Bereits vorhanden`).  **Kein neuer Code** — der Eintrag schreibt
+│   │   ausdrücklich vor, dass der verbleibende Teil (managed serverless
+│   │   Postgres-Engine + Provisioning/Billing) Cloud-Infra ist und „keine
+│   │   zusätzliche UI-Fläche" erzeugt.  Der UI-abbildbare Lakebase-Anteil
+│   │   ist die bereits geshippte Synced/Online-Tables-Schicht
+│   │   (`services/synced_tables.py` + `pg_sync/`, `/online-tables` mit
+│   │   Status/Sync-now/Lookup-Tester, Scheduler-Kind `table_sync`),
+│   │   gerade erst erweitert um das Ops/Health-Panel (Phase 235) und die
+│   │   Branching/Snapshots (Phase 236).  Diese Runde verifiziert die
+│   │   Vollständigkeit der Surface und hakt den Eintrag ab; alle Gates
+│   │   bleiben grün (keine Code-Änderung, nur Doku).
+│   │
+├── Phase 238 — Predictive Optimization: Maintenance-Policy-Registry (Catalog/Schema/Table-Scope) + Effective-Resolver + Konsole (Summit-Recherche)  ✅ shipped (local, 2026-06-20)
+│   │
+│   │   Sechsundzwanzigster umgesetzter Eintrag aus
+│   │   `databricks-summit-backlog.md` (Predictive Optimization: autonome
+│   │   Delta-Wartung OPTIMIZE/VACUUM/Clustering/ANALYZE mit Policy +
+│   │   Observability).  Der Engine-Teil (Compaction/Clustering) läuft
+│   │   bereits via PQL/deltalake; geliefert ist die *Control*-Seite: Eigen-
+│   │   Metadaten-Tabelle `optimization_policies` (Migration `aef5cb590bd7`,
+│   │   Scope-CHECK), ein `services/predictive_optimization.py` mit Scope-
+│   │   validierung (catalog=1/schema=2/table=3 Teile), `set_policy`-Upsert
+│   │   je Scope (enabled + optimize/vacuum/analyze + VACUUM-Retention),
+│   │   list/delete und vor allem dem `effective_policy`-Resolver, der je
+│   │   3-Part-Tabellenname most-specific-first auflöst (table ▸ schema ▸
+│   │   catalog ▸ Default = keine Wartung).  Admin-Konsole
+│   │   `/admin/optimization` (Set-Form mit Scope-Select + Op-Toggles,
+│   │   Policy-Liste, Effective-Resolver-Tester) + `GET/POST/DELETE
+│   │   /api/admin/optimization` + `…/effective?table=` + Landing-Card.
+│   │   8 Tests (Scope-Validierung, Upsert, Most-Specific-Resolution +
+│   │   Default + table-wins, Route-Set/List/Resolve + Render + Auth), alle
+│   │   Gates inkl. biome + alembic-Drift grün, pyright 0/1073 (1065).
+│   │   Vertagt (engine-adjacent): der cron-getriebene Wartungs-Executor,
+│   │   der die Policies ausführt, und das Observability-Panel über
+│   │   echte optimize()/vacuum()-Läufe + Statistik-Frische.
+│   │
+├── Phase 237 — Lakebase Search: Hybrid-Retrieval (Vector + Keyword via RRF) im Vector-Search-Endpunkt + Panel (Summit-Recherche)  ✅ shipped (local, 2026-06-20)
+│   │
+│   │   Fünfundzwanzigster umgesetzter Eintrag aus
+│   │   `databricks-summit-backlog.md` (Lakebase Search: agenten-natives
+│   │   Hybrid-Retrieval, Vektor-Ähnlichkeit + BM25 per Reciprocal Rank
+│   │   Fusion).  PointlesSQL hat beide Bausteine getrennt; geliefert ist
+│   │   die Fusions-Hälfte als pure, getestete Primitive:
+│   │   `services/hybrid_search.py` mit `keyword_relevance` (BM25-lite:
+│   │   saturierender TF-Score über die distinkten Query-Terme × Coverage),
+│   │   `reciprocal_rank_fusion` (1/(k+rank) über mehrere Ranglisten) und
+│   │   `fuse_vector_hits` (re-rankt die Vektor-Treffer, indem die Vektor-
+│   │   Ordnung mit der Keyword-Ordnung über dieselben Snippets per RRF
+│   │   fusioniert wird).  `POST /api/sql/vector_search` bekommt ein
+│   │   `hybrid`-Flag; im Hybrid-Modus trägt jeder Hit zusätzlich
+│   │   `keyword_score` + `fused_score` und die Liste ist nach Fused-Score
+│   │   sortiert.  Das semantic_search-Panel bekommt einen Hybrid-Switch.
+│   │   5 Tests (Keyword-Relevanz inkl. Frequenz/Case/Absenz, RRF-
+│   │   Agreement, fuse hebt Keyword-Match über keyword-losen Mid-Vektor-
+│   │   Hit, Empty), alle Gates inkl. biome + raw-fetch-Budget grün, pyright
+│   │   0/1073 (1065), keine Migration.  Vertagt (engine-/storage-intern):
+│   │   die RaBitQ-Quantisierung und die Postgres-`lakebase_vector`/
+│   │   `lakebase_text`-Extensions; die Keyword-Seite re-rankt hier den
+│   │   Vektor-Kandidatenpool statt aus einem separaten BM25-Index über
+│   │   Delta-Spalten zu ziehen.
+│   │
+├── Phase 236 — Lakebase: Git-style Branching/Snapshots über Synced Tables (Management-Registry: create/promote/discard) (Summit-Recherche)  ✅ shipped (local, 2026-06-20)
+│   │
+│   │   Vierundzwanzigster umgesetzter Eintrag aus
+│   │   `databricks-summit-backlog.md` (Lakebase Git-style Branching +
+│   │   Snapshots: Copy-on-Write-Kopien produktiver Daten).  PointlesSQL
+│   │   hat das Branch-UX-Muster schon als Delta-Branching (`pql/branch/`);
+│   │   geliefert ist dieselbe Branch/Snapshot-Verwaltung über den synced/
+│   │   pg_sync-Postgres-Mirror.  Neu: Eigen-Metadaten-Tabelle
+│   │   `synced_table_snapshots` (Migration `ca59a629d146`, CHECK auf
+│   │   status), ein `services/synced_table_snapshots.py`-CRUD (create
+│   │   erfasst die aktuelle `last_synced_version` + `rows_synced` der
+│   │   Synced Table als Snapshot; promote setzt die serving-Baseline und
+│   │   demotet jeden Sibling; discard = soft-tombstone; delete = hart) und
+│   │   Routen unter `/api/online-tables/{name}/snapshots` (+ promote/
+│   │   discard/delete) plus ein „Snapshots & branches"-Panel je Online
+│   │   Table auf `/online-tables` (Create-Form + Liste mit Promote/Discard/
+│   │   Delete).  10 Tests (Service-CRUD inkl. Capture/Validierung/Promote-
+│   │   demotes-Sibling/discard/delete + Route-Lifecycle), alle Gates inkl.
+│   │   biome + alembic-Drift grün, pyright 0/1073 (1065).  Vertagt (engine-
+│   │   intern, out-of-scope): die eigentliche Copy-on-Write-Storage-Engine
+│   │   und der Live-Preview eines Branches im Postgres-Ziel — die Snapshots
+│   │   sind hier Metadaten-Marker (Version/Row-Count), keine echten Daten-
+│   │   kopien.
+│   │
+├── Phase 235 — Lakebase: autonomes Ops-/Health-Panel über Online/Synced Tables (Propose-and-Approve-Empfehlungen) (Summit-Recherche)  ✅ shipped (local, 2026-06-20)
+│   │
+│   │   Dreiundzwanzigster umgesetzter Eintrag aus
+│   │   `databricks-summit-backlog.md` (Lakebase autonomous database
+│   │   operations: Agenten überwachen DB-Health, schlagen Indizes/Recovery
+│   │   vor; DBA-Arbeit verschiebt sich Richtung Governance/Policy).
+│   │   PointlesSQL hat mit synced_tables/pg_sync schon ein „Lakebase-lite";
+│   │   geliefert ist die Governance-Surface darauf: `services/lakebase_ops.py`
+│   │   (pure, getestet) leitet je Synced Table aus dem Lifecycle-State
+│   │   (status/last_error/last_synced_at/mode/primary_keys) ein Health-
+│   │   Verdikt (healthy/syncing/degraded/critical) + advisory Recommendations
+│   │   ab (investigate_failure, initial_sync, resync bei Staleness,
+│   │   set_primary_keys für CDF-ohne-PK, add_serving_index als Info) — die
+│   │   Propose-Hälfte eines Propose-and-Approve-Flows; `ops_overview()`
+│   │   rollt sie pro Workspace (worst-first sortiert, Summary je Health).
+│   │   Route `GET /api/online-tables/ops` + ein read-only „Autonomous ops
+│   │   & health"-Panel auf `/online-tables` (Health-Badges + Recommendation-
+│   │   Liste je Tabelle).  9 Tests (jeder Health-/Recommendation-Pfad +
+│   │   Overview-Summary/Sortierung + Route), alle Gates inkl. biome grün,
+│   │   pyright 0/1073 (1065), keine Migration.  Vertagt (engine-intern):
+│   │   die eigentliche Index-/Recovery-Ausführung im Postgres-Ziel und das
+│   │   tatsächliche Latenz-/Slowdown-Signal (heute heuristisch aus dem
+│   │   Sync-State statt aus Live-Query-Telemetrie).
+│   │
+├── Phase 234 — Lakeflow Connect: neue Connector-Welle + Maturity (GA/Beta) in der Quellen-Galerie (Summit-Recherche)  ✅ shipped (local, 2026-06-20)
+│   │
+│   │   Zweiundzwanzigster umgesetzter Eintrag aus
+│   │   `databricks-summit-backlog.md` (neue Lakeflow-Connect-Konnektoren:
+│   │   Monday.com, Slack, Zoom, RabbitMQ, Pendo, Zoho Books, Jira, GitHub,
+│   │   Confluence, SharePoint, Google Drive, Outlook).  Baut auf der
+│   │   Connector-Galerie (Phase 231) auf: die SaaS-Konnektoren haben
+│   │   nativ keinen DuckDB-Reader, bleiben also `coming_soon`, werden aber
+│   │   jetzt vollständig abgebildet.  Geliefert: `connector_gallery.py`
+│   │   bekommt die neue Connector-Welle + ein `maturity`-Feld
+│   │   (available/ga/beta), das den realen Rollout spiegelt (Confluence =
+│   │   ga, der Rest der Welle = beta; SharePoint konservativ beta gemäß
+│   │   AWS-Docs), zwei neue Kategorien (`streaming` für RabbitMQ,
+│   │   `knowledge` für die Enterprise-Knowledge-Gruppe Jira/GitHub/
+│   │   Confluence/SharePoint/Google Drive/Outlook).  Das „New source"-
+│   │   Formular zeigt je coming_soon-Kachel ein GA- bzw. Beta-Badge statt
+│   │   nur „Soon".  5 Tests (Welle vollständig + disjunkt, Maturity-Werte,
+│   │   Render-Form inkl. neuer Kategorien, Gruppen-Reihenfolge), alle
+│   │   Gates inkl. biome grün, pyright 0/1073 (1065), keine Migration.
+│   │   Vertagt (wie Phase 231): die eigentlichen SaaS-/Streaming-Reader
+│   │   (brauchen API-Clients bzw. den Streaming-Pfad), nicht über DuckDB
+│   │   darstellbar.
+│   │
+├── Phase 233 — Lakeflow Jobs: table_update-Trigger auf Delta-Sharing-Shares + System-Tabellen (Quellenauswahl) (Summit-Recherche)  ✅ shipped (local, 2026-06-20)
+│   │
+│   │   Einundzwanzigster umgesetzter Eintrag aus
+│   │   `databricks-summit-backlog.md` (Lakeflow Jobs: Data-Readiness-
+│   │   Trigger auf geteilte + System-Tabellen, Beta).  Der Scheduler hatte
+│   │   den `table_update`-Trigger bereits (pollt die lokale Delta-Version
+│   │   per Run-as-User-Katalogclient, cursor-basiert).  Geliefert ist die
+│   │   Erweiterung der Versions-Quelle: `delta_sharing_consumer`
+│   │   bekommt `remote_table_version()` (+ den puren Header-Parser
+│   │   `_parse_delta_table_version`), das die OpenSharing-„Query Table
+│   │   Version"-Route (`…/tables/{t}/version`) hittet und die Version aus
+│   │   dem `Delta-Table-Version`-Header liest; `triggers.py` routet den
+│   │   `table_update`-Zweig per neuem `config["source"]`: `sharing` →
+│   │   `_sharing_table_version` (Provider per Alias + Share/Schema/Table),
+│   │   sonst (`local`/`system`) der bestehende Delta-Log-Pfad (System =
+│   │   nur vorbefüllte FQN, gleicher Katalog-Pfad).  Der Jobs-Trigger-
+│   │   Dialog bekommt eine Quellenauswahl (lokal / Delta Sharing / System)
+│   │   mit bedingten Provider-/Share-/Schema-Feldern.  6 Tests (Header-
+│   │   Parse, remote_table_version 200/Non-200, Sharing-Routing + fehlende
+│   │   Felder + unbekannter Provider), alle Gates inkl. biome grün,
+│   │   pyright 0/1073 (1065, an der Quelle: json-config nach isinstance
+│   │   auf `dict[str, Any]` gecastet → sogar Vorbestand bereinigt), keine
+│   │   Migration.  Reine Verdrahtung des bestehenden Triggers auf weitere
+│   │   Tabellenquellen, kein neuer Engine-Code.
+│   │
+├── Phase 232 — Lakeflow Designer: NL-Prompt → DataFrame-Studio-Pipeline (Plan→CanvasDoc-Assembler + /generate-Endpunkt) (Summit-Recherche)  ✅ shipped (local, 2026-06-20)
+│   │
+│   │   Zwanzigster umgesetzter Eintrag aus `databricks-summit-backlog.md`
+│   │   (Lakeflow Designer GA: NL-Prompt-to-Pipeline auf dem Visual-DP-
+│   │   Editor / DataFrame-Studio-Canvas).  Der visuelle Canvas + der sink-
+│   │   freie Studio-Compiler existierten schon; es fehlte die KI-
+│   │   Generierung.  Geliefert: `services/dataframe_designer.py` als
+│   │   deterministisches Rückgrat — `build_canvas_from_plan()` mappt einen
+│   │   LLM-Plan (geordnete Transform-Schritte) auf eine lineare Block-
+│   │   Kette (`InputPort(table) → step₁ → …`, jeweils „in"←„out" verdrahtet)
+│   │   über die acht erlaubten Single-Input-Blocktypen (Filter, Project,
+│   │   Rename, Cast, CalcColumn, Sort, Limit, Distinct) und schickt sie
+│   │   durch `validate_schema_flow`; `generate_pipeline()` baut den
+│   │   System-/User-Prompt, parst die JSON-Antwort robust und ruft den
+│   │   *injizierten* Completer (`Completer`-Seam) — testbar ohne Live-LLM.
+│   │   Route `POST /api/dataframe-studio/generate` löst den Workspace-
+│   │   Provider via neuem öffentlichen `ai_functions.resolve_completer`
+│   │   auf (klare 400, wenn keiner konfiguriert).  8 Tests (Linear-Wiring,
+│   │   Disallowed-/Unknown-Block, Input-Table-Pflicht, Seed-aus-Spalten,
+│   │   Generate mit Fake-Completer happy/parse-fail/disallowed, Route-422
+│   │   bei leerem Prompt), alle Gates inkl. biome grün, pyright 0/1073
+│   │   (1069), keine Migration; an der Quelle gefixt: Private-Usage von
+│   │   `_resolve_completer` über öffentlichen Wrapper, Side-Effect-Import +
+│   │   json-Parsing-Typisierung sauber für pyright.  Vertagt: der „Generate
+│   │   from prompt"-Knopf direkt im Studio-Canvas-JS (lädt das
+│   │   zurückgegebene Dokument in den Drawflow-Editor) — reine UI-Politur
+│   │   auf dem fertigen Endpunkt.
+│   │
+├── Phase 231 — Lakeflow Connect: Point-and-Click-Connector-Galerie (kategorisiert, Available ↔ Coming-soon) im Ingest-Formular (Summit-Recherche)  ✅ shipped (local, 2026-06-20)
+│   │
+│   │   Neunzehnter umgesetzter Eintrag aus `databricks-summit-backlog.md`
+│   │   (Lakeflow Connect → 100+ Point-and-Click-Konnektoren, GA).
+│   │   PointlesSQL hat schon eine gemanagte Point-and-Click-Ingestion mit
+│   │   sieben erstklassigen Connector-Kinds (Datei, S3/HTTP, Postgres/
+│   │   MySQL/SQLite), aber bisher als flache Radio-Liste.  Die
+│   │   funktionalen Reader sind durch die DuckDB-Scanner begrenzt — SaaS-
+│   │   Konnektoren (Salesforce/Workday) haben nativ keinen Reader.
+│   │   Geliefert: `services/ingest/connector_gallery.py` (pure, getestet)
+│   │   — eine kategorisierte Galerie, deren `available`-Einträge aus
+│   │   `INGEST_SOURCE_KINDS` abgeleitet sind (kann nie aus dem Tritt
+│   │   geraten) plus acht angekündigte `coming_soon`-Konnektoren (SQL
+│   │   Server, Salesforce, Workday, ServiceNow, Google Analytics,
+│   │   NetSuite, SharePoint, Google Drive) mit Label/Kategorie/Icon/
+│   │   Beschreibung; `gallery_groups()` gruppiert nach Files → Databases →
+│   │   Cloud → SaaS.  Das „New source"-Formular rendert daraus eine
+│   │   Point-and-Click-Galerie (Available = wählbare Radio-Kacheln mit
+│   │   Per-Kind-Config; Coming-soon = deaktivierte „Soon"-Kacheln) statt
+│   │   der flachen Liste.  4 Tests (Available=Working-Kinds, Coming-soon-
+│   │   Disjunktheit, Render-Form, Gruppen-Reihenfolge), alle Gates inkl.
+│   │   biome grün, pyright 0/1073 (1069), keine Migration.  Vertagt: die
+│   │   eigentlichen SaaS-/SQL-Server-Reader (brauchen API-Clients bzw.
+│   │   einen Scanner, nicht über DuckDB darstellbar) und die Free-Tier-/
+│   │   DBU-Abrechnung (serverless-Billing, out-of-scope).
+│   │
+├── Phase 230 — Genie Code: ganzseitiges agentisches Authoring-Command-Center (surface-übergreifender Hub + Run-Glance) (Summit-Recherche)  ✅ shipped (local, 2026-06-20)
+│   │
+│   │   Achtzehnter umgesetzter Eintrag aus `databricks-summit-backlog.md`
+│   │   (Genie Code: unified agentic-authoring command center across
+│   │   pipelines, jobs, ingest & ML, GA).  PointlesSQL hatte alle
+│   │   Einzelbausteine als eigene Surfaces (NL→SQL/Genie, NL→Notebook,
+│   │   Pipeline-Canvas, Ingest, Jobs/Scheduler, Agent-Run-Supervision,
+│   │   ML-Registry); es fehlte das ganzseitige, surface-übergreifende
+│   │   Dach.  Geliefert: `services/genie_code.py` mit der kuratierten
+│   │   `AUTHORING_SURFACES`-Registry (7 Einstiegspunkte, je label/desc/
+│   │   href/icon) + `command_center_overview()`, das die jüngsten Agent-
+│   │   Runs der Workspace zu einer Glance-Statistik (total/active/
+│   │   succeeded/failed/needs_approval) + Recent-Runs-Liste rollt; Seite
+│   │   `/genie-code` (Surface-Karten-Grid + Run-Glance) + `GET
+│   │   /api/genie-code/overview` + Nav-Eintrag „Genie Code".  Ergänzt das
+│   │   bestehende `/command-center` (Phase ~1, Parallel-Run-Cockpit) um
+│   │   das übergeordnete Authoring-Dach, ohne es zu duplizieren.  6 Tests
+│   │   (Surface-Registry, Stats/Recent inkl. active-Zählung, Limit, Route-
+│   │   /Render), alle Gates inkl. biome + Nav-/Bootstrap-Order grün,
+│   │   pyright 0/1073 (1069), keine Migration.  Vertagt (coming soon laut
+│   │   Quelle): autonome geplante Agent-Runs (NL-Prompt → Scheduler-Task,
+│   │   der einen Agent-Run autonom auslöst) — baut auf scheduler +
+│   │   agent_runs auf, eigener Scope.
+│   │
+├── Phase 229 — OpenSharing: Iceberg-REST-Verbindungshinweise je Share (Trino/Spark/PyIceberg/Flink/Snowflake) (Summit-Recherche)  ✅ shipped (local, 2026-06-20)
+│   │
+│   │   Siebzehnter umgesetzter Eintrag aus `databricks-summit-backlog.md`
+│   │   (OpenSharing: External Sharing an Iceberg-REST-Catalog-Clients,
+│   │   Iceberg-Interop GA).  PointlesSQL hat die volle Delta-Sharing-
+│   │   Provider-Seite (`/admin/sharing` + `/api/sharing`); der konkrete
+│   │   Beitrag ist der Client-Ausgabepfad.  Geliefert:
+│   │   `services/iceberg_rest_sharing.py` (pure, getestet) baut je Share +
+│   │   Iceberg-REST-Catalog-URI (+ optionalem Recipient-Token) copy-paste-
+│   │   fertige Verbindungs-Snippets für Trino, Spark, PyIceberg, Flink und
+│   │   Snowflake; Route `GET /api/sharing/shares/{name}/iceberg-rest`
+│   │   (admin) leitet die Catalog-URI aus der Request-Base + `/iceberg/v1`
+│   │   ab; UI: ein „Connect via Iceberg REST"-Panel im aufgeklappten
+│   │   Share-Detail der Sharing-Konsole (URI + Warehouse-Hinweis + Snippet
+│   │   je Engine).  4 Tests (Engine-Abdeckung + URI/Warehouse/Token im
+│   │   Snippet, Token-Placeholder, Route-Shape + Auth), alle Gates inkl.
+│   │   biome grün, pyright 0/1073 (1069), keine Migration.  Vertagt
+│   │   (soyuz-/Cloud-Ebene, out-of-scope): das eigentliche Iceberg-REST-
+│   │   Catalog-Serving in soyuz-catalogs SharingMixin (dann wird das Panel
+│   │   live), sowie SecureConnect (managed Cross-Cloud-Proxy) und Global
+│   │   Distribution (Cross-Region-Replikation) — beide ohne UI-Surface.
+│   │
+├── Phase 228 — Managed Iceberg als first-class Tabellenformat: format-bewusste Badges (Delta ↔ Iceberg) im Catalog-Browser (Summit-Recherche)  ✅ shipped (local, 2026-06-20)
+│   │
+│   │   Sechzehnter umgesetzter Eintrag aus `databricks-summit-backlog.md`
+│   │   (Managed Iceberg GA als vollwertiges Tabellenformat in UC,
+│   │   gleichberechtigt neben Delta).  Der Catalog-Browser kannte das
+│   │   `data_source_format`-Feld zwar, rendete Delta und Iceberg aber mit
+│   │   demselben generischen Badge — Iceberg war nicht first-class.
+│   │   Geliefert: `table_features.format_badge(data_source_format)` (pure,
+│   │   getestet) liefert je Format einen distinkten Badge-Deskriptor
+│   │   (label/css/icon/first_class) — Delta und Iceberg je eigene Farbe +
+│   │   Icon (first_class), Datei-Formate neutral, unbekannte
+│   │   durchgereicht; registriert als Jinja-Global in
+│   │   `_template_filters.py` (wie `status_class`), sodass Templates
+│   │   `{{ format_badge(...) }}` aufrufen.  Verdrahtet in die Tabellen-
+│   │   Liste (`tables.html`, Format-Spalte je Zeile) und die Detail-
+│   │   Overview (ersetzt die bisherige inline `_fmt_badge`-Map, DRY).  10
+│   │   Tests im `table_features`-Modul (3 neu: Delta/Iceberg first-class +
+│   │   distinkt, Datei-/Unbekannt-Formate, leerer Platzhalter), alle Gates
+│   │   inkl. biome grün, pyright 0/1073 (1069), keine Migration.  Vertagt
+│   │   (Engine-intern/out-of-scope): die eigentliche Iceberg-Snapshot-/
+│   │   Spec-Metadaten-Anzeige (sobald soyuz-catalog sie ausliefert) sowie
+│   │   Predictive Optimization / Liquid Clustering (nur deren Status wäre
+│   │   einblendbar; der PQL-Delta-Schreibpfad ist kein Iceberg-Writer).
+│   │
+├── Phase 227 — Governance Hub: vereinheitlichter Posture-Score + Remediation-Queue über Compliance-Findings + Run-Anomalien (Summit-Recherche)  ✅ shipped (local, 2026-06-20)
+│   │
+│   │   Fünfzehnter umgesetzter Eintrag aus `databricks-summit-backlog.md`
+│   │   (Governance Hub: unified posture + risk + remediation command
+│   │   center, Private Preview).  Die einzelnen Signalquellen existierten
+│   │   schon (Compliance-Scanner loggt `policy.compliance_violation`-
+│   │   Audit-Rows, Audit-Cockpit cached Anomaly-Verdikte auf
+│   │   `agent_runs`); es fehlte die aggregierende Rollup-Oberfläche.
+│   │   Geliefert: `services/governance_hub.py` (read-only) bündelt die
+│   │   de-duplizierten Compliance-Findings (Audit-Rows, neueste je
+│   │   target+kind+locus) und die anomalen Agent-Runs zu einem
+│   │   gewichteten Posture-Score (100 − min(100, 12·critical + 4·warn),
+│   │   Buchstaben-Grade A–F) plus einer severity-sortierten Remediation-
+│   │   Queue.  Admin-Konsole `/admin/governance-hub` (Posture-Grade-Karte
+│   │   + Severity/Source-Breakdown + Queue-Tabelle, Fenster-Filter) +
+│   │   `GET /api/admin/governance-hub/posture?since=` + Landing-Card.
+│   │   Keine Migration (liest bestehende Tabellen).  7 Tests (Score/Grade/
+│   │   Ranking, Finding-Dedup, saubere Workspace = 100/A, Penalty-Cap bei
+│   │   0/F, Route-/Auth-Tests), alle Gates inkl. biome grün, pyright
+│   │   0/1073 (1069); an der Quelle: json.loads-Detail per cast auf
+│   │   `dict[str, Any]` getypt, um neue pyright-Warnungen zu vermeiden.
+│   │   Vertagt (je eigene Signalquelle für spätere Runden): weitere
+│   │   Quellen in den Score einhängen (policy_as_code-Denials, Cost-Gate-
+│   │   Breaches, offene PII-Klassifikationen) und Remediation-Aktionen
+│   │   (Findings direkt aus der Queue triagieren/acknowledgen).
+│   │
+├── Phase 226 — Foreign Iceberg Federation: Iceberg-Connector-Presets im „New Foreign Catalog"-Flow (Summit-Recherche)  ✅ shipped (local, 2026-06-20)
+│   │
+│   │   Vierzehnter umgesetzter Eintrag aus `databricks-summit-backlog.md`
+│   │   (Foreign Iceberg Catalog Federation + Credential Vending, GA).
+│   │   PointlesSQL hat die volle Federation-CRUD (Connections / External
+│   │   Locations / Credentials) + generischen Foreign-Catalog-Flow schon
+│   │   (Lakehouse-Federation).  Geliefert ist Erweiterung #1: Iceberg-
+│   │   spezifische Connector-Typen mit vorausgefüllten Optionen je Quelle
+│   │   — `services/foreign_iceberg.py` (pure, getestete Preset-Registry)
+│   │   listet die sechs Iceberg-Quellen (AWS Glue, Snowflake Horizon,
+│   │   Hive Metastore, Salesforce Data Cloud, Google Cloud Lakehouse,
+│   │   Palantir), jede mit den erwarteten Option-Keys (`catalog-type`,
+│   │   `uri`/`warehouse`/`region` …) vorbelegt.  Der `connections`-Route
+│   │   reicht sie in den Kontext; das `create_foreign_catalog_modal`
+│   │   bekommt einen „Iceberg source"-Select, der per
+│   │   `applyConnectorPreset()` das Options-Grid aus dem gewählten Preset
+│   │   füllt (statt leerem Key/Value-Grid).  3 Tests (Quellen-Abdeckung,
+│   │   Render-Form je Preset, isolierte Kopien), alle Gates inkl. biome
+│   │   grün, pyright 0/1073 (1068).  Vertagt: Erweiterung #2, das
+│   │   Credential-Vending-Panel (Anzeige der von soyuz-catalog gemmten
+│   │   kurzlebigen scoped Credentials + Scope/Ablauf + Audit) — das
+│   │   eigentliche Token-Minten bleibt ohnehin soyuz-catalog-seitig.
+│   │
+├── Phase 225 — Cross-Engine ABAC: Scan-Plan-Policy-Preview (Observability über die ausgelieferte Maskierung/Row-Filter) (Summit-Recherche)  ✅ shipped (local, 2026-06-20)
+│   │
+│   │   Dreizehnter umgesetzter Eintrag aus `databricks-summit-backlog.md`
+│   │   (Cross-Engine ABAC: tag-basierte Row-Filter/Column-Masks für
+│   │   externe Iceberg-Clients via Iceberg-REST-Scan-Enforcement).  Die
+│   │   eigentliche serverseitige Durchsetzung braucht einen Iceberg-REST-
+│   │   `planScan`-Endpoint in soyuz-catalog (out-of-scope, soyuz-Feature);
+│   │   buildbar in PointlesSQL ist die *Observability*-Seite.  Geliefert:
+│   │   `tag_policies.preview_scan_policy(uc_client, *, full_name,
+│   │   principal, factory)` spiegelt exakt den SELECT-Choke-Point
+│   │   (per-table-Property-Policy via `extract_table_policy` + Merge der
+│   │   matchenden Tag-Regeln via `apply_tag_policies`), gibt die
+│   │   *effektive* Policy aber als Daten zurück statt sie anzuwenden:
+│   │   welche Spalten ein externer Client maskiert sähe und welches Row-
+│   │   Filter-Prädikat (mit `current_user()`→principal-Substitution) in
+│   │   den vorgefilterten Scan-Plan injiziert würde.  Route
+│   │   `GET /api/admin/tag-policies/preview?table=&principal=` (admin) +
+│   │   eine „Cross-engine scan preview"-Karte in `/admin/classification`
+│   │   (Table/Principal-Eingabe → Row-Filter + maskierte Spalten read-
+│   │   only).  17 Tests (4 neu: Masken+Filter, Property-Row-Filter mit
+│   │   Principal-Substitution, leere Policy, 3-Part-Validierung), alle
+│   │   Gates inkl. biome grün, pyright 0/1073 (1068).  Vertagt (soyuz-
+│   │   Ebene/out-of-scope): der echte Iceberg-REST-`planScan`-Endpoint,
+│   │   der den vorgefilterten Plan an externe Engines (Spark, Starburst,
+│   │   DuckDB) ausliefert — Engine-interne Plan-Ausführung bleibt fremd.
+│   │
+├── Phase 224 — Iceberg v3 im Catalog-Browser: VARIANT/Geospatial-Typ-Badges + Deletion-Vectors/Row-Tracking/UniForm-Feature-Badges (Summit-Recherche)  ✅ shipped (local, 2026-06-20)
+│   │
+│   │   Zwölfter umgesetzter Eintrag aus `databricks-summit-backlog.md`
+│   │   (Iceberg v3 / UniForm GA: VARIANT, Deletion Vectors, Row
+│   │   Tracking, Geospatial-Typen).  Reine Metadaten-/Read-Path-
+│   │   Surfacing-Arbeit ohne Engine-Neubau — alle Signale sitzen bereits
+│   │   in der von soyuz-catalog gelieferten Tabellen-Info.  Geliefert:
+│   │   `services/table_features.py` (pure Klassifizierer, voll unit-
+│   │   getestet): `column_type_kind` taggt einen Spaltentyp als VARIANT
+│   │   oder geospatial; `table_feature_flags`/`table_feature_badges`
+│   │   lesen die Delta-/UniForm-Properties (`delta.enableDeletionVectors`,
+│   │   `delta.enableRowTracking`, `delta.universalFormat.enabledFormats`
+│   │   bzw. `enableIcebergCompatV1/2`) und liefern render-fertige
+│   │   Feature-Badges.  Verdrahtet in den Catalog-Browser: der
+│   │   table_detail-Route reicht `table_features` + `advanced_column_kinds`
+│   │   in den Kontext; die Overview-Behavior-Sektion zeigt die Feature-
+│   │   Badges (Deletion vectors / Row tracking / UniForm Iceberg), die
+│   │   Spalten-Tabelle ein VARIANT- bzw. geo-Badge neben `type_text`.
+│   │   Kein extra UC-Round-Trip, keine Migration.  7 Tests (VARIANT/geo-
+│   │   Klassifikation, Feature-Flags inkl. Case-Insensitivity +
+│   │   Iceberg-Compat-Pfad, Badge-Reihenfolge, Non-Dict-Robustheit), alle
+│   │   Gates inkl. biome grün, pyright 0/1073 (1068, Headroom).  Vertagt:
+│   │   die tiefere Preview-Expansion von VARIANT/Geo über PQL/DuckDB/
+│   │   pyarrow und das Einhängen der Row-Lineage-IDs in die Row-Trace-/
+│   │   CDF-UI (eigener Read-Path-Scope).
+│   │
+├── Phase 223 — ABAC: Catalog-/Schema-Scoped Tag Policies (Securable-Subtree-Vererbung) (Summit-Recherche)  ✅ shipped (local, 2026-06-20)
+│   │
+│   │   Elfter umgesetzter Eintrag aus `databricks-summit-backlog.md`
+│   │   (UC-GA: ABAC-Tag-Policies auf Catalog-/Schema-Ebene + Governed-
+│   │   Tags-Registry + LLM-Klassifikation).  Der Kern war bereits da
+│   │   (tag-basierte mask/row_filter-Regeln, an beiden SELECT-Choke-
+│   │   Points enforced).  Geliefert ist die *Headline*-GA-Neuheit:
+│   │   `TagPolicyRule` von deployment-global auf einen optionalen
+│   │   Securable-Scope gehoben — neue Spalten `scope_type`
+│   │   (global/catalog/schema, CHECK-Constraint) + `scope_value`
+│   │   (Migration `1f8b223fe7a9`, server_default `global` backfillt
+│   │   Bestandsregeln).  Eine catalog-/schema-skopierte Regel vererbt via
+│   │   UC-Tags automatisch auf alle passenden Tabellen im Subtree;
+│   │   `apply_tag_policies` filtert out-of-scope-Regeln *vor* jedem Tag-
+│   │   Fetch (kein Round-Trip, keine Wirkung), `create_rule` validiert die
+│   │   dotted-Tiefe (catalog = 1 Teil, schema = 2 Teile) und verwirft den
+│   │   Wert bei global.  Konsole `/admin/classification`: Scope-Select +
+│   │   bedingtes Namensfeld im Create-Form + Scope-Spalte in der Regel-
+│   │   liste.  13 Tests (4 neu: Scope-Validierung + catalog-/schema-
+│   │   Subtree-Enforcement inkl. No-Fetch-Kurzschluss), alle Gates inkl.
+│   │   biome + alembic-Drift grün, pyright 0/1073.  Vertagt (je eigener
+│   │   Scope, im Backlog dokumentiert): die Governed-Tags-Registry
+│   │   (erlaubte Keys/Values als eigene CRUD-Surface mit Validierung beim
+│   │   Tag-Setzen) und die LLM-augmentierte Klassifikation (`ai_classify`/
+│   │   `ai_extract` als zusätzliche Signalquelle im PII-Scanner mit
+│   │   Compliance-Framework-Labels).
+│   │
+├── Phase 222 — Unity AI Gateway: AI-Spend-Governance-Overlay über Lens (Provider/Model/User-Attribution + Budget) (Summit-Recherche)  ✅ shipped (local, 2026-06-20)
+│   │
+│   │   Zehnter umgesetzter Eintrag aus `databricks-summit-backlog.md`
+│   │   (Unity AI Gateway → vereinheitlichte Runtime-AI-Governance: AI-
+│   │   Spend-Sichtbarkeit, granulare Kostenzuordnung, Spend-Caps, Smart-
+│   │   Routing).  Smart-Routing als Live-Auswahllogik im Provider und das
+│   │   Live-Spend-Cap-Enforcement sind Runtime-Ebene; buildbar ist die
+│   │   *Sichtbarkeits-/Attributions*-Schicht.  Der Lens-Chat-Loop metert
+│   │   bereits jeden Model-Round-Trip (`lens_sessions`.provider/model/
+│   │   owner + `lens_messages`.tokens_in/out/cost_estimate je Turn), also
+│   │   braucht es keine neue Metering-Verdrahtung — nur die Aggregation.
+│   │   Geliefert: `services/ai_gateway.py`, das die gemeterten Turns einer
+│   │   Workspace nach Provider, Model und User rollt, den Spend in Model-
+│   │   Inferenz (assistant-Turns) vs Tool/SQL (tool-Turns) splittet,
+│   │   Token-Summen bildet und den akkumulierten Spend per
+│   │   `cost.evaluate_budget` (warn 80 % / block 100 %) gegen ein vom
+│   │   Admin getipptes Budget bewertet; plus die Admin-Konsole
+│   │   `/admin/ai-gateway` (Fenster-Filter, Budget-Banner, Spend-by-
+│   │   Provider/-Model/-User-Tabellen, Token-Karten, Recent-Sessions) +
+│   │   Landing-Card.  Endpunkte: `GET /admin/ai-gateway`,
+│   │   `GET /api/admin/ai-gateway/overview?since=&budget=`.  Keine
+│   │   Migration (liest bestehende Lens-Tabellen).  7 Tests (isolierte
+│   │   Workspaces + Owner für Rollup-/Budget-/Since-/Empty-Fälle + Route-/
+│   │   Auth-Tests), alle Gates inkl. biome grün, pyright 0/1073; an der
+│   │   Quelle gefixt: SQLite droppt tzinfo auf `DateTime(timezone=True)`-
+│   │   Round-Trips, daher die Recent-Sessions-`since`-Vergleichsstelle auf
+│   │   aware-UTC normalisiert.  Vertagt (Runtime-/Engine-Ebene): Smart-
+│   │   Model-Routing als Auswahllogik, Live-Spend-Cap-Enforcement (die
+│   │   harten Per-Session-Caps liegen bereits auf dem cost_gate),
+│   │   Attribution der ephemeren `ai_*`-SQL-Funktions-Calls (heute nicht
+│   │   persistiert) und Team-Ebenen-Rollups.
+│   │
+├── Phase 221 — Agent Gateway: Governance-Overlay über Agent-Runs (Harness-Telemetrie + Budget) (Summit-Recherche)  ✅ shipped (local, 2026-06-20)
+│   │
+│   │   Neunter umgesetzter Eintrag aus `databricks-summit-backlog.md`
+│   │   (Omnigent Meta-Harness → AI-Gateway-artige Policy/Cost/Telemetrie
+│   │   über Agent-Runs).  Der Meta-Harness-Kern selbst (Frameworks
+│   │   komponieren/austauschen, isolierte Lakebox-Ausführung) ist
+│   │   Runtime-Ebene und out-of-scope; geliefert ist die buildbare
+│   │   Governance-*Schicht* als read-only Overlay auf der bestehenden
+│   │   Agent-Run-Supervision.  Neu: ein `harness`-Feld je Run (Migration
+│   │   `7931778a18d8`, indexiert), das die Ingestion (`POST
+│   │   /api/agent-runs`) annimmt und der Serializer ausliefert; ein
+│   │   `services/agent_gateway.py`-Aggregator, der Runs nach Harness und
+│   │   Principal rollt (Run-/Status-Counts, Spend-Summe + Schnitt,
+│   │   Distinct-Mitglieder) und den akkumulierten Spend per
+│   │   `cost.evaluate_budget` (warn 80 % / block 100 %) gegen ein vom
+│   │   Admin getipptes Budget bewertet; und eine Admin-Konsole
+│   │   `/admin/agent-gateway` (Fenster-Filter, Budget-Eingabe mit
+│   │   Statusbanner + Fortschrittsbalken, Spend-by-Harness/-Principal-
+│   │   Tabellen, Recent-Runs mit Harness-Anzeige je Run) plus Landing-
+│   │   Card.  Endpunkte: `GET /admin/agent-gateway`,
+│   │   `GET /api/admin/agent-gateway/overview?since=&budget=`.  9 Tests
+│   │   (isolierte Workspaces für die Rollup-/Budget-/Since-Fälle +
+│   │   Ingestion-Roundtrip + Route-/Auth-Tests), alle Gates inkl. biome
+│   │   grün, pyright 0/1073.  Vertagt (eigener, größerer Scope laut Fit):
+│   │   die *Live*-Durchsetzung (einen Agent-/MCP-Call nur an approvte
+│   │   Harnesses routen, einen Run bei erschöpftem Budget mitten im Lauf
+│   │   stoppen), persistierte Budget-Objekte (statt der getippten
+│   │   What-if-Schwelle) und Smart-Model-Routing als Auswahllogik — alles
+│   │   Runtime-/Engine-Ebene.  Die kontextuellen Guardrails (allow/
+│   │   require-approval/deny je Aktion) hat bereits Phase 218.
+│   │
+├── Phase 220 — Governed MCP Service Registry: Custom-MCP-Registrierung + Tool-Inventar (Summit-Recherche)  ✅ shipped (local, 2026-06-20)
+│   │
+│   │   Achter umgesetzter Eintrag aus `databricks-summit-backlog.md`
+│   │   (Unity AI Gateway → governtes Inventar freigegebener MCP-Services
+│   │   + Custom-MCP-Registrierung).  PointlesSQL betreibt bereits einen
+│   │   MCP-*Server* (`lens/mcp_server.py`); die Summit-Ankündigung ist die
+│   │   governte Gegenrichtung — ein UC-artiges Inventar approvter
+│   │   *externer* MCP-Services als eigene Securable-Klasse.  Geliefert ist
+│   │   der baubare Kern: zwei Eigen-Metadaten-Tabellen (`mcp_services` +
+│   │   `mcp_service_tools`, Migration `e9895b37e384`), ein
+│   │   `services/mcp_registry.py`-CRUD-Service (Register/Update/Enable-
+│   │   Disable je Service, Per-Tool-Allow-Toggle, Discovery-View, die nur
+│   │   enabled Services + enabled Tools ausliefert) und eine Admin-Konsole
+│   │   `/admin/mcp-services` (Register-Form, Service-Liste mit Per-Tool-
+│   │   Toggles, „All services"↔„Published (developer view)"-Umschalter) plus
+│   │   Landing-Card.  Endpunkte: `GET/POST /api/admin/mcp-services`,
+│   │   `GET …/discover`, `PATCH/DELETE …/{id}`, `POST …/{id}/tools`,
+│   │   `PATCH/DELETE …/{id}/tools/{tool_id}`.  10 Tests (isolierte
+│   │   Workspaces + pollution-robuste Route-Tests), alle Gates inkl. biome
+│   │   grün, pyright 0/1073.  Vertagt (eigener, größerer Scope laut Fit):
+│   │   die *Live*-Durchsetzung (Agent-/MCP-Call nur an approvte+enabled
+│   │   Services routen), Zugriffs-Grants über policy_as_code, Nutzungs-
+│   │   Audit im Audit-Cockpit und der gehostete Managed-Connector-Betrieb
+│   │   (Slack/Jira als Service) — letzterer bleibt Infra/out-of-scope.
+│   │
+├── Phase 219 — Genie Ontology: PageRank-Tabellen-Autorität + Auto-Suggest (Summit-Recherche)  ✅ shipped (local, 2026-06-20)
+│   │
+│   │   Siebter umgesetzter Eintrag aus `databricks-summit-backlog.md`
+│   │   (Genie One → selbstlernende Kontextschicht).  Der baubare Kern:
+│   │   `genie/_ontology.py` rankt die Tabellen eines Workspace per hand-
+│   │   gerolltem PageRank (kein networkx; Power-Iteration mit Dangling-
+│   │   Mass-Redistribution) über den bereits vorhandenen Lineage-
+│   │   Tabellengraphen (`lineage_row_edges` source→target, distinct, ohne
+│   │   Self-Loops).  Tabellen, in die viele gut-verbundene Quellen
+│   │   fließen (die kanonischen Marts), steigen nach oben.  Endpunkte:
+│   │   `GET /api/genie/ontology/authority` (Workspace-Ranking) und per-
+│   │   Space `GET /api/genie/spaces/{slug}/suggested-tables` (Top-
+│   │   Autorität minus bereits kuratierte), plus „Suggested tables"-Block
+│   │   im Config-Drawer, der Vorschläge per Klick in die kuratierte
+│   │   Tabellenliste übernimmt — Auto-Population statt Hand-Kuratierung.
+│   │   Neue genie/_ontology-Fassade, keine Migration.  5 Tests (isolierte
+│   │   Workspaces für die Ranking-Determinismus-Asserts), alle Gates inkl.
+│   │   biome grün.  Vertagt (out-of-scope laut Fit): kontinuierliche Auto-
+│   │   Extraktion/Fusion aus Nicht-Lineage-Quellen und Connected-
+│   │   Workplace-Apps (Drive/Jira/Slack/SharePoint) als eigene Connectors.
+│   │
+├── Phase 218 — Genie Skills: Trusted Asset deterministisch re-runbar (Genie-One-Aktions-Hub)  ✅ shipped (local, 2026-06-20)
+│   │
+│   │   Sechster umgesetzter Eintrag aus `databricks-summit-backlog.md`
+│   │   (Genie One → „eine Frage löst eine wiederverwendbare Skill/Aktion
+│   │   aus").  Der vom Fit benannte nächste Schritt — Skills-Persistenz +
+│   │   Aktions-Hub.  Trusted Assets waren bisher nur via LLM re-fragbar
+│   │   (`useAsset` füllt das Eingabefeld); neu führt
+│   │   `POST /api/genie/spaces/{slug}/assets/{id}/run` das gespeicherte,
+│   │   geprüfte SQL deterministisch durch denselben governten SELECT-Pfad
+│   │   wie `ask` aus (`resolve_select_context` + `run_sync`, ohne
+│   │   LLM-Roundtrip), nach erneuter Tabellen-Scope-Prüfung gegen die
+│   │   ggf. geänderte Space-Tabellenliste.  Neuer `get_trusted_asset`-
+│   │   Service + „Run"-Button je Asset im Raum (`runAsset` rendert in die
+│   │   bestehende Ergebnis-Tabelle).  Reine UI-/Service-Verdrahtung auf
+│   │   vorhandenen Genie-Tabellen, keine Migration.  3 Route-Tests, alle
+│   │   Gates inkl. biome grün.  Vertagt (breitere Genie-One-Klammer):
+│   │   Aktionen aus Antworten in Alerts/Scheduler/MCP, Dokument-/Visual-
+│   │   Generierung, DBU-Pricing — je eigene Cross-Subsystem-Integration.
+│   │
+├── Phase 217 — Genie Agents: Konversation als benannter, wiederverwendbarer Agent (Summit-Recherche)  ✅ shipped (local, 2026-06-20)
+│   │
+│   │   Fünfter umgesetzter Eintrag aus `databricks-summit-backlog.md`
+│   │   (Genie One → „save a conversation as a reusable named agent").
+│   │   Genie-Spaces waren bereits kuratierte NL-Datenräume; es fehlte der
+│   │   Promote-Pfad „Konversation → benannter Agent".  Neuer
+│   │   `save_space_as_agent`-Service destilliert einen Space samt seiner
+│   │   Unterhaltung in einen neuen, eigenständig besessenen GenieSpace:
+│   │   kuratierte Quellen (tables + metric_views) und Instructions werden
+│   │   geerbt, die Trusted-Assets aus den Source-Assets PLUS den
+│   │   erfolgreichen Antworten der Konversation geseedet (jede ok+SQL-
+│   │   Assistant-Antwort mit ihrer Frage, ohne thumbs-down).  Endpoint
+│   │   `POST /api/genie/spaces/{slug}/save-as-agent` (jedes Workspace-
+│   │   Mitglied darf einen sichtbaren Raum in seinen eigenen Agent
+│   │   destillieren) + „Save as agent"-Button im Room-Template.  Reine
+│   │   UI-/Service-Verdrahtung auf bestehenden Genie-Tabellen, kein neues
+│   │   Engine-Surface, keine neue Migration.  6 Tests (Service-Distillation
+│   │   inkl. skip-failed/downvoted + Route/Validierung), alle Gates grün.
+│   │
+├── Phase 216 — Kimi- & Grok-Provider-Adapter für Lens / AI-Functions (Summit-Recherche)  ✅ shipped (local, 2026-06-20)
+│   │
+│   │   Vierter umgesetzter Eintrag aus `databricks-summit-backlog.md`
+│   │   (Agent Bricks → native Kimi/Grok-Modelle).  Die provider-agnostische
+│   │   LensProvider-Abstraktion kannte bisher nur OpenAI + Anthropic.  Kimi
+│   │   (Moonshot) und Grok (xAI) sprechen beide das OpenAI-kompatible
+│   │   chat.completions-Format, daher erben `KimiProvider`/`GrokProvider`
+│   │   den OpenAI-Adapter mit eigener `base_url` + `name` (kein dupliziertes
+│   │   Wire-Format).  Dazu: Pricing-Snapshots je Provider, `get_provider`-
+│   │   Dispatch, Bump von `LENS_PROVIDERS`, zwei neue `LensSettings`-Defaults
+│   │   und ein zentraler `model_default(provider)`-Helfer, der die bisher
+│   │   binäre openai/else-anthropic-Auflösung an allen drei Stellen ersetzt
+│   │   (Lens-Session-Create, Data-Product-Ask, AI-Functions-Credential-Pick).
+│   │   Alembic-Migration `c1c67c9fa4e0` erweitert die beiden Provider-CHECK-
+│   │   Constraints (lens_sessions + lens_provider_creds) um kimi/grok; der
+│   │   API-getriebene Credential-Flow akzeptiert sie damit als BYO-Provider.
+│   │   8 neue Tests (+ 3 Alt-Tests retargetet, die den 2-Provider-Stand
+│   │   festschrieben), alle Gates inkl. alembic-check/fresh-drift grün.
+│   │
+├── Phase 215 — Contextual Service Policies / Agent-Guardrails (Summit-Recherche)  ✅ shipped (local, 2026-06-20)
+│   │
+│   │   Dritter umgesetzter Eintrag aus `databricks-summit-backlog.md`
+│   │   (Unity-AI-Gateway → Contextual Service Policies).  Die Cedar-Engine
+│   │   beantwortet bisher nur permit/forbid; Agent-Guardrails brauchen ein
+│   │   drittes Ergebnis: *erlauben mit Freigabe*.  Neuer
+│   │   `evaluate_agent_action`-Service legt diese allow/deny/
+│   │   require-approval-Trichotomie über die bestehende Engine, ohne sie zu
+│   │   ändern — via Zwei-Aktions-Konvention (`Action::"agent_action"` vs
+│   │   `Action::"agent_action_with_approval"`).  Der Agent-Kontext
+│   │   (`context.model`/`mcp_service`/`tool` + Content-Flags pii/
+│   │   prompt_injection/jailbreak/unsafe_content) speist kontextuelle
+│   │   Cedar-Regeln.  Admin-Konsole `/admin/agent-guardrails` (+ Karte auf
+│   │   der Admin-Landing) zum Autoren/Testen einer hypothetischen Aktion.
+│   │   7 Tests (Service in isolierten Workspaces + Route/Auth), alle Gates
+│   │   grün.  Vertagt: die *Live*-Durchsetzung im MCP-/Agent-Run-Pfad und
+│   │   der Content-Scanner, der die Flags setzt — eigener, größerer Scope.
+│   │
+├── Phase 214 — Agent-Memory-Registry (Agent-Bricks-Surface aus der Summit-Recherche)  ✅ shipped (local, 2026-06-20)
+│   │
+│   │   Zweiter umgesetzter Eintrag aus `databricks-summit-backlog.md`
+│   │   (Agent Bricks → managed agent-memory registry).  Die per-Agent
+│   │   „Brain-Browser"-Seite `/memory/{agent_id}` war bisher nur per
+│   │   bekannter `agent_id` erreichbar — es fehlte ein Index.  Neue
+│   │   `/agent-memories`-Registry rollt die vorhandenen `agent_runs`/
+│   │   `agent_run_operations` zu einer Zeile pro `agent_id` auf (Run-/
+│   │   Operation-Zähler, letzte Aktivität, letzter Principal, Status-
+│   │   Aufschlüsselung), mit Substring-Filter und Link in die bestehende
+│   │   Memory-Seite; Discovery-Link im People-Context-Panel.  Neue
+│   │   `agent_memory_registry_routes/`-Fassade (`_shared`-Builder +
+│   │   `_page` HTML + `_api` JSON), reine Read-Rollup auf vorhandenen
+│   │   Tabellen — kein neuer Memory-Store.  4 Route-Tests, alle Gates grün.
+│   │   Die Document-Intelligence-Hälfte des Backlog-Eintrags (Dokumente →
+│   │   UC-Tabellen via LLM-Extraktion) ist bewusst als separate, größere
+│   │   Aufgabe vertagt — sie ist kein Metadaten-Rollup, sondern braucht
+│   │   eine eigene Parsing-/`ai_extract`-Pipeline.
+│   │
+├── Phase 213 — Agent Command Center (Genie-Code-Cockpit aus der Summit-Recherche)  ✅ shipped (local, 2026-06-20)
+│   │
+│   │   Erster umgesetzter Eintrag aus `databricks-summit-backlog.md`
+│   │   (Data + AI Summit 2026).  Ein Ganzseiten-Cockpit (`/command-center`)
+│   │   über die bestehenden Agent-Run-Metadaten: parallele In-Flight-Runs
+│   │   als Live-Thread-Board, plus Candidate-Sets, die konkurrierende
+│   │   Versuche desselben Notebooks gruppieren (empfohlener „best pick" =
+│   │   günstigster erfolgreicher Lauf).  Side-by-Side-Vergleich
+│   │   (Status/Kosten/Ops/Dauer/Tables/Anomaly) und inline Approve/Deny
+│   │   über die vorhandenen `/api/agent-runs/{id}/approve|deny`-Endpunkte.
+│   │   Neue `command_center_routes/`-Fassade (`_shared`-Builder + `_page`
+│   │   HTML + `_api` summary/compare), Seite unter dem Watch-Hub, reine
+│   │   Wiederverwendung der `runs_routes`-Loader — keine neue
+│   │   Metadaten-Quelle.  6 Route-Tests, alle Gates grün.
+│   │
 ├── Phase 212 — UX-Loop: interaktions-getriebener Klickpfad-Sweep  🔄 laufend (local, 2026-06-13)
 │   │
 │   │   Anders als Phase 211 (statischer Screenshot-Audit) werden hier

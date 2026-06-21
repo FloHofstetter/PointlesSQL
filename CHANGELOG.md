@@ -15,8 +15,350 @@ contributors who need finer commit-level granularity.
 <!-- Future commits land here until the next cluster boundary is
 defined in ``scripts/clusters.json``. -->
 
+### Notes
+
+- **Databricks Free Edition expansion (phase 245).** Verified already
+  present — no code change.  The announcement bundles Genie Code,
+  serverless GPUs, Lakebase, Agent Bricks, and Lakeflow Designer into the
+  free tier; it is a packaging/pricing event, and PointlesSQL
+  intentionally models no entitlements/billing/free-tier surface.  Four
+  of the five products already exist as direct analogs — Lakebase
+  (synced/online tables + `pg_sync`), Agent Bricks (agent runs +
+  agent-gateway + MCP), Lakeflow Designer (declarative pipelines), and
+  Genie Code (Genie + SQL chat).  Only serverless GPUs are compute
+  infrastructure, intentionally out of scope.  This closes the Data + AI
+  Summit 2026 backlog (33/33).
+
+- **Lakebase governed online/synced-table surface (phase 239).** Verified
+  already shipped — no code change.  The UI-mappable part of Lakebase is
+  the existing synced/online-tables stack (`/online-tables`, the
+  `table_sync` scheduler executor, the lookup API), recently extended
+  with the ops/health panel and snapshots/branching.  The managed
+  serverless Postgres engine + provisioning are cloud infrastructure and
+  intentionally not rebuilt.
+
 ### Added
 
+- **Genie for Microsoft Teams / M365 Copilot (phase 244).** A new admin
+  console, `/admin/genie-connectors`, registers an outbound chat bot,
+  mints a shared-secret token (shown once, stored only as a SHA-256
+  hash), and binds it to a Genie space.  A token-authenticated inbound
+  webhook, `POST /api/genie/teams/{public_id}/messages`, receives a
+  Microsoft Bot Framework Activity and answers `@Genie` questions
+  through the same grant-enforced Genie path as the in-app surface
+  (`build_context` → `generate_sql` → grant-checked execution), audited
+  per answer.  The bot enforces UC grants as its own principal and
+  degrades to a helpful reply (rather than erroring) when no LLM is
+  configured or the connector is unbound.  Backed by a new
+  `genie_bot_connectors` table, `services/genie_connectors.py`, and the
+  pure Bot Framework adapter `services/genie_teams.py`.
+
+- **Genie App Builder (phase 243).** Describe an app in plain language
+  and PointlesSQL drafts a runnable single-file scaffold (FastAPI or
+  Streamlit) and creates it on the hosted-apps surface.  A new
+  workspace-admin route, `POST /api/apps/genie-build`, drafts the body
+  with the workspace's BYO LLM when one is configured and falls back to
+  a deterministic placeholder scaffold (that renders the prompt) when it
+  is not — so the feature works end to end without any provider.  Backed
+  by a pure, tested `services/genie_app_builder.py`; a "Build with Genie"
+  card on the apps page wires the UI.  The created app is then managed
+  on the regular `/apps` surface (start, edit, proxy).
+
+- **Excel add-in bridge (phase 242).** A driverless Office.js add-in
+  can now pull governed Unity-Catalog metric views into a worksheet
+  without a per-user ODBC driver.  `GET /api/excel/manifest.xml` serves
+  the Office.js task-pane manifest, `GET /api/excel/odata` is the OData
+  service document of pullable metric views (by catalog + schema), and
+  `GET /api/excel/odata/metric/{full_name}` compiles + runs the metric
+  query through the same grant-enforced read path as the in-app surface
+  and wraps the result in an OData-v4 feed Excel's "From OData Feed"
+  consumes.  Backed by a pure, tested `services/excel_bridge.py` (feed
+  envelope + service document + manifest XML).  The task-pane HTML and
+  the write-back round-trip are deferred follow-ups.
+
+- **App Spaces for hosted apps (phase 241).** A new admin console,
+  `/admin/app-spaces`, groups hosted apps into a governance boundary:
+  declare the API scopes (for on-behalf-of-user access) once per space
+  and assign apps into it; an app's effective scopes are its space's.
+  Backed by a new `app_spaces` table (migration `442e355e08bf`), a
+  nullable `hosted_apps.app_space_id` FK, and a
+  `services/app_spaces.py` registry.  Scope enforcement is layered by
+  the grant/policy stack; this is the declaration + assignment layer.
+
+- **CSV export for dashboard snapshots (phase 240).** A dashboard
+  snapshot can now be downloaded as a tabular CSV — one section per
+  data-backed widget (header + rows, markdown/errored widgets skipped) —
+  via `GET /api/bi/dashboards/{slug}/snapshots/{id}/csv`.  This is the
+  CSV-attachment channel the AI/BI 2026 subscriptions use, backed by a
+  pure `services/bi_snapshot_csv.py` serialiser.
+
+- **Predictive-optimization maintenance policies (phase 238).** A new
+  admin console, `/admin/optimization`, controls autonomous Delta
+  maintenance: set a per-catalog / schema / table policy declaring which
+  operations run (OPTIMIZE, VACUUM, ANALYZE), and resolve the effective
+  policy for any table (most-specific scope wins; table inherits schema
+  inherits catalog, else no maintenance).  Backed by a new
+  `optimization_policies` table (migration `aef5cb590bd7`) and a
+  `services/predictive_optimization.py` resolver.  The maintenance
+  execution stays on the engine path; this is the control layer.
+
+- **Hybrid vector + keyword search (phase 237).** `POST
+  /api/sql/vector_search` gains a `hybrid` flag that re-ranks the vector
+  hits by fusing their vector ordering with a keyword-relevance ordering
+  over the same snippets via Reciprocal Rank Fusion, so a strong keyword
+  match can surface above a weaker-but-closer vector hit.  Each hit then
+  carries `keyword_score` + `fused_score`, and the table's semantic-search
+  panel gains a Hybrid switch.  Backed by a pure
+  `services/hybrid_search.py` (keyword relevance + RRF) primitive.
+
+- **Snapshots & branches for online tables (phase 236).** Each synced
+  table now has a "Snapshots & branches" panel on `/online-tables`:
+  capture a named snapshot of the serving copy's state (Delta version +
+  row count), promote one as the serving baseline (demoting any
+  sibling), or discard / delete it.  Backed by a new
+  `synced_table_snapshots` metadata table (migration `ca59a629d146`), a
+  `services/synced_table_snapshots.py` CRUD service, and routes under
+  `/api/online-tables/{name}/snapshots`.  Snapshots are management
+  markers; the copy-on-write storage stays engine-side.
+
+- **Lakebase autonomous ops & health panel (phase 235).** The
+  `/online-tables` page gains a read-only "Autonomous ops & health"
+  panel that assesses each synced table's health (healthy / syncing /
+  degraded / critical) and proposes advisory fixes — resync stale data,
+  set primary keys for CDF, add a serving index, recover from a failure
+  — as a propose-and-approve list.  Backed by a pure
+  `services/lakebase_ops.py` engine and `GET /api/online-tables/ops`;
+  executing a fix in the serving store stays engine-side.
+
+- **New Lakeflow Connect connectors in the gallery (phase 234).** The
+  ingest connector gallery now lists the Summit connector wave
+  (Monday.com, Slack, Zoom, RabbitMQ, Pendo, Zoho Books, Jira, GitHub,
+  Confluence, SharePoint, Google Drive, Outlook) under new Streaming and
+  Enterprise-knowledge categories, and each announced connector shows a
+  GA or Beta maturity badge reflecting its rollout status (only kinds
+  with a real reader stay pickable).
+
+- **Delta Sharing + system-table job triggers (phase 233).** The
+  scheduler's `table_update` trigger can now watch tables beyond the
+  local Delta log: a `source` selector on the job trigger dialog picks a
+  local Delta table, a Delta-Sharing share (provider + share + schema +
+  table, version read over the OpenSharing "Query Table Version"
+  endpoint), or a system table.  A job fires when the shared or
+  operational data changes.  Backed by a new
+  `delta_sharing_consumer.remote_table_version` and source routing in
+  `scheduler/triggers.py`.
+
+- **NL-prompt to pipeline for DataFrame Studio (phase 232).** A new
+  `POST /api/dataframe-studio/generate` endpoint turns a natural-language
+  request into a pre-filled, validated canvas: it asks the workspace's
+  AI provider for an ordered plan of single-input transforms (Filter,
+  Project, Rename, Cast, CalcColumn, Sort, Limit, Distinct), maps it onto
+  a linear block chain rooted at the base table, and runs it through the
+  schema-flow validator.  Backed by a `services/dataframe_designer.py`
+  assembler with an injectable completer (testable without a live model)
+  and a new public `ai_functions.resolve_completer`.
+
+- **Connector gallery for ingest (phase 231).** The "new source" page
+  now presents a categorised, point-and-click connector gallery (Files /
+  Databases / Cloud storage / SaaS apps) instead of a flat radio list.
+  The working kinds render as selectable tiles, and the announced
+  Lakeflow Connect connectors (SQL Server, Salesforce, Workday,
+  ServiceNow, Google Analytics, NetSuite, SharePoint, Google Drive)
+  appear as "Soon" placeholders.  Backed by a pure
+  `services/ingest/connector_gallery.py` registry whose available set is
+  derived from `INGEST_SOURCE_KINDS`, so it can never advertise a
+  pickable connector with no reader.
+
+- **Genie Code command center (phase 230).** A new full-page
+  agentic-authoring hub at `/genie-code` (with a "Genie Code" nav entry)
+  unifies PointlesSQL's authoring surfaces — NL→SQL, NL→notebook,
+  pipeline canvas, ingest connectors, jobs/scheduler, agent-run
+  supervision, and the ML registry — as a card grid, alongside a
+  cross-surface glance at recent supervised agent runs (status stats +
+  recent-runs list).  Backed by a `services/genie_code.py` surface
+  registry + run aggregator and `GET /api/genie-code/overview`.
+
+- **Iceberg REST connection hints for shares (phase 229).** The Delta
+  Sharing admin console now offers a "Connect via Iceberg REST" panel on
+  each expanded share: it renders copy-paste connection config for
+  Trino, Spark, PyIceberg, Flink, and Snowflake against this install's
+  Iceberg REST catalog root, with the share as the warehouse and the
+  recipient token inlined.  Backed by a pure
+  `services/iceberg_rest_sharing.py` helper and
+  `GET /api/sharing/shares/{name}/iceberg-rest`.  The live REST serving
+  is soyuz-catalog's job; this is the client-side wiring.
+
+- **Iceberg as a first-class table format (phase 228).** The catalog
+  browser now renders Delta and Iceberg with distinct, first-class
+  format badges (each its own colour + icon) instead of a single generic
+  badge, in both the schema's table list and the table detail overview.
+  Backed by a pure `table_features.format_badge()` helper exposed as a
+  `format_badge` Jinja global, replacing the previous inline badge map.
+
+- **Governance hub (phase 227).** A new read-only admin command center,
+  `/admin/governance-hub`, rolls the workspace's scattered governance
+  signals — de-duplicated compliance-scanner findings and agent-run
+  anomalies — into a single posture score (0–100 with an A–F grade) and
+  a severity-ranked remediation queue, so a steward sees the whole
+  surface and what to fix first without visiting each console.  Backed
+  by a pure `services/governance_hub.py` aggregator and
+  `GET /api/admin/governance-hub/posture`; no migration (it reads
+  existing audit + agent-run rows).
+
+- **Iceberg connector presets for foreign catalogs (phase 226).** The
+  "New Foreign Catalog" modal on the Connections page now offers an
+  Iceberg-source picker (AWS Glue, Snowflake Horizon, Hive Metastore,
+  Salesforce Data Cloud, Google Cloud Lakehouse, Palantir) that
+  pre-fills the option grid with the keys each source expects instead of
+  starting blank.  Backed by a pure `services/foreign_iceberg.py` preset
+  registry threaded into the page context.
+
+- **Cross-engine scan-plan policy preview (phase 225).** The
+  `/admin/classification` console gains a read-only preview that shows
+  what an external Iceberg client would receive for a table: enter a
+  `catalog.schema.table` (and optionally a principal) and it reports the
+  row-filter predicate that would be injected into the pre-filtered scan
+  plan and which columns would be masked — evaluated through the same
+  tag-policy rules the SELECT paths enforce, via
+  `GET /api/admin/tag-policies/preview`.  The actual Iceberg-REST
+  `planScan` enforcement endpoint lives in soyuz-catalog and is out of
+  scope here; this is the observability half.
+
+- **Iceberg v3 surfacing in the catalog browser (phase 224).** Table
+  pages now badge the Iceberg-v3-era features and advanced column types
+  that soyuz-catalog already reports.  The overview's Behavior section
+  shows feature badges derived from the Delta / UniForm table properties
+  (deletion vectors, row tracking / row lineage, UniForm Iceberg
+  interop), and the column list badges VARIANT and geospatial
+  (GEOMETRY / GEOGRAPHY) types next to their type text.  Backed by a
+  pure `services/table_features.py` classifier — no extra catalog
+  round-trip and no migration.
+
+- **Catalog/schema-scoped tag policies (phase 223).** Tag-policy rules
+  can now be confined to a Unity-Catalog subtree instead of applying
+  deployment-wide: a rule carries a `scope_type` (`global` / `catalog` /
+  `schema`) and a `scope_value` (the catalog or `catalog.schema` name,
+  migration `1f8b223fe7a9`).  A catalog- or schema-scoped rule inherits
+  automatically onto every matching table beneath it, and the
+  enforcement merge drops out-of-scope rules before any tag fetch.  The
+  `/admin/classification` console gains a scope selector on the
+  rule-create form and a scope column in the rule list.  Existing rules
+  backfill to `global`, so behaviour is unchanged until a scope is set.
+
+- **Unified AI-spend governance overlay (phase 222).** A new read-only
+  admin surface, `/admin/ai-gateway`, is a unified AI-gateway lens over
+  the Lens chat spend: it rolls every metered model round-trip up by the
+  provider and model that served it and by the user it ran for, splits
+  the spend into model-inference cost (assistant turns) versus tool / SQL
+  cost (tool turns), sums token usage, and — given a budget you type in —
+  evaluates the accrued spend against warn (80%) / block (100%)
+  thresholds via the shared cost-budget evaluator.  Adds a
+  `services/ai_gateway.py` aggregator over the existing `lens_sessions` +
+  `lens_messages` tables (no migration) and a
+  `GET /api/admin/ai-gateway/overview?since=&budget=` endpoint.  Hard
+  per-session spend caps already live on the Lens cost gate; this surface
+  is the cross-session visibility and attribution layer.
+
+- **Agent gateway governance overlay (phase 221).** A new read-only
+  admin surface, `/admin/agent-gateway`, is an AI-gateway lens over the
+  agent-run registry: it rolls supervised runs up by their harness (the
+  agent framework / meta-harness that produced them) and by principal,
+  sums the per-run cost estimates into a spend view, and — given a
+  budget you type in — evaluates the accrued spend against warn (80%) /
+  block (100%) thresholds via the shared cost-budget evaluator.  Adds a
+  nullable, indexed `harness` column to `agent_runs` (migration
+  `7931778a18d8`) that the run ingestion endpoint now accepts and the
+  serializer returns, a `services/agent_gateway.py` aggregator, and a
+  `GET /api/admin/agent-gateway/overview?since=&budget=` endpoint.  Live
+  enforcement (routing, mid-run blocking) stays in the runtime.
+
+- **Governed MCP service registry (phase 220).** A new admin surface,
+  `/admin/mcp-services`, registers approved *external* MCP services as a
+  Unity-Catalog-style tool inventory: register a service (endpoint URL +
+  transport), curate the tools it advertises with a per-tool allow
+  toggle, and enable/disable the whole service to publish it to
+  developers without losing the registration.  Backed by two
+  metadata-DB tables (`mcp_services` + `mcp_service_tools`, migration
+  `e9895b37e384`), a `services/mcp_registry.py` CRUD service, and JSON
+  endpoints under `/api/admin/mcp-services` including a `…/discover`
+  view that returns only enabled services and their enabled tools.
+  First slice of the Unity AI Gateway managed-MCP / custom-MCP-
+  registration announcement (Data + AI Summit 2026); live enforcement
+  (routing agent/MCP calls only at approved services), policy-as-code
+  access grants, usage audit, and hosted managed connectors are
+  deferred.
+- **Genie ontology / table authority (phase 219).** A new
+  `genie/_ontology.py` ranks a workspace's tables by a PageRank-style
+  authority score (hand-rolled; no networkx) over the existing lineage
+  table graph (`lineage_row_edges`), exposed via
+  `GET /api/genie/ontology/authority` and a per-space
+  `GET /api/genie/spaces/{slug}/suggested-tables`, with a "Suggested
+  tables" block in the space config that adds a ranked table to the
+  curated list in one click — auto-populating Genie context instead of
+  hand-curation.  First slice of the Genie-One self-improving context
+  layer (Data + AI Summit 2026); continuous extraction from non-lineage
+  / connected-workplace-app sources is deferred.
+- **Genie skills (phase 218).** Trusted assets (saved question→SQL) are
+  now deterministically re-runnable skills: `POST /api/genie/spaces/
+  {slug}/assets/{id}/run` executes the vetted SQL through the same
+  governed SELECT path as `ask` (no LLM round-trip) after re-checking it
+  against the space's current tables, and a "Run" button renders the
+  result inline.  First slice of the Genie One agentic-coworker unify
+  (Data + AI Summit 2026); wiring answers into alerts / scheduler / MCP
+  and document/visual generation are deferred as the broader umbrella.
+- **Genie agents (phase 217).** "Save a Genie conversation as a reusable
+  named agent" — a new `save_space_as_agent` service distils a Genie
+  space and its conversation into a new, independently-owned space:
+  curated tables / metric views and instructions are inherited, and the
+  agent's trusted Q→SQL assets are seeded from the source assets plus the
+  conversation's successful (`ok` + SQL, non-downvoted) answers.  New
+  `POST /api/genie/spaces/{slug}/save-as-agent` endpoint and a
+  "Save as agent" button in the room.  Delivers the Genie-agents item
+  (Data + AI Summit 2026).
+- **Kimi & Grok LLM providers (phase 216).** The Lens / AI-functions
+  provider abstraction gains `KimiProvider` (Moonshot) and `GrokProvider`
+  (xAI), both subclassing the OpenAI-compatible adapter with their own
+  `base_url`, plus per-provider pricing snapshots and `get_provider`
+  dispatch.  `LENS_PROVIDERS` and the two provider CHECK constraints
+  (migration `c1c67c9fa4e0`) now accept `kimi` / `grok` as BYO
+  credentials, and a new `LensSettings.model_default(provider)` helper
+  replaces the binary openai/anthropic model-default resolution across
+  the Lens session, data-product ask, and AI-functions paths.  Delivers
+  the foundation-model expansion item (Data + AI Summit 2026).
+- **Contextual agent guardrails (phase 215).** A new
+  `evaluate_agent_action` service layers an allow / deny /
+  require-approval verdict over the existing Cedar engine for agent
+  actions, keyed on context attributes (`context.model`,
+  `context.mcp_service`, `context.tool`, plus pii / prompt_injection /
+  jailbreak / unsafe_content content flags).  The require-approval tier
+  is modelled without changing the engine, via a two-action convention
+  (`Action::"agent_action"` vs `Action::"agent_action_with_approval"`).
+  New admin console `/admin/agent-guardrails` evaluates a hypothetical
+  action against the workspace's modules.  Delivers the contextual
+  service-policy surface (Data + AI Summit 2026); live enforcement in
+  the MCP / agent-run path and the content-flag scanner are deferred.
+- **Agent-memory registry (phase 214).** A new `/agent-memories`
+  registry rolls up the existing `agent_runs` / `agent_run_operations`
+  rows into one entry per `agent_id` (run / operation counts, last
+  activity, last principal, status breakdown) with a substring filter,
+  turning the previously unreachable per-agent memory page
+  (`/memory/{agent_id}`) into something you can browse to; discovery
+  link added to the People context panel.  New
+  `agent_memory_registry_routes/` façade — a pure read-rollup, no new
+  store.  Delivers the registry half of the Agent Bricks backlog item
+  (Data + AI Summit 2026); the Document-Intelligence extraction view is
+  deferred as a separate, larger effort.
+- **Agent Command Center (phase 213).** A parallel-run cockpit at
+  `/command-center` over the agent-run metadata: a live-thread board of
+  in-flight runs and candidate sets that group competing attempts over
+  the same notebook (recommended "best pick" = cheapest succeeded run),
+  with a side-by-side compare matrix (status / cost / ops / duration /
+  tables / anomaly) and inline approve/deny reusing the existing
+  `/api/agent-runs/{id}/approve|deny` endpoints.  New
+  `command_center_routes/` façade (`_shared` builders + `_page` HTML +
+  `_api` summary/compare) reusing the `runs_routes` loaders — no new
+  metadata source.  First item delivered from
+  `databricks-summit-backlog.md` (Data + AI Summit 2026).
 - **Runtime query profiles (phase 210.1).** A Profile button next to
   Explain runs the SELECT normally and captures DuckDB's JSON profile
   from the same execution: slowest-first per-operator panel (time,
