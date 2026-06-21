@@ -33,6 +33,44 @@ HOSTED_APP_KINDS: tuple[str, ...] = ("fastapi", "streamlit", "command")
 """Supported app runtimes — each maps to one spawn recipe."""
 
 
+class AppSpace(Base):
+    """A governance boundary grouping several hosted apps.
+
+    An App Space lets an admin define the API scopes (for on-behalf-of-
+    user access) and a shared rationale once for a group of apps, rather
+    than per app.  Apps point at a space via ``HostedApp.app_space_id``;
+    the space's scopes are the apps' effective grant set.  The actual
+    enforcement is layered by the grant / policy stack on top.
+
+    Attributes:
+        id: Auto-incremented primary key.
+        workspace_id: FK to ``workspaces.id``; spaces are
+            workspace-scoped.
+        name: Space identifier, unique per workspace.
+        description: Free-text rationale shown in the UI.
+        api_scopes: JSON-encoded list of API scope strings the space's
+            apps may use on behalf of a user.
+        created_by: E-mail of the creating principal.
+        created_at: Creation timestamp.
+        updated_at: Timestamp of the most recent mutation.
+    """
+
+    __tablename__ = "app_spaces"
+
+    __table_args__ = (UniqueConstraint("workspace_id", "name", name="uq_app_spaces_ws_name"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    workspace_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("workspaces.id"), nullable=False, server_default="1"
+    )
+    name: Mapped[str] = mapped_column(String(128), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    api_scopes: Mapped[str] = mapped_column(Text, nullable=False, default="[]", server_default="[]")
+    created_by: Mapped[str | None] = mapped_column(String(254), nullable=True)
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    updated_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
 class HostedApp(Base):
     """One hosted data app and its worker lifecycle.
 
@@ -62,6 +100,9 @@ class HostedApp(Base):
             process.
         last_error: Most recent startup/runtime failure, for the
             detail page.
+        app_space_id: Optional FK to :class:`AppSpace` — the governance
+            boundary the app belongs to; ``None`` when ungrouped.  SET
+            NULL on space delete so the app survives losing its space.
         created_by_user_id: FK to ``users.id`` — the creating admin.
         created_at: Timestamp when the app was created.
         updated_at: Timestamp of the most recent mutation.
@@ -97,6 +138,13 @@ class HostedApp(Base):
         String(16), nullable=False, default="stopped", server_default="stopped"
     )
     last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    #  Optional App Space grouping — the space's API scopes apply to
+    # every member app.  SET NULL on space delete so the app survives.
+    app_space_id: Mapped[int | None] = mapped_column(
+        Integer,
+        ForeignKey("app_spaces.id", ondelete="SET NULL", name="fk_hosted_apps_app_space"),
+        nullable=True,
+    )
     created_by_user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
     created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     updated_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)

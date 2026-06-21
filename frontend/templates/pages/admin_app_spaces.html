@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+{% block title %}App spaces · PointlesSQL{% endblock %}
+
+{% set breadcrumbs = [
+    {"label": "Home", "href": "/"},
+    {"label": "Admin", "href": "/admin"},
+    {"label": "App spaces"}
+] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-1"
+     x-data="{
+        spaces: [],
+        apps: [],
+        form: { name: '', description: '', scopes: '' },
+        formError: null,
+        async init() { await this.load(); },
+        async load() {
+            const r = await window.pqlApi.fetch('/api/admin/app-spaces');
+            if (r.ok) { this.spaces = r.data.spaces || []; this.apps = r.data.apps || []; }
+        },
+        _scopeList(s) {
+            return (s || '').split(',').map((x) => x.trim()).filter((x) => x);
+        },
+        async create() {
+            this.formError = null;
+            const r = await window.pqlApi.fetch('/api/admin/app-spaces', {
+                method: 'POST',
+                body: { name: this.form.name, description: this.form.description,
+                        api_scopes: this._scopeList(this.form.scopes) }
+            });
+            if (!r.ok) { this.formError = r.error || 'Failed to create space'; return; }
+            this.form = { name: '', description: '', scopes: '' };
+            await this.load();
+        },
+        async removeSpace(s) {
+            if (!window.confirm('Delete space \'' + s.name + '\'? Its apps stay running, ungrouped.')) return;
+            const r = await window.pqlApi.fetch('/api/admin/app-spaces/' + s.id, { method: 'DELETE' });
+            if (r.ok) await this.load();
+        },
+        async editScopes(s) {
+            const next = window.prompt('Comma-separated API scopes for ' + s.name, (s.api_scopes || []).join(', '));
+            if (next === null) return;
+            const r = await window.pqlApi.fetch('/api/admin/app-spaces/' + s.id, {
+                method: 'PATCH', body: { api_scopes: this._scopeList(next) }
+            });
+            if (r.ok) await this.load();
+        },
+        async assign(app, spaceId) {
+            const r = await window.pqlApi.fetch('/api/admin/app-spaces/assign', {
+                method: 'POST',
+                body: { app_id: app.id, space_id: spaceId === '' ? null : Number(spaceId) }
+            });
+            if (r.ok) await this.load();
+        }
+     }">
+
+    <div class="d-flex align-items-center gap-2 mb-3">
+        <i class="bi bi-grid-1x2 fs-3"></i>
+        <h1 class="h3 mb-0">App spaces</h1>
+    </div>
+
+    <p class="text-muted">
+        An App Space is a governance boundary over a group of hosted apps: declare the API scopes (for on-behalf-of-user
+        access) once for the space, then assign apps into it. The scopes become each member app's effective grant set;
+        the enforcement is layered by the grant / policy stack on top.
+    </p>
+
+    <div class="row g-3">
+        <div class="col-12 col-lg-4">
+            <div class="card">
+                <div class="card-header py-2 fw-semibold">New space</div>
+                <div class="card-body">
+                    <div class="mb-2">
+                        <label class="form-label small text-muted" for="as-name">Name</label>
+                        <input id="as-name" type="text" class="form-control form-control-sm"
+                               x-model="form.name" placeholder="analytics-apps">
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small text-muted" for="as-desc">Description</label>
+                        <input id="as-desc" type="text" class="form-control form-control-sm"
+                               x-model="form.description" placeholder="optional">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small text-muted" for="as-scopes">API scopes (comma-separated)</label>
+                        <input id="as-scopes" type="text" class="form-control form-control-sm font-monospace"
+                               x-model="form.scopes" placeholder="sql.read, catalog.read">
+                    </div>
+                    <button type="button" class="btn btn-primary btn-sm" @click="create()">
+                        <i class="bi bi-plus-lg me-1"></i>Create space
+                    </button>
+                    <span x-show="formError" x-text="formError" class="text-danger small ms-2"></span>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-lg-8">
+            <div class="card mb-3">
+                <div class="card-header py-2 fw-semibold">Spaces</div>
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead>
+                            <tr class="small text-muted">
+                                <th>Name</th><th>API scopes</th><th class="text-end">Apps</th><th class="text-end"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template x-for="s in spaces" :key="s.id">
+                                <tr>
+                                    <td>
+                                        <span class="fw-semibold" x-text="s.name"></span>
+                                        <div class="text-muted small" x-text="s.description || ''"></div>
+                                    </td>
+                                    <td class="small">
+                                        <template x-for="sc in s.api_scopes" :key="sc">
+                                            <span class="badge bg-light text-dark me-1" x-text="sc"></span>
+                                        </template>
+                                        <span x-show="s.api_scopes.length === 0" class="text-muted">none</span>
+                                    </td>
+                                    <td class="text-end" x-text="s.app_count"></td>
+                                    <td class="text-end text-nowrap">
+                                        <button type="button" class="btn btn-sm btn-outline-secondary"
+                                                @click="editScopes(s)">Scopes</button>
+                                        <button type="button" class="btn btn-sm btn-outline-danger"
+                                                @click="removeSpace(s)" aria-label="Delete space">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            </template>
+                            <tr x-show="spaces.length === 0">
+                                <td colspan="4" class="text-muted small">No app spaces yet.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header py-2 fw-semibold">Hosted apps</div>
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead>
+                            <tr class="small text-muted"><th>App</th><th>Space</th></tr>
+                        </thead>
+                        <tbody>
+                            <template x-for="a in apps" :key="a.id">
+                                <tr>
+                                    <td>
+                                        <span class="fw-semibold" x-text="a.title"></span>
+                                        <code class="small ms-1" x-text="a.slug"></code>
+                                    </td>
+                                    <td style="max-width: 16rem;">
+                                        <select class="form-select form-select-sm"
+                                                :aria-label="'Space for ' + a.title"
+                                                @change="assign(a, $event.target.value)">
+                                            <option value="" :selected="a.app_space_id === null">(none)</option>
+                                            <template x-for="s in spaces" :key="s.id">
+                                                <option :value="s.id" :selected="a.app_space_id === s.id"
+                                                        x-text="s.name"></option>
+                                            </template>
+                                        </select>
+                                    </td>
+                                </tr>
+                            </template>
+                            <tr x-show="apps.length === 0">
+                                <td colspan="2" class="text-muted small">No hosted apps in this workspace.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
