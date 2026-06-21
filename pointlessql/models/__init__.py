@@ -241,6 +241,10 @@ from pointlessql.models.notifications import (
     UserNotification,
     UserWebhookSubscription,
 )
+from pointlessql.models.optimization_policies import (
+    OPTIMIZATION_SCOPE_TYPES,
+    OptimizationPolicy,
+)
 from pointlessql.models.pipelines import (
     PIPELINE_DATASET_KINDS,
     PIPELINE_EXPECTATION_ACTIONS,
@@ -511,6 +515,7 @@ __all__ = [
     "GENIE_MESSAGE_ROLES",
     "GENIE_MESSAGE_STATUSES",
     "SECRET_SCOPE_PERMISSIONS",
+    "OPTIMIZATION_SCOPE_TYPES",
     "SERVING_ENDPOINT_STATES",
     "SNAPSHOT_STATUSES",
     "SYNCED_TABLE_MODES",
@@ -524,6 +529,7 @@ __all__ = [
     "SecretScopeSecret",
     "ServingEndpoint",
     "SharingProvider",
+    "OptimizationPolicy",
     "SyncedTable",
     "SyncedTableSnapshot",
     "SystemKey",

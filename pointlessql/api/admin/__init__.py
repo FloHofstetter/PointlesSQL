@@ -47,6 +47,7 @@ from pointlessql.api.admin.ingest_sources import (
 from pointlessql.api.admin.lens_providers import router as _lens_providers_router
 from pointlessql.api.admin.mcp_services import router as _mcp_services_router
 from pointlessql.api.admin.mesh_entities import router as _mesh_entities_router
+from pointlessql.api.admin.optimization import router as _optimization_router
 from pointlessql.api.admin.policy_modules import router as _policy_modules_router
 from pointlessql.api.admin.repos import router as _repos_router
 from pointlessql.api.admin.secrets import router as _secrets_router
@@ -61,6 +62,7 @@ router.include_router(_glossary_router)
 router.include_router(_admin_governance_router)
 router.include_router(_governance_hub_router)
 router.include_router(_mesh_entities_router)
+router.include_router(_optimization_router)
 router.include_router(_workspace_pins_router)
 router.include_router(_repos_router)
 router.include_router(_cdf_tail_router)

@@ -1,0 +1,189 @@
+{% extends "base.html" %}
+{% block title %}Predictive optimization · PointlesSQL{% endblock %}
+
+{% set breadcrumbs = [
+    {"label": "Home", "href": "/"},
+    {"label": "Admin", "href": "/admin"},
+    {"label": "Predictive optimization"}
+] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-1"
+     x-data="{
+        scopeTypes: {{ scope_types | tojson }},
+        policies: [],
+        form: { scope_type: 'catalog', scope_value: '', enabled: true,
+                optimize: true, vacuum: true, analyze: true },
+        formError: null,
+        effectiveTable: '',
+        effective: null,
+        async init() { await this.load(); },
+        async load() {
+            const r = await window.pqlApi.fetch('/api/admin/optimization');
+            if (r.ok) { this.policies = (r.data && r.data.policies) || []; }
+        },
+        async save() {
+            this.formError = null;
+            const r = await window.pqlApi.fetch('/api/admin/optimization', {
+                method: 'POST', body: { ...this.form }
+            });
+            if (!r.ok) { this.formError = r.error || 'Failed to save policy'; return; }
+            this.form.scope_value = '';
+            await this.load();
+        },
+        async remove(p) {
+            if (!window.confirm('Delete the ' + p.scope_type + ' policy for ' + p.scope_value + '?')) return;
+            const r = await window.pqlApi.fetch('/api/admin/optimization/' + p.id, { method: 'DELETE' });
+            if (r.ok) await this.load();
+        },
+        async resolve() {
+            this.effective = null;
+            if (!this.effectiveTable.trim()) return;
+            const r = await window.pqlApi.fetch(
+                '/api/admin/optimization/effective?table=' + encodeURIComponent(this.effectiveTable.trim())
+            );
+            if (r.ok) { this.effective = r.data; }
+        }
+     }">
+
+    <div class="d-flex align-items-center gap-2 mb-3">
+        <i class="bi bi-magic fs-3"></i>
+        <h1 class="h3 mb-0">Predictive optimization</h1>
+    </div>
+
+    <p class="text-muted">
+        Control which Unity-Catalog tables get autonomous Delta maintenance. A policy attaches at a catalog, schema,
+        or table scope and declares which operations run — OPTIMIZE / compaction, VACUUM, and ANALYZE (statistics). A
+        table inherits its schema's, then its catalog's policy unless it sets its own (most-specific wins). The
+        maintenance itself runs on the existing engine path; this console is the control + visibility layer.
+    </p>
+
+    <div class="row g-3">
+        <div class="col-12 col-lg-4">
+            <div class="card">
+                <div class="card-header py-2 fw-semibold">Set a policy</div>
+                <div class="card-body">
+                    <div class="mb-2">
+                        <label class="form-label small text-muted" for="po-scope-type">Scope</label>
+                        <select id="po-scope-type" class="form-select form-select-sm" x-model="form.scope_type">
+                            <template x-for="t in scopeTypes" :key="t">
+                                <option :value="t" x-text="t"></option>
+                            </template>
+                        </select>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small text-muted" for="po-scope-value">
+                            <span x-text="form.scope_type === 'catalog' ? 'Catalog'
+                                  : (form.scope_type === 'schema' ? 'catalog.schema' : 'catalog.schema.table')"></span>
+                        </label>
+                        <input id="po-scope-value" type="text" class="form-control form-control-sm font-monospace"
+                               x-model="form.scope_value"
+                               :placeholder="form.scope_type === 'catalog' ? 'main'
+                                  : (form.scope_type === 'schema' ? 'main.sales' : 'main.sales.orders')">
+                    </div>
+                    <div class="form-check form-switch">
+                        <input id="po-enabled" class="form-check-input" type="checkbox" role="switch"
+                               x-model="form.enabled">
+                        <label class="form-check-label small" for="po-enabled">Enabled</label>
+                    </div>
+                    <div class="form-check form-switch">
+                        <input id="po-optimize" class="form-check-input" type="checkbox" role="switch"
+                               x-model="form.optimize">
+                        <label class="form-check-label small" for="po-optimize">OPTIMIZE / compaction</label>
+                    </div>
+                    <div class="form-check form-switch">
+                        <input id="po-vacuum" class="form-check-input" type="checkbox" role="switch"
+                               x-model="form.vacuum">
+                        <label class="form-check-label small" for="po-vacuum">VACUUM</label>
+                    </div>
+                    <div class="form-check form-switch mb-2">
+                        <input id="po-analyze" class="form-check-input" type="checkbox" role="switch"
+                               x-model="form.analyze">
+                        <label class="form-check-label small" for="po-analyze">ANALYZE (statistics)</label>
+                    </div>
+                    <button type="button" class="btn btn-primary btn-sm" @click="save()">
+                        <i class="bi bi-check-lg me-1"></i>Save policy
+                    </button>
+                    <span x-show="formError" x-text="formError" class="text-danger small ms-2"></span>
+                </div>
+            </div>
+
+            <div class="card mt-3">
+                <div class="card-header py-2 fw-semibold">Resolve effective policy</div>
+                <div class="card-body">
+                    <label class="form-label small text-muted" for="po-effective">Table</label>
+                    <div class="input-group input-group-sm">
+                        <input id="po-effective" type="text" class="form-control font-monospace"
+                               x-model="effectiveTable" placeholder="main.sales.orders"
+                               @keydown.enter="resolve()">
+                        <button type="button" class="btn btn-outline-primary" @click="resolve()">Resolve</button>
+                    </div>
+                    <template x-if="effective">
+                        <div class="mt-2 small">
+                            <div>
+                                <span class="badge"
+                                      :class="effective.enabled ? 'bg-success' : 'bg-secondary'"
+                                      x-text="effective.enabled ? 'maintained' : 'not maintained'"></span>
+                                <span class="text-muted ms-1"
+                                      x-text="effective.matched_scope ? ('via ' + effective.matched_scope)
+                                              : '(default — no policy)'"></span>
+                            </div>
+                            <div class="mt-1" x-show="effective.enabled">
+                                <span class="badge bg-light text-dark" x-show="effective.optimize">OPTIMIZE</span>
+                                <span class="badge bg-light text-dark" x-show="effective.vacuum">VACUUM</span>
+                                <span class="badge bg-light text-dark" x-show="effective.analyze">ANALYZE</span>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-lg-8">
+            <div class="card">
+                <div class="card-header py-2 fw-semibold">Policies</div>
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead>
+                            <tr class="small text-muted">
+                                <th>Scope</th><th>Status</th><th>Operations</th><th class="text-end"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template x-for="p in policies" :key="p.id">
+                                <tr>
+                                    <td>
+                                        <span class="badge bg-secondary" x-text="p.scope_type"></span>
+                                        <code x-text="p.scope_value"></code>
+                                    </td>
+                                    <td>
+                                        <span class="badge" :class="p.enabled ? 'bg-success' : 'bg-secondary'"
+                                              x-text="p.enabled ? 'enabled' : 'disabled'"></span>
+                                    </td>
+                                    <td class="small">
+                                        <span class="badge bg-light text-dark" x-show="p.optimize">OPTIMIZE</span>
+                                        <span class="badge bg-light text-dark" x-show="p.vacuum">VACUUM</span>
+                                        <span class="badge bg-light text-dark" x-show="p.analyze">ANALYZE</span>
+                                    </td>
+                                    <td class="text-end">
+                                        <button type="button" class="btn btn-sm btn-outline-danger"
+                                                @click="remove(p)" aria-label="Delete policy">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            </template>
+                            <tr x-show="policies.length === 0">
+                                <td colspan="4" class="text-muted small">
+                                    No policies yet — every table falls back to no autonomous maintenance.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
