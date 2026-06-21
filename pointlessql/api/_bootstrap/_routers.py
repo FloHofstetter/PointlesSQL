@@ -28,6 +28,7 @@ def register_routers(app: FastAPI) -> None:
     """
     from pointlessql.api.access_requests_routes import router as access_requests_router
     from pointlessql.api.admin import router as admin_router
+    from pointlessql.api.agent_memory_registry_routes import router as agent_memory_registry_router
     from pointlessql.api.agent_reviews_routes import router as agent_reviews_router
     from pointlessql.api.agent_runs_routes import router as agent_runs_router
     from pointlessql.api.agents_html_routes import router as agents_html_router
@@ -183,6 +184,7 @@ def register_routers(app: FastAPI) -> None:
     app.include_router(runs_router)
     app.include_router(command_center_router)
     app.include_router(agent_runs_router)
+    app.include_router(agent_memory_registry_router)
     app.include_router(agent_reviews_router)
     app.include_router(branches_router)
     app.include_router(pql_introspect_router)
