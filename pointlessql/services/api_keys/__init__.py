@@ -25,7 +25,7 @@ here so callers keep importing from ``pointlessql.services.api_keys``:
 
 from __future__ import annotations
 
-from pointlessql.services.api_keys._cache import KeyEntry, invalidate_cache
+from pointlessql.services.api_keys._cache import KeyEntry, hash_secret, invalidate_cache
 from pointlessql.services.api_keys._crud import (
     bootstrap_from_env,
     create_api_key,
@@ -47,6 +47,7 @@ __all__ = [
     "KeyEntry",
     "bootstrap_from_env",
     "create_api_key",
+    "hash_secret",
     "invalidate_cache",
     "is_auditor",
     "is_supervisor",

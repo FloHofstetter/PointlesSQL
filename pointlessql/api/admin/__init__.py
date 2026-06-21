@@ -39,6 +39,7 @@ from pointlessql.api.admin.expected_producers import (
     router as _expected_producers_router,
 )
 from pointlessql.api.admin.external_writes import router as _external_writes_router
+from pointlessql.api.admin.genie_connectors import router as _genie_connectors_router
 from pointlessql.api.admin.glossary import router as _glossary_router
 from pointlessql.api.admin.governance import router as _admin_governance_router
 from pointlessql.api.admin.governance_hub import router as _governance_hub_router
@@ -78,6 +79,7 @@ router.include_router(_policy_modules_router)
 router.include_router(_agent_guardrails_router)
 router.include_router(_agent_gateway_router)
 router.include_router(_app_spaces_router)
+router.include_router(_genie_connectors_router)
 router.include_router(_ai_gateway_router)
 router.include_router(_mcp_services_router)
 router.include_router(_cost_routes_router)

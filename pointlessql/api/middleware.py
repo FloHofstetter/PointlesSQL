@@ -104,6 +104,12 @@ PUBLIC_PREFIXES: tuple[str, ...] = (
     # 404 inside the route, and widget queries run as the owner.
     "/bi/public/",
     "/api/bi/public/",
+    # inbound Genie chat webhook (Teams / M365 Copilot).
+    # Authentication is the connector's shared-secret Bearer token
+    # verified inside the route handler against the stored hash; the
+    # path itself is unauthenticated so the chat channel can POST
+    # without a browser session or an API key.
+    "/api/genie/teams/",
 )
 
 

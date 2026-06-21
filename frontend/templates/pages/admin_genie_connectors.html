@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+{% block title %}Genie connectors · PointlesSQL{% endblock %}
+
+{% set breadcrumbs = [
+    {"label": "Home", "href": "/"},
+    {"label": "Admin", "href": "/admin"},
+    {"label": "Genie connectors"}
+] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-1"
+     x-data="{
+        connectors: [],
+        spaces: [],
+        form: { name: '', platform: 'teams', space: '' },
+        formError: null,
+        lastToken: null,
+        async init() { await this.load(); },
+        async load() {
+            const r = await window.pqlApi.fetch('/api/admin/genie-connectors');
+            if (r.ok) { this.connectors = r.data.connectors || []; this.spaces = r.data.spaces || []; }
+        },
+        async create() {
+            this.formError = null;
+            const r = await window.pqlApi.fetch('/api/admin/genie-connectors', {
+                method: 'POST',
+                body: { name: this.form.name, platform: this.form.platform,
+                        genie_space_slug: this.form.space || null }
+            });
+            if (!r.ok) { this.formError = r.error || 'Failed to create connector'; return; }
+            this.lastToken = { name: r.data.connector.name, token: r.data.token,
+                               path: r.data.connector.messaging_path };
+            this.form = { name: '', platform: 'teams', space: '' };
+            await this.load();
+        },
+        async rotate(c) {
+            if (!window.confirm('Rotate the token for \'' + c.name + '\'? The old token stops working immediately.')) return;
+            const r = await window.pqlApi.fetch('/api/admin/genie-connectors/' + c.id + '/rotate', { method: 'POST' });
+            if (r.ok) { this.lastToken = { name: c.name, token: r.data.token, path: c.messaging_path }; await this.load(); }
+        },
+        async toggle(c) {
+            const r = await window.pqlApi.fetch('/api/admin/genie-connectors/' + c.id, {
+                method: 'PATCH', body: { enabled: !c.enabled }
+            });
+            if (r.ok) await this.load();
+        },
+        async bind(c, slug) {
+            const r = await window.pqlApi.fetch('/api/admin/genie-connectors/' + c.id, {
+                method: 'PATCH', body: { genie_space_slug: slug === '' ? null : slug }
+            });
+            if (r.ok) await this.load();
+        },
+        async removeConnector(c) {
+            if (!window.confirm('Delete connector \'' + c.name + '\'?')) return;
+            const r = await window.pqlApi.fetch('/api/admin/genie-connectors/' + c.id, { method: 'DELETE' });
+            if (r.ok) await this.load();
+        }
+     }">
+
+    <div class="d-flex align-items-center gap-2 mb-3">
+        <i class="bi bi-chat-dots fs-3"></i>
+        <h1 class="h3 mb-0">Genie connectors</h1>
+    </div>
+
+    <p class="text-muted">
+        Bring Genie into Microsoft Teams or M365 Copilot. Register a bot, point the channel's messaging
+        endpoint at its URL, and every <code>@Genie</code> question routes through the workspace's Genie
+        engine — grant-enforced and audited per answer. Bind a Genie space to scope which tables the bot
+        may answer over. The shared-secret token is shown once on create and rotate.
+    </p>
+
+    <div class="alert alert-success" x-show="lastToken" x-cloak>
+        <div class="fw-semibold mb-1"><i class="bi bi-key me-1"></i>Token for <span x-text="lastToken.name"></span></div>
+        <div class="small mb-1">Copy it now — it isn't shown again. Use it as a <code>Bearer</code> token.</div>
+        <code class="d-block user-select-all mb-1" x-text="lastToken.token"></code>
+        <div class="small text-muted">Messaging endpoint: <code x-text="lastToken.path"></code></div>
+        <button type="button" class="btn btn-sm btn-outline-secondary mt-2" @click="lastToken = null">Dismiss</button>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-12 col-lg-4">
+            <div class="card">
+                <div class="card-header py-2 fw-semibold">New connector</div>
+                <div class="card-body">
+                    <div class="mb-2">
+                        <label class="form-label small text-muted" for="gc-name">Name</label>
+                        <input id="gc-name" type="text" class="form-control form-control-sm"
+                               x-model="form.name" placeholder="sales-genie">
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small text-muted" for="gc-platform">Platform</label>
+                        <select id="gc-platform" class="form-select form-select-sm" x-model="form.platform">
+                            <option value="teams">Microsoft Teams</option>
+                            <option value="copilot">M365 Copilot</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small text-muted" for="gc-space">Genie space (optional)</label>
+                        <select id="gc-space" class="form-select form-select-sm" x-model="form.space">
+                            <option value="">(none — bind later)</option>
+                            <template x-for="s in spaces" :key="s.slug">
+                                <option :value="s.slug" x-text="s.title"></option>
+                            </template>
+                        </select>
+                    </div>
+                    <button type="button" class="btn btn-primary btn-sm" @click="create()">
+                        <i class="bi bi-plus-lg me-1"></i>Create connector
+                    </button>
+                    <span x-show="formError" x-text="formError" class="text-danger small ms-2"></span>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-lg-8">
+            <div class="card">
+                <div class="card-header py-2 fw-semibold">Connectors</div>
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead>
+                            <tr class="small text-muted">
+                                <th>Name</th><th>Platform</th><th>Space</th><th>Token</th>
+                                <th class="text-end"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template x-for="c in connectors" :key="c.id">
+                                <tr>
+                                    <td>
+                                        <span class="fw-semibold" x-text="c.name"></span>
+                                        <div class="text-muted small font-monospace" x-text="c.messaging_path"></div>
+                                    </td>
+                                    <td class="small" x-text="c.platform"></td>
+                                    <td style="max-width: 12rem;">
+                                        <select class="form-select form-select-sm"
+                                                :aria-label="'Genie space for ' + c.name"
+                                                @change="bind(c, $event.target.value)">
+                                            <option value="" :selected="!c.genie_space_slug">(none)</option>
+                                            <template x-for="s in spaces" :key="s.slug">
+                                                <option :value="s.slug" :selected="c.genie_space_slug === s.slug"
+                                                        x-text="s.title"></option>
+                                            </template>
+                                        </select>
+                                    </td>
+                                    <td class="small font-monospace text-muted" x-text="c.token_prefix + '…'"></td>
+                                    <td class="text-end text-nowrap">
+                                        <button type="button" class="btn btn-sm"
+                                                :class="c.enabled ? 'btn-outline-success' : 'btn-outline-secondary'"
+                                                @click="toggle(c)"
+                                                x-text="c.enabled ? 'Enabled' : 'Disabled'"></button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary"
+                                                @click="rotate(c)">Rotate</button>
+                                        <button type="button" class="btn btn-sm btn-outline-danger"
+                                                @click="removeConnector(c)" aria-label="Delete connector">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            </template>
+                            <tr x-show="connectors.length === 0">
+                                <td colspan="5" class="text-muted small">No Genie connectors yet.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

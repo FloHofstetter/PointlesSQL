@@ -181,6 +181,10 @@ from pointlessql.models.genie import (
     GenieSpace,
     GenieTrustedAsset,
 )
+from pointlessql.models.genie_connectors import (
+    GENIE_CONNECTOR_PLATFORMS,
+    GenieBotConnector,
+)
 from pointlessql.models.hosted_apps import (
     HOSTED_APP_KINDS,
     HOSTED_APP_STATES,
@@ -523,6 +527,8 @@ __all__ = [
     "SYNCED_TABLE_MODES",
     "SYNCED_TABLE_STATUSES",
     "AutoloaderFile",
+    "GENIE_CONNECTOR_PLATFORMS",
+    "GenieBotConnector",
     "GenieMessage",
     "GenieSpace",
     "GenieTrustedAsset",
