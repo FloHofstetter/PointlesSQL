@@ -431,3 +431,27 @@ class LensSettings(BaseSettings):
     max_messages_per_session: int = 100
     openai_model_default: str = "gpt-4o-mini"
     anthropic_model_default: str = "claude-haiku-4-5-20251001"
+    kimi_model_default: str = "kimi-k2-0711-preview"
+    grok_model_default: str = "grok-4"
+
+    def model_default(self, provider: str) -> str:
+        """Return the default model id for *provider*.
+
+        Centralises the per-provider fallback the chat-loop, the
+        data-product ask path, and AI functions all need when a
+        workspace credential leaves ``default_model`` unset, so a new
+        provider lands in one place instead of three binary branches.
+
+        Args:
+            provider: One of :data:`pointlessql.models.LENS_PROVIDERS`.
+
+        Returns:
+            The configured default model id; unknown providers fall back
+            to the OpenAI default.
+        """
+        return {
+            "openai": self.openai_model_default,
+            "anthropic": self.anthropic_model_default,
+            "kimi": self.kimi_model_default,
+            "grok": self.grok_model_default,
+        }.get(provider, self.openai_model_default)

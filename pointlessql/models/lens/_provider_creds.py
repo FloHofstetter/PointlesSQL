@@ -32,7 +32,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from pointlessql.models.base import Base
 
-LENS_PROVIDERS: tuple[str, ...] = ("openai", "anthropic")
+LENS_PROVIDERS: tuple[str, ...] = ("openai", "anthropic", "kimi", "grok")
 """Recognised :attr:`LensProviderCreds.provider` and
 :attr:`LensSession.llm_provider` values.
 

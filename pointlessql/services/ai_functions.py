@@ -150,11 +150,7 @@ def _resolve_provider(settings: Settings) -> tuple[str, str, str]:
             )
             if api_key is None:
                 continue
-            default_model = (
-                settings.lens.openai_model_default
-                if row.provider == "openai"
-                else settings.lens.anthropic_model_default
-            )
+            default_model = settings.lens.model_default(row.provider)
             return row.provider, api_key, override or row.default_model or default_model
     except Exception:  # noqa: BLE001 — fall through to env keys
         logger.debug("workspace LLM credential lookup failed", exc_info=True)

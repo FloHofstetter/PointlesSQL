@@ -54,8 +54,8 @@ def _create_user(*, email: str) -> int:
 
 
 def test_lens_providers_pinned() -> None:
-    """``LENS_PROVIDERS`` exposes the two recognised provider names."""
-    assert set(LENS_PROVIDERS) == {"openai", "anthropic"}
+    """``LENS_PROVIDERS`` exposes the recognised provider names."""
+    assert set(LENS_PROVIDERS) == {"openai", "anthropic", "kimi", "grok"}
 
 
 def test_lens_session_columns_present() -> None:
@@ -248,6 +248,6 @@ def test_provider_creds_unknown_provider_raises() -> None:
         upsert_provider_creds(
             factory,
             workspace_id=1,
-            provider="grok",
+            provider="bogus",
             api_key="x",
         )

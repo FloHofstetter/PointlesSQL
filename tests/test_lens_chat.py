@@ -81,7 +81,7 @@ async def test_create_session_rejects_unknown_provider(
     _wipe_lens_tables()
     resp = await admin_client.post(
         "/api/lens/sessions",
-        json={"title": "bad", "llm_provider": "grok"},
+        json={"title": "bad", "llm_provider": "bogus"},
     )
     assert resp.status_code == 422
 

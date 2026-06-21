@@ -81,11 +81,7 @@ def create_session_endpoint(
     settings = request.app.state.settings
     workspace_id = current_workspace_id(request)
     user = get_user(request)
-    default_model = (
-        settings.lens.openai_model_default
-        if body.llm_provider == "openai"
-        else settings.lens.anthropic_model_default
-    )
+    default_model = settings.lens.model_default(body.llm_provider)
     row = create_session(
         factory,
         workspace_id=workspace_id,

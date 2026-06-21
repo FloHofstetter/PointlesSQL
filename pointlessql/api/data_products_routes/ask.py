@@ -84,11 +84,7 @@ def _pick_provider(factory: Any, workspace_id: int, settings: Any) -> tuple[str,
         enabled[0] if enabled else None
     )
     provider = chosen.provider if chosen else "anthropic"
-    default_model = (
-        settings.lens.openai_model_default
-        if provider == "openai"
-        else settings.lens.anthropic_model_default
-    )
+    default_model = settings.lens.model_default(provider)
     model = chosen.default_model if chosen and chosen.default_model else default_model
     return provider, model, chosen is not None
 

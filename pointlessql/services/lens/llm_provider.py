@@ -115,18 +115,29 @@ class _BaseProvider:
 
 
 class OpenAIProvider(_BaseProvider):
-    """OpenAI chat.completions adapter.
+    """OpenAI-compatible chat.completions adapter.
 
     Lazy-imports ``openai`` so the rest of PointlesSQL stays usable
-    when the package isn't installed.
+    when the package isn't installed.  Kimi (Moonshot) and Grok (xAI)
+    speak the same chat.completions wire format, so they subclass this
+    adapter with a different :attr:`base_url` and :attr:`name` rather
+    than duplicating the request/response translation.
     """
 
-    name: Literal["openai"] = "openai"
+    name: str = "openai"
+    #: OpenAI-compatible base URL.  ``None`` targets OpenAI itself; the
+    #: Kimi / Grok subclasses point it at their respective endpoints.
+    base_url: str | None = None
 
     def __init__(self, api_key: str) -> None:  # noqa: D107
         import openai  # local import — keeps cold-start independent
 
-        self._client = openai.AsyncOpenAI(api_key=api_key)  # type: ignore[no-untyped-call]
+        if self.base_url is not None:
+            self._client = openai.AsyncOpenAI(  # type: ignore[no-untyped-call]
+                api_key=api_key, base_url=self.base_url
+            )
+        else:
+            self._client = openai.AsyncOpenAI(api_key=api_key)  # type: ignore[no-untyped-call]
 
     async def chat_with_tools(
         self,
@@ -191,13 +202,27 @@ class OpenAIProvider(_BaseProvider):
             tokens_in=tokens_in,
             tokens_out=tokens_out,
             cost_estimate=_estimate_cost_usd(
-                provider="openai",
+                provider=self.name,
                 model=model,
                 tokens_in=tokens_in,
                 tokens_out=tokens_out,
             ),
             finish_reason=str(getattr(choice, "finish_reason", "") or "") or None,
         )
+
+
+class KimiProvider(OpenAIProvider):
+    """Moonshot AI (Kimi) adapter over the OpenAI-compatible API."""
+
+    name: str = "kimi"
+    base_url: str | None = "https://api.moonshot.ai/v1"
+
+
+class GrokProvider(OpenAIProvider):
+    """xAI (Grok) adapter over the OpenAI-compatible API."""
+
+    name: str = "grok"
+    base_url: str | None = "https://api.x.ai/v1"
 
 
 class AnthropicProvider(_BaseProvider):
@@ -292,7 +317,27 @@ _ANTHROPIC_PRICING: dict[str, tuple[float, float]] = {
     "claude-sonnet-4-6": (3.00, 15.00),
     "claude-opus-4-7": (15.00, 75.00),
 }
+_KIMI_PRICING: dict[str, tuple[float, float]] = {
+    "kimi-k2-0711-preview": (0.60, 2.50),
+    "moonshot-v1-8k": (0.20, 2.00),
+    "moonshot-v1-32k": (0.30, 3.00),
+    "moonshot-v1-128k": (0.60, 6.00),
+}
+_GROK_PRICING: dict[str, tuple[float, float]] = {
+    "grok-4": (3.00, 15.00),
+    "grok-3": (3.00, 15.00),
+    "grok-3-mini": (0.30, 0.50),
+}
 _FALLBACK_PRICING: tuple[float, float] = (5.00, 25.00)
+
+#: Per-provider pricing snapshot lookup.  Unknown providers fall back to
+#: an empty table so the conservative :data:`_FALLBACK_PRICING` applies.
+_PRICING_BY_PROVIDER: dict[str, dict[str, tuple[float, float]]] = {
+    "openai": _OPENAI_PRICING,
+    "anthropic": _ANTHROPIC_PRICING,
+    "kimi": _KIMI_PRICING,
+    "grok": _GROK_PRICING,
+}
 
 
 def _estimate_cost_usd(
@@ -303,13 +348,7 @@ def _estimate_cost_usd(
     tokens_out: int,
 ) -> float:
     """Return a USD-cents-precision cost estimate for one round-trip."""
-    table = (
-        _OPENAI_PRICING
-        if provider == "openai"
-        else _ANTHROPIC_PRICING
-        if provider == "anthropic"
-        else {}
-    )
+    table = _PRICING_BY_PROVIDER.get(provider, {})
     pricing = table.get(model, _FALLBACK_PRICING)
     in_per_million, out_per_million = pricing
     return (tokens_in / 1_000_000.0) * in_per_million + (tokens_out / 1_000_000.0) * out_per_million
@@ -334,7 +373,11 @@ def get_provider(provider_name: str, api_key: str) -> LensProvider:
     # Protocol structurally at runtime; broadening the Protocol field
     # would weaken downstream callers that branch on the literal.
     if provider_name == "openai":
-        return OpenAIProvider(api_key=api_key)  # pyright: ignore[reportReturnType]
+        return OpenAIProvider(api_key=api_key)
     if provider_name == "anthropic":
         return AnthropicProvider(api_key=api_key)  # pyright: ignore[reportReturnType]
+    if provider_name == "kimi":
+        return KimiProvider(api_key=api_key)
+    if provider_name == "grok":
+        return GrokProvider(api_key=api_key)
     raise ValueError(f"Unrecognised Lens provider: {provider_name!r}")
