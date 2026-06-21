@@ -12,7 +12,7 @@ from __future__ import annotations
 import dataclasses
 from typing import Any
 
-from fastapi import APIRouter, Body, Request
+from fastapi import APIRouter, Body, Query, Request
 from fastapi.responses import HTMLResponse
 
 from pointlessql.api._audit_helpers import audit
@@ -34,6 +34,8 @@ def _serialize_rule(rule: Any) -> dict[str, Any]:
         "id": rule.id,
         "tag_key": rule.tag_key,
         "tag_value": rule.tag_value,
+        "scope_type": rule.scope_type,
+        "scope_value": rule.scope_value,
         "effect": rule.effect,
         "expr": rule.expr,
         "priority": rule.priority,
@@ -57,7 +59,8 @@ async def api_create_tag_policy(
 ) -> dict[str, Any]:
     """Create a rule (admin only).
 
-    Body: ``{tag_key, tag_value?, effect, expr, priority?, description?}``.
+    Body: ``{tag_key, tag_value?, scope_type?, scope_value?, effect,
+    expr, priority?, description?}``.
     """
     require_admin(request)
     user = get_user(request)
@@ -70,6 +73,8 @@ async def api_create_tag_policy(
         expr=str(body.get("expr") or ""),
         priority=int(body.get("priority") or 100),
         description=(str(body["description"]) if body.get("description") else None),
+        scope_type=str(body.get("scope_type") or "global"),
+        scope_value=(str(body["scope_value"]) if body.get("scope_value") else None),
         created_by_user_id=user["id"],
     )
     await audit(request, "tag_policy.created", f"tag_policy:{rule.id}", _serialize_rule(rule))
@@ -114,6 +119,41 @@ async def api_delete_tag_policy(request: Request, rule_id: int) -> dict[str, Any
         raise ValidationError(f"tag policy rule {rule_id} not found")
     await audit(request, "tag_policy.deleted", f"tag_policy:{rule_id}")
     return {"deleted": True}
+
+
+@router.get("/api/admin/tag-policies/preview")
+async def api_preview_scan_policy(
+    request: Request,
+    table: str = Query(..., description="catalog.schema.table to preview"),
+    principal: str | None = Query(default=None, description="external principal to preview as"),
+) -> dict[str, Any]:
+    """Preview the cross-engine scan policy for a table + principal (admin).
+
+    Shows which columns an external Iceberg client running as
+    *principal* would see masked, and which row-filter predicate the
+    pre-filtered scan plan would carry — the observability view over the
+    same tag-policy evaluation the SELECT choke points apply.
+
+    Args:
+        request: The incoming request (admin gate + UC client).
+        table: Three-part ``catalog.schema.table`` to preview.
+        principal: External principal to evaluate as; defaults to the
+            requesting admin's email when omitted.
+
+    Returns:
+        The preview payload from
+        :func:`tag_policies.preview_scan_policy`.
+    """
+    require_admin(request)
+    uc_client = get_uc_client(request)
+    user = get_user(request)
+    target_principal = (principal or "").strip() or str(user.get("email", ""))
+    return await tag_policies.preview_scan_policy(
+        uc_client,
+        full_name=table.strip(),
+        principal=target_principal,
+        factory=request.app.state.session_factory,
+    )
 
 
 @router.post("/api/admin/classification/scan")

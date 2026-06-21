@@ -49,6 +49,22 @@
                            x-model="form.tag_value" placeholder="any">
                 </div>
                 <div class="col-md-2">
+                    <label class="form-label small fw-bold" for="tp-scope-type">Scope</label>
+                    <select id="tp-scope-type" class="form-select form-select-sm" x-model="form.scope_type">
+                        <option value="global">global (all tables)</option>
+                        <option value="catalog">catalog</option>
+                        <option value="schema">schema</option>
+                    </select>
+                </div>
+                <div class="col-md-2" x-show="form.scope_type !== 'global'" x-cloak>
+                    <label class="form-label small fw-bold" for="tp-scope-value">
+                        <span x-text="form.scope_type === 'catalog' ? 'Catalog name' : 'Schema (catalog.schema)'"></span>
+                    </label>
+                    <input id="tp-scope-value" type="text" class="form-control form-control-sm font-monospace"
+                           x-model="form.scope_value"
+                           :placeholder="form.scope_type === 'catalog' ? 'main' : 'main.sales'">
+                </div>
+                <div class="col-md-2">
                     <label class="form-label small fw-bold" for="tp-effect">Effect</label>
                     <select id="tp-effect" class="form-select form-select-sm" x-model="form.effect">
                         <option value="mask">mask (column tags)</option>
@@ -85,6 +101,7 @@
                 <thead>
                     <tr>
                         <th class="ps-3">Tag</th>
+                        <th>Scope</th>
                         <th>Effect</th>
                         <th>Expression</th>
                         <th>Priority</th>
@@ -98,6 +115,16 @@
                         <tr>
                             <td data-label="Tag" class="ps-3 font-monospace">
                                 <span x-text="r.tag_key"></span><template x-if="r.tag_value"><span>=<span x-text="r.tag_value"></span></span></template>
+                            </td>
+                            <td data-label="Scope">
+                                <template x-if="r.scope_type === 'global'">
+                                    <span class="badge bg-light text-dark">global</span>
+                                </template>
+                                <template x-if="r.scope_type !== 'global'">
+                                    <span class="badge bg-secondary">
+                                        <span x-text="r.scope_type"></span>:<span class="font-monospace"
+                                              x-text="r.scope_value"></span></span>
+                                </template>
                             </td>
                             <td data-label="Effect">
                                 <span class="badge"
@@ -188,6 +215,83 @@
                 <p class="text-muted small mb-0" x-show="(findings || []).length === 0">
                     Nothing classified — either the scope is clean or names/values carry no PII signal.
                 </p>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mt-4">
+        <div class="card-header">
+            <i class="bi bi-box-arrow-up-right me-1"></i>Cross-engine scan preview
+        </div>
+        <div class="card-body">
+            <p class="text-muted small">
+                Preview the masks and row filter an external Iceberg client would receive for a table —
+                exactly what the pre-filtered scan plan carries for the given principal, evaluated through the
+                same tag-policy rules the SELECT paths enforce.
+            </p>
+            <div class="row g-2 align-items-end">
+                <div class="col-md-5">
+                    <label class="form-label small fw-bold" for="prev-table">Table</label>
+                    <input id="prev-table" type="text" class="form-control form-control-sm font-monospace"
+                           x-model="previewForm.table" placeholder="catalog.schema.table">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label small fw-bold" for="prev-principal">Principal (optional)</label>
+                    <input id="prev-principal" type="text" class="form-control form-control-sm font-monospace"
+                           x-model="previewForm.principal" placeholder="analyst@example.com">
+                </div>
+                <div class="col-md-3">
+                    <button type="button" class="btn btn-primary btn-sm w-100" :disabled="previewing"
+                            @click="runPreview()">
+                        <span x-show="!previewing">Preview plan</span>
+                        <span x-show="previewing" x-cloak>
+                            <span class="spinner-border spinner-border-sm me-1" role="status"></span>Evaluating&hellip;
+                        </span>
+                    </button>
+                </div>
+            </div>
+            <div class="alert alert-danger mt-2 mb-0" x-show="previewError" x-text="previewError" x-cloak></div>
+            <div class="mt-3" x-show="preview !== null" x-cloak>
+                <template x-if="preview && !preview.has_policy">
+                    <p class="text-success small mb-0">
+                        <i class="bi bi-unlock me-1"></i>No policy applies — this principal receives an
+                        unfiltered, unmasked scan plan.
+                    </p>
+                </template>
+                <template x-if="preview && preview.has_policy">
+                    <div>
+                        <div class="mb-2">
+                            <span class="fw-semibold small">Row filter injected:</span>
+                            <template x-if="preview.row_filter">
+                                <code class="ms-1" x-text="preview.row_filter"></code>
+                            </template>
+                            <template x-if="!preview.row_filter">
+                                <span class="text-muted small ms-1">none</span>
+                            </template>
+                        </div>
+                        <div class="fw-semibold small mb-1">
+                            Masked columns
+                            (<span x-text="(preview.masked_columns || []).length"></span>)
+                        </div>
+                        <div class="table-responsive" x-show="(preview.masked_columns || []).length > 0">
+                            <table class="table table-sm mb-0">
+                                <thead><tr><th>Column</th><th>Mask expression</th></tr></thead>
+                                <tbody>
+                                    <template x-for="col in preview.masked_columns" :key="col">
+                                        <tr>
+                                            <td class="font-monospace" x-text="col"></td>
+                                            <td class="font-monospace small text-info"
+                                                x-text="preview.column_masks[col]"></td>
+                                        </tr>
+                                    </template>
+                                </tbody>
+                            </table>
+                        </div>
+                        <p class="text-muted small mb-0" x-show="(preview.masked_columns || []).length === 0">
+                            No column masks — only a row filter is injected.
+                        </p>
+                    </div>
+                </template>
             </div>
         </div>
     </div>

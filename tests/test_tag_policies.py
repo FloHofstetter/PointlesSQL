@@ -116,6 +116,133 @@ def test_update_toggles_and_delete_removes(factory: Any) -> None:
     assert tag_policies.delete_rule(factory, rule.id) is False
 
 
+def test_create_validates_scope(factory: Any) -> None:
+    with pytest.raises(ValidationError, match="scope_type"):
+        tag_policies.create_rule(
+            factory,
+            tag_key="pii",
+            tag_value=None,
+            effect="mask",
+            expr="redact",
+            scope_type="nope",
+            created_by_user_id=1,
+        )
+    with pytest.raises(ValidationError, match="scope_value is required"):
+        tag_policies.create_rule(
+            factory,
+            tag_key="pii",
+            tag_value=None,
+            effect="mask",
+            expr="redact",
+            scope_type="catalog",
+            created_by_user_id=1,
+        )
+    with pytest.raises(ValidationError, match="dotted part"):
+        tag_policies.create_rule(
+            factory,
+            tag_key="pii",
+            tag_value=None,
+            effect="mask",
+            expr="redact",
+            scope_type="schema",
+            scope_value="main",
+            created_by_user_id=1,
+        )
+    # A global rule discards any stray scope_value.
+    glob = tag_policies.create_rule(
+        factory,
+        tag_key="pii",
+        tag_value=None,
+        effect="mask",
+        expr="redact",
+        scope_type="global",
+        scope_value="ignored",
+        created_by_user_id=1,
+    )
+    assert glob.scope_type == "global"
+    assert glob.scope_value is None
+    # A catalog rule keeps its one-part name.
+    cat = tag_policies.create_rule(
+        factory,
+        tag_key="pii",
+        tag_value=None,
+        effect="mask",
+        expr="redact",
+        scope_type="catalog",
+        scope_value="main",
+        created_by_user_id=1,
+    )
+    assert (cat.scope_type, cat.scope_value) == ("catalog", "main")
+
+
+def test_in_scope_is_case_insensitive() -> None:
+    # UC names are case-insensitive; a rule scoped with a different case
+    # than the queried name must still match (no silent fail-open).
+    assert tag_policies._in_scope("catalog", "Main", "main.sales.t") is True
+    assert tag_policies._in_scope("schema", "Main.Sales", "MAIN.SALES.orders") is True
+    # A genuinely different securable still does not match.
+    assert tag_policies._in_scope("catalog", "Main", "other.sales.t") is False
+    assert tag_policies._in_scope("schema", "main.sales", "main.ops.t") is False
+
+
+async def test_catalog_scope_only_applies_in_subtree(factory: Any) -> None:
+    tag_policies.create_rule(
+        factory,
+        tag_key="pii",
+        tag_value=None,
+        effect="mask",
+        expr="redact",
+        scope_type="catalog",
+        scope_value="main",
+        created_by_user_id=1,
+    )
+    client = _uc_with_tags(column_tags={"email": [{"key": "pii", "value": "x"}]})
+    inside = await tag_policies.apply_tag_policies(
+        client,
+        full_name="main.demo.people",
+        info=_INFO,
+        base=None,
+        principal="u@x",
+        factory=factory,
+    )
+    assert inside is not None
+    assert "email" in inside.column_masks
+    # A table in a different catalog is out of scope — and the rule is
+    # dropped before any tag fetch.
+    outside = await tag_policies.apply_tag_policies(
+        client,
+        full_name="other.demo.people",
+        info=_INFO,
+        base=None,
+        principal="u@x",
+        factory=factory,
+    )
+    assert outside is None
+
+
+async def test_schema_scope_only_applies_in_subtree(factory: Any) -> None:
+    tag_policies.create_rule(
+        factory,
+        tag_key="restricted",
+        tag_value=None,
+        effect="row_filter",
+        expr="1 = 1",
+        scope_type="schema",
+        scope_value="main.demo",
+        created_by_user_id=1,
+    )
+    client = _uc_with_tags(table_tags=[{"key": "restricted", "value": "x"}])
+    inside = await tag_policies.apply_tag_policies(
+        client, full_name="main.demo.t", info=_INFO, base=None, principal="u@x", factory=factory
+    )
+    assert inside is not None
+    assert inside.row_filter is not None
+    outside = await tag_policies.apply_tag_policies(
+        client, full_name="main.other.t", info=_INFO, base=None, principal="u@x", factory=factory
+    )
+    assert outside is None
+
+
 # ---------------------------------------------------------------------------
 # merge semantics
 # ---------------------------------------------------------------------------
@@ -281,3 +408,73 @@ async def test_merged_policy_masks_rows_in_duckdb(factory: Any, tmp_path: Path) 
         table_policies={"main.demo.people": merged},
     )
     assert result.rows == [["***", 1], ["***", 2]]
+
+
+# ---------------------------------------------------------------------------
+# cross-engine scan-plan policy preview
+# ---------------------------------------------------------------------------
+
+
+def _uc_for_preview(
+    info: dict[str, Any],
+    *,
+    table_tags: list[dict[str, str]] | None = None,
+    column_tags: dict[str, list[dict[str, str]]] | None = None,
+) -> MagicMock:
+    """UC stub that also serves get_table for the preview path."""
+    client = _uc_with_tags(table_tags=table_tags, column_tags=column_tags)
+    client.get_table = AsyncMock(return_value=info)
+    return client
+
+
+async def test_preview_reports_masks_and_filter(factory: Any) -> None:
+    tag_policies.create_rule(
+        factory,
+        tag_key="pii",
+        tag_value=None,
+        effect="mask",
+        expr="redact",
+        created_by_user_id=1,
+    )
+    info = {"columns": [{"name": "email"}, {"name": "amount"}], "properties": {}}
+    client = _uc_for_preview(info, column_tags={"email": [{"key": "pii", "value": "x"}]})
+    out = await tag_policies.preview_scan_policy(
+        client, full_name="main.demo.people", principal="ext@x", factory=factory
+    )
+    assert out["has_policy"] is True
+    assert out["masked_columns"] == ["email"]
+    assert "email" in out["column_masks"]
+    assert out["table"] == "main.demo.people"
+    assert out["principal"] == "ext@x"
+
+
+async def test_preview_includes_property_row_filter(factory: Any) -> None:
+    info = {
+        "columns": [{"name": "email"}],
+        "properties": {"pointlessql.row_filter": "owner = current_user()"},
+    }
+    client = _uc_for_preview(info)
+    out = await tag_policies.preview_scan_policy(
+        client, full_name="main.demo.people", principal="ext@x", factory=factory
+    )
+    assert out["has_policy"] is True
+    assert "'ext@x'" in out["row_filter"]
+
+
+async def test_preview_empty_when_no_policy(factory: Any) -> None:
+    info = {"columns": [{"name": "email"}], "properties": {}}
+    client = _uc_for_preview(info)
+    out = await tag_policies.preview_scan_policy(
+        client, full_name="main.demo.people", principal="ext@x", factory=factory
+    )
+    assert out["has_policy"] is False
+    assert out["row_filter"] is None
+    assert out["masked_columns"] == []
+
+
+async def test_preview_rejects_non_three_part(factory: Any) -> None:
+    client = _uc_for_preview({"columns": [], "properties": {}})
+    with pytest.raises(ValidationError, match="3-part"):
+        await tag_policies.preview_scan_policy(
+            client, full_name="main.demo", principal="x", factory=factory
+        )

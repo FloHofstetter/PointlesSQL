@@ -14,6 +14,8 @@ export function adminClassification(initialRules) {
     form: {
       tag_key: '',
       tag_value: '',
+      scope_type: 'global',
+      scope_value: '',
       effect: 'mask',
       expr: 'redact',
       priority: 100,
@@ -23,6 +25,10 @@ export function adminClassification(initialRules) {
     scanning: false,
     scanError: '',
     findings: null,
+    previewForm: { table: '', principal: '' },
+    previewing: false,
+    previewError: '',
+    preview: null,
 
     async create() {
       this.error = '';
@@ -32,8 +38,12 @@ export function adminClassification(initialRules) {
         effect: this.form.effect,
         expr: this.form.expr.trim(),
         priority: Number(this.form.priority) || 100,
+        scope_type: this.form.scope_type,
       };
       if (this.form.tag_value.trim()) body.tag_value = this.form.tag_value.trim();
+      if (this.form.scope_type !== 'global' && this.form.scope_value.trim()) {
+        body.scope_value = this.form.scope_value.trim();
+      }
       if (this.form.description.trim()) body.description = this.form.description.trim();
       const res = await window.pqlApi.fetch('/api/admin/tag-policies', {
         method: 'POST',
@@ -50,6 +60,8 @@ export function adminClassification(initialRules) {
       this.form = {
         tag_key: '',
         tag_value: '',
+        scope_type: 'global',
+        scope_value: '',
         effect: 'mask',
         expr: 'redact',
         priority: 100,
@@ -100,6 +112,30 @@ export function adminClassification(initialRules) {
         return;
       }
       this.findings = res.data.findings || [];
+    },
+
+    async runPreview() {
+      this.previewError = '';
+      this.preview = null;
+      const table = this.previewForm.table.trim();
+      if (!table) {
+        this.previewError = 'Enter a catalog.schema.table to preview.';
+        return;
+      }
+      const params = new URLSearchParams({ table });
+      if (this.previewForm.principal.trim()) {
+        params.set('principal', this.previewForm.principal.trim());
+      }
+      this.previewing = true;
+      const res = await window.pqlApi.fetch(`/api/admin/tag-policies/preview?${params}`, {
+        silent: true,
+      });
+      this.previewing = false;
+      if (!res.ok) {
+        this.previewError = res.error || 'Preview failed';
+        return;
+      }
+      this.preview = res.data;
     },
   };
 }

@@ -6,6 +6,7 @@ import datetime
 
 from sqlalchemy import (
     Boolean,
+    CheckConstraint,
     DateTime,
     ForeignKey,
     Index,
@@ -16,6 +17,14 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column
 
 from pointlessql.models.base import Base
+
+SCOPE_TYPES: tuple[str, ...] = ("global", "catalog", "schema")
+"""Allowed :attr:`TagPolicyRule.scope_type` values.
+
+``global`` matches every table; ``catalog`` / ``schema`` confine a rule
+to a Unity-Catalog subtree.  Mirrored to a CHECK constraint — adding a
+scope kind: bump both this tuple AND the constraint via Alembic.
+"""
 
 
 class TagPolicyRule(Base):
@@ -34,6 +43,15 @@ class TagPolicyRule(Base):
         tag_key: The tag key to match (e.g. ``"pii"``).
         tag_value: Optional tag value to match; ``None`` matches any
             value of ``tag_key``.
+        scope_type: One of :data:`SCOPE_TYPES`.  ``"global"`` (the
+            default) applies the rule to every table; ``"catalog"`` /
+            ``"schema"`` confine it to the Unity-Catalog subtree named
+            by ``scope_value``, so one rule governs every matching
+            table beneath it without per-table config.
+        scope_value: The catalog name (one part, e.g. ``"main"``) for a
+            catalog scope, or the schema name (two parts, e.g.
+            ``"main.sales"``) for a schema scope; ``None`` for a global
+            rule.
         effect: ``"mask"`` (matches *column* tags; ``expr`` is a mask
             spec) or ``"row_filter"`` (matches *table* tags; ``expr``
             is a SQL predicate).
@@ -54,11 +72,21 @@ class TagPolicyRule(Base):
 
     __tablename__ = "tag_policy_rules"
 
-    __table_args__ = (Index("ix_tag_policy_rules_active", "is_active"),)
+    __table_args__ = (
+        Index("ix_tag_policy_rules_active", "is_active"),
+        CheckConstraint(
+            "scope_type IN ('global', 'catalog', 'schema')",
+            name="ck_tag_policy_rules_scope_type",
+        ),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     tag_key: Mapped[str] = mapped_column(String(200), nullable=False)
     tag_value: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    scope_type: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="global", server_default="global"
+    )
+    scope_value: Mapped[str | None] = mapped_column(String(512), nullable=True)
     effect: Mapped[str] = mapped_column(String(20), nullable=False)
     expr: Mapped[str] = mapped_column(Text, nullable=False)
     priority: Mapped[int] = mapped_column(

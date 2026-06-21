@@ -29,14 +29,16 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
-from pointlessql.exceptions import ValidationError
-from pointlessql.models.tag_policies import TagPolicyRule
+from pointlessql.exceptions import CatalogNotFoundError, ValidationError
+from pointlessql.models.tag_policies import SCOPE_TYPES, TagPolicyRule
 from pointlessql.pql._policies import (
     TablePolicy,
+    extract_table_policy,
     render_mask,
     substitute_current_user,
     validate_row_filter,
 )
+from pointlessql.services._scope import split_dotted_scope
 
 logger = logging.getLogger(__name__)
 
@@ -60,6 +62,64 @@ class RuleSnapshot:
     effect: str
     expr: str
     priority: int
+    scope_type: str
+    scope_value: str | None
+
+
+def _normalize_scope(scope_type: str, scope_value: str | None) -> tuple[str, str | None]:
+    """Validate a scope and return its normalized ``(type, value)``.
+
+    Args:
+        scope_type: One of :data:`SCOPE_TYPES`.
+        scope_value: Catalog (one part) or schema (two parts) name; only
+            consulted for non-global scopes.
+
+    Returns:
+        The cleaned pair — ``("global", None)`` for a global rule, else
+        the scope type with its trimmed dotted name.
+
+    Raises:
+        ValidationError: On an unknown scope type, a missing value for a
+            catalog/schema scope, or a name whose dotted depth does not
+            match the scope kind (catalog = 1 part, schema = 2 parts).
+    """
+    if scope_type not in SCOPE_TYPES:
+        raise ValidationError(f"scope_type must be one of {list(SCOPE_TYPES)}")
+    if scope_type == "global":
+        return "global", None
+    value = (scope_value or "").strip()
+    if not value:
+        raise ValidationError(f"scope_value is required for a {scope_type} scope")
+    expected = 1 if scope_type == "catalog" else 2
+    split_dotted_scope(scope_type, value, expected)
+    return scope_type, value
+
+
+def _in_scope(scope_type: str, scope_value: str | None, full_name: str) -> bool:
+    """Return whether a rule's scope covers *full_name*.
+
+    Args:
+        scope_type: The rule's scope kind.
+        scope_value: The rule's catalog / schema name (ignored when
+            global).
+        full_name: The three-part ``catalog.schema.table`` being read.
+
+    Returns:
+        ``True`` for a global rule, or when *full_name* sits inside the
+        rule's catalog / schema subtree.
+    """
+    if scope_type == "global" or not scope_value:
+        return True
+    # Unity Catalog names are case-insensitive, so match case-folded on
+    # both sides: a rule scoped to ``Main.Sales`` must still cover a query
+    # for ``main.sales.t`` rather than silently failing open and leaking
+    # the columns the rule was meant to mask.
+    parts = full_name.lower().split(".")
+    target = scope_value.lower()
+    if scope_type == "catalog":
+        return bool(parts) and parts[0] == target
+    # schema scope: match on the catalog.schema prefix.
+    return len(parts) >= 2 and ".".join(parts[:2]) == target
 
 
 def invalidate_caches() -> None:
@@ -107,6 +167,8 @@ def create_rule(
     expr: str,
     priority: int = 100,
     description: str | None = None,
+    scope_type: str = "global",
+    scope_value: str | None = None,
     created_by_user_id: int,
 ) -> TagPolicyRule:
     """Create one rule after validating its shape.
@@ -120,14 +182,20 @@ def create_rule(
             fails at authoring time, not at query time).
         priority: Mask tie-breaker (lowest wins).
         description: Free-text rationale.
+        scope_type: ``"global"`` (default), ``"catalog"`` or
+            ``"schema"`` — confines the rule to a catalog / schema
+            subtree (validated here).
+        scope_value: Catalog (one part) or schema (two parts) name for a
+            non-global scope.
         created_by_user_id: Authoring admin.
 
     Returns:
         The detached new row.
 
     Raises:
-        ValidationError: On an unknown effect, empty key/expr, or a
-            row-filter predicate that does not parse.
+        ValidationError: On an unknown effect or scope, empty key/expr,
+            a malformed scope value, or a row-filter predicate that does
+            not parse.
     """
     key = (tag_key or "").strip()
     body = (expr or "").strip()
@@ -137,6 +205,7 @@ def create_rule(
         raise ValidationError(f"effect must be one of {list(EFFECTS)}")
     if not body:
         raise ValidationError("expr is required")
+    norm_scope_type, norm_scope_value = _normalize_scope(scope_type, scope_value)
     if effect == "row_filter":
         try:
             validate_row_filter(body)
@@ -147,6 +216,8 @@ def create_rule(
         row = TagPolicyRule(
             tag_key=key,
             tag_value=(tag_value or "").strip() or None,
+            scope_type=norm_scope_type,
+            scope_value=norm_scope_value,
             effect=effect,
             expr=body,
             priority=priority,
@@ -251,6 +322,8 @@ def _active_rules(factory: sessionmaker[Session]) -> tuple[RuleSnapshot, ...]:
                     effect=r.effect,
                     expr=r.expr,
                     priority=r.priority,
+                    scope_type=r.scope_type,
+                    scope_value=r.scope_value,
                 )
                 for r in rows
             ),
@@ -326,11 +399,15 @@ async def apply_tag_policies(
             # exist; the per-table property policy stands alone.
             return base
     rules = _active_rules(factory)
-    if not rules:
+    # Drop rules whose catalog / schema scope does not cover this table
+    # before any tag fetch — an out-of-scope rule must neither fire nor
+    # cost a catalog round-trip.
+    scoped = [r for r in rules if _in_scope(r.scope_type, r.scope_value, full_name)]
+    if not scoped:
         return base
 
-    mask_rules = [r for r in rules if r.effect == "mask"]
-    filter_rules = [r for r in rules if r.effect == "row_filter"]
+    mask_rules = [r for r in scoped if r.effect == "mask"]
+    filter_rules = [r for r in scoped if r.effect == "row_filter"]
 
     extra_filters: list[str] = []
     if filter_rules:
@@ -374,3 +451,69 @@ async def apply_tag_policies(
     combined_masks = {**rule_masks, **(base.column_masks if base else {})}
     merged = TablePolicy(row_filter=combined_filter, column_masks=combined_masks)
     return None if merged.is_empty() else merged
+
+
+async def preview_scan_policy(
+    uc_client: Any,
+    *,
+    full_name: str,
+    principal: str,
+    factory: sessionmaker[Session] | None = None,
+) -> dict[str, Any]:
+    """Preview the masks + row filter an external scan plan would carry.
+
+    Mirrors the SELECT choke point — the per-table property policy merged
+    with every matching tag rule — but returns the *effective* policy as
+    data instead of applying it.  This is the observability counterpart
+    to cross-engine ABAC: an admin can see exactly which columns a given
+    external principal's pre-filtered scan plan would mask and which row
+    filter would be injected, without running a query and without the
+    catalog's own Iceberg-REST scan endpoint.
+
+    Args:
+        uc_client: Principal-bound catalog facade (table info + tags).
+        full_name: Three-part ``catalog.schema.table`` to preview.
+        principal: The external principal the scan runs as
+            (``current_user()`` substitution in row-filter predicates).
+        factory: Session factory override (tests); defaults to the
+            application factory inside :func:`apply_tag_policies`.
+
+    Returns:
+        A JSON-safe dict with ``table`` / ``principal``, ``has_policy``,
+        the injected ``row_filter`` (or ``None``), the ``column_masks``
+        map, and the sorted ``masked_columns`` list.
+
+    Raises:
+        ValidationError: When *full_name* is not a 3-part name or the
+            table carries a malformed read policy.
+        CatalogNotFoundError: When the table is unknown.
+    """
+    parts = full_name.split(".")
+    if len(parts) != 3 or not all(parts):
+        raise ValidationError(f"table must be a 3-part name, got {full_name!r}")
+    info = await uc_client.get_table(parts[0], parts[1], parts[2])
+    if not info:
+        raise CatalogNotFoundError(f"Table not found: {full_name!r}")
+    try:
+        base = extract_table_policy(info, principal=principal)
+    except ValueError as exc:
+        raise ValidationError(
+            f"table {full_name!r} carries a malformed read policy: {exc}"
+        ) from exc
+    policy = await apply_tag_policies(
+        uc_client,
+        full_name=full_name,
+        info=info,
+        base=base,
+        principal=principal,
+        factory=factory,
+    )
+    masks = dict(policy.column_masks) if policy else {}
+    return {
+        "table": full_name,
+        "principal": principal,
+        "has_policy": policy is not None,
+        "row_filter": policy.row_filter if policy else None,
+        "column_masks": masks,
+        "masked_columns": sorted(masks),
+    }
