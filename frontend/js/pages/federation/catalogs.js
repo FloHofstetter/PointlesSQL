@@ -15,13 +15,16 @@
 
 import { validateRequired } from '../../editor_base.js';
 
-export function createForeignCatalogForm({ connections }) {
+export function createForeignCatalogForm({ connections, icebergConnectors }) {
   return {
     connections: connections || [],
+    icebergConnectors: icebergConnectors || [],
     name: '',
     connectionName: '',
     comment: '',
     options: [],
+    connectorType: '',
+    connectorHint: '',
     saving: false,
     error: null,
 
@@ -31,6 +34,19 @@ export function createForeignCatalogForm({ connections }) {
 
     removeOption(index) {
       this.options.splice(index, 1);
+    },
+
+    applyConnectorPreset() {
+      const preset = this.icebergConnectors.find((ct) => ct.key === this.connectorType);
+      if (!preset) {
+        this.connectorHint = '';
+        return;
+      }
+      this.connectorHint = preset.hint || '';
+      this.options = Object.entries(preset.options || {}).map(([key, value]) => ({
+        key,
+        value: value ?? '',
+      }));
     },
 
     async submit() {

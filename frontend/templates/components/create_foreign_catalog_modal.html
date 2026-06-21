@@ -9,7 +9,8 @@
 #}
 <div class="modal fade" id="createForeignCatalogModal" tabindex="-1"
      x-data='createForeignCatalogForm({
-         connections: {{ (connections or [])|tojson }}
+         connections: {{ (connections or [])|tojson }},
+         icebergConnectors: {{ (iceberg_connectors or [])|tojson }}
      })'>
     <div class="modal-dialog">
         <div class="modal-content">
@@ -47,6 +48,20 @@
                     <textarea id="fc-comment" class="form-control" x-model="comment" rows="2"
                               placeholder="Optional description"></textarea>
                 </div>
+
+                <template x-if="icebergConnectors.length > 0">
+                    <div class="mb-3">
+                        <label class="form-label" for="fc-iceberg-type">Iceberg source (optional)</label>
+                        <select id="fc-iceberg-type" class="form-select"
+                                x-model="connectorType" @change="applyConnectorPreset()">
+                            <option value="">(generic — set options manually)</option>
+                            <template x-for="ct in icebergConnectors" :key="ct.key">
+                                <option :value="ct.key" x-text="ct.label"></option>
+                            </template>
+                        </select>
+                        <div class="form-text" x-show="connectorHint" x-text="connectorHint" x-cloak></div>
+                    </div>
+                </template>
 
                 <label class="form-label d-flex align-items-center justify-content-between">
                     <span>Options</span>

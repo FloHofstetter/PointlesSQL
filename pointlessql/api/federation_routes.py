@@ -33,6 +33,7 @@ from fastapi.responses import HTMLResponse, Response
 
 from pointlessql.api._audit_helpers import audit
 from pointlessql.api.dependencies import admin_uc, render_page_with_fallback
+from pointlessql.services import foreign_iceberg
 from pointlessql.services.unitycatalog import UnityCatalogClient
 
 logger = logging.getLogger(__name__)
@@ -274,7 +275,11 @@ async def connections_index(
         "pages/connections.html",
         client.list_connections,
         context_key="connections",
-        extra_context={"active_page": "connections", "list_page": True},
+        extra_context={
+            "active_page": "connections",
+            "list_page": True,
+            "iceberg_connectors": foreign_iceberg.iceberg_connector_types(),
+        },
     )
 
 
