@@ -33,6 +33,14 @@ export function hostedApps(initial, canAdmin) {
     createError: '',
     error: '',
     busy: {},
+    genie: {
+      kind: 'fastapi',
+      title: '',
+      prompt: '',
+      building: false,
+      error: '',
+      notice: '',
+    },
 
     ago(iso) {
       if (!iso) return '—';
@@ -96,6 +104,40 @@ export function hostedApps(initial, canAdmin) {
         source_code: FASTAPI_EXAMPLE,
         env_text: '',
       };
+      await this.refresh();
+    },
+
+    async genieBuild() {
+      this.genie.error = '';
+      this.genie.notice = '';
+      const prompt = this.genie.prompt.trim();
+      if (!prompt) {
+        this.genie.error = 'Describe the app first.';
+        return;
+      }
+      const payload = { prompt: prompt, kind: this.genie.kind };
+      const title = this.genie.title.trim();
+      if (title) payload.title = title;
+      this.genie.building = true;
+      const res = await window.pqlApi.fetch('/api/apps/genie-build', {
+        method: 'POST',
+        body: payload,
+      });
+      this.genie.building = false;
+      if (!res.ok) {
+        this.genie.error = res.error || 'Failed to build app';
+        return;
+      }
+      const made = res.data && res.data.app;
+      const viaLlm = !!(res.data && res.data.used_llm);
+      this.genie.prompt = '';
+      this.genie.title = '';
+      this.genie.notice = made
+        ? 'Created "' +
+          made.title +
+          '"' +
+          (viaLlm ? ' with the configured LLM.' : ' as a scaffold (no LLM configured).')
+        : 'App created.';
       await this.refresh();
     },
 

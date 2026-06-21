@@ -70,6 +70,7 @@ def register_routers(app: FastAPI) -> None:
     from pointlessql.api.federation_routes import router as federation_router
     from pointlessql.api.feed_html_routes import router as feed_html_router
     from pointlessql.api.feed_routes import router as feed_router
+    from pointlessql.api.genie_app_builder_routes import router as genie_app_builder_router
     from pointlessql.api.genie_code_routes import router as genie_code_router
     from pointlessql.api.genie_routes import router as genie_router
     from pointlessql.api.glossary_html_routes import router as glossary_html_router
@@ -246,6 +247,7 @@ def register_routers(app: FastAPI) -> None:
     app.include_router(apps_router)
     app.include_router(apps_html_router)
     app.include_router(apps_proxy_router)
+    app.include_router(genie_app_builder_router)
     app.include_router(access_requests_router)
     app.include_router(bundles_router)
     app.include_router(bi_dashboards_router)
