@@ -71,10 +71,10 @@
     </p>
 
     <div class="alert alert-success" x-show="lastToken" x-cloak>
-        <div class="fw-semibold mb-1"><i class="bi bi-key me-1"></i>Token for <span x-text="lastToken.name"></span></div>
+        <div class="fw-semibold mb-1"><i class="bi bi-key me-1"></i>Token for <span x-text="lastToken?.name"></span></div>
         <div class="small mb-1">Copy it now — it isn't shown again. Use it as a <code>Bearer</code> token.</div>
-        <code class="d-block user-select-all mb-1" x-text="lastToken.token"></code>
-        <div class="small text-muted">Messaging endpoint: <code x-text="lastToken.path"></code></div>
+        <code class="d-block user-select-all mb-1" x-text="lastToken?.token"></code>
+        <div class="small text-muted">Messaging endpoint: <code x-text="lastToken?.path"></code></div>
         <button type="button" class="btn btn-sm btn-outline-secondary mt-2" @click="lastToken = null">Dismiss</button>
     </div>
 
