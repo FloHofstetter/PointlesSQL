@@ -124,6 +124,13 @@ class AgentRun(Base):
             verdict in :attr:`anomaly_severity` (currently one of
             ``rejects`` / ``errored_ops``); ``NULL`` when severity
             is ``NULL`` or ``ok``.
+        harness: The agent framework / meta-harness that produced the
+            run (e.g. ``langgraph`` / ``crewai`` / ``claude-code-sdk``
+            / ``omnigent``).  Free-form so a new harness needs no
+            migration; the gateway console rolls spend and run
+            telemetry up by this value.  ``NULL`` for runs registered
+            before the field existed or by a runtime that does not
+            report one.
     """
 
     __tablename__ = "agent_runs"
@@ -133,6 +140,7 @@ class AgentRun(Base):
         Index("ix_agent_runs_principal", "principal"),
         Index("ix_agent_runs_status", "status"),
         Index("ix_agent_runs_workspace_started", "workspace_id", "started_at"),
+        Index("ix_agent_runs_harness", "harness"),
     )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
@@ -172,3 +180,7 @@ class AgentRun(Base):
     # without re-running the aggregator.
     anomaly_severity: Mapped[str | None] = mapped_column(String(16), nullable=True)
     anomaly_metric: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    # The agent framework / meta-harness that produced this run.  The
+    # gateway console groups spend + run telemetry by this value; the
+    # ix_agent_runs_harness index above keeps that rollup cheap.
+    harness: Mapped[str | None] = mapped_column(String(64), nullable=True)

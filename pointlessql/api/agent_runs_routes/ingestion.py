@@ -70,6 +70,7 @@ async def api_create_agent_run(
             ``source`` (UTF-8 ``.py`` text), ``runtime_versions``
             (``{name: version}`` mapping with at least one entry).
             Optional: ``id``, ``agent_id``, ``principal``,
+            ``harness`` (the agent framework / meta-harness name),
             ``source_snapshot_sha`` (validated against the computed
             digest), ``status``, ``cost_est``, ``tables_touched``,
             ``started_at``.
@@ -124,6 +125,13 @@ async def api_create_agent_run(
     agent_id = (
         str(agent_id_raw).strip()
         if isinstance(agent_id_raw, str) and agent_id_raw.strip()
+        else None
+    )
+
+    harness_raw = body.get("harness")
+    harness = (
+        str(harness_raw).strip()[:64]
+        if isinstance(harness_raw, str) and harness_raw.strip()
         else None
     )
 
@@ -186,6 +194,7 @@ async def api_create_agent_run(
             tables_touched=tables_touched,
             started_at=started_at,
             runtime_versions=json.dumps(runtime_versions, sort_keys=True),
+            harness=harness,
         )
         session.add(row)
         # Flush before adding the FK-dependent child row so SQLite's

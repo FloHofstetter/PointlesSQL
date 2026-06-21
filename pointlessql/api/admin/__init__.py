@@ -25,6 +25,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
+from pointlessql.api.admin.agent_gateway import router as _agent_gateway_router
 from pointlessql.api.admin.agent_guardrails import router as _agent_guardrails_router
 from pointlessql.api.admin.api_keys import router as _api_keys_router
 from pointlessql.api.admin.cdf_tail import router as _cdf_tail_router
@@ -69,6 +70,7 @@ router.include_router(_admin_ingest_sources_router)
 router.include_router(_coedit_bus_router)
 router.include_router(_policy_modules_router)
 router.include_router(_agent_guardrails_router)
+router.include_router(_agent_gateway_router)
 router.include_router(_mcp_services_router)
 router.include_router(_cost_routes_router)
 
