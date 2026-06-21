@@ -296,9 +296,24 @@ jobs:
         # known CVE still fails because pip-audit exits non-zero on
         # actual findings. Run on every PR to catch new advisories
         # against the locked versions.
-        # CVE-2026-1839 (transformers, via the optional vector extra)
-        # is ignored until its fix ships in a stable release — the
-        # only fixed version is the 5.0.0rc3 pre-release, which the
-        # sentence-transformers pin cannot take yet. Drop the ignore
-        # once transformers 5.x final is locked.
-        run: uv run pip-audit --skip-editable --ignore-vuln CVE-2026-1839
+        # Four advisories are ignored because none has a fix we can
+        # actually lock today; each is revisited when a usable release
+        # ships:
+        #   - CVE-2026-1839 (transformers, optional vector extra): only
+        #     fixed in the 5.0.0rc3 pre-release, which the
+        #     sentence-transformers pin cannot take yet.
+        #   - PYSEC-2025-217 (transformers, optional vector extra): no
+        #     fixed release published; same pin constraint.
+        #   - CVE-2025-3000 (torch, pulled transitively by
+        #     sentence-transformers): no fixed release published.
+        #   - GHSA-537c-gmf6-5ccf (cryptography): fixed in 48.0.1, but
+        #     that release lacks wheel coverage for the universal lock's
+        #     full environment set (``uv lock`` is unsatisfiable when
+        #     the floor is raised). Drop this once 48.x ships broad
+        #     wheels or ``tool.uv.environments`` is narrowed.
+        run: |
+          uv run pip-audit --skip-editable \
+            --ignore-vuln CVE-2026-1839 \
+            --ignore-vuln PYSEC-2025-217 \
+            --ignore-vuln CVE-2025-3000 \
+            --ignore-vuln GHSA-537c-gmf6-5ccf
