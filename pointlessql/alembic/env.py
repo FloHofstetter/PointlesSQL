@@ -16,8 +16,18 @@ target_metadata = Base.metadata
 # this, ``alembic upgrade head`` always hits the SQLite path baked
 # into ``alembic.ini``, which makes CI Postgres lanes and ad-hoc PG
 # migrations needlessly painful.
+#
+# The override applies *only* when the config still carries the inert
+# ``alembic.ini`` placeholder, i.e. the bare-shell case.  Callers that
+# build a config with an explicit url — ``pointlessql.db._alembic_config``
+# (the migrate-to-Postgres CLI), the co-edit-bus sub-DB fixtures — must
+# win over the ambient ``POINTLESSQL_DB_URL`` so their migration lands on
+# the database they actually targeted, not the parent/source the env var
+# points at.
+_INI_PLACEHOLDER_URL = "sqlite:///./pointlessql.db"
 _url_override = os.environ.get("POINTLESSQL_DB_URL")
-if _url_override:
+_configured_url = context.config.get_main_option("sqlalchemy.url")
+if _url_override and _configured_url in (None, "", _INI_PLACEHOLDER_URL):
     context.config.set_main_option("sqlalchemy.url", _url_override)
 
 # SQLite cannot reflect ``CREATE INDEX … (col DESC)`` from PRAGMA, so
