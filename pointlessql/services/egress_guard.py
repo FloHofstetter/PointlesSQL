@@ -52,6 +52,27 @@ def _parse_allowed_hosts(raw: str) -> frozenset[str]:
     return frozenset(h.strip().lower() for h in raw.split(",") if h.strip())
 
 
+def _host_is_blocked_ip_literal(host: str) -> bool:
+    """Return whether *host* is an IP literal that resolves to a blocked address.
+
+    Used for schemes that do not go through DNS resolution (e.g. an
+    ``s3://`` bucket host), where the only internal-target risk is a raw
+    IP written directly into the URL.
+
+    Args:
+        host: The hostname component of a URL.
+
+    Returns:
+        ``True`` when *host* parses as an IP address that
+        :func:`_is_blocked_ip` rejects; ``False`` for ordinary names.
+    """
+    try:
+        ip = ipaddress.ip_address(host)
+    except ValueError:
+        return False
+    return _is_blocked_ip(ip)
+
+
 def _is_blocked_ip(ip: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:
     """Return whether *ip* is a non-public address the guard must reject.
 
@@ -123,3 +144,34 @@ def assert_public_http_url(url: str) -> None:
             raise EgressError(
                 f"egress blocked: host {host!r} resolves to non-public address {address}"
             )
+
+
+def assert_public_s3_url(url: str) -> None:
+    """Raise :class:`EgressError` unless *url* is an ``s3://`` URL with a safe host.
+
+    DuckDB's S3 reader targets the AWS endpoint for the bucket, so the
+    bucket name — not a network host — fills the URL host slot.  The only
+    direct internal-target risk is a raw IP or ``localhost`` written as
+    the bucket host, which this rejects.  No-ops when the guard is
+    disabled.
+
+    Args:
+        url: The ``s3://bucket/key`` URL to validate.
+
+    Raises:
+        EgressError: When the scheme is not ``s3`` or the bucket host is
+            ``localhost`` / a raw internal IP literal.
+    """
+    egress = get_settings().egress
+    if not egress.enabled:
+        return
+    parts = urlsplit(url)
+    if parts.scheme != "s3":
+        raise EgressError(f"egress blocked: expected an s3:// URL, got scheme {parts.scheme!r}")
+    host = (parts.hostname or "").lower()
+    if not host:
+        raise EgressError("egress blocked: s3 URL has no bucket host")
+    if egress.allow_private:
+        return
+    if host == "localhost" or _host_is_blocked_ip_literal(host):
+        raise EgressError(f"egress blocked: s3 bucket host {host!r} is a raw internal address")

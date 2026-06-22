@@ -24,6 +24,11 @@ from typing import Any
 
 from pointlessql.exceptions import ValidationError
 from pointlessql.models.ingest import INGEST_SOURCE_KINDS
+from pointlessql.services.egress_guard import (
+    EgressError,
+    assert_public_http_url,
+    assert_public_s3_url,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -161,6 +166,10 @@ def _build_http_spec(config: dict[str, Any], source_table: str | None) -> Reader
     url = str(config.get("url") or "").strip()
     if not url:
         raise ValidationError("http source requires 'url' in config.")
+    try:
+        assert_public_http_url(url)
+    except EgressError as exc:
+        raise ValidationError(f"http source url is not allowed: {exc}") from exc
     reader, base = _file_reader_for_path(url)
     return ReaderSpec(
         sql=f"SELECT * FROM {reader}({quote_sql_string(url)})",
@@ -180,6 +189,10 @@ def _build_s3_spec(config: dict[str, Any], source_table: str | None) -> ReaderSp
     url = str(config.get("url") or "").strip()
     if not url:
         raise ValidationError("s3 source requires 'url' in config.")
+    try:
+        assert_public_s3_url(url)
+    except EgressError as exc:
+        raise ValidationError(f"s3 source url is not allowed: {exc}") from exc
     reader, base = _file_reader_for_path(url)
     return ReaderSpec(
         sql=f"SELECT * FROM {reader}({quote_sql_string(url)})",
