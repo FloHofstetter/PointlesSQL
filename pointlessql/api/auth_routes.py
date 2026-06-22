@@ -343,6 +343,16 @@ async def oidc_callback(request: Request):
                 redirect_uri,
                 client,
             )
+            id_token = tokens.get("id_token")
+            if not id_token:
+                raise oidc_service.OIDCError("Provider did not return an id_token")
+            id_claims = await oidc_service.verify_id_token(
+                discovery,
+                str(id_token),
+                settings.oidc.client_id,  # type: ignore[arg-type]
+                cookie_payload.get("nonce"),
+                client,
+            )
             userinfo = await oidc_service.fetch_userinfo(
                 discovery,
                 tokens["access_token"],
@@ -354,8 +364,13 @@ async def oidc_callback(request: Request):
             status_code=303,
         )
 
-    # Map claims to local user.
-    email = userinfo.get("email") or userinfo.get("preferred_username", "")
+    # Map claims to local user. The subject identity comes from the
+    # signature-verified id_token; userinfo (unverified) only enriches
+    # the display name and group claims.
+    sub = str(id_claims.get("sub") or userinfo["sub"])
+    email = (
+        id_claims.get("email") or userinfo.get("email") or userinfo.get("preferred_username", "")
+    )
     display_name = userinfo.get("name") or userinfo.get("preferred_username") or email
     raw_groups = userinfo.get(settings.oidc.groups_claim_name, [])
     groups: list[str] = [str(g) for g in raw_groups] if isinstance(raw_groups, list) else []
@@ -364,7 +379,7 @@ async def oidc_callback(request: Request):
         user = oidc_service.find_or_create_oidc_user(
             _factory(request),
             settings.oidc.discovery_url,  # type: ignore[arg-type]
-            userinfo["sub"],
+            sub,
             email,
             display_name,
             groups=groups,

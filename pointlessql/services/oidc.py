@@ -27,6 +27,8 @@ from typing import Any
 from urllib.parse import urlencode
 
 import httpx
+import jwt
+from jwt import PyJWKSet
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -270,6 +272,139 @@ async def exchange_code(
         return resp.json()
     except httpx.HTTPError as exc:
         raise OIDCError(f"Token exchange failed: {exc}") from exc
+
+
+# ---------------------------------------------------------------------------
+# id_token validation
+# ---------------------------------------------------------------------------
+
+_jwks_cache: dict[str, tuple[float, dict[str, Any]]] = {}
+
+# Asymmetric signing algorithms only — never HS* (symmetric, vulnerable to
+# alg-confusion against the public key) or "none".
+_ALLOWED_ID_TOKEN_ALGS: tuple[str, ...] = (
+    "RS256",
+    "RS384",
+    "RS512",
+    "ES256",
+    "ES384",
+    "ES512",
+    "PS256",
+    "PS384",
+    "PS512",
+)
+
+
+async def _fetch_jwks(jwks_uri: str, client: httpx.AsyncClient) -> dict[str, Any]:
+    """Fetch and cache the provider's JWKS document.
+
+    Args:
+        jwks_uri: The ``jwks_uri`` from the discovery document.
+        client: An ``httpx.AsyncClient`` for the request.
+
+    Returns:
+        The parsed JWKS document.
+
+    Raises:
+        OIDCError: If the fetch fails or the response is not valid JSON.
+    """
+    now = time.monotonic()
+    cached = _jwks_cache.get(jwks_uri)
+    if cached is not None and now - cached[0] < _CACHE_TTL:
+        return cached[1]
+    try:
+        resp = await client.get(jwks_uri, timeout=_http_timeout())
+        resp.raise_for_status()
+        doc = resp.json()
+    except httpx.HTTPError as exc:
+        raise OIDCError(f"Failed to fetch OIDC JWKS: {exc}") from exc
+    _jwks_cache[jwks_uri] = (now, doc)
+    return doc
+
+
+def _signing_key(jwks: dict[str, Any], kid: str | None) -> Any:
+    """Select the verification key from *jwks* for the token's ``kid``.
+
+    Args:
+        jwks: The parsed JWKS document.
+        kid: The ``kid`` header from the id_token, or ``None``.
+
+    Returns:
+        The cryptographic public key for signature verification.
+
+    Raises:
+        OIDCError: When the JWKS is unusable or no key matches.
+    """
+    try:
+        jwk_set = PyJWKSet.from_dict(jwks)
+    except jwt.PyJWTError as exc:
+        raise OIDCError(f"OIDC JWKS is unusable: {exc}") from exc
+    if kid is not None:
+        for key in jwk_set.keys:
+            if key.key_id == kid:
+                return key.key
+        raise OIDCError("id_token references an unknown signing key")
+    if len(jwk_set.keys) == 1:
+        return jwk_set.keys[0].key
+    raise OIDCError("id_token has no 'kid' but the provider publishes multiple keys")
+
+
+async def verify_id_token(
+    discovery: dict[str, Any],
+    id_token: str,
+    client_id: str,
+    expected_nonce: str | None,
+    client: httpx.AsyncClient,
+) -> dict[str, Any]:
+    """Verify an OIDC id_token and return its validated claims.
+
+    Checks the signature against the provider's JWKS, the issuer, that the
+    audience contains our ``client_id``, that the token is unexpired, and
+    that the ``nonce`` claim matches the one bound into the login request.
+    Without this the callback trusted unverified userinfo, leaving the SSO
+    flow open to token replay and cross-client token injection.
+
+    Args:
+        discovery: Parsed OIDC discovery document (needs ``issuer`` and
+            ``jwks_uri``).
+        id_token: The compact JWT returned by the token endpoint.
+        client_id: Our OAuth2 client id, the expected audience.
+        expected_nonce: The nonce stored in the signed state cookie, or
+            ``None`` to skip the nonce check.
+        client: An ``httpx.AsyncClient`` for the JWKS fetch.
+
+    Returns:
+        The validated id_token claims.
+
+    Raises:
+        OIDCError: On any validation failure (bad signature, issuer,
+            audience, expiry, algorithm, or nonce mismatch).
+    """
+    issuer = discovery.get("issuer")
+    jwks_uri = discovery.get("jwks_uri")
+    if not issuer or not jwks_uri:
+        raise OIDCError("OIDC discovery document is missing 'issuer' or 'jwks_uri'")
+    jwks = await _fetch_jwks(str(jwks_uri), client)
+    try:
+        header = jwt.get_unverified_header(id_token)
+    except jwt.PyJWTError as exc:
+        raise OIDCError(f"id_token header is malformed: {exc}") from exc
+    if header.get("alg") not in _ALLOWED_ID_TOKEN_ALGS:
+        raise OIDCError(f"id_token uses a disallowed signing algorithm {header.get('alg')!r}")
+    try:
+        claims: dict[str, Any] = jwt.decode(
+            id_token,
+            _signing_key(jwks, header.get("kid")),
+            algorithms=list(_ALLOWED_ID_TOKEN_ALGS),
+            audience=client_id,
+            issuer=str(issuer),
+            options={"require": ["exp", "iss", "aud"]},
+        )
+    except jwt.PyJWTError as exc:
+        raise OIDCError(f"id_token validation failed: {exc}") from exc
+    if expected_nonce and claims.get("nonce") != expected_nonce:
+        raise OIDCError("id_token nonce does not match the login request")
+    return claims
 
 
 # ---------------------------------------------------------------------------

@@ -491,7 +491,12 @@ class TestOIDCCallback:
             patch(
                 "pointlessql.api.auth_routes.oidc_service.exchange_code",
                 new_callable=AsyncMock,
-                return_value={"access_token": "at123"},
+                return_value={"access_token": "at123", "id_token": "fake.jwt.token"},
+            ),
+            patch(
+                "pointlessql.api.auth_routes.oidc_service.verify_id_token",
+                new_callable=AsyncMock,
+                return_value={"sub": "oidc-sub", "email": "sso@test.com"},
             ),
             patch(
                 "pointlessql.api.auth_routes.oidc_service.fetch_userinfo",
