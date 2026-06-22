@@ -17,6 +17,7 @@ from pointlessql.config import Settings
 from pointlessql.services import audit as audit_service
 from pointlessql.services.alerts import prune_events_older_than
 from pointlessql.services.query_history import prune_history_older_than
+from pointlessql.services.sql_statements import cleanup_stale_statements
 
 logger = logging.getLogger(__name__)
 
@@ -53,10 +54,12 @@ async def _audit_retention_loop(  # pyright: ignore[reportUnusedFunction]
 
 
 def _prune_event_tables(factory: Any, settings: Settings) -> None:
-    """Prune ``alert_events`` + ``query_history`` past their windows.
+    """Prune the unbounded append tables past their retention windows.
 
-    Both tables grow one row per event with no built-in cap.  A
-    ``*_retention_days`` of 0 keeps that table forever.
+    ``alert_events``, ``query_history`` and the public SQL Statement API
+    store (``sql_statements``) all grow one row per event with no built-in
+    cap.  A retention of 0 (or a disabled SQL Statement API) keeps that
+    table forever.
 
     Args:
         factory: SQLAlchemy session factory.
@@ -69,6 +72,11 @@ def _prune_event_tables(factory: Any, settings: Settings) -> None:
     history_days = settings.audit.query_history_retention_days
     if history_days > 0:
         prune_history_older_than(factory, now - datetime.timedelta(days=history_days))
+    if settings.sql_execution_api.enabled:
+        cleanup_stale_statements(
+            factory,
+            retention_hours=settings.sql_execution_api.result_payload_retention_hours,
+        )
 
 
 async def _event_retention_loop(  # pyright: ignore[reportUnusedFunction]
