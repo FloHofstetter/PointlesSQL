@@ -27,6 +27,23 @@ from typing import Any
 import httpx
 
 
+def proxy_timeout(settings: Any) -> httpx.Timeout:
+    """Return the operation-appropriate timeout for a volume proxy client.
+
+    Volume up/downloads move large file bodies, so the read/write budget
+    is generous (``soyuz.volume_proxy_timeout_seconds``) while connect and
+    pool stay tight to fail fast on a wedged backend.
+
+    Args:
+        settings: The live application settings.
+
+    Returns:
+        An ``httpx.Timeout`` for the proxy ``AsyncClient``.
+    """
+    secs = settings.soyuz.volume_proxy_timeout_seconds
+    return httpx.Timeout(connect=5.0, read=secs, write=secs, pool=5.0)
+
+
 def build_headers(principal: str | None) -> dict[str, str]:
     """Return headers for a soyuz volume file IO request.
 

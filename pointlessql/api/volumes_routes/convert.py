@@ -160,7 +160,9 @@ async def api_convert_volume_file_to_delta(
     # Raw soyuz GET — the UnityCatalogClient wrapper does not expose
     # volumes yet.  Keep the call narrow; result is a dict, not a
     # typed model.
-    async with httpx.AsyncClient() as http:
+    async with httpx.AsyncClient(
+        timeout=vol_service.proxy_timeout(request.app.state.settings)
+    ) as http:
         v_response = await http.get(
             f"{soyuz_base_url(request)}/api/2.1/unity-catalog/volumes/{full_name}",
             headers={"X-Principal": user.get("email") or ""},
@@ -187,7 +189,9 @@ async def api_convert_volume_file_to_delta(
             f"extension on {rel_path!r}.",
         )
 
-    async with httpx.AsyncClient() as http_client:
+    async with httpx.AsyncClient(
+        timeout=vol_service.proxy_timeout(request.app.state.settings)
+    ) as http_client:
         # Stream into a temp file.
         target_path = Path(tempfile.mkstemp(suffix=f".{ext}")[1])
         try:

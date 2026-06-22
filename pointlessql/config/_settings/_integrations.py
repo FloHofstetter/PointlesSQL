@@ -37,6 +37,10 @@ class SoyuzSettings(BaseSettings):
     read_timeout_seconds: float = 30.0
     write_timeout_seconds: float = 10.0
     pool_timeout_seconds: float = 5.0
+    # Volume upload/download proxies move large file bodies, so they get a
+    # more generous read/write budget than ordinary metadata calls (which
+    # the httpx 5s default would cut short) while keeping connect/pool tight.
+    volume_proxy_timeout_seconds: float = 60.0
 
 
 class JupyterSettings(BaseSettings):

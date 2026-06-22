@@ -44,7 +44,11 @@ async def volumes_page(request: Request) -> HTMLResponse:
         logger.exception("volumes page: list_catalogs failed")
         catalogs = []
     user = get_user(request)
-    async with httpx.AsyncClient() as http_client:
+    from pointlessql.services import volumes as vol_service
+
+    async with httpx.AsyncClient(
+        timeout=vol_service.proxy_timeout(request.app.state.settings)
+    ) as http_client:
         for cat in catalogs or []:
             try:
                 schemas = await uc_client.list_schemas(cat["name"])
@@ -122,7 +126,9 @@ async def volume_detail_page(request: Request, full_name: str) -> HTMLResponse:
 
     await volume_full_name_split(full_name)
     user = get_user(request)
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(
+        timeout=vol_service.proxy_timeout(request.app.state.settings)
+    ) as client:
         # Look up metadata via a raw soyuz GET so we can surface
         # storage_location in the UI.
         meta = await client.get(

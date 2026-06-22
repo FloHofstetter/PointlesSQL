@@ -38,7 +38,9 @@ async def api_browse_volume(
 
     await volume_full_name_split(full_name)
     user = get_user(request)
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(
+        timeout=vol_service.proxy_timeout(request.app.state.settings)
+    ) as client:
         files = await vol_service.browse_files(
             client,
             soyuz_base_url(request),
@@ -82,7 +84,9 @@ async def api_upload_volume_file(
         raise HTTPException(
             status_code=413, detail="Uploaded file exceeds the maximum allowed size."
         )
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(
+        timeout=vol_service.proxy_timeout(request.app.state.settings)
+    ) as client:
         body = await vol_service.upload_file(
             client,
             soyuz_base_url(request),
@@ -122,7 +126,9 @@ async def api_delete_volume_file(
 
     await volume_full_name_split(full_name)
     user = get_user(request)
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(
+        timeout=vol_service.proxy_timeout(request.app.state.settings)
+    ) as client:
         await vol_service.delete_file(
             client,
             soyuz_base_url(request),
