@@ -6,7 +6,7 @@ import logging
 from typing import Any
 
 import httpx
-from fastapi import APIRouter, File, Form, Request, UploadFile
+from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import Response
 
 from pointlessql.api._audit_helpers import audit
@@ -65,12 +65,23 @@ async def api_upload_volume_file(
 
     Returns:
         Dict with the resulting file entry.
+
+    Raises:
+        HTTPException: 413 when the uploaded body exceeds
+            ``server.max_request_bytes``.
     """
     from pointlessql.services import volumes as vol_service
 
     await volume_full_name_split(full_name)
     user = get_user(request)
     data = await upload.read()
+    # Backstop the Content-Length middleware for chunked uploads that
+    # carry no length header: reject once the body is in hand.
+    max_bytes = int(request.app.state.settings.server.max_request_bytes)
+    if len(data) > max_bytes:
+        raise HTTPException(
+            status_code=413, detail="Uploaded file exceeds the maximum allowed size."
+        )
     async with httpx.AsyncClient() as client:
         body = await vol_service.upload_file(
             client,

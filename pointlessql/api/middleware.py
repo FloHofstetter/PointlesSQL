@@ -433,6 +433,35 @@ async def request_id_middleware(request: Request, call_next: Any) -> Response:
     return response
 
 
+async def _body_size_limit_middleware(request: Request, call_next: Any) -> Response:
+    """Reject a request whose declared body exceeds the configured cap.
+
+    Checks the ``Content-Length`` header against
+    ``server.max_request_bytes`` and returns 413 before any handler
+    buffers the body, so an oversized upload cannot OOM the process.
+
+    Args:
+        request: The incoming request.
+        call_next: The downstream handler.
+
+    Returns:
+        A 413 response when the declared body is too large, else the
+        downstream response.
+    """
+    settings = getattr(request.app.state, "settings", None)
+    server = getattr(settings, "server", None)
+    max_bytes = int(getattr(server, "max_request_bytes", 25 * 1024 * 1024))
+    raw_length = request.headers.get("content-length")
+    if raw_length is not None:
+        try:
+            declared = int(raw_length)
+        except ValueError:
+            declared = None
+        if declared is not None and declared > max_bytes:
+            return Response("Request body too large.", status_code=413, media_type="text/plain")
+    return await call_next(request)
+
+
 def register_middleware(app: FastAPI) -> None:
     """Stack the middleware on *app* in the canonical order.
 
@@ -453,6 +482,7 @@ def register_middleware(app: FastAPI) -> None:
     app.middleware("http")(auth_middleware)
     app.middleware("http")(_rate_limit_middleware)
     app.middleware("http")(_csrf_middleware)
+    app.middleware("http")(_body_size_limit_middleware)
     app.middleware("http")(request_id_middleware)
     app.middleware("http")(security_headers_middleware)
     app.middleware("http")(latency_middleware)

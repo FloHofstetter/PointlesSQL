@@ -27,6 +27,10 @@ class ServerSettings(BaseSettings):
     host: str = "127.0.0.1"
     port: int = 8000
     base_url: str | None = None
+    # Hard cap on request body size (Content-Length), enforced by a
+    # middleware so an oversized upload is rejected with 413 before the
+    # handler buffers it into memory. 25 MiB default.
+    max_request_bytes: int = 25 * 1024 * 1024
 
 
 class EgressSettings(BaseSettings):
