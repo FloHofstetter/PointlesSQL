@@ -14,9 +14,10 @@ import httpx
 from sqlalchemy import select
 
 from pointlessql.api.main import app
-from pointlessql.config import correlation_id_var
+from pointlessql.config import Settings, correlation_id_var, request_id_var
 from pointlessql.models import AgentRun, AgentRunOperation
 from pointlessql.services.agent_runs.operations._lifecycle import record_operation
+from pointlessql.services.soyuz_client import make_principal_client, make_soyuz_client
 
 
 def _factory():
@@ -114,6 +115,58 @@ async def test_middleware_defaults_correlation_to_request_id() -> None:
     assert res.status_code == 200, res.text
     # No inbound correlation id → falls back to the request id.
     assert res.headers.get("X-Correlation-ID") == res.headers.get("X-Request-ID")
+
+
+def test_soyuz_client_forwards_active_trace_ids() -> None:
+    """The default client stamps the active request + correlation ids."""
+    rt = request_id_var.set("req-123")
+    ct = correlation_id_var.set("corr-abc")
+    try:
+        headers = make_soyuz_client(Settings()).get_httpx_client().headers
+    finally:
+        correlation_id_var.reset(ct)
+        request_id_var.reset(rt)
+    assert headers["x-request-id"] == "req-123"
+    assert headers["x-correlation-id"] == "corr-abc"
+
+
+def test_principal_client_forwards_trace_ids_and_keeps_principal() -> None:
+    """The per-principal client carries the trace ids alongside X-Principal."""
+    rt = request_id_var.set("req-9")
+    ct = correlation_id_var.set("corr-9")
+    try:
+        headers = make_principal_client(Settings(), "user@test.com").get_httpx_client().headers
+    finally:
+        correlation_id_var.reset(ct)
+        request_id_var.reset(rt)
+    assert headers["x-principal"] == "user@test.com"
+    assert headers["x-request-id"] == "req-9"
+    assert headers["x-correlation-id"] == "corr-9"
+
+
+def test_soyuz_client_correlation_defaults_to_request_id() -> None:
+    """With no correlation set, the request id is forwarded as the correlation."""
+    rt = request_id_var.set("req-only")
+    try:
+        headers = make_soyuz_client(Settings()).get_httpx_client().headers
+    finally:
+        request_id_var.reset(rt)
+    assert headers["x-correlation-id"] == "req-only"
+
+
+def test_soyuz_client_omits_trace_headers_outside_request() -> None:
+    """Outside any request scope no trace headers are forwarded."""
+    # The autouse fixtures do not set the trace context vars, but a prior
+    # test could have leaked one — assert against a clean explicit reset.
+    rt = request_id_var.set("")
+    ct = correlation_id_var.set("")
+    try:
+        headers = make_soyuz_client(Settings()).get_httpx_client().headers
+    finally:
+        correlation_id_var.reset(ct)
+        request_id_var.reset(rt)
+    assert "x-request-id" not in headers
+    assert "x-correlation-id" not in headers
 
 
 async def test_trace_endpoint_returns_timeline() -> None:
