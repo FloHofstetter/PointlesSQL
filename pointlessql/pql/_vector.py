@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Literal, cast
@@ -406,6 +407,13 @@ def delete_index(*, workspace_id: int, index_id: str) -> Path | None:
     return path
 
 
+# The column name becomes the ``_vss/<column>.duckdb`` path segment; a
+# separator or ``..`` would let a request read or unlink files outside the
+# index directory, so restrict it to a plain identifier here too (the API
+# request models validate it first; this is the defence-in-depth backstop).
+_VECTOR_COLUMN_RE = re.compile(r"^[A-Za-z0-9_][A-Za-z0-9_-]{0,255}$")
+
+
 def _index_file_path(storage_location: str, column: str) -> Path:
     # Soyuz returns ``storage_location`` as a ``file://`` URI for managed
     # tables; ``deltalake`` handles that natively but DuckDB's
@@ -413,10 +421,16 @@ def _index_file_path(storage_location: str, column: str) -> Path:
     # so the same call site works for both Delta reads and DuckDB index
     # opens.  Non-``file://`` schemes (s3://, abfss://) intentionally
     # fall through — vector-search currently only supports local Delta.
+    if not _VECTOR_COLUMN_RE.match(column):
+        raise ValueError(f"invalid vector index column name: {column!r}")
     if storage_location.startswith("file://"):
         storage_location = storage_location[len("file://") :]
     base = Path(storage_location.rstrip("/"))
-    return base / "_vss" / f"{column}.duckdb"
+    vss_dir = base / "_vss"
+    target = vss_dir / f"{column}.duckdb"
+    if not target.resolve().is_relative_to(vss_dir.resolve()):
+        raise ValueError(f"vector index path escapes the index directory: {column!r}")
+    return target
 
 
 def _resolve_storage_location(client: Client, full_name: str, unreachable_msg: str) -> str:
