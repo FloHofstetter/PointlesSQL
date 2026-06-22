@@ -382,11 +382,20 @@ async def _handle_prompt(
                     ChatEvent(kind="error", payload={"detail": str(exc)}),
                 )
                 return
-            except Exception as exc:  # noqa: BLE001 — bubble to client
+            except Exception:  # noqa: BLE001 — bubble a safe message to client
+                # Never forward str(exc): an unexpected failure can carry
+                # internal detail (paths, secrets). Log the full trace
+                # server-side and send the client a fixed, safe message.
                 logger.exception("%s chat turn failed", surface)
                 publish(
                     editor_session_id,
-                    ChatEvent(kind="error", payload={"detail": str(exc)}),
+                    ChatEvent(
+                        kind="error",
+                        payload={
+                            "detail": "The chat turn failed unexpectedly.",
+                            "code": "chat_turn_failed",
+                        },
+                    ),
                 )
                 return
             # Yield to the loop so any pending call_soon_threadsafe
