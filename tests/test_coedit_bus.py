@@ -54,9 +54,13 @@ def _create_subdb_engine(parent_url: str) -> tuple[Engine, str]:
 
 
 def _drop_subdb(parent_url: str, sub: str) -> None:
+    # WITH (FORCE) terminates any still-draining LISTEN connection the
+    # bus held open: ``stop()`` awaits the listener task, but the backend
+    # it owned can linger a beat on the server side, which is enough for a
+    # plain DROP DATABASE to fail with "is being accessed by other users".
     base = create_engine(parent_url, isolation_level="AUTOCOMMIT")
     with base.connect() as conn:
-        conn.execute(text(f'DROP DATABASE IF EXISTS "{sub}"'))
+        conn.execute(text(f'DROP DATABASE IF EXISTS "{sub}" WITH (FORCE)'))
     base.dispose()
 
 
