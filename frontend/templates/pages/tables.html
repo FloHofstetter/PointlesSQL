@@ -367,7 +367,7 @@
                      · <span x-text="pqlRelativeTime(c.created_at)" :title="pqlAbsTime(c.created_at)"></span>
                     </div>
                    </div>
-                   <div class="pql-comment-body" x-html="c.body_md_resolved || c.body_md"></div>
+                   <div class="pql-comment-body" x-html="window.pqlRenderCitations(c.body_md_resolved || c.body_md)"></div>
                   </div>
                  </div>
                 </template>

@@ -517,6 +517,10 @@
          resting-placeholder pattern to every page navigation. -->
     <script src="/static/js/loading_skeleton.js"></script>
     <script src="/static/js/star.js?v={{ asset_version }}"></script>
+    <!-- Escape-first markdown+citation renderer (window.pqlRenderCitations).
+         Loaded globally and before the deferred Alpine so every social
+         pane's x-html binding can render comment/review bodies safely. -->
+    <script src="/static/js/citation_render.js?v={{ asset_version }}"></script>
     {% block extra_js %}{% endblock %}
 </body>
 </html>

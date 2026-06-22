@@ -42,7 +42,7 @@
                                 </button>
                             </template>
                         </div>
-                        <div class="pql-review-body" x-html="r.body_md_resolved || r.body_md"></div>
+                        <div class="pql-review-body" x-html="window.pqlRenderCitations(r.body_md_resolved || r.body_md)"></div>
                     </div>
                 </div>
             </template>

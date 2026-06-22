@@ -91,7 +91,7 @@
                                             <i class="bi bi-trash"></i>
                                         </button>
                                     </div>
-                                    <div class="pql-comment-body" x-html="c.body_md_resolved || c.body_md"></div>
+                                    <div class="pql-comment-body" x-html="window.pqlRenderCitations(c.body_md_resolved || c.body_md)"></div>
                                 </div>
                             </div>
                         </template>
