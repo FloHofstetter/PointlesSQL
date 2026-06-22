@@ -9,6 +9,7 @@ import httpx
 from fastapi import APIRouter, Form, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 
+from pointlessql.api._cookie_security import resolve_cookie_secure
 from pointlessql.api.dependencies import get_optional_user, get_templates
 from pointlessql.api.middleware import WORKSPACE_COOKIE_NAME
 from pointlessql.config import Settings
@@ -86,6 +87,7 @@ async def login_submit(
         token,
         httponly=True,
         samesite="lax",
+        secure=resolve_cookie_secure(request),
         max_age=settings.auth.jwt_expiry_hours * 3600,
     )
     # Rotate the CSRF cookie on successful login — standard token
@@ -95,6 +97,7 @@ async def login_submit(
         csrf.generate_token(),
         httponly=True,
         samesite="lax",
+        secure=resolve_cookie_secure(request),
         max_age=settings.auth.jwt_expiry_hours * 3600,
         path="/",
     )
@@ -158,7 +161,7 @@ async def logout(request: Request):
     """Clear the session cookie and redirect to login."""
     settings = _settings(request)
     response = RedirectResponse(url="/auth/login", status_code=303)
-    response.delete_cookie(auth.COOKIE_NAME)
+    response.delete_cookie(auth.COOKIE_NAME, secure=resolve_cookie_secure(request))
     # Rotate the CSRF cookie alongside the auth cookie. Deleting it
     # would just force the middleware to re-issue a fresh one on the
     # redirect target; rotating in place keeps the token bound to the
@@ -168,6 +171,7 @@ async def logout(request: Request):
         csrf.generate_token(),
         httponly=True,
         samesite="lax",
+        secure=resolve_cookie_secure(request),
         max_age=settings.auth.jwt_expiry_hours * 3600,
         path="/",
     )
@@ -228,6 +232,7 @@ async def switch_workspace(request: Request, slug: str = Form()):
         cleaned,
         httponly=True,
         samesite="lax",
+        secure=resolve_cookie_secure(request),
         max_age=settings.auth.jwt_expiry_hours * 3600,
         path="/",
     )
@@ -279,6 +284,7 @@ async def sso_redirect(request: Request):
         cookie_value,
         httponly=True,
         samesite="lax",
+        secure=resolve_cookie_secure(request),
         max_age=300,
     )
     return response
@@ -384,6 +390,7 @@ async def oidc_callback(request: Request):
         token,
         httponly=True,
         samesite="lax",
+        secure=resolve_cookie_secure(request),
         max_age=settings.auth.jwt_expiry_hours * 3600,
     )
     # Rotate the CSRF cookie on SSO login, matching the local-login
@@ -393,8 +400,9 @@ async def oidc_callback(request: Request):
         csrf.generate_token(),
         httponly=True,
         samesite="lax",
+        secure=resolve_cookie_secure(request),
         max_age=settings.auth.jwt_expiry_hours * 3600,
         path="/",
     )
-    response.delete_cookie(oidc_service.STATE_COOKIE_NAME)
+    response.delete_cookie(oidc_service.STATE_COOKIE_NAME, secure=resolve_cookie_secure(request))
     return response

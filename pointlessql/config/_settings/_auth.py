@@ -81,6 +81,15 @@ class AuthSettings(BaseSettings):
     secret_key: str = INSECURE_DEFAULT_SECRET_KEY
     secret_key_previous: str | None = None
     jwt_expiry_hours: int = 168  # 7 days
+    cookie_secure: bool | None = None
+    """Whether session/CSRF cookies carry the ``Secure`` attribute.
+
+    ``None`` (default) auto-detects from the request scheme — ``Secure``
+    on https, not on plain http — so a clean checkout works over
+    loopback http while a TLS deployment marks cookies ``Secure``
+    automatically.  Set ``POINTLESSQL_AUTH_COOKIE_SECURE=true``/``false``
+    to force it (e.g. behind a TLS-terminating proxy that forwards
+    http)."""
 
 
 class GroupMapping(BaseModel):
