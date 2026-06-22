@@ -37,8 +37,8 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    false,
 )
-from sqlalchemy import text as sa_text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from pointlessql.models.base import Base
@@ -103,7 +103,7 @@ class Workspace(Base):
     branch_promote_requires_endorsement: Mapped[bool] = mapped_column(
         Boolean,
         nullable=False,
-        server_default=sa_text("0"),
+        server_default=false(),
         default=False,
     )
 

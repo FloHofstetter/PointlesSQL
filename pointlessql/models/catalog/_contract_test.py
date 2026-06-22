@@ -29,6 +29,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    true,
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -139,7 +140,9 @@ class DataProductContractTest(Base):
     severity: Mapped[str] = mapped_column(
         String(8), nullable=False, default="warn", server_default="warn"
     )
-    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="1")
+    enabled: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True, server_default=true()
+    )
     created_by_user_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("users.id"), nullable=True
     )

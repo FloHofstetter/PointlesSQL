@@ -21,6 +21,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    false,
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -89,7 +90,7 @@ class Agent(Base):
     home_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     principal_user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
     is_verified: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, default=False, server_default="0"
+        Boolean, nullable=False, default=False, server_default=false()
     )
     verified_by_user_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("users.id"), nullable=True

@@ -47,6 +47,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    false,
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -157,7 +158,7 @@ class WorkspaceGovernancePolicy(Base):
     encryption_class: Mapped[str | None] = mapped_column(String(16), nullable=True)
     residency_region: Mapped[str | None] = mapped_column(String(64), nullable=True)
     consent_required: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, default=False, server_default="0"
+        Boolean, nullable=False, default=False, server_default=false()
     )
     consent_basis: Mapped[str | None] = mapped_column(String(200), nullable=True)
     consumption_enforcement: Mapped[str] = mapped_column(

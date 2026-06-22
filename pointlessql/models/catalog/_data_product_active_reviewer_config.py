@@ -34,6 +34,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    false,
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -120,7 +121,7 @@ class DataProductActiveReviewerConfig(Base):
     enabled: Mapped[bool] = mapped_column(
         Boolean,
         nullable=False,
-        server_default="0",
+        server_default=false(),
     )
     runner: Mapped[str] = mapped_column(String(20), nullable=False)
     llm_provider: Mapped[str | None] = mapped_column(String(20), nullable=True)
