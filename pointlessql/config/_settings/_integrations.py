@@ -41,6 +41,10 @@ class SoyuzSettings(BaseSettings):
     # more generous read/write budget than ordinary metadata calls (which
     # the httpx 5s default would cut short) while keeping connect/pool tight.
     volume_proxy_timeout_seconds: float = 60.0
+    # Max number of schemas whose tables/volumes/models are fetched
+    # concurrently while building the sidebar tree — bounds the fan-out so
+    # a wide catalog does not stampede soyuz with thousands of parallel GETs.
+    tree_fanout_concurrency: int = 16
 
 
 class JupyterSettings(BaseSettings):

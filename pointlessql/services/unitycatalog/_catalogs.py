@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from typing import Any
 
 from soyuz_catalog_client import Client
@@ -19,6 +20,8 @@ from pointlessql.services.unitycatalog._api import (
     _update_catalog,
     wrap_catalog_errors,
 )
+
+logger = logging.getLogger(__name__)
 
 # Upper bound on pages drained per list call — a backstop against a
 # provider that returns a self-referential next_page_token forever.
@@ -136,20 +139,42 @@ class CatalogsMixin:
             whose entries each carry ``tables``, ``volumes``, and
             ``models`` keys.
         """
+        from pointlessql.config import get_settings
+
         catalogs = await self.list_catalogs()
+        # Bound the per-schema child fan-out so a wide catalog cannot
+        # stampede soyuz with thousands of concurrent GETs.
+        semaphore = asyncio.Semaphore(max(1, get_settings().soyuz.tree_fanout_concurrency))
 
         async def _with_schemas(cat: dict[str, Any]) -> dict[str, Any]:
             schemas = await self.list_schemas(cat["name"])  # type: ignore[attr-defined]
 
             async def _with_children(schema: dict[str, Any]) -> dict[str, Any]:
-                tables_task = self.list_tables(cat["name"], schema["name"])  # type: ignore[attr-defined]
-                volumes_task = self.list_volumes(cat["name"], schema["name"])  # type: ignore[attr-defined]
-                models_task = self.list_registered_models(  # type: ignore[attr-defined]
-                    catalog_name=cat["name"], schema_name=schema["name"]
-                )
-                tables, volumes, models = await asyncio.gather(
-                    tables_task, volumes_task, models_task
-                )
+                async with semaphore:
+                    try:
+                        tables, volumes, models = await asyncio.gather(
+                            self.list_tables(cat["name"], schema["name"]),  # type: ignore[attr-defined]
+                            self.list_volumes(cat["name"], schema["name"]),  # type: ignore[attr-defined]
+                            self.list_registered_models(  # type: ignore[attr-defined]
+                                catalog_name=cat["name"], schema_name=schema["name"]
+                            ),
+                        )
+                    except Exception:  # noqa: BLE001 — degrade one schema, not the tree
+                        # A failing/unavailable schema must not abort the whole
+                        # sidebar render — surface it as an empty, partial node.
+                        logger.warning(
+                            "get_tree: children fetch failed for %s.%s",
+                            cat["name"],
+                            schema["name"],
+                            exc_info=True,
+                        )
+                        return {
+                            **schema,
+                            "tables": [],
+                            "volumes": [],
+                            "models": [],
+                            "partial": True,
+                        }
                 return {
                     **schema,
                     "tables": tables,
