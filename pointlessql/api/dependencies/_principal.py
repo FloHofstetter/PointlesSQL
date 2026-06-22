@@ -14,20 +14,42 @@ from pointlessql.services.unitycatalog import UnityCatalogClient
 from pointlessql.types import UserInfo
 
 
+def _caller_may_impersonate(request: Request) -> bool:
+    """Whether this request is trusted to set ``X-Principal`` to another identity.
+
+    Only two callers may speak for someone else: a request authenticated
+    with an API key (Hermes, ops curl — server-to-server credentials an
+    admin issued) and an admin cookie session.  A normal non-admin cookie
+    session must not be able to forge a higher-privileged principal.
+
+    Args:
+        request: Incoming FastAPI request.
+
+    Returns:
+        ``True`` for API-key or admin callers; ``False`` otherwise.
+    """
+    if getattr(request.state, "api_key_id", None) is not None:
+        return True
+    user = getattr(request.state, "user", None)
+    return bool(user is not None and user.get("is_admin"))
+
+
 def effective_principal(request: Request) -> str | None:
     """Return the effective principal for SELECT enforcement + audit.
 
-    The ``X-Principal`` header takes precedence so an external
-    runtime (Hermes, an ops curl) can act on behalf of an end user
-    without that user holding a session cookie on PointlesSQL.
-    When the header is absent or empty we fall back to the
-    session-cookie user's email.  When neither is set the request
-    is anonymous and the function returns ``None`` — callers decide
-    whether to short-circuit or continue with the default UC client.
+    The ``X-Principal`` header lets a *trusted* caller act on behalf of an
+    end user without that user holding a session cookie — but only when
+    the request is API-key authenticated or the cookie user is an admin
+    (:func:`_caller_may_impersonate`).  For a normal non-admin cookie
+    session the header is ignored and we fall back to that user's own
+    email, so it cannot impersonate a higher-privileged principal to
+    bypass grants or forge the audit trail.  When neither a trusted
+    override nor a cookie user is present the request is anonymous and the
+    function returns ``None``.
 
-    The header is the same one the agent-runs registry accepts and
-    is also propagated through to the SQL routes and the query-
-    history audit row so attribution stays consistent across hops.
+    The header is the same one the agent-runs registry accepts and is also
+    propagated through to the SQL routes and the query-history audit row
+    so attribution stays consistent across hops.
 
     Args:
         request: Incoming FastAPI request.
@@ -36,7 +58,7 @@ def effective_principal(request: Request) -> str | None:
         The effective principal email, or ``None`` for anonymous.
     """
     header = request.headers.get("x-principal")
-    if header and header.strip():
+    if header and header.strip() and _caller_may_impersonate(request):
         return header.strip()
     user = getattr(request.state, "user", None)
     if user is not None and user.get("email"):
