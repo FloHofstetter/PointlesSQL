@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hmac
 import logging
 import re
 from pathlib import Path
@@ -220,17 +221,44 @@ async def readyz(request: Request) -> Response:
     )
 
 
+def _authorize_metrics(request: Request) -> None:
+    """Gate the ``/metrics`` scrape: public, scrape-token, or admin session.
+
+    The metrics surface includes every job name in the install, so it is
+    not world-readable by default. Resolution order: an operator who set
+    ``metrics_public`` opts the route out of auth entirely; otherwise a
+    configured ``metrics_token`` presented as a bearer token (compared in
+    constant time) admits a least-privilege Prometheus scraper; failing
+    both, the request falls through to the admin-session gate, which
+    raises :class:`AuthorizationError` when the caller is not an admin.
+
+    Args:
+        request: Incoming FastAPI request.
+    """
+    obs = request.app.state.settings.observability
+    if obs.metrics_public:
+        return
+    token: str | None = obs.metrics_token
+    if token:
+        header = request.headers.get("authorization") or ""
+        presented = header[7:].strip() if header.lower().startswith("bearer ") else ""
+        if presented and hmac.compare_digest(presented, token):
+            return
+    _require_admin(request)
+
+
 @app.get("/metrics")
 async def metrics(request: Request) -> Response:
-    """Expose Prometheus metrics for the scheduler (admin-only).
+    """Expose Prometheus metrics (scrape-token or admin-only).
 
     Returns the default text exposition format so any Prometheus
-    scraper works without extra negotiation. Gated by
-    :func:`_require_admin` because the metrics surface includes the
-    names of every job in the install, which is sensitive information
-    on multi-tenant deployments.
+    scraper works without extra negotiation. Access is mediated by
+    :func:`_authorize_metrics` — a least-privilege scrape token for
+    headless Prometheus, with the admin session kept as a fallback —
+    because the metrics surface includes the names of every job in the
+    install, which is sensitive information on multi-tenant deployments.
     """
-    _require_admin(request)
+    _authorize_metrics(request)
     body, content_type = metrics_service.render_metrics()
     return Response(content=body, media_type=content_type)
 

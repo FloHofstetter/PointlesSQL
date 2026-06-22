@@ -226,8 +226,37 @@ The scheduler emits three Prometheus metrics via
 | `pointlessql_job_run_duration_seconds` | Histogram | `job_name` |
 | `pointlessql_scheduler_tick_lag_seconds` | Gauge | — |
 
-`GET /metrics` exposes the standard Prometheus text format (admin
-users only).
+Alongside these, the endpoint also exports the standard
+`process_*` and `python_info` series (RSS, CPU seconds, open FDs,
+interpreter build), so one scrape covers host health and the app.
+
+### Scraping `/metrics`
+
+`GET /metrics` exposes the standard Prometheus text format. By
+default it is **admin-session only** — convenient for a human, but a
+headless Prometheus server would need an over-privileged admin key.
+Set a least-privilege scrape token instead:
+
+```bash
+export POINTLESSQL_OBSERVABILITY_METRICS_TOKEN=$(openssl rand -hex 32)
+```
+
+The scraper then presents it as a bearer token (the admin-session
+path stays available as a fallback):
+
+```yaml
+scrape_configs:
+  - job_name: pointlessql
+    authorization:
+      type: Bearer
+      credentials: "<POINTLESSQL_OBSERVABILITY_METRICS_TOKEN value>"
+    static_configs:
+      - targets: ["127.0.0.1:8000"]
+```
+
+If the endpoint is already isolated to a private scrape subnet you
+can drop auth entirely with
+`POINTLESSQL_OBSERVABILITY_METRICS_PUBLIC=true`.
 
 ## 7. Built-in kinds
 

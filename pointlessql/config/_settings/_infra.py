@@ -181,7 +181,7 @@ class CDFTailSettings(BaseSettings):
 
 
 class ObservabilitySettings(BaseSettings):
-    """OpenTelemetry tracing configuration (opt-in, default off).
+    """Tracing config plus the ``/metrics`` scrape-access policy.
 
     Reads ``POINTLESSQL_OBSERVABILITY_*`` environment variables.  When
     ``enabled`` is ``False`` (the default) the runtime never imports the
@@ -195,6 +195,16 @@ class ObservabilitySettings(BaseSettings):
     context so traces and structured logs share the same identifiers.
     ``sample_ratio`` is the head-based sampling probability (``1.0`` keeps
     every trace; lower it under high load).
+
+    ``metrics_token`` and ``metrics_public`` govern who may scrape
+    ``/metrics``.  By default the route is admin-session only — fine for a
+    human, useless for a headless Prometheus server, which would otherwise
+    need an over-privileged admin key.  Setting ``metrics_token`` lets a
+    scraper present it as a bearer token (constant-time compared) for a
+    least-privilege pull; the admin-session path stays as a fallback.
+    ``metrics_public`` drops auth on ``/metrics`` entirely and is only safe
+    when the endpoint is already network-isolated to a private scrape
+    subnet.
     """
 
     model_config = SettingsConfigDict(env_prefix="POINTLESSQL_OBSERVABILITY_")
@@ -203,3 +213,5 @@ class ObservabilitySettings(BaseSettings):
     tracing_endpoint: str | None = None
     service_name: str = "pointlessql"
     sample_ratio: float = 1.0
+    metrics_token: str | None = None
+    metrics_public: bool = False

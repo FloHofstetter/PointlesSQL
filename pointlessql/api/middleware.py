@@ -111,6 +111,11 @@ PUBLIC_PREFIXES: tuple[str, ...] = (
     # path itself is unauthenticated so the chat channel can POST
     # without a browser session or an API key.
     "/api/genie/teams/",
+    # Prometheus /metrics scrape. Public at the middleware layer so a
+    # headless scraper presenting a bearer scrape-token (or an install
+    # that set metrics_public) is not bounced to /auth/login; the route's
+    # own gate enforces the scrape-token / admin-session policy.
+    "/metrics",
 )
 
 
