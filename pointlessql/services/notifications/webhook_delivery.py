@@ -26,6 +26,7 @@ from sqlalchemy import or_, select
 
 from pointlessql.models.notifications import UserWebhookSubscription
 from pointlessql.services.alert_dispatcher import sign_body
+from pointlessql.services.egress_guard import assert_public_http_url
 
 logger = logging.getLogger(__name__)
 
@@ -100,6 +101,9 @@ async def deliver_to_user_subscriptions(
             ok = False
             error: str | None = None
             try:
+                # Re-check at send time so a DNS rebind to an internal
+                # address since the subscription was saved is rejected.
+                assert_public_http_url(sub.webhook_url)
                 resp = await actual_client.post(
                     sub.webhook_url,
                     content=body,

@@ -51,6 +51,7 @@ from pointlessql.config._settings._features import (
 )
 from pointlessql.config._settings._infra import (
     CDFTailSettings,
+    EgressSettings,
     ExecutorSettings,
     ExternalWritesSettings,
     LoggingSettings,
@@ -89,6 +90,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="POINTLESSQL_")
 
     server: ServerSettings = Field(default_factory=ServerSettings)
+    egress: EgressSettings = Field(default_factory=EgressSettings)
     executor: ExecutorSettings = Field(default_factory=ExecutorSettings)
     soyuz: SoyuzSettings = Field(default_factory=SoyuzSettings)
     db: DatabaseSettings = Field(default_factory=DatabaseSettings)
@@ -181,6 +183,7 @@ __all__ = [
     "DatabaseSettings",
     "DeltaSettings",
     "EditorChatSettings",
+    "EgressSettings",
     "EventPortSettings",
     "ExecutorSettings",
     "ExternalWritesSettings",

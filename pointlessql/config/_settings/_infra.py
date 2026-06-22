@@ -29,6 +29,25 @@ class ServerSettings(BaseSettings):
     base_url: str | None = None
 
 
+class EgressSettings(BaseSettings):
+    """SSRF guard for user-supplied outbound destination URLs.
+
+    Reads ``POINTLESSQL_EGRESS_*`` environment variables.  ``enabled``
+    (default ``True``) governs the whole check; ``allow_private`` is the
+    explicit escape hatch for installs that deliberately reach an
+    internal relay; ``allowed_hosts`` is an optional comma-separated
+    hostname allowlist that further narrows what may be contacted (empty
+    means "any public host").  See
+    :func:`pointlessql.services.egress_guard.assert_public_http_url`.
+    """
+
+    model_config = SettingsConfigDict(env_prefix="POINTLESSQL_EGRESS_")
+
+    enabled: bool = True
+    allow_private: bool = False
+    allowed_hosts: str = ""
+
+
 class ExecutorSettings(BaseSettings):
     """Sizing for the app-owned request-path thread pool.
 

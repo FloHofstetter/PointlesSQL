@@ -16,6 +16,11 @@ from unittest.mock import MagicMock
 # before any test imports ``pointlessql.api.main``.
 os.environ.setdefault("POINTLESSQL_JUPYTER_ENABLED", "0")
 os.environ.setdefault("POINTLESSQL_MLFLOW_ENABLED", "0")
+# The SSRF egress guard performs real DNS resolution; default it off so
+# the suite's webhook-delivery tests (which post to unresolvable test
+# hosts behind mocked clients) don't hit the network. The dedicated
+# egress-guard tests re-enable it via settings_override.
+os.environ.setdefault("POINTLESSQL_EGRESS_ENABLED", "0")
 
 # short-circuit the FastAPI lifespan when run under
 # ``TestClient(app)`` / ``ASGITransport``.  The conftest pre-wires

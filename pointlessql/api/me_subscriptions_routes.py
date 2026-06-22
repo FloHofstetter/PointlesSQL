@@ -24,6 +24,24 @@ from pointlessql.api.dependencies import (
 )
 from pointlessql.exceptions import BadRequestError, ResourceNotFoundError
 from pointlessql.models.notifications import UserWebhookSubscription
+from pointlessql.services.egress_guard import EgressError, assert_public_http_url
+
+
+def _assert_webhook_url_allowed(url: str) -> None:
+    """Reject a user webhook URL that the egress guard blocks.
+
+    Args:
+        url: The caller-supplied destination URL.
+
+    Raises:
+        BadRequestError: When the URL targets a non-public address or a
+            non-http(s) scheme.
+    """
+    try:
+        assert_public_http_url(url)
+    except EgressError as exc:
+        raise BadRequestError(f"webhook_url is not allowed: {exc}") from exc
+
 
 router = APIRouter(tags=["me"])
 
@@ -103,6 +121,7 @@ async def create_subscription(request: Request) -> dict[str, Any]:
     dp_ref_filter = body.get("dp_ref_filter") or None
     if not webhook_url:
         raise BadRequestError("webhook_url is required")
+    _assert_webhook_url_allowed(webhook_url)
     if not event_type_filter:
         raise BadRequestError("event_type_filter is required")
 
@@ -139,7 +158,10 @@ async def update_subscription(sub_id: int, request: Request) -> dict[str, Any]:
         if "is_active" in body:
             row.is_active = 1 if bool(body["is_active"]) else 0
         if "webhook_url" in body:
-            row.webhook_url = (body["webhook_url"] or "").strip() or row.webhook_url
+            new_url = (body["webhook_url"] or "").strip()
+            if new_url:
+                _assert_webhook_url_allowed(new_url)
+                row.webhook_url = new_url
         if "event_type_filter" in body:
             new_filter = (body["event_type_filter"] or "").strip()
             if new_filter:
