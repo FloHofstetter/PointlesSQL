@@ -169,7 +169,8 @@ class DataProductInputPort(Base):
         nullable=False,
     )
     name: Mapped[str] = mapped_column(String(120), nullable=False)
-    kind: Mapped[str] = mapped_column(String(16), nullable=False)
+    # ``operational_system`` is 18 chars, so the column must hold > 16.
+    kind: Mapped[str] = mapped_column(String(32), nullable=False)
     source_ref: Mapped[str | None] = mapped_column(String(500), nullable=True)
     source_workspace_id: Mapped[int | None] = mapped_column(
         Integer,
