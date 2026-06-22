@@ -19,6 +19,42 @@ from __future__ import annotations
 from pydantic import BaseModel, ConfigDict, computed_field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+INSECURE_DEFAULT_SECRET_KEY = "change-me-in-production"  # pragma: allowlist secret
+"""Public placeholder JWT signing key shipped as the field default.
+
+It lets a fresh ``git clone`` boot on loopback with zero configuration,
+but it is public knowledge — anyone could forge a session (including an
+admin one) signed with it.  :func:`secret_key_is_insecure` flags it so
+the startup gate can refuse it once the server binds a reachable host.
+"""
+
+_MIN_SECRET_KEY_LENGTH = 16
+
+LOOPBACK_HOSTS = frozenset({"127.0.0.1", "localhost", "::1"})
+"""Bind addresses that keep the server unreachable from other hosts.
+
+Booting on one of these is treated as local development, where the
+insecure default key is tolerated.
+"""
+
+
+def secret_key_is_insecure(secret_key: str) -> bool:
+    """Return whether *secret_key* is unfit to sign production sessions.
+
+    A key is insecure when it is the public
+    :data:`INSECURE_DEFAULT_SECRET_KEY` placeholder, empty, or shorter
+    than :data:`_MIN_SECRET_KEY_LENGTH` characters — too little entropy
+    to resist offline brute forcing of issued tokens.
+
+    Args:
+        secret_key: The configured ``POINTLESSQL_AUTH_SECRET_KEY`` value.
+
+    Returns:
+        ``True`` when the key must not be used on a publicly reachable
+        server.
+    """
+    return secret_key == INSECURE_DEFAULT_SECRET_KEY or len(secret_key) < _MIN_SECRET_KEY_LENGTH
+
 
 class AuthSettings(BaseSettings):
     """JWT signing and session lifetime.
@@ -42,7 +78,7 @@ class AuthSettings(BaseSettings):
 
     model_config = SettingsConfigDict(env_prefix="POINTLESSQL_AUTH_")
 
-    secret_key: str = "change-me-in-production"
+    secret_key: str = INSECURE_DEFAULT_SECRET_KEY
     secret_key_previous: str | None = None
     jwt_expiry_hours: int = 168  # 7 days
 

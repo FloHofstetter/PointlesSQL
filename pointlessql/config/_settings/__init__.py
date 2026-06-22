@@ -26,9 +26,12 @@ from pointlessql.config._settings._audit import (
     LineageRetentionSettings,
 )
 from pointlessql.config._settings._auth import (
+    INSECURE_DEFAULT_SECRET_KEY,
+    LOOPBACK_HOSTS,
     AuthSettings,
     GroupMapping,
     OIDCSettings,
+    secret_key_is_insecure,
 )
 from pointlessql.config._settings._features import (
     AiFunctionsSettings,
@@ -126,7 +129,38 @@ class Settings(BaseSettings):
     privilege: PrivilegeSettings = Field(default_factory=PrivilegeSettings)
 
 
+def assert_secret_key_safe(settings: Settings) -> None:
+    """Refuse to boot with an insecure JWT key on a reachable address.
+
+    A clean checkout boots on loopback with the public placeholder key
+    so first-run needs no configuration.  The moment the server binds a
+    non-loopback host (``0.0.0.0`` in a container, a LAN address), that
+    placeholder — or any too-short key — would let anyone forge admin
+    session tokens, so we fail loud at startup and name the env var to
+    set instead of silently signing with a guessable key.
+
+    Args:
+        settings: The resolved root settings.
+
+    Raises:
+        RuntimeError: When the signing key is insecure
+            (:func:`secret_key_is_insecure`) and the server is bound to
+            a publicly reachable, non-:data:`LOOPBACK_HOSTS` address.
+    """
+    if settings.server.host in LOOPBACK_HOSTS:
+        return
+    if secret_key_is_insecure(settings.auth.secret_key):
+        raise RuntimeError(
+            "POINTLESSQL_AUTH_SECRET_KEY is unset or insecure while the server is "
+            f"bound to {settings.server.host!r}. Generate a strong key, e.g. "
+            "`python -c 'import secrets; print(secrets.token_urlsafe(48))'`, and set "
+            "POINTLESSQL_AUTH_SECRET_KEY before starting outside loopback."
+        )
+
+
 __all__ = [
+    "INSECURE_DEFAULT_SECRET_KEY",
+    "LOOPBACK_HOSTS",
     "AgentRunsSettings",
     "AiFunctionsSettings",
     "ApiKeyAclSettings",
@@ -169,4 +203,6 @@ __all__ = [
     "SoyuzSettings",
     "SqlExecutionApiSettings",
     "WorkspaceReposSettings",
+    "assert_secret_key_safe",
+    "secret_key_is_insecure",
 ]

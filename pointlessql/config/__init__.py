@@ -72,6 +72,7 @@ from pointlessql.config._settings import (
     SqlExecutionApiSettings,
     SQLSettings,
     WorkspaceReposSettings,
+    assert_secret_key_safe,
 )
 
 __all__ = [
@@ -115,6 +116,7 @@ __all__ = [
     "SoyuzSettings",
     "SqlExecutionApiSettings",
     "WorkspaceReposSettings",
+    "assert_secret_key_safe",
     "configure_logging",
     "correlation_id_var",
     "get_settings",

@@ -49,7 +49,7 @@ from pointlessql.api._bootstrap._loops import (
     _user_notification_digest_loop,  # pyright: ignore[reportPrivateUsage]
     _workspace_repos_sync_loop,  # pyright: ignore[reportPrivateUsage]
 )
-from pointlessql.config import get_settings
+from pointlessql.config import assert_secret_key_safe, get_settings
 from pointlessql.db import get_session_factory, init_db
 from pointlessql.services import api_keys as api_keys_service
 from pointlessql.services import scheduler as scheduler_service
@@ -132,6 +132,12 @@ def make_lifespan(
         # the full lifespan (alembic verification, UC-client real
         # http path, etc.) simply unset the env var.
         fast_test_lifespan = os.environ.get("POINTLESSQL_TEST_LIFESPAN_FAST") == "1"
+
+        # Fail loud before doing any work if the JWT signing key is the
+        # public placeholder (or too short) while bound to a reachable
+        # host — booting that way would let anyone forge admin sessions.
+        if not fast_test_lifespan:
+            assert_secret_key_safe(settings)
 
         if not fast_test_lifespan:
             soyuz = make_soyuz_client(settings)
