@@ -178,6 +178,30 @@ PLAYBOOK_COVERAGE: dict[str, tuple[str, str]] = {
     # --- n-a: not a browser journey -----------------------------------------
     "lens-mcp.md": ("n-a", "MCP server stdio/SSE mode — no browser surface"),
     "packaging.md": ("n-a", "packaging / distribution walkthrough — not a UI journey"),
+    # --- Summit 2026 feature round ------------------------------------------
+    # pending: pure-UI, automatable with soyuz DOWN
+    "access-requests.md": ("pending", "access-request + certification queue — our DB"),
+    "admin-secrets.md": ("pending", "admin secret / credential console — our DB"),
+    "asset-bundles.md": ("pending", "asset-bundle config surface — our DB"),
+    "data-classification.md": ("pending", "column classification authoring — our DB"),
+    "hosted-apps.md": ("pending", "App-Spaces hosted-app registry — our DB"),
+    # deferred-requires-soyuz: needs catalog data on GET
+    "bi-dashboards.md": ("deferred-requires-soyuz", "AI/BI dashboards over catalog tables"),
+    "delta-sharing.md": ("deferred-requires-soyuz", "Delta Sharing shares over catalog"),
+    "ingest-streaming.md": ("deferred-requires-soyuz", "streaming ingest into a catalog target"),
+    "metric-views.md": ("deferred-requires-soyuz", "metric-view definitions over catalog tables"),
+    "online-tables.md": ("deferred-requires-soyuz", "online-table promote over a catalog table"),
+    "quality-monitoring.md": ("deferred-requires-soyuz", "quality monitors over catalog tables"),
+    "query-profile.md": ("deferred-requires-soyuz", "query profile of an executed catalog query"),
+    # deferred-subprocess: Jupyter / MLflow / dbt / scheduler
+    "dashboard-snapshots.md": ("deferred-subprocess", "scheduled snapshot needs executed data"),
+    "jobs-v2.md": ("deferred-subprocess", "jobs-v2 state needs a scheduler tick"),
+    "model-serving.md": ("deferred-subprocess", "MLflow model-serving lifecycle"),
+    "notebook-debugger.md": ("deferred-subprocess", "live kernel (ipykernel) debugger required"),
+    "pipelines.md": ("deferred-subprocess", "declarative pipeline execution subprocess"),
+    # deferred-hermes: needs a live LLM / Hermes agent runtime
+    "ai-functions.md": ("deferred-hermes", "ai_* SQL functions need an LLM provider"),
+    "genie-spaces.md": ("deferred-hermes", "Genie space NL query needs an LLM credential"),
 }
 
 
