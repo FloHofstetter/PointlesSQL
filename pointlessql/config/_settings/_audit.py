@@ -76,6 +76,11 @@ class AuditSettings(BaseSettings):
 
     retention_days: int = 365
     cleanup_interval_seconds: int = 86400  # once per day
+    # Per-event-table retention (days); 0 keeps rows forever. Both tables
+    # grow one row per event with no built-in cap, so they are pruned on
+    # the same cleanup cadence as the audit log.
+    alert_event_retention_days: int = 90
+    query_history_retention_days: int = 90
     anomaly_baseline_window_days: int = 7
     anomaly_threshold_sigma: float = 2.0
     pii_mask_default: bool = True

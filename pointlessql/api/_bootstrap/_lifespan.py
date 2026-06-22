@@ -43,6 +43,7 @@ from pointlessql.api._bootstrap._loops import (
     _data_product_passport_loop,  # pyright: ignore[reportPrivateUsage]
     _data_product_promotion_loop,  # pyright: ignore[reportPrivateUsage]
     _data_product_trending_loop,  # pyright: ignore[reportPrivateUsage]
+    _event_retention_loop,  # pyright: ignore[reportPrivateUsage]
     _external_writes_loop,  # pyright: ignore[reportPrivateUsage]
     _lineage_pruner_loop,  # pyright: ignore[reportPrivateUsage]
     _user_badges_loop,  # pyright: ignore[reportPrivateUsage]
@@ -214,6 +215,16 @@ def make_lifespan(
             audit_task = asyncio.create_task(
                 _audit_retention_loop(app.state.session_factory, settings),
                 name="audit-retention",
+            )
+
+        # Per-event-table retention (alert_events + query_history). Runs on
+        # the same audit cleanup cadence; each table is opt-out via its
+        # ``*_retention_days=0``.
+        event_retention_task: asyncio.Task[None] | None = None
+        if not fast_test_lifespan:
+            event_retention_task = asyncio.create_task(
+                _event_retention_loop(app.state.session_factory, settings),
+                name="event-retention",
             )
 
         # periodic API-key lifecycle sweep.  Marks
@@ -599,6 +610,7 @@ def make_lifespan(
             if hermes_manager is not None:
                 await hermes_manager.stop_all()
             await _cancel_task(audit_task)
+            await _cancel_task(event_retention_task)
             await _cancel_task(api_key_lifecycle_task)
             await _cancel_task(api_key_usage_flush_task)
             await _cancel_task(api_key_usage_retention_task)

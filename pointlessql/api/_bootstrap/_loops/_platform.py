@@ -9,11 +9,14 @@ package ``__init__`` for the shared shape; these are scheduled as
 from __future__ import annotations
 
 import asyncio
+import datetime
 import logging
 from typing import Any
 
 from pointlessql.config import Settings
 from pointlessql.services import audit as audit_service
+from pointlessql.services.alerts import prune_events_older_than
+from pointlessql.services.query_history import prune_history_older_than
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +46,51 @@ async def _audit_retention_loop(  # pyright: ignore[reportUnusedFunction]
             await asyncio.to_thread(audit_service.cleanup_old_entries, factory, retention)
         except Exception:  # noqa: BLE001 — retention loop must survive everything
             logger.exception("audit: retention loop tick raised")
+        try:
+            await asyncio.sleep(interval)
+        except asyncio.CancelledError:
+            return
+
+
+def _prune_event_tables(factory: Any, settings: Settings) -> None:
+    """Prune ``alert_events`` + ``query_history`` past their windows.
+
+    Both tables grow one row per event with no built-in cap.  A
+    ``*_retention_days`` of 0 keeps that table forever.
+
+    Args:
+        factory: SQLAlchemy session factory.
+        settings: Snapshotted :class:`Settings`.
+    """
+    now = datetime.datetime.now(datetime.UTC)
+    alert_days = settings.audit.alert_event_retention_days
+    if alert_days > 0:
+        prune_events_older_than(factory, now - datetime.timedelta(days=alert_days))
+    history_days = settings.audit.query_history_retention_days
+    if history_days > 0:
+        prune_history_older_than(factory, now - datetime.timedelta(days=history_days))
+
+
+async def _event_retention_loop(  # pyright: ignore[reportUnusedFunction]
+    factory: Any,
+    settings: Settings,
+) -> None:
+    """Prune the per-event tables on the audit cleanup cadence.
+
+    ``alert_events`` and ``query_history`` each grow unbounded; this
+    sweep keeps them within their ``*_retention_days`` windows on the
+    same tick cadence as the audit-log retention loop.
+
+    Args:
+        factory: SQLAlchemy session factory shared with the app.
+        settings: Snapshotted :class:`Settings`.
+    """
+    interval = max(60, settings.audit.cleanup_interval_seconds)
+    while True:
+        try:
+            await asyncio.to_thread(_prune_event_tables, factory, settings)
+        except Exception:  # noqa: BLE001 — retention loop must survive everything
+            logger.exception("event-retention loop tick raised")
         try:
             await asyncio.sleep(interval)
         except asyncio.CancelledError:
