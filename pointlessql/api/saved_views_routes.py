@@ -20,6 +20,7 @@ from fastapi import APIRouter, Body, Query, Request
 from fastapi.responses import HTMLResponse, Response
 
 from pointlessql.api._audit_helpers import audit
+from pointlessql.api._embed_headers import allow_framing
 from pointlessql.api.dependencies import (
     current_workspace_id,
     effective_principal,
@@ -492,7 +493,7 @@ async def page_view_embed(request: Request, slug: str) -> HTMLResponse:
     )
     if row is None:
         raise CatalogNotFoundError(f"Saved view {slug!r} not found.")
-    return get_templates(request).TemplateResponse(
+    response = get_templates(request).TemplateResponse(
         request,
         "pages/saved_view_embed.html",
         {
@@ -501,3 +502,4 @@ async def page_view_embed(request: Request, slug: str) -> HTMLResponse:
             "embed": True,
         },
     )
+    return allow_framing(response)

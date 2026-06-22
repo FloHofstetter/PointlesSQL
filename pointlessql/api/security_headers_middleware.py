@@ -81,7 +81,16 @@ async def security_headers_middleware(request: Request, call_next: Any) -> Respo
         The downstream response with the security headers added.
     """
     response = await call_next(request)
+    # A route that declares its own enforced ``frame-ancestors`` (the public
+    # embeds) governs framing through that directive; also stamping
+    # ``X-Frame-Options: DENY`` would conflict and block the embed, so skip
+    # it in that case. Every other hardening header is still defaulted.
+    declares_frame_ancestors = (
+        "frame-ancestors" in response.headers.get("content-security-policy", "").lower()
+    )
     for name, value in _STATIC_HEADERS.items():
+        if name == "X-Frame-Options" and declares_frame_ancestors:
+            continue
         response.headers.setdefault(name, value)
     if request.url.scheme == "https":
         response.headers.setdefault(

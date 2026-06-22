@@ -87,6 +87,35 @@ async def test_api_create_snapshot_share_and_view(
     assert "<!DOCTYPE html>" in viewed.text
 
 
+async def test_embed_route_is_framable_full_page_is_not(
+    workspace_dir: Path, admin_client: httpx.AsyncClient
+) -> None:
+    """The ``/embed/`` variant opts into framing; the full page keeps DENY.
+
+    The iframe-friendly embed route declares ``frame-ancestors *`` so a
+    third-party doc can embed the share; the regular full-page viewer keeps
+    the global ``X-Frame-Options: DENY`` clickjacking guard.
+    """
+    _write_notebook(workspace_dir, "embed.py")
+    await admin_client.post("/api/notebooks/create", json={"path": "embed.py"})
+    _write_notebook(workspace_dir, "embed.py")
+    create = await admin_client.post(
+        "/api/notebooks/shares",
+        json={"path": "embed.py", "share_mode": "snapshot"},
+    )
+    assert create.status_code == 201, create.text
+    share_uuid = create.json()["share_uuid"]
+
+    embed = await admin_client.get(f"/embed/notebook_share/{share_uuid}")
+    assert embed.status_code == 200
+    assert embed.headers["content-security-policy"] == "frame-ancestors *"
+    assert "x-frame-options" not in {k.lower() for k in embed.headers}
+
+    full = await admin_client.get(f"/share/notebook/{share_uuid}")
+    assert full.status_code == 200
+    assert full.headers["x-frame-options"] == "DENY"
+
+
 async def test_api_create_live_share_no_revision(
     workspace_dir: Path, admin_client: httpx.AsyncClient
 ) -> None:
