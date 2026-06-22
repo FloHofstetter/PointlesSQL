@@ -11,13 +11,14 @@
 <div class="pql-feed-categories mb-2"
      :class="focusMode ? 'pql-feed-categories--muted' : ''"
      :aria-hidden="focusMode ? 'true' : 'false'">
-    <ul class="nav nav-pills nav-pills-sm" role="tablist" aria-label="Feed categories">
+    <ul class="nav nav-pills nav-pills-sm" role="group" aria-label="Feed categories">
         <template x-for="c in categories" :key="c.key">
             <li class="nav-item" role="presentation">
                 <button type="button"
                         class="nav-link py-1 px-2 d-inline-flex align-items-center gap-1"
                         :class="category === c.key ? 'active' : ''"
                         :data-category="c.key"
+                        :aria-pressed="category === c.key ? 'true' : 'false'"
                         @click="setCategory(c.key)">
                     <i class="bi" :class="c.icon"></i>
                     <span x-text="c.label"></span>
