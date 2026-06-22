@@ -33,6 +33,8 @@ _SQLITE_EXPRESSION_INDEX_ALLOWLIST = frozenset(
     {
         "ix_job_runs_job_started",
         "ix_sync_run_catalog_started",
+        "ix_bi_dashboard_snapshots_dashboard_captured",
+        "ix_table_profile_snapshots_lookup",
     }
 )
 
