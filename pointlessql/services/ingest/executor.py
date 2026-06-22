@@ -60,6 +60,7 @@ async def run_pull(
     """
     from pointlessql.models import IngestSource
     from pointlessql.pql.pql import PQL
+    from pointlessql.services.ingest._secrets import decrypt_secrets
     from pointlessql.services.ingest.pull import (
         PullError,
         load_mappings,
@@ -79,9 +80,9 @@ async def run_pull(
             raise ValidationError(f"IngestSource {source_id} not found or inactive.")
         try:
             config_dict = json.loads(source.config or "{}")
-            secrets_dict = json.loads(source.secrets or "{}")
         except (ValueError, TypeError) as exc:
             raise ValidationError(f"IngestSource {source_id} has malformed JSON: {exc}.") from exc
+        secrets_dict = decrypt_secrets(source.secrets, factory)
         mappings = load_mappings(source.table_mappings)
         if not 0 <= mapping_index < len(mappings):
             raise ValidationError(

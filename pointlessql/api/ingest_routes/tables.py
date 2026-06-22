@@ -18,6 +18,7 @@ from fastapi import APIRouter, Request
 from pointlessql.api.dependencies import current_workspace_id, require_user
 from pointlessql.exceptions import PointlessSQLError, ResourceNotFoundError
 from pointlessql.models import IngestSource
+from pointlessql.services.ingest._secrets import decrypt_secrets
 from pointlessql.services.ingest.probe import ProbeError, list_tables
 
 logger = logging.getLogger(__name__)
@@ -52,22 +53,19 @@ async def api_list_source_tables(request: Request, source_id: int) -> dict[str, 
             raise ResourceNotFoundError("source not found")
         try:
             config = json.loads(row.config or "{}")
-            secrets = json.loads(row.secrets or "{}")
         except (ValueError, TypeError) as exc:
             raise PointlessSQLError(
                 f"source has malformed JSON columns: {exc}",
             ) from exc
+        secrets = decrypt_secrets(row.secrets, factory)
         kind = row.kind
 
     if not isinstance(config, dict):
         config = {}
-    if not isinstance(secrets, dict):
-        secrets = {}
     typed_config = cast(dict[str, Any], config)
-    typed_secrets = cast(dict[str, Any], secrets)
 
     try:
-        names = list_tables(kind, typed_config, typed_secrets)
+        names = list_tables(kind, typed_config, secrets)
     except ProbeError as exc:
         return {"ok": False, "reason": exc.reason, "hint": exc.hint}
 
