@@ -25,7 +25,15 @@ mkdir ~/pointlessql && cd ~/pointlessql
 curl -fsSL https://raw.githubusercontent.com/FloHofstetter/PointlesSQL/main/docker/docker-compose.yml -o docker-compose.yml
 ```
 
-**2. Start the stack:**
+**2. Set a JWT signing key.** The stack ships no baked-in key (a public
+default would let anyone forge session tokens), so write a strong random
+one into a `.env` file next to the compose file:
+
+```bash
+echo "POINTLESSQL_AUTH_SECRET_KEY=$(python -c 'import secrets; print(secrets.token_urlsafe(48))')" >> .env
+```
+
+**3. Start the stack:**
 
 ```bash
 docker compose up -d

@@ -23,3 +23,8 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile
+    environment:
+      # Local-build default so contributors stay zero-config; override
+      # by exporting POINTLESSQL_AUTH_SECRET_KEY. Never use this value
+      # for a reachable deployment — it is public in the repo.
+      POINTLESSQL_AUTH_SECRET_KEY: "${POINTLESSQL_AUTH_SECRET_KEY:-pql-local-dev-secret-not-for-production}"

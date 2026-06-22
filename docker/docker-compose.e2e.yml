@@ -27,6 +27,10 @@ services:
     volumes:
       - ../scripts:/app/scripts:ro
     environment:
+      # Local e2e default so walkthrough replays stay zero-config;
+      # override by exporting POINTLESSQL_AUTH_SECRET_KEY. Public value —
+      # never use for a reachable deployment.
+      POINTLESSQL_AUTH_SECRET_KEY: "${POINTLESSQL_AUTH_SECRET_KEY:-pql-local-dev-secret-not-for-production}"
       # Short scheduler tick for the ``jobs-dag.md`` playbook —
       # ``pointlessql/settings.py`` defaults to 30 s which is too slow
       # to exercise state transitions in a live walk.
@@ -54,7 +58,7 @@ services:
     container_name: pql_postgres_e2e
     environment:
       POSTGRES_USER: e2e
-      POSTGRES_PASSWORD: e2e
+      POSTGRES_PASSWORD: e2e  # pragma: allowlist secret
       POSTGRES_DB: ecommerce
     ports:
       - "${E2E_POSTGRES_HOST_PORT:-5433}:5432"

@@ -11,7 +11,7 @@ services:
     image: postgres:17-alpine
     environment:
       POSTGRES_USER: pointlessql
-      POSTGRES_PASSWORD: pointlessql
+      POSTGRES_PASSWORD: pointlessql  # pragma: allowlist secret
       POSTGRES_DB: pointlessql
     ports:
       - "${POSTGRES_HOST_PORT:-5432}:5432"
@@ -26,7 +26,11 @@ services:
 
   pointlessql:
     environment:
-      POINTLESSQL_DB_URL: "postgresql+psycopg://pointlessql:pointlessql@postgres:5432/pointlessql"
+      POINTLESSQL_DB_URL: "postgresql+psycopg://pointlessql:pointlessql@postgres:5432/pointlessql"  # pragma: allowlist secret
+      # Local Postgres-lane default so the stack stays zero-config;
+      # override by exporting POINTLESSQL_AUTH_SECRET_KEY. Public value —
+      # never use for a reachable deployment.
+      POINTLESSQL_AUTH_SECRET_KEY: "${POINTLESSQL_AUTH_SECRET_KEY:-pql-local-dev-secret-not-for-production}"
     depends_on:
       postgres:
         condition: service_healthy
