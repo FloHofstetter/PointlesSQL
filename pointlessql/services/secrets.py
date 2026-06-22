@@ -52,7 +52,7 @@ from sqlalchemy import select
 from pointlessql.models.system_keys import SystemKey
 
 if TYPE_CHECKING:
-    from sqlalchemy.orm import Session, sessionmaker
+    from pointlessql.types import SessionFactory
 
 logger = logging.getLogger(__name__)
 
@@ -76,7 +76,7 @@ def _generate_master_key() -> str:
     return Fernet.generate_key().decode("ascii")
 
 
-def get_or_create_master_key(session_factory: sessionmaker[Session]) -> str:
+def get_or_create_master_key(session_factory: SessionFactory) -> str:
     """Return the install's master key, generating one on first call.
 
     The key lives under ``system_keys.name='repo_secrets_master'``.
@@ -119,7 +119,7 @@ def get_or_create_master_key(session_factory: sessionmaker[Session]) -> str:
             return row.value
 
 
-def encrypt_value(plaintext: str, *, session_factory: sessionmaker[Session]) -> str:
+def encrypt_value(plaintext: str, *, session_factory: SessionFactory) -> str:
     """Encrypt *plaintext* with the install master key.
 
     Args:
@@ -139,7 +139,7 @@ def encrypt_value(plaintext: str, *, session_factory: sessionmaker[Session]) -> 
     return fernet.encrypt(plaintext.encode("utf-8")).decode("ascii")
 
 
-def decrypt_value(token: str, *, session_factory: sessionmaker[Session]) -> str:
+def decrypt_value(token: str, *, session_factory: SessionFactory) -> str:
     """Decrypt *token* produced by :func:`encrypt_value`.
 
     Args:

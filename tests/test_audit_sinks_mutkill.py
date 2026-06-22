@@ -375,7 +375,9 @@ async def test_dispatch_to_sinks_builds_per_sink_log(
 ) -> None:
     seen: list[str] = []
 
-    async def _fake_dispatch_one(sink: Any, envelope: Any, *, client: Any = None) -> bool:
+    async def _fake_dispatch_one(
+        sink: Any, envelope: Any, *, session_factory: Any = None, client: Any = None
+    ) -> bool:
         seen.append(sink.name)
         return sink.name != "ws-scoped"  # one failure to exercise ok=False
 

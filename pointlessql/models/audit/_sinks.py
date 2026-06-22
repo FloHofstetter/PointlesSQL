@@ -72,10 +72,12 @@ class AuditSink(Base):
               ``{"region": str, "event_source": str,
                  "access_key_id": str, "secret_access_key": str}``.
 
-            Secrets at rest are plaintext for the MVP — same posture
-            as :class:`pointlessql.models.alerts.AlertDestination`'s
-            ``hmac_secret``.  Encrypt-at-rest is a +
-            follow-up.
+            The credential fields (``hmac_secret``,
+            ``secret_access_key``, ``session_token``) are Fernet-
+            encrypted at rest with the install master key; the other
+            fields stay cleartext.  Rows written before encryption are
+            read as legacy plaintext and upgrade to ciphertext on their
+            next write.
         is_active: Inactive sinks are skipped by the dispatcher.
         event_types_json: Optional JSON-encoded list of
             ``"pointlessql.<…>"`` event-type strings the sink wants
