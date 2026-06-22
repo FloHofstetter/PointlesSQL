@@ -27,6 +27,7 @@ class ErrorCode(StrEnum):
 
     # Generic / catch-all.
     INTERNAL_ERROR = "internal_error"
+    DATABASE_UNAVAILABLE = "database_unavailable"
 
     # Catalog (soyuz) plumbing.
     CATALOG_UNAVAILABLE = "catalog_unavailable"
