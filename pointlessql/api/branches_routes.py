@@ -57,8 +57,6 @@ from pointlessql.models.catalog._data_product_endorsement import (
 from pointlessql.models.social._social_target import SocialTarget
 from pointlessql.models.workspace import Workspace
 from pointlessql.pql import (
-    BranchError,
-    BranchPromotionConflictError,
     discard_branch_schema,
     preview_promote_conflicts,
     promote_branch_schema,
@@ -311,22 +309,15 @@ async def api_promote_branch(request: Request, branch_fqn: str) -> dict[str, Any
     require_admin(request)
     _branch_promote_gate_check(request, branch_fqn)
     client, settings = _make_settings_client(request)
-    try:
-        result = promote_branch_schema(
-            client=client,
-            branch_schema_fqn=branch_fqn,
-            settings=settings,
-        )
-    except BranchPromotionConflictError as exc:
-        return {
-            "ok": False,
-            "error": "promotion_conflict",
-            "table": exc.table_name,
-            "expected_version": exc.expected_version,
-            "actual_version": exc.actual_version,
-        }
-    except BranchError as exc:
-        return {"ok": False, "error": exc.__class__.__name__, "message": str(exc)}
+    # BranchPromotionConflictError / BranchError are PointlessSQLError
+    # subclasses carrying status 409 + error_code + extension_members, so
+    # let them propagate to the RFC-9457 handler instead of flattening a
+    # failed destructive op into an implicit-200 {"ok": false} body.
+    result = promote_branch_schema(
+        client=client,
+        branch_schema_fqn=branch_fqn,
+        settings=settings,
+    )
     return {"ok": True, **result}
 
 
@@ -335,14 +326,12 @@ async def api_discard_branch(request: Request, branch_fqn: str) -> dict[str, Any
     """Discard a branch (admin-only)."""
     require_admin(request)
     client, settings = _make_settings_client(request)
-    try:
-        discard_branch_schema(
-            client=client,
-            branch_schema_fqn=branch_fqn,
-            settings=settings,
-        )
-    except BranchError as exc:
-        return {"ok": False, "error": exc.__class__.__name__, "message": str(exc)}
+    # BranchError propagates to the RFC-9457 handler (status 409 + code).
+    discard_branch_schema(
+        client=client,
+        branch_schema_fqn=branch_fqn,
+        settings=settings,
+    )
     return {"ok": True}
 
 
