@@ -256,9 +256,7 @@ class HermesSettings(BaseSettings):
     ``session_token`` pins the dashboard's pre-shared token so the
     proxy can inject it on every forwarded request; left ``None`` a
     fresh token is minted per managed instance.  ``chat_enabled``
-    launches the POSIX-only chat PTY, and ``acp_enabled`` turns on
-    the agent-client-protocol supervision bridge that mirrors Hermes
-    permission gates into the home-feed action lane.
+    launches the POSIX-only chat PTY.
     """
 
     model_config = SettingsConfigDict(env_prefix="POINTLESSQL_HERMES_")
@@ -273,7 +271,6 @@ class HermesSettings(BaseSettings):
     home_root: Path | None = None
     session_token: str | None = None
     chat_enabled: bool = True
-    acp_enabled: bool = False
     # The very first managed launch builds the Hermes web bundle, which
     # can take roughly a minute; later launches reuse the cached build
     # and come up in a few seconds.
