@@ -111,6 +111,11 @@ def init_db(url: str) -> Engine:
             cursor = dbapi_conn.cursor()
             cursor.execute("PRAGMA journal_mode=WAL")
             cursor.execute("PRAGMA foreign_keys=ON")
+            # Wait for a competing writer's lock instead of failing with
+            # "database is locked" — the background loops contend for it.
+            cursor.execute(f"PRAGMA busy_timeout={int(db_settings.sqlite_busy_timeout_ms)}")
+            # NORMAL is durable under WAL and avoids an fsync per commit.
+            cursor.execute("PRAGMA synchronous=NORMAL")
             cursor.close()
 
     if is_postgres and db_settings.statement_timeout_ms > 0:
