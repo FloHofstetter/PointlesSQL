@@ -177,7 +177,7 @@ def test_cleanup_failure_logs_warning_message_text(
 
     assert deleted == 0
     rec = _warning_record(caplog)
-    assert rec.getMessage() == "audit: cleanup_old_entries failed (retention=7)"
+    assert rec.getMessage() == "audit: cleanup_old_entries failed after 0 row(s) (retention=7)"
 
 
 def test_cleanup_failure_warning_keeps_format_string_first(
@@ -223,3 +223,25 @@ def test_cleanup_failure_warning_attaches_exception_traceback(
     assert len(rec.exc_info) == 3
     assert rec.exc_info[0] is RuntimeError
     assert isinstance(rec.exc_info[1], RuntimeError)
+
+
+def test_cleanup_prunes_large_backlog_across_batches(monkeypatch: pytest.MonkeyPatch) -> None:
+    # With the batch size below the backlog, the sweep must loop over
+    # several commits and still remove every stale row while keeping the
+    # fresh ones — a non-looping mutant would prune only the first batch.
+    fixed_now = datetime.datetime(2024, 6, 10, 12, 0, 0, tzinfo=datetime.UTC)
+    _freeze_core_now(monkeypatch, fixed_now)
+    monkeypatch.setattr(_core, "_AUDIT_PRUNE_BATCH", 2)
+    old = fixed_now - datetime.timedelta(days=30)
+    fresh = fixed_now - datetime.timedelta(days=1)
+    for i in range(5):
+        _seed_audit_row(old, f"old-{i}")
+    for i in range(2):
+        _seed_audit_row(fresh, f"fresh-{i}")
+
+    deleted = _core.cleanup_old_entries(_factory(), retention_days=7)
+
+    assert deleted == 5
+    with _factory()() as s:
+        remaining = {r.action for r in s.scalars(select(AuditLog))}
+    assert remaining == {"fresh-0", "fresh-1"}
