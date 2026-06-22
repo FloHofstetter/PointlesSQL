@@ -20,6 +20,7 @@ from typing import TYPE_CHECKING, Any
 from sqlalchemy import delete, select
 
 from pointlessql.models import TableStats
+from pointlessql.services.perf import query_span
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session, sessionmaker
@@ -184,28 +185,29 @@ def compute_stats(
     try:
         register_delta_view(conn, full_name, storage_location)
         result: dict[str, dict[str, Any]] = {}
-        for column in columns:
-            name = column["name"]
-            type_text = column.get("type", "")
-            try:
-                result[name] = _stats_for_column(
-                    conn,
-                    full_name,
-                    name,
-                    type_text,
-                    top_k_ceiling=top_k_ceiling,
-                )
-            except Exception as exc:  # noqa: BLE001 — per-column isolation
-                logger.exception(
-                    "table_stats: column %s.%s profile failed",
-                    full_name,
-                    name,
-                )
-                result[name] = {
-                    "column_name": name,
-                    "column_type": type_text,
-                    "error": str(exc),
-                }
+        with query_span("table_stats_profile", "duckdb"):
+            for column in columns:
+                name = column["name"]
+                type_text = column.get("type", "")
+                try:
+                    result[name] = _stats_for_column(
+                        conn,
+                        full_name,
+                        name,
+                        type_text,
+                        top_k_ceiling=top_k_ceiling,
+                    )
+                except Exception as exc:  # noqa: BLE001 — per-column isolation
+                    logger.exception(
+                        "table_stats: column %s.%s profile failed",
+                        full_name,
+                        name,
+                    )
+                    result[name] = {
+                        "column_name": name,
+                        "column_type": type_text,
+                        "error": str(exc),
+                    }
         return result
     finally:
         if should_close:

@@ -20,8 +20,29 @@ from __future__ import annotations
 import time
 from collections.abc import Iterator
 from contextlib import contextmanager
+from typing import TYPE_CHECKING
 
 from pointlessql.services import metrics
+
+if TYPE_CHECKING:
+    from sqlalchemy.orm import Session
+
+
+def backend_label(session: Session) -> str:
+    """Return the low-cardinality backend label for a session's engine.
+
+    Maps SQLAlchemy's dialect name onto the stable label set the
+    ``backend`` metric dimension uses (``postgresql`` → ``postgres``);
+    every other dialect (``sqlite`` …) is passed through unchanged.
+
+    Args:
+        session: The ORM session whose bound engine identifies the backend.
+
+    Returns:
+        ``sqlite`` / ``postgres`` / the raw dialect name for the bind.
+    """
+    name = session.get_bind().dialect.name
+    return "postgres" if name == "postgresql" else name
 
 
 @contextmanager

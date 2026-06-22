@@ -27,6 +27,7 @@ from typing import TYPE_CHECKING, Any
 from sqlalchemy import delete, desc, func, select
 
 from pointlessql.models import QueryHistory, QueryHistoryTable
+from pointlessql.services.perf import backend_label, query_span
 from pointlessql.types import QueryHistoryId, QueryStatus, ReadKind, RunId
 
 if TYPE_CHECKING:
@@ -249,7 +250,7 @@ def list_queries(
     if read_kind is not None and read_kind in VALID_READ_KINDS:
         stmt = stmt.where(QueryHistory.read_kind == read_kind)
 
-    with factory() as session:
+    with factory() as session, query_span("query_history_list", backend_label(session)):
         rows = session.scalars(stmt).all()
         if not rows:
             return []
