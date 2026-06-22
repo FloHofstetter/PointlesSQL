@@ -85,7 +85,10 @@
 }
 
 .pql-context-panel__link.active {
-    color: var(--pql-color-accent);
+    /* Accent-green text only reaches ~2.4:1 on the light tint; keep the
+       accent as the border + background cue and use body text for contrast. */
+    color: var(--bs-body-color);
+    font-weight: 600;
     border-left-color: var(--pql-color-accent);
     background: var(--pql-color-accent-bg, rgba(118, 185, 0, 0.08));
 }

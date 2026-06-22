@@ -118,7 +118,9 @@
 .pql-icon-rail__link--cta.active {
     border-radius: 0.5rem;
     background-color: var(--pql-color-accent, #76b900) !important;
-    color: #ffffff !important;
+    /* On-accent text token (near-black in light, white in dark) — plain
+       white on the bright accent only reaches ~2.4:1, under the WCAG-AA floor. */
+    color: var(--pql-color-accent-fg, #0b1400) !important;
     border-left: 0 !important;
     font-weight: 600;
     padding: 0.55rem 0.75rem;
@@ -128,11 +130,11 @@
 .pql-icon-rail__link--cta:focus,
 .pql-icon-rail__link--cta.active:hover {
     background-color: var(--pql-color-accent-strong, #5a9000) !important;
-    color: #ffffff !important;
+    color: var(--pql-color-accent-fg, #0b1400) !important;
     text-decoration: none;
 }
 .pql-icon-rail__link--cta i {
-    color: #ffffff;
+    color: var(--pql-color-accent-fg, #0b1400);
 }
 html[data-pql-rail-state="collapsed"] .pql-icon-rail__link--cta {
     padding: 0.55rem 0;
@@ -228,7 +230,9 @@ html[data-pql-rail-state="collapsed"] .pql-icon-rail__link--cta .pql-icon-rail__
     align-items: center;
     width: 100%;
     padding: 0.5rem 0.75rem;
-    color: var(--bs-secondary-color);
+    /* Full body contrast — the muted secondary tone fell under the WCAG-AA
+       floor against the rail's tertiary background. */
+    color: var(--bs-body-color);
     text-decoration: none;
     border-left: 3px solid transparent;
     background: transparent;
@@ -250,7 +254,10 @@ html[data-pql-rail-state="collapsed"] .pql-icon-rail__link--cta .pql-icon-rail__
 }
 
 .pql-icon-rail__link.active {
-    color: var(--pql-color-accent);
+    /* Accent-green text only reaches ~2.2:1 on the active tint; keep the
+       accent as the border + background cue and use body text for contrast. */
+    color: var(--bs-body-color);
+    font-weight: 600;
     background: var(--pql-color-accent-bg, rgba(118, 185, 0, 0.08));
     border-left-color: var(--pql-color-accent);
 }

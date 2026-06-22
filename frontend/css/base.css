@@ -120,7 +120,10 @@
 }
 
 :root[data-bs-theme="light"] {
- --pql-color-accent-fg: #ffffff;
+ /* On-accent text is near-black: white on the #76b900 accent is only
+    ~2.4:1, under the WCAG-AA floor. The accent green is bright enough that
+    dark text reads at ~8:1 in both themes. */
+ --pql-color-accent-fg: #0b1400;
  --pql-color-success-bg: #e7f4d0;
  --pql-color-success-fg: #3d6b00;
  --pql-color-warning-bg: #fff1cc;
@@ -217,8 +220,13 @@ body {
 
 [data-bs-theme="light"] {
  --bs-primary-text-emphasis: #3d6b00;
- --bs-link-hover-color: #4a7500;
- --bs-link-hover-color-rgb: 74, 117, 0;
+ /* The bright #76b900 link/nav-pill green only reaches ~2.1:1 on light
+    backgrounds; darken it for light mode so links + nav-pills clear the
+    WCAG-AA floor (dark mode keeps the bright green on dark surfaces). */
+ --bs-link-color: #4a7500;
+ --bs-link-color-rgb: 74, 117, 0;
+ --bs-link-hover-color: #3d6300;
+ --bs-link-hover-color-rgb: 61, 99, 0;
 }
 
 a:not(.btn):not(.nav-link):not(.dropdown-item):not(.page-link) {

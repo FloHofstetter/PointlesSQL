@@ -112,7 +112,13 @@
     box-shadow: 0 0 4px var(--pql-color-danger-fg);
 }
 .pql-footer-bar__pill--na {
-    opacity: 0.55;
+    /* The status is carried by the dot; a 0.55 text opacity dropped the
+       label to ~2.4:1. Mute the dot instead so the label keeps full
+       contrast. */
+    --pql-footer-pill-dot-opacity: 0.55;
+}
+.pql-footer-bar__pill--na .pql-footer-bar__pill-dot {
+    opacity: var(--pql-footer-pill-dot-opacity, 1);
 }
 
 .pql-footer-bar__hint {
@@ -135,5 +141,8 @@
     font-size: 0.7rem;
     padding: 0 0.25rem;
     background: var(--bs-secondary-bg);
+    /* Bootstrap's kbd defaults to white text (meant for a dark kbd bg);
+       on this light-grey bg it must use body text to stay legible. */
+    color: var(--bs-body-color);
     border-radius: 0.2rem;
 }
