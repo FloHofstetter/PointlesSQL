@@ -154,6 +154,8 @@ def _test_engine() -> Iterator[tuple[Engine, sessionmaker[Any]]]:  # pyright: ig
         engine_kwargs["poolclass"] = StaticPool
     engine = create_engine(db_url, **engine_kwargs)
     Base.metadata.create_all(engine)
+    if engine.dialect.name == "postgresql":
+        _disable_postgres_fk_enforcement(engine)
     factory = sessionmaker(bind=engine)
 
     yield engine, factory
@@ -167,6 +169,38 @@ def _test_engine() -> Iterator[tuple[Engine, sessionmaker[Any]]]:  # pyright: ig
     # slate.
     _drop_audit_fts_artifacts(engine)
     engine.dispose()
+
+
+def _disable_postgres_fk_enforcement(engine: Engine) -> None:
+    """Drop every foreign-key constraint so Postgres matches SQLite's test DB.
+
+    The SQLite test engine deliberately leaves ``PRAGMA foreign_keys``
+    off (see :func:`_test_engine`), so the suite is written to insert
+    rows with convenience ids without seeding every parent row.  Postgres
+    enforces foreign keys by default, which would reject those fixtures
+    on the dialect lane even though the SQLite lane accepts them.
+
+    Drop the FK constraints after ``create_all`` so both backends behave
+    identically (foreign keys unenforced).  Unlike
+    ``session_replication_role = replica`` this leaves regular triggers
+    in place, so the audit-search FTS upsert/delete triggers still fire
+    and the lane keeps exercising every query + DDL path on real
+    Postgres — only the fixture-level FK checks (which SQLite never ran
+    either) are relaxed.
+
+    Args:
+        engine: The Postgres test engine, immediately after the schema
+            was built with :meth:`MetaData.create_all`.
+    """
+    with engine.begin() as conn:
+        constraints = conn.execute(
+            _sa_text(
+                "SELECT conrelid::regclass::text AS tbl, conname "
+                "FROM pg_constraint WHERE contype = 'f'"
+            )
+        ).all()
+        for tbl, conname in constraints:
+            conn.execute(_sa_text(f'ALTER TABLE {tbl} DROP CONSTRAINT "{conname}"'))
 
 
 def _drop_audit_fts_artifacts(engine: Engine) -> None:
