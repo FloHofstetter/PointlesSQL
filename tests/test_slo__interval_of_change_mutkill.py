@@ -35,6 +35,18 @@ from pointlessql.services.slo._interval_of_change import (
 )
 
 
+def _instant(iso: str) -> datetime.datetime:
+    """Parse an isoformat ``last_write_at`` to a tz-naive UTC datetime.
+
+    ``measure_interval_of_change`` echoes the stored ``created_at``, which
+    SQLite hands back naive but Postgres hands back tz-aware (TIMESTAMPTZ).
+    Normalise both so the ordering assertions compare instants instead of
+    dialect-specific text.
+    """
+    dt = datetime.datetime.fromisoformat(iso)
+    return dt.astimezone(datetime.UTC).replace(tzinfo=None) if dt.tzinfo else dt
+
+
 def _factory():
     return app.state.session_factory
 
@@ -255,11 +267,12 @@ def test_last_write_at_is_most_recent_timestamp() -> None:
     _seed_events(dp, op, [(t, "compliant") for t in ts])
     m = measure_interval_of_change(_factory(), data_product_id=dp)
     assert m is not None
-    # SQLite hands datetimes back naive; compare against the same shape the
-    # code produces (the most-recent timestamp, ts[-1], not ts[1] or ts[-2]).
-    assert m.last_write_at == ts[-1].replace(tzinfo=None).isoformat()
-    assert m.last_write_at != ts[1].replace(tzinfo=None).isoformat()
-    assert m.last_write_at != ts[-2].replace(tzinfo=None).isoformat()
+    # Compare instants (the most-recent timestamp, ts[-1], not ts[1] or
+    # ts[-2]); _instant normalises the dialect-specific tz shape.
+    assert m.last_write_at is not None
+    assert _instant(m.last_write_at) == ts[-1].replace(tzinfo=None)
+    assert _instant(m.last_write_at) != ts[1].replace(tzinfo=None)
+    assert _instant(m.last_write_at) != ts[-2].replace(tzinfo=None)
 
 
 def test_orders_by_created_at_desc_to_keep_most_recent_window() -> None:
@@ -277,8 +290,9 @@ def test_orders_by_created_at_desc_to_keep_most_recent_window() -> None:
     assert m is not None
     # window=2 with desc() keeps the two newest events -> last_write_at = ts[-1].
     # The order_by(None) mutant keeps the two oldest -> ts[1], which differs.
-    assert m.last_write_at == ts[-1].replace(tzinfo=None).isoformat()
-    assert m.last_write_at != ts[1].replace(tzinfo=None).isoformat()
+    assert m.last_write_at is not None
+    assert _instant(m.last_write_at) == ts[-1].replace(tzinfo=None)
+    assert _instant(m.last_write_at) != ts[1].replace(tzinfo=None)
 
 
 def test_returns_none_below_two_writes() -> None:
