@@ -20,6 +20,10 @@ from pointlessql.services.unitycatalog._api import (
     wrap_catalog_errors,
 )
 
+# Upper bound on pages drained per list call — a backstop against a
+# provider that returns a self-referential next_page_token forever.
+_MAX_LIST_PAGES = 1000
+
 
 class CatalogsMixin:
     """Catalog-level CRUD + the bulk-tree aggregator."""
@@ -30,17 +34,27 @@ class CatalogsMixin:
     async def list_catalogs(self) -> list[dict[str, Any]]:
         """Return all catalogs visible to the caller.
 
+        Follows ``next_page_token`` to the end so a large install is not
+        silently truncated to soyuz's first page.
+
         Returns:
             A list of catalog dicts, or an empty list if the server
             reports none.
         """
-        response = await _list_catalogs.asyncio(client=self._client)
-        if not isinstance(response, ListCatalogsResponse):
-            return []
-        catalogs = response.catalogs
-        if not isinstance(catalogs, list):
-            return []
-        return [c.to_dict() for c in catalogs]
+        out: list[dict[str, Any]] = []
+        page_token: str | None = None
+        for _ in range(_MAX_LIST_PAGES):
+            response = await _list_catalogs.asyncio(client=self._client, page_token=page_token)
+            if not isinstance(response, ListCatalogsResponse):
+                break
+            catalogs = response.catalogs
+            if isinstance(catalogs, list):
+                out.extend(c.to_dict() for c in catalogs)
+            next_token = response.next_page_token
+            if not isinstance(next_token, str) or not next_token:
+                break
+            page_token = next_token
+        return out
 
     @wrap_catalog_errors
     async def get_catalog(self, catalog_name: str) -> dict[str, Any]:

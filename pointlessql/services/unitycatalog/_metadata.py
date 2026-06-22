@@ -33,6 +33,10 @@ from pointlessql.services.unitycatalog._api import (
 )
 from pointlessql.types import TableFqn
 
+# Upper bound on pages drained per list call — a backstop against a
+# provider that returns a self-referential next_page_token forever.
+_MAX_LIST_PAGES = 1000
+
 
 class MetadataMixin:
     """Schema + table + tag operations."""
@@ -171,13 +175,22 @@ class MetadataMixin:
         Returns:
             A list of schema dicts.
         """
-        response = await _list_schemas.asyncio(client=self._client, catalog_name=catalog_name)
-        if not isinstance(response, ListSchemasResponse):
-            return []
-        schemas = response.schemas
-        if not isinstance(schemas, list):
-            return []
-        return [s.to_dict() for s in schemas]
+        out: list[dict[str, Any]] = []
+        page_token: str | None = None
+        for _ in range(_MAX_LIST_PAGES):
+            response = await _list_schemas.asyncio(
+                client=self._client, catalog_name=catalog_name, page_token=page_token
+            )
+            if not isinstance(response, ListSchemasResponse):
+                break
+            schemas = response.schemas
+            if isinstance(schemas, list):
+                out.extend(s.to_dict() for s in schemas)
+            next_token = response.next_page_token
+            if not isinstance(next_token, str) or not next_token:
+                break
+            page_token = next_token
+        return out
 
     @wrap_catalog_errors
     async def list_tables(self, catalog_name: str, schema_name: str) -> list[dict[str, Any]]:
@@ -197,17 +210,27 @@ class MetadataMixin:
             A list of table dicts.
         """
         url = "/api/2.1/unity-catalog/tables"
-        params = {"catalog_name": catalog_name, "schema_name": schema_name}
         http = self._client.get_async_httpx_client()
-        resp = await http.get(url, params=params)
-        # 404 means the schema genuinely has no tables endpoint; any other
-        # error (5xx, timeout) must surface so the tree shows "unavailable"
-        # rather than silently rendering an empty schema.
-        if resp.status_code == 404:
-            return []
-        resp.raise_for_status()
-        data = resp.json()
-        return data.get("tables", data.get("identifiers", []))
+        out: list[dict[str, Any]] = []
+        page_token: str | None = None
+        for _ in range(_MAX_LIST_PAGES):
+            params = {"catalog_name": catalog_name, "schema_name": schema_name}
+            if page_token:
+                params["page_token"] = page_token
+            resp = await http.get(url, params=params)
+            # 404 means the schema genuinely has no tables endpoint; any
+            # other error (5xx, timeout) must surface so the tree shows
+            # "unavailable" rather than silently rendering an empty schema.
+            if resp.status_code == 404:
+                break
+            resp.raise_for_status()
+            data = resp.json()
+            out.extend(data.get("tables", data.get("identifiers", [])))
+            next_token = data.get("next_page_token")
+            if not next_token:
+                break
+            page_token = next_token
+        return out
 
     @wrap_catalog_errors
     async def list_volumes(self, catalog_name: str, schema_name: str) -> list[dict[str, Any]]:
@@ -227,15 +250,25 @@ class MetadataMixin:
             A list of volume dicts.
         """
         url = "/api/2.1/unity-catalog/volumes"
-        params = {"catalog_name": catalog_name, "schema_name": schema_name}
         http = self._client.get_async_httpx_client()
-        resp = await http.get(url, params=params)
-        # 404 → genuinely absent; surface everything else as unavailable.
-        if resp.status_code == 404:
-            return []
-        resp.raise_for_status()
-        data = resp.json()
-        return data.get("volumes", [])
+        out: list[dict[str, Any]] = []
+        page_token: str | None = None
+        for _ in range(_MAX_LIST_PAGES):
+            params = {"catalog_name": catalog_name, "schema_name": schema_name}
+            if page_token:
+                params["page_token"] = page_token
+            resp = await http.get(url, params=params)
+            # 404 → genuinely absent; surface everything else as unavailable.
+            if resp.status_code == 404:
+                break
+            resp.raise_for_status()
+            data = resp.json()
+            out.extend(data.get("volumes", []))
+            next_token = data.get("next_page_token")
+            if not next_token:
+                break
+            page_token = next_token
+        return out
 
     @wrap_catalog_errors
     async def get_tags(self, securable_type: str, full_name: str) -> list[dict[str, Any]]:
