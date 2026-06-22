@@ -73,6 +73,7 @@ PUBLIC_PREFIXES: tuple[str, ...] = (
     "/auth/",
     "/static/",
     "/healthz",
+    "/readyz",
     "/alerts/feed.atom",
     "/alerts/feed.json",
     # inbound webhook receiver.  Authentication is the

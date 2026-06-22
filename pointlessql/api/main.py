@@ -8,6 +8,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fastapi.responses import (
+    JSONResponse,
     Response,
 )
 from fastapi.staticfiles import StaticFiles
@@ -178,6 +179,45 @@ register_middleware(app)
 async def healthz() -> dict[str, str]:
     """Return service health."""
     return {"status": "ok"}
+
+
+@app.get("/readyz")
+async def readyz(request: Request) -> Response:
+    """Readiness probe: metadata DB answers and soyuz-catalog is reachable.
+
+    ``/healthz`` is static liveness — it returns 200 even if the DB
+    migration failed or soyuz is down.  ``/readyz`` actually exercises both
+    dependencies so an orchestrator does not route traffic to an instance
+    that cannot serve.  Unauthenticated (a probe carries no session); the
+    body names which component is unhealthy without leaking URLs.
+
+    Args:
+        request: Incoming request, for the session factory + soyuz URL.
+
+    Returns:
+        JSON ``{status, db, soyuz}`` with HTTP 200 when both are healthy,
+        else 503.
+    """
+    from sqlalchemy import text
+
+    from pointlessql.api.health_routes import probe_soyuz
+    from pointlessql.services._executor import run_sync
+
+    def _check_db() -> None:
+        with request.app.state.session_factory() as session:
+            session.execute(text("SELECT 1"))
+
+    db_status = "ok"
+    try:
+        await run_sync(_check_db)
+    except Exception:  # noqa: BLE001 — readiness reports failure, never raises
+        db_status = "down"
+    soyuz_status = await probe_soyuz(request.app.state.settings.soyuz.catalog_url)
+    ready = db_status == "ok" and soyuz_status == "ok"
+    return JSONResponse(
+        {"status": "ready" if ready else "not_ready", "db": db_status, "soyuz": soyuz_status},
+        status_code=200 if ready else 503,
+    )
 
 
 @app.get("/metrics")

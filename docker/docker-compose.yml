@@ -64,7 +64,7 @@ services:
           "CMD",
           "python",
           "-c",
-          "import httpx; httpx.get('http://localhost:8000/healthz').raise_for_status()",
+          "import httpx; httpx.get('http://localhost:8000/readyz').raise_for_status()",
         ]
       interval: 5s
       timeout: 3s
