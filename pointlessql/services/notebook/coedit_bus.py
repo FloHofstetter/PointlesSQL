@@ -34,6 +34,7 @@ from typing import Any
 import psycopg
 from sqlalchemy import delete, func, insert, select, text
 from sqlalchemy.engine import Engine
+from sqlalchemy.orm import Session
 
 from pointlessql.models.notebook import CoeditBusMessage
 
@@ -261,7 +262,7 @@ class CoeditBus:
         try:
             row_id_str, _nb_uuid_hint = channel_payload.split(":", 1)
             row_id = int(row_id_str)
-        except ValueError, AttributeError:
+        except (ValueError, AttributeError):
             _LOG.warning("coedit-bus: malformed notify payload %r", channel_payload)
             return
 
@@ -289,9 +290,14 @@ class CoeditBus:
             )
 
     def _fetch_row(self, row_id: int) -> CoeditBusMessage | None:
-        """Fetch a single outbox row by id (synchronous)."""
-        with self.engine.connect() as conn:
-            return conn.execute(
+        """Fetch a single outbox row by id (synchronous).
+
+        Uses a Session so the ORM entity is returned; a Core
+        ``Connection.execute(select(Entity)).scalar_one_or_none()`` would
+        hand back the first *column* (the id) instead of the mapped row.
+        """
+        with Session(self.engine) as session:
+            return session.execute(
                 select(CoeditBusMessage).where(CoeditBusMessage.id == row_id)
             ).scalar_one_or_none()
 
