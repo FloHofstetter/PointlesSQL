@@ -26,9 +26,9 @@ def _factory(_test_engine: tuple[Engine, sessionmaker]) -> sessionmaker:  # type
 
 def test_cron_picks_only_stale_repos(_test_engine):  # type: ignore[no-untyped-def]
     factory = _factory(_test_engine)
-    out_a = create_repo(factory, workspace_id=1, slug="never-cron", url="x")
-    out_b = create_repo(factory, workspace_id=1, slug="stale-cron", url="y")
-    out_c = create_repo(factory, workspace_id=1, slug="fresh-cron", url="z")
+    out_a = create_repo(factory, workspace_id=1, slug="never-cron", url="https://example.com/x.git")
+    out_b = create_repo(factory, workspace_id=1, slug="stale-cron", url="https://example.com/y.git")
+    out_c = create_repo(factory, workspace_id=1, slug="fresh-cron", url="https://example.com/z.git")
     now = datetime.datetime.now(datetime.UTC)
     with factory() as session:
         b = session.get(WorkspaceRepo, out_b.repo.id)

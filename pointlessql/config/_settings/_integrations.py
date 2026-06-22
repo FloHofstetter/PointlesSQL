@@ -99,6 +99,13 @@ class WorkspaceReposSettings(BaseSettings):
     sync_interval_seconds: int = 0
     clone_timeout_seconds: int = 300
     pull_timeout_seconds: int = 120
+    allow_file_protocol: bool = False
+    """Permit ``file://`` clone URLs and the git ``file`` transport.
+
+    Off by default — ``file://`` lets a clone read local repos, so it is
+    an SSRF/LFI seam in a multi-tenant deployment.  Enable it only for
+    installs that deliberately clone from a local path (and the test
+    suite, which clones throwaway file:// repos)."""
     yaml_search_globs: tuple[str, ...] = (
         "pointlessql.yaml",
         "**/pointlessql.yaml",

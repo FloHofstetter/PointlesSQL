@@ -21,6 +21,9 @@ os.environ.setdefault("POINTLESSQL_MLFLOW_ENABLED", "0")
 # hosts behind mocked clients) don't hit the network. The dedicated
 # egress-guard tests re-enable it via settings_override.
 os.environ.setdefault("POINTLESSQL_EGRESS_ENABLED", "0")
+# The workspace-repo integration tests clone throwaway file:// repos, which
+# the production git transport allowlist blocks by default; permit it here.
+os.environ.setdefault("POINTLESSQL_REPOS_ALLOW_FILE_PROTOCOL", "1")
 
 # short-circuit the FastAPI lifespan when run under
 # ``TestClient(app)`` / ``ASGITransport``.  The conftest pre-wires

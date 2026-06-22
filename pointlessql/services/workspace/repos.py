@@ -37,6 +37,7 @@ from __future__ import annotations
 import asyncio
 import datetime
 import logging
+import re
 import secrets
 import shutil
 from dataclasses import dataclass, field
@@ -149,6 +150,41 @@ def _resolve_clone_dir(base_dir: Path, workspace_id: int, slug: str) -> Path:
     return (base_dir / str(workspace_id) / slug).resolve()
 
 
+# git honours ``ext::`` (runs an arbitrary command) and ``file://`` (local
+# read), so a repo URL must use a network transport we recognise. Accept
+# https/http/ssh URLs and the SCP-style ``git@host:path``; reject anything
+# else, including ``-``-prefixed values that could be read as a git flag.
+_ALLOWED_GIT_URL_SCHEMES = ("https://", "http://", "ssh://")
+_SCP_LIKE_GIT_URL = re.compile(r"^[A-Za-z0-9._~+-]+@[A-Za-z0-9.-]+:.+$")
+
+
+def _assert_safe_git_url(url: str) -> None:
+    """Reject a repo URL whose transport git could abuse.
+
+    Args:
+        url: The caller-supplied clone URL.
+
+    Raises:
+        ValueError: When the URL is empty, ``-``-prefixed, or does not
+            use an allowed network transport.
+    """
+    candidate = url.strip()
+    if not candidate or candidate.startswith("-"):
+        raise ValueError("repo url must be non-empty and may not start with '-'")
+    lowered = candidate.lower()
+    if any(lowered.startswith(scheme) for scheme in _ALLOWED_GIT_URL_SCHEMES):
+        return
+    if _SCP_LIKE_GIT_URL.match(candidate):
+        return
+    from pointlessql.config import get_settings
+
+    if lowered.startswith("file://") and get_settings().workspace_repos.allow_file_protocol:
+        return
+    raise ValueError(
+        f"unsupported repo url transport: {url!r}; use https://, http://, ssh:// or git@host:path"
+    )
+
+
 def create_repo(
     factory: sessionmaker[Session],
     *,
@@ -192,6 +228,7 @@ def create_repo(
         raise WorkspaceRepoUnknownProvider(
             f"unknown provider_kind {provider_kind!r}; expected one of {KNOWN_PROVIDER_KINDS}"
         )
+    _assert_safe_git_url(url)
     if (initial_secret_kind is None) != (initial_secret_plaintext is None):
         raise ValueError("initial_secret_kind and initial_secret_plaintext must be set together")
     if initial_secret_kind is not None and initial_secret_kind not in WORKSPACE_REPO_SECRET_KINDS:
