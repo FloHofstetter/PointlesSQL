@@ -200,8 +200,12 @@ class MetadataMixin:
         params = {"catalog_name": catalog_name, "schema_name": schema_name}
         http = self._client.get_async_httpx_client()
         resp = await http.get(url, params=params)
-        if resp.status_code != 200:
+        # 404 means the schema genuinely has no tables endpoint; any other
+        # error (5xx, timeout) must surface so the tree shows "unavailable"
+        # rather than silently rendering an empty schema.
+        if resp.status_code == 404:
             return []
+        resp.raise_for_status()
         data = resp.json()
         return data.get("tables", data.get("identifiers", []))
 
@@ -226,8 +230,10 @@ class MetadataMixin:
         params = {"catalog_name": catalog_name, "schema_name": schema_name}
         http = self._client.get_async_httpx_client()
         resp = await http.get(url, params=params)
-        if resp.status_code != 200:
+        # 404 → genuinely absent; surface everything else as unavailable.
+        if resp.status_code == 404:
             return []
+        resp.raise_for_status()
         data = resp.json()
         return data.get("volumes", [])
 
