@@ -2,9 +2,28 @@
 
 from __future__ import annotations
 
+import httpx
 from soyuz_catalog_client import Client
 
 from pointlessql.config import Settings, get_settings
+
+
+def _soyuz_timeout(settings: Settings) -> httpx.Timeout:
+    """Build the bounded HTTP timeout for soyuz calls from settings.
+
+    Args:
+        settings: Application settings carrying the per-phase timeouts.
+
+    Returns:
+        An ``httpx.Timeout`` so a hung soyuz endpoint cannot pin a worker.
+    """
+    soyuz = settings.soyuz
+    return httpx.Timeout(
+        connect=soyuz.connect_timeout_seconds,
+        read=soyuz.read_timeout_seconds,
+        write=soyuz.write_timeout_seconds,
+        pool=soyuz.pool_timeout_seconds,
+    )
 
 
 def make_soyuz_client(
@@ -34,6 +53,7 @@ def make_soyuz_client(
         base_url=settings.soyuz.catalog_url,
         raise_on_unexpected_status=True,
         headers=headers,
+        timeout=_soyuz_timeout(settings),
     )
 
 
@@ -64,4 +84,5 @@ def make_principal_client(
         base_url=settings.soyuz.catalog_url,
         raise_on_unexpected_status=True,
         headers=headers,
+        timeout=_soyuz_timeout(settings),
     )

@@ -29,6 +29,14 @@ class SoyuzSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="POINTLESSQL_SOYUZ_")
 
     catalog_url: str = "http://127.0.0.1:8080"
+    # Bounded HTTP timeouts for every soyuz call. The generated client
+    # otherwise defaults to no timeout, so a hung soyuz endpoint would pin
+    # the calling worker indefinitely. Read is the most generous (tree
+    # listings of a large catalog); connect/write/pool stay tight.
+    connect_timeout_seconds: float = 5.0
+    read_timeout_seconds: float = 30.0
+    write_timeout_seconds: float = 10.0
+    pool_timeout_seconds: float = 5.0
 
 
 class JupyterSettings(BaseSettings):
