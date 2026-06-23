@@ -158,8 +158,17 @@ async def register_submit(
 
 @router.post("/logout")
 async def logout(request: Request):
-    """Clear the session cookie and redirect to login."""
+    """Clear the session cookie and revoke the user's outstanding tokens.
+
+    Beyond dropping the cookie, the user's ``session_version`` is bumped so
+    a copy of the just-cleared JWT (captured before logout) can no longer
+    authenticate — logout is a real server-side revocation, not just a
+    client-side cookie clear.
+    """
     settings = _settings(request)
+    user = get_optional_user(request)
+    if user is not None and isinstance(user.get("id"), int) and user["id"] > 0:
+        auth.revoke_user_sessions(_factory(request), int(user["id"]))
     response = RedirectResponse(url="/auth/login", status_code=303)
     response.delete_cookie(auth.COOKIE_NAME, secure=resolve_cookie_secure(request))
     # Rotate the CSRF cookie alongside the auth cookie. Deleting it
@@ -397,6 +406,7 @@ async def oidc_callback(request: Request):
         user.is_admin,
         settings.auth.secret_key,
         settings.auth.jwt_expiry_hours,
+        session_version=user.session_version,
     )
 
     response = RedirectResponse(url="/", status_code=303)

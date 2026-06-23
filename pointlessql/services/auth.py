@@ -28,6 +28,12 @@ _hasher = PasswordHash((BcryptHasher(),))
 
 COOKIE_NAME = "pql_session"
 
+# Audience + issuer pinned into every JWT and verified on decode, so a
+# token minted for another service (or with no ``aud`` / ``iss`` at all)
+# is rejected rather than silently accepted.
+_JWT_AUDIENCE = "pointlessql"
+_JWT_ISSUER = "pointlessql"
+
 
 def hash_password(password: str) -> str:
     """Hash a plaintext password with bcrypt.
@@ -64,6 +70,8 @@ def create_jwt(
     is_admin: bool,
     secret_key: str,
     expiry_hours: int = 168,
+    *,
+    session_version: int = 0,
 ) -> str:
     """Create a signed JWT token for the given user.
 
@@ -73,6 +81,9 @@ def create_jwt(
         is_admin: Whether the user is an administrator.
         secret_key: Secret key for signing the token.
         expiry_hours: Token validity in hours (default 7 days).
+        session_version: The user's current ``session_version``, stamped as
+            the ``sv`` claim so a later bump (logout / admin revoke)
+            invalidates this token server-side.
 
     Returns:
         str: Encoded JWT token string.
@@ -82,6 +93,9 @@ def create_jwt(
         "sub": str(user_id),
         "email": email,
         "is_admin": is_admin,
+        "sv": session_version,
+        "aud": _JWT_AUDIENCE,
+        "iss": _JWT_ISSUER,
         "iat": now,
         "exp": now + datetime.timedelta(hours=expiry_hours),
     }
@@ -100,7 +114,9 @@ def verify_jwt(
     token and ``previous_key`` is set, retries once with the old
     key — this mid-flight grace window lets operators rotate the
     signing key without terminating every live session.  Corrupt,
-    expired, or tampered tokens still fail under both keys.
+    expired, or tampered tokens still fail under both keys, as do
+    tokens whose ``aud`` / ``iss`` do not pin to this service (or are
+    absent) — both claims are verified on decode.
 
     Args:
         token: The JWT token string to verify.
@@ -113,12 +129,24 @@ def verify_jwt(
         dict[str, Any] | None: Decoded payload on success, ``None`` on failure.
     """
     try:
-        return jwt.decode(token, secret_key, algorithms=["HS256"])
+        return jwt.decode(
+            token,
+            secret_key,
+            algorithms=["HS256"],
+            audience=_JWT_AUDIENCE,
+            issuer=_JWT_ISSUER,
+        )
     except jwt.InvalidTokenError:
         if not previous_key:
             return None
     try:
-        return jwt.decode(token, previous_key, algorithms=["HS256"])
+        return jwt.decode(
+            token,
+            previous_key,
+            algorithms=["HS256"],
+            audience=_JWT_AUDIENCE,
+            issuer=_JWT_ISSUER,
+        )
     except jwt.InvalidTokenError:
         return None
 
@@ -244,7 +272,14 @@ def login(
             logger.warning("Login failed: invalid credentials (email=%s)", email)
             return None
 
-        return create_jwt(user.id, user.email, user.is_admin, secret_key, expiry_hours)
+        return create_jwt(
+            user.id,
+            user.email,
+            user.is_admin,
+            secret_key,
+            expiry_hours,
+            session_version=user.session_version,
+        )
 
 
 def get_current_user(
@@ -283,6 +318,14 @@ def get_current_user(
         user = session.query(User).filter(User.id == user_id).first()
         if user is None:
             return None
+        # Server-side revocation: a token is valid only while its ``sv``
+        # claim still matches the user's current ``session_version``. A
+        # logout / admin revoke bumps the column, so every token minted
+        # before the bump fails here. Tokens predating the ``sv`` claim are
+        # treated as version 0 (the column default), so they keep working
+        # until the first bump rather than being summarily rejected.
+        if int(payload.get("sv", 0)) != int(user.session_version):
+            return None
         return UserInfo(
             id=user.id,
             email=user.email,
@@ -291,3 +334,28 @@ def get_current_user(
             is_supervisor=bool(user.is_supervisor),
             is_auditor=bool(user.is_auditor),
         )
+
+
+def revoke_user_sessions(factory: sessionmaker[Session], user_id: int) -> bool:
+    """Invalidate every existing JWT for *user_id* by bumping its version.
+
+    Increments the user's ``session_version`` so the ``sv`` claim on every
+    previously-minted token no longer matches and
+    :func:`get_current_user` rejects it.  Used by logout (self-revoke) and
+    the admin force-logout action.
+
+    Args:
+        factory: SQLAlchemy session factory.
+        user_id: The user whose sessions to revoke.
+
+    Returns:
+        ``True`` when a user row was bumped, ``False`` when no such user
+        exists.
+    """
+    with factory() as session:
+        user = session.query(User).filter(User.id == user_id).first()
+        if user is None:
+            return False
+        user.session_version = int(user.session_version or 0) + 1
+        session.commit()
+        return True

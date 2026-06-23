@@ -32,6 +32,9 @@ class User(Base):
         is_auditor: Whether the user has auditor scope (governs
             tenant-wide ``/api/audit/*`` aggregates).  Same grant
             + refresh shape as :attr:`is_supervisor`.
+        session_version: Server-side session-revocation counter stamped
+            into every JWT as its ``sv`` claim; bumping it (logout / admin
+            force-revoke) invalidates all previously-minted tokens.
         created_at: Timestamp when the user was created.
         oidc_provider: OIDC discovery URL that authenticated this user.
         oidc_subject: The ``sub`` claim from the OIDC provider.
@@ -94,6 +97,13 @@ class User(Base):
         Boolean, nullable=False, server_default=text("false")
     )
     is_auditor: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
+    # Server-side session-revocation counter.  Every issued JWT carries the
+    # value at mint time as its ``sv`` claim; bumping this column (on logout
+    # or an admin force-revoke) invalidates every token minted before the
+    # bump, since the stale ``sv`` no longer matches.
+    session_version: Mapped[int] = mapped_column(
+        Integer, nullable=False, server_default=text("0"), default=0
+    )
     created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     oidc_provider: Mapped[str | None] = mapped_column(String(500), nullable=True)
     oidc_subject: Mapped[str | None] = mapped_column(String(500), nullable=True)

@@ -53,11 +53,13 @@ from pointlessql.api.admin.optimization import router as _optimization_router
 from pointlessql.api.admin.policy_modules import router as _policy_modules_router
 from pointlessql.api.admin.repos import router as _repos_router
 from pointlessql.api.admin.secrets import router as _secrets_router
+from pointlessql.api.admin.users import router as _users_router
 from pointlessql.api.admin.workspace_pins import router as _workspace_pins_router
 from pointlessql.api.admin.workspaces import router as _workspaces_router
 
 router = APIRouter()
 router.include_router(_console_router)
+router.include_router(_users_router)
 router.include_router(_workspaces_router)
 router.include_router(_domains_router)
 router.include_router(_glossary_router)
