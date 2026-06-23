@@ -202,7 +202,19 @@ async def api_create_app(
 
 @router.get("/api/apps/{slug}")
 async def api_get_app(request: Request, slug: str) -> dict[str, Any]:
-    """Return one app by slug."""
+    """Return one app by slug.
+
+    Open to any signed-in user. ``_ensure_app`` answers 404
+    (``ResourceNotFoundError``) when *slug* is unknown in the active
+    workspace.
+
+    Args:
+        request: Incoming FastAPI request.
+        slug: App slug from the URL.
+
+    Returns:
+        The serialized app row.
+    """
     return serialize_app(_ensure_app(request, slug), manager=_optional_manager(request))
 
 
@@ -262,7 +274,20 @@ async def api_update_app(
 
 @router.delete("/api/apps/{slug}")
 async def api_delete_app(request: Request, slug: str) -> dict[str, Any]:
-    """Stop (if running) and delete an app (workspace admins only)."""
+    """Stop (if running) and delete an app.
+
+    Restricted to workspace admins: ``require_workspace_admin``
+    answers 403 for non-admins. ``_ensure_app`` answers 404
+    (``ResourceNotFoundError``) when *slug* is unknown in the active
+    workspace.
+
+    Args:
+        request: Incoming FastAPI request.
+        slug: App slug from the URL.
+
+    Returns:
+        ``{"deleted": bool}`` — whether a row was removed.
+    """
     require_workspace_admin(request)
     row = _ensure_app(request, slug)
     manager = _optional_manager(request)
@@ -277,7 +302,12 @@ async def api_delete_app(request: Request, slug: str) -> dict[str, Any]:
 
 @router.post("/api/apps/{slug}/start")
 async def api_start_app(request: Request, slug: str) -> dict[str, Any]:
-    """Start the app's worker and wait for health (admins only).
+    """Start the app's worker and wait for health.
+
+    Restricted to workspace admins: ``require_workspace_admin``
+    answers 403 for non-admins. ``_ensure_app`` answers 404
+    (``ResourceNotFoundError``) when *slug* is unknown in the active
+    workspace.
 
     Secret references (``{{secrets/<scope>/<key>}}``) in the app's
     stored env resolve here, just-in-time, against the active
@@ -339,7 +369,20 @@ async def api_start_app(request: Request, slug: str) -> dict[str, Any]:
 
 @router.post("/api/apps/{slug}/stop")
 async def api_stop_app(request: Request, slug: str) -> dict[str, Any]:
-    """Stop the app's worker (workspace admins only)."""
+    """Stop the app's worker and mark it ``stopped``.
+
+    Restricted to workspace admins: ``require_workspace_admin``
+    answers 403 for non-admins. ``_ensure_app`` answers 404
+    (``ResourceNotFoundError``) when *slug* is unknown in the active
+    workspace.
+
+    Args:
+        request: Incoming FastAPI request.
+        slug: App slug from the URL.
+
+    Returns:
+        The refreshed serialized app row.
+    """
     require_workspace_admin(request)
     row = _ensure_app(request, slug)
     manager = _optional_manager(request)
@@ -355,7 +398,19 @@ async def api_stop_app(request: Request, slug: str) -> dict[str, Any]:
 
 @router.get("/api/apps/{slug}/logs")
 async def api_app_logs(request: Request, slug: str) -> dict[str, Any]:
-    """Return the last 200 lines of the app worker's stderr log."""
+    """Return the last 200 lines of the app worker's stderr log.
+
+    Open to any signed-in user. ``_ensure_app`` answers 404
+    (``ResourceNotFoundError``) when *slug* is unknown in the active
+    workspace.
+
+    Args:
+        request: Incoming FastAPI request.
+        slug: App slug from the URL.
+
+    Returns:
+        ``{"slug": str, "lines": list[str]}`` — the log tail.
+    """
     row = _ensure_app(request, slug)
     lines = await run_sync(app_hosting.read_log_tail, row.id, max_lines=200)
     return {"slug": slug, "lines": lines}
