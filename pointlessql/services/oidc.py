@@ -77,6 +77,14 @@ class OIDCError(PointlessSQLError):
 def generate_pkce() -> tuple[str, str]:
     """Generate a PKCE code-verifier and code-challenge pair.
 
+    Proof Key for Code Exchange (RFC 7636) defeats authorization-code
+    interception: only the challenge (the SHA-256 hash) travels to the provider
+    in the authorize redirect, while the high-entropy verifier stays on the
+    server in the signed state cookie. At the token endpoint the verifier is
+    presented, and the provider re-hashes it to confirm the match — so an
+    attacker who captures the code off the redirect cannot redeem it without
+    the verifier they never saw.
+
     Returns:
         tuple[str, str]: ``(code_verifier, code_challenge)`` where
             the challenge is the Base64url-encoded SHA-256 of the verifier.
@@ -98,6 +106,16 @@ STATE_COOKIE_NAME = "pql_oidc_state"
 def sign_state_cookie(payload: dict[str, Any], secret_key: str) -> str:
     """Serialize *payload* as JSON and sign with HMAC-SHA256.
 
+    The signed state cookie is the CSRF/replay defense for the OIDC round-trip:
+    it carries the ``state``, PKCE ``code_verifier``, and ``nonce`` minted in
+    ``/auth/sso`` across to the callback. HMAC over the application secret lets
+    the callback prove the cookie was issued by this server and not forged or
+    tampered with — so the ``state`` echoed back by the provider can be trusted
+    when compared against the cookie, and the verifier/nonce it shields cannot
+    be substituted by an attacker. The payload is only base64-encoded, not
+    encrypted, so callers must not place anything secret beyond what the client
+    already holds in this cookie.
+
     Args:
         payload: Arbitrary dict (must be JSON-serializable).
         secret_key: Application secret key for signing.
@@ -112,6 +130,15 @@ def sign_state_cookie(payload: dict[str, Any], secret_key: str) -> str:
 
 def verify_state_cookie(cookie: str, secret_key: str) -> dict[str, Any] | None:
     """Verify signature and decode a state cookie.
+
+    This is the trust gate on the OIDC callback: it recomputes the HMAC and
+    compares it with :func:`hmac.compare_digest` (constant-time, to avoid
+    leaking the signature via timing) before decoding. Returning the payload
+    only on a valid signature is what lets the callback safely compare the
+    embedded ``state`` against the provider's echo and recover the PKCE
+    verifier and nonce. Any malformed, truncated, tampered, or non-JSON cookie
+    yields ``None`` rather than an exception, so a bad cookie fails the SSO
+    attempt closed instead of crashing the handler.
 
     Args:
         cookie: The cookie value produced by :func:`sign_state_cookie`.
@@ -191,6 +218,16 @@ def build_authorize_url(
     scope: str = "openid email profile",
 ) -> str:
     """Build the provider's authorization URL for a PKCE flow.
+
+    Assembles the authorization-code request that the browser is redirected to.
+    It pins ``response_type=code`` and ``code_challenge_method=S256`` so the
+    server-side code flow with PKCE (RFC 7636) is requested rather than the
+    legacy implicit flow or the weaker ``plain`` challenge method. The
+    ``state`` and ``nonce`` carried here are the same values stored in the
+    signed state cookie: ``state`` is echoed back and checked at the callback
+    to block CSRF on the redirect, and ``nonce`` is bound into the id_token to
+    block token replay across login attempts. Only the ``code_challenge``
+    appears in the URL — never the verifier.
 
     Args:
         discovery: Parsed OIDC discovery document.
