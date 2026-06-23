@@ -48,7 +48,14 @@ def _version_and_count_at(storage_location: str, when: datetime.datetime) -> dic
         version = int(dt.version())
     except Exception:  # noqa: BLE001 — resolution is best-effort
         # bare-broad-ok: an unreadable / pre-existence table degrades to
-        # "no snapshot" rather than failing the whole manifest.
+        # "no snapshot" rather than failing the whole manifest.  Log it so
+        # an empty snapshot can be told apart from a broken storage path.
+        logger.warning(
+            "point-in-time: table unreadable at %s; degrading to no snapshot",
+            when.isoformat(),
+            exc_info=True,
+            extra={"storage_location": storage_location},
+        )
         return {"as_of_version": None, "row_count": None}
     row_count: int | None = None
     try:
