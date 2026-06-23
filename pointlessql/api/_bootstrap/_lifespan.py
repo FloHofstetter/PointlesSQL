@@ -50,6 +50,7 @@ from pointlessql.api._bootstrap._loops import (
     _user_notification_digest_loop,  # pyright: ignore[reportPrivateUsage]
     _workspace_repos_sync_loop,  # pyright: ignore[reportPrivateUsage]
 )
+from pointlessql.api.dependencies._principal import close_principal_uc_clients
 from pointlessql.config import assert_secret_key_safe, get_settings
 from pointlessql.db import get_session_factory, init_db
 from pointlessql.services import api_keys as api_keys_service
@@ -631,6 +632,7 @@ def make_lifespan(
                 await scheduler.stop()
             bind_app_executor(None)
             executor.shutdown(wait=True)
+            await close_principal_uc_clients(app.state)
             if not fast_test_lifespan and app.state.uc_client is not None:
                 await app.state.uc_client.aclose()
 

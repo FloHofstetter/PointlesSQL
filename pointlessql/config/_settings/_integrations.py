@@ -45,6 +45,12 @@ class SoyuzSettings(BaseSettings):
     # concurrently while building the sidebar tree — bounds the fan-out so
     # a wide catalog does not stampede soyuz with thousands of parallel GETs.
     tree_fanout_concurrency: int = 16
+    # httpx connection-pool bounds applied to every soyuz client. Without
+    # them the pool is unbounded, so a burst of per-principal clients (one
+    # pool each) could exhaust file descriptors against soyuz. Reused pools
+    # keep at most ``max_keepalive_connections`` idle sockets warm.
+    max_connections: int = 100
+    max_keepalive_connections: int = 20
 
 
 class JupyterSettings(BaseSettings):

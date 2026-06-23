@@ -130,18 +130,28 @@ def test_soyuz_client_forwards_active_trace_ids() -> None:
     assert headers["x-correlation-id"] == "corr-abc"
 
 
-def test_principal_client_forwards_trace_ids_and_keeps_principal() -> None:
-    """The per-principal client carries the trace ids alongside X-Principal."""
+async def test_principal_client_stamps_trace_ids_per_request_and_keeps_principal() -> None:
+    """The per-principal client pins X-Principal statically and trace ids per call.
+
+    The client is cached + reused, so the trace ids ride an async request
+    hook (read at send time) rather than static headers, which would freeze
+    the first request's ids onto every later one.
+    """
+    client = make_principal_client(Settings(), "user@test.com")
+    # X-Principal is stable for the client's whole lifetime.
+    assert client.get_async_httpx_client().headers["x-principal"] == "user@test.com"
+
+    hook = client.get_async_httpx_client().event_hooks["request"][0]
     rt = request_id_var.set("req-9")
     ct = correlation_id_var.set("corr-9")
     try:
-        headers = make_principal_client(Settings(), "user@test.com").get_httpx_client().headers
+        outgoing = httpx.Request("GET", "http://soyuz/catalogs")
+        await hook(outgoing)
     finally:
         correlation_id_var.reset(ct)
         request_id_var.reset(rt)
-    assert headers["x-principal"] == "user@test.com"
-    assert headers["x-request-id"] == "req-9"
-    assert headers["x-correlation-id"] == "corr-9"
+    assert outgoing.headers["x-request-id"] == "req-9"
+    assert outgoing.headers["x-correlation-id"] == "corr-9"
 
 
 def test_soyuz_client_correlation_defaults_to_request_id() -> None:

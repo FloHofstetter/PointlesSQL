@@ -25,6 +25,9 @@ def _build_request(is_admin: bool, uc_client: object = "uc-sentinel") -> MagicMo
     request.headers = {}
     request.app.state.uc_client = uc_client
     request.app.state.settings = MagicMock()
+    # Real dict so the per-principal client cache works (a MagicMock would
+    # auto-create a truthy attribute and short-circuit the lookup).
+    request.app.state.principal_uc_clients = {}
     return request
 
 

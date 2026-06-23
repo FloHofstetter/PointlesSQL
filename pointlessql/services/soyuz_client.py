@@ -43,6 +43,24 @@ def _trace_headers() -> dict[str, str]:
     return headers
 
 
+async def _stamp_trace_headers(request: httpx.Request) -> None:
+    """Httpx request hook: stamp the active trace ids on each outgoing call.
+
+    Used by the cached per-principal clients: those are reused across
+    requests for the process lifetime, so the ids cannot be frozen into the
+    static headers (the first request's ids would leak onto every later
+    one).  Reading the context vars at send time keeps each forwarded id
+    matched to the request that triggered the call.  Safe as an async hook
+    because per-principal clients are only ever driven through the async UC
+    facade.
+
+    Args:
+        request: The outgoing httpx request, annotated in place.
+    """
+    for name, value in _trace_headers().items():
+        request.headers[name] = value
+
+
 def _soyuz_timeout(settings: Settings) -> httpx.Timeout:
     """Build the bounded HTTP timeout for soyuz calls from settings.
 
@@ -59,6 +77,28 @@ def _soyuz_timeout(settings: Settings) -> httpx.Timeout:
         write=soyuz.write_timeout_seconds,
         pool=soyuz.pool_timeout_seconds,
     )
+
+
+def _soyuz_httpx_args(settings: Settings) -> dict[str, object]:
+    """Build the extra httpx kwargs (connection-pool limits) for a client.
+
+    The generated client otherwise builds an unbounded pool; bounding it
+    keeps a burst of per-principal clients from exhausting file descriptors
+    against soyuz.
+
+    Args:
+        settings: Application settings carrying the pool bounds.
+
+    Returns:
+        A ``httpx_args`` mapping to pass through to the generated ``Client``.
+    """
+    soyuz = settings.soyuz
+    return {
+        "limits": httpx.Limits(
+            max_connections=soyuz.max_connections,
+            max_keepalive_connections=soyuz.max_keepalive_connections,
+        )
+    }
 
 
 def make_soyuz_client(
@@ -89,6 +129,7 @@ def make_soyuz_client(
         raise_on_unexpected_status=True,
         headers=headers,
         timeout=_soyuz_timeout(settings),
+        httpx_args=_soyuz_httpx_args(settings),
     )
 
 
@@ -112,12 +153,17 @@ def make_principal_client(
         A ``Client`` instance with the ``X-Principal`` header set
         (and ``X-Agent-Run-Id`` when ``agent_run_id`` is non-empty).
     """
-    headers = {"X-Principal": principal, **_trace_headers()}
+    headers = {"X-Principal": principal}
     if agent_run_id:
         headers["X-Agent-Run-Id"] = agent_run_id
+    httpx_args = _soyuz_httpx_args(settings)
+    # Trace ids ride an async request hook (not static headers) because this
+    # client is cached + reused across requests; see :func:`_stamp_trace_headers`.
+    httpx_args["event_hooks"] = {"request": [_stamp_trace_headers]}
     return Client(
         base_url=settings.soyuz.catalog_url,
         raise_on_unexpected_status=True,
         headers=headers,
         timeout=_soyuz_timeout(settings),
+        httpx_args=httpx_args,
     )
