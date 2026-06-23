@@ -64,7 +64,18 @@ async def login_submit(
     email: str = Form(),
     password: str = Form(),
 ):
-    """Verify credentials and set session cookie."""
+    """Verify the submitted credentials and start an authenticated session.
+
+    On success, issues a fresh auth JWT and returns a 303 redirect to ``/``,
+    setting the auth cookie (HttpOnly, SameSite=Lax, ``secure`` per the proxy
+    resolver) for ``jwt_expiry_hours``. The CSRF cookie is rotated alongside it
+    as token-fixation prevention.
+
+    On invalid credentials (``auth.login`` returns ``None``), re-renders
+    ``pages/login.html`` with a generic "Invalid email or password." error and
+    a 401 status — no cookies are set, so the error is not leaked as a
+    distinct redirect and the existing session (if any) is untouched.
+    """
     settings = _settings(request)
     token = auth.login(
         _factory(request),
@@ -123,7 +134,22 @@ async def register_submit(
     password: str = Form(),
     password_confirm: str = Form(),
 ):
-    """Create a new user and redirect to login."""
+    """Create a local user account, then bounce to the login page.
+
+    On success, returns a 303 redirect to
+    ``/auth/login?flash=account_created`` so the login page can surface a
+    one-shot positive confirmation rather than dropping the user on an empty
+    form (which read as a silent failure). No session is started here — the
+    new user must log in.
+
+    On any validation failure, re-renders ``pages/register.html`` with an
+    error message via the local ``_reg_error`` helper, which preserves the
+    ``first_user`` bootstrap context. The failure branches are: passwords that
+    do not match (400) and passwords shorter than 8 characters (400), both
+    short-circuited before any DB write; and a duplicate email — when
+    ``auth.register`` returns ``None`` — which renders with a 409. This handler
+    never sets an auth or CSRF cookie.
+    """
     factory = _factory(request)
 
     def _reg_error(msg: str, status: int = 400):
@@ -160,10 +186,19 @@ async def register_submit(
 async def logout(request: Request):
     """Clear the session cookie and revoke the user's outstanding tokens.
 
-    Beyond dropping the cookie, the user's ``session_version`` is bumped so
+    Always returns a 303 redirect to ``/auth/login``. The auth cookie is
+    deleted and the CSRF cookie is rotated in place (binding a fresh token to
+    the new anonymous session); deleting it would only force the middleware to
+    re-issue one on the redirect target, so rotating keeps the state change
+    observable.
+
+    Beyond dropping the cookie, when an authenticated user is present the
+    user's ``session_version`` is bumped (via ``auth.revoke_user_sessions``) so
     a copy of the just-cleared JWT (captured before logout) can no longer
     authenticate — logout is a real server-side revocation, not just a
-    client-side cookie clear.
+    client-side cookie clear. The endpoint is not gated: an anonymous or
+    already-expired caller still gets the cookie-clearing redirect, just
+    without the server-side revocation step.
     """
     settings = _settings(request)
     user = get_optional_user(request)
@@ -255,7 +290,20 @@ async def switch_workspace(request: Request, slug: str = Form()):
 
 @router.get("/sso")
 async def sso_redirect(request: Request):
-    """Initiate OIDC authorization-code flow with PKCE."""
+    """Initiate the OIDC authorization-code flow with PKCE.
+
+    When OIDC is enabled, fetches the provider discovery document, generates a
+    PKCE verifier/challenge pair plus random ``state`` and ``nonce`` values,
+    and returns a 302 redirect to the provider's authorize URL. The verifier,
+    state, and nonce are stashed in the signed, HttpOnly ``pql_oidc_state``
+    cookie (SameSite=Lax, ``secure`` per the proxy resolver, 5-minute lifetime)
+    so the callback can validate the round-trip; the challenge alone travels in
+    the redirect, keeping the verifier off the wire.
+
+    When OIDC is not configured (``settings.oidc.enabled`` is false), returns a
+    303 redirect to ``/auth/login?error=SSO+is+not+configured`` and sets no
+    cookie.
+    """
     settings = _settings(request)
     if not settings.oidc.enabled:
         return RedirectResponse(url="/auth/login?error=SSO+is+not+configured", status_code=303)
@@ -301,7 +349,27 @@ async def sso_redirect(request: Request):
 
 @router.get("/callback")
 async def oidc_callback(request: Request):
-    """Handle the OIDC provider redirect after authentication."""
+    """Complete the OIDC flow from the provider's redirect and mint a session.
+
+    On success, exchanges the authorization code for tokens, verifies the
+    id_token signature/issuer/audience/nonce, maps the (signature-verified)
+    claims to a local user — creating or linking one as needed — and returns a
+    303 redirect to ``/``. The auth cookie is set, the CSRF cookie is rotated
+    (matching ``login_submit``), and the one-shot ``pql_oidc_state`` cookie is
+    deleted.
+
+    Every failure branch instead returns a 303 redirect to
+    ``/auth/login?error=...`` and sets no auth cookie, so a failed SSO attempt
+    can never establish a session. Those branches are: the provider returning
+    an ``error`` query param (surfacing its ``error_description``); a missing
+    ``code`` or ``state``; a missing ``pql_oidc_state`` cookie (treated as an
+    expired SSO session); a state cookie whose signature is invalid or whose
+    stored ``state`` does not match the callback's; any ``OIDCError`` raised
+    during discovery, token exchange, a missing/invalid id_token, or userinfo
+    fetch; and an ``OIDCError`` from user provisioning (e.g. a concurrent
+    create conflict). The subject identity is taken from the verified
+    id_token; unverified userinfo only enriches the display name and groups.
+    """
     settings = _settings(request)
 
     # Provider may return an error directly.
