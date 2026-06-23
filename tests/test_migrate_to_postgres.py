@@ -90,6 +90,52 @@ def test_ensure_dialects_rejects_non_pg_target() -> None:
         mtp._ensure_dialects("sqlite:///x", "sqlite:///y")  # pyright: ignore[reportPrivateUsage]
 
 
+def test_copy_set_covers_every_portable_orm_table() -> None:
+    """The copy set is every ORM table minus the explicit non-portable allowlist.
+
+    Guards the silent-data-loss regression: a hand-maintained table tuple
+    copied only 38 of 185 tables (two names even stale) yet reported
+    success. The runtime ordering must track the model registry exactly.
+    """
+    from pointlessql.models import Base
+
+    copied = set(mtp._ordered_table_names())  # pyright: ignore[reportPrivateUsage]
+    expected = set(Base.metadata.tables) - mtp._NON_PORTABLE_TABLES  # pyright: ignore[reportPrivateUsage]
+    assert copied == expected
+    # The previously-dropped real table is now covered; the stale names
+    # that masked it are gone.
+    assert "sync_run" in copied
+    assert {"sync_runs", "job_steps"}.isdisjoint(copied)
+
+
+def test_copy_order_is_fk_safe() -> None:
+    """Every table is copied after the tables its foreign keys reference.
+
+    A child copied before its parent would fail the FK insert on Postgres,
+    so the parent→child ordering is the contract the bulk copy depends on.
+    """
+    from pointlessql.models import Base
+
+    names = mtp._ordered_table_names()  # pyright: ignore[reportPrivateUsage]
+    position = {name: i for i, name in enumerate(names)}
+    for table in Base.metadata.sorted_tables:
+        if table.name not in position:
+            continue
+        for fk in table.foreign_keys:
+            parent = fk.column.table.name
+            if parent == table.name or parent not in position:
+                continue  # self-FK / non-portable parent — not an ordering constraint
+            assert position[parent] <= position[table.name], (
+                f"{table.name} copied before its FK parent {parent}"
+            )
+
+
+def test_pinned_roots_lead_the_copy_order() -> None:
+    """The pinned FK-root tables head the order so children never race them."""
+    names = mtp._ordered_table_names()  # pyright: ignore[reportPrivateUsage]
+    assert names[: len(mtp._PIN_FIRST)] == list(mtp._PIN_FIRST)  # pyright: ignore[reportPrivateUsage]
+
+
 # ---------------------------------------------------------------------------
 # End-to-end — requires PG.
 # ---------------------------------------------------------------------------
