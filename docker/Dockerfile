@@ -5,9 +5,11 @@
 # Usage:
 #   docker compose -f docker-compose.yml -f docker-compose.dev.yml build
 #
-# The builder stage fetches soyuz-catalog-client from the public
-# git tag pinned in pyproject.toml's [tool.uv.sources]. No
-# credentials are required — soyuz-catalog is a public repository.
+# The builder stage installs the exact, hash-pinned dependency set from
+# uv.lock (reproducible across rebuilds) rather than re-resolving the
+# ``>=`` floors in pyproject.toml. soyuz-catalog-client is fetched from
+# the git SHA pinned in pyproject.toml's [tool.uv.sources]; no credentials
+# are required — soyuz-catalog is a public repository.
 
 # ---------------------------------------------------------------------------
 # Stage 1: Install PointlesSQL and all dependencies into a venv
@@ -22,11 +24,22 @@ RUN pip install --no-cache-dir uv
 
 RUN uv venv /opt/venv
 
-COPY pyproject.toml README.md LICENSE /src/
+# Install the locked dependency set first — from uv.lock, not the ``>=``
+# floors in pyproject.toml — so releases are reproducible and the
+# dependency layer caches independently of source edits.  ``uv export``
+# pins every PyPI package by hash and the soyuz-catalog-client by its git
+# SHA from ``[tool.uv.sources]``.
+COPY pyproject.toml uv.lock README.md LICENSE /src/
+RUN uv export --frozen --no-dev --no-emit-project --project /src \
+        -o /src/requirements.txt \
+    && uv pip install -r /src/requirements.txt --python /opt/venv/bin/python
+
+# Then install the application itself with no dependency resolution —
+# everything it needs is already pinned and present from the lock above.
 COPY pointlessql/ /src/pointlessql/
 COPY frontend/ /src/frontend/
 
-RUN uv pip install /src/ --python /opt/venv/bin/python
+RUN uv pip install /src/ --no-deps --python /opt/venv/bin/python
 
 # ---------------------------------------------------------------------------
 # Stage 2: Slim runtime image
