@@ -75,6 +75,23 @@ Pin to a digest for reproducibility in production:
 image: ghcr.io/flohofstetter/pointlessql@sha256:<digest>
 ```
 
+### Verifying the image signature
+
+Every published image is signed keylessly with
+[cosign](https://docs.sigstore.dev/) (Sigstore OIDC — no long-lived
+key) and ships an SBOM + max provenance attestation. Confirm an image
+came from this repo's release workflow before trusting it:
+
+```bash
+cosign verify ghcr.io/flohofstetter/pointlessql:<tag> \
+  --certificate-identity-regexp '^https://github.com/FloHofstetter/PointlesSQL' \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com
+```
+
+The same command works for `ghcr.io/flohofstetter/soyuz-catalog:<tag>`.
+A non-zero exit means the image was not signed by the workflow — do
+not run it.
+
 ## pip install from git tag
 
 Install PointlesSQL as a Python package via `uv`. Useful for

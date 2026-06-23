@@ -13,6 +13,14 @@ name: docker
 # PointlesSQL package namespace) is the only credential in play — both
 # the cross-repo checkout and the soyuz-catalog-client wheel install
 # read it anonymously.
+#
+# Both images are built with an SBOM + max provenance attestation and
+# signed keylessly with cosign (Sigstore OIDC, no long-lived key).
+# Verify a pulled image with:
+#
+#   cosign verify ghcr.io/flohofstetter/pointlessql:<tag> \
+#     --certificate-identity-regexp '^https://github.com/FloHofstetter/PointlesSQL' \
+#     --certificate-oidc-issuer https://token.actions.githubusercontent.com
 
 on:
   push:
@@ -22,6 +30,7 @@ on:
 permissions:
   contents: read
   packages: write
+  id-token: write  # keyless cosign signing via the Sigstore OIDC token
 
 jobs:
   docker:
@@ -98,6 +107,7 @@ jobs:
         uses: docker/setup-buildx-action@v4
 
       - name: Build + push PointlesSQL image
+        id: build_pql
         uses: docker/build-push-action@v7
         with:
           context: pointlessql
@@ -107,10 +117,13 @@ jobs:
           build-args: |
             VCS_REF=${{ github.sha }}
             VERSION=${{ github.ref_name }}
+          sbom: true
+          provenance: mode=max
           cache-from: type=gha,scope=pointlessql
           cache-to: type=gha,mode=max,scope=pointlessql
 
       - name: Build + push soyuz-catalog image (idempotent on same tag)
+        id: build_soyuz
         uses: docker/build-push-action@v7
         with:
           context: pointlessql
@@ -122,5 +135,19 @@ jobs:
           build-args: |
             VCS_REF=${{ github.sha }}
             VERSION=${{ steps.pin.outputs.soyuz_tag }}
+          sbom: true
+          provenance: mode=max
           cache-from: type=gha,scope=soyuz-catalog
           cache-to: type=gha,mode=max,scope=soyuz-catalog
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3
+
+      - name: Sign images keylessly (Sigstore OIDC)
+        env:
+          PQL_DIGEST: ${{ steps.build_pql.outputs.digest }}
+          SOYUZ_DIGEST: ${{ steps.build_soyuz.outputs.digest }}
+        run: |
+          # Sign by immutable digest so every tag pointing at it is covered.
+          cosign sign --yes "ghcr.io/flohofstetter/pointlessql@${PQL_DIGEST}"
+          cosign sign --yes "ghcr.io/flohofstetter/soyuz-catalog@${SOYUZ_DIGEST}"
