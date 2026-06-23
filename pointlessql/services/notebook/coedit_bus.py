@@ -1,6 +1,6 @@
 """cross-worker co-edit bus via PG LISTEN/NOTIFY.
 
-Bridges the in-memory Phase-105.2 hub across multiple uvicorn
+Bridges the in-memory co-edit hub across multiple uvicorn
 workers without adding Redis / RabbitMQ / NATS.  Each worker keeps a
 single long-lived psycopg async connection in autocommit mode that
 ``LISTEN coedit_bus``; publishers INSERT a row into
@@ -262,7 +262,7 @@ class CoeditBus:
         try:
             row_id_str, _nb_uuid_hint = channel_payload.split(":", 1)
             row_id = int(row_id_str)
-        except (ValueError, AttributeError):
+        except ValueError, AttributeError:
             _LOG.warning("coedit-bus: malformed notify payload %r", channel_payload)
             return
 

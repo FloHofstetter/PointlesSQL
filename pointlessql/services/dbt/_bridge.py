@@ -539,7 +539,7 @@ def emit_operations_for_dbt_run(
             :func:`capture_delta_versions`.  Drives
             ``delta_version_before``.  ``None`` (default) leaves every
             row's ``delta_version_before`` as ``None`` — preserves the
-            pre-Sprint-36.D shape.
+            the legacy shape.
         post_versions: Optional ``{relation: version|None}`` captured
             *after* the dbt invocation.  Drives ``delta_version_after``.
 

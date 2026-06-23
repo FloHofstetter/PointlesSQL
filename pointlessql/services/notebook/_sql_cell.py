@@ -1,4 +1,4 @@
-"""SQL-cell support helpers for the Phase-66.5 browser notebook editor.
+"""SQL-cell support helpers for the browser notebook editor.
 
 A SQL cell is a regular code cell whose marker carries the ``[sql]``
 tag (e.g. ``# %% [sql] df``).  Execution goes through the kernel —

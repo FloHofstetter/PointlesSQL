@@ -1,6 +1,6 @@
 """Read a Delta table and compute per-column stats.
 
-The Phase-91 NL→SQL chat needs a quick "what's in this table" view
+The NL→SQL chat needs a quick "what's in this table" view
 before drafting SQL: row count, per-column nullability and
 cardinality, plus min/max for numeric columns and top-5 modes for
 strings.  Computed via the existing :class:`PQL.table` adapter so

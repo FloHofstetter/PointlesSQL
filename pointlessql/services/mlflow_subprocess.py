@@ -55,7 +55,7 @@ if TYPE_CHECKING:
 
 _logger = logging.getLogger(__name__)
 
-# Repo root anchor for cwd-relative URI defaults (BUG-grand-09).
+# Repo root anchor for cwd-relative URI defaults.
 # This file lives at ``<repo>/pointlessql/services/mlflow_subprocess.py``
 # so three ``parent`` walks yield the repo root.  Operators who want
 # the legacy CWD-relative behaviour can still set

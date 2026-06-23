@@ -7,7 +7,7 @@ This module is the upsert-on-save service that maintains the
 * The save-path reconciler (after the cell-UUID is minted /
   re-confirmed) — passes the saver's email + their last agent_run
   context if any.
-* The Phase-96 AI-assistant acceptance path — passes the agent's
+* The AI-assistant acceptance path — passes the agent's
   ``agent_run_id`` so the cell shows up attributed to the chat-driven
   authoring run.
 

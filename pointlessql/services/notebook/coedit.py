@@ -1,4 +1,4 @@
-"""Sidecar Y.Doc persistence for Phase-105 real-time co-edit.
+"""Sidecar Y.Doc persistence for real-time co-edit.
 
 Each notebook gets one persistent :class:`pycrdt.Doc` mirrored into
 the ``notebook_crdt_state`` table.  This module owns the load / patch

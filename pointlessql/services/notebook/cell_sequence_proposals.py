@@ -9,7 +9,7 @@ landing in a half-applied state.
 The LLM that generates the sequence lives in the hermes plugin
 (``pql_propose_cell_sequence`` tool); the backend just stores +
 serves the draft.  Provenance per-cell still goes through the
-Phase-96 :class:`NotebookCellProvenance` table — accepting a
+:class:`NotebookCellProvenance` table — accepting a
 sequence fans out one provenance row per inserted cell once the
 save-path reconciler mints UUIDs.
 """

@@ -29,8 +29,8 @@ async def _coedit_compaction_executor(
 ) -> None:
     """Compact stale ``notebook_crdt_state`` blobs.
 
-    walk every ``notebook_crdt_state`` row, skip the
-    notebooks that currently have a live Sprint-105.2 hub (the hub's
+    Walk every ``notebook_crdt_state`` row, skip the
+    notebooks that currently have a live co-edit hub (the hub's
     own teardown flush handles those), and compact any inactive blob
     that has crossed the size or TTL gate exposed by
     :func:`coedit_service.needs_compaction`.

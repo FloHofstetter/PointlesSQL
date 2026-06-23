@@ -41,7 +41,7 @@ ChatSurface = Literal["sql", "notebook"]
 """Discriminator for which env-var split the propose tools should see.
 
 The plugin's ``pql_propose_sql`` tool gates on
-``POINTLESSQL_CHAT_SESSION_ID``; the Phase-96 ``pql_propose_cell`` /
+``POINTLESSQL_CHAT_SESSION_ID``; the ``pql_propose_cell`` /
 ``pql_fix_cell`` / ``pql_explain_cell`` tools gate on
 ``POINTLESSQL_NOTEBOOK_CHAT_SESSION_ID``.  Setting both at once
 would register every tool in both surfaces, which is wrong — the

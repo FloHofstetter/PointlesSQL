@@ -1,7 +1,7 @@
 """Aggregate-ownership heuristic — a federated suggestion, not a rule.
 
 An aggregate-aligned product is built from other products.  When such a
-product declares its upstreams (Phase-125 ``upstream_product`` input
+product declares its upstreams (``upstream_product`` input
 ports), the platform can *suggest* which business domain should own it:
 the domain that owns the majority of its upstreams.  This is a
 read-only hint surfaced on the Governance tab; the owner still assigns

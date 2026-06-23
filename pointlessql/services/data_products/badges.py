@@ -19,7 +19,7 @@ Four computed badges, all recomputed on read (no cache table):
   the DP's ``last_loaded_at`` + ``sla_minutes`` versus the
   ``governance_events`` records of ``sla_violated`` envelopes.
   Today this is a coarse "did we ever miss SLA in the window?"
-  signal; the metric refines once Phase-72.3 cache lands.
+  signal; the metric refines once the SLA cache lands.
 """
 
 from __future__ import annotations

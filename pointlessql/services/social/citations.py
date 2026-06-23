@@ -524,7 +524,7 @@ def register_citation_kind(kind: CitationKind) -> None:
 
     Args:
         kind: The :class:`CitationKind` to add to the registry.
-            Later Phase-77 sub-phases call this once per
+            Later callers in the social layer call this once per
             new entity type (table / model / branch / run / …).
 
     Raises:
@@ -543,7 +543,7 @@ def registered_citation_kinds() -> tuple[str, ...]:
 
 
 # ---------------------------------------------------------------------------
-# Public entry point — preserved Phase-76.6 signature
+# Public entry point — preserved legacy signature
 # ---------------------------------------------------------------------------
 
 
