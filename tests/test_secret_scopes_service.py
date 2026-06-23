@@ -176,3 +176,63 @@ def test_resolve_secret_references_unknown_key_raises() -> None:
         svc.resolve_secret_references(
             _factory(), workspace_id=1, text="{{secrets/svc-refs-miss/pw}}"
         )
+
+
+# ---------------------------------------------------------------------------
+# recursive tree resolution (the form connector configs actually use)
+# ---------------------------------------------------------------------------
+
+
+def test_resolve_references_in_tree_resolves_nested_and_leaves_scalars() -> None:
+    """Placeholders in nested dicts/lists resolve; non-string nodes pass through."""
+    factory = _factory()
+    scope = svc.create_scope(factory, workspace_id=1, name="conn", description=None, principal=None)
+    svc.put_secret(factory, scope_id=scope.id, key="user", value="alice", principal="a@test.com")
+    svc.put_secret(
+        factory, scope_id=scope.id, key="password", value="s3cr3t", principal="a@test.com"
+    )
+
+    tree = {
+        "host": "db.example.com",
+        "port": 5432,
+        "tls": True,
+        "auth": {
+            "username": "{{secrets/conn/user}}",
+            "password": "{{secrets/conn/password}}",
+        },
+        "tags": ["plain", "{{secrets/conn/user}}", 7, None],
+    }
+    out = svc.resolve_references_in_tree(factory, workspace_id=1, data=tree)
+    assert out == {
+        "host": "db.example.com",
+        "port": 5432,
+        "tls": True,
+        "auth": {"username": "alice", "password": "s3cr3t"},
+        "tags": ["plain", "alice", 7, None],
+    }
+
+
+def test_resolve_references_in_tree_deeply_nested() -> None:
+    """A reference several levels deep (dict→list→dict) still resolves."""
+    factory = _factory()
+    scope = svc.create_scope(factory, workspace_id=1, name="deep", description=None, principal=None)
+    svc.put_secret(factory, scope_id=scope.id, key="token", value="xyz", principal="a@test.com")
+    tree = {"a": [{"b": [{"c": "Bearer {{secrets/deep/token}}"}]}]}
+    out = svc.resolve_references_in_tree(factory, workspace_id=1, data=tree)
+    assert out == {"a": [{"b": [{"c": "Bearer xyz"}]}]}
+
+
+def test_resolve_references_in_tree_unresolvable_ref_propagates() -> None:
+    """An unknown reference nested in the tree fails loudly, not silently."""
+    factory = _factory()
+    svc.create_scope(factory, workspace_id=1, name="known", description=None, principal=None)
+    with pytest.raises(ValueError, match="unknown secret key"):
+        svc.resolve_references_in_tree(
+            factory,
+            workspace_id=1,
+            data={"nested": {"deep": ["{{secrets/known/missing}}"]}},
+        )
+    with pytest.raises(ValueError, match="unknown secret scope"):
+        svc.resolve_references_in_tree(
+            factory, workspace_id=1, data=["{{secrets/missing_scope/k}}"]
+        )
