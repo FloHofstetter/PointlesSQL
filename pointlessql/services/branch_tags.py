@@ -358,7 +358,10 @@ async def apply_branch_tags(
 
     The schema must already exist in UC — this function only writes
     metadata.  After this call the schema is ``status=active`` and
-    fully discoverable to the rest of .
+    fully discoverable to the rest of the system.
+
+    Propagates :class:`ValueError` from :func:`_build_initial_changes`
+    when ``strategy`` is not a known strategy string.
 
     Args:
         uc: UC client (forwards principal + handles soyuz errors).
@@ -418,8 +421,11 @@ async def set_branch_status(
     * :data:`STATUS_PROMOTED` writes :data:`TAG_PROMOTED_AT`.
     * :data:`STATUS_DISCARDED` writes :data:`TAG_DISCARDED_AT`.
     * :data:`STATUS_ACTIVE` removes both timestamp tags so a future
-      reader does not see stale promote/discard markers (defensive
-     .4 does not currently de-promote branches).
+      reader does not see stale promote/discard markers (defensive —
+      PointlesSQL does not currently de-promote branches).
+
+    Propagates :class:`ValueError` from :func:`_build_status_change`
+    when ``status`` is not one of :data:`VALID_STATUSES`.
 
     Args:
         uc: UC client.
@@ -434,7 +440,7 @@ async def set_branch_status(
 async def mark_pre_promote_backup(uc: UnityCatalogClient, schema_fqn: str) -> None:
     """Tag a (renamed) pre-promote backup schema for later recognition.
 
-     promotes a branch by renaming the parent schema to
+    PointlesSQL promotes a branch by renaming the parent schema to
     ``{parent}_pre_promote_{timestamp}`` and stamping it with this
     tag.  The Control-Room UI lists those backups in
     a separate panel so reviewers can find the original parent state
@@ -500,7 +506,11 @@ def apply_branch_tags_sync(
     strategy: str,
     created_at: str | None = None,
 ) -> None:
-    """Sync sibling of :func:`apply_branch_tags`."""
+    """Sync sibling of :func:`apply_branch_tags`.
+
+    Propagates :class:`ValueError` from :func:`_build_initial_changes`
+    when ``strategy`` is not a known strategy string.
+    """
     changes = _build_initial_changes(
         parent_schema=parent_schema,
         parent_version_at_create=parent_version_at_create,
@@ -512,7 +522,11 @@ def apply_branch_tags_sync(
 
 
 def read_branch_tags_sync(client: Client, schema_fqn: str) -> BranchTags | None:
-    """Sync sibling of :func:`read_branch_tags`."""
+    """Sync sibling of :func:`read_branch_tags`.
+
+    Propagates :class:`BranchTagsCorruptError` from :func:`_parse_tag_list`
+    when the schema carries a partial / malformed branch-tag set.
+    """
     raw = _get_tags_sync(client, schema_fqn)
     return _parse_tag_list(raw, schema_fqn)
 
@@ -524,7 +538,11 @@ def set_branch_status_sync(
     *,
     timestamp: str | None = None,
 ) -> None:
-    """Sync sibling of :func:`set_branch_status`."""
+    """Sync sibling of :func:`set_branch_status`.
+
+    Propagates :class:`ValueError` from :func:`_build_status_change`
+    when ``status`` is not one of :data:`VALID_STATUSES`.
+    """
     changes = _build_status_change(status, timestamp=timestamp)
     _update_tags_sync(client, schema_fqn, changes)
 
