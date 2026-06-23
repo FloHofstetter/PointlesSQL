@@ -74,7 +74,10 @@ def _emit_auth_denied_audit(
             workspace_id=int(row.workspace_id),
         )
     except Exception:  # noqa: BLE001 — audit must never break auth
-        logger.debug(
+        # Failing to write a security audit row (auth-denied) is a
+        # compliance-relevant gap that must be visible at the default INFO
+        # level, not buried at debug.
+        logger.warning(
             "Failed to emit auth-denied audit for api_key %s (%s)",
             row.name,
             action,
