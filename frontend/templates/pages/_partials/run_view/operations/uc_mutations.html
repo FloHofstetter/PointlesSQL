@@ -129,9 +129,16 @@
  <strong><i class="bi bi-exclamation-triangle me-1"></i>Stale</strong>
  — table has moved to v<span class="font-monospace"
  x-text="preview.current_version"></span>
- since this run wrote it. Restoring will overwrite
+ since this run wrote it.
+ <template x-if="preview.intervening_writes_verified">
+ <span>Restoring will overwrite
  <strong x-text="preview.intervening_writes.length"></strong>
- intervening write(s).
+ intervening write(s).</span>
+ </template>
+ <template x-if="!preview.intervening_writes_verified">
+ <span><strong>Could not verify</strong> how many writes intervened
+ (the check failed); restoring may overwrite later writes.</span>
+ </template>
  <div class="mt-2 form-check">
  <input class="form-check-input" type="checkbox"
  id="rollbackForceCheck" x-model="allowForce">

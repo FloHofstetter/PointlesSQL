@@ -18,6 +18,7 @@ mapping from refusal exception classes to PointlesSQL HTTP errors).
 from __future__ import annotations
 
 import datetime
+import logging
 import uuid
 from typing import Any
 
@@ -48,6 +49,8 @@ from pointlessql.services.agent_runs.operations import (
 )
 from pointlessql.services.workspace import find_downstream_tables
 from pointlessql.types import OpName
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -141,12 +144,18 @@ def _load_intervening_writes(
     target: str,
     after_version: int,
     exclude_run: str,
-) -> list[dict[str, Any]]:
+) -> tuple[list[dict[str, Any]], bool]:
     """Return ``agent_run_operations`` rows that wrote *target* after *after_version*.
 
     Drives the ⚠ stale-warning panel.  The exclusion is by run id —
     other ops within the same run that share the target ordinal are
     surfaced as ``op_candidates``, not as intervening writes.
+
+    The second tuple element is a *verified* flag.  This check gates a
+    destructive forced rollback, so a query failure must NOT look like
+    "no intervening writes" — an empty list with ``verified=False`` means
+    "unknown", which the panel renders as a distinct could-not-verify
+    warning rather than a reassuring "0 writes".
 
     Args:
         request: Incoming FastAPI request — provides the session
@@ -157,10 +166,12 @@ def _load_intervening_writes(
         exclude_run: ``agent_run_id`` of the run being rolled back.
 
     Returns:
-        A list of dicts shaped like ``{"run_id", "op_id",
-        "delta_version_after", "started_at"}``, ordered by
-        ``delta_version_after`` ascending.  Empty when no rows
-        match (or the query failed — best-effort).
+        ``(rows, verified)``.  ``rows`` is a list of dicts shaped like
+        ``{"run_id", "op_id", "delta_version_after", "started_at"}``
+        ordered by ``delta_version_after`` ascending, empty when no rows
+        match.  ``verified`` is ``True`` on a successful query and
+        ``False`` when the query raised (``rows`` is then ``[]`` and must
+        be treated as "unknown", not "clean").
     """
     factory = request.app.state.session_factory
     try:
@@ -182,10 +193,16 @@ def _load_intervening_writes(
                     "started_at": row.started_at.isoformat() if row.started_at else None,
                 }
                 for row in rows
-            ]
-    except Exception:  # noqa: BLE001 — preview is best-effort
-        # bare-broad-ok: intervening-writes panel renders empty on DB hiccup
-        return []
+            ], True
+    except Exception:  # noqa: BLE001 — verification must degrade to "unknown"
+        # bare-broad-ok: a DB hiccup here can't be allowed to read as
+        # "0 intervening writes" on a destructive-rollback safety check.
+        logger.exception(
+            "intervening-writes verification failed for %s after v%s; reporting unverified",
+            target,
+            after_version,
+        )
+        return [], False
 
 
 @router.get("/api/runs/{run_id}/rollback-preview")
@@ -220,7 +237,10 @@ async def api_rollback_preview(
         ``{"run_id", "target_table", "op_id", "op_candidates",
         "delta_version_before", "delta_version_after",
         "current_version", "is_stale", "intervening_writes",
-        "downstream_warnings"}``.
+        "intervening_writes_verified", "downstream_warnings"}``.
+        ``intervening_writes_verified`` is ``False`` when the
+        intervening-writes query failed, so an empty
+        ``intervening_writes`` must be read as "unknown", not "clean".
 
     Raises:
         CatalogNotFoundError: No matching ``agent_run_operations``
@@ -251,6 +271,7 @@ async def api_rollback_preview(
     chosen: AgentRunOperation | None = rows[0] if len(rows) == 1 else None
 
     intervening: list[dict[str, Any]] = []
+    intervening_verified: bool = True
     current_version: int | None = None
     is_stale: bool = False
 
@@ -267,7 +288,7 @@ async def api_rollback_preview(
             and current_version != chosen.delta_version_after
         ):
             is_stale = True
-            intervening = _load_intervening_writes(
+            intervening, intervening_verified = _load_intervening_writes(
                 request,
                 target=target,
                 after_version=chosen.delta_version_after,
@@ -294,6 +315,7 @@ async def api_rollback_preview(
         "current_version": current_version,
         "is_stale": is_stale,
         "intervening_writes": intervening,
+        "intervening_writes_verified": intervening_verified,
         "downstream_warnings": downstream_warnings,
     }
 

@@ -17,7 +17,10 @@ from __future__ import annotations
 
 import datetime
 import json
+import logging
 import uuid
+from types import SimpleNamespace
+from typing import Any
 
 import httpx
 import pytest
@@ -285,6 +288,9 @@ class TestRollbackPreviewRoute:
         assert "current_version" in body
         assert "is_stale" in body
         assert body["intervening_writes"] == []  # no other run touched silver
+        # Not stale (Delta unreachable → current_version None), so the
+        # verification flag defaults to True.
+        assert body["intervening_writes_verified"] is True
         assert body["downstream_warnings"] == []  # no lineage seeded
 
     @pytest.mark.asyncio
@@ -327,6 +333,87 @@ class TestRollbackPreviewRoute:
         assert len(body["op_candidates"]) == 2
         ordinals = [c["ordinal"] for c in body["op_candidates"]]
         assert ordinals == [1, 2]
+
+
+def _fake_request(factory: Any) -> Any:
+    """Minimal stand-in exposing ``request.app.state.session_factory``."""
+    return SimpleNamespace(app=SimpleNamespace(state=SimpleNamespace(session_factory=factory)))
+
+
+class TestLoadInterveningWrites:
+    """The intervening-writes check must distinguish 'clean' from 'unknown'.
+
+    This gates a destructive forced rollback, so a query failure must
+    report ``verified=False`` (an empty list that means "unknown") rather
+    than the same empty list a genuinely-clean table returns.
+    """
+
+    def test_success_returns_rows_verified_true(
+        self,
+        factory: sessionmaker,  # type: ignore[type-arg]
+    ) -> None:
+        """Two later runs are returned, version-ordered, with verified=True."""
+        from pointlessql.api.runs_routes.rollback import _load_intervening_writes
+
+        run_b, _ = _seed_run_op(
+            factory, target="main.silver.orders", delta_version_before=1, delta_version_after=2
+        )
+        run_c, _ = _seed_run_op(
+            factory, target="main.silver.orders", delta_version_before=2, delta_version_after=3
+        )
+        rows, verified = _load_intervening_writes(
+            _fake_request(factory),
+            target="main.silver.orders",
+            after_version=1,
+            exclude_run="some-unrelated-run",
+        )
+        assert verified is True
+        assert [r["delta_version_after"] for r in rows] == [2, 3]
+        assert {r["run_id"] for r in rows} == {run_b, run_c}
+
+    def test_exclude_run_is_filtered(
+        self,
+        factory: sessionmaker,  # type: ignore[type-arg]
+    ) -> None:
+        """The run being rolled back is excluded even if its version is higher."""
+        from pointlessql.api.runs_routes.rollback import _load_intervening_writes
+
+        run_b, _ = _seed_run_op(
+            factory, target="main.silver.orders", delta_version_before=1, delta_version_after=2
+        )
+        run_c, _ = _seed_run_op(
+            factory, target="main.silver.orders", delta_version_before=2, delta_version_after=3
+        )
+        rows, verified = _load_intervening_writes(
+            _fake_request(factory),
+            target="main.silver.orders",
+            after_version=1,
+            exclude_run=run_b,
+        )
+        assert verified is True
+        assert {r["run_id"] for r in rows} == {run_c}
+
+    def test_query_failure_returns_unverified(
+        self,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """A factory error yields ([], False) and logs — never a silent clean."""
+        from pointlessql.api.runs_routes.rollback import _load_intervening_writes
+
+        class _BoomFactory:
+            def __call__(self) -> Any:
+                raise RuntimeError("db down")
+
+        with caplog.at_level(logging.ERROR, logger="pointlessql.api.runs_routes.rollback"):
+            rows, verified = _load_intervening_writes(
+                _fake_request(_BoomFactory()),
+                target="main.silver.orders",
+                after_version=1,
+                exclude_run="run-x",
+            )
+        assert rows == []
+        assert verified is False
+        assert any("verification failed" in r.getMessage() for r in caplog.records)
 
 
 def _seed_run_op_via_app(
