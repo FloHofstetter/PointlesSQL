@@ -127,6 +127,42 @@ async def test_walk_back_attaches_cdf_events_to_step(
 
 
 @pytest.mark.asyncio
+async def test_row_trace_runs_blocking_db_work_on_executor(
+    uc_mock: MagicMock,
+    admin_client: httpx.AsyncClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The walkback + metadata-DB assembly are dispatched through run_sync.
+
+    Proves the 40+ blocking ORM queries no longer run directly on the
+    event loop: both the walkback and the coarse assembly helper flow
+    through the executor wrapper.
+    """
+    table = "demo.silver.tracked_exec"
+    row_id = "row-exec-001"
+    _seed_edge_and_events(table=table, row_id=row_id, versions=[1])
+
+    import pointlessql.api.lineage.views._row_trace as row_trace_mod
+
+    real_run_sync = row_trace_mod.run_sync
+    dispatched: list[str] = []
+
+    async def _spy(func: object, *args: object, **kwargs: object) -> object:
+        dispatched.append(getattr(func, "__name__", repr(func)))
+        return await real_run_sync(func, *args, **kwargs)  # type: ignore[arg-type]
+
+    monkeypatch.setattr(row_trace_mod, "run_sync", _spy)
+
+    resp = await admin_client.get(
+        "/api/lineage/row-trace",
+        params={"table": table, "row_id": row_id},
+    )
+    assert resp.status_code == 200, resp.text
+    assert "walk_back" in dispatched
+    assert "_assemble_row_steps" in dispatched
+
+
+@pytest.mark.asyncio
 async def test_walk_back_steps_without_cdf_events_get_empty_list(
     uc_mock: MagicMock, admin_client: httpx.AsyncClient
 ) -> None:

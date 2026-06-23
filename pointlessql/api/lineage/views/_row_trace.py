@@ -23,10 +23,36 @@ from pointlessql.api.lineage.views._helpers import (
     _step_to_dict,
 )
 from pointlessql.exceptions import ValidationError
-from pointlessql.services.lineage_edges import walk_back
+from pointlessql.services._executor import run_sync
+from pointlessql.services.lineage_edges import LineageStep, walk_back
 from pointlessql.types import TableFqn
 
 router = APIRouter(tags=["lineage"])
+
+
+def _assemble_row_steps(
+    factory: Any, steps: list[LineageStep], *, workspace_id: int
+) -> list[dict[str, Any]]:
+    """Build the row-trace step dicts from a walkback — the blocking DB block.
+
+    Bundles the op-metadata load, the value-change join, and the CDF-event
+    join into one callable so the route runs the whole metadata-DB section
+    on the executor in a single hop instead of issuing dozens of blocking
+    ORM queries directly on the event loop.
+
+    Args:
+        factory: SQLAlchemy session factory for the metadata DB.
+        steps: The lineage walkback to project and enrich.
+        workspace_id: Active workspace, scoping the CDF-event join.
+
+    Returns:
+        The fully-assembled step dicts, ready for PII masking.
+    """
+    op_meta = _load_op_metadata(_collect_op_ids(steps))
+    step_dicts = [_step_to_dict(s, op_meta) for s in steps]
+    step_dicts = _attach_value_changes(factory, step_dicts)
+    step_dicts = _attach_cdf_events(factory, step_dicts, workspace_id=workspace_id)
+    return step_dicts
 
 
 @router.get("/api/lineage/row-trace", responses=STANDARD_ERROR_RESPONSES)
@@ -58,13 +84,12 @@ async def api_row_trace(
     await _enforce_select(request, table)
 
     factory = _get_session_factory()
-    steps = walk_back(factory, table=table, row_id=row_id, max_hops=_MAX_HOPS)
+    steps = await run_sync(walk_back, factory, table=table, row_id=row_id, max_hops=_MAX_HOPS)
     steps = await _enrich_with_source_file(request, steps)
 
-    op_meta = _load_op_metadata(_collect_op_ids(steps))
-    step_dicts = [_step_to_dict(s, op_meta) for s in steps]
-    step_dicts = _attach_value_changes(factory, step_dicts)
-    step_dicts = _attach_cdf_events(factory, step_dicts, workspace_id=current_workspace_id(request))
+    step_dicts = await run_sync(
+        _assemble_row_steps, factory, steps, workspace_id=current_workspace_id(request)
+    )
     step_dicts = await _apply_pii_masking(request, step_dicts)
     return {
         "table": table,
@@ -102,12 +127,11 @@ async def html_row_trace(
     await _enforce_select(request, full_name)
 
     factory = _get_session_factory()
-    steps = walk_back(factory, table=full_name, row_id=row_id, max_hops=_MAX_HOPS)
+    steps = await run_sync(walk_back, factory, table=full_name, row_id=row_id, max_hops=_MAX_HOPS)
     steps = await _enrich_with_source_file(request, steps)
-    op_meta = _load_op_metadata(_collect_op_ids(steps))
-    step_dicts = [_step_to_dict(s, op_meta) for s in steps]
-    step_dicts = _attach_value_changes(factory, step_dicts)
-    step_dicts = _attach_cdf_events(factory, step_dicts, workspace_id=current_workspace_id(request))
+    step_dicts = await run_sync(
+        _assemble_row_steps, factory, steps, workspace_id=current_workspace_id(request)
+    )
     step_dicts = await _apply_pii_masking(request, step_dicts)
 
     return get_templates(request).TemplateResponse(

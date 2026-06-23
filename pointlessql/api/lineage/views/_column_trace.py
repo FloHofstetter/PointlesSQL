@@ -17,6 +17,7 @@ from pointlessql.api.lineage.views._helpers import (
     _load_op_metadata,
 )
 from pointlessql.exceptions import ValidationError
+from pointlessql.services._executor import run_sync
 from pointlessql.services.lineage_edges import (
     ColumnPredecessorRef,
     ColumnTraceStep,
@@ -25,6 +26,26 @@ from pointlessql.services.lineage_edges import (
 from pointlessql.types import TableFqn
 
 router = APIRouter(tags=["lineage"])
+
+
+def _build_column_steps(factory: Any, table: str, column: str) -> list[dict[str, Any]]:
+    """Walk back a column and project the steps — the blocking DB block.
+
+    Bundles the walkback and the op-metadata load into one callable so the
+    route runs the whole metadata-DB section on the executor in a single
+    hop rather than on the event loop.
+
+    Args:
+        factory: SQLAlchemy session factory for the metadata DB.
+        table: Three-part UC name of the column's table.
+        column: Column name to trace.
+
+    Returns:
+        The projected column-trace step dicts.
+    """
+    steps = walk_back_columns(factory, table=table, column=column, max_hops=_MAX_HOPS)
+    op_meta = _load_op_metadata(_collect_column_op_ids(steps))
+    return [_column_step_to_dict(s, op_meta) for s in steps]
 
 
 def _column_predecessor_to_dict(
@@ -126,12 +147,11 @@ async def api_column_trace(
     await _enforce_select(request, table)
 
     factory = _get_session_factory()
-    steps = walk_back_columns(factory, table=table, column=column, max_hops=_MAX_HOPS)
-    op_meta = _load_op_metadata(_collect_column_op_ids(steps))
+    steps = await run_sync(_build_column_steps, factory, table, column)
     return {
         "table": table,
         "column": column,
-        "steps": [_column_step_to_dict(s, op_meta) for s in steps],
+        "steps": steps,
     }
 
 
@@ -165,8 +185,7 @@ async def html_column_trace(
     await _enforce_select(request, full_name)
 
     factory = _get_session_factory()
-    steps = walk_back_columns(factory, table=full_name, column=column_name, max_hops=_MAX_HOPS)
-    op_meta = _load_op_metadata(_collect_column_op_ids(steps))
+    steps = await run_sync(_build_column_steps, factory, full_name, column_name)
 
     return get_templates(request).TemplateResponse(
         request,
@@ -177,7 +196,7 @@ async def html_column_trace(
             "table_name": table_name,
             "full_name": full_name,
             "column_name": column_name,
-            "steps": [_column_step_to_dict(s, op_meta) for s in steps],
+            "steps": steps,
             "active_catalog": catalog_name,
             "active_schema": schema_name,
             "active_table": table_name,
