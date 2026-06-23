@@ -438,6 +438,10 @@ class ServingManager:
             try:
                 await asyncio.wait_for(process.wait(), timeout=5.0)
             except TimeoutError:
+                logger.warning(
+                    "model-serving worker did not exit within 5s of SIGTERM; killing",
+                    extra={"endpoint_id": endpoint_id, "pid": process.pid},
+                )
                 process.kill()
                 await process.wait()
         return True

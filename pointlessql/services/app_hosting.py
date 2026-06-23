@@ -691,6 +691,10 @@ class AppsManager:
             try:
                 await asyncio.wait_for(process.wait(), timeout=5.0)
             except TimeoutError:
+                logger.warning(
+                    "hosted-app worker did not exit within 5s of SIGTERM; killing",
+                    extra={"app_id": app_id, "pid": process.pid},
+                )
                 process.kill()
                 await process.wait()
         return True
