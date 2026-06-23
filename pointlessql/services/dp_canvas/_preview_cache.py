@@ -83,7 +83,9 @@ def _upstream_doc_hash(doc: CanvasDoc, upto_node_id: str) -> str:
         for e in edge_items
     ]
     payload = json.dumps({"nodes": nodes, "edges": edges}, sort_keys=True, default=str)
-    return hashlib.sha1(payload.encode("utf-8")).hexdigest()
+    # Non-cryptographic content fingerprint for the preview cache key; never
+    # used for security, so SHA-1's collision weakness is irrelevant here.
+    return hashlib.sha1(payload.encode("utf-8"), usedforsecurity=False).hexdigest()
 
 
 def _key(*, dp_id: int, doc_hash: str, upto_node_id: str, limit: int) -> str:
