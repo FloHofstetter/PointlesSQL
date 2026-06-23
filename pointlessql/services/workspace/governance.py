@@ -24,6 +24,7 @@ agent run.
 
 from __future__ import annotations
 
+import asyncio
 import datetime
 import json
 import logging
@@ -38,9 +39,17 @@ from pointlessql.services.audit.sinks import dispatch_to_sinks
 from pointlessql.types import EventOutcome
 
 if TYPE_CHECKING:
+    from collections.abc import Coroutine
+
     from sqlalchemy.orm import Session, sessionmaker
 
 logger = logging.getLogger(__name__)
+
+#: Strong references to in-flight fire-and-forget governance-event tasks
+#: spawned by :func:`spawn_governance_event`.  Without this the event loop
+#: keeps only a weak reference and the task can be garbage-collected
+#: mid-flight; the done-callback discards each task when it settles.
+_background_event_tasks: set[asyncio.Task[None]] = set()
 
 
 EVENT_TYPE_EXTERNAL_WRITE = "pointlessql.external_write.detected"
@@ -363,3 +372,38 @@ async def emit_governance_event(
         outcome=EventOutcome.DELIVERED if delivered else EventOutcome.DELIVERY_FAILED,
         delivered_to=log,
     )
+
+
+def spawn_governance_event(
+    loop: asyncio.AbstractEventLoop,
+    coro: Coroutine[Any, Any, None],
+    *,
+    label: str,
+) -> None:
+    """Schedule a fire-and-forget governance-event emit with an error sink.
+
+    :func:`emit_governance_event` swallows fan-out failures but lets a
+    persistence error (the ``_persist_event`` write) propagate.  On a
+    ``loop.create_task`` call site there is no caller to catch that, so the
+    exception would vanish into the event-loop default handler.  This wraps
+    the coroutine so failures are logged, and retains a strong reference to
+    the task in :data:`_background_event_tasks` so it can't be
+    garbage-collected before it completes.
+
+    Args:
+        loop: The running event loop to schedule the emit on.
+        coro: The ``emit_governance_event(...)`` coroutine to run.
+        label: Short identifier included in the failure log line.
+    """
+
+    async def _runner() -> None:
+        try:
+            await coro
+        except Exception:  # noqa: BLE001
+            # bare-broad-ok: fire-and-forget emit — the originating write
+            # already succeeded and the caller can't act on this failure.
+            logger.exception("governance event emit failed: %s", label)
+
+    task = loop.create_task(_runner())
+    _background_event_tasks.add(task)
+    task.add_done_callback(_background_event_tasks.discard)

@@ -226,7 +226,10 @@ def emit_branch_event(
     import asyncio
 
     from pointlessql.db import get_session_factory
-    from pointlessql.services.workspace.governance import emit_governance_event
+    from pointlessql.services.workspace.governance import (
+        emit_governance_event,
+        spawn_governance_event,
+    )
 
     try:
         factory = get_session_factory()
@@ -253,7 +256,7 @@ def emit_branch_event(
                 exc,
             )
         return
-    loop.create_task(coro)
+    spawn_governance_event(loop, coro, label=f"branch:{event_type}")
 
 
 def record_branch_audit_log(
