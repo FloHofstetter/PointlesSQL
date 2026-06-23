@@ -343,19 +343,32 @@ class KernelSession:
         km = AsyncKernelManager()
         await km.start_kernel(env=env, cwd=str(self._cwd))
         kc: AsyncKernelClient = km.client()
-        kc.start_channels()
-        await kc.wait_for_ready(timeout=_KERNEL_READY_TIMEOUT)
+        # Register the manager + client on the session immediately, before
+        # the readiness wait that can time out.  The registry only stores
+        # this session once ``start`` returns, so if ``wait_for_ready`` (or
+        # channel open / bootstrap) raises after the subprocess is already
+        # spawned, the kernel would otherwise be orphaned — untracked by the
+        # registry and invisible to the idle reaper.  Holding the references
+        # here lets the ``except`` below reap it via ``shutdown``.
         self._km = km
         self._kc = kc
-        await self._run_bootstrap(kc)
-        self._iopub_task = asyncio.create_task(
-            self._pump("iopub"),
-            name=f"kernel-iopub-{self.session_id[:8]}",
-        )
-        self._shell_task = asyncio.create_task(
-            self._pump("shell"),
-            name=f"kernel-shell-{self.session_id[:8]}",
-        )
+        try:
+            kc.start_channels()
+            await kc.wait_for_ready(timeout=_KERNEL_READY_TIMEOUT)
+            await self._run_bootstrap(kc)
+            self._iopub_task = asyncio.create_task(
+                self._pump("iopub"),
+                name=f"kernel-iopub-{self.session_id[:8]}",
+            )
+            self._shell_task = asyncio.create_task(
+                self._pump("shell"),
+                name=f"kernel-shell-{self.session_id[:8]}",
+            )
+        except Exception:
+            # Reap the half-started kernel subprocess + ZMQ channels before
+            # propagating; a readiness timeout must not leak the process.
+            await self.shutdown()
+            raise
         logger.info(
             "kernel started for %s notebook=%s session_id=%s",
             self._user_email,
