@@ -96,8 +96,10 @@ class TestContextPanelDispatch:
             cookies={auth.COOKIE_NAME: token},
         ) as client:
             resp = await client.get(url)
-        if resp.status_code != 200:
-            pytest.skip(f"{url} returned {resp.status_code}; out of nav-panel scope")
+        assert resp.status_code == 200, (
+            f"{url} returned {resp.status_code} (expected 200) — the context-panel "
+            "page must render for a seeded admin, not silently skip on regression."
+        )
         body = resp.text
         assert f'aria-label="{aria_label}"' in body, (
             f"{url} did not render its context-panel partial (missing aria-label={aria_label!r})"
