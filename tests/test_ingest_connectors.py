@@ -14,6 +14,8 @@ from pointlessql.exceptions import ValidationError
 from pointlessql.services.ingest.connectors import (
     build_reader_spec,
     build_table_listing_spec,
+    quote_sql_identifier,
+    quote_sql_string,
 )
 
 
@@ -133,3 +135,57 @@ def test_postgres_requires_source_table_when_reading() -> None:
             {"password": "p"},
             source_table=None,
         )
+
+
+# -- required-field validation -----------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("kind", "config", "field"),
+    [
+        ("file_upload", {}, "path"),
+        ("file_upload", {"path": "   "}, "path"),
+        ("parquet_glob", {}, "pattern"),
+        ("parquet_glob", {"pattern": ""}, "pattern"),
+        ("http", {}, "url"),
+        ("s3", {}, "url"),
+    ],
+)
+def test_blank_required_field_rejected(kind: str, config: dict[str, object], field: str) -> None:
+    """A missing/blank required config field raises ValidationError naming it."""
+    with pytest.raises(ValidationError, match=field):
+        build_reader_spec(kind, config)
+
+
+def test_postgres_missing_host_db_user_rejected() -> None:
+    """Postgres needs host/db/user; blank config is rejected (before secrets)."""
+    with pytest.raises(ValidationError, match="host"):
+        build_reader_spec("postgres", {}, {}, source_table="public.orders")
+
+
+def test_source_table_with_too_many_parts_rejected() -> None:
+    """A three-part source_table (``a.b.c``) is rejected — only schema.table/table."""
+    with pytest.raises(ValidationError, match="schema.table"):
+        build_reader_spec(
+            "postgres",
+            {"host": "h", "db": "d", "user": "u"},
+            {"password": "p"},
+            source_table="cat.schema.table",
+        )
+
+
+# -- SQL quoting helpers (injection-safety seam) -----------------------------
+
+
+def test_quote_sql_string_doubles_embedded_quotes() -> None:
+    assert quote_sql_string("plain") == "'plain'"
+    assert quote_sql_string("foo'bar") == "'foo''bar'"
+    # Consecutive quotes each get doubled.
+    assert quote_sql_string("a''b") == "'a''''b'"
+    assert quote_sql_string("") == "''"
+
+
+def test_quote_sql_identifier_doubles_embedded_quotes() -> None:
+    assert quote_sql_identifier("col") == '"col"'
+    assert quote_sql_identifier('we"ird') == '"we""ird"'
+    assert quote_sql_identifier('"') == '""""'
