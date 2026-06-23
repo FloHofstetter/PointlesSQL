@@ -296,6 +296,7 @@ markers = [
     "e2e: requires a headless browser via Playwright; lives under e2e/",
     "requires_soyuz: e2e journey needs a live soyuz-catalog (catalog/lineage/federation data); auto-skips when soyuz is unreachable",
     "lineage_verify: property-based + golden-corpus lineage correctness (Hypothesis)",
+    "sql_parser_verify: property-based SQL-parser reference-extraction correctness (Hypothesis)",
 ]
 
 [tool.coverage.run]
