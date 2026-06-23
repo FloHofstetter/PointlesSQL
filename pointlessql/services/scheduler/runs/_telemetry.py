@@ -104,13 +104,22 @@ async def _post_failure_webhook(
     # use elsewhere).
     from pointlessql.services.scheduler import runs as _runs
 
+    # Correlation fields so a failed delivery can be joined to the run that
+    # triggered it (the bare URL alone can't be).
+    log_extra = {
+        "webhook_url": url,
+        "job_id": payload.get("job_id"),
+        "run_id": payload.get("run_id"),
+    }
     try:
         async with _runs._webhook_client_factory() as client:
             await client.post(url, json=payload, timeout=_runs._WEBHOOK_TIMEOUT_SECONDS)
     except httpx.HTTPError as exc:
-        logger.warning("scheduler: on_failure_url webhook to %s failed: %s", url, exc)
+        logger.warning(
+            "scheduler: on_failure_url webhook to %s failed: %s", url, exc, extra=log_extra
+        )
     except Exception:  # noqa: BLE001 — webhook boundary
-        logger.exception("scheduler: on_failure_url webhook to %s raised", url)
+        logger.exception("scheduler: on_failure_url webhook to %s raised", url, extra=log_extra)
 
 
 def _sync_run_health_signal(
