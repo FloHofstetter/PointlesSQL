@@ -205,7 +205,13 @@ def test_save_with_drifted_uuid_rewrites_hub_doc(
             doc[CELLS_TEXT_KEY][bogus_client_uuid] = Text("payload-text")
             doc[CELLS_ORDER_KEY].append(bogus_client_uuid)
             ws.send_bytes(_TAG_SYNC_UPDATE + doc.get_update())
-            time.sleep(0.15)  # give the hub time to apply
+            hub = notebook_coedit_ws._HUBS[notebook_uuid]
+            # Bounded poll: wait for the hub to apply the client's update,
+            # rather than racing a fixed sleep on a loaded CI box.
+            for _ in range(50):
+                if bogus_client_uuid in dict(hub.doc[CELLS_TEXT_KEY].to_py()):
+                    break
+                time.sleep(0.02)
             client.post(
                 "/api/notebooks/save",
                 json={
@@ -219,8 +225,13 @@ def test_save_with_drifted_uuid_rewrites_hub_doc(
                     ],
                 },
             )
-            time.sleep(0.15)  # let the broadcast settle
-            hub = notebook_coedit_ws._HUBS[notebook_uuid]
+            # Bounded poll: wait for the save's remap broadcast to settle
+            # (the bogus client key is rewritten to the real cell uuid).
+            for _ in range(50):
+                texts_now = dict(hub.doc[CELLS_TEXT_KEY].to_py())
+                if real_cell_uuid in texts_now and bogus_client_uuid not in texts_now:
+                    break
+                time.sleep(0.02)
             order = list(hub.doc[CELLS_ORDER_KEY].to_py())
             texts = dict(hub.doc[CELLS_TEXT_KEY].to_py())
     assert bogus_client_uuid not in texts
