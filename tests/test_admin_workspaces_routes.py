@@ -111,6 +111,12 @@ async def test_admin_archive_workspace_sets_timestamp() -> None:
         response = await client.post(f"/api/admin/workspaces/{ws.id}/archive")
     assert response.status_code == 200
     assert response.json()["archived_at"] is not None
+    # Persistence check: the workspace row itself is archived, not just the
+    # response body — a route that returned a timestamp without committing
+    # the archive (or committing to the wrong row) would otherwise pass.
+    persisted = workspaces_service.get_workspace(_factory(), workspace_id=ws.id)
+    assert persisted is not None
+    assert persisted.archived_at is not None
 
 
 @pytest.mark.asyncio
