@@ -39,13 +39,38 @@ _MAX_LIST_PAGES = 1000
 
 
 class MetadataMixin:
-    """Schema + table + tag operations."""
+    """Schema + table + tag operations.
+
+    The metadata-browsing core: schemas and tables under a catalog,
+    plus the tag edges hung off any securable. Several list methods
+    page directly against soyuz endpoints the generated client does
+    not yet wrap.
+
+    Every method routes through ``@wrap_catalog_errors``, which normalises
+    soyuz-catalog failures into domain exceptions (the shared error
+    mapping): a 404 becomes ``CatalogNotFoundError``, other 4xx and
+    malformed request bodies become ``ValidationError``, and 5xx /
+    transport errors become ``CatalogUnavailableError``.
+    """
 
     _client: Client  # provided by UnityCatalogClient
 
     @wrap_catalog_errors
     async def get_schema(self, catalog_name: str, schema_name: str) -> dict[str, Any]:
-        """Return metadata for a single schema."""
+        """Return metadata for a single schema.
+
+        Failures are normalised by the shared error mapping (see the
+        class docstring): an unknown schema surfaces as
+        ``CatalogNotFoundError``.
+
+        Args:
+            catalog_name: Parent catalog.
+            schema_name: Target schema.
+
+        Returns:
+            The schema's fields as a dict, or ``{}`` if soyuz returned
+            no parsed body.
+        """
         full_name = f"{catalog_name}.{schema_name}"
         response = await _get_schema.asyncio(full_name=full_name, client=self._client)
         if response is None:
@@ -56,7 +81,21 @@ class MetadataMixin:
     async def get_table(
         self, catalog_name: str, schema_name: str, table_name: str
     ) -> dict[str, Any]:
-        """Return metadata (including columns) for a single table."""
+        """Return metadata, including columns, for a single table.
+
+        Failures are normalised by the shared error mapping (see the
+        class docstring): an unknown table surfaces as
+        ``CatalogNotFoundError``.
+
+        Args:
+            catalog_name: Parent catalog.
+            schema_name: Parent schema.
+            table_name: Target table.
+
+        Returns:
+            The table's fields as a dict, or ``{}`` if soyuz returned no
+            parsed body.
+        """
         full_name = TableFqn.from_parts(catalog_name, schema_name, table_name)
         response = await _get_table.asyncio(full_name=full_name, client=self._client)
         if response is None:
@@ -66,6 +105,10 @@ class MetadataMixin:
     @wrap_catalog_errors
     async def create_schema(self, data: dict[str, Any]) -> dict[str, Any]:
         """Create a new schema under an existing catalog.
+
+        Failures are normalised by the shared error mapping (see the
+        class docstring); a body that ``CreateSchema.from_dict`` cannot
+        parse surfaces as ``ValidationError``.
 
         Args:
             data: Request body matching ``CreateSchema`` — requires
@@ -95,6 +138,10 @@ class MetadataMixin:
         ``data_source_format``, ``columns``, ``storage_location``) must
         be present — soyuz rejects partial payloads with 422.
 
+        Failures are normalised by the shared error mapping (see the
+        class docstring); a partial or unparseable body surfaces as
+        ``ValidationError``.
+
         Args:
             data: Request body matching ``CreateTable``.
 
@@ -115,7 +162,8 @@ class MetadataMixin:
         """Delete a table by its three-part name.
 
         Used by the Postgres sync worker to drop tables that have
-        disappeared from the source database.
+        disappeared from the source database. Failures are normalised by
+        the shared error mapping (see the class docstring).
 
         Args:
             catalog_name: Parent catalog.
@@ -141,6 +189,9 @@ class MetadataMixin:
         remaining tables in the schema; the discard primitive cleans
         them explicitly first, so ``force=False`` is the default.
 
+        Failures are normalised by the shared error mapping (see the
+        class docstring).
+
         Args:
             catalog_name: Parent catalog.
             schema_name: Target schema.
@@ -157,7 +208,20 @@ class MetadataMixin:
     async def update_schema(
         self, catalog_name: str, schema_name: str, patch: dict[str, Any]
     ) -> dict[str, Any]:
-        """Apply a partial update to a schema."""
+        """Apply a partial update to a schema.
+
+        Failures are normalised by the shared error mapping (see the
+        class docstring).
+
+        Args:
+            catalog_name: Parent catalog.
+            schema_name: Target schema.
+            patch: Partial body matching ``UpdateSchema``.
+
+        Returns:
+            The updated schema as a dict, or ``{}`` if soyuz returned no
+            parsed body.
+        """
         full_name = f"{catalog_name}.{schema_name}"
         body = UpdateSchema.from_dict(patch)
         response = await _update_schema.asyncio(full_name=full_name, client=self._client, body=body)
@@ -169,11 +233,17 @@ class MetadataMixin:
     async def list_schemas(self, catalog_name: str) -> list[dict[str, Any]]:
         """Return all schemas inside a catalog.
 
+        Drains every page (capped at ``_MAX_LIST_PAGES``) and stops
+        early if soyuz returns an unexpected response shape. Failures
+        are normalised by the shared error mapping (see the class
+        docstring).
+
         Args:
             catalog_name: Name of the parent catalog.
 
         Returns:
-            A list of schema dicts.
+            A list of schema dicts, or ``[]`` if soyuz returned an
+            unexpected response shape on the first page.
         """
         out: list[dict[str, Any]] = []
         page_token: str | None = None
@@ -202,12 +272,18 @@ class MetadataMixin:
         identifiers under ``"identifiers"`` — a spec mismatch to be
         fixed upstream.
 
+        A 404 is treated as "no tables" and yields ``[]``; any other
+        non-2xx surfaces through the shared error mapping (see the class
+        docstring) so the tree shows "unavailable" rather than an empty
+        schema.
+
         Args:
             catalog_name: Name of the parent catalog.
             schema_name: Name of the parent schema.
 
         Returns:
-            A list of table dicts.
+            A list of table dicts, or ``[]`` when the schema has no
+            tables.
         """
         url = "/api/2.1/unity-catalog/tables"
         http = self._client.get_async_httpx_client()
@@ -240,14 +316,16 @@ class MetadataMixin:
         directly because the generated client does not yet wrap it.
         Same shape as :meth:`list_tables` so :meth:`get_tree` can
         treat volumes as a third sibling list alongside tables +
-        models.
+        models. A 404 yields ``[]``; any other non-2xx surfaces through
+        the shared error mapping (see the class docstring).
 
         Args:
             catalog_name: Name of the parent catalog.
             schema_name: Name of the parent schema.
 
         Returns:
-            A list of volume dicts.
+            A list of volume dicts, or ``[]`` when the schema has no
+            volumes.
         """
         url = "/api/2.1/unity-catalog/volumes"
         http = self._client.get_async_httpx_client()
@@ -274,12 +352,16 @@ class MetadataMixin:
     async def get_tags(self, securable_type: str, full_name: str) -> list[dict[str, Any]]:
         """Return tags for a securable (catalog, schema, or table).
 
+        Failures are normalised by the shared error mapping (see the
+        class docstring).
+
         Args:
             securable_type: One of ``catalog``, ``schema``, ``table``.
             full_name: Dotted name of the securable.
 
         Returns:
-            A list of tag dicts with ``key``, ``value``, timestamps.
+            A list of tag dicts with ``key``, ``value``, timestamps, or
+            ``[]`` if soyuz returned an unexpected response shape.
         """
         st = GetTagsTagsSecurableTypeFullNameGetSecurableType(securable_type)
         response = await _get_tags.asyncio(
@@ -301,6 +383,9 @@ class MetadataMixin:
     ) -> list[dict[str, Any]]:
         """Apply tag changes (set/remove) and return the updated tag list.
 
+        Failures are normalised by the shared error mapping (see the
+        class docstring).
+
         Args:
             securable_type: One of ``catalog``, ``schema``, ``table``.
             full_name: Dotted name of the securable.
@@ -308,7 +393,8 @@ class MetadataMixin:
                 dicts.
 
         Returns:
-            The updated tag list after applying changes.
+            The updated tag list after applying changes, or ``[]`` if
+            soyuz returned an unexpected response shape.
         """
         st = UpdateTagsTagsSecurableTypeFullNamePatchSecurableType(securable_type)
         body = UpdateTags.from_dict({"changes": changes})
