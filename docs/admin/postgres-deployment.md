@@ -115,6 +115,44 @@ These tweaks are not auto-applied by alembic — operators run
 them once per install.  A `pointlessql admin tune-pg`
 sub-command may follow in a later phase.
 
+## Adding indexes to large tables online
+
+A plain `CREATE INDEX` takes an `ACCESS EXCLUSIVE` lock and blocks
+**every write** to the table until the build finishes.  On the large,
+append-only tables — `audit_log` (on the request write hot path),
+`query_history`, the `lineage_*` family, and the `*_snapshots` tables —
+that stalls live traffic for as long as the build runs.
+
+Any migration that adds an index to one of those tables must build it
+online instead.  Use the helper rather than a bare `op.create_index`:
+
+```python
+from pointlessql.alembic._online_index import create_index_online, drop_index_online
+
+def upgrade() -> None:
+    create_index_online(
+        "ix_audit_log_workspace_created",
+        "audit_log",
+        ["workspace_id", sa.text("created_at DESC")],
+    )
+
+def downgrade() -> None:
+    drop_index_online("ix_audit_log_workspace_created", "audit_log")
+```
+
+On Postgres the helper builds the index `CONCURRENTLY` (no write lock)
+inside an `autocommit_block` — required, because a concurrent build
+cannot run inside the migration's transaction — and adds `IF NOT
+EXISTS` so a retry after an interrupted build is idempotent.  On SQLite
+it falls back to a plain `op.create_index`, so `alembic check` stays
+green on the SQLite lane.  The migration
+`64bf0762645a_add_snapshot_lookup_expression_indexes.py` is the
+reference example.
+
+> A concurrent build that fails (e.g. a duplicate-value violation on a
+> unique index) leaves an `INVALID` index behind.  Drop it
+> (`DROP INDEX CONCURRENTLY`) before re-running the migration.
+
 ## Backup / restore playbook
 
 ### Single-shot dump
