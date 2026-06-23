@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 import datetime
+import logging
+
+import pytest
 
 from pointlessql.api.main import app
 from pointlessql.models import PolicyModule
@@ -111,6 +114,29 @@ def test_parse_error_fails_closed_with_error_class() -> None:
     )
     assert decision.effect == "forbid"
     assert decision.error_class == "cedar_parse_error"
+
+
+def test_parse_error_emits_warning_log(caplog: pytest.LogCaptureFixture) -> None:
+    """A fail-closed parse error is visible in the log stream, not just the audit row.
+
+    The engine denies access when a policy module won't compile; that
+    config failure must surface a warning (with the structured
+    ``error_class`` field) so an operator can see access is being denied
+    by broken policy rather than by intent.
+    """
+    invalidate_cache()
+    broken = _module("broken", "this is not cedar source")
+    with caplog.at_level(logging.WARNING, logger="pointlessql.services.policy_as_code._engine"):
+        decision = cedar_evaluate(
+            [broken],
+            principal='User::"1"',
+            action='Action::"read"',
+            resource='DataProduct::"main.silver"',
+        )
+    assert decision.error_class == "cedar_parse_error"
+    assert any(
+        getattr(record, "error_class", None) == "cedar_parse_error" for record in caplog.records
+    ), "fail-closed parse error was not logged with its error_class"
 
 
 def test_cache_keys_on_version_bump() -> None:
