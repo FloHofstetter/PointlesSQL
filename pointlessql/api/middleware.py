@@ -118,6 +118,32 @@ PUBLIC_PREFIXES: tuple[str, ...] = (
     "/metrics",
 )
 
+# Fallback Bearer path-allowlist used when settings are not yet wired (e.g.
+# the lifespan has not populated ``app.state.settings``). Mirrors the
+# ``ApiKeyAclSettings.bearer_path_prefixes`` default.
+_DEFAULT_BEARER_PATH_PREFIXES: tuple[str, ...] = ("/api/", "/mcp/", "/webhook/")
+
+
+def _bearer_allowed_for_path(request: Request, path: str) -> bool:
+    """Return whether a Bearer API key may authenticate on *path*.
+
+    A stray ``Authorization`` header on a path outside the configured
+    allowlist (e.g. an HTML page) is ignored rather than silently
+    authenticating, so a leaked key cannot drive surfaces it was never
+    meant to reach.
+
+    Args:
+        request: Incoming request (for ``app.state.settings``).
+        path: The request URL path.
+
+    Returns:
+        ``True`` when *path* is under one of the allowlisted prefixes.
+    """
+    settings = getattr(request.app.state, "settings", None)
+    acl = getattr(settings, "api_key_acl", None)
+    prefixes = tuple(getattr(acl, "bearer_path_prefixes", _DEFAULT_BEARER_PATH_PREFIXES))
+    return path.startswith(prefixes)
+
 
 async def auth_middleware(request: Request, call_next: Any) -> Response:
     """Resolve a principal from cookie OR Bearer key; gate protected paths.
@@ -137,6 +163,13 @@ async def auth_middleware(request: Request, call_next: Any) -> Response:
     Cookie auth still wins when both are present so a human in a
     browser keeps their identity even if a misconfigured proxy
     forwards a Bearer header.
+
+    Bearer acceptance is defence-in-depth gated: the key is honoured
+    only on the configured ``bearer_path_prefixes`` (the JSON API, MCP,
+    and webhooks by default), so a stray ``Authorization`` header on an
+    HTML path is ignored rather than silently authenticating. A key that
+    declares its own ip-grants is enforced against them unconditionally,
+    independent of the global ``enforce_ip_grants`` opt-in flag.
     """
     path = request.url.path
 
@@ -163,7 +196,7 @@ async def auth_middleware(request: Request, call_next: Any) -> Response:
     # TTL inside :func:`verify_bearer` keeps the hot path off the DB
     # except on miss.
     api_key_workspace_id: int | None = None
-    if getattr(request.state, "user", None) is None:
+    if getattr(request.state, "user", None) is None and _bearer_allowed_for_path(request, path):
         factory = getattr(request.app.state, "session_factory", None)
         entry = api_keys_service.verify_bearer(
             request.headers.get("authorization"),
@@ -172,14 +205,13 @@ async def auth_middleware(request: Request, call_next: Any) -> Response:
         if entry is not None:
             # IP allowlist gate.  Runs before any state is
             # attached so a denied request looks indistinguishable from
-            # an unauthenticated one + emits a distinct audit row.
+            # an unauthenticated one + emits a distinct audit row.  A key
+            # that declares its own ip-grants is enforced unconditionally;
+            # the global ``enforce_ip_grants`` flag is only an opt-in for
+            # keys with no grants of their own (the check itself is
+            # zero-grant-permissive, so a no-grant key still passes).
             settings_for_acl = getattr(request.app.state, "settings", None)
-            enforce_ip = (
-                settings_for_acl is not None
-                and getattr(settings_for_acl, "api_key_acl", None) is not None
-                and bool(settings_for_acl.api_key_acl.enforce_ip_grants)
-            )
-            if enforce_ip and factory is not None:
+            if factory is not None:
                 from pointlessql.api.rate_limit_middleware import (
                     _client_ip,  # pyright: ignore[reportPrivateUsage]
                 )
@@ -189,18 +221,25 @@ async def auth_middleware(request: Request, call_next: Any) -> Response:
                 )
 
                 ip_grants = load_ip_grants_for(factory, api_key_id=entry.id)
-                rl_settings = getattr(settings_for_acl, "rate_limit", None)
-                trust_xff = bool(getattr(rl_settings, "trust_x_forwarded_for", False))
-                source_ip = _client_ip(request, trust_xff)
-                if not check_ip_allowed(ip_grants, source_ip):
-                    _emit_ip_denied_audit(factory, entry, source_ip)
-                    return problem_response(
-                        request,
-                        status_code=403,
-                        error_code=ErrorCode.IP_NOT_ALLOWED,
-                        detail=(f"source IP {source_ip!r} is not in the allowlist for this key"),
-                        extra={"source_ip": source_ip, "api_key_name": entry.name},
-                    )
+                acl_settings = getattr(settings_for_acl, "api_key_acl", None)
+                enforce_ip_global = acl_settings is not None and bool(
+                    acl_settings.enforce_ip_grants
+                )
+                if ip_grants or enforce_ip_global:
+                    rl_settings = getattr(settings_for_acl, "rate_limit", None)
+                    trust_xff = bool(getattr(rl_settings, "trust_x_forwarded_for", False))
+                    source_ip = _client_ip(request, trust_xff)
+                    if not check_ip_allowed(ip_grants, source_ip):
+                        _emit_ip_denied_audit(factory, entry, source_ip)
+                        return problem_response(
+                            request,
+                            status_code=403,
+                            error_code=ErrorCode.IP_NOT_ALLOWED,
+                            detail=(
+                                f"source IP {source_ip!r} is not in the allowlist for this key"
+                            ),
+                            extra={"source_ip": source_ip, "api_key_name": entry.name},
+                        )
             request.state.api_key_name = entry.name
             request.state.api_key_supervisor = entry.supervisor
             request.state.api_key_auditor = entry.auditor

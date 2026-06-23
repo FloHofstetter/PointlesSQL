@@ -98,11 +98,24 @@ class ApiKeyAclSettings(BaseSettings):
 
     Reads ``POINTLESSQL_API_KEY_ACL_*`` environment variables.
 
-    ``enforce_catalog_grants`` and ``enforce_ip_grants`` are global
-    kill-switches.  When ``False`` the corresponding ACL check
-    short-circuits to "allowed" for every request — useful during
-    incident response if a misconfigured grant locks out a critical
-    integration.
+    ``enforce_catalog_grants`` is a global kill-switch: when ``False``
+    the catalog ACL check short-circuits to "allowed" for every request
+    — useful during incident response if a misconfigured grant locks out
+    a critical integration.
+
+    ``enforce_ip_grants`` is the *opt-in* IP enforcement switch for keys
+    that have **no** ip-grants of their own.  A key that declares its own
+    ip-grants is always enforced against them regardless of this flag —
+    a configured allowlist is never silently ignored.  Set ``False`` only
+    to disable the blanket enforcement, e.g. behind a header-stripping
+    reverse proxy that hides the real source IP.
+
+    ``bearer_path_prefixes`` restricts where a Bearer API key is accepted.
+    A stray ``Authorization`` header on any other path (e.g. an HTML page)
+    is ignored rather than silently authenticating the request, so a
+    leaked key cannot drive the browser UI.  The default covers the
+    integration surfaces: the JSON API, the MCP transport, and inbound
+    webhooks.
 
     ``usage_flush_interval_seconds`` is how often the in-process
     Counter is drained into the ``api_key_usage_buckets`` table.
@@ -116,6 +129,7 @@ class ApiKeyAclSettings(BaseSettings):
 
     enforce_catalog_grants: bool = True
     enforce_ip_grants: bool = True
+    bearer_path_prefixes: tuple[str, ...] = ("/api/", "/mcp/", "/webhook/")
     usage_flush_interval_seconds: int = 30
     usage_retention_days: int = 30
 
