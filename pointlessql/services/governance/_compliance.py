@@ -184,6 +184,14 @@ def scan_workspace(
         try:
             contract = DataProductContract.model_validate(json.loads(contract_json))
         except TypeError, ValueError:
+            # A corrupt/unparseable contract drops out of the compliance
+            # scan entirely — no PII/retention finding is ever raised for
+            # it.  Log it so the silent gap is visible, rather than letting
+            # a malformed product look compliant.
+            logger.warning(
+                "compliance scan: skipping data product with unparseable contract",
+                extra={"data_product_id": product_id, "workspace_id": workspace_id},
+            )
             continue
         class_index = classifications_for_schema(session_factory, catalog=catalog, schema=schema)
         effective = get_effective_policy(

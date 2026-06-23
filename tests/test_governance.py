@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import datetime
 import json
+import logging
 
 import httpx
 import pandas as pd
@@ -345,6 +346,51 @@ def test_scan_workspace_logs_violations() -> None:
             )
         ).all()
     assert len(rows) >= 2
+
+
+def test_scan_workspace_logs_and_skips_unparseable_contract(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """A corrupt contract_json is logged and skipped, not silently dropped.
+
+    A product whose contract won't parse produces no PII/retention finding;
+    without a log that gap is invisible and the product looks compliant.
+    """
+    now = datetime.datetime.now(datetime.UTC)
+    with _factory()() as session:
+        row = DataProduct(
+            workspace_id=1,
+            catalog_name="main",
+            schema_name="broken_dp",
+            steward_user_id=None,
+            version="1.0.0",
+            description="",
+            sla_minutes=None,
+            contract_yaml_hash="0" * 64,
+            contract_json="{ this is not valid json",
+            last_loaded_at=now,
+            created_at=now,
+        )
+        session.add(row)
+        session.commit()
+        bad_id = row.id
+
+    with caplog.at_level(logging.WARNING, logger="pointlessql.services.governance._compliance"):
+        summary = gov.scan_workspace(
+            _factory(),
+            None,
+            workspace_id=1,
+            age_provider=lambda _s, _c, _sc, _t: 1.0,
+        )
+
+    # The broken product produced no violation (skipped, not crashed)...
+    assert all(v.get("ref") != "main.broken_dp" for v in summary["violations"])
+    # ...but the skip was logged with the product id.
+    assert any(
+        getattr(record, "data_product_id", None) == bad_id
+        and "unparseable contract" in record.getMessage()
+        for record in caplog.records
+    ), "unparseable-contract skip was not logged"
 
 
 # ---------------------------------------------------------------------------
