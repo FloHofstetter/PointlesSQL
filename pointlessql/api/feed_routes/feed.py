@@ -8,21 +8,41 @@
 * ``GET /api/feed/trending`` — top-N entities by 24 h activity count.
 * ``GET /api/feed/people`` — top contributors the caller does not
   already follow, 7 d window.
+
+The per-request ``session.execute(...)`` data-fetch blocks live in
+:mod:`pointlessql.api.feed_routes._queries`; row→dict shaping lives in
+:mod:`pointlessql.api.feed_routes._serializers`.  These route bodies only
+orchestrate.
 """
 
 from __future__ import annotations
 
 import datetime
-import json
 from typing import Any
 
 from fastapi import APIRouter, Request
-from sqlalchemy import and_, func, or_, select
 
 from pointlessql.api.dependencies import (
     current_workspace_id,
     get_user,
     require_user,
+)
+from pointlessql.api.feed_routes._queries import (
+    fetch_display_names,
+    fetch_followed_overlay,
+    fetch_followed_user_ids,
+    fetch_inbox,
+    fetch_mention_rows,
+    fetch_my_rows,
+    fetch_needs_action_count,
+    fetch_open_signals,
+    fetch_pending_runs,
+    fetch_people_activity_counts,
+    fetch_reply_counts,
+    fetch_run_principals,
+    fetch_seen_at,
+    fetch_trending_counts,
+    fetch_unread_for_you_count,
 )
 from pointlessql.api.feed_routes._serializers import (
     DEFAULT_LIMIT,
@@ -36,14 +56,6 @@ from pointlessql.api.feed_routes._serializers import (
     row_from_review,
     row_from_signal,
 )
-from pointlessql.models.actionable_signals import STATUS_OPEN, ActionableSignal
-from pointlessql.models.agent._runs import STATUS_NEEDS_APPROVAL, AgentRun
-from pointlessql.models.auth import User
-from pointlessql.models.catalog._data_product_comments import DataProductComment
-from pointlessql.models.catalog._data_product_reviews import DataProductReview
-from pointlessql.models.notifications import FeedReadMarker, UserNotification
-from pointlessql.models.social._social_target import SocialTarget
-from pointlessql.models.social._user_follow import UserFollow
 from pointlessql.services.notifications.categories import (
     ATTENTION_ACT,
     ATTENTION_FOR_YOU,
@@ -135,100 +147,40 @@ async def get_feed(
     workspace_id = current_workspace_id(request)
     limit = max(1, min(MAX_LIMIT, int(limit)))
     needle = q.strip().lower()
+    is_admin = bool(caller.get("is_admin"))
 
     factory = request.app.state.session_factory
     rows: list[dict[str, Any]] = []
     with factory() as session:
-        # per-request DP-FQN cache feeds the
-        # registry-driven URL builder so every feed row carries
-        # the same shape ``social_target.entity_ref`` rows use.
+        # per-request DP-FQN cache feeds the registry-driven URL builder so
+        # every feed row carries the same shape ``social_target.entity_ref``
+        # rows use.
         fqn_map = build_fqn_map(session, workspace_id)
 
-        # Inbox rows — always pulled, the filter trims after merge.
-        inbox = (
-            session.execute(
-                select(UserNotification)
-                .where(
-                    UserNotification.recipient_user_id == caller["id"],
-                    UserNotification.workspace_id == workspace_id,
-                )
-                .order_by(UserNotification.created_at.desc())
-                .limit(limit * 2)
-            )
-            .scalars()
-            .all()
+        # Inbox rows + the followed-users overlay (comments + reviews).  The
+        # filter trims after merge, so both are always pulled here.
+        inbox = fetch_inbox(session, caller_id=caller["id"], workspace_id=workspace_id, limit=limit)
+        followed_user_ids = fetch_followed_user_ids(session, caller_id=caller["id"])
+        comments_rows, reviews_rows = fetch_followed_overlay(
+            session,
+            followed_user_ids=followed_user_ids,
+            workspace_id=workspace_id,
+            limit=limit,
         )
 
-        # Followed-users overlay (comments + reviews).
-        followed_user_ids: list[int] = [
-            int(uid)
-            for (uid,) in session.execute(
-                select(UserFollow.followed_user_id).where(
-                    UserFollow.follower_user_id == caller["id"]
-                )
-            ).all()
-        ]
-        comments_rows: list[Any] = []
-        reviews_rows: list[Any] = []
-        if followed_user_ids:
-            # JOIN the polymorphic anchor so cross-kind
-            # comments + reviews flow into the feed with the right
-            # entity_kind/entity_ref + source_url.
-            comments_rows = session.execute(
-                select(DataProductComment, SocialTarget)
-                .outerjoin(
-                    SocialTarget,
-                    DataProductComment.social_target_id == SocialTarget.id,
-                )
-                .where(
-                    DataProductComment.author_user_id.in_(followed_user_ids),
-                    DataProductComment.workspace_id == workspace_id,
-                    DataProductComment.deleted_at.is_(None),
-                )
-                .order_by(DataProductComment.created_at.desc())
-                .limit(limit)
-            ).all()
-            reviews_rows = session.execute(
-                select(DataProductReview, SocialTarget)
-                .outerjoin(
-                    SocialTarget,
-                    DataProductReview.social_target_id == SocialTarget.id,
-                )
-                .where(
-                    DataProductReview.author_user_id.in_(followed_user_ids),
-                    DataProductReview.workspace_id == workspace_id,
-                )
-                .order_by(DataProductReview.created_at.desc())
-                .limit(limit)
-            ).all()
-
-        # bulk-resolve actor display names so every
-        # feed row carries an attribution line.  One SELECT for all
-        # actor + author user-ids surfaced above.
+        # bulk-resolve actor display names so every feed row carries an
+        # attribution line — one SELECT for all surfaced user-ids.
         actor_names = build_actor_names(
             session,
             list(inbox) + [c for c, _ in comments_rows] + [r for r, _ in reviews_rows],
         )
-
         # One grouped SELECT for the reply count under every surfaced
-        # comment, so each card can show "View N replies" without a
-        # per-row query.
-        reply_counts: dict[int, int] = {}
+        # comment, so each card can show "View N replies" without a per-row
+        # query.
         comment_ids = [int(c.id) for c, _ in comments_rows]
-        if comment_ids:
-            reply_counts = {
-                int(pid): int(n)
-                for pid, n in session.execute(
-                    select(DataProductComment.parent_comment_id, func.count())
-                    .where(
-                        DataProductComment.parent_comment_id.in_(comment_ids),
-                        DataProductComment.workspace_id == workspace_id,
-                        DataProductComment.deleted_at.is_(None),
-                    )
-                    .group_by(DataProductComment.parent_comment_id)
-                ).all()
-                if pid is not None
-            }
+        reply_counts = fetch_reply_counts(
+            session, comment_ids=comment_ids, workspace_id=workspace_id
+        )
 
         rows.extend(row_from_notification(n, fqn_map, actor_names) for n in inbox)
         rows.extend(
@@ -237,176 +189,37 @@ async def get_feed(
         )
         rows.extend(row_from_review(r, fqn_map, actor_names, t) for r, t in reviews_rows)
 
-        # Action-required lane (live): agent runs in ``needs_approval``
-        # are read straight from the source table — never stored as a
-        # notification — so the inline Approve / Deny card always
-        # reflects the run's current state.  Admin-gated: approving is
-        # admin-only, so only admins see the actionable cards.
-        if caller.get("is_admin"):
-            pending_runs = (
-                session.execute(
-                    select(AgentRun)
-                    .where(
-                        AgentRun.status == STATUS_NEEDS_APPROVAL,
-                        AgentRun.workspace_id == workspace_id,
-                    )
-                    .order_by(AgentRun.started_at.desc())
-                    .limit(limit)
-                )
-                .scalars()
-                .all()
-            )
-            # Resolve each run's principal email to a display name + id in
-            # one round-trip so the approval card reads as a person, not a
-            # raw email, and the avatar gets a stable per-user colour.
-            principal_emails = {r.principal for r in pending_runs if r.principal}
-            principals: dict[str, tuple[int, str]] = {}
-            if principal_emails:
-                principals = {
-                    str(email): (int(uid), str(name))
-                    for uid, email, name in session.execute(
-                        select(User.id, User.email, User.display_name).where(
-                            User.email.in_(principal_emails)
-                        )
-                    ).all()
-                }
+        # Action-required lane (live): agent runs in ``needs_approval`` and
+        # open actionable signals are read straight from their source
+        # tables — never stored as notifications — so the inline cards
+        # always reflect current state.  Admin-gated: triage is admin-only.
+        if is_admin:
+            pending_runs = fetch_pending_runs(session, workspace_id=workspace_id, limit=limit)
+            principals = fetch_run_principals(session, pending_runs=pending_runs)
             rows.extend(row_from_pending_run(r, principals) for r in pending_runs)
-
-            # Data-health / pipeline lane (live): open actionable
-            # signals are read straight from the ledger, so a card
-            # disappears the moment the underlying problem resolves.
-            # Admin-gated like approvals — admins triage data health.
-            open_signals = (
-                session.execute(
-                    select(ActionableSignal)
-                    .where(
-                        ActionableSignal.status == STATUS_OPEN,
-                        ActionableSignal.workspace_id == workspace_id,
-                    )
-                    .order_by(ActionableSignal.opened_at.desc())
-                    .limit(limit)
-                )
-                .scalars()
-                .all()
-            )
+            open_signals = fetch_open_signals(session, workspace_id=workspace_id, limit=limit)
             rows.extend(row_from_signal(s) for s in open_signals)
 
-        # Attention-tier counts power the "needs you" badge + zone
-        # header.  They are counted independently of the row slice so a
-        # capped fetch never under-reports what is waiting.  The ``act``
-        # work (approvals + open signals) is admin-gated like the cards;
-        # the ``for_you`` count is per-recipient and covers every caller.
-        # Legacy rows written before the ``attention`` column existed are
-        # treated as ``for_you`` only when their event type is a mention,
-        # mirroring :func:`attention_for_event`.
-        needs_action_count = 0
-        if caller.get("is_admin"):
-            pending_count = session.execute(
-                select(func.count())
-                .select_from(AgentRun)
-                .where(
-                    AgentRun.status == STATUS_NEEDS_APPROVAL,
-                    AgentRun.workspace_id == workspace_id,
-                )
-            ).scalar()
-            signal_count = session.execute(
-                select(func.count())
-                .select_from(ActionableSignal)
-                .where(
-                    ActionableSignal.status == STATUS_OPEN,
-                    ActionableSignal.workspace_id == workspace_id,
-                )
-            ).scalar()
-            needs_action_count = int(pending_count or 0) + int(signal_count or 0)
-        # Seen-cursor — the per-(user, workspace) high-water mark that
-        # splits "new" ambient rows from already-seen history.  ``None``
-        # (no marker yet) means the reader has seen nothing, so every
-        # row reads as new until they catch up.
-        seen_at = session.execute(
-            select(FeedReadMarker.seen_at).where(
-                FeedReadMarker.user_id == caller["id"],
-                FeedReadMarker.workspace_id == workspace_id,
-            )
-        ).scalar_one_or_none()
-        # SQLite drops the offset on a ``DateTime(timezone=True)`` column,
-        # so a cursor read back here is naive; normalise to UTC before any
-        # comparison against the (UTC-aware) parsed row timestamps.
-        if seen_at is not None and seen_at.tzinfo is None:
-            seen_at = seen_at.replace(tzinfo=datetime.UTC)
-        unread_for_you_count = int(
-            session.execute(
-                select(func.count())
-                .select_from(UserNotification)
-                .where(
-                    UserNotification.recipient_user_id == caller["id"],
-                    UserNotification.workspace_id == workspace_id,
-                    UserNotification.read_at.is_(None),
-                    or_(
-                        UserNotification.attention == ATTENTION_FOR_YOU,
-                        and_(
-                            UserNotification.attention.is_(None),
-                            UserNotification.event_type.like("%mention%"),
-                        ),
-                    ),
-                )
-            ).scalar()
-            or 0
+        # Attention-tier counts power the "needs you" badge + zone header.
+        # They are counted independently of the row slice so a capped fetch
+        # never under-reports what is waiting.  The ``act`` work is
+        # admin-gated like the cards; the ``for_you`` count covers everyone.
+        needs_action_count = (
+            fetch_needs_action_count(session, workspace_id=workspace_id) if is_admin else 0
+        )
+        seen_at = fetch_seen_at(session, caller_id=caller["id"], workspace_id=workspace_id)
+        unread_for_you_count = fetch_unread_for_you_count(
+            session, caller_id=caller["id"], workspace_id=workspace_id
         )
 
-        # Mentions filter — resolve to the user's id and check
-        # ``mentioned_user_ids_json``.  Authored ``my`` filter
-        # mirrors the same logic with a different predicate.
+        # Filter overlays — ``mentions`` / ``my`` replace the merged set
+        # with their own query; ``followed_*`` narrow the merged rows.
         if filter == "mentions":
-            mentions = (
-                session.execute(
-                    select(DataProductComment)
-                    .where(
-                        DataProductComment.workspace_id == workspace_id,
-                        DataProductComment.deleted_at.is_(None),
-                    )
-                    .order_by(DataProductComment.created_at.desc())
-                )
-                .scalars()
-                .all()
+            rows = fetch_mention_rows(
+                session, caller_id=caller["id"], workspace_id=workspace_id, fqn_map=fqn_map
             )
-            mention_actor_names = build_actor_names(session, mentions)
-            mention_rows: list[dict[str, Any]] = []
-            for c in mentions:
-                try:
-                    mentioned = json.loads(c.mentioned_user_ids_json or "[]")
-                except ValueError, TypeError:
-                    mentioned = []
-                if caller["id"] in mentioned:
-                    mention_rows.append(row_from_comment(c, fqn_map, mention_actor_names, None))
-            rows = mention_rows
         elif filter == "my":
-            mine_comments = (
-                session.execute(
-                    select(DataProductComment)
-                    .where(
-                        DataProductComment.author_user_id == caller["id"],
-                        DataProductComment.deleted_at.is_(None),
-                    )
-                    .order_by(DataProductComment.created_at.desc())
-                    .limit(limit)
-                )
-                .scalars()
-                .all()
-            )
-            mine_reviews = (
-                session.execute(
-                    select(DataProductReview)
-                    .where(DataProductReview.author_user_id == caller["id"])
-                    .order_by(DataProductReview.created_at.desc())
-                    .limit(limit)
-                )
-                .scalars()
-                .all()
-            )
-            my_actor_names = build_actor_names(session, list(mine_comments) + list(mine_reviews))
-            rows = [row_from_comment(c, fqn_map, my_actor_names, None) for c in mine_comments] + [
-                row_from_review(r, fqn_map, my_actor_names, None) for r in mine_reviews
-            ]
+            rows = fetch_my_rows(session, caller_id=caller["id"], fqn_map=fqn_map, limit=limit)
         elif filter == "followed_users":
             rows = [r for r in rows if r["kind"] in ("comment", "review")]
         elif filter == "followed_dps":
@@ -535,25 +348,7 @@ async def get_trending(request: Request, limit: int = 5) -> dict[str, Any]:
     factory = request.app.state.session_factory
     cutoff = datetime.datetime.now(datetime.UTC) - _TRENDING_WINDOW
     with factory() as session:
-        rows = session.execute(
-            select(
-                UserNotification.source_entity_kind,
-                UserNotification.source_entity_ref,
-                func.count().label("c"),
-            )
-            .where(
-                UserNotification.workspace_id == workspace_id,
-                UserNotification.created_at >= cutoff,
-                UserNotification.source_entity_kind.is_not(None),
-                UserNotification.source_entity_ref.is_not(None),
-            )
-            .group_by(
-                UserNotification.source_entity_kind,
-                UserNotification.source_entity_ref,
-            )
-            .order_by(func.count().desc())
-            .limit(cap)
-        ).all()
+        rows = fetch_trending_counts(session, workspace_id=workspace_id, cutoff=cutoff, limit=cap)
     out: list[dict[str, Any]] = []
     for kind, ref, count in rows:
         if not kind or not ref:
@@ -603,40 +398,13 @@ async def get_people_to_follow(request: Request, limit: int = 5) -> dict[str, An
     cutoff = datetime.datetime.now(datetime.UTC) - _PEOPLE_WINDOW
     with factory() as session:
         # Already-followed user ids.
-        followed: set[int] = {
-            int(uid)
-            for (uid,) in session.execute(
-                select(UserFollow.followed_user_id).where(
-                    UserFollow.follower_user_id == caller["id"]
-                )
-            ).all()
-        }
+        followed: set[int] = set(fetch_followed_user_ids(session, caller_id=caller["id"]))
         # Comment + review activity authored in window.  Counts both
         # tables and sums client-side to keep the SQL portable across
         # SQLite + Postgres.
-        comment_counts = session.execute(
-            select(
-                DataProductComment.author_user_id,
-                func.count().label("c"),
-            )
-            .where(
-                DataProductComment.workspace_id == workspace_id,
-                DataProductComment.created_at >= cutoff,
-                DataProductComment.deleted_at.is_(None),
-            )
-            .group_by(DataProductComment.author_user_id)
-        ).all()
-        review_counts = session.execute(
-            select(
-                DataProductReview.author_user_id,
-                func.count().label("c"),
-            )
-            .where(
-                DataProductReview.workspace_id == workspace_id,
-                DataProductReview.created_at >= cutoff,
-            )
-            .group_by(DataProductReview.author_user_id)
-        ).all()
+        comment_counts, review_counts = fetch_people_activity_counts(
+            session, workspace_id=workspace_id, cutoff=cutoff
+        )
         totals: dict[int, int] = {}
         for uid, c in comment_counts:
             totals[int(uid)] = totals.get(int(uid), 0) + int(c)
@@ -655,9 +423,7 @@ async def get_people_to_follow(request: Request, limit: int = 5) -> dict[str, An
         if not candidates:
             return {"rows": []}
         ids = [uid for uid, _ in candidates]
-        names = dict(
-            session.execute(select(User.id, User.display_name).where(User.id.in_(ids))).all()
-        )
+        names = fetch_display_names(session, user_ids=ids)
     return {
         "rows": [
             {
