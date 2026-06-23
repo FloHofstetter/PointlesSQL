@@ -1,16 +1,14 @@
 """smoke tests for ``/ws/notebook/chat/{editor_session_id}``.
 
-Forks the Phase-91 SQL chat WS smoke suite.  Verifies the
-JSON-RPC envelope, the ``ready`` notify, the prompt → tokens →
-final round-trip, and the surface=notebook env-var routing
-(``POINTLESSQL_NOTEBOOK_CHAT_SESSION_ID`` is set, not
-``POINTLESSQL_CHAT_SESSION_ID``).
+Forks the SQL chat WS smoke suite.  Verifies the JSON-RPC envelope, the
+``ready`` notify, the prompt → tokens → final round-trip, and that the
+handler forwards ``surface='notebook'`` to ``build_agent`` (which is what
+drives the notebook-vs-sql env-var split inside the real factory).
 """
 
 from __future__ import annotations
 
 import json
-import os
 import uuid
 from typing import Any
 
@@ -61,18 +59,14 @@ def fake_agent_factory(monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
     """Replace ``build_agent`` with a fake that captures kwargs."""
 
     def fake_build_agent(*, on_token: Any, **kwargs: Any) -> _FakeAIAgent:
+        # Capture the kwargs the WS handler passed so the routing test can
+        # assert on the real contract (``surface='notebook'``).  We do NOT
+        # touch ``os.environ`` here — the real env-var split lives in
+        # build_agent itself, and mutating the process env from a fake both
+        # leaked across tests and only ever proved the fake set what it was
+        # coded to set.
         _LAST_BUILD_KWARGS.clear()
         _LAST_BUILD_KWARGS.update(kwargs)
-        # Mimic the real factory's env-var split so the env-routing
-        # test below can observe which variable was set.
-        surface = kwargs.get("surface", "sql")
-        editor_session_id = kwargs.get("editor_session_id", "")
-        if surface == "notebook":
-            os.environ["POINTLESSQL_NOTEBOOK_CHAT_SESSION_ID"] = editor_session_id
-            os.environ.pop("POINTLESSQL_CHAT_SESSION_ID", None)
-        else:
-            os.environ["POINTLESSQL_CHAT_SESSION_ID"] = editor_session_id
-            os.environ.pop("POINTLESSQL_NOTEBOOK_CHAT_SESSION_ID", None)
         return _FakeAIAgent(
             reply="Inserted a cell for you.",
             emit_tokens=("Inserted ", "a ", "cell."),
