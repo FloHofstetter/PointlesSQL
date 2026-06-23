@@ -49,12 +49,25 @@ FROM python:3.14-slim AS runtime
 COPY --from=builder /opt/venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
+# Unprivileged runtime user (uid 10001): a container compromise can't run
+# as root or write outside the app's own paths.  /opt/venv is copied
+# root-owned but world-readable, so the app can still import from it.
+RUN useradd --system --create-home --uid 10001 app
+
 WORKDIR /app
 
 # Ship default notebooks so the getting-started notebook is available
 # out of the box.  The compose file bind-mounts ./notebooks on top of
 # this so user edits persist on the host.
 COPY notebooks/ /app/notebooks/
+
+# Pre-create the writable mount points (the compose named volumes
+# warehouse_data / pointlessql_data / notebooks_data land here) and hand
+# /app to the app user before dropping privileges.  A fresh named volume
+# inherits this ownership on first mount, so the non-root process can
+# write its SQLite DB, warehouse, and notebooks.
+RUN mkdir -p /app/data /app/warehouse /app/notebooks \
+    && chown -R app:app /app
 
 # OCI labels: `source` links the package to its repo on GHCR's sidebar;
 # `revision` + `version` come from build args passed by docker.yml.
@@ -68,5 +81,7 @@ LABEL org.opencontainers.image.source="https://github.com/FloHofstetter/Pointles
       org.opencontainers.image.licenses="Apache-2.0"
 
 EXPOSE 8000 8888
+
+USER app
 
 CMD ["uvicorn", "pointlessql.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
