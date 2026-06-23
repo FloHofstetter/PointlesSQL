@@ -1,9 +1,13 @@
 # Static application security testing (SAST).
 #
-# Runs bandit over the application package at high severity. Kept
-# non-blocking (continue-on-error) until the finding floor is calibrated on
-# a few green runs — same ramp the e2e-browser job used. Flip to blocking by
-# removing `continue-on-error` once the baseline is clean.
+# Runs bandit over the application package at medium-and-above severity
+# (-ll) against a committed finding baseline (.bandit-baseline.json). The
+# baseline freezes the known pre-existing findings as the floor, so the gate
+# passes today and fails only when a change introduces a NEW, non-baselined
+# finding — the same budget-gate shape as the pyright / file-size gates.
+# Regenerate the baseline deliberately (and review the delta in the diff)
+# whenever a finding is genuinely resolved or accepted:
+#   uv run bandit -r pointlessql -ll --ini .bandit -f json -o .bandit-baseline.json
 #
 # pip-audit (dependency CVEs) already runs in test.yml; detect-secrets gating
 # needs a committed `.detect-secrets.baseline` (generate with
@@ -18,12 +22,11 @@ on:
 jobs:
   sast:
     runs-on: ubuntu-latest
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v7
       - name: Install uv
         uses: astral-sh/setup-uv@v7
       - name: Sync dependencies
         run: uv sync --all-extras
-      - name: Bandit (high severity)
-        run: uv run bandit -r pointlessql -ll --ini .bandit
+      - name: Bandit (medium+ severity, against committed baseline)
+        run: uv run bandit -r pointlessql -ll --ini .bandit -b .bandit-baseline.json
