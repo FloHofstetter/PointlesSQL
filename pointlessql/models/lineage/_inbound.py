@@ -1,9 +1,9 @@
-"""Expected upstream-producer registry for the Phase-40 freshness check.
+"""Expected upstream-producer registry for the freshness check.
 
 One row per ``(workspace, target_table, producer)`` triple captures
 "this table should receive at least one inbound OpenLineage event
 from this producer every ``max_silence_minutes`` minutes".  The
-Sprint-40.4 freshness compute walks this registry to surface stale
+freshness compute walks this registry to surface stale
 upstream feeds on the table-detail page and (optionally, via
 ``last_alerted_at`` dedup) emit a CloudEvents alert envelope.
 

@@ -151,7 +151,7 @@ export function createCoeditClient({
       // any cells_text / cells_order entries pinned to the stale
       // key follow over, then surface the dict to the mixin so the
       // Alpine state (cells[].cell_uuid, cellCounts, etc.) and any
-      // Phase-105.3b CodeMirror binding can rebind to the new key.
+      // CodeMirror binding can rebind to the new key.
       let remap = null;
       try {
         remap = JSON.parse(new TextDecoder().decode(payload));

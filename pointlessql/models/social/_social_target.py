@@ -78,7 +78,7 @@ class SocialTarget(Base):
         data_product_id: Optional back-pointer to
             ``data_products.id`` with ``ondelete=CASCADE``.  Set
             iff ``entity_kind='dp'``; preserves the original
-            Phase-76 behaviour where deleting a DP cleans up its
+            behaviour where deleting a DP cleans up its
             social rows.  ``NULL`` for every other kind.
         created_at: Wall-clock when the anchor row was created.
     """

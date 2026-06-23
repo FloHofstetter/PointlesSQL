@@ -283,7 +283,7 @@ def load_contracts_for_workspace(
     combines two yaml sources:
 
     1. Env-configured ``settings.data_products.yaml_search_paths``
-       (the legacy Phase-50 path).  Treated as workspace-agnostic;
+       (the legacy env-path source).  Treated as workspace-agnostic;
        admins point this at machine-local directories.
     2. Repo-discovered yaml: every successfully-synced
        :class:`WorkspaceRepo` row in *workspace_id* contributes
@@ -311,7 +311,7 @@ def load_contracts_for_workspace(
         List of successfully-loaded contracts.
 
     The function imports :class:`Settings` lazily to keep this
-    module's import surface unchanged for the Phase-50 paths that
+    module's import surface unchanged for the env-path callers that
     don't go through the workspace-scoped helper.
     """
     # Local import to avoid a top-level dependency on settings/git

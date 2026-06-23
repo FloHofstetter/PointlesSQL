@@ -2,7 +2,7 @@
 
 A milestone groups issues by a due date / planning bucket — same
 shape as GitHub milestones.  Each issue references at most one
-milestone (mirrors GitHub, locked-decision in the Phase-77 plan).
+milestone (mirrors GitHub, by design).
 The catalogue is workspace-scoped so two workspaces can have
 identically-titled milestones without collision.
 """

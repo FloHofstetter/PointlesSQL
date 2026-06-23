@@ -1,6 +1,6 @@
 """Cross-worker co-edit bus outbox.
 
-Outbox table that lets the otherwise single-process Phase-105.2
+Outbox table that lets the otherwise single-process
 co-edit hub fan frames out to other uvicorn workers without a
 new infrastructure dependency.  Each publish writes one row +
 emits a PG ``NOTIFY`` carrying the row id; remote workers receive
@@ -30,7 +30,7 @@ from pointlessql.models.base import Base
 class CoeditBusMessage(Base):
     """One cross-worker co-edit frame, durable for ~60 s.
 
-    The Phase-105.2 hub holds the live :class:`pycrdt.Doc` in the
+    The co-edit hub holds the live :class:`pycrdt.Doc` in the
     uvicorn worker that first claimed it.  Once a second worker is
     online (``POINTLESSQL_COEDIT_BUS_ENABLED=1`` + multiple uvicorn
     workers), updates from one worker must reach editors on the

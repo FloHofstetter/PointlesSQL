@@ -166,11 +166,11 @@ export function chatPanel(editorSessionId) {
 
     /** Accept the proposal, load SQL into editor with the chat run id.
      *
-     * Phase-96 fix: ``this.$root`` inside this factory returns the
+     * ``this.$root`` inside this factory returns the
      * drawer's own root, NOT the outer ``sqlEditor()`` scope —
      * Alpine 3's ``$root`` magic resolves to the closest x-data
-     * ancestor, which is the drawer itself.  Phase-91 shipped with
-     * silently-broken ``this.$root.setSQL`` / ``.chatOpen`` /
+     * ancestor, which is the drawer itself.  An earlier version
+     * had silently-broken ``this.$root.setSQL`` / ``.chatOpen`` /
      * ``._chatAgentRunId`` writes against this self-reference.
      * Walking up one ancestor and asking Alpine for its data
      * gives us the real outer scope.

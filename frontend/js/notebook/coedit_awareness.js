@@ -12,7 +12,7 @@
  *      same peer rail under a robot-icon branch (`_applyAgentPresence`).
  *
  * Sync-recovery rebroadcast: the late-joiner re-emit in the awareness
- * `change` handler closes the Phase-108 race where the recipient's
+ * `change` handler closes the race where the recipient's
  * `setLocalState` frame arrived before our own.  Bounded loop — the
  * recipient's own re-broadcast surfaces as `updated`, not `added`,
  * so it does not re-fire.

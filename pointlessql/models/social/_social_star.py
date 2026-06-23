@@ -1,7 +1,7 @@
 """Lightweight per-user star bookmarks.
 
 Stars are the "I bookmarked this, no notifications" primitive.
-They sit alongside the Phase-71 follow table — follows generate
+They sit alongside the follow table — follows generate
 inbox rows on relevant events, stars are inert.
 
 The table is polymorphic from day 1: composite PK on

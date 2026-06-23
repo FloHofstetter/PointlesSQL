@@ -5,8 +5,8 @@ Four allowed types, CHECK-constrained at the DB layer:
 * ``verified-by-steward`` — the steward has rubber-stamped the
   contract and the latest contents.
 * ``production-ready`` — promoted for downstream consumption.
-* ``deprecated`` — soft warning on writes; Phase-50 pre-write
-  hook reads this on a future polish sprint.
+* ``deprecated`` — soft warning on writes; the pre-write
+  hook reads this.
 * ``under-review`` — actively being audited; readers should
   expect schema churn.
 

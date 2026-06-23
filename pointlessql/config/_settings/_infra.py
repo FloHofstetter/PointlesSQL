@@ -163,7 +163,7 @@ class CDFTailSettings(BaseSettings):
     """CDF tail subscription worker configuration.
 
     Reads ``POINTLESSQL_CDF_TAIL_*`` environment variables.  The
-    Phase-40.5 background worker periodically reads
+    background worker periodically reads
     ``DeltaTable.load_cdf()`` per active
     :class:`CdfTailSubscription` and INSERT-OR-IGNOREs every CDF row
     into ``cdf_tail_events``.

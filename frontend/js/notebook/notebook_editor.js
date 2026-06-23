@@ -535,7 +535,7 @@ export function notebookEditor({ initialPath = '', currentUser = null } = {}) {
      *
      * Drives the toolbar's "Close all (N)" affordance, which surfaces
      * once ≥2 panels stack on top of each other.  Includes the
-     * Phase-96 chat drawer even though it's fixed-position rather than
+     * chat drawer even though it's fixed-position rather than
      * inline-stacked, so "Close all" maps to the user's "clear my
      * workspace" intent regardless of the underlying layout.
      *

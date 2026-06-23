@@ -1,6 +1,6 @@
 """Per-cell authorship attribution.
 
-The "current attribution" surface on top of the Phase-96 provenance
+The "current attribution" surface on top of the provenance
 log: who minted this cell and who last touched it.  Used by the
 editor's cell-header chip and the reviewer-per-cell flow.
 """
@@ -25,7 +25,7 @@ from pointlessql.models.base import Base
 class NotebookCellAuthorship(Base):
     """Per-cell authorship attribution.
 
-    The Phase-96 :class:`NotebookCellProvenance` table records every
+    The :class:`NotebookCellProvenance` table records every
     accepted AI-assistant proposal as an append-only audit log.
     Authorship is the *current* attribution surface: "who minted this
     cell and who last touched it".  Used by the editor's cell-header

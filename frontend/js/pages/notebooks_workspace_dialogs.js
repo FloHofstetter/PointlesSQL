@@ -57,7 +57,7 @@ export function notebookDialogs() {
         this.templates = Array.isArray(body?.templates) ? body.templates : [];
       } catch {
         // Fail-quiet: an empty gallery means the user gets the empty
-        // notebook path — same behaviour as pre-Phase-98.B.
+        // notebook path — same as the legacy behaviour.
         this.templates = [];
       } finally {
         this.templatesLoaded = true;

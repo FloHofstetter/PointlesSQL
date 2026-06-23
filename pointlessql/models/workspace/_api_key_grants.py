@@ -35,7 +35,7 @@ class ApiKeyCatalogGrant(Base):
     """Per-key catalog/schema allowlist row.
 
     Semantics: a key with **zero** rows in this table is unrestricted
-    (back-compat behaviour for every pre-Phase-120 key).  With **one or
+    (back-compat behaviour for every legacy key).  With **one or
     more** rows, every catalog/schema reference in the statement must
     match at least one grant.  A grant with ``schema_name=NULL``
     matches every schema inside that catalog.

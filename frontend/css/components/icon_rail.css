@@ -5,7 +5,7 @@
  *   * ``"expanded"`` (default):  220 px column.  Icon + label
  *     side-by-side; group headers visible.
  *   * ``"collapsed"``:           64 px column.  Icon-only entries;
- *     group headers hidden.  Equivalent to pre-Phase-80 layout.
+ *     group headers hidden.  Equivalent to the legacy layout.
  *
  * Width is exposed via the CSS variable ``--pql-icon-rail-width``,
  * declared in base.css.  layout.css reads the same variable for the

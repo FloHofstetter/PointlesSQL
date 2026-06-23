@@ -142,7 +142,7 @@ class ApiKeyLifecycleSettings(BaseSettings):
     The ``default_ttl_days`` field is **not enforced** as a hard
     server-side default — instead it acts as the suggested value
     the admin UI form pre-fills, so admins explicitly opt in to a
-    TTL per key.  Backward compatibility for pre-Phase-119 keys is
+    TTL per key.  Backward compatibility for legacy keys is
     via ``expires_at=NULL`` which the verify path treats as "no
     expiry".
 
@@ -389,7 +389,7 @@ class CoeditSettings(BaseSettings):
     """cross-worker co-edit hub fanout.
 
     Reads ``POINTLESSQL_COEDIT_*`` environment variables.  The
-    Phase-105.2 hub holds the live :class:`pycrdt.Doc` in the
+    co-edit hub holds the live :class:`pycrdt.Doc` in the
     uvicorn worker that first claimed it; once multiple uvicorn
     workers serve the same install, updates from one worker need a
     pub/sub backbone to reach editors on the other workers.

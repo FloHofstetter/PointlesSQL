@@ -1,6 +1,6 @@
 """Notebook replay attempts.
 
-The replay surface re-executes a Phase-97 :class:`NotebookRevision`
+The replay surface re-executes a :class:`NotebookRevision`
 against today's data and stores the fresh outputs alongside the frozen
 historical ones — the AV-governance "shadow mode" pattern applied to
 notebooks.
@@ -28,7 +28,7 @@ from pointlessql.models.base import Base
 class NotebookReplay(Base):
     """One replay attempt of an old notebook revision.
 
-    The replay surface re-executes a Phase-97 :class:`NotebookRevision`
+    The replay surface re-executes a :class:`NotebookRevision`
     against today's data and stores the fresh outputs alongside the
     frozen historical ones, so a reviewer can spot which cells now
     produce different results.  This is the AV-governance
@@ -36,7 +36,7 @@ class NotebookReplay(Base):
     revision stays untouched (no chance of overwriting it); the
     replay row is the diff anchor.
 
-    A replay may optionally target a Phase-102 branch instead of
+    A replay may optionally target a branch instead of
     ``main`` so the re-execution does not corrupt the production
     table — flag stored in ``branch_name``.
 
@@ -45,9 +45,9 @@ class NotebookReplay(Base):
         replay_uuid: 36-char stable identifier for REST URLs.
         notebook_id: FK to :class:`Notebook` — cascade-delete with
             the notebook.
-        base_revision_uuid: Phase-97 revision the replay forks
+        base_revision_uuid: Revision the replay forks
             from.  Frozen; the replay never edits this row.
-        branch_name: Optional Phase-102 branch the replay's writes
+        branch_name: Optional branch the replay's writes
             target.  ``None`` means the replay runs read-only or
             against ``main`` (caller's choice).
         status: ``"pending"`` | ``"running"`` | ``"ok"`` |

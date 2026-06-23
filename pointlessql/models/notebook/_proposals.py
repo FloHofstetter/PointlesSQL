@@ -1,6 +1,6 @@
 """Multi-cell AI proposal — full code-gen flow.
 
-Extends the Phase-96 single-cell propose / fix / explain proposals
+Extends the single-cell propose / fix / explain proposals
 to a full sequence the user can insert as an atomic block.
 """
 
@@ -26,7 +26,7 @@ from pointlessql.models.base import Base
 class NotebookCellSequenceProposal(Base):
     """Multi-cell AI proposal — full code-gen flow.
 
-    Extends the Phase-96 single-cell propose / fix / explain proposals
+    Extends the single-cell propose / fix / explain proposals
     to a full sequence: one prompt yields a coherent ``imports →
     DataFrame → plot → markdown`` sequence the user can insert as a
     block.  Each row carries the full cell list as JSON so insertion

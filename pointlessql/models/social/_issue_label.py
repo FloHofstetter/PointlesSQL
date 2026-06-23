@@ -2,9 +2,9 @@
 
 Labels are user-defined slugs (e.g. ``bug``, ``good-first-issue``,
 ``compliance``) attached to issues via the ``issues.labels_json``
-JSON array.  No M:N junction — per the Phase-77 plan, labels live
+JSON array.  No M:N junction — by design, labels live
 as a slug list inside each issue row.  Filtering-by-label goes
-through 77.9 FTS or client-side; the SQL-side cost of a junction
+through FTS or client-side; the SQL-side cost of a junction
 table wasn't worth it for the typical workspace label count.
 
 The catalogue row itself stores presentation metadata: human-

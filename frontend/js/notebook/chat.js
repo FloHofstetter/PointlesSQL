@@ -23,7 +23,7 @@ const CHAT_RECONNECT_DELAY_MS = 2000;
  * @param {string} editorSessionId
  * @param {string} [notebookUuid] Optional notebook UUID forwarded
  *   as ``?notebook_id=…`` so the agent factory can stamp
- *   ``POINTLESSQL_NOTEBOOK_ID`` for the Phase-105.6 plugin
+ *   ``POINTLESSQL_NOTEBOOK_ID`` for the plugin
  *   agent-presence wiring.
  * @returns {string}
  */
