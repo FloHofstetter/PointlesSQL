@@ -45,7 +45,22 @@ async def add_relation(
 
 @router.delete("/api/glossary/{term_id}/relations/{relation_id}")
 async def delete_relation(term_id: int, relation_id: int, request: Request) -> dict[str, Any]:
-    """Delete one relation (admin)."""
+    """Delete one relation.
+
+    Restricted to admins: ``require_admin`` answers 403 for
+    non-admins.
+
+    Args:
+        term_id: Source term id from the URL (unused beyond routing).
+        relation_id: Relation primary key to delete.
+        request: Incoming FastAPI request.
+
+    Returns:
+        ``{"deleted": True}`` once the relation is removed.
+
+    Raises:
+        HTTPException: 404 when no relation with *relation_id* exists.
+    """
     require_admin(request)
     factory = request.app.state.session_factory
     removed = glossary_service.delete_relation(factory, relation_id=relation_id)
@@ -67,7 +82,23 @@ async def list_relations(term_id: int, request: Request, direction: str = "both"
 
 @router.get("/api/glossary/{term_id}/graph")
 async def get_term_graph(term_id: int, request: Request, depth: int = 2) -> dict[str, Any]:
-    """Return the bounded knowledge-graph rooted at *term_id*."""
+    """Return the bounded knowledge-graph rooted at *term_id*.
+
+    Open to any signed-in user: ``require_user`` answers 403 for
+    anonymous callers.
+
+    Args:
+        term_id: Root term id from the URL.
+        request: Incoming FastAPI request.
+        depth: Traversal depth; must be in ``[1, 5]``.
+
+    Returns:
+        The bounded knowledge-graph payload.
+
+    Raises:
+        BadRequestError: 400 when *depth* is outside ``[1, 5]``.
+        HTTPException: 404 when no term with *term_id* exists.
+    """
     require_user(request)
     factory = request.app.state.session_factory
     if depth <= 0 or depth > 5:
