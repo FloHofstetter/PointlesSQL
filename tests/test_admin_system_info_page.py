@@ -37,6 +37,14 @@ def _setup_app(tmp_path):
     Base.metadata.create_all(engine)
     factory = sessionmaker(bind=engine)
 
+    # Snapshot the app state this fixture clobbers so it can be restored on
+    # teardown — otherwise the custom Settings / mock UC client bleed into
+    # later tests (conftest only recreates settings when it is None).
+    _prev_state = {
+        attr: getattr(app.state, attr, None)
+        for attr in ("session_factory", "settings", "uc_client")
+    }
+
     app.state.session_factory = factory
     app.state.settings = Settings(
         auth={"secret_key": "test-secret-key-for-unit-tests!!"},
@@ -60,6 +68,8 @@ def _setup_app(tmp_path):
     yield
 
     engine.dispose()
+    for _attr, _value in _prev_state.items():
+        setattr(app.state, _attr, _value)
 
 
 def _seed_users(factory):
