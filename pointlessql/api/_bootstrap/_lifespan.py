@@ -45,6 +45,7 @@ from pointlessql.api._bootstrap._loops import (
     _data_product_trending_loop,  # pyright: ignore[reportPrivateUsage]
     _event_retention_loop,  # pyright: ignore[reportPrivateUsage]
     _external_writes_loop,  # pyright: ignore[reportPrivateUsage]
+    _kernel_reaper_loop,  # pyright: ignore[reportPrivateUsage]
     _lineage_pruner_loop,  # pyright: ignore[reportPrivateUsage]
     _user_badges_loop,  # pyright: ignore[reportPrivateUsage]
     _user_notification_digest_loop,  # pyright: ignore[reportPrivateUsage]
@@ -523,7 +524,19 @@ def make_lifespan(
         # subprocess on app exit.
         notebooks_dir = settings.jupyter.notebooks_dir.resolve()
         notebooks_dir.mkdir(parents=True, exist_ok=True)
-        app.state.kernel_registry = KernelRegistry(notebooks_dir=notebooks_dir)
+        app.state.kernel_registry = KernelRegistry(
+            notebooks_dir=notebooks_dir,
+            max_kernels=settings.jupyter.max_kernels,
+        )
+
+        # Periodic idle-kernel reaper so a kernel subprocess is not held
+        # for the process lifetime once its editor disconnects.
+        kernel_reaper_task: asyncio.Task[None] | None = None
+        if not fast_test_lifespan:
+            kernel_reaper_task = asyncio.create_task(
+                _kernel_reaper_loop(app.state.kernel_registry, settings),
+                name="kernel-reaper",
+            )
 
         # cross-worker co-edit fanout bus.  Opt-in
         # (``coedit.bus_enabled``) and PG-only — SQLite installs stay
@@ -593,6 +606,7 @@ def make_lifespan(
 
                 bind_coedit_bus(None)
                 await coedit_bus.stop()
+            await _cancel_task(kernel_reaper_task)
             await app.state.kernel_registry.shutdown_all()
             serving_manager = getattr(app.state, "serving_manager", None)
             if serving_manager is not None:

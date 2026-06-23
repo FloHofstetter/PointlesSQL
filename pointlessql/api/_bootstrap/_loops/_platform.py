@@ -79,6 +79,39 @@ def _prune_event_tables(factory: Any, settings: Settings) -> None:
         )
 
 
+async def _kernel_reaper_loop(  # pyright: ignore[reportUnusedFunction]
+    registry: Any,
+    settings: Settings,
+) -> None:
+    """Shut down idle notebook kernels so subprocesses don't accumulate.
+
+    Each ``(user, notebook)`` pair holds an ipykernel subprocess for the
+    process lifetime; on a shared deploy that leaks PIDs and memory. This
+    sweep retires any kernel idle past
+    ``jupyter.kernel_idle_ttl_seconds`` so only live editors keep one.
+    Disabled (returns immediately) when the TTL is non-positive.
+
+    Args:
+        registry: The process-global ``KernelRegistry``.
+        settings: Snapshotted :class:`Settings`.
+    """
+    ttl = settings.jupyter.kernel_idle_ttl_seconds
+    if ttl <= 0:
+        return
+    interval = max(60, ttl // 4)
+    while True:
+        try:
+            reaped = await registry.reap_idle(ttl)
+            if reaped:
+                logger.info("kernel reaper shut down %d idle kernel(s)", reaped)
+        except Exception:  # noqa: BLE001 — reaper must survive every tick
+            logger.exception("kernel-reaper loop tick raised")
+        try:
+            await asyncio.sleep(interval)
+        except asyncio.CancelledError:
+            return
+
+
 async def _event_retention_loop(  # pyright: ignore[reportUnusedFunction]
     factory: Any,
     settings: Settings,

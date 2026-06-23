@@ -74,6 +74,15 @@ class JupyterSettings(BaseSettings):
     notebooks_dir: Path = Path("notebooks")
     runs_dir: Path = Path("notebooks/runs")
     execute_timeout_seconds: int = 300
+    # Idle-kernel reaping. A live kernel is one ipykernel subprocess per
+    # (user, notebook); without reaping they accumulate for the process
+    # lifetime and threaten PID/memory exhaustion on shared deploys. A
+    # kernel untouched for this many seconds is shut down by the background
+    # reaper. 0 disables reaping.
+    kernel_idle_ttl_seconds: int = 1800
+    # Hard ceiling on concurrently live kernels; starting one past the cap
+    # first evicts the least-recently-active kernel. 0 means unlimited.
+    max_kernels: int = 0
 
     @field_validator("notebooks_dir", "runs_dir", mode="after")
     @classmethod

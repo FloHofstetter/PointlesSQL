@@ -16,6 +16,7 @@ import asyncio
 import logging
 import os
 import queue
+import time
 import uuid
 from pathlib import Path
 from typing import Any
@@ -305,6 +306,18 @@ class KernelSession:
         self._exec_lock = asyncio.Lock()
         self._debug_lock = asyncio.Lock()
         self._debug_seq = 0
+        # Monotonic timestamp of the last client activity, consulted by
+        # ``KernelRegistry.reap_idle`` to retire kernels no editor is using.
+        self.last_activity: float = time.monotonic()
+
+    def touch(self) -> None:
+        """Mark the session as active so the idle reaper spares it.
+
+        Called when a client connects (get-or-start) and on every inbound
+        WebSocket frame, so a kernel is only reaped once no editor has
+        touched it for the configured idle TTL.
+        """
+        self.last_activity = time.monotonic()
 
     async def start(self) -> None:
         """Launch the kernel subprocess and start the pump tasks.

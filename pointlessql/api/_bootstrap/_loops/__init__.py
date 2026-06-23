@@ -46,6 +46,7 @@ from pointlessql.api._bootstrap._loops._lineage import (
 from pointlessql.api._bootstrap._loops._platform import (
     _audit_retention_loop,
     _event_retention_loop,
+    _kernel_reaper_loop,
     _user_badges_loop,
     _user_notification_digest_loop,
     _workspace_repos_sync_loop,
@@ -66,6 +67,7 @@ __all__ = [
     "_data_product_promotion_loop",
     "_data_product_trending_loop",
     "_external_writes_loop",
+    "_kernel_reaper_loop",
     "_lineage_pruner_loop",
     "_user_badges_loop",
     "_user_notification_digest_loop",

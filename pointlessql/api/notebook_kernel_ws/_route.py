@@ -196,6 +196,9 @@ async def notebook_kernel_ws(websocket: WebSocket) -> None:
                     message="frame must be a JSON object",
                 )
                 continue
+            # Mark the kernel active so the idle reaper spares it while an
+            # editor is connected and sending frames.
+            session.touch()
             request_id_raw = frame.get("id")
             request_id = int(request_id_raw) if isinstance(request_id_raw, int) else None
             method = frame.get("method")
