@@ -81,6 +81,8 @@ async def api_upload_volume_file(
     # carry no length header: reject once the body is in hand.
     max_bytes = int(request.app.state.settings.server.max_request_bytes)
     if len(data) > max_bytes:
+        # bare-http-ok: 413 payload-too-large is a transport limit, not a
+        # domain failure; the standard HTTP status is the clearest signal.
         raise HTTPException(
             status_code=413, detail="Uploaded file exceeds the maximum allowed size."
         )

@@ -209,6 +209,8 @@ async def readyz(request: Request) -> Response:
             session.execute(text("SELECT 1"))
 
     db_status = "ok"
+    # bare-broad-ok: a readiness probe must report "down" on any failure and
+    # never raise or log-spam on every poll, so the traceback is dropped.
     try:
         await run_sync(_check_db)
     except Exception:  # noqa: BLE001 — readiness reports failure, never raises
