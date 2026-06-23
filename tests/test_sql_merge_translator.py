@@ -194,6 +194,89 @@ def test_subquery_source_routes_through_materialisation(
     fake_helper.assert_called_once()
 
 
+def test_on_equality_non_column_rejected(conn: duckdb.DuckDBPyConnection) -> None:
+    """``ON t.id = 5`` (a literal, not a column) is rejected."""
+    sql = (
+        "MERGE INTO main.silver.orders t "
+        "USING main.bronze.staging s "
+        "ON t.id = 5 "
+        "WHEN MATCHED THEN UPDATE SET name = s.name"
+    )
+    ast = _parse_merge(sql)
+    with pytest.raises(SQLMergeUnsupportedError, match="compare two column references"):
+        translate_merge_ast(ast, conn=conn, approved={})
+
+
+def test_on_column_name_mismatch_rejected(conn: duckdb.DuckDBPyConnection) -> None:
+    """``ON t.id = s.order_id`` (names differ across aliases) is rejected."""
+    sql = (
+        "MERGE INTO main.silver.orders t "
+        "USING main.bronze.staging s "
+        "ON t.id = s.order_id "
+        "WHEN MATCHED THEN UPDATE SET name = s.name"
+    )
+    ast = _parse_merge(sql)
+    with pytest.raises(SQLMergeUnsupportedError, match="column names must match"):
+        translate_merge_ast(ast, conn=conn, approved={})
+
+
+def test_multiple_when_matched_rejected(conn: duckdb.DuckDBPyConnection) -> None:
+    """Two WHEN MATCHED branches are rejected."""
+    sql = (
+        "MERGE INTO main.silver.orders t "
+        "USING main.bronze.staging s "
+        "ON t.id = s.id "
+        "WHEN MATCHED THEN UPDATE SET name = s.name "
+        "WHEN MATCHED THEN UPDATE SET name = s.name"
+    )
+    ast = _parse_merge(sql)
+    with pytest.raises(SQLMergeUnsupportedError, match="Multiple WHEN MATCHED"):
+        translate_merge_ast(ast, conn=conn, approved={})
+
+
+def test_multiple_when_not_matched_rejected(conn: duckdb.DuckDBPyConnection) -> None:
+    """Two WHEN NOT MATCHED branches are rejected."""
+    sql = (
+        "MERGE INTO main.silver.orders t "
+        "USING main.bronze.staging s "
+        "ON t.id = s.id "
+        "WHEN MATCHED THEN UPDATE SET name = s.name "
+        "WHEN NOT MATCHED THEN INSERT (id, name) VALUES (s.id, s.name) "
+        "WHEN NOT MATCHED THEN INSERT (id, name) VALUES (s.id, s.name)"
+    )
+    ast = _parse_merge(sql)
+    with pytest.raises(SQLMergeUnsupportedError, match="Multiple WHEN NOT MATCHED"):
+        translate_merge_ast(ast, conn=conn, approved={})
+
+
+def test_when_not_matched_by_source_rejected(conn: duckdb.DuckDBPyConnection) -> None:
+    """WHEN NOT MATCHED BY SOURCE is rejected (delete-by-source is out of scope)."""
+    sql = (
+        "MERGE INTO main.silver.orders t "
+        "USING main.bronze.staging s "
+        "ON t.id = s.id "
+        "WHEN MATCHED THEN UPDATE SET name = s.name "
+        "WHEN NOT MATCHED BY SOURCE THEN DELETE"
+    )
+    ast = _parse_merge(sql)
+    with pytest.raises(SQLMergeUnsupportedError, match="BY SOURCE"):
+        translate_merge_ast(ast, conn=conn, approved={})
+
+
+def test_when_not_matched_non_insert_rejected(conn: duckdb.DuckDBPyConnection) -> None:
+    """A WHEN NOT MATCHED branch that is not THEN INSERT is rejected."""
+    sql = (
+        "MERGE INTO main.silver.orders t "
+        "USING main.bronze.staging s "
+        "ON t.id = s.id "
+        "WHEN MATCHED THEN UPDATE SET name = s.name "
+        "WHEN NOT MATCHED THEN UPDATE SET name = s.name"
+    )
+    ast = _parse_merge(sql)
+    with pytest.raises(SQLMergeUnsupportedError, match="THEN INSERT"):
+        translate_merge_ast(ast, conn=conn, approved={})
+
+
 def test_unqualified_target_rejected(conn: duckdb.DuckDBPyConnection) -> None:
     """Two-part target raises SQLParseError (caught as base class)."""
     sql = (
