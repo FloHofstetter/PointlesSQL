@@ -220,7 +220,7 @@ async def emit_audit_for_run(
         pre_versions: Map of ``{relation: delta_version_before}`` captured
             before dbt ran (via :func:`capture_pre_run_versions`).
             ``None`` (default) keeps ``delta_version_before`` as ``None``
-            on every emitted op — the pre-Sprint-36.D shape.
+            on every emitted op — the legacy shape.
 
     Returns:
         Summary dict with counts and per-node payload (used by the

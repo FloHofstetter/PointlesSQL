@@ -2,10 +2,10 @@
 
 Wraps the polymorphic ``/api/social/{kind}/{ref:path}/comments``
 namespace.  For ``kind='dp'`` the call is delegated in-process to
-the existing Phase-76 DP comment handlers (zero behavioural drift,
+the existing DP comment handlers (zero behavioural drift,
 legacy ``data_product:`` audit-prefix preserved per locked
-decision #9).  For ``kind='table'`` and ``kind='branch'`` Phase
-77.1.5 routes the call through the generic kind-agnostic handlers
+decision #9).  For ``kind='table'`` and ``kind='branch'`` the
+router routes the call through the generic kind-agnostic handlers
 in :mod:`_polymorphic_handlers`.
 """
 

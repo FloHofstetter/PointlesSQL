@@ -2,7 +2,7 @@
 
 Splits the previous 430-LOC ``data_products_routes.py`` module into
 per-axis sub-modules: listing, detail, diff, lineage, reload (plus
-the Phase-71 marketplace-polish add-ons that share this surface).
+the marketplace-polish add-ons that share this surface).
 Public surface (the FastAPI router and the cross-module ``load_one``
 helper) is re-exported here so existing imports like
 ``from pointlessql.api.data_products_routes import router`` and

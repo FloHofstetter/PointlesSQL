@@ -8,7 +8,7 @@ Three endpoints:
 * ``GET /followers`` + ``GET /following`` — listing.
 
 Each ``POST`` emits ``pointlessql.user.followed`` (recipient =
-the followed user) so the inbox + Phase-20 SIEM forwarder both
+the followed user) so the inbox + SIEM forwarder both
 pick up the social signal.
 """
 

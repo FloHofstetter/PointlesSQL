@@ -49,7 +49,7 @@ async def pump_subscription(
 ) -> None:
     """Forward one ZMQ channel's messages from kernel queue to the browser.
 
-    Mirrors the persistence side-effect the deleted Phase-12 handler
+    Mirrors the persistence side-effect the deleted legacy handler
     had: every ``stream`` / ``execute_result`` / ``display_data`` /
     ``error`` iopub frame lands in ``notebook_outputs`` so a page
     reload can replay the cell view without re-executing.

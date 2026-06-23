@@ -16,7 +16,7 @@ Three endpoints:
 
 Every successful POST and DELETE drops an ``audit_log`` row so
 the audit-search FTS picks the action up alongside everything
-else (matches the Phase-72.5 mirror pattern).
+else (matches the audit-log mirror pattern).
 """
 
 from __future__ import annotations

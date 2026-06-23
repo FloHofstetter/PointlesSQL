@@ -6,9 +6,9 @@ Two surfaces:
   update / unpublish.  Cookie-gated, workspace-scoped.
 * **Public viewer** under ``/share/notebook/{share_uuid}`` —
   unauthenticated read-only render.  Serves either the regular HTML
-  (Phase-98.D export pipeline) or the dashboard variant.
+  (export pipeline) or the dashboard variant.
 
-Snapshot mode pins the share to a Phase-97 :class:`NotebookRevision`
+Snapshot mode pins the share to a :class:`NotebookRevision`
 so subsequent edits do not leak; live mode reads the current ``.py``
 plus the latest persisted outputs.  Both modes scrub nothing
 automatically — the publish step is admin-gated and the publisher

@@ -192,7 +192,7 @@ def _attach_cdf_events(
 ) -> list[dict[str, Any]]:
     """Populate the ``cdf_events`` key on each step from the CDF tail log.
 
-    Mirrors :func:`_attach_value_changes` for the Phase-40.5/40.6
+    Mirrors :func:`_attach_value_changes` for the
     foreign-Delta CDF capture stream.  Per step a single indexed
     point-lookup on ``(workspace_id, table_full_name, row_id)`` —
     bounded to ≤20 reads at the default ``max_hops``.  Events are

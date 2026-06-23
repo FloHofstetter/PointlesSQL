@@ -51,7 +51,7 @@ def _sql_strategies(factory: Any, approved: dict[str, str]) -> dict[str, str]:
 async def execute_select(ctx: DispatchContext) -> ExecutionResult:
     """Run a SELECT through the existing DuckDB rewriter path.
 
-    Identical shape to the pre-Phase-63 ``api_sql_execute``
+    Identical shape to the earlier inline ``api_sql_execute``
     SELECT body — kept here so the dispatcher owns 100% of the
     statement-type branching.
 

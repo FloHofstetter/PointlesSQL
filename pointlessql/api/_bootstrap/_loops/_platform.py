@@ -229,7 +229,7 @@ async def _workspace_repos_sync_loop(  # pyright: ignore[reportUnusedFunction]
 
     Active only when
     ``POINTLESSQL_REPOS_SYNC_INTERVAL_SECONDS`` is non-zero — same
-    opt-in discipline as every other Phase-13.x+ scanner.  Each
+    opt-in discipline as every other scanner.  Each
     tick lists the repos whose ``last_synced_at`` is older than
     the configured cadence (or ``NULL``) and pulls them
     sequentially.  Per-repo failures are recorded on the row

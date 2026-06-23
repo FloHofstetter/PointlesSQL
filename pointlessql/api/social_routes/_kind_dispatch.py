@@ -90,13 +90,13 @@ def parse_ref(kind: str, ref: str) -> str:
     if spec is None:
         # bare-http-ok: 501 has no domain-exception counterpart — kind is
         # registered with entity_registry but no polymorphic handler is
-        # wired through yet.  Later Phase-77 sub-phases add the missing
+        # wired through yet.  Later iterations add the missing
         # ones by registering a new RefKind in _ref_kinds.py.
         raise HTTPException(
             status_code=501,
             detail=(
                 f"kind={kind!r} not yet wired through polymorphic "
-                "/api/social/; later Phase-77 sub-phases add it"
+                "/api/social/; a handler for it is not registered yet"
             ),
         )
     if not spec.validate(ref):

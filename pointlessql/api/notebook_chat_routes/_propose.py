@@ -148,7 +148,7 @@ def _resolve_session(
             # transient WS-state mismatch.
             raise ResourceNotFoundError("notebook chat session not found.")
         if agent_run_id is None or chat_session.agent_run_id != agent_run_id:
-            # 403 mirrors the Phase-91 SQL chat propose
+            # 403 mirrors the SQL chat propose
             # route — agents may only push proposals into the session
             # the caller must drive an agent_run they own.
             raise PermissionDeniedError("X-Agent-Run-Id mismatch for this chat session.")

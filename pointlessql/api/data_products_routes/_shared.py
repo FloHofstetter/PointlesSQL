@@ -1,7 +1,7 @@
 """Shared helpers used across the data_products_routes sub-modules.
 
 The listing / detail / diff / lineage / reload sub-modules — and
-the upcoming Phase-71 comment / review / follow / readme handlers —
+the comment / review / follow / readme handlers —
 all need a way to serialise a :class:`DataProduct` ORM row and to
 look up one product (plus its parsed pydantic contract + steward)
 by ``(workspace_id, catalog, schema)``.  Centralising those tiny

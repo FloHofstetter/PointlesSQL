@@ -1,4 +1,4 @@
-"""Shared helpers for the Phase-77.7 Issues router.
+"""Shared helpers for the Issues router.
 
 Split out from :mod:`pointlessql.api.social_routes.issues` so the
 issue-route surface stays under the file-size budget.  Pure

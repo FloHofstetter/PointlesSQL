@@ -10,7 +10,7 @@ comment author (anything broader would storm the audit-log with
 low-signal rows).  A reaction on the *product* notifies all
 followers — same recipient set as the existing
 ``data_product.commented`` event.  Both axes drop an
-``audit.reaction.*`` row alongside the write so Phase-18.7 FTS
+``audit.reaction.*`` row alongside the write so the audit-search FTS
 picks the rows up in ``/audit/search``.
 """
 

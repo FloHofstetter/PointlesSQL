@@ -94,8 +94,8 @@ PUBLIC_PREFIXES: tuple[str, ...] = (
     "/share/",
     # iframe-embed mirror of the share viewer.
     # Same auth-by-uuid contract as /share/; lives under /embed/
-    # so external doc embeds can frame it like Phase-92.2's
-    # /embed/semantic_search/{fqn}.
+    # so external doc embeds can frame it like the
+    # /embed/semantic_search/{fqn} mirror.
     "/embed/notebook_share/",
     # browser-posted CSP violation reports.  Credential-less by
     # design — the browser sends these without cookies or an API key.

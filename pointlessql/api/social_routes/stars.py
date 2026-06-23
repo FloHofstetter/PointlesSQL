@@ -4,13 +4,13 @@ Stars are the lightweight "I bookmarked this" primitive — separate
 from Follow (which signals "I want notifications").  Three
 endpoints sit under the polymorphic
 ``/api/social/{kind}/{ref:path}/star`` namespace, plus a profile
-endpoint at ``/api/users/{user_id}/stars`` for the Phase-77.10
+endpoint at ``/api/users/{user_id}/stars`` for the
 "Starred" profile tab.
 
 For ``kind='dp'`` we route to the same polymorphic handler — the
 social_targets row is resolved kind-agnostically, so DP stars land
 in the same ``social_stars`` table.  No legacy DP star handler
-exists (the pre-77.8 component was localStorage-only), so there's
+exists (the earlier component was localStorage-only), so there's
 no kind dispatch needed inside this router.
 """
 
@@ -80,6 +80,6 @@ async def get_user_stars(
 ) -> dict[str, Any]:
     """List a user's starred entities (admin or self only).
 
-    Feeds the Phase-77.10 ``/users/{id}`` "Starred" profile tab.
+    Feeds the ``/users/{id}`` "Starred" profile tab.
     """
     return await list_user_stars(user_id, request, kind=kind, limit=limit)

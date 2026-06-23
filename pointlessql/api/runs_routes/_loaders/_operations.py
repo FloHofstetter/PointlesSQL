@@ -185,7 +185,7 @@ def load_rewrite_attempts_for_run(
 ) -> list[dict[str, Any]]:
     """Return all ``rewrite_attempts`` rows for *run_id*, oldest first.
 
-    Surfaces the Phase-39 explain-first rewrite-loop trace in the
+    Surfaces the explain-first rewrite-loop trace in the
     Operations top-tab's "Rewrites" sub-pane.  Rows are ordered by
     ``attempt_no`` ASC so the loop reads top-to-bottom in submission
     order.

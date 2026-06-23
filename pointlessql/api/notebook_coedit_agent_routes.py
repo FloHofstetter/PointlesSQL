@@ -3,7 +3,7 @@
 Lets an agent (hermes-plugin-pointlessql, future first-party
 copilots, etc.) advertise that it is currently operating on a
 specific cell of a specific notebook.  Every connected browser
-tab then sees the agent as a pseudo-peer in the Phase-105.4
+tab then sees the agent as a pseudo-peer in the
 avatar rail — same UI surface as a human collaborator, with a
 robot icon swap-in.
 
