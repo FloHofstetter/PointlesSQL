@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 from pathlib import Path
 from unittest.mock import patch
 
@@ -121,6 +122,44 @@ async def test_run_once_rejects_non_dict_parameters(
         json={"path": "demo.py", "parameters": "not a dict"},
     )
     assert resp.status_code == 422
+
+
+async def test_run_once_logs_when_execute_run_fails(
+    workspace_dir: Path,
+    admin_client: httpx.AsyncClient,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """A failure inside execute_run is logged, not swallowed silently.
+
+    The route fires execute_run as a background task; if that coroutine
+    raises before persisting a terminal JobRun status, the error must
+    surface in the logs rather than vanish into the event-loop default
+    handler (which would leave the browser polling a run that never
+    updates).
+    """
+    (workspace_dir / "demo.py").write_text(_PARAM_NOTEBOOK)
+
+    async def _boom(*_args: object, **_kwargs: object) -> None:
+        raise RuntimeError("execute boom")
+
+    with (
+        patch(
+            "pointlessql.api.notebooks_routes.jobs.scheduler_service.execute_run",
+            new=_boom,
+        ),
+        caplog.at_level(logging.ERROR, logger="pointlessql.api.notebooks_routes.jobs"),
+    ):
+        resp = await admin_client.post(
+            "/api/notebooks/run-once",
+            json={"path": "demo.py", "parameters": {}},
+        )
+        # Let the fire-and-forget task run and log before assertions.
+        await asyncio.sleep(0)
+
+    assert resp.status_code == 200, resp.text
+    assert any("failed to execute" in r.getMessage() for r in caplog.records), (
+        "execute_run failure was not logged by the run-once route"
+    )
 
 
 async def test_run_once_non_admin_accessible(

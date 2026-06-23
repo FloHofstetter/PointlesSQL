@@ -217,17 +217,27 @@ async def api_run_once(
         # the task spawns. Re-read pattern matches ``api_run_job``.
 
     # Fire-and-forget — the HTTP response returns as soon as the task is
-    # scheduled. The browser polls ``/api/jobs/{job_id}/runs`` for
-    # status.
-    asyncio.create_task(
-        scheduler_service.execute_run(
-            factory,
-            settings,
-            JOB_REGISTRY,
-            job_id,
-            "manual",
-        ),
-    )
+    # scheduled. The browser polls ``/api/jobs/{job_id}/runs`` for status.
+    # Wrap the coroutine so a failure that fires before ``execute_run``
+    # persists a terminal JobRun status (e.g. a DB error on the initial
+    # insert) is logged instead of vanishing into the event-loop default
+    # handler — otherwise the browser would poll a run that never updates.
+    async def _runner() -> None:
+        try:
+            await scheduler_service.execute_run(
+                factory,
+                settings,
+                JOB_REGISTRY,
+                job_id,
+                "manual",
+            )
+        except Exception:  # noqa: BLE001
+            # bare-broad-ok: fire-and-forget — ``execute_run`` records its
+            # own terminal status when it can; this only surfaces failures
+            # that escape before it does, which the HTTP caller can't act on.
+            logger.exception("run-once notebook job %s failed to execute", job_id)
+
+    asyncio.create_task(_runner())
 
     # Capture the freshly-created JobRun row id with a short retry —
     # ``execute_run`` inserts the row on entry, so a tiny grace gives
