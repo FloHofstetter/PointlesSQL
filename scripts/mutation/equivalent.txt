@@ -112,3 +112,10 @@ pointlessql.pql._pql_widgets.xǁ_WidgetsMixinǁwidgets__mutmut_5   # factory = g
 # kill to these. The FastMCP(name)->None mutant IS killed by that test.
 pointlessql.services.mcp_server.x_build_server__mutmut_1   # name default content
 pointlessql.services.mcp_server.x_build_server__mutmut_2   # name default case
+
+# --- pointlessql.services.lens.tools.query (run_select_query) ---
+# Coverage-blind signature default: limit=None is pinned behaviourally by
+# test_run_select_query_forwards_sql_and_limit (default-limit case), but mutmut
+# attributes the import-time signature-default line to the first importing test
+# (same as the pql._contracts defaults), so its coverage map never routes the kill.
+pointlessql.services.lens.tools.query.x_run_select_query__mutmut_1   # limit=None default

@@ -123,3 +123,24 @@ async def test_describe_table_result_carries_facade_payload() -> None:
         "describe_table", {"catalog": "c", "schema": "s", "table": "orders"}
     )
     assert "orders" in str(result)
+
+
+@pytest.mark.asyncio
+async def test_run_select_is_registered_only_with_a_query_runner() -> None:
+    """``run_select`` appears only when a query runner is injected, and forwards args."""
+    captured: dict[str, Any] = {}
+
+    async def fake_runner(sql: str, limit: int | None) -> dict[str, Any]:
+        captured["sql"] = sql
+        captured["limit"] = limit
+        return {"columns": [], "rows": [], "executed_sql": sql}
+
+    metadata_only = await build_server(_FakeUC()).list_tools()  # type: ignore[arg-type]
+    assert "run_select" not in {t.name for t in metadata_only}
+
+    server = build_server(_FakeUC(), query_runner=fake_runner)  # type: ignore[arg-type]
+    assert "run_select" in {t.name for t in await server.list_tools()}
+    await server.call_tool("run_select", {"sql": "SELECT 1", "limit": 5})
+    assert captured == {"sql": "SELECT 1", "limit": 5}
+    await server.call_tool("run_select", {"sql": "SELECT 2"})  # default limit
+    assert captured == {"sql": "SELECT 2", "limit": None}

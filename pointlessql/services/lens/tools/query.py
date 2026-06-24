@@ -409,6 +409,27 @@ QUERY_TOOL = ToolDef(
 )
 
 
+async def run_select_query(
+    ctx: SessionContext, sql: str, *, limit: int | None = None
+) -> QueryResult:
+    """Run one governed read-only SELECT and return its result.
+
+    Public entrypoint over the gated executor for non-Lens callers (e.g. the
+    catalog MCP server's ``run_select`` tool): it applies the same SELECT-only
+    validation, EXPLAIN cost cap, per-session budget, and UC-scoped table
+    resolution that the Lens ``query`` tool does.
+
+    Args:
+        ctx: The per-call session context (workspace, factory, UC client).
+        sql: The single SELECT statement to run.
+        limit: Optional row cap; ``None`` lets the gate inject its default.
+
+    Returns:
+        A :class:`QueryResult` with columns, rows, the gated SQL, and cost.
+    """
+    return await _execute_query(ctx, QueryArgs(sql=sql, limit=limit))
+
+
 __all__ = [
     "QUERY_TOOL",
     "QueryArgs",
@@ -416,4 +437,5 @@ __all__ = [
     "QueryResult",
     "_execute_query",
     "_session_cost",
+    "run_select_query",
 ]
