@@ -103,3 +103,12 @@ pointlessql.pql._pql_governance.xǁ_GovernanceMixinǁtraining_context__mutmut_2 
 # session — a full metadata-DB harness, integration-test territory.
 pointlessql.pql._pql_widgets.xǁ_WidgetsMixinǁwidgets__mutmut_4   # init_db(get_settings().db.url) -> init_db(None)
 pointlessql.pql._pql_widgets.xǁ_WidgetsMixinǁwidgets__mutmut_5   # factory = get_session_factory() -> None
+
+# --- pointlessql.services.mcp_server (build_server) ---
+# Coverage-blind signature default: the server name is pinned by
+# test_server_is_named_for_the_application, but mutmut attributes the
+# import-time signature-default line to the first importing test (same as the
+# pointlessql.pql._contracts defaults), so its coverage map never routes the
+# kill to these. The FastMCP(name)->None mutant IS killed by that test.
+pointlessql.services.mcp_server.x_build_server__mutmut_1   # name default content
+pointlessql.services.mcp_server.x_build_server__mutmut_2   # name default case
