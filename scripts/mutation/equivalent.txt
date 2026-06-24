@@ -34,3 +34,15 @@ pointlessql.pql._metrics.x_compile_metric_query__mutmut_102   # order_by rsplit(
 pointlessql.pql._metrics.x_compile_metric_query__mutmut_105   # rsplit(" ",1)->rsplit(" "): differs only for 3+ token order_by (never a selected name)
 pointlessql.pql._metrics.x_compile_metric_query__mutmut_106   # rsplit->split: differs only for 3+ token order_by (invalid)
 pointlessql.pql._metrics.x_compile_metric_query__mutmut_108   # rsplit maxsplit 1->2: differs only for 3+ token order_by (invalid)
+
+# --- pointlessql.pql._policies (validate_row_filter) ---
+# Parse-time dialect/into hints used only to check the predicate parses; the
+# predicate is returned unchanged, so the hint cannot change behaviour for any
+# predicate the validator accepts.
+pointlessql.pql._policies.x_validate_row_filter__mutmut_21   # dialect="duckdb" -> None
+pointlessql.pql._policies.x_validate_row_filter__mutmut_24   # dialect kwarg dropped (== None)
+pointlessql.pql._policies.x_validate_row_filter__mutmut_22   # into=exp.Condition -> None
+pointlessql.pql._policies.x_validate_row_filter__mutmut_25   # into kwarg dropped (== None)
+pointlessql.pql._policies.x_validate_row_filter__mutmut_19   # probe literal 'probe@…' case: any valid string literal validates identically
+pointlessql.pql._policies.x_validate_row_filter__mutmut_6    # cosmetic: non-empty-predicate message content
+pointlessql.pql._policies.x_validate_row_filter__mutmut_11   # cosmetic: single-predicate message content
