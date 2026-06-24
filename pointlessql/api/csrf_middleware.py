@@ -30,7 +30,11 @@ from fastapi.responses import HTMLResponse, Response
 from pointlessql.services import csrf
 
 _SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
-_EXEMPT_PREFIXES = ("/api/", "/static/", "/webhook/git/")
+# ``/catalog-mcp/`` is the network MCP transport: its POSTs carry
+# ``application/json`` JSON-RPC bodies (not browser forms), are authenticated
+# by the request principal / a Bearer key, and the SSE stream is same-origin
+# protected — the same cross-origin-forgery argument that exempts ``/api/``.
+_EXEMPT_PREFIXES = ("/api/", "/static/", "/webhook/git/", "/catalog-mcp/")
 _EXEMPT_PATHS = frozenset({"/healthz"})
 # The hosted-apps reverse-proxy forwards arbitrary in-iframe app
 # traffic (forms, fetches) whose JS cannot know PointlesSQL's CSRF

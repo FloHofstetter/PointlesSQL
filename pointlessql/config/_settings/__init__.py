@@ -39,6 +39,7 @@ from pointlessql.config._settings._features import (
     ApiKeyLifecycleSettings,
     BitemporalSettings,
     BranchSettings,
+    CatalogMcpSettings,
     CoeditSettings,
     ConventionsSettings,
     DataProductsSettings,
@@ -127,6 +128,7 @@ class Settings(BaseSettings):
     dbt: DBTSettings = Field(default_factory=DBTSettings)
     hermes: HermesSettings = Field(default_factory=HermesSettings)
     lens: LensSettings = Field(default_factory=LensSettings)
+    catalog_mcp: CatalogMcpSettings = Field(default_factory=CatalogMcpSettings)
     coedit: CoeditSettings = Field(default_factory=CoeditSettings)
     privilege: PrivilegeSettings = Field(default_factory=PrivilegeSettings)
 
@@ -176,6 +178,7 @@ __all__ = [
     "CDFTailSettings",
     "ObservabilitySettings",
     "CanvasFileIoSettings",
+    "CatalogMcpSettings",
     "CoeditSettings",
     "ConventionsSettings",
     "DBTSettings",

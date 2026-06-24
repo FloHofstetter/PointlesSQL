@@ -87,6 +87,12 @@ PUBLIC_PREFIXES: tuple[str, ...] = (
     # /mcp/* to /auth/login would break IDE consumers (Claude
     # Desktop, Cursor) that never see an HTTP redirect.
     "/mcp/",
+    # Catalog MCP transport.  Authentication is the request principal
+    # (cookie or Bearer API key), enforced inside the mounted ASGI app
+    # itself (anonymous → 401).  As with the Lens transport, a 303
+    # redirect to /auth/login here would break network MCP clients that
+    # never follow an HTTP redirect.
+    "/catalog-mcp/",
     # notebook share viewer.  Public-by-design surface;
     # the share_uuid IS the credential.  Revoked / expired shares
     # return 410 from the route itself — letting the auth middleware
@@ -121,7 +127,7 @@ PUBLIC_PREFIXES: tuple[str, ...] = (
 # Fallback Bearer path-allowlist used when settings are not yet wired (e.g.
 # the lifespan has not populated ``app.state.settings``). Mirrors the
 # ``ApiKeyAclSettings.bearer_path_prefixes`` default.
-_DEFAULT_BEARER_PATH_PREFIXES: tuple[str, ...] = ("/api/", "/mcp/", "/webhook/")
+_DEFAULT_BEARER_PATH_PREFIXES: tuple[str, ...] = ("/api/", "/mcp/", "/catalog-mcp/", "/webhook/")
 
 
 def _bearer_allowed_for_path(request: Request, path: str) -> bool:

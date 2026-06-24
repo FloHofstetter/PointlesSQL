@@ -22,6 +22,7 @@ from ._principal import (
     get_optional_user,
     get_uc_client,
     get_user,
+    uc_client_for_principal,
 )
 from ._rendering import (
     get_templates,
@@ -75,5 +76,6 @@ __all__ = [
     "require_supervisor",
     "require_user",
     "require_workspace_admin",
+    "uc_client_for_principal",
     "wants_json",
 ]

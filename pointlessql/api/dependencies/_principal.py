@@ -100,10 +100,32 @@ def get_uc_client(request: Request) -> UnityCatalogClient:
     principal = effective_principal(request)
     if not principal:
         return request.app.state.uc_client
-    cache = _principal_client_cache(request.app.state)
+    return uc_client_for_principal(request.app.state, principal)
+
+
+def uc_client_for_principal(app_state: Any, principal: str) -> UnityCatalogClient:
+    """Return the cached per-principal UC facade on *app_state*, minting on miss.
+
+    Shared by :func:`get_uc_client` (the request dependency) and any non-route
+    caller that already knows its principal — notably the MCP transport, whose
+    mounted ASGI app resolves the principal itself rather than through FastAPI's
+    dependency injection. Keeping the get-or-create + eviction in one place
+    means every entry point reuses the same per-process HTTP pools and the same
+    cap, and :func:`close_principal_uc_clients` drains them all at shutdown.
+
+    Args:
+        app_state: The application ``state`` namespace (holds the cache and the
+            settings used to build the per-principal client).
+        principal: The effective principal email to scope the client to.
+
+    Returns:
+        A :class:`UnityCatalogClient` that forwards *principal* as the
+        ``X-Principal`` header, cached and reused for the process lifetime.
+    """
+    cache = _principal_client_cache(app_state)
     client = cache.get(principal)
     if client is None:
-        client = UnityCatalogClient.for_principal(request.app.state.settings, principal)
+        client = UnityCatalogClient.for_principal(app_state.settings, principal)
         cache[principal] = client
         _evict_over_cap(cache)
     return client
