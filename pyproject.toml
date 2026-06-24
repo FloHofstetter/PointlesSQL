@@ -84,7 +84,7 @@ dbt = [
 # a core dep (chat panel), so no separate extra is needed for the
 # hosted ``OpenAIEmbedder`` provider.
 vector = [
-    "sentence-transformers >= 2.7, < 4.0",
+    "sentence-transformers>=5.6.0,<6.0",
 ]
 # OpenTelemetry tracing.  Off by default (POINTLESSQL_OBSERVABILITY_ENABLED);
 # the tracing bridge lazily imports these only when enabled, so a default
