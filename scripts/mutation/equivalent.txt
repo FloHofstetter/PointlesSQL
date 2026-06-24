@@ -46,3 +46,14 @@ pointlessql.pql._policies.x_validate_row_filter__mutmut_25   # into kwarg droppe
 pointlessql.pql._policies.x_validate_row_filter__mutmut_19   # probe literal 'probe@…' case: any valid string literal validates identically
 pointlessql.pql._policies.x_validate_row_filter__mutmut_6    # cosmetic: non-empty-predicate message content
 pointlessql.pql._policies.x_validate_row_filter__mutmut_11   # cosmetic: single-predicate message content
+
+# --- pointlessql.pql._contracts (contract factory) ---
+# Default-literal mutations on the contract() signature. These ARE pinned by
+# test_contract_defaults_version_and_description (verified: it fails when the
+# default is mutated), but mutmut attributes the import-time signature-default
+# line to the first test that imports the module, so its coverage map never
+# routes the killing assertion to these mutants. A mutmut coverage-attribution
+# limitation, not an untested default.
+pointlessql.pql._contracts.x_contract__mutmut_1   # description="" default
+pointlessql.pql._contracts.x_contract__mutmut_2   # version="0.1.0-draft" default (content)
+pointlessql.pql._contracts.x_contract__mutmut_3   # version="0.1.0-draft" default (case)
