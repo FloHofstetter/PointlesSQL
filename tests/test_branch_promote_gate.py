@@ -144,6 +144,27 @@ async def test_promote_passes_when_gate_off(
 
 
 @pytest.mark.asyncio
+async def test_promote_conflict_is_409_problem_json(
+    admin_client: httpx.AsyncClient, reset_gate: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A promotion conflict surfaces as 409 problem+json, not 200 {ok:false}."""
+    del reset_gate
+    from pointlessql.pql import BranchPromotionConflictError
+
+    def _conflict(**_: object) -> dict[str, object]:
+        raise BranchPromotionConflictError("main.orders", 5, 7)
+
+    monkeypatch.setattr(branches_routes, "promote_branch_schema", _conflict)
+    res = await admin_client.post(f"/api/branches/{_BRANCH_FQN}/promote")
+    assert res.status_code == 409, res.text
+    body = res.json()
+    assert body["code"] == "branch_promotion_conflict"
+    assert body["table_name"] == "main.orders"
+    assert body["expected_version"] == 5
+    assert body["actual_version"] == 7
+
+
+@pytest.mark.asyncio
 async def test_promote_blocked_when_gate_on_and_no_endorsement(
     admin_client: httpx.AsyncClient, reset_gate: None
 ) -> None:

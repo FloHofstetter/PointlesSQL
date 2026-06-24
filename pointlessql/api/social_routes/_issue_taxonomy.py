@@ -1,4 +1,4 @@
-"""Labels + Milestones CRUD for the Phase-77.7 Issues entity.
+"""Labels + Milestones CRUD for the Issues entity.
 
 Split out from :mod:`pointlessql.api.social_routes.issues` so the
 issue-route surface stays under the file-size budget.  Both

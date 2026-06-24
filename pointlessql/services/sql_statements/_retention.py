@@ -6,17 +6,16 @@ prunes it.  The default retention is 24h (configurable via
 shorter than the query-history retention because the wire client
 already has the result in hand.
 
-The sweeper is wired into the existing scheduler executor registry
-so it inherits the ``kind="sql_statements_retention"`` executor
-declared in :func:`build_default_registry`.  Single periodic task
-per process; safe to no-op when the table is empty.
+:func:`cleanup_stale_statements` is run by the lifespan's
+event-retention background loop on the audit cleanup cadence.  Single
+periodic sweep per process; safe to no-op when the table is empty or
+the SQL Statement API is disabled.
 """
 
 from __future__ import annotations
 
 import datetime
 import logging
-from typing import Any
 
 from sqlalchemy import delete
 from sqlalchemy.orm import Session, sessionmaker
@@ -60,22 +59,3 @@ def cleanup_stale_statements(
     if deleted:
         logger.info("sql_statements retention: pruned %d rows older than %s", deleted, cutoff)
     return deleted
-
-
-def register_retention_executor(app_state: Any) -> None:
-    """Attach the retention executor to ``app.state`` for scheduler discovery.
-
-    The scheduler registry is initialised at startup; this helper
-    drops the retention executor into the discovered map so the
-    task can be added without editing the registry bootstrap code.
-    When called twice (e.g. in tests that re-run lifespan) the
-    second call is idempotent.
-
-    Args:
-        app_state: ``app.state`` of the running FastAPI app.
-    """
-    registry: dict[str, Any] | None = getattr(app_state, "scheduler_executor_registry", None)
-    if registry is None:
-        registry = {}
-        app_state.scheduler_executor_registry = registry
-    registry.setdefault("sql_statements_retention", cleanup_stale_statements)

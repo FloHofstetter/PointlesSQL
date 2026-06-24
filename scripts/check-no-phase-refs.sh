@@ -16,7 +16,13 @@ set -euo pipefail
 
 TARGET_DIRS=("frontend" "pointlessql")
 
-PATTERN='(Phase|Sprint|Wave)\s+\w+(\.\w+)*|BUG-\d+'
+# Matches both the space-separated form ("Phase 97", "Sprint 21") AND the
+# hyphenated form ("Phase-97", "Sprint-36.D", "Wave-B", "Plan-Agent-Phase-56")
+# — the latter used to slip past the old ``\s+``-only pattern.  ``BUG-\w+``
+# catches both ``BUG-12-34`` and the ``BUG-grand-08`` word form.
+# Regression fixtures (must all be caught): Phase-97, Phase 97, Sprint-36.D,
+# Wave-B, Plan-Agent-Phase-56, BUG-grand-08, BUG-12-34.
+PATTERN='(Phase|Sprint|Wave)[-[:space:]]+\w+(\.\w+)*|BUG-\w+'
 
 HITS="$(grep -rEn "$PATTERN" "${TARGET_DIRS[@]}" 2>/dev/null \
     | grep -v "pointlessql/alembic/versions/" || true)"

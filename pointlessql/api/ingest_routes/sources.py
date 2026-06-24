@@ -38,6 +38,7 @@ from pointlessql.api.ingest_routes._serializers import (
 from pointlessql.exceptions import ConflictError, ResourceNotFoundError, ValidationError
 from pointlessql.models import IngestSource
 from pointlessql.models.ingest import INGEST_SOURCE_KINDS
+from pointlessql.services.ingest._secrets import decrypt_secrets, encrypt_secrets
 
 logger = logging.getLogger(__name__)
 
@@ -96,7 +97,7 @@ async def api_list_sources(request: Request) -> dict[str, Any]:
             .order_by(IngestSource.created_at.desc())
         )
         rows = list(session.scalars(stmt).all())
-        out = [serialize_source(r) for r in rows]
+        out = [serialize_source(r, factory) for r in rows]
     return {"sources": out}
 
 
@@ -122,6 +123,7 @@ async def api_create_source(
     workspace_id = current_workspace_id(request)
     name, kind, config, secrets = _validate_create_body(body)
 
+    factory = request.app.state.session_factory
     now = datetime.datetime.now(datetime.UTC)
     source = IngestSource(
         workspace_id=workspace_id,
@@ -129,14 +131,13 @@ async def api_create_source(
         name=name,
         kind=kind,
         config=json.dumps(config),
-        secrets=json.dumps(secrets),
+        secrets=encrypt_secrets(secrets, factory),
         table_mappings="[]",
         job_id=None,
         is_active=True,
         created_at=now,
         updated_at=now,
     )
-    factory = request.app.state.session_factory
     with factory() as session:
         session.add(source)
         try:
@@ -147,7 +148,7 @@ async def api_create_source(
                 f"A source named {name!r} already exists in this workspace.",
             ) from exc
         session.refresh(source)
-        out = serialize_source(source)
+        out = serialize_source(source, factory)
     return {"source": out}
 
 
@@ -173,7 +174,7 @@ async def api_get_source(request: Request, source_id: int) -> dict[str, Any]:
         row = session.get(IngestSource, source_id)
         if row is None or row.workspace_id != workspace_id:
             raise ResourceNotFoundError("source not found")
-        return {"source": serialize_source(row)}
+        return {"source": serialize_source(row, factory)}
 
 
 @router.patch("/api/ingest/sources/{source_id}")
@@ -229,8 +230,9 @@ async def api_patch_source(
                 patch_secrets = {
                     str(k): v for k, v in cast(dict[Any, Any], patch_secrets_raw).items()
                 }
-            merged = merge_patch_secrets(row.secrets or "{}", patch_secrets)
-            row.secrets = json.dumps(merged)
+            existing_plain = json.dumps(decrypt_secrets(row.secrets, factory))
+            merged = merge_patch_secrets(existing_plain, patch_secrets)
+            row.secrets = encrypt_secrets(merged, factory)
         if "is_active" in body:
             row.is_active = bool(body["is_active"])
         row.updated_at = datetime.datetime.now(datetime.UTC)
@@ -242,7 +244,7 @@ async def api_patch_source(
                 "A source with this name already exists in this workspace.",
             ) from exc
         session.refresh(row)
-        return {"source": serialize_source(row)}
+        return {"source": serialize_source(row, factory)}
 
 
 @router.delete("/api/ingest/sources/{source_id}")

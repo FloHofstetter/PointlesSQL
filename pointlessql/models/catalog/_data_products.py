@@ -79,7 +79,7 @@ class DataProduct(Base):
         id: Auto-incremented primary key.
         workspace_id: Workspace this product belongs to.  FK on
             ``workspaces.id``; ``server_default='1'`` so the
-            seeded default workspace adopts every pre-Phase-29
+            seeded default workspace adopts every pre-existing
             row at upgrade time.
         catalog_name: UC catalog segment.
         schema_name: UC schema segment.  ``(workspace_id,

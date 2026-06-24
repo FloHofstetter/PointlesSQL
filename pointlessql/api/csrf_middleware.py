@@ -86,13 +86,14 @@ async def _submitted_token(request: Request) -> str | None:
     return value if isinstance(value, str) else None
 
 
-def _set_cookie(response: Response, token: str, max_age: int) -> None:
+def _set_cookie(response: Response, token: str, max_age: int, *, secure: bool) -> None:
     """Write the CSRF cookie with the same attributes used by auth."""
     response.set_cookie(
         csrf.COOKIE_NAME,
         token,
         httponly=True,
         samesite="lax",
+        secure=secure,
         max_age=max_age,
         path="/",
     )
@@ -139,6 +140,10 @@ async def csrf_middleware(request: Request, call_next: Any) -> Response:
         settings = getattr(request.app.state, "settings", None)
         auth_cfg = getattr(settings, "auth", None)
         max_age = int(getattr(auth_cfg, "jwt_expiry_hours", 168)) * 3600
-        _set_cookie(response, cookie_token, max_age)
+        # Match the Secure resolution used for the auth cookies: explicit
+        # setting wins, else auto-detect from the request scheme.
+        configured = getattr(auth_cfg, "cookie_secure", None)
+        secure = configured if configured is not None else request.url.scheme == "https"
+        _set_cookie(response, cookie_token, max_age, secure=secure)
 
     return response

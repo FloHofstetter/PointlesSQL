@@ -63,7 +63,7 @@ def flush_buffer(session_factory: sessionmaker[Session], app_state: Any) -> int:
     Per-tick read-modify-write UPSERT so concurrent flushes from
     different workers don't lose counts (SQLite tests; PG production
     would ideally use ``INSERT ... ON CONFLICT DO UPDATE SET count =
-    count + excluded.count`` — keep that as a Phase-120 follow-up
+    count + excluded.count`` — keep that as a follow-up
     optimisation once we have multi-worker traffic).
 
     Args:

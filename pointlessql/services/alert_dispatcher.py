@@ -22,6 +22,8 @@ from typing import Any
 
 import httpx
 
+from pointlessql.services.egress_guard import EgressError, assert_public_http_url
+
 logger = logging.getLogger(__name__)
 
 
@@ -83,6 +85,16 @@ async def dispatch_webhook(
     Returns:
         ``True`` when a 2xx response arrived within the retry budget.
     """
+    # Re-check at send time (not just when the destination was saved) so
+    # a DNS rebind to an internal address since then is still rejected.
+    try:
+        assert_public_http_url(url)
+    except EgressError as exc:
+        logger.warning(
+            "alert webhook blocked by egress guard",
+            extra={"webhook_url": url, "reason": str(exc)},
+        )
+        return False
     body = canonicalise_envelope(envelope)
     headers = {"Content-Type": "application/cloudevents+json"}
     if hmac_secret:

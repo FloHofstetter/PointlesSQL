@@ -26,7 +26,7 @@ def _column_edge_key(row: LineageColumnMap) -> _ColumnEdgeKey:
     same columns from collapsing into one alignment slot.
     """
     # Run-scoped diffs only ever see rows from local agent runs, so
-    # ``op_id`` is always non-NULL in this code path.  The Phase-40
+    # ``op_id`` is always non-NULL in this code path.  The
     # nullability on the column allows external-producer rows that
     # are explicitly filtered out before this helper runs; coerce
     # ``None`` to 0 defensively in case a future caller drifts.

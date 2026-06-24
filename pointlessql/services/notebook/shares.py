@@ -4,7 +4,7 @@ Mints an unguessable v4 UUID per share so a notebook can be reached
 read-only under ``/share/notebook/{share_uuid}`` without auth.  Two
 modes share the same row:
 
-* ``snapshot`` — freezes the current state as a Phase-97
+* ``snapshot`` — freezes the current state as a
   :class:`NotebookRevision` and stores the revision UUID; subsequent
   edits do not leak.  Re-publish updates the snapshot under the
   same share UUID so links stay stable.
@@ -252,13 +252,13 @@ def render_dashboard_html(
 ) -> str:
     """Render the dashboard variant — strips code, keeps markdown + outputs.
 
-    Re-uses the Phase-98.D HTML pipeline but filters out non-markdown
+    Re-uses the shared HTML pipeline but filters out non-markdown
     cells before handing off so the rendered document carries only
     the narrative + result frames.
 
     Args:
         title: Page title.
-        cells: Cell list (Phase-96 shape).
+        cells: Cell list (cell-provenance shape).
         outputs: Persisted output rows (load shape).
 
     Returns:

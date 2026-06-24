@@ -137,7 +137,7 @@ class ApiKey(Base):
     auditor: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False, server_default=text("false")
     )
-    # Phase-40: ``lineage_inbound`` gates ``POST /api/lineage/openlineage``.
+    # ``lineage_inbound`` gates ``POST /api/lineage/openlineage``.
     # Independent of ``supervisor`` / ``auditor`` so a federation-only key
     # can land lineage events without seeing run audit telemetry.
     lineage_inbound: Mapped[bool] = mapped_column(

@@ -23,9 +23,16 @@ catches :class:`pydantic.ValidationError` and rewraps it as
 
 from __future__ import annotations
 
+import re
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+# Unity Catalog identifier: a leading word char then word chars / hyphen,
+# bounded length. No path separators (``/`` ``\`` ``.``) or ``..``, so a
+# catalog/schema name can never escape the draft directory it is written
+# into (see ``data_products_routes/contracts.py``).
+_UC_IDENTIFIER = re.compile(r"^[A-Za-z0-9_][A-Za-z0-9_-]{0,127}$")
 
 DataProductColumnType = Literal[
     "string",
@@ -129,6 +136,32 @@ class DataProductContract(BaseModel):
     steward_email: str | None = None
     sla_minutes: int | None = Field(default=None, ge=1)
     tables: tuple[DataProductTableContract, ...] = ()
+
+    @field_validator("catalog", "schema_name")
+    @classmethod
+    def _validate_uc_identifier(cls, value: str) -> str:
+        """Reject catalog/schema names that are not safe UC identifiers.
+
+        Keeps a draft file's ``catalog__schema.yaml`` name from carrying
+        a path separator that would escape the workspace draft directory.
+
+        Args:
+            value: The proposed catalog or schema name.
+
+        Returns:
+            The value unchanged when it is a valid UC identifier.
+
+        Raises:
+            ValueError: When the value contains anything other than
+                letters, digits, ``_`` or ``-`` (path separators
+                included), or exceeds 128 characters.
+        """
+        if not _UC_IDENTIFIER.match(value):
+            raise ValueError(
+                f"{value!r} is not a valid Unity Catalog identifier "
+                "(letters, digits, '_' or '-'; no path separators, max 128 chars)"
+            )
+        return value
 
     def get_table(self, table_name: str) -> DataProductTableContract | None:
         """Return the contract for ``table_name`` or ``None``.

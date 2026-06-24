@@ -2,12 +2,17 @@
 
 from __future__ import annotations
 
+import logging
+from typing import Any
+
 import pytest
 
 from pointlessql.pql.sql_parser import SQLParseError, inject_limit
+from pointlessql.services.lens import cost_gate as cost_gate_module
 from pointlessql.services.lens.cost_gate import (
     LensNonSelectBlockedError,
     LensSessionBudgetExceededError,
+    _explain_cost_or_zero,
     gate_query,
 )
 
@@ -113,6 +118,48 @@ def test_gate_query_session_budget_exceeded() -> None:
             max_session_cost=0.0,
             session_cost_so_far=10.0,
         )
+
+
+# ---------------------------------------------------------------------------
+# _explain_cost_or_zero — narrowed fail-soft behaviour
+# ---------------------------------------------------------------------------
+
+
+def test_explain_value_error_falls_soft(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    """A malformed-plan ValueError falls soft to cost 0 and is logged."""
+
+    def _boom(_sql: str, _tables: dict[str, str]) -> Any:
+        raise ValueError("EXPLAIN JSON did not parse")
+
+    monkeypatch.setattr(cost_gate_module, "run_explain", _boom)
+    with caplog.at_level(logging.WARNING, logger="pointlessql.services.lens.cost_gate"):
+        estimate = _explain_cost_or_zero("SELECT 1", {"main.s.t": "/loc"})
+    assert estimate.cost == 0
+    assert any("EXPLAIN failed" in record.getMessage() for record in caplog.records)
+
+
+def test_explain_duckdb_error_falls_soft(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A DuckDB engine error falls soft to cost 0 (plan/version drift)."""
+    import duckdb
+
+    def _boom(_sql: str, _tables: dict[str, str]) -> Any:
+        raise duckdb.Error("EXPLAIN unsupported")
+
+    monkeypatch.setattr(cost_gate_module, "run_explain", _boom)
+    assert _explain_cost_or_zero("SELECT 1", {"main.s.t": "/loc"}).cost == 0
+
+
+def test_explain_code_bug_propagates(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A code-bug exception type propagates — it must NOT silently disable the gate."""
+
+    def _boom(_sql: str, _tables: dict[str, str]) -> Any:
+        raise KeyError("regressed plan key")
+
+    monkeypatch.setattr(cost_gate_module, "run_explain", _boom)
+    with pytest.raises(KeyError):
+        _explain_cost_or_zero("SELECT 1", {"main.s.t": "/loc"})
 
 
 # ---------------------------------------------------------------------------

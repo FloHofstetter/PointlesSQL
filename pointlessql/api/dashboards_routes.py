@@ -250,7 +250,13 @@ async def api_update_dashboard(
 
 @router.delete("/api/dashboards/{slug}")
 async def api_delete_dashboard(request: Request, slug: str) -> dict[str, str]:
-    """Delete a dashboard (admin-only)."""
+    """Delete a dashboard.
+
+    Restricted to admins: ``require_admin`` answers 403 for
+    non-admins. Raises ``CatalogNotFoundError`` (rendered as 404)
+    when no dashboard with *slug* exists. Returns
+    ``{"status": "deleted", "slug": slug}`` on success.
+    """
     from pointlessql.models import Dashboard as DashboardModel
 
     require_admin(request)

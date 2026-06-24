@@ -10,6 +10,12 @@
 #
 # Contributors who build from a local checkout layer the dev override:
 #   docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+#
+# REQUIRED before `up`: a strong POINTLESSQL_AUTH_SECRET_KEY. This stack
+# ships no baked-in signing key (a public default would let anyone forge
+# session tokens against every deployment), so it refuses to start until
+# you supply one. Put it in a .env file next to this compose file:
+#   echo "POINTLESSQL_AUTH_SECRET_KEY=$(python -c 'import secrets; print(secrets.token_urlsafe(48))')" >> .env
 
 services:
   soyuz-catalog:
@@ -44,7 +50,7 @@ services:
       POINTLESSQL_DELTA_ENGINE: "${POINTLESSQL_DELTA_ENGINE:-pandas}"
       POINTLESSQL_SERVER_HOST: "0.0.0.0"
       POINTLESSQL_DB_URL: "sqlite:////app/data/pointlessql.db"
-      POINTLESSQL_AUTH_SECRET_KEY: "docker-dev-secret-change-in-prod"
+      POINTLESSQL_AUTH_SECRET_KEY: "${POINTLESSQL_AUTH_SECRET_KEY:?set a strong random secret, e.g. python -c 'import secrets;print(secrets.token_urlsafe(48))'}"
     volumes:
       - warehouse_data:/app/warehouse
       - pointlessql_data:/app/data
@@ -58,7 +64,7 @@ services:
           "CMD",
           "python",
           "-c",
-          "import httpx; httpx.get('http://localhost:8000/healthz').raise_for_status()",
+          "import httpx; httpx.get('http://localhost:8000/readyz').raise_for_status()",
         ]
       interval: 5s
       timeout: 3s

@@ -30,8 +30,8 @@
     <script src="/static/js/theme_boot.js?v={{ asset_version }}"></script>
     <script src="/static/js/layout_boot.js?v={{ asset_version }}"></script>
     <link rel="preload" href="/static/fonts/inter-regular.woff2" as="font" type="font/woff2" crossorigin>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" integrity="sha384-XGjxtQfXaH2tnPFa9x+ruJTuLE3Aa6LhHSWRr1XeTyhezb4abCG4ccI5AkVDxqC+" crossorigin="anonymous" rel="stylesheet">
     <link href="/static/css/style.css?v={{ asset_version }}" rel="stylesheet">
     {% block extra_css %}{% endblock %}
 </head>
@@ -424,14 +424,14 @@
     {% include "components/confirm_modal.html" %}
     {% include "components/rail_customise_offcanvas.html" %}
 
-    <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.6/dist/htmx.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.6/dist/htmx.min.js" integrity="sha384-Akqfrbj/HpNVo8k11SXBb6TlBWmXXlYQrCSqEWmyKJe+hDm3Z/B2WVG4smwBkRVm" crossorigin="anonymous"></script>
     <!-- Chart.js 4.x UMD.  Loaded non-module so every page gets
          ``window.Chart`` synchronously.  Do NOT switch to the
          ``chart.esm.js`` build — the SQL editor's Alpine IIFE
          expects ``window.Chart`` at factory-return time, and the
          Alpine-race replay fix (commit b830300) burned us on
          exactly this category of bug. -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js" integrity="sha384-dug+JxfBvklEQdJ4AYuBBAIScUz0bVN73xpy273gcAwHjb3qI0fXmuYNaNfdyYJG" crossorigin="anonymous"></script>
     {#-
       follow-up: the importmap MUST be parsed before any
       ES module that imports the bare specifiers below. bootstrap.js
@@ -486,8 +486,8 @@
     <script type="module" src="/static/js/entries/{{ _page_entry }}?v={{ asset_version }}"></script>
     {%- endif %}
     <script type="module" src="/static/js/bootstrap.js?v={{ asset_version }}"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js" integrity="sha384-l8f0VcPi/M1iHPv8egOnY/15TDwqgbOR1anMIJWvU6nLRgZVLTLSaNqi/TOoT5Fh" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
     <!-- Initialise Bootstrap Popovers for the contextual
          help-icons emitted by ``_macros/help_icon.html``.
          Must load AFTER the Bootstrap bundle above. -->
@@ -517,6 +517,10 @@
          resting-placeholder pattern to every page navigation. -->
     <script src="/static/js/loading_skeleton.js"></script>
     <script src="/static/js/star.js?v={{ asset_version }}"></script>
+    <!-- Escape-first markdown+citation renderer (window.pqlRenderCitations).
+         Loaded globally and before the deferred Alpine so every social
+         pane's x-html binding can render comment/review bodies safely. -->
+    <script src="/static/js/citation_render.js?v={{ asset_version }}"></script>
     {% block extra_js %}{% endblock %}
 </body>
 </html>

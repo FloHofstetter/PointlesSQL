@@ -38,13 +38,17 @@ from collections.abc import Iterator
 from contextvars import ContextVar
 from typing import Any
 
-from sqlalchemy import event, select
+from sqlalchemy import delete, event, select
 
 from pointlessql.exceptions import PointlessSQLError
 from pointlessql.models import AuditLog
 from pointlessql.types import ErrorCode, SessionFactory
 
 logger = logging.getLogger(__name__)
+
+# Rows deleted per retention batch — bounds the transaction size so the
+# first sweep over a large backlog cannot OOM or trip statement_timeout.
+_AUDIT_PRUNE_BATCH = 1000
 
 
 class AuditIntegrityError(PointlessSQLError):
@@ -246,24 +250,39 @@ def cleanup_old_entries(
         # row forever.
         return 0
     cutoff = datetime.datetime.now(datetime.UTC) - datetime.timedelta(days=retention_days)
+    total = 0
     try:
-        with factory() as session, _allow_audit_mutation():
-            stale = session.scalars(select(AuditLog).where(AuditLog.created_at < cutoff)).all()
-            count = len(stale)
-            for entry in stale:
-                session.delete(entry)
-            session.commit()
-            if count:
-                logger.info(
-                    "audit: pruned %d row(s) older than %d day(s)",
-                    count,
-                    retention_days,
-                )
-            return count
+        # Delete in bounded batches, committing each, rather than loading
+        # the whole stale backlog into memory and deleting it in one
+        # transaction — the first sweep over a large backlog would OOM or
+        # blow the PG statement_timeout. A fresh session per batch keeps
+        # each transaction (and its locks) small. Core bulk delete by id
+        # is fine here: the append-only guard exists to catch accidental
+        # ORM deletes, and this is the sanctioned retention path.
+        while True:
+            with factory() as session, _allow_audit_mutation():
+                ids = session.scalars(
+                    select(AuditLog.id)
+                    .where(AuditLog.created_at < cutoff)
+                    .limit(_AUDIT_PRUNE_BATCH)
+                ).all()
+                if not ids:
+                    break
+                session.execute(delete(AuditLog).where(AuditLog.id.in_(ids)))
+                session.commit()
+                total += len(ids)
+        if total:
+            logger.info(
+                "audit: pruned %d row(s) older than %d day(s)",
+                total,
+                retention_days,
+            )
+        return total
     except Exception:  # noqa: BLE001 — cleanup must never crash the scheduler loop
         logger.warning(
-            "audit: cleanup_old_entries failed (retention=%d)",
+            "audit: cleanup_old_entries failed after %d row(s) (retention=%d)",
+            total,
             retention_days,
             exc_info=True,
         )
-        return 0
+        return total

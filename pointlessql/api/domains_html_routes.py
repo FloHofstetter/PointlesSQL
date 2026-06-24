@@ -102,7 +102,22 @@ async def api_list_domains(request: Request, include_archived: bool = False) -> 
 
 @router.get("/api/domains/{slug}")
 async def api_domain_detail(request: Request, slug: str) -> dict[str, Any]:
-    """Return one domain with its members + owned products."""
+    """Return one domain with its members + owned products.
+
+    Open to any signed-in user: ``require_user`` answers 403 for
+    anonymous callers.
+
+    Args:
+        request: Incoming FastAPI request.
+        slug: Domain slug from the URL.
+
+    Returns:
+        The serialized domain plus its members and owned products.
+
+    Raises:
+        ResourceNotFoundError: When no domain with *slug* exists in
+            the active workspace — rendered as 404.
+    """
     require_user(request)
     factory = request.app.state.session_factory
     workspace_id = current_workspace_id(request)
@@ -146,7 +161,24 @@ async def domains_index_page(request: Request) -> HTMLResponse | RedirectRespons
 
 @router.get("/domains/{slug}", response_class=HTMLResponse, response_model=None)
 async def domain_detail_page(request: Request, slug: str) -> HTMLResponse | RedirectResponse:
-    """Render one domain's detail page (members + owned products)."""
+    """Render one domain's detail page (members + owned products).
+
+    Anonymous visitors are redirected (303) to the login page with a
+    ``next`` deep-link instead of being rendered the page; signed-in
+    users get the rendered detail page.
+
+    Args:
+        request: Incoming FastAPI request.
+        slug: Domain slug from the URL.
+
+    Returns:
+        The rendered detail page, or a 303 redirect to login for
+        anonymous visitors.
+
+    Raises:
+        ResourceNotFoundError: When no domain with *slug* exists in
+            the active workspace — rendered as 404.
+    """
     user = get_user(request)
     if user["id"] == 0:
         return RedirectResponse(url=f"/auth/login?next=/domains/{slug}", status_code=303)

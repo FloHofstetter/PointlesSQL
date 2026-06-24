@@ -7,6 +7,7 @@ and returns the resolved column list or a structured 400.
 
 from __future__ import annotations
 
+import json
 import logging
 from typing import Any, cast
 
@@ -20,6 +21,7 @@ from pointlessql.api.ingest_routes._serializers import (
 from pointlessql.exceptions import ValidationError
 from pointlessql.models import IngestSource
 from pointlessql.models.ingest import INGEST_SOURCE_KINDS
+from pointlessql.services.ingest._secrets import decrypt_secrets
 from pointlessql.services.ingest.probe import ProbeError, probe_source
 
 logger = logging.getLogger(__name__)
@@ -57,7 +59,8 @@ def _resolve_secrets_for_probe(request: Request, body: dict[str, Any]) -> dict[s
         row = session.get(IngestSource, int(source_id))
         if row is None:
             return {k: v for k, v in body_secrets.items() if v != SECRETS_REDACTED_SENTINEL}
-        return merge_patch_secrets(row.secrets or "{}", body_secrets)
+        existing_plain = json.dumps(decrypt_secrets(row.secrets, factory))
+        return merge_patch_secrets(existing_plain, body_secrets)
 
 
 @router.post("/api/ingest/probe")

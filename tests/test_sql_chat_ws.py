@@ -251,3 +251,34 @@ def test_ws_unknown_method_returns_error(
         assert err["error"]["code"] == "unknown_method"
     finally:
         _cleanup(fresh_session_id)
+
+
+def test_ws_unexpected_turn_error_does_not_leak(
+    fake_agent_factory: None,
+    auth_cookies: dict[str, str],
+    fresh_session_id: str,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """An unexpected run_turn failure sends a safe message, never str(exc)."""
+
+    async def _boom(**_: Any) -> Any:
+        raise RuntimeError("SECRET-INTERNAL-LEAK")
+
+    monkeypatch.setattr("pointlessql.api._editor_chat_ws.run_turn", _boom)
+    try:
+        with TestClient(app, cookies=auth_cookies) as client:
+            with client.websocket_connect(f"/ws/sql/chat/{fresh_session_id}") as ws:
+                _ready = ws.receive_text()
+                ws.send_text(json.dumps({"id": 1, "method": "prompt", "params": {"text": "hi"}}))
+                error_frame: dict[str, Any] | None = None
+                for _ in range(20):
+                    raw = ws.receive_text()
+                    assert "SECRET-INTERNAL-LEAK" not in raw
+                    msg = json.loads(raw)
+                    if msg.get("notify") == "error":
+                        error_frame = msg
+                        break
+        assert error_frame is not None
+        assert error_frame["params"]["code"] == "chat_turn_failed"
+    finally:
+        _cleanup(fresh_session_id)

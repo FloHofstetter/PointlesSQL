@@ -76,7 +76,7 @@ def bind_branch(
         session: A SQLAlchemy session.
         notebook_id: ``Notebook.id`` UUID.
         branch_name: Delta-branch name.
-        base_revision_uuid: Optional Phase-97 revision the branch
+        base_revision_uuid: Optional revision the branch
             forks from.
         created_by_user_id: Audit pointer.
 
@@ -155,7 +155,7 @@ def _consult_promote_webhook(
     Args:
         notebook_id: Notebook UUID being promoted.
         binding_branch: Branch name about to be promoted.
-        base_revision_uuid: Optional Phase-97 revision the branch
+        base_revision_uuid: Optional revision the branch
             forks from — forwarded so the reviewer can resolve the
             exact diff under review without a follow-up RPC.
         promoted_by_user_id: Acting user id (forwarded for audit).

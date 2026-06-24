@@ -4,7 +4,7 @@ One row per (editor-tab, user) pair that opens the chat drawer.
 A chat-session is a thin wrapper around a single agent_run: the
 chat owns the run for the duration of the session, every plugin
 tool-call lands an operation row against that run, and the
-Phase-90 ``/memory/<agent-id>`` page renders the whole
+``/memory/<agent-id>`` page renders the whole
 conversation trace as a memory timeline.
 
 Conversation history is stored verbatim as the JSON message list
@@ -39,7 +39,7 @@ class EditorChatSession(Base):
     ``sessionStorage`` for the tab's lifetime).  Each session owns
     exactly one ``agent_run`` row; the LLM's tool-calls and the
     human's accept-clicks both stamp operation rows against that
-    run, so Phase-90 memory automatically surfaces the trace.
+    run, so the memory page automatically surfaces the trace.
 
     Attributes:
         id: Auto-incremented primary key.

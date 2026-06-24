@@ -3,7 +3,7 @@
 Picks ``pending`` :class:`~pointlessql.models.notebook.NotebookReplay`
 rows, marks them ``running``, spins up an isolated Python kernel via
 ``jupyter_client.AsyncKernelManager`` (same dependency the live
-``KernelSession`` uses), re-runs every cell from the pinned Phase-97
+``KernelSession`` uses), re-runs every cell from the pinned
 revision, and records the per-cell outputs back onto the replay row.
 
 The worker is deliberately self-contained:

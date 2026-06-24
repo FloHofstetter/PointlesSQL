@@ -37,12 +37,16 @@ from pointlessql.api.dependencies import require_admin
 from pointlessql.exceptions import CatalogNotFoundError, ValidationError
 from pointlessql.models import Workspace
 from pointlessql.models.audit._sinks import SINK_TYPES, AuditSink, GovernanceEvent
+from pointlessql.services.audit._sink_secrets import (
+    SINK_SECRET_KEYS,
+    decrypt_sink_secrets,
+    encrypt_sink_secrets,
+)
 
 router = APIRouter(tags=["admin-audit-sinks"])
 
 _MAX_NAME = 64
 _MAX_CONFIG_BYTES = 8192
-_SENSITIVE_KEYS: frozenset[str] = frozenset({"hmac_secret", "secret_access_key", "session_token"})
 
 
 def _loads_obj(raw: str | None) -> dict[str, Any]:
@@ -80,7 +84,7 @@ def _redact_config(config: dict[str, Any]) -> dict[str, Any]:
     """
     out = dict(config)
     for k in list(out.keys()):
-        if k in _SENSITIVE_KEYS and out[k]:
+        if k in SINK_SECRET_KEYS and out[k]:
             out[k] = "<redacted>"
     return out
 
@@ -276,7 +280,7 @@ async def api_admin_create_audit_sink(
         row = AuditSink(
             name=name,
             type=sink_type,
-            config_json=json.dumps(config),
+            config_json=json.dumps(encrypt_sink_secrets(config, factory)),
             is_active=is_active,
             event_types_json=json.dumps(event_types) if event_types else None,
             workspace_filter=json.dumps(workspace_filter) if workspace_filter else None,
@@ -331,7 +335,9 @@ async def api_admin_update_audit_sink(
             )
             row.workspace_filter = json.dumps(ws_filter) if ws_filter else None
         if "config" in body:
-            existing_cfg = _loads_obj(row.config_json or "{}")
+            # Decrypt the stored secrets before merging so an unchanged
+            # credential is not double-encrypted on the way back out.
+            existing_cfg = decrypt_sink_secrets(_loads_obj(row.config_json or "{}"), factory)
             patch = body["config"]
             if patch is None:
                 merged: dict[str, Any] = {}
@@ -340,7 +346,7 @@ async def api_admin_update_audit_sink(
             else:
                 raise ValidationError("config must be a JSON object or null")
             validated = _validate_config(merged, sink_type=row.type)
-            row.config_json = json.dumps(validated)
+            row.config_json = json.dumps(encrypt_sink_secrets(validated, factory))
         session.commit()
         session.refresh(row)
         session.expunge(row)
@@ -417,7 +423,7 @@ async def api_admin_test_audit_sink(request: Request, sink_id: int) -> dict[str,
     # Bypass the standard dispatch filter — call the per-sink dispatcher directly
     from pointlessql.services.audit.sinks import dispatch_one
 
-    ok = await dispatch_one(row, envelope)
+    ok = await dispatch_one(row, envelope, session_factory=factory)
     await audit(
         request,
         "audit_sink.tested",

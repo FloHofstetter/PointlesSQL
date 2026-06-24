@@ -149,8 +149,10 @@ class TestRailHubs:
             cookies={auth.COOKIE_NAME: token},
         ) as client:
             resp = await client.get(url)
-        if resp.status_code != 200:
-            pytest.skip(f"{url} returned {resp.status_code}; out of nav-rail scope")
+        assert resp.status_code == 200, (
+            f"{url} returned {resp.status_code} (expected 200) — a hub landing page "
+            "must render for a seeded admin, not silently skip on regression."
+        )
         body = resp.text
         for spoke in spokes:
             assert spoke in body, f"{url} missing spoke {spoke!r} in context panel"
@@ -217,8 +219,10 @@ class TestActiveHub:
             cookies={auth.COOKIE_NAME: token},
         ) as client:
             resp = await client.get("/runs")
-        if resp.status_code != 200:
-            pytest.skip(f"/runs returned {resp.status_code}; not under nav-rail test scope")
+        assert resp.status_code == 200, (
+            f"/runs returned {resp.status_code} (expected 200) — the watch hub must "
+            "render for a seeded admin, not silently skip on regression."
+        )
         body = resp.text
         assert 'data-active-hub="watch"' in body
         assert 'class="pql-icon-rail__link active"' in body, "active class missing on rail"

@@ -149,10 +149,14 @@ async def apps_proxy(slug: str, path: str, request: Request) -> Response:
                 follow_redirects=False,
             )
         except httpx.HTTPError as exc:
-            _logger.warning("hosted-app proxy upstream error for %s/%s: %s", slug, path, exc)
+            # logger.exception captures the traceback — several httpx
+            # transport errors (ConnectError/ReadTimeout) stringify empty.
+            _logger.exception("hosted-app proxy upstream error for %s/%s", slug, path)
             # bare-http-ok: 502 is the canonical proxy-upstream-failed
-            # status; no domain-named exception exists for it.
-            raise HTTPException(status_code=502, detail=f"App upstream error: {exc}") from exc
+            # status; no domain-named exception exists for it.  The detail
+            # stays generic so the upstream host:port in ``exc`` is not
+            # disclosed to the client.
+            raise HTTPException(status_code=502, detail="App upstream is unavailable") from exc
 
     # Strip headers that interfere with our re-emission.
     # ``content-encoding`` would force the client to decode an

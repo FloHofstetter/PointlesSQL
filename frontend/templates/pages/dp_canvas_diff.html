@@ -13,7 +13,7 @@
 {% block extra_css %}
 {{ super() }}
 <link rel="stylesheet"
-      href="https://cdn.jsdelivr.net/npm/drawflow@0.0.59/dist/drawflow.min.css">
+      href="https://cdn.jsdelivr.net/npm/drawflow@0.0.59/dist/drawflow.min.css" integrity="sha384-IFh+Q6zh+LRcTjqVmAKetdGY59dT485vtvWT5DAKQy8iv5+fYWHXisHP7mFKcFqV" crossorigin="anonymous">
 <link rel="stylesheet" href="/static/css/canvas_shared.css?v={{ asset_version }}">
 <link rel="stylesheet" href="/static/css/dp_canvas_editor.css?v={{ asset_version }}">
 <link rel="stylesheet" href="/static/css/dp_canvas_diff.css?v={{ asset_version }}">
@@ -21,7 +21,7 @@
 
 {% block extra_js %}
 {{ super() }}
-<script src="https://cdn.jsdelivr.net/npm/drawflow@0.0.59/dist/drawflow.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/drawflow@0.0.59/dist/drawflow.min.js" integrity="sha384-AwUJfl4ROgOxbeFXwuFb9a5iT0jo4xQ2irCGirX4Z1aZbaIDD10j/nY/+RVcTg5E" crossorigin="anonymous"></script>
 {% endblock %}
 
 {% block content %}

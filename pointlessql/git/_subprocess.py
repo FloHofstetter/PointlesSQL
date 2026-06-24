@@ -68,6 +68,15 @@ def _build_env(extra: dict[str, str] | None) -> dict[str, str]:
     # Stable, predictable output that does not depend on the operator's locale.
     env["LC_ALL"] = "C"
     env["LANG"] = "C"
+    # Restrict the transports git will use so a user-supplied URL can never
+    # reach ext:: (arbitrary command execution). file:// is off unless an
+    # operator opts in (it lets a clone read local repos).
+    from pointlessql.config import get_settings
+
+    protocols = "https:http:ssh:git"
+    if get_settings().workspace_repos.allow_file_protocol:
+        protocols += ":file"
+    env["GIT_ALLOW_PROTOCOL"] = protocols
     if extra:
         env.update(extra)
     return env

@@ -69,7 +69,7 @@ _EVENT_RULES: tuple[tuple[str, str, str], ...] = (
 )
 
 # Actionable-signal ledger kinds → (category, severity). Used by the
-# Wave-4 signal serializer; kept here so both lanes share one source
+# Signal serializer; kept here so both lanes share one source
 # of truth.
 _SIGNAL_RULES: dict[str, tuple[str, str]] = {
     "alert_firing": ("health", "error"),

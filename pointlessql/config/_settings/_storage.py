@@ -42,6 +42,13 @@ class DatabaseSettings(BaseSettings):
     # default — see docs/admin/postgres-deployment.md for tuning.
     pool_recycle_seconds: int = 1800
 
+    # SQLite-only.  How long a writer waits for a competing writer's
+    # lock before raising ``database is locked``.  WAL allows one writer
+    # at a time, and PointlesSQL runs ~17 background loops that all write
+    # the metadata DB, so a non-zero busy_timeout is what keeps a
+    # concurrent write from failing outright.  5 s default; ignored on PG.
+    sqlite_busy_timeout_ms: int = 5000
+
     # PG-only.  Applied per-connection via a SET statement_timeout
     # event listener; SQLite has no equivalent and ignores this.
     # 30 s default fits the cockpit's p95 budget; bump for ad-hoc

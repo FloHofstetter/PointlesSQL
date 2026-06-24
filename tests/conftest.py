@@ -16,6 +16,14 @@ from unittest.mock import MagicMock
 # before any test imports ``pointlessql.api.main``.
 os.environ.setdefault("POINTLESSQL_JUPYTER_ENABLED", "0")
 os.environ.setdefault("POINTLESSQL_MLFLOW_ENABLED", "0")
+# The SSRF egress guard performs real DNS resolution; default it off so
+# the suite's webhook-delivery tests (which post to unresolvable test
+# hosts behind mocked clients) don't hit the network. The dedicated
+# egress-guard tests re-enable it via settings_override.
+os.environ.setdefault("POINTLESSQL_EGRESS_ENABLED", "0")
+# The workspace-repo integration tests clone throwaway file:// repos, which
+# the production git transport allowlist blocks by default; permit it here.
+os.environ.setdefault("POINTLESSQL_REPOS_ALLOW_FILE_PROTOCOL", "1")
 
 # short-circuit the FastAPI lifespan when run under
 # ``TestClient(app)`` / ``ASGITransport``.  The conftest pre-wires
@@ -385,6 +393,11 @@ def _auth_db(  # pyright: ignore[reportUnusedFunction]
     # ``soyuz_audit.fetch_for_run`` swallow-all-exceptions block
     # neutralises any unexpected awaitable mismatches.
     app.state.uc_client = MagicMock()
+
+    # Reset the per-principal UC-client cache so a client cached by one
+    # test (often a MagicMock from a ``for_principal`` patch) never bleeds
+    # into the next — the production cache lives for the process lifetime.
+    app.state.principal_uc_clients = {}
 
     # Ensure templates are always available (set in lifespan normally).
     from pointlessql.api.main import _TEMPLATES

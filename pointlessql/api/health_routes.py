@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["health"])
 
 
-async def _probe_soyuz(catalog_url: str) -> str:
+async def probe_soyuz(catalog_url: str) -> str:
     """Best-effort 1s probe of the soyuz catalog endpoint."""
     base = catalog_url.rstrip("/")
     try:
@@ -65,7 +65,7 @@ async def get_backend_health(request: Request) -> dict[str, Any]:
     mlflow_enabled = bool(settings.mlflow.enabled)
     dbt_enabled = bool(settings.dbt.enabled)
 
-    soyuz_status = await _probe_soyuz(soyuz_url)
+    soyuz_status = await probe_soyuz(soyuz_url)
 
     return {
         "soyuz": soyuz_status,

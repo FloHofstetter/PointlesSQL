@@ -42,7 +42,7 @@ class NotebookBranchBinding(Base):
 
     History rows stay around — one notebook can have many bindings
     over its lifetime, but only one without a ``superseded_at`` is
-    "current".  This matches the Phase-95 cell-identity tombstone
+    "current".  This matches the cell-identity tombstone
     pattern.
 
     Attributes:
@@ -52,7 +52,7 @@ class NotebookBranchBinding(Base):
         branch_name: The Delta-branch name (e.g.
             ``"agent_42__exp1"``).  Free-text; the branch service
             (``services/agent_runs/memory/_branch.py``) owns naming.
-        base_revision_uuid: Optional Phase-97
+        base_revision_uuid: Optional
             :class:`NotebookRevision` UUID this branch forks from —
             so replay can reproduce the exact starting point.
         created_by_user_id: Audit pointer to the binder.

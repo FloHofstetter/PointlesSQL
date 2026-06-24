@@ -27,6 +27,29 @@ class ServerSettings(BaseSettings):
     host: str = "127.0.0.1"
     port: int = 8000
     base_url: str | None = None
+    # Hard cap on request body size (Content-Length), enforced by a
+    # middleware so an oversized upload is rejected with 413 before the
+    # handler buffers it into memory. 25 MiB default.
+    max_request_bytes: int = 25 * 1024 * 1024
+
+
+class EgressSettings(BaseSettings):
+    """SSRF guard for user-supplied outbound destination URLs.
+
+    Reads ``POINTLESSQL_EGRESS_*`` environment variables.  ``enabled``
+    (default ``True``) governs the whole check; ``allow_private`` is the
+    explicit escape hatch for installs that deliberately reach an
+    internal relay; ``allowed_hosts`` is an optional comma-separated
+    hostname allowlist that further narrows what may be contacted (empty
+    means "any public host").  See
+    :func:`pointlessql.services.egress_guard.assert_public_http_url`.
+    """
+
+    model_config = SettingsConfigDict(env_prefix="POINTLESSQL_EGRESS_")
+
+    enabled: bool = True
+    allow_private: bool = False
+    allowed_hosts: str = ""
 
 
 class ExecutorSettings(BaseSettings):
@@ -140,7 +163,7 @@ class CDFTailSettings(BaseSettings):
     """CDF tail subscription worker configuration.
 
     Reads ``POINTLESSQL_CDF_TAIL_*`` environment variables.  The
-    Phase-40.5 background worker periodically reads
+    background worker periodically reads
     ``DeltaTable.load_cdf()`` per active
     :class:`CdfTailSubscription` and INSERT-OR-IGNOREs every CDF row
     into ``cdf_tail_events``.
@@ -158,7 +181,7 @@ class CDFTailSettings(BaseSettings):
 
 
 class ObservabilitySettings(BaseSettings):
-    """OpenTelemetry tracing configuration (opt-in, default off).
+    """Tracing config plus the ``/metrics`` scrape-access policy.
 
     Reads ``POINTLESSQL_OBSERVABILITY_*`` environment variables.  When
     ``enabled`` is ``False`` (the default) the runtime never imports the
@@ -172,6 +195,16 @@ class ObservabilitySettings(BaseSettings):
     context so traces and structured logs share the same identifiers.
     ``sample_ratio`` is the head-based sampling probability (``1.0`` keeps
     every trace; lower it under high load).
+
+    ``metrics_token`` and ``metrics_public`` govern who may scrape
+    ``/metrics``.  By default the route is admin-session only — fine for a
+    human, useless for a headless Prometheus server, which would otherwise
+    need an over-privileged admin key.  Setting ``metrics_token`` lets a
+    scraper present it as a bearer token (constant-time compared) for a
+    least-privilege pull; the admin-session path stays as a fallback.
+    ``metrics_public`` drops auth on ``/metrics`` entirely and is only safe
+    when the endpoint is already network-isolated to a private scrape
+    subnet.
     """
 
     model_config = SettingsConfigDict(env_prefix="POINTLESSQL_OBSERVABILITY_")
@@ -180,3 +213,5 @@ class ObservabilitySettings(BaseSettings):
     tracing_endpoint: str | None = None
     service_name: str = "pointlessql"
     sample_ratio: float = 1.0
+    metrics_token: str | None = None
+    metrics_public: bool = False

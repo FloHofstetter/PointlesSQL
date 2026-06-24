@@ -118,7 +118,7 @@ class LineageRowEdge(Base):
     workspace_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("workspaces.id"), nullable=False, server_default="1"
     )
-    # Phase-40: ``run_id`` and ``op_id`` are nullable for edges
+    # ``run_id`` and ``op_id`` are nullable for edges
     # ingested from external producers via
     # ``POST /api/lineage/openlineage``.  Local PQL inserts always
     # populate both.  Read paths that filter by ``run_id`` naturally
@@ -134,7 +134,7 @@ class LineageRowEdge(Base):
     target_table: Mapped[str] = mapped_column(String(255), nullable=False)
     target_row_id: Mapped[str] = mapped_column(String(64), nullable=False)
     source_model_uri: Mapped[str | None] = mapped_column(String(512), nullable=True)
-    # Phase-40: ``producer`` is the OpenLineage ``job.namespace`` of
+    # ``producer`` is the OpenLineage ``job.namespace`` of
     # an inbound event; ``NULL`` denotes "produced by this install".
     # ``external_event_id`` carries the OL ``run.runId`` for inbound
     # de-dupe and is ``NULL`` for locally-emitted edges.
@@ -268,7 +268,7 @@ class LineageColumnMap(Base):
     workspace_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("workspaces.id"), nullable=False, server_default="1"
     )
-    # Phase-40: nullable for inbound-only edges; same rationale as
+    # Nullable for inbound-only edges; same rationale as
     # :class:`LineageRowEdge`.
     run_id: Mapped[str | None] = mapped_column(
         String(36), ForeignKey("agent_runs.id"), nullable=True

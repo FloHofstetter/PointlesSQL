@@ -43,13 +43,16 @@ from pointlessql.api._bootstrap._loops import (
     _data_product_passport_loop,  # pyright: ignore[reportPrivateUsage]
     _data_product_promotion_loop,  # pyright: ignore[reportPrivateUsage]
     _data_product_trending_loop,  # pyright: ignore[reportPrivateUsage]
+    _event_retention_loop,  # pyright: ignore[reportPrivateUsage]
     _external_writes_loop,  # pyright: ignore[reportPrivateUsage]
+    _kernel_reaper_loop,  # pyright: ignore[reportPrivateUsage]
     _lineage_pruner_loop,  # pyright: ignore[reportPrivateUsage]
     _user_badges_loop,  # pyright: ignore[reportPrivateUsage]
     _user_notification_digest_loop,  # pyright: ignore[reportPrivateUsage]
     _workspace_repos_sync_loop,  # pyright: ignore[reportPrivateUsage]
 )
-from pointlessql.config import get_settings
+from pointlessql.api.dependencies._principal import close_principal_uc_clients
+from pointlessql.config import assert_secret_key_safe, get_settings
 from pointlessql.db import get_session_factory, init_db
 from pointlessql.services import api_keys as api_keys_service
 from pointlessql.services import scheduler as scheduler_service
@@ -133,6 +136,12 @@ def make_lifespan(
         # http path, etc.) simply unset the env var.
         fast_test_lifespan = os.environ.get("POINTLESSQL_TEST_LIFESPAN_FAST") == "1"
 
+        # Fail loud before doing any work if the JWT signing key is the
+        # public placeholder (or too short) while bound to a reachable
+        # host — booting that way would let anyone forge admin sessions.
+        if not fast_test_lifespan:
+            assert_secret_key_safe(settings)
+
         if not fast_test_lifespan:
             soyuz = make_soyuz_client(settings)
             app.state.uc_client = UnityCatalogClient(soyuz)
@@ -208,6 +217,16 @@ def make_lifespan(
             audit_task = asyncio.create_task(
                 _audit_retention_loop(app.state.session_factory, settings),
                 name="audit-retention",
+            )
+
+        # Per-event-table retention (alert_events + query_history). Runs on
+        # the same audit cleanup cadence; each table is opt-out via its
+        # ``*_retention_days=0``.
+        event_retention_task: asyncio.Task[None] | None = None
+        if not fast_test_lifespan:
+            event_retention_task = asyncio.create_task(
+                _event_retention_loop(app.state.session_factory, settings),
+                name="event-retention",
             )
 
         # periodic API-key lifecycle sweep.  Marks
@@ -505,7 +524,19 @@ def make_lifespan(
         # subprocess on app exit.
         notebooks_dir = settings.jupyter.notebooks_dir.resolve()
         notebooks_dir.mkdir(parents=True, exist_ok=True)
-        app.state.kernel_registry = KernelRegistry(notebooks_dir=notebooks_dir)
+        app.state.kernel_registry = KernelRegistry(
+            notebooks_dir=notebooks_dir,
+            max_kernels=settings.jupyter.max_kernels,
+        )
+
+        # Periodic idle-kernel reaper so a kernel subprocess is not held
+        # for the process lifetime once its editor disconnects.
+        kernel_reaper_task: asyncio.Task[None] | None = None
+        if not fast_test_lifespan:
+            kernel_reaper_task = asyncio.create_task(
+                _kernel_reaper_loop(app.state.kernel_registry, settings),
+                name="kernel-reaper",
+            )
 
         # cross-worker co-edit fanout bus.  Opt-in
         # (``coedit.bus_enabled``) and PG-only — SQLite installs stay
@@ -575,6 +606,7 @@ def make_lifespan(
 
                 bind_coedit_bus(None)
                 await coedit_bus.stop()
+            await _cancel_task(kernel_reaper_task)
             await app.state.kernel_registry.shutdown_all()
             serving_manager = getattr(app.state, "serving_manager", None)
             if serving_manager is not None:
@@ -593,6 +625,7 @@ def make_lifespan(
             if hermes_manager is not None:
                 await hermes_manager.stop_all()
             await _cancel_task(audit_task)
+            await _cancel_task(event_retention_task)
             await _cancel_task(api_key_lifecycle_task)
             await _cancel_task(api_key_usage_flush_task)
             await _cancel_task(api_key_usage_retention_task)
@@ -613,6 +646,7 @@ def make_lifespan(
                 await scheduler.stop()
             bind_app_executor(None)
             executor.shutdown(wait=True)
+            await close_principal_uc_clients(app.state)
             if not fast_test_lifespan and app.state.uc_client is not None:
                 await app.state.uc_client.aclose()
 

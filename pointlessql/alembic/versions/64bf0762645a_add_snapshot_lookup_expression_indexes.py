@@ -16,7 +16,8 @@ Create Date: 2026-06-21 23:35:16.645735
 from collections.abc import Sequence
 
 import sqlalchemy as sa
-from alembic import op
+
+from pointlessql.alembic._online_index import create_index_online, drop_index_online
 
 # revision identifiers, used by Alembic.
 revision: str = "64bf0762645a"
@@ -26,14 +27,20 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    """Create the two ``captured_at DESC`` snapshot-lookup indexes."""
-    op.create_index(
+    """Create the two ``captured_at DESC`` snapshot-lookup indexes.
+
+    Both target ``*_snapshots`` tables that grow unbounded, so the index
+    build runs online (``CONCURRENTLY``) on Postgres via
+    :func:`create_index_online` — a plain build would lock out snapshot
+    writes for the duration. SQLite falls back to a plain build.
+    """
+    create_index_online(
         "ix_bi_dashboard_snapshots_dashboard_captured",
         "bi_dashboard_snapshots",
         ["dashboard_id", sa.text("captured_at DESC")],
         unique=False,
     )
-    op.create_index(
+    create_index_online(
         "ix_table_profile_snapshots_lookup",
         "table_profile_snapshots",
         ["monitor_id", "table_fqn", sa.text("captured_at DESC")],
@@ -42,12 +49,12 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    """Drop the snapshot-lookup indexes."""
-    op.drop_index(
+    """Drop the snapshot-lookup indexes (online on Postgres)."""
+    drop_index_online(
         "ix_table_profile_snapshots_lookup",
-        table_name="table_profile_snapshots",
+        "table_profile_snapshots",
     )
-    op.drop_index(
+    drop_index_online(
         "ix_bi_dashboard_snapshots_dashboard_captured",
-        table_name="bi_dashboard_snapshots",
+        "bi_dashboard_snapshots",
     )

@@ -19,8 +19,8 @@ right ``tool_status`` (``cost_denied`` / ``session_budget_exceeded``
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
-from typing import Any
 
 from pointlessql.exceptions import PointlessSQLError, ValidationError
 from pointlessql.pql.sql_parser import (
@@ -32,6 +32,8 @@ from pointlessql.pql.sql_parser import (
 from pointlessql.services.sql.cost_estimator import CostEstimate
 from pointlessql.services.sql.explain import run_explain
 from pointlessql.types import ErrorCode
+
+logger = logging.getLogger(__name__)
 
 DEFAULT_QUERY_LIMIT = 1000
 
@@ -161,28 +163,36 @@ def _explain_cost_or_zero(sql: str, approved_tables: dict[str, str]) -> CostEsti
     """
     if not approved_tables:
         return CostEstimate(max_cardinality=0, join_depth=0, cost=0)
+    import duckdb
+
     try:
         result = run_explain(sql, approved_tables)
     except PointlessSQLError:
         raise
-    except Exception as exc:  # noqa: BLE001 — narrow-cast unknown EXPLAIN failures
-        # bare-broad-ok: Treat EXPLAIN parse drift as non-blocking:
-        # the executor will still enforce timeouts; we just lose cost
-        # estimation for this query.  Surface as zero so the budget
-        # check can't DOS the analyst over a DuckDB version drift.
-        # ``_log_explain_drift`` already preserves the exception
-        # context, just without the ``exc_info=`` keyword the AST
-        # lint expects.
+    except (duckdb.Error, ValueError) as exc:
+        # Treat a DuckDB EXPLAIN failure (version/plan drift) or a malformed
+        # plan-JSON (run_explain raises ValueError) as non-blocking: the
+        # executor still enforces timeouts, so we fall soft to cost 0 rather
+        # than DOS the analyst over an estimation hiccup.  The except stays
+        # narrow on purpose — an AttributeError/KeyError from a refactor must
+        # propagate, not silently disable the cost cap.
         _log_explain_drift(exc)
         return CostEstimate(max_cardinality=0, join_depth=0, cost=0)
     return result.cost
 
 
-def _log_explain_drift(exc: Any) -> None:
-    """Log that EXPLAIN parsing failed; cheap fall-through helper."""
-    import logging
+def _log_explain_drift(exc: Exception) -> None:
+    """Log that EXPLAIN cost estimation failed and the gate fell soft to cost 0.
 
-    logging.getLogger(__name__).warning(
-        "Lens cost-gate: EXPLAIN parse failed (%s); proceeding without cost estimate.",
+    Records the full traceback (``exc_info``) so a recurring drift — or a
+    genuine bug in ``run_explain`` that happens to raise a caught type — is
+    diagnosable rather than reduced to a one-line message.
+
+    Args:
+        exc: The DuckDB / value error raised by ``run_explain``.
+    """
+    logger.warning(
+        "Lens cost-gate: EXPLAIN failed (%s); proceeding without a cost estimate.",
         exc,
+        exc_info=exc,
     )

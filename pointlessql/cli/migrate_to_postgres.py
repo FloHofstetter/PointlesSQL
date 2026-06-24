@@ -7,8 +7,9 @@ fresh Postgres target.  Intentionally narrow scope:
   point at a freshly-provisioned PG with no audit/app-state rows.
 * Runs ``alembic upgrade head`` against the target first so the
   schema matches the source's chain end.
-* Copies tables in a hard-coded FK-respecting order, streaming
-  rows in batches via SQLAlchemy core.
+* Copies every portable ORM table in FK-dependency order (derived
+  from the model registry), streaming rows in batches via SQLAlchemy
+  core.
 * Syncs Postgres sequences past the largest copied id so
   subsequent INSERTs don't collide.
 * Rebuilds the Postgres FTS index from the freshly-copied source
@@ -46,62 +47,54 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-#: Tables copied in this exact order so FK references resolve
-#: against rows that already exist in the target.  Children
-#: appear after their parents.  ``alembic_version`` and the FTS
-#: indexes (``audit_search``/``audit_search_index`` family) are
-#: *not* in this list — alembic rebuilds the version row, and
-#: 30.1's ``audit_fts.install_index`` rebuilds the FTS index
-#: from the freshly-copied source rows.
-_FK_ORDERED_TABLES: tuple[str, ...] = (
-    # Workspace + auth roots
-    "workspaces",
-    "workspace_members",
-    "workspace_catalog_pins",
-    "users",
-    "api_keys",
-    "system_keys",
-    # Catalog UX state
-    "saved_audit_queries",
-    "recent_tables",
-    "table_stats",
-    # Scheduler
-    "jobs",
-    "job_runs",
-    "job_steps",
-    # Sync
-    "sync_runs",
-    # Notebook UX state
-    "notebook_cell_runs",
-    "notebook_cell_run_sources",
-    "notebook_outputs",
-    # Agent runs (parents)
-    "agent_runs",
-    "agent_run_sources",
-    "agent_run_operations",
-    "agent_run_events",
-    "agent_run_tool_calls",
-    # Lineage (children of agent_runs / agent_run_operations)
-    "lineage_row_edges",
-    "lineage_row_rejects",
-    "lineage_column_map",
-    "lineage_value_changes",
-    # Audit + governance + reviews
-    "audit_log",
-    "governance_events",
-    "audit_sinks",
-    "agent_reviews",
-    "review_destinations",
-    "query_history",
-    # External writes / anomalies / branches
-    "unattributed_writes",
-    "anomaly_acks",
-    "branch_audit_log",
-    # Alerts (depend on jobs + workspaces + users)
-    "alerts",
-    "alert_destinations",
-    "alert_events",
+#: Tables rebuilt at the target rather than bulk-copied, so they are
+#: excluded from the copy set.  ``alembic_version`` is alembic's own
+#: bookkeeping (rebuilt by ``alembic upgrade head``); the audit FTS index
+#: (``audit_search``/``audit_search_index`` family) is rebuilt from the
+#: copied rows by :func:`audit_fts.rebuild_index`.  None of these are
+#: ORM-mapped today (so they are already absent from ``Base.metadata``),
+#: but the allowlist is the explicit, documented contract regardless.
+_NON_PORTABLE_TABLES: frozenset[str] = frozenset(
+    {
+        "alembic_version",
+        "audit_search",
+        "audit_search_index",
+        "audit_search_data",
+        "audit_search_idx",
+        "audit_search_content",
+        "audit_search_docsize",
+        "audit_search_config",
+    }
 )
+
+#: A few roots every other table references — pinned to the front of the
+#: copy order so a child is never copied before its parent even if the
+#: metadata-derived topological order tie-breaks them later.  Both are FK
+#: roots (no outbound FKs), so pinning them first is always safe.  Every
+#: other table falls back to ``Base.metadata.sorted_tables`` ordering.
+_PIN_FIRST: tuple[str, ...] = ("workspaces", "users")
+
+
+def _ordered_table_names() -> list[str]:
+    """Return every portable ORM table in FK-dependency (parent→child) order.
+
+    Derived at runtime from ``Base.metadata.sorted_tables`` (SQLAlchemy's
+    topological FK sort) so a newly added model is migrated automatically
+    instead of being silently dropped — the previous hand-maintained tuple
+    covered only 38 of 185 tables (and two of those names were stale), so
+    the bulk of the database vanished on the documented upgrade path while
+    the run still reported success.  ``_PIN_FIRST`` forces the shared root
+    tables to the front; ``_NON_PORTABLE_TABLES`` are excluded.
+
+    Returns:
+        Table names in a copy-safe order (reverse it for the wipe pass).
+    """
+    from pointlessql.models import Base  # noqa: PLC0415 — heavy import deferred
+
+    ordered = [t.name for t in Base.metadata.sorted_tables if t.name not in _NON_PORTABLE_TABLES]
+    pinned = [n for n in _PIN_FIRST if n in ordered]
+    rest = [n for n in ordered if n not in pinned]
+    return pinned + rest
 
 
 class MigrationError(RuntimeError):
@@ -131,8 +124,8 @@ def _ensure_dialects(source_url: str, target_url: str) -> None:
 def _refuse_non_empty_target(target_engine: Engine) -> None:
     """Refuse to overwrite an existing PG with rows.
 
-    Counts rows in every table in :data:`_FK_ORDERED_TABLES`.  If
-    *any* table reports > 0 rows we abort — operators must hand
+    Counts rows in every portable table.  If *any* table reports > 0 rows
+    (beyond the alembic-seeded allowance) we abort — operators must hand
     us a freshly-provisioned PG (no migrations run yet, or only
     alembic upgrade with empty seeds).
 
@@ -153,7 +146,7 @@ def _refuse_non_empty_target(target_engine: Engine) -> None:
         "saved_audit_queries": 5,  # 5 starter queries from j0e1f2a3b4c5
     }
     with target_engine.connect() as conn:
-        for tname in _FK_ORDERED_TABLES:
+        for tname in _ordered_table_names():
             if tname not in existing:
                 continue
             count = conn.execute(text(f"SELECT COUNT(*) FROM {tname}")).scalar() or 0
@@ -305,7 +298,7 @@ def _verify_counts(
     tgt_tables = set(tgt_inspector.get_table_names())
 
     with source_engine.connect() as sc, target_engine.connect() as tc:
-        for tname in _FK_ORDERED_TABLES:
+        for tname in _ordered_table_names():
             if tname not in src_tables or tname not in tgt_tables:
                 continue
             sc_count = int(sc.execute(text(f"SELECT COUNT(*) FROM {tname}")).scalar() or 0)
@@ -399,6 +392,7 @@ def migrate(
         "elapsed_seconds": 0.0,
     }
 
+    ordered = _ordered_table_names()
     try:
         if not dry_run:
             _run_alembic_upgrade_head(target_url)
@@ -407,13 +401,14 @@ def migrate(
             # copied without PK collision.  Walk children → parents
             # so FK references survive.
             with target_engine.begin() as conn:
-                for tname in reversed(_FK_ORDERED_TABLES):
-                    inspector = inspect(target_engine)
-                    if tname not in inspector.get_table_names():
+                inspector = inspect(target_engine)
+                target_tables = set(inspector.get_table_names())
+                for tname in reversed(ordered):
+                    if tname not in target_tables:
                         continue
                     conn.execute(text(f"DELETE FROM {tname}"))
 
-        for tname in _FK_ORDERED_TABLES:
+        for tname in ordered:
             try:
                 copied = _copy_table(
                     source_engine,

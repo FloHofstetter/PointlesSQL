@@ -14,6 +14,9 @@ import pytest
 
 from pointlessql.api.main import app
 from pointlessql.models import IngestSource
+from pointlessql.services.ingest._secrets import (  # pyright: ignore[reportPrivateUsage]
+    decrypt_secrets,
+)
 
 
 def _wipe_sources() -> None:
@@ -89,12 +92,15 @@ async def test_patch_keeps_redacted_secret_unchanged(
     assert patch.status_code == 200, patch.text
     assert patch.json()["source"]["name"] == "pg-prod-renamed"
 
-    # Sneak in via the ORM to confirm the secret survived.
+    # Sneak in via the ORM to confirm the secret survived — stored
+    # encrypted (no plaintext in the column), recovered via decrypt.
     factory = app.state.session_factory
     with factory() as session:
         row = session.get(IngestSource, source_id)
         assert row is not None
-        assert '"original"' in (row.secrets or "")
+        stored = row.secrets or ""
+    assert "original" not in stored
+    assert decrypt_secrets(stored, factory) == {"password": "original"}
 
 
 @pytest.mark.asyncio
@@ -120,8 +126,9 @@ async def test_patch_with_new_secret_overwrites(
     with factory() as session:
         row = session.get(IngestSource, source_id)
         assert row is not None
-        assert '"new"' in (row.secrets or "")
-        assert '"old"' not in (row.secrets or "")
+        stored = row.secrets or ""
+    assert "old" not in stored
+    assert decrypt_secrets(stored, factory) == {"password": "new"}
 
 
 @pytest.mark.asyncio

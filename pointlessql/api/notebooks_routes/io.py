@@ -325,7 +325,7 @@ async def api_save_notebook(
     # if the reconciler minted a different UUID than the
     # client tracked, broadcast a remap so every open browser tab
     # patches its Y.Doc + Alpine state in lock-step.  No-op when no
-    # client uuids were sent (older clients, pre-105.3 callers) or
+    # client uuids were sent (older clients) or
     # when no hub is open.
     remap: dict[str, str] = {}
     for client_uuid, result in zip(client_cell_uuids, results, strict=True):
@@ -491,13 +491,12 @@ def _write_proposal_provenance(
         )
         if proposal is not None:
             proposal.inserted_cell_uuid = cell_uuid
-        # AI-acceptance authorship (Wave-B follow-up
-        # 2026-05-20).  Fires BEFORE the save-handler's user-authorship
-        # loop so the row's ``first_author_*`` gets the agent and the
-        # user-loop only bumps ``last_modifier_*`` to the saver.  Net
-        # effect: the chip reads "minted by AI • last edit by Flo".
-        # Inline editor chat has no registered ``Agent`` DB row;
-        # ``agent_id`` stays None and the service contract accepts
+        # AI-acceptance authorship.  Fires BEFORE the save-handler's
+        # user-authorship loop so the row's ``first_author_*`` gets the
+        # agent and the user-loop only bumps ``last_modifier_*`` to the
+        # saver.  Net effect: the chip reads "minted by AI • last edit
+        # by Flo".  Inline editor chat has no registered ``Agent`` DB
+        # row; ``agent_id`` stays None and the service contract accepts
         # ``agent_run_id``-only attribution.
         try:
             cell_authorship_service.upsert_cell_authorship(

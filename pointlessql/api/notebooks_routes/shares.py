@@ -6,9 +6,9 @@ Two surfaces:
   update / unpublish.  Cookie-gated, workspace-scoped.
 * **Public viewer** under ``/share/notebook/{share_uuid}`` —
   unauthenticated read-only render.  Serves either the regular HTML
-  (Phase-98.D export pipeline) or the dashboard variant.
+  (export pipeline) or the dashboard variant.
 
-Snapshot mode pins the share to a Phase-97 :class:`NotebookRevision`
+Snapshot mode pins the share to a :class:`NotebookRevision`
 so subsequent edits do not leak; live mode reads the current ``.py``
 plus the latest persisted outputs.  Both modes scrub nothing
 automatically — the publish step is admin-gated and the publisher
@@ -24,6 +24,7 @@ from fastapi import APIRouter, Body, Query, Request
 from fastapi.responses import JSONResponse, Response
 from fastapi.templating import Jinja2Templates
 
+from pointlessql.api._embed_headers import allow_framing
 from pointlessql.api.dependencies import get_optional_user, require_user
 from pointlessql.api.notebooks_routes._shared import get_or_create_notebook_uuid
 from pointlessql.config import Settings
@@ -319,6 +320,8 @@ async def public_share_embed(request: Request, share_uuid: str) -> Response:
     """Iframe-friendly variant of :func:`public_share_view`.
 
     Same content + same secret-scrub; ``compact=True`` hides the brand
-    topbar so the iframe parent owns the chrome.
+    topbar so the iframe parent owns the chrome.  The response opts into
+    cross-origin framing (the full-page view at :func:`public_share_view`
+    keeps the global ``X-Frame-Options: DENY``).
     """
-    return await _render_share(request, share_uuid, compact=True)
+    return allow_framing(await _render_share(request, share_uuid, compact=True))

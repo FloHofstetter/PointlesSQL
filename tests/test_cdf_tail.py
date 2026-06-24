@@ -239,3 +239,47 @@ class TestAdminCdfSubscriptions:
         )
         assert first.status_code == 200
         assert second.status_code == 422
+
+
+class TestCoerceTimestamp:
+    """``_coerce_timestamp`` normalises every Delta CDF timestamp shape to UTC."""
+
+    def test_none_returns_none(self) -> None:
+        assert cdf_tail._coerce_timestamp(None) is None
+
+    def test_naive_datetime_is_stamped_utc(self) -> None:
+        naive = datetime.datetime(2026, 1, 2, 3, 4, 5)  # noqa: DTZ001 — testing naive input
+        out = cdf_tail._coerce_timestamp(naive)
+        assert out == datetime.datetime(2026, 1, 2, 3, 4, 5, tzinfo=datetime.UTC)
+        assert out is not None and out.tzinfo is datetime.UTC
+
+    def test_aware_datetime_passes_through(self) -> None:
+        aware = datetime.datetime(2026, 1, 2, 3, 4, 5, tzinfo=datetime.UTC)
+        assert cdf_tail._coerce_timestamp(aware) is aware
+
+    def test_epoch_millis_int(self) -> None:
+        # 1_700_000_000_000 ms == 1_700_000_000 s.
+        expected = datetime.datetime.fromtimestamp(1_700_000_000, tz=datetime.UTC)
+        assert cdf_tail._coerce_timestamp(1_700_000_000_000) == expected
+
+    def test_epoch_millis_float(self) -> None:
+        expected = datetime.datetime.fromtimestamp(1_700_000_000.5, tz=datetime.UTC)
+        assert cdf_tail._coerce_timestamp(1_700_000_000_500.0) == expected
+
+    def test_out_of_range_epoch_returns_none(self) -> None:
+        # A value far beyond datetime's range overflows → None, not a crash.
+        assert cdf_tail._coerce_timestamp(10**30) is None
+
+    def test_iso_string_with_z_suffix(self) -> None:
+        out = cdf_tail._coerce_timestamp("2026-01-02T03:04:05Z")
+        assert out == datetime.datetime(2026, 1, 2, 3, 4, 5, tzinfo=datetime.UTC)
+
+    def test_iso_string_with_offset(self) -> None:
+        out = cdf_tail._coerce_timestamp("2026-01-02T03:04:05+00:00")
+        assert out == datetime.datetime(2026, 1, 2, 3, 4, 5, tzinfo=datetime.UTC)
+
+    def test_unparseable_string_returns_none(self) -> None:
+        assert cdf_tail._coerce_timestamp("not a timestamp") is None
+
+    def test_unknown_type_returns_none(self) -> None:
+        assert cdf_tail._coerce_timestamp(["not", "a", "scalar"]) is None

@@ -10,9 +10,13 @@ audit-sink pattern.
 from __future__ import annotations
 
 import json
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from pointlessql.models import IngestSource
+from pointlessql.services.ingest._secrets import decrypt_secrets
+
+if TYPE_CHECKING:
+    from sqlalchemy.orm import Session, sessionmaker
 
 # Sentinel value that the API GET path returns in place of any
 # secret value.  PATCH-side, callers may echo it back to mean
@@ -77,14 +81,17 @@ def merge_patch_secrets(existing_json: str, patch_secrets: dict[str, Any] | None
     return merged
 
 
-def serialize_source(row: IngestSource) -> dict[str, Any]:
+def serialize_source(row: IngestSource, session_factory: sessionmaker[Session]) -> dict[str, Any]:
     """Project an :class:`IngestSource` into a JSON-ready dict.
 
     Secrets are redacted; config and table_mappings round-trip
-    untouched.
+    untouched.  The session factory decrypts the at-rest credential
+    blob so the redaction still reports which keys are set.
 
     Args:
         row: ORM row.
+        session_factory: Session factory used to decrypt the secrets
+            column before redacting it.
 
     Returns:
         Dict suitable for ``json.dumps``.
@@ -97,6 +104,7 @@ def serialize_source(row: IngestSource) -> dict[str, Any]:
         mappings = json.loads(row.table_mappings or "[]")
     except ValueError, TypeError:
         mappings = []
+    secrets_plain = decrypt_secrets(row.secrets, session_factory)
     return {
         "id": int(row.id),
         "workspace_id": int(row.workspace_id),
@@ -104,7 +112,7 @@ def serialize_source(row: IngestSource) -> dict[str, Any]:
         "name": row.name,
         "kind": row.kind,
         "config": config,
-        "secrets": redact_secrets(row.secrets or "{}"),
+        "secrets": redact_secrets(json.dumps(secrets_plain)),
         "table_mappings": mappings,
         "job_id": int(row.job_id) if row.job_id is not None else None,
         "is_active": bool(row.is_active),

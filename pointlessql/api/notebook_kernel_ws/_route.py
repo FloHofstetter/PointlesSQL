@@ -196,6 +196,9 @@ async def notebook_kernel_ws(websocket: WebSocket) -> None:
                     message="frame must be a JSON object",
                 )
                 continue
+            # Mark the kernel active so the idle reaper spares it while an
+            # editor is connected and sending frames.
+            session.touch()
             request_id_raw = frame.get("id")
             request_id = int(request_id_raw) if isinstance(request_id_raw, int) else None
             method = frame.get("method")
@@ -258,4 +261,9 @@ async def notebook_kernel_ws(websocket: WebSocket) -> None:
         for task in (iopub_task, shell_task):
             if not task.done():
                 task.cancel()
+        # Await the cancelled pumps so cancellation actually completes
+        # before the handler returns and any teardown exception is
+        # retrieved (an un-awaited cancelled task can linger past the
+        # WebSocket close and log "Task exception was never retrieved").
+        await asyncio.gather(iopub_task, shell_task, return_exceptions=True)
         session.unsubscribe(sub)

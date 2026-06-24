@@ -9,11 +9,15 @@ package ``__init__`` for the shared shape; these are scheduled as
 from __future__ import annotations
 
 import asyncio
+import datetime
 import logging
 from typing import Any
 
 from pointlessql.config import Settings
 from pointlessql.services import audit as audit_service
+from pointlessql.services.alerts import prune_events_older_than
+from pointlessql.services.query_history import prune_history_older_than
+from pointlessql.services.sql_statements import cleanup_stale_statements
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +47,91 @@ async def _audit_retention_loop(  # pyright: ignore[reportUnusedFunction]
             await asyncio.to_thread(audit_service.cleanup_old_entries, factory, retention)
         except Exception:  # noqa: BLE001 — retention loop must survive everything
             logger.exception("audit: retention loop tick raised")
+        try:
+            await asyncio.sleep(interval)
+        except asyncio.CancelledError:
+            return
+
+
+def _prune_event_tables(factory: Any, settings: Settings) -> None:
+    """Prune the unbounded append tables past their retention windows.
+
+    ``alert_events``, ``query_history`` and the public SQL Statement API
+    store (``sql_statements``) all grow one row per event with no built-in
+    cap.  A retention of 0 (or a disabled SQL Statement API) keeps that
+    table forever.
+
+    Args:
+        factory: SQLAlchemy session factory.
+        settings: Snapshotted :class:`Settings`.
+    """
+    now = datetime.datetime.now(datetime.UTC)
+    alert_days = settings.audit.alert_event_retention_days
+    if alert_days > 0:
+        prune_events_older_than(factory, now - datetime.timedelta(days=alert_days))
+    history_days = settings.audit.query_history_retention_days
+    if history_days > 0:
+        prune_history_older_than(factory, now - datetime.timedelta(days=history_days))
+    if settings.sql_execution_api.enabled:
+        cleanup_stale_statements(
+            factory,
+            retention_hours=settings.sql_execution_api.result_payload_retention_hours,
+        )
+
+
+async def _kernel_reaper_loop(  # pyright: ignore[reportUnusedFunction]
+    registry: Any,
+    settings: Settings,
+) -> None:
+    """Shut down idle notebook kernels so subprocesses don't accumulate.
+
+    Each ``(user, notebook)`` pair holds an ipykernel subprocess for the
+    process lifetime; on a shared deploy that leaks PIDs and memory. This
+    sweep retires any kernel idle past
+    ``jupyter.kernel_idle_ttl_seconds`` so only live editors keep one.
+    Disabled (returns immediately) when the TTL is non-positive.
+
+    Args:
+        registry: The process-global ``KernelRegistry``.
+        settings: Snapshotted :class:`Settings`.
+    """
+    ttl = settings.jupyter.kernel_idle_ttl_seconds
+    if ttl <= 0:
+        return
+    interval = max(60, ttl // 4)
+    while True:
+        try:
+            reaped = await registry.reap_idle(ttl)
+            if reaped:
+                logger.info("kernel reaper shut down %d idle kernel(s)", reaped)
+        except Exception:  # noqa: BLE001 — reaper must survive every tick
+            logger.exception("kernel-reaper loop tick raised")
+        try:
+            await asyncio.sleep(interval)
+        except asyncio.CancelledError:
+            return
+
+
+async def _event_retention_loop(  # pyright: ignore[reportUnusedFunction]
+    factory: Any,
+    settings: Settings,
+) -> None:
+    """Prune the per-event tables on the audit cleanup cadence.
+
+    ``alert_events`` and ``query_history`` each grow unbounded; this
+    sweep keeps them within their ``*_retention_days`` windows on the
+    same tick cadence as the audit-log retention loop.
+
+    Args:
+        factory: SQLAlchemy session factory shared with the app.
+        settings: Snapshotted :class:`Settings`.
+    """
+    interval = max(60, settings.audit.cleanup_interval_seconds)
+    while True:
+        try:
+            await asyncio.to_thread(_prune_event_tables, factory, settings)
+        except Exception:  # noqa: BLE001 — retention loop must survive everything
+            logger.exception("event-retention loop tick raised")
         try:
             await asyncio.sleep(interval)
         except asyncio.CancelledError:
@@ -140,7 +229,7 @@ async def _workspace_repos_sync_loop(  # pyright: ignore[reportUnusedFunction]
 
     Active only when
     ``POINTLESSQL_REPOS_SYNC_INTERVAL_SECONDS`` is non-zero — same
-    opt-in discipline as every other Phase-13.x+ scanner.  Each
+    opt-in discipline as every other scanner.  Each
     tick lists the repos whose ``last_synced_at`` is older than
     the configured cadence (or ``NULL``) and pulls them
     sequentially.  Per-repo failures are recorded on the row

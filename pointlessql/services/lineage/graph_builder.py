@@ -34,6 +34,7 @@ from pointlessql.models import (
     LineageColumnMap,
     LineageRowEdge,
 )
+from pointlessql.services.perf import backend_label, query_span
 
 
 def build_lineage_graph(
@@ -117,7 +118,10 @@ def build_lineage_graph(
         else:
             op_meta[op_id_value] = (int(row[0]), row[1])
 
-    with factory() as session:
+    with (
+        factory() as session,
+        query_span("lineage_graph_build", backend_label(session)),
+    ):
         # --- row edges -------------------------------------------------
         row_stmt = select(
             LineageRowEdge.source_table,

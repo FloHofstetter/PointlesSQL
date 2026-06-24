@@ -57,6 +57,25 @@ def _draft_filename(catalog: str, schema: str) -> str:
     return f"{catalog}__{schema}.yaml"
 
 
+def _assert_within_dir(parent: Path, target: Path) -> None:
+    """Reject a draft path that escapes its workspace directory.
+
+    The contract model already rejects path separators in catalog /
+    schema names; this is the defence-in-depth check on the resolved
+    path so a malformed or legacy value can never write outside the
+    sandbox.
+
+    Args:
+        parent: The workspace draft directory.
+        target: The draft file path built under *parent*.
+
+    Raises:
+        BadRequestError: When *target* is not contained in *parent*.
+    """
+    if not target.resolve().is_relative_to(parent.resolve()):
+        raise BadRequestError("invalid catalog or schema name")
+
+
 def _draft_dir(settings: Any, workspace_id: int) -> Path:
     """Return the workspace-scoped draft directory; create on demand.
 
@@ -151,6 +170,7 @@ async def preview_contract_draft(
     draft = _build_payload(body)
     parent = _draft_dir(settings, workspace_id)
     target = parent / _draft_filename(draft.contract.catalog, draft.contract.schema_name)
+    _assert_within_dir(parent, target)
     return {
         "yaml_preview": draft.yaml(),
         "would_write_path": str(target),
@@ -179,6 +199,7 @@ async def save_contract_draft(
     draft = _build_payload(body)
     parent = _draft_dir(settings, workspace_id)
     target = parent / _draft_filename(draft.contract.catalog, draft.contract.schema_name)
+    _assert_within_dir(parent, target)
     yaml_text = draft.yaml()
     yaml_hash = hashlib.sha256(yaml_text.encode("utf-8")).hexdigest()
     target.write_text(yaml_text, encoding="utf-8")
@@ -322,6 +343,7 @@ async def promote_draft(
             raise ConflictError("draft was discarded; cannot promote")
         draft_path = Path(row.draft_path)
         target = writable_dir / _draft_filename(row.catalog_name, row.schema_name)
+        _assert_within_dir(writable_dir, target)
         catalog_name = row.catalog_name
         schema_name = row.schema_name
 

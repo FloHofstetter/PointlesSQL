@@ -111,9 +111,11 @@ def record_contract_event_after_commit(
     from pointlessql.services.workspace.governance import (
         EVENT_TYPE_DATA_PRODUCT_CONTRACT_VIOLATED,
         emit_governance_event,
+        spawn_governance_event,
     )
 
-    loop.create_task(
+    spawn_governance_event(
+        loop,
         emit_governance_event(
             EVENT_TYPE_DATA_PRODUCT_CONTRACT_VIOLATED,
             {
@@ -124,7 +126,8 @@ def record_contract_event_after_commit(
             },
             session_factory=session_factory,
             workspace_id=workspace_id,
-        )
+        ),
+        label="contract_violated",
     )
 
 

@@ -68,7 +68,7 @@ async def test_create_repo_with_secret_metadata_visible(admin_client: httpx.Asyn
 async def test_create_repo_rejects_unknown_provider(admin_client: httpx.AsyncClient) -> None:
     res = await admin_client.post(
         "/api/admin/repos",
-        json={"slug": "bad", "url": "x", "provider_kind": "gitlab"},
+        json={"slug": "bad", "url": "https://example.com/repo.git", "provider_kind": "gitlab"},
     )
     assert res.status_code == 422
 
@@ -77,7 +77,7 @@ async def test_create_repo_rejects_unknown_provider(admin_client: httpx.AsyncCli
 async def test_add_secret_then_revoke(admin_client: httpx.AsyncClient) -> None:
     create = await admin_client.post(
         "/api/admin/repos",
-        json={"slug": "rotatable", "url": "x"},
+        json={"slug": "rotatable", "url": "https://example.com/repo.git"},
     )
     repo_id = create.json()["id"]
 
@@ -104,7 +104,7 @@ async def test_add_secret_then_revoke(admin_client: httpx.AsyncClient) -> None:
 async def test_rotate_webhook_secret(admin_client: httpx.AsyncClient) -> None:
     create = await admin_client.post(
         "/api/admin/repos",
-        json={"slug": "rotate-me", "url": "x"},
+        json={"slug": "rotate-me", "url": "https://example.com/repo.git"},
     )
     original = create.json()["webhook_secret"]
     repo_id = create.json()["id"]
@@ -134,7 +134,7 @@ async def test_sync_repo_returns_outcome_envelope(admin_client: httpx.AsyncClien
 async def test_delete_repo_returns_deleted_true(admin_client: httpx.AsyncClient) -> None:
     create = await admin_client.post(
         "/api/admin/repos",
-        json={"slug": "byebye", "url": "x"},
+        json={"slug": "byebye", "url": "https://example.com/repo.git"},
     )
     repo_id = create.json()["id"]
     res = await admin_client.delete(f"/api/admin/repos/{repo_id}")

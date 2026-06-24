@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from typing import Any
 
 from soyuz_catalog_client import Client
@@ -20,6 +21,12 @@ from pointlessql.services.unitycatalog._api import (
     wrap_catalog_errors,
 )
 
+logger = logging.getLogger(__name__)
+
+# Upper bound on pages drained per list call — a backstop against a
+# provider that returns a self-referential next_page_token forever.
+_MAX_LIST_PAGES = 1000
+
 
 class CatalogsMixin:
     """Catalog-level CRUD + the bulk-tree aggregator."""
@@ -30,17 +37,27 @@ class CatalogsMixin:
     async def list_catalogs(self) -> list[dict[str, Any]]:
         """Return all catalogs visible to the caller.
 
+        Follows ``next_page_token`` to the end so a large install is not
+        silently truncated to soyuz's first page.
+
         Returns:
             A list of catalog dicts, or an empty list if the server
             reports none.
         """
-        response = await _list_catalogs.asyncio(client=self._client)
-        if not isinstance(response, ListCatalogsResponse):
-            return []
-        catalogs = response.catalogs
-        if not isinstance(catalogs, list):
-            return []
-        return [c.to_dict() for c in catalogs]
+        out: list[dict[str, Any]] = []
+        page_token: str | None = None
+        for _ in range(_MAX_LIST_PAGES):
+            response = await _list_catalogs.asyncio(client=self._client, page_token=page_token)
+            if not isinstance(response, ListCatalogsResponse):
+                break
+            catalogs = response.catalogs
+            if isinstance(catalogs, list):
+                out.extend(c.to_dict() for c in catalogs)
+            next_token = response.next_page_token
+            if not isinstance(next_token, str) or not next_token:
+                break
+            page_token = next_token
+        return out
 
     @wrap_catalog_errors
     async def get_catalog(self, catalog_name: str) -> dict[str, Any]:
@@ -122,20 +139,42 @@ class CatalogsMixin:
             whose entries each carry ``tables``, ``volumes``, and
             ``models`` keys.
         """
+        from pointlessql.config import get_settings
+
         catalogs = await self.list_catalogs()
+        # Bound the per-schema child fan-out so a wide catalog cannot
+        # stampede soyuz with thousands of concurrent GETs.
+        semaphore = asyncio.Semaphore(max(1, get_settings().soyuz.tree_fanout_concurrency))
 
         async def _with_schemas(cat: dict[str, Any]) -> dict[str, Any]:
             schemas = await self.list_schemas(cat["name"])  # type: ignore[attr-defined]
 
             async def _with_children(schema: dict[str, Any]) -> dict[str, Any]:
-                tables_task = self.list_tables(cat["name"], schema["name"])  # type: ignore[attr-defined]
-                volumes_task = self.list_volumes(cat["name"], schema["name"])  # type: ignore[attr-defined]
-                models_task = self.list_registered_models(  # type: ignore[attr-defined]
-                    catalog_name=cat["name"], schema_name=schema["name"]
-                )
-                tables, volumes, models = await asyncio.gather(
-                    tables_task, volumes_task, models_task
-                )
+                async with semaphore:
+                    try:
+                        tables, volumes, models = await asyncio.gather(
+                            self.list_tables(cat["name"], schema["name"]),  # type: ignore[attr-defined]
+                            self.list_volumes(cat["name"], schema["name"]),  # type: ignore[attr-defined]
+                            self.list_registered_models(  # type: ignore[attr-defined]
+                                catalog_name=cat["name"], schema_name=schema["name"]
+                            ),
+                        )
+                    except Exception:  # noqa: BLE001 — degrade one schema, not the tree
+                        # A failing/unavailable schema must not abort the whole
+                        # sidebar render — surface it as an empty, partial node.
+                        logger.warning(
+                            "get_tree: children fetch failed for %s.%s",
+                            cat["name"],
+                            schema["name"],
+                            exc_info=True,
+                        )
+                        return {
+                            **schema,
+                            "tables": [],
+                            "volumes": [],
+                            "models": [],
+                            "partial": True,
+                        }
                 return {
                     **schema,
                     "tables": tables,

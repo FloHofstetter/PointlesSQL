@@ -160,4 +160,6 @@ def _safe_audit(
             workspace_id=int(row.workspace_id),
         )
     except Exception:  # noqa: BLE001 — sweep must never break on audit
-        logger.debug("Failed to emit %s audit for api_key %s", action, row.name, exc_info=True)
+        # The api_key.expired / expiry_warning rows are a security audit
+        # trail; a failed write must be visible at INFO, not buried at debug.
+        logger.warning("Failed to emit %s audit for api_key %s", action, row.name, exc_info=True)

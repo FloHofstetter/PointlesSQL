@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import asyncio
 import datetime
+import logging
 import uuid
 from pathlib import Path
 
@@ -165,3 +166,46 @@ def test_violated_outcome_outside_event_loop(tmp_path: Path) -> None:
     )
     assert _count_dp_contract_events() == 1
     assert _count_violated_envelopes() == 0
+
+
+async def test_spawn_governance_event_logs_failure(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """A raising emit coroutine is logged, not silently dropped.
+
+    emit_governance_event lets a persistence error propagate; on the
+    fire-and-forget call sites there is no caller to catch it, so the
+    spawn helper must log the failure rather than let it vanish into the
+    event-loop default handler.
+    """
+    from pointlessql.services.workspace.governance import spawn_governance_event
+
+    async def _boom() -> None:
+        raise RuntimeError("emit boom")
+
+    with caplog.at_level(logging.ERROR, logger="pointlessql.services.workspace.governance"):
+        spawn_governance_event(asyncio.get_running_loop(), _boom(), label="unit")
+        # Two ticks: one to start the task, one for it to raise + log.
+        await asyncio.sleep(0)
+        await asyncio.sleep(0)
+
+    assert any(
+        "governance event emit failed" in record.getMessage() for record in caplog.records
+    ), "spawned emit failure was not logged"
+
+
+async def test_spawn_governance_event_runs_to_completion() -> None:
+    """The happy path runs the coroutine and retains it until done."""
+    from pointlessql.services.workspace import governance
+
+    ran = asyncio.Event()
+
+    async def _ok() -> None:
+        ran.set()
+
+    governance.spawn_governance_event(asyncio.get_running_loop(), _ok(), label="unit-ok")
+    await asyncio.wait_for(ran.wait(), timeout=1.0)
+    # Drain the done-callback so the retention set empties.
+    await asyncio.sleep(0)
+    assert ran.is_set()
+    assert governance._background_event_tasks == set()

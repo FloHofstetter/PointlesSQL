@@ -20,6 +20,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 from sqlalchemy import select
 
+from pointlessql.api._embed_headers import allow_framing
 from pointlessql.api.bi_dashboards_routes._shared import (
     ensure_can_edit,
     ensure_dashboard,
@@ -97,7 +98,7 @@ async def bi_dashboard_public_page(request: Request, token: str) -> HTMLResponse
     dashboard = bi_service.get_dashboard_by_token(factory, token=token)
     if dashboard is None:
         raise ResourceNotFoundError("Published dashboard not found.")
-    return get_templates(request).TemplateResponse(
+    response = get_templates(request).TemplateResponse(
         request,
         "pages/bi_dashboard_public.html",
         {
@@ -106,6 +107,7 @@ async def bi_dashboard_public_page(request: Request, token: str) -> HTMLResponse
             "public_token": token,
         },
     )
+    return allow_framing(response)
 
 
 @router.get("/bi", response_class=HTMLResponse)

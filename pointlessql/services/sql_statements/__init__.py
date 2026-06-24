@@ -36,7 +36,6 @@ from pointlessql.services.sql_statements._parameters import (
 from pointlessql.services.sql_statements._qualify import qualify_sql
 from pointlessql.services.sql_statements._retention import (
     cleanup_stale_statements,
-    register_retention_executor,
 )
 
 __all__ = [
@@ -50,7 +49,6 @@ __all__ = [
     "error_envelope",
     "fetch_statement",
     "qualify_sql",
-    "register_retention_executor",
     "register_statement_task",
     "run_statement",
     "unregister_statement_task",

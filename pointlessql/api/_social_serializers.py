@@ -22,8 +22,8 @@ different JSON shapes between the DP-specific routes (which use
 ``data_product_id``) and the polymorphic routes (which use
 ``social_target_id``) — see locked decision #3.
 Forcing a unified serialiser would either break backward compat
-for pre-77 clients or hide the polymorphic addressing key from
-new clients.  The decision gate in the Phase-79 plan documents
+for older clients or hide the polymorphic addressing key from
+new clients.  The decision gate in the consolidation plan documents
 the choice to skip that consolidation.
 """
 

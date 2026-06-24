@@ -25,6 +25,7 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import HTMLResponse, JSONResponse, Response
 from fastapi.templating import Jinja2Templates
+from sqlalchemy.exc import OperationalError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from pointlessql.api.dependencies import get_optional_user, is_htmx_partial, wants_json
@@ -409,6 +410,22 @@ def register_error_handlers(app: FastAPI) -> None:
         if headers:
             response.headers.update(headers)
         return response
+
+    @app.exception_handler(OperationalError)
+    async def _handle_db_unavailable(  # pyright: ignore[reportUnusedFunction]
+        request: Request, exc: OperationalError
+    ) -> Response:
+        # A connection/operational failure on the metadata DB is an outage,
+        # not a bug — classify it as a retryable 503 with a stable code so
+        # monitors can tell "database down" from "internal error", and never
+        # leak str(exc) (which carries the DSN). Do not retry here.
+        logger.warning("metadata DB operational error on %s %s", request.method, request.url.path)
+        return _dispatch(
+            request,
+            status_code=503,
+            error_code=ErrorCode.DATABASE_UNAVAILABLE,
+            detail="The database is temporarily unavailable. Please retry.",
+        )
 
     @app.exception_handler(Exception)
     async def _handle_unexpected_error(  # pyright: ignore[reportUnusedFunction]

@@ -100,9 +100,16 @@ async def _pump(client: WebSocket, upstream: ClientConnection) -> None:
 
     forward = asyncio.create_task(client_to_upstream())
     backward = asyncio.create_task(upstream_to_client())
-    _done, pending = await asyncio.wait({forward, backward}, return_when=asyncio.FIRST_COMPLETED)
-    for task in pending:
-        task.cancel()
+    try:
+        await asyncio.wait({forward, backward}, return_when=asyncio.FIRST_COMPLETED)
+    finally:
+        # Cancel + await BOTH pumps so neither is left orphaned — including
+        # the case where _pump itself is cancelled mid-wait, where the old
+        # "cancel only the pending set" cleanup was skipped entirely and
+        # both pumps kept running against the closing sockets.
+        forward.cancel()
+        backward.cancel()
+        await asyncio.gather(forward, backward, return_exceptions=True)
 
 
 async def _proxy_ws(websocket: WebSocket, upstream_path: str) -> None:

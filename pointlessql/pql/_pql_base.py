@@ -2,7 +2,7 @@
 
 Holds the three private attributes (``_client``, ``_engine``,
 ``_current_run_id``) every PQL method touches, plus the two per-call
-helpers (``_unreachable_msg``, ``_branch_remap``).  The Phase-111.7
+helpers (``_unreachable_msg``, ``_branch_remap``).  The
 mixin split keeps these centralised so the per-concern mixins
 (``_DataOpsMixin``, ``_GovernanceMixin``) can rely on a stable
 contract without redeclaring the attrs each time.

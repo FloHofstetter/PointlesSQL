@@ -30,6 +30,8 @@ from typing import TYPE_CHECKING, Any, Literal
 
 from sqlalchemy import text
 
+from pointlessql.services.perf import query_span
+
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session, sessionmaker
 
@@ -162,25 +164,27 @@ def search(
 
     with factory() as session:
         if _is_sqlite(session):
-            results = _sqlite.search(
-                session,
-                sanitised=sanitised,
-                axis=axis,
-                limit=limit,
-                offset=safe_offset,
-                workspace_id=workspace_id,
-                kind=kind,
-            )
+            with query_span("audit_fts_search", "sqlite"):
+                results = _sqlite.search(
+                    session,
+                    sanitised=sanitised,
+                    axis=axis,
+                    limit=limit,
+                    offset=safe_offset,
+                    workspace_id=workspace_id,
+                    kind=kind,
+                )
         elif _is_postgres(session):
-            results = _postgres.search(
-                session,
-                sanitised=sanitised,
-                axis=axis,
-                limit=limit,
-                offset=safe_offset,
-                workspace_id=workspace_id,
-                kind=kind,
-            )
+            with query_span("audit_fts_search", "postgres"):
+                results = _postgres.search(
+                    session,
+                    sanitised=sanitised,
+                    axis=axis,
+                    limit=limit,
+                    offset=safe_offset,
+                    workspace_id=workspace_id,
+                    kind=kind,
+                )
         else:
             return response
 

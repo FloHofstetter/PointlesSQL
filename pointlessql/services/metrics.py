@@ -36,6 +36,8 @@ from prometheus_client import (
     Counter,
     Gauge,
     Histogram,
+    PlatformCollector,
+    ProcessCollector,
     generate_latest,
 )
 from prometheus_client import REGISTRY as _DEFAULT_REGISTRY
@@ -48,6 +50,14 @@ logger = logging.getLogger(__name__)
 # specifically; anyone who wants to scrape process metrics too can
 # compose this with the default registry in their own exporter.
 REGISTRY: CollectorRegistry = CollectorRegistry()
+
+# Expose the standard process + platform series (RSS, CPU seconds, open
+# FDs, Python/platform build labels) on the same registry the route
+# renders, so a single scrape carries host-health alongside the app
+# metrics — no separate exporter needed. Both are stateless reads of
+# ``/proc`` and the interpreter, registered once at import.
+ProcessCollector(registry=REGISTRY)
+PlatformCollector(registry=REGISTRY)
 
 
 # Bucket selection for job durations.

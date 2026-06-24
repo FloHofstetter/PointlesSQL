@@ -35,6 +35,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from pointlessql.models.audit._sinks import AuditSink
 from pointlessql.services.alert_dispatcher import dispatch_webhook
+from pointlessql.services.audit._sink_secrets import decrypt_sink_secrets
 from pointlessql.services.aws_sigv4 import sign_request
 from pointlessql.types import AuditSinkType, SessionFactory
 
@@ -43,11 +44,21 @@ logger = logging.getLogger(__name__)
 _DEFAULT_TIMEOUT = httpx.Timeout(connect=5.0, read=10.0, write=10.0, pool=10.0)
 
 
-def _decode_config(sink: AuditSink) -> dict[str, Any]:
+def _decode_config(
+    sink: AuditSink,
+    session_factory: SessionFactory | sessionmaker[Session] | None = None,
+) -> dict[str, Any]:
     """Decode ``sink.config_json`` into a dict, raising :class:`ValueError` on bad JSON.
+
+    When *session_factory* is supplied the credential fields are
+    decrypted with the install master key (legacy plaintext rows are
+    kept as-is).  Callers that only read non-secret fields — the
+    stdout/syslog dispatchers — pass nothing and skip the decrypt.
 
     Args:
         sink: ORM row to read.
+        session_factory: Optional session factory; when given, the
+            :data:`SINK_SECRET_KEYS` values are decrypted before return.
 
     Returns:
         Decoded config dict.
@@ -58,6 +69,8 @@ def _decode_config(sink: AuditSink) -> dict[str, Any]:
     cfg = json.loads(sink.config_json or "{}")
     if not isinstance(cfg, dict):
         raise ValueError(f"audit_sinks[{sink.id}].config_json is not a JSON object")
+    if session_factory is not None:
+        return decrypt_sink_secrets(cfg, session_factory)
     return cfg
 
 
@@ -131,17 +144,21 @@ def _decode_workspace_filter(sink: AuditSink) -> set[int] | None:
 async def _dispatch_webhook(
     sink: AuditSink,
     envelope: dict[str, Any],
+    *,
+    session_factory: SessionFactory | sessionmaker[Session] | None = None,
 ) -> bool:
     """Dispatch *envelope* to a webhook sink, returning success.
 
     Args:
         sink: The webhook sink ORM row.
         envelope: CloudEvents 1.0 dict.
+        session_factory: Session factory used to decrypt the HMAC
+            signing secret at rest.
 
     Returns:
         ``True`` on a 2xx response within the retry budget.
     """
-    cfg = _decode_config(sink)
+    cfg = _decode_config(sink, session_factory)
     url = cfg.get("url")
     if not isinstance(url, str) or not url:
         logger.warning("audit_sinks[%s] webhook missing 'url' in config", sink.id)
@@ -155,6 +172,7 @@ async def _dispatch_s3(
     sink: AuditSink,
     envelope: dict[str, Any],
     *,
+    session_factory: SessionFactory | sessionmaker[Session] | None = None,
     client: httpx.AsyncClient | None = None,
 ) -> bool:
     """PUT one JSON object per envelope under ``<prefix>/...`` in S3.
@@ -162,12 +180,14 @@ async def _dispatch_s3(
     Args:
         sink: The S3 sink ORM row.
         envelope: CloudEvents 1.0 dict.
+        session_factory: Session factory used to decrypt the AWS secret
+            access key at rest.
         client: Optional httpx client override (used by tests).
 
     Returns:
         ``True`` on a 2xx response.
     """
-    cfg = _decode_config(sink)
+    cfg = _decode_config(sink, session_factory)
     bucket = cfg.get("bucket")
     region = cfg.get("region", "us-east-1")
     access_key_id = cfg.get("access_key_id")
@@ -245,6 +265,7 @@ async def _dispatch_cloudtrail(
     sink: AuditSink,
     envelope: dict[str, Any],
     *,
+    session_factory: SessionFactory | sessionmaker[Session] | None = None,
     client: httpx.AsyncClient | None = None,
 ) -> bool:
     """POST one envelope to the CloudTrail Data Service PutAuditEvents endpoint.
@@ -252,12 +273,14 @@ async def _dispatch_cloudtrail(
     Args:
         sink: The aws_cloudtrail sink ORM row.
         envelope: CloudEvents 1.0 dict.
+        session_factory: Session factory used to decrypt the AWS secret
+            access key at rest.
         client: Optional httpx client override (used by tests).
 
     Returns:
         ``True`` on a 2xx response.
     """
-    cfg = _decode_config(sink)
+    cfg = _decode_config(sink, session_factory)
     region = cfg.get("region", "us-east-1")
     event_source = cfg.get("event_source", "pointlessql.audit")
     channel_arn = cfg.get("channel_arn")
@@ -321,6 +344,7 @@ async def dispatch_one(
     sink: AuditSink,
     envelope: dict[str, Any],
     *,
+    session_factory: SessionFactory | sessionmaker[Session] | None = None,
     client: httpx.AsyncClient | None = None,
 ) -> bool:
     """Route the envelope to the right per-type dispatcher.
@@ -331,17 +355,21 @@ async def dispatch_one(
     Args:
         sink: ORM row.
         envelope: CloudEvents dict.
+        session_factory: Session factory the credential-bearing
+            dispatchers use to decrypt ``config_json`` secrets at rest.
         client: Optional pre-built httpx client (S3 / CloudTrail).
 
     Returns:
         ``True`` when the dispatcher reports success.
     """
     if sink.type == AuditSinkType.WEBHOOK:
-        return await _dispatch_webhook(sink, envelope)
+        return await _dispatch_webhook(sink, envelope, session_factory=session_factory)
     if sink.type == AuditSinkType.S3:
-        return await _dispatch_s3(sink, envelope, client=client)
+        return await _dispatch_s3(sink, envelope, session_factory=session_factory, client=client)
     if sink.type == AuditSinkType.AWS_CLOUDTRAIL:
-        return await _dispatch_cloudtrail(sink, envelope, client=client)
+        return await _dispatch_cloudtrail(
+            sink, envelope, session_factory=session_factory, client=client
+        )
     if sink.type == AuditSinkType.STDOUT_JSON:
         return _dispatch_stdout_json(sink, envelope)
     if sink.type == AuditSinkType.SYSLOG:
@@ -535,7 +563,7 @@ async def dispatch_to_sinks(
     for sink in sinks:
         ok = False
         try:
-            ok = await dispatch_one(sink, envelope, client=client)
+            ok = await dispatch_one(sink, envelope, session_factory=session_factory, client=client)
         except Exception:  # noqa: BLE001 — emitter must never raise
             logger.exception(
                 "audit_sinks[%s] dispatcher raised for event_id=%s",

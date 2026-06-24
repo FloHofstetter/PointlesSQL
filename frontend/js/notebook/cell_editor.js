@@ -34,7 +34,7 @@
  *   the editor swaps its local CodeMirror ``history()`` extension
  *   for ``y-codemirror.next``'s ``yCollab`` extension, which mirrors
  *   every CodeMirror transaction onto the shared ``ytext`` (then
- *   onto the WebSocket via the Phase-105.2 hub) and applies remote
+ *   onto the WebSocket via the co-edit hub) and applies remote
  *   updates back into the editor with a remote-origin marker so the
  *   parent's dirty flag does not flip on incoming peer edits.  The
  *   ``onSourceChange`` callback still fires — driven by a

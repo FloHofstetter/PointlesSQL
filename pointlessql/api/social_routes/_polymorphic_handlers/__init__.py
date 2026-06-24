@@ -2,8 +2,8 @@
 
 The original ``_polymorphic_handlers.py`` was 2231 LOC across nine
 behavioural axes (comments, endorsements, follows, reactions, stars,
-READMEs, reviews) plus a shared helpers / serialisers block.  Phase
-89.1 split each axis into its own sub-module; this ``__init__``
+READMEs, reviews) plus a shared helpers / serialisers block.  The
+split moved each axis into its own sub-module; this ``__init__``
 re-exports every public handler name the 7 sibling route modules
 (``comments.py``, ``endorsements.py``, ``follows.py``, ``reviews.py``,
 ``reactions.py``, ``stars.py``, ``readme.py``) import from this

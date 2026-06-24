@@ -19,8 +19,10 @@ repos:
         args: ["--maxkb=512"]
         # Curated launch media (the trailer video/GIF and the screenshot
         # gallery) lives under docs/assets/ and is intentionally larger
-        # than the 512 KB guard that protects the rest of the tree.
-        exclude: ^docs/assets/
+        # than the 512 KB guard that protects the rest of the tree. The
+        # bandit SAST baseline (.bandit-baseline.json) is a generated
+        # finding ledger whose size tracks the frozen finding count.
+        exclude: ^(docs/assets/|\.bandit-baseline\.json$)
       - id: check-merge-conflict
       - id: detect-private-key
 

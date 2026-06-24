@@ -59,6 +59,19 @@ def test_validate_sql_rejects_delete() -> None:
         svc.validate_sql("DELETE FROM agent_runs")
 
 
+@pytest.mark.parametrize("blank", ["", "   ", "\n\t ", ";", "  ;  "])
+def test_validate_sql_rejects_empty(blank: str) -> None:
+    """Empty / whitespace-only / bare-semicolon SQL is rejected."""
+    with pytest.raises(ValidationError, match="must not be empty"):
+        svc.validate_sql(blank)
+
+
+def test_validate_sql_rejects_unparseable() -> None:
+    """A sqlglot ParseError is wrapped as a ValidationError, not leaked raw."""
+    with pytest.raises(ValidationError, match="Could not parse SQL"):
+        svc.validate_sql("SELECT * FROM (")
+
+
 def test_validate_sql_rejects_drop() -> None:
     with pytest.raises(ValidationError):
         svc.validate_sql("DROP TABLE agent_runs")

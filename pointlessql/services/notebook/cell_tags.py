@@ -32,7 +32,7 @@ CURATED_CELL_TAGS: tuple[str, ...] = (
 
 Picked for early adopters' lifecycle / status categorisation.
 Drift watch: once the long-tail of custom tags grows past a handful
-of stable values, a Phase-96 curation pass folds the popular ones in
+of stable values, a curation pass folds the popular ones in
 here and demotes anything that turned out to be one-off.
 """
 

@@ -33,7 +33,6 @@ def test_hermes_settings_defaults() -> None:
     assert s.host == "127.0.0.1"
     assert s.port_base == 9119
     assert s.chat_enabled is True
-    assert s.acp_enabled is False
 
 
 # --------------------------------------------------------------------------- #

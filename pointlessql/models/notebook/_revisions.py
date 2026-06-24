@@ -149,14 +149,14 @@ class NotebookRevisionFact(Base):
             invisible to another even when the underlying revision is
             shared.
         social_target_id: FK to :class:`SocialTarget` — the polymorphic
-            anchor for Phase-81 followers / feed.  ``entity_kind`` is
+            anchor for followers / feed.  ``entity_kind`` is
             ``'notebook_revision'`` for whole-revision facts or
             ``'notebook_cell_output'`` for per-cell-output facts.
         revision_id: FK to :class:`NotebookRevision`.  Cascade-delete
             so removing a revision drops its facts (rare — revisions
             are append-only) without leaving dangling rows.
         cell_content_hash: When set, the fact pins one specific cell's
-            output inside the revision (Phase-98.C cell-lineage chip's
+            output inside the revision (the cell-lineage chip's
             sibling primitive).  ``NULL`` pins the whole revision.
         title: Human-readable label (≤ 200 chars).  Required.
         description_md: Optional Markdown description rendered on the

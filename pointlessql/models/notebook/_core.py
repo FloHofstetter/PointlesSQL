@@ -1,7 +1,7 @@
 """Core notebook tables: identity, cell identity, outputs, run history.
 
 The five tables here were the original ``models/notebook.py`` shape
-from the pre-Phase-95 era and ship the kernel-execution surface every
+and ship the kernel-execution surface every
 newer subsystem layers on top of: notebook UUID identity, stable cell
 identity, persisted outputs, per-cell run lifecycle, source-snapshot
 history, and the papermill-job index.

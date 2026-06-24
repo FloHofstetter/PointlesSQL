@@ -23,7 +23,7 @@ class EntityKindSpec:
         audit_target_prefix: The string emitted as the
             ``audit_log.target`` column's leading prefix.  For
             ``kind='dp'`` this is the legacy ``data_product:``
-            (locked decision #9 of the Phase-77 plan).  For every
+            (locked decision #9 of the social plan).  For every
             other kind it defaults to ``{key}:``.
         supports_reviews: ``True`` if the kind exposes a Reviews
             tab (star ratings).  Tables / branches / runs default

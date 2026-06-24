@@ -97,8 +97,8 @@ async def api_table_versions(request: Request, full_name: str) -> dict[str, Any]
     Each entry includes ``{version, timestamp, operation, run_id}``.
     ``run_id`` is populated from
     :class:`AgentRunOperation.delta_version_after` when the write
-    originated in PointlesSQL; ``None`` for external writes (Sprint
-    14.3 already detects those).
+    originated in PointlesSQL; ``None`` for external writes (which
+    are already detected).
 
     Args:
         request: Incoming FastAPI request.

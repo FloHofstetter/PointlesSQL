@@ -147,7 +147,7 @@ def publish_cell_proposal_created(
     auto_accepted: bool,
     agent_run_id: str | None,
 ) -> int:
-    """Fan-out for the Phase-96 notebook cell propose / fix / explain route.
+    """Fan-out for the notebook cell propose / fix / explain route.
 
     Args:
         editor_session_id: Target chat session id (notebook chat).

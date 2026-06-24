@@ -17,7 +17,7 @@ The seven first-party connector kinds shipped each have:
   frame and hands them to ``pql.write_table()`` / ``pql.merge()``.
 
 The scheduled-pull executor in :mod:`.executor` wires the pull path
-into the Phase-8 scheduler under job kind ``"ingest_pull"``.
+into the scheduler under job kind ``"ingest_pull"``.
 """
 
 from __future__ import annotations

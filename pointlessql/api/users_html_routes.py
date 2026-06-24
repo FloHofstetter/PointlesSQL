@@ -83,8 +83,8 @@ async def users_index_page(
             stmt = stmt.where(User.is_admin.is_(False))
         if recent == 1:
             # No last_seen_at column yet; fall back to most-recently
-            # registered as a proxy for "recently active" until Phase
-            # 81 adds session-level tracking.
+            # registered as a proxy for "recently active" until
+            # session-level tracking is added.
             stmt = stmt.order_by(desc(User.created_at))
         else:
             stmt = stmt.order_by(User.display_name, User.email)

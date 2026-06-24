@@ -11,7 +11,7 @@ import re
 
 # audit-bound discussions sidecar.  Each comment
 # POST / DELETE drops an ``audit_log`` row alongside the
-# DataProductComment write so the Phase-18.7 audit-search FTS
+# DataProductComment write so the audit-search FTS
 # index picks comments up.  The comments stay system-of-record;
 # the audit row is a discoverability mirror.
 DISCUSSION_POSTED = "audit.discussion.posted"

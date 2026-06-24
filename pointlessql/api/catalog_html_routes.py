@@ -494,7 +494,7 @@ def _columns_with_lineage(full_name: str) -> set[str]:
 
 
 def _external_producers_for_table(full_name: str, *, session_factory: Any) -> list[dict[str, Any]]:
-    """Return the Phase-40 external producers writing into *full_name*.
+    """Return the external producers writing into *full_name*.
 
     Walks ``lineage_column_map`` for rows with ``producer IS NOT NULL``
     targeting *full_name*, groups by producer, and returns one row per

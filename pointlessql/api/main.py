@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import hmac
 import logging
 import re
 from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fastapi.responses import (
+    JSONResponse,
     Response,
 )
 from fastapi.staticfiles import StaticFiles
@@ -180,17 +182,85 @@ async def healthz() -> dict[str, str]:
     return {"status": "ok"}
 
 
+@app.get("/readyz")
+async def readyz(request: Request) -> Response:
+    """Readiness probe: metadata DB answers and soyuz-catalog is reachable.
+
+    ``/healthz`` is static liveness — it returns 200 even if the DB
+    migration failed or soyuz is down.  ``/readyz`` actually exercises both
+    dependencies so an orchestrator does not route traffic to an instance
+    that cannot serve.  Unauthenticated (a probe carries no session); the
+    body names which component is unhealthy without leaking URLs.
+
+    Args:
+        request: Incoming request, for the session factory + soyuz URL.
+
+    Returns:
+        JSON ``{status, db, soyuz}`` with HTTP 200 when both are healthy,
+        else 503.
+    """
+    from sqlalchemy import text
+
+    from pointlessql.api.health_routes import probe_soyuz
+    from pointlessql.services._executor import run_sync
+
+    def _check_db() -> None:
+        with request.app.state.session_factory() as session:
+            session.execute(text("SELECT 1"))
+
+    db_status = "ok"
+    # bare-broad-ok: a readiness probe must report "down" on any failure and
+    # never raise or log-spam on every poll, so the traceback is dropped.
+    try:
+        await run_sync(_check_db)
+    except Exception:  # noqa: BLE001 — readiness reports failure, never raises
+        db_status = "down"
+    soyuz_status = await probe_soyuz(request.app.state.settings.soyuz.catalog_url)
+    ready = db_status == "ok" and soyuz_status == "ok"
+    return JSONResponse(
+        {"status": "ready" if ready else "not_ready", "db": db_status, "soyuz": soyuz_status},
+        status_code=200 if ready else 503,
+    )
+
+
+def _authorize_metrics(request: Request) -> None:
+    """Gate the ``/metrics`` scrape: public, scrape-token, or admin session.
+
+    The metrics surface includes every job name in the install, so it is
+    not world-readable by default. Resolution order: an operator who set
+    ``metrics_public`` opts the route out of auth entirely; otherwise a
+    configured ``metrics_token`` presented as a bearer token (compared in
+    constant time) admits a least-privilege Prometheus scraper; failing
+    both, the request falls through to the admin-session gate, which
+    raises :class:`AuthorizationError` when the caller is not an admin.
+
+    Args:
+        request: Incoming FastAPI request.
+    """
+    obs = request.app.state.settings.observability
+    if obs.metrics_public:
+        return
+    token: str | None = obs.metrics_token
+    if token:
+        header = request.headers.get("authorization") or ""
+        presented = header[7:].strip() if header.lower().startswith("bearer ") else ""
+        if presented and hmac.compare_digest(presented, token):
+            return
+    _require_admin(request)
+
+
 @app.get("/metrics")
 async def metrics(request: Request) -> Response:
-    """Expose Prometheus metrics for the scheduler (admin-only).
+    """Expose Prometheus metrics (scrape-token or admin-only).
 
     Returns the default text exposition format so any Prometheus
-    scraper works without extra negotiation. Gated by
-    :func:`_require_admin` because the metrics surface includes the
-    names of every job in the install, which is sensitive information
-    on multi-tenant deployments.
+    scraper works without extra negotiation. Access is mediated by
+    :func:`_authorize_metrics` — a least-privilege scrape token for
+    headless Prometheus, with the admin session kept as a fallback —
+    because the metrics surface includes the names of every job in the
+    install, which is sensitive information on multi-tenant deployments.
     """
-    _require_admin(request)
+    _authorize_metrics(request)
     body, content_type = metrics_service.render_metrics()
     return Response(content=body, media_type=content_type)
 

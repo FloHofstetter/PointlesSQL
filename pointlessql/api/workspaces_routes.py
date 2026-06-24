@@ -13,7 +13,7 @@ admin module owns the workspace-lifecycle CRUD; this module owns:
 * ``PATCH /api/workspaces/{slug}/pins/reorder`` — drag-and-drop
   reorder for admins.
 * ``GET /api/workspaces/{slug}/activity`` — workspace-scoped
-  cross-entity feed (reuses 77.9 feed query with a workspace
+  cross-entity feed (reuses the feed query with a workspace
   scope filter).
 
 All public reads are member-gated; writes are admin-gated.

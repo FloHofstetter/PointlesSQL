@@ -7,6 +7,13 @@ enforced CSP would break.  Shipping the policy in report-only mode collects
 real violations (via the ``/api/csp-report`` collector) so the policy can be
 tightened against evidence before it is ever switched to enforcing.
 
+The policy already names the only third-party origin the UI loads from
+(``https://cdn.jsdelivr.net``) so the collector reflects genuine
+violations rather than expected CDN loads.  The remaining path to
+enforcement is dropping ``'unsafe-inline'`` / ``'unsafe-eval'`` (nonce or
+hash the inline Alpine/HTMX directives) — that is what the report-only
+window is there to de-risk.
+
 The non-CSP headers are unconditional and safe to enforce immediately:
 
 * ``X-Content-Type-Options: nosniff`` — no MIME sniffing.
@@ -33,11 +40,18 @@ CSP_REPORT_PATH = "/api/csp-report"
 # ``'unsafe-inline'`` / ``'unsafe-eval'`` are present only so the report-only
 # policy does not drown the collector in noise from the existing Alpine/HTMX
 # inline handlers; the goal is to remove them as the templates are migrated.
+# jsdelivr is the only third-party origin the UI loads from (Bootstrap +
+# bootstrap-icons CSS/woff, HTMX, Alpine, Chart.js). Naming it here keeps
+# the report-only collector from drowning in CDN false positives, which is
+# the prerequisite for flipping the policy to enforcing. All fetch/SSE/WS
+# targets are same-origin, so connect-src stays 'self'.
+_JSDELIVR = "https://cdn.jsdelivr.net"
 _CSP_REPORT_ONLY = (
     "default-src 'self'; "
     "img-src 'self' data:; "
-    "style-src 'self' 'unsafe-inline'; "
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval'; "
+    f"style-src 'self' 'unsafe-inline' {_JSDELIVR}; "
+    f"script-src 'self' 'unsafe-inline' 'unsafe-eval' {_JSDELIVR}; "
+    f"font-src 'self' {_JSDELIVR}; "
     "connect-src 'self'; "
     "frame-ancestors 'none'; "
     "base-uri 'self'; "
@@ -67,7 +81,16 @@ async def security_headers_middleware(request: Request, call_next: Any) -> Respo
         The downstream response with the security headers added.
     """
     response = await call_next(request)
+    # A route that declares its own enforced ``frame-ancestors`` (the public
+    # embeds) governs framing through that directive; also stamping
+    # ``X-Frame-Options: DENY`` would conflict and block the embed, so skip
+    # it in that case. Every other hardening header is still defaulted.
+    declares_frame_ancestors = (
+        "frame-ancestors" in response.headers.get("content-security-policy", "").lower()
+    )
     for name, value in _STATIC_HEADERS.items():
+        if name == "X-Frame-Options" and declares_frame_ancestors:
+            continue
         response.headers.setdefault(name, value)
     if request.url.scheme == "https":
         response.headers.setdefault(

@@ -2,7 +2,7 @@
 
 Exposes the read surface the editor's cell-header chip + the agent-
 profile page consume.  Writes happen via the save-path reconciler +
-the Phase-96 AI-assistant acceptance path — not via REST — so no
+the AI-assistant acceptance path — not via REST — so no
 ``POST`` is exposed here today.
 """
 

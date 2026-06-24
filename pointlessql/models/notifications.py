@@ -9,7 +9,7 @@ One table:
 
 Fan-out lives on the emit side (see
 :mod:`pointlessql.services.notifications.fanout`).  Retention is
-governed by the same Phase-20 ``audit_retention`` loop that prunes
+governed by the same ``audit_retention`` loop that prunes
 ``governance_events`` — no separate policy.
 """
 
@@ -32,10 +32,9 @@ class UserNotification(Base):
         recipient_user_id: FK on ``users.id``.  Receives the row.
             ``ondelete='CASCADE'`` so removed users don't leave
             orphan inbox rows.
-        event_type: One of the Phase-71.4 / Phase-20 governance
-            event types.  Kept as ``String(80)`` so a producer can
-            ship a new type without an Alembic migration on the
-            recipient side.
+        event_type: One of the governance event types.  Kept as
+            ``String(80)`` so a producer can ship a new type without
+            an Alembic migration on the recipient side.
         source_data_product_id: Optional FK on ``data_products.id``
             for click-through.  Nullable so the table can later
             absorb non-DP events without a schema change.

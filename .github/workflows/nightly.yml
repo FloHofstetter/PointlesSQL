@@ -1,9 +1,10 @@
 name: nightly
 
-# Deep property-based lineage verification.  The PR `test` workflow runs the
-# `lineage_verify` suite with the lean `ci` Hypothesis profile; this nightly
-# job re-runs it with the `nightly` profile (a much larger `max_examples`
-# budget) so rare counter-examples surface without slowing every PR.
+# Deep property-based verification.  The default PR test run exercises the
+# `lineage_verify` + `sql_parser_verify` suites with a lean Hypothesis
+# profile; these nightly jobs re-run them with the `nightly` profile (a much
+# larger `max_examples` budget) so rare counter-examples surface without
+# slowing every PR.
 
 on:
   schedule:
@@ -33,3 +34,21 @@ jobs:
         env:
           HYPOTHESIS_PROFILE: nightly
         run: uv run pytest -m lineage_verify -q
+
+  sql-parser-verify:
+    name: SQL-parser property suite (deep)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+      - name: Set up Python
+        run: uv python install 3.14
+      - name: Install dependencies
+        run: uv sync --all-extras
+      - name: SQL-parser verification — deep Hypothesis budget
+        env:
+          HYPOTHESIS_PROFILE: nightly
+        run: uv run pytest -m sql_parser_verify -q

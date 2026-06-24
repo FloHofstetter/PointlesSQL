@@ -12,6 +12,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Query, Request
 from fastapi.responses import HTMLResponse
 
+from pointlessql.api._embed_headers import allow_framing
 from pointlessql.api.dependencies import current_workspace_id, get_templates, get_user
 from pointlessql.db import get_session_factory
 from pointlessql.exceptions import ResourceNotFoundError
@@ -73,8 +74,9 @@ async def embed_semantic_search(
         "query": q,
         "top_k": k,
     }
-    return get_templates(request).TemplateResponse(
+    response = get_templates(request).TemplateResponse(
         request,
         "pages/semantic_search_embed.html",
         {"embed_data": embed_data, "table_fqn": table_fqn, "embed": True},
     )
+    return allow_framing(response)

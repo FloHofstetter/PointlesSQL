@@ -57,8 +57,6 @@ from pointlessql.models.catalog._data_product_endorsement import (
 from pointlessql.models.social._social_target import SocialTarget
 from pointlessql.models.workspace import Workspace
 from pointlessql.pql import (
-    BranchError,
-    BranchPromotionConflictError,
     discard_branch_schema,
     preview_promote_conflicts,
     promote_branch_schema,
@@ -207,7 +205,22 @@ async def api_list_branches(request: Request) -> dict[str, Any]:
 
 @router.get("/api/branches/{branch_fqn}")
 async def api_get_branch(request: Request, branch_fqn: str) -> dict[str, Any]:
-    """JSON detail for one branch (tags + audit-log tail)."""
+    """JSON detail for one branch (tags + audit-log tail).
+
+    Restricted to supervisors and above: ``require_supervisor``
+    answers 403 for lesser roles.
+
+    Args:
+        request: Incoming FastAPI request.
+        branch_fqn: Branch schema's full reference.
+
+    Returns:
+        ``{"branch_schema_fqn", "tags", "audit_log"}``.
+
+    Raises:
+        CatalogNotFoundError: When *branch_fqn* carries no branch
+            tags — rendered as 404.
+    """
     require_supervisor(request)
     client, _ = _make_settings_client(request)
     tags = branch_tags.read_branch_tags_sync(client, branch_fqn)
@@ -311,22 +324,15 @@ async def api_promote_branch(request: Request, branch_fqn: str) -> dict[str, Any
     require_admin(request)
     _branch_promote_gate_check(request, branch_fqn)
     client, settings = _make_settings_client(request)
-    try:
-        result = promote_branch_schema(
-            client=client,
-            branch_schema_fqn=branch_fqn,
-            settings=settings,
-        )
-    except BranchPromotionConflictError as exc:
-        return {
-            "ok": False,
-            "error": "promotion_conflict",
-            "table": exc.table_name,
-            "expected_version": exc.expected_version,
-            "actual_version": exc.actual_version,
-        }
-    except BranchError as exc:
-        return {"ok": False, "error": exc.__class__.__name__, "message": str(exc)}
+    # BranchPromotionConflictError / BranchError are PointlessSQLError
+    # subclasses carrying status 409 + error_code + extension_members, so
+    # let them propagate to the RFC-9457 handler instead of flattening a
+    # failed destructive op into an implicit-200 {"ok": false} body.
+    result = promote_branch_schema(
+        client=client,
+        branch_schema_fqn=branch_fqn,
+        settings=settings,
+    )
     return {"ok": True, **result}
 
 
@@ -335,14 +341,12 @@ async def api_discard_branch(request: Request, branch_fqn: str) -> dict[str, Any
     """Discard a branch (admin-only)."""
     require_admin(request)
     client, settings = _make_settings_client(request)
-    try:
-        discard_branch_schema(
-            client=client,
-            branch_schema_fqn=branch_fqn,
-            settings=settings,
-        )
-    except BranchError as exc:
-        return {"ok": False, "error": exc.__class__.__name__, "message": str(exc)}
+    # BranchError propagates to the RFC-9457 handler (status 409 + code).
+    discard_branch_schema(
+        client=client,
+        branch_schema_fqn=branch_fqn,
+        settings=settings,
+    )
     return {"ok": True}
 
 
@@ -441,7 +445,22 @@ def _branch_promote_gate_ui_state(request: Request, branch_fqn: str) -> dict[str
 
 @router.get("/branches/{branch_fqn}", response_class=HTMLResponse)
 async def html_branch_detail(request: Request, branch_fqn: str) -> HTMLResponse:
-    """Render the branch-detail page (admin-only)."""
+    """Render the branch-detail page.
+
+    Restricted to admins: ``require_admin`` answers 403 for
+    non-admins.
+
+    Args:
+        request: Incoming FastAPI request.
+        branch_fqn: Branch schema's full reference.
+
+    Returns:
+        The rendered branch-detail page.
+
+    Raises:
+        CatalogNotFoundError: When *branch_fqn* carries no branch
+            tags — rendered as 404.
+    """
     require_admin(request)
     user = get_user(request)
     client, _ = _make_settings_client(request)

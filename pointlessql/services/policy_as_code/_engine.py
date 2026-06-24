@@ -25,6 +25,7 @@ local; restart clears it.
 from __future__ import annotations
 
 import dataclasses
+import logging
 import threading
 import time
 from typing import Any
@@ -32,6 +33,8 @@ from typing import Any
 import cedarpy
 
 from pointlessql.models import PolicyModule
+
+logger = logging.getLogger(__name__)
 
 #: Default-deny reason persisted in the audit trail when the
 #: engine fails closed due to parse / runtime errors.
@@ -133,6 +136,18 @@ def cedar_evaluate(
         composed = _compose_policies(modules)
     except (ValueError, TypeError) as exc:  # noqa: BLE001
         # bare-broad-ok: cache-compose only catches str-cast errors.
+        # A broken policy module denying access is a config failure the
+        # operator must see — the audit row alone is invisible in the log
+        # stream.
+        logger.warning(
+            "Cedar policy compose failed; failing closed (forbid)",
+            exc_info=True,
+            extra={
+                "error_class": "cedar_parse_error",
+                "cedar_action": action,
+                "cedar_resource": resource,
+            },
+        )
         return Decision(
             effect="forbid",
             empty=False,
@@ -156,6 +171,15 @@ def cedar_evaluate(
     # bare-broad-ok: Cedar raises arbitrary classes; collapse to fail-closed.
     except Exception as exc:  # noqa: BLE001
         latency_ms = int((time.monotonic() - start) * 1000)
+        logger.warning(
+            "Cedar evaluation raised; failing closed (forbid)",
+            exc_info=True,
+            extra={
+                "error_class": "cedar_runtime_error",
+                "cedar_action": action,
+                "cedar_resource": resource,
+            },
+        )
         return Decision(
             effect="forbid",
             empty=False,
@@ -172,6 +196,17 @@ def cedar_evaluate(
         error_class = "cedar_parse_error"
     elif "NoDecision" in decision_label and not allowed:
         error_class = "cedar_runtime_error"
+    if error_class is not None:
+        # Cedar returned (without raising) a decision carrying errors or no
+        # decision — still a fail-closed outcome the operator should see.
+        logger.warning(
+            "Cedar returned a fail-closed decision with errors; forbidding",
+            extra={
+                "error_class": error_class,
+                "cedar_action": action,
+                "cedar_resource": resource,
+            },
+        )
     return Decision(
         effect="permit" if allowed else "forbid",
         empty=False,

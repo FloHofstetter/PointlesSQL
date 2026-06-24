@@ -58,10 +58,12 @@ class IngestSource(Base):
 
     ``config`` carries non-secret connection parameters (host, port,
     bucket, file path, glob pattern, etc.) as a JSON-encoded string.
-    ``secrets`` carries plaintext credentials (Postgres password, S3
-    secret key, HTTP bearer token) in a JSON-encoded string column —
-    redacted on every API GET, only fully readable inside the executor
-    that runs under the source's owner.
+    ``secrets`` carries credentials (Postgres password, S3 secret key,
+    HTTP bearer token) Fernet-encrypted at rest with the install master
+    key — redacted on every API GET, decrypted only inside the executor
+    that runs under the source's owner.  Rows written before encryption
+    was introduced are still read as legacy plaintext JSON and upgrade
+    to ciphertext on their next write.
 
     ``table_mappings`` is a JSON-encoded list of
     ``{source_table, target_fqn, mode, high_water_col,
@@ -82,8 +84,8 @@ class IngestSource(Base):
         name: Human-readable name, unique within the workspace.
         kind: One of :data:`INGEST_SOURCE_KINDS`.
         config: JSON-encoded non-secret connection parameters.
-        secrets: JSON-encoded plaintext credentials.  Redacted on
-            every API read.
+        secrets: Fernet-encrypted JSON credentials (legacy plaintext
+            tolerated on read).  Redacted on every API read.
         table_mappings: JSON-encoded list of per-table pull mappings.
         job_id: FK to ``jobs.id`` — the cron-scheduled pull job.
             ``NULL`` when no schedule is configured.

@@ -39,8 +39,8 @@ async def api_start_replay(request: Request, body: dict[str, Any] = Body(...)) -
 
     Body keys:
         path: Relative notebook path.
-        base_revision_uuid: Phase-97 revision the replay forks from.
-        branch_name: Optional Phase-102 branch the replay's writes
+        base_revision_uuid: Revision the replay forks from.
+        branch_name: Optional branch the replay's writes
             target.
     """
     require_user(request)
@@ -81,7 +81,7 @@ async def api_record_replay_finished(
 
     Body keys:
         status: ``"ok"`` | ``"error"`` | ``"cancelled"``.
-        outputs: List of output rows (Phase-96 load shape).
+        outputs: List of output rows (load shape).
     """
     require_user(request)
     if not isinstance(body, dict):

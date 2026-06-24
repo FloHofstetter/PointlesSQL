@@ -6,8 +6,7 @@ persist row-level edges, persist column-level edges.  All three
 share the same shape — call a service helper, check for failure,
 stamp a marker via :func:`stamp_audit_marker` if anything went
 wrong.  ``error_message`` stays reserved for "the primitive itself
-raised" (BUG-grand-08); these failures land in
-``warnings_json`` instead.
+raised"; these failures land in ``warnings_json`` instead.
 """
 
 from __future__ import annotations
@@ -42,7 +41,7 @@ def emit_lineage_after_commit(
     into the row's ``warnings_json`` blob so the audit trail records
     that the side-effect was attempted but didn't reach soyuz; the
     underlying PQL write is never blocked, and ``error_message``
-    stays reserved for "the primitive itself raised" (BUG-grand-08).
+    stays reserved for "the primitive itself raised".
 
      extends the body with two optional output facets when
     the recorder collected matching pending entries:

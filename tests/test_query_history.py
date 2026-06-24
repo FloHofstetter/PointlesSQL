@@ -513,3 +513,57 @@ async def test_queries_page_htmx_passes_filter_params_through(
     assert resp.status_code == 200
     # Pager URL must propagate read_kind so subsequent pages honour the filter.
     assert "read_kind=sql_execute" in resp.text
+
+
+# -- retention sweep -----------------------------------------------
+
+
+def _seed_at(when: datetime.datetime, tables: list[str]) -> int:
+    """Record one query started at *when* referencing *tables*."""
+    return qh.record_query(
+        app.state.session_factory,
+        user_id=1,
+        user_email="x@y.z",
+        sql_text="SELECT 1",
+        started_at=when,
+        finished_at=when,
+        status="succeeded",
+        row_count=1,
+        duration_ms=1,
+        referenced_tables=tables,
+    )
+
+
+def test_prune_history_older_than_respects_cutoff_and_clears_children() -> None:
+    """Rows before the cutoff (and their child table rows) are deleted; the
+    boundary row exactly at the cutoff is kept (the predicate is strict ``<``)."""
+    factory = app.state.session_factory
+    base = datetime.datetime(2026, 1, 1, tzinfo=datetime.UTC)
+    cutoff = base + datetime.timedelta(days=10)
+
+    old1 = _seed_at(base, ["main.a.t1"])
+    old2 = _seed_at(base + datetime.timedelta(days=5), ["main.a.t2", "main.a.t3"])
+    at_cutoff = _seed_at(cutoff, ["main.a.t4"])  # exactly at cutoff → kept
+    newer = _seed_at(cutoff + datetime.timedelta(days=1), ["main.a.t5"])
+
+    deleted = qh.prune_history_older_than(factory, cutoff)
+    assert deleted == 2  # old1 + old2 only
+
+    with factory() as session:
+        remaining = set(session.scalars(select(QueryHistory.id)).all())
+        assert remaining == {at_cutoff, newer}
+        # Child rows of the pruned parents are gone — no orphans left behind.
+        child_parents = set(session.scalars(select(QueryHistoryTable.query_history_id)).all())
+        assert child_parents == {at_cutoff, newer}
+        assert old1 not in child_parents
+        assert old2 not in child_parents
+
+
+def test_prune_history_older_than_no_op_when_none_older() -> None:
+    """When nothing predates the cutoff, the sweep deletes 0 and keeps all rows."""
+    factory = app.state.session_factory
+    now = datetime.datetime(2026, 6, 1, tzinfo=datetime.UTC)
+    _seed_at(now, ["main.a.t"])
+    deleted = qh.prune_history_older_than(factory, now - datetime.timedelta(days=1))
+    assert deleted == 0
+    assert qh.count_queries(factory) == 1

@@ -6,8 +6,8 @@ from typing import Final
 
 from pointlessql.services.notebook import coedit as coedit_service
 
-# Wire-protocol tag bytes (kept in sync with the future
-# ``frontend/js/notebook/coedit.js`` Sprint-105.3 mixin).
+# Wire-protocol tag bytes (kept in sync with the
+# ``frontend/js/notebook/coedit.js`` mixin).
 TAG_SYNC_STEP1: Final[int] = 0x00
 TAG_SYNC_STEP2: Final[int] = 0x01
 TAG_SYNC_UPDATE: Final[int] = 0x02

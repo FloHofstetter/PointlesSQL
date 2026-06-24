@@ -1,10 +1,10 @@
 """Polymorphic README router.
 
-DP delegates to the Phase-71.5 versioned wiki handlers.  Non-DP
+DP delegates to the versioned wiki handlers.  Non-DP
 kinds use the kind-agnostic polymorphic handlers — admin-only
 edits in this iteration; per-entity stewards stay a DP-only
-concept.  History + diff endpoints stay DP-only for now; Phase
-77.11 polish unifies them.
+concept.  History + diff endpoints stay DP-only for now; a later
+polish pass unifies them.
 """
 
 from __future__ import annotations

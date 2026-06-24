@@ -24,6 +24,7 @@ from pointlessql.api.dependencies import require_admin
 from pointlessql.exceptions import CatalogNotFoundError, ValidationError
 from pointlessql.models import Workspace
 from pointlessql.models.agent._reviews import REVIEW_SEVERITIES, ReviewDestination
+from pointlessql.services.egress_guard import EgressError, assert_public_http_url
 
 router = APIRouter(tags=["admin-review-destinations"])
 
@@ -88,6 +89,10 @@ def _validate_url(value: Any) -> str:
         raise ValidationError(f"webhook_url must be ≤ {_MAX_URL} chars")
     if not (cleaned.startswith("https://") or cleaned.startswith("http://")):
         raise ValidationError("webhook_url must start with http:// or https://")
+    try:
+        assert_public_http_url(cleaned)
+    except EgressError as exc:
+        raise ValidationError(f"webhook_url is not allowed: {exc}") from exc
     return cleaned
 
 

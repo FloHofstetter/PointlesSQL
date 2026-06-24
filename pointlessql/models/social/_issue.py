@@ -14,8 +14,8 @@ at the entity the issue is opened against (table / model / branch
 the anchor or the parent goes away.
 
 Labels live as a JSON array of slugs inside ``labels_json``.  No
-M:N junction — per the Phase-77 plan, indexed label filtering
-goes through the 77.9 FTS path; for the typical workspace label
+M:N junction — by design, indexed label filtering
+goes through the FTS path; for the typical workspace label
 count, a junction was not worth the surface.
 
 State + close-reason CHECKs are enforced at the DB layer so a

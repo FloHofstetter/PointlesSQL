@@ -16,7 +16,7 @@
   class="pql-chat-drawer"
   x-data="chatPanel('{{ editor_session_id }}')"
   x-init="connect()"
-  {# Phase-96 fix: ``$root`` inside an ``x-data`` scope returns the   #}
+  {# ``$root`` inside an ``x-data`` scope returns the                 #}
   {# CURRENT root (the drawer), not the page-level outer scope, so    #}
   {# ``$root.chatOpen`` always evaluated against the drawer's own     #}
   {# data and silently stayed undefined.  Alpine 3's parent-scope     #}

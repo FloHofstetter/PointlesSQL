@@ -1,12 +1,12 @@
 """HTML pages for the data-product browse + detail surface.
 
-Two pages mirror the Phase-21 ``/models`` shape:
+Two pages mirror the ``/models`` shape:
 
 * ``GET /data-products`` — index with a card per cached product.
 * ``GET /data-products/{catalog}/{schema}`` — detail page with six
   tabs (Overview / Contract / Diff / Lineage / Compliance /
-  Discussion — the latter added ) backed by the JSON
-  routes in :mod:`pointlessql.api.data_products_routes`.
+  Discussion) backed by the JSON routes in
+  :mod:`pointlessql.api.data_products_routes`.
 
 Both redirect anonymous visitors to ``/auth/login?next=...`` so the
 deep-link survives the OIDC round-trip.

@@ -134,7 +134,7 @@ def test_create_repo_rejects_half_specified_secret(_test_engine):  # type: ignor
             factory,
             workspace_id=1,
             slug="oops",
-            url="x",
+            url="https://example.com/x.git",
             initial_secret_kind="https_token",
             initial_secret_plaintext=None,
         )
@@ -142,7 +142,7 @@ def test_create_repo_rejects_half_specified_secret(_test_engine):  # type: ignor
 
 def test_add_secret_upserts_existing_kind(_test_engine):  # type: ignore[no-untyped-def]
     factory = _factory(_test_engine)
-    out = create_repo(factory, workspace_id=1, slug="rotate-me", url="x")
+    out = create_repo(factory, workspace_id=1, slug="rotate-me", url="https://example.com/x.git")
     add_secret(factory, repo_id=out.repo.id, kind="https_token", plaintext="v1")
     add_secret(factory, repo_id=out.repo.id, kind="https_token", plaintext="v2")
     with factory() as session:
@@ -154,7 +154,7 @@ def test_add_secret_upserts_existing_kind(_test_engine):  # type: ignore[no-unty
 
 def test_rotate_webhook_secret_changes_value(_test_engine):  # type: ignore[no-untyped-def]
     factory = _factory(_test_engine)
-    out = create_repo(factory, workspace_id=1, slug="rot", url="x")
+    out = create_repo(factory, workspace_id=1, slug="rot", url="https://example.com/x.git")
     new_value = rotate_webhook_secret(factory, repo_id=out.repo.id)
     assert new_value != out.webhook_secret_plaintext
     with factory() as session:
@@ -165,7 +165,7 @@ def test_rotate_webhook_secret_changes_value(_test_engine):  # type: ignore[no-u
 
 def test_delete_repo_removes_row_and_clone_dir(tmp_path, _test_engine):  # type: ignore[no-untyped-def]
     factory = _factory(_test_engine)
-    out = create_repo(factory, workspace_id=1, slug="bye", url="x")
+    out = create_repo(factory, workspace_id=1, slug="bye", url="https://example.com/x.git")
     base = tmp_path / "repos"
     clone_dir = base / "1" / "bye"
     clone_dir.mkdir(parents=True)
@@ -184,17 +184,17 @@ def test_delete_repo_returns_false_when_missing(_test_engine, tmp_path):  # type
 
 def test_list_repos_for_workspace_returns_only_that_workspace(_test_engine):  # type: ignore[no-untyped-def]
     factory = _factory(_test_engine)
-    create_repo(factory, workspace_id=1, slug="a", url="x")
-    create_repo(factory, workspace_id=1, slug="b", url="y")
+    create_repo(factory, workspace_id=1, slug="a", url="https://example.com/x.git")
+    create_repo(factory, workspace_id=1, slug="b", url="https://example.com/y.git")
     rows = list_repos_for_workspace(factory, workspace_id=1)
     assert {row.slug for row in rows} >= {"a", "b"}
 
 
 def test_list_repos_due_for_sync_picks_never_and_stale(_test_engine):  # type: ignore[no-untyped-def]
     factory = _factory(_test_engine)
-    out_a = create_repo(factory, workspace_id=1, slug="never", url="x")
-    out_b = create_repo(factory, workspace_id=1, slug="stale", url="y")
-    out_c = create_repo(factory, workspace_id=1, slug="fresh", url="z")
+    out_a = create_repo(factory, workspace_id=1, slug="never", url="https://example.com/x.git")
+    out_b = create_repo(factory, workspace_id=1, slug="stale", url="https://example.com/y.git")
+    out_c = create_repo(factory, workspace_id=1, slug="fresh", url="https://example.com/z.git")
     now = datetime.datetime.now(datetime.UTC)
     with factory() as session:
         b_row = session.get(WorkspaceRepo, out_b.repo.id)

@@ -115,6 +115,90 @@ async def test_buffer_shutdown_drains_pending_rows(tmp_path: Path) -> None:
     assert len(deltalake.DeltaTable(target).to_pandas()) == 2
 
 
+@pytest.mark.asyncio
+async def test_slow_write_to_one_key_does_not_block_another(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A stalled Delta write to one key must not block appends to another.
+
+    Proves the blocking write runs with the state lock released: while key
+    A's write is wedged, an append+flush of key B completes.
+    """
+    import asyncio
+    import time as _time
+
+    release = _threading_event()
+    a_started = asyncio.Event()
+    loop = asyncio.get_running_loop()
+    b_written: list[int] = []
+
+    def fake_append(location: str, rows: list[dict[str, Any]]) -> None:
+        if location.endswith("aaa"):
+            loop.call_soon_threadsafe(a_started.set)
+            while not release.is_set():
+                _time.sleep(0.005)
+        else:
+            b_written.append(len(rows))
+
+    monkeypatch.setattr(stream_buffer_module, "_append_rows_to_delta", fake_append)
+
+    buf = StreamBuffer(max_rows=1, max_age_seconds=999.0)
+    try:
+        # max_rows=1 → the first append trips the (now-wedged) write for A.
+        a_task = asyncio.create_task(buf.append("main.s.a", str(tmp_path / "aaa"), [{"x": 1}]))
+        await asyncio.wait_for(a_started.wait(), timeout=2.0)
+        # A's write is blocked; appending+flushing B must still complete.
+        b_done = await asyncio.wait_for(
+            buf.append("main.s.b", str(tmp_path / "bbb"), [{"y": 1}]),
+            timeout=2.0,
+        )
+        assert b_done == 0
+        assert b_written == [1]
+        release.set()
+        assert await asyncio.wait_for(a_task, timeout=2.0) == 0
+    finally:
+        release.set()
+        await buf.shutdown()
+
+
+@pytest.mark.asyncio
+async def test_write_failure_keeps_rows_for_retry(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A failed off-lock write merges its rows back so the next flush retries."""
+    written: list[int] = []
+    calls = {"n": 0}
+
+    def flaky_append(_location: str, rows: list[dict[str, Any]]) -> None:
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise RuntimeError("delta boom")
+        written.append(len(rows))
+
+    monkeypatch.setattr(stream_buffer_module, "_append_rows_to_delta", flaky_append)
+
+    buf = StreamBuffer(max_rows=999, max_age_seconds=999.0)
+    try:
+        await buf.append("main.s.t", str(tmp_path / "t"), [{"a": 1}, {"a": 2}])
+        with pytest.raises(RuntimeError, match="delta boom"):
+            await buf.flush("main.s.t")
+        # The failed write did not drop the rows.
+        assert buf.buffered_rows("main.s.t") == 2
+        # Retry drains them.
+        assert await buf.flush("main.s.t") == 2
+        assert written == [2]
+        assert buf.buffered_rows("main.s.t") == 0
+    finally:
+        await buf.shutdown()
+
+
+def _threading_event() -> Any:
+    """A plain threading.Event the worker-thread fake can poll + the test sets."""
+    import threading
+
+    return threading.Event()
+
+
 # ---------------------------------------------------------------------------
 # Route tests
 # ---------------------------------------------------------------------------

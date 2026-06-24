@@ -23,7 +23,7 @@ from pointlessql.models.base import Base
 
 
 class NotebookCrdtState(Base):
-    """Sidecar persistence for the Phase-105 Y.Doc per notebook.
+    """Sidecar persistence for the Y.Doc per notebook.
 
     Holds the serialised ``pycrdt.Doc`` state for one notebook so a
     fresh WS subscriber can warm-start from the latest committed

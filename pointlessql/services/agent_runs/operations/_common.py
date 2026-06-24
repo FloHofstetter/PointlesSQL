@@ -101,7 +101,7 @@ class OperationRecorder:
             hooks (lineage emit, edge insert, reject, column, value-
             change failures).  Persisted into the row's
             ``warnings_json`` column so ``error_message`` stays clean.
-        pending_contract_event: Phase-50 hook — when the data-product
+        pending_contract_event: Contract hook — when the data-product
             enforcement check fired (see
             :func:`pointlessql.data_products.check_contract_for_write`)
             the primitive stashes a tuple of
@@ -176,7 +176,7 @@ def stamp_audit_marker(session_factory: sessionmaker[Session], *, op_id: int, ma
     column / value-change record) failed but the underlying op
     succeeded — the audit row should still record that the
     side-effect was attempted, but ``error_message`` must stay
-    reserved for "the primitive itself raised" (BUG-grand-08).
+    reserved for "the primitive itself raised".
 
     Args:
         session_factory: SQLAlchemy session factory.

@@ -73,7 +73,22 @@ async def api_list_terms(request: Request) -> dict[str, Any]:
 
 @router.get("/api/glossary/{slug}")
 async def api_term_detail(request: Request, slug: str) -> dict[str, Any]:
-    """Return one glossary term with its column bindings."""
+    """Return one glossary term with its column bindings.
+
+    Open to any signed-in user: ``require_user`` answers 403 for
+    anonymous callers.
+
+    Args:
+        request: Incoming FastAPI request.
+        slug: Term slug from the URL.
+
+    Returns:
+        The serialized term plus its column bindings.
+
+    Raises:
+        ResourceNotFoundError: When no term with *slug* exists in the
+            active workspace — rendered as 404.
+    """
     require_user(request)
     factory = request.app.state.session_factory
     workspace_id = current_workspace_id(request)
@@ -101,7 +116,24 @@ async def glossary_index_page(request: Request) -> HTMLResponse | RedirectRespon
 
 @router.get("/glossary/{slug}", response_class=HTMLResponse, response_model=None)
 async def glossary_detail_page(request: Request, slug: str) -> HTMLResponse | RedirectResponse:
-    """Render one glossary term's detail page (definition + bindings)."""
+    """Render one glossary term's detail page (definition + bindings).
+
+    Anonymous visitors are redirected (303) to the login page with a
+    ``next`` deep-link instead of being rendered the page; signed-in
+    users get the rendered detail page.
+
+    Args:
+        request: Incoming FastAPI request.
+        slug: Term slug from the URL.
+
+    Returns:
+        The rendered detail page, or a 303 redirect to login for
+        anonymous visitors.
+
+    Raises:
+        ResourceNotFoundError: When no term with *slug* exists in the
+            active workspace — rendered as 404.
+    """
     user = get_user(request)
     if user["id"] == 0:
         return RedirectResponse(url=f"/auth/login?next=/glossary/{slug}", status_code=303)

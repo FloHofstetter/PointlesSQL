@@ -9,8 +9,8 @@ service has three responsibilities:
 * Mint or reuse the polymorphic :class:`SocialTarget` anchor for
   ``kind='notebook_revision'`` (whole-revision facts) or
   ``kind='notebook_cell_output'`` (per-cell-output facts), so the
-  fact participates in the Phase-77 social surface (followers,
-  comments) and the Phase-81 feed fanout.
+  fact participates in the social surface (followers,
+  comments) and the feed fanout.
 * Fan a ``"notebook_revision_pinned"`` event out to the notebook's
   followers via :func:`pointlessql.services.notifications.fanout.fanout_event`
   so the activity feed surfaces the pin.

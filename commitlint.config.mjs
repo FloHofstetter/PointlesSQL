@@ -1,4 +1,4 @@
-// commitlint configuration (W3 D6 follow-up).
+// commitlint configuration.
 //
 // Enforces Conventional-Commits shape so the cliff-driven CHANGELOG
 // regen (scripts/regen-changelog.py) can categorise every commit
@@ -6,6 +6,11 @@
 // absent — the pre-commit hook (alessandrojcm/commitlint-pre-commit-hook)
 // and the GitHub workflow (wagoid/commitlint-github-action) both
 // auto-fetch the Node runtime they need.
+//
+// ESM (.mjs) is required: wagoid/commitlint-github-action rejects a
+// `.js` configFile outright ("please use .mjs instead"), and commitlint's
+// own config resolver discovers `commitlint.config.mjs` for the local
+// pre-commit hook too — so a single ESM module serves both lanes.
 //
 // Tuning rationale:
 // - type-enum: strict; the historical 5 'debug(ci):' commits stay
@@ -23,10 +28,10 @@
 //   past 100).
 // - header-max-length: 120 (matches subject).
 //
-// To install the commit-msg hook locally after this lands:
+// To install the commit-msg hook locally:
 //   uv run pre-commit install --hook-type commit-msg
 
-module.exports = {
+export default {
   extends: ['@commitlint/config-conventional'],
   rules: {
     'type-enum': [

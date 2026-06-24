@@ -27,6 +27,8 @@ from typing import Any
 from urllib.parse import urlencode
 
 import httpx
+import jwt
+from jwt import PyJWKSet
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -75,6 +77,14 @@ class OIDCError(PointlessSQLError):
 def generate_pkce() -> tuple[str, str]:
     """Generate a PKCE code-verifier and code-challenge pair.
 
+    Proof Key for Code Exchange (RFC 7636) defeats authorization-code
+    interception: only the challenge (the SHA-256 hash) travels to the provider
+    in the authorize redirect, while the high-entropy verifier stays on the
+    server in the signed state cookie. At the token endpoint the verifier is
+    presented, and the provider re-hashes it to confirm the match — so an
+    attacker who captures the code off the redirect cannot redeem it without
+    the verifier they never saw.
+
     Returns:
         tuple[str, str]: ``(code_verifier, code_challenge)`` where
             the challenge is the Base64url-encoded SHA-256 of the verifier.
@@ -96,6 +106,16 @@ STATE_COOKIE_NAME = "pql_oidc_state"
 def sign_state_cookie(payload: dict[str, Any], secret_key: str) -> str:
     """Serialize *payload* as JSON and sign with HMAC-SHA256.
 
+    The signed state cookie is the CSRF/replay defense for the OIDC round-trip:
+    it carries the ``state``, PKCE ``code_verifier``, and ``nonce`` minted in
+    ``/auth/sso`` across to the callback. HMAC over the application secret lets
+    the callback prove the cookie was issued by this server and not forged or
+    tampered with — so the ``state`` echoed back by the provider can be trusted
+    when compared against the cookie, and the verifier/nonce it shields cannot
+    be substituted by an attacker. The payload is only base64-encoded, not
+    encrypted, so callers must not place anything secret beyond what the client
+    already holds in this cookie.
+
     Args:
         payload: Arbitrary dict (must be JSON-serializable).
         secret_key: Application secret key for signing.
@@ -110,6 +130,15 @@ def sign_state_cookie(payload: dict[str, Any], secret_key: str) -> str:
 
 def verify_state_cookie(cookie: str, secret_key: str) -> dict[str, Any] | None:
     """Verify signature and decode a state cookie.
+
+    This is the trust gate on the OIDC callback: it recomputes the HMAC and
+    compares it with :func:`hmac.compare_digest` (constant-time, to avoid
+    leaking the signature via timing) before decoding. Returning the payload
+    only on a valid signature is what lets the callback safely compare the
+    embedded ``state`` against the provider's echo and recover the PKCE
+    verifier and nonce. Any malformed, truncated, tampered, or non-JSON cookie
+    yields ``None`` rather than an exception, so a bad cookie fails the SSO
+    attempt closed instead of crashing the handler.
 
     Args:
         cookie: The cookie value produced by :func:`sign_state_cookie`.
@@ -189,6 +218,16 @@ def build_authorize_url(
     scope: str = "openid email profile",
 ) -> str:
     """Build the provider's authorization URL for a PKCE flow.
+
+    Assembles the authorization-code request that the browser is redirected to.
+    It pins ``response_type=code`` and ``code_challenge_method=S256`` so the
+    server-side code flow with PKCE (RFC 7636) is requested rather than the
+    legacy implicit flow or the weaker ``plain`` challenge method. The
+    ``state`` and ``nonce`` carried here are the same values stored in the
+    signed state cookie: ``state`` is echoed back and checked at the callback
+    to block CSRF on the redirect, and ``nonce`` is bound into the id_token to
+    block token replay across login attempts. Only the ``code_challenge``
+    appears in the URL — never the verifier.
 
     Args:
         discovery: Parsed OIDC discovery document.
@@ -270,6 +309,139 @@ async def exchange_code(
         return resp.json()
     except httpx.HTTPError as exc:
         raise OIDCError(f"Token exchange failed: {exc}") from exc
+
+
+# ---------------------------------------------------------------------------
+# id_token validation
+# ---------------------------------------------------------------------------
+
+_jwks_cache: dict[str, tuple[float, dict[str, Any]]] = {}
+
+# Asymmetric signing algorithms only — never HS* (symmetric, vulnerable to
+# alg-confusion against the public key) or "none".
+_ALLOWED_ID_TOKEN_ALGS: tuple[str, ...] = (
+    "RS256",
+    "RS384",
+    "RS512",
+    "ES256",
+    "ES384",
+    "ES512",
+    "PS256",
+    "PS384",
+    "PS512",
+)
+
+
+async def _fetch_jwks(jwks_uri: str, client: httpx.AsyncClient) -> dict[str, Any]:
+    """Fetch and cache the provider's JWKS document.
+
+    Args:
+        jwks_uri: The ``jwks_uri`` from the discovery document.
+        client: An ``httpx.AsyncClient`` for the request.
+
+    Returns:
+        The parsed JWKS document.
+
+    Raises:
+        OIDCError: If the fetch fails or the response is not valid JSON.
+    """
+    now = time.monotonic()
+    cached = _jwks_cache.get(jwks_uri)
+    if cached is not None and now - cached[0] < _CACHE_TTL:
+        return cached[1]
+    try:
+        resp = await client.get(jwks_uri, timeout=_http_timeout())
+        resp.raise_for_status()
+        doc = resp.json()
+    except httpx.HTTPError as exc:
+        raise OIDCError(f"Failed to fetch OIDC JWKS: {exc}") from exc
+    _jwks_cache[jwks_uri] = (now, doc)
+    return doc
+
+
+def _signing_key(jwks: dict[str, Any], kid: str | None) -> Any:
+    """Select the verification key from *jwks* for the token's ``kid``.
+
+    Args:
+        jwks: The parsed JWKS document.
+        kid: The ``kid`` header from the id_token, or ``None``.
+
+    Returns:
+        The cryptographic public key for signature verification.
+
+    Raises:
+        OIDCError: When the JWKS is unusable or no key matches.
+    """
+    try:
+        jwk_set = PyJWKSet.from_dict(jwks)
+    except jwt.PyJWTError as exc:
+        raise OIDCError(f"OIDC JWKS is unusable: {exc}") from exc
+    if kid is not None:
+        for key in jwk_set.keys:
+            if key.key_id == kid:
+                return key.key
+        raise OIDCError("id_token references an unknown signing key")
+    if len(jwk_set.keys) == 1:
+        return jwk_set.keys[0].key
+    raise OIDCError("id_token has no 'kid' but the provider publishes multiple keys")
+
+
+async def verify_id_token(
+    discovery: dict[str, Any],
+    id_token: str,
+    client_id: str,
+    expected_nonce: str | None,
+    client: httpx.AsyncClient,
+) -> dict[str, Any]:
+    """Verify an OIDC id_token and return its validated claims.
+
+    Checks the signature against the provider's JWKS, the issuer, that the
+    audience contains our ``client_id``, that the token is unexpired, and
+    that the ``nonce`` claim matches the one bound into the login request.
+    Without this the callback trusted unverified userinfo, leaving the SSO
+    flow open to token replay and cross-client token injection.
+
+    Args:
+        discovery: Parsed OIDC discovery document (needs ``issuer`` and
+            ``jwks_uri``).
+        id_token: The compact JWT returned by the token endpoint.
+        client_id: Our OAuth2 client id, the expected audience.
+        expected_nonce: The nonce stored in the signed state cookie, or
+            ``None`` to skip the nonce check.
+        client: An ``httpx.AsyncClient`` for the JWKS fetch.
+
+    Returns:
+        The validated id_token claims.
+
+    Raises:
+        OIDCError: On any validation failure (bad signature, issuer,
+            audience, expiry, algorithm, or nonce mismatch).
+    """
+    issuer = discovery.get("issuer")
+    jwks_uri = discovery.get("jwks_uri")
+    if not issuer or not jwks_uri:
+        raise OIDCError("OIDC discovery document is missing 'issuer' or 'jwks_uri'")
+    jwks = await _fetch_jwks(str(jwks_uri), client)
+    try:
+        header = jwt.get_unverified_header(id_token)
+    except jwt.PyJWTError as exc:
+        raise OIDCError(f"id_token header is malformed: {exc}") from exc
+    if header.get("alg") not in _ALLOWED_ID_TOKEN_ALGS:
+        raise OIDCError(f"id_token uses a disallowed signing algorithm {header.get('alg')!r}")
+    try:
+        claims: dict[str, Any] = jwt.decode(
+            id_token,
+            _signing_key(jwks, header.get("kid")),
+            algorithms=list(_ALLOWED_ID_TOKEN_ALGS),
+            audience=client_id,
+            issuer=str(issuer),
+            options={"require": ["exp", "iss", "aud"]},
+        )
+    except jwt.PyJWTError as exc:
+        raise OIDCError(f"id_token validation failed: {exc}") from exc
+    if expected_nonce and claims.get("nonce") != expected_nonce:
+        raise OIDCError("id_token nonce does not match the login request")
+    return claims
 
 
 # ---------------------------------------------------------------------------

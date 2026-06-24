@@ -1,6 +1,6 @@
 """Notebook replay / scenario-mode.
 
-Each replay row re-executes a Phase-97 :class:`NotebookRevision` and
+Each replay row re-executes a :class:`NotebookRevision` and
 parks the fresh outputs alongside the original.  The actual
 kernel-driven re-execution loop is out of scope for this module —
 the scaffolding here is the metadata + diff surface that drives the
@@ -62,9 +62,9 @@ def start_replay(
     Args:
         session: A SQLAlchemy session.
         notebook_id: ``Notebook.id`` UUID.
-        base_revision_uuid: Phase-97 revision UUID the replay forks
+        base_revision_uuid: Revision UUID the replay forks
             from.  Must already exist and belong to ``notebook_id``.
-        branch_name: Optional Phase-102 branch the replay's writes
+        branch_name: Optional branch the replay's writes
             target.
         triggered_by_user_id: Audit pointer.
 

@@ -200,7 +200,7 @@ async def list_followers(
 
     Privacy gate: the count is public (above) but the names are
     not.  Workspace-admin proxy is install-admin (``is_admin``)
-    per the Phase-71 plan.
+    per the followers plan.
 
     Args:
         catalog: UC catalog segment.

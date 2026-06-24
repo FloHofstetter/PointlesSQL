@@ -29,6 +29,28 @@ class SoyuzSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="POINTLESSQL_SOYUZ_")
 
     catalog_url: str = "http://127.0.0.1:8080"
+    # Bounded HTTP timeouts for every soyuz call. The generated client
+    # otherwise defaults to no timeout, so a hung soyuz endpoint would pin
+    # the calling worker indefinitely. Read is the most generous (tree
+    # listings of a large catalog); connect/write/pool stay tight.
+    connect_timeout_seconds: float = 5.0
+    read_timeout_seconds: float = 30.0
+    write_timeout_seconds: float = 10.0
+    pool_timeout_seconds: float = 5.0
+    # Volume upload/download proxies move large file bodies, so they get a
+    # more generous read/write budget than ordinary metadata calls (which
+    # the httpx 5s default would cut short) while keeping connect/pool tight.
+    volume_proxy_timeout_seconds: float = 60.0
+    # Max number of schemas whose tables/volumes/models are fetched
+    # concurrently while building the sidebar tree — bounds the fan-out so
+    # a wide catalog does not stampede soyuz with thousands of parallel GETs.
+    tree_fanout_concurrency: int = 16
+    # httpx connection-pool bounds applied to every soyuz client. Without
+    # them the pool is unbounded, so a burst of per-principal clients (one
+    # pool each) could exhaust file descriptors against soyuz. Reused pools
+    # keep at most ``max_keepalive_connections`` idle sockets warm.
+    max_connections: int = 100
+    max_keepalive_connections: int = 20
 
 
 class JupyterSettings(BaseSettings):
@@ -52,6 +74,15 @@ class JupyterSettings(BaseSettings):
     notebooks_dir: Path = Path("notebooks")
     runs_dir: Path = Path("notebooks/runs")
     execute_timeout_seconds: int = 300
+    # Idle-kernel reaping. A live kernel is one ipykernel subprocess per
+    # (user, notebook); without reaping they accumulate for the process
+    # lifetime and threaten PID/memory exhaustion on shared deploys. A
+    # kernel untouched for this many seconds is shut down by the background
+    # reaper. 0 disables reaping.
+    kernel_idle_ttl_seconds: int = 1800
+    # Hard ceiling on concurrently live kernels; starting one past the cap
+    # first evicts the least-recently-active kernel. 0 means unlimited.
+    max_kernels: int = 0
 
     @field_validator("notebooks_dir", "runs_dir", mode="after")
     @classmethod
@@ -99,6 +130,13 @@ class WorkspaceReposSettings(BaseSettings):
     sync_interval_seconds: int = 0
     clone_timeout_seconds: int = 300
     pull_timeout_seconds: int = 120
+    allow_file_protocol: bool = False
+    """Permit ``file://`` clone URLs and the git ``file`` transport.
+
+    Off by default — ``file://`` lets a clone read local repos, so it is
+    an SSRF/LFI seam in a multi-tenant deployment.  Enable it only for
+    installs that deliberately clone from a local path (and the test
+    suite, which clones throwaway file:// repos)."""
     yaml_search_globs: tuple[str, ...] = (
         "pointlessql.yaml",
         "**/pointlessql.yaml",
@@ -249,9 +287,7 @@ class HermesSettings(BaseSettings):
     ``session_token`` pins the dashboard's pre-shared token so the
     proxy can inject it on every forwarded request; left ``None`` a
     fresh token is minted per managed instance.  ``chat_enabled``
-    launches the POSIX-only chat PTY, and ``acp_enabled`` turns on
-    the agent-client-protocol supervision bridge that mirrors Hermes
-    permission gates into the home-feed action lane.
+    launches the POSIX-only chat PTY.
     """
 
     model_config = SettingsConfigDict(env_prefix="POINTLESSQL_HERMES_")
@@ -266,7 +302,6 @@ class HermesSettings(BaseSettings):
     home_root: Path | None = None
     session_token: str | None = None
     chat_enabled: bool = True
-    acp_enabled: bool = False
     # The very first managed launch builds the Hermes web bundle, which
     # can take roughly a minute; later launches reuse the cached build
     # and come up in a few seconds.

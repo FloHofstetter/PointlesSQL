@@ -24,9 +24,10 @@ import datetime
 import logging
 from typing import TYPE_CHECKING, Any
 
-from sqlalchemy import desc, func, select
+from sqlalchemy import delete, desc, func, select
 
 from pointlessql.models import QueryHistory, QueryHistoryTable
+from pointlessql.services.perf import backend_label, query_span
 from pointlessql.types import QueryHistoryId, QueryStatus, ReadKind, RunId
 
 if TYPE_CHECKING:
@@ -249,7 +250,7 @@ def list_queries(
     if read_kind is not None and read_kind in VALID_READ_KINDS:
         stmt = stmt.where(QueryHistory.read_kind == read_kind)
 
-    with factory() as session:
+    with factory() as session, query_span("query_history_list", backend_label(session)):
         rows = session.scalars(stmt).all()
         if not rows:
             return []
@@ -427,3 +428,28 @@ def count_queries(
     with factory() as session:
         result = session.execute(stmt)
         return int(result.scalar() or 0)
+
+
+def prune_history_older_than(factory: sessionmaker[Session], cutoff: datetime.datetime) -> int:
+    """Delete ``query_history`` rows started before *cutoff*.
+
+    The store grows one row per executed query with no built-in cap, so a
+    background sweep keeps it bounded.  The child ``query_history_tables``
+    reference rows are deleted first because the FK carries no cascade.
+
+    Args:
+        factory: SQLAlchemy session factory.
+        cutoff: Timestamp threshold; rows with ``started_at`` before it
+            are removed.
+
+    Returns:
+        The number of deleted ``query_history`` rows.
+    """
+    old_ids = select(QueryHistory.id).where(QueryHistory.started_at < cutoff)
+    with factory() as session:
+        session.execute(
+            delete(QueryHistoryTable).where(QueryHistoryTable.query_history_id.in_(old_ids))
+        )
+        result = session.execute(delete(QueryHistory).where(QueryHistory.started_at < cutoff))
+        session.commit()
+        return int(getattr(result, "rowcount", 0) or 0)

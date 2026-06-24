@@ -235,6 +235,74 @@ class TestMetricsRouteAuth:
             resp = await client.get("/metrics")
         assert resp.status_code == 403
 
+    async def test_valid_scrape_token_gets_200_without_session(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A correct bearer scrape token admits a sessionless Prometheus pull."""
+        monkeypatch.setattr(app.state.settings.observability, "metrics_token", "scrape-secret")
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app),
+            base_url="http://test",
+            headers={"authorization": "Bearer scrape-secret"},
+        ) as client:
+            resp = await client.get("/metrics")
+        assert resp.status_code == 200
+        assert "pointlessql_job_runs_total" in resp.text
+
+    async def test_wrong_token_falls_through_to_admin_gate(
+        self, non_admin_cookies: dict[str, str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A wrong token does not bypass auth — it falls to the admin gate (403)."""
+        monkeypatch.setattr(app.state.settings.observability, "metrics_token", "scrape-secret")
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app),
+            base_url="http://test",
+            cookies=non_admin_cookies,
+            headers={"authorization": "Bearer wrong-token"},
+        ) as client:
+            resp = await client.get("/metrics")
+        assert resp.status_code == 403
+
+    async def test_admin_session_still_works_when_token_configured(
+        self, auth_cookies: dict[str, str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Configuring a scrape token does not break the admin-session fallback."""
+        monkeypatch.setattr(app.state.settings.observability, "metrics_token", "scrape-secret")
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app),
+            base_url="http://test",
+            cookies=auth_cookies,
+        ) as client:
+            resp = await client.get("/metrics")
+        assert resp.status_code == 200
+
+    async def test_metrics_public_drops_auth(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """``metrics_public`` exposes the route with no credential at all."""
+        monkeypatch.setattr(app.state.settings.observability, "metrics_public", True)
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app),
+            base_url="http://test",
+        ) as client:
+            resp = await client.get("/metrics")
+        assert resp.status_code == 200
+
+    async def test_standard_collectors_present_in_exposition(
+        self, auth_cookies: dict[str, str]
+    ) -> None:
+        """The scrape carries the standard process/platform collector series.
+
+        ``python_info`` comes from the PlatformCollector and is emitted on
+        every OS, so it is the portable proof the collectors registered.
+        """
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app),
+            base_url="http://test",
+            cookies=auth_cookies,
+        ) as client:
+            resp = await client.get("/metrics")
+        assert resp.status_code == 200
+        assert "python_info" in resp.text
+
 
 class TestFailureWebhook:
     async def test_webhook_posted_on_failure(

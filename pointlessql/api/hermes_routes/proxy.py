@@ -121,10 +121,14 @@ async def hermes_proxy(path: str, request: Request) -> Response:
                 follow_redirects=False,
             )
         except httpx.HTTPError as exc:
-            _logger.warning("Hermes proxy upstream error for %s: %s", path, exc)
+            # logger.exception captures the traceback — several httpx
+            # transport errors (ConnectError/ReadTimeout) stringify empty.
+            _logger.exception("Hermes proxy upstream error for %s", path)
             # bare-http-ok: 502 is the canonical proxy-upstream-failed
-            # status; no domain-named exception exists for it.
-            raise HTTPException(status_code=502, detail=f"Hermes upstream error: {exc}") from exc
+            # status; no domain-named exception exists for it.  The detail
+            # stays generic so the upstream host:port in ``exc`` is not
+            # disclosed to the client.
+            raise HTTPException(status_code=502, detail="Hermes upstream is unavailable") from exc
 
     response_headers = {
         k: v for k, v in upstream.headers.items() if k.lower() not in _HOP_BY_HOP_RESPONSE

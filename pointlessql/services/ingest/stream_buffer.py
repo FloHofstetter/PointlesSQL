@@ -15,11 +15,14 @@ guarantees should call the force-flush endpoint after their batch.
 On a flush *failure* the rows stay buffered and are retried on the
 next tick / flush, so transient storage errors don't drop data.
 
-Concurrency: everything runs on the single FastAPI event loop and is
-serialised by one :class:`asyncio.Lock`; the blocking Delta write is
-dispatched through :func:`pointlessql.services._executor.run_sync`
-(appends to other keys wait for the in-flight flush — acceptable for
-the lite tier this implements).
+Concurrency: buffer *state* (the per-key dicts) is guarded by one
+:class:`asyncio.Lock`, but the blocking Delta write runs *outside* that
+lock — the key's rows are popped under the lock, then dispatched through
+:func:`pointlessql.services._executor.run_sync` with the lock released,
+so a slow or stalled write to one table no longer wedges appends to
+every other key (or the age-flush ticker).  A failed write merges its
+rows back ahead of anything a concurrent append enqueued in the
+meantime, so the retry preserves order and drops nothing.
 
 Tuning currently comes from the two module constants below (or ctor
 params); folding them into ``Settings`` as a nested
@@ -131,10 +134,13 @@ class StreamBuffer:
                 buf.oldest_monotonic = time.monotonic()
             buf.storage_location = storage_location
             buf.rows.extend(rows)
-            if len(buf.rows) >= self._max_rows:
-                await self._flush_locked(fqn)
-                return 0
-            return len(buf.rows)
+            if len(buf.rows) < self._max_rows:
+                return len(buf.rows)
+            to_write = self._pop_locked(fqn)
+        # Size cap tripped — write the detached rows with the lock released.
+        if to_write is not None:
+            await self._write_buffer(fqn, to_write)
+        return 0
 
     async def flush(self, fqn: str) -> int:
         """Force-flush one key.
@@ -146,7 +152,10 @@ class StreamBuffer:
             Number of rows written (``0`` when nothing was buffered).
         """
         async with self._lock:
-            return await self._flush_locked(fqn)
+            to_write = self._pop_locked(fqn)
+        if to_write is None:
+            return 0
+        return await self._write_buffer(fqn, to_write)
 
     async def flush_all(self) -> int:
         """Force-flush every key; returns the total rows written.
@@ -154,10 +163,12 @@ class StreamBuffer:
         Returns:
             Total number of rows written across all keys.
         """
-        total = 0
         async with self._lock:
-            for fqn in list(self._buffers):
-                total += await self._flush_locked(fqn)
+            pending = [(fqn, self._pop_locked(fqn)) for fqn in list(self._buffers)]
+        total = 0
+        for fqn, buf in pending:
+            if buf is not None:
+                total += await self._write_buffer(fqn, buf)
         return total
 
     def buffered_rows(self, fqn: str) -> int:
@@ -184,31 +195,68 @@ class StreamBuffer:
                 await self._ticker
             self._ticker = None
         async with self._lock:
-            for fqn in list(self._buffers):
-                try:
-                    await self._flush_locked(fqn)
-                except Exception:  # noqa: BLE001 — best-effort drain
-                    logger.exception("ingest stream: shutdown flush failed for %s", fqn)
+            pending = [(fqn, self._pop_locked(fqn)) for fqn in list(self._buffers)]
+        for fqn, buf in pending:
+            if buf is None:
+                continue
+            try:
+                await self._write_buffer(fqn, buf)
+            except Exception:  # noqa: BLE001 — best-effort drain
+                logger.exception("ingest stream: shutdown flush failed for %s", fqn)
 
-    async def _flush_locked(self, fqn: str) -> int:
-        """Write one key's rows to Delta; caller must hold the lock.
+    def _pop_locked(self, fqn: str) -> _KeyBuffer | None:
+        """Detach a key's buffer for an off-lock write; caller holds the lock.
 
-        The buffer entry is only removed after the write succeeded, so
-        a failing flush keeps the rows for the next attempt.
+        Removing the entry under the lock means a concurrent append for
+        the same key starts a fresh buffer, so the popped rows are owned
+        exclusively by the subsequent :meth:`_write_buffer` call.
 
         Args:
-            fqn: Buffer key to flush.
+            fqn: Buffer key to detach.
+
+        Returns:
+            The detached :class:`_KeyBuffer`, or ``None`` when the key was
+            absent or empty (its entry is dropped either way).
+        """
+        buf = self._buffers.pop(fqn, None)
+        if buf is None or not buf.rows:
+            return None
+        return buf
+
+    async def _write_buffer(self, fqn: str, buf: _KeyBuffer) -> int:
+        """Append a detached buffer's rows to Delta without holding the lock.
+
+        Runs the blocking ``write_deltalake`` through ``run_sync`` with the
+        state lock released, so a slow write does not block appends to other
+        keys.  On failure the rows are merged back ahead of anything a
+        concurrent append enqueued in the meantime and the error is
+        re-raised, so the rows retry on the next tick / flush.
+
+        Args:
+            fqn: Buffer key the rows belong to.
+            buf: The detached buffer returned by :meth:`_pop_locked`.
 
         Returns:
             Number of rows written.
+
+        Raises:
+            Exception: Whatever ``write_deltalake`` raised — re-raised after
+                the rows are merged back for retry.
         """
-        buf = self._buffers.get(fqn)
-        if buf is None or not buf.rows:
-            self._buffers.pop(fqn, None)
-            return 0
-        await run_sync(_append_rows_to_delta, buf.storage_location, buf.rows)
+        try:
+            await run_sync(_append_rows_to_delta, buf.storage_location, buf.rows)
+        except Exception:  # noqa: BLE001 — re-raised after restoring rows
+            async with self._lock:
+                existing = self._buffers.get(fqn)
+                if existing is None:
+                    self._buffers[fqn] = buf
+                else:
+                    # Failed rows go first so the original order is kept.
+                    buf.rows.extend(existing.rows)
+                    existing.rows = buf.rows
+                    existing.oldest_monotonic = buf.oldest_monotonic
+            raise
         flushed = len(buf.rows)
-        self._buffers.pop(fqn, None)
         logger.info("ingest stream: flushed %d row(s) to %s", flushed, fqn)
         return flushed
 
@@ -230,10 +278,15 @@ class StreamBuffer:
         """Flush every key whose oldest row exceeds the age cap."""
         now = time.monotonic()
         async with self._lock:
+            pending: list[tuple[str, _KeyBuffer]] = []
             for fqn in list(self._buffers):
                 buf = self._buffers[fqn]
                 if buf.rows and now - buf.oldest_monotonic >= self._max_age_seconds:
-                    await self._flush_locked(fqn)
+                    popped = self._pop_locked(fqn)
+                    if popped is not None:
+                        pending.append((fqn, popped))
+        for fqn, popped in pending:
+            await self._write_buffer(fqn, popped)
 
 
 def get_stream_buffer(app: Any) -> StreamBuffer:

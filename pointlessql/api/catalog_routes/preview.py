@@ -272,7 +272,7 @@ async def api_table_stats(
 ) -> Response:
     """Return per-column statistics for a Delta table as JSON.
 
-    Used by the Phase-91 ``pql_describe_columns_with_stats`` chat
+    Used by the ``pql_describe_columns_with_stats`` chat
     tool: the LLM calls this before drafting SQL so the prompt
     carries row counts, nullability, cardinality, and a few
     extremes / modes per column.

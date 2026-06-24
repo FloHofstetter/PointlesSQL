@@ -42,7 +42,7 @@ YAML_DRAFT_SOURCE_KINDS: tuple[str, ...] = (
 
 
 class DataProductYamlDraft(Base):
-    """One yaml draft authored by a Phase-73 surface.
+    """One yaml draft authored by a contract-editing surface.
 
     Attributes:
         id: Auto-incremented primary key.

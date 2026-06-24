@@ -14,6 +14,7 @@ route.
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from fastapi import APIRouter, Request
@@ -23,6 +24,8 @@ from sqlalchemy import func, select
 from pointlessql.api.dependencies import get_user, require_user
 from pointlessql.exceptions import ResourceNotFoundError
 from pointlessql.models.auth import User
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["me"])
 
@@ -98,13 +101,11 @@ async def me_index_page(
                 or 0
             )
     except Exception:  # noqa: BLE001 — Me-hub counts are best-effort
-        # bare-broad-ok: Empty install or a model missing on an
-        # upgrade race: leave counts at zero, render the cards as
-        # 0-state.  Logged for diagnostics but never surfaced.
-        import logging as _logging
-
-        _logging.getLogger(__name__).debug("me hub: counts query failed", exc_info=True)
-        pass
+        # bare-broad-ok: leave counts at zero and render the cards in
+        # their 0-state rather than failing the page.  A failed counts
+        # query renders silent zeros, so log at warning (not debug) — it
+        # must be visible in prod to correlate "my counts went to 0".
+        logger.warning("me hub: counts query failed", exc_info=True)
 
     templates = request.app.state.templates
     return templates.TemplateResponse(
