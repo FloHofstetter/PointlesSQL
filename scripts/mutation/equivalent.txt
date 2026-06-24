@@ -15,3 +15,22 @@
 # entry when its module changes.
 #
 # Populated from the first full baseline run (Phase 189 W2).
+
+# --- pointlessql.pql._metrics (compile_metric_query / _parse_fragment) ---
+# Parse-time dialect/into hints: the parsed expression is re-serialized with the
+# duckdb dialect at output, so for every fragment the compiler accepts these do
+# not change the emitted SQL.
+pointlessql.pql._metrics.x__parse_fragment__mutmut_14   # dialect=_DIALECT -> None
+pointlessql.pql._metrics.x__parse_fragment__mutmut_17   # dialect kwarg dropped (== None)
+pointlessql.pql._metrics.x__parse_fragment__mutmut_15   # into=exp.Condition -> None
+pointlessql.pql._metrics.x__parse_fragment__mutmut_18   # into kwarg dropped (== None)
+pointlessql.pql._metrics.x__parse_fragment__mutmut_19   # cosmetic: parse-error ValueError message text
+pointlessql.pql._metrics.x_compile_metric_query__mutmut_4     # source_table or "" -> "XXXX": both fail the FQN regex, identical raise
+pointlessql.pql._metrics.x_compile_metric_query__mutmut_8     # cosmetic: "at least one measure" message content
+pointlessql.pql._metrics.x_compile_metric_query__mutmut_83    # cosmetic: spec-filter error-noun text
+pointlessql.pql._metrics.x_compile_metric_query__mutmut_91    # cosmetic: where error-noun text
+pointlessql.pql._metrics.x_compile_metric_query__mutmut_131   # cosmetic: limit ValueError message text
+pointlessql.pql._metrics.x_compile_metric_query__mutmut_102   # order_by rsplit(" ",1)->rsplit(None,1): identical for "<name> <dir>"
+pointlessql.pql._metrics.x_compile_metric_query__mutmut_105   # rsplit(" ",1)->rsplit(" "): differs only for 3+ token order_by (never a selected name)
+pointlessql.pql._metrics.x_compile_metric_query__mutmut_106   # rsplit->split: differs only for 3+ token order_by (invalid)
+pointlessql.pql._metrics.x_compile_metric_query__mutmut_108   # rsplit maxsplit 1->2: differs only for 3+ token order_by (invalid)
