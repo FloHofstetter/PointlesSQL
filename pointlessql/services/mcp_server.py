@@ -8,8 +8,9 @@ External AI clients (assistant desktop apps, IDEs, agents) speak the Model
 Context Protocol; ``mcp_registry`` governs which *external* MCP services a
 workspace trusts, but until now PointlesSQL exposed none of its own. This
 module is the other half: it publishes a read-only view of the Unity
-Catalog metadata — catalogs, schemas, tables, and per-table column detail —
-as MCP tools so any MCP client can browse the lakehouse without a bespoke
+Catalog metadata — catalogs, schemas, tables, column detail, lineage,
+effective permissions, and metric views (the semantic layer) — as MCP
+tools so any MCP client can browse the lakehouse without a bespoke
 integration.
 
 Every tool forwards to the async :class:`UnityCatalogClient` facade, so the
@@ -92,5 +93,58 @@ def build_server(uc_client: UnityCatalogClient, *, name: str = "pointlessql") ->
             The table's metadata dict.
         """
         return await uc_client.get_table(catalog, schema, table)
+
+    @server.tool()
+    async def get_lineage(full_name: str, depth: int = 3) -> dict[str, Any]:
+        """Return the upstream/downstream lineage graph for a table.
+
+        Args:
+            full_name: Three-part ``catalog.schema.table`` name.
+            depth: How many hops of lineage to traverse (default 3).
+
+        Returns:
+            The lineage graph (nodes + edges) as a dict.
+        """
+        return await uc_client.get_lineage(full_name, depth)
+
+    @server.tool()
+    async def get_effective_permissions(
+        securable_type: str, full_name: str
+    ) -> list[dict[str, Any]]:
+        """Return the effective permissions on a securable for the principal.
+
+        Args:
+            securable_type: UC securable kind (e.g. ``"table"``, ``"schema"``).
+            full_name: The securable's fully-qualified name.
+
+        Returns:
+            One dict per effective privilege grant.
+        """
+        return await uc_client.get_effective_permissions(securable_type, full_name)
+
+    @server.tool()
+    async def list_metric_views(catalog: str, schema: str) -> list[dict[str, Any]]:
+        """List the metric views (semantic-layer measures) inside one schema.
+
+        Args:
+            catalog: Parent catalog name.
+            schema: Parent schema name.
+
+        Returns:
+            One dict per metric view.
+        """
+        return await uc_client.list_metric_views(catalog, schema)
+
+    @server.tool()
+    async def get_metric_view(full_name: str) -> dict[str, Any]:
+        """Return one metric view's definition (dimensions + measures).
+
+        Args:
+            full_name: Three-part ``catalog.schema.metric_view`` name.
+
+        Returns:
+            The metric view's definition dict.
+        """
+        return await uc_client.get_metric_view(full_name)
 
     return server

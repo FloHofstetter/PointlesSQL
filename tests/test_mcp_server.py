@@ -33,6 +33,24 @@ class _FakeUC:
         self.calls.append(("get_table", (catalog_name, schema_name, table_name)))
         return {"name": table_name, "columns": [{"name": "id"}]}
 
+    async def get_lineage(self, full_name: str, depth: int = 3) -> dict[str, Any]:
+        self.calls.append(("get_lineage", (full_name, depth)))
+        return {"nodes": [full_name], "edges": []}
+
+    async def get_effective_permissions(
+        self, securable_type: str, full_name: str
+    ) -> list[dict[str, Any]]:
+        self.calls.append(("get_effective_permissions", (securable_type, full_name)))
+        return [{"privilege": "SELECT"}]
+
+    async def list_metric_views(self, catalog_name: str, schema_name: str) -> list[dict[str, Any]]:
+        self.calls.append(("list_metric_views", (catalog_name, schema_name)))
+        return [{"name": "revenue"}]
+
+    async def get_metric_view(self, full_name: str) -> dict[str, Any]:
+        self.calls.append(("get_metric_view", (full_name,)))
+        return {"name": full_name, "measures": []}
+
 
 def test_server_is_named_for_the_application() -> None:
     """The MCP server advertises the configured name to connecting clients."""
@@ -47,7 +65,16 @@ async def test_server_exposes_the_read_only_catalog_tools() -> None:
     server = build_server(_FakeUC())  # type: ignore[arg-type]
     tools = await server.list_tools()
     by_name = {t.name: t for t in tools}
-    assert {"list_catalogs", "list_schemas", "list_tables", "describe_table"} <= set(by_name)
+    assert {
+        "list_catalogs",
+        "list_schemas",
+        "list_tables",
+        "describe_table",
+        "get_lineage",
+        "get_effective_permissions",
+        "list_metric_views",
+        "get_metric_view",
+    } <= set(by_name)
     # every tool advertises a description so MCP clients can render it
     assert all(t.description for t in tools)
 
@@ -65,6 +92,27 @@ async def test_tools_dispatch_into_the_facade() -> None:
 
     assert ("list_catalogs", ()) in fake.calls
     assert ("get_table", ("main", "gold", "orders")) in fake.calls
+
+
+@pytest.mark.asyncio
+async def test_lineage_and_metric_tools_dispatch_with_their_arguments() -> None:
+    """The lineage, permissions, and metric-view tools forward their args."""
+    fake = _FakeUC()
+    server = build_server(fake)  # type: ignore[arg-type]
+
+    await server.call_tool("get_lineage", {"full_name": "c.s.t", "depth": 2})
+    await server.call_tool("get_lineage", {"full_name": "c.s.t"})  # default depth
+    await server.call_tool(
+        "get_effective_permissions", {"securable_type": "table", "full_name": "c.s.t"}
+    )
+    await server.call_tool("list_metric_views", {"catalog": "c", "schema": "s"})
+    await server.call_tool("get_metric_view", {"full_name": "c.s.m"})
+
+    assert ("get_lineage", ("c.s.t", 2)) in fake.calls
+    assert ("get_lineage", ("c.s.t", 3)) in fake.calls  # the default depth is forwarded
+    assert ("get_effective_permissions", ("table", "c.s.t")) in fake.calls
+    assert ("list_metric_views", ("c", "s")) in fake.calls
+    assert ("get_metric_view", ("c.s.m",)) in fake.calls
 
 
 @pytest.mark.asyncio
