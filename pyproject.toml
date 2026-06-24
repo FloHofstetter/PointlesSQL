@@ -154,6 +154,7 @@ Issues = "https://github.com/FloHofstetter/PointlesSQL/issues"
 
 [project.scripts]
 pointlessql = "pointlessql.api.main:cli"
+pointlessql-mcp = "pointlessql.cli.mcp_server:main"
 
 [tool.hatch.build.targets.wheel.force-include]
 "frontend" = "pointlessql/_frontend"
