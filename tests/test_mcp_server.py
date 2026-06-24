@@ -34,6 +34,13 @@ class _FakeUC:
         return {"name": table_name, "columns": [{"name": "id"}]}
 
 
+def test_server_is_named_for_the_application() -> None:
+    """The MCP server advertises the configured name to connecting clients."""
+    # pins FastMCP(name) against a None/default substitution
+    assert build_server(_FakeUC()).name == "pointlessql"  # type: ignore[arg-type]
+    assert build_server(_FakeUC(), name="custom").name == "custom"  # type: ignore[arg-type]
+
+
 @pytest.mark.asyncio
 async def test_server_exposes_the_read_only_catalog_tools() -> None:
     """All four browse tools are registered with descriptions."""
