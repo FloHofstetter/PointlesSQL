@@ -175,6 +175,10 @@ app.mount(
 
 register_middleware(app)
 
+from pointlessql.api.catalog_mcp import mount_catalog_mcp  # noqa: E402
+
+mount_catalog_mcp(app)
+
 
 @app.get("/healthz")
 async def healthz() -> dict[str, str]:

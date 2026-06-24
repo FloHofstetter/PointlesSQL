@@ -129,7 +129,7 @@ class ApiKeyAclSettings(BaseSettings):
 
     enforce_catalog_grants: bool = True
     enforce_ip_grants: bool = True
-    bearer_path_prefixes: tuple[str, ...] = ("/api/", "/mcp/", "/webhook/")
+    bearer_path_prefixes: tuple[str, ...] = ("/api/", "/mcp/", "/catalog-mcp/", "/webhook/")
     usage_flush_interval_seconds: int = 30
     usage_retention_days: int = 30
 
@@ -469,3 +469,24 @@ class LensSettings(BaseSettings):
             "kimi": self.kimi_model_default,
             "grok": self.grok_model_default,
         }.get(provider, self.openai_model_default)
+
+
+class CatalogMcpSettings(BaseSettings):
+    """Network (HTTP/SSE) transport for the read-only catalog MCP server.
+
+    Reads ``POINTLESSQL_CATALOG_MCP_*`` environment variables. The catalog
+    MCP server (catalogs → schemas → tables, lineage, effective permissions,
+    metric views, keyword search) is always reachable over stdio via the
+    ``pointlessql-mcp`` console script; this flag governs the *network*
+    surface mounted on the web app so hosted AI clients can connect over
+    HTTP without spawning the binary.
+
+    The mount authenticates every connection as the request's principal and
+    scopes each caller's tools to their own catalog grants — the same
+    governance the web UI relies on — so it is safe to leave enabled.
+    Operators who do not want a network MCP surface switch it off here.
+    """
+
+    model_config = SettingsConfigDict(env_prefix="POINTLESSQL_CATALOG_MCP_")
+
+    enabled: bool = True
