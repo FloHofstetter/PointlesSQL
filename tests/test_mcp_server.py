@@ -51,6 +51,10 @@ class _FakeUC:
         self.calls.append(("get_metric_view", (full_name,)))
         return {"name": full_name, "measures": []}
 
+    async def get_tree(self) -> list[dict[str, Any]]:
+        self.calls.append(("get_tree", ()))
+        return [{"name": "main", "schemas": [{"name": "s", "tables": [{"name": "orders"}]}]}]
+
 
 def test_server_is_named_for_the_application() -> None:
     """The MCP server advertises the configured name to connecting clients."""
@@ -74,6 +78,7 @@ async def test_server_exposes_the_read_only_catalog_tools() -> None:
         "get_effective_permissions",
         "list_metric_views",
         "get_metric_view",
+        "search_catalog",
     } <= set(by_name)
     # every tool advertises a description so MCP clients can render it
     assert all(t.description for t in tools)
@@ -113,6 +118,18 @@ async def test_lineage_and_metric_tools_dispatch_with_their_arguments() -> None:
     assert ("get_effective_permissions", ("table", "c.s.t")) in fake.calls
     assert ("list_metric_views", ("c", "s")) in fake.calls
     assert ("get_metric_view", ("c.s.m",)) in fake.calls
+
+
+@pytest.mark.asyncio
+async def test_search_catalog_dispatches_into_get_tree() -> None:
+    """The search tool fetches the tree once and ranks it into the result."""
+    fake = _FakeUC()
+    server = build_server(fake)  # type: ignore[arg-type]
+
+    result = await server.call_tool("search_catalog", {"query": "orders"})
+
+    assert ("get_tree", ()) in fake.calls
+    assert "main.s.orders" in str(result)
 
 
 @pytest.mark.asyncio

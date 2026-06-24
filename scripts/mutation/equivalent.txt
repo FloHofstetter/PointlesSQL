@@ -112,6 +112,13 @@ pointlessql.pql._pql_widgets.xǁ_WidgetsMixinǁwidgets__mutmut_5   # factory = g
 # kill to these. The FastMCP(name)->None mutant IS killed by that test.
 pointlessql.services.mcp_server.x_build_server__mutmut_1   # name default content
 pointlessql.services.mcp_server.x_build_server__mutmut_2   # name default case
+# rank_catalog's _children() casts the child list for the type checker only;
+# typing.cast is a runtime no-op, so mutating its type-string argument cannot
+# change behaviour (the value is returned unchanged regardless of the string).
+pointlessql.services.mcp_server.x__children__mutmut_3   # cast("list[...]") -> cast(None): runtime no-op
+pointlessql.services.mcp_server.x__children__mutmut_7   # cast type-string wrapped XX..XX: runtime no-op
+pointlessql.services.mcp_server.x__children__mutmut_8   # cast type-string Any->any: runtime no-op
+pointlessql.services.mcp_server.x__children__mutmut_9   # cast type-string upper-cased: runtime no-op
 
 # --- pointlessql.services.lens.tools.query (run_select_query) ---
 # Coverage-blind signature default: limit=None is pinned behaviourally by
