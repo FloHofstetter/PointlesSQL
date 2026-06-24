@@ -15,3 +15,91 @@
 # entry when its module changes.
 #
 # Populated from the first full baseline run (Phase 189 W2).
+
+# --- pointlessql.pql._metrics (compile_metric_query / _parse_fragment) ---
+# Parse-time dialect/into hints: the parsed expression is re-serialized with the
+# duckdb dialect at output, so for every fragment the compiler accepts these do
+# not change the emitted SQL.
+pointlessql.pql._metrics.x__parse_fragment__mutmut_14   # dialect=_DIALECT -> None
+pointlessql.pql._metrics.x__parse_fragment__mutmut_17   # dialect kwarg dropped (== None)
+pointlessql.pql._metrics.x__parse_fragment__mutmut_15   # into=exp.Condition -> None
+pointlessql.pql._metrics.x__parse_fragment__mutmut_18   # into kwarg dropped (== None)
+pointlessql.pql._metrics.x__parse_fragment__mutmut_19   # cosmetic: parse-error ValueError message text
+pointlessql.pql._metrics.x_compile_metric_query__mutmut_4     # source_table or "" -> "XXXX": both fail the FQN regex, identical raise
+pointlessql.pql._metrics.x_compile_metric_query__mutmut_8     # cosmetic: "at least one measure" message content
+pointlessql.pql._metrics.x_compile_metric_query__mutmut_83    # cosmetic: spec-filter error-noun text
+pointlessql.pql._metrics.x_compile_metric_query__mutmut_91    # cosmetic: where error-noun text
+pointlessql.pql._metrics.x_compile_metric_query__mutmut_131   # cosmetic: limit ValueError message text
+pointlessql.pql._metrics.x_compile_metric_query__mutmut_102   # order_by rsplit(" ",1)->rsplit(None,1): identical for "<name> <dir>"
+pointlessql.pql._metrics.x_compile_metric_query__mutmut_105   # rsplit(" ",1)->rsplit(" "): differs only for 3+ token order_by (never a selected name)
+pointlessql.pql._metrics.x_compile_metric_query__mutmut_106   # rsplit->split: differs only for 3+ token order_by (invalid)
+pointlessql.pql._metrics.x_compile_metric_query__mutmut_108   # rsplit maxsplit 1->2: differs only for 3+ token order_by (invalid)
+
+# --- pointlessql.pql._policies (validate_row_filter) ---
+# Parse-time dialect/into hints used only to check the predicate parses; the
+# predicate is returned unchanged, so the hint cannot change behaviour for any
+# predicate the validator accepts.
+pointlessql.pql._policies.x_validate_row_filter__mutmut_21   # dialect="duckdb" -> None
+pointlessql.pql._policies.x_validate_row_filter__mutmut_24   # dialect kwarg dropped (== None)
+pointlessql.pql._policies.x_validate_row_filter__mutmut_22   # into=exp.Condition -> None
+pointlessql.pql._policies.x_validate_row_filter__mutmut_25   # into kwarg dropped (== None)
+pointlessql.pql._policies.x_validate_row_filter__mutmut_19   # probe literal 'probe@…' case: any valid string literal validates identically
+pointlessql.pql._policies.x_validate_row_filter__mutmut_6    # cosmetic: non-empty-predicate message content
+pointlessql.pql._policies.x_validate_row_filter__mutmut_11   # cosmetic: single-predicate message content
+
+# --- pointlessql.pql._contracts (contract factory) ---
+# Default-literal mutations on the contract() signature. These ARE pinned by
+# test_contract_defaults_version_and_description (verified: it fails when the
+# default is mutated), but mutmut attributes the import-time signature-default
+# line to the first test that imports the module, so its coverage map never
+# routes the killing assertion to these mutants. A mutmut coverage-attribution
+# limitation, not an untested default.
+pointlessql.pql._contracts.x_contract__mutmut_1   # description="" default
+pointlessql.pql._contracts.x_contract__mutmut_2   # version="0.1.0-draft" default (content)
+pointlessql.pql._contracts.x_contract__mutmut_3   # version="0.1.0-draft" default (case)
+
+# --- pointlessql.pql.facts (pin / list_facts_for_notebook) ---
+pointlessql.pql.facts.x_list_facts_for_notebook__mutmut_1   # include_unpinned default (coverage-blind, see _contracts note)
+pointlessql.pql.facts.x_list_facts_for_notebook__mutmut_2   # limit=50 default (coverage-blind)
+pointlessql.pql.facts.x_pin__mutmut_24   # cosmetic: requires-workspace_id message content
+pointlessql.pql.facts.x_pin__mutmut_25   # cosmetic: requires-workspace_id message case
+pointlessql.pql.facts.x_pin__mutmut_57   # target_table=None dropped == memory.record's own default
+# Integration-coupled: reachable only on the agent path (resolved_run_id set
+# via POINTLESSQL_AGENT_RUN_ID + _agent_context DB lookup) writing the audit
+# op row through memory.record — needs a full session_factory + DB harness,
+# integration-test territory, not a unit blind spot.
+pointlessql.pql.facts.x_pin__mutmut_13   # resolved_run_id None->"" in the except branch
+pointlessql.pql.facts.x_pin__mutmut_23   # requires-workspace_id message -> None (agent-path raise)
+pointlessql.pql.facts.x_pin__mutmut_52   # memory.record finished_at -> None
+pointlessql.pql.facts.x_pin__mutmut_58   # memory.record finished_at kwarg dropped
+pointlessql.pql.facts.x_pin__mutmut_68   # datetime.now(UTC) -> now(None) in the audit record
+
+# --- pointlessql.pql._pql_read (table_as_of_event_time) ---
+# getattr(frame, "columns", []) default is unreachable: `not hasattr` short-
+# circuits before it when columns is absent, and when columns exists the
+# default is unused — so the default value cannot change behaviour.
+pointlessql.pql._pql_read.xǁ_ReadMixinǁtable_as_of_event_time__mutmut_16   # getattr default [] -> None
+pointlessql.pql._pql_read.xǁ_ReadMixinǁtable_as_of_event_time__mutmut_19   # getattr default dropped
+pointlessql.pql._pql_read.xǁ_ReadMixinǁtable_as_of_event_time__mutmut_23   # cosmetic: no-event-column message content
+pointlessql.pql._pql_read.xǁ_ReadMixinǁtable_as_of_event_time__mutmut_24   # cosmetic: no-event-column message case
+
+# --- pointlessql.pql.memory (default args, coverage-blind) ---
+pointlessql.pql.memory.x_recall__mutmut_1   # limit=200 default
+pointlessql.pql.memory.x_branch__mutmut_1   # pin_to_version=True default
+pointlessql.pql.memory.x_fork__mutmut_1     # pin_to_version=True default
+
+# --- pointlessql.pql.sql_parser._refs (_extract_schema_target) ---
+pointlessql.pql.sql_parser._refs.x__extract_schema_target__mutmut_2    # defensive exp.Schema unwrap: sqlglot parses CREATE/DROP SCHEMA as Create(this=Table), never exp.Schema, so the branch is unreachable
+pointlessql.pql.sql_parser._refs.x__extract_schema_target__mutmut_15   # cosmetic: not-fully-qualified message content
+pointlessql.pql.sql_parser._refs.x__extract_schema_target__mutmut_16   # cosmetic: not-fully-qualified message case
+
+# --- pointlessql.pql._pql_governance (training_context default args) ---
+pointlessql.pql._pql_governance.xǁ_GovernanceMixinǁtraining_context__mutmut_1   # framework="auto" default (coverage-blind)
+pointlessql.pql._pql_governance.xǁ_GovernanceMixinǁtraining_context__mutmut_2   # framework="auto" default case
+
+# --- pointlessql.pql._pql_widgets (widgets DB-init path) ---
+# Integration-coupled: reached only with an active notebook context AND an
+# unbound session factory (kernel subprocess), exercising init_db + the DB
+# session — a full metadata-DB harness, integration-test territory.
+pointlessql.pql._pql_widgets.xǁ_WidgetsMixinǁwidgets__mutmut_4   # init_db(get_settings().db.url) -> init_db(None)
+pointlessql.pql._pql_widgets.xǁ_WidgetsMixinǁwidgets__mutmut_5   # factory = get_session_factory() -> None
