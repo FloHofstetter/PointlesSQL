@@ -23,15 +23,74 @@ metadata DB directly. The transport (stdio, SSE, …) is the caller's choice;
 from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
-from typing import Any
+from typing import Any, cast
 
 from mcp.server.fastmcp import FastMCP
 
+from pointlessql.services.hybrid_search import keyword_relevance
 from pointlessql.services.unitycatalog import UnityCatalogClient
 
 #: A governed SELECT runner: ``(sql, limit) -> {columns, rows, …}``. Injected so
 #: the server stays decoupled from the Lens session-context plumbing.
 QueryRunner = Callable[[str, int | None], Awaitable[dict[str, Any]]]
+
+
+def _score_into(hits: list[dict[str, Any]], fqn: str, kind: str, text: str, query: str) -> None:
+    """Score one securable and append it to *hits* when it matches.
+
+    Args:
+        hits: Accumulator the scored entry is appended to.
+        fqn: Fully-qualified name of the securable.
+        kind: Securable kind (``"catalog"`` / ``"schema"`` / ``"table"``).
+        text: The name + comment text to score against the query.
+        query: The free-text search query.
+    """
+    score = keyword_relevance(text, query)
+    if score > 0:
+        hits.append({"name": fqn, "type": kind, "score": score})
+
+
+def _children(node: dict[str, Any], key: str) -> list[dict[str, Any]]:
+    """Return *node*'s child list under *key* (empty when absent or non-list).
+
+    Args:
+        node: A catalog-tree node (catalog or schema dict).
+        key: The child-collection key (``"schemas"`` / ``"tables"``).
+
+    Returns:
+        The list of child node dicts, or an empty list.
+    """
+    value = node.get(key)
+    return cast("list[dict[str, Any]]", value) if isinstance(value, list) else []
+
+
+def rank_catalog(tree: list[dict[str, Any]], query: str, *, limit: int) -> list[dict[str, Any]]:
+    """Rank catalog/schema/table entries by keyword relevance to *query*.
+
+    Walks the catalog tree and scores each securable's name + comment with the
+    shared BM25-lite scorer, returning the best matches (score > 0) first.
+
+    Args:
+        tree: The catalog tree as returned by ``UnityCatalogClient.get_tree``.
+        query: The free-text search query.
+        limit: Maximum number of matches to return.
+
+    Returns:
+        Up to *limit* dicts ``{"name": fqn, "type": kind, "score": float}``,
+        highest score first.
+    """
+    hits: list[dict[str, Any]] = []
+    for cat in tree:
+        c = str(cat.get("name", ""))
+        _score_into(hits, c, "catalog", f"{c} {cat.get('comment', '')}", query)
+        for sch in _children(cat, "schemas"):
+            s = str(sch.get("name", ""))
+            _score_into(hits, f"{c}.{s}", "schema", f"{s} {sch.get('comment', '')}", query)
+            for tbl in _children(sch, "tables"):
+                t = str(tbl.get("name", ""))
+                _score_into(hits, f"{c}.{s}.{t}", "table", f"{t} {tbl.get('comment', '')}", query)
+    hits.sort(key=lambda h: h["score"], reverse=True)
+    return hits[:limit]
 
 
 def build_server(
@@ -159,6 +218,23 @@ def build_server(
             The metric view's definition dict.
         """
         return await uc_client.get_metric_view(full_name)
+
+    @server.tool()
+    async def search_catalog(query: str, limit: int = 20) -> list[dict[str, Any]]:
+        """Search the catalog by keyword and return the best-matching securables.
+
+        Ranks catalogs, schemas, and tables by how well their name + comment
+        match the query (a deterministic BM25-lite score), highest first — a
+        fast way to discover relevant data without browsing the whole tree.
+
+        Args:
+            query: Free-text search query.
+            limit: Maximum number of matches to return (default 20).
+
+        Returns:
+            Ranked dicts with ``name`` (FQN), ``type``, and ``score``.
+        """
+        return rank_catalog(await uc_client.get_tree(), query, limit=limit)
 
     if query_runner is not None:
 

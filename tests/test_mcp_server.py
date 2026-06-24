@@ -51,6 +51,10 @@ class _FakeUC:
         self.calls.append(("get_metric_view", (full_name,)))
         return {"name": full_name, "measures": []}
 
+    async def get_tree(self) -> list[dict[str, Any]]:
+        self.calls.append(("get_tree", ()))
+        return [{"name": "main", "schemas": [{"name": "s", "tables": [{"name": "orders"}]}]}]
+
 
 def test_server_is_named_for_the_application() -> None:
     """The MCP server advertises the configured name to connecting clients."""
@@ -74,6 +78,7 @@ async def test_server_exposes_the_read_only_catalog_tools() -> None:
         "get_effective_permissions",
         "list_metric_views",
         "get_metric_view",
+        "search_catalog",
     } <= set(by_name)
     # every tool advertises a description so MCP clients can render it
     assert all(t.description for t in tools)
