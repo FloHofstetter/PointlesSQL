@@ -22,14 +22,24 @@ metadata DB directly. The transport (stdio, SSE, …) is the caller's choice;
 
 from __future__ import annotations
 
+from collections.abc import Awaitable, Callable
 from typing import Any
 
 from mcp.server.fastmcp import FastMCP
 
 from pointlessql.services.unitycatalog import UnityCatalogClient
 
+#: A governed SELECT runner: ``(sql, limit) -> {columns, rows, …}``. Injected so
+#: the server stays decoupled from the Lens session-context plumbing.
+QueryRunner = Callable[[str, int | None], Awaitable[dict[str, Any]]]
 
-def build_server(uc_client: UnityCatalogClient, *, name: str = "pointlessql") -> FastMCP:
+
+def build_server(
+    uc_client: UnityCatalogClient,
+    *,
+    name: str = "pointlessql",
+    query_runner: QueryRunner | None = None,
+) -> FastMCP:
     """Build a FastMCP server exposing read-only Unity Catalog tools.
 
     The returned server is transport-agnostic; call ``run()`` on it (or mount
@@ -40,6 +50,9 @@ def build_server(uc_client: UnityCatalogClient, *, name: str = "pointlessql") ->
     Args:
         uc_client: The Unity Catalog facade every tool dispatches into.
         name: Server name advertised to connecting MCP clients.
+        query_runner: Optional governed SELECT runner. When supplied, a
+            ``run_select`` tool is registered that forwards to it; when
+            ``None`` the server is metadata-only (no data access).
 
     Returns:
         A configured :class:`FastMCP` instance ready to serve.
@@ -146,5 +159,24 @@ def build_server(uc_client: UnityCatalogClient, *, name: str = "pointlessql") ->
             The metric view's definition dict.
         """
         return await uc_client.get_metric_view(full_name)
+
+    if query_runner is not None:
+
+        @server.tool()
+        async def run_select(sql: str, limit: int | None = None) -> dict[str, Any]:
+            """Run a read-only SELECT against the catalog and return its rows.
+
+            The statement is validated as a single SELECT (DDL/DML rejected),
+            auto-LIMITed, and gated by an EXPLAIN cost cap before it executes.
+
+            Args:
+                sql: A single SELECT statement.
+                limit: Optional row cap (the gate injects a default otherwise).
+
+            Returns:
+                A dict with ``columns``, ``rows``, the gated ``executed_sql``,
+                and a cost estimate.
+            """
+            return await query_runner(sql, limit)
 
     return server
