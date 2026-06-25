@@ -429,13 +429,11 @@ def bootstrap_starter_rows(factory: sessionmaker[Session]) -> int:
     Returns:
         Count of newly inserted rows.
     """
-    # Re-export from the migration module so the canonical list of
-    # starter specs lives in exactly one place.  The spec list is a
-    # function call so the SQL can pick the right dialect (SQLite vs
-    # Postgres) for the date arithmetic.
-    from pointlessql.alembic.versions.j0e1f2a3b4c5_saved_audit_queries import (
-        starter_rows,
-    )
+    # The starter specs live in one shared module so this idempotent re-seed
+    # and the seeding migration build identical rows. The spec list is a
+    # function call so the SQL can pick the right dialect (SQLite vs Postgres)
+    # for the date arithmetic.
+    from pointlessql.models.starter_audit_queries import starter_rows
 
     now = datetime.datetime.now(datetime.UTC)
     inserted = 0

@@ -295,6 +295,30 @@ def test_list_paginated_orders_starters_before_newer_non_starters() -> None:
     assert rows[0]["slug"] == "p-starter-old"
 
 
+def test_list_orderings_tiebreak_by_updated_at_desc() -> None:
+    """Within one ``is_starter`` tier, rows sort by ``updated_at`` descending.
+
+    Pins the *secondary* ``desc(updated_at)`` ORDER BY key on both listing
+    paths. The three rows share ``is_starter`` (so the primary key cannot
+    disambiguate them) and are inserted out of date order, so dropping or
+    nulling the secondary key — ``order_by(desc(is_starter), None)`` /
+    ``desc(None)`` / the key removed — surfaces them in insertion order
+    instead of newest-first.
+    """
+    base = datetime.datetime(2024, 1, 1, tzinfo=datetime.UTC)
+    _insert_query(slug="tb-oldest", is_starter=False, updated_at=base)
+    _insert_query(slug="tb-newest", is_starter=False, updated_at=base + datetime.timedelta(days=10))
+    _insert_query(slug="tb-middle", is_starter=False, updated_at=base + datetime.timedelta(days=5))
+    expected = ["tb-newest", "tb-middle", "tb-oldest"]
+
+    def _relative_order(slugs: list[str]) -> list[str]:
+        return [s for s in slugs if s in set(expected)]
+
+    assert _relative_order([r["slug"] for r in sq.list_all(_factory())]) == expected
+    page, _total = sq.list_paginated(_factory(), offset=0, limit=50)
+    assert _relative_order([r["slug"] for r in page]) == expected
+
+
 # ---------------------------------------------------------------------
 # execute — row-cap boundary semantics
 # ---------------------------------------------------------------------

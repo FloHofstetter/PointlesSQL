@@ -126,3 +126,43 @@ pointlessql.services.mcp_server.x__children__mutmut_9   # cast type-string upper
 # attributes the import-time signature-default line to the first importing test
 # (same as the pql._contracts defaults), so its coverage map never routes the kill.
 pointlessql.services.lens.tools.query.x_run_select_query__mutmut_1   # limit=None default
+
+# --- pointlessql.services.audit.saved_queries ---
+# Surfaced when the saved_audit_queries seeding import was repointed off the
+# renumbered migration. All entries below are genuinely equivalent or
+# coverage-blind; the only real gap (the secondary updated_at ORDER BY) is
+# killed by test_list_orderings_tiebreak_by_updated_at_desc.
+# Equivalent — slug helper string/boundary no-ops:
+pointlessql.services.audit.saved_queries.x_make_slug__mutmut_5    # "audit-query"->"AUDIT-QUERY" then .lower(): identical
+pointlessql.services.audit.saved_queries.x_make_slug__mutmut_13   # .strip("-")->.strip("XX-XX") on lowercased base: identical
+pointlessql.services.audit.saved_queries.x_make_slug__mutmut_22   # len>max -> len>=max: base[:max]==base at equality, no-op
+pointlessql.services.audit.saved_queries.x_make_slug__mutmut_26   # .rstrip("-")->.rstrip("XX-XX") on lowercased base: identical
+# Equivalent — sqlglot parse dialect hint; SELECT/allow-list verdict unchanged:
+pointlessql.services.audit.saved_queries.x_validate_sql__mutmut_14   # read="sqlite"->None
+pointlessql.services.audit.saved_queries.x_validate_sql__mutmut_16   # read="sqlite" kwarg dropped
+# Equivalent — column default=True/False (or nullable) reproduces the value when
+# the kwarg is None/dropped, so the inserted row is identical:
+pointlessql.services.audit.saved_queries.x_bootstrap_starter_rows__mutmut_21  # is_shared=True->None (default=True)
+pointlessql.services.audit.saved_queries.x_bootstrap_starter_rows__mutmut_29  # owner_id=None dropped (nullable)
+pointlessql.services.audit.saved_queries.x_bootstrap_starter_rows__mutmut_30  # is_shared=True dropped (default=True)
+pointlessql.services.audit.saved_queries.x_bootstrap_starter_rows__mutmut_32  # alert_threshold_count=None dropped (nullable)
+pointlessql.services.audit.saved_queries.x_create__mutmut_18  # is_shared=True->None (default=True)
+pointlessql.services.audit.saved_queries.x_create__mutmut_19  # is_starter=False->None (default=False)
+pointlessql.services.audit.saved_queries.x_create__mutmut_28  # is_shared=True dropped (default=True)
+pointlessql.services.audit.saved_queries.x_create__mutmut_29  # is_starter=False dropped (default=False)
+# Equivalent — dialect_name=None routes _date_minus's else branch, identical to
+# "sqlite" under the SQLite test backend the gate runs on:
+pointlessql.services.audit.saved_queries.x_bootstrap_starter_rows__mutmut_5  # dialect_name = None
+pointlessql.services.audit.saved_queries.x_bootstrap_starter_rows__mutmut_6  # starter_rows(None)
+# Equivalent — datetime.now(UTC)->now(None); stamps current time, no test pins
+# tzinfo (same precedent as pql.facts.x_pin__mutmut_68):
+pointlessql.services.audit.saved_queries.x_bootstrap_starter_rows__mutmut_2  # now(UTC)->now(None)
+pointlessql.services.audit.saved_queries.x_create__mutmut_11  # now(UTC)->now(None)
+pointlessql.services.audit.saved_queries.x_update__mutmut_32  # updated_at now(UTC)->now(None)
+# Coverage-blind signature defaults (mutmut routes the import-time default line
+# to the first importing test; same as the pql._contracts defaults):
+pointlessql.services.audit.saved_queries.x_list_paginated__mutmut_1  # offset=0 default
+pointlessql.services.audit.saved_queries.x_list_paginated__mutmut_2  # limit=50 default
+pointlessql.services.audit.saved_queries.x_execute__mutmut_1  # row_cap=1000 default
+pointlessql.services.audit.saved_queries.x_update__mutmut_1  # "__unchanged__" sentinel default content
+pointlessql.services.audit.saved_queries.x_update__mutmut_2  # "__unchanged__" sentinel default case
