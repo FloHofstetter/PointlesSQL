@@ -184,13 +184,14 @@ body.pql-chromeless {
  box-shadow: 0 6px 20px -6px var(--auth-glow);
  transition:
   transform var(--pql-duration-fast) var(--pql-ease),
-  box-shadow var(--pql-duration-normal) var(--pql-ease),
-  filter var(--pql-duration-fast) var(--pql-ease);
+  box-shadow var(--pql-duration-normal) var(--pql-ease);
 }
 .pql-chromeless .btn-primary:hover {
  color: var(--pql-color-accent-fg);
  transform: translateY(-1px);
- filter: brightness(1.06);
+ /* Brighter gradient instead of filter: brightness() — this machine is
+    software-composited, so a static gradient costs nothing per frame. */
+ background: linear-gradient(135deg, #98dc00, #5f9900);
  box-shadow: 0 10px 28px -6px var(--auth-glow);
 }
 .pql-chromeless .btn-primary:active {
