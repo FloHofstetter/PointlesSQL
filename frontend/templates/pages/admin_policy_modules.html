@@ -83,7 +83,7 @@
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title" x-text="editing.id ? 'Edit policy module' : 'New policy module'"></h5>
-                    <button type="button" class="btn-close" @click="closeEditor()"></button>
+                    <button type="button" class="btn-close" @click="closeEditor()" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     <div class="mb-3">
@@ -123,7 +123,7 @@
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title">Dry-run module</h5>
-                    <button type="button" class="btn-close" @click="testOpen = false"></button>
+                    <button type="button" class="btn-close" @click="testOpen = false" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     <div class="mb-2">
@@ -160,7 +160,7 @@
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title">Decision log</h5>
-                    <button type="button" class="btn-close" @click="decisionsOpen = false"></button>
+                    <button type="button" class="btn-close" @click="decisionsOpen = false" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     <table class="table table-sm">

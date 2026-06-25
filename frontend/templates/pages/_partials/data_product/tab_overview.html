@@ -258,7 +258,7 @@
                                         <span class="badge text-bg-secondary ms-1"
                                               x-text="'v' + (versionDrawerPort?.version_semver || '0.1.0')"></span>
                                     </h5>
-                                    <button type="button" class="btn-close" @click="closeVersionDrawer()"></button>
+                                    <button type="button" class="btn-close" @click="closeVersionDrawer()" aria-label="Close"></button>
                                 </div>
                                 <div class="modal-body">
                                     <div class="alert alert-danger py-1 px-2 small"
