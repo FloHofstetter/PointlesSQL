@@ -374,11 +374,17 @@ not sufficient for the in-session tool surface.
     are even worse than comments — end users see them and "Phase
     85.1 prototype" reads as untranslated developer chatter.
 
-  Exception (single, narrow): `pointlessql/alembic/versions/*.py`
-  migration files. The phase tag in the migration filename +
-  docstring is the schema-change identity, not project-management
-  noise; downgrading to a feature description would lose the
-  cross-reference to ROADMAP.md / CHANGELOG.md sprint anchors.
+  Exception (single, narrow): the **docstring bodies** of
+  `pointlessql/alembic/versions/*.py` migration files. A migration's
+  docstring narrates a schema change that already shipped, so it may
+  reference the phase/sprint it landed in — that is the historical
+  record, not live project-management noise, and scrubbing the frozen
+  migrations would only lose the cross-reference to ROADMAP.md /
+  CHANGELOG.md anchors. Migration *filenames* and revision ids carry no
+  phase tags: they are sequential `NNNN_slug.py` with a matching
+  `revision = "NNNN"` (soyuz-catalog's convention). A new migration
+  takes the next number, hand-assigned with
+  `alembic revision --rev-id <NNNN> -m "<slug>"`.
 
   Enforcement: `scripts/check-no-phase-refs.sh` runs as a local
   pre-commit hook scoped to `frontend/` + `pointlessql/`

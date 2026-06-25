@@ -143,7 +143,7 @@ def _refuse_non_empty_target(target_engine: Engine) -> None:
     # (PKs collide, sequences sync afterwards).
     seeded_allow = {
         "workspaces": 1,  # bootstrap default workspace (id=1)
-        "saved_audit_queries": 5,  # 5 starter queries from j0e1f2a3b4c5
+        "saved_audit_queries": 5,  # 5 starter queries seeded by the saved_audit_queries migration
     }
     with target_engine.connect() as conn:
         for tname in _ordered_table_names():
