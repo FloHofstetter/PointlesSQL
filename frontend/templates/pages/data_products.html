@@ -154,9 +154,22 @@
     </template>
 
     <template x-if="!loading && !error && filtered.length === 0">
-        <div class="alert alert-secondary pql-dp-empty">
-            <i class="bi bi-info-circle me-1"></i>
-            No data products match.
+        <div class="pql-card pql-empty pql-dp-empty">
+            <i class="bi pql-empty__icon"
+               :class="products.length === 0 ? 'bi-box-seam' : 'bi-search'"
+               aria-hidden="true"></i>
+            <p class="pql-empty__title"
+               x-text="products.length === 0 ? 'No data products yet' : 'No data products match your filter'"></p>
+            <p class="pql-empty__message"
+               x-text="products.length === 0
+                   ? 'Data products are defined as YAML and registered into the catalog.'
+                   : 'Try a different search, or clear the filters to see everything.'"></p>
+            <template x-if="products.length > 0">
+                <button type="button" class="btn btn-outline-primary btn-sm pql-empty__action"
+                        @click="filter = ''; activeChip = 'all'; mktDomain = 'all'; mktLifecycle = 'all'; mktCertified = false">
+                    Clear filters
+                </button>
+            </template>
         </div>
     </template>
 
