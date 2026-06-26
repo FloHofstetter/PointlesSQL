@@ -84,6 +84,7 @@
             <div class="input-group">
               <input type="text" class="form-control"
                      placeholder="Ask a question about your data…"
+                     aria-label="Ask a question about your data"
                      x-model="draft" :disabled="thinking">
               <button class="btn btn-primary" type="submit"
                       :disabled="thinking || !draft.trim()">
