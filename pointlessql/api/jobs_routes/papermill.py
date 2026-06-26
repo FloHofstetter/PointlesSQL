@@ -14,6 +14,7 @@ from typing import Literal
 from fastapi import APIRouter, Request
 from fastapi.responses import FileResponse, HTMLResponse
 
+from pointlessql.api._embed_headers import allow_framing_same_origin
 from pointlessql.api.dependencies import get_templates
 from pointlessql.api.jobs_routes._access import (
     load_job_or_404,
@@ -53,7 +54,7 @@ async def job_run_notebook(
         run_id,
         exclude_input=exclude_input,
     )
-    return HTMLResponse(html)
+    return allow_framing_same_origin(HTMLResponse(html))
 
 
 @router.get("/jobs/{job_id}/runs/{run_id}/notebook/download")

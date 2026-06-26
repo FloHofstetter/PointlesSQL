@@ -32,9 +32,11 @@
                  window.pqlApi.reloadWithToast(successMsg);
              }
          }">
+        {% if job.kind == "dag" %}
         <a href="/jobs/{{ job.id }}/dag" class="btn btn-outline-primary btn-sm">
             <i class="bi bi-diagram-3 me-1"></i>Edit DAG
         </a>
+        {% endif %}
         <button type="button" class="btn btn-primary btn-sm"
                 x-bind:disabled="busy"
                 x-on:click="post('/api/jobs/{{ job.id }}/run', 'Run started.')">

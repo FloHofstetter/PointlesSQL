@@ -107,13 +107,15 @@
                                 <button type="button" class="btn btn-sm btn-outline-primary"
                                         x-bind:disabled="busy"
                                         x-on:click.stop="runNow()"
-                                        title="Run now">
+                                        title="Run now"
+                                        aria-label="Run now">
                                     <i class="bi bi-play-fill"></i>
                                 </button>
                                 <button type="button" class="btn btn-sm btn-outline-secondary"
                                         x-bind:disabled="busy"
                                         x-on:click.stop="togglePause()"
-                                        x-bind:title="paused ? 'Resume' : 'Pause'">
+                                        x-bind:title="paused ? 'Resume' : 'Pause'"
+                                        x-bind:aria-label="paused ? 'Resume job' : 'Pause job'">
                                     <i class="bi" x-bind:class="paused ? 'bi-play' : 'bi-pause'"></i>
                                 </button>
                             </td>

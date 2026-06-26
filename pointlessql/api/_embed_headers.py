@@ -34,3 +34,28 @@ def allow_framing[ResponseT: Response](response: ResponseT) -> ResponseT:
     if "X-Frame-Options" in response.headers:
         del response.headers["X-Frame-Options"]
     return response
+
+
+def allow_framing_same_origin[ResponseT: Response](response: ResponseT) -> ResponseT:
+    """Mark *response* as embeddable only from the same origin.
+
+    Private in-app artefacts — the executed-notebook HTML the job-detail
+    "Output artifacts" card iframes, the run-compare page's twin iframes,
+    and the dashboard output iframe — are framed by our own pages but must
+    not be embeddable by third-party sites. The global
+    ``X-Frame-Options: DENY`` blocks framing outright, including the
+    same-origin case, so declare an enforced ``frame-ancestors 'self'``
+    instead: the middleware then skips ``X-Frame-Options`` and the browser
+    permits the same-origin embed while still denying cross-origin ones.
+
+    Args:
+        response: The private same-origin artefact response.
+
+    Returns:
+        The same response, scoped to same-origin framing with no
+        conflicting ``X-Frame-Options``.
+    """
+    response.headers["Content-Security-Policy"] = "frame-ancestors 'self'"
+    if "X-Frame-Options" in response.headers:
+        del response.headers["X-Frame-Options"]
+    return response

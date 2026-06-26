@@ -20,7 +20,8 @@
         </span>
         <button class="btn btn-sm btn-link p-0 text-muted"
                 @click="reload()"
-                title="Refresh">
+                title="Refresh"
+                aria-label="Refresh jobs">
             <i class="bi bi-arrow-clockwise" :class="loading ? 'pql-spin' : ''"></i>
         </button>
     </div>
