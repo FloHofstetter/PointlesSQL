@@ -17,13 +17,12 @@
 <div x-data="dataProductsBrowse()">
     <div class="card mb-3">
         <div class="card-body py-2">
-            <div class="row gx-2 align-items-center">
-                <div class="col-md-5">
-                    <input type="text" class="form-control form-control-sm pql-dp-filter-input"
-                           placeholder="Search products, domains or business terms…"
-                           x-model="filter">
-                </div>
-                <div class="col-md-4" x-show="viewMode !== 'marketplace'">
+            <div class="d-flex flex-wrap align-items-center gap-2">
+                <input type="text" class="form-control form-control-sm pql-dp-filter-input flex-grow-1"
+                       style="min-width: 14rem;"
+                       placeholder="Search products, domains or business terms…"
+                       x-model="filter">
+                <div x-show="viewMode !== 'marketplace'">
                     <div class="d-flex flex-wrap gap-1 pql-dp-filter-chips">
                         <button class="btn btn-sm"
                                 :class="activeChip === 'all' ? 'btn-primary' : 'btn-outline-secondary'"
@@ -43,14 +42,14 @@
                                 data-chip="stale">Stale</button>
                     </div>
                 </div>
-                <div class="col-md-3 d-flex align-items-end justify-content-end gap-2">
-                    <div class="btn-group btn-group-sm pql-dp-view-toggle" role="group">
+                <div class="d-flex align-items-center gap-2 ms-auto flex-shrink-0">
+                    <div class="btn-group btn-group-sm pql-dp-view-toggle" role="group" aria-label="View mode">
                         <button type="button"
                                 class="btn"
                                 :class="viewMode === 'marketplace' ? 'btn-secondary' : 'btn-outline-secondary'"
                                 @click="setView('marketplace')"
                                 data-view="marketplace"
-                                title="Marketplace">
+                                title="Marketplace" aria-label="Marketplace view">
                             <i class="bi bi-shop"></i>
                         </button>
                         <button type="button"
@@ -58,7 +57,7 @@
                                 :class="viewMode === 'table' ? 'btn-secondary' : 'btn-outline-secondary'"
                                 @click="setView('table')"
                                 data-view="table"
-                                title="Table">
+                                title="Table" aria-label="Table view">
                             <i class="bi bi-table"></i>
                         </button>
                         <button type="button"
@@ -66,12 +65,12 @@
                                 :class="viewMode === 'cards' ? 'btn-secondary' : 'btn-outline-secondary'"
                                 @click="setView('cards')"
                                 data-view="cards"
-                                title="Cards">
+                                title="Cards" aria-label="Cards view">
                             <i class="bi bi-grid"></i>
                         </button>
                     </div>
                     {% if is_admin %}
-                    <button class="btn btn-sm btn-outline-primary" @click="reloadFromYaml()" :disabled="reloading">
+                    <button class="btn btn-sm btn-outline-primary text-nowrap" @click="reloadFromYaml()" :disabled="reloading">
                         <i class="bi bi-arrow-repeat"></i>
                         <span x-text="reloading ? 'Reloading…' : 'Reload yaml'"></span>
                     </button>
