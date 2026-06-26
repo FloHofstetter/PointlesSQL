@@ -69,8 +69,24 @@
                 </div>
             </div>
         </template>
-        <div class="col-12 text-muted" x-show="filtered.length === 0">
-            No domains match.
+        <div class="col-12" x-show="filtered.length === 0">
+            <div class="pql-card pql-empty">
+                <i class="bi pql-empty__icon"
+                   :class="domains.length === 0 ? 'bi-diagram-2' : 'bi-search'"
+                   aria-hidden="true"></i>
+                <p class="pql-empty__title"
+                   x-text="domains.length === 0 ? 'No domains yet' : 'No domains match your filter'"></p>
+                <p class="pql-empty__message"
+                   x-text="domains.length === 0
+                       ? 'Business domains group the data products a team owns.'
+                       : 'Try a different search or archetype.'"></p>
+                <template x-if="domains.length > 0">
+                    <button type="button" class="btn btn-outline-primary btn-sm pql-empty__action"
+                            @click="filter = ''; activeArchetype = 'all'">
+                        Clear filters
+                    </button>
+                </template>
+            </div>
         </div>
     </div>
 </div>
