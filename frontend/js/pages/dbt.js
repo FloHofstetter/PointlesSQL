@@ -196,3 +196,8 @@ if (document.readyState === 'loading') {
 } else {
   _init();
 }
+
+// htmx-boosted navigation swaps in a fresh ``#dbtTabs`` without re-running the
+// module, so the tables would stay stuck on their "Loading…" seed. Re-run
+// ``_init`` after each swap; it no-ops when the dbt tabs are absent.
+document.addEventListener('htmx:afterSwap', () => _init());
