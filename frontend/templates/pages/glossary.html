@@ -52,8 +52,24 @@
                 </div>
             </div>
         </template>
-        <div class="col-12 text-muted" x-show="filtered.length === 0">
-            No terms match.
+        <div class="col-12" x-show="filtered.length === 0">
+            <div class="pql-card pql-empty">
+                <i class="bi pql-empty__icon"
+                   :class="terms.length === 0 ? 'bi-book' : 'bi-search'"
+                   aria-hidden="true"></i>
+                <p class="pql-empty__title"
+                   x-text="terms.length === 0 ? 'No glossary terms yet' : 'No terms match your search'"></p>
+                <p class="pql-empty__message"
+                   x-text="terms.length === 0
+                       ? 'Glossary terms define shared business vocabulary and bind to the columns that realise them.'
+                       : 'Try a different search.'"></p>
+                <template x-if="terms.length > 0">
+                    <button type="button" class="btn btn-outline-primary btn-sm pql-empty__action"
+                            @click="filter = ''">
+                        Clear search
+                    </button>
+                </template>
+            </div>
         </div>
     </div>
 </div>
