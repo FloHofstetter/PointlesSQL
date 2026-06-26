@@ -17,6 +17,10 @@ export function dashboardTree() {
     error: null,
     activeSlug: slugFromUrl(),
 
+    syncActiveSlug() {
+      this.activeSlug = slugFromUrl();
+    },
+
     async load() {
       try {
         const cached = sessionStorage.getItem(STORAGE_KEY);

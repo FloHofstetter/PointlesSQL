@@ -1,10 +1,11 @@
 <aside class="pql-sidebar border-end"
        x-data="dashboardTree()"
        x-init="load()"
-       @htmx:after-swap.window="activeSlug = slugFromUrl()">
+       @htmx:after-swap.window="syncActiveSlug()">
     <div class="p-3 d-flex align-items-center justify-content-between border-bottom">
         <span class="text-uppercase small fw-semibold text-muted">Dashboards</span>
-        <button class="btn btn-sm btn-link p-0 text-muted" @click="reload()" title="Refresh">
+        <button class="btn btn-sm btn-link p-0 text-muted" @click="reload()" title="Refresh"
+                aria-label="Refresh dashboards">
             <i class="bi bi-arrow-clockwise" :class="loading ? 'pql-spin' : ''"></i>
         </button>
     </div>
