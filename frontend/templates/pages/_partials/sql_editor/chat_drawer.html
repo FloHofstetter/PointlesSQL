@@ -133,6 +133,8 @@
           class="btn btn-primary btn-sm"
           :disabled="streaming || !prompt.trim()"
           data-testid="chat-send"
+          aria-label="Send message"
+          title="Send message"
         >
           <i class="bi bi-send"></i>
         </button>
@@ -142,6 +144,8 @@
           x-show="streaming"
           x-cloak
           @click="cancel()"
+          aria-label="Stop generating"
+          title="Stop generating"
         >
           <i class="bi bi-x-octagon"></i>
         </button>
