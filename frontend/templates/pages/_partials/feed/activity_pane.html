@@ -105,7 +105,8 @@
                             class="btn"
                             :class="density === opt.key ? 'btn-secondary' : 'btn-outline-secondary'"
                             @click="setDensity(opt.key)"
-                            :title="opt.label">
+                            :title="opt.label"
+                            :aria-label="opt.label">
                         <i class="bi" :class="opt.icon"></i>
                     </button>
                 </template>

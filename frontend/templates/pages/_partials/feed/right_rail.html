@@ -117,7 +117,8 @@
             <button type="button"
                     class="btn btn-sm btn-link p-0 text-decoration-none"
                     @click="saveCurrentSearch()"
-                    title="Save current filter + search">
+                    title="Save current filter + search"
+                    aria-label="Save current filter and search">
                 <i class="bi bi-plus-lg"></i>
             </button>
         </div>
@@ -134,7 +135,8 @@
                     <button type="button"
                             class="btn btn-link btn-sm text-danger p-0"
                             @click="deleteSavedSearch(idx)"
-                            title="Delete saved search">
+                            title="Delete saved search"
+                            aria-label="Delete saved search">
                         <i class="bi bi-trash"></i>
                     </button>
                 </li>
