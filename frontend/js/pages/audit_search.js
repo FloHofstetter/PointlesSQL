@@ -176,3 +176,9 @@ if (document.readyState === 'loading') {
 } else {
   _init();
 }
+
+// htmx-boosted navigation swaps in fresh DOM without re-running this eager
+// module, so the search form + load-more would be dead after an in-app
+// navigation. Re-wire on every swap; the init guards on its own elements and
+// no-ops when they are absent.
+document.addEventListener('htmx:afterSwap', () => _init());

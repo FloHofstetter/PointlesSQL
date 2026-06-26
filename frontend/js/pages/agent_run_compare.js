@@ -86,3 +86,9 @@ if (document.readyState === 'loading') {
 } else {
   _init();
 }
+
+// htmx-boosted navigation swaps in fresh DOM without re-running this eager
+// module, so the lineage diff would not render after an in-app navigation.
+// Re-run on every swap; the init guards on its payload element and no-ops
+// when it is absent.
+document.addEventListener('htmx:afterSwap', () => _init());

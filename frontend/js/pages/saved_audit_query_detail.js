@@ -126,3 +126,8 @@ if (document.readyState === 'loading') {
 } else {
   _initRunButton();
 }
+
+// htmx-boosted navigation swaps in fresh DOM without re-running this eager
+// module, so the Run button would be dead after an in-app navigation. Re-wire
+// on every swap; the init guards on its button and no-ops when it is absent.
+document.addEventListener('htmx:afterSwap', () => _initRunButton());

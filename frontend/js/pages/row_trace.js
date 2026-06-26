@@ -94,3 +94,9 @@ if (document.readyState === 'loading') {
 } else {
   _initPiiReveal();
 }
+
+// htmx-boosted navigation swaps in fresh DOM without re-running this eager
+// module, so the PII-reveal buttons would be dead after an in-app navigation.
+// Re-wire on every swap; the init guards on its buttons and no-ops when they
+// are absent.
+document.addEventListener('htmx:afterSwap', () => _initPiiReveal());
