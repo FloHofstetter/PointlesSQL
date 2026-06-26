@@ -90,7 +90,8 @@
         </table>
     </div>
     <div x-show="pipelines.length === 0" x-cloak>
-        {% with icon="bi-diagram-3", title="No pipelines yet", message="Create a declarative pipeline to refresh materialized views and streaming tables in dependency order.", flush=True %}
+        {% with icon="bi-diagram-3", title="No pipelines yet", message="Create a declarative pipeline to refresh materialized views and streaming tables in dependency order.", flush=True,
+                action_click="creating = true", action_label="Create the first pipeline" %}
           {% include "components/empty.html" with context %}
         {% endwith %}
     </div>

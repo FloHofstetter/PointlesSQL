@@ -1,11 +1,14 @@
 {#
  Build hub spoke list.
 
- Top section of the context panel for every Build-hub page: the six
+ Top section of the context panel for every Build-hub page: the
  authoring surfaces that used to be flat entries in the rail's BUILD
  group.  Whichever build sub-section is active also renders its own
  contextual partial below this list (e.g. the SQL editor's
  editor/history/saved links, the jobs list, the dashboards tree).
+
+ Kept in step with the Build group in ``components/nav_links.html``
+ (the mobile drawer) so desktop and mobile expose the same surfaces.
 
  Active-state is section-keyed; Notebooks lives in the ``workspace``
  section.
@@ -50,10 +53,31 @@
  </a>
  </li>
  <li>
+ <a href="/metric-views"
+ class="pql-context-panel__link{% if active_section == 'metric-views' %} active{% endif %}">
+ <i class="bi bi-rulers"></i>
+ <span>Metric Views</span>
+ </a>
+ </li>
+ <li>
+ <a href="/pipelines"
+ class="pql-context-panel__link{% if active_section == 'pipelines' %} active{% endif %}">
+ <i class="bi bi-diagram-3"></i>
+ <span>Pipelines</span>
+ </a>
+ </li>
+ <li>
  <a href="/jobs"
  class="pql-context-panel__link{% if active_section == 'jobs' %} active{% endif %}">
  <i class="bi bi-clock-history"></i>
  <span>Scheduled jobs</span>
+ </a>
+ </li>
+ <li>
+ <a href="/quality"
+ class="pql-context-panel__link{% if active_section == 'quality' %} active{% endif %}">
+ <i class="bi bi-heart-pulse"></i>
+ <span>Quality</span>
  </a>
  </li>
  <li>
