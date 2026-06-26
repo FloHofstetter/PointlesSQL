@@ -20,9 +20,10 @@
         <div class="text-muted small">Loading…</div>
     </template>
     <template x-if="loaded && agents.length === 0">
-        <div class="alert alert-secondary">
-            No agents registered in this workspace yet.
-        </div>
+        {% with icon="bi-robot", title="No agents yet",
+                message="Agents appear here once they are registered and start authoring runs, reviews, and memories." %}
+          {% include "components/empty.html" with context %}
+        {% endwith %}
     </template>
 
     <ul class="list-group pql-agents-list" x-show="loaded && agents.length > 0">
