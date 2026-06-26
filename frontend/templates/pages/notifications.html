@@ -61,11 +61,10 @@
     </template>
 
     <template x-if="!loading && notifications.length === 0">
-        <div class="alert alert-secondary pql-notif-empty">
-            <i class="bi bi-inbox me-1"></i>
-            Nothing here yet.  Follow a data product or wait for an
-            event you've subscribed to.
-        </div>
+        {% with icon="bi-inbox", title="You're all caught up",
+                message="New notifications appear here when you follow a data product or an event you subscribed to fires." %}
+          {% include "components/empty.html" with context %}
+        {% endwith %}
     </template>
 
     <template x-if="!loading && notifications.length > 0">

@@ -71,11 +71,10 @@
     </template>
 
     <template x-if="!loading && subs.length === 0">
-        <div class="alert alert-secondary pql-me-sub-empty">
-            <i class="bi bi-info-circle me-1"></i>
-            No subscriptions yet.  Click "New subscription" to
-            register a webhook URL.
-        </div>
+        {% with icon="bi-bell-slash", title="No subscriptions yet",
+                message="Click \"New subscription\" to register a webhook URL for the events you care about." %}
+          {% include "components/empty.html" with context %}
+        {% endwith %}
     </template>
 
     <template x-if="subs.length > 0">
