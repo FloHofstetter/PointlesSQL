@@ -27,7 +27,7 @@
             :class="{ active: rightDrawer.tab === 'chat' }"
             @click="rightDrawer.tab = 'chat'"
             data-testid="right-drawer-tab-chat"
-            title="AI assistant">
+            title="AI assistant" aria-label="AI assistant">
      <i class="bi bi-robot" aria-hidden="true"></i>
     </button>
    </li>
@@ -38,7 +38,7 @@
             :class="{ active: rightDrawer.tab === 'variables' }"
             @click="rightDrawer.tab = 'variables'; requestVariableSnapshot()"
             data-testid="right-drawer-tab-variables"
-            title="Kernel variables">
+            title="Kernel variables" aria-label="Kernel variables">
      <i class="bi bi-eye" aria-hidden="true"></i>
     </button>
    </li>
@@ -49,7 +49,7 @@
             :class="{ active: rightDrawer.tab === 'discussion' }"
             @click="rightDrawer.tab = 'discussion'"
             data-testid="right-drawer-tab-discussion"
-            title="Discussion">
+            title="Discussion" aria-label="Discussion">
      <i class="bi bi-chat-dots" aria-hidden="true"></i>
     </button>
    </li>
@@ -59,7 +59,7 @@
             :class="{ active: rightDrawer.tab === 'endorsements' }"
             @click="rightDrawer.tab = 'endorsements'"
             data-testid="right-drawer-tab-endorsements"
-            title="Endorsements">
+            title="Endorsements" aria-label="Endorsements">
      <i class="bi bi-award" aria-hidden="true"></i>
     </button>
    </li>
@@ -69,7 +69,7 @@
             :class="{ active: rightDrawer.tab === 'followers' }"
             @click="rightDrawer.tab = 'followers'"
             data-testid="right-drawer-tab-followers"
-            title="Followers">
+            title="Followers" aria-label="Followers">
      <i class="bi bi-people" aria-hidden="true"></i>
     </button>
    </li>
@@ -79,7 +79,7 @@
             :class="{ active: rightDrawer.tab === 'readme' }"
             @click="rightDrawer.tab = 'readme'"
             data-testid="right-drawer-tab-readme"
-            title="README">
+            title="README" aria-label="README">
      <i class="bi bi-file-text" aria-hidden="true"></i>
     </button>
    </li>
