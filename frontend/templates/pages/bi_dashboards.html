@@ -100,7 +100,8 @@
         </table>
     </div>
     {% else %}
-    {% with icon="bi-bar-chart", title="No dashboards yet", message="Create one to start charting.", flush=True %}
+    {% with icon="bi-bar-chart", title="No dashboards yet", message="Create one to start charting.", flush=True,
+            action_modal_target="#createBiDashboardModal", action_label="Create the first dashboard" %}
       {% include "components/empty.html" with context %}
     {% endwith %}
     {% endif %}
