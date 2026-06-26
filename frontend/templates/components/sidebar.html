@@ -6,7 +6,8 @@
  @pql:starred-changed.window="starred = $event.detail.items">
  <div class="p-3 d-flex align-items-center justify-content-between border-bottom">
  <span class="text-uppercase small fw-semibold text-muted">Catalog{{ info('catalog.what-is-a-catalog') }}</span>
- <button class="btn btn-sm btn-link p-0 text-muted" @click="reload()" title="Refresh">
+ <button class="btn btn-sm btn-link p-0 text-muted" @click="reload()" title="Refresh"
+ aria-label="Refresh catalog tree">
  <i class="bi bi-arrow-clockwise" :class="loading ? 'pql-spin' : ''"></i>
  </button>
  </div>
@@ -156,7 +157,8 @@
  <div class="pql-tree-item"
  :class="{ active: activePath.catalog === c.name && !activePath.schema }">
  <button class="pql-tree-chevron" @click="toggle('c:' + c.name)"
- :aria-expanded="isOpen('c:' + c.name)">
+ :aria-expanded="isOpen('c:' + c.name)"
+ :aria-label="(isOpen('c:' + c.name) ? 'Collapse ' : 'Expand ') + 'catalog ' + c.name">
  <i class="bi" :class="isOpen('c:' + c.name) ? 'bi-chevron-down' : 'bi-chevron-right'"></i>
  </button>
  <a :href="'/catalogs/' + c.name" class="pql-tree-label">
@@ -176,7 +178,8 @@
  <div class="pql-tree-item pql-tree-lvl-2"
  :class="{ active: activePath.catalog === c.name && activePath.schema === s.name && !activePath.table }">
  <button class="pql-tree-chevron" @click="toggle('s:' + c.name + '.' + s.name)"
- :aria-expanded="isOpen('s:' + c.name + '.' + s.name)">
+ :aria-expanded="isOpen('s:' + c.name + '.' + s.name)"
+ :aria-label="(isOpen('s:' + c.name + '.' + s.name) ? 'Collapse ' : 'Expand ') + 'schema ' + s.name">
  <i class="bi" :class="isOpen('s:' + c.name + '.' + s.name) ? 'bi-chevron-down' : 'bi-chevron-right'"></i>
  </button>
  <a :href="'/catalogs/' + c.name + '/schemas/' + s.name" class="pql-tree-label">
