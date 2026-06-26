@@ -43,12 +43,12 @@
         <div class="d-flex align-items-center gap-1 flex-shrink-0">
             <button class="btn btn-sm btn-link p-0 text-muted"
                     @click="createNotebook()"
-                    title="New notebook…">
+                    title="New notebook…" aria-label="New notebook">
                 <i class="bi bi-plus-square"></i>
             </button>
             <button class="btn btn-sm btn-link p-0 text-muted"
                     @click="reload()"
-                    title="Refresh">
+                    title="Refresh" aria-label="Refresh notebooks">
                 <i class="bi bi-arrow-clockwise" :class="loading ? 'pql-spin' : ''"></i>
             </button>
         </div>
