@@ -40,11 +40,13 @@
         <div class="ms-auto d-flex align-items-center gap-2">
             <button class="btn btn-sm btn-outline-secondary"
                     @click="focusMode = window.pqlToggleFocusMode()"
-                    :class="{ active: focusMode }" title="Focus mode (Shift+F)">
+                    :class="{ active: focusMode }" title="Focus mode (Shift+F)"
+                    aria-label="Focus mode (Shift+F)">
                 <i class="bi bi-window-fullscreen"></i>
             </button>
             <button class="btn btn-sm btn-outline-secondary" @click="autoTidy()"
-                    title="Auto-layout (Ctrl+L)">
+                    title="Auto-layout (Ctrl+L)"
+                    aria-label="Auto-layout (Ctrl+L)">
                 <i class="bi bi-diagram-3"></i>
             </button>
             <button class="btn btn-sm btn-outline-primary" @click="runPreview()"
