@@ -52,7 +52,7 @@
             </div>
 
             <button class="btn btn-link p-0 text-muted ms-auto"
-                    @click="reload()" title="Refresh">
+                    @click="reload()" title="Refresh" aria-label="Refresh notebooks">
                 <i class="bi bi-arrow-clockwise" :class="loading ? 'pql-spin' : ''"></i>
             </button>
         </div>
@@ -197,7 +197,7 @@
                                                 type="button"
                                                 data-bs-toggle="dropdown"
                                                 aria-expanded="false"
-                                                title="More actions">
+                                                title="More actions" aria-label="Notebook actions">
                                             <i class="bi bi-three-dots"></i>
                                         </button>
                                         <ul class="dropdown-menu dropdown-menu-end">
