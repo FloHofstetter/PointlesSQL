@@ -85,7 +85,7 @@
             <!-- Marketplace discovery facets -->
             <div x-show="viewMode === 'marketplace'">
               <div class="d-flex flex-wrap align-items-center gap-3 mt-2 pql-dp-facets">
-                <div class="d-flex flex-wrap align-items-center gap-1" x-show="domainList.length > 0">
+                <div class="d-none flex-wrap align-items-center gap-1" :class="domainList.length > 0 ? 'd-flex' : ''">
                     <span class="small text-muted me-1"><i class="bi bi-diagram-3 me-1"></i>Domain</span>
                     <button class="btn btn-sm py-0"
                             :class="mktDomain === 'all' ? 'btn-secondary' : 'btn-outline-secondary'"
@@ -99,7 +99,7 @@
                                 x-text="d.name"></button>
                     </template>
                 </div>
-                <div class="d-flex flex-wrap align-items-center gap-1" x-show="lifecycleList.length > 1">
+                <div class="d-none flex-wrap align-items-center gap-1" :class="lifecycleList.length > 1 ? 'd-flex' : ''">
                     <span class="small text-muted me-1"><i class="bi bi-life-preserver me-1"></i>Lifecycle</span>
                     <button class="btn btn-sm py-0"
                             :class="mktLifecycle === 'all' ? 'btn-secondary' : 'btn-outline-secondary'"

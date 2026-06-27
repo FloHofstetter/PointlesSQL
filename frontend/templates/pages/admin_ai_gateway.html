@@ -121,8 +121,8 @@
                 </div>
             </div>
 
-            <div x-show="overview.budget" x-cloak class="alert d-flex align-items-center gap-3"
-                 :class="budgetClass()" role="alert">
+            <div x-cloak class="alert align-items-center gap-3"
+                 :class="(overview.budget ? 'd-flex' : 'd-none') + ' ' + budgetClass()" role="alert">
                 <i class="bi bi-cash-coin fs-4"></i>
                 <div class="flex-grow-1">
                     <span class="fw-semibold text-capitalize" x-text="overview.budget && overview.budget.status"></span>

@@ -93,7 +93,7 @@
       <div class="alert small mb-2" :class="disabled ? 'alert-warning' : 'alert-danger'">
         <i class="bi me-1" :class="disabled ? 'bi-gear' : 'bi-exclamation-octagon'"></i>
         <span x-text="lastError"></span>
-        <div class="mt-2 d-flex gap-2" x-show="!disabled && lastRun && lastRun.lastSql">
+        <div class="mt-2 d-none gap-2" :class="!disabled && lastRun && lastRun.lastSql ? 'd-flex' : ''">
           <button type="button"
                   class="btn btn-outline-warning btn-sm"
                   data-testid="chat-refine-error"
