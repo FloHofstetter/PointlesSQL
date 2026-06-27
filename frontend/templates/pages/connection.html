@@ -21,8 +21,8 @@
         <button x-show="!confirming" class="btn btn-outline-danger btn-sm" @click="confirming = true">
             <i class="bi bi-trash me-1"></i>Delete
         </button>
-        <span x-show="confirming" x-cloak class="d-flex gap-2">
-            <button class="btn btn-danger btn-sm" @click="doDelete()" :disabled="deleting">Confirm Delete</button>
+        <span x-show="confirming" x-cloak>
+            <button class="btn btn-danger btn-sm me-2" @click="doDelete()" :disabled="deleting">Confirm Delete</button>
             <button class="btn btn-outline-secondary btn-sm" @click="confirming = false">Cancel</button>
         </span>
         <div x-show="error" x-cloak class="text-danger small mt-1" x-text="error"></div>
