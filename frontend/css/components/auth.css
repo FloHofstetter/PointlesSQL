@@ -112,6 +112,15 @@ body.pql-chromeless {
  -webkit-text-fill-color: transparent;
  letter-spacing: -0.01em;
 }
+/* The bright wordmark gradient reads well on the near-black dark mesh, but on
+ * the pale light mesh its light yellow-green start and pale-teal end wash out
+ * (the "SQL" especially). Deepen the stops in light mode so the green→teal
+ * identity is kept while clearing AA contrast on the #eef3ea background. */
+:root[data-bs-theme="light"] .pql-auth-brand span {
+ background: linear-gradient(120deg, #4a8500, #2c7500 48%, #0b7d6c);
+ -webkit-background-clip: text;
+ background-clip: text;
+}
 /* Solid-colour fallback where background-clip:text is unsupported. */
 @supports not ((-webkit-background-clip: text) or (background-clip: text)) {
  .pql-auth-brand span {
