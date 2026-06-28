@@ -24,13 +24,21 @@ same call the engines made before object storage existed.
 
 from __future__ import annotations
 
+import logging
+import time
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 from urllib.parse import urlparse
 
+from soyuz_catalog_client.types import Unset
+
 if TYPE_CHECKING:
     from soyuz_catalog_client import Client
+    from soyuz_catalog_client.models.aws_credentials import AwsCredentials
+    from soyuz_catalog_client.models.temporary_credentials import TemporaryCredentials
 
     from pointlessql.config import AzureSettings, GCSSettings, ObjectStoreSettings, S3Settings
+
+logger = logging.getLogger(__name__)
 
 # Scheme groupings.  ``s3a`` is the Hadoop alias; the Azure family covers
 # both ABFS(S) and the legacy WASB(S) / adl forms; ``gcs`` aliases ``gs``.
@@ -235,6 +243,236 @@ class StaticResolver:
         return {}
 
 
+def _bucket_key(location: str) -> str:
+    """Return the ``scheme://netloc`` cache key (bucket) for a location.
+
+    Vended credentials are scoped to a storage root, not a single
+    object, so all paths under one bucket share a cache entry.
+
+    Args:
+        location: A Delta table storage location (URI).
+
+    Returns:
+        The ``scheme://netloc`` prefix used as the cache key.
+    """
+    parsed = urlparse(location)
+    return f"{parsed.scheme}://{parsed.netloc}"
+
+
+def fetch_path_credentials(client: Client, url: str) -> TemporaryCredentials | None:
+    """Fetch Unity Catalog temporary credentials for a storage path.
+
+    Calls soyuz-catalog's url-keyed ``temporary-path-credentials``
+    endpoint synchronously (PQL is a sync surface, mirroring the
+    ``_get_table.sync`` calls the read/write paths already make).
+
+    Args:
+        client: The configured soyuz-catalog client.
+        url: The storage path to vend credentials for.
+
+    Returns:
+        The vended credentials, or ``None`` when soyuz returned an
+        unexpected response shape.
+    """
+    from soyuz_catalog_client.api.temporary_credentials import (
+        generate_temporary_path_credentials_api_2_1_unity_catalog_temporary_path_credentials_post as _gen,  # noqa: E501
+    )
+    from soyuz_catalog_client.models.generate_temporary_path_credential import (
+        GenerateTemporaryPathCredential,
+    )
+    from soyuz_catalog_client.models.generate_temporary_path_credential_operation import (
+        GenerateTemporaryPathCredentialOperation,
+    )
+    from soyuz_catalog_client.models.temporary_credentials import TemporaryCredentials
+
+    body = GenerateTemporaryPathCredential(
+        url=url,
+        operation=GenerateTemporaryPathCredentialOperation.PATH_READ_WRITE,
+    )
+    response = _gen.sync(client=client, body=body)
+    return response if isinstance(response, TemporaryCredentials) else None
+
+
+class VendingResolver:
+    """Resolver that vends short-lived UC credentials, else falls back.
+
+    The primary path: ask soyuz-catalog for temporary credentials scoped
+    to the storage location (Unity Catalog credential vending). When
+    soyuz returns real keys — today only for S3 paths governed by an
+    IAM-role external location with vending enabled — they are merged
+    with the connection params (endpoint / region / http) from
+    :class:`~pointlessql.config.ObjectStoreSettings` and used. Otherwise
+    (no vended keys, a non-S3 scheme soyuz does not vend, an unreachable
+    catalog, or any error) it falls back to the static resolver, so a
+    local / dev store backed by config keeps working.
+
+    Results are cached per bucket: a positive vend until just before its
+    expiry, a negative outcome for a short TTL so a dev store doesn't
+    re-hit the catalog on every Delta call. The static fallback is always
+    re-read live, so it still reflects current settings.
+
+    Args:
+        client: The configured soyuz-catalog client.
+        object_store: Pinned object-store settings; ``None`` reads the
+            live process settings.
+        negative_ttl_seconds: How long a "nothing vended" outcome is
+            cached before the catalog is asked again.
+    """
+
+    def __init__(
+        self,
+        client: Client,
+        object_store: ObjectStoreSettings | None = None,
+        *,
+        negative_ttl_seconds: float = 60.0,
+    ) -> None:
+        self._client = client
+        self._config = object_store
+        self._fallback = StaticResolver(object_store)
+        self._negative_ttl = negative_ttl_seconds
+        self._cache: dict[str, tuple[dict[str, str] | None, float]] = {}
+
+    @property
+    def _s3_settings(self) -> S3Settings:
+        if self._config is not None:
+            return self._config.s3
+        from pointlessql.config import get_settings
+
+        return get_settings().object_store.s3
+
+    def resolve(self, location: str) -> dict[str, str]:
+        """Resolve options, preferring vended credentials over static.
+
+        Args:
+            location: A Delta table storage location (path or URI).
+
+        Returns:
+            The ``storage_options`` dict, empty for a local path.
+        """
+        scheme = scheme_of(location)
+        if scheme not in OBJECT_STORE_SCHEMES:
+            return {}
+        key = _bucket_key(location)
+        now = time.time()
+        entry = self._cache.get(key)
+        if entry is None or now >= entry[1]:
+            entry = self._refresh(location, scheme, now)
+            self._cache[key] = entry
+        vended = entry[0]
+        if vended is not None:
+            return dict(vended)
+        return self._fallback.resolve(location)
+
+    def _refresh(
+        self, location: str, scheme: str, now: float
+    ) -> tuple[dict[str, str] | None, float]:
+        """Re-query the catalog and compute the cache entry for a bucket.
+
+        Args:
+            location: The storage location being resolved.
+            scheme: Its already-parsed scheme.
+            now: Current epoch seconds.
+
+        Returns:
+            ``(options, expires_at)`` — ``options`` is ``None`` to signal
+            "use the static fallback" (cached for ``negative_ttl``).
+        """
+        # Soyuz only vends real credentials for S3 today; for Azure / GCS
+        # it returns empty stubs, so skip the round-trip entirely.
+        if scheme not in S3_SCHEMES:
+            return (None, now + self._negative_ttl)
+        try:
+            credentials = fetch_path_credentials(self._client, location)
+        except Exception:  # noqa: BLE001 — vending is best-effort; fall back to static
+            logger.debug(
+                "credential vending failed for %s; using static config",
+                location,
+                exc_info=True,
+            )
+            return (None, now + self._negative_ttl)
+        aws = _real_aws_credentials(credentials)
+        if aws is None:
+            return (None, now + self._negative_ttl)
+        return (self._s3_options(aws), _expiry_seconds(credentials, now, self._negative_ttl))
+
+    def _s3_options(self, aws: AwsCredentials) -> dict[str, str]:
+        """Merge vended S3 keys with the configured connection params.
+
+        The vended object carries only the secret material; the
+        endpoint / region / http flags are properties of the store, so
+        they come from settings regardless of where the keys originate.
+
+        Args:
+            aws: The vended ``AwsCredentials`` (validated non-empty).
+
+        Returns:
+            A complete S3 ``storage_options`` dict.
+        """
+        cfg = self._s3_settings
+        opts: dict[str, str] = {}
+        if cfg.region:
+            opts["AWS_REGION"] = cfg.region
+        if cfg.endpoint_url:
+            opts["AWS_ENDPOINT_URL"] = cfg.endpoint_url
+        if cfg.allow_http:
+            opts["AWS_ALLOW_HTTP"] = "true"
+        if cfg.allow_unsafe_rename:
+            opts["AWS_S3_ALLOW_UNSAFE_RENAME"] = "true"
+        opts["AWS_ACCESS_KEY_ID"] = str(aws.access_key_id)
+        secret = aws.secret_access_key
+        if secret and not isinstance(secret, Unset):
+            opts["AWS_SECRET_ACCESS_KEY"] = str(secret)
+        token = aws.session_token
+        if token and not isinstance(token, Unset):
+            opts["AWS_SESSION_TOKEN"] = str(token)
+        return opts
+
+
+def _real_aws_credentials(credentials: TemporaryCredentials | None) -> AwsCredentials | None:
+    """Return the vended ``AwsCredentials`` only when it carries real keys.
+
+    soyuz returns an empty ``aws_temp_credentials`` stub when it is not
+    vending; that must be treated as "nothing vended" so the caller
+    falls back to static config.
+
+    Args:
+        credentials: The vended response, or ``None``.
+
+    Returns:
+        The populated ``AwsCredentials`` object, or ``None`` when the
+        response is missing, a stub, or keyless.
+    """
+    if credentials is None:
+        return None
+    aws = credentials.aws_temp_credentials
+    if aws is None or isinstance(aws, Unset):
+        return None
+    access_key = aws.access_key_id
+    if isinstance(access_key, Unset) or not access_key:
+        return None
+    return aws
+
+
+def _expiry_seconds(
+    credentials: TemporaryCredentials | None, now: float, default_ttl: float
+) -> float:
+    """Compute the cache-until time from a vended ``expiration_time``.
+
+    Args:
+        credentials: The vended response.
+        now: Current epoch seconds.
+        default_ttl: Fallback TTL when no usable expiry is present.
+
+    Returns:
+        Epoch seconds at which the cached vend should be refreshed — a
+        minute before the real expiry, never in the past.
+    """
+    expiration = None if credentials is None else credentials.expiration_time
+    if not expiration or isinstance(expiration, Unset):
+        return now + default_ttl
+    return max(now, expiration / 1000 - 60)
+
+
 # Shared default used when a call site has no resolver of its own.  It is
 # stateless (settings are read lazily), so a module-level singleton is safe.
 _DEFAULT_RESOLVER: StorageOptionsResolver = StaticResolver()
@@ -267,21 +505,23 @@ def storage_options_for(
 
 def make_resolver(
     object_store: ObjectStoreSettings,
-    client: Client | None = None,  # noqa: ARG001 — used by the vending resolver
+    client: Client | None = None,
 ) -> StorageOptionsResolver:
     """Build the resolver a :class:`PQL` instance uses for its engine.
 
-    Centralised so the credential *source* can change in one place.
-    Today it returns a static (config-driven) resolver; the vending
-    resolver — which uses ``client`` to fetch short-lived Unity Catalog
-    credentials — layers on here with the static resolver as its
-    fallback.
+    Centralised so the credential *source* changes in one place. With a
+    ``client`` it returns a :class:`VendingResolver` — Unity Catalog
+    credential vending is the primary path, with the static config
+    resolver as its fallback. Without one (the rare clientless engine) it
+    returns the plain static resolver.
 
     Args:
         object_store: The instance's resolved object-store settings.
-        client: The soyuz-catalog client (used once vending lands).
+        client: The soyuz-catalog client used to vend credentials.
 
     Returns:
-        A resolver bound to this instance's settings.
+        A resolver bound to this instance's settings and client.
     """
+    if client is not None:
+        return VendingResolver(client, object_store)
     return StaticResolver(object_store)
