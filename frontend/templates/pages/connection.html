@@ -76,9 +76,32 @@
         <table class="table table-sm mb-0">
             <tbody>
                 {% for key, value in connection.options.items() %}
+                {% set _sk = key|lower %}
+                {% set _is_secret = ('password' in _sk) or ('passwd' in _sk) or ('pwd' in _sk)
+                    or ('secret' in _sk) or ('token' in _sk) or ('credential' in _sk)
+                    or _sk.endswith('key') %}
                 <tr>
                     <td class="font-monospace small text-muted ps-3" style="width: 30%;">{{ key }}</td>
+                    {% if _is_secret %}
+                    {# Mask the credential by default so a shoulder-surf / screenshot does
+                       not leak it; an explicit Reveal toggle shows it, and the copy button
+                       copies the real value without revealing. x-cloak on the real value
+                       keeps it from flashing before Alpine hides it. #}
+                    <td class="font-monospace small" x-data="{ revealed: false }">
+                        <span x-show="!revealed" aria-hidden="true">••••••••</span>
+                        <span x-show="revealed" x-cloak>{{ value }}</span>
+                        <button type="button"
+                                class="btn btn-link btn-sm p-0 ms-1 align-baseline text-muted"
+                                @click="revealed = !revealed"
+                                aria-label="Toggle {{ key }} visibility"
+                                :title="revealed ? 'Hide' : 'Reveal'">
+                            <i class="bi" :class="revealed ? 'bi-eye-slash' : 'bi-eye'"></i>
+                        </button>
+                        {{ copy_btn(value, label="Copy " ~ key) }}
+                    </td>
+                    {% else %}
                     <td class="font-monospace small">{{ value }}{{ copy_btn(value, label="Copy " ~ key) }}</td>
+                    {% endif %}
                 </tr>
                 {% endfor %}
             </tbody>
