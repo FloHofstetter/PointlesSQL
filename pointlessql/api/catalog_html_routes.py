@@ -52,6 +52,39 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["catalog-html"])
 
 
+@router.get("/catalogs", response_class=HTMLResponse)
+async def catalogs_index(request: Request) -> HTMLResponse:
+    """Render the catalog explorer landing — a grid of every catalog.
+
+    The Data hub's headline "Catalog" spoke lands here so a fresh
+    workspace has a click-path into the metastore: pick a catalog to open
+    its schema list (``/catalogs/{name}``). It mirrors the context-panel
+    catalog tree but as a full-width browse surface, instead of dropping
+    the user on the social feed.
+    """
+    client = get_uc_client(request)
+    user = get_user(request)
+    catalogs: list[dict[str, Any]] = []
+    error: str | None = None
+    try:
+        catalogs = await client.list_catalogs()
+    except CatalogUnavailableError as exc:
+        error = exc.detail
+    return get_templates(request).TemplateResponse(
+        request,
+        "pages/catalogs.html",
+        {
+            "catalogs": catalogs,
+            "error": error,
+            "is_admin": user.get("is_admin", False),
+            "active_page": "catalogs",
+            "active_catalog": None,
+            "active_schema": None,
+            "active_table": None,
+        },
+    )
+
+
 @router.get("/catalogs/{catalog_name}", response_class=HTMLResponse)
 async def catalog_detail(request: Request, catalog_name: str) -> HTMLResponse:
     """Render metadata for a single catalog."""

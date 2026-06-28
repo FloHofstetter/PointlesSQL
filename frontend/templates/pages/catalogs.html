@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% from "_macros/timestamps.html" import relative_time_epoch %}
+{% block title %}Catalogs · PointlesSQL{% endblock %}
+
+{% set breadcrumbs = [
+    {"label": "Home", "href": "/"},
+    {"label": "Catalogs"},
+] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center gap-2 mb-3">
+    <i class="bi bi-database fs-3"></i>
+    <h1 class="h3 mb-0">Catalogs</h1>
+    {% if catalogs %}
+    <span class="text-muted ms-auto small">{{ catalogs|length }} catalog{{ '' if catalogs|length == 1 else 's' }}</span>
+    {% endif %}
+</div>
+
+<p class="text-muted">
+    The top of the Unity Catalog namespace. Open a catalog to browse its
+    schemas, then tables, views, volumes and models.
+</p>
+
+{% if error %}
+<div class="alert alert-danger">
+    <i class="bi bi-exclamation-triangle me-1"></i>{{ error }}
+</div>
+{% elif not catalogs %}
+{% with icon="bi-database",
+        title="No catalogs yet",
+        message="Create a catalog in Unity Catalog, or connect a foreign source, to start organising data." %}
+{% include "components/empty.html" %}
+{% endwith %}
+{% else %}
+<div class="row g-3">
+    {% for c in catalogs %}
+    <div class="col-12 col-md-6 col-xl-4">
+        <a href="/catalogs/{{ c.name }}"
+           class="card h-100 text-decoration-none text-body pql-hover-lift">
+            <div class="card-body">
+                <div class="d-flex align-items-center gap-2 mb-1">
+                    <i class="bi bi-folder2 text-muted flex-shrink-0"></i>
+                    <span class="fw-semibold font-monospace text-truncate">{{ c.name }}</span>
+                    {% if c.connection_name %}
+                    <span class="badge text-bg-info text-dark ms-auto">FOREIGN</span>
+                    {% else %}
+                    <span class="badge text-bg-light text-muted ms-auto">{{ c.type or 'MANAGED' }}</span>
+                    {% endif %}
+                </div>
+                {% if c.comment %}
+                <p class="small text-muted mb-2">{{ c.comment }}</p>
+                {% endif %}
+                <div class="small text-muted d-flex flex-wrap gap-3">
+                    {% if c.owner %}<span><i class="bi bi-person me-1"></i>{{ c.owner }}</span>{% endif %}
+                    {% if c.updated_at %}<span><i class="bi bi-clock-history me-1"></i>{{ relative_time_epoch(c.updated_at, klass="") }}</span>{% endif %}
+                </div>
+            </div>
+        </a>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+{% endblock %}
