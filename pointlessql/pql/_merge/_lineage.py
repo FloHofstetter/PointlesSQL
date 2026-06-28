@@ -10,6 +10,7 @@ import deltalake
 import pyarrow as pa
 
 from pointlessql.pql._merge._constants import LINEAGE_ROW_ID_COLUMN
+from pointlessql.pql._storage_options import storage_options_for
 from pointlessql.pql._types import ArrowArray, ArrowTable
 from pointlessql.services.lineage_edges import synth_target_row_id
 
@@ -60,7 +61,9 @@ def _capture_value_changes(
     try:
         from pointlessql.services.value_change_capture import extract_value_changes
 
-        dt = deltalake.DeltaTable(target_location)
+        dt = deltalake.DeltaTable(
+            target_location, storage_options=storage_options_for(target_location)
+        )
         cdf_reader = dt.load_cdf(
             starting_version=version_before + 1,
             ending_version=version_after,

@@ -21,6 +21,7 @@ from pointlessql.exceptions import (
     ValidationError,
 )
 from pointlessql.pql import memory
+from pointlessql.pql._storage_options import make_resolver
 from pointlessql.pql.engine import make_engine
 from pointlessql.services.agent_runs.memory._replay import ReplayUnsafeOpError
 from pointlessql.services.agent_runs.memory._replay_policy import ReplayPolicy
@@ -85,7 +86,10 @@ async def replay_endpoint(
     settings = request.app.state.settings
     client = make_soyuz_client(settings)
     factory = request.app.state.session_factory
-    engine = make_engine(getattr(settings.delta, "engine", "pandas"))
+    engine = make_engine(
+        getattr(settings.delta, "engine", "pandas"),
+        make_resolver(settings.object_store, client),
+    )
 
     try:
         result = memory.replay(

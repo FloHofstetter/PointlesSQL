@@ -43,6 +43,7 @@ from pointlessql.exceptions import (
 )
 from pointlessql.models.vector import VectorIndex
 from pointlessql.pql._parsing import parse_full_name
+from pointlessql.pql._storage_options import is_object_storage, storage_options_for
 from pointlessql.pql._vss_engine import open_index, read_meta, write_meta
 from pointlessql.pql.embedders import Embedder, EmbedderUnavailableError, resolve_embedder
 from pointlessql.types import OpName, RunId
@@ -166,7 +167,9 @@ def create_or_rebuild_index(
         if rebuild and index_path.exists():
             index_path.unlink()
 
-        delta_table = deltalake.DeltaTable(storage_location)
+        delta_table = deltalake.DeltaTable(
+            storage_location, storage_options=storage_options_for(storage_location)
+        )
         delta_version = delta_table.version()
         column_data, pk_payloads = _read_column_with_pks(delta_table, column)
         rows_indexed = len(column_data)
@@ -419,10 +422,16 @@ def _index_file_path(storage_location: str, column: str) -> Path:
     # tables; ``deltalake`` handles that natively but DuckDB's
     # ``connect()`` expects a plain filesystem path.  Strip the scheme
     # so the same call site works for both Delta reads and DuckDB index
-    # opens.  Non-``file://`` schemes (s3://, abfss://) intentionally
-    # fall through — vector-search currently only supports local Delta.
+    # opens.  Object-store tables have no local sidecar directory, so the
+    # index colocation scheme does not apply — refuse loudly rather than
+    # silently building a bogus local path under the URI's host.
     if not _VECTOR_COLUMN_RE.match(column):
         raise ValueError(f"invalid vector index column name: {column!r}")
+    if is_object_storage(storage_location):
+        raise ValidationError(
+            "vector search is not yet supported for tables on object storage "
+            f"({storage_location!r}); it currently requires a local Delta table"
+        )
     if storage_location.startswith("file://"):
         storage_location = storage_location[len("file://") :]
     base = Path(storage_location.rstrip("/"))

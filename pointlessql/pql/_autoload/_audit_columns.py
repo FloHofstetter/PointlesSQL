@@ -21,6 +21,7 @@ import deltalake
 import pyarrow as pa
 
 from pointlessql.conventions import ConventionsConfig
+from pointlessql.pql._storage_options import storage_options_for
 from pointlessql.pql._types import (
     ArrowArray,
     ArrowTable,
@@ -59,7 +60,12 @@ def _build_autoload_column_edges(
     from pointlessql.services.lineage_edges import ColumnEdgeSpec
 
     try:
-        schema = cast(DeltaSchema, deltalake.DeltaTable(target_location).schema())
+        schema = cast(
+            DeltaSchema,
+            deltalake.DeltaTable(
+                target_location, storage_options=storage_options_for(target_location)
+            ).schema(),
+        )
         delta_columns = [field.name for field in schema.fields]
     except Exception:  # noqa: BLE001 — best-effort metadata read
         # bare-broad-ok: column-edge derivation skipped on Delta read failure

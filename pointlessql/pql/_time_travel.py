@@ -42,6 +42,7 @@ from pointlessql.exceptions import (
     CatalogUnavailableError,
 )
 from pointlessql.pql._parsing import parse_full_name
+from pointlessql.pql._storage_options import storage_options_for
 from pointlessql.services.audit._read import record_read
 from pointlessql.types import QueryStatus, ReadKind
 
@@ -121,7 +122,7 @@ def read_table_at_version(
     try:
         import deltalake
 
-        dt = deltalake.DeltaTable(location)
+        dt = deltalake.DeltaTable(location, storage_options=storage_options_for(location))
         dt.load_as_version(version)
         result = dt.to_pandas()
     except Exception as exc:
@@ -195,7 +196,7 @@ def read_table_at_timestamp(
     try:
         import deltalake
 
-        dt = deltalake.DeltaTable(location)
+        dt = deltalake.DeltaTable(location, storage_options=storage_options_for(location))
         dt.load_as_version(when)
         result = dt.to_pandas()
     except Exception as exc:

@@ -73,9 +73,13 @@ from pointlessql.config._settings._integrations import (
 )
 from pointlessql.config._settings._privileges import PrivilegeSettings
 from pointlessql.config._settings._storage import (
+    AzureSettings,
     CanvasFileIoSettings,
     DatabaseSettings,
     DeltaSettings,
+    GCSSettings,
+    ObjectStoreSettings,
+    S3Settings,
 )
 
 
@@ -104,6 +108,7 @@ class Settings(BaseSettings):
     scheduler: SchedulerSettings = Field(default_factory=SchedulerSettings)
     audit: AuditSettings = Field(default_factory=AuditSettings)
     delta: DeltaSettings = Field(default_factory=DeltaSettings)
+    object_store: ObjectStoreSettings = Field(default_factory=ObjectStoreSettings)
     canvas_file_io: CanvasFileIoSettings = Field(default_factory=CanvasFileIoSettings)
     sql: SQLSettings = Field(default_factory=SQLSettings)
     sql_execution_api: SqlExecutionApiSettings = Field(default_factory=SqlExecutionApiSettings)
@@ -173,6 +178,7 @@ __all__ = [
     "AuditSettings",
     "AuditStreamSettings",
     "AuthSettings",
+    "AzureSettings",
     "BitemporalSettings",
     "BranchSettings",
     "CDFTailSettings",
@@ -190,6 +196,7 @@ __all__ = [
     "EventPortSettings",
     "ExecutorSettings",
     "ExternalWritesSettings",
+    "GCSSettings",
     "GroupMapping",
     "HermesSettings",
     "JupyterSettings",
@@ -199,7 +206,9 @@ __all__ = [
     "MLflowSettings",
     "NotificationsSettings",
     "OIDCSettings",
+    "ObjectStoreSettings",
     "PrivilegeSettings",
+    "S3Settings",
     "RateLimitSettings",
     "SQLSettings",
     "SchedulerSettings",

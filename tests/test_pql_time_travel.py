@@ -29,8 +29,9 @@ _UNREACHABLE = "cannot reach catalog"
 class _FakeDeltaTable:
     """Stand-in for ``deltalake.DeltaTable`` recording the requested version."""
 
-    def __init__(self, location: str) -> None:
+    def __init__(self, location: str, storage_options: Any = None) -> None:
         self.location = location
+        self.storage_options = storage_options
         self.loaded: Any = None
 
     def load_as_version(self, version: Any) -> None:

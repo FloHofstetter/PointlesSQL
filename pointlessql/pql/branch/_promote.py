@@ -26,6 +26,7 @@ from pointlessql.pql._branch_errors import (
     BranchNotFoundError,
     BranchPromotionConflictError,
 )
+from pointlessql.pql._storage_options import storage_options_for
 from pointlessql.pql.branch._common import (
     _get_table,
     branch_tags,
@@ -93,7 +94,7 @@ def _check_promotion_conflicts(
             )
 
         try:
-            dt = DeltaTable(location)
+            dt = DeltaTable(location, storage_options=storage_options_for(location))
             actual_version = int(dt.version())
         except Exception as exc:  # noqa: BLE001 — surface unreadable tables as conflicts
             logger.warning(
@@ -339,7 +340,7 @@ def preview_promote_conflicts(
             )
             continue
         try:
-            dt = DeltaTable(location)
+            dt = DeltaTable(location, storage_options=storage_options_for(location))
             actual_version = int(dt.version())
         except Exception as exc:  # noqa: BLE001 — diagnostic-only path
             # bare-broad-ok: failure detail surfaces in conflicts payload

@@ -15,6 +15,7 @@ import os
 from soyuz_catalog_client import Client
 
 from pointlessql.config import Settings, get_settings
+from pointlessql.pql._storage_options import make_resolver
 from pointlessql.pql.engine import Engine
 
 
@@ -91,10 +92,16 @@ class PQLBase:
                 self._client = _facade.make_soyuz_client(
                     resolved, agent_run_id=self._current_run_id
                 )
+        # The resolver maps an object-store ``storage_location`` to the
+        # ``storage_options`` the Delta engine needs.  Built from this
+        # instance's resolved settings + client so an explicitly-passed
+        # ``Settings`` (e.g. in tests) is honoured rather than the cached
+        # process settings the module-level default would read.
+        resolver = make_resolver(resolved.object_store, self._client)
         if engine is None:
-            self._engine = _facade.make_engine(resolved.delta.engine)
+            self._engine = _facade.make_engine(resolved.delta.engine, resolver)
         elif isinstance(engine, str):
-            self._engine = _facade.make_engine(engine)
+            self._engine = _facade.make_engine(engine, resolver)
         else:
             self._engine = engine
         # Subprocess-spawned agent notebooks bypass the FastAPI

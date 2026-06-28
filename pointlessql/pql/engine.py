@@ -14,6 +14,8 @@ from typing import TYPE_CHECKING, Any, Literal, Protocol, runtime_checkable
 
 import deltalake
 
+from pointlessql.pql._storage_options import StorageOptionsResolver, storage_options_for
+
 if TYPE_CHECKING:
     import duckdb
     import pandas as pd
@@ -73,7 +75,14 @@ class PandasEngine:
     """Engine that reads Delta tables as pandas DataFrames.
 
     This is the default engine.
+
+    Args:
+        resolver: Maps an object-store location to ``storage_options``;
+            ``None`` uses the shared static (env-driven) resolver.
     """
+
+    def __init__(self, resolver: StorageOptionsResolver | None = None) -> None:
+        self._resolver = resolver
 
     def read(self, storage_location: str) -> pd.DataFrame:
         """Read a Delta table as a pandas DataFrame.
@@ -84,7 +93,10 @@ class PandasEngine:
         Returns:
             The table contents as a pandas DataFrame.
         """
-        dt = deltalake.DeltaTable(storage_location)
+        dt = deltalake.DeltaTable(
+            storage_location,
+            storage_options=storage_options_for(storage_location, resolver=self._resolver),
+        )
         return dt.to_pandas()
 
     def write(self, frame: pd.DataFrame, storage_location: str, mode: WriteMode) -> None:
@@ -105,10 +117,17 @@ class PandasEngine:
             storage_location: Filesystem path or URI of the Delta table.
             mode: Write mode passed to ``deltalake.write_deltalake``.
         """
+        options = storage_options_for(storage_location, resolver=self._resolver)
         if mode == "overwrite":
-            deltalake.write_deltalake(storage_location, frame, mode=mode, schema_mode="overwrite")
+            deltalake.write_deltalake(
+                storage_location,
+                frame,
+                mode=mode,
+                schema_mode="overwrite",
+                storage_options=options,
+            )
         else:
-            deltalake.write_deltalake(storage_location, frame, mode=mode)
+            deltalake.write_deltalake(storage_location, frame, mode=mode, storage_options=options)
 
     def columns_info(self, frame: pd.DataFrame) -> list[tuple[str, str, str, bool]]:
         """Extract column metadata from a pandas DataFrame.
@@ -191,7 +210,9 @@ def register_delta_view(
     """
     from pointlessql.pql._policies import coerce_policy, policy_view_sql
 
-    dt = deltalake.DeltaTable(storage_location)
+    dt = deltalake.DeltaTable(
+        storage_location, storage_options=storage_options_for(storage_location)
+    )
     arrow_dataset = dt.to_pyarrow_dataset()
     effective = coerce_policy(policy)
     if effective is None or effective.is_empty():
@@ -216,12 +237,17 @@ class DuckDBEngine:
     Uses PyArrow as the bridge: Delta → PyArrow Dataset → DuckDB.
     Requires the ``duckdb`` package.  Creates an in-process DuckDB
     connection on instantiation.
+
+    Args:
+        resolver: Maps an object-store location to ``storage_options``;
+            ``None`` uses the shared static (env-driven) resolver.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, resolver: StorageOptionsResolver | None = None) -> None:
         import duckdb
 
         self._conn = duckdb.connect()
+        self._resolver = resolver
 
     def read(self, storage_location: str) -> duckdb.DuckDBPyRelation:
         """Read a Delta table as a DuckDB relation.
@@ -232,7 +258,10 @@ class DuckDBEngine:
         Returns:
             A DuckDB relation backed by the Delta table's Arrow data.
         """
-        dt = deltalake.DeltaTable(storage_location)
+        dt = deltalake.DeltaTable(
+            storage_location,
+            storage_options=storage_options_for(storage_location, resolver=self._resolver),
+        )
         arrow_dataset = dt.to_pyarrow_dataset()
         return self._conn.from_arrow(arrow_dataset)
 
@@ -248,12 +277,19 @@ class DuckDBEngine:
             mode: Write mode passed to ``deltalake.write_deltalake``.
         """
         arrow_table = frame.arrow()
+        options = storage_options_for(storage_location, resolver=self._resolver)
         if mode == "overwrite":
             deltalake.write_deltalake(
-                storage_location, arrow_table, mode=mode, schema_mode="overwrite"
+                storage_location,
+                arrow_table,
+                mode=mode,
+                schema_mode="overwrite",
+                storage_options=options,
             )
         else:
-            deltalake.write_deltalake(storage_location, arrow_table, mode=mode)
+            deltalake.write_deltalake(
+                storage_location, arrow_table, mode=mode, storage_options=options
+            )
 
     def columns_info(self, frame: duckdb.DuckDBPyRelation) -> list[tuple[str, str, str, bool]]:
         """Extract column metadata from a DuckDB relation.
@@ -312,7 +348,14 @@ class PolarsEngine:
 
     Uses PyArrow as the bridge: Delta → PyArrow Table → Polars.
     Requires the ``polars`` package.
+
+    Args:
+        resolver: Maps an object-store location to ``storage_options``;
+            ``None`` uses the shared static (env-driven) resolver.
     """
+
+    def __init__(self, resolver: StorageOptionsResolver | None = None) -> None:
+        self._resolver = resolver
 
     def read(self, storage_location: str) -> pl.DataFrame:
         """Read a Delta table as a Polars DataFrame.
@@ -325,7 +368,10 @@ class PolarsEngine:
         """
         import polars as pl
 
-        dt = deltalake.DeltaTable(storage_location)
+        dt = deltalake.DeltaTable(
+            storage_location,
+            storage_options=storage_options_for(storage_location, resolver=self._resolver),
+        )
         result = pl.from_arrow(dt.to_pyarrow_table())
         assert isinstance(result, pl.DataFrame)  # noqa: S101 — pyarrow Table always yields DataFrame
         return result
@@ -341,12 +387,19 @@ class PolarsEngine:
             storage_location: Filesystem path or URI of the Delta table.
             mode: Write mode passed to ``deltalake.write_deltalake``.
         """
+        options = storage_options_for(storage_location, resolver=self._resolver)
         if mode == "overwrite":
             deltalake.write_deltalake(
-                storage_location, frame.to_arrow(), mode=mode, schema_mode="overwrite"
+                storage_location,
+                frame.to_arrow(),
+                mode=mode,
+                schema_mode="overwrite",
+                storage_options=options,
             )
         else:
-            deltalake.write_deltalake(storage_location, frame.to_arrow(), mode=mode)
+            deltalake.write_deltalake(
+                storage_location, frame.to_arrow(), mode=mode, storage_options=options
+            )
 
     def columns_info(self, frame: pl.DataFrame) -> list[tuple[str, str, str, bool]]:
         """Extract column metadata from a Polars DataFrame.
@@ -374,11 +427,14 @@ _ENGINE_REGISTRY: dict[str, type] = {
 }
 
 
-def make_engine(name: str) -> Engine:
+def make_engine(name: str, resolver: StorageOptionsResolver | None = None) -> Engine:
     """Create an engine instance by name.
 
     Args:
         name: Engine name (``"pandas"``, ``"duckdb"``, ``"polars"``).
+        resolver: Storage-options resolver injected into the engine so it
+            can read/write object-store Delta tables; ``None`` uses the
+            shared static (env-driven) resolver.
 
     Returns:
         A configured engine instance.
@@ -393,4 +449,4 @@ def make_engine(name: str) -> Engine:
         valid = ", ".join(sorted(_ENGINE_REGISTRY))
         msg = f"Unknown engine {name!r}. Valid engines: {valid}"
         raise ValidationError(msg)
-    return cls()
+    return cls(resolver)

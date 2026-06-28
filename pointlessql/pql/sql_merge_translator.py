@@ -39,6 +39,7 @@ import duckdb
 from sqlglot import expressions as exp
 from sqlglot.expressions.core import Expression
 
+from pointlessql.pql._storage_options import storage_options_for
 from pointlessql.pql.sql_parser import SQLParseError
 from pointlessql.types import TableFqn
 
@@ -352,7 +353,7 @@ def _read_delta_as_pandas(table_node: exp.Table, approved: dict[str, str]) -> An
         )
     import deltalake
 
-    return deltalake.DeltaTable(location).to_pandas()
+    return deltalake.DeltaTable(location, storage_options=storage_options_for(location)).to_pandas()
 
 
 __all__ = [
