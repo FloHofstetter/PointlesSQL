@@ -139,12 +139,19 @@ async def volume_detail_page(request: Request, full_name: str) -> HTMLResponse:
             raise CatalogNotFoundError(f"Volume {full_name!r} not found.")
         meta.raise_for_status()
         volume = meta.json()
-        files = await vol_service.browse_files(
-            client,
-            soyuz_base_url(request),
-            full_name,
-            principal=user.get("email"),
-        )
+        # A managed volume with no storage_location yet (freshly created,
+        # never materialised) has nothing to browse — soyuz 400s the /files
+        # endpoint for it. Skip the doomed call and let the template render
+        # the empty-files state it already provides, rather than 500-ing.
+        if volume.get("storage_location"):
+            files = await vol_service.browse_files(
+                client,
+                soyuz_base_url(request),
+                full_name,
+                principal=user.get("email"),
+            )
+        else:
+            files = []
     return get_templates(request).TemplateResponse(
         request,
         "pages/volume_detail.html",
