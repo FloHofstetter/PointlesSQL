@@ -39,9 +39,18 @@
                 <span x-text="nodeCount"></span> <span x-text="nodeCount === 1 ? 'product' : 'products'"></span>,
                 <span x-text="edgeCount"></span> <span x-text="edgeCount === 1 ? 'declared edge' : 'declared edges'"></span>
             </div>
-            <div id="mesh-cy" style="width: 100%; height: 600px;"></div>
-            <div class="text-muted small" x-show="nodeCount === 0">
-                No data products yet.
+            {# Keep #mesh-cy in the DOM (x-bind:style toggles height, not display)
+               so Cytoscape still mounts; collapse it when empty and show a
+               centered empty state instead of a tiny note under a blank box. #}
+            <div id="mesh-cy" style="width: 100%;"
+                 :style="nodeCount === 0 ? 'width:100%;height:0;' : 'width:100%;height:600px;'"></div>
+            <div class="text-center text-muted py-5" x-show="nodeCount === 0" x-cloak>
+                <i class="bi bi-diagram-3 d-block fs-1 mb-2 opacity-50"></i>
+                <p class="mb-1 fw-semibold">No data products yet</p>
+                <p class="small mb-0">
+                    Register a data product and declare its mesh edges to see the
+                    producer → consumer graph here.
+                </p>
             </div>
         </div>
     </div>
