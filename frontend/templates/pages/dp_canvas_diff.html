@@ -52,7 +52,8 @@
             <button class="btn btn-sm btn-outline-secondary"
                     @click="focusMode = window.pqlToggleFocusMode()"
                     :class="{ active: focusMode }"
-                    title="Focus mode — hide side navigation (Shift+F)">
+                    title="Focus mode — hide side navigation (Shift+F)"
+                    aria-label="Focus mode — hide side navigation">
                 <i class="bi bi-window-fullscreen"></i>
             </button>
             <button class="btn btn-sm btn-primary" @click="load()" :disabled="busy">
