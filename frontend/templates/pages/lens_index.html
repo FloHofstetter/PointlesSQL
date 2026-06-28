@@ -12,7 +12,7 @@
   <div class="d-flex align-items-center justify-content-between mb-3">
     <h1 class="h3 mb-0"><i class="bi bi-eye"></i> Lens</h1>
     <div>
-      <button class="btn btn-sm btn-primary" @click="newSession()">
+      <button class="btn btn-sm btn-primary" @click="openNewSession()">
         <i class="bi bi-plus-lg"></i> New session
       </button>
     </div>
@@ -97,6 +97,38 @@
 
       <div class="alert alert-info" x-show="activeId === null">
         Select a session on the left, or click "New session" to start.
+      </div>
+    </div>
+  </div>
+
+  {# New-session modal — replaces the native prompt() so the create flow is
+     themed, focus-trapped and consistent with the other create surfaces. #}
+  <div class="modal fade" id="lens-new-modal" tabindex="-1"
+       aria-labelledby="lens-new-modal-title" aria-hidden="true"
+       @shown.bs.modal="$refs.newTitleInput?.focus()">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <form @submit.prevent="createSession()">
+          <div class="modal-header">
+            <h5 class="modal-title" id="lens-new-modal-title">New Lens session</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <label for="lens-new-title" class="form-label">Session title</label>
+            <input type="text" class="form-control" id="lens-new-title"
+                   x-model="newTitle" x-ref="newTitleInput"
+                   placeholder="New analysis" maxlength="200">
+            <div class="alert alert-danger mt-3 mb-0 py-2 small"
+                 x-show="createError" x-cloak x-text="createError"></div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-primary" :disabled="creating || !newTitle.trim()">
+              <span x-show="creating" class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>
+              Create session
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   </div>

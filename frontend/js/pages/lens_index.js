@@ -8,6 +8,9 @@ export function lensChat() {
     messages: [],
     draft: '',
     thinking: false,
+    newTitle: 'New analysis',
+    creating: false,
+    createError: null,
     async init() {
       await this.loadSessions();
     },
@@ -16,20 +19,43 @@ export function lensChat() {
       const body = await res.json();
       this.sessions = body.sessions || [];
     },
-    async newSession() {
-      const title = prompt('Session title?', 'New analysis');
-      if (!title) return;
-      const res = await fetch('/api/lens/sessions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: title, llm_provider: 'anthropic' }),
-      });
-      if (res.ok) {
+    openNewSession() {
+      this.newTitle = 'New analysis';
+      this.createError = null;
+      const el = document.getElementById('lens-new-modal');
+      if (el && window.bootstrap) {
+        window.bootstrap.Modal.getOrCreateInstance(el).show();
+      }
+    },
+    async createSession() {
+      const title = this.newTitle.trim();
+      if (!title) {
+        this.createError = 'Please enter a session title.';
+        return;
+      }
+      this.creating = true;
+      this.createError = null;
+      try {
+        const res = await fetch('/api/lens/sessions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title: title, llm_provider: 'anthropic' }),
+        });
+        if (!res.ok) {
+          this.createError = `Could not create session (HTTP ${res.status}).`;
+          return;
+        }
         const body = await res.json();
+        const el = document.getElementById('lens-new-modal');
+        if (el && window.bootstrap) {
+          window.bootstrap.Modal.getInstance(el)?.hide();
+        }
         await this.loadSessions();
         await this.loadSession(body.id);
-      } else {
-        alert('Could not create session: ' + res.status);
+      } catch (e) {
+        this.createError = `Could not create session: ${e && e.message ? e.message : e}`;
+      } finally {
+        this.creating = false;
       }
     },
     async loadSession(id) {
@@ -39,7 +65,12 @@ export function lensChat() {
       this.messages = body.messages || [];
     },
     async deleteSession(id) {
-      if (!confirm('Delete this session?')) return;
+      const ok = await window.pqlConfirm(
+        'Delete session?',
+        'This permanently deletes the session and its messages.',
+        { confirmLabel: 'Delete' }
+      );
+      if (!ok) return;
       await fetch(`/api/lens/sessions/${id}`, { method: 'DELETE' });
       if (this.activeId === id) {
         this.activeId = null;
