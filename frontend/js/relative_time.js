@@ -29,9 +29,25 @@ export function pqlParseServerIso(iso) {
   return s + 'Z';
 }
 
+// Normalise either an ISO-8601 string or a numeric epoch to ms-since-epoch.
+// The Unity Catalog surfaces (registered models, versions, …) stamp
+// created_at/updated_at as integer epoch **milliseconds**, not ISO strings, so
+// the ISO path below would Date.parse("1782649089702Z") → NaN and echo the raw
+// number. Treat a number or all-digits string as an epoch: values below 1e12
+// are seconds (×1000), the rest are already ms. Returns NaN for unparseable.
+export function pqlToMillis(value) {
+  if (value === null || value === undefined || value === '') return Number.NaN;
+  if (typeof value === 'number' || /^\d+$/.test(String(value).trim())) {
+    const n = Number(value);
+    if (!Number.isFinite(n)) return Number.NaN;
+    return n < 1e12 ? n * 1000 : n;
+  }
+  return Date.parse(pqlParseServerIso(value));
+}
+
 export function pqlRelativeTime(iso) {
   if (!iso) return '';
-  const t = Date.parse(pqlParseServerIso(iso));
+  const t = pqlToMillis(iso);
   if (Number.isNaN(t)) return iso;
   const delta = Math.max(0, (Date.now() - t) / 1000);
   if (delta < 45) return 'just now';
@@ -54,7 +70,7 @@ export function pqlRelativeTime(iso) {
  */
 export function pqlAbsTime(iso) {
   if (!iso) return '';
-  const t = Date.parse(pqlParseServerIso(iso));
+  const t = pqlToMillis(iso);
   if (Number.isNaN(t)) return iso;
   const d = new Date(t);
   const pad = (n) => String(n).padStart(2, '0');
