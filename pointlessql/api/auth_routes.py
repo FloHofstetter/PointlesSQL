@@ -88,7 +88,11 @@ async def login_submit(
         return get_templates(request).TemplateResponse(
             request,
             "pages/login.html",
-            {"error": "Invalid email or password.", "hide_sidebar": True},
+            {
+                "error": "Invalid email or password.",
+                "email": email,
+                "hide_sidebar": True,
+            },
             status_code=401,
         )
 
@@ -155,6 +159,8 @@ async def register_submit(
     def _reg_error(msg: str, status: int = 400):
         ctx = {
             "error": msg,
+            "email": email,
+            "display_name": display_name,
             "first_user": auth.is_first_user(factory),
             "hide_sidebar": True,
         }

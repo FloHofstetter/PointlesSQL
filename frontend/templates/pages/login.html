@@ -24,6 +24,7 @@
             {{ csrf_input() }}
             <div class="form-floating">
                 <input type="email" class="form-control" id="email" name="email"
+                       value="{{ email|default('', true) }}"
                        required autofocus placeholder="you@example.com">
                 <label for="email">Email</label>
             </div>
