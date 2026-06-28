@@ -766,10 +766,10 @@ def _step_promote(
         },
         headers=_csrf_headers(http),
     )
-    if resp.status_code == 400 and "already champion" in resp.text:
-        p.info("v1 was already champion (previous run promoted it) — re-promote skipped")
+    if resp.status_code in (400, 422) and "already champion" in resp.text:
+        p.info("v1 was already champion (auto-crowned on register) — re-promote skipped")
         return version
-    if resp.status_code in (400, 401, 403):
+    if resp.status_code in (400, 401, 403, 422):
         p.warn(f"promote refused ({resp.status_code}): {resp.text[:200]}")
         return None
     resp.raise_for_status()
