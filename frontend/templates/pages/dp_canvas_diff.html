@@ -28,6 +28,7 @@
 <main class="container-xl py-3"
       x-data='dpCanvasDiff({{ product | tojson }})'
       x-init="init()">
+    {% include "components/_canvas_mobile_notice.html" %}
     <div class="d-flex align-items-center gap-3 mb-3">
         <a class="btn btn-sm btn-outline-secondary" :href="'/dp/' + product.id + '/canvas'">
             <i class="bi bi-arrow-left"></i> Back to editor

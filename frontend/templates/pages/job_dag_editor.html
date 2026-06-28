@@ -28,6 +28,8 @@
      })'
      x-init="init()">
 
+    {% include "components/_canvas_mobile_notice.html" %}
+
     <div class="pql-dp-canvas-topbar d-flex align-items-center gap-2 px-3 py-2 border-bottom bg-body-tertiary">
         <a class="btn btn-sm btn-outline-secondary" href="/jobs/{{ job.id }}"
            title="Back to job detail">

@@ -1,0 +1,15 @@
+{#
+  Mobile "open on a wider screen" hint for the visual canvas editors.
+
+  The Drawflow / Rete canvases need a pointer and horizontal room to draw
+  and wire blocks; on a phone the drawing stage collapses to nothing, which
+  reads as a broken page. Show a gentle hint below the md breakpoint so a
+  mobile visitor knows to switch to a desktop rather than assuming the
+  editor failed to load. Hidden at md and up, where the canvas works.
+#}
+<div class="alert alert-info d-md-none mx-3 mt-3 mb-0 py-2 small" role="note">
+  <i class="bi bi-display me-2" aria-hidden="true"></i>
+  <strong>Best on a wider screen.</strong>
+  This visual editor needs a mouse and room to draw — open it on a desktop
+  to add and connect blocks.
+</div>
