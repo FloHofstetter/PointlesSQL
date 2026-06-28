@@ -126,10 +126,10 @@
       }
       if (!resp.ok) {
         const detail = await resp.text();
-        alert('Replay failed: ' + detail.slice(0, 200));
+        window.pqlToast?.error?.('Replay failed: ' + detail.slice(0, 200));
       }
     } catch (err) {
-      alert('Replay failed: ' + err);
+      window.pqlToast?.error?.('Replay failed: ' + err);
     } finally {
       buttonEl.disabled = false;
       buttonEl.innerHTML = origLabel;

@@ -174,6 +174,37 @@
     </div>
 </div>
 
+{# Themed acknowledge modal — replaces the native prompt() chain for the
+   ack comment + snooze flow.  Driven imperatively by audit_inbox.js. #}
+<div class="modal fade" id="audit-ack-modal" tabindex="-1" aria-hidden="true"
+     aria-labelledby="audit-ack-title">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="audit-ack-title">Acknowledge anomaly</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <label for="audit-ack-comment" class="form-label">
+          Comment <span class="text-muted">(optional)</span></label>
+        <textarea id="audit-ack-comment" class="form-control" rows="2"
+                  placeholder="Why is this expected? (leave blank for none)"></textarea>
+        <label for="audit-ack-snooze" class="form-label mt-3">
+          Snooze until <span class="text-muted">(optional)</span></label>
+        <input id="audit-ack-snooze" type="datetime-local" class="form-control">
+        <div class="form-text">
+          Leave blank to acknowledge permanently; set a time to have the anomaly
+          reappear after it.
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" id="audit-ack-confirm" class="btn btn-primary">Acknowledge</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 {# Page-local IIFE moved to frontend/js/pages/audit_inbox.js,
    imported as a side-effect module via frontend/js/bootstrap.js. #}
 {% endblock %}

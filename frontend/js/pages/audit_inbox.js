@@ -5,6 +5,52 @@
 // ``#inbox-filter`` form so the cost on unrelated pages is one
 // ``getElementById`` lookup.
 
+// Themed acknowledge modal — replaces the native prompt() chain. Resolves
+// with {comment, snooze} (snooze normalised to an ISO-8601 string) when the
+// user confirms, or null when they cancel / dismiss. Falls back to a no-input
+// ack if the Bootstrap modal markup is unavailable.
+function showAckModal(headingText) {
+  return new Promise((resolve) => {
+    const modalEl = document.getElementById('audit-ack-modal');
+    if (!modalEl || !window.bootstrap) {
+      resolve({ comment: '', snooze: '' });
+      return;
+    }
+    const titleEl = document.getElementById('audit-ack-title');
+    const commentEl = document.getElementById('audit-ack-comment');
+    const snoozeEl = document.getElementById('audit-ack-snooze');
+    const confirmBtn = document.getElementById('audit-ack-confirm');
+    if (titleEl) titleEl.textContent = headingText;
+    if (commentEl) commentEl.value = '';
+    if (snoozeEl) snoozeEl.value = '';
+    const modal = window.bootstrap.Modal.getOrCreateInstance(modalEl);
+    let settled = false;
+    const cleanup = () => {
+      confirmBtn?.removeEventListener('click', onConfirm);
+      modalEl.removeEventListener('hidden.bs.modal', onHidden);
+    };
+    const onConfirm = () => {
+      settled = true;
+      let snooze = '';
+      if (snoozeEl?.value) {
+        const d = new Date(snoozeEl.value);
+        if (!Number.isNaN(d.getTime())) snooze = d.toISOString();
+      }
+      const comment = commentEl ? commentEl.value.trim() : '';
+      cleanup();
+      modal.hide();
+      resolve({ comment, snooze });
+    };
+    const onHidden = () => {
+      cleanup();
+      if (!settled) resolve(null);
+    };
+    confirmBtn?.addEventListener('click', onConfirm);
+    modalEl.addEventListener('hidden.bs.modal', onHidden);
+    modal.show();
+  });
+}
+
 function _init() {
   const formEl = document.getElementById('inbox-filter');
   if (!formEl) return;
@@ -166,9 +212,9 @@ function _init() {
 
   bulkAckBtn.addEventListener('click', async () => {
     if (selected.size === 0) return;
-    const comment = prompt(
-      'Optional ack comment for all ' + selected.size + ' (leave blank for none)'
-    );
+    const result = await showAckModal('Acknowledge ' + selected.size + ' anomalies');
+    if (result === null) return;
+    const { comment, snooze } = result;
     bulkAckBtn.disabled = true;
     let failed = 0;
     const entries = Array.from(selected.values());
@@ -176,6 +222,7 @@ function _init() {
       entries.map(async (e) => {
         const body = { metric: e.metric, bin_iso: e.bin_iso, bin_kind: e.bin_kind };
         if (comment) body.comment = comment;
+        if (snooze) body.dismissed_until = snooze;
         const r = await fetch('/api/audit/anomaly-acks', {
           method: 'POST',
           credentials: 'same-origin',
@@ -202,15 +249,15 @@ function _init() {
     if (!btn) return;
     ev.preventDefault();
     if (btn.dataset.action === 'ack') {
-      const comment = prompt('Optional ack comment (leave blank for none)');
-      const snooze = prompt('Snooze until (ISO 8601, leave blank for permanent ack)');
+      const result = await showAckModal('Acknowledge anomaly');
+      if (result === null) return;
       const body = {
         metric: btn.dataset.metric,
         bin_iso: btn.dataset.binIso,
         bin_kind: btn.dataset.binKind,
       };
-      if (comment) body.comment = comment;
-      if (snooze) body.dismissed_until = snooze;
+      if (result.comment) body.comment = result.comment;
+      if (result.snooze) body.dismissed_until = result.snooze;
       const r = await fetch('/api/audit/anomaly-acks', {
         method: 'POST',
         credentials: 'same-origin',
@@ -218,19 +265,24 @@ function _init() {
         body: JSON.stringify(body),
       });
       if (!r.ok) {
-        alert('Ack failed: ' + r.status);
+        window.pqlToast?.error?.('Ack failed: ' + r.status);
         return;
       }
       await loadInbox();
     } else if (btn.dataset.action === 'unack') {
       const id = btn.dataset.ackId;
-      if (!confirm(`Un-ack #${id}?  The anomaly will reappear in the inbox.`)) return;
+      const ok = await window.pqlConfirm(
+        `Un-ack #${id}?`,
+        'The anomaly will reappear in the inbox.',
+        { confirmLabel: 'Un-ack' }
+      );
+      if (!ok) return;
       const r = await fetch(`/api/audit/anomaly-acks/${id}`, {
         method: 'DELETE',
         credentials: 'same-origin',
       });
       if (!r.ok) {
-        alert('Un-ack failed: ' + r.status);
+        window.pqlToast?.error?.('Un-ack failed: ' + r.status);
         return;
       }
       await loadInbox();

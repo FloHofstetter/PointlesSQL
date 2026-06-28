@@ -17,12 +17,12 @@ document.addEventListener('submit', (ev) => {
         window.location.reload();
       } else {
         r.text().then((t) => {
-          alert(`Delete failed: ${t || r.status}`);
+          window.pqlToast?.error?.(`Delete failed: ${t || r.status}`);
         });
       }
     })
     .catch((err) => {
-      alert(`Delete failed: ${err}`);
+      window.pqlToast?.error?.(`Delete failed: ${err}`);
     });
 });
 
@@ -50,11 +50,11 @@ document.addEventListener('submit', (ev) => {
         window.location.reload();
       } else {
         r.text().then((t) => {
-          alert(`Create failed: ${t || r.status}`);
+          window.pqlToast?.error?.(`Create failed: ${t || r.status}`);
         });
       }
     })
     .catch((err) => {
-      alert(`Create failed: ${err}`);
+      window.pqlToast?.error?.(`Create failed: ${err}`);
     });
 });
