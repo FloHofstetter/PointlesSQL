@@ -24,15 +24,15 @@ router = APIRouter(tags=["hermes"])
 async def agent_page(request: Request) -> HTMLResponse | RedirectResponse:
     """Render ``/agent`` — the embedded Hermes dashboard.
 
-    Anonymous callers are sent to login; non-admins are sent home
-    (the dashboard can run commands, so it is admin-only, matching the
-    proxy gate).
+    Anonymous callers are sent to login; authenticated non-admins get the
+    standard 403 "Access denied" envelope (the dashboard can run commands,
+    so it is admin-only, matching the proxy gate and the ``/admin`` pages —
+    a silent redirect home read as the page being broken).
     """
     user = get_user(request)
     if user["id"] == 0:
         return RedirectResponse(url="/auth/login?next=/agent", status_code=303)
-    if not user["is_admin"]:
-        return RedirectResponse(url="/", status_code=303)
+    require_admin(request)
     templates = request.app.state.templates
     return templates.TemplateResponse(
         request,
