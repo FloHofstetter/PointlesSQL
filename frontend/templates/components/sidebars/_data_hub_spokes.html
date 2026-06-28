@@ -92,6 +92,20 @@
  </a>
  </li>
  <li>
+ <a href="/serving"
+ class="pql-context-panel__link{% if active_section == 'serving' %} active{% endif %}">
+ <i class="bi bi-rocket-takeoff"></i>
+ <span>Model Serving</span>
+ </a>
+ </li>
+ <li>
+ <a href="/online-tables"
+ class="pql-context-panel__link{% if active_section == 'online-tables' %} active{% endif %}">
+ <i class="bi bi-lightning-charge"></i>
+ <span>Online Tables</span>
+ </a>
+ </li>
+ <li>
  {{ permission_link(
       href="/branches",
       icon="bi-signpost-split",
