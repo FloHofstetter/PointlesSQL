@@ -143,3 +143,69 @@ def test_read_at_timestamp_returns_frame(monkeypatch: pytest.MonkeyPatch, fake_d
         client=object(), full_name="c.s.t", when=when, unreachable_msg=_UNREACHABLE
     )
     assert list(df["a"]) == [1, 2, 3]
+
+
+# --- storage_options threading (object storage) --------------------------
+
+
+class _SpyDeltaTable:
+    """Captures the ``storage_options`` the time-travel reader threads in."""
+
+    captured: dict[str, Any] = {}
+
+    def __init__(self, location: str, storage_options: Any = None) -> None:
+        _SpyDeltaTable.captured = {"location": location, "storage_options": storage_options}
+
+    def load_as_version(self, version: Any) -> None:
+        pass
+
+    def to_pandas(self) -> Any:
+        import pandas as pd
+
+        return pd.DataFrame({"a": [1]})
+
+
+@pytest.fixture
+def _s3_configured(monkeypatch: pytest.MonkeyPatch) -> None:
+    from pointlessql.config import reset_settings_cache
+
+    monkeypatch.setenv("POINTLESSQL_OBJECT_STORE_S3_ACCESS_KEY_ID", "AK")
+    monkeypatch.setenv("POINTLESSQL_OBJECT_STORE_S3_SECRET_ACCESS_KEY", "SK")
+    monkeypatch.setenv("POINTLESSQL_OBJECT_STORE_S3_ENDPOINT_URL", "http://s3:9000")
+    reset_settings_cache()
+
+
+def test_read_at_version_threads_storage_options(
+    monkeypatch: pytest.MonkeyPatch, _s3_configured: None
+) -> None:
+    """An s3 table's resolved storage_options reach ``DeltaTable``."""
+    import deltalake
+
+    monkeypatch.setattr(deltalake, "DeltaTable", _SpyDeltaTable)
+    _patch_get_table(monkeypatch, TableInfo(storage_location="s3://bucket/t"))
+    _time_travel.read_table_at_version(
+        client=object(), full_name="c.s.t", version=2, unreachable_msg=_UNREACHABLE
+    )
+    assert _SpyDeltaTable.captured["location"] == "s3://bucket/t"
+    opts = _SpyDeltaTable.captured["storage_options"]
+    assert opts is not None
+    assert opts["AWS_ACCESS_KEY_ID"] == "AK"
+    assert opts["AWS_ENDPOINT_URL"] == "http://s3:9000"
+
+
+def test_read_at_timestamp_threads_storage_options(
+    monkeypatch: pytest.MonkeyPatch, _s3_configured: None
+) -> None:
+    """The timestamp reader threads storage_options the same way."""
+    import deltalake
+
+    monkeypatch.setattr(deltalake, "DeltaTable", _SpyDeltaTable)
+    _patch_get_table(monkeypatch, TableInfo(storage_location="s3://bucket/t"))
+    when = datetime.datetime(2026, 1, 1, tzinfo=datetime.UTC)
+    _time_travel.read_table_at_timestamp(
+        client=object(), full_name="c.s.t", when=when, unreachable_msg=_UNREACHABLE
+    )
+    assert _SpyDeltaTable.captured["location"] == "s3://bucket/t"
+    opts = _SpyDeltaTable.captured["storage_options"]
+    assert opts is not None
+    assert opts["AWS_ACCESS_KEY_ID"] == "AK"
