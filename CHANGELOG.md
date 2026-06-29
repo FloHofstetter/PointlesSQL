@@ -17,6 +17,20 @@ defined in ``scripts/clusters.json``. -->
 
 ### Notes
 
+- **Object-storage support for Delta tables (phase 246).** PQL now reads
+  and writes Delta tables on `s3://` / `abfss://` / `gs://` (and
+  S3-compatible endpoints), where before it was effectively
+  local-filesystem-only.  A `StorageOptionsResolver` seam threads
+  credentials/endpoint into every `deltalake` call; new
+  `POINTLESSQL_OBJECT_STORE_{S3,AZURE,GCS}_*` settings drive it, and an
+  all-default config resolves to nothing so local Delta calls are
+  byte-identical.  Unity Catalog credential vending is the primary path
+  (`VendingResolver` → soyuz `temporary-path-credentials`) with static
+  config as the fallback; soyuz-catalog gains opt-in AWS-STS minting
+  (`SOYUZ_ENABLE_STS_VENDING`).  The local test/dev object store is
+  SeaweedFS — MinIO entered maintenance mode in 2025, and moto's mock S3
+  cannot serve the HTTP Range reads delta-rs issues.  Branch `deep_copy`
+  and vector-index support on object storage are deferred follow-ups.
 - **Databricks Free Edition expansion (phase 245).** Verified already
   present — no code change.  The announcement bundles Genie Code,
   serverless GPUs, Lakebase, Agent Bricks, and Lakeflow Designer into the

@@ -46,8 +46,9 @@ class _FakeDeltaTable:
 
     instances: list[_FakeDeltaTable] = []
 
-    def __init__(self, location: Any) -> None:
+    def __init__(self, location: Any, storage_options: Any = None) -> None:
         self.location = location
+        self.storage_options = storage_options
         self.loaded: Any = "<unloaded>"
         _FakeDeltaTable.instances.append(self)
 

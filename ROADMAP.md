@@ -3854,6 +3854,28 @@ PointlesSQL
 │       │   Kapazität („Budget erreicht in N Tagen") + Cost am Agent-Run +
 │       │   FinOps-Grafana-Panels.  estimated_cost = Schätzung, kein $.
 │   │
+├── Phase 246 — Object-Storage-Support (Delta auf S3 / Azure / GCS)  ✅ Phasen 1–2 (local, 2026-06-28); Branch/Vector-on-cloud ⏳ deferred
+│   │
+│   │   Bis hierhin war der PQL-Bridge effektiv local-filesystem-only:
+│   │   alle ~28 ``deltalake``-Call-Sites liefen ohne ``storage_options``.
+│   │
+│   │   - StorageOptionsResolver-Seam (``pql/_storage_options.py``) durch
+│   │     jede ``deltalake``-Call-Site gefädelt; neue ``ObjectStoreSettings``
+│   │     (``POINTLESSQL_OBJECT_STORE_{S3,AZURE,GCS}_*``). Ein all-default
+│   │     Block kollabiert zu ``None`` → lokale Delta-Calls byte-stabil.
+│   │   - UC-Credential-Vending als primärer Pfad: ``VendingResolver`` ruft
+│   │     soyuz ``temporary-path-credentials``, Static-Config als Fallback.
+│   │     soyuz erhält opt-in AWS-STS-Minting (``SOYUZ_ENABLE_STS_VENDING``,
+│   │     eigener Branch/PR im soyuz-catalog-Repo).
+│   │   - Lokaler Object-Store für Dev/CI/E2E: SeaweedFS (MinIO ist seit
+│   │     12/2025 im Maintenance-Mode). moto taugt nicht für Delta-Reads —
+│   │     kein HTTP-Range-Support, der Rust-Reader hängt.
+│   │   - Multi-Cloud read/write läuft via Static-Config (Azure/GCS-Branches
+│   │     im Resolver, unit-getestet).
+│   │   - Deferred Follow-ups (brauchen echtes Object-Storage zum Verifizieren):
+│   │     Branch ``deep_copy`` auf Object-Store, Vector-Index
+│   │     materialize-locally, Azurite/fake-gcs-server-Emulator-CI.
+│   │
 ├── Phase 245 — Databricks Free Edition expansion: verifiziert bereits vorhanden — kein Code (Summit-Recherche)  ✅ verified (local, 2026-06-21)
 │   │
 │   │   Dreiunddreißigster und letzter Eintrag aus

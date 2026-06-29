@@ -138,6 +138,12 @@ dev = [
     # the rest of the suite never touches Playwright.
     "playwright>=1.50",
     "hypothesis>=6",
+    # ``boto3`` provisions the bucket for the object-storage integration
+    # tests against whatever real S3 endpoint the lane provides (a
+    # SeaweedFS service in CI / docker-compose).  A real server is
+    # required: moto's mock S3 does not honour the HTTP Range reads the
+    # deltalake Rust reader issues, so Delta *data* reads hang on it.
+    "boto3>=1.35",
 ]
 docs = [
     "mkdocs>=1.6",

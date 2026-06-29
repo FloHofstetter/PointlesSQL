@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from pointlessql.config._settings._paths import PROJECT_ROOT
@@ -92,3 +93,87 @@ class CanvasFileIoSettings(BaseSettings):
     root: Path | None = None
     allow_input: bool = True
     allow_output: bool = False
+
+
+class S3Settings(BaseSettings):
+    """S3 (and S3-compatible) credentials and connection options.
+
+    Reads ``POINTLESSQL_OBJECT_STORE_S3_*`` environment variables.
+    These feed the Delta engine's ``storage_options`` so tables whose
+    ``storage_location`` is an ``s3://`` URI can be read and written.
+
+    ``endpoint_url`` + ``allow_http`` are what make a non-AWS,
+    HTTP-only store (a local moto-server or SeaweedFS gateway) reachable
+    — they are properties of the endpoint, not of any one credential, so
+    they live here rather than being vended with the keys.
+    """
+
+    model_config = SettingsConfigDict(env_prefix="POINTLESSQL_OBJECT_STORE_S3_")
+
+    access_key_id: str | None = None
+    secret_access_key: str | None = None
+    session_token: str | None = None
+    region: str = "us-east-1"
+    # Override for S3-compatible stores (moto-server, SeaweedFS, R2, MinIO).
+    # Unset means real AWS S3.
+    endpoint_url: str | None = None
+    # Permit plain HTTP — required for local endpoints that don't serve TLS.
+    allow_http: bool = False
+    # Skip the conditional-put / locking provider on commit.  Safe only for
+    # single-writer use (local dev, the test fixtures); never for shared
+    # production writers.  See docs / ROADMAP for the multi-writer story.
+    allow_unsafe_rename: bool = False
+
+
+class AzureSettings(BaseSettings):
+    """Azure Blob Storage / ADLS Gen2 credentials.
+
+    Reads ``POINTLESSQL_OBJECT_STORE_AZURE_*`` environment variables.
+    Feeds the Delta engine's ``storage_options`` for ``abfss://`` URIs.
+    Either an account key or a SAS token authorises access; a delegation
+    SAS is what credential vending mints, so both shapes are accepted.
+    """
+
+    model_config = SettingsConfigDict(env_prefix="POINTLESSQL_OBJECT_STORE_AZURE_")
+
+    account_name: str | None = None
+    account_key: str | None = None
+    sas_token: str | None = None
+
+
+class GCSSettings(BaseSettings):
+    """Google Cloud Storage credentials.
+
+    Reads ``POINTLESSQL_OBJECT_STORE_GCS_*`` environment variables.
+    Feeds the Delta engine's ``storage_options`` for ``gs://`` URIs.
+    The service account may be given inline as a JSON blob or as a path
+    to a key file; vending supplies a short-lived OAuth token instead.
+    """
+
+    model_config = SettingsConfigDict(env_prefix="POINTLESSQL_OBJECT_STORE_GCS_")
+
+    service_account_path: Path | None = None
+    service_account_key: str | None = None
+    bearer_token: str | None = None
+
+
+class ObjectStoreSettings(BaseSettings):
+    """Object-store credentials for Delta tables on S3 / Azure / GCS.
+
+    Reads ``POINTLESSQL_OBJECT_STORE_*`` environment variables.  Each
+    cloud has its own nested sub-model; the Delta engine resolves a
+    table's ``storage_location`` scheme to the matching block and turns
+    it into the ``storage_options`` dict the ``deltalake`` library
+    expects.  All blocks unset (the default) means no cloud config, so
+    the engine stays byte-for-byte on its prior local-filesystem path.
+
+    These static credentials are also the bootstrap and fallback for
+    Unity Catalog credential vending: until soyuz-catalog mints real
+    short-lived tokens, the vending resolver falls back to these.
+    """
+
+    model_config = SettingsConfigDict(env_prefix="POINTLESSQL_OBJECT_STORE_")
+
+    s3: S3Settings = Field(default_factory=S3Settings)
+    azure: AzureSettings = Field(default_factory=AzureSettings)
+    gcs: GCSSettings = Field(default_factory=GCSSettings)

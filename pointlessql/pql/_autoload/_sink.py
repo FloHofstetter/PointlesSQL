@@ -32,6 +32,7 @@ from pointlessql.exceptions import (
     CatalogUnavailableError,
 )
 from pointlessql.pql._columns import columns_from_tuples
+from pointlessql.pql._storage_options import storage_options_for
 from pointlessql.pql._types import (
     ArrowTable,
 )
@@ -103,7 +104,12 @@ def _append_to_delta(target_location: str, arrow_table: ArrowTable) -> None:
     # ``ArrowTable`` Protocol matches the pyarrow.Table runtime shape;
     # deltalake's stub typing wants its own ArrowArrayExportable union,
     # so we drop to Any at the boundary.
-    deltalake.write_deltalake(target_location, cast(Any, arrow_table), mode="append")
+    deltalake.write_deltalake(
+        target_location,
+        cast(Any, arrow_table),
+        mode="append",
+        storage_options=storage_options_for(target_location),
+    )
 
 
 def _register_target_in_uc(

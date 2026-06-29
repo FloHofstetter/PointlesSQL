@@ -40,6 +40,27 @@ services:
       retries: 10
       start_period: 10s
 
+  # S3-compatible object storage for Delta tables on ``s3://`` storage
+  # roots.  SeaweedFS (Apache-2.0, single Go binary, actively maintained)
+  # replaces MinIO, which entered maintenance mode in 2025.  Runs the S3
+  # gateway open (no identity config) so any access/secret key works —
+  # fine for a local dev / test store; lock it down for anything shared.
+  # Point a schema's storage_root at ``s3://<bucket>/...`` and set the
+  # POINTLESSQL_OBJECT_STORE_S3_* vars on the pointlessql service to use it.
+  seaweedfs:
+    image: chrislusf/seaweedfs:${SEAWEEDFS_VERSION:-3.80}
+    command: server -s3 -dir=/data -s3.port=8333 -ip.bind=0.0.0.0
+    ports:
+      - "${S3_HOST_PORT:-8333}:8333"
+    volumes:
+      - seaweedfs_data:/data
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:9333/cluster/status"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
   pointlessql:
     image: ghcr.io/flohofstetter/pointlessql:${PQL_VERSION:-v0.1.0rc3}
     ports:
@@ -76,3 +97,4 @@ volumes:
   pointlessql_data:
   warehouse_data:
   notebooks_data:
+  seaweedfs_data:

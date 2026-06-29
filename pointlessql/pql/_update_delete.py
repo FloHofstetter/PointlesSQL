@@ -39,6 +39,7 @@ from pointlessql.exceptions import (
     CatalogUnavailableError,
 )
 from pointlessql.pql._parsing import parse_full_name
+from pointlessql.pql._storage_options import storage_options_for
 from pointlessql.pql._write import safe_delta_version
 from pointlessql.services.agent_runs import operation_context
 from pointlessql.types import OpName, RunId
@@ -132,7 +133,7 @@ def update_table(
 
         import deltalake
 
-        dt = deltalake.DeltaTable(location)
+        dt = deltalake.DeltaTable(location, storage_options=storage_options_for(location))
         try:
             stats = dt.update(updates=set_clause, predicate=where)
         except Exception:
@@ -218,7 +219,7 @@ def delete_table_rows(
 
         import deltalake
 
-        dt = deltalake.DeltaTable(location)
+        dt = deltalake.DeltaTable(location, storage_options=storage_options_for(location))
         stats = dt.delete(predicate=where)
 
         if agent_run_id is not None:

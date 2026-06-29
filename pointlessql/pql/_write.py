@@ -29,6 +29,7 @@ from pointlessql.exceptions import (
 from pointlessql.pql._columns import columns_from_tuples
 from pointlessql.pql._hashing import arrow_ipc_sha256
 from pointlessql.pql._parsing import parse_full_name
+from pointlessql.pql._storage_options import storage_options_for
 from pointlessql.pql.engine import Engine
 from pointlessql.services.agent_runs import operation_context
 from pointlessql.services.lineage_edges import synth_target_row_id
@@ -442,7 +443,9 @@ def safe_delta_version(location: str) -> int | None:
     try:
         import deltalake
 
-        return int(deltalake.DeltaTable(location).version())
+        return int(
+            deltalake.DeltaTable(location, storage_options=storage_options_for(location)).version()
+        )
     except Exception:  # noqa: BLE001 — version reads are best-effort
         # bare-broad-ok: version probe returns None on Delta absent / corrupt
         return None

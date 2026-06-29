@@ -14,6 +14,7 @@ from pointlessql.pql._merge._constants import (
     SCD2_VALID_FROM,
     SCD2_VALID_TO,
 )
+from pointlessql.pql._storage_options import storage_options_for
 from pointlessql.pql._types import ArrowTable
 
 
@@ -28,7 +29,7 @@ def _do_upsert(target_location: str, arrow_source: ArrowTable, on: list[str]) ->
     Returns:
         ``{"strategy": "upsert", **deltalake_merge_stats}``.
     """
-    dt = deltalake.DeltaTable(target_location)
+    dt = deltalake.DeltaTable(target_location, storage_options=storage_options_for(target_location))
     predicate = " AND ".join(f"target.{col} = source.{col}" for col in on)
     # deltalake.merge typing wants its own ArrowArrayExportable union;
     # cast to Any at the boundary — runtime is still pyarrow.Table.
@@ -67,7 +68,7 @@ def _do_scd2(target_location: str, arrow_source: ArrowTable, on: list[str]) -> d
     now = datetime.now(UTC)
     augmented = _augment_for_scd2(arrow_source, now)
 
-    dt = deltalake.DeltaTable(target_location)
+    dt = deltalake.DeltaTable(target_location, storage_options=storage_options_for(target_location))
     predicate_close = (
         " AND ".join(f"target.{col} = source.{col}" for col in on)
         + f" AND target.{SCD2_IS_CURRENT} = TRUE"
@@ -89,7 +90,12 @@ def _do_scd2(target_location: str, arrow_source: ArrowTable, on: list[str]) -> d
         .execute()
     )
 
-    deltalake.write_deltalake(target_location, cast(Any, augmented), mode="append")
+    deltalake.write_deltalake(
+        target_location,
+        cast(Any, augmented),
+        mode="append",
+        storage_options=storage_options_for(target_location),
+    )
     return {
         "strategy": "scd2",
         "rows_appended": augmented.num_rows,

@@ -34,6 +34,8 @@ import logging
 
 import deltalake
 
+from pointlessql.pql._storage_options import storage_options_for
+
 logger = logging.getLogger(__name__)
 
 CDF_TBLPROP = "delta.enableChangeDataFeed"
@@ -80,7 +82,9 @@ def ensure_cdf_enabled(target_location: str) -> bool:
         exist or deltalake raised at open time.
     """
     try:
-        dt = deltalake.DeltaTable(target_location)
+        dt = deltalake.DeltaTable(
+            target_location, storage_options=storage_options_for(target_location)
+        )
     except Exception:  # noqa: BLE001 — best-effort
         logger.info(
             "ensure_cdf_enabled: cannot open Delta table at %s",

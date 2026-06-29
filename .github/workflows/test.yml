@@ -273,6 +273,47 @@ jobs:
         run: |
           uv run pytest -q -n 4 --dist loadfile
 
+  integration:
+    name: object-storage integration (SeaweedFS S3)
+    runs-on: ubuntu-latest
+    needs: gate
+    env:
+      POINTLESSQL_TEST_S3_ENDPOINT: http://127.0.0.1:8333
+      POINTLESSQL_TEST_S3_ACCESS_KEY: pointlessql
+      POINTLESSQL_TEST_S3_SECRET_KEY: pointlessql  # pragma: allowlist secret
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+      - name: Set up Python
+        run: uv python install 3.14
+      - name: Install dependencies
+        run: uv sync --all-extras
+      - name: Start SeaweedFS S3 gateway
+        # A GitHub Actions *service container* can't override the image
+        # command, and SeaweedFS needs ``server -s3`` args — so run it
+        # directly with ``docker run``.  The gateway starts open (no
+        # identity config), so the test's dummy keys are accepted.  Real
+        # S3 servers are required here: moto's mock does not honour the
+        # HTTP Range reads deltalake's Rust reader issues, so Delta data
+        # reads hang on it.
+        run: |
+          docker run -d --name seaweedfs -p 8333:8333 \
+            chrislusf/seaweedfs:${SEAWEEDFS_VERSION:-3.80} \
+            server -s3 -dir=/data -s3.port=8333 -ip.bind=0.0.0.0
+          echo "waiting for the S3 endpoint to accept connections..."
+          for _ in $(seq 1 60); do
+            if curl -s -o /dev/null http://127.0.0.1:8333; then echo "S3 up"; exit 0; fi
+            sleep 2
+          done
+          echo "SeaweedFS S3 did not come up in time"; docker logs seaweedfs; exit 1
+      - name: Pytest — object-storage round-trip on S3
+        # Only the S3 integration file — the broader integration marker
+        # also covers live-soyuz tests this job does not provision.
+        run: uv run pytest -q -m integration tests/test_pql_s3_roundtrip.py
+
   security-audit:
     name: dependency CVE scan (pip-audit)
     runs-on: ubuntu-latest

@@ -44,6 +44,7 @@ from pointlessql.exceptions import (
     CatalogUnavailableError,
 )
 from pointlessql.models import AgentRunOperation
+from pointlessql.pql._storage_options import storage_options_for
 from pointlessql.services.agent_runs import operation_context
 from pointlessql.services.agent_runs.operations import (
     RollbackAmbiguous,
@@ -183,7 +184,7 @@ def rollback_table(
                 "(delta_version_before is None); use pql.drop_table to undo"
             )
 
-        dt = DeltaTable(target_location)
+        dt = DeltaTable(target_location, storage_options=storage_options_for(target_location))
         current_version = int(dt.version())
         recorder.delta_version_before = current_version
 
