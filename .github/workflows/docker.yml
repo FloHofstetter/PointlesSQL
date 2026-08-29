@@ -160,7 +160,7 @@ jobs:
       # runs, same ramp as security-sast.yml.  ignore-unfixed drops noise
       # for CVEs with no available patch.
       - name: Scan PointlesSQL image for OS/library CVEs
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: ghcr.io/flohofstetter/pointlessql@${{ steps.build_pql.outputs.digest }}
           format: sarif
@@ -170,13 +170,13 @@ jobs:
           exit-code: '0'
 
       - name: Upload PointlesSQL CVE SARIF
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: trivy-pointlessql.sarif
           category: trivy-pointlessql
 
       - name: Scan soyuz-catalog image for OS/library CVEs
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: ghcr.io/flohofstetter/soyuz-catalog@${{ steps.build_soyuz.outputs.digest }}
           format: sarif
@@ -186,7 +186,7 @@ jobs:
           exit-code: '0'
 
       - name: Upload soyuz-catalog CVE SARIF
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: trivy-soyuz-catalog.sarif
           category: trivy-soyuz-catalog

@@ -94,7 +94,7 @@ jobs:
         # frontend/js/package.json carries only {"type": "module"} so
         # Node parses the production ESM files; there is deliberately
         # no root package.json, lockfile, or npm install.
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: '24'
       - name: Run JS unit tests
