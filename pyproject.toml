@@ -115,7 +115,7 @@ dev = [
     # not adopt those; a 0.8 bump turns the whole tree red without a
     # corresponding policy change.  Re-pin to 0.7.x until/unless the
     # docstrings are deliberately reconciled to the 0.8 ruleset.
-    "pydoclint>=0.7,<0.8",
+    "pydoclint>=0.7,<0.10",
     # Explicit dep on the fork so the post-install state is
     # deterministic.  pydoclint imports ``DocstringYields`` from
     # ``docstring_parser.common``; the symbol only ships in the fork
